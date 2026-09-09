@@ -40,7 +40,7 @@ public static class HandbuchContent
         Rollen.SuperAdmin =>
         [
             new("1", "Vérifier les écoles et utilisateurs", "Dans Administration, contrôle les rôles, les affectations et les paramètres globaux."),
-            new("2", "Piloter les facturations HALLOAPP", "Suis le workflow complet: période créée, validation direction, confirmation finale après réception."),
+            new("2", "Piloter les facturations SKOULOUAPPABO", "Suis le workflow complet: période créée, validation direction, confirmation finale après réception."),
             new("3", "Configurer prix et commissions", "Le prix global et les commissions globales se règlent ici. Une école peut aussi avoir des paramètres spécifiques."),
             new("4", "Gérer les migrations explicitement", "En développement, crée et applique les migrations EF manuellement avant de lancer des opérations sensibles.")
         ],
@@ -48,7 +48,7 @@ public static class HandbuchContent
         [
             new("1", "Préparer l'école", "Crée les classes, démarre les cycles (date + prix), puis affecte enseignants et élèves."),
             new("2", "Gérer les élèves", "Valide les inscriptions, attribue la classe actuelle et organise le remplissage après réouverture si besoin."),
-            new("3", "Suivre paiements et clôture", "Enregistre la scolarité, gère l'abonnement HALLOAPP et clôture le cycle avec décision de fin."),
+            new("3", "Suivre paiements et clôture", "Enregistre la scolarité, gère l'abonnement SKOULOUAPP et clôture le cycle avec décision de fin."),
             new("4", "Valider les facturations", "Après clôture, contrôle le montant, effectue le virement puis confirme dans la page de facturation.")
         ],
         Rollen.Koordinator =>
@@ -70,7 +70,7 @@ public static class HandbuchContent
             new("1", "Choisir la classe attribuée", "Dans l'espace enseignant, filtre par école et classe autorisées."),
             new("2", "Créer ou partager le contenu", "Prépare leçons, exercices, examens et éventuellement des vidéos de leçon."),
             new("3", "Suivre et corriger", "Consulte les progrès et corrige les réponses libres ou manuelles."),
-            new("4", "Comprendre les abonnements", "Les leçons de professeur sont visibles selon l'abonnement et les règles HALLOAPP.")
+            new("4", "Comprendre les abonnements", "Les leçons de professeur sont visibles selon l'abonnement et les règles SKOULOUAPP.")
         ],
         _ =>
         [
@@ -127,7 +127,7 @@ public static class HandbuchContent
             new("Examens", "Mode concentration : une question à la fois, points de progression et résultat final.", ["Questions auto-corrigées", "Réponses manuelles", "Minuteur pour les examens"])
         ],
         [
-            "Un abonnement HALLOAPP doit exister pour accéder aux contenus concernés.",
+            "Un abonnement SKOULOUAPP doit exister pour accéder aux contenus concernés.",
             "Les vidéos de leçon sont stockées via le stockage média et ignorées lors des exports PDF.",
             "Les élèves voient un message lorsqu'une vidéo existe mais n'est pas incluse dans leur abonnement."
         ]);
@@ -174,7 +174,7 @@ public static class HandbuchContent
             "Utiliser la réaffectation des élèves après réouverture de classe si nécessaire."
         ],
         [
-            new("Classes", "Organisation par classes actives avec options de cycle et préparation d'abonnement HALLOAPP.", ["Création", "Attribution", "Suivi"]),
+            new("Classes", "Organisation par classes actives avec options de cycle et préparation d'abonnement SKOULOUAPP.", ["Création", "Attribution", "Suivi"]),
             new("Élèves", "Gestion des inscriptions, validation, blocage/déblocage et affectation de classe.", ["Validation", "Blocage", "Historique"])
         ],
         [
@@ -189,7 +189,7 @@ public static class HandbuchContent
         "violet",
         "/provisionen",
         "Ouvrir les commissions",
-        "Consulte les montants répartis après validation des périodes de facturation HALLOAPP.",
+        "Consulte les montants répartis après validation des périodes de facturation SKOULOUAPPABO.",
         [
             "Ouvrir la période concernée.",
             "Vérifier le chiffre d'affaires traité.",
@@ -212,7 +212,7 @@ public static class HandbuchContent
         "rose",
         "/finanzen",
         "Ouvrir les finances",
-        "L'espace finance aide à suivre la scolarité, l'abonnement HALLOAPP et les périodes autorisées.",
+        "L'espace finance aide à suivre la scolarité, l'abonnement SKOULOUAPP et les périodes autorisées.",
         [
             "Vérifier le cycle actif.",
             "Enregistrer les paiements au bon élève et à la bonne classe.",
@@ -221,7 +221,7 @@ public static class HandbuchContent
         ],
         [
             new("Paiements", "Suivi de la scolarité et des abonnements de classe.", ["Montants", "Statuts", "Historique"]),
-            new("Clôture de cycle", "La clôture peut déclencher la préparation de facturation HALLOAPP selon les règles en place.", ["Contrôle", "Validation", "Traçabilité"])
+            new("Clôture de cycle", "La clôture peut déclencher la préparation de facturation SKOULOUAPPABO selon les règles en place.", ["Contrôle", "Validation", "Traçabilité"])
         ],
         [
             "Les écritures doivent rester cohérentes avec les périodes actives.",
