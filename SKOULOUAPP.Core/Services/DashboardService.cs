@@ -1,0 +1,3158 @@
+using HalloApp.Core.DataModels.Courses;
+using HalloApp.Core.DataModels.Exams;
+using HalloApp.Core.DataModels.Exercises;
+using HalloApp.Core.DataModels.Finanzen;
+using HalloApp.Core.DataModels.Identity;
+using HalloApp.Core.DataModels.Lessons;
+using HalloApp.Core.DataModels.Schools;
+using HalloApp.Core.Interfaces;
+using HalloApp.Core.Models.Admin;
+using HalloApp.Core.Models.Dashboard;
+using HalloApp.Core.Models.Home;
+using HalloApp.Core.Models.Student;
+using HalloApp.Core.Models.TeacherLessons;
+using HalloApp.Core.Services.Storage;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+
+namespace HalloApp.Core.Services;
+
+public class DashboardService(
+    IHalloAppDbContext dbContext,
+    UserManager<AppUser> userManager,
+    IMediaStorageService mediaStorageService,
+    IHostEnvironment? hostEnvironment = null)
+{
+    // Zentrale Regel fuer die erlaubten Niveaus eines Schuelers. Optional, damit
+    // bestehende Konstruktoraufrufe (u. a. Tests) unveraendert funktionieren.
+    private readonly NiveauGruppenService _niveauGruppen = new(dbContext);
+    private async Task<decimal> GetGlobalSubscriptionPriceAsync(CancellationToken cancellationToken)
+        => await dbContext.CommissionSettings
+            .AsNoTracking()
+            .OrderBy(x => x.ErstelltAmUtc)
+            .Select(x => (decimal?)x.GlobalSubscriptionPrice)
+            .FirstOrDefaultAsync(cancellationToken)
+        ?? HalloAppKonstanten.StandardPreisAbo;
+    public async Task<DashboardSummary> GetAdminSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var teacherIds = await userManager.GetUsersInRoleAsync("Lehrer");
+        var studentIds = await userManager.GetUsersInRoleAsync("Schüler");
+
+        // Die Kachel "En attente / bloqués" zählt alle blockierten Konten, die vom
+        // Administrator verwaltet werden – Schüler ebenso wie Lehrer und SchulLeiter
+        // (SchulLeiter besitzen zusätzlich die Rolle "Lehrer" und erscheinen daher in
+        // der Lehrer-Liste). Die Konten werden anhand ihrer Id zusammengeführt.
+        // BlockedStudentCount weist zusätzlich die reine Schüleranzahl aus.
+        var verwalteteBenutzer = teacherIds
+            .Concat(studentIds)
+            .GroupBy(x => x.Id)
+            .Select(g => g.First())
+            .ToList();
+
+        return new DashboardSummary
+        {
+            SchoolCount = await dbContext.Schools.CountAsync(cancellationToken),
+            ActiveSchoolCount = await dbContext.Schools.CountAsync(x => x.IsActive, cancellationToken),
+            TeacherCount = teacherIds.Count,
+            StudentCount = studentIds.Count,
+            BlockedStudentCount = studentIds.Count(x => x.IsBlocked),
+            BlockedAccountCount = verwalteteBenutzer.Count(x => x.IsBlocked),
+            CourseCount = await dbContext.Klassen.CountAsync(cancellationToken),
+            LessonCount = await dbContext.Lessons.CountAsync(cancellationToken),
+            ExerciseCount = await dbContext.Exercises.CountAsync(cancellationToken)
+        };
+    }
+
+    /// <summary>
+    /// Liefert die Katalog-Zusammenfassung für die öffentliche Startseite direkt
+    /// aus der Datenbank (Klassen/Lektionen/Übungen). Ersetzt die frühere
+    /// In-Memory-JSON-Quelle, damit die Startseite den tatsächlich geseedeten
+    /// Katalog (inkl. der kuratierten ~10.000 Übungen) widerspiegelt.
+    /// </summary>
+    public async Task<HomeCatalogViewModel> GetHomeCatalogAsync(CancellationToken cancellationToken = default)
+    {
+        var lessonCount = await dbContext.Lessons.CountAsync(cancellationToken);
+        var exerciseCount = await dbContext.Exercises.CountAsync(cancellationToken);
+
+        // Kursniveaus mit Lektions- und Übungszahlen (nach Klasse gruppiert).
+        var levels = await dbContext.Lessons
+            .AsNoTracking()
+            .GroupBy(lesson => lesson.Klasse.Code)
+            .Select(gruppe => new HomeCatalogLevelItem
+            {
+                LevelCode = gruppe.Key,
+                LessonCount = gruppe.Count(),
+                ExerciseCount = gruppe.Sum(lesson => lesson.Exercises.Count)
+            })
+            .OrderBy(item => item.LevelCode)
+            .ToListAsync(cancellationToken);
+
+        // Anzahl der Kursniveaus mit Lektionen entspricht der Anzahl der Gruppen —
+        // kein zusätzlicher DB-Round-Trip nötig.
+        var niveauCount = levels.Count;
+
+        // Nur eine kleine Vorschau der ersten Lektionen laden (nicht den ganzen Katalog).
+        var previewLessons = await dbContext.Lessons
+            .AsNoTracking()
+            .OrderBy(lesson => lesson.Klasse.Code)
+            .ThenBy(lesson => lesson.Order)
+            .Take(3)
+            .Select(lesson => new HomeCatalogLessonItem
+            {
+                LevelCode = lesson.Klasse.Code,
+                Title = lesson.Title,
+                Summary = lesson.Summary,
+                Order = lesson.Order,
+                ExerciseCount = lesson.Exercises.Count
+            })
+            .ToListAsync(cancellationToken);
+
+        return new HomeCatalogViewModel
+        {
+            NiveauCount = niveauCount,
+            LessonCount = lessonCount,
+            ExerciseCount = exerciseCount,
+            RecommendedLesson = previewLessons.FirstOrDefault(),
+            PreviewLessons = previewLessons,
+            Levels = levels
+        };
+    }
+
+    /// <summary>
+    /// Liefert alle Lektionen des Katalogs (leichtgewichtig, mit Übungs-/Medienzahlen)
+    /// für die öffentliche Lektionsübersicht. Ersetzt die frühere In-Memory-JSON-Quelle.
+    /// </summary>
+    public async Task<IReadOnlyList<HomeCatalogLessonItem>> GetCatalogLessonsAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Lessons
+            .AsNoTracking()
+            .OrderBy(lesson => lesson.Klasse.Code)
+            .ThenBy(lesson => lesson.Order)
+            .Select(lesson => new HomeCatalogLessonItem
+            {
+                LevelCode = lesson.Klasse.Code,
+                Title = lesson.Title,
+                Summary = lesson.Summary,
+                Order = lesson.Order,
+                ExerciseCount = lesson.Exercises.Count,
+                MediaCount = lesson.MediaItems.Count
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AdminSchoolOverview>> GetAdminSchoolsAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Schools
+            .AsNoTracking()
+            .Select(school => new AdminSchoolOverview
+            {
+                SchoolId = school.Id,
+                Name = school.Name,
+                City = school.City,
+                Country = school.Country,
+                IsActive = school.IsActive,
+                TeacherCount = school.UserSchools.Count(link => link.CanManageStudents),
+                StudentCount = school.Students.Count
+            })
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserManagementItem>> GetUserManagementAsync(CancellationToken cancellationToken = default)
+    {
+        var users = await dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.UserSchools)
+                .ThenInclude(x => x.School)
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        var results = new List<UserManagementItem>(users.Count);
+        foreach (var user in users)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            results.Add(new UserManagementItem
+            {
+                UserId = user.Id,
+                FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
+                RoleName = roles.FirstOrDefault() ?? "Utilisateur",
+                IsBlocked = user.IsBlocked,
+                IsSelfRegistered = user.IsSelfRegistered,
+                Schools = user.UserSchools.Select(x => x.School.Name).OrderBy(x => x).ToList()
+            });
+        }
+
+        var userIds = results
+            .Where(x => x.RoleName == "Schüler")
+            .Select(x => x.UserId)
+            .ToList();
+        var levelLookup = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.AppUserId))
+            .Select(x => new { x.AppUserId, x.CurrentLevelCode, x.CurrentKlasseId })
+            .ToDictionaryAsync(x => x.AppUserId, x => x.CurrentLevelCode, cancellationToken);
+        var classLookup = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.AppUserId))
+            .Select(x => new { x.AppUserId, x.CurrentKlasseId })
+            .ToDictionaryAsync(x => x.AppUserId, x => x.CurrentKlasseId, cancellationToken);
+        var combinedScores = await GetCombinedProgressScoresAsync(userIds, cancellationToken);
+        var paidUserIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.StudentId) && x.IsPaid)
+            .Select(x => x.StudentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var paidUserIdSet = paidUserIds.ToHashSet();
+        var activeSubscriptionUserIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.StudentId) && x.IsUnlocked)
+            .Select(x => x.StudentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var activeSubscriptionUserIdSet = activeSubscriptionUserIds.ToHashSet();
+        var feeLookup = await GetCurrentSchoolFeeLookupAsync(userIds, cancellationToken);
+        foreach (var item in results)
+        {
+            item.HasPaidEnrollment = paidUserIdSet.Contains(item.UserId);
+            item.IsHalloPlus = activeSubscriptionUserIdSet.Contains(item.UserId);
+            item.HasStudentClass = classLookup.TryGetValue(item.UserId, out var currentKlasseId) && currentKlasseId.HasValue;
+            if (feeLookup.TryGetValue(item.UserId, out var fee))
+            {
+                item.SchoolFeeAmount = fee.Amount;
+                item.SchoolFeePaidAmount = fee.PaidAmount;
+                item.HasActiveSchoolFeeCycle = fee.HasCycle;
+            }
+
+            if (combinedScores.TryGetValue(item.UserId, out var combined) && combined.Count > 0)
+            {
+                item.CombinedScorePercent = combined.AverageScorePercent;
+                item.CombinedScoreCount = combined.Count;
+            }
+
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Ermittelt den kombinierten Fortschritts-Score aus Lektions-Übungen und Prüfungen.
+    /// Der jeweils letzte bewertete Versuch je Übung (richtig = 100 %, falsch = 0 %) und jede
+    /// abgeschlossene Prüfung (ScorePercent) ist ein gleichgewichteter Datenpunkt. Der Score
+    /// gilt für ALLE Schüler und wird durch Wiederholungen automatisch aktualisiert.
+    /// Liefert nur Einträge für Schüler mit mindestens einem Datenpunkt.
+    /// </summary>
+    private async Task<Dictionary<Guid, (int AverageScorePercent, int Count)>> GetCombinedProgressScoresAsync(
+        IReadOnlyCollection<Guid> studentIds,
+        CancellationToken cancellationToken)
+    {
+        if (studentIds.Count == 0)
+        {
+            return [];
+        }
+
+        // Übungsversuche (nur bereits automatisch/manuell bewertete, keine offenen manuellen).
+        var exerciseAttempts = await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(a => !a.RequiresManualGrading && studentIds.Contains(a.StudentId))
+            .Select(a => new
+            {
+                a.StudentId,
+                a.ExerciseId,
+                a.IsCorrect,
+                a.AwardedPoints,
+                a.AnsweredAtUtc,
+                a.Id
+            })
+            .ToListAsync(cancellationToken);
+
+        var exerciseIds = exerciseAttempts.Select(a => a.ExerciseId).Distinct().ToList();
+        var exercisePointsById = await dbContext.Exercises
+            .AsNoTracking()
+            .Where(exercise => exerciseIds.Contains(exercise.Id))
+            .Select(exercise => new { exercise.Id, exercise.Points })
+            .ToDictionaryAsync(x => x.Id, x => x.Points, cancellationToken);
+
+        var abschlussExamIds = await dbContext.Exams
+            .AsNoTracking()
+            .Where(exam => exam.ExamType == ExamType.AbschlussRelevant)
+            .Select(exam => exam.Id)
+            .ToListAsync(cancellationToken);
+
+        var examAttempts = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(a => a.IsCompleted
+                        && !a.RequiresManualGrading
+                        && !abschlussExamIds.Contains(a.ExamId)
+                        && studentIds.Contains(a.StudentId))
+            .Select(a => new
+            {
+                a.StudentId,
+                a.ScorePercent
+            })
+            .ToListAsync(cancellationToken);
+
+        var perStudent = new Dictionary<Guid, (int Sum, int Count)>();
+
+        foreach (var attempt in exerciseAttempts
+            .GroupBy(a => new { a.StudentId, a.ExerciseId })
+            .Select(group => group
+                .OrderByDescending(a => a.AnsweredAtUtc)
+                .ThenByDescending(a => a.Id)
+                .First()))
+        {
+            perStudent.TryGetValue(attempt.StudentId, out var acc);
+            var hasExercisePoints = exercisePointsById.TryGetValue(attempt.ExerciseId, out var configuredPoints);
+            var maxPoints = configuredPoints > 0 ? configuredPoints : 10;
+            var percent = attempt.AwardedPoints > 0 && hasExercisePoints
+                ? (int)Math.Round(Math.Clamp(attempt.AwardedPoints, 0, maxPoints) * 100d / maxPoints)
+                : (attempt.IsCorrect ? 100 : 0);
+            perStudent[attempt.StudentId] = (acc.Sum + percent, acc.Count + 1);
+        }
+
+        foreach (var attempt in examAttempts)
+        {
+            perStudent.TryGetValue(attempt.StudentId, out var acc);
+            perStudent[attempt.StudentId] = (acc.Sum + attempt.ScorePercent, acc.Count + 1);
+        }
+
+        return perStudent.ToDictionary(
+            x => x.Key,
+            x => ((int)Math.Round((double)x.Value.Sum / x.Value.Count), x.Value.Count));
+    }
+
+    public async Task<IReadOnlyList<CourseManagementViewModel>> GetCourseManagementAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Klassen
+            .AsNoTracking()
+            .Include(x => x.Lessons)
+                .ThenInclude(x => x.Exercises)
+            .Include(x => x.Lessons)
+                .ThenInclude(x => x.MediaItems)
+            .Include(x => x.Exams)
+            .Include(x => x.School)
+            .OrderBy(x => x.Code)
+            .Select(course => new CourseManagementViewModel
+            {
+                CourseId = course.Id,
+                SchoolId = course.SchoolId,
+                SchoolName = course.School != null ? course.School.Name : null,
+                IstSystemNiveau = course.IstSystemNiveau,
+                Code = course.Code,
+                Title = course.Title,
+                CEFRGroup = course.CEFRGroup,
+                Description = course.Description,
+                RecommendedLessonCount = course.RecommendedLessonCount,
+                ExamCount = course.Exams.Count,
+                MediaCount = course.Lessons.SelectMany(x => x.MediaItems).Count(),
+                Price = course.Price,
+                StudentCount = course.Enrollments.Count(x => x.IsUnlocked),
+                Lessons = course.Lessons
+                    .OrderBy(x => x.Order)
+                    .Select(lesson => new LessonManagementItem
+                    {
+                        LessonId = lesson.Id,
+                        Title = lesson.Title,
+                        Summary = lesson.Summary,
+                        Order = lesson.Order,
+                        ExerciseCount = lesson.Exercises.Count
+                    })
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MediaLibraryItem>> GetMediaLibraryAsync(CancellationToken cancellationToken = default)
+    {
+        var blobMedia = await dbContext.BlobMediaAssets
+            .AsNoTracking()
+            .Include(x => x.School)
+            .Include(x => x.Klasse)
+            .OrderBy(x => x.School.Name)
+            .ThenBy(x => x.DisplayName)
+            .ThenBy(x => x.OriginalFileName)
+            .Select(asset => new MediaLibraryItem
+            {
+                MediaId = asset.Id,
+                SchoolId = asset.SchoolId,
+                SchoolName = asset.School.Name,
+                MediaType = asset.ContentType,
+                RelativePath = asset.BlobName,
+                DisplayName = asset.DisplayName,
+                OriginalFileName = asset.OriginalFileName,
+                ContentType = asset.ContentType,
+                Length = asset.Length,
+                AltText = asset.AltText,
+                LessonTitle = string.Empty,
+                CourseCode = asset.Klasse != null ? asset.Klasse.Code : string.Empty,
+                KlasseCode = asset.Klasse != null ? asset.Klasse.Code : string.Empty,
+                StorageHint = "Médiathèque sécurisée"
+            })
+            .ToListAsync(cancellationToken);
+
+        return blobMedia;
+    }
+
+    public async Task<StudentDashboardViewModel?> GetStudentDashboardAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var profile = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Include(x => x.AppUser)
+            .Include(x => x.School)
+            .FirstOrDefaultAsync(x => x.AppUserId == userId, cancellationToken);
+
+        if (profile is null)
+        {
+            return null;
+        }
+
+        var courseProgress = await dbContext.Klassen
+            .AsNoTracking()
+            .Include(x => x.Lessons)
+                .ThenInclude(x => x.Exercises)
+            .Include(x => x.Exams)
+            .Where(x => x.SchoolId == profile.SchoolId)
+            .OrderBy(x => x.Code)
+            .Select(course => new StudentCourseProgressItem
+            {
+                CourseCode = course.Code,
+                CourseTitle = course.Title,
+                LessonCount = course.Lessons.Count,
+                ExerciseCount = course.Lessons.SelectMany(x => x.Exercises).Count(),
+                ExamCount = course.Exams.Count,
+                IsCurrentLevel = profile.CurrentKlasseId.HasValue
+                    ? course.Id == profile.CurrentKlasseId.Value
+                    : course.Code == profile.CurrentLevelCode,
+                IsUnlocked = false
+            })
+            .ToListAsync(cancellationToken);
+
+        var unlockedKlasseIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == userId && enrollment.IsUnlocked)
+            .Select(enrollment => enrollment.KlasseId)
+            .ToHashSetAsync(cancellationToken);
+        var klasseIdsByCode = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasse.SchoolId == profile.SchoolId)
+            .Select(klasse => new { klasse.Id, klasse.Code })
+            .ToDictionaryAsync(klasse => klasse.Code, klasse => klasse.Id, cancellationToken);
+        foreach (var course in courseProgress)
+        {
+            course.IsUnlocked = klasseIdsByCode.TryGetValue(course.CourseCode, out var klasseId)
+                && unlockedKlasseIds.Contains(klasseId);
+        }
+
+        // Abschlussprüfung nur freischalten, wenn alle Lektionen des aktuellen Niveaus
+        // abgeschlossen sind (eine Lektion gilt erst als abgeschlossen, wenn ihre Übungen bestanden wurden).
+        var currentLevelLessonIds = await dbContext.Lessons
+            .AsNoTracking()
+            .Where(x => profile.CurrentKlasseId.HasValue
+                ? x.KlasseId == profile.CurrentKlasseId.Value
+                : x.Klasse.SchoolId == profile.SchoolId && x.Klasse.Code == profile.CurrentLevelCode)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var completedLessonIds = await dbContext.LessonProgresses
+            .AsNoTracking()
+            .Where(x => x.StudentId == userId && x.IsCompleted && currentLevelLessonIds.Contains(x.LessonId))
+            .Select(x => x.LessonId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var canTakeFinalExam = currentLevelLessonIds.Count > 0
+            && completedLessonIds.Count == currentLevelLessonIds.Count;
+
+        var combinedScores = await GetCombinedProgressScoresAsync([userId], cancellationToken);
+        combinedScores.TryGetValue(userId, out var combined);
+        var hasActiveSubscription = unlockedKlasseIds.Count > 0;
+        var hasPaidHalloAppAbo = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .AnyAsync(enrollment => enrollment.StudentId == userId && enrollment.IsPaid, cancellationToken);
+
+        var (streakDays, xpPoints) = await GetStreakAndXpAsync(userId, cancellationToken);
+        var classHistory = await GetStudentClassHistoryAsync(userId, profile.SchoolId, profile.CurrentKlasseId, cancellationToken);
+
+        return new StudentDashboardViewModel
+        {
+            FullName = profile.AppUser.FullName,
+            SchoolName = profile.School.Name,
+            CurrentLevelCode = profile.CurrentLevelCode ?? string.Empty,
+            CompletedLessonsCount = profile.CompletedLessonsCount,
+            IsBlocked = profile.AppUser.IsBlocked,
+            CanTakeFinalExam = canTakeFinalExam,
+            IsHalloPlus = false,
+            HasActiveSubscription = hasActiveSubscription,
+            HasPaidHalloAppAbo = hasPaidHalloAppAbo,
+            CombinedScorePercent = combined.Count > 0 ? combined.AverageScorePercent : null,
+            CombinedScoreCount = combined.Count,
+            StreakDays = streakDays,
+            XpPoints = xpPoints,
+            CourseProgress = courseProgress,
+            ClassHistory = classHistory
+        };
+    }
+
+    private async Task<List<StudentClassHistoryItem>> GetStudentClassHistoryAsync(
+        Guid studentId,
+        Guid schoolId,
+        Guid? currentKlasseId,
+        CancellationToken cancellationToken)
+    {
+        var klasseIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Select(enrollment => enrollment.KlasseId)
+            .ToListAsync(cancellationToken);
+
+        klasseIds = klasseIds.Distinct().ToList();
+        if (klasseIds.Count == 0)
+        {
+            return [];
+        }
+
+        var classes = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasseIds.Contains(klasse.Id) && klasse.SchoolId == schoolId)
+            .OrderBy(klasse => klasse.Code)
+            .Select(klasse => new { klasse.Id, klasse.Code, klasse.Title })
+            .ToListAsync(cancellationToken);
+
+        var lessons = await dbContext.TeacherLessons
+            .AsNoTracking()
+            .Include(lesson => lesson.Klasse)
+            .Include(lesson => lesson.Author)
+            .Include(lesson => lesson.Pages)
+            .Where(lesson => klasseIds.Contains(lesson.KlasseId)
+                && lesson.IsPublished
+                && lesson.IsSharedWithSchool
+                && lesson.AuthorId.HasValue
+                && lesson.Author!.UserSchools.Any(link => link.SchoolId == schoolId))
+            .OrderBy(lesson => lesson.Klasse.Code)
+            .ThenBy(lesson => lesson.Order)
+            .ToListAsync(cancellationToken);
+
+        var exerciseAttempts = await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(attempt => attempt.StudentId == studentId
+                && !attempt.RequiresManualGrading
+                && klasseIds.Contains(attempt.Exercise.Lesson.KlasseId))
+            .Select(attempt => new
+            {
+                attempt.ExerciseId,
+                KlasseId = attempt.Exercise.Lesson.KlasseId,
+                attempt.IsCorrect,
+                attempt.AnsweredAtUtc,
+                attempt.Id
+            })
+            .ToListAsync(cancellationToken);
+        var examAttempts = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(attempt => attempt.StudentId == studentId
+                && attempt.IsCompleted
+                && !attempt.RequiresManualGrading
+                && klasseIds.Contains(attempt.Exam.KlasseId))
+            .Select(attempt => new { KlasseId = attempt.Exam.KlasseId, attempt.ScorePercent })
+            .ToListAsync(cancellationToken);
+
+        var entscheidungen = await dbContext.KlassenAbschlussEntscheidungen
+            .AsNoTracking()
+            .Where(x => x.StudentId == studentId && klasseIds.Contains(x.Durchlauf.KlasseId))
+            .Select(x => new
+            {
+                KlasseId = x.Durchlauf.KlasseId,
+                x.GeaendertAmUtc,
+                x.AbschlussNoteText,
+                x.AbschlussNote
+            })
+            .ToListAsync(cancellationToken);
+
+        return classes.Select(klasse =>
+        {
+            var scores = exerciseAttempts
+                .Where(attempt => attempt.KlasseId == klasse.Id)
+                .GroupBy(attempt => attempt.ExerciseId)
+                .Select(group => group.OrderByDescending(attempt => attempt.AnsweredAtUtc).ThenByDescending(attempt => attempt.Id).First().IsCorrect ? 100 : 0)
+                .Concat(examAttempts.Where(attempt => attempt.KlasseId == klasse.Id).Select(attempt => attempt.ScorePercent))
+                .ToList();
+
+            var letzteAbschlussNotiz = entscheidungen
+                .Where(e => e.KlasseId == klasse.Id)
+                .OrderByDescending(e => e.GeaendertAmUtc)
+                .ThenByDescending(e => e.AbschlussNoteText)
+                .FirstOrDefault();
+
+            var abschlussNotenAnzahl = entscheidungen
+                .Where(e => e.KlasseId == klasse.Id)
+                .Select(group => group
+                    .AbschlussNoteText)
+                .Count(text => !string.IsNullOrWhiteSpace(text));
+
+            return new StudentClassHistoryItem
+            {
+                KlasseId = klasse.Id,
+                CourseCode = klasse.Code,
+                CourseTitle = klasse.Title,
+                IsCurrent = klasse.Id == currentKlasseId,
+                ScorePercent = scores.Count > 0 ? (int)Math.Round(scores.Average()) : null,
+                ScoreCount = scores.Count,
+                AbschlussNoteText = !string.IsNullOrWhiteSpace(letzteAbschlussNotiz?.AbschlussNoteText)
+                    ? letzteAbschlussNotiz!.AbschlussNoteText
+                    : letzteAbschlussNotiz?.AbschlussNote?.ToString("N2"),
+                AbschlussExamCount = abschlussNotenAnzahl,
+                TeacherLessons = lessons
+                    .Where(lesson => lesson.KlasseId == klasse.Id)
+                    .Select(lesson =>
+                    {
+                        var item = new TeacherLessonListItem
+                        {
+                            Id = lesson.Id,
+                            Title = lesson.Title,
+                            Summary = lesson.Summary,
+                            CourseTheme = lesson.CourseTheme,
+                            CourseCode = lesson.Klasse.Code,
+                            KlasseId = lesson.KlasseId,
+                            Order = lesson.Order,
+                            IsPublished = lesson.IsPublished,
+                            PageCount = lesson.Pages.Count,
+                            AuthorName = lesson.Author?.FullName ?? string.Empty,
+                            AuthorId = lesson.AuthorId,
+                            IsPdfExportEnabled = lesson.IsPdfExportEnabled,
+                            IsSharedWithSchool = lesson.IsSharedWithSchool
+                        };
+                        return item;
+                    })
+                    .ToList()
+            };
+        }).OrderByDescending(item => item.IsCurrent).ThenBy(item => item.CourseCode).ToList();
+    }
+
+    private async Task<HashSet<Guid>> GetUnlockedStandardKlasseIdsAsync(Guid studentId, CancellationToken cancellationToken)
+    {
+        var explicitlyUnlockedIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Select(enrollment => enrollment.KlasseId)
+            .ToListAsync(cancellationToken);
+
+        var subscribedCefrGroups = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Select(enrollment => enrollment.Klasse.CEFRGroup)
+            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (subscribedCefrGroups.Count == 0)
+        {
+            return explicitlyUnlockedIds.ToHashSet();
+        }
+
+        var groupedIds = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasse.SchoolId == null
+                && klasse.IstSystemNiveau
+                && subscribedCefrGroups.Contains(klasse.CEFRGroup))
+            .Select(klasse => klasse.Id)
+            .ToListAsync(cancellationToken);
+
+        var result = explicitlyUnlockedIds.ToHashSet();
+        result.UnionWith(groupedIds);
+        return result;
+    }
+
+    /// <summary>
+    /// Ermittelt die aktuelle Tages-Streak und die gesammelten XP-Punkte eines Schülers.
+    /// XP: 10 pro richtig beantworteter Übung, 20 pro abgeschlossener Lektion, je 1 Punkt pro
+    /// ScorePercent bei abgeschlossenen Prüfungen.
+    /// Streak: Anzahl aufeinanderfolgender Kalendertage (endend heute oder gestern) mit
+    /// mindestens einer Aktivität (Übung, Lektion oder Prüfung).
+    /// </summary>
+    private async Task<(int StreakDays, int XpPoints)> GetStreakAndXpAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var exerciseAttempts = await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(a => a.StudentId == userId)
+            .Select(a => new { a.IsCorrect, a.AnsweredAtUtc })
+            .ToListAsync(cancellationToken);
+
+        var lessonCompletions = await dbContext.LessonProgresses
+            .AsNoTracking()
+            .Where(x => x.StudentId == userId && x.IsCompleted && x.CompletedAtUtc != null)
+            .Select(x => x.CompletedAtUtc!.Value)
+            .ToListAsync(cancellationToken);
+
+        var examAttempts = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(a => a.StudentId == userId && a.IsCompleted && a.SubmittedAtUtc != null)
+            .Select(a => new { a.ScorePercent, SubmittedAtUtc = a.SubmittedAtUtc!.Value })
+            .ToListAsync(cancellationToken);
+
+        var xpPoints = exerciseAttempts.Count(a => a.IsCorrect) * 10
+            + lessonCompletions.Count * 20
+            + examAttempts.Sum(a => a.ScorePercent);
+
+        var activityDates = exerciseAttempts.Select(a => a.AnsweredAtUtc.Date)
+            .Concat(lessonCompletions.Select(d => d.Date))
+            .Concat(examAttempts.Select(a => a.SubmittedAtUtc.Date))
+            .ToHashSet();
+
+        var streakDays = 0;
+        if (activityDates.Count > 0)
+        {
+            var today = DateTime.UtcNow.Date;
+            var cursor = activityDates.Contains(today) ? today : today.AddDays(-1);
+
+            while (activityDates.Contains(cursor))
+            {
+                streakDays++;
+                cursor = cursor.AddDays(-1);
+            }
+        }
+
+        return (streakDays, xpPoints);
+    }
+
+    public async Task<IReadOnlyList<SchoolManagementViewModel>> GetSchoolManagementAsync(CancellationToken cancellationToken = default)
+    {
+        var teacherIds = (await userManager.GetUsersInRoleAsync("Lehrer")).Select(x => x.Id).ToHashSet();
+        var directorIds = (await userManager.GetUsersInRoleAsync(Rollen.SchulLeiter)).Select(x => x.Id).ToHashSet();
+        var globalSubscriptionPrice = await GetGlobalSubscriptionPriceAsync(cancellationToken);
+
+        return await dbContext.Schools
+            .AsNoTracking()
+            .Include(x => x.UserSchools)
+                .ThenInclude(x => x.AppUser)
+            .Include(x => x.Students)
+            .OrderBy(x => x.Name)
+            .Select(school => new SchoolManagementViewModel
+            {
+                SchoolId = school.Id,
+                Name = school.Name,
+                City = school.City,
+                Country = school.Country,
+                IsActive = school.IsActive,
+                TeacherCount = school.UserSchools.Count(link => link.CanManageStudents && teacherIds.Contains(link.AppUserId)),
+                StudentCount = school.Students.Count,
+                OutstandingDebt = school.Students
+                    .SelectMany(student => student.AppUser.LevelEnrollments)
+                    .Where(enrollment => enrollment.IsPaid
+                        && enrollment.AbgerechnetInPeriodeId == null
+                        && enrollment.PriceAtEnrollment > 0m
+                        && (enrollment.SchoolLeaderCommissionAtEnrollment > 0m
+                            || enrollment.TeacherCommissionAtEnrollment > 0m
+                            || enrollment.ProductOwnerCommissionAtEnrollment > 0m))
+                    .Sum(enrollment => enrollment.PriceAtEnrollment),
+                EffectiveSubscriptionPrice = school.SubscriptionPriceOverride ?? globalSubscriptionPrice,
+                SubscriptionPriceOverride = school.SubscriptionPriceOverride,
+                DirectorAssignments = school.UserSchools
+                    .Where(link => link.CanManageStudents && directorIds.Contains(link.AppUserId))
+                    .OrderBy(link => link.AppUser.FullName)
+                    .Select(link => new TeacherAssignmentOption
+                    {
+                        TeacherId = link.AppUserId,
+                        TeacherName = link.AppUser.FullName,
+                        Email = link.AppUser.Email ?? string.Empty,
+                        IsAssigned = true
+                    })
+                    .ToList(),
+                TeacherAssignments = school.UserSchools
+                    .Where(link => link.CanManageStudents && teacherIds.Contains(link.AppUserId))
+                    .OrderBy(link => link.AppUser.FullName)
+                    .Select(link => new TeacherAssignmentOption
+                    {
+                        TeacherId = link.AppUserId,
+                        TeacherName = link.AppUser.FullName,
+                        Email = link.AppUser.Email ?? string.Empty,
+                        IsAssigned = true
+                    })
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TeacherAssignmentOption>> GetTeacherOptionsAsync(Guid? schoolId = null, CancellationToken cancellationToken = default)
+    {
+        var teachers = await userManager.GetUsersInRoleAsync("Lehrer");
+        var assignedTeacherIds = schoolId.HasValue
+            ? await dbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.SchoolId == schoolId.Value && link.CanManageStudents)
+                .Select(link => link.AppUserId)
+                .ToListAsync(cancellationToken)
+            : [];
+
+        return teachers
+            .OrderBy(x => x.FullName)
+            .Select(teacher => new TeacherAssignmentOption
+            {
+                TeacherId = teacher.Id,
+                TeacherName = teacher.FullName,
+                Email = teacher.Email ?? string.Empty,
+                IsAssigned = assignedTeacherIds.Contains(teacher.Id)
+            })
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<TeacherAssignmentOption>> GetSchoolOptionsAsync(Guid? userId = null, CancellationToken cancellationToken = default)
+    {
+        var assignedSchoolIds = userId.HasValue
+            ? await dbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.AppUserId == userId.Value)
+                .Select(link => link.SchoolId)
+                .ToListAsync(cancellationToken)
+            : [];
+
+        return await dbContext.Schools
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(school => new TeacherAssignmentOption
+            {
+                TeacherId = school.Id,
+                TeacherName = school.Name,
+                Email = $"{school.City}, {school.Country}",
+                IsAssigned = assignedSchoolIds.Contains(school.Id)
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveSchoolAsync(SchoolFormModel model, IReadOnlyCollection<Guid> teacherIds, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = model.Name.Trim();
+        var duplicateExists = await dbContext.Schools.AnyAsync(
+            x => x.Name == normalizedName && (!model.Id.HasValue || x.Id != model.Id.Value),
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            return (false, "Une école avec ce nom existe déjà.");
+        }
+
+        School school;
+        if (model.Id.HasValue)
+        {
+            school = await dbContext.Schools.FirstOrDefaultAsync(x => x.Id == model.Id.Value, cancellationToken)
+                ?? new School();
+
+            if (school.Id == Guid.Empty)
+            {
+                return (false, "L'école est introuvable.");
+            }
+        }
+        else
+        {
+            school = new School();
+            await dbContext.Schools.AddAsync(school, cancellationToken);
+        }
+
+        school.Name = normalizedName;
+        school.City = model.City.Trim();
+        school.Country = model.Country.Trim();
+        school.IsActive = model.IsActive;
+        school.SubscriptionPriceOverride = model.SubscriptionPriceOverride;
+        school.SchoolLeaderCommissionPercentOverride = model.SchoolLeaderCommissionPercentOverride;
+        school.TeacherCommissionPercentOverride = model.TeacherCommissionPercentOverride;
+        school.ProductOwnerCommissionPercentOverride = model.ProductOwnerCommissionPercentOverride;
+
+        var commissionOverrideSum = (school.SchoolLeaderCommissionPercentOverride ?? 0m)
+            + (school.TeacherCommissionPercentOverride ?? 0m)
+            + (school.ProductOwnerCommissionPercentOverride ?? 0m);
+        if (commissionOverrideSum > 100m)
+        {
+            return (false, "La somme des commissions spécifiques de l'école ne peut pas dépasser 100 %.");
+        }
+
+        school.GeaendertAmUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await SyncTeacherAssignmentsAsync(school.Id, teacherIds, cancellationToken);
+
+        return (true, model.Id.HasValue ? "L'école a été mise à jour." : "L'école a été créée.");
+    }
+
+    /// <summary>Erstellt eine neue Schule und ordnet sie ausschließlich dem angemeldeten Schulleiter zu.</summary>
+    public async Task<(bool Succeeded, string Message)> CreateSchoolForSchoolLeaderAsync(
+        Guid schoolLeaderId,
+        SchoolFormModel model,
+        CancellationToken cancellationToken = default)
+    {
+        var schoolLeader = await userManager.FindByIdAsync(schoolLeaderId.ToString());
+        if (schoolLeader is null || !await userManager.IsInRoleAsync(schoolLeader, Rollen.SchulLeiter))
+        {
+            return (false, "Seul un directeur peut créer une école.");
+        }
+
+        var normalizedName = model.Name.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedName) || string.IsNullOrWhiteSpace(model.City) || string.IsNullOrWhiteSpace(model.Country))
+        {
+            return (false, "Veuillez renseigner le nom, la ville et le pays de l'école.");
+        }
+
+        if (await dbContext.Schools.AnyAsync(school => school.Name == normalizedName, cancellationToken))
+        {
+            return (false, "Une école avec ce nom existe déjà.");
+        }
+
+        var school = new School
+        {
+            Name = normalizedName,
+            City = model.City.Trim(),
+            Country = model.Country.Trim(),
+            IsActive = true
+        };
+
+        await dbContext.Schools.AddAsync(school, cancellationToken);
+        await dbContext.UserSchools.AddAsync(new UserSchool
+        {
+            AppUserId = schoolLeaderId,
+            SchoolId = school.Id,
+            CanManageStudents = true
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return (true, "L'école a été créée et t'est maintenant attribuée.");
+    }
+
+    public async Task<SchoolFormModel?> GetSchoolForEditAsync(Guid schoolId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Schools
+            .AsNoTracking()
+            .Where(x => x.Id == schoolId)
+            .Select(x => new SchoolFormModel
+            {
+                Id = x.Id,
+                Name = x.Name,
+                City = x.City,
+                Country = x.Country,
+                IsActive = x.IsActive,
+                SubscriptionPriceOverride = x.SubscriptionPriceOverride,
+                SchoolLeaderCommissionPercentOverride = x.SchoolLeaderCommissionPercentOverride,
+                TeacherCommissionPercentOverride = x.TeacherCommissionPercentOverride,
+                ProductOwnerCommissionPercentOverride = x.ProductOwnerCommissionPercentOverride
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<UserFormModel?> GetUserForEditAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.UserSchools)
+            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+
+        var roleName = roles.FirstOrDefault() ?? Rollen.Schueler;
+        var teacherClassAssignments = roleName == Rollen.Lehrer
+            ? await dbContext.LehrerNiveauZuordnungen
+                .AsNoTracking()
+                .Where(assignment => assignment.LehrerID == user.Id)
+                .Select(assignment => new TeacherClassAssignmentFormModel
+                {
+                    SchoolId = assignment.SchulID,
+                    KlasseId = assignment.KlasseId,
+                    Wochenstunden = assignment.Wochenstunden
+                })
+                .ToListAsync(cancellationToken)
+            : [];
+
+        return new UserFormModel
+        {
+            UserId = user.Id,
+            Vorname = user.Vorname,
+            Nachname = user.Nachname,
+            Email = user.Email ?? string.Empty,
+            TelefonNummer = user.TelefonNummer,
+            RoleName = roleName,
+            IsBlocked = user.IsBlocked,
+            IsSelfRegistered = user.IsSelfRegistered,
+            SchoolIds = user.UserSchools.Select(x => x.SchoolId).ToList(),
+            CurrentKlasseId = await dbContext.StudentProfiles
+                .Where(profile => profile.AppUserId == user.Id)
+                .Select(profile => profile.CurrentKlasseId)
+                .FirstOrDefaultAsync(cancellationToken),
+            ElternTelefonNummer = await dbContext.StudentProfiles
+                .Where(profile => profile.AppUserId == user.Id)
+                .Select(profile => profile.ElternTelefonNummer)
+                .FirstOrDefaultAsync(cancellationToken),
+            ElternEmail = await dbContext.StudentProfiles
+                .Where(profile => profile.AppUserId == user.Id)
+                .Select(profile => profile.ElternEmail)
+                .FirstOrDefaultAsync(cancellationToken),
+            TeacherClassAssignments = teacherClassAssignments
+        };
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveUserAsync(UserFormModel model, CancellationToken cancellationToken = default)
+    {
+        model.SchoolIds = model.SchoolIds.Where(schoolId => schoolId != Guid.Empty).Distinct().ToList();
+        if (model.RoleName == Rollen.Schueler && model.SchoolIds.Count > 1)
+        {
+            return (false, "Un élève ne peut être attribué qu'à une seule école.");
+        }
+
+        if (model.RoleName == Rollen.Schueler && model.CurrentKlasseId is Guid klasseId)
+        {
+            var belongsToStudentSchool = await dbContext.Klassen.AnyAsync(klasse => klasse.Id == klasseId && klasse.SchoolId == model.SchoolIds.FirstOrDefault(), cancellationToken);
+            if (!belongsToStudentSchool)
+            {
+                return (false, "Veuillez choisir une classe de l'école sélectionnée.");
+            }
+        }
+
+        var normalizedEmail = model.Email.Trim();
+        var duplicateExists = await dbContext.Users.AnyAsync(
+            x => x.Email == normalizedEmail && (!model.UserId.HasValue || x.Id != model.UserId.Value),
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            return (false, "Un utilisateur avec cette adresse e-mail existe déjà.");
+        }
+
+        AppUser user;
+        if (model.UserId.HasValue)
+        {
+            user = await userManager.FindByIdAsync(model.UserId.Value.ToString()) ?? new AppUser();
+            if (user.Id == Guid.Empty)
+            {
+                return (false, "L'utilisateur est introuvable.");
+            }
+        }
+        else
+        {
+            user = new AppUser
+            {
+                UserName = normalizedEmail,
+                Email = normalizedEmail,
+                EmailConfirmed = true
+            };
+
+            var password = string.IsNullOrWhiteSpace(model.Password) ? "Start123!" : model.Password;
+            var createResult = await userManager.CreateAsync(user, password);
+            if (!createResult.Succeeded)
+            {
+                return (false, string.Join(" ", createResult.Errors.Select(x => x.Description)));
+            }
+        }
+
+        user.Vorname = model.Vorname.Trim();
+        user.Nachname = model.Nachname.Trim();
+        user.FullName = model.FullName;
+        user.Email = normalizedEmail;
+        user.UserName = normalizedEmail;
+        user.TelefonNummer = NormalizeOptional(model.TelefonNummer);
+        user.IsBlocked = model.IsBlocked;
+        user.IsSelfRegistered = model.IsSelfRegistered;
+        user.UpdatedAtUtc = DateTime.UtcNow;
+
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return (false, string.Join(" ", updateResult.Errors.Select(x => x.Description)));
+        }
+
+        var currentRoles = await userManager.GetRolesAsync(user);
+        if (currentRoles.Count > 0)
+        {
+            await userManager.RemoveFromRolesAsync(user, currentRoles);
+        }
+
+        await userManager.AddToRoleAsync(user, model.RoleName);
+
+        await SyncUserSchoolsAsync(user.Id, model.SchoolIds, model.RoleName is Rollen.Lehrer or Rollen.SchulLeiter or Rollen.Koordinator or Rollen.ProduktOwner, cancellationToken);
+        await EnsureStudentProfileStateAsync(user, model.RoleName, model.SchoolIds, model.CurrentKlasseId, model.ElternTelefonNummer, model.ElternEmail, cancellationToken);
+        if (model.RoleName == Rollen.Lehrer)
+        {
+            await SyncTeacherClassAssignmentsAsync(user.Id, model.SchoolIds, model.TeacherClassAssignments, cancellationToken);
+        }
+
+        return (true, model.UserId.HasValue ? "L'utilisateur a été mis à jour." : "L'utilisateur a été créé.");
+    }
+
+    private async Task SyncTeacherClassAssignmentsAsync(
+        Guid teacherId,
+        IReadOnlyCollection<Guid> schoolIds,
+        IReadOnlyCollection<TeacherClassAssignmentFormModel> assignments,
+        CancellationToken cancellationToken)
+    {
+        var existing = await dbContext.LehrerNiveauZuordnungen
+            .Where(assignment => assignment.LehrerID == teacherId)
+            .ToListAsync(cancellationToken);
+        dbContext.LehrerNiveauZuordnungen.RemoveRange(existing);
+
+        var validAssignments = assignments
+            .Where(assignment => schoolIds.Contains(assignment.SchoolId) && assignment.KlasseId != Guid.Empty)
+            .DistinctBy(assignment => new { assignment.SchoolId, assignment.KlasseId })
+            .ToList();
+        var validClassKeys = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => validAssignments.Select(assignment => assignment.KlasseId).Contains(klasse.Id))
+            .Select(klasse => new { klasse.Id, klasse.SchoolId, klasse.IstSystemNiveau })
+            .ToListAsync(cancellationToken);
+
+        foreach (var assignment in validAssignments.Where(assignment => validClassKeys.Any(klasse => klasse.Id == assignment.KlasseId && (klasse.SchoolId == assignment.SchoolId || (klasse.SchoolId is null && klasse.IstSystemNiveau)))))
+        {
+            dbContext.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung
+            {
+                LehrerID = teacherId,
+                SchulID = assignment.SchoolId,
+                KlasseId = assignment.KlasseId,
+                Wochenstunden = Math.Max(1m, assignment.Wochenstunden)
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Entfernt ausschließlich in der Development-Umgebung einen Schulleiter,
+    /// alle ihm zugeordneten Schulen und deren Testdaten endgültig. Benutzer,
+    /// die noch einer nicht betroffenen Schule zugeordnet sind, bleiben erhalten.
+    /// </summary>
+    public async Task<(bool Succeeded, string Message)> HardDeleteSchoolLeaderForDevelopmentAsync(
+        Guid schoolLeaderId,
+        CancellationToken cancellationToken = default)
+    {
+        if (hostEnvironment?.IsDevelopment() != true)
+        {
+            return (false, "La suppression définitive des données de test est disponible uniquement en environnement Development.");
+        }
+
+        var schoolLeader = await userManager.FindByIdAsync(schoolLeaderId.ToString());
+        if (schoolLeader is null || !(await userManager.IsInRoleAsync(schoolLeader, "SchulLeiter")))
+        {
+            return (false, "Le directeur sélectionné est introuvable.");
+        }
+
+        var schoolIds = await dbContext.UserSchools
+            .Where(link => link.AppUserId == schoolLeaderId)
+            .Select(link => link.SchoolId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return (false, "Ce directeur n'est affecté à aucune école.");
+        }
+
+        var classIds = await dbContext.Klassen
+            .Where(klasse => klasse.SchoolId.HasValue && schoolIds.Contains(klasse.SchoolId.Value))
+            .Select(klasse => klasse.Id)
+            .ToListAsync(cancellationToken);
+
+        var assignedUserIds = await dbContext.UserSchools
+            .Where(link => schoolIds.Contains(link.SchoolId))
+            .Select(link => link.AppUserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var studentUserIds = await dbContext.StudentProfiles
+            .Where(profile => schoolIds.Contains(profile.SchoolId))
+            .Select(profile => profile.AppUserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var targetUserIds = assignedUserIds
+            .Concat(studentUserIds)
+            .Append(schoolLeaderId)
+            .Distinct()
+            .ToList();
+
+        var retainedUserIds = await dbContext.UserSchools
+            .Where(link => targetUserIds.Contains(link.AppUserId) && !schoolIds.Contains(link.SchoolId))
+            .Select(link => link.AppUserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var usersWithOtherStudentProfiles = await dbContext.StudentProfiles
+            .Where(profile => targetUserIds.Contains(profile.AppUserId) && !schoolIds.Contains(profile.SchoolId))
+            .Select(profile => profile.AppUserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        retainedUserIds = retainedUserIds
+            .Concat(usersWithOtherStudentProfiles)
+            .Distinct()
+            .ToList();
+        var usersToDelete = targetUserIds.Except(retainedUserIds).ToList();
+
+        // Bei aktivierter Retry-Logik (Azure SQL) muss eine benutzerdefinierte
+        // Transaktion vollständig innerhalb der Execution Strategy ablaufen,
+        // damit ein Wiederholungsversuch den gesamten Block erneut ausführt.
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+
+        try
+        {
+            return await strategy.ExecuteAsync(LoescheAsync);
+        }
+        catch (Exception exception)
+        {
+            // Eine nicht committete Transaktion wird beim Dispose automatisch zurückgerollt.
+            return (false, $"La suppression définitive a échoué : {exception.Message}");
+        }
+
+        async Task<(bool Succeeded, string Message)> LoescheAsync()
+        {
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                : null;
+
+            var studentIds = await dbContext.StudentProfiles
+                .Where(profile => schoolIds.Contains(profile.SchoolId))
+                .Select(profile => profile.AppUserId)
+                .ToListAsync(cancellationToken);
+
+            var runIds = await dbContext.KursNiveauDurchlaeufe
+                .Where(run => schoolIds.Contains(run.SchulID))
+                .Select(run => run.Id)
+                .ToListAsync(cancellationToken);
+            dbContext.RatenZahlungen.RemoveRange(await dbContext.RatenZahlungen
+                .Where(payment => runIds.Contains(payment.DurchlaufID) || studentIds.Contains(payment.StudentId))
+                .ToListAsync(cancellationToken));
+
+            dbContext.FinanzBuchungen.RemoveRange(await dbContext.FinanzBuchungen
+                .Where(entry => schoolIds.Contains(entry.SchulID))
+                .ToListAsync(cancellationToken));
+            dbContext.FinanzKategorien.RemoveRange(await dbContext.FinanzKategorien
+                .Where(category => category.SchulID.HasValue && schoolIds.Contains(category.SchulID.Value))
+                .ToListAsync(cancellationToken));
+            dbContext.KursNiveauDurchlaeufe.RemoveRange(await dbContext.KursNiveauDurchlaeufe
+                .Where(run => schoolIds.Contains(run.SchulID))
+                .ToListAsync(cancellationToken));
+
+            dbContext.LehrerNiveauZuordnungen.RemoveRange(await dbContext.LehrerNiveauZuordnungen
+                .Where(assignment => schoolIds.Contains(assignment.SchulID))
+                .ToListAsync(cancellationToken));
+            dbContext.UserSchools.RemoveRange(await dbContext.UserSchools
+                .Where(link => schoolIds.Contains(link.SchoolId))
+                .ToListAsync(cancellationToken));
+
+            dbContext.ExamAttempts.RemoveRange(await dbContext.ExamAttempts
+                .Where(attempt => studentIds.Contains(attempt.StudentId))
+                .ToListAsync(cancellationToken));
+            dbContext.ExerciseAttempts.RemoveRange(await dbContext.ExerciseAttempts
+                .Where(attempt => studentIds.Contains(attempt.StudentId))
+                .ToListAsync(cancellationToken));
+            dbContext.LessonProgresses.RemoveRange(await dbContext.LessonProgresses
+                .Where(progress => studentIds.Contains(progress.StudentId))
+                .ToListAsync(cancellationToken));
+            dbContext.LevelEnrollments.RemoveRange(await dbContext.LevelEnrollments
+                .Where(enrollment => studentIds.Contains(enrollment.StudentId) || classIds.Contains(enrollment.KlasseId))
+                .ToListAsync(cancellationToken));
+            dbContext.StudentProfiles.RemoveRange(await dbContext.StudentProfiles
+                .Where(profile => schoolIds.Contains(profile.SchoolId))
+                .ToListAsync(cancellationToken));
+
+            var teacherLessonIds = await dbContext.TeacherLessons
+                .Where(lesson => classIds.Contains(lesson.KlasseId) || (lesson.AuthorId.HasValue && usersToDelete.Contains(lesson.AuthorId.Value)))
+                .Select(lesson => lesson.Id)
+                .ToListAsync(cancellationToken);
+            dbContext.TeacherLessons.RemoveRange(await dbContext.TeacherLessons
+                .Where(lesson => teacherLessonIds.Contains(lesson.Id))
+                .ToListAsync(cancellationToken));
+            dbContext.Klassen.RemoveRange(await dbContext.Klassen
+                .Where(klasse => classIds.Contains(klasse.Id))
+                .ToListAsync(cancellationToken));
+            dbContext.Abrechnungsperioden.RemoveRange(await dbContext.Abrechnungsperioden
+                .Where(period => schoolIds.Contains(period.SchulID))
+                .ToListAsync(cancellationToken));
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            foreach (var userId in usersToDelete)
+            {
+                var user = await userManager.FindByIdAsync(userId.ToString());
+                if (user is not null)
+                {
+                    var roles = await userManager.GetRolesAsync(user);
+                    if (roles.Count > 0)
+                    {
+                        var removeRolesResult = await userManager.RemoveFromRolesAsync(user, roles);
+                        if (!removeRolesResult.Succeeded)
+                        {
+                            throw new InvalidOperationException(string.Join(" ", removeRolesResult.Errors.Select(error => error.Description)));
+                        }
+                    }
+
+                    var deleteResult = await userManager.DeleteAsync(user);
+                    if (!deleteResult.Succeeded)
+                    {
+                        throw new InvalidOperationException(string.Join(" ", deleteResult.Errors.Select(error => error.Description)));
+                    }
+                }
+            }
+
+            dbContext.Schools.RemoveRange(await dbContext.Schools
+                .Where(school => schoolIds.Contains(school.Id))
+                .ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return (true, "Le directeur, ses écoles et toutes les données de test associées ont été supprimés définitivement.");
+        }
+    }
+
+    public async Task<CourseFormModel?> GetCourseForEditAsync(Guid courseId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Klassen
+            .AsNoTracking()
+            .Where(x => x.Id == courseId)
+            .Select(x => new CourseFormModel
+            {
+                CourseId = x.Id,
+                Code = x.Code,
+                Title = x.Title,
+                CEFRGroup = x.CEFRGroup,
+                Description = x.Description,
+                RecommendedLessonCount = x.RecommendedLessonCount,
+                Price = x.Price,
+                SchoolId = x.SchoolId,
+                KlassenStufeId = x.KlassenStufeId,
+                ReferenceName = x.KlassenStufe != null ? x.KlassenStufe.Name : null,
+                IstSystemNiveau = x.IstSystemNiveau,
+                AutoAssignHalloAppAboOnCycleStart = x.AutoAssignHalloAppAboOnCycleStart
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message, Guid? CourseId)> SaveCourseAsync(CourseFormModel model, CancellationToken cancellationToken = default)
+    {
+        var normalizedCode = model.Code.Trim();
+        // Klassen-Code ist pro Schule eindeutig (globale System-Niveaus teilen sich SchoolId == null).
+        var duplicateExists = await dbContext.Klassen.AnyAsync(
+            x => x.Code == normalizedCode
+                 && x.SchoolId == model.SchoolId
+                 && (!model.CourseId.HasValue || x.Id != model.CourseId.Value),
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            return (false, "Un cours avec ce code existe déjà.", null);
+        }
+
+        Klasse course;
+        if (model.CourseId.HasValue)
+        {
+            course = await dbContext.Klassen.FirstOrDefaultAsync(x => x.Id == model.CourseId.Value, cancellationToken) ?? new Klasse();
+            if (course.Id == Guid.Empty)
+            {
+                return (false, "Le cours est introuvable.", null);
+            }
+
+            // Feste Sprachschul-Niveaus (A1–C) dürfen nicht bearbeitet werden.
+            if (course.IstSystemNiveau)
+            {
+                return (false, "Ce niveau standard ne peut pas être modifié.", null);
+            }
+        }
+        else
+        {
+            course = new Klasse
+            {
+                // Neu angelegte Klassen sind immer schul-eigene Klassen, niemals System-Niveaus.
+                SchoolId = model.SchoolId,
+                IstSystemNiveau = false
+            };
+            await dbContext.Klassen.AddAsync(course, cancellationToken);
+        }
+
+        course.Code = normalizedCode;
+        course.Title = model.Title.Trim();
+        course.CEFRGroup = model.CEFRGroup.Trim();
+        course.Description = model.Description.Trim();
+        course.RecommendedLessonCount = model.RecommendedLessonCount;
+        course.Price = model.Price;
+        course.GeaendertAmUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, model.CourseId.HasValue ? "Le cours a été mis à jour." : "Le cours a été créé.", course.Id);
+    }
+
+    /// <summary>Liefert die Referenzklassen/-stufen einer Schule samt Verwendungsanzahl.</summary>
+    public async Task<IReadOnlyList<KlassenStufeViewModel>> GetKlassenStufenAsync(Guid schoolId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.KlassenStufen
+            .AsNoTracking()
+            .Where(stufe => stufe.SchoolId == schoolId)
+            .OrderBy(stufe => stufe.Name)
+            .Select(stufe => new KlassenStufeViewModel
+            {
+                Id = stufe.Id,
+                Name = stufe.Name,
+                KlassenCount = stufe.Klassen.Count
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Löscht eine Klassenstufe ausschließlich, wenn keine Klasse darauf verweist.</summary>
+    public async Task<(bool Succeeded, string Message)> DeleteKlassenStufeAsync(Guid schoolId, Guid klassenStufeId, CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        return (false, "Les directeurs peuvent modifier les classes scolaires, mais pas les supprimer.");
+    }
+
+    /// <summary>
+    /// Liefert ausschließlich die von einer Schule selbst verwalteten Klassen.
+    /// Globale System-Niveaus dienen nur als Grundlage für Scorebewertungen und
+    /// werden niemals in der Schulleiter-Verwaltung ausgegeben.
+    /// </summary>
+    public async Task<IReadOnlyList<CourseFormModel>> GetSchoolKlassenAsync(Guid schoolId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Klassen
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId && !x.IstSystemNiveau)
+            .OrderBy(x => x.KlassenStufe != null ? x.KlassenStufe.Name : string.Empty)
+            .ThenBy(x => x.Title)
+            .ThenBy(x => x.Code)
+            .Select(x => new CourseFormModel
+            {
+                CourseId = x.Id,
+                Code = x.Code,
+                Title = x.Title,
+                CEFRGroup = x.CEFRGroup,
+                Description = x.Description,
+                RecommendedLessonCount = x.RecommendedLessonCount,
+                Price = x.Price,
+                SchoolId = x.SchoolId,
+                KlassenStufeId = x.KlassenStufeId,
+                ReferenceName = x.KlassenStufe != null ? x.KlassenStufe.Name : null,
+                IstSystemNiveau = x.IstSystemNiveau,
+                AutoAssignHalloAppAboOnCycleStart = x.AutoAssignHalloAppAboOnCycleStart
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Speichert eine schul-eigene Klasse für den Schulleiter. System-Niveaus werden hier niemals verändert.
+    /// </summary>
+    public async Task<(bool Succeeded, string Message, Guid? CourseId)> SaveSchoolKlasseForSchoolLeaderAsync(
+        Guid schoolLeaderId,
+        Guid schoolId,
+        CourseFormModel model,
+        CancellationToken cancellationToken = default)
+    {
+        var assignedSchoolIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == schoolLeaderId && link.CanManageStudents)
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+        var isAssigned = assignedSchoolIds.Contains(schoolId);
+        if (!isAssigned)
+        {
+            return (false, "Tu ne peux gérer que tes propres écoles.", null);
+        }
+
+        return await SaveSchoolKlasseAsync(schoolId, model, cancellationToken);
+    }
+
+    /// <summary>
+    /// Speichert eine schul-eigene Klasse. Diese Methode dient internen Verwaltungsabläufen;
+    /// Schulleiter verwenden <see cref="SaveSchoolKlasseForSchoolLeaderAsync"/>.
+    /// </summary>
+    public async Task<(bool Succeeded, string Message, Guid? CourseId)> SaveSchoolKlasseAsync(Guid schoolId, CourseFormModel model, CancellationToken cancellationToken = default)
+    {
+        var school = await dbContext.Schools.FirstOrDefaultAsync(x => x.Id == schoolId, cancellationToken);
+        if (school is null)
+        {
+            return (false, "L'école est introuvable.", null);
+        }
+
+        var normalizedClassName = model.Title.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedClassName))
+        {
+            return (false, "Veuillez saisir le nom de la classe.", null);
+        }
+
+        var normalizedCode = normalizedClassName;
+
+        var duplicateExists = await dbContext.Klassen.AnyAsync(
+            x => x.Code == normalizedCode
+                 && x.SchoolId == schoolId
+                 && (!model.CourseId.HasValue || x.Id != model.CourseId.Value),
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            return (false, "Une classe avec ce nom existe déjà dans ton école.", null);
+        }
+
+        Klasse klasse;
+        if (model.CourseId.HasValue)
+        {
+            klasse = await dbContext.Klassen.FirstOrDefaultAsync(
+                x => x.Id == model.CourseId.Value && x.SchoolId == schoolId, cancellationToken)
+                ?? new Klasse();
+            if (klasse.Id == Guid.Empty)
+            {
+                return (false, "La classe est introuvable pour cette école.", null);
+            }
+            if (klasse.IstSystemNiveau)
+            {
+                return (false, "Ce niveau standard ne peut pas être modifié.", null);
+            }
+        }
+        else
+        {
+            klasse = new Klasse
+            {
+                SchoolId = schoolId,
+                IstSystemNiveau = false
+            };
+            await dbContext.Klassen.AddAsync(klasse, cancellationToken);
+        }
+
+        KlassenStufe? klassenStufe = null;
+        if (!string.IsNullOrWhiteSpace(model.NeueKlassenStufe))
+        {
+            var neuerName = model.NeueKlassenStufe.Trim();
+            klassenStufe = await dbContext.KlassenStufen
+                .FirstOrDefaultAsync(item => item.SchoolId == schoolId && item.Name == neuerName, cancellationToken);
+            if (klassenStufe is null)
+            {
+                klassenStufe = new KlassenStufe { SchoolId = schoolId, Name = neuerName };
+                await dbContext.KlassenStufen.AddAsync(klassenStufe, cancellationToken);
+            }
+        }
+        else if (model.KlassenStufeId.HasValue)
+        {
+            klassenStufe = await dbContext.KlassenStufen
+                .FirstOrDefaultAsync(item => item.Id == model.KlassenStufeId.Value && item.SchoolId == schoolId, cancellationToken)
+                ?? throw new InvalidOperationException("La référence de classe sélectionnée est introuvable.");
+        }
+        else
+        {
+            return (false, "Sélectionne ou crée un nom de référence pour cette classe.", null);
+        }
+
+        klasse.Code = normalizedCode;
+        klasse.Title = normalizedClassName;
+        klasse.CEFRGroup = string.IsNullOrWhiteSpace(model.CEFRGroup) ? "Classe" : model.CEFRGroup.Trim();
+        klasse.KlassenStufeId = klassenStufe?.Id;
+        klasse.Description = model.Description.Trim();
+        klasse.RecommendedLessonCount = model.RecommendedLessonCount;
+        klasse.Price = model.Price;
+        klasse.AutoAssignHalloAppAboOnCycleStart = model.AutoAssignHalloAppAboOnCycleStart;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, model.CourseId.HasValue ? "La classe a été mise à jour." : "La classe a été créée.", klasse.Id);
+    }
+
+    /// <summary>
+    /// Löscht eine schul-eigene Klasse. System-Niveaus können nicht gelöscht werden.
+    /// </summary>
+    public async Task<(bool Succeeded, string Message)> DeleteSchoolKlasseAsync(Guid schoolId, Guid klasseId, CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        return (false, "Les directeurs peuvent modifier les classes, mais pas les supprimer.");
+    }
+
+    public async Task<LessonFormModel?> GetLessonForEditAsync(Guid lessonId, CancellationToken cancellationToken = default)
+    {
+        var lesson = await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Exercises)
+                .ThenInclude(x => x.Options)
+            .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);
+
+        if (lesson is null)
+        {
+            return null;
+        }
+
+        return new LessonFormModel
+        {
+            LessonId = lesson.Id,
+            CourseId = lesson.KlasseId,
+            Title = lesson.Title,
+            Summary = lesson.Summary,
+            Content = lesson.Content,
+            Order = lesson.Order,
+            Exercises = lesson.Exercises
+                .OrderBy(x => x.Order)
+                .Select(exercise =>
+                {
+                    var normalizedType = NormalizeLessonExerciseType(exercise.ExerciseType);
+                    return new LessonExerciseFormModel
+                    {
+                        ExerciseId = exercise.Id,
+                        Title = exercise.Title,
+                        Instructions = exercise.Instructions,
+                        Question = exercise.Question,
+                        Points = exercise.Points > 0 ? exercise.Points : 10,
+                        ExerciseType = normalizedType,
+                        Order = exercise.Order,
+                        AudioText = exercise.AudioText,
+                        TtsLanguage = NormalizeTtsLanguage(exercise.TtsLanguage),
+                        AcceptedAnswers = string.Join('\n', AnswerMatchingService.ParseAcceptedAnswers(exercise.AcceptedAnswersJson)),
+                        Gaps = AnswerMatchingService.ParseGapAnswers(exercise.GapAnswersJson)
+                            .Select(gap => new LessonExerciseGapFormModel
+                            {
+                                AcceptedAnswers = string.Join('\n', gap)
+                            })
+                            .ToList(),
+                        Options = exercise.Options
+                            .OrderBy(x => x.Order)
+                            .Select(option => new LessonExerciseOptionFormModel
+                            {
+                                OptionId = option.Id,
+                                Text = option.Text,
+                                IsCorrect = option.IsCorrect
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveLessonAsync(LessonFormModel model, CancellationToken cancellationToken = default)
+    {
+        var courseExists = await dbContext.Klassen.AnyAsync(x => x.Id == model.CourseId, cancellationToken);
+        if (!courseExists)
+        {
+            return (false, "Le cours associé est introuvable.");
+        }
+
+        Lesson lesson;
+        if (model.LessonId.HasValue)
+        {
+            lesson = await dbContext.Lessons
+                .Include(x => x.Exercises)
+                    .ThenInclude(x => x.Options)
+                .FirstOrDefaultAsync(x => x.Id == model.LessonId.Value, cancellationToken) ?? new Lesson();
+            if (lesson.Id == Guid.Empty)
+            {
+                return (false, "La leçon est introuvable.");
+            }
+        }
+        else
+        {
+            lesson = new Lesson();
+            await dbContext.Lessons.AddAsync(lesson, cancellationToken);
+        }
+
+        lesson.KlasseId = model.CourseId;
+        lesson.Title = model.Title.Trim();
+        lesson.Summary = model.Summary.Trim();
+        lesson.Content = model.Content.Trim();
+        lesson.Order = model.Order;
+        lesson.IsPublished = model.IsPublished;
+        lesson.ExerciseSubmissionDueAtUtc = model.ExerciseSubmissionDueAtUtc;
+        lesson.GeaendertAmUtc = DateTime.UtcNow;
+
+        SyncLessonExercises(lesson, model.Exercises);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, model.LessonId.HasValue ? "La leçon a été mise à jour." : "La leçon a été créée.");
+    }
+
+    private void SyncLessonExercises(Lesson lesson, List<LessonExerciseFormModel> exerciseForms)
+    {
+        var forms = (exerciseForms ?? [])
+            .Select((exercise, index) => new { Exercise = exercise, Order = index + 1 })
+            .ToList();
+
+        var existingById = lesson.Exercises.ToDictionary(exercise => exercise.Id);
+        var retainedIds = new HashSet<Guid>();
+
+        foreach (var item in forms)
+        {
+            var form = item.Exercise;
+            var normalizedType = NormalizeLessonExerciseType(form.ExerciseType);
+            var isChoiceType = IsChoiceType(normalizedType);
+            var isSingleChoiceType = IsSingleChoiceType(normalizedType);
+            var isAudioType = IsAudioType(normalizedType);
+
+            Exercise exercise;
+            if (form.ExerciseId.HasValue && existingById.TryGetValue(form.ExerciseId.Value, out var existing))
+            {
+                exercise = existing;
+            }
+            else
+            {
+                exercise = new Exercise
+                {
+                    LessonId = lesson.Id
+                };
+                lesson.Exercises.Add(exercise);
+            }
+
+            exercise.Title = form.Title?.Trim() ?? string.Empty;
+            exercise.Instructions = form.Instructions?.Trim() ?? string.Empty;
+            exercise.Question = form.Question?.Trim() ?? string.Empty;
+            exercise.Points = form.Points > 0 ? form.Points : 10;
+            exercise.ExerciseType = normalizedType;
+            exercise.Order = item.Order;
+            exercise.AudioText = isAudioType ? form.AudioText?.Trim() : null;
+            exercise.TtsLanguage = NormalizeTtsLanguage(form.TtsLanguage);
+            exercise.AcceptedAnswersJson = normalizedType == "GapFill"
+                ? null
+                : AnswerMatchingService.SerializeVariants(AnswerMatchingService.SplitVariants(form.AcceptedAnswers));
+            exercise.GapAnswersJson = normalizedType == "GapFill"
+                ? AnswerMatchingService.SerializeGaps((form.Gaps ?? []).Select(g => AnswerMatchingService.SplitVariants(g.AcceptedAnswers)))
+                : null;
+
+            if (isChoiceType)
+            {
+                SyncLessonExerciseOptions(exercise, form.Options ?? [], isSingleChoiceType);
+            }
+            else if (exercise.Options.Count > 0)
+            {
+                dbContext.ExerciseOptions.RemoveRange(exercise.Options);
+                exercise.Options.Clear();
+            }
+
+            retainedIds.Add(exercise.Id);
+        }
+
+        var removed = lesson.Exercises
+            .Where(exercise => exercise.Id != Guid.Empty && !retainedIds.Contains(exercise.Id))
+            .ToList();
+
+        if (removed.Count > 0)
+        {
+            dbContext.Exercises.RemoveRange(removed);
+        }
+    }
+
+    private void SyncLessonExerciseOptions(Exercise exercise, List<LessonExerciseOptionFormModel> optionForms, bool singleChoice)
+    {
+        var orderedOptions = (optionForms ?? [])
+            .Where(option => !string.IsNullOrWhiteSpace(option.Text))
+            .Select((option, index) => new { Option = option, Order = index + 1 })
+            .ToList();
+
+        var existingById = exercise.Options.ToDictionary(option => option.Id);
+        var retainedIds = new HashSet<Guid>();
+        var hasMarkedCorrect = orderedOptions.Any(option => option.Option.IsCorrect);
+
+        for (var i = 0; i < orderedOptions.Count; i++)
+        {
+            var formOption = orderedOptions[i].Option;
+            ExerciseOption option;
+            if (formOption.OptionId.HasValue && existingById.TryGetValue(formOption.OptionId.Value, out var existing))
+            {
+                option = existing;
+            }
+            else
+            {
+                option = new ExerciseOption
+                {
+                    ExerciseId = exercise.Id
+                };
+                exercise.Options.Add(option);
+            }
+
+            option.Text = formOption.Text.Trim();
+            option.Order = orderedOptions[i].Order;
+            option.IsCorrect = singleChoice
+                ? (hasMarkedCorrect ? formOption.IsCorrect : i == 0)
+                : formOption.IsCorrect;
+
+            retainedIds.Add(option.Id);
+        }
+
+        var removed = exercise.Options
+            .Where(option => option.Id != Guid.Empty && !retainedIds.Contains(option.Id))
+            .ToList();
+        if (removed.Count > 0)
+        {
+            dbContext.ExerciseOptions.RemoveRange(removed);
+        }
+    }
+
+    private static bool IsChoiceType(string normalizedType)
+        => normalizedType is "SingleChoice" or "MultipleChoice" or "AudioSingleChoice" or "AudioMultipleChoice";
+
+    private static bool IsSingleChoiceType(string normalizedType)
+        => normalizedType is "SingleChoice" or "AudioSingleChoice";
+
+    private static bool IsAudioType(string normalizedType)
+        => normalizedType is "AudioText" or "AudioSingleChoice" or "AudioMultipleChoice";
+
+    private static string NormalizeLessonExerciseType(string? exerciseType)
+    {
+        if (string.IsNullOrWhiteSpace(exerciseType))
+        {
+            return "SingleChoice";
+        }
+
+        return exerciseType.Trim().ToLowerInvariant() switch
+        {
+            "choice" or "singlechoice" => "SingleChoice",
+            "multiplechoice" => "MultipleChoice",
+            "audiochoice" or "audiosinglechoice" => "AudioSingleChoice",
+            "audiomultiplechoice" => "AudioMultipleChoice",
+            "gapfill" or "gap" or "lücken" or "luecken" => "GapFill",
+            "text" or "freetext" => "Text",
+            "sentencebuilding" or "sentence" or "satzbau" => "SentenceBuilding",
+            "audiotext" or "audio" => "AudioText",
+            _ => "SingleChoice"
+        };
+    }
+
+    private static string NormalizeTtsLanguage(string? language)
+        => language switch
+        {
+            "fr-FR" => "fr-FR",
+            "en-US" => "en-US",
+            _ => "de-DE"
+        };
+
+    public async Task<IReadOnlyList<LessonManagementItem>> GetLessonOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .OrderBy(x => x.Klasse.Code)
+            .ThenBy(x => x.Order)
+            .Select(lesson => new LessonManagementItem
+            {
+                LessonId = lesson.Id,
+                Title = $"{lesson.Klasse.Code} · {lesson.Title}",
+                Summary = lesson.Summary,
+                Order = lesson.Order,
+                ExerciseCount = lesson.Exercises.Count
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveLessonMediaAsync(MediaUploadFormModel model, Stream content, string fileName, CancellationToken cancellationToken = default)
+    {
+        if (!model.LessonId.HasValue)
+        {
+            return (false, "Veuillez choisir une leçon.");
+        }
+
+        var lesson = await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .FirstOrDefaultAsync(x => x.Id == model.LessonId.Value, cancellationToken);
+
+        if (lesson is null)
+        {
+            return (false, "La leçon sélectionnée est introuvable.");
+        }
+
+        var lessonFolder = $"{lesson.Klasse.Code.ToLowerInvariant()}/lesson-{lesson.Order}";
+        var savedMedia = await mediaStorageService.SaveAsync(new MediaSaveRequest
+        {
+            Content = content,
+            FileName = fileName,
+            MediaType = model.MediaType,
+            AltText = model.AltText,
+            LessonFolder = lessonFolder
+        }, cancellationToken);
+
+        dbContext.LessonMedia.Add(new LessonMedia
+        {
+            LessonId = lesson.Id,
+            MediaType = model.MediaType,
+            RelativePath = savedMedia.RelativePath,
+            AltText = model.AltText.Trim(),
+            StorageProvider = savedMedia.StorageProvider
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "Le média a été enregistré.");
+    }
+
+    private async Task SyncUserSchoolsAsync(Guid userId, IReadOnlyCollection<Guid> schoolIds, bool canManageStudents, CancellationToken cancellationToken)
+    {
+        var existingLinks = await dbContext.UserSchools.Where(x => x.AppUserId == userId).ToListAsync(cancellationToken);
+
+        var linksToRemove = existingLinks.Where(link => !schoolIds.Contains(link.SchoolId)).ToList();
+        if (linksToRemove.Count > 0)
+        {
+            dbContext.UserSchools.RemoveRange(linksToRemove);
+        }
+
+        foreach (var schoolId in schoolIds)
+        {
+            var link = existingLinks.FirstOrDefault(x => x.SchoolId == schoolId);
+            if (link is null)
+            {
+                dbContext.UserSchools.Add(new UserSchool
+                {
+                    AppUserId = userId,
+                    SchoolId = schoolId,
+                    CanManageStudents = canManageStudents
+                });
+            }
+            else
+            {
+                link.CanManageStudents = canManageStudents;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Löscht eine noch nicht bestätigte Selbstregistrierung endgültig. Der aufrufende
+    /// Schulleiter darf ausschließlich Schüler seiner eigenen Schule entfernen.
+    /// </summary>
+    public async Task<(bool Succeeded, string Message)> DeletePendingSelfRegisteredStudentAsync(
+        Guid directorId,
+        Guid studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        var profile = await dbContext.StudentProfiles
+            .FirstOrDefaultAsync(x => x.AppUserId == studentId && schoolIds.Contains(x.SchoolId), cancellationToken);
+        var user = await userManager.FindByIdAsync(studentId.ToString());
+        if (profile is null || user is null)
+        {
+            return (false, "L'élève sélectionné est introuvable.");
+        }
+        if (!user.IsSelfRegistered || !user.IsBlocked)
+        {
+            return (false, "Seules les auto-inscriptions encore en attente peuvent être supprimées.");
+        }
+
+        dbContext.StudentProfiles.Remove(profile);
+        dbContext.UserSchools.RemoveRange(await dbContext.UserSchools
+            .Where(x => x.AppUserId == studentId)
+            .ToListAsync(cancellationToken));
+        dbContext.LevelEnrollments.RemoveRange(await dbContext.LevelEnrollments
+            .Where(x => x.StudentId == studentId)
+            .ToListAsync(cancellationToken));
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var deleteResult = await userManager.DeleteAsync(user);
+        return deleteResult.Succeeded
+            ? (true, "L'auto-inscription en attente a été supprimée définitivement.")
+            : (false, string.Join(" ", deleteResult.Errors.Select(x => x.Description)));
+    }
+
+    private async Task EnsureStudentProfileStateAsync(
+        AppUser user,
+        string roleName,
+        IReadOnlyCollection<Guid> schoolIds,
+        Guid? currentKlasseId,
+        string? elternTelefonNummer,
+        string? elternEmail,
+        CancellationToken cancellationToken)
+    {
+        var existingProfiles = await dbContext.StudentProfiles.Where(x => x.AppUserId == user.Id).ToListAsync(cancellationToken);
+
+        if (roleName != "Schüler")
+        {
+            if (existingProfiles.Count > 0)
+            {
+                dbContext.StudentProfiles.RemoveRange(existingProfiles);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            return;
+        }
+
+        var firstSchoolId = schoolIds.FirstOrDefault();
+        if (firstSchoolId == Guid.Empty)
+        {
+            return;
+        }
+
+        var selectedKlasse = currentKlasseId is Guid klasseId
+            ? await dbContext.Klassen.FirstOrDefaultAsync(klasse => klasse.Id == klasseId && klasse.SchoolId == firstSchoolId, cancellationToken)
+            : null;
+        var profile = existingProfiles.FirstOrDefault(x => x.SchoolId == firstSchoolId);
+        if (profile is null)
+        {
+            profile = new StudentProfile
+            {
+                AppUserId = user.Id,
+                SchoolId = firstSchoolId,
+                CompletedLessonsCount = 0
+            };
+            dbContext.StudentProfiles.Add(profile);
+        }
+
+        if (selectedKlasse is not null)
+        {
+            profile.CurrentKlasseId = selectedKlasse.Id;
+            profile.CurrentLevelCode = selectedKlasse.Code;
+
+            var hasActiveCycle = await dbContext.KursNiveauDurchlaeufe
+                .AsNoTracking()
+                .AnyAsync(durchlauf => durchlauf.SchulID == firstSchoolId
+                    && durchlauf.KlasseId == selectedKlasse.Id
+                    && durchlauf.EndDatum == null, cancellationToken);
+
+            var autoAssignAlsBezahlt = selectedKlasse.AutoAssignHalloAppAboOnCycleStart && hasActiveCycle;
+            if (!autoAssignAlsBezahlt)
+            {
+                var hasEnrollment = await dbContext.LevelEnrollments.AnyAsync(
+                    enrollment => enrollment.StudentId == user.Id && enrollment.KlasseId == selectedKlasse.Id,
+                    cancellationToken);
+                if (!hasEnrollment)
+                {
+                    await dbContext.LevelEnrollments.AddAsync(new LevelEnrollment
+                    {
+                        StudentId = user.Id,
+                        KlasseId = selectedKlasse.Id
+                    }, cancellationToken);
+                }
+            }
+        }
+
+        profile.ElternTelefonNummer = NormalizeOptional(elternTelefonNummer);
+        profile.ElternEmail = NormalizeOptional(elternEmail);
+
+        var obsoleteProfiles = existingProfiles.Where(x => x.SchoolId != firstSchoolId).ToList();
+        if (obsoleteProfiles.Count > 0)
+        {
+            dbContext.StudentProfiles.RemoveRange(obsoleteProfiles);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (selectedKlasse is not null)
+        {
+            var hasActiveCycle = await dbContext.KursNiveauDurchlaeufe
+                .AsNoTracking()
+                .AnyAsync(durchlauf => durchlauf.SchulID == firstSchoolId
+                    && durchlauf.KlasseId == selectedKlasse.Id
+                    && durchlauf.EndDatum == null, cancellationToken);
+            var autoAssignAlsBezahlt = selectedKlasse.AutoAssignHalloAppAboOnCycleStart && hasActiveCycle;
+            if (autoAssignAlsBezahlt)
+            {
+                var aboService = new AboService(dbContext);
+                await aboService.AboZuweisenAsync(user.Id, selectedKlasse.Id, AboTyp.HalloApp, cancellationToken: cancellationToken);
+            }
+        }
+    }
+
+    private static string? NormalizeOptional(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private async Task SyncTeacherAssignmentsAsync(Guid schoolId, IReadOnlyCollection<Guid> teacherIds, CancellationToken cancellationToken)
+    {
+        var existingLinks = await dbContext.UserSchools
+            .Where(link => link.SchoolId == schoolId && link.CanManageStudents)
+            .ToListAsync(cancellationToken);
+
+        var existingTeacherIds = existingLinks.Select(link => link.AppUserId).ToHashSet();
+
+        var linksToRemove = existingLinks.Where(link => !teacherIds.Contains(link.AppUserId)).ToList();
+        if (linksToRemove.Count > 0)
+        {
+            dbContext.UserSchools.RemoveRange(linksToRemove);
+        }
+
+        var teacherIdsToAdd = teacherIds.Where(id => !existingTeacherIds.Contains(id)).ToList();
+        foreach (var teacherId in teacherIdsToAdd)
+        {
+            dbContext.UserSchools.Add(new UserSchool
+            {
+                AppUserId = teacherId,
+                SchoolId = schoolId,
+                CanManageStudents = true
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TeacherSchoolOverview>> GetTeacherSchoolsAsync(Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var zuordnungen = await GetAktiveLehrerZuordnungenAsync(teacherId, cancellationToken);
+        var eingeschraenkteSchulIds = zuordnungen.Select(z => z.SchulID).Distinct().ToList();
+
+        if (eingeschraenkteSchulIds.Count == 0)
+        {
+            return [];
+        }
+
+        var lehrerIds = (await userManager.GetUsersInRoleAsync("Lehrer")).Select(x => x.Id).ToHashSet();
+
+        var query = dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && link.CanManageStudents);
+
+        query = query.Where(link => eingeschraenkteSchulIds.Contains(link.SchoolId));
+
+        return await query
+            .Select(link => new TeacherSchoolOverview
+            {
+                SchoolId = link.SchoolId,
+                SchoolName = link.School.Name,
+                City = link.School.City,
+                StudentCount = link.School.Students.Count,
+                PendingApprovalCount = link.School.Students.Count(student => student.AppUser.IsSelfRegistered && student.AppUser.IsBlocked),
+                BlockedStudentCount = link.School.Students.Count(student => student.AppUser.IsBlocked),
+                TeacherCount = link.School.UserSchools.Count(l => l.CanManageStudents && lehrerIds.Contains(l.AppUserId))
+            })
+            .OrderBy(x => x.SchoolName)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TeacherSchoolOverview>> GetSchoolLeaderSchoolsAsync(Guid directorId, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var teacherIds = (await userManager.GetUsersInRoleAsync(Rollen.Lehrer)).Select(user => user.Id).ToHashSet();
+        var globalSubscriptionPrice = await GetGlobalSubscriptionPriceAsync(cancellationToken);
+
+        return await dbContext.Schools
+            .AsNoTracking()
+            .Where(school => schoolIds.Contains(school.Id))
+            .Select(school => new TeacherSchoolOverview
+            {
+                SchoolId = school.Id,
+                SchoolName = school.Name,
+                City = school.City,
+                StudentCount = school.Students.Count(student => !student.IsArchived),
+                PendingApprovalCount = school.Students.Count(student => !student.IsArchived && student.AppUser.IsSelfRegistered && student.AppUser.IsBlocked),
+                BlockedStudentCount = school.Students.Count(student => !student.IsArchived && student.AppUser.IsBlocked),
+                TeacherCount = school.UserSchools.Count(link => link.CanManageStudents && teacherIds.Contains(link.AppUserId)),
+                EffectiveSubscriptionPrice = school.SubscriptionPriceOverride ?? globalSubscriptionPrice
+            })
+            .OrderBy(school => school.SchoolName)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<StudentApprovalItem>> GetSchoolLeaderStudentsAsync(Guid directorId, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var profiles = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => schoolIds.Contains(profile.SchoolId) && !profile.IsArchived)
+            .Select(profile => new StudentApprovalItem
+            {
+                UserId = profile.AppUserId,
+                FullName = profile.AppUser.FullName,
+                Email = profile.AppUser.Email ?? string.Empty,
+                SchoolName = profile.School.Name,
+                SchoolId = profile.SchoolId,
+                CurrentLevelCode = profile.CurrentLevelCode,
+                CurrentKlasseId = profile.CurrentKlasseId,
+                CurrentKlasseName = profile.CurrentKlasse != null
+                    ? profile.CurrentKlasse.Title
+                    : profile.CurrentLevelCode,
+                IsBlocked = profile.AppUser.IsBlocked,
+                IsSelfRegistered = profile.AppUser.IsSelfRegistered,
+                CompletedLessonsCount = profile.CompletedLessonsCount,
+                EnrolledAtUtc = profile.AppUser.CreatedAtUtc,
+                HasPaidEnrollment = profile.AppUser.LevelEnrollments.Any(enrollment => enrollment.IsPaid),
+                HasActiveSubscription = profile.AppUser.LevelEnrollments.Any(enrollment => enrollment.IsUnlocked)
+            })
+            .OrderBy(profile => profile.SchoolName)
+            .ThenBy(profile => profile.FullName)
+            .ToListAsync(cancellationToken);
+
+        await ApplyStudentProgressScoresAsync(profiles, cancellationToken);
+        await ApplySchoolFeeInfoAsync(profiles, cancellationToken);
+        return profiles;
+    }
+
+    public async Task<(bool Succeeded, string Message)> AssignStudentsToKlasseAsync(
+        Guid directorId,
+        Guid klasseId,
+        IReadOnlyCollection<Guid> studentIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (studentIds.Count == 0)
+        {
+            return (false, "Sélectionne au moins un élève.");
+        }
+
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return (false, "Aucune école n'est associée à votre compte.");
+        }
+
+        var klasse = await dbContext.Klassen
+            .FirstOrDefaultAsync(x => x.Id == klasseId && x.SchoolId != null && schoolIds.Contains(x.SchoolId.Value), cancellationToken);
+        if (klasse is null)
+        {
+            return (false, "Classe introuvable ou non autorisée.");
+        }
+
+        var targetStudentIds = studentIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        var profiles = await dbContext.StudentProfiles
+            .Where(profile => targetStudentIds.Contains(profile.AppUserId)
+                              && profile.SchoolId == klasse.SchoolId
+                              && profile.CurrentKlasseId == null)
+            .ToListAsync(cancellationToken);
+
+        if (profiles.Count == 0)
+        {
+            return (false, "Aucun élève sans classe active ne correspond à la sélection.");
+        }
+
+        foreach (var profile in profiles)
+        {
+            profile.CurrentKlasseId = klasse.Id;
+            profile.CurrentLevelCode = klasse.Code;
+
+            var hasEnrollment = await dbContext.LevelEnrollments.AnyAsync(
+                enrollment => enrollment.StudentId == profile.AppUserId && enrollment.KlasseId == klasse.Id,
+                cancellationToken);
+            if (!hasEnrollment)
+            {
+                await dbContext.LevelEnrollments.AddAsync(new LevelEnrollment
+                {
+                    StudentId = profile.AppUserId,
+                    KlasseId = klasse.Id,
+                    PriceAtEnrollment = klasse.Price
+                }, cancellationToken);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var hasActiveCycle = await dbContext.KursNiveauDurchlaeufe
+            .AsNoTracking()
+            .AnyAsync(durchlauf => durchlauf.SchulID == klasse.SchoolId
+                && durchlauf.KlasseId == klasse.Id
+                && durchlauf.EndDatum == null, cancellationToken);
+
+        if (klasse.AutoAssignHalloAppAboOnCycleStart && hasActiveCycle)
+        {
+            var aboService = new AboService(dbContext);
+            foreach (var profile in profiles)
+            {
+                await aboService.AboZuweisenAsync(profile.AppUserId, klasse.Id, AboTyp.HalloApp, cancellationToken: cancellationToken);
+            }
+        }
+
+        return (true, $"{profiles.Count} élève(s) attribué(s) à {klasse.Title}.");
+    }
+
+    public async Task<IReadOnlyList<StudentApprovalItem>> GetTeacherStudentsAsync(Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var teacherSchoolIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && link.CanManageStudents)
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+
+        var zuordnungen = await GetAktiveLehrerZuordnungenAsync(teacherId, cancellationToken);
+        var zuordnungsSchulIds = zuordnungen.Select(z => z.SchulID).Distinct().ToList();
+        var zuordnungsSchluessel = zuordnungen
+            .Select(z => z.SchulID + "|" + z.KlasseId)
+            .ToHashSet();
+
+        if (zuordnungen.Count == 0)
+        {
+            return [];
+        }
+
+        var profiles = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => teacherSchoolIds.Contains(profile.SchoolId) && !profile.IsArchived)
+            .Select(profile => new StudentApprovalItem
+            {
+                UserId = profile.AppUserId,
+                FullName = profile.AppUser.FullName,
+                Email = profile.AppUser.Email ?? string.Empty,
+                SchoolName = profile.School.Name,
+                SchoolId = profile.SchoolId,
+                CurrentLevelCode = profile.CurrentLevelCode,
+                CurrentKlasseId = profile.CurrentKlasseId,
+                CurrentKlasseName = profile.CurrentKlasse != null
+                    ? profile.CurrentKlasse.Title
+                    : profile.CurrentLevelCode,
+                IsBlocked = profile.AppUser.IsBlocked,
+                IsSelfRegistered = profile.AppUser.IsSelfRegistered,
+                CompletedLessonsCount = profile.CompletedLessonsCount,
+                EnrolledAtUtc = profile.AppUser.CreatedAtUtc,
+                HasPaidEnrollment = profile.AppUser.LevelEnrollments.Any(e => e.IsPaid),
+                HasActiveSubscription = profile.AppUser.LevelEnrollments.Any(e => e.IsUnlocked)
+            })
+            .OrderBy(x => x.SchoolName)
+            .ThenBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        profiles = profiles
+            .Where(p => zuordnungsSchulIds.Contains(p.SchoolId)
+                && p.CurrentKlasseId.HasValue
+                && zuordnungsSchluessel.Contains(p.SchoolId + "|" + p.CurrentKlasseId.Value))
+            .ToList();
+
+        await ApplyStudentProgressScoresAsync(profiles, cancellationToken);
+
+        return profiles;
+    }
+
+    private async Task ApplyStudentProgressScoresAsync(IReadOnlyList<StudentApprovalItem> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var studentIds = items.Select(x => x.UserId).ToList();
+        var combinedScores = await GetCombinedProgressScoresAsync(studentIds, cancellationToken);
+
+        foreach (var item in items)
+        {
+            item.IsHalloPlus = item.HasActiveSubscription;
+
+            if (combinedScores.TryGetValue(item.UserId, out var combined) && combined.Count > 0)
+            {
+                item.CombinedScorePercent = combined.AverageScorePercent;
+                item.CombinedScoreCount = combined.Count;
+            }
+        }
+    }
+
+    private async Task ApplySchoolFeeInfoAsync(IReadOnlyList<StudentApprovalItem> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var feeLookup = await GetCurrentSchoolFeeLookupAsync(items.Select(x => x.UserId).ToList(), cancellationToken);
+        foreach (var item in items)
+        {
+            if (feeLookup.TryGetValue(item.UserId, out var fee))
+            {
+                item.SchoolFeeAmount = fee.Amount;
+                item.SchoolFeePaidAmount = fee.PaidAmount;
+                item.HasActiveSchoolFeeCycle = fee.HasCycle;
+            }
+        }
+    }
+
+    private async Task<Dictionary<Guid, SchoolFeeSnapshot>> GetCurrentSchoolFeeLookupAsync(
+        IReadOnlyCollection<Guid> studentIds,
+        CancellationToken cancellationToken)
+    {
+        if (studentIds.Count == 0)
+        {
+            return [];
+        }
+
+        var profiles = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => studentIds.Contains(profile.AppUserId))
+            .Select(profile => new
+            {
+                profile.AppUserId,
+                profile.SchoolId,
+                profile.CurrentKlasseId
+            })
+            .ToListAsync(cancellationToken);
+
+        var currentClassProfiles = profiles
+            .Where(profile => profile.CurrentKlasseId.HasValue)
+            .ToList();
+        if (currentClassProfiles.Count == 0)
+        {
+            return [];
+        }
+
+        var currentClassKeys = currentClassProfiles
+            .Select(profile => profile.SchoolId + "|" + profile.CurrentKlasseId!.Value)
+            .ToHashSet();
+
+        var durchlaeufe = await dbContext.KursNiveauDurchlaeufe
+            .AsNoTracking()
+            .Where(durchlauf => currentClassKeys.Contains(durchlauf.SchulID + "|" + durchlauf.KlasseId))
+            .Select(durchlauf => new
+            {
+                durchlauf.Id,
+                durchlauf.SchulID,
+                durchlauf.KlasseId,
+                durchlauf.NiveauPreis,
+                durchlauf.StartDatum,
+                durchlauf.EndDatum
+            })
+            .ToListAsync(cancellationToken);
+
+        var candidates = (
+            from profile in currentClassProfiles
+            join durchlauf in durchlaeufe
+                on new { profile.SchoolId, KlasseId = profile.CurrentKlasseId!.Value } equals new { SchoolId = durchlauf.SchulID, durchlauf.KlasseId } into matchingDurchlaeufe
+            from durchlauf in matchingDurchlaeufe.DefaultIfEmpty()
+            select new
+            {
+                StudentId = profile.AppUserId,
+                DurchlaufId = durchlauf?.Id,
+                NiveauPreis = durchlauf?.NiveauPreis,
+                StartDatum = durchlauf?.StartDatum,
+                EndDatum = durchlauf?.EndDatum,
+                HasCycle = durchlauf is not null
+            })
+            .ToList();
+
+        var durchlaufIds = candidates
+            .Where(x => x.DurchlaufId.HasValue)
+            .Select(x => x.DurchlaufId!.Value)
+            .Distinct()
+            .ToList();
+        var payments = await dbContext.RatenZahlungen
+            .AsNoTracking()
+            .Where(x => durchlaufIds.Contains(x.DurchlaufID) && studentIds.Contains(x.StudentId))
+            .GroupBy(x => new { x.DurchlaufID, x.StudentId })
+            .Select(group => new
+            {
+                group.Key.DurchlaufID,
+                group.Key.StudentId,
+                PaidAmount = group.Sum(x => x.Betrag)
+            })
+            .ToListAsync(cancellationToken);
+        var paymentLookup = payments.ToDictionary(x => (x.DurchlaufID, x.StudentId), x => x.PaidAmount);
+
+        return candidates
+            .GroupBy(x => x.StudentId)
+            .Select(group => group
+                .OrderByDescending(x => x.HasCycle)
+                .ThenByDescending(x => x.EndDatum is null)
+                .ThenByDescending(x => x.StartDatum)
+                .First())
+            .ToDictionary(
+                x => x.StudentId,
+                x => new SchoolFeeSnapshot(
+                    x.NiveauPreis,
+                    x.DurchlaufId.HasValue ? paymentLookup.GetValueOrDefault((x.DurchlaufId.Value, x.StudentId)) : 0m,
+                    x.HasCycle));
+    }
+
+    private sealed record SchoolFeeSnapshot(decimal? Amount, decimal PaidAmount, bool HasCycle);
+
+    public async Task<IReadOnlyList<StudentProgressItem>> GetTeacherStudentProgressAsync(Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var teacherSchoolIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && link.CanManageStudents)
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+
+        var students = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => teacherSchoolIds.Contains(profile.SchoolId) && !profile.IsArchived)
+            .Select(profile => new
+            {
+                profile.AppUserId,
+                profile.AppUser.FullName,
+                SchoolName = profile.School.Name,
+                profile.SchoolId,
+                profile.CurrentLevelCode,
+                profile.CurrentKlasseId,
+                profile.AppUser.IsBlocked,
+                profile.CompletedLessonsCount
+            })
+            .ToListAsync(cancellationToken);
+
+        var progressZuordnungen = await GetAktiveLehrerZuordnungenAsync(teacherId, cancellationToken);
+        if (progressZuordnungen.Count == 0)
+        {
+            return [];
+        }
+
+        var progressSchulIds = progressZuordnungen.Select(z => z.SchulID).Distinct().ToHashSet();
+        var progressSchluessel = progressZuordnungen
+            .Select(z => z.SchulID + "|" + z.KlasseId)
+            .ToHashSet();
+
+        students = students
+            .Where(s => progressSchulIds.Contains(s.SchoolId)
+                && s.CurrentKlasseId.HasValue
+                && progressSchluessel.Contains(s.SchoolId + "|" + s.CurrentKlasseId.Value))
+            .ToList();
+
+        var studentIds = students.Select(x => x.AppUserId).ToList();
+
+        var solvedExercises = await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(x => x.IsCorrect && studentIds.Contains(x.StudentId))
+            .GroupBy(x => x.StudentId)
+            .Select(g => new { StudentId = g.Key, Count = g.Select(a => a.ExerciseId).Distinct().Count() })
+            .ToListAsync(cancellationToken);
+
+        var examStats = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(x => x.IsCompleted && studentIds.Contains(x.StudentId))
+            .GroupBy(x => x.StudentId)
+            .Select(g => new
+            {
+                StudentId = g.Key,
+                Taken = g.Count(),
+                Passed = g.Count(a => a.IsPassed),
+                BestScore = g.Max(a => a.ScorePercent),
+                LastActivity = g.Max(a => a.SubmittedAtUtc)
+            })
+            .ToListAsync(cancellationToken);
+
+        var lessonActivity = await dbContext.LessonProgresses
+            .AsNoTracking()
+            .Where(x => studentIds.Contains(x.StudentId))
+            .GroupBy(x => x.StudentId)
+            .Select(g => new { StudentId = g.Key, LastActivity = g.Max(a => a.LastActivityUtc) })
+            .ToListAsync(cancellationToken);
+
+        var combinedScores = await GetCombinedProgressScoresAsync(studentIds, cancellationToken);
+        var paidStudentIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => studentIds.Contains(enrollment.StudentId) && enrollment.IsPaid)
+            .Select(enrollment => enrollment.StudentId)
+            .Distinct()
+            .ToHashSetAsync(cancellationToken);
+
+        return students
+            .Select(student =>
+            {
+                var exam = examStats.FirstOrDefault(x => x.StudentId == student.AppUserId);
+                var examLast = exam?.LastActivity;
+                var lessonLast = lessonActivity.FirstOrDefault(x => x.StudentId == student.AppUserId)?.LastActivity;
+                DateTime? lastActivity = examLast is null
+                    ? lessonLast
+                    : lessonLast is null ? examLast : (examLast > lessonLast ? examLast : lessonLast);
+
+                var isHalloPlus = paidStudentIds.Contains(student.AppUserId);
+                combinedScores.TryGetValue(student.AppUserId, out var combined);
+
+                return new StudentProgressItem
+                {
+                    UserId = student.AppUserId,
+                    FullName = student.FullName,
+                    SchoolId = student.SchoolId,
+                    SchoolName = student.SchoolName,
+                    CurrentLevelCode = student.CurrentLevelCode,
+                    IsBlocked = student.IsBlocked,
+                    CompletedLessonsCount = student.CompletedLessonsCount,
+                    SolvedExerciseCount = solvedExercises.FirstOrDefault(x => x.StudentId == student.AppUserId)?.Count ?? 0,
+                    ExamsTaken = exam?.Taken ?? 0,
+                    ExamsPassed = exam?.Passed ?? 0,
+                    BestExamScorePercent = exam?.BestScore ?? 0,
+                    IsHalloPlus = isHalloPlus,
+                    CombinedScorePercent = combined.Count > 0 ? combined.AverageScorePercent : null,
+                    CombinedScoreCount = combined.Count,
+                    LastActivityUtc = lastActivity
+                };
+            })
+            .OrderBy(x => x.SchoolName)
+            .ThenBy(x => x.FullName)
+            .ToList();
+    }
+
+    public async Task<(bool Succeeded, string Message)> ArchiveStudentsAsync(
+        Guid directorId,
+        IReadOnlyCollection<Guid> studentIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (studentIds is null || studentIds.Count == 0)
+        {
+            return (false, "Sélectionne au moins un élève à archiver.");
+        }
+
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return (false, "Aucune école n'est associée à votre compte.");
+        }
+
+        var profiles = await dbContext.StudentProfiles
+            .Where(profile => studentIds.Contains(profile.AppUserId)
+                              && schoolIds.Contains(profile.SchoolId)
+                              && !profile.IsArchived)
+            .ToListAsync(cancellationToken);
+
+        if (profiles.Count == 0)
+        {
+            return (false, "Aucun élève actif sélectionné n'est archivable.");
+        }
+
+        foreach (var profile in profiles)
+        {
+            profile.IsArchived = true;
+            profile.GeaendertAmUtc = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, profiles.Count == 1
+            ? "L'élève sélectionné a été archivé."
+            : $"{profiles.Count} élèves ont été archivés.");
+    }
+
+    public async Task SetStudentBlockedStateAsync(Guid studentId, bool isBlocked, bool allowBlockingPaidStudent = false, CancellationToken cancellationToken = default)
+    {
+        var student = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == studentId, cancellationToken);
+        if (student is null)
+        {
+            return;
+        }
+
+        // Ein Schüler mit mindestens einem bezahlten Niveau darf nur vom SuperAdmin
+        // (allowBlockingPaidStudent = true) blockiert werden. Der Schulleiter kann dies nicht.
+        if (isBlocked && !allowBlockingPaidStudent)
+        {
+            var hatBezahltesNiveau = await dbContext.LevelEnrollments
+                .AsNoTracking()
+                .AnyAsync(e => e.StudentId == studentId && e.IsPaid, cancellationToken);
+            if (hatBezahltesNiveau)
+            {
+                return;
+            }
+        }
+
+        student.IsBlocked = isBlocked;
+        student.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<List<Guid>> GetDirectorSchoolIdsAsync(Guid directorId, CancellationToken cancellationToken)
+        => await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == directorId && link.CanManageStudents)
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// Liefert die aktiven Klassen-Zuordnungen eines Lehrers.
+    /// Eine leere Liste bedeutet, dass der Lehrer keine Schüler sehen darf.
+    /// </summary>
+    private async Task<List<LehrerNiveauZuordnung>> GetAktiveLehrerZuordnungenAsync(Guid teacherId, CancellationToken cancellationToken)
+        => await dbContext.LehrerNiveauZuordnungen
+            .AsNoTracking()
+            .Where(z => z.LehrerID == teacherId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<SchoolUserItem>> GetSchoolUsersAsync(Guid directorId, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var allowedRoles = await GetManageableSchoolUserRolesAsync(directorId, cancellationToken);
+        if (allowedRoles.Count == 0)
+        {
+            return [];
+        }
+
+        var users = await dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.UserSchools)
+            .ThenInclude(link => link.School)
+            .Where(x => x.Id != directorId && x.UserSchools.Any(link => schoolIds.Contains(link.SchoolId)))
+            .ToListAsync(cancellationToken);
+
+        var result = new List<SchoolUserItem>();
+        foreach (var user in users)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            var roleName = roles.FirstOrDefault() ?? Rollen.Schueler;
+
+            // Nur Rollen anzeigen, die der aktuelle Manager verwalten darf.
+            if (!allowedRoles.Contains(roleName))
+            {
+                continue;
+            }
+
+            result.Add(new SchoolUserItem
+            {
+                UserId = user.Id,
+                FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
+                RoleName = roleName,
+                IsBlocked = user.IsBlocked,
+                IsSelfRegistered = user.IsSelfRegistered,
+                Schools = user.UserSchools
+                    .Where(link => schoolIds.Contains(link.SchoolId))
+                    .Select(link => link.School.Name)
+                    .OrderBy(name => name)
+                    .ToList()
+            });
+        }
+
+        return result
+            .OrderBy(x => x.RoleName == Rollen.Lehrer ? 0 : 1)
+            .ThenBy(x => x.FullName)
+            .ToList();
+    }
+
+    public async Task<UserFormModel?> GetSchoolUserForEditAsync(Guid directorId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return null;
+        }
+
+        var allowedRoles = await GetManageableSchoolUserRolesAsync(directorId, cancellationToken);
+        if (allowedRoles.Count == 0)
+        {
+            return null;
+        }
+
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.UserSchools)
+            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+
+        if (user is null || !user.UserSchools.Any(link => schoolIds.Contains(link.SchoolId)))
+        {
+            return null;
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+        var roleName = roles.FirstOrDefault() ?? Rollen.Schueler;
+        if (!allowedRoles.Contains(roleName))
+        {
+            return null;
+        }
+
+        var teacherClassAssignments = roleName == Rollen.Lehrer
+            ? await dbContext.LehrerNiveauZuordnungen
+                .AsNoTracking()
+                .Where(assignment => assignment.LehrerID == user.Id && schoolIds.Contains(assignment.SchulID))
+                .Select(assignment => new TeacherClassAssignmentFormModel
+                {
+                    SchoolId = assignment.SchulID,
+                    KlasseId = assignment.KlasseId,
+                    Wochenstunden = assignment.Wochenstunden
+                })
+                .ToListAsync(cancellationToken)
+            : [];
+
+        return new UserFormModel
+        {
+            UserId = user.Id,
+            Vorname = user.Vorname,
+            Nachname = user.Nachname,
+            Email = user.Email ?? string.Empty,
+            RoleName = roleName,
+            IsBlocked = user.IsBlocked,
+            IsSelfRegistered = user.IsSelfRegistered,
+            SchoolIds = user.UserSchools
+                .Where(link => schoolIds.Contains(link.SchoolId))
+                .Select(link => link.SchoolId)
+                .ToList(),
+            CurrentKlasseId = await dbContext.StudentProfiles
+                .Where(profile => profile.AppUserId == user.Id)
+                .Select(profile => profile.CurrentKlasseId)
+                .FirstOrDefaultAsync(cancellationToken),
+            TeacherClassAssignments = teacherClassAssignments
+        };
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveSchoolUserAsync(Guid directorId, UserFormModel model, CancellationToken cancellationToken = default)
+    {
+        var allowedRoles = await GetManageableSchoolUserRolesAsync(directorId, cancellationToken);
+        if (allowedRoles.Count == 0)
+        {
+            return (false, "Vous n'êtes pas autorisé à gérer des utilisateurs scolaires.");
+        }
+
+        if (!allowedRoles.Contains(model.RoleName))
+        {
+            return (false, "Vous n'êtes pas autorisé à créer ou modifier ce rôle.");
+        }
+
+        var directorSchoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (directorSchoolIds.Count == 0)
+        {
+            return (false, "Aucune école n'est associée à votre compte.");
+        }
+
+        var selectedSchoolIds = model.SchoolIds
+            .Where(schoolId => schoolId != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (model.RoleName == Rollen.Schueler && selectedSchoolIds.Count > 1)
+        {
+            return (false, "Un élève ne peut être attribué qu'à une seule école.");
+        }
+
+        if (selectedSchoolIds.Count == 0 || selectedSchoolIds.Any(schoolId => !directorSchoolIds.Contains(schoolId)))
+        {
+            return (false, "Veuillez choisir une ou plusieurs de vos écoles.");
+        }
+
+        if (model.RoleName == Rollen.Schueler && model.CurrentKlasseId is Guid klasseId)
+        {
+            var klasseBelongsToSchool = await dbContext.Klassen.AnyAsync(
+                klasse => klasse.Id == klasseId && klasse.SchoolId == selectedSchoolIds[0], cancellationToken);
+            if (!klasseBelongsToSchool)
+            {
+                return (false, "Veuillez choisir une classe de l'école sélectionnée.");
+            }
+        }
+
+        model.SchoolIds = selectedSchoolIds;
+
+        // Beim Bearbeiten sicherstellen, dass der Nutzer wirklich zur Schule des Directeurs gehört.
+        if (model.UserId.HasValue)
+        {
+            var existing = await GetSchoolUserForEditAsync(directorId, model.UserId.Value, cancellationToken);
+            if (existing is null)
+            {
+                return (false, "Vous n'êtes pas autorisé à modifier cet utilisateur.");
+            }
+        }
+
+        // Schüler eines Directeurs sind sofort akzeptiert (nicht blockiert).
+        if (model.RoleName == Rollen.Schueler)
+        {
+            model.IsBlocked = false;
+        }
+
+        var result = await SaveUserAsync(model, cancellationToken);
+        if (result.Succeeded && model.RoleName == Rollen.Lehrer)
+        {
+            var assignments = model.TeacherClassAssignments
+                .Where(assignment => selectedSchoolIds.Contains(assignment.SchoolId))
+                .Select(assignment => (assignment.SchoolId, assignment.KlasseId, assignment.Wochenstunden))
+                .ToList();
+
+            var teacherId = model.UserId;
+            if (!teacherId.HasValue)
+            {
+                teacherId = await dbContext.Users
+                    .Where(user => user.Email == model.Email.Trim())
+                    .Select(user => (Guid?)user.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+            }
+
+            if (!teacherId.HasValue)
+            {
+                if (assignments.Count == 0)
+                {
+                    return result;
+                }
+
+                return (false, "L'enseignant créé est introuvable.");
+            }
+
+            await SetLehrerNiveauZuordnungenAsync(directorId, teacherId.Value, assignments, cancellationToken);
+
+            var obsoleteAssignments = await dbContext.LehrerNiveauZuordnungen
+                .Where(assignment => assignment.LehrerID == teacherId.Value && !selectedSchoolIds.Contains(assignment.SchulID))
+                .ToListAsync(cancellationToken);
+
+            if (obsoleteAssignments.Count > 0)
+            {
+                dbContext.LehrerNiveauZuordnungen.RemoveRange(obsoleteAssignments);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<HashSet<string>> GetManageableSchoolUserRolesAsync(Guid managerUserId, CancellationToken cancellationToken)
+    {
+        var manager = await userManager.FindByIdAsync(managerUserId.ToString());
+        if (manager is null)
+        {
+            return [];
+        }
+
+        var roles = await userManager.GetRolesAsync(manager);
+        if (roles.Contains(Rollen.SuperAdmin))
+        {
+            return [Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler, Rollen.ProduktOwner, Rollen.SuperAdmin];
+        }
+
+        if (roles.Contains(Rollen.ProduktOwner))
+        {
+            return [Rollen.SchulLeiter];
+        }
+
+        if (roles.Contains(Rollen.SchulLeiter))
+        {
+            return [Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler];
+        }
+
+        if (roles.Contains(Rollen.Koordinator))
+        {
+            return [Rollen.Lehrer, Rollen.Schueler];
+        }
+
+        return [];
+    }
+
+    public async Task<IReadOnlyList<LevelEnrollmentItem>> GetStudentLevelEnrollmentsAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        var profile = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(item => item.AppUserId == studentId)
+            .Select(item => new
+            {
+                item.SchoolId,
+                item.CurrentKlasseId,
+                item.CurrentLevelCode,
+                item.School.SubscriptionPriceOverride
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (profile is null)
+        {
+            return [];
+        }
+
+        var enrollments = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(x => x.StudentId == studentId)
+            .ToDictionaryAsync(x => x.KlasseId, cancellationToken);
+        var closedClassIds = await dbContext.KursNiveauDurchlaeufe
+            .AsNoTracking()
+            .Where(durchlauf => durchlauf.SchulID == profile.SchoolId && durchlauf.EndDatum != null)
+            .Select(durchlauf => durchlauf.KlasseId)
+            .ToHashSetAsync(cancellationToken);
+        var activeClassIds = await dbContext.KursNiveauDurchlaeufe
+            .AsNoTracking()
+            .Where(durchlauf => durchlauf.SchulID == profile.SchoolId && durchlauf.EndDatum == null)
+            .Select(durchlauf => durchlauf.KlasseId)
+            .ToHashSetAsync(cancellationToken);
+        var globalSubscriptionPrice = await GetGlobalSubscriptionPriceAsync(cancellationToken);
+        var subscriptionPrice = profile.SubscriptionPriceOverride ?? globalSubscriptionPrice;
+
+        var schoolCourses = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(course => course.SchoolId == profile.SchoolId)
+            .Select(course => new { course.Id, course.Code, course.Title, course.Price, course.SchoolId })
+            .ToListAsync(cancellationToken);
+
+        var historicalCourseIds = enrollments.Keys.Except(schoolCourses.Select(course => course.Id)).ToList();
+        var historicalCourses = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(course => historicalCourseIds.Contains(course.Id))
+            .Select(course => new { course.Id, course.Code, course.Title, course.Price, course.SchoolId })
+            .ToListAsync(cancellationToken);
+        var courses = schoolCourses.Concat(historicalCourses)
+            .OrderBy(course => course.SchoolId == profile.SchoolId ? 0 : 1)
+            .ThenBy(course => course.Code)
+            .ToList();
+
+        return courses
+            .Select(course =>
+            {
+                enrollments.TryGetValue(course.Id, out var enrollment);
+                var hasActiveClassCycle = activeClassIds.Contains(course.Id);
+                var isClassCycleClosed = !hasActiveClassCycle && closedClassIds.Contains(course.Id);
+                return new LevelEnrollmentItem
+                {
+                    KlasseId = course.Id,
+                    CourseCode = course.Code,
+                    CourseTitle = course.Title,
+                    Price = course.Price,
+                    SubscriptionPrice = subscriptionPrice,
+                    AboPreis = enrollment is not null && enrollment.PriceAtEnrollment > 0m
+                        ? enrollment.PriceAtEnrollment
+                        : subscriptionPrice,
+                    AboTyp = enrollment?.AboTyp ?? DataModels.Schools.AboTyp.HalloApp,
+                    IsUnlocked = enrollment?.IsUnlocked ?? false,
+                    IsPaid = enrollment?.IsPaid ?? false,
+                    IstAbgerechnet = enrollment?.AbgerechnetInPeriodeId is not null,
+                    UnlockedAtUtc = enrollment?.UnlockedAtUtc,
+                    PaidAtUtc = enrollment?.PaidAtUtc,
+                    HasActiveClassCycle = hasActiveClassCycle,
+                    IsClassCycleClosed = isClassCycleClosed,
+                    IsCurrentKlasse = course.Id == profile.CurrentKlasseId
+                        || (profile.CurrentKlasseId is null
+                            && string.Equals(course.Code, profile.CurrentLevelCode, StringComparison.OrdinalIgnoreCase))
+                };
+            })
+            .ToList();
+    }
+
+    public async Task SetLevelUnlockedAsync(Guid studentId, Guid klasseId, bool isUnlocked, CancellationToken cancellationToken = default)
+    {
+        var enrollment = await dbContext.LevelEnrollments
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+
+        if (enrollment is null)
+        {
+            var course = await dbContext.Klassen.FirstOrDefaultAsync(x => x.Id == klasseId, cancellationToken);
+            if (course is null)
+            {
+                return;
+            }
+
+            // Neue Freischaltungen nur innerhalb der Niveaugruppe des Schuelers zulassen.
+            if (isUnlocked && !await _niveauGruppen.IstKlasseErlaubtAsync(studentId, klasseId, cancellationToken))
+            {
+                throw new InvalidOperationException(NiveauGruppenService.NichtErlaubtMeldung);
+            }
+
+            enrollment = new LevelEnrollment
+            {
+                StudentId = studentId,
+                KlasseId = klasseId,
+                PriceAtEnrollment = course.Price
+            };
+            await dbContext.LevelEnrollments.AddAsync(enrollment, cancellationToken);
+        }
+
+        enrollment.IsUnlocked = isUnlocked;
+        enrollment.UnlockedAtUtc = isUnlocked ? DateTime.UtcNow : enrollment.UnlockedAtUtc;
+        enrollment.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SetLevelPaidAsync(Guid studentId, Guid klasseId, bool isPaid, CancellationToken cancellationToken = default)
+    {
+        var enrollment = await dbContext.LevelEnrollments
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+
+        if (enrollment is null)
+        {
+            var course = await dbContext.Klassen.FirstOrDefaultAsync(x => x.Id == klasseId, cancellationToken);
+            if (course is null)
+            {
+                return;
+            }
+
+            enrollment = new LevelEnrollment
+            {
+                StudentId = studentId,
+                KlasseId = klasseId,
+                PriceAtEnrollment = course.Price
+            };
+            await dbContext.LevelEnrollments.AddAsync(enrollment, cancellationToken);
+        }
+
+        enrollment.IsPaid = isPaid;
+        enrollment.PaidAtUtc = isPaid ? DateTime.UtcNow : enrollment.PaidAtUtc;
+        enrollment.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Liefert für einen Lehrer alle möglichen Niveau-Zuordnungen innerhalb der Schulen des
+    /// Direktors und markiert, welche davon aktuell aktiv sind. Der Lehrer muss dem Direktor
+    /// über mindestens eine gemeinsame Schule zugeordnet sein.
+    /// </summary>
+    public async Task<IReadOnlyList<LehrerNiveauZuordnungItem>> GetLehrerNiveauZuordnungenAsync(Guid directorId, Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        // Nur Schulen, denen der Lehrer tatsächlich zugeordnet ist.
+        var lehrerSchulIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && schoolIds.Contains(link.SchoolId))
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+
+        if (lehrerSchulIds.Count == 0)
+        {
+            return [];
+        }
+
+        var schulen = await dbContext.Schools
+            .AsNoTracking()
+            .Where(s => lehrerSchulIds.Contains(s.Id))
+            .Select(s => new { s.Id, s.Name })
+            .ToListAsync(cancellationToken);
+
+        var niveaus = await dbContext.Klassen
+            .AsNoTracking()
+            .OrderBy(c => c.Code)
+            .Select(c => new { c.Id, c.Code, c.Title, c.SchoolId, c.IstSystemNiveau })
+            .ToListAsync(cancellationToken);
+
+        var aktive = (await dbContext.LehrerNiveauZuordnungen
+            .AsNoTracking()
+            .Where(z => z.LehrerID == teacherId && lehrerSchulIds.Contains(z.SchulID))
+            .Select(z => new { z.SchulID, z.KlasseId, z.Wochenstunden })
+            .ToListAsync(cancellationToken))
+            .ToDictionary(z => z.SchulID + "|" + z.KlasseId, z => z.Wochenstunden);
+
+        var result = new List<LehrerNiveauZuordnungItem>();
+        foreach (var schule in schulen.OrderBy(s => s.Name))
+        {
+            foreach (var niveau in niveaus.Where(niveau => niveau.SchoolId == schule.Id || (niveau.SchoolId == null && niveau.IstSystemNiveau)))
+            {
+                result.Add(new LehrerNiveauZuordnungItem
+                {
+                    SchulID = schule.Id,
+                    SchulName = schule.Name,
+                    KlasseId = niveau.Id,
+                    NiveauCode = niveau.Code,
+                    NiveauTitel = niveau.Title,
+                    IstZugeordnet = aktive.ContainsKey(schule.Id + "|" + niveau.Id),
+                    Wochenstunden = aktive.GetValueOrDefault(schule.Id + "|" + niveau.Id, 1m)
+                });
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Speichert die vom Direktor gewählten Klassen-Zuordnungen für einen Lehrer. Es werden nur
+    /// Zuordnungen innerhalb der Schulen berücksichtigt, die der Direktor verwaltet und denen der
+    /// Lehrer zugeordnet ist. Bestehende Zuordnungen dieser Schulen werden ersetzt.
+    /// </summary>
+    public async Task SetLehrerNiveauZuordnungenAsync(Guid directorId, Guid teacherId, IReadOnlyList<(Guid SchulID, Guid KlasseId, decimal Wochenstunden)> zuordnungen, CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return;
+        }
+
+        var lehrerSchulIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && schoolIds.Contains(link.SchoolId))
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
+
+        if (lehrerSchulIds.Count == 0)
+        {
+            return;
+        }
+
+        var gueltigeKlassen = await dbContext.Klassen
+            .AsNoTracking()
+            .Select(c => new { c.Id, c.SchoolId, c.IstSystemNiveau })
+            .ToListAsync(cancellationToken);
+
+        var bestehende = await dbContext.LehrerNiveauZuordnungen
+            .Where(z => z.LehrerID == teacherId && lehrerSchulIds.Contains(z.SchulID))
+            .ToListAsync(cancellationToken);
+
+        dbContext.LehrerNiveauZuordnungen.RemoveRange(bestehende);
+
+        var gewuenscht = zuordnungen
+            .Where(z => z.Wochenstunden > 0m && lehrerSchulIds.Contains(z.SchulID) && gueltigeKlassen.Any(klasse => klasse.Id == z.KlasseId && (klasse.SchoolId == z.SchulID || (klasse.SchoolId == null && klasse.IstSystemNiveau))))
+            .Distinct()
+            .ToList();
+
+        foreach (var (schulId, klasseId, wochenstunden) in gewuenscht)
+        {
+            await dbContext.LehrerNiveauZuordnungen.AddAsync(new LehrerNiveauZuordnung
+            {
+                LehrerID = teacherId,
+                SchulID = schulId,
+                KlasseId = klasseId,
+                Wochenstunden = Math.Max(1m, wochenstunden)
+            }, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+}

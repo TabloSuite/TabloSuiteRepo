@@ -1,0 +1,15 @@
+<button type="@Type"
+        class="@ButtonClass"
+        disabled="@(IsBusy || Disabled)"
+        aria-busy="@IsBusy"
+        @onclick="OnClick">
+    @if (IsBusy)
+    {
+        <ProgressRing Size="1rem" Label="@BusyLabel" Class="mr-2" />
+        <span>@BusyLabel</span>
+    }
+    else
+    {
+        @ChildContent
+    }
+</button>

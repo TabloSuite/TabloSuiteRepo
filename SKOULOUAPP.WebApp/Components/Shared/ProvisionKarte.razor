@@ -1,0 +1,6 @@
+@* Kleine Kachel zur Anzeige eines Provisionsbetrags mit Rollentitel. *@
+
+<div class="rounded-3xl bg-gradient-to-br @Farbe p-5 text-white shadow-lg shadow-slate-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+    <div class="text-2xl font-black">@Betrag.ToString("N0") FCFA</div>
+    <div class="mt-1 text-sm text-white/90">@Titel</div>
+</div>

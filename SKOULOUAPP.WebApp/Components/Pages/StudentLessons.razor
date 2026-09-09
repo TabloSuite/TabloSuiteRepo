@@ -1,0 +1,209 @@
+﻿@page "/student/lessons"
+@attribute [Authorize(Policy = "RequireStudent")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.Student
+
+<PageTitle>Mes leçons</PageTitle>
+
+@if (lessons is null)
+{
+    <SkeletonLoader />
+}
+else
+{
+    <section class="student-learning-page grid gap-4 sm:gap-5 lg:gap-6">
+        <div class="hallo-hero rounded-[1.5rem] p-4 text-white shadow-xl sm:rounded-[2rem] sm:p-5 lg:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-100 sm:text-sm">Espace d'apprentissage</p>
+            <h1 class="mt-2 text-2xl font-black sm:text-3xl">Mes leçons</h1>
+            <p class="mt-2 max-w-2xl text-xs leading-6 text-indigo-50 sm:text-sm sm:leading-7">Retrouve les leçons, les supports et les exercices publiés pour ta classe. Tes résultats sont enregistrés automatiquement.</p>
+
+            @if (lessons.Count > 0)
+            {
+                <div class="mt-4 grid gap-2 sm:grid-cols-3 sm:gap-3">
+                    <div class="rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
+                        <div class="text-xl font-black sm:text-2xl">@completedCount / @lessons.Count</div>
+                        <div class="text-xs font-medium text-indigo-100">leçons terminées</div>
+                    </div>
+                    <div class="rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
+                        <div class="text-xl font-black sm:text-2xl">@solvedExercises / @totalExercises</div>
+                        <div class="text-xs font-medium text-indigo-100">exercices résolus</div>
+                    </div>
+                    <div class="rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
+                        <div class="text-xl font-black sm:text-2xl">@overallPercent %</div>
+                        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
+                            <div class="h-full rounded-full bg-emerald-400 transition-all duration-500" style="width:@(overallPercent)%"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (lessons.Count == 0)
+        {
+            <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                @if (!HasPaidHalloAppAbo)
+                {
+                    <h2 class="text-lg font-black text-slate-900">Abo SKOULOUAPP requis</h2>
+                    <p class="mt-2 text-sm text-slate-600">Les leçons et exercices de ta classe sont disponibles après activation de ton abonnement scolaire.</p>
+                    <p class="mt-2 text-xs font-semibold text-amber-700">Demande à ton école d'activer ton accès pour consulter les contenus publiés.</p>
+                }
+                else
+                {
+                    <h2 class="text-lg font-black text-slate-900">Aucune leçon disponible</h2>
+                    <p class="mt-2 text-sm text-slate-600">Aucune leçon n'est encore disponible pour ta classe actuelle.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm font-semibold text-slate-600">@(IsPathView ? "Vue parcours d'apprentissage" : "Vue liste")</p>
+                <div class="inline-flex rounded-full bg-slate-100 p-1">
+                    <button type="button"
+                            class="@(IsPathView ? "rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-indigo-700 shadow" : "rounded-full px-4 py-1.5 text-sm font-semibold text-slate-500")"
+                            @onclick="() => ToggleView(true)">
+                        🧭 Parcours
+                    </button>
+                    <button type="button"
+                            class="@(!IsPathView ? "rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-indigo-700 shadow" : "rounded-full px-4 py-1.5 text-sm font-semibold text-slate-500")"
+                            @onclick="() => ToggleView(false)">
+                        📋 Liste
+                    </button>
+                </div>
+            </div>
+
+            <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">Aller directement à une leçon</p>
+                        <p class="text-xs text-slate-500">Entre un numéro visible, par exemple 10 ou 18.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number"
+                               min="1"
+                               max="@OrderedLessons.Count"
+                               class="w-24 rounded-2xl border border-slate-200 px-3 py-2 text-base font-semibold text-slate-800 focus:border-indigo-400 focus:outline-none"
+                               @bind="lessonJumpNumber"
+                               @bind:event="oninput" />
+                        <button type="button"
+                                class="hallo-btn-accent inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                disabled="@(!CanJumpToLesson)"
+                                @onclick="JumpToLesson">
+                            Ouvrir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (IsPathView)
+            {
+                <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+                    <div class="lesson-path">
+                        @foreach (var lesson in lessons.OrderBy(x => x.Order))
+                        {
+                            var status = GetPathNodeStatus(lesson);
+                            <div class="lesson-path-item lesson-path-item--@status card-stack-enter">
+                                <div class="lesson-path-connector"></div>
+                                <div class="lesson-path-node lesson-path-node--@status" aria-hidden="true">
+                                    @if (status == "completed")
+                                    {
+                                        <span>✓</span>
+                                    }
+                                    else if (status == "locked")
+                                    {
+                                        <span>🔒</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@lesson.Order</span>
+                                    }
+                                </div>
+                                 <div class="lesson-path-card rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-4">
+                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">@lesson.CourseCode · Leçon @lesson.Order</p>
+                                            <h2 class="mt-1 text-base font-bold text-slate-900">@lesson.Title</h2>
+                                        </div>
+                                        @if (status == "current")
+                                        {
+                                            <Badge Accent="indigo">En cours</Badge>
+                                        }
+                                        else if (status == "completed")
+                                        {
+                                            <Badge Accent="emerald">Terminé</Badge>
+                                        }
+                                    </div>
+                                    <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
+                                    <div class="mt-3">
+                                        <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                                            <span>@lesson.CorrectExerciseCount / @lesson.ExerciseCount exercices</span>
+                                            <span>@lesson.ProgressPercent %</span>
+                                        </div>
+                                        <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                            <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width:@(lesson.ProgressPercent)%"></div>
+                                        </div>
+                                    </div>
+                                    <button type="button"
+                                            class="hallo-btn-accent mt-4 inline-flex w-fit items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                            disabled="@(!lesson.IsUnlocked)"
+                                            @onclick="() => OpenLesson(lesson.LessonId)">
+                                        @GetLessonActionText(lesson)
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+            <div class="rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+                <DataListPanel Items="lessons"
+                               PageSize="10"
+                               SearchPlaceholder="Rechercher une leçon..."
+                               EmptyText="Aucune leçon correspondante."
+                               ResultLabelSingular="leçon"
+                               ResultLabelPlural="leçons"
+                               Filter="@((LessonListItem l, string term) => Contains(l.Title, term) || Contains(l.CourseCode, term) || Contains(l.Summary, term))">
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        @foreach (var lesson in context)
+                        {
+                    <article class="card-stack-enter flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-xl">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">@lesson.CourseCode · Leçon @lesson.Order</p>
+                                <h2 class="mt-1 text-lg font-bold text-slate-900">@lesson.Title</h2>
+                            </div>
+                            <Badge Accent="@(lesson.IsCompleted ? "emerald" : "slate")">
+                                @(lesson.IsCompleted ? "Terminé" : "À faire")
+                            </Badge>
+                        </div>
+                        <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
+
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                                <span>@lesson.CorrectExerciseCount / @lesson.ExerciseCount exercices</span>
+                                <span>@lesson.ProgressPercent %</span>
+                            </div>
+                            <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width:@(lesson.ProgressPercent)%"></div>
+                            </div>
+                        </div>
+
+                        <button type="button"
+                                class="hallo-btn-accent mt-5 inline-flex w-fit self-start items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                disabled="@(!lesson.IsUnlocked)"
+                                @onclick="() => OpenLesson(lesson.LessonId)">
+                            @GetLessonActionText(lesson)
+                        </button>
+                    </article>
+                        }
+                    </div>
+                </DataListPanel>
+            </div>
+            }
+        }
+    </section>
+}
+

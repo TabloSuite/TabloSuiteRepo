@@ -1,0 +1,268 @@
+﻿@page "/student/lessons/{LessonId:guid}"
+@attribute [Authorize(Policy = "RequireStudent")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+
+<PageTitle>@(lesson?.Title ?? "Leçon")</PageTitle>
+
+@if (notFound)
+{
+    <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+        <p class="text-sm text-slate-600">Cette leçon est introuvable.</p>
+        <a class="hallo-btn-accent mt-4 inline-block rounded-full px-5 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Retour à la liste</a>
+    </div>
+}
+else if (lesson is null)
+{
+    <SkeletonLoader CardCount="2" />
+}
+else
+{
+    <section class="student-exercise-page grid gap-4 sm:gap-5 lg:gap-6">
+        <div class="sticky top-2 z-10 rounded-[1.5rem] bg-white/95 p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 backdrop-blur sm:p-4 lg:top-4 lg:rounded-[2rem] lg:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 sm:text-sm">@lesson.CourseCode</p>
+                    <h1 class="mt-1 text-xl font-black text-slate-900 sm:text-2xl">@lesson.Title</h1>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="progress-ring" style="--ring-percent:@LessonPercent; --ring-color:#4f46e5;">
+                        <span class="progress-ring-label text-slate-900">@LessonPercent%</span>
+                    </div>
+                    <a class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 sm:px-4 sm:py-2 sm:text-sm" href="/student/lessons">Retour</a>
+                </div>
+            </div>
+        </div>
+
+        @if (lesson.IsCompleted)
+        {
+            <div class="rounded-[2rem] bg-emerald-50 p-5 text-emerald-800 ring-1 ring-emerald-100 sm:p-6">
+                <p class="text-sm font-semibold">Bravo ! Cette leçon est terminée.</p>
+            </div>
+        }
+
+        @if (lesson.ExerciseSubmissionDueAtUtc.HasValue)
+        {
+            var dueAt = lesson.ExerciseSubmissionDueAtUtc.Value;
+            var dueLabel = dueAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+            var isPastDue = DateTime.UtcNow > dueAt;
+            <div class="rounded-[1.5rem] p-4 ring-1 sm:p-5 @(isPastDue ? "bg-amber-50 text-amber-900 ring-amber-100" : "bg-cyan-50 text-cyan-900 ring-cyan-100")">
+                <p class="text-sm font-semibold">
+                    @(isPastDue
+                        ? $"Date limite passée ({dueLabel}). Les réponses ouvertes ne peuvent plus être envoyées et seront corrigées par l'enseignant."
+                        : $"Date limite des réponses ouvertes: {dueLabel}.")
+                </p>
+            </div>
+        }
+
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 sm:text-sm">Contenu</p>
+            <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">@lesson.Summary</h2>
+            <div class="rich-content mt-3 text-sm leading-7 text-slate-700 sm:text-base sm:leading-8">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
+
+            @if (!exerciseStarted)
+            {
+                <button type="button"
+                        class="hallo-btn-accent mt-6 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5"
+                        @onclick="StartExercises">
+                    Commencer les exercices
+                </button>
+            }
+        </div>
+
+        @if (exerciseStarted)
+        {
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 sm:text-sm">Exercices</p>
+            <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">Résous les exercices</h2>
+
+            @if (lesson.Exercises.Count == 0)
+            {
+                <p class="mt-5 text-sm text-slate-500">Aucun exercice n'est encore disponible pour cette leçon.</p>
+            }
+            else
+            {
+                <p class="mt-1 text-xs text-slate-500 sm:text-sm">@SolvedCount sur @lesson.Exercises.Count exercices résolus</p>
+
+                <div class="mt-3 rounded-2xl border border-cyan-100 bg-cyan-50/80 p-3 text-sm text-cyan-950">
+                    <span>Sur téléphone/tablette, l'activation audio se fait automatiquement quand tu appuies sur « Écouter ».</span>
+                    <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="font-semibold text-cyan-900">Langue TTS:</span>
+                        <button type="button" data-halloapp-tts-set-lang="de-DE" class="rounded-full bg-white px-3 py-1 font-semibold text-cyan-800 ring-1 ring-cyan-200">DE</button>
+                        <button type="button" data-halloapp-tts-set-lang="fr-FR" class="rounded-full bg-white px-3 py-1 font-semibold text-cyan-800 ring-1 ring-cyan-200">FR</button>
+                        <button type="button" data-halloapp-tts-set-lang="en-US" class="rounded-full bg-white px-3 py-1 font-semibold text-cyan-800 ring-1 ring-cyan-200">EN</button>
+                    </div>
+                    @if (audioActivationFailed)
+                    {
+                        <p class="mt-2 text-xs text-rose-700">L'audio n'a pas pu être activé automatiquement. Vérifie le volume/silence puis réessaie « Écouter ».</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(audioDiagnosticMessage))
+                    {
+                        <p class="mt-2 text-xs text-cyan-800">@audioDiagnosticMessage</p>
+                    }
+                </div>
+
+                <div class="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                    @for (var i = 0; i < OrderedExercises.Count; i++)
+                    {
+                        var dotIndex = i;
+                        var dotState = exerciseStates[OrderedExercises[dotIndex].ExerciseId];
+                        <button type="button"
+                                title="@("Exercice " + (dotIndex + 1))"
+                                class="@GetDotClass(dotIndex, dotState)"
+                                @onclick="() => GoToExercise(dotIndex)"></button>
+                    }
+                </div>
+
+                var exercise = CurrentExercise;
+                @if (exercise is not null)
+                {
+                    var state = exerciseStates[exercise.ExerciseId];
+                    <div class="mt-4 grid gap-4 sm:gap-5">
+                        <article class="card-stack-enter rounded-2xl border border-slate-200 p-3 sm:p-4 lg:rounded-3xl lg:p-5 @(state.IsCorrect ? "bounce-on-correct" : "")" @key="exercise.ExerciseId">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-500">Exercice @(currentExerciseIndex + 1) / @OrderedExercises.Count</p>
+                                    <h3 class="mt-1 text-base font-bold text-slate-900 sm:text-lg">@exercise.Title</h3>
+                                    @if (!string.IsNullOrWhiteSpace(exercise.Instructions))
+                                    {
+                                        <p class="mt-1 text-xs text-slate-500 sm:text-sm">@exercise.Instructions</p>
+                                    }
+                                </div>
+                                @if (state.IsCorrect)
+                                {
+                                    <Badge Accent="emerald">Correct</Badge>
+                                }
+                            </div>
+
+                            <div class="mt-4 flex flex-wrap items-center gap-3">
+                                <p class="text-base font-semibold text-slate-900">@exercise.Question</p>
+                                @if (IsAudioType(exercise.ExerciseType) && !string.IsNullOrWhiteSpace(exercise.AudioText))
+                                {
+                                    <button type="button"
+                                            class="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-700"
+                                            data-halloapp-tts-text="@exercise.AudioText"
+                                             data-halloapp-audio-url="@GetLessonAudioUrl()"
+                                             data-halloapp-tts-lang="@exercise.TtsLanguage">
+                                        🔊 Écouter
+                                    </button>
+                                }
+                            </div>
+
+                            @if (IsMultipleChoiceType(exercise.ExerciseType))
+                            {
+                                <div class="mt-4 grid gap-3">
+                                    @foreach (var option in exercise.Options.OrderBy(o => o.Order))
+                                    {
+                                        var isSelected = state.SelectedOptionIds.Contains(option.OptionId);
+                                        var isCorrectOption = state.IsCorrect && option.OptionId == state.AnsweredCorrectOptionId;
+                                        <button type="button" class="@GetOptionClass(state, isSelected, isCorrectOption)"
+                                                disabled="@state.IsCorrect"
+                                                @onclick="() => ToggleOption(exercise.ExerciseId, option.OptionId)">
+                                            @option.Text
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else if (IsChoiceType(exercise.ExerciseType))
+                            {
+                                <div class="mt-4 grid gap-3">
+                                    @foreach (var option in exercise.Options.OrderBy(o => o.Order))
+                                    {
+                                        var isSelected = state.SelectedOptionId == option.OptionId;
+                                        var isCorrectOption = state.AnsweredCorrectOptionId == option.OptionId;
+                                        <button type="button" class="@GetOptionClass(state, isSelected, isCorrectOption)"
+                                                disabled="@state.IsCorrect"
+                                                @onclick="() => SelectOption(exercise.ExerciseId, option.OptionId)">
+                                            @option.Text
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else if (exercise.ExerciseType == "GapFill")
+                            {
+                                <div class="mt-4 grid gap-3">
+                                    @for (var i = 0; i < exercise.GapCount; i++)
+                                    {
+                                        var gapIndex = i;
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-sm font-semibold text-slate-500">Blanc @(gapIndex + 1)</span>
+                                            <input type="text"
+                                                   class="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-base focus:border-indigo-400 focus:outline-none"
+                                                   disabled="@state.IsCorrect"
+                                                   value="@GetGapValue(state, gapIndex)"
+                                                   @onchange="e => SetGapValue(exercise.ExerciseId, exercise.GapCount, gapIndex, e.Value?.ToString())" />
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mt-4">
+                                    <RichTextEditor Value="@state.TextAnswer"
+                                                    ValueChanged="value => SetTextAnswer(exercise.ExerciseId, value)"
+                                                    Placeholder="Ta réponse..."
+                                                    ReadOnly="@state.IsCorrect" />
+                                    @if (!exercise.HasAutomaticGrading)
+                                    {
+                                        <p class="mt-2 text-xs text-slate-500">Cette réponse sera corrigée par ton enseignant.</p>
+                                        @if (exercise.IsPendingManualGrading)
+                                        {
+                                            <p class="mt-1 text-xs font-semibold text-amber-700">Correction manuelle en attente.</p>
+                                        }
+                                        else if (exercise.IsManuallyReviewed)
+                                        {
+                                            <p class="mt-1 text-xs font-semibold text-emerald-700">Correction manuelle effectuée.</p>
+                                            @if (!string.IsNullOrWhiteSpace(exercise.ManualFeedback))
+                                            {
+                                                <p class="mt-1 text-xs text-slate-600">Feedback: @exercise.ManualFeedback</p>
+                                            }
+                                        }
+                                    }
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(state.Feedback))
+                            {
+                                <p class="mt-3 text-sm font-semibold @(state.IsCorrect ? "text-emerald-700" : (state.RequiresManualGrading ? "text-slate-600" : "text-rose-700"))">@state.Feedback</p>
+                            }
+
+                            @if (!state.IsCorrect && !state.IsGradedManually)
+                            {
+                                <button type="button"
+                                        class="hallo-btn-accent mt-4 rounded-full px-5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:opacity-50"
+                                        disabled="@(!CanSubmit(exercise, state) || state.IsSubmitting)"
+                                        @onclick="() => SubmitAsync(exercise.ExerciseId)">
+                                    @(state.IsSubmitting ? "Vérification..." : "Vérifier la réponse")
+                                </button>
+                            }
+                        </article>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <button type="button"
+                                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    disabled="@IsFirstExercise"
+                                    @onclick="GoToPreviousExercise">
+                                ← Précédent
+                            </button>
+                            <button type="button"
+                                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    disabled="@IsLastExercise"
+                                    @onclick="GoToNextExercise">
+                                Suivant →
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="mt-6">
+                @if (lesson.IsCompleted)
+                {
+                    <span class="rounded-full bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-700">Bravo ! Cette leçon est terminée.</span>
+                }
+            </div>
+        </div>
+        }
+    </section>
+}

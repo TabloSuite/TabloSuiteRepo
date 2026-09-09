@@ -1,0 +1,54 @@
+@page "/auth/login"
+@attribute [AllowAnonymous]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>Connexion</PageTitle>
+
+<section class="relative mx-auto mt-12 w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl shadow-cyan-100/80 ring-1 ring-slate-100 sm:mt-20 sm:p-8">
+    <div class="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-cyan-100/70 blur-3xl"></div>
+    <div class="relative">
+    <div class="mb-6 flex items-center gap-4">
+        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 text-2xl font-black text-white shadow-lg shadow-cyan-200">H</div>
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Connexion sécurisée</p>
+            <h1 class="mt-1 text-3xl font-black text-slate-900">Bon retour</h1>
+        </div>
+    </div>
+    <p class="text-sm leading-7 text-slate-600">Connecte-toi avec ton compte validé. Les élèves peuvent se connecter après confirmation de leur école. Pour protéger ton compte, une nouvelle connexion déconnecte automatiquement l'autre appareil.</p>
+
+    @if (!string.IsNullOrWhiteSpace(infoMessage))
+    {
+        <div class="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">@infoMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@errorMessage</div>
+    }
+
+    <form method="post" action="/auth/login/submit" data-submit-loading="true" data-loading-text="Connexion..." class="mt-8 grid gap-5 min-w-0">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+        <div>
+            <label class="hallo-label">Adresse e-mail</label>
+            <input name="email" type="email" required autocomplete="username" class="hallo-input" />
+        </div>
+
+        <div>
+            <label class="hallo-label">Mot de passe</label>
+            <PasswordInput @bind-Value="Model.Password" Name="password" Required="true" />
+        </div>
+
+        <label class="inline-flex items-center gap-3 text-sm text-slate-600">
+            <input type="checkbox" name="rememberMe" value="true" />
+            <span>Rester connecté</span>
+        </label>
+
+        <button type="submit" data-loading-text="Connexion..." class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-200 transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80">Se connecter</button>
+    </form>
+
+    <p class="mt-4 text-sm text-slate-600"><a class="font-semibold text-cyan-700" href="/auth/forgot-password">Mot de passe oublié ?</a></p>
+    <p class="mt-2 text-sm text-slate-600">Pas encore de compte ? <a class="font-semibold text-cyan-700" href="/auth/register">S'inscrire maintenant</a></p>
+    </div>
+</section>

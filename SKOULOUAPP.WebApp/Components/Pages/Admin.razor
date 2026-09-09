@@ -1,0 +1,1067 @@
+@page "/admin"
+@attribute [Authorize(Policy = "RequireSuperAdmin")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.Admin
+
+<PageTitle>Tableau administrateur</PageTitle>
+
+@if (summary is null)
+{
+    <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+        <div class="flex items-center gap-3 text-slate-600">
+            <ProgressRing Size="1.5rem" Label="Chargement du tableau de bord" />
+            <p class="text-sm">Chargement du tableau de bord...</p>
+        </div>
+    </div>
+}
+else
+{
+    <section class="grid gap-6">
+        <div class="hallo-hero relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-indigo-900 to-cyan-800 p-5 text-white shadow-xl shadow-indigo-300/30 sm:p-6 xl:p-7">
+            <div class="pointer-events-none absolute -top-16 -right-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-14 -left-8 h-36 w-36 rounded-full bg-fuchsia-500/15 blur-3xl"></div>
+            <div class="relative">
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">Administrateur</p>
+                <h1 class="mt-3 text-3xl font-black xl:text-4xl">Vue d'ensemble de la plateforme et des écoles</h1>
+                <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Tu vois ici toutes les écoles, le nombre d'enseignants et d'élèves ainsi que l'état des contenus de la plateforme.</p>
+                <button type="button"
+                        class="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition duration-200 hover:bg-white/20"
+                        @onclick="ToggleAllSections">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@(AllSectionsExpanded ? "m4.5 15.75 7.5-7.5 7.5 7.5" : "m19.5 8.25-7.5 7.5-7.5-7.5")" />
+                    </svg>
+                    @(AllSectionsExpanded ? "Tout réduire" : "Tout développer")
+                </button>
+            </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+            <div class="group rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 p-4 text-white shadow-md shadow-cyan-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.SchoolCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-cyan-50">Écoles</div></div>
+            <div class="hallo-hero-badge group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 p-4 text-white shadow-md shadow-indigo-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.TeacherCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-indigo-50">Enseignants</div></div>
+            <div class="group rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-4 text-white shadow-md shadow-emerald-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.StudentCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-50">Élèves</div></div>
+            <div class="group rounded-2xl bg-gradient-to-br from-rose-500 to-orange-600 p-4 text-white shadow-md shadow-rose-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.BlockedAccountCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-rose-50">En attente / bloqués</div><div class="mt-1 text-[11px] text-rose-100">dont @summary.BlockedStudentCount élève(s)</div></div>
+        </div>
+
+        <CollapsibleCard Title="Vue d'ensemble des écoles"
+                             Eyebrow="Gestion des écoles"
+                             Icon="??"
+                             Accent="cyan"
+                             Expanded="schoolOverviewExpanded"
+                             ExpandedChanged="v => schoolOverviewExpanded = v">
+                <HeaderRight>
+                    <Badge Accent="slate">Écoles : @summary.SchoolCount · Enseignants : @summary.TeacherCount · Élèves : @summary.StudentCount · Classes : @summary.CourseCount</Badge>
+                </HeaderRight>
+                <ChildContent>
+                <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@errorMessage</div>
+                }
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" @onclick="OpenNewSchoolModalAsync">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Nouvelle école
+                    </button>
+                </div>
+
+                <ModalDialog Open="schoolModalOpen"
+                             OpenChanged="OnSchoolModalOpenChangedAsync"
+                             Title="@schoolModalTitle"
+                             Eyebrow="Gestion des écoles"
+                             MaxWidthClass="max-w-3xl">
+                <EditForm Model="schoolForm" OnValidSubmit="SaveSchoolAsync" FormName="admin-school-form" class="grid gap-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div>
+                        <label class="hallo-label">Nom de l'école</label>
+                        <InputText @bind-Value="schoolForm.Name" class="hallo-input" />
+                    </div>
+
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <label class="hallo-label">Ville</label>
+                            <InputText @bind-Value="schoolForm.City" class="hallo-input" />
+                        </div>
+                        <ModernDropdown TValue="string"
+                                        Label="Pays"
+                                        Value="schoolForm.Country"
+                                        ValueChanged="SetSchoolCountryAsync"
+                                        Options="SchoolCountryOptions"
+                                        Searchable="true"
+                                        SearchPlaceholder="Rechercher un pays..." />
+                    </div>
+
+                    <label class="inline-flex items-center gap-3 text-sm text-slate-600">
+                        <InputCheckbox @bind-Value="schoolForm.IsActive" />
+                        <span>L'école est active</span>
+                    </label>
+
+                    <div>
+                        <label class="hallo-label">Prix de l'abonnement (FCFA)</label>
+                        <div class="hallo-input">@SchoolSubscriptionPriceDisplay.ToString("N0") FCFA</div>
+                        <p class="mt-1 text-xs text-slate-500">Affichage uniquement. Le prix est défini par l'admin.</p>
+                    </div>
+
+                    <div class="grid gap-4 xl:grid-cols-3">
+                        <div>
+                            <label class="hallo-label">Commission directeur (%)</label>
+                            <InputNumber @bind-Value="schoolForm.SchoolLeaderCommissionPercentOverride" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                        </div>
+                        <div>
+                            <label class="hallo-label">Commission enseignants (%)</label>
+                            <InputNumber @bind-Value="schoolForm.TeacherCommissionPercentOverride" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                        </div>
+                        <div>
+                            <label class="hallo-label">Commission du responsable produit (%)</label>
+                            <InputNumber @bind-Value="schoolForm.ProductOwnerCommissionPercentOverride" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-3 text-sm font-semibold text-slate-700">Affecter des enseignants</div>
+                        <div class="grid gap-3">
+                            @foreach (var teacher in teacherOptions)
+                            {
+                                <label class="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                                    <input type="checkbox" checked="@selectedTeacherIds.Contains(teacher.TeacherId)" @onchange="args => ToggleTeacher(teacher.TeacherId, args.Value)" />
+                                    <span>
+                                        <span class="block font-semibold text-slate-900">@teacher.TeacherName</span>
+                                        <span class="text-sm text-slate-500">@teacher.Email</span>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-end gap-3">
+                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseSchoolModalAsync">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(schoolForm.Id.HasValue ? "Enregistrer l'ecole" : "Creer l'ecole")</AsyncActionButton>
+                    </div>
+                </EditForm>
+                </ModalDialog>
+
+                <div class="mt-6">
+                @if (!isProduktOwner)
+                {
+                    <div class="mb-4 max-w-xl">
+                        <ModernDropdown TValue="Guid?"
+                                        Label="Filtrer les écoles par directeur"
+                                        Value="schoolDirectorFilter"
+                                        ValueChanged="SetSchoolDirectorFilterAsync"
+                                        Options="SchoolDirectorFilterOptions"
+                                        Searchable="true"
+                                        SearchPlaceholder="Rechercher un directeur..." />
+                    </div>
+                }
+                <DataListPanel Items="FilteredSchoolManagementItems"
+                               PageSize="12"
+                               SearchPlaceholder="Rechercher une ecole..."
+                               EmptyText="Aucune ecole trouvée."
+                               ResultLabelSingular="ecole"
+                               ResultLabelPlural="ecoles"
+                               Filter="@((SchoolManagementViewModel s, string term) => Contains(s.Name, term) || Contains(s.City, term) || Contains(s.Country, term))">
+                    <div class="grid gap-3 xl:grid-cols-2 3xl:grid-cols-3">
+                        @foreach (var school in context)
+                        {
+                    <article class="rounded-2xl border border-slate-200 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">@school.Name</h3>
+                                <p class="mt-0.5 text-xs text-slate-500">@school.City, @school.Country</p>
+                            </div>
+                            <Badge Accent="@(school.IsActive ? "emerald" : "rose")">@(school.IsActive ? "Ecole active" : "Ecole inactive")</Badge>
+                        </div>
+                        <div class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@school.TeacherCount</div><div class="text-slate-500">Enseignants</div></div>
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@school.StudentCount</div><div class="text-slate-500">Eleves</div></div>
+                            <div class="rounded-xl @(school.OutstandingDebt > 0 ? "bg-rose-50" : "bg-slate-50") p-2.5"><div class="font-bold @(school.OutstandingDebt > 0 ? "text-rose-700" : "text-slate-900")">@school.OutstandingDebt.ToString("N0") FCFA</div><div class="@(school.OutstandingDebt > 0 ? "text-rose-500" : "text-slate-500")">Dette de l'ecole envers SKOULOUAPP</div></div>
+                        </div>
+                        <div class="mt-2.5 grid gap-2 text-xs sm:grid-cols-2">
+                            <div class="rounded-xl bg-cyan-50 p-2.5"><div class="font-bold text-cyan-800">@school.EffectiveSubscriptionPrice.ToString("N0") FCFA</div><div class="text-cyan-600">Prix de l'abonnement affiche</div></div>
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@(school.SubscriptionPriceOverride.HasValue ? school.SubscriptionPriceOverride.Value.ToString("N0") + " FCFA" : "Prix general")</div><div class="text-slate-500">Tarif specifique de l'ecole</div></div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-1.5">
+                            @foreach (var director in school.DirectorAssignments)
+                            {
+                                <Badge Accent="indigo">Directeur: @director.TeacherName</Badge>
+                            }
+
+                            @foreach (var teacher in school.TeacherAssignments.Take(4))
+                            {
+                                <Badge Accent="cyan">@teacher.TeacherName</Badge>
+                            }
+
+                            @if (school.TeacherAssignments.Count > 4)
+                            {
+                                <Badge Accent="slate">+@(school.TeacherAssignments.Count - 4)</Badge>
+                            }
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditSchoolAsync(school.SchoolId)">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="@(school.IsActive ? "m4.5 15.75 7.5-7.5 7.5 7.5" : "m19.5 8.25-7.5 7.5-7.5-7.5")" />
+                                </svg>
+                                Modifier
+                            </button>
+                        </div>
+                                  </article>
+                                     }
+                                 </div>
+                             </DataListPanel>
+                            </div>
+
+                    <div class="mt-8 border-t border-slate-200 pt-8">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Gestion des utilisateurs</p>
+                            <Badge Accent="slate">@FilteredUserManagementItems.Count utilisateurs</Badge>
+                        </div>
+                <Toast Message="@userStatusMessage" MessageChanged="v => userStatusMessage = v" Kind="Toast.ToastKind.Success" />
+
+                @if (!string.IsNullOrWhiteSpace(userErrorMessage))
+                {
+                    <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@userErrorMessage</div>
+                }
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" @onclick="OpenNewUserModalAsync">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Nouvel utilisateur
+                    </button>
+                </div>
+
+                <ModalDialog Open="userModalOpen"
+                             OpenChanged="OnUserModalOpenChangedAsync"
+                             Title="@userModalTitle"
+                             Eyebrow="Gestion des utilisateurs"
+                             CloseOnBackdrop="false"
+                             MaxWidthClass="max-w-3xl">
+                <EditForm Model="userForm" OnValidSubmit="SaveUserAsync" FormName="admin-user-form" class="grid gap-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    @if (!string.IsNullOrWhiteSpace(userErrorMessage))
+                    {
+                        <div class="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">
+                            <p class="font-bold">Information</p>
+                            <p class="mt-1">@userErrorMessage</p>
+                        </div>
+                    }
+
+                    <div class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-950">
+                        <p class="font-bold">Information</p>
+                        <p class="mt-1">Vérifie le rôle, l'école et l'adresse e-mail avant d'enregistrer. Les droits d'accès et les leçons visibles dépendent de ces choix.</p>
+                    </div>
+
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <label class="hallo-label">Prénom</label>
+                            <InputText @bind-Value="userForm.Vorname" class="hallo-input" />
+                        </div>
+                        <div>
+                            <label class="hallo-label">Nom de famille</label>
+                            <InputText @bind-Value="userForm.Nachname" class="hallo-input" />
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div class="xl:col-span-2">
+                            <label class="hallo-label">E-mail</label>
+                            <div class="flex gap-2"><InputText @bind-Value="userForm.Email" class="hallo-input min-w-0 flex-1" />@if (ShowHalloAppEmailButton) { <button type="button" class="w-44 shrink-0 rounded-2xl bg-slate-100 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled="@(!CanSuggestHalloAppEmail)" @onclick="SuggestHalloAppEmail">@halloAppEmailButtonLabel</button> }</div>
+                        </div>
+                        <div>
+                            <label class="hallo-label">Téléphone <span class="font-normal text-slate-400">(optionnel)</span></label>
+                            <InputText @bind-Value="userForm.TelefonNummer" type="tel" class="hallo-input" />
+                        </div>
+                    </div>
+
+                    @if (userForm.RoleName == "Schüler")
+                    {
+                        <div class="grid gap-4 xl:grid-cols-2"><div><label class="hallo-label">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternTelefonNummer" type="tel" class="hallo-input" /></div><div><label class="hallo-label">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternEmail" type="email" class="hallo-input" /></div></div>
+                    }
+
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <ModernDropdown TValue="string" Label="Rôle" Value="userForm.RoleName" ValueChanged="SetUserRoleAsync" Options="RoleOptions" />
+                        </div>
+                        <div>
+                            <label class="hallo-label">Mot de passe initial (nouveau / optionnel)</label>
+                            <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <label class="hallo-label">Confirmer le mot de passe</label>
+                            <PasswordInput @bind-Value="userForm.PasswordConfirmation" Autocomplete="new-password" />
+                            <ValidationMessage For="() => userForm.PasswordConfirmation" class="mt-1 text-xs text-rose-600" />
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3 xl:grid-cols-2">
+                        <label class="inline-flex items-center gap-3 text-sm text-slate-600">
+                            <InputCheckbox @bind-Value="userForm.IsBlocked" />
+                            <span>Utilisateur bloqué</span>
+                        </label>
+                        <label class="inline-flex items-center gap-3 text-sm text-slate-600">
+                            <InputCheckbox @bind-Value="userForm.IsSelfRegistered" />
+                            <span>Auto-inscription</span>
+                        </label>
+                    </div>
+
+                    @if (userForm.RoleName is "ProduktOwner" or "SuperAdmin")
+                    {
+                        <div class="rounded-2xl bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+                            Ce rôle n'est attribué à aucune école.
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <div class="mb-3 text-sm font-semibold text-slate-700">@(userForm.RoleName == "Schüler" ? "École attribuée" : "Écoles attribuées")</div>
+                            <div class="grid gap-3">
+                                @foreach (var schoolOption in schoolOptions)
+                                {
+                                    <label class="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                                        <input type="checkbox" checked="@selectedUserSchoolIds.Contains(schoolOption.TeacherId)" @onchange="args => ToggleUserSchoolAsync(schoolOption.TeacherId, args.Value)" />
+                                        <span>
+                                            <span class="block font-semibold text-slate-900">@schoolOption.TeacherName</span>
+                                            <span class="text-sm text-slate-500">@schoolOption.Email</span>
+                                        </span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        @if (userForm.RoleName == "Schüler")
+                        {
+                            <div>
+                                <ModernDropdown TValue="Guid?" Label="Classe ou niveau actuel" Value="userForm.CurrentKlasseId" ValueChanged="SetUserClassAsync" Options="UserClassOptions" />
+                                <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOUAPP.</p>
+                            </div>
+                        }
+                        @if (userForm.RoleName == "Lehrer")
+                        {
+                            <div>
+                                <div class="mb-3 text-sm font-semibold text-slate-700">Classes attribuées</div>
+                                <div class="grid gap-3">
+                                    @foreach (var klasse in userFormClassOptions.Where(klasse => klasse.SchoolId.HasValue && klasse.CourseId.HasValue))
+                                    {
+                                        <label class="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                                            <input type="checkbox" checked="@IsTeacherClassAssigned(klasse.SchoolId!.Value, klasse.CourseId!.Value)" @onchange="args => SetTeacherClassAssignment(klasse, args.Value as bool? == true)" />
+                                            @klasse.Code · @klasse.Title
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    <div class="flex flex-wrap justify-end gap-3">
+                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseUserModalAsync">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(userForm.UserId.HasValue ? "Enregistrer l'utilisateur" : "Créer l'utilisateur")</AsyncActionButton>
+                    </div>
+                </EditForm>
+                </ModalDialog>
+
+                <div class="mt-6">
+                    @if (SchoolFilterNames.Count > 1)
+                    {
+                        <div class="mb-4 flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">École :</span>
+                            <button type="button"
+                                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter is null ? "hallo-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
+                                    @onclick="() => SetUserSchoolFilter(null)">
+                                Toutes
+                            </button>
+                            @foreach (var name in SchoolFilterNames)
+                            {
+                                <button type="button"
+                                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter == name ? "hallo-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
+                                        @onclick="() => SetUserSchoolFilter(name)">
+                                    @name
+                                </button>
+                            }
+                        </div>
+                    }
+                    <DataListPanel Items="FilteredUserManagementItems"
+                                   PageSize="10"
+                                   SearchPlaceholder="Rechercher un utilisateur..."
+                                   EmptyText="Aucun utilisateur trouvé."
+                                   ResultLabelSingular="utilisateur"
+                                   ResultLabelPlural="utilisateurs"
+                                   Chips="userRoleChips"
+                                   Filter="@((UserManagementItem u, string term) => Contains(u.FullName, term) || Contains(u.Email, term) || Contains(GetRoleLabel(u.RoleName), term))">
+                        <div class="grid gap-4">
+                            @{
+                                string? currentRoleSection = null;
+                            }
+                            @foreach (var user in context)
+                            {
+                                if (user.RoleName != currentRoleSection)
+                                {
+                                    currentRoleSection = user.RoleName;
+                                    <h4 class="mt-2 border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-[0.14em] text-indigo-700">@GetRoleSectionTitle(user.RoleName)</h4>
+                                }
+                        <article class="rounded-2xl border border-slate-100 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-base font-bold text-slate-900">@user.FullName</h3>
+                                        @if (user.RoleName == "Schüler" && !user.IsBlocked)
+                                        {
+                                            <Badge Accent="@(user.HasPaidEnrollment ? "emerald" : "amber")">@GetStudentAboHeaderLabel(user.HasPaidEnrollment, user.IsHalloPlus)</Badge>
+                                            @if (user.HasSchoolFeeInfo)
+                                            {
+                                                <Badge Accent="@(user.IsSchoolFeeFullyPaid ? "emerald" : user.SchoolFeePaidAmount > 0m ? "cyan" : "amber")">@GetSchoolFeeHeaderLabel(user.SchoolFeePaidAmount, user.SchoolFeeAmount, user.HasActiveSchoolFeeCycle)</Badge>
+                                            }
+                                        }
+                                    </div>
+                                    <p class="mt-1 text-xs text-slate-500">@user.Email</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <Badge Accent="slate">@GetRoleLabel(user.RoleName)</Badge>
+                                    <Badge Accent="@(user.IsBlocked ? "rose" : "emerald")">@(user.IsBlocked ? "Compte bloqué" : "Compte actif")</Badge>
+                                    @if (user.RoleName == "Schüler" && !user.IsBlocked)
+                                    {
+                                        <Badge Accent="emerald">Enregistrement validé</Badge>
+                                        @if (user.HasPaidEnrollment)
+                                        {
+                                            <Badge Accent="emerald">Paiement effectué</Badge>
+                                        }
+                                        else
+                                        {
+                                            <Badge Accent="amber">Non payé</Badge>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                            <p class="mt-3 text-sm text-slate-600">Écoles : @(user.Schools.Count == 0 ? "Aucune affectation" : string.Join(", ", user.Schools))</p>
+                            <p class="mt-2 text-sm text-slate-500">Auto-inscription : @(user.IsSelfRegistered ? "Oui" : "Non")</p>
+                                @if (!isProduktOwner && user.RoleName == "Schüler")
+                            {
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200">
+                                        <span aria-hidden="true">??</span>
+                                        <span class="text-slate-600">Score exercices &amp; examens :</span>
+                                        @if (user.CombinedScorePercent.HasValue)
+                                        {
+                                            <span class="font-black" style="color:@ScoreColorHelper.GetScoreColor(user.CombinedScorePercent.Value)">@user.CombinedScorePercent %</span>
+                                            <span class="text-xs text-slate-400">(@user.CombinedScoreCount)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-slate-400">–</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditUserAsync(user.UserId)">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487a2.25 2.25 0 1 1 3.182 3.182L8.25 19.463 4.5 20.25l.787-3.75L16.862 4.487z" />
+                                    </svg>
+                                    Modifier
+                                </button>
+                            @if (user.IsBlocked)
+                            {
+                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, false)">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    Activer
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, true)">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                    Bloquer
+                                </button>
+                            }
+                            @if (IsDevelopment && user.RoleName == "SchulLeiter")
+                            {
+                                <button type="button"
+                                        class="inline-flex items-center gap-2 rounded-full bg-rose-950 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-900 hover:shadow-md"
+                                        @onclick="() => RequestHardDeleteSchoolLeader(user)">
+                                    Supprimer définitivement (test)
+                                </button>
+                            }
+                        </div>
+                        @if (user.RoleName == "Schüler")
+                        {
+                            <div class="mt-4">
+                                <button type="button"
+                                        class="inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                        @onclick="() => ToggleEnrollmentPanelAsync(user.UserId)">
+                                    Abonnements &amp; paiements
+                                    <svg class="h-4 w-4 transition-transform duration-200 @(expandedEnrollmentStudentId == user.UserId ? "rotate-180" : "")" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                                </button>
+
+                                @if (expandedEnrollmentStudentId == user.UserId)
+                                {
+                                    <div class="mt-4 grid gap-2">
+                                        @foreach (var level in levelEnrollments.Where(l => l.IsUnlocked || !l.IsUnlocked && !l.IsPaid))
+                                        {
+                                            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                                                <div>
+                                                    <span class="font-semibold text-slate-800">@level.CourseCode</span>
+                                                    <span class="text-sm text-slate-500">@level.CourseTitle</span>
+                                                </div>
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <Badge Accent="cyan">SKOULOUAPP</Badge>
+                                                    @if (!level.IsUnlocked)
+                                                    {
+                                                        <Badge Accent="slate">Désactivé</Badge>
+                                                    }
+                                                    @if (level.IsPaid)
+                                                    {
+                                                        <Badge Accent="emerald">Paiement effectué</Badge>
+                                                    }
+                                                    @if (level.IstAbgerechnet)
+                                                    {
+                                                        <Badge Accent="slate">Facturé</Badge>
+                                                    }
+                                                    @if (level.IsUnlocked && !level.IstAbgerechnet)
+{
+    <button type="button"
+            class="rounded-full bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+            @onclick="() => RequestRemoveAbo(user.UserId, level)">
+        Annuler l'abonnement
+    </button>
+}
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!levelEnrollments.Any(l => l.IsUnlocked || !l.IsUnlocked && !l.IsPaid))
+                                        {
+                                            <p class="text-sm text-slate-500">Aucun niveau débloqué pour cet élève.</p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </article>
+                            }
+                        </div>
+                    </DataListPanel>
+                </div>
+                </div>
+                </ChildContent>
+            </CollapsibleCard>
+
+            @* Medien werden für SuperAdmin/ProductOwner unten anstelle des Klassen-/Niveau-Blocks angezeigt. *@
+
+        <CollapsibleCard Title="Bibliothèque de médias"
+                         Eyebrow="Médias par école"
+                         Icon="???"
+                         Accent="amber"
+                         Expanded="mediaExpanded"
+                         ExpandedChanged="v => mediaExpanded = v">
+            <HeaderRight>
+                <Badge Accent="amber">@FilteredMediaLibraryItems.Count / @mediaLibraryItems.Count médias · @FormatFileSize(FilteredMediaBytes)</Badge>
+            </HeaderRight>
+            <ChildContent>
+            <div class="mt-6 grid gap-4 rounded-3xl bg-amber-50/60 p-4 lg:grid-cols-[1fr_auto]">
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-amber-100">
+                        <p class="text-xs font-black uppercase tracking-wide text-amber-700">Total médias</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@mediaLibraryItems.Count</p>
+                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(TotalMediaBytes)</p>
+                    </div>
+                    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-cyan-100">
+                        <p class="text-xs font-black uppercase tracking-wide text-cyan-700">Filtre actuel</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@FilteredMediaLibraryItems.Count</p>
+                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(FilteredMediaBytes)</p>
+                    </div>
+                    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                        <p class="text-xs font-black uppercase tracking-wide text-slate-500">Écoles</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@MediaSchoolFilterOptions.Count(option => option.Value.HasValue)</p>
+                        <p class="text-xs font-semibold text-slate-500">avec médias enregistrés</p>
+                    </div>
+                </div>
+                <div class="min-w-72">
+                    <ModernDropdown TValue="Guid?" Label="Filtrer par école" Value="mediaSchoolFilter" ValueChanged="SetMediaSchoolFilterAsync" Options="MediaSchoolFilterOptions" />
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <DataListPanel Items="FilteredMediaLibraryItems"
+                               PageSize="12"
+                               SearchPlaceholder="Rechercher un média, une école, une classe..."
+                               EmptyText="Aucun média trouvé."
+                               ResultLabelSingular="média"
+                               ResultLabelPlural="médias"
+                               Filter="@((MediaLibraryItem m, string term) => Contains(m.DisplayName, term) || Contains(m.OriginalFileName, term) || Contains(m.RelativePath, term) || Contains(m.SchoolName, term) || Contains(m.KlasseCode, term) || Contains(m.ContentType, term) || Contains(m.AltText, term))">
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        @foreach (var media in context)
+                        {
+                            <article class="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-black uppercase tracking-wide text-amber-700">@media.SchoolName</p>
+                                        <h3 class="mt-1 truncate text-lg font-bold text-slate-900">@(string.IsNullOrWhiteSpace(media.DisplayName) ? media.OriginalFileName : media.DisplayName)</h3>
+                                        <p class="mt-1 truncate text-xs text-slate-400">@media.OriginalFileName</p>
+                                    </div>
+                                    <Badge Accent="slate">@FormatFileSize(media.Length)</Badge>
+                                </div>
+                                <div class="mt-4 grid gap-2 text-sm">
+                                    <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2"><span class="text-slate-500">Type</span><span class="font-semibold text-slate-800">@media.ContentType</span></div>
+                                    <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2"><span class="text-slate-500">Classe</span><span class="font-semibold text-slate-800">@(string.IsNullOrWhiteSpace(media.KlasseCode) ? "Sans classe" : media.KlasseCode)</span></div>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(media.AltText))
+                                {
+                                    <p class="mt-3 line-clamp-2 text-sm text-slate-600">@media.AltText</p>
+                                }
+                                <p class="mt-3 truncate text-[11px] font-semibold text-amber-700">@media.RelativePath</p>
+                            </article>
+                        }
+                    </div>
+                </DataListPanel>
+            </div>
+            </ChildContent>
+        </CollapsibleCard>
+
+        <div class="hidden">
+
+            <ModalDialog Open="courseModalOpen"
+                         OpenChanged="OnCourseModalOpenChanged"
+                         Title="@courseModalTitle"
+                         Eyebrow="Gestion des classes et niveaux"
+                         MaxWidthClass="max-w-2xl">
+                <EditForm Model="courseForm" OnValidSubmit="SaveCourseAsync" FormName="admin-course-form" class="grid gap-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <label class="hallo-label">Nom du niveau</label>
+                            <InputText @bind-Value="courseForm.Code" class="hallo-input" />
+                        </div>
+                        <div>
+                            <ModernDropdown TValue="string" Label="Niveau CECR (Cadre européen)" Value="courseForm.CEFRGroup" ValueChanged="SetCourseCefrAsync" Options="CefrOptions" />
+                            <p class="mt-1 text-xs text-slate-500">Référence européenne pour le niveau linguistique. Choisis « Hors CECR » pour une classe non linguistique.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="hallo-label">Titre</label>
+                        <InputText @bind-Value="courseForm.Title" class="hallo-input" />
+                    </div>
+                    <div>
+                        <label class="hallo-label">Description</label>
+                        <InputTextArea @bind-Value="courseForm.Description" class="hallo-input min-h-28" />
+                    </div>
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <label class="hallo-label">Leçons recommandées</label>
+                            <InputNumber @bind-Value="courseForm.RecommendedLessonCount" class="hallo-input" />
+                        </div>
+                        <div>
+                            <label class="hallo-label">Prix du niveau (FCFA)</label>
+                            <InputNumber @bind-Value="courseForm.Price" class="hallo-input" />
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-3">
+                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseCourseModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(courseForm.CourseId.HasValue ? "Enregistrer la classe / le niveau" : "Créer la classe / le niveau")</AsyncActionButton>
+                    </div>
+                </EditForm>
+            </ModalDialog>
+
+            <ModalDialog Open="lessonModalOpen"
+                         OpenChanged="OnLessonModalOpenChanged"
+                         Title="@lessonModalTitle"
+                         Eyebrow="Gestion des leçons"
+                         MaxWidthClass="max-w-2xl">
+                <EditForm Model="lessonForm" OnValidSubmit="SaveLessonAsync" FormName="admin-lesson-form" class="grid gap-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <ModernDropdown TValue="Guid?" Label="Classe / niveau" Value="lessonForm.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" />
+                    </div>
+                    <div class="grid gap-4 xl:grid-cols-[1fr_120px]">
+                        <div>
+                            <label class="hallo-label">Titre</label>
+                            <InputText @bind-Value="lessonForm.Title" class="hallo-input" />
+                        </div>
+                        <div>
+                            <label class="hallo-label">Ordre</label>
+                            <InputNumber @bind-Value="lessonForm.Order" class="hallo-input" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="hallo-label">Résumé</label>
+                        <InputTextArea @bind-Value="lessonForm.Summary" class="hallo-input min-h-24" />
+                    </div>
+                    <div>
+                        <label class="hallo-label">Contenu</label>
+                        <RichTextEditor @bind-Value="lessonForm.Content" Placeholder="Contenu HTML de la le?on..." />
+                    </div>
+                    <div class="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:grid-cols-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="lessonForm.IsPublished" />
+                            <span class="text-sm font-semibold text-slate-700">Publier la leçon et ses exercices</span>
+                        </label>
+                        <div>
+                            <label class="hallo-label">Date limite des réponses ouvertes (optionnel)</label>
+                            <TailwindDateTimePicker @bind-Value="lessonForm.ExerciseSubmissionDueAtUtc" />
+                        </div>
+                    </div>
+                    <div class="rounded-3xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-900">Exercices de la leçon</h3>
+                                <p class="mt-1 text-xs text-slate-500">Même structure que les examens, mais rattachée à cette leçon.</p>
+                            </div>
+                            <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="AddLessonExercise">+ Ajouter un exercice</button>
+                        </div>
+
+                        <div class="mt-4 space-y-4">
+                            @for (var exerciseIndex = 0; exerciseIndex < lessonForm.Exercises.Count; exerciseIndex++)
+                            {
+                                var exercise = lessonForm.Exercises[exerciseIndex];
+                                var localExerciseIndex = exerciseIndex;
+                                var isChoiceType = IsChoiceType(exercise.ExerciseType);
+                                var isSingleChoiceType = IsSingleChoiceType(exercise.ExerciseType);
+                                var isAudioType = IsAudioType(exercise.ExerciseType);
+
+                                <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <h4 class="text-sm font-bold text-slate-800">Exercice @(localExerciseIndex + 1)</h4>
+                                        <button type="button" class="rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExercise(exercise)">Supprimer</button>
+                                    </div>
+
+                                    <div class="grid gap-3">
+                                        <div class="grid gap-3 xl:grid-cols-2">
+                                            <div>
+                                                <label class="hallo-label">Titre de l'exercice</label>
+                                                <InputText @bind-Value="exercise.Title" class="hallo-input" />
+                                            </div>
+                                            <div>
+                                                <ModernDropdown TValue="string?" Label="Type d'exercice" Value="exercise.ExerciseType" ValueChanged="value => SetLessonExerciseTypeAsync(exercise, value)" Options="LessonExerciseTypeOptions" />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="hallo-label">Consigne (optionnel)</label>
+                                            <InputTextArea @bind-Value="exercise.Instructions" class="hallo-input min-h-20" />
+                                        </div>
+
+                                        <div>
+                                            <label class="hallo-label">Question</label>
+                                            <InputTextArea @bind-Value="exercise.Question" class="hallo-input min-h-20" />
+                                        </div>
+
+                                        <div>
+                                            <label class="hallo-label">Points</label>
+                                            <InputNumber @bind-Value="exercise.Points" class="hallo-input" />
+                                        </div>
+
+                                        @if (isAudioType)
+                                        {
+                                            <div class="rounded-2xl border border-cyan-100 bg-cyan-50 p-3">
+                                                <div class="grid gap-3 xl:grid-cols-2">
+                                                    <div>
+                                                        <label class="hallo-label">Texte audio (TTS)</label>
+                                                        <InputTextArea @bind-Value="exercise.AudioText" class="hallo-input min-h-20" />
+                                                    </div>
+                                                    <div>
+                                                        <ModernDropdown TValue="string?" Label="Langue TTS" Value="exercise.TtsLanguage" ValueChanged="value => SetLessonExerciseTtsLanguageAsync(exercise, value)" Options="TtsLanguageOptions" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (exercise.ExerciseType == "GapFill")
+                                        {
+                                            <div class="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
+                                                <div class="mb-2 flex items-center justify-between gap-2">
+                                                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Réponses par trou</p>
+                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100" @onclick="() => AddLessonGap(exercise)">+ Ajouter un trou</button>
+                                                </div>
+                                                @for (var gapIndex = 0; gapIndex < exercise.Gaps.Count; gapIndex++)
+                                                {
+                                                    var gap = exercise.Gaps[gapIndex];
+                                                    <div class="mb-2 rounded-xl bg-white p-3 ring-1 ring-indigo-100">
+                                                        <div class="mb-1 flex items-center justify-between">
+                                                            <span class="text-xs font-bold text-slate-700">Trou @(gapIndex + 1)</span>
+                                                            <button type="button" class="text-xs font-semibold text-rose-600" @onclick="() => RemoveLessonGap(exercise, gap)">Supprimer</button>
+                                                        </div>
+                                                        <InputTextArea @bind-Value="gap.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else if (!isChoiceType)
+                                        {
+                                            <div>
+                                                <label class="hallo-label">Réponses acceptées (optionnel)</label>
+                                                <InputTextArea @bind-Value="exercise.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                            </div>
+                                        }
+
+                                        @if (isChoiceType)
+                                        {
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                                <div class="mb-2 flex items-center justify-between gap-2">
+                                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Options</p>
+                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100" @onclick="() => AddLessonExerciseOption(exercise)">+ Ajouter une option</button>
+                                                </div>
+
+                                                @for (var optionIndex = 0; optionIndex < exercise.Options.Count; optionIndex++)
+                                                {
+                                                    var option = exercise.Options[optionIndex];
+                                                    <div class="mb-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                                                        <div class="grid gap-3 xl:grid-cols-[auto_1fr_auto] xl:items-center">
+                                                            @if (isSingleChoiceType)
+                                                            {
+                                                                <input type="radio" name="@($"lesson-ex-{localExerciseIndex}-single")" checked="@option.IsCorrect" @onchange="() => SelectSingleCorrectLessonOption(exercise, option)" />
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="checkbox" @bind="option.IsCorrect" />
+                                                            }
+                                                            <InputText @bind-Value="option.Text" class="hallo-input" />
+                                                            <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-3">
+                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseLessonModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(lessonForm.LessonId.HasValue ? "Enregistrer la leçon" : "Créer la leçon")</AsyncActionButton>
+                    </div>
+                </EditForm>
+                </ModalDialog>
+
+                <ModalDialog Open="mediaModalOpen"
+                         OpenChanged="OnMediaModalOpenChanged"
+                         Title="Téléverser une image ou un audio"
+                         Eyebrow="Bibliothèque de médias"
+                         MaxWidthClass="max-w-2xl">
+                @if (!string.IsNullOrWhiteSpace(mediaErrorMessage))
+                {
+                    <div class="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@mediaErrorMessage</div>
+                }
+                <EditForm Model="mediaUploadForm" OnValidSubmit="SaveMediaAsync" FormName="admin-media-form" class="grid gap-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <ModernDropdown TValue="Guid?" Label="Leçon" Value="mediaUploadForm.LessonId" ValueChanged="SetMediaLessonAsync" Options="LessonOptions" />
+                    </div>
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <div>
+                            <ModernDropdown TValue="string" Label="Type de média" Value="mediaUploadForm.MediaType" ValueChanged="SetMediaTypeAsync" Options="MediaTypeOptions" />
+                        </div>
+                        <div>
+                            <label class="hallo-label">Fichier</label>
+                            <InputFile OnChange="HandleMediaSelected" accept="@MediaFileAccept" class="hallo-input" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="hallo-label">Texte alternatif</label>
+                        <InputText @bind-Value="mediaUploadForm.AltText" class="hallo-input" />
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-3">
+                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseMediaModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Téléverser le média" />
+                    </div>
+                </EditForm>
+                </ModalDialog>
+
+                <div class="mt-6">
+                    <DataListPanel Items="FilteredCourseManagementItems"
+                               PageSize="10"
+                               SearchPlaceholder="Rechercher une classe ou un niveau..."
+                               EmptyText="Aucune classe ni aucun niveau trouvé."
+                               ResultLabelSingular="classe ou niveau"
+                               ResultLabelPlural="classes et niveaux"
+                               Filter="@((CourseManagementViewModel c, string term) => Contains(c.Code, term) || Contains(c.Title, term) || Contains(c.CEFRGroup, term) || Contains(c.Description, term))">
+                <div class="grid gap-4">
+                @foreach (var course in context)
+                {
+                    <article class="rounded-3xl border p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-md @(course.IstSystemNiveau || !course.SchoolId.HasValue ? "border-emerald-100 bg-emerald-50/30 hover:border-emerald-200" : "border-cyan-100 bg-white hover:border-cyan-200")">
+                        <button type="button" class="flex w-full items-start justify-between gap-3 text-left" @onclick="() => ToggleCourse(course.CourseId)">
+                            <div class="flex items-start gap-3">
+                                <svg class="mt-1 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 @(IsCourseExpanded(course.CourseId) ? "rotate-90" : "")" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-lg font-bold text-slate-900">@course.Code · @course.Title</h3>
+                                        @if (course.IstSystemNiveau || !course.SchoolId.HasValue)
+                                        {
+                                            <span class="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700">Standard</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="rounded-full bg-cyan-100 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-cyan-700">@course.SchoolName</span>
+                                        }
+                                    </div>
+                                    <p class="mt-1 text-sm text-slate-500">CECR @course.CEFRGroup · @course.Lessons.Count leçons</p>
+                                </div>
+                            </div>
+                            <Badge Accent="emerald">@course.MediaCount médias</Badge>
+                        </button>
+
+                        @if (IsCourseExpanded(course.CourseId))
+                        {
+                        <p class="mt-3 text-sm text-slate-600">@course.Description</p>
+                        <div class="mt-4">
+                            <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditCourseAsync(course.CourseId)">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                                Modifier la classe / le niveau
+                            </button>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 text-sm sm:grid-cols-5">
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@course.RecommendedLessonCount</div><div class="text-slate-500">Recommandé</div></div>
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@course.ExamCount</div><div class="text-slate-500">Épreuves</div></div>
+                            <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@course.Lessons.Count</div><div class="text-slate-500">Leçons</div></div>
+                            <div class="rounded-xl bg-amber-50 p-2.5"><div class="font-bold text-amber-900">@course.Price.ToString("N0") FCFA</div><div class="text-amber-600">Prix de la classe / du niveau</div></div>
+                            <div class="rounded-xl bg-sky-50 p-2.5"><div class="font-bold text-sky-900">@course.StudentCount</div><div class="text-sky-600">Élèves inscrits</div></div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3">
+                            @foreach (var lesson in course.Lessons)
+                            {
+                                <div class="rounded-2xl bg-slate-50 p-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="font-semibold text-slate-900">@lesson.Order. @lesson.Title</div>
+                                        <span class="text-xs font-medium text-slate-500">@lesson.ExerciseCount exercices</span>
+                                    </div>
+                                    <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
+                                    <div class="mt-3">
+                                        <button type="button" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 ring-1 ring-slate-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-md" @onclick="() => EditLessonAsync(lesson.LessonId)">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                                            Modifier la leçon
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        }
+                    </article>
+                }
+                </div>
+                </DataListPanel>
+            </div>
+        </div>
+    </section>
+
+    <section class="mt-10 rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mt-12 sm:p-8">
+        <p class="text-sm font-semibold uppercase tracking-[.18em] text-violet-700">Administrateur</p>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">Prix général et commissions des abonnements</h2>
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Définis ici le prix général de l'abonnement. Si une école n'a pas de prix spécifique, ce prix général est utilisé automatiquement. Les nouveaux abonnements figent ensuite leur prix et leurs montants calculés.</p>
+
+        @if (!string.IsNullOrWhiteSpace(commissionStatusMessage))
+        {
+            <div class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">@commissionStatusMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(commissionErrorMessage))
+        {
+            <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@commissionErrorMessage</div>
+        }
+
+        <div class="mt-5 max-w-md rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <label class="hallo-label">Prix général de l'abonnement (FCFA)</label>
+            <InputNumber @bind-Value="commissionSettings.GlobalSubscriptionPrice" class="hallo-input" />
+            <p class="mt-1 text-xs text-slate-500">Prix par défaut pour toutes les écoles sans tarif spécifique.</p>
+        </div>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-4">
+            <div class="rounded-2xl bg-cyan-50 p-4"><p class="font-bold text-slate-900">Direction d'école</p><p class="mt-1 text-2xl font-black text-slate-900">@commissionSettings.SchoolLeaderAmount.ToString("N0") FCFA</p><p class="mt-1 text-sm text-cyan-700">@commissionSettings.SchoolLeaderPercent.ToString("N2") %</p><label class="mt-3 block text-xs font-semibold text-slate-600">FCFA</label><input type="number" min="0" @bind:get="commissionSettings.SchoolLeaderAmount" @bind:set="SetSchoolLeaderCommissionAmountAsync" class="mt-1 w-full rounded-xl border border-cyan-200 px-3 py-2" /><label class="mt-3 block text-xs font-semibold text-slate-600">Pourcentage</label><InputNumber @bind-Value="commissionSettings.SchoolLeaderPercent" class="mt-1 w-full rounded-xl border border-cyan-200 px-3 py-2" /></div>
+            <div class="rounded-2xl bg-indigo-50 p-4"><p class="font-bold text-slate-900">Fonds enseignants</p><p class="mt-1 text-2xl font-black text-slate-900">@commissionSettings.TeacherAmount.ToString("N0") FCFA</p><p class="mt-1 text-sm text-indigo-700">@commissionSettings.TeacherPercent.ToString("N2") %</p><label class="mt-3 block text-xs font-semibold text-slate-600">FCFA</label><input type="number" min="0" @bind:get="commissionSettings.TeacherAmount" @bind:set="SetTeacherCommissionAmountAsync" class="mt-1 w-full rounded-xl border border-indigo-200 px-3 py-2" /><label class="mt-3 block text-xs font-semibold text-slate-600">Pourcentage</label><InputNumber @bind-Value="commissionSettings.TeacherPercent" class="mt-1 w-full rounded-xl border border-indigo-200 px-3 py-2" /></div>
+            <div class="rounded-2xl bg-violet-50 p-4"><p class="font-bold text-slate-900">Responsable produit</p><p class="mt-1 text-2xl font-black text-slate-900">@commissionSettings.ProductOwnerAmount.ToString("N0") FCFA</p><p class="mt-1 text-sm text-violet-700">@commissionSettings.ProductOwnerPercent.ToString("N2") %</p><label class="mt-3 block text-xs font-semibold text-slate-600">FCFA</label><input type="number" min="0" @bind:get="commissionSettings.ProductOwnerAmount" @bind:set="SetProductOwnerCommissionAmountAsync" class="mt-1 w-full rounded-xl border border-violet-200 px-3 py-2" /><label class="mt-3 block text-xs font-semibold text-slate-600">Pourcentage</label><InputNumber @bind-Value="commissionSettings.ProductOwnerPercent" class="mt-1 w-full rounded-xl border border-violet-200 px-3 py-2" /></div>
+            <div class="rounded-2xl bg-slate-100 p-4"><p class="font-bold text-slate-900">Plateforme</p><p class="mt-4 text-2xl font-black text-slate-900">@commissionSettings.PlatformAmount.ToString("N0") FCFA</p><p class="mt-1 text-sm text-slate-600">@commissionSettings.PlatformPercent.ToString("N2") %</p><p class="mt-5 text-xs text-slate-500">Calculé automatiquement.</p></div>
+        </div>
+        <AsyncActionButton Class="mt-5 rounded-full bg-violet-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement..." OnClick="@(_ => SaveCommissionSettingsAsync())">Enregistrer les commissions</AsyncActionButton>
+    </section>
+
+    <ModalDialog @bind-Open="confirmRemovePaymentOpen"
+                 Title="Retirer le paiement"
+                 Eyebrow="Action réservée à l'Administrateur"
+                 MaxWidthClass="max-w-lg">
+        <p class="text-sm leading-6 text-slate-600">
+            Confirmes-tu le retrait du paiement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveLevelCode</span> ?
+            Cette action est réservée à l'Administrateur et n'est possible que tant que le paiement n'a pas encore été facturé et que le cycle de la classe est encore ouvert.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button"
+                    class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                    @onclick="() => confirmRemovePaymentOpen = false">
+                Annuler
+            </button>
+            <button type="button"
+                    class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                    @onclick="ConfirmRemovePaymentAsync">
+                Retirer le paiement
+            </button>
+        </div>
+    </ModalDialog>
+
+    <ModalDialog @bind-Open="confirmRemoveAboOpen"
+                 Title="Annuler l'abonnement"
+                 Eyebrow="Action réservée à l'Administrateur"
+                 MaxWidthClass="max-w-lg">
+    <p class="text-sm leading-6 text-slate-600">
+        Confirmes-tu l'annulation de l'abonnement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveAboLevelCode</span> ?
+        Le niveau ne sera plus accessible à l'élève et le statut payé sera retiré. Cette action n'est possible que tant que le niveau n'est pas encore facturé.
+    </p>
+    <div class="mt-6 flex justify-end gap-3">
+        <button type="button"
+                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                @onclick="() => confirmRemoveAboOpen = false">
+            Annuler
+        </button>
+        <button type="button"
+                class="rounded-full bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                @onclick="ConfirmRemoveAboAsync">
+            Annuler l'abonnement
+        </button>
+    </div>
+</ModalDialog>
+
+    @if (IsDevelopment)
+    {
+        <ModalDialog @bind-Open="confirmHardDeleteSchoolLeaderOpen"
+                     Title="Supprimer définitivement le directeur et ses données de test"
+                     Eyebrow="Development uniquement — action irréversible"
+                     CloseOnBackdrop="false"
+                     MaxWidthClass="max-w-lg">
+            <div class="rounded-2xl bg-rose-50 p-4 text-sm leading-6 text-rose-900">
+                <p class="font-bold">Cette action est définitive.</p>
+                <p class="mt-2">
+                    Le directeur <span class="font-semibold">@pendingHardDeleteSchoolLeaderName</span>, toutes ses écoles et toutes les données de test associées seront supprimés.
+                </p>
+                <p class="mt-2">Les utilisateurs également affectés à une autre école sont conservés dans cette autre école.</p>
+            </div>
+            <div class="mt-6 flex flex-wrap justify-end gap-3">
+                <button type="button"
+                        class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                        @onclick="() => confirmHardDeleteSchoolLeaderOpen = false">
+                    Annuler
+                </button>
+                <AsyncActionButton Class="rounded-full bg-rose-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-900 disabled:opacity-50"
+                                   IsBusy="@isDatabaseActionInProgress"
+                                   BusyLabel="Suppression..."
+                                   OnClick="@(_ => ConfirmHardDeleteSchoolLeaderAsync())">
+                    Supprimer définitivement
+                </AsyncActionButton>
+            </div>
+        </ModalDialog>
+    }
+}
+

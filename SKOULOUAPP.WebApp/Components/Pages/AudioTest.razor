@@ -1,0 +1,37 @@
+@page "/audio-test"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>Test audio</PageTitle>
+
+<section class="mx-auto max-w-xl rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Diagnostic</p>
+    <h1 class="mt-1 text-2xl font-black text-slate-900">Test audio iPhone / Android</h1>
+    <p class="mt-2 text-sm leading-6 text-slate-600">
+        Touche chaque bouton une fois. Chaque test démarre directement dans le navigateur,
+        sans passer par le serveur.
+    </p>
+
+    <div class="mt-5 grid gap-3">
+        <button type="button" id="halloapp-test-html5"
+                class="rounded-full bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700">
+            1. Tester HTML5 audio (WAV)
+        </button>
+        <button type="button" id="halloapp-test-webaudio"
+                class="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+            2. Tester WebAudio (bip)
+        </button>
+        <button type="button" id="halloapp-test-tts"
+                class="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+            3. Tester la voix (TTS « Guten Tag »)
+        </button>
+    </div>
+
+    <div class="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-800 ring-1 ring-slate-200">
+        <p class="font-bold">Résultat</p>
+        <p id="halloapp-audio-test-result" class="mt-1 break-words">HTML5: non testé | WebAudio: non testé | TTS: non testé</p>
+    </div>
+
+    <p class="mt-4 text-xs text-slate-500">
+        Vérifie aussi que l'iPhone n'est pas en mode silencieux (bouton latéral) et que le volume est monté.
+    </p>
+</section>

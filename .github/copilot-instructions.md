@@ -1,0 +1,163 @@
+# Copilot Instructions
+
+## General Guidelines
+- Die App soll in Texten und Darstellung als allgemeine Verwaltungsplattform für Schulen, Universitäten, Sprachschulen oder Nachhilfeeinrichtungen formuliert sein, nicht nur für klassische Schulen.
+- Alle sichtbaren Nutzertexte der App müssen ausschließlich auf Französisch sein; keine deutschen Bezeichnungen wie „Klassen“ verwenden.
+- Der Nutzer möchte vor der Bearbeitung weiterer TODOs zunächst die gesamte Projektarchitektur, Hinweise und vorhandene Implementierungen verstehen und dokumentieren.
+- Auf der Startseite dürfen keine Inhalte mehr auf Deutschlernen, 'Allemand', CECR/A1 usw. verweisen; die App soll neutral für beliebige Schulen formuliert sein.
+- Für den ersten App-Aufruf ohne Anmeldung oder Schulzuordnung soll die Startseite nur neutrale, verständliche Einführungs- und Leerseiten-Texte zeigen; keine seltsamen Kurs-/Klassen-/Abo-Hinweise ohne Kontext.
+- Beim Speichern bzw. Einfügen eines zu großen Bildes soll der Nutzer eine verständliche MessageBox mit Hinweis auf das 8-MB-Limit erhalten. Die Rich-Text-Bilder werden später von Base64 auf echte Uploads mit Azure Blob Storage umgestellt; bis dahin bleibt die aktuelle 8-MB-Schutzprüfung aktiv.
+- Der Nutzer startet jetzt die Azure-Blob-Storage-Umstellung für Lektion-Bilder. Lektionsersteller sollen Bilder aus Azure Blob auswählen oder hochladen; Sichtbarkeit ist rollen- und schulbezogen (SuperAdmin/ProductOwner: schulübergreifend nach Schule, Lehrer: eigene und schulweite Bilder aller zugeordneten Schulen, Schulleiter/Koordinator: pro Schule, Lehrer und schulweit).
+- In keinem Editor der App dürfen Bilder eingefügt werden außer im Bereich „Lektion + Übungen erstellen“ für Nutzer, die Lektionen erstellen dürfen. Bilder dürfen dort ausschließlich aus gespeicherten Azure-Storage-Bildern eingefügt werden, nicht per Base64/Paste/lokaler Datei. Die Bibliothek braucht Filtermöglichkeiten, u. a. nach Bildname und Klasse/Lektionsklasse.
+- Lektionsvideos dürfen ausschließlich über Azure Storage gespeichert und ausgeliefert werden. Ein Lektionsvideo darf maximal 1 Stunde lang sein; längere Videos dürfen nicht hochgeladen werden.
+- Der Nutzer wird die Anwendung später manuell testen; bis dahin soll mit TODO-Punkt 15 fortgefahren werden. Die Punkte 1, 2 und 4 sind fachlich abgeschlossen und werden später gründlich manuell im Browser getestet.
+- Analysiere jeden vom Nutzer beauftragten Punkt sofort, liste die betroffenen Punkte/Flows auf und beginne ohne weitere Rückfrage mit der Implementierung; erforderliche Builds und Tests durchführen.
+- Rich-Text-Eingabefelder sollen bei Bedarf über eine Schaltfläche in einem größeren Modal geöffnet werden; Änderungen werden erst mit „Übernehmen“ zurück in das ursprüngliche Feld übertragen. Der RTF-Großeditor soll eine zuverlässige bidirektionale Übernahme zwischen Inline- und Modal-Editor bieten sowie eine große, nach unten ausgedehnte Editorfläche im Modal. Beim Öffnen muss der sichtbare Inline-Text in den Modalentwurf übernommen werden; derzeit erscheint fälschlich der Literalwert „modalEntwurf“. Die Modal-zu-Inline-Übernahme funktioniert.
+- Der Großeditor des RichTextEditor soll überall verfügbar sein, einschließlich Schülerantworten, Finanznotizen und Lektionseditor.
+- Formelvorlagen im Rich-Text-Editor sollen bei Auswahl direkt an der aktuellen Cursorposition eingefügt werden.
+- Standardlektionen und Standardklassen/-niveaus (A1–C) sowie die vorgegebenen Standard-Examen (z. B. finale Tests A1–C) werden von Schulen bzw. Schulleitern nicht verwaltet. Sie dienen ausschließlich als feste Grundlage für die Scorebewertung und Lern-/Bewertungsgrundlage; die entsprechende Verwaltungs- und Kursdurchlauf-UI darf sie nicht anzeigen oder bearbeitbar machen.
+- Abo-Wechsel ist nur einmalig von Basis zu Plus erlaubt, nie zurück; das Modal soll nur erlaubte Optionen anzeigen.
+- Abo-Erstvergabe darf direkt HALLOPLUS sein. Verbindliche Bestätigungstexte: HALLOBASIS: „Das Abo kann nicht mehr storniert werden, nur ein Upgrade auf HalloPlus ist möglich.“ HALLOPLUS: „Das Abo kann nicht mehr storniert werden. Upgrade auf HalloBasic auch wird nicht möglich sein.“
+- Abo-Vergabe erfolgt erst nach der Registrierung auf Wunsch des Schülers. Für die Schulleitung gilt ein 1‑Schritt-Prozess: „Enregistrer comme payé“ setzt bei HALLOAPPABO gleichzeitig IsUnlocked=true und IsPaid=true.
+- Die Flags bleiben getrennt: IsBlocked steuert die App-Anmeldung/Kontoaktivität, IsUnlocked steuert den Zugriff auf Klassen-/Niveau-Lehrmaterialien.
+- Bei aktivierter Klassenoption „AutoAssignHalloAppAboOnCycleStart“ erhalten aktive, neu hinzugefügte und neu angelegte Schüler das HALLOAPPABO automatisch als bezahlt (IsUnlocked=true, IsPaid=true), solange der Klassenzyklus aktiv ist.
+- Admin-Stornierung ist auf den neuen Stand abgestimmt: „Annuler l'abonnement“ ist die zentrale Aktion. Sie deaktiviert das Abo (IsUnlocked=false, IsPaid=false, PaidAtUtc=null) und entfernt zugehörige HALLOAPP-Finanzbuchungen, solange das Abo noch nicht fakturiert/abgerechnet ist.
+- Die Kennzahl „Dette de l'école envers HALLOAPP“ im Admin-Bereich basiert auf bezahlten, noch nicht fakturierten HALLOAPPABOs (nicht auf unbezahlten Freischaltungen).
+- Der stilisierte H-App-Icon soll das aktuelle Standard-Blazor-Browsericon ersetzen. Die erste Favicon-Änderung war nicht wirksam; beim Browser-Tab darf kein Standard-Blazor-Icon als PNG-Fallback konkurrieren. Das H-Icon muss ausschließlich und eindeutig als Browser-Favicon geladen werden.
+- Audio-Übungen im HALLOAPP-Projekt verwenden keine externen Audio-Dateien; sie sind Text-To-Speech-Übungen. Seed-Vorschläge sollen daher Audio-Inhalte als Text/TTS-Felder modellieren, nicht als Audiodateipfade. **Für TTS soll Deutsch (de-DE) der Standard sein, mit Möglichkeit zur Umstellung auf Französisch und Englisch.**
+- Die festen Kursniveaus im HALLOAPP-Projekt sollen für Seed-/Standardlektionen auf feste Niveau-Codes begrenzt werden: A1.1, A1.2, A2.1, A2.2, B1.1, B1.2, B2.1, B2.2 sowie noch zu klärende C-Niveaus. **Seed-Lehrmaterialien: A1.1 und A1.2 sollen jetzt mit Lehrbuchqualität begonnen werden; klare Progression, sehr einfache A1-Sprache, natürliche Dialoge, Wortschatz-/Grammatikboxen und passende A1-Übungen sind verbindlich. Seed-Lehrmaterialien sollen nach A1 jetzt niveauweise weiter in Lehrbuchqualität ausgebaut werden: zuerst A2.1 und A2.2, danach B1.1 und B1.2, anschließend weitere Niveaus.**
+- Der SeedGen-Projekt befindet sich im Ordner C:\ETSE\HalloAppSeed (SeedGen.csproj & Program.cs).
+- Neue Lehrmaterial-Lektionen sollen standardmäßig für die Schulleitung sichtbar sein und PDF-Export aktiviert haben. Exams und eigenständige Quizze bleiben standardmäßig privat.
+- Der Benutzerhandbuch soll für jeden Nutzer über Tab-Seiten organisiert werden; die sichtbaren Tabs und Inhalte bleiben rollenbasiert freigeschaltet.
+- Die Kommunikation mit dem Nutzer erfolgt auf Deutsch; die sichtbaren Endnutzertexte der Anwendung bleiben auf Französisch. **Die App wird in Togo verwendet; nutzerseitige Texte, Hinweise und UX sollen französisch sein. Insbesondere auf der Startseite/Home dürfen keine deutschen UI-Texte verbleiben.**
+- Für den Sprachschul-Menüpunkt sind „Parcours de français“ und die CECR-Bezeichnung ungeeignet; der Eintrag umfasst Standardlektionen und Übungen.
+- Bei Datenbankzugriffen soll konsequent IDbContextFactory verwendet werden, um parallele DbContext-Fehler zu vermeiden.
+- Registrierungsanforderung: Telefonnummer optional für alle Nutzer. Für Schüler zusätzlich Telefonnummer und E-Mail eines Elternteils. In SuperAdmin-, Schulleiter-, Koordinator- und ProduktOwner-Anlage neben dem E-Mail-Feld ein aktivierbarer Button zur automatischen E-Mail-Erzeugung aus Vorname.Nachname@halloapp.com; E-Mail bleibt editierbar und vorhandene Adresse wird validiert. **Die automatische HalloApp-E-Mail ist aktiv, wenn der Nutzer/die Rolle nicht Lehrer und nicht Schüler ist. Im öffentlichen Registrierungsformular darf kein Auto-E-Mail-Button erscheinen. Die Auto-E-Mail-Funktion gilt nur für bereits angemeldete Nutzer, deren eigene Rolle nicht Lehrer und nicht Schüler ist; sie ist damit vom angemeldeten Bearbeiter abhängig, nicht von der Zielrolle im Formular.** Mindestalter für die Nutzung/Registrierung der App soll überall entfernt werden; der Schulleiter entscheidet bei der Akzeptierung der Registrierung selbst.
+- Bei Dateiimport für Lehrer/Schüler sind Telefon und E-Mail optional. Pflichtfelder sind Vorname, Nachname und Klasse. Fehlt die E-Mail, soll sie automatisch aus Nachname+Vorname nach bestehendem HALLOAPP-E-Mail-Schema generiert werden. Fehlt ein Passwort, soll initial Passwort123! gesetzt werden; Daten können später geändert werden.
+- Bei Schülern soll im Bereich Lehrer-Lehrmaterialien ein Hinweis angezeigt werden, warum sie eine Lektion bzw. Lehrmaterial nicht sehen dürfen, z. B. fehlende Freigabe, falsche Klasse oder kein passendes Abo.
+- Schulleiter verwalten die Schulgebühr von Schülern selbst, entweder sofort oder in Raten. Beim Beenden eines Klassen-/Course-Cycles wird geprüft, ob alle Schüler die Schulgebühr bezahlt haben; bei offenen Beträgen können Schulleiter abbrechen oder fortsetzen. Beim Fortsetzen wird der Restbetrag als Verlust in der Schul-Finanzverwaltung gebucht.
+- Schulleiter und Koordinatoren haben nahezu gleiche Rechte und dürfen mit der Direktion geteilte Lehrer-Inhalte sehen. SuperAdmin und ProductOwner dürfen diese schul-/directionsinternen Inhalte normalerweise nicht sehen; ihre Dashboards sollen entsprechend keine Direktion-Inhalte anzeigen.
+- Selektierte Buttons/Links sollen klar markiert sein; innere Seiten sollen eine Zurück-Navigation anbieten; im Medienauswahl-Dialog darf „Azure“ nicht sichtbar erscheinen und der Medienauswahl-/Upload-Button soll schöner gestaltet werden; SuperAdmin/ProductOwner-Bereiche sollen Mehrfachschulen sauber getrennt/filtrierbar darstellen.
+- Im Registrierungsformular sollen native Browser-Selects vermieden und durch das moderne App-Dropdown-Design ersetzt werden.
+- In SuperAdmin/ProductOwner-Ansichten soll der Klassen-/Niveaus-/Lektionen-/Übungen-Block im Frontend ausgeblendet werden. Stattdessen soll an dieser Stelle die Medienübersicht angezeigt werden, nach Schule filterbar und mit Dateigrößen insgesamt sowie je Schule.
+- Der obere Header-/Top-Panel-Bereich soll im Layout eigenen Platz reservieren, sodass kein darunterliegender Inhalt mehr darunterläuft/überlappt; dieselbe saubere Top-Abstandslogik soll auch das PDF-Export-Top-Problem lösen.
+- HALLOAPP-Abo-Preise können individuell pro Schule festgelegt werden; nur die Commission-Konfiguration ist global. **Es gibt nur noch einen Abo-Typ (AboTyp.HalloApp); Bezeichnungen wie HALLOPLUS sind nur sprachlich gemeint und müssen technisch auf AboTyp.HalloApp abgebildet werden. Nur der Admin darf den Abo-Preis festlegen: global als Standard oder explizit pro Schule; ohne Schulspezifik gilt der globale Preis. Beim Anlegen von Klassen soll dieser Preis angezeigt werden.**
+- Finanzberichte müssen bei Mehrfachschulen strikt pro ausgewählter Schule erstellt und exportiert werden; keine Vermischung mehrerer Schulen in einem Bericht.
+- Bei UI-/Berichtsverbesserungen darf die Umsetzung kreativ und übersichtlich gestaltet werden, solange fachliche Regeln strikt eingehalten werden.
+- Commissions-/Facturation-Anzeigen sollen neben der Gesamtzahl offener bezahlter Abos auch die Anzahl je Abo-Typ anzeigen, z. B. 1 HALLOPLUS und 3 HALLOBASIC.
+- In der Finanzverwaltung/Cycles-de-niveau-UI soll der Button „Démarrer le cycle“ ausgegraut/deaktiviert sein, wenn für das ausgewählte Niveau bereits ein aktiver Durchlauf läuft.
+- Bei der ersten Registrierung als Schulleiter darf der Nutzer seine Schule selbst angeben/anlegen, statt eine vorhandene Schule aus der Liste auswählen zu müssen.
+- Bei Änderungen an Business-Regeln prüfe die App proaktiv auf Folgefälle, Ausnahmen, Berechtigungen, UI-Hinweise, Doppelerfassung und Abrechnungs-/Finanzkonsistenz, auch wenn diese Punkte nicht explizit genannt werden.
+- Der Nutzer erwartet proaktiv, dass ich Änderungen ganzheitlich prüfe, mitdenke und konkrete Verbesserungsempfehlungen mitliefere, statt nur punktuell umzusetzen. **Die Anwendung soll in der Kommunikation primär als Schulverwaltungssoftware betrachtet werden.**
+- Der Nutzer erlaubt ausdrücklich, Models anzupassen, wenn dies zur Vereinfachung oder Verbesserung sinnvoll ist.
+- Der Nutzer möchte, dass bestätigte Korrekturen vollständig nacheinander umgesetzt werden, ohne einzelne Punkte vorzeitig abzubrechen oder zu überspringen.
+- HALLOAPP-Abos dürfen erst festgelegt werden, wenn für die betreffende Klasse ein Klassen-/Kursdurchlauf gestartet wurde.
+- Bei Business-/Service-Regeländerungen immer proaktiv die zugehörigen Blazor-UIs mitprüfen und anpassen, statt nur Backend/Tests umzusetzen.
+- Für große Schulen soll geprüft/umgesetzt werden, ob Lehrer inklusive Klassen-Zuweisung und Schüler inklusive Klassen-Zuweisung automatisch aus einer Datei importiert/erstellt werden können.
+- Lehrer-Import und Schüler-Import sollen in der UI getrennt angeboten werden, aber technisch einen gemeinsamen Import-Service/Vorschau-Workflow verwenden. In der UI soll ein Muster/Template für das Dateiformat angezeigt werden.
+
+## Aufgaben und Quiz
+- Lehrer dürfen den Schülerstatus (Blockieren/Entsperren und verwandte Statusaktionen) verwalten. Die gemeinsame Überschrift für Schülerstatus und Fortschritt lautet „Statut et progression des élèves“.
+- Lehrer dürfen den Schülerstatus nicht verwalten. Die gemeinsame Dashboard-Gruppierung „Gestion et progression des élèves“ mit Status und Fortschritt bleibt bestehen.
+- In der Schüleransicht „Cours & supports“ soll für vom Schulleiter autorisierte Lehrerlektionen ein Export-/PDF-Button verfügbar sein.
+- Der Menüpunkt „Cours & supports“ soll unter „Espace élève“ stehen; „Leçons disponibles“ soll vor „Contact“ erscheinen.
+- Lehrerlektionen sollen optional einen zugehörigen Lektions-Quiz mit Devoir-Aufgabenblöcken erhalten; Schüler bearbeiten ihn zusammen mit der Lektion. Lehrerteilungs-Lektionen sollen nach Kursende für neue Schüler erneut veröffentlichbar sein. Ein optionaler Kursthema-/Titel wird bei der Erstellung festgelegt und gemeinsam mit den Lektionen angezeigt.
+- Lehrer sollen beim Erstellen einer Lektion direkt mehrere Aufgaben als Template (Lektion + Aufgabenliste) hinzufügen können; Bearbeitung/Freigabe soll bis zur Zuweisung möglich sein. Gleiches Muster gilt für Exams mit Aufgabenliste. Lehrerlektion und zugehöriges optionales Lektionsquiz sollen als gemeinsames Paket wiederverwendet, Schülern gemeinsam angezeigt und im PDF-Export zusammen ausgegeben werden. **Nach Klassenzuweisung sollen alle Schüler mit mindestens einem HalloApp-Abo die Lektion plus Aufgabe sehen können. Direkte normale Quizze bleiben nur für HALLOPlus-Schüler zuweisbar. Schulleiter/Koordinator dürfen bei Direktion-Freigabe alles lesen, aber nicht ändern; bei PDF-Freigabe darf Lektion plus Übung exportiert werden.** 
+- PDF-Export-Prinzip: Bei Lehrer-Lektionen, Exams und Lehrer-Quizzen soll es Export mit Lösungen und Export ohne Lösungen geben. **Schüler-PDF-Exporte müssen immer ohne Lösungen erfolgen. Lösungen, richtige Markierungen und Häkchen dürfen im Schülerexport nicht angezeigt werden.** 
+- Finanzbericht pro Klasse mit Schulgebühr-/Abo-Zahlungsständen soll implementiert werden. **Gefilterte Einnahmen und Ausgaben sollen als PDF exportierbar sein. Bei HALLOAPP-Abos werden aus dem Abo-Preis der Schulanteil als Eingang und Schulleiter-/Lehrer-Anteile als Ausgänge gebucht; ProductOwner-Anteil wird manuell vom SuperAdmin/ProductOwner-Verantwortlichen ausgezahlt und nicht automatisch gebucht. Schüler-Abos sollen nur gezählt werden, wenn IsPaid true ist und das Enrollment noch nicht in einer vorherigen Abrechnung enthalten ist (AbgerechnetInPeriodeId null).**
+- Klassenbezogener Abschluss-Examens-/Bewertungs- und Versetzungsprozess mit Einzel/Mehrfachauswahl soll bereitgestellt werden. **Exams erhalten zwei Typen – `TestExam` (Standard, zählt nicht für die Abschlussnote) und Abschlussnoten-relevante Exams. Noten relevanter Exams dürfen bis zum Beenden der Klasse nachgetragen werden; die Abschlussnote wird daraus automatisch berechnet. `IsBestanden` bleibt unabhängig von der Abschlussnote und wird vor bzw. beim Beenden der Klasse vom zuständigen Schulleiter oder Lehrer explizit auf True/False gesetzt.**
+- Hard-Delete nicht akzeptierter Selbstregistrierungen durch Schulleiter ist zu ermöglichen.
+- Nach erfolgreichem Schließen einer Klasse soll direkt ein Hinweis erscheinen, dass bestandene Schüler jetzt versetzt werden können; optionaler direkter Einstieg zur Promotion. Nach erfolgreicher Promotion soll ein Hinweis erscheinen, dass die Schüler in der neuen Klasse sind und der neue Klassenzyklus gestartet werden soll.
+- Lehrer kann Klassen-Test-Exams Schülern zuweisen; diese werden wie Lektionsaufgaben behandelt (automatische oder manuelle Antworten) und fließen in den Score ein. Abschluss-Exams sind druckbasiert/manuell korrigiert; Lehrkraft trägt daraus die Abschlussnote ein.
+
+## Projektrichtlinien
+- UI-Präferenz im Projekt: horizontale Scrollbars immer vermeiden, Layout auf Tablet/Mobil vollständig responsiv halten, Rollen-/Technologieinfos aus der Navigation entfernen und Anmelden/Registrieren im Profilbereich oben rechts platzieren.
+- UI-Inhalte sollen schülerorientiert formuliert sein; technische oder interne Ausbaustufen sind für Endanwender auszublenden.
+- Öffentlich sichtbare Informationen und Übungsbeschreibungen für Endanwender sollen auf Deutsch formuliert werden, während Infos, Meldungen, Kursbeschreibungen und sonstige erklärende Texte auf Französisch bleiben. **Hero-Texte dürfen daher nicht allgemein von „les langues“ sprechen, sondern müssen ausdrücklich „l’allemand“ nennen; klassische Schulfächer werden ergänzend genannt.** Hero-Titel und Beschreibung sollen kreativ sowohl Sprachschulen als auch klassische Schulen ansprechen, statt nur Deutschlernen bzw. CEFR A1.1–C2 hervorzuheben.
+- Klassen und Eigenschaften in Core-DataModels sollen auf Deutsch benannt werden. Bei normalen Schulen soll die Bezeichnung „Niveau“ durch „Classe“ ersetzt werden; der Code bezeichnet dort die Klasse statt eines Sprach-Niveaus. Für normale Schulen wird ein eigenes Feld „Classe“ (Klassenstufe) implementiert. Die Klassenstufen gehören zur jeweiligen Schule, können von mehreren konkreten Klassen wie CEP1A/CEP1B verwendet werden und dürfen nur gelöscht werden, wenn keine konkrete Klasse darauf verweist.
+- Bei ID-Eigenschaften verwende den Namen Id für die Basis-ID und zusammengesetzte deutsche Namen mit ID, z. B. SchuelerID, LektionID, SchulID.
+- Die alte HALLOAPPprj-App soll möglichst 1:1 in der neuen Struktur nachgebaut werden, Schritt für Schritt, statt eigene alternative Architekturentscheidungen zu treffen.
+- Namespaces sollen in diesem Repository der Datei-/Ordnerstruktur entsprechen, insbesondere unter `HalloApp.Core/DataModels`.
+- Im Sprachschul-Kursformular soll das Feld „Code du niveau“ in „Nom du niveau“ umbenannt werden. Auch im globalen SuperAdmin-Kursformular (Sprach-Niveals) soll das Feld „Code“ als „Nom du niveau“ bezeichnet werden.
+- Im globalen SuperAdmin-Verwaltungsbereich sollen sichtbare Bezeichnungen „Cours“ zu „Classes et niveaux“ geändert werden, da der Bereich sowohl normale Klassen als auch Sprach-Niveaus verwaltet. Diese Bezeichnung soll überall dort verwendet werden, wo die Anwendung normale Klassen und Sprach-Niveaus gemeinsam bezeichnet.
+- Die TODO-Punkte 6, 8, 9 und 14 sollen gemeinsam umgesetzt werden. Standardlektionen aus Seed/LessonContent werden nicht durch Schulen verwaltet, sondern nur für Fortschritt angezeigt. Schulleiter verwalten eigene Klassen sowie zugeordnete Lehrkräfte und Schüler. Die umfassenden Tests aller TODOs erfolgen erst am Ende.
+- Punkt 6 zum Lektionseditor und PDF-Export umsetzen; Punkt 3 wird zurückgestellt und erst nach den folgenden TODOs am Ende bearbeitet.
+- Im Schulleiterbereich soll „Tout développer“ ausschließlich die CollapsibleCard „Élèves“ auf- bzw. zuklappen, nicht die PDF-Exportkarte.
+- Auf allen Seiten mit CollapsibleCard sollen die Bereiche standardmäßig geschlossen starten; globale Auf-/Zuklappschaltflächen haben Vorrang: Beim Klicken müssen alle CollapsibleCard-Bereiche der jeweiligen Seite denselben Auf-/Zu-Zustand übernehmen.
+- PDF-Exporte sollen als echte serverseitig erzeugte PDF-Dateien umgesetzt werden, damit Browser-Kopf-/Fußzeilen mit URL garantiert nicht erscheinen.
+- Beim Einfügen großer Inhalte in den Lektionseditor sollen Inhalte automatisch auf A4-Seiten verteilt werden: Seite 1 enthält nur den Platz bis zum tatsächlichen A4-Überlauf, der Rest wird auf Folgeseiten übernommen.
+- Für den Lektionseditor soll die Fußzeile kleiner und optisch dezenter sein. Der automatische Seitenumbruch darf nicht bereits beim ersten Zeichen mehrere Seiten erzeugen; die erste Seite muss bis zur tatsächlichen A4-Inhaltshöhe nutzbar bleiben. Automatisch angelegte Folgeseiten sollen sichtbar und leer bleiben, solange sie nicht vollständig geleert werden. Wenn eine automatisch erzeugte zweite Lessionsseite vollständig geleert wird, soll sie sofort geschlossen werden; der Cursor/Fokus soll an das Ende der vorherigen Seite zurückkehren, damit dort weiter gelöscht oder geschrieben werden kann. Wenn der Cursor in einer bereits leeren, automatisch erzeugten Folgeseite steht und der Benutzer erneut die Rücktaste drückt, soll die Folgeseite entfernt und der Cursor ans Ende der vorherigen Seite gesetzt werden. Beim Drücken der Rücktaste im Lessionseditor soll die Seite automatisch zur aktuellen Cursorposition scrollen, insbesondere nach dem Wechsel von einer leeren Folgeseite zurück zur vorherigen Seite. Zuverlässiger Cursorfokus auf der vorherigen Seite hat Vorrang vor der Scroll-Nachführung; die Scroll-Ergänzung darf den bereits funktionierenden Fokuswechsel nicht ersetzen oder beeinträchtigen. Der automatische Seitenfluss beim Schreiben darf den Cursor nicht an den Zeilenanfang zurücksetzen; die aktuelle Cursorposition muss beim HTML-Synchronisieren erhalten bleiben. Der Cursorverlust im Lektionseditor entsteht während der internen Quill-Neuverteilung; die Cursorposition muss vor der Seitenverteilung gesichert und danach wiederhergestellt werden.
+- SuperAdmin soll Entitäten hard-deleten dürfen, mit Bestätigungsdialog; beim Löschen eines Schulleiters sollen dessen Schule und sämtliche zugehörigen Daten gelöscht werden. Die Hard-Delete-Funktion für Schulleiter und zugehörige Daten wird ausschließlich in der Development-Umgebung zum Zurücksetzen von Testdaten benötigt.
+- Klassenformular soll für beide Schultypen angepasst werden: Sprachschule zeigt Niveau-Code und CECR-Auswahl; Normale Schule zeigt Klassen-Code und Klassenbezeichnung und blendet CECR aus.
+- Quiz-Zuweisung: Ein Lehrer erstellt ein Quiz für seine konkrete Klasse (z. B. A1/CEP1). Das Quiz darf ausschließlich Schülern dieser Klasse mit HalloPlus-Abo zugewiesen werden. Gibt es mindestens einen berechtigten Schüler, bietet die UI „alle HalloPlus-Schüler“ sowie eine durchsuchbare Einzelschülerauswahl. Gibt es keinen berechtigten Schüler, ist die Zuweisungsaktion deaktiviert und zeigt den Hinweis „Keiner der Klasse hat das AboPlus“ an.
+- Im Schulleiterbereich soll der Zahlungsdialog für Schüler größer sein und eine Schülersuche bieten. Kursdurchläufe benötigen Filter für „en cours“/„clôturés“ sowie nach Niveau/Klasse. Bei Barzahlung darf der festgelegte Gesamtpreis nicht geändert werden.
+
+## Abrechnungsworkflow
+- Wenn ein ProductOwner für eine zugewiesene Schule eine Abo-Rechnung erstellt oder deren Zahlung erhält, soll der SuperAdmin benachrichtigt werden und den Erhalt separat als erledigt bestätigen können. Auch selbst erstellte Rechnungen an Leiter sollen vom SuperAdmin als erledigt markiert werden können.
+
+## Finanzen-Navigation
+- Directeur sieht genau einen kombinierten Tab mit Buchungen + HALLOAPPABO-Infos; SuperAdmin sieht zwei getrennte Tabs (Finances des écoles und HALLOAPP-ABOs-Verwaltung inkl. Festlegen/Ändern/Buchung).
+- Der Endsaldo in der Finanzansicht muss sprachlich ausdrücklich als Ergebnis von Schulgebühren, weiteren Einnahmen, Betriebsausgaben und allen HALLOAPP-Anteilen erläutert werden.
+- Bei der Finanzanzeige bleiben der Direktionsanteil und der Lehrkräfteanteil in der Schule; als offene HALLOAPP-Forderung wird ausschließlich der Plattformanteil abgezogen.
+
+## Seed-Generator
+- Nutzer möchte bis zu 10.000 echte, authentische, hochwertige Übungen/Lehrmaterialien statt mechanischer Schleifenwiederholungen. Qualität, Niveauanpassung, echte Themen, Dialoge, Grammatik und abwechslungsreiche Aufgabentypen sind verbindlich.
+- Pro-Niveau-Redaktionsrunde soll später durchgeführt werden; aktuelle Qualitätsrunde bleibt zunächst global, spätere Feinschleife pro Niveau ist gewünscht.
+- Der Nutzer will alle verbleibenden Sprachschule-/CEFR-/Standardkurskatalog-Reste konsequent entfernen; insbesondere keine festen Seed-Level oder CSV-Kurskatalog-Initialisierung mehr im Initializer belassen.
+- **Der Nutzer möchte, dass alle Schulen als gleichwertig betrachtet werden, ohne Unterscheidung zwischen verschiedenen Schultypen.**
+- Wenn der Nutzer in diesem Workspace von 'Projekt' spricht, ist konkret SKOULOUAPP (SKOULOUAPPMAPPE) gemeint.
+
+## Code Style
+- Bevorzuge Blazor-Komponenten mit separaten Code-Behind-Dateien (.razor.cs) statt @code-Blöcken in .razor-Dateien, wie im HALLOAPPprj-Projekt.
+- Die verwendete Identity-UI soll gestaltet werden.
+- Ein kreativer HALLOAPP-Footer mit Kontaktinfos ist zu implementieren.
+- Single-Device-Login soll ermöglicht werden.
+
+## PDF-Export
+- PDF-Print-Layout-Feinschliff wurde vorerst zurückgestellt: vertikale Position/Mittigkeit in Chrome-Druckvorschau bleibt später zu optimieren; aktueller Stand soll zunächst bleiben.
+
+## Benutzer-/Rollenübersichten
+- In Benutzer-/Rollenübersichten und Filtern muss die Rolle Koordinator sichtbar berücksichtigt werden, insbesondere neben Directeur, Product Owner, Enseignants und Élèves.
+- Koordinatoren haben keinen Zugriff auf Finanzverwaltung/Finanzen und verwalten keine Schulgebühren. Finanz- und Schulgebührenverwaltung bleibt beim Schulleiter bzw. SuperAdmin, nicht beim Koordinator.
+
+## Provision
+- Lehrer erhalten keine individuellen automatisch berechneten/ausge zahlten Commission-Anteile mehr und müssen keinen Erhalt bestätigen. Lehrer- und Schul-Commission werden pro Schule aggregiert berechnet und angezeigt; die Schule verteilt Lehreranteile intern selbst. Klassen-Gebühr ist Pflicht pro Schüler/Klasse, HALLOAPP-Abo ist optional; mindestens ein Abo gewährt Zugriff auf Standard-Lehrmaterial und Lehrer-Lektionen/Übungen, HALLOPlus erlaubt Quizze.
+
+## Handbuch-Erweiterung
+- Bei der Handbuch-Erweiterung darf die Architektur angepasst werden; das Handbuch soll mit mehr Kontext und UI-Schnitten/rollenbezogenen UI-Abschnitten erweitert werden.
+
+## Kernprozess-Prüfungen
+- Bei Kernprozess-/Business-Regel-Änderungen sollen immer auch die betroffenen Blazor-UI-Flows geprüft und angepasst werden; UI gehört ausdrücklich zum notwendigen Umfang.
+
+## Home-Seite
+- Mobile Home-Hero muss wie eine echte Hero-Section den kompletten Handy-Bildschirm füllen; die darunterliegenden Intro-/CTA-/Statistik-Inhalte dürfen erst nach dem Scrollen sichtbar werden. Hero bleibt nur Bild plus themefarbener Badge. Home-Hero-Badge soll als kreatives Overlay etwas höher über dem unteren Bildrand liegen und einen Registrierungslink enthalten. Für angemeldete Nutzer soll der CTA sinnvoll zu den Lektionen führen.
+- Das Bild „hero-halloapp - mobile.png“ soll als dezenter, nur schwach sichtbarer Hintergrund eingebunden werden; Verlauf, Texte und CTAs bleiben klar lesbar.
+- Die hellen Akzentflächen oben und rechts im Verlauf sollen durch die jeweils aktive Theme-Farbe ersetzt werden.
+- Bei klick-/submit-auslösenden Buttons soll sofort sichtbares Feedback erscheinen (ProgressRing/Loading-State) und Doppelklicks sollen verhindert werden, damit Nutzer nicht das Gefühl haben, dass nichts passiert.
+- Loading-/Progress-Feedback und Doppelklick-Schutz sollen nicht nur beim Login, sondern app-weit für relevante Buttons, Form-Submits und datenbankauslösende Aktionen geprüft und konsistent umgesetzt werden.
+- Korrektur: Mit der hellen Fläche „oben am Hero“ ist der horizontale helle Streifen direkt unter der mobilen Kopfzeile und oberhalb des Hero-Inhalts gemeint; dieser soll die aktive Theme-Farbe verwenden.
+- Den Scroll-Hinweis im Home-Hero dauerhaft vollständig entfernen.
+
+## SEO-Anforderungen
+- Globale Open-Graph-Meta-Tags für HALLOAPP hinzufügen, damit Vorschauen beim Teilen in sozialen Netzwerken die Marke, Beschreibung und ein passendes Vorschaubild enthalten.
+
+## Willkommensmails
+- Die aktuelle Regel für Willkommensmails bleibt unverändert: Versand bei Selbstregistrierung sowie manueller Neuanlage durch SuperAdmin oder Schulleiter; beim CSV-Import erfolgt weiterhin kein Versand.
+- Bei Länderauswahlfeldern soll eine vollständige Länder-Liste mit Suchfunktion angeboten werden.
+- Bei leeren Kursdurchläufen soll die Kursdurchlaufüberschrift sichtbar bleiben; nur die irreführende Leerzustandsmeldung beziehungsweise der leere Inhaltsbereich soll ausgeblendet werden.
+
+## Tests
+- Bei neuen Services sollen immer Tests ergänzt bzw. die Testsuite vervollständigt werden.
+
+## Datenbankmigration
+- Nutzer bevorzugt explizite EF-Migrationen und möchte keine automatischen Datenbankmigrationen beim App-Start.
+
+- Für nutzerseitige Texte soll die Rollenbezeichnung „SuperAdmin“ als „Administrateur“ angezeigt werden.
+
+- **Business-Regel präzisiert:** IsUnlocked und IsPaid bleiben im Model; beim Schulleiter-Flow soll 'Enregistrer comme payé' beide Flags (IsUnlocked + IsPaid) in einem Schritt auf true setzen.
+
+- SuperAdmin soll Schulen nach Direktor filtern können (nicht Schüler nach Direktor).
+
+- ProduktOwner haben ähnlich wie SuperAdmins Verwaltungsrechte für ihre zugewiesenen Schulen, dürfen jedoch keine globalen App-Kontostände sehen und sollen Abrechnungen nur für ihre zugewiesenen Schulen erstellen können. **ProduktOwner sollen ihre zugewiesenen Schulen selbstständig verwalten und nur die Abo-Anteile dieser Schulen sehen. Globale App-Umsätze, App-Kontostände und Finanzdaten anderer Schulen dürfen ihnen nicht angezeigt werden.**
+
+- In der App darf nirgends mehr 'HALLOAPP' als sichtbarer Text erscheinen; stattdessen nur SKOULOU, SKOULOUAPP oder SKOULOUAPPABO verwenden.

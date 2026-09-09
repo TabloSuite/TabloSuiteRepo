@@ -1,0 +1,77 @@
+{
+  "levels": [
+    {
+      "code": "B1.1",
+      "themes": [
+        {
+          "title": "Loisirs et passions",
+          "summary": "Présenter ses centres d'intérêt en détail",
+          "content": "À ce niveau, tu exprimes tes préférences avec plus de nuances. Expressions à retenir :\nIch interessiere mich für… (je m'intéresse à…)\nMein Lieblingshobby ist… (mon loisir préféré est…)\nIch verbringe gerne Zeit mit… (j'aime passer du temps à…)\nDas macht mir Spaß (ça me plaît)\nIch bin Mitglied in einem Verein (je suis membre d'une association).",
+          "vocabulary": [
+            { "fr": "je m'intéresse à", "de": "Ich interessiere mich für" },
+            { "fr": "mon loisir préféré", "de": "mein Lieblingshobby" },
+            { "fr": "passer du temps", "de": "Zeit verbringen" },
+            { "fr": "ça me plaît", "de": "Das macht mir Spaß" },
+            { "fr": "l'association / le club", "de": "der Verein" },
+            { "fr": "être membre", "de": "Mitglied sein" },
+            { "fr": "la compétition", "de": "der Wettbewerb" },
+            { "fr": "s'entraîner", "de": "trainieren" },
+            { "fr": "collectionner", "de": "sammeln" },
+            { "fr": "créatif / créative", "de": "kreativ" }
+          ]
+        },
+        {
+          "title": "Exprimer une opinion",
+          "summary": "Donner son avis et le justifier",
+          "content": "Un locuteur B1 sait défendre un point de vue. Expressions à retenir :\nMeiner Meinung nach… (à mon avis…)\nIch finde, dass… (je trouve que…)\nEinerseits…, andererseits… (d'une part…, d'autre part…)\nIch stimme zu / Ich stimme nicht zu (je suis d'accord / pas d'accord)\nDas hängt davon ab (ça dépend).",
+          "vocabulary": [
+            { "fr": "à mon avis", "de": "meiner Meinung nach" },
+            { "fr": "je trouve que", "de": "ich finde, dass" },
+            { "fr": "d'une part… d'autre part", "de": "einerseits… andererseits" },
+            { "fr": "je suis d'accord", "de": "ich stimme zu" },
+            { "fr": "je ne suis pas d'accord", "de": "ich stimme nicht zu" },
+            { "fr": "ça dépend", "de": "das hängt davon ab" },
+            { "fr": "l'argument", "de": "das Argument" },
+            { "fr": "convaincre", "de": "überzeugen" },
+            { "fr": "discuter", "de": "diskutieren" },
+            { "fr": "le point de vue", "de": "der Standpunkt" }
+          ]
+        },
+        {
+          "title": "Raconter un souvenir",
+          "summary": "Utiliser le passé pour raconter une expérience",
+          "content": "Apprends à raconter un événement passé de manière vivante. Expressions à retenir :\nAls ich… war (quand j'étais…)\nEs war ein unvergessliches Erlebnis (c'était une expérience inoubliable)\nZuerst…, dann…, schließlich… (d'abord…, ensuite…, finalement…)\nIch erinnere mich an… (je me souviens de…)\nDas hat mich sehr beeindruckt (ça m'a beaucoup impressionné).",
+          "vocabulary": [
+            { "fr": "je me souviens de", "de": "ich erinnere mich an" },
+            { "fr": "inoubliable", "de": "unvergesslich" },
+            { "fr": "l'expérience", "de": "das Erlebnis" },
+            { "fr": "d'abord", "de": "zuerst" },
+            { "fr": "ensuite", "de": "dann" },
+            { "fr": "finalement", "de": "schließlich" },
+            { "fr": "impressionner", "de": "beeindrucken" },
+            { "fr": "le souvenir", "de": "die Erinnerung" },
+            { "fr": "se passer / arriver", "de": "passieren" },
+            { "fr": "raconter", "de": "erzählen" }
+          ]
+        },
+        {
+          "title": "Voyager et découvrir",
+          "summary": "Parler de projets de voyage et de découvertes",
+          "content": "Vocabulaire pour préparer et raconter un voyage. Mots à retenir :\ndie Reise (le voyage)\ndas Ziel (la destination)\nbuchen (réserver)\ndie Unterkunft (l'hébergement)\ndie Sehenswürdigkeit (le site touristique)\nentdecken (découvrir)\nsich verlaufen (se perdre)\ndie Kultur (la culture)\nunterwegs sein (être en route)\nzurückkommen (revenir).",
+          "vocabulary": [
+            { "fr": "le voyage", "de": "die Reise" },
+            { "fr": "la destination", "de": "das Ziel" },
+            { "fr": "réserver", "de": "buchen" },
+            { "fr": "l'hébergement", "de": "die Unterkunft" },
+            { "fr": "le site touristique", "de": "die Sehenswürdigkeit" },
+            { "fr": "découvrir", "de": "entdecken" },
+            { "fr": "se perdre", "de": "sich verlaufen" },
+            { "fr": "la culture", "de": "die Kultur" },
+            { "fr": "être en route", "de": "unterwegs sein" },
+            { "fr": "revenir", "de": "zurückkommen" }
+          ]
+        }
+      ]
+    }
+  ]
+}

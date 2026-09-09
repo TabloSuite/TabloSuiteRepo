@@ -1,0 +1,77 @@
+{
+  "levels": [
+    {
+      "code": "B2.1",
+      "themes": [
+        {
+          "title": "Les médias au quotidien",
+          "summary": "Discuter des avantages et des inconvénients des médias",
+          "content": "Vocabulaire pour analyser l'usage des médias. Mots à retenir :\ndie Medien (les médias)\ndie Berichterstattung (le reportage/la couverture médiatique)\nglaubwürdig (crédible)\ndie Quelle (la source)\nsoziale Netzwerke (les réseaux sociaux)\ndie Meinungsbildung (la formation de l'opinion)\nmanipulieren (manipuler)\nder Einfluss (l'influence)\nrecherchieren (faire des recherches)\ndie Werbung (la publicité).",
+          "vocabulary": [
+            { "fr": "les médias", "de": "die Medien" },
+            { "fr": "le reportage", "de": "die Berichterstattung" },
+            { "fr": "crédible", "de": "glaubwürdig" },
+            { "fr": "la source", "de": "die Quelle" },
+            { "fr": "les réseaux sociaux", "de": "soziale Netzwerke" },
+            { "fr": "la formation de l'opinion", "de": "die Meinungsbildung" },
+            { "fr": "manipuler", "de": "manipulieren" },
+            { "fr": "l'influence", "de": "der Einfluss" },
+            { "fr": "faire des recherches", "de": "recherchieren" },
+            { "fr": "la publicité", "de": "die Werbung" }
+          ]
+        },
+        {
+          "title": "Débattre et argumenter",
+          "summary": "Structurer une discussion complexe",
+          "content": "Apprends à structurer un débat de niveau intermédiaire. Expressions à retenir :\nZunächst möchte ich betonen, dass… (tout d'abord, je voudrais souligner que…)\nIm Gegensatz dazu… (contrairement à cela…)\nDaraus folgt, dass… (il en résulte que…)\nAbschließend lässt sich sagen, dass… (pour conclure, on peut dire que…)\nIch widerspreche dieser Aussage (je conteste cette affirmation).",
+          "vocabulary": [
+            { "fr": "souligner", "de": "betonen" },
+            { "fr": "contrairement à", "de": "im Gegensatz zu" },
+            { "fr": "il en résulte que", "de": "daraus folgt, dass" },
+            { "fr": "pour conclure", "de": "abschließend" },
+            { "fr": "contester / contredire", "de": "widersprechen" },
+            { "fr": "l'affirmation", "de": "die Aussage" },
+            { "fr": "la contradiction", "de": "der Widerspruch" },
+            { "fr": "pertinent", "de": "relevant" },
+            { "fr": "nuancer", "de": "differenzieren" },
+            { "fr": "le compromis", "de": "der Kompromiss" }
+          ]
+        },
+        {
+          "title": "L'environnement et le climat",
+          "summary": "Parler des enjeux environnementaux",
+          "content": "Vocabulaire pour aborder les questions écologiques. Mots à retenir :\nder Klimawandel (le changement climatique)\nnachhaltig (durable)\ndie Umweltverschmutzung (la pollution)\nerneuerbare Energien (les énergies renouvelables)\nder CO2-Ausstoß (les émissions de CO2)\nrecyceln (recycler)\nder Ressourcenverbrauch (la consommation de ressources)\ndie Auswirkung (l'impact)\nder Artenschutz (la protection des espèces)\nverzichten auf (renoncer à).",
+          "vocabulary": [
+            { "fr": "le changement climatique", "de": "der Klimawandel" },
+            { "fr": "durable", "de": "nachhaltig" },
+            { "fr": "la pollution", "de": "die Umweltverschmutzung" },
+            { "fr": "les énergies renouvelables", "de": "erneuerbare Energien" },
+            { "fr": "les émissions de CO2", "de": "der CO2-Ausstoß" },
+            { "fr": "recycler", "de": "recyceln" },
+            { "fr": "la consommation de ressources", "de": "der Ressourcenverbrauch" },
+            { "fr": "l'impact", "de": "die Auswirkung" },
+            { "fr": "la protection des espèces", "de": "der Artenschutz" },
+            { "fr": "renoncer à", "de": "verzichten auf" }
+          ]
+        },
+        {
+          "title": "La vie numérique",
+          "summary": "Parler des technologies et de leurs effets",
+          "content": "Vocabulaire pour discuter du numérique au quotidien. Mots à retenir :\ndie Digitalisierung (la digitalisation)\ndie künstliche Intelligenz (l'intelligence artificielle)\ndie Datensicherheit (la sécurité des données)\ndie Abhängigkeit (la dépendance)\nonline sein (être en ligne)\ndie App (l'application)\nprogrammieren (programmer)\nder Algorithmus (l'algorithme)\ndie Privatsphäre (la vie privée)\nvernetzt sein (être connecté).",
+          "vocabulary": [
+            { "fr": "la digitalisation", "de": "die Digitalisierung" },
+            { "fr": "l'intelligence artificielle", "de": "die künstliche Intelligenz" },
+            { "fr": "la sécurité des données", "de": "die Datensicherheit" },
+            { "fr": "la dépendance", "de": "die Abhängigkeit" },
+            { "fr": "être en ligne", "de": "online sein" },
+            { "fr": "l'application", "de": "die App" },
+            { "fr": "programmer", "de": "programmieren" },
+            { "fr": "l'algorithme", "de": "der Algorithmus" },
+            { "fr": "la vie privée", "de": "die Privatsphäre" },
+            { "fr": "être connecté", "de": "vernetzt sein" }
+          ]
+        }
+      ]
+    }
+  ]
+}

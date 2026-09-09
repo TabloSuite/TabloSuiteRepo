@@ -1,0 +1,745 @@
+{
+  "settings": {
+    "components": {
+      "code": true,
+      "binaries": false
+    },
+    "targetId": "net10.0",
+    "targetDisplayName": ".NETCoreApp,Version=v10.0"
+  },
+  "analysisStartTime": "2026-07-24T08:14:39.0952208Z",
+  "analysisEndTime": "2026-07-24T08:14:44.2437191Z",
+  "privacyModeHelpUrl": "https://go.microsoft.com/fwlink/?linkid=2270980",
+  "stats": {
+    "summary": {
+      "projects": 3,
+      "issues": 6,
+      "incidents": 22,
+      "effort": 22
+    },
+    "charts": {
+      "severity": {
+        "Mandatory": 7,
+        "Optional": 1,
+        "Potential": 14,
+        "Information": 0
+      },
+      "category": {
+        "NuGet": 9,
+        "Project": 3,
+        "Api": 10
+      }
+    }
+  },
+  "projects": [
+    {
+      "path": "HalloApp.Core\\HalloApp.Core.csproj",
+      "startingProject": true,
+      "issues": 2,
+      "storyPoints": 3,
+      "properties": {
+        "appName": "HalloApp.Core",
+        "projectKind": "ClassLibrary",
+        "frameworks": [
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 137,
+        "numberOfCodeFiles": 128,
+        "linesTotal": 8265,
+        "linesOfCode": 7431,
+        "totalApiScanned": 9814,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "c5322693-8685-483b-83d4-7a74276f220b",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+              "protected": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "snippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+            "protectedSnippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+            "label": "Microsoft.AspNetCore.Identity.EntityFrameworkCore 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "ed370f3c-09fe-4cac-bd5b-2c0ccca42b09",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "1b1e5b82-dbf8-43f4-99f9-5006810552f3",
+          "ruleId": "Project.0002",
+          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+              "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
+            },
+            "kind": "File",
+            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "properties": {
+              "CurrentTargetFramework": "net9.0",
+              "RecommendedTargetFramework": "net10.0"
+            }
+          }
+        }
+      ],
+      "features": []
+    },
+    {
+      "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+      "startingProject": true,
+      "issues": 3,
+      "storyPoints": 3,
+      "properties": {
+        "appName": "HalloApp.Tests",
+        "projectKind": "DotNetCoreApp",
+        "frameworks": [
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 21,
+        "numberOfCodeFiles": 19,
+        "linesTotal": 5177,
+        "linesOfCode": 3389,
+        "totalApiScanned": 4970,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "777c13e2-ab56-44a1-8162-c1712ba97f41",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore.InMemory 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore.InMemory",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "e667b5b1-5f25-41c4-b727-513f3baa0e33",
+          "ruleId": "NuGet.0005",
+          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+              "protected": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3"
+            },
+            "kind": "File",
+            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "snippet": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+            "protectedSnippet": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+            "label": "xunit 2.9.2",
+            "properties": {
+              "PackageId": "xunit",
+              "PackageVersion": "2.9.2",
+              "PackageNewVersion": null,
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "dba13893-68b9-48d3-896b-6807242ebbd4",
+          "ruleId": "Project.0002",
+          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+              "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
+            },
+            "kind": "File",
+            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "properties": {
+              "CurrentTargetFramework": "net9.0",
+              "RecommendedTargetFramework": "net10.0"
+            }
+          }
+        }
+      ],
+      "features": []
+    },
+    {
+      "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+      "startingProject": true,
+      "issues": 5,
+      "storyPoints": 16,
+      "properties": {
+        "appName": "HalloApp.WebApp",
+        "projectKind": "AspNetCore",
+        "frameworks": [
+          "net9.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 100,
+        "numberOfCodeFiles": 48,
+        "linesTotal": 69692,
+        "linesOfCode": 21101,
+        "totalApiScanned": 47032,
+        "minLinesOfCodeToChange": 10,
+        "maxLinesOfCodeToChange": 10
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "eb3a126c-3057-414c-9c5a-b0cfbe0dc664",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+              "protected": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+            "protectedSnippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
+            "label": "Microsoft.AspNetCore.Identity.EntityFrameworkCore 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "63c01d09-5ec9-498d-b3f2-38e0dd7418be",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "a5734192-24f5-4a9b-80d5-c90b16c644f9",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore.Design 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore.Design",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "273a17c6-450b-479b-8b87-f096c6a24a4d",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore.SqlServer 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore.SqlServer",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "9130e4a1-5050-43a6-9120-3c37fe70d550",
+          "ruleId": "NuGet.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10",
+              "protected": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10",
+            "protectedSnippet": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10",
+            "label": "Microsoft.EntityFrameworkCore.Tools 9.0.0",
+            "properties": {
+              "PackageId": "Microsoft.EntityFrameworkCore.Tools",
+              "PackageVersion": "9.0.0",
+              "PackageNewVersion": "10.0.10",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "664d96ac-7e99-42e3-a526-a61efd376b07",
+          "ruleId": "Project.0002",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+              "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
+            "properties": {
+              "CurrentTargetFramework": "net9.0",
+              "RecommendedTargetFramework": "net10.0"
+            }
+          }
+        },
+        {
+          "incidentId": "76aaf470-3475-469b-9431-c525e6e56df2",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: URI length limits removed ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var returnUrl = Uri.EscapeDataString(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));",
+              "protected": "T:System.Uri"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\obj\\Debug\\net9.0\\Microsoft.CodeAnalysis.Razor.Compiler\\Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator\\Components/Auth/RedirectToLogin_razor.g.cs",
+            "snippet": "var returnUrl = Uri.EscapeDataString(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));",
+            "protectedSnippet": "T:System.Uri",
+            "label": "T:System.Uri",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/networking/10.0/uri-length-limits-removed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 153,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "00be86d9-63da-47f8-97c6-c36b360a4339",
+          "ruleId": "Api.0002",
+          "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "timer = new Timer(OnTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));",
+              "protected": "M:System.TimeSpan.FromSeconds(System.Int64)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
+            "snippet": "timer = new Timer(OnTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));",
+            "protectedSnippet": "M:System.TimeSpan.FromSeconds(System.Int64)",
+            "label": "M:System.TimeSpan.FromSeconds(System.Int64)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/core-libraries/9.0/timespan-from-overloads.md",
+                "isCustom": false
+              }
+            ],
+            "line": 54,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "327af9b5-f2e1-4ea0-8988-23e52c27bad5",
+          "ruleId": "Api.0002",
+          "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "TimeSpan.FromSeconds(Math.Max(0, remainingSeconds))",
+              "protected": "M:System.TimeSpan.FromSeconds(System.Int64)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
+            "snippet": "TimeSpan.FromSeconds(Math.Max(0, remainingSeconds))",
+            "protectedSnippet": "M:System.TimeSpan.FromSeconds(System.Int64)",
+            "label": "M:System.TimeSpan.FromSeconds(System.Int64)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/core-libraries/9.0/timespan-from-overloads.md",
+                "isCustom": false
+              }
+            ],
+            "line": 34,
+            "column": 36
+          }
+        },
+        {
+          "incidentId": "5f07e8be-118e-436d-a882-f099ddf9847a",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: Exception diagnostics are suppressed when IExceptionHandler.TryHandleAsync returns true ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "app.UseExceptionHandler(\u0022/Error\u0022, createScopeForErrors: true);",
+              "protected": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "app.UseExceptionHandler(\u0022/Error\u0022, createScopeForErrors: true);",
+            "protectedSnippet": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)",
+            "label": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/aspnet-core/10/exception-handler-diagnostics-suppressed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 124,
+            "column": 4
+          }
+        },
+        {
+          "incidentId": "eed88350-badc-49a8-a41a-0ea0304928e8",
+          "ruleId": "Api.0001",
+          "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var reseedCourseCatalog = app.Configuration.GetValue\u003Cbool\u003E(\u0022Seeding:ReseedCourseCatalog\u0022);",
+              "protected": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "var reseedCourseCatalog = app.Configuration.GetValue\u003Cbool\u003E(\u0022Seeding:ReseedCourseCatalog\u0022);",
+            "protectedSnippet": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)",
+            "label": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/extensions/10.0/dynamically-accessed-members-configuration.md",
+                "isCustom": false
+              }
+            ],
+            "line": 117,
+            "column": 4
+          }
+        },
+        {
+          "incidentId": "6b2ac2f2-f092-46cc-8a2f-2464c4c0e019",
+          "ruleId": "Api.0001",
+          "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "builder.Services.Configure\u003CAzureSqlOptions\u003E(builder.Configuration.GetSection(AzureSqlOptions.SectionName));",
+              "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "builder.Services.Configure\u003CAzureSqlOptions\u003E(builder.Configuration.GetSection(AzureSqlOptions.SectionName));",
+            "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/extensions/10.0/dynamically-accessed-members-configuration.md",
+                "isCustom": false
+              }
+            ],
+            "line": 88,
+            "column": 0
+          }
+        },
+        {
+          "incidentId": "ec0e0ed6-5045-479f-8f68-d43d4e794027",
+          "ruleId": "Api.0001",
+          "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "builder.Services.Configure\u003CAzureBlobStorageOptions\u003E(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));",
+              "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "builder.Services.Configure\u003CAzureBlobStorageOptions\u003E(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));",
+            "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/extensions/10.0/dynamically-accessed-members-configuration.md",
+                "isCustom": false
+              }
+            ],
+            "line": 87,
+            "column": 0
+          }
+        },
+        {
+          "incidentId": "5caecdea-4930-4023-bba7-6c8506cd3b8d",
+          "ruleId": "Api.0001",
+          "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "builder.Services.Configure\u003CMediaStorageOptions\u003E(builder.Configuration.GetSection(MediaStorageOptions.SectionName));",
+              "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "builder.Services.Configure\u003CMediaStorageOptions\u003E(builder.Configuration.GetSection(MediaStorageOptions.SectionName));",
+            "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
+            "links": [
+              {
+                "title": "API-Dokumentation",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/extensions/10.0/dynamically-accessed-members-configuration.md",
+                "isCustom": false
+              }
+            ],
+            "line": 86,
+            "column": 0
+          }
+        },
+        {
+          "incidentId": "bb0716d1-e72c-47de-9080-6f8e13fae3b8",
+          "ruleId": "Api.0002",
+          "description": "API is available in package Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6. Add package reference to Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
+              "protected": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
+            "protectedSnippet": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions",
+            "label": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions",
+            "properties": {
+              "PackageId": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+              "PackageNewVersion": "8.0.6"
+            },
+            "line": 29,
+            "column": 0
+          }
+        },
+        {
+          "incidentId": "ab72e8e5-4672-4944-97ea-e465925c0868",
+          "ruleId": "Api.0002",
+          "description": "API is available in package Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6. Add package reference to Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6",
+          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
+              "protected": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)"
+            },
+            "kind": "File",
+            "path": "HalloApp.WebApp\\Program.cs",
+            "snippet": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
+            "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)",
+            "label": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)",
+            "properties": {
+              "PackageId": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+              "PackageNewVersion": "8.0.6"
+            },
+            "line": 29,
+            "column": 0
+          }
+        }
+      ],
+      "features": []
+    }
+  ],
+  "rules": {
+    "NuGet.0002": {
+      "id": "NuGet.0002",
+      "isFeature": false,
+      "description": "F\u00FCr das ausgew\u00E4hlte Zielframework wird ein NuGet-Paketupgrade empfohlen.\n\nStandardm\u00E4\u00DFige .NET-Pakete werden empfohlen, um Versionen zu verwenden, die der Version von .NET entsprechen, auf die das Projekt abzielt.\n\nAuch einige andere Pakete funktionieren f\u00FCr die ausgew\u00E4hlten Zielframeworks bekanntlich besser.",
+      "label": "Ein NuGet-Paketupgrade wird empfohlen",
+      "severity": "Potential",
+      "effort": 1,
+      "links": [
+        {
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262530",
+          "isCustom": false
+        }
+      ]
+    },
+    "Project.0002": {
+      "id": "Project.0002",
+      "isFeature": false,
+      "description": "Die Zielframeworks des Projekts m\u00FCssen in das neue Zielframework ge\u00E4ndert werden, das Sie f\u00FCr dieses Upgrade ausgew\u00E4hlt haben.\n\nW\u00E4hrend des Upgrades wird das Zielframework an die entsprechende Plattform angepasst, falls zutreffend. In einigen F\u00E4llen, f\u00FChrte das Upgrade des Projekts zu mehreren Zielframeworks, wenn es Features verwendete, die jetzt \u00FCber eigene Plattformen in modernen .NET-Frameworks (Windows, iOS, Android usw.) verf\u00FCgen.",
+      "label": "Die Zielframeworks des Projekts m\u00FCssen ge\u00E4ndert werden",
+      "severity": "Mandatory",
+      "effort": 1,
+      "links": [
+        {
+          "title": "\u00DCbersicht \u00FCber das Portieren von .NET\u00A0Framework zu .NET",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2265227",
+          "isCustom": false
+        },
+        {
+          "title": ".NET-Projekt-SDKs",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2265226",
+          "isCustom": false
+        }
+      ]
+    },
+    "NuGet.0005": {
+      "id": "NuGet.0005",
+      "isFeature": false,
+      "description": "Das NuGet-Paket ist veraltet.\n\nWechseln Sie zur Dokumentation, und wenn ein Leitfaden zum Ersetzen der von diesem Paket bereitgestellten Funktionen vorhanden ist.",
+      "label": "Das NuGet-Paket ist veraltet",
+      "severity": "Optional",
+      "effort": 1,
+      "links": [
+        {
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262531",
+          "isCustom": false
+        }
+      ]
+    },
+    "Api.0003": {
+      "id": "Api.0003",
+      "isFeature": false,
+      "description": "Die API beinhaltet eine Verhaltens\u00E4nderung in der ausgew\u00E4hlten .NET-Version: Code und Bin\u00E4rdateien verhalten sich zur Laufzeit m\u00F6glicherweise anders, ohne dass eine Neukompilierung erforderlich ist, doch das neue Verhalten ist m\u00F6glicherweise unerw\u00FCnscht und erfordert Updates.",
+      "label": "Verhaltens\u00E4nderung bei ausgew\u00E4hlter .NET-Version",
+      "severity": "Potential",
+      "effort": 1
+    },
+    "Api.0002": {
+      "id": "Api.0002",
+      "isFeature": false,
+      "description": "Die API ist mit der ausgew\u00E4hlten .NET-Version inkompatibel: erfordert Code\u00E4nderungen, um erfolgreich kompiliert zu werden, wenn eine neue Version als Zielplattform gew\u00E4hlt wird, z.\u00A0B. das Entfernen veralteter APIs oder das \u00C4ndern von Methodensignaturen.",
+      "label": "Die Quelle ist mit der ausgew\u00E4hlten .NET-Version inkompatibel.",
+      "severity": "Potential",
+      "effort": 1,
+      "links": [
+        {
+          "title": "Breaking Changes in .NET",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262679",
+          "isCustom": false
+        }
+      ]
+    },
+    "Api.0001": {
+      "id": "Api.0001",
+      "isFeature": false,
+      "description": "Die API ist mit der ausgew\u00E4hlten .NET-Version bin\u00E4r inkompatibel: Dies wirkt sich auf vorhandene Bin\u00E4rdateien aus, die h\u00E4ufig neu kompiliert werden m\u00FCssen, weil die API so ver\u00E4ndert wurde, dass \u00E4ltere Bin\u00E4rdateien nicht geladen oder ausgef\u00FChrt werden k\u00F6nnen.",
+      "label": "Bin\u00E4r inkompatibel mit ausgew\u00E4hlter .NET-Version",
+      "severity": "Mandatory",
+      "effort": 1,
+      "links": [
+        {
+          "title": "Breaking Changes in .NET",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262679",
+          "isCustom": false
+        }
+      ]
+    }
+  }
+}

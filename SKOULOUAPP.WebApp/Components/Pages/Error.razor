@@ -1,0 +1,25 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Erreur</PageTitle>
+
+<h1 class="text-danger">Erreur.</h1>
+<h2 class="text-danger">Une erreur s'est produite lors du traitement de votre demande.</h2>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>Identifiant de la demande :</strong> <code>@RequestId</code>
+    </p>
+}
+
+<h3>Mode développement</h3>
+<p>
+    L'environnement <strong>Développement</strong> affiche des informations plus détaillées sur l'erreur.
+</p>
+<p>
+    <strong>L'environnement de développement ne doit pas être activé pour les applications déployées.</strong>
+    Il peut exposer aux utilisateurs des informations sensibles issues des exceptions.
+    Pour le débogage local, activez l'environnement <strong>Développement</strong> en définissant la variable d'environnement <strong>ASPNETCORE_ENVIRONMENT</strong> sur <strong>Development</strong>,
+    puis redémarrez l'application.
+</p>

@@ -1,0 +1,108 @@
+@page "/teacher-exams/{ExamId:guid}/pdf"
+@attribute [Authorize(Policy = "RequireTeacher")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.Admin
+@using Microsoft.JSInterop
+
+<PageTitle>@(exam?.Title ?? "Examen PDF")</PageTitle>
+
+<div class="pdf-export-root">
+    @if (exam is null)
+    {
+        <section class="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+            <div class="flex items-center gap-3 text-slate-600">
+                <ProgressRing Size="1.5rem" Label="Chargement de l'examen" />
+                <p>Chargement de l'examen...</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="mx-auto max-w-4xl space-y-6">
+            <div class="no-print flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-4 text-white">
+                <div>
+                    <p class="font-bold">@exam.Title</p>
+                    <p class="text-sm text-slate-300">Export @PdfModeLabel. La boîte de dialogue d'impression permet d'enregistrer cet examen au format PDF.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a class="rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/20" href="/teacher-exams">← Retour</a>
+                    <a class="rounded-full px-4 py-2.5 text-sm font-semibold ring-1 transition @(IncludeSolutions ? "bg-cyan-400 text-slate-950 ring-cyan-200 shadow-lg shadow-cyan-500/25" : "bg-slate-800 text-white ring-white/20 hover:bg-slate-700")" href="teacher-exams/@ExamId/pdf?solutions=true">Avec solutions</a>
+                    <a class="rounded-full px-4 py-2.5 text-sm font-semibold ring-1 transition @(!IncludeSolutions ? "bg-cyan-400 text-slate-950 ring-cyan-200 shadow-lg shadow-cyan-500/25" : "bg-slate-800 text-white ring-white/20 hover:bg-slate-700")" href="teacher-exams/@ExamId/pdf?solutions=false">Sans solutions</a>
+                    <button type="button" class="rounded-full bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950" @onclick="@(_ => PrintAsync())">Exporter en PDF</button>
+                </div>
+            </div>
+            <article class="pdf-document bg-white p-10 text-slate-900 shadow-sm ring-1 ring-slate-200">
+                <header class="border-b-2 border-cyan-600 pb-5">
+                    <p class="text-sm font-semibold uppercase tracking-[.18em] text-cyan-700">@exam.NiveauCode · @exam.DurationInMinutes min · @exam.TotalPoints pts</p>
+                    <h1 class="mt-2 text-3xl font-black">@exam.Title</h1>
+                    @if (!string.IsNullOrWhiteSpace(exam.Description))
+                    {
+                        <div class="mt-3 rich-content text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(exam.Description))</div>
+                    }
+                    <div class="mt-4 flex flex-wrap gap-6 text-sm text-slate-500">
+                        <span>Nom : ______________________________</span>
+                        <span>Date : ______________</span>
+                        <span>Note : ______ / @exam.TotalPoints</span>
+                    </div>
+                </header>
+
+                @foreach (var block in exam.Exercises)
+                {
+                    <section class="mt-8">
+                        <h2 class="text-xl font-bold text-slate-900">Exercice @block.Number@(string.IsNullOrWhiteSpace(block.Title) ? "" : $" — {block.Title}")</h2>
+                        @if (!string.IsNullOrWhiteSpace(block.Consigne))
+                        {
+                            <div class="mt-1 rich-content italic text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(block.Consigne))</div>
+                        }
+
+                        @foreach (var question in block.Questions)
+                        {
+                            <div class="mt-4 break-inside-avoid">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="rich-content font-medium text-slate-900">@question.Number. @((MarkupString)HtmlSanitizer.Sanitize(question.Prompt))</div>
+                                    <span class="whitespace-nowrap text-sm text-slate-500">(@question.Points pt@(question.Points > 1 ? "s" : ""))</span>
+                                </div>
+
+                                @if (question.QuestionType is "Choice" or "SingleChoice" or "MultipleChoice" or "AudioChoice" or "AudioSingleChoice" or "AudioMultipleChoice" && question.Options.Count > 0)
+                                {
+                                    <ul class="mt-2 space-y-1 pl-2">
+                                        @foreach (var option in question.Options)
+                                        {
+                                            <li class="flex items-center gap-2 @(IncludeSolutions && question.CorrectOptions.Contains(option) ? "font-bold text-emerald-700" : "text-slate-700")"><span class="inline-block h-4 w-4 rounded-sm border border-slate-400"></span>@option @(IncludeSolutions && question.CorrectOptions.Contains(option) ? "✓" : string.Empty)</li>
+                                        }
+                                    </ul>
+                                }
+                                else if (question.QuestionType == "GapFill")
+                                {
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @for (var i = 0; i < Math.Max(question.GapCount, 1); i++)
+                                        {
+                                            <span class="inline-block min-w-[8rem] border-b border-slate-400">&nbsp;</span>
+                                        }
+                                    </div>
+                                    @if (IncludeSolutions && question.GapSolutions.Count > 0)
+                                    {
+                                        <p class="mt-2 text-xs text-emerald-700">Solutions : @string.Join(" · ", question.GapSolutions)</p>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="mt-2 space-y-4">
+                                        <div class="border-b border-slate-300">&nbsp;</div>
+                                        <div class="border-b border-slate-300">&nbsp;</div>
+                                        <div class="border-b border-slate-300">&nbsp;</div>
+                                    </div>
+                                    @if (IncludeSolutions && !string.IsNullOrWhiteSpace(question.AcceptedAnswers))
+                                    {
+                                        <p class="mt-2 text-xs text-emerald-700">Solution(s) : @question.AcceptedAnswers</p>
+                                    }
+                                }
+                            </div>
+                        }
+                    </section>
+                }
+            </article>
+        </section>
+    }
+</div>

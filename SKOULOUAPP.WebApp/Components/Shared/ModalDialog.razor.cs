@@ -1,0 +1,43 @@
+using Microsoft.AspNetCore.Components;
+
+namespace HalloApp.WebApp.Components.Shared;
+
+public partial class ModalDialog
+{
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Eyebrow { get; set; }
+
+    [Parameter]
+    public string MaxWidthClass { get; set; } = "max-w-3xl";
+
+    [Parameter]
+    public bool CloseOnBackdrop { get; set; } = true;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private async Task CloseAsync()
+    {
+        if (OpenChanged.HasDelegate)
+        {
+            await OpenChanged.InvokeAsync(false);
+        }
+    }
+
+    private async Task OnBackdropClickAsync()
+    {
+        if (CloseOnBackdrop)
+        {
+            await CloseAsync();
+        }
+    }
+}

@@ -1,0 +1,55 @@
+@page "/contact"
+@attribute [AllowAnonymous]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>Contact</PageTitle>
+
+<section class="mx-auto mt-16 w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
+    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Contact</p>
+    <h1 class="mt-3 text-3xl font-black text-slate-900">Écris-nous</h1>
+    <p class="mt-4 text-sm leading-7 text-slate-600">Une question, une remarque ou besoin d'aide ? Remplis le formulaire et nous te répondrons par e-mail.</p>
+
+    <div class="mt-5 flex items-start gap-3 rounded-2xl bg-cyan-50 px-4 py-3 text-sm text-cyan-900 ring-1 ring-cyan-100">
+        <span class="bi bi-info-circle mt-0.5" aria-hidden="true"></span>
+        <p class="leading-6">
+            <span class="font-semibold">Bon à savoir :</span> ce message est envoyé à l'équipe de support de SKOULOUAPP,
+            et non à ton école. Pour toute question concernant les cours, les inscriptions ou les paiements,
+            adresse-toi directement à ton école.
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="mt-6 rounded-2xl @(succeeded ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800") px-4 py-3 text-sm">@message</div>
+    }
+
+    <EditForm Model="Model" OnValidSubmit="HandleSubmitAsync" FormName="contact-form" class="mt-8 grid gap-5 min-w-0">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+                <label class="hallo-label">Ton nom</label>
+                <InputText @bind-Value="Model.Name" class="hallo-input" />
+            </div>
+            <div>
+                <label class="hallo-label">Ton e-mail</label>
+                <InputText @bind-Value="Model.Email" type="email" class="hallo-input" />
+            </div>
+        </div>
+
+        <div>
+            <label class="hallo-label">Sujet</label>
+            <InputText @bind-Value="Model.Subject" class="hallo-input" />
+        </div>
+
+        <div>
+            <label class="hallo-label">Message</label>
+            <RichTextEditor @bind-Value="Model.Message"
+                            Placeholder="Écris ton message..."
+                            EnableImages="false" />
+        </div>
+
+        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50" IsBusy="@isSubmitting" BusyLabel="Envoi...">Envoyer le message</AsyncActionButton>
+    </EditForm>
+</section>

@@ -1,0 +1,206 @@
+﻿@page "/student"
+@attribute [Authorize(Policy = "RequireStudent")]
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+
+<PageTitle>Espace élève</PageTitle>
+
+@if (dashboard is null)
+{
+    <SkeletonLoader CardCount="3" />
+}
+else
+{
+    <section class="student-dashboard-page grid gap-6">
+            <div class="hallo-hero student-dashboard-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+            <div class="pointer-events-none absolute -top-20 -right-14 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-violet-300/20 blur-3xl"></div>
+            <div class="relative">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace élève</p>
+            <h1 class="mt-3 text-3xl font-black">Bienvenue, @dashboard.FullName</h1>
+            <p class="mt-4 max-w-3xl text-sm leading-7 text-indigo-50">Ton école : @dashboard.SchoolName · @KlassenLabel actuelle : @dashboard.CurrentLevelCode</p>
+            <div class="student-dashboard-meta mt-4 flex flex-wrap items-center gap-2">
+                <span class="streak-badge">
+                    <span aria-hidden="true">🔥</span>
+                    <span>@dashboard.StreakDays jour@(dashboard.StreakDays > 1 ? "s" : "") de suite</span>
+                </span>
+                <span class="xp-pill">
+                    <span aria-hidden="true">⭐</span>
+                    <span>@dashboard.XpPoints XP · Niveau @dashboard.XpLevel</span>
+                </span>
+            </div>
+            <div class="student-dashboard-score-strip mt-4 -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+                <div class="student-dashboard-score-card flex w-[85%] shrink-0 snap-center items-center gap-3 rounded-2xl bg-white/15 px-5 py-3 ring-1 ring-white/30 sm:w-auto sm:shrink">
+                    <span class="text-2xl" aria-hidden="true">📚</span>
+                    <div class="leading-tight">
+                        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-100">Score exercices &amp; examens</div>
+                        <div class="flex items-baseline gap-2">
+                            @if (dashboard.CombinedScorePercent.HasValue)
+                            {
+                                <span class="text-2xl font-black" style="color:@ScoreColorHelper.GetScoreColor(dashboard.CombinedScorePercent.Value)">@dashboard.CombinedScorePercent %</span>
+                                <span class="text-xs text-indigo-100">sur @dashboard.CombinedScoreCount épreuve@(dashboard.CombinedScoreCount > 1 ? "s" : "")</span>
+                            }
+                            else
+                            {
+                                <span class="text-2xl font-black text-white/80">–</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @if (!dashboard.IsHalloPlus)
+            {
+                <div class="student-dashboard-upgrade-hint mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 ring-1 ring-white/20">
+                    <span aria-hidden="true">✨</span>
+                    <span>Active ton abonnement de classe auprès de la direction pour accéder aux contenus de tes enseignants.</span>
+                </div>
+            }
+            <div class="student-dashboard-actions mt-6 flex flex-wrap items-center gap-3">
+                    <a class="student-dashboard-action student-dashboard-action-primary inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 no-underline transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" href="/student/lessons">Leçons & exercices</a>
+                    <a class="student-dashboard-action student-dashboard-action-secondary inline-flex items-center justify-center rounded-full border border-white/30 px-4 py-2 text-center text-sm font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-white/10" href="/student/cours">Cours & supports</a>
+                    @if (dashboard.CanTakeFinalExam)
+                    {
+                        <a class="student-dashboard-action student-dashboard-action-secondary ml-auto inline-flex items-center justify-center rounded-full border border-white/30 px-4 py-2 text-center text-sm font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-white/10" href="/student/exams">Épreuves finales</a>
+                    }
+                    else
+                    {
+                        <span class="student-dashboard-action student-dashboard-action-locked ml-auto inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-center text-sm font-semibold text-white/50" title="Termine toutes les leçons et exercices de ta classe pour débloquer l'épreuve finale.">
+                            <span aria-hidden="true">🔒</span>
+                            Épreuves finales
+                        </span>
+                    }
+            </div>
+            </div>
+        </div>
+
+        <div class="grid gap-4 xl:grid-cols-3">
+            <div class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div class="text-3xl font-black text-slate-900">@dashboard.CurrentLevelCode</div><div class="mt-1 text-sm text-slate-600">@KlassenLabel actuelle</div></div>
+            <div class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div class="text-3xl font-black text-slate-900">@dashboard.CompletedLessonsCount</div><div class="mt-1 text-sm text-slate-600">Leçons terminées</div></div>
+            <div class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div class="text-3xl font-black @(dashboard.IsBlocked ? "text-rose-700" : "text-emerald-700")">@(dashboard.IsBlocked ? "Bloqué" : "Validé")</div><div class="mt-1 text-sm text-slate-600">Statut du compte</div></div>
+        </div>
+
+        <div class="rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Mes classes</p>
+                <h2 class="mt-2 text-2xl font-bold text-slate-900">Ma classe actuelle et mon parcours</h2>
+                <p class="mt-2 text-sm text-slate-600">Retrouve les supports et résultats disponibles pour chacune de tes classes.</p>
+            </div>
+            @if (dashboard.ClassHistory.Count == 0)
+            {
+                <p class="mt-6 text-sm text-slate-500">Aucune classe n'est encore attribuée.</p>
+            }
+            else
+            {
+                <div class="mt-6 grid gap-4 xl:grid-cols-2">
+                    @foreach (var course in dashboard.ClassHistory)
+                    {
+                        <article class="rounded-3xl border border-slate-200 p-5">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-900">@course.CourseCode · @course.CourseTitle</h3>
+                                    <p class="mt-1 text-sm text-slate-500">@(course.IsCurrent ? "Classe actuelle" : "Classe précédente")</p>
+                                </div>
+                                <Badge Accent="@(course.IsCurrent ? "emerald" : "slate")">@(course.IsCurrent ? "Actuelle" : "Terminée")</Badge>
+                            </div>
+                            <div class="mt-4 rounded-2xl bg-slate-50 p-3 text-sm">
+                                <span class="font-semibold text-slate-700">Résultats :</span>
+                                @if (course.ScorePercent.HasValue)
+                                {
+                                    <span class="ml-1 font-bold" style="color:@ScoreColorHelper.GetScoreColor(course.ScorePercent.Value)">@course.ScorePercent %</span>
+                                    <span class="ml-1 text-slate-500">sur @course.ScoreCount épreuve@(course.ScoreCount > 1 ? "s" : "")</span>
+                                }
+                                else
+                                {
+                                    <span class="ml-1 text-slate-500">Aucun résultat disponible</span>
+                                }
+                            </div>
+                            <div class="mt-3 rounded-2xl bg-violet-50 p-3 text-sm">
+                                <span class="font-semibold text-violet-800">Note finale :</span>
+                                @if (!string.IsNullOrWhiteSpace(course.AbschlussNoteText))
+                                {
+                                    <span class="ml-1 font-bold text-violet-900">@course.AbschlussNoteText</span>
+                                }
+                                else
+                                {
+                                    <span class="ml-1 text-violet-700">Non disponible</span>
+                                }
+                            </div>
+                            <div class="mt-4">
+                                <p class="text-sm font-semibold text-slate-700">Supports de l'enseignant</p>
+                                @if (course.TeacherLessons.Count == 0)
+                                {
+                                    <p class="mt-2 text-sm text-slate-500">Aucun support publié pour cette classe.</p>
+                                }
+                                else
+                                {
+                                    <ul class="mt-2 grid gap-2">
+                                        @foreach (var lesson in course.TeacherLessons)
+                                        {
+                                            <li>
+                                                <a class="block rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800 no-underline transition hover:bg-indigo-100" href="/student/cours/@lesson.Id">
+                                                    @lesson.Title
+                                                    <span class="ml-2 font-normal text-indigo-600">@lesson.PageCount page(s)</span>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Progression</p>
+                <h2 class="mt-2 text-2xl font-bold text-slate-900">Tes classes et contenus disponibles</h2>
+            </div>
+
+            <div class="mt-6 grid gap-4 xl:grid-cols-2">
+                @foreach (var course in dashboard.CourseProgress)
+                {
+                    <article class="rounded-3xl border border-slate-200 p-5 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">@course.CourseCode · @course.CourseTitle</h3>
+                            </div>
+                            <Badge Accent="@(course.IsCurrentLevel ? "emerald" : "slate")">@(course.IsCurrentLevel ? "Actuelle" : "Disponible")</Badge>
+                        </div>
+                        <div class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@course.LessonCount</div><div class="text-slate-500">Leçons</div></div>
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@course.ExerciseCount</div><div class="text-slate-500">Exercices</div></div>
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@course.ExamCount</div><div class="text-slate-500">Épreuves</div></div>
+                        </div>
+                        @if (course.IsUnlocked)
+                        {
+                            <a class="hallo-btn-accent mt-4 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Ouvrir les leçons de la classe</a>
+                        }
+                        else
+                        {
+                            <span class="mt-4 inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500" title="Cette classe n'est pas encore débloquée">Classe verrouillée</span>
+                        }
+                    </article>
+                }
+            </div>
+        </div>
+
+        <div class="rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Prochaines étapes</p>
+            <div class="mt-5 grid gap-4 xl:grid-cols-3">
+                <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
+                    <h3 class="font-semibold text-slate-900">1. Étudier les leçons</h3>
+                    <p class="mt-2 text-sm text-slate-600">Travaille les leçons de ta classe actuelle dans l'ordre.</p>
+                </div>
+                <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
+                    <h3 class="font-semibold text-slate-900">2. Terminer les exercices</h3>
+                    <p class="mt-2 text-sm text-slate-600">Résous les exercices de chaque leçon pour progresser.</p>
+                </div>
+                <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
+                    <h3 class="font-semibold text-slate-900">3. Réussir l'épreuve</h3>
+                    <p class="mt-2 text-sm text-slate-600">Après plusieurs leçons, tu peux commencer l'épreuve finale.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+}

@@ -1,0 +1,77 @@
+{
+  "levels": [
+    {
+      "code": "C",
+      "themes": [
+        {
+          "title": "Présenter un sujet complexe",
+          "summary": "Structurer un exposé académique",
+          "content": "Vocabulaire pour bâtir une présentation convaincante. Mots à retenir :\ndie Gliederung (le plan)\ndie Einleitung (l'introduction)\nder Hauptteil (le développement)\nder Schluss (la conclusion)\nzusammenfassen (résumer)\ndie These (la thèse)\nbelegen (étayer/prouver)\nveranschaulichen (illustrer)\ndas Fazit (le bilan/la conclusion)\ndie Fragestellung (la problématique).",
+          "vocabulary": [
+            { "fr": "le plan", "de": "die Gliederung" },
+            { "fr": "l'introduction", "de": "die Einleitung" },
+            { "fr": "le développement", "de": "der Hauptteil" },
+            { "fr": "la conclusion", "de": "der Schluss" },
+            { "fr": "résumer", "de": "zusammenfassen" },
+            { "fr": "la thèse", "de": "die These" },
+            { "fr": "étayer / prouver", "de": "belegen" },
+            { "fr": "illustrer", "de": "veranschaulichen" },
+            { "fr": "le bilan", "de": "das Fazit" },
+            { "fr": "la problématique", "de": "die Fragestellung" }
+          ]
+        },
+        {
+          "title": "Nuances fines du style",
+          "summary": "Distinguer les registres formel, informel et académique",
+          "content": "Apprends à choisir le registre approprié selon le contexte. Mots à retenir :\ndie Ausdrucksweise (la manière de s'exprimer)\numgangssprachlich (familier/courant)\ngehoben (soutenu)\nsachlich (factuel/objectif)\nironisch (ironique)\nrhetorisch (rhétorique)\ndie Konnotation (la connotation)\nzweideutig (ambigu)\nprägnant (concis)\nfeinfühlig formulieren (formuler avec finesse).",
+          "vocabulary": [
+            { "fr": "la manière de s'exprimer", "de": "die Ausdrucksweise" },
+            { "fr": "familier / courant", "de": "umgangssprachlich" },
+            { "fr": "soutenu", "de": "gehoben" },
+            { "fr": "factuel / objectif", "de": "sachlich" },
+            { "fr": "ironique", "de": "ironisch" },
+            { "fr": "rhétorique", "de": "rhetorisch" },
+            { "fr": "la connotation", "de": "die Konnotation" },
+            { "fr": "ambigu", "de": "zweideutig" },
+            { "fr": "concis", "de": "prägnant" },
+            { "fr": "formuler avec finesse", "de": "feinfühlig formulieren" }
+          ]
+        },
+        {
+          "title": "Analyser un texte littéraire",
+          "summary": "Interpréter et commenter un texte avec précision",
+          "content": "Vocabulaire pour l'analyse littéraire et critique. Mots à retenir :\ndie Interpretation (l'interprétation)\nder Erzähler (le narrateur)\ndie Metapher (la métaphore)\nder Kontext (le contexte)\ndie Stilmittel (les procédés stylistiques)\nzwischen den Zeilen lesen (lire entre les lignes)\ndie Perspektive (la perspective)\nkritisch hinterfragen (remettre en question de manière critique)\nvieldeutig (polysémique/ambigu)\nder Symbolgehalt (la valeur symbolique).",
+          "vocabulary": [
+            { "fr": "l'interprétation", "de": "die Interpretation" },
+            { "fr": "le narrateur", "de": "der Erzähler" },
+            { "fr": "la métaphore", "de": "die Metapher" },
+            { "fr": "le contexte", "de": "der Kontext" },
+            { "fr": "les procédés stylistiques", "de": "die Stilmittel" },
+            { "fr": "lire entre les lignes", "de": "zwischen den Zeilen lesen" },
+            { "fr": "la perspective", "de": "die Perspektive" },
+            { "fr": "remettre en question de manière critique", "de": "kritisch hinterfragen" },
+            { "fr": "polysémique / ambigu", "de": "vieldeutig" },
+            { "fr": "la valeur symbolique", "de": "der Symbolgehalt" }
+          ]
+        },
+        {
+          "title": "Débats de société avancés",
+          "summary": "Discuter de sujets sociétaux avec précision et nuance",
+          "content": "Vocabulaire pour débattre de sujets complexes au niveau natif. Mots à retenir :\ndie Gesellschaft (la société)\ndie Gerechtigkeit (la justice)\ndie Chancengleichheit (l'égalité des chances)\nder gesellschaftliche Wandel (le changement sociétal)\ndifferenziert betrachten (considérer avec nuance)\ndie Kontroverse (la controverse)\nder Konsens (le consensus)\ndie Verhältnismäßigkeit (la proportionnalité)\ndas Dilemma (le dilemme)\neine fundierte Position vertreten (défendre une position solide).",
+          "vocabulary": [
+            { "fr": "la société", "de": "die Gesellschaft" },
+            { "fr": "la justice", "de": "die Gerechtigkeit" },
+            { "fr": "l'égalité des chances", "de": "die Chancengleichheit" },
+            { "fr": "le changement sociétal", "de": "der gesellschaftliche Wandel" },
+            { "fr": "considérer avec nuance", "de": "differenziert betrachten" },
+            { "fr": "la controverse", "de": "die Kontroverse" },
+            { "fr": "le consensus", "de": "der Konsens" },
+            { "fr": "la proportionnalité", "de": "die Verhältnismäßigkeit" },
+            { "fr": "le dilemme", "de": "das Dilemma" },
+            { "fr": "défendre une position solide", "de": "eine fundierte Position vertreten" }
+          ]
+        }
+      ]
+    }
+  ]
+}

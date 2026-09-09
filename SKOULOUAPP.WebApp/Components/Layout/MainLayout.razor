@@ -1,0 +1,73 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using HalloApp.WebApp.Components.Layout
+@inherits LayoutComponentBase
+
+<div class="app-shell @(isStudentChromeHidden ? "app-shell--student" : "")">
+    @if (!isStudentChromeHidden)
+    {
+        <aside class="app-sidebar">
+            <NavMenu />
+        </aside>
+    }
+
+    <main class="app-main @(isStudentChromeHidden ? "app-main--student" : "")">
+        @if (!isStudentChromeHidden)
+        {
+            <header class="app-header">
+                <div class="app-header-actions">
+                    <UserMenu @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+                </div>
+            </header>
+        }
+
+        <article class="app-content @(isStudentChromeHidden ? "app-content--student" : "")">
+            @Body
+        </article>
+
+        @if (!isStudentChromeHidden)
+        {
+            <footer class="app-footer" aria-label="Informations de contact SKOULOU">
+                <div class="app-footer-brand">
+                    <div class="app-footer-logo" aria-hidden="true">
+                        <img src="hallo-app-icon.svg" alt="" />
+                    </div>
+                    <div>
+                        <p class="app-footer-kicker">Apprendre. Progresser. Réussir.</p>
+                        <p class="app-footer-title">SKOULOU</p>
+                        <p class="app-footer-tagline">Apprendre. Progresser. Réussir.</p>
+                        <br />
+                        <p class="app-footer-tagline">Plateforme d'apprentissage pour les établissements scolaires.</p>
+                        <p class="app-footer-tagline">L'espace d'apprentissage qui rapproche les écoles, les enseignants et les élèves.</p>
+
+                    </div>
+                </div>
+
+                <div class="app-footer-contact">
+                    <p class="app-footer-heading">Contact</p>
+                    <a href="https://skoulouapp.com" target="_blank" rel="noopener noreferrer">skoulouapp.com</a>
+                    <a href="mailto:kontakt@skoulouapp.com">kontakt@skoulouapp.com</a>
+                    <span>Lomé, Togo</span>
+                    <span>Tel: <a href="tel:+4917661221600">+49 176 61221600</a></span>
+
+                </div>
+
+                <div class="app-footer-bottom">
+                    <span>© @DateTime.UtcNow.Year SKOULOU. Tous droits réservés.</span>
+                    <span>Conçu avec passion pour mieux apprendre.</span>
+                </div>
+            </footer>
+        }
+    </main>
+</div>
+
+<StudentBottomNav @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+
+<ScrollToTopButton />
+
+<TermsAcceptanceGuard @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+
+<div id="blazor-error-ui" data-nosnippet>
+    Une erreur inattendue s'est produite.
+    <a href="." class="reload">Recharger</a>
+    <span class="dismiss">🗙</span>
+</div>

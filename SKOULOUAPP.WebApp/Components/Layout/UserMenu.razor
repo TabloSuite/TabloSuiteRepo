@@ -1,0 +1,150 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JS
+
+<AuthorizeView Context="authState">
+    <Authorized>
+        <div class="user-menu @(isOpen ? "user-menu-open" : "")">
+            <button type="button" class="user-menu-avatar" @onclick="ToggleMenu" @onclick:stopPropagation="true" aria-haspopup="true" aria-expanded="@isOpen" title="@authState.User.Identity?.Name">
+                @Initials
+            </button>
+
+            @if (isOpen)
+            {
+                <div class="user-menu-backdrop" @onclick="CloseMenu"></div>
+                <div class="user-menu-dropdown" @onclick:stopPropagation="true">
+                    <div class="user-menu-header">
+                        <span class="user-menu-avatar-large">@Initials</span>
+                        <div class="user-menu-header-copy">
+                            <span class="user-menu-name">@authState.User.Identity?.Name</span>
+                            <span class="user-menu-email">@(authState.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value)</span>
+                        </div>
+                    </div>
+
+                    <nav class="user-menu-links">
+                        <a class="user-menu-link" href="profil" @onclick="CloseMenu">
+                            <span class="user-menu-link-icon" aria-hidden="true">👤</span>
+                            Mon profil
+                        </a>
+                        <a class="user-menu-link" href="profil#personal-data" @onclick="CloseMenu">
+                            <span class="user-menu-link-icon" aria-hidden="true">🪪</span>
+                            Mes données personnelles
+                        </a>
+                        <a class="user-menu-link" href="profil#change-password" @onclick="CloseMenu">
+                            <span class="user-menu-link-icon" aria-hidden="true">🔒</span>
+                            Changer le mot de passe
+                        </a>
+                    </nav>
+
+                    <div class="user-menu-theme">
+                        <span class="user-menu-theme-label">Th&#232;me de couleur</span>
+                        <div class="user-menu-theme-options">
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-navy @(currentTheme == "navy" ? "is-active" : "")" title="Marine" @onclick='() => SetThemeAsync("navy")'></button>
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-ocean @(currentTheme == "ocean" ? "is-active" : "")" title="Oc&#233;an" @onclick='() => SetThemeAsync("ocean")'></button>
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-coral @(currentTheme == "coral" ? "is-active" : "")" title="Corail" @onclick='() => SetThemeAsync("coral")'></button>
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-slate @(currentTheme == "slate" ? "is-active" : "")" title="Ardoise" @onclick='() => SetThemeAsync("slate")'></button>
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-sage @(currentTheme == "sage" ? "is-active" : "")" title="Sauge" @onclick='() => SetThemeAsync("sage")'></button>
+                            <button type="button" class="user-menu-theme-dot user-menu-theme-indigo @(currentTheme == "indigo" ? "is-active" : "")" title="Indigo/Cyan" @onclick='() => SetThemeAsync("indigo")'></button>
+                        </div>
+                    </div>
+
+                    <form action="auth/logout" method="post" data-submit-loading="true" data-loading-text="Déconnexion..." class="user-menu-logout-form">
+                        <AntiforgeryToken />
+                        <button type="submit" data-loading-text="Déconnexion..." class="user-menu-logout">
+                            <span class="user-menu-link-icon" aria-hidden="true">🚪</span>
+                            Se déconnecter
+                        </button>
+                    </form>
+                </div>
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="user-menu-guest">
+            <a class="app-link-pill" href="auth/login">Se connecter</a>
+            <a class="app-link-pill app-link-pill-accent" href="auth/register">S'inscrire</a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private bool isOpen;
+    private string currentTheme = "navy";
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private string Initials { get; set; } = "?";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+        {
+            var state = await AuthStateTask;
+            Initials = ComputeInitials(state.User.Identity?.Name);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var stored = await JS.InvokeAsync<string>("SKOULOUAPPTheme.get");
+                if (!string.IsNullOrWhiteSpace(stored))
+                {
+                    currentTheme = stored;
+                    // Re-apply to <html data-theme> in case this page load / enhanced navigation
+                    // did not re-run the App.razor pre-render script (e.g. interactive server island
+                    // re-mounted without a full document reload).
+                    await JS.InvokeVoidAsync("SKOULOUAPPTheme.set", stored);
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // JS interop not ready yet (e.g. static prerender) — keep default.
+            }
+        }
+    }
+
+    private async Task SetThemeAsync(string theme)
+    {
+        currentTheme = theme;
+        await JS.InvokeVoidAsync("SKOULOUAPPTheme.set", theme);
+    }
+
+    private static string ComputeInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
+
+        var parts = name.Split(new[] { ' ', '.', '@', '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length == 0)
+        {
+            return "?";
+        }
+
+        if (parts.Length == 1)
+        {
+            return parts[0].Length >= 2
+                ? parts[0][..2].ToUpperInvariant()
+                : parts[0][..1].ToUpperInvariant();
+        }
+
+        return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+    }
+
+    private void ToggleMenu()
+    {
+        isOpen = !isOpen;
+    }
+
+    private void CloseMenu()
+    {
+        isOpen = false;
+    }
+}

@@ -1,0 +1,103 @@
+.lesson-editor-metadata {
+    position: sticky;
+    top: 0.75rem;
+    z-index: 20;
+    width: min(100%, 210mm);
+    margin-inline: auto;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.lesson-editor-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    padding-top: 0.25rem;
+}
+
+.lesson-editor-pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* A4-Breite (210mm) für die Word-ähnliche Darstellung. */
+.lesson-editor-doc {
+    width: min(100%, 210mm);
+}
+
+.lesson-editor-pagecount {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+/* Der Editor-Container wird zur Bühne: dahinter liegen die A4-Blätter,
+   darüber schreibt Quill transparent. Die .halloapp-paged-Klasse sitzt auf
+   dem Quill-.ql-container. */
+.lesson-editor-doc ::deep .ql-container.halloapp-paged {
+    position: relative;
+    border: none;
+    background: transparent;
+    font-size: inherit;
+}
+
+/* Ebene mit den weißen A4-Blättern (absolut positioniert je Blatt). */
+.lesson-editor-doc ::deep .halloapp-page-sheets {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.lesson-editor-doc ::deep .halloapp-page-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 297mm;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 10px 34px rgba(15, 23, 42, 0.16);
+}
+
+.lesson-editor-doc ::deep .halloapp-page-sheet-footer {
+    position: absolute;
+    bottom: 6mm;
+    right: 16mm;
+    color: #94a3b8;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}
+
+/* Toolbar bleibt beim Scrollen oben sichtbar. */
+.lesson-editor-doc ::deep .ql-toolbar.ql-snow {
+    position: sticky;
+    top: 6.5rem;
+    z-index: 10;
+    background: #fff;
+    border-radius: 0.75rem 0.75rem 0 0;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* Der Editorbereich bekommt exakt die A4-Innenränder, damit der Text auf den
+   dahinterliegenden Blättern korrekt sitzt. */
+.lesson-editor-doc ::deep .ql-container.halloapp-paged .ql-editor {
+    position: relative;
+    z-index: 1;
+    padding: 16mm;
+    min-height: 297mm;
+    box-sizing: border-box;
+    background: transparent;
+}
+
+@media (max-width: 700px) {
+    .lesson-editor-shell {
+        padding: 0.5rem;
+    }
+
+    .lesson-editor-doc ::deep .ql-toolbar.ql-snow {
+        top: 4.5rem;
+    }
+}

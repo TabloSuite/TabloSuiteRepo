@@ -1,0 +1,77 @@
+{
+  "levels": [
+    {
+      "code": "A2.2",
+      "themes": [
+        {
+          "title": "Chercher un logement",
+          "summary": "Comprendre une annonce de logement",
+          "content": "Apprends le vocabulaire du logement. Mots à retenir : die Wohnung (l'appartement), das Zimmer (la pièce/chambre), die Küche (la cuisine), das Bad (la salle de bain), die Miete (le loyer), der Vermieter (le propriétaire), die Adresse (l'adresse), der Balkon (le balcon), möbliert (meublé), umziehen (déménager).",
+          "vocabulary": [
+            { "fr": "l'appartement", "de": "die Wohnung" },
+            { "fr": "la pièce / chambre", "de": "das Zimmer" },
+            { "fr": "la cuisine", "de": "die Küche" },
+            { "fr": "la salle de bain", "de": "das Bad" },
+            { "fr": "le loyer", "de": "die Miete" },
+            { "fr": "le propriétaire", "de": "der Vermieter" },
+            { "fr": "l'adresse", "de": "die Adresse" },
+            { "fr": "le balcon", "de": "der Balkon" },
+            { "fr": "meublé", "de": "möbliert" },
+            { "fr": "déménager", "de": "umziehen" }
+          ]
+        },
+        {
+          "title": "Le travail",
+          "summary": "Parler de son métier et de son travail",
+          "content": "Apprends le vocabulaire du travail. Mots à retenir : die Arbeit (le travail), der Beruf (le métier), der Chef (le chef), das Büro (le bureau), der Kollege (le collègue), das Gehalt (le salaire), die Firma (l'entreprise), der Termin (le rendez-vous), arbeiten (travailler), verdienen (gagner).",
+          "vocabulary": [
+            { "fr": "le travail", "de": "die Arbeit" },
+            { "fr": "le métier", "de": "der Beruf" },
+            { "fr": "le chef", "de": "der Chef" },
+            { "fr": "le bureau", "de": "das Büro" },
+            { "fr": "le collègue", "de": "der Kollege" },
+            { "fr": "le salaire", "de": "das Gehalt" },
+            { "fr": "l'entreprise", "de": "die Firma" },
+            { "fr": "le rendez-vous", "de": "der Termin" },
+            { "fr": "travailler", "de": "arbeiten" },
+            { "fr": "gagner (de l'argent)", "de": "verdienen" }
+          ]
+        },
+        {
+          "title": "Les loisirs et le week-end",
+          "summary": "Parler de ses activités préférées",
+          "content": "Apprends le vocabulaire des loisirs. Mots à retenir : das Hobby (le loisir), der Sport (le sport), die Musik (la musique), das Buch (le livre), der Film (le film), reisen (voyager), tanzen (danser), schwimmen (nager), das Wochenende (le week-end), die Freizeit (le temps libre).",
+          "vocabulary": [
+            { "fr": "le loisir", "de": "das Hobby" },
+            { "fr": "le sport", "de": "der Sport" },
+            { "fr": "la musique", "de": "die Musik" },
+            { "fr": "le livre", "de": "das Buch" },
+            { "fr": "le film", "de": "der Film" },
+            { "fr": "voyager", "de": "reisen" },
+            { "fr": "danser", "de": "tanzen" },
+            { "fr": "nager", "de": "schwimmen" },
+            { "fr": "le week-end", "de": "das Wochenende" },
+            { "fr": "le temps libre", "de": "die Freizeit" }
+          ]
+        },
+        {
+          "title": "Les vêtements",
+          "summary": "Nommer les vêtements du quotidien",
+          "content": "Apprends le vocabulaire des vêtements. Mots à retenir : die Hose (le pantalon), das Hemd (la chemise), der Schuh (la chaussure), die Jacke (la veste), der Rock (la jupe), das Kleid (la robe), der Pullover (le pull), die Mütze (le bonnet), tragen (porter), anziehen (mettre/enfiler).",
+          "vocabulary": [
+            { "fr": "le pantalon", "de": "die Hose" },
+            { "fr": "la chemise", "de": "das Hemd" },
+            { "fr": "la chaussure", "de": "der Schuh" },
+            { "fr": "la veste", "de": "die Jacke" },
+            { "fr": "la jupe", "de": "der Rock" },
+            { "fr": "la robe", "de": "das Kleid" },
+            { "fr": "le pull", "de": "der Pullover" },
+            { "fr": "le bonnet", "de": "die Mütze" },
+            { "fr": "porter", "de": "tragen" },
+            { "fr": "mettre / enfiler", "de": "anziehen" }
+          ]
+        }
+      ]
+    }
+  ]
+}

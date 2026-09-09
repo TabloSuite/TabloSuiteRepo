@@ -1,0 +1,107 @@
+{
+  "levels": [
+    {
+      "code": "A1.1",
+      "themes": [
+        {
+          "title": "Se saluer",
+          "summary": "Dire bonjour, au revoir et merci",
+          "content": "Dans cette leçon, tu apprends les premières formules de politesse en allemand. Mots à retenir :\nHallo (bonjour, familier)\nGuten Morgen (bonjour le matin)\nGuten Tag (bonjour la journée)\nGuten Abend (bonsoir)\nTschüss (salut/au revoir)\nAuf Wiedersehen (au revoir)\nDanke (merci)\nBitte (s'il te plaît / de rien)\nJa (oui)\nNein (non).",
+          "vocabulary": [
+            { "fr": "bonjour (familier)", "de": "Hallo" },
+            { "fr": "bonjour (le matin)", "de": "Guten Morgen" },
+            { "fr": "bonjour (la journée)", "de": "Guten Tag" },
+            { "fr": "bonsoir", "de": "Guten Abend" },
+            { "fr": "salut / au revoir (familier)", "de": "Tschüss" },
+            { "fr": "au revoir (poli)", "de": "Auf Wiedersehen" },
+            { "fr": "merci", "de": "Danke" },
+            { "fr": "s'il te plaît / de rien", "de": "Bitte" },
+            { "fr": "oui", "de": "Ja" },
+            { "fr": "non", "de": "Nein" },
+            { "fr": "bonne nuit", "de": "Gute Nacht" },
+            { "fr": "à bientôt", "de": "Bis bald" }
+          ]
+        },
+        {
+          "title": "Se présenter",
+          "summary": "Dire son nom et d'où l'on vient",
+          "content": "Ici tu apprends à te présenter. Phrases à retenir : Ich heiße… (je m'appelle…), Ich bin… (je suis…), Wie heißt du? (comment t'appelles-tu ?), Ich komme aus… (je viens de…), Ich wohne in… (j'habite à…). Mots utiles : der Name (le nom), das Land (le pays), die Stadt (la ville).",
+          "vocabulary": [
+            { "fr": "je m'appelle", "de": "Ich heiße" },
+            { "fr": "je suis", "de": "Ich bin" },
+            { "fr": "comment t'appelles-tu ?", "de": "Wie heißt du?" },
+            { "fr": "je viens de", "de": "Ich komme aus" },
+            { "fr": "j'habite à", "de": "Ich wohne in" },
+            { "fr": "le nom", "de": "der Name" },
+            { "fr": "le pays", "de": "das Land" },
+            { "fr": "la ville", "de": "die Stadt" },
+            { "fr": "enchanté", "de": "Freut mich" },
+            { "fr": "et toi ?", "de": "Und du?" }
+          ]
+        },
+        {
+          "title": "Les nombres 0 à 20",
+          "summary": "Compter de zéro à vingt",
+          "content": "Apprends à compter en allemand. Mots à retenir : null (0), eins (1), zwei (2), drei (3), vier (4), fünf (5), sechs (6), sieben (7), acht (8), neun (9), zehn (10), elf (11), zwölf (12), dreizehn (13), vierzehn (14), fünfzehn (15), sechzehn (16), siebzehn (17), achtzehn (18), neunzehn (19), zwanzig (20).",
+          "vocabulary": [
+            { "fr": "zéro", "de": "null" },
+            { "fr": "un", "de": "eins" },
+            { "fr": "deux", "de": "zwei" },
+            { "fr": "trois", "de": "drei" },
+            { "fr": "quatre", "de": "vier" },
+            { "fr": "cinq", "de": "fünf" },
+            { "fr": "six", "de": "sechs" },
+            { "fr": "sept", "de": "sieben" },
+            { "fr": "huit", "de": "acht" },
+            { "fr": "neuf", "de": "neun" },
+            { "fr": "dix", "de": "zehn" },
+            { "fr": "onze", "de": "elf" },
+            { "fr": "douze", "de": "zwölf" },
+            { "fr": "treize", "de": "dreizehn" },
+            { "fr": "quatorze", "de": "vierzehn" },
+            { "fr": "quinze", "de": "fünfzehn" },
+            { "fr": "seize", "de": "sechzehn" },
+            { "fr": "dix-sept", "de": "siebzehn" },
+            { "fr": "dix-huit", "de": "achtzehn" },
+            { "fr": "dix-neuf", "de": "neunzehn" },
+            { "fr": "vingt", "de": "zwanzig" }
+          ]
+        },
+        {
+          "title": "Les couleurs",
+          "summary": "Nommer les couleurs de base",
+          "content": "Apprends les couleurs. Mots à retenir : rot (rouge), blau (bleu), gelb (jaune), grün (vert), schwarz (noir), weiß (blanc), orange (orange), braun (marron), rosa (rose), grau (gris).",
+          "vocabulary": [
+            { "fr": "rouge", "de": "rot" },
+            { "fr": "bleu", "de": "blau" },
+            { "fr": "jaune", "de": "gelb" },
+            { "fr": "vert", "de": "grün" },
+            { "fr": "noir", "de": "schwarz" },
+            { "fr": "blanc", "de": "weiß" },
+            { "fr": "orange", "de": "orange" },
+            { "fr": "marron", "de": "braun" },
+            { "fr": "rose", "de": "rosa" },
+            { "fr": "gris", "de": "grau" }
+          ]
+        },
+        {
+          "title": "Les jours de la semaine",
+          "summary": "Nommer les sept jours",
+          "content": "Voici les jours de la semaine. Mots à retenir : Montag (lundi), Dienstag (mardi), Mittwoch (mercredi), Donnerstag (jeudi), Freitag (vendredi), Samstag (samedi), Sonntag (dimanche), die Woche (la semaine), heute (aujourd'hui), morgen (demain).",
+          "vocabulary": [
+            { "fr": "lundi", "de": "Montag" },
+            { "fr": "mardi", "de": "Dienstag" },
+            { "fr": "mercredi", "de": "Mittwoch" },
+            { "fr": "jeudi", "de": "Donnerstag" },
+            { "fr": "vendredi", "de": "Freitag" },
+            { "fr": "samedi", "de": "Samstag" },
+            { "fr": "dimanche", "de": "Sonntag" },
+            { "fr": "la semaine", "de": "die Woche" },
+            { "fr": "aujourd'hui", "de": "heute" },
+            { "fr": "demain", "de": "morgen" }
+          ]
+        }
+      ]
+    }
+  ]
+}

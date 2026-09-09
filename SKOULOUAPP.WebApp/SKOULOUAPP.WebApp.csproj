@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <Content Remove="web.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SKOULOUAPP.Core\SKOULOUAPP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HalloApp.WebApp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\scenario-instructions.md" />
+    <None Include="web.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Erlaubt dem Testprojekt den Zugriff auf interne Typen wie EmailTemplates. -->
+    <InternalsVisibleTo Include="SKOULOUAPP.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- .NET-10-Verhalten: NavigationManager.NavigateTo wirft in statischem SSR keine NavigationException mehr. -->
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>43aa6e7c-6ec6-4dc0-8010-6b3660d72e6a</UserSecretsId>
+  </PropertyGroup>
+</Project>

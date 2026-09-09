@@ -1,0 +1,221 @@
+@page "/teacher/lessons"
+@attribute [Authorize(Policy = "RequireTeacher")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.TeacherLessons
+@using HalloApp.WebApp.Components.Shared
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Cours &amp; supports</PageTitle>
+
+<section class="grid gap-6">
+    <div class="hallo-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
+        <h1 class="mt-3 text-3xl font-black">Cours &amp; supports de cours</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-7 text-indigo-50">@(canManageLessons
+            ? "Crée des supports de cours (scripts) page par page pour chaque niveau. Tous les élèves du niveau concerné pourront les consulter."
+            : "Vous voyez ici tous les supports publiés des enseignants de vos écoles en lecture seule.")</p>
+    </div>
+
+    @if (!isEditing)
+    {
+        @if (canManageLessons)
+        {
+            <div class="flex justify-end">
+                <button type="button"
+                        class="hallo-btn-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg transition"
+                        @onclick="StartCreate">
+                    + Nouveau cours
+                </button>
+            </div>
+        }
+
+        @if (lessons is null)
+        {
+            <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                <div class="flex items-center gap-3 text-slate-600">
+                    <ProgressRing Size="1.5rem" Label="Chargement des leçons" />
+                    <p class="text-sm">Chargement...</p>
+                </div>
+            </div>
+        }
+        else if (lessons.Count == 0)
+        {
+            <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                <p class="text-sm text-slate-600">Aucun cours créé pour l'instant.</p>
+            </div>
+        }
+        else
+        {
+            <div class="grid gap-4">
+                @foreach (var item in lessons)
+                {
+                    <article class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@item.CourseCode</span>
+                                    @if (item.IsPublished)
+                                    {
+                                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Publié</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Brouillon</span>
+                                    }
+                                    @if (item.IsSharedWithSchool)
+                                    {
+                                        <span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">Visible direction</span>
+                                    }
+                                    @if (!IsOwnLesson(item))
+                                    {
+                                        <span class="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">Partagé par @item.AuthorName</span>
+                                    }
+                                </div>
+                                <h2 class="mt-2 text-lg font-bold text-slate-900">@item.Title</h2>
+                                <p class="mt-1 text-sm text-slate-500">@item.Summary</p>
+                                <p class="mt-2 text-xs text-slate-400">@item.PageCount page(s)</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @if (IsOwnLesson(item) && canManageLessons)
+                                {
+                                    <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="() => StartEditAsync(item.Id)">Modifier</button>
+                                }
+                                else
+                                {
+                                    <a class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" href="teacher-lessons/@item.Id/view">Voir</a>
+                                }
+                                @if (item.IsPdfExportEnabled)
+                                {
+                                    <a class="rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="teacher-lessons/@item.Id/pdf?solutions=true" target="_blank">Exporter PDF</a>
+                                }
+                                @if (IsOwnLesson(item) && canManageLessons)
+                                {
+                                    <button type="button" class="rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-200" @onclick="() => TogglePublishAsync(item)">@(item.IsPublished ? "Dépublier" : "Publier")</button>
+                                    <button type="button" class="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => DeleteAsync(item.Id)">Supprimer</button>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    }
+    else if (form is not null)
+    {
+        <div class="lesson-editor-shell rounded-[2rem] bg-slate-100/80 p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+            <div class="lesson-editor-metadata grid gap-2 bg-white p-3 sm:grid-cols-2 sm:rounded-2xl">
+                <label class="block">
+                    <span class="text-sm font-semibold text-slate-700">Titre</span>
+                    <input type="text" class="hallo-input mt-1 text-sm" @bind="form.Title" />
+                </label>
+                <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.KlasseId" ValueChanged="SetLessonKlasseAsync" Options="KlasseOptions" />
+                <label class="block sm:col-span-2">
+                    <span class="text-sm font-semibold text-slate-700">Résumé</span>
+                    <input type="text" class="hallo-input mt-1 text-sm" @bind="form.Summary" />
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="text-sm font-semibold text-slate-700">Thème du cours (optionnel)</span>
+                    <input type="text" class="hallo-input mt-1 text-sm" @bind="form.CourseTheme" placeholder="Ex. : Se présenter" />
+                </label>
+                <div class="lesson-editor-options sm:col-span-2">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsPublished" />
+                        <span class="text-sm font-semibold text-slate-700">Publier pour les élèves</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsSharedWithSchool" />
+                        <span class="text-sm font-semibold text-slate-700">Visible par la direction</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsPdfExportEnabled" />
+                        <span class="text-sm font-semibold text-slate-700">Autoriser l'export PDF</span>
+                    </label>
+                </div>
+                <div class="sm:col-span-2 rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-black text-cyan-950">Vidéo de cours optionnelle</p>
+                            <p class="mt-1 text-xs leading-5 text-cyan-800">La vidéo est stockée uniquement via Azure Storage et ignorée dans l'export PDF. Formats recommandés : MP4/MOV. Durée maximale réelle : 1 heure.</p>
+                        </div>
+                        @if (form.VideoAssetId.HasValue)
+                        {
+                            <button type="button" class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-100 hover:bg-rose-50" @onclick="RemoveVideo">Retirer la vidéo</button>
+                        }
+                    </div>
+                    @if (form.VideoAssetId.HasValue)
+                    {
+                        <div class="mt-3 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-cyan-900 ring-1 ring-cyan-100">
+                            🎬 @form.VideoDisplayName
+                            @if (form.VideoDuration.HasValue)
+                            {
+                                <span class="text-cyan-600"> · @Math.Round(form.VideoDuration.Value.TotalMinutes) min</span>
+                            }
+                        </div>
+                    }
+                    <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+                        <label class="block">
+                            <span class="text-xs font-semibold text-slate-600">Fichier vidéo</span>
+                            <InputFile id="teacher-lesson-video-file" OnChange="OnVideoSelected" accept="video/mp4,video/quicktime,.mp4,.m4v,.mov" class="mt-1 block w-full rounded-xl border border-cyan-100 bg-white px-3 py-2 text-sm" />
+                        </label>
+                        <div class="block">
+                            <span class="text-xs font-semibold text-slate-600">Durée détectée</span>
+                            <div class="mt-1 rounded-xl border border-cyan-100 bg-white px-3 py-2 text-sm text-slate-700 sm:w-32">@VideoDurationLabel</div>
+                        </div>
+                        <button type="button" class="rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:opacity-50" disabled="@(selectedVideoFile is null || isVideoUploading)" @onclick="UploadVideoAsync">@(isVideoUploading ? "Téléversement..." : "Téléverser")</button>
+                    </div>
+                    @if (ShowVideoUploadProgress)
+                    {
+                        <div class="mt-4 rounded-2xl bg-white p-3 ring-1 ring-cyan-100">
+                            <div class="flex items-center justify-between gap-3 text-xs font-semibold text-cyan-900">
+                                <span>Téléversement en cours</span>
+                                <span>@VideoUploadProgressLabel</span>
+                            </div>
+                            <div class="mt-2 h-3 overflow-hidden rounded-full bg-cyan-100">
+                                <div class="h-full rounded-full bg-cyan-700 transition-all duration-300" style="@($"width:{VideoUploadPercent}%")"></div>
+                            </div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(videoUploadMessage))
+                    {
+                        <p class="mt-3 text-sm font-semibold text-emerald-700">@videoUploadMessage</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(videoUploadError))
+                    {
+                        <p class="mt-3 text-sm font-semibold text-rose-700">@videoUploadError</p>
+                    }
+                </div>
+            </div>
+
+            <div class="lesson-editor-pages mt-6">
+                <section class="lesson-editor-doc">
+                    <RichTextEditor @ref="lessonEditor"
+                                    @bind-Value="editorHtml"
+                                    EnableImages="true"
+                                    RequestImageLibrary="OpenImageLibrary"
+                                    ImageLibraryTargetRequested="SetImageLibraryTarget"
+                                    Paged="true"
+                                    OnPageCount="OnPageCountChanged"
+                                    DefaultFont="inter"
+                                    MinEditorHeightRem="28"
+                                    Placeholder="Rédige le contenu du cours..." />
+                </section>
+                <p class="lesson-editor-pagecount">@pageCount page(s)</p>
+            </div>
+
+<AzureBlobImageLibrary Open="imageLibraryOpen"
+                       OpenChanged="@(open => imageLibraryOpen = open)"
+                       ImageSelected="InsertLibraryImageAsync" />
+
+            @if (statusMessage is not null)
+            {
+                <p class="mt-4 text-sm font-semibold text-emerald-700">@statusMessage</p>
+            }
+
+            <div class="mt-6 flex flex-wrap gap-2">
+                <button type="button" class="hallo-btn-accent rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg transition disabled:opacity-50" @onclick="SaveAsync" disabled="@isSaving">Enregistrer</button>
+                <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="CancelEdit">Retour</button>
+            </div>
+        </div>
+    }
+</section>

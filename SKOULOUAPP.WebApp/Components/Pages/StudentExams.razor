@@ -1,0 +1,76 @@
+﻿@page "/student/exams"
+@attribute [Authorize(Policy = "RequireStudent")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.Student
+
+<PageTitle>Épreuves</PageTitle>
+
+@if (exams is null)
+{
+    <SkeletonLoader />
+}
+else
+{
+    <section class="student-exams-page grid gap-6">
+        <div class="rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 p-6 text-white shadow-2xl shadow-orange-200/60 sm:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-amber-100">Espace épreuves</p>
+            <h1 class="mt-3 text-3xl font-black">Mes épreuves</h1>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-amber-50">Lance une épreuve quand tu es prêt. Le chronomètre démarre dès le début – tes réponses sont évaluées automatiquement.</p>
+        </div>
+
+        @if (exams.Count == 0)
+        {
+            <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                <h2 class="text-lg font-black text-slate-900">Aucune épreuve disponible</h2>
+                <p class="mt-2 text-sm text-slate-600">Aucune épreuve n'est encore disponible pour ta classe actuelle.</p>
+            </div>
+        }
+        else
+        {
+            <div class="rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6">
+                <DataListPanel Items="exams"
+                               PageSize="10"
+                               SearchPlaceholder="Rechercher une épreuve..."
+                               EmptyText="Aucune épreuve correspondante."
+                               ResultLabelSingular="épreuve"
+                               ResultLabelPlural="épreuves"
+                               Filter="@((ExamListItem e, string term) => Contains(e.Title, term) || Contains(e.CourseCode, term) || Contains(e.Description, term))">
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        @foreach (var exam in context)
+                        {
+                    <article class="card-stack-enter flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-xl">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">@exam.CourseCode</p>
+                                <h2 class="mt-1 text-lg font-bold text-slate-900">@exam.Title</h2>
+                            </div>
+                            @if (exam.HasAttempt)
+                            {
+                                <Badge Accent="@(exam.IsPassed ? "emerald" : "rose")">
+                                    @(exam.IsPassed ? "Réussi" : "Échoué") · <span class="font-black" style="color:@ScoreColorHelper.GetScoreColor(exam.BestScorePercent)">@exam.BestScorePercent %</span>
+                                </Badge>
+                            }
+                        </div>
+                        <p class="mt-2 text-sm text-slate-600">@exam.Description</p>
+
+                        <div class="mt-4 grid grid-cols-3 gap-3 text-center text-sm">
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@exam.QuestionCount</div><div class="text-slate-500">Questions</div></div>
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@exam.DurationInMinutes'</div><div class="text-slate-500">Minutes</div></div>
+                            <div class="rounded-2xl bg-slate-50 p-3"><div class="font-bold text-slate-900">@exam.PassingScore %</div><div class="text-slate-500">Seuil</div></div>
+                        </div>
+
+                        <button type="button"
+                                class="mt-5 inline-flex w-fit self-start items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled="@(exam.QuestionCount == 0)"
+                                @onclick="() => StartExam(exam.ExamId)">
+                            @(exam.HasAttempt ? "Réessayer" : "Commencer l'épreuve")
+                        </button>
+                    </article>
+                        }
+                    </div>
+                </DataListPanel>
+            </div>
+        }
+    </section>
+}
