@@ -1,11 +1,20 @@
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IJSRuntime JS
+@inject AuthService AuthService
 
 <AuthorizeView Context="authState">
     <Authorized>
         <div class="user-menu @(isOpen ? "user-menu-open" : "")">
             <button type="button" class="user-menu-avatar" @onclick="ToggleMenu" @onclick:stopPropagation="true" aria-haspopup="true" aria-expanded="@isOpen" title="@authState.User.Identity?.Name">
-                @Initials
+                @if (!string.IsNullOrWhiteSpace(profileImageUrl))
+                {
+                    <img src="@profileImageUrl" alt="Photo de profil" class="user-menu-avatar-image" />
+                }
+                else
+                {
+                    @Initials
+                }
             </button>
 
             @if (isOpen)
@@ -13,7 +22,16 @@
                 <div class="user-menu-backdrop" @onclick="CloseMenu"></div>
                 <div class="user-menu-dropdown" @onclick:stopPropagation="true">
                     <div class="user-menu-header">
-                        <span class="user-menu-avatar-large">@Initials</span>
+                        <span class="user-menu-avatar-large">
+                            @if (!string.IsNullOrWhiteSpace(profileImageUrl))
+                            {
+                                <img src="@profileImageUrl" alt="Photo de profil" class="user-menu-avatar-large-image" />
+                            }
+                            else
+                            {
+                                @Initials
+                            }
+                        </span>
                         <div class="user-menu-header-copy">
                             <span class="user-menu-name">@authState.User.Identity?.Name</span>
                             <span class="user-menu-email">@(authState.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value)</span>
@@ -43,7 +61,6 @@
                             <button type="button" class="user-menu-theme-dot user-menu-theme-coral @(currentTheme == "coral" ? "is-active" : "")" title="Corail" @onclick='() => SetThemeAsync("coral")'></button>
                             <button type="button" class="user-menu-theme-dot user-menu-theme-slate @(currentTheme == "slate" ? "is-active" : "")" title="Ardoise" @onclick='() => SetThemeAsync("slate")'></button>
                             <button type="button" class="user-menu-theme-dot user-menu-theme-sage @(currentTheme == "sage" ? "is-active" : "")" title="Sauge" @onclick='() => SetThemeAsync("sage")'></button>
-                            <button type="button" class="user-menu-theme-dot user-menu-theme-indigo @(currentTheme == "indigo" ? "is-active" : "")" title="Indigo/Cyan" @onclick='() => SetThemeAsync("indigo")'></button>
                         </div>
                     </div>
 
@@ -69,11 +86,15 @@
 @code {
     private bool isOpen;
     private string currentTheme = "navy";
+    private bool themeSynced;
+    private int themeSyncAttempts;
+    private const int MaxThemeSyncAttempts = 12;
 
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
 
     private string Initials { get; set; } = "?";
+    private string? profileImageUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,29 +102,42 @@
         {
             var state = await AuthStateTask;
             Initials = ComputeInitials(state.User.Identity?.Name);
+
+            var userIdValue = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdValue, out var userId))
+            {
+                var profile = await AuthService.GetUserProfileAsync(userId);
+                profileImageUrl = profile?.ProfilBildUrl;
+            }
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (themeSynced)
         {
-            try
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("SKOULOUAPPTheme.sync");
+            var stored = await JS.InvokeAsync<string>("SKOULOUAPPTheme.get");
+            if (!string.IsNullOrWhiteSpace(stored))
             {
-                var stored = await JS.InvokeAsync<string>("SKOULOUAPPTheme.get");
-                if (!string.IsNullOrWhiteSpace(stored))
-                {
-                    currentTheme = stored;
-                    // Re-apply to <html data-theme> in case this page load / enhanced navigation
-                    // did not re-run the App.razor pre-render script (e.g. interactive server island
-                    // re-mounted without a full document reload).
-                    await JS.InvokeVoidAsync("SKOULOUAPPTheme.set", stored);
-                    StateHasChanged();
-                }
+                currentTheme = stored;
             }
-            catch
+
+            themeSynced = true;
+            StateHasChanged();
+        }
+        catch
+        {
+            if (themeSyncAttempts < MaxThemeSyncAttempts)
             {
-                // JS interop not ready yet (e.g. static prerender) — keep default.
+                themeSyncAttempts++;
+                await Task.Delay(60);
+                await InvokeAsync(StateHasChanged);
             }
         }
     }

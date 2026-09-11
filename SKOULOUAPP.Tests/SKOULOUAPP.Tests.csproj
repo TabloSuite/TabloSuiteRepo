@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-	<ProjectReference Include="..\HalloApp.Core\HalloApp.Core.csproj" />
-	<ProjectReference Include="..\HalloApp.WebApp\HalloApp.WebApp.csproj" />
+	<ProjectReference Include="..\SKOULOUAPP.Core\SKOULOUAPP.Core.csproj" />
+	<ProjectReference Include="..\SKOULOUAPP.WebApp\SKOULOUAPP.WebApp.csproj" />
   </ItemGroup>
 
 </Project>

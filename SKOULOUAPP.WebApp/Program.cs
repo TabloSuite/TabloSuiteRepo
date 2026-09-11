@@ -142,6 +142,10 @@ builder.Services.AddScoped<DatabaseActionGuard>();
 
 builder.Services.Configure<MediaStorageOptions>(builder.Configuration.GetSection(MediaStorageOptions.SectionName));
 builder.Services.Configure<AzureBlobStorageOptions>(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.PostConfigure<AzureBlobStorageOptions>(options => options.Enabled = false);
+}
 builder.Services.Configure<PostmarkOptions>(builder.Configuration.GetSection(PostmarkOptions.SectionName));
 
 builder.Services.AddHttpClient("Postmark", client =>

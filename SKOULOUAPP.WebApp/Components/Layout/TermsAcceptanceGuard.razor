@@ -3,11 +3,32 @@
 
 @if (showTermsModal)
 {
-    <ModalDialog Open="true" Title="Conditions d'utilisation" Eyebrow="Confirmation requise" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
+    <ModalDialog Open="true" Title="Conditions d'utilisation" Eyebrow="Confirmation requise" MaxWidthClass="max-w-5xl" CloseOnBackdrop="false">
         <div class="space-y-6">
-            <div class="rounded-2xl bg-sky-50 p-4 text-sm leading-6 text-sky-950">
-                <p class="font-bold">Avant d'accéder à SKOULOU Campus</p>
-                <p class="mt-1">Ton compte a été créé par ton établissement. Lis et accepte les conditions applicables à ton rôle pour continuer.</p>
+            <div class="rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-5 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Avant d'accéder à SKOULOU Campus</p>
+                        <h3 class="mt-1 text-xl font-black text-slate-900">Valide les règles de ton espace</h3>
+                    </div>
+                    <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Version @AuthService.CurrentTermsVersion</span>
+                </div>
+                <p class="mt-3 text-sm leading-6 text-slate-700">Ton compte a été créé par ton établissement. Lis les conditions liées à ton rôle et confirme pour continuer.</p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Profil détecté</p>
+                        <p class="mt-1 text-sm font-bold text-slate-900">@currentRoleLabel</p>
+                        <p class="mt-1 text-xs text-slate-600">@currentRoleSummary</p>
+                    </div>
+                    <div class="rounded-2xl bg-white p-3 ring-1 ring-slate-100">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Ce que tu confirmes</p>
+                        <ul class="mt-1 list-disc space-y-1 pl-4 text-xs text-slate-600">
+                            <li>Utilisation conforme aux règles de l'établissement.</li>
+                            <li>Protection des comptes et des données scolaires.</li>
+                            <li>Respect des droits d'auteur et des consignes internes.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(termsErrorMessage))
@@ -15,12 +36,17 @@
                 <div class="rounded-2xl bg-rose-50 p-4 text-sm text-rose-800">@termsErrorMessage</div>
             }
 
-            <div class="max-h-[38vh] space-y-5 overflow-y-auto pr-2 text-sm leading-6 text-slate-700 sm:max-h-[48vh]">
+            <div class="max-h-[40vh] space-y-5 overflow-y-auto pr-2 text-sm leading-6 text-slate-700 sm:max-h-[50vh]">
                 <section id="terms-student" class="scroll-mt-4 rounded-2xl border p-5 @(currentRole == Rollen.Schueler ? "border-emerald-400 bg-emerald-50" : "border-emerald-100 bg-emerald-50/60")">
                     <h3 class="text-xl font-black text-emerald-900">Élèves</h3>
                     <p class="mt-2">SKOULOUAPP ne conclut pas de contrat directement avec toi. L'accès à la plateforme est organisé par ton école, avec laquelle toi ou ton représentant légal êtes liés.</p>
                     <p class="mt-2">Pour toute question concernant ton compte, tes cours, tes paiements ou tes droits d'accès, adresse-toi d'abord à ton école, tant qu'elle administre l'application.</p>
                     <p class="mt-2">Les leçons et exercices publiés dans SKOULOUAPP accompagnent le travail de ta classe et ne remplacent ni le programme scolaire ni l'enseignement de ton école.</p>
+                    <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-emerald-900/85">
+                        <li>Accès possible selon la classe attribuée et le statut du compte.</li>
+                        <li>Les exports PDF élèves sont fournis sans solutions.</li>
+                        <li>En cas de blocage, contacte d'abord ta direction.</li>
+                    </ul>
                 </section>
 
                 <section id="terms-school" class="scroll-mt-4 rounded-2xl border p-5 @(currentRole is Rollen.SchulLeiter or Rollen.Koordinator ? "border-indigo-400 bg-indigo-50" : "border-indigo-100 bg-indigo-50/60")">
@@ -28,6 +54,11 @@
                     <p class="mt-2">Vous administrez les écoles qui vous sont attribuées et êtes responsables de la gestion des élèves, enseignants, contenus pédagogiques et autorisations qui relèvent de ces écoles.</p>
                     <p class="mt-2">L'accès de votre école peut être suspendu ou limité lorsqu'une facture arrivée à échéance n'est pas réglée. Les abonnements et règlements restent dus selon les périodes facturées.</p>
                     <p class="mt-2">Contactez SKOULOUAPP pour une difficulté technique d'utilisation ou pour transmettre une suggestion d'amélioration. Les demandes individuelles des élèves sont d'abord traitées par l'école.</p>
+                    <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-indigo-900/85">
+                        <li>Validation des inscriptions et gestion des affectations scolaires.</li>
+                        <li>Suivi des abonnements, paiements et périodes de facturation.</li>
+                        <li>Responsabilité de conformité locale sur les contenus publiés.</li>
+                    </ul>
                 </section>
 
                 <section id="terms-teacher" class="scroll-mt-4 rounded-2xl border p-5 @(currentRole == Rollen.Lehrer ? "border-amber-400 bg-amber-50" : "border-amber-100 bg-amber-50/60")">
@@ -35,18 +66,38 @@
                     <p class="mt-2">Votre accès est accordé par votre école. Utilisez uniquement les élèves, classes et écoles qui vous sont attribués et protégez les informations qui vous sont confiées.</p>
                     <p class="mt-2">Vous êtes responsable des leçons, exercices, examens et autres contenus que vous créez ou partagez, ainsi que du respect des droits d'auteur, de la protection des données et des règles de votre établissement.</p>
                     <p class="mt-2">Les commissions éventuelles sont calculées à partir des périodes et des attributions enregistrées par la plateforme; leur versement et leur confirmation suivent les processus convenus avec l'école et SKOULOUAPP.</p>
+                    <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-900/85">
+                        <li>Publier des contenus clairs, exacts et adaptés à la classe.</li>
+                        <li>Respecter les règles d'évaluation et de confidentialité.</li>
+                        <li>Signaler rapidement tout incident pédagogique ou technique.</li>
+                    </ul>
                 </section>
 
                 <section id="terms-owner" class="scroll-mt-4 rounded-2xl border p-5 @(currentRole == Rollen.ProduktOwner ? "border-fuchsia-400 bg-fuchsia-50" : "border-fuchsia-100 bg-fuchsia-50/60")">
                     <h3 class="text-xl font-black text-fuchsia-900">Responsables produit</h3>
                     <p class="mt-2">En tant que partenaire SKOULOUAPP, vous accompagnez uniquement les écoles qui vous sont attribuées. Votre rôle porte sur le suivi financier et commercial convenu; il ne vous autorise pas à accéder aux contenus pédagogiques ou aux données des élèves au-delà de vos droits.</p>
                     <p class="mt-2">Les commissions sont calculées à partir des factures réglées et des périodes validées. Une commission affichée est un relevé transparent; la confirmation de réception documente son paiement sans modifier l'historique financier.</p>
+                    <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-fuchsia-900/85">
+                        <li>Accès limité aux écoles attribuées et à leur suivi commercial.</li>
+                        <li>Aucun accès global aux données financières des autres écoles.</li>
+                        <li>Traçabilité des validations de facturation et de réception.</li>
+                    </ul>
                 </section>
 
                 <section class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <h3 class="text-xl font-black text-slate-900">Règles communes</h3>
                     <p class="mt-2">Un compte ne peut être utilisé que sur un appareil à la fois. Une nouvelle connexion met fin à la session active précédente.</p>
                     <p class="mt-2">SKOULOUAPP utilise des ressources de prestataires tiers, notamment pour l'hébergement. En cas d'indisponibilité indépendante de SKOULOUAPP, par exemple une panne de service Microsoft, le remboursement des contributions d'abonnement n'est pas dû pour cette indisponibilité.</p>
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                        <div class="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Confidentialité</p>
+                            <p class="mt-1 text-xs text-slate-700">Les données sont utilisées pour la gestion pédagogique et administrative selon les autorisations.</p>
+                        </div>
+                        <div class="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sécurité</p>
+                            <p class="mt-1 text-xs text-slate-700">Ne partage pas tes accès. Déconnecte-toi après usage sur un appareil partagé.</p>
+                        </div>
+                    </div>
                 </section>
             </div>
 

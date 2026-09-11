@@ -22,6 +22,7 @@ public interface IBlobMediaLibraryService
 
     Task<BlobMediaDownload?> OpenImageAsync(Guid assetId, Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default);
     Task<BlobMediaDownload?> OpenVideoAsync(Guid assetId, Guid userId, IReadOnlyCollection<string> roles, bool hasActiveSubscription, Guid? lessonId = null, CancellationToken cancellationToken = default);
+    Task DeleteImageAsync(Guid assetId, Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default);
 
     Task<BlobMediaAssetItem> UploadVideoAsync(
         Guid userId,

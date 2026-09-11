@@ -65,7 +65,7 @@ public partial class RichTextEditor : ComponentBase, IAsyncDisposable
 
     /// <summary>Optionale Mindesthöhe des Editor-Inhaltsbereichs in rem.</summary>
     [Parameter]
-    public double? MinEditorHeightRem { get; set; }
+    public double? MinEditorHeightRem { get; set; } = 10;
 
     private string? ContainerStyle => MinEditorHeightRem is > 0
         ? $"--hallo-richtext-min-height:{MinEditorHeightRem:0.##}rem;"

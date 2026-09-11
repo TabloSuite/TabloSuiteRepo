@@ -11,51 +11,54 @@
 
 @if (Open)
 {
-    <div class="fixed inset-0 z-[2200] flex items-center justify-center bg-slate-950/60 p-6 sm:p-8" role="dialog" aria-modal="true" aria-label="Bibliothèque d’images">
-        <div class="hallo-modal-surface flex max-h-[92dvh] w-full max-w-6xl flex-col rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
-            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+    <div class="fixed inset-0 z-[2200] flex items-start justify-center overflow-hidden bg-slate-950/60 p-6 sm:p-8" role="dialog" aria-modal="true" aria-label="Bibliothèque d’images">
+        <div class="hallo-modal-surface flex max-h-[92dvh] w-full max-w-6xl flex-col rounded-3xl bg-white p-3 shadow-2xl sm:p-4">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Médiathèque sécurisée</p>
-                    <h2 class="text-xl font-black text-slate-900">Bibliothèque d’images</h2>
-                    <p class="mt-1 text-xs text-slate-500">Images privées déjà enregistrées pour les leçons. L’insertion directe par fichier dans l’éditeur est désactivée.</p>
+                    <h2 class="text-xl font-black text-slate-900">@(ProfileImageMode ? "Photo de profil" : "Bibliothèque d’images")</h2>
+                    <p class="mt-1 text-xs text-slate-500">@(ProfileImageMode
+                        ? "Choisis une photo. Le nom et le texte alternatif sont générés automatiquement."
+                        : "Images privées déjà enregistrées pour les leçons. L’insertion directe par fichier dans l’éditeur est désactivée.")</p>
                 </div>
                 <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700" @onclick="CloseAsync">Fermer</button>
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <p class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@errorMessage</p>
-            }
+            <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
+            <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
-            <div class="mt-4 grid gap-4 rounded-2xl bg-slate-50 p-4 lg:grid-cols-4">
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">École</span>
-                    <select class="mt-1 hallo-input text-sm" @bind="selectedSchoolId" @bind:after="OnSchoolChangedAsync">
-                        @foreach (var school in schools)
-                        {
-                            <option value="@school.Id">@school.Name</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">Classe / niveau</span>
-                    <select class="mt-1 hallo-input text-sm" @bind="selectedKlasseId">
-                        <option value="">Sans classe</option>
-                        @foreach (var klasse in klasseOptions)
-                        {
-                            <option value="@klasse.Id">@klasse.Code</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">Nom de l’image</span>
-                    <input class="mt-1 hallo-input text-sm" @bind="displayName" placeholder="Ex. triangle rectangle" />
-                </label>
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">Texte alternatif</span>
-                    <input class="mt-1 hallo-input text-sm" @bind="altText" placeholder="Description de l’image" />
-                </label>
-                <div class="lg:col-span-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-cyan-200 bg-white/80 p-3">
+            <div class="mt-3 shrink-0 grid gap-3 rounded-2xl bg-slate-50 p-3 @(ProfileImageMode ? string.Empty : "lg:grid-cols-4")">
+                @if (!ProfileImageMode)
+                {
+                    <label>
+                        <span class="text-xs font-semibold text-slate-600">École</span>
+                        <select class="mt-1 hallo-input text-sm" @bind="selectedSchoolId" @bind:after="OnSchoolChangedAsync">
+                            @foreach (var school in schools)
+                            {
+                                <option value="@school.Id">@school.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span class="text-xs font-semibold text-slate-600">Classe / niveau</span>
+                        <select class="mt-1 hallo-input text-sm" @bind="selectedKlasseId">
+                            <option value="">Sans classe</option>
+                            @foreach (var klasse in klasseOptions)
+                            {
+                                <option value="@klasse.Id">@klasse.Code</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span class="text-xs font-semibold text-slate-600">Nom de l’image</span>
+                        <input class="mt-1 hallo-input text-sm" @bind="displayName" placeholder="Ex. triangle rectangle" />
+                    </label>
+                    <label>
+                        <span class="text-xs font-semibold text-slate-600">Texte alternatif</span>
+                        <input class="mt-1 hallo-input text-sm" @bind="altText" placeholder="Description de l’image" />
+                    </label>
+                }
+                <div class="@(ProfileImageMode ? string.Empty : "lg:col-span-4") flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-cyan-200 bg-white/80 p-2.5">
                     <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100 transition hover:bg-cyan-50 hover:ring-cyan-200">
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-lg text-cyan-700">🖼️</span>
                         <span class="min-w-0">
@@ -64,14 +67,24 @@
                         </span>
                         <InputFile OnChange="SelectFile" accept="image/png,image/jpeg,image/gif,image/webp" class="sr-only" />
                     </label>
-                    <AsyncActionButton Class="rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none" Disabled="@(selectedFile is null)" IsBusy="@isUploading" BusyLabel="Enregistrement..." OnClick="@(_ => UploadAsync())">Enregistrer et insérer</AsyncActionButton>
+                    <AsyncActionButton Class="rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none" Disabled="@(selectedFile is null)" IsBusy="@isUploading" BusyLabel="Enregistrement..." OnClick="@(_ => UploadAsync())">@(ProfileImageMode ? "Utiliser comme photo" : "Enregistrer et insérer")</AsyncActionButton>
                 </div>
             </div>
 
-            <div class="mt-4 grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-3">
+            <div class="mt-3 shrink-0 grid gap-2 rounded-2xl border border-slate-100 p-3 md:grid-cols-4">
                 <label>
-                    <span class="text-xs font-semibold text-slate-600">Filtrer par nom</span>
-                    <input class="mt-1 hallo-input text-sm" @bind="nameFilter" @bind:event="oninput" placeholder="Nom, fichier, texte alt..." />
+                    <span class="text-xs font-semibold text-slate-600">Filtrer par fichier</span>
+                    <input class="mt-1 hallo-input text-sm" @bind="fileNameFilter" @bind:event="oninput" placeholder="Nom affiché ou nom de fichier..." />
+                </label>
+                <label>
+                    <span class="text-xs font-semibold text-slate-600">Filtrer par école</span>
+                    <select class="mt-1 hallo-input text-sm" @bind="schoolFilter">
+                        <option value="">Toutes</option>
+                        @foreach (var school in AllSchoolFilters)
+                        {
+                            <option value="@school.Id">@school.Name</option>
+                        }
+                    </select>
                 </label>
                 <label>
                     <span class="text-xs font-semibold text-slate-600">Filtrer par classe</span>
@@ -86,7 +99,7 @@
                 <p class="self-end text-xs font-semibold text-slate-500">@FilteredImages.Count image(s) affichée(s)</p>
             </div>
 
-            <div class="hallo-modal-scroll mt-4 min-h-0 flex-1">
+            <div class="hallo-modal-scroll mt-3 min-h-[12rem] flex-1 rounded-2xl border border-slate-100 bg-white p-3">
                 @if (images is null)
                 {
                     <p class="p-6 text-sm text-slate-500">Chargement de la bibliothèque...</p>
@@ -100,13 +113,16 @@
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                         @foreach (var image in FilteredImages)
                         {
-                            <button type="button" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10" title="Insérer @image.DisplayName" @onclick="() => ChooseAsync(image)">
+                            <div class="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
                                 <img class="aspect-square w-full object-cover" src="@image.ImageUrl" alt="@image.AltText" />
                                 <span class="block truncate px-3 pt-2 text-xs font-semibold text-slate-700">@(string.IsNullOrWhiteSpace(image.DisplayName) ? image.OriginalFileName : image.DisplayName)</span>
                                 <span class="block truncate px-3 text-[11px] text-slate-400">@image.KlasseCode</span>
                                 <span class="block truncate px-3 text-[11px] text-slate-400">@image.SchoolName · @image.OwnerName</span>
-                                <span class="mx-3 mb-3 mt-2 inline-flex rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-bold text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white">Insérer</span>
-                            </button>
+                                <div class="mx-3 mb-3 mt-2 flex items-center gap-2">
+                                    <button type="button" class="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-bold text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white" title="Insérer @image.DisplayName" @onclick="() => ChooseAsync(image)">Insérer</button>
+                                    <button type="button" class="inline-flex rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700 transition hover:bg-rose-600 hover:text-white" title="Supprimer @image.DisplayName" @onclick="() => DeleteImageAsync(image)">Supprimer</button>
+                                </div>
+                            </div>
                         }
                     </div>
                 }
@@ -119,6 +135,7 @@
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public EventCallback<BlobMediaAssetItem> ImageSelected { get; set; }
+    [Parameter] public bool ProfileImageMode { get; set; }
 
     private readonly List<(Guid Id, string Name)> schools = [];
     private readonly List<(Guid Id, string Code)> klasseOptions = [];
@@ -128,19 +145,29 @@
     private IBrowserFile? selectedFile;
     private string displayName = string.Empty;
     private string altText = string.Empty;
-    private string nameFilter = string.Empty;
+    private string fileNameFilter = string.Empty;
     private string klasseFilter = string.Empty;
+    private string schoolFilter = string.Empty;
     private string? errorMessage;
+    private string? statusMessage;
     private bool isUploading;
+    private bool isDeleting;
     private Guid userId;
     private string[] roles = [];
+    private string currentUserDisplayName = "utilisateur";
 
     private IReadOnlyList<BlobMediaAssetItem> FilteredImages => (images ?? [])
-        .Where(image => string.IsNullOrWhiteSpace(nameFilter)
-            || Contains(image.DisplayName, nameFilter)
-            || Contains(image.OriginalFileName, nameFilter)
-            || Contains(image.AltText, nameFilter))
+        .Where(image => string.IsNullOrWhiteSpace(fileNameFilter)
+            || Contains(image.DisplayName, fileNameFilter)
+            || Contains(image.OriginalFileName, fileNameFilter))
+        .Where(image => string.IsNullOrWhiteSpace(schoolFilter) || string.Equals(image.SchoolId.ToString(), schoolFilter, StringComparison.OrdinalIgnoreCase))
         .Where(image => string.IsNullOrWhiteSpace(klasseFilter) || string.Equals(image.KlasseCode, klasseFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private IReadOnlyList<(Guid Id, string Name)> AllSchoolFilters => (images ?? [])
+        .Select(image => new ValueTuple<Guid, string>(image.SchoolId, image.SchoolName))
+        .Distinct()
+        .OrderBy(item => item.Item2)
         .ToList();
 
     private IReadOnlyList<string> AllKlasseFilters => (images ?? [])
@@ -160,6 +187,7 @@
         var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
         roles = state.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray();
+        currentUserDisplayName = state.User.Identity?.Name?.Trim() ?? "utilisateur";
         var schoolQuery = DbContext.Schools.AsNoTracking().AsQueryable();
         if (!roles.Contains(Rollen.SuperAdmin) && !roles.Contains(Rollen.ProduktOwner))
         {
@@ -208,13 +236,27 @@
         try
         {
             errorMessage = null;
+            statusMessage = null;
             isUploading = true;
             await using var stream = selectedFile.OpenReadStream(5 * 1024 * 1024);
-            var asset = await MediaLibrary.UploadImageAsync(userId, roles, selectedSchoolId, selectedKlasseId, stream, selectedFile.Name, displayName, selectedFile.ContentType, altText);
+            var displayNameForUpload = displayName;
+            var altTextForUpload = altText;
+            if (ProfileImageMode)
+            {
+                displayNameForUpload = string.IsNullOrWhiteSpace(displayName)
+                    ? System.IO.Path.GetFileNameWithoutExtension(selectedFile.Name)
+                    : displayName;
+                altTextForUpload = string.IsNullOrWhiteSpace(altText)
+                    ? $"Photo de profil de {currentUserDisplayName}"
+                    : altText;
+            }
+
+            var asset = await MediaLibrary.UploadImageAsync(userId, roles, selectedSchoolId, selectedKlasseId, stream, selectedFile.Name, displayNameForUpload, selectedFile.ContentType, altTextForUpload);
             selectedFile = null;
             displayName = string.Empty;
             altText = string.Empty;
             await LoadImagesAsync();
+            statusMessage = "Image enregistrée avec succès.";
             await ChooseAsync(asset);
         }
         catch (Exception ex)
@@ -224,6 +266,32 @@
         finally
         {
             isUploading = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(BlobMediaAssetItem image)
+    {
+        if (isDeleting)
+        {
+            return;
+        }
+
+        try
+        {
+            isDeleting = true;
+            errorMessage = null;
+            statusMessage = null;
+            await MediaLibrary.DeleteImageAsync(image.Id, userId, roles);
+            statusMessage = "Image supprimée avec succès.";
+            await LoadImagesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isDeleting = false;
         }
     }
 

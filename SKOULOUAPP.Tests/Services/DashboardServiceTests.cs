@@ -2,6 +2,7 @@ using HalloApp.Core.DataModels.Courses;
 using HalloApp.Core.DataModels.Exams;
 using HalloApp.Core.DataModels.Exercises;
 using HalloApp.Core.DataModels.Identity;
+using HalloApp.Core.DataModels.Lessons;
 using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Models.Admin;
 using HalloApp.Core.Services;
@@ -1231,6 +1232,158 @@ public class DashboardServiceTests
 
         var school = Assert.Single(schools);
         Assert.Equal(schoolA.Id, school.SchoolId);
+    }
+
+    [Fact]
+    public async Task SaveLessonAsync_MitAbgabenVorFrist_SperrtBearbeitungInAktuellerRunde()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Lomé" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "6e", Title = "Sixième" };
+        var lesson = new Lesson
+        {
+            Id = Guid.NewGuid(),
+            KlasseId = klasse.Id,
+            Title = "Leçon 1",
+            Summary = "Résumé",
+            Content = "Contenu",
+            Order = 1,
+            ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddDays(2),
+            AssignmentVersion = 1
+        };
+        var exercise = new Exercise
+        {
+            Id = Guid.NewGuid(),
+            LessonId = lesson.Id,
+            Title = "Exercice",
+            Question = "Question",
+            ExerciseType = "SingleChoice",
+            Order = 1
+        };
+        var studentId = Guid.NewGuid();
+
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Lessons.Add(lesson);
+        db.Exercises.Add(exercise);
+        db.ExerciseAttempts.Add(new ExerciseAttempt
+        {
+            Id = Guid.NewGuid(),
+            ExerciseId = exercise.Id,
+            StudentId = studentId,
+            AssignmentVersion = 1,
+            IsCorrect = true,
+            AnsweredAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var service = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+
+        var result = await service.SaveLessonAsync(new LessonFormModel
+        {
+            LessonId = lesson.Id,
+            CourseId = klasse.Id,
+            Title = "Leçon modifiée",
+            Summary = "Résumé",
+            Content = "Contenu",
+            Order = 1,
+            IsPublished = true,
+            ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
+            Exercises =
+            [
+                new LessonExerciseFormModel
+                {
+                    ExerciseId = exercise.Id,
+                    Title = "Exercice",
+                    Question = "Question",
+                    ExerciseType = "SingleChoice",
+                    Order = 1,
+                    Points = 10,
+                    Options = [ new LessonExerciseOptionFormModel { Text = "A", IsCorrect = true } ]
+                }
+            ]
+        });
+
+        Assert.False(result.Succeeded);
+        var persisted = await db.Lessons.AsNoTracking().SingleAsync(x => x.Id == lesson.Id);
+        Assert.Equal(1, persisted.AssignmentVersion);
+        Assert.Equal("Leçon 1", persisted.Title);
+    }
+
+    [Fact]
+    public async Task SaveLessonAsync_MitAbgabenNachFrist_ErhohtVersionUndSpeichertAenderung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Lomé" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "6e", Title = "Sixième" };
+        var lesson = new Lesson
+        {
+            Id = Guid.NewGuid(),
+            KlasseId = klasse.Id,
+            Title = "Leçon 1",
+            Summary = "Résumé",
+            Content = "Contenu",
+            Order = 1,
+            ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddDays(-1),
+            AssignmentVersion = 1
+        };
+        var exercise = new Exercise
+        {
+            Id = Guid.NewGuid(),
+            LessonId = lesson.Id,
+            Title = "Exercice",
+            Question = "Question",
+            ExerciseType = "SingleChoice",
+            Order = 1
+        };
+        var studentId = Guid.NewGuid();
+
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Lessons.Add(lesson);
+        db.Exercises.Add(exercise);
+        db.ExerciseAttempts.Add(new ExerciseAttempt
+        {
+            Id = Guid.NewGuid(),
+            ExerciseId = exercise.Id,
+            StudentId = studentId,
+            AssignmentVersion = 1,
+            IsCorrect = true,
+            AnsweredAtUtc = DateTime.UtcNow.AddHours(-2)
+        });
+        await db.SaveChangesAsync();
+
+        var service = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+
+        var result = await service.SaveLessonAsync(new LessonFormModel
+        {
+            LessonId = lesson.Id,
+            CourseId = klasse.Id,
+            Title = "Leçon modifiée",
+            Summary = "Résumé 2",
+            Content = "Contenu 2",
+            Order = 2,
+            IsPublished = true,
+            ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddDays(3),
+            Exercises =
+            [
+                new LessonExerciseFormModel
+                {
+                    ExerciseId = exercise.Id,
+                    Title = "Exercice",
+                    Question = "Question",
+                    ExerciseType = "SingleChoice",
+                    Order = 1,
+                    Points = 10,
+                    Options = [ new LessonExerciseOptionFormModel { Text = "A", IsCorrect = true } ]
+                }
+            ]
+        });
+
+        Assert.True(result.Succeeded, result.Message);
+        var persisted = await db.Lessons.AsNoTracking().SingleAsync(x => x.Id == lesson.Id);
+        Assert.Equal(2, persisted.AssignmentVersion);
+        Assert.Equal("Leçon modifiée", persisted.Title);
     }
 
 }

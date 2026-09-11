@@ -35,6 +35,16 @@ public class ExerciseAttempt : AuditableModel
     public bool IsCorrect { get; set; }
 
     /// <summary>
+    /// Zuweisungsrunde der Lektion zum Zeitpunkt der Abgabe.
+    /// </summary>
+    public int AssignmentVersion { get; set; } = 1;
+
+    /// <summary>
+    /// Kompakter Snapshot der Aufgabenfrage zum Abgabezeitpunkt.
+    /// </summary>
+    public string? ExerciseSnapshotJson { get; set; }
+
+    /// <summary>
     /// True, wenn die Antwort mangels Musterlösung manuell benotet werden muss und noch nicht bewertet wurde.
     /// </summary>
     public bool RequiresManualGrading { get; set; }

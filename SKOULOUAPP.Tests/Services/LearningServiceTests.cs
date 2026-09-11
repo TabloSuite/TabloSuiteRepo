@@ -5,6 +5,7 @@ using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Services;
 using HalloApp.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace HalloApp.Tests.Services;
@@ -262,6 +263,69 @@ public class LearningServiceTests
         // Assert
         Assert.True(result.Succeeded);
         Assert.False(result.IsCorrect);
+    }
+
+    [Fact]
+    public async Task SubmitExerciseAsync_SpeichertAssignmentVersionUndSnapshot()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var studentId = Guid.NewGuid();
+        var (exercise, richtig1, richtig2, _) = await SeedMultipleChoiceUebungAsync(db, studentId);
+        exercise.Lesson.AssignmentVersion = 3;
+        await db.SaveChangesAsync();
+
+        var service = new LearningService(db);
+        var result = await service.SubmitExerciseAsync(exercise.Id, studentId, new ExerciseSubmission
+        {
+            SelectedOptionIds = [richtig1.Id, richtig2.Id]
+        });
+
+        Assert.True(result.Succeeded);
+
+        var attempt = await db.ExerciseAttempts
+            .OrderByDescending(a => a.AnsweredAtUtc)
+            .FirstAsync();
+        Assert.Equal(3, attempt.AssignmentVersion);
+        Assert.False(string.IsNullOrWhiteSpace(attempt.ExerciseSnapshotJson));
+        Assert.Contains("Artikel", attempt.ExerciseSnapshotJson);
+    }
+
+    [Fact]
+    public async Task GetLessonDetailAsync_BeruecksichtigtNurAbgabenDerAktuellenVersion()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var studentId = Guid.NewGuid();
+        var (exercise, _, _, _) = await SeedMultipleChoiceUebungAsync(db, studentId);
+
+        db.ExerciseAttempts.AddRange(
+            new ExerciseAttempt
+            {
+                Id = Guid.NewGuid(),
+                ExerciseId = exercise.Id,
+                StudentId = studentId,
+                AssignmentVersion = 1,
+                IsCorrect = true,
+                AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-10)
+            },
+            new ExerciseAttempt
+            {
+                Id = Guid.NewGuid(),
+                ExerciseId = exercise.Id,
+                StudentId = studentId,
+                AssignmentVersion = 2,
+                IsCorrect = false,
+                AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-5)
+            });
+
+        exercise.Lesson.AssignmentVersion = 2;
+        await db.SaveChangesAsync();
+
+        var service = new LearningService(db);
+        var detail = await service.GetLessonDetailAsync(exercise.LessonId, studentId);
+
+        Assert.NotNull(detail);
+        var vm = Assert.Single(detail!.Exercises);
+        Assert.False(vm.IsAnsweredCorrectly);
     }
 
     [Fact]

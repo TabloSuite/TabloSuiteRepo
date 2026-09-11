@@ -11,6 +11,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<School> Schools => Set<School>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<KlassenStufe> KlassenStufen => Set<KlassenStufe>();
+    public DbSet<Fach> Faecher => Set<Fach>();
+    public DbSet<LehrerFachZuordnung> LehrerFachZuordnungen => Set<LehrerFachZuordnung>();
     public DbSet<Lesson> Lessons => Set<Lesson>();
     public DbSet<LessonMedia> LessonMedia => Set<LessonMedia>();
     public DbSet<BlobMediaAsset> BlobMediaAssets => Set<BlobMediaAsset>();
@@ -59,6 +61,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<AppUser>().Property(x => x.Nachname).HasMaxLength(100);
         modelBuilder.Entity<AppUser>().Property(x => x.TelefonNummer).HasMaxLength(50);
         modelBuilder.Entity<AppUser>().Property(x => x.AgbVersion).HasMaxLength(32);
+        modelBuilder.Entity<Fach>().Property(x => x.Name).HasMaxLength(120);
         modelBuilder.Entity<StudentProfile>().Property(x => x.ElternTelefonNummer).HasMaxLength(50);
         modelBuilder.Entity<StudentProfile>().Property(x => x.ElternEmail).HasMaxLength(256);
         modelBuilder.Entity<StudentProfile>().Property(x => x.IsArchived).HasDefaultValue(false);
@@ -72,6 +75,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // in verschiedenen Schulen tragen.
         modelBuilder.Entity<Klasse>().HasIndex(x => new { x.SchoolId, x.Code }).IsUnique();
         modelBuilder.Entity<KlassenStufe>().HasIndex(x => new { x.SchoolId, x.Name }).IsUnique();
+        modelBuilder.Entity<Fach>().HasIndex(x => new { x.SchoolId, x.Name }).IsUnique();
+        modelBuilder.Entity<LehrerFachZuordnung>().HasIndex(x => new { x.LehrerId, x.FachId }).IsUnique();
         // Restrict statt Cascade: Andernfalls entstehen mehrere Kaskadenpfade zur
         // LevelEnrollments-Tabelle (School -> Klasse -> LevelEnrollment und
         // School -> StudentProfile -> LevelEnrollment), was SQL Server ablehnt.
@@ -86,6 +91,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(x => x.KlassenStufen)
             .HasForeignKey(x => x.SchoolId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Fach>()
+            .HasOne(x => x.School)
+            .WithMany()
+            .HasForeignKey(x => x.SchoolId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LehrerFachZuordnung>()
+            .HasOne(x => x.Lehrer)
+            .WithMany(x => x.LehrerFachZuordnungen)
+            .HasForeignKey(x => x.LehrerId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LehrerFachZuordnung>()
+            .HasOne(x => x.Fach)
+            .WithMany(x => x.LehrerZuordnungen)
+            .HasForeignKey(x => x.FachId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppUser>()
+            .HasOne(x => x.ProfilBildAsset)
+            .WithMany()
+            .HasForeignKey(x => x.ProfilBildAssetId)
+            .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<BlobMediaAsset>().Property(x => x.BlobName).HasMaxLength(600);
         modelBuilder.Entity<BlobMediaAsset>().Property(x => x.OriginalFileName).HasMaxLength(260);
         modelBuilder.Entity<BlobMediaAsset>().Property(x => x.DisplayName).HasMaxLength(200);
@@ -212,9 +237,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<Exercise>().Property(x => x.Question).HasMaxLength(1000);
         modelBuilder.Entity<Exercise>().Property(x => x.Points).HasDefaultValue(10);
         modelBuilder.Entity<Lesson>().Property(x => x.IsPublished).HasDefaultValue(true);
+        modelBuilder.Entity<Lesson>().Property(x => x.AssignmentVersion).HasDefaultValue(1);
         modelBuilder.Entity<ExerciseOption>().Property(x => x.Text).HasMaxLength(500);
         modelBuilder.Entity<ExerciseAttempt>().Property(x => x.ManualFeedback).HasMaxLength(2000);
         modelBuilder.Entity<ExerciseAttempt>().Property(x => x.AwardedPoints).HasDefaultValue(0);
+        modelBuilder.Entity<ExerciseAttempt>().Property(x => x.AssignmentVersion).HasDefaultValue(1);
+        modelBuilder.Entity<ExerciseAttempt>().Property(x => x.ExerciseSnapshotJson).HasMaxLength(4000);
 
         modelBuilder.Entity<ExerciseOption>()
             .HasOne(x => x.Exercise)
@@ -236,6 +264,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         modelBuilder.Entity<ExerciseAttempt>()
             .HasIndex(x => new { x.ExerciseId, x.StudentId });
+
+        modelBuilder.Entity<ExerciseAttempt>()
+            .HasIndex(x => new { x.ExerciseId, x.StudentId, x.AssignmentVersion });
 
         modelBuilder.Entity<LessonProgress>()
             .HasOne(x => x.Lesson)
@@ -445,6 +476,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasOne(x => x.VideoAsset)
             .WithMany()
             .HasForeignKey(x => x.VideoAssetId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<TeacherLesson>()
+            .HasOne(x => x.Fach)
+            .WithMany(x => x.TeacherLessons)
+            .HasForeignKey(x => x.FachId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<TeacherLesson>()

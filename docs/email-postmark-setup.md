@@ -1,7 +1,7 @@
 # E-Mail-Versand & DNS-Einrichtung (Postmark)
 
 Diese Dokumentation beschreibt die vollständige Einrichtung des transaktionalen
-E-Mail-Versands über **Postmark** für die Domain `meinehalloapp.com`, inklusive
+E-Mail-Versands über **Postmark** für die Domain `skoulou.com`, inklusive
 der notwendigen DNS-Einträge (DKIM / Return-Path) bei **IONOS**.
 
 ---
@@ -11,13 +11,13 @@ der notwendigen DNS-Einträge (DKIM / Return-Path) bei **IONOS**.
 | Komponente        | Wert / Ort                                             |
 |-------------------|--------------------------------------------------------|
 | E-Mail-Provider   | Postmark (https://postmarkapp.com)                     |
-| Absenderdomain    | `meinehalloapp.com`                                    |
-| Absenderadresse   | `kontakt.etse@meinehalloapp.com`                       |
+| Absenderdomain    | `skoulou.com`                                           |
+| Absenderadresse   | `kontakt.etse@skoulou.com`                              |
 | DNS-Anbieter      | **IONOS (1&1)** – Nameserver `ns…ui-dns.de/.com/.biz/.org` |
 | Message Stream    | `outbound` (Transactional) für Auth-/Kontakt-Mails     |
 | Konfiguration     | User Secrets (lokal) / App-Konfiguration (Produktion)  |
 
-> **Wichtig:** Die Domain `meinehalloapp.com` wird **nicht** über Azure DNS,
+> **Wichtig:** Die Domain `skoulou.com` wird **nicht** über Azure DNS,
 > sondern über **IONOS** verwaltet. Alle DNS-Einträge müssen daher im
 > IONOS-DNS-Portal gepflegt werden.
 
@@ -55,11 +55,11 @@ und verbessert Zustellbarkeit und Bounce-Verarbeitung.
 ### 2.3 Eintragen bei IONOS
 
 1. Bei [ionos.de](https://www.ionos.de) anmelden → **Domains & SSL**.
-2. Neben `meinehalloapp.com` auf **DNS** / Zahnrad klicken.
+2. Neben `skoulou.com` auf **DNS** / Zahnrad klicken.
 3. **Eintrag hinzufügen** und beide Records wie oben anlegen.
 
 > **Kritisch:** Im Feld *Hostname* nur den **relativen** Namen eintragen
-> (z. B. `pm-bounces`), **niemals** `.meinehalloapp.com` anhängen – IONOS
+> (z. B. `pm-bounces`), **niemals** `.skoulou.com` anhängen – IONOS
 > ergänzt die Domain automatisch. Der DKIM-Wert muss als **eine** durchgehende
 > Zeichenkette eingetragen werden (keine Zeilenumbrüche, keine Leerzeichen).
 
@@ -72,16 +72,16 @@ Prüfung über einen öffentlichen Resolver (Google 8.8.8.8):
 
 ```powershell
 # DKIM (TXT)
-Resolve-DnsName "20260724070215pm._domainkey.meinehalloapp.com" -Type TXT -Server 8.8.8.8
+Resolve-DnsName "20260724070215pm._domainkey.skoulou.com" -Type TXT -Server 8.8.8.8
 
 # Return-Path (CNAME)
-Resolve-DnsName "pm-bounces.meinehalloapp.com" -Type CNAME -Server 8.8.8.8
+Resolve-DnsName "pm-bounces.skoulou.com" -Type CNAME -Server 8.8.8.8
 ```
 
 Direkt beim autoritativen IONOS-Nameserver gegenprüfen:
 
 ```powershell
-Resolve-DnsName "pm-bounces.meinehalloapp.com" -Type CNAME -Server ns1065.ui-dns.de
+Resolve-DnsName "pm-bounces.skoulou.com" -Type CNAME -Server ns1065.ui-dns.de
 ```
 
 Sobald beide Records auflösen, in Postmark unter
@@ -91,7 +91,7 @@ wechseln dann auf **Verified** (grün).
 **Status (Stand der Einrichtung):**
 - ✅ DKIM – Verified
 - ✅ Return-Path – Verified
-- ✅ Reale Zustellung getestet – Test-Mail an `kontakt.etse@meinehalloapp.com`
+- ✅ Reale Zustellung getestet – Test-Mail an `kontakt.etse@skoulou.com`
   ist im IONOS-Postfach angekommen (End-to-End bestätigt).
 
 ---
@@ -108,7 +108,7 @@ Domains ist eine manuelle Freigabe nötig (**Request approval**):
   gekauften Listen).
 
 **Verhalten im Test/Pending-Modus:**
-- Versand an die **eigene Domain** (`@meinehalloapp.com`) wird real zugestellt.
+- Versand an die **eigene Domain** (`@skoulou.com`) wird real zugestellt.
 - Versand an **fremde Domains** (z. B. `web.de`, `gmail.com`) wird von der API
   mit `OK` bestätigt, aber erst **nach Freigabe** real zugestellt.
 
@@ -126,9 +126,9 @@ Die Postmark-Zugangsdaten liegen in den **User Secrets** des Projekts
   "Postmark": {
 	"Enabled": true,
 	"ServerToken": "<geheimer-server-token>",
-	"FromEmail": "kontakt.etse@meinehalloapp.com",
+	"FromEmail": "kontakt.etse@skoulou.com",
 	"FromName": "HALLO-APP",
-	"SupportEmail": "kontakt.etse@meinehalloapp.com",
+	"SupportEmail": "kontakt.etse@skoulou.com",
 	"MessageStream": "outbound"
   }
 }
@@ -185,7 +185,7 @@ $stream = $secrets.Postmark.MessageStream
 
 $body = @{
 	From          = $from
-	To            = "kontakt.etse@meinehalloapp.com"
+	To            = "kontakt.etse@skoulou.com"
 	Subject       = "HalloApp Postmark Test"
 	HtmlBody      = "<h2>Test erfolgreich</h2>"
 	TextBody      = "Test erfolgreich."
@@ -205,7 +205,7 @@ Invoke-RestMethod -Method Post -Uri "https://api.postmarkapp.com/email" `
 	"Message": "OK",
 	"MessageID": "8e428a32-309c-4dd6-9d95-2c843dc3c021",
 	"SubmittedAt": "2026-07-29T07:36:56Z",
-	"To": "kontakt.etse@meinehalloapp.com"
+	"To": "kontakt.etse@skoulou.com"
 }
 ```
 
@@ -231,7 +231,7 @@ sichtbar.
 
 Wenn Mails zwar zugestellt werden, aber bei web.de, GMX, Outlook oder Gmail
 im **Spam-Ordner** landen, prüft man zuerst die Authentifizierung der Domain
-(DKIM, Return-Path, SPF, DMARC). Für `meinehalloapp.com` ist dieser Teil
+(DKIM, Return-Path, SPF, DMARC). Für `skoulou.com` ist dieser Teil
 **bereits vollständig erledigt** — die eigentliche Ursache liegt woanders.
 
 ### 9.1 Aktueller Ist-Stand
@@ -260,7 +260,7 @@ handled for you."*
 
 Der Grund liegt im Return-Path. Die SPF-Prüfung bewertet **nicht** die sichtbare
 `From`-Adresse, sondern den Envelope-Absender (Return-Path). Dieser lautet durch
-den verifizierten CNAME `pm-bounces.meinehalloapp.com` und löst auf
+den verifizierten CNAME `pm-bounces.skoulou.com` und löst auf
 `pm.mtasv.net` auf, wo Postmark einen eigenen SPF-Record
 (`v=spf1 include:spf.mtasv.net -all`) pflegt. Die SPF-Prüfung läuft damit
 bereits heute auf **PASS**, und weil der Return-Path unter der eigenen Domain
@@ -284,7 +284,7 @@ Den bestehenden DMARC-Record bearbeiten:
 |----------|------|
 | Typ      | `TXT` |
 | Hostname | `_dmarc` |
-| Wert     | `v=DMARC1; p=none; rua=mailto:kontakt.etse@meinehalloapp.com; fo=1; adkim=r; aspf=r` |
+| Wert     | `v=DMARC1; p=none; rua=mailto:kontakt.etse@skoulou.com; fo=1; adkim=r; aspf=r` |
 | TTL      | 1 Stunde |
 
 Bedeutung der Parameter:
@@ -298,7 +298,7 @@ Bedeutung der Parameter:
 
 ### 9.4 Postmark-Seite prüfen
 
-Im Postmark-Portal unter **Sender Signatures → meinehalloapp.com → DNS Settings**
+Im Postmark-Portal unter **Sender Signatures → skoulou.com → DNS Settings**
 sind bereits alle Bereiche grün:
 
 | Kachel | Bedeutung |
@@ -316,16 +316,16 @@ um — ein klassisches Spam-Signal). Anwendungsseitig ist das bereits abgeschalt
 
 ```powershell
 # DKIM
-(Resolve-DnsName "20260724070215pm._domainkey.meinehalloapp.com" -Type TXT -Server 8.8.8.8).Strings
+(Resolve-DnsName "20260724070215pm._domainkey.skoulou.com" -Type TXT -Server 8.8.8.8).Strings
 
 # Return-Path — muss pm.mtasv.net liefern
-(Resolve-DnsName "pm-bounces.meinehalloapp.com" -Type CNAME -Server 8.8.8.8).NameHost
+(Resolve-DnsName "pm-bounces.skoulou.com" -Type CNAME -Server 8.8.8.8).NameHost
 
 # DMARC
-(Resolve-DnsName "_dmarc.meinehalloapp.com" -Type TXT -Server 8.8.8.8).Strings
+(Resolve-DnsName "_dmarc.skoulou.com" -Type TXT -Server 8.8.8.8).Strings
 
 # SPF der Domain (bleibt unverändert, nur zur Kontrolle)
-(Resolve-DnsName "meinehalloapp.com" -Type TXT -Server 8.8.8.8).Strings |
+(Resolve-DnsName "skoulou.com" -Type TXT -Server 8.8.8.8).Strings |
 	Where-Object { $_ -like "v=spf1*" }
 ```
 

@@ -40,24 +40,8 @@
         </div>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(message))
-    {
-        <div class="flex items-center justify-between gap-4 rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-100">
-            <span>@message</span>
-            <button type="button" class="shrink-0 rounded-full p-1 text-emerald-600 transition hover:bg-emerald-100" aria-label="Fermer" @onclick="() => message = null">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
-    }
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
-    {
-        <div class="flex items-center justify-between gap-4 rounded-2xl bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
-            <span>@errorMessage</span>
-            <button type="button" class="shrink-0 rounded-full p-1 text-rose-600 transition hover:bg-rose-100" aria-label="Fermer" @onclick="() => errorMessage = null">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
-    }
+    <Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
+    <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
     @if (HasMultipleSchools)
     {
@@ -122,26 +106,10 @@
         }
     </div>
 
-    <div class="flex flex-wrap gap-2 rounded-2xl bg-white p-2 shadow ring-1 ring-slate-100">
-        <button type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold @(directorTab == "schule" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")"
-                @onclick='() => SetDirectorTabAsync("schule")'>
-            Espace directeur · Administration scolaire
-        </button>
-        <button type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold @(directorTab == "pedagogik" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")"
-                @onclick='() => SetDirectorTabAsync("pedagogik")'>
-            Espace pédagogique
-        </button>
-        <button type="button"
-                class="rounded-full px-4 py-2 text-sm font-semibold @(directorTab == "finances" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")"
-                @onclick='() => SetDirectorTabAsync("finances")'>
-            Finances
-        </button>
+    <div class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow ring-1 ring-slate-100">
+        Espace directeur · Administration scolaire
     </div>
 
-    @if (directorTab == "schule")
-    {
     <CollapsibleCard Title="Classes de mon école"
                       Eyebrow="Gestion des classes"
                       Subtitle="Crée et gère uniquement les classes propres à ton école."
@@ -158,15 +126,9 @@
             </button>
         </HeaderRight>
         <ChildContent>
-            @if (!string.IsNullOrEmpty(klasseStatusMessage))
-            {
-                <div class="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">@klasseStatusMessage</div>
-            }
-            @if (!string.IsNullOrEmpty(klasseErrorMessage))
-            {
-                <div class="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">@klasseErrorMessage</div>
-            }
-            @if (!string.IsNullOrEmpty(klasseWarnMessage))
+            <Toast Message="@(klasseModalOpen ? null : klasseStatusMessage)" MessageChanged="v => klasseStatusMessage = v" Kind="Toast.ToastKind.Success" />
+            <Toast Message="@(klasseModalOpen ? null : klasseErrorMessage)" MessageChanged="v => klasseErrorMessage = v" Kind="Toast.ToastKind.Error" />
+            @if (!klasseModalOpen && !string.IsNullOrEmpty(klasseWarnMessage))
             {
                 <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">@klasseWarnMessage</div>
             }
@@ -226,6 +188,33 @@
                                             <span> · Réf. @klasse.ReferenceName</span>
                                         }
                                     </p>
+                                    <div class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+                                            <span class="text-slate-600">Occupation</span>
+                                            @if (klasse.MaxPlaetze.HasValue)
+                                            {
+                                                <span class="@(IsKlasseOverbooked(klasse) ? "text-rose-700" : "text-slate-700")">@klasse.CurrentStudentCount / @klasse.MaxPlaetze.Value élève(s)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-slate-500">@klasse.CurrentStudentCount élève(s) · capacité libre</span>
+                                            }
+                                        </div>
+                                        @if (klasse.MaxPlaetze.HasValue)
+                                        {
+                                            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                                                <div class="h-full @GetOccupancyBarClass(klasse)" style="@($"width:{GetOccupancyPercent(klasse)}%")"></div>
+                                            </div>
+                                            @if (IsKlasseOverbooked(klasse))
+                                            {
+                                                <p class="mt-2 text-xs font-semibold text-rose-700">Sur-occupation autorisée : +@(klasse.CurrentStudentCount - klasse.MaxPlaetze.Value) élève(s) au-dessus de la capacité.</p>
+                                            }
+                                            else if (GetRemainingPlaetze(klasse) is int reste)
+                                            {
+                                                <p class="mt-2 text-xs text-slate-500">Places restantes : @reste</p>
+                                            }
+                                        }
+                                    </div>
                                     @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var durchlauf))
                                     {
                                         @if (durchlauf.IstAktiv)
@@ -242,6 +231,7 @@
                                         <p class="mt-2 text-xs font-semibold text-amber-700">Aucun cycle démarré</p>
                                     }
                                 </div>
+
                                 <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" class="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700" @onclick="() => OpenNewStudentForKlasseAsync(klasse)">Ajouter élève</button>
                                     @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var aktuellerDurchlauf) && aktuellerDurchlauf.IstAktiv)
@@ -286,11 +276,7 @@
     </HeaderRight>
     <ChildContent>
     <Toast Message="@userStatusMessage" MessageChanged="v => userStatusMessage = v" Kind="Toast.ToastKind.Success" />
-
-    @if (!string.IsNullOrWhiteSpace(userErrorMessage))
-    {
-        <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@userErrorMessage</div>
-    }
+    <Toast Message="@userErrorMessage" MessageChanged="v => userErrorMessage = v" Kind="Toast.ToastKind.Error" />
 
     @if (FilteredSchoolUsersOhneSchueler.Count == 0)
     {
@@ -545,15 +531,17 @@
                                                 <Badge Accent="cyan">Abonnement SKOULOUAPP</Badge>
                                                 <Badge Accent="slate">@level.AboPreis.ToString("N0") FCFA</Badge>
                                             }
+
                                             @if (level.IsPaid)
                                             {
                                                 <Badge Accent="emerald">Paiement effectué</Badge>
                                             }
-                                    @if (level.IsCurrentKlasse && level.HasActiveClassCycle)
-                                    {
-                                        <Badge Accent="emerald">Cycle actif</Badge>
-                                    }
-                                    else if (level.IsClassCycleClosed)
+
+                                            @if (level.IsCurrentKlasse && level.HasActiveClassCycle)
+                                            {
+                                                <Badge Accent="emerald">Cycle actif</Badge>
+                                            }
+                                            else if (level.IsClassCycleClosed)
                                             {
                                                 <Badge Accent="slate">Cycle clôturé</Badge>
                                             }
@@ -807,47 +795,6 @@
             </ChildContent>
         </CollapsibleCard>
     }
-    }
-    else if (directorTab == "pedagogik")
-    {
-        <div class="grid gap-4 rounded-[2rem] bg-white p-5 shadow ring-1 ring-slate-100">
-            <div class="flex flex-wrap gap-2">
-                <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(pedagogikTab == "create" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetPedagogikTabAsync("create")'>Création + attribution</button>
-                <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(pedagogikTab == "progress" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetPedagogikTabAsync("progress")'>Progression élèves</button>
-            </div>
-
-            @if (pedagogikTab == "create")
-            {
-                <div class="rounded-2xl bg-cyan-50 px-5 py-4 ring-1 ring-cyan-100">
-                    <h2 class="text-lg font-black text-slate-900">Création pédagogique</h2>
-                    <p class="mt-1 text-sm text-slate-600">Enseignant: leçons + exercices + examens. Direction: examens d'impression (release direction).</p>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <a class="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white" href="teacher/lessons">Leçons & exercices</a>
-                        <a class="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white" href="teacher-exams">Examens</a>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <div class="rounded-2xl bg-slate-50 px-5 py-4 ring-1 ring-slate-100">
-                    <h2 class="text-lg font-black text-slate-900">Progression & résultats</h2>
-                    <p class="mt-1 text-sm text-slate-600">Suivi des scores et du statut des élèves par classe directement dans la section Administration scolaire.</p>
-                    <button type="button" class="mt-3 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white" @onclick='() => SetDirectorTabAsync("schule")'>Ouvrir le suivi des élèves</button>
-                </div>
-            }
-        </div>
-    }
-    else if (directorTab == "finances")
-    {
-        <div class="grid gap-4 rounded-[2rem] bg-white p-5 shadow ring-1 ring-slate-100">
-            <h2 class="text-lg font-black text-slate-900">Finances</h2>
-            <p class="text-sm text-slate-600">Directeur : un seul espace combiné (comptabilité + infos SKOULOUAPPABO).</p>
-            <div class="flex flex-wrap gap-2">
-                <a class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" href="finanzen">Ouvrir Comptabilité & infos SKOULOUAPPABO</a>
-                <a class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700" href="abrechnung">Vue facturation SKOULOUAPP</a>
-            </div>
-        </div>
-    }
 </section>
 
 <div class="mt-8">
@@ -891,9 +838,44 @@
              Eyebrow="Gestion des utilisateurs"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-3xl">
+    @if (!string.IsNullOrWhiteSpace(userErrorMessage) || !string.IsNullOrWhiteSpace(userStatusMessage))
+    {
+        <div class="sticky top-0 z-20 -mx-1 mb-3 space-y-2 rounded-xl bg-white/95 pb-2 pt-1 backdrop-blur">
+            @if (!string.IsNullOrWhiteSpace(userErrorMessage))
+            {
+                <div class="flex items-start justify-between gap-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">
+                    <span>@userErrorMessage</span>
+                    <button type="button" class="shrink-0 rounded-full p-1 text-rose-700 transition hover:bg-rose-100" aria-label="Fermer" @onclick="() => userErrorMessage = null">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(userStatusMessage))
+            {
+                <div class="flex items-start justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
+                    <span>@userStatusMessage</span>
+                    <button type="button" class="shrink-0 rounded-full p-1 text-emerald-700 transition hover:bg-emerald-100" aria-label="Fermer" @onclick="() => userStatusMessage = null">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
     <EditForm Model="userForm" OnValidSubmit="SaveUserAsync" FormName="schulleiter-user-form" class="grid gap-4">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+
+        <div class="hallo-modal-sticky-messages">
+            <ValidationSummary />
+        </div>
+
+        <div>
+            <ModernDropdown TValue="string" Label="Rôle" Value="userForm.RoleName" ValueChanged="SetSchoolUserRoleAsync" Options="SchoolUserRoleOptions" />
+        </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
@@ -920,9 +902,6 @@
         }
 
         <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <ModernDropdown TValue="string" Label="Rôle" Value="userForm.RoleName" ValueChanged="SetSchoolUserRoleAsync" Options="SchoolUserRoleOptions" />
-            </div>
             @if (userForm.RoleName == "Lehrer")
             {
                 <div class="sm:col-span-2">
@@ -943,8 +922,18 @@
                 </div>
                 <div class="sm:col-span-2">
                     <label class="hallo-label">Classes attribuées</label>
+                    @if (TeacherClassReferenceFilterOptions.Count > 1)
+                    {
+                        <div class="mb-3 max-w-sm">
+                            <ModernDropdown TValue="string"
+                                            Label="Classe de référence"
+                                            Value="teacherClassReferenceFilter"
+                                            ValueChanged="SetTeacherClassReferenceFilterAsync"
+                                            Options="TeacherClassReferenceFilterOptions" />
+                        </div>
+                    }
                     <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                        @foreach (var option in userFormTeacherClassOptions.Where(option => userForm.SchoolIds.Contains(option.SchulID)))
+                        @foreach (var option in FilteredUserFormTeacherClassOptions)
                         {
                             <label class="flex items-center gap-2 text-sm text-slate-700">
                                 <input type="checkbox"
@@ -1100,6 +1089,26 @@
                Eyebrow="Gestion des classes"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-2xl">
+    @if (!string.IsNullOrWhiteSpace(klasseErrorMessage) || !string.IsNullOrWhiteSpace(klasseStatusMessage) || !string.IsNullOrWhiteSpace(klasseWarnMessage))
+    {
+        <div class="sticky top-0 z-20 -mx-1 mb-3 space-y-2 rounded-xl bg-white/95 pb-2 pt-1 backdrop-blur">
+            @if (!string.IsNullOrWhiteSpace(klasseErrorMessage))
+            {
+                <div class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">@klasseErrorMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(klasseStatusMessage))
+            {
+                <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">@klasseStatusMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(klasseWarnMessage))
+            {
+                <div class="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">@klasseWarnMessage</div>
+            }
+        </div>
+    }
+
     <EditForm Model="klasseForm" OnValidSubmit="SaveKlasseAsync" FormName="schulleiter-klasse-form" class="grid gap-4">
         <DataAnnotationsValidator />
         <ValidationSummary />
@@ -1137,15 +1146,26 @@
                 var selectedSchool = schools.FirstOrDefault(s => s.SchoolId == klasseSchoolId);
                 if (selectedSchool is not null)
                 {
-                    <p class="mt-1 text-xs text-cyan-700">Prix d'abonnement affich� pour cette �cole : <strong>@selectedSchool.EffectiveSubscriptionPrice.ToString("N0") FCFA</strong></p>
+                    <p class="mt-1 text-xs text-cyan-700">Prix d'abonnement affich&eacute; pour cette &eacute;cole : <strong>@selectedSchool.EffectiveSubscriptionPrice.ToString("N0") FCFA</strong></p>
                 }
+            }
+        </div>
+
+        <div>
+            <label class="hallo-label">Capacité optimale (places)</label>
+            <InputNumber @bind-Value="klasseForm.MaxPlaetze" class="hallo-input" />
+            <ValidationMessage For="() => klasseForm.MaxPlaetze" class="mt-1 text-xs text-rose-600" />
+            <p class="mt-1 text-xs text-slate-500">Optionnel. L'application autorise la sur-occupation, mais affiche un avertissement clair dans la liste des classes.</p>
+            @if (klasseForm.CourseId.HasValue)
+            {
+                <p class="mt-1 text-xs font-semibold text-slate-700">Occupation actuelle : @klasseForm.CurrentStudentCount élève(s)</p>
             }
         </div>
 
         <label class="inline-flex items-start gap-2 rounded-2xl bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-900 ring-1 ring-cyan-100">
             <InputCheckbox @bind-Value="klasseForm.AutoAssignHalloAppAboOnCycleStart" class="mt-0.5 h-4 w-4 rounded border-cyan-300" />
             <span>
-                Préparer automatiquement SKOULOUAPP (AboTyp.HalloApp) au démarrage du cycle
+                Préparer automatiquement SKOULOUAPP (AboTyp.SkoulouApp) au démarrage du cycle
                 <span class="mt-1 block text-xs font-normal text-cyan-800">Quand le cycle démarre, les élèves actifs de cette classe reçoivent automatiquement l'abonnement SKOULOUAPP activé et marqué payé.</span>
             </span>
         </label>

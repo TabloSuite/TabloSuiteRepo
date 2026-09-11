@@ -9,6 +9,10 @@
 <PageTitle>Cours &amp; supports</PageTitle>
 
 <section class="grid gap-6">
+    <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
+    <Toast Message="@videoUploadMessage" MessageChanged="v => videoUploadMessage = v" Kind="Toast.ToastKind.Success" />
+    <Toast Message="@videoUploadError" MessageChanged="v => videoUploadError = v" Kind="Toast.ToastKind.Error" />
+
     <div class="hallo-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
         <h1 class="mt-3 text-3xl font-black">Cours &amp; supports de cours</h1>
@@ -55,6 +59,10 @@
                             <div>
                                 <div class="flex items-center gap-2">
                                     <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@item.CourseCode</span>
+                                         @if (!string.IsNullOrWhiteSpace(item.FachName))
+                                         {
+                                             <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@item.FachName</span>
+                                         }
                                     @if (item.IsPublished)
                                     {
                                         <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Publié</span>
@@ -80,6 +88,7 @@
                                 @if (IsOwnLesson(item) && canManageLessons)
                                 {
                                     <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="() => StartEditAsync(item.Id)">Modifier</button>
+                                    <button type="button" class="rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-800 transition hover:bg-indigo-200" @onclick="() => OpenCopyModal(item)">Copier vers une classe</button>
                                 }
                                 else
                                 {
@@ -114,6 +123,15 @@
                     <span class="text-sm font-semibold text-slate-700">Résumé</span>
                     <input type="text" class="hallo-input mt-1 text-sm" @bind="form.Summary" />
                 </label>
+                <div class="sm:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                    <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                        <ModernDropdown TValue="Guid?" Label="Matière" Value="form.FachId" ValueChanged="SetLessonFachAsync" Options="FachOptions" />
+                        <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <input type="text" class="hallo-input text-sm" @bind="newFachName" placeholder="Nouvelle matière" />
+                            <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-xs font-semibold text-white" Disabled="@string.IsNullOrWhiteSpace(newFachName)" IsBusy="@isAddingFach" BusyLabel="Ajout..." OnClick="AddFachAsync">Ajouter</AsyncActionButton>
+                        </div>
+                    </div>
+                </div>
                 <label class="block sm:col-span-2">
                     <span class="text-sm font-semibold text-slate-700">Thème du cours (optionnel)</span>
                     <input type="text" class="hallo-input mt-1 text-sm" @bind="form.CourseTheme" placeholder="Ex. : Se présenter" />
@@ -176,14 +194,6 @@
                             </div>
                         </div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(videoUploadMessage))
-                    {
-                        <p class="mt-3 text-sm font-semibold text-emerald-700">@videoUploadMessage</p>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(videoUploadError))
-                    {
-                        <p class="mt-3 text-sm font-semibold text-rose-700">@videoUploadError</p>
-                    }
                 </div>
             </div>
 
@@ -207,14 +217,32 @@
                        OpenChanged="@(open => imageLibraryOpen = open)"
                        ImageSelected="InsertLibraryImageAsync" />
 
-            @if (statusMessage is not null)
-            {
-                <p class="mt-4 text-sm font-semibold text-emerald-700">@statusMessage</p>
-            }
-
             <div class="mt-6 flex flex-wrap gap-2">
                 <button type="button" class="hallo-btn-accent rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg transition disabled:opacity-50" @onclick="SaveAsync" disabled="@isSaving">Enregistrer</button>
                 <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="CancelEdit">Retour</button>
+            </div>
+        </div>
+    }
+    @if (copyModalOpen)
+    {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+            <div class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100">
+                <div class="grid gap-4">
+                    <p class="text-sm text-slate-600">Crée une nouvelle copie en brouillon dans une autre classe. Le support original reste inchangé.</p>
+                    <ModernDropdown TValue="Guid?"
+                                    Label="Classe cible"
+                                    Value="copyTargetKlasseId"
+                                    ValueChanged="(Guid? value) => copyTargetKlasseId = value"
+                                    Options="CopyTargetKlasseOptions" />
+                    <label class="inline-flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-900 ring-1 ring-indigo-100">
+                        <InputCheckbox @bind-Value="copyPublishDirectly" class="h-4 w-4 rounded border-indigo-300" />
+                        <span>Publier directement la copie</span>
+                    </label>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700" @onclick="() => OnCopyModalOpenChanged(false)">Annuler</button>
+                        <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-sm font-semibold text-white" Disabled="@(copyTargetKlasseId is null)" IsBusy="@isCopying" BusyLabel="Copie..." OnClick="CopyLessonAsync">Créer la copie</AsyncActionButton>
+                    </div>
+                </div>
             </div>
         </div>
     }

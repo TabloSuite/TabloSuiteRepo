@@ -24,6 +24,8 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
     public DbSet<School> Schools => Set<School>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<KlassenStufe> KlassenStufen => Set<KlassenStufe>();
+    public DbSet<Fach> Faecher => Set<Fach>();
+    public DbSet<LehrerFachZuordnung> LehrerFachZuordnungen => Set<LehrerFachZuordnung>();
     public DbSet<Lesson> Lessons => Set<Lesson>();
     public DbSet<LessonMedia> LessonMedia => Set<LessonMedia>();
     public DbSet<BlobMediaAsset> BlobMediaAssets => Set<BlobMediaAsset>();
@@ -96,6 +98,36 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
             .HasOne(x => x.Schule)
             .WithMany()
             .HasForeignKey(x => x.SchulID)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Fach>()
+            .HasOne(x => x.School)
+            .WithMany()
+            .HasForeignKey(x => x.SchoolId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LehrerFachZuordnung>()
+            .HasOne(x => x.Lehrer)
+            .WithMany(x => x.LehrerFachZuordnungen)
+            .HasForeignKey(x => x.LehrerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LehrerFachZuordnung>()
+            .HasOne(x => x.Fach)
+            .WithMany(x => x.LehrerZuordnungen)
+            .HasForeignKey(x => x.FachId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AppUser>()
+            .HasOne(x => x.ProfilBildAsset)
+            .WithMany()
+            .HasForeignKey(x => x.ProfilBildAssetId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<BlobMediaAsset>()
+            .HasOne(x => x.Owner)
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<StudentProfile>()

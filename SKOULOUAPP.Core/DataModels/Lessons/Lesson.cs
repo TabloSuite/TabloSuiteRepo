@@ -29,6 +29,15 @@ public class Lesson : AuditableModel
     /// </summary>
     public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
 
+    /// <summary>
+    /// Versionsrunde der Aufgaben-Zuweisung. Wird nach Fristablauf erhöht,
+    /// damit neue Änderungen nur für neue Abgaben gelten.
+    /// </summary>
+    public int AssignmentVersion { get; set; } = 1;
+
+    public Guid? FachId { get; set; }
+    public Fach? Fach { get; set; }
+
     public ICollection<LessonMedia> MediaItems { get; set; } = new List<LessonMedia>();
     public ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
 }

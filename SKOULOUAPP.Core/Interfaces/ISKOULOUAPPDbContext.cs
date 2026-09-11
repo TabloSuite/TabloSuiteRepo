@@ -54,6 +54,12 @@ public interface IHalloAppDbContext
     /// <summary>Schulgebundene Klassenstufen normaler Schulen.</summary>
     DbSet<KlassenStufe> KlassenStufen { get; }
 
+    /// <summary>Schulgebundene Fächer (Matières).</summary>
+    DbSet<Fach> Faecher { get; }
+
+    /// <summary>Mehrfachzuordnung von Lehrern zu Fächern.</summary>
+    DbSet<LehrerFachZuordnung> LehrerFachZuordnungen { get; }
+
     /// <summary>Einschreibungen in Kursniveaus.</summary>
     DbSet<LevelEnrollment> LevelEnrollments { get; }
 

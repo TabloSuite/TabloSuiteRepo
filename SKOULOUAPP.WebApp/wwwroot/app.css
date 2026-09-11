@@ -43,6 +43,38 @@ html {
     background-clip: padding-box;
 }
 
+.hallo-modal-scroll .validation-summary-errors {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    margin: 0 0 0.9rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.95rem;
+    border: 1px solid #fecaca;
+    background: rgba(255, 241, 242, 0.98);
+    color: #b91c1c;
+    backdrop-filter: blur(2px);
+}
+
+.hallo-modal-scroll .validation-summary-errors ul {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.hallo-modal-scroll .validation-summary-errors li {
+    margin: 0.15rem 0;
+}
+
+.hallo-modal-scroll .hallo-modal-sticky-messages {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: -0.1rem 0 0.9rem;
+    padding-top: 0.1rem;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.98), rgba(255,255,255,0.9) 78%, rgba(255,255,255,0));
+    backdrop-filter: blur(2px);
+}
+
 .halloapp-formula-palette {
     position: fixed;
     z-index: 1000;
@@ -217,22 +249,22 @@ html {
    Switch by setting data-theme="ocean" | "coral" | "slate" | "sage" | "navy" on <html>.
    ========================================================================== */
 :root,
-[data-theme="indigo"] {
-    --hallo-bg-from: #f8fafc;
-    --hallo-bg-to: #eef2ff;
-    --hallo-bg-page: #eef4ff;
-    --hallo-accent-1: #4f46e5;
-    --hallo-accent-1-dark: #4338ca;
-    --hallo-accent-2: #06b6d4;
-    --hallo-accent-2-dark: #0891b2;
-    --hallo-sidebar-from: #1e1b4b;
-    --hallo-sidebar-via: #4f46e5;
-    --hallo-sidebar-to: #0891b2;
-    --hallo-kicker: #0f766e;
-    --hallo-glow-1: rgba(124, 58, 237, 0.16);
-    --hallo-glow-2: rgba(6, 182, 212, 0.12);
-    --hallo-selection: rgba(37, 99, 235, 0.25);
-    --hallo-focus-ring: rgba(37, 99, 235, 0.35);
+[data-theme="navy"] {
+    --hallo-bg-from: #f4f7fb;
+    --hallo-bg-to: #e6ecf5;
+    --hallo-bg-page: #f4f7fb;
+    --hallo-accent-1: #1e3a8a;
+    --hallo-accent-1-dark: #172554;
+    --hallo-accent-2: #2563eb;
+    --hallo-accent-2-dark: #1d4ed8;
+    --hallo-sidebar-from: #050b1f;
+    --hallo-sidebar-via: #1e3a8a;
+    --hallo-sidebar-to: #2563eb;
+    --hallo-kicker: #1e3a8a;
+    --hallo-glow-1: rgba(30, 58, 138, 0.18);
+    --hallo-glow-2: rgba(37, 99, 235, 0.14);
+    --hallo-selection: rgba(30, 58, 138, 0.25);
+    --hallo-focus-ring: rgba(30, 58, 138, 0.35);
 }
 
 [data-theme="ocean"] {
@@ -307,23 +339,6 @@ html {
     --hallo-focus-ring: rgba(77, 124, 74, 0.3);
 }
 
-[data-theme="navy"] {
-    --hallo-bg-from: #f4f7fb;
-    --hallo-bg-to: #e6ecf5;
-    --hallo-bg-page: #f4f7fb;
-    --hallo-accent-1: #1e3a8a;
-    --hallo-accent-1-dark: #172554;
-    --hallo-accent-2: #2563eb;
-    --hallo-accent-2-dark: #1d4ed8;
-    --hallo-sidebar-from: #050b1f;
-    --hallo-sidebar-via: #1e3a8a;
-    --hallo-sidebar-to: #2563eb;
-    --hallo-kicker: #1e3a8a;
-    --hallo-glow-1: rgba(30, 58, 138, 0.18);
-    --hallo-glow-2: rgba(37, 99, 235, 0.14);
-    --hallo-selection: rgba(30, 58, 138, 0.25);
-    --hallo-focus-ring: rgba(30, 58, 138, 0.35);
-}
 
 [id] {
     scroll-margin-top: 1.5rem;
@@ -1761,6 +1776,13 @@ section {
 .halloapp-richtext[style*="--hallo-richtext-min-height"] .ql-container,
 .halloapp-richtext[style*="--hallo-richtext-min-height"] .ql-editor {
     min-height: var(--hallo-richtext-min-height);
+}
+
+/* Standardhöhe für alle RichTextEditor-Instanzen ohne explizite Höhenvorgabe:
+   ca. 20 Zeilen für konsistente Bearbeitungsfläche. */
+.halloapp-richtext:not([style*="--hallo-richtext-min-height"]) .ql-container,
+.halloapp-richtext:not([style*="--hallo-richtext-min-height"]) .ql-editor {
+    min-height: 10rem;
 }
 
 .student-exercise-page,

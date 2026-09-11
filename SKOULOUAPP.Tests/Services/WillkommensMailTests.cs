@@ -136,7 +136,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("unbekannt@test.local", "Jean");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Equal("Bienvenue chez HalloApp", nachricht.Subject);
+        Assert.Equal("Bienvenue chez SKOULOUAPP", nachricht.Subject);
         Assert.Contains("Jean", nachricht.HtmlBody);
     }
 
@@ -162,7 +162,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("jean@test.local", "Jean");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
-        Assert.Contains("HALLOAPP", html);
+        Assert.Contains("SKOULOUAPP", html);
         Assert.Contains("CONTACT", html);
         Assert.Contains("Tous droits réservés", html);
     }
@@ -191,7 +191,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("chef@test.local", "Jean");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Contains("école HalloApp est enregistrée", nachricht.Subject);
+        Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
         Assert.Contains("Institut Goethe", nachricht.HtmlBody);
         Assert.Contains("directeur d'école", nachricht.HtmlBody);
     }
@@ -220,7 +220,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("eleve@test.local", "Jean");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
-        Assert.Contains("HALLOAPPABO", html);
+        Assert.Contains("SKOULOUAPPABO", html);
         Assert.Contains("tu bénéficies des leçons, supports, exercices et examens", html);
         Assert.Contains("La direction attribue et suit cet abonnement pour chaque classe", html);
     }
@@ -235,7 +235,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("eleve2@test.local", "Jean");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
-        Assert.Contains("HALLOAPPABO", html);
+        Assert.Contains("SKOULOUAPPABO", html);
         Assert.Contains("tu bénéficies des leçons, supports, exercices et examens", html);
         Assert.Contains("La direction attribue et suit cet abonnement pour chaque classe", html);
     }
@@ -260,6 +260,6 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("chef2@test.local", "Jean");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Contains("école HalloApp est enregistrée", nachricht.Subject);
+        Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
     }
 }

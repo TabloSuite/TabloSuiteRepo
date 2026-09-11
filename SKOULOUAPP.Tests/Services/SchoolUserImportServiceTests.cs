@@ -29,7 +29,7 @@ public class SchoolUserImportServiceTests
         Assert.True(preview.Succeeded, string.Join(" ", preview.Errors.Concat(preview.Rows.SelectMany(r => r.Errors))));
         var row = Assert.Single(preview.Rows);
         Assert.True(row.EmailGenerated);
-        Assert.Equal("mensah.afi@halloapp.com", row.Email);
+        Assert.Equal("mensah.afi@skoulou.com", row.Email);
         Assert.Equal(SchoolUserImportDefaults.InitialPassword, row.InitialPassword);
     }
 
@@ -88,7 +88,7 @@ public class SchoolUserImportServiceTests
             DirectorId = director.Id,
             SchoolId = school.Id,
             Kind = SchoolUserImportKind.Teacher,
-            CsvContent = $"\uFEFFPrénom;Nom;Classe;E-mail;Téléphone\nAmah;Abalo;{klasse.Code};amah.abalo@halloapp.com;90000001"
+            CsvContent = $"\uFEFFPrénom;Nom;Classe;E-mail;Téléphone\nAmah;Abalo;{klasse.Code};amah.abalo@skoulou.com;90000001"
         });
 
         Assert.True(preview.Succeeded, string.Join(" ", preview.Errors.Concat(preview.Rows.SelectMany(row => row.Errors))));

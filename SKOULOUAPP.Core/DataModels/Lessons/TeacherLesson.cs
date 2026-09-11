@@ -1,6 +1,7 @@
 using HalloApp.Core.DataModels.BaseModel;
 using HalloApp.Core.DataModels.Courses;
 using HalloApp.Core.DataModels.Identity;
+using HalloApp.Core.DataModels.Schools;
 
 namespace HalloApp.Core.DataModels.Lessons;
 
@@ -43,6 +44,9 @@ public class TeacherLesson : AuditableModel
 
     /// <summary>Gibt an, ob der Autor den PDF-Export seines Skripts erlaubt.</summary>
     public bool IsPdfExportEnabled { get; set; }
+
+    public Guid? FachId { get; set; }
+    public Fach? Fach { get; set; }
 
     /// <summary>Optionales Vorlesungsvideo zur Lektion. Wird ausschließlich über Azure Blob Storage ausgeliefert.</summary>
     public Guid? VideoAssetId { get; set; }

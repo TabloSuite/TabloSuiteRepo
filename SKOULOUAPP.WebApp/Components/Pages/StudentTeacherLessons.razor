@@ -32,27 +32,85 @@
     }
     else
     {
-        <div class="grid gap-4">
-            @foreach (var item in lessons)
-            {
-                <article class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                    <button type="button" class="w-full text-left" @onclick="() => OpenLesson(item.Id)">
-                        <div class="flex items-center gap-2">
-                            <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@item.CourseCode</span>
-                            <span class="text-xs text-slate-400">@item.PageCount page(s)</span>
-                        </div>
-                        <h2 class="mt-2 text-lg font-bold text-slate-900">@item.Title</h2>
-                        <p class="mt-1 text-sm text-slate-500">@item.Summary</p>
-                    </button>
-                    <div class="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                        <button type="button" class="inline-flex rounded-full bg-violet-100 px-4 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenLesson(item.Id)">Lire la leçon</button>
-                        @if (item.IsPdfExportEnabled)
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="grid gap-3 sm:grid-cols-2">
+                <ModernDropdown TValue="Guid?" Label="Filtrer par enseignant" Value="selectedTeacherId" ValueChanged="SetTeacherFilterAsync" Options="TeacherOptions" Searchable="true" SearchPlaceholder="Rechercher un enseignant..." />
+                <ModernDropdown TValue="Guid?" Label="Filtrer par matière" Value="selectedFachId" ValueChanged="SetFachFilterAsync" Options="FachOptions" Searchable="true" SearchPlaceholder="Rechercher une matière..." />
+            </div>
+        </div>
+
+        <div class="grid gap-6">
+            <div class="rounded-2xl bg-white p-4 shadow ring-1 ring-slate-100">
+                <h2 class="text-lg font-black text-slate-900">Classe actuelle</h2>
+                @if (FilteredCurrentLessons.Count == 0)
+                {
+                    <p class="mt-2 text-sm text-slate-500">Aucun support ne correspond aux filtres pour ta classe actuelle.</p>
+                }
+                else
+                {
+                    <div class="mt-4 grid gap-4">
+                        @foreach (var item in FilteredCurrentLessons)
                         {
-                            <a class="inline-flex rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="student/cours/@item.Id/pdf" target="_blank">Exporter PDF</a>
+                            <article class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+                                <button type="button" class="w-full text-left" @onclick="() => OpenLesson(item.Id)">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@item.CourseCode</span>
+                                        @if (!string.IsNullOrWhiteSpace(item.FachName))
+                                        {
+                                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@item.FachName</span>
+                                        }
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">@item.AuthorName</span>
+                                        <span class="text-xs text-slate-400">@item.PageCount page(s)</span>
+                                    </div>
+                                    <h2 class="mt-2 text-lg font-bold text-slate-900">@item.Title</h2>
+                                    <p class="mt-1 text-sm text-slate-500">@item.Summary</p>
+                                </button>
+                                <div class="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                                    <button type="button" class="inline-flex rounded-full bg-violet-100 px-4 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenLesson(item.Id)">Lire la leçon</button>
+                                    @if (item.IsPdfExportEnabled)
+                                    {
+                                        <a class="inline-flex rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="student/cours/@item.Id/pdf" target="_blank">Exporter PDF</a>
+                                    }
+                                </div>
+                            </article>
                         }
                     </div>
-                </article>
-            }
+                }
+            </div>
+
+            <div class="rounded-2xl bg-white p-4 shadow ring-1 ring-slate-100">
+                <h2 class="text-lg font-black text-slate-900">Historique</h2>
+                @if (FilteredHistoryLessons.Count == 0)
+                {
+                    <p class="mt-2 text-sm text-slate-500">Aucun support d'historique ne correspond aux filtres.</p>
+                }
+                else
+                {
+                    <div class="mt-4 grid gap-4">
+                        @foreach (var item in FilteredHistoryLessons)
+                        {
+                            <article class="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+                                <button type="button" class="w-full text-left" @onclick="() => OpenLesson(item.Id)">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">@item.CourseCode</span>
+                                        @if (!string.IsNullOrWhiteSpace(item.KlasseTitle))
+                                        {
+                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">@item.KlasseTitle</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.FachName))
+                                        {
+                                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@item.FachName</span>
+                                        }
+                                        <span class="rounded-full bg-white px-3 py-1 text-xs text-slate-700">@item.AuthorName</span>
+                                    </div>
+                                    <h3 class="mt-2 text-base font-bold text-slate-900">@item.Title</h3>
+                                    <p class="mt-1 text-sm text-slate-500">@item.Summary</p>
+                                </button>
+                            </article>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     }
 </section>

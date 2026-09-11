@@ -485,4 +485,172 @@ public class TeacherLessonServiceTests
         Assert.Equal(1, detail.Pages[0].PageNumber);
         Assert.Equal("<p>2-geändert</p>", detail.Pages[0].ContentHtml);
     }
+
+    [Fact]
+    public async Task CopyLessonToKlasseAsync_ErstelltNeueLektionAlsEntwurfMitSeiten()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolIdA = Guid.NewGuid();
+        var schoolIdB = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+
+        var klasseA = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolIdA, Code = "CP1", Title = "CP1 A" };
+        var klasseB = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolIdB, Code = "CP1", Title = "CP1 B" };
+        var fachA = new Fach { Id = Guid.NewGuid(), SchoolId = schoolIdA, Name = "Math" };
+
+        db.Schools.AddRange(
+            new School { Id = schoolIdA, Name = "École A", City = "Lomé" },
+            new School { Id = schoolIdB, Name = "École B", City = "Lomé" });
+        db.Users.Add(new AppUser { Id = authorId, FullName = "Enseignant", UserName = "teacher" });
+        db.Klassen.AddRange(klasseA, klasseB);
+        db.Faecher.Add(fachA);
+        db.UserSchools.AddRange(
+            new UserSchool { AppUserId = authorId, SchoolId = schoolIdA, CanManageStudents = true },
+            new UserSchool { AppUserId = authorId, SchoolId = schoolIdB, CanManageStudents = true });
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+        var sourceId = await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = klasseA.Id,
+            FachId = fachA.Id,
+            Title = "Support original",
+            Summary = "Résumé",
+            IsPublished = true,
+            IsSharedWithSchool = true,
+            IsPdfExportEnabled = true,
+            Pages =
+            [
+                new TeacherLessonPageFormModel { ContentHtml = "<p>Page 1</p>" },
+                new TeacherLessonPageFormModel { ContentHtml = "<p>Page 2</p>" }
+            ]
+        }, authorId);
+
+        var copyId = await service.CopyLessonToKlasseAsync(sourceId, authorId, klasseB.Id);
+
+        var copied = await service.GetLessonForEditAsync(copyId, authorId);
+        Assert.NotNull(copied);
+        Assert.Equal("Support original (copie)", copied!.Title);
+        Assert.Equal(klasseB.Id, copied.KlasseId);
+        Assert.False(copied.IsPublished);
+        Assert.True(copied.IsPdfExportEnabled);
+        Assert.True(copied.IsSharedWithSchool);
+        Assert.Null(copied.FachId);
+        Assert.Equal(2, copied.Pages.Count);
+        Assert.Equal("<p>Page 1</p>", copied.Pages[0].ContentHtml);
+        Assert.Equal("<p>Page 2</p>", copied.Pages[1].ContentHtml);
+    }
+
+    [Fact]
+    public async Task CopyLessonToKlasseAsync_FremderAutor_WirdAbgewiesen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var fremderId = Guid.NewGuid();
+        var klasseA = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1" };
+        var klasseB = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP2", Title = "CP2" };
+
+        db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
+        db.Users.AddRange(
+            new AppUser { Id = authorId, FullName = "Auteur", UserName = "auteur" },
+            new AppUser { Id = fremderId, FullName = "Autre", UserName = "autre" });
+        db.Klassen.AddRange(klasseA, klasseB);
+        db.UserSchools.AddRange(
+            new UserSchool { AppUserId = authorId, SchoolId = schoolId, CanManageStudents = true },
+            new UserSchool { AppUserId = fremderId, SchoolId = schoolId, CanManageStudents = true });
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+        var sourceId = await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = klasseA.Id,
+            Title = "Support",
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
+        }, authorId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CopyLessonToKlasseAsync(sourceId, fremderId, klasseB.Id));
+    }
+
+    [Fact]
+    public async Task CopyLessonToKlasseAsync_PublishDirectly_SetztVeroeffentlicht()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var klasseA = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1" };
+        var klasseB = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP2", Title = "CP2" };
+
+        db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
+        db.Users.Add(new AppUser { Id = authorId, FullName = "Auteur", UserName = "auteur" });
+        db.Klassen.AddRange(klasseA, klasseB);
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+        var sourceId = await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = klasseA.Id,
+            Title = "Support",
+            IsPublished = true,
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
+        }, authorId);
+
+        var copyId = await service.CopyLessonToKlasseAsync(sourceId, authorId, klasseB.Id, publishDirectly: true);
+
+        var copied = await service.GetLessonDetailAsync(copyId, onlyPublished: false);
+        Assert.NotNull(copied);
+        Assert.True(copied!.IsPublished);
+    }
+
+    [Fact]
+    public async Task GetLessonsForStudentAsync_MarkiertAktuelleKlasseUndHistorie()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var currentKlasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1 A" };
+        var oldKlasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP0", Title = "CP0 A" };
+        var studentId = Guid.NewGuid();
+
+        db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
+        db.Users.Add(new AppUser { Id = authorId, FullName = "Professeur A", UserName = "prof-a" });
+        db.Klassen.AddRange(currentKlasse, oldKlasse);
+        db.UserSchools.Add(new UserSchool { AppUserId = authorId, SchoolId = schoolId, CanManageStudents = true });
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentKlasseId = currentKlasse.Id,
+            CurrentLevelCode = currentKlasse.Code
+        });
+        db.LevelEnrollments.AddRange(
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = currentKlasse.Id, IsUnlocked = true },
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = oldKlasse.Id, IsUnlocked = true });
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+
+        await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = currentKlasse.Id,
+            Title = "Actuel",
+            IsPublished = true,
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>Actuel</p>" }]
+        }, authorId);
+
+        await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = oldKlasse.Id,
+            Title = "Historique",
+            IsPublished = true,
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>Ancien</p>" }]
+        }, authorId);
+
+        var result = await service.GetLessonsForStudentAsync(studentId);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, item => item.Title == "Actuel" && item.IsCurrentKlasse && item.KlasseTitle == "CP1 A");
+        Assert.Contains(result, item => item.Title == "Historique" && !item.IsCurrentKlasse && item.KlasseTitle == "CP0 A");
+    }
 }

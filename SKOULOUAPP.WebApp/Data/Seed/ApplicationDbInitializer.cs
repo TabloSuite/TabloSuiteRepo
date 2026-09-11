@@ -91,7 +91,7 @@ public static class ApplicationDbInitializer
         // Lehrer und Schueler werden ausschliesslich ueber die Anwendung erfasst.
         await EnsureUserAsync(
             userManager,
-            email: "admin@web.de",
+            email: "admin@skoulou.com",
             fullName: "Ich",
             password: "Admin123!",
             isSelfRegistered: false,

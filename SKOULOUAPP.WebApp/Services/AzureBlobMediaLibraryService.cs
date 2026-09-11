@@ -60,7 +60,8 @@ public sealed class AzureBlobMediaLibraryService(
     };
 
     private readonly AzureBlobStorageOptions storageOptions = options.Value;
-    private const string LocalMediaLibraryRoot = "media-library";
+    private const string DefaultLocalMediaLibraryRoot = "wwwroot/media-library";
+    private const string BlobStorageRootPrefix = "SkoulouAppStorage";
 
     public async Task<IReadOnlyList<BlobMediaAssetItem>> GetVisibleImagesAsync(
         Guid userId,
@@ -116,7 +117,6 @@ public sealed class AzureBlobMediaLibraryService(
         string altText,
         CancellationToken cancellationToken = default)
     {
-        ValidateConfiguration();
         var normalizedContentType = NormalizeImageContentType(contentType, originalFileName);
         ValidateImage(normalizedContentType, altText);
 
@@ -130,16 +130,26 @@ public sealed class AzureBlobMediaLibraryService(
             throw new InvalidOperationException("La classe choisie n'appartient pas à cette école.");
         }
 
-        var extension = Path.GetExtension(originalFileName);
-        var safeName = SanitizeBlobSegment(string.IsNullOrWhiteSpace(displayName) ? Path.GetFileNameWithoutExtension(originalFileName) : displayName);
-        var classSegment = klasseId.HasValue ? $"classes/{klasseId.Value:N}/" : string.Empty;
-        var blobName = $"schools/{schoolId:N}/{classSegment}{DateTime.UtcNow:yyyy/MM}/{safeName}-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var blob = GetContainerClient().GetBlobClient(blobName);
-        await blob.UploadAsync(content, new BlobUploadOptions
+        string blobName;
+        if (storageOptions.Enabled)
         {
-            TransferOptions = UploadTransferOptions,
-            HttpHeaders = new BlobHttpHeaders { ContentType = normalizedContentType }
-        }, cancellationToken);
+            ValidateConfiguration();
+            blobName = BuildBlobStoragePath(schoolId, klasseId, originalFileName, displayName, "images");
+            var blob = GetContainerClient().GetBlobClient(blobName);
+            await blob.UploadAsync(content, new BlobUploadOptions
+            {
+                TransferOptions = UploadTransferOptions,
+                HttpHeaders = new BlobHttpHeaders { ContentType = normalizedContentType }
+            }, cancellationToken);
+        }
+        else
+        {
+            blobName = BuildLocalMediaPath(schoolId, klasseId, originalFileName, displayName, "images");
+            var physicalPath = GetLocalMediaPath(blobName);
+            Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
+            await using var fileStream = File.Create(physicalPath);
+            await content.CopyToAsync(fileStream, cancellationToken);
+        }
 
         var asset = new BlobMediaAsset
         {
@@ -235,10 +245,7 @@ public sealed class AzureBlobMediaLibraryService(
         if (storageOptions.Enabled)
         {
             ValidateConfiguration();
-            var extension = Path.GetExtension(originalFileName);
-            var safeName = SanitizeBlobSegment(string.IsNullOrWhiteSpace(displayName) ? Path.GetFileNameWithoutExtension(originalFileName) : displayName);
-            var classSegment = klasseId.HasValue ? $"classes/{klasseId.Value:N}/" : string.Empty;
-            blobName = $"schools/{schoolId:N}/{classSegment}videos/{DateTime.UtcNow:yyyy/MM}/{safeName}-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+            blobName = BuildBlobStoragePath(schoolId, klasseId, originalFileName, displayName, "videos");
             var blob = GetContainerClient().GetBlobClient(blobName);
             await blob.UploadAsync(content, new BlobUploadOptions
             {
@@ -337,6 +344,22 @@ public sealed class AzureBlobMediaLibraryService(
             return null;
         }
 
+        if (!storageOptions.Enabled)
+        {
+            var physicalPath = GetLocalMediaPath(asset.BlobName);
+            if (!File.Exists(physicalPath))
+            {
+                return null;
+            }
+
+            return new BlobMediaDownload
+            {
+                Content = File.OpenRead(physicalPath),
+                ContentType = asset.ContentType,
+                FileName = asset.OriginalFileName
+            };
+        }
+
         ValidateConfiguration();
         var download = await GetContainerClient().GetBlobClient(asset.BlobName).DownloadStreamingAsync(cancellationToken: cancellationToken);
         return new BlobMediaDownload
@@ -345,6 +368,65 @@ public sealed class AzureBlobMediaLibraryService(
             ContentType = asset.ContentType,
             FileName = asset.OriginalFileName
         };
+    }
+
+    public async Task DeleteImageAsync(
+        Guid assetId,
+        Guid userId,
+        IReadOnlyCollection<string> roles,
+        CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.BlobMediaAssets
+            .Where(asset => asset.Id == assetId && asset.MediaType == BlobMediaType.Image)
+            .AsQueryable();
+
+        query = await ApplyVisibilityAsync(query, userId, roles, cancellationToken);
+        var asset = await query.SingleOrDefaultAsync(cancellationToken);
+        if (asset is null)
+        {
+            throw new InvalidOperationException("Image introuvable ou non autorisée.");
+        }
+
+        var isPrivileged = roles.Any(role => role is Rollen.SuperAdmin or Rollen.ProduktOwner or Rollen.SchulLeiter or Rollen.Koordinator);
+        var canDelete = isPrivileged || asset.OwnerId == userId;
+        if (!canDelete)
+        {
+            throw new UnauthorizedAccessException("Vous n’êtes pas autorisé à supprimer cette image.");
+        }
+
+        var isInUseByProfile = await dbContext.Users
+            .AsNoTracking()
+            .AnyAsync(user => user.ProfilBildAssetId == assetId, cancellationToken);
+        if (isInUseByProfile)
+        {
+            throw new InvalidOperationException("Suppression impossible : cette image est utilisée comme photo de profil.");
+        }
+
+        var mediaRoute = $"/media-library/{assetId}";
+        var isInUseByLessonContent = await dbContext.TeacherLessonPages
+            .AsNoTracking()
+            .AnyAsync(page => page.ContentHtml.Contains(mediaRoute), cancellationToken);
+        if (isInUseByLessonContent)
+        {
+            throw new InvalidOperationException("Suppression impossible : cette image est utilisée dans une leçon.");
+        }
+
+        dbContext.BlobMediaAssets.Remove(asset);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (!storageOptions.Enabled)
+        {
+            var physicalPath = GetLocalMediaPath(asset.BlobName);
+            if (File.Exists(physicalPath))
+            {
+                File.Delete(physicalPath);
+            }
+
+            return;
+        }
+
+        ValidateConfiguration();
+        await GetContainerClient().GetBlobClient(asset.BlobName).DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
     private async Task<bool> CanStudentOpenPublishedTeacherLessonVideoAsync(
@@ -443,7 +525,17 @@ public sealed class AzureBlobMediaLibraryService(
         => new BlobContainerClient(storageOptions.BlobConnectionString, storageOptions.ContainerName);
 
     private string GetLocalMediaRootPath()
-        => Path.Combine(environment.WebRootPath, LocalMediaLibraryRoot);
+    {
+        var configuredRoot = storageOptions.LocalDataRootPath;
+        if (string.IsNullOrWhiteSpace(configuredRoot))
+        {
+            configuredRoot = DefaultLocalMediaLibraryRoot;
+        }
+
+        return Path.IsPathRooted(configuredRoot)
+            ? configuredRoot
+            : Path.GetFullPath(Path.Combine(environment.ContentRootPath, configuredRoot));
+    }
 
     private string GetLocalMediaPath(string relativePath)
     {
@@ -457,6 +549,14 @@ public sealed class AzureBlobMediaLibraryService(
         var safeName = SanitizeBlobSegment(string.IsNullOrWhiteSpace(displayName) ? Path.GetFileNameWithoutExtension(originalFileName) : displayName);
         var classSegment = klasseId.HasValue ? $"classes/{klasseId.Value:N}/" : string.Empty;
         return $"{mediaFolder}/schools/{schoolId:N}/{classSegment}{DateTime.UtcNow:yyyy/MM}/{safeName}-{Guid.NewGuid():N}{extension}";
+    }
+
+    private static string BuildBlobStoragePath(Guid schoolId, Guid? klasseId, string originalFileName, string displayName, string mediaFolder)
+    {
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var safeName = SanitizeBlobSegment(string.IsNullOrWhiteSpace(displayName) ? Path.GetFileNameWithoutExtension(originalFileName) : displayName);
+        var classSegment = klasseId.HasValue ? $"classes/{klasseId.Value:N}/" : string.Empty;
+        return $"{BlobStorageRootPrefix}/schools/{schoolId:N}/{classSegment}{mediaFolder}/{DateTime.UtcNow:yyyy/MM}/{safeName}-{Guid.NewGuid():N}{extension}";
     }
 
     private void ValidateConfiguration()

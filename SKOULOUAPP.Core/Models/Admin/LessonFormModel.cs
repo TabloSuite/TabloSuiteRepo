@@ -6,6 +6,12 @@ public class LessonFormModel
 {
     public Guid? LessonId { get; set; }
     public Guid CourseId { get; set; }
+    public int AssignmentVersion { get; set; } = 1;
+    public bool IsCurrentAssignmentVersionLocked { get; set; }
+    public bool HasSubmissionsInCurrentAssignmentVersion { get; set; }
+    public Guid? FachId { get; set; }
+    public string? FachName { get; set; }
+    public string? NeueFachBezeichnung { get; set; }
 
     [Required(ErrorMessage = "Veuillez saisir un titre de leçon.")]
     [StringLength(200)]

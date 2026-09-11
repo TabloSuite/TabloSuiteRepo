@@ -34,11 +34,17 @@ public partial class TeacherLessonExercises
     private List<KlasseOption> klasses = [];
     private LessonFormModel? form;
     private string selectedLessonCode = string.Empty;
+    private Dictionary<Guid, Guid?> klasseSchoolById = [];
+    private List<FachOptionItem> fachOptions = [];
+    private List<FachOptionItem> filteredFachOptions = [];
+    private string newFachName = string.Empty;
+    private bool isAddingFach;
 
     private bool isLoading = true;
     private bool editorOpen;
     private bool isSaving;
     private bool isSavingManualReview;
+    private bool isCurrentAssignmentVersionLocked;
     private string? statusMessage;
     private string? errorMessage;
     private List<PendingManualExerciseReviewItem> pendingManualReviews = [];
@@ -59,6 +65,8 @@ public partial class TeacherLessonExercises
     {
         public Guid LessonId { get; set; }
         public Guid KlasseId { get; set; }
+        public Guid? FachId { get; set; }
+        public string? FachName { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Summary { get; set; } = string.Empty;
         public int ExerciseCount { get; set; }
@@ -70,6 +78,12 @@ public partial class TeacherLessonExercises
         .. klasses.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
     ];
 
+    private IReadOnlyList<ModernDropdownOption<Guid?>> FachOptions =>
+    [
+        new(null, "— Matière (optionnel) —"),
+        .. filteredFachOptions.Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, $"{fach.Name} · {fach.SchoolName}"))
+    ];
+
     private Task SetLessonCourseAsync(Guid? courseId)
     {
         if (form is null || courseId is not Guid value)
@@ -79,6 +93,23 @@ public partial class TeacherLessonExercises
 
         form.CourseId = value;
         selectedLessonCode = klasses.FirstOrDefault(klasse => klasse.Id == value)?.Code ?? string.Empty;
+        FilterFachOptionsForCurrentCourse();
+
+        if (form.FachId.HasValue && filteredFachOptions.All(fach => fach.FachId != form.FachId.Value))
+        {
+            form.FachId = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetLessonFachAsync(Guid? fachId)
+    {
+        if (form is not null)
+        {
+            form.FachId = fachId;
+        }
+
         return Task.CompletedTask;
     }
 
@@ -100,6 +131,8 @@ public partial class TeacherLessonExercises
         new("fr-FR", "Français (FR)"),
         new("en-US", "English (EN)")
     ];
+
+    private bool IsAddFachDisabled => isCurrentAssignmentVersionLocked || string.IsNullOrWhiteSpace(newFachName);
 
     protected override async Task OnInitializedAsync()
     {
@@ -157,6 +190,26 @@ public partial class TeacherLessonExercises
             })
             .ToListAsync(ComponentToken);
 
+        klasseSchoolById = await DbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => allowedCourseIds.Contains(klasse.Id))
+            .ToDictionaryAsync(klasse => klasse.Id, klasse => klasse.SchoolId, ComponentToken);
+
+        fachOptions = await DbContext.LehrerFachZuordnungen
+            .AsNoTracking()
+            .Where(assignment => assignment.LehrerId == currentTeacherId)
+            .Select(assignment => new FachOptionItem
+            {
+                FachId = assignment.FachId,
+                Name = assignment.Fach.Name,
+                SchoolId = assignment.Fach.SchoolId,
+                SchoolName = assignment.Fach.School.Name
+            })
+            .DistinctBy(item => item.FachId)
+            .OrderBy(item => item.SchoolName)
+            .ThenBy(item => item.Name)
+            .ToListAsync(ComponentToken);
+
         if (allowedCourseIds.Count == 0)
         {
             lessons = [];
@@ -174,6 +227,8 @@ public partial class TeacherLessonExercises
             {
                 LessonId = lesson.Id,
                 KlasseId = lesson.KlasseId,
+                FachId = lesson.FachId,
+                FachName = lesson.Fach != null ? lesson.Fach.Name : null,
                 Title = lesson.Title,
                 Summary = lesson.Summary,
                 ExerciseCount = lesson.Exercises.Count,
@@ -214,6 +269,7 @@ public partial class TeacherLessonExercises
         }
 
         form = loaded;
+        isCurrentAssignmentVersionLocked = loaded.IsCurrentAssignmentVersionLocked;
         if (form.Exercises.Count == 0)
         {
             form.Exercises.Add(CreateDefaultLessonExercise());
@@ -221,6 +277,8 @@ public partial class TeacherLessonExercises
         }
 
         selectedLessonCode = meta.Code;
+        FilterFachOptionsForCurrentCourse();
+        newFachName = string.Empty;
         editorOpen = true;
     }
 
@@ -249,10 +307,13 @@ public partial class TeacherLessonExercises
             Order = nextOrder,
             IsPublished = false
         };
+        isCurrentAssignmentVersionLocked = false;
         form.Exercises.Add(CreateDefaultLessonExercise());
         ReorderLessonExercises();
 
         selectedLessonCode = klasses.FirstOrDefault(klasse => klasse.Id == firstCourseId)?.Code ?? string.Empty;
+        FilterFachOptionsForCurrentCourse();
+        newFachName = string.Empty;
         editorOpen = true;
     }
 
@@ -260,7 +321,106 @@ public partial class TeacherLessonExercises
     {
         editorOpen = false;
         form = null;
+        isCurrentAssignmentVersionLocked = false;
         selectedLessonCode = string.Empty;
+        newFachName = string.Empty;
+        filteredFachOptions = [];
+    }
+
+    private void FilterFachOptionsForCurrentCourse()
+    {
+        if (form is null)
+        {
+            filteredFachOptions = [];
+            return;
+        }
+
+        if (!klasseSchoolById.TryGetValue(form.CourseId, out var schoolId) || schoolId is not Guid id)
+        {
+            filteredFachOptions = [];
+            form.FachId = null;
+            return;
+        }
+
+        filteredFachOptions = fachOptions
+            .Where(fach => fach.SchoolId == id)
+            .OrderBy(fach => fach.Name)
+            .ToList();
+    }
+
+    private async Task AddFachAsync()
+    {
+        if (isAddingFach || form is null || string.IsNullOrWhiteSpace(newFachName))
+        {
+            return;
+        }
+
+        isAddingFach = true;
+        errorMessage = null;
+        try
+        {
+            var schoolId = klasseSchoolById.GetValueOrDefault(form.CourseId);
+            if (schoolId is not Guid validSchoolId)
+            {
+                errorMessage = "Impossible de déterminer l'école de cette classe.";
+                return;
+            }
+
+            var normalizedName = newFachName.Trim();
+            var existing = await DbContext.Faecher
+                .AsNoTracking()
+                .FirstOrDefaultAsync(fach => fach.SchoolId == validSchoolId && fach.Name == normalizedName, ComponentToken);
+
+            Guid fachId;
+            if (existing is not null)
+            {
+                fachId = existing.Id;
+            }
+            else
+            {
+                var created = new Fach { SchoolId = validSchoolId, Name = normalizedName };
+                await DbContext.Faecher.AddAsync(created, ComponentToken);
+                await DbContext.SaveChangesAsync(ComponentToken);
+                fachId = created.Id;
+            }
+
+            var hasAssignment = await DbContext.LehrerFachZuordnungen
+                .AsNoTracking()
+                .AnyAsync(assignment => assignment.LehrerId == currentTeacherId && assignment.FachId == fachId, ComponentToken);
+            if (!hasAssignment)
+            {
+                await DbContext.LehrerFachZuordnungen.AddAsync(new LehrerFachZuordnung
+                {
+                    LehrerId = currentTeacherId,
+                    FachId = fachId
+                }, ComponentToken);
+                await DbContext.SaveChangesAsync(ComponentToken);
+            }
+
+            fachOptions = await DbContext.LehrerFachZuordnungen
+                .AsNoTracking()
+                .Where(assignment => assignment.LehrerId == currentTeacherId)
+                .Select(assignment => new FachOptionItem
+                {
+                    FachId = assignment.FachId,
+                    Name = assignment.Fach.Name,
+                    SchoolId = assignment.Fach.SchoolId,
+                    SchoolName = assignment.Fach.School.Name
+                })
+                .DistinctBy(item => item.FachId)
+                .OrderBy(item => item.SchoolName)
+                .ThenBy(item => item.Name)
+                .ToListAsync(ComponentToken);
+
+            FilterFachOptionsForCurrentCourse();
+            form.FachId = fachId;
+            newFachName = string.Empty;
+            statusMessage = "La matière a été ajoutée à ton profil enseignant.";
+        }
+        finally
+        {
+            isAddingFach = false;
+        }
     }
 
     private async Task SaveAsync()

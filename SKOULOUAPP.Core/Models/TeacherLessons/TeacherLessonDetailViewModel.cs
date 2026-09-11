@@ -9,6 +9,8 @@ public class TeacherLessonDetailViewModel
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
+    public Guid? FachId { get; set; }
+    public string? FachName { get; set; }
     public string? CourseTheme { get; set; }
     public string CourseCode { get; set; } = string.Empty;
     public bool IsPublished { get; set; }

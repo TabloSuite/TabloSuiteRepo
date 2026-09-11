@@ -51,7 +51,7 @@ public partial class SchulLeiter
 
         var localPart = string.Join('.', builder.ToString().Split(new[] { '.', ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(part => part.All(char.IsLetterOrDigit)));
-        return $"{localPart}@halloapp.com";
+        return $"{localPart}@skoulou.com";
     }
 
     [Inject]
@@ -85,6 +85,7 @@ public partial class SchulLeiter
     private IReadOnlyList<SchoolUserItem> schoolUsers = [];
     private IReadOnlyList<CourseFormModel> userFormKlassen = [];
     private IReadOnlyList<LehrerNiveauZuordnungItem> userFormTeacherClassOptions = [];
+    private string? teacherClassReferenceFilter;
 
     // Filter auf eine bestimmte Schule (null = alle Schulen).
     private string? schoolFilterName;
@@ -308,6 +309,28 @@ public partial class SchulLeiter
             .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, $"{klasse.Code} · {klasse.Title}"))
     ];
 
+    private IReadOnlyList<LehrerNiveauZuordnungItem> UserFormTeacherClassOptionsForSelectedSchools =>
+        userFormTeacherClassOptions
+            .Where(option => userForm.SchoolIds.Contains(option.SchulID))
+            .ToList();
+
+    private IReadOnlyList<LehrerNiveauZuordnungItem> FilteredUserFormTeacherClassOptions =>
+        UserFormTeacherClassOptionsForSelectedSchools
+            .Where(option => string.IsNullOrWhiteSpace(teacherClassReferenceFilter)
+                             || string.Equals(option.ReferenceName, teacherClassReferenceFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private IReadOnlyList<ModernDropdownOption<string?>> TeacherClassReferenceFilterOptions =>
+    [
+        new(null, "Toutes les classes de référence"),
+        .. UserFormTeacherClassOptionsForSelectedSchools
+            .Select(option => option.ReferenceName)
+            .Where(reference => !string.IsNullOrWhiteSpace(reference))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(reference => reference)
+            .Select(reference => new ModernDropdownOption<string?>(reference, reference!))
+    ];
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseSchoolOptions =>
     [
         new(null, "-- Choisir une école --"),
@@ -489,18 +512,6 @@ public partial class SchulLeiter
         }
     }
 
-    private Task SetDirectorTabAsync(string tab)
-    {
-        directorTab = tab;
-        return Task.CompletedTask;
-    }
-
-    private Task SetPedagogikTabAsync(string tab)
-    {
-        pedagogikTab = tab;
-        return Task.CompletedTask;
-    }
-
     private Task SetReassignTargetKlasseAsync(Guid? klasseId)
     {
         reassignTargetKlasseId = klasseId;
@@ -577,7 +588,16 @@ public partial class SchulLeiter
     private async Task SetSchoolUserRoleAsync(string? roleName)
     {
         userForm.RoleName = roleName ?? Rollen.Schueler;
+        teacherClassReferenceFilter = null;
         await LoadUserFormTeacherClassOptionsAsync();
+    }
+
+    private Task SetTeacherClassReferenceFilterAsync(string? referenceName)
+    {
+        teacherClassReferenceFilter = string.IsNullOrWhiteSpace(referenceName)
+            ? null
+            : referenceName;
+        return Task.CompletedTask;
     }
 
     private async Task SetSelectedStudentSchoolAsync(Guid? schoolId)
@@ -654,8 +674,7 @@ public partial class SchulLeiter
 
     private bool usersExpanded;
     private bool userImportExpanded;
-    private string directorTab = "schule";
-    private string pedagogikTab = "create";
+
     private Guid? reassignTargetKlasseId;
     private string reassignSearch = string.Empty;
     private HashSet<Guid> reassignSelectedStudentIds = [];
@@ -1061,6 +1080,7 @@ public partial class SchulLeiter
             RoleName = AllowedSchoolUserRoles.FirstOrDefault() ?? Rollen.Schueler,
             SchoolIds = []
         };
+        teacherClassReferenceFilter = null;
         userStatusMessage = null;
         userErrorMessage = null;
         userModalOpen = true;
@@ -1102,12 +1122,14 @@ public partial class SchulLeiter
                     SchulID = school.SchoolId,
                     SchulName = school.SchoolName,
                     KlasseId = klasse.CourseId!.Value,
+                    ReferenceName = klasse.ReferenceName,
                     NiveauCode = klasse.Code,
                     NiveauTitel = klasse.Title
                 }));
         }
 
         userFormTeacherClassOptions = options;
+        EnsureTeacherClassReferenceFilter();
     }
 
     private bool IsTeacherClassAssigned(Guid schoolId, Guid klasseId) => userForm.TeacherClassAssignments
@@ -1139,6 +1161,7 @@ public partial class SchulLeiter
         }
 
         userForm.SchoolIds.Remove(schoolId);
+        EnsureTeacherClassReferenceFilter();
     }
 
     private async Task OpenEditUserAsync(Guid userId)
@@ -1151,6 +1174,7 @@ public partial class SchulLeiter
         }
 
         userForm = model;
+        teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
         await LoadUserFormTeacherClassOptionsAsync();
         userStatusMessage = null;
@@ -1166,6 +1190,23 @@ public partial class SchulLeiter
             userForm = new UserFormModel();
             userFormKlassen = [];
             userFormTeacherClassOptions = [];
+            teacherClassReferenceFilter = null;
+        }
+    }
+
+    private void EnsureTeacherClassReferenceFilter()
+    {
+        if (string.IsNullOrWhiteSpace(teacherClassReferenceFilter))
+        {
+            return;
+        }
+
+        var stillAvailable = UserFormTeacherClassOptionsForSelectedSchools
+            .Any(option => string.Equals(option.ReferenceName, teacherClassReferenceFilter, StringComparison.OrdinalIgnoreCase));
+
+        if (!stillAvailable)
+        {
+            teacherClassReferenceFilter = null;
         }
     }
 
@@ -1428,6 +1469,43 @@ public partial class SchulLeiter
             ? klasse.Title
             : $"{klasse.Title} · Réf. {klasse.ReferenceName}";
 
+    private static int? GetRemainingPlaetze(CourseFormModel klasse)
+        => klasse.MaxPlaetze.HasValue ? klasse.MaxPlaetze.Value - klasse.CurrentStudentCount : null;
+
+    private static bool IsKlasseOverbooked(CourseFormModel klasse)
+        => klasse.MaxPlaetze.HasValue && klasse.CurrentStudentCount > klasse.MaxPlaetze.Value;
+
+    private static decimal GetOccupancyPercent(CourseFormModel klasse)
+    {
+        if (!klasse.MaxPlaetze.HasValue || klasse.MaxPlaetze.Value <= 0)
+        {
+            return 0m;
+        }
+
+        return Math.Round(Math.Min(200m, klasse.CurrentStudentCount * 100m / klasse.MaxPlaetze.Value), 0);
+    }
+
+    private static string GetOccupancyBarClass(CourseFormModel klasse)
+    {
+        if (!klasse.MaxPlaetze.HasValue)
+        {
+            return "bg-slate-400";
+        }
+
+        var percent = klasse.MaxPlaetze.Value <= 0 ? 0m : klasse.CurrentStudentCount * 100m / klasse.MaxPlaetze.Value;
+        if (percent > 100m)
+        {
+            return "bg-rose-600";
+        }
+
+        if (percent >= 85m)
+        {
+            return "bg-amber-500";
+        }
+
+        return "bg-emerald-500";
+    }
+
     private async Task ShowKlassenFinanzberichtAsync(DurchlaufUebersicht durchlauf)
     {
         klasseErrorMessage = null;
@@ -1620,6 +1698,7 @@ public partial class SchulLeiter
             IstSystemNiveau = false,
             CEFRGroup = "Classe",
             RecommendedLessonCount = 1,
+            MaxPlaetze = null,
             AutoAssignHalloAppAboOnCycleStart = false
         };
         klasseStatusMessage = null;
@@ -1655,6 +1734,8 @@ public partial class SchulLeiter
             KlassenStufeId = klasse.KlassenStufeId,
             Description = klasse.Description,
             Price = klasse.Price,
+            MaxPlaetze = klasse.MaxPlaetze,
+            CurrentStudentCount = klasse.CurrentStudentCount,
             SchoolId = klasse.SchoolId,
             IstSystemNiveau = klasse.IstSystemNiveau,
             AutoAssignHalloAppAboOnCycleStart = klasse.AutoAssignHalloAppAboOnCycleStart

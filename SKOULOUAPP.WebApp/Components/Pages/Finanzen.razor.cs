@@ -129,6 +129,10 @@ public partial class Finanzen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
+    private decimal CommissionSchulleiter => uebersicht?.Zeilen
+        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboSchulleiterAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+        .Sum(zeile => zeile.Betrag) ?? 0m;
+
     private decimal CommissionProductOwner => uebersicht?.Zeilen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
@@ -152,6 +156,22 @@ public partial class Finanzen
         .Sum(zeile => zeile.Betrag);
 
     private decimal EchteBuchungenSaldo => EchteBuchungenEntrees - EchteBuchungenSorties;
+
+    private bool includeSkoulouAppSharesInPeriodSummary;
+
+    private decimal ZeitraumSortiesBasis => EchteBuchungenSorties;
+
+    private decimal ZeitraumSortiesMitAnteil => ZeitraumSortiesBasis + CommissionSchulleiter + CommissionLehrer;
+
+    private decimal ZeitraumSortiesAnzeige => includeSkoulouAppSharesInPeriodSummary
+        ? ZeitraumSortiesMitAnteil
+        : ZeitraumSortiesBasis;
+
+    private decimal ZeitraumSaldoAnzeige => EchteBuchungenEntrees - ZeitraumSortiesAnzeige;
+
+    private string ZeitraumOptionLabel => includeSkoulouAppSharesInPeriodSummary
+        ? "Sorties + parts SKOULOUAPP (direction + enseignants)"
+        : "Sorties réelles (sans parts SKOULOUAPP)";
 
     private decimal SchulgebuehrenEinnahmen => EchteSchulBuchungen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung && zeile.Richtung == FinanzRichtung.Einnahme)

@@ -1,4 +1,7 @@
 using HalloApp.Core.Options;
+using HalloApp.Core.Models.Profile;
+using HalloApp.Core.Models.TeacherLessons;
+using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Services;
 using HalloApp.Core.Services.Email;
 using HalloApp.Core.Services.Text;
@@ -21,6 +24,7 @@ public class AuthService(
     ILogger<AuthService> logger)
 {
     private const string AktuelleAgbVersion = "2026-08-05";
+    public static string CurrentTermsVersion => AktuelleAgbVersion;
 
     public async Task<bool> RequiresTermsAcceptanceAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -348,11 +352,176 @@ public class AuthService(
     // Profil
     // ----------------------------------------------------------------------
 
-    public async Task<AppUser?> GetUserAsync(Guid userId)
-        => await userManager.FindByIdAsync(userId.ToString());
+    public async Task<UserProfileModel?> GetUserProfileAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var user = await db.Users
+            .AsNoTracking()
+            .Include(item => item.ProfilBildAsset)
+            .FirstOrDefaultAsync(item => item.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var rollen = await (
+            from userRole in db.UserRoles.AsNoTracking()
+            join role in db.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+            where userRole.UserId == userId
+            select role.Name!).ToListAsync(cancellationToken);
+
+        var schulen = await (
+            from userSchool in db.UserSchools.AsNoTracking()
+            join school in db.Schools.AsNoTracking() on userSchool.SchoolId equals school.Id
+            where userSchool.AppUserId == userId
+            select new UserProfileSchoolItem
+            {
+                SchoolId = school.Id,
+                SchoolName = school.Name
+            }).ToListAsync(cancellationToken);
+
+        var studentMeta = await db.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => profile.AppUserId == userId)
+            .Select(profile => new
+            {
+                profile.ElternTelefonNummer,
+                profile.ElternEmail,
+                profile.CurrentKlasseId
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var klassenAnzeige = studentMeta?.CurrentKlasseId is Guid klasseId
+            ? await db.Klassen
+                .AsNoTracking()
+                .Where(klasse => klasse.Id == klasseId)
+                .Select(klasse => klasse.Code + " · " + klasse.Title)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var faecher = await db.LehrerFachZuordnungen
+            .AsNoTracking()
+            .Where(assignment => assignment.LehrerId == userId)
+            .Select(assignment => new UserProfileFachItem
+            {
+                FachId = assignment.FachId,
+                Name = assignment.Fach.Name,
+                SchoolId = assignment.Fach.SchoolId,
+                SchoolName = assignment.Fach.School.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        return new UserProfileModel
+        {
+            UserId = user.Id,
+            Email = user.Email ?? string.Empty,
+            Vorname = user.Vorname,
+            Nachname = user.Nachname,
+            FullName = user.FullName,
+            TelefonNummer = user.TelefonNummer,
+            Geschlecht = user.Geschlecht,
+            IsBlocked = user.IsBlocked,
+            IsSelfRegistered = user.IsSelfRegistered,
+            CreatedAtUtc = user.CreatedAtUtc,
+            UpdatedAtUtc = user.UpdatedAtUtc,
+            ProfilBildAssetId = user.ProfilBildAssetId,
+            ProfilBildUrl = user.ProfilBildAssetId.HasValue ? $"/media-library/{user.ProfilBildAssetId.Value}" : null,
+            ElternTelefonNummer = studentMeta?.ElternTelefonNummer,
+            ElternEmail = studentMeta?.ElternEmail,
+            CurrentKlasseId = studentMeta?.CurrentKlasseId,
+            CurrentKlasseAnzeige = klassenAnzeige,
+            Rollen = rollen,
+            Schulen = schulen,
+            Faecher = faecher
+        };
+    }
+
+    public async Task<IReadOnlyList<FachOptionItem>> GetTeacherFachOptionsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var schoolIds = await db.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == userId)
+            .Select(link => link.SchoolId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var faecher = await db.Faecher
+            .AsNoTracking()
+            .Where(fach => schoolIds.Contains(fach.SchoolId))
+            .OrderBy(fach => fach.School.Name)
+            .ThenBy(fach => fach.Name)
+            .Select(fach => new FachOptionItem
+            {
+                FachId = fach.Id,
+                SchoolId = fach.SchoolId,
+                SchoolName = fach.School.Name,
+                Name = fach.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        return faecher;
+    }
+
+    public async Task<(bool Succeeded, string Message, Guid? FachId)> AddTeacherFachAsync(Guid userId, string fachName, CancellationToken cancellationToken = default)
+    {
+        var normalized = fachName.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return (false, "Veuillez saisir une matière.", null);
+        }
+
+        var normalizedKey = normalized.ToUpperInvariant();
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var schoolIds = await db.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == userId)
+            .Select(link => link.SchoolId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return (false, "Aucune école associée à ce profil.", null);
+        }
+
+        var zielSchoolId = schoolIds[0];
+        var fach = await db.Faecher
+            .FirstOrDefaultAsync(
+                item => item.SchoolId == zielSchoolId && item.Name.ToUpper() == normalizedKey,
+                cancellationToken);
+        if (fach is null)
+        {
+            fach = new Fach { SchoolId = zielSchoolId, Name = normalized };
+            await db.Faecher.AddAsync(fach, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        var alreadyAssigned = await db.LehrerFachZuordnungen
+            .AnyAsync(assignment => assignment.LehrerId == userId && assignment.FachId == fach.Id, cancellationToken);
+        if (!alreadyAssigned)
+        {
+            await db.LehrerFachZuordnungen.AddAsync(new LehrerFachZuordnung
+            {
+                LehrerId = userId,
+                FachId = fach.Id
+            }, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return (true, "La matière a été ajoutée.", fach.Id);
+    }
 
     public async Task<(bool Succeeded, string Message)> UpdateProfileAsync(
-        Guid userId, string vorname, string nachname, Geschlecht geschlecht, CancellationToken cancellationToken = default)
+        Guid userId,
+        UpdateUserProfileRequest request,
+        CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
@@ -360,16 +529,59 @@ public class AuthService(
             return (false, "Utilisateur introuvable.");
         }
 
-        user.Vorname = vorname.Trim();
-        user.Nachname = nachname.Trim();
-        user.FullName = $"{vorname.Trim()} {nachname.Trim()}".Trim();
-        user.Geschlecht = geschlecht;
+        user.Vorname = request.Vorname.Trim();
+        user.Nachname = request.Nachname.Trim();
+        user.FullName = $"{request.Vorname.Trim()} {request.Nachname.Trim()}".Trim();
+        user.TelefonNummer = NormalizeOptional(request.TelefonNummer);
+        user.Geschlecht = request.Geschlecht;
+        user.ProfilBildAssetId = request.ProfilBildAssetId;
         user.UpdatedAtUtc = DateTime.UtcNow;
 
         var result = await userManager.UpdateAsync(user);
-        return result.Succeeded
-            ? (true, "Ton profil a été mis à jour.")
-            : (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+        if (!result.Succeeded)
+        {
+            return (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+        }
+
+        var isTeacher = await userManager.IsInRoleAsync(user, Rollen.Lehrer);
+        if (isTeacher)
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+            var assignedSchoolIds = await db.UserSchools
+                .AsNoTracking()
+                .Where(link => link.AppUserId == userId)
+                .Select(link => link.SchoolId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var validFachIds = await db.Faecher
+                .AsNoTracking()
+                .Where(fach => request.FachIds.Contains(fach.Id) && assignedSchoolIds.Contains(fach.SchoolId))
+                .Select(fach => fach.Id)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var currentAssignments = await db.LehrerFachZuordnungen
+                .Where(assignment => assignment.LehrerId == userId)
+                .ToListAsync(cancellationToken);
+
+            db.LehrerFachZuordnungen.RemoveRange(currentAssignments.Where(assignment => !validFachIds.Contains(assignment.FachId)));
+
+            var existingIds = currentAssignments.Select(assignment => assignment.FachId).ToHashSet();
+            foreach (var fachId in validFachIds.Where(fachId => !existingIds.Contains(fachId)))
+            {
+                db.LehrerFachZuordnungen.Add(new LehrerFachZuordnung
+                {
+                    LehrerId = userId,
+                    FachId = fachId
+                });
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return (true, "Ton profil a été mis à jour.");
     }
 
     // ----------------------------------------------------------------------

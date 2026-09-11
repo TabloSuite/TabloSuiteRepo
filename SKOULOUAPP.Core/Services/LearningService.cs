@@ -5,6 +5,7 @@ using HalloApp.Core.Interfaces;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Models.TeacherLessons;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace HalloApp.Core.Services;
 
@@ -109,7 +110,9 @@ public class LearningService(IHalloAppDbContext dbContext)
 
         var attempts = await dbContext.ExerciseAttempts
             .AsNoTracking()
-            .Where(x => x.StudentId == studentId && exerciseIds.Contains(x.ExerciseId))
+            .Where(x => x.StudentId == studentId
+                && x.AssignmentVersion == lesson.AssignmentVersion
+                && exerciseIds.Contains(x.ExerciseId))
             .ToListAsync(cancellationToken);
 
         var progress = await dbContext.LessonProgresses
@@ -357,10 +360,12 @@ public class LearningService(IHalloAppDbContext dbContext)
         {
             ExerciseId = exerciseId,
             StudentId = studentId,
+            AssignmentVersion = Math.Max(1, exercise.Lesson.AssignmentVersion),
             SelectedOptionId = selectedOptionId,
             SelectedOptionIdsJson = selectedOptionIdsJson,
             TextAnswer = textAnswer,
             GapAnswersJson = gapValuesJson,
+            ExerciseSnapshotJson = BuildExerciseSnapshot(exercise),
             IsCorrect = isCorrect,
             RequiresManualGrading = requiresManualGrading,
             AwardedPoints = awardedPoints,
@@ -537,20 +542,29 @@ public class LearningService(IHalloAppDbContext dbContext)
     {
         var exercises = await dbContext.Exercises
             .Where(x => x.LessonId == lessonId)
-            .Select(x => x.Id)
+            .Select(x => new { x.Id, LessonVersion = x.Lesson.AssignmentVersion })
             .ToListAsync(cancellationToken);
 
-        var totalCount = exercises.Count;
+        var currentVersion = exercises.Select(x => x.LessonVersion).FirstOrDefault();
+        var exerciseIds = exercises.Select(x => x.Id).ToList();
+
+        var totalCount = exerciseIds.Count;
 
         var pendingAttempts = dbContext.ChangeTracker
             .Entries<ExerciseAttempt>()
             .Where(e => e.State == EntityState.Added)
             .Select(e => e.Entity)
-            .Where(a => a.StudentId == studentId && a.IsCorrect && exercises.Contains(a.ExerciseId))
+            .Where(a => a.StudentId == studentId
+                && a.IsCorrect
+                && a.AssignmentVersion == currentVersion
+                && exerciseIds.Contains(a.ExerciseId))
             .Select(a => a.ExerciseId);
 
         var persistedCorrect = await dbContext.ExerciseAttempts
-            .Where(x => x.StudentId == studentId && x.IsCorrect && exercises.Contains(x.ExerciseId))
+            .Where(x => x.StudentId == studentId
+                && x.IsCorrect
+                && x.AssignmentVersion == currentVersion
+                && exerciseIds.Contains(x.ExerciseId))
             .Select(x => x.ExerciseId)
             .ToListAsync(cancellationToken);
 
@@ -621,5 +635,23 @@ public class LearningService(IHalloAppDbContext dbContext)
             .Distinct()
             .Count();
         profile.GeaendertAmUtc = DateTime.UtcNow;
+    }
+
+    private static string BuildExerciseSnapshot(Exercise exercise)
+    {
+        var snapshot = new
+        {
+            exercise.Id,
+            exercise.Title,
+            exercise.Question,
+            exercise.ExerciseType,
+            exercise.Points,
+            Options = exercise.Options
+                .OrderBy(option => option.Order)
+                .Select(option => new { option.Id, option.Text, option.IsCorrect, option.Order })
+                .ToList()
+        };
+
+        return JsonSerializer.Serialize(snapshot);
     }
 }

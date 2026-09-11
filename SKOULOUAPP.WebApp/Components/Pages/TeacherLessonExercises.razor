@@ -31,14 +31,8 @@
     }
     else
     {
-        @if (!string.IsNullOrWhiteSpace(statusMessage))
-        {
-            <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">@statusMessage</div>
-        }
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <div class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">@errorMessage</div>
-        }
+        <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
+        <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
         @if (!editorOpen)
         {
@@ -102,6 +96,10 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@lesson.CourseCode</span>
+                                        @if (!string.IsNullOrWhiteSpace(lesson.FachName))
+                                        {
+                                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@lesson.FachName</span>
+                                        }
                                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">@lesson.ExerciseCount exercice(s)</span>
                                     </div>
                                     <h2 class="mt-2 text-lg font-bold text-slate-900">@lesson.Title</h2>
@@ -116,14 +114,31 @@
         }
         else if (form is not null)
         {
-            <div class="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="hallo-modal-surface mx-auto w-full max-w-5xl max-h-[calc(100dvh-4.5rem)] rounded-3xl bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:max-h-[calc(100dvh-6rem)]">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">@selectedLessonCode</p>
-                        <h2 class="text-xl font-black text-slate-900">@(string.IsNullOrWhiteSpace(form.Title) ? "Nouvelle leçon" : form.Title)</h2>
+                        <h2 class="text-lg font-black text-slate-900">@(string.IsNullOrWhiteSpace(form.Title) ? "Nouvelle leçon" : form.Title)</h2>
                     </div>
                     <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="CloseEditor">Retour</button>
                 </div>
+
+                <div class="hallo-modal-scroll px-4 py-4 sm:px-5">
+
+                @if (form.LessonId.HasValue)
+                {
+                    <div class="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-indigo-900">
+                        <p class="font-semibold">Session d'attribution actuelle : v@form.AssignmentVersion</p>
+                        @if (isCurrentAssignmentVersionLocked)
+                        {
+                            <p class="mt-1">Cette session est verrouillée: des élèves ont déjà soumis et la date limite n'est pas encore atteinte. Après la date limite, tes modifications ouvriront automatiquement une nouvelle session.</p>
+                        }
+                        else if (form.HasSubmissionsInCurrentAssignmentVersion)
+                        {
+                            <p class="mt-1">Des soumissions existent pour cette session. La prochaine modification enregistrée ouvrira une nouvelle session (v@(form.AssignmentVersion + 1)).</p>
+                        }
+                    </div>
+                }
 
                 <EditForm Model="form" OnValidSubmit="SaveAsync" FormName="teacher-lesson-exercise-form" class="grid gap-4">
                     <DataAnnotationsValidator />
@@ -132,30 +147,39 @@
                     <div class="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:grid-cols-2">
                         <div>
                             <label class="hallo-label">Titre de la leçon</label>
-                            <InputText @bind-Value="form.Title" class="hallo-input" />
+                            <InputText @bind-Value="form.Title" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div>
-                            <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" />
+                            <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" Disabled="@isCurrentAssignmentVersionLocked" />
+                        </div>
+                        <div class="xl:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                            <div class="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-end">
+                                <ModernDropdown TValue="Guid?" Label="Matière" Value="form.FachId" ValueChanged="SetLessonFachAsync" Options="FachOptions" Disabled="@isCurrentAssignmentVersionLocked" />
+                                <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                                    <InputText @bind-Value="newFachName" class="hallo-input" placeholder="Nouvelle matière" disabled="@isCurrentAssignmentVersionLocked" />
+                                    <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-xs font-semibold text-white" Disabled="@IsAddFachDisabled" IsBusy="@isAddingFach" BusyLabel="Ajout..." OnClick="AddFachAsync">Ajouter</AsyncActionButton>
+                                </div>
+                            </div>
                         </div>
                         <div class="xl:col-span-2">
                             <label class="hallo-label">Résumé</label>
-                            <InputTextArea @bind-Value="form.Summary" class="hallo-input min-h-16" />
+                            <InputTextArea @bind-Value="form.Summary" class="hallo-input min-h-16" disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div class="xl:col-span-2">
                             <label class="hallo-label">Contenu de la leçon</label>
-                            <RichTextEditor @bind-Value="form.Content" Placeholder="Rédige le contenu de la leçon..." MinEditorHeightRem="28" />
+                            <RichTextEditor @bind-Value="form.Content" Placeholder="Rédige le contenu de la leçon..." MinEditorHeightRem="28" ReadOnly="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div>
                             <label class="hallo-label">Ordre</label>
-                            <InputNumber @bind-Value="form.Order" class="hallo-input" />
+                            <InputNumber @bind-Value="form.Order" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsPublished" />
+                            <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsPublished" disabled="@isCurrentAssignmentVersionLocked" />
                             <span class="text-sm font-semibold text-slate-700">Publier la leçon et ses exercices</span>
                         </label>
                         <div>
                             <label class="hallo-label">Date limite des réponses ouvertes (optionnel)</label>
-                            <TailwindDateTimePicker @bind-Value="form.ExerciseSubmissionDueAtUtc" />
+                            <TailwindDateTimePicker @bind-Value="form.ExerciseSubmissionDueAtUtc" IsDisabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                     </div>
 
@@ -165,7 +189,7 @@
                                 <h3 class="text-sm font-black text-slate-900">Exercices de la leçon</h3>
                                 <p class="mt-1 text-xs text-slate-500">Même structure que les examens, mais rattachée à cette leçon.</p>
                             </div>
-                            <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="AddLessonExercise">+ Ajouter un exercice</button>
+                            <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="AddLessonExercise">+ Ajouter un exercice</button>
                         </div>
 
                         <div class="mt-4 space-y-4">
@@ -180,33 +204,33 @@
                                 <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
                                     <div class="mb-3 flex items-center justify-between gap-3">
                                         <h4 class="text-sm font-bold text-slate-800">Exercice @(localExerciseIndex + 1)</h4>
-                                        <button type="button" class="rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExercise(exercise)">Supprimer</button>
+                                        <button type="button" class="rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => RemoveLessonExercise(exercise)">Supprimer</button>
                                     </div>
 
                                     <div class="grid gap-3">
                                         <div class="grid gap-3 xl:grid-cols-2">
                                             <div>
                                                 <label class="hallo-label">Titre de l'exercice</label>
-                                                <InputText @bind-Value="exercise.Title" class="hallo-input" />
+                                                <InputText @bind-Value="exercise.Title" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
                                             </div>
                                             <div>
-                                                <ModernDropdown TValue="string?" Label="Type d'exercice" Value="exercise.ExerciseType" ValueChanged="value => SetLessonExerciseTypeAsync(exercise, value)" Options="LessonExerciseTypeOptions" />
+                                                <ModernDropdown TValue="string?" Label="Type d'exercice" Value="exercise.ExerciseType" ValueChanged="value => SetLessonExerciseTypeAsync(exercise, value)" Options="LessonExerciseTypeOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                                             </div>
                                         </div>
 
                                         <div>
                                             <label class="hallo-label">Consigne (optionnel)</label>
-                                            <InputTextArea @bind-Value="exercise.Instructions" class="hallo-input min-h-20" />
+                                            <InputTextArea @bind-Value="exercise.Instructions" class="hallo-input min-h-20" disabled="@isCurrentAssignmentVersionLocked" />
                                         </div>
 
                                         <div>
                                             <label class="hallo-label">Question</label>
-                                            <InputTextArea @bind-Value="exercise.Question" class="hallo-input min-h-20" />
+                                            <InputTextArea @bind-Value="exercise.Question" class="hallo-input min-h-20" disabled="@isCurrentAssignmentVersionLocked" />
                                         </div>
 
                                         <div>
                                             <label class="hallo-label">Points</label>
-                                            <InputNumber @bind-Value="exercise.Points" class="hallo-input" />
+                                            <InputNumber @bind-Value="exercise.Points" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
                                         </div>
 
                                         @if (isAudioType)
@@ -215,10 +239,10 @@
                                                 <div class="grid gap-3 xl:grid-cols-2">
                                                     <div>
                                                         <label class="hallo-label">Texte audio (TTS)</label>
-                                                        <InputTextArea @bind-Value="exercise.AudioText" class="hallo-input min-h-20" />
+                                                        <InputTextArea @bind-Value="exercise.AudioText" class="hallo-input min-h-20" disabled="@isCurrentAssignmentVersionLocked" />
                                                     </div>
                                                     <div>
-                                                        <ModernDropdown TValue="string?" Label="Langue TTS" Value="exercise.TtsLanguage" ValueChanged="value => SetLessonExerciseTtsLanguageAsync(exercise, value)" Options="TtsLanguageOptions" />
+                                                        <ModernDropdown TValue="string?" Label="Langue TTS" Value="exercise.TtsLanguage" ValueChanged="value => SetLessonExerciseTtsLanguageAsync(exercise, value)" Options="TtsLanguageOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -229,7 +253,7 @@
                                             <div class="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
                                                 <div class="mb-2 flex items-center justify-between gap-2">
                                                     <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Réponses par trou</p>
-                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100" @onclick="() => AddLessonGap(exercise)">+ Ajouter un trou</button>
+                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => AddLessonGap(exercise)">+ Ajouter un trou</button>
                                                 </div>
                                                 @for (var gapIndex = 0; gapIndex < exercise.Gaps.Count; gapIndex++)
                                                 {
@@ -237,9 +261,9 @@
                                                     <div class="mb-2 rounded-xl bg-white p-3 ring-1 ring-indigo-100">
                                                         <div class="mb-1 flex items-center justify-between">
                                                             <span class="text-xs font-bold text-slate-700">Trou @(gapIndex + 1)</span>
-                                                            <button type="button" class="text-xs font-semibold text-rose-600" @onclick="() => RemoveLessonGap(exercise, gap)">Supprimer</button>
+                                                            <button type="button" class="text-xs font-semibold text-rose-600 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => RemoveLessonGap(exercise, gap)">Supprimer</button>
                                                         </div>
-                                                        <InputTextArea @bind-Value="gap.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                                        <InputTextArea @bind-Value="gap.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" disabled="@isCurrentAssignmentVersionLocked" />
                                                     </div>
                                                 }
                                             </div>
@@ -248,7 +272,7 @@
                                         {
                                             <div>
                                                 <label class="hallo-label">Réponses acceptées (optionnel)</label>
-                                                <InputTextArea @bind-Value="exercise.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                                <InputTextArea @bind-Value="exercise.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" disabled="@isCurrentAssignmentVersionLocked" />
                                             </div>
                                         }
 
@@ -257,7 +281,7 @@
                                             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                                 <div class="mb-2 flex items-center justify-between gap-2">
                                                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Options</p>
-                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100" @onclick="() => AddLessonExerciseOption(exercise)">+ Ajouter une option</button>
+                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => AddLessonExerciseOption(exercise)">+ Ajouter une option</button>
                                                 </div>
 
                                                 @for (var optionIndex = 0; optionIndex < exercise.Options.Count; optionIndex++)
@@ -267,14 +291,14 @@
                                                         <div class="grid gap-3 xl:grid-cols-[auto_1fr_auto] xl:items-center">
                                                             @if (isSingleChoiceType)
                                                             {
-                                                                <input type="radio" name="@($"lesson-ex-{localExerciseIndex}-single")" checked="@option.IsCorrect" @onchange="() => SelectSingleCorrectLessonOption(exercise, option)" />
+                                                                <input type="radio" name="@($"lesson-ex-{localExerciseIndex}-single")" checked="@option.IsCorrect" disabled="@isCurrentAssignmentVersionLocked" @onchange="() => SelectSingleCorrectLessonOption(exercise, option)" />
                                                             }
                                                             else
                                                             {
-                                                                <input type="checkbox" @bind="option.IsCorrect" />
+                                                                <input type="checkbox" @bind="option.IsCorrect" disabled="@isCurrentAssignmentVersionLocked" />
                                                             }
-                                                            <InputText @bind-Value="option.Text" class="hallo-input" />
-                                                            <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
+                                                            <InputText @bind-Value="option.Text" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
+                                                            <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
                                                         </div>
                                                     </div>
                                                 }
@@ -286,11 +310,13 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200" @onclick="CloseEditor">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" IsBusy="@isSaving" BusyLabel="Enregistrement...">Enregistrer les exercices</AsyncActionButton>
-                    </div>
                 </EditForm>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
+                    <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200" @onclick="CloseEditor">Annuler</button>
+                    <AsyncActionButton Type="submit" Form="teacher-lesson-exercise-form" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" IsBusy="@isSaving" BusyLabel="Enregistrement..." Disabled="@isCurrentAssignmentVersionLocked">Enregistrer les exercices</AsyncActionButton>
+                </div>
             </div>
         }
     }

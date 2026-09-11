@@ -14,6 +14,11 @@ public class Klasse : AuditableModel
     public decimal Price { get; set; } = 12500;
 
     /// <summary>
+    /// Optionale Richtkapazität der Klasse. Überbelegung bleibt erlaubt.
+    /// </summary>
+    public int? MaxPlaetze { get; set; }
+
+    /// <summary>
     /// Schule, der diese Klasse gehört. Ist der Wert null, handelt es sich um ein
     /// globales, festes Sprachschul-Niveau (A1–C), das allen Sprachschulen gemeinsam ist.
     /// Schul-eigene Klassen (Zusatzkurs einer Sprachschule bzw. alle Klassen einer

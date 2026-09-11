@@ -18,7 +18,12 @@ public enum AboTyp
     /// <summary>
     /// Standard-HALLOAPP-Abo für eine Klasse.
     /// </summary>
-    HalloApp = 0
+    HalloApp = 0,
+
+    /// <summary>
+    /// Sichtbarer SKOULOUAPP-Name für denselben einheitlichen Abo-Typ.
+    /// </summary>
+    SkoulouApp = 0
 }
 
 /// <summary>

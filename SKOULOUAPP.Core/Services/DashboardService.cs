@@ -348,6 +348,7 @@ public class DashboardService(
                 ExamCount = course.Exams.Count,
                 MediaCount = course.Lessons.SelectMany(x => x.MediaItems).Count(),
                 Price = course.Price,
+                MaxPlaetze = course.MaxPlaetze,
                 StudentCount = course.Enrollments.Count(x => x.IsUnlocked),
                 Lessons = course.Lessons
                     .OrderBy(x => x.Order)
@@ -1314,6 +1315,7 @@ public class DashboardService(
                 Description = x.Description,
                 RecommendedLessonCount = x.RecommendedLessonCount,
                 Price = x.Price,
+                MaxPlaetze = x.MaxPlaetze,
                 SchoolId = x.SchoolId,
                 KlassenStufeId = x.KlassenStufeId,
                 ReferenceName = x.KlassenStufe != null ? x.KlassenStufe.Name : null,
@@ -1370,6 +1372,7 @@ public class DashboardService(
         course.Description = model.Description.Trim();
         course.RecommendedLessonCount = model.RecommendedLessonCount;
         course.Price = model.Price;
+        course.MaxPlaetze = model.MaxPlaetze;
         course.GeaendertAmUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -1421,6 +1424,8 @@ public class DashboardService(
                 Description = x.Description,
                 RecommendedLessonCount = x.RecommendedLessonCount,
                 Price = x.Price,
+                MaxPlaetze = x.MaxPlaetze,
+                CurrentStudentCount = x.Enrollments.Count(enrollment => enrollment.IsUnlocked),
                 SchoolId = x.SchoolId,
                 KlassenStufeId = x.KlassenStufeId,
                 ReferenceName = x.KlassenStufe != null ? x.KlassenStufe.Name : null,
@@ -1536,9 +1541,10 @@ public class DashboardService(
         klasse.Title = normalizedClassName;
         klasse.CEFRGroup = string.IsNullOrWhiteSpace(model.CEFRGroup) ? "Classe" : model.CEFRGroup.Trim();
         klasse.KlassenStufeId = klassenStufe?.Id;
-        klasse.Description = model.Description.Trim();
+        klasse.Description = string.IsNullOrWhiteSpace(model.Description) ? string.Empty : model.Description.Trim();
         klasse.RecommendedLessonCount = model.RecommendedLessonCount;
         klasse.Price = model.Price;
+        klasse.MaxPlaetze = model.MaxPlaetze;
         klasse.AutoAssignHalloAppAboOnCycleStart = model.AutoAssignHalloAppAboOnCycleStart;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -1560,6 +1566,7 @@ public class DashboardService(
             .AsNoTracking()
             .Include(x => x.Exercises)
                 .ThenInclude(x => x.Options)
+            .Include(x => x.Fach)
             .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);
 
         if (lesson is null)
@@ -1567,10 +1574,25 @@ public class DashboardService(
             return null;
         }
 
+        var lessonExerciseIds = lesson.Exercises.Select(exercise => exercise.Id).ToList();
+        var hasSubmissionsInCurrentAssignmentVersion = lessonExerciseIds.Count > 0 && await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .AnyAsync(attempt => attempt.AssignmentVersion == lesson.AssignmentVersion
+                && lessonExerciseIds.Contains(attempt.ExerciseId), cancellationToken);
+
+        var dueStillRunning = lesson.ExerciseSubmissionDueAtUtc.HasValue
+            && DateTime.UtcNow <= lesson.ExerciseSubmissionDueAtUtc.Value;
+        var isCurrentAssignmentVersionLocked = hasSubmissionsInCurrentAssignmentVersion && dueStillRunning;
+
         return new LessonFormModel
         {
             LessonId = lesson.Id,
             CourseId = lesson.KlasseId,
+            AssignmentVersion = Math.Max(1, lesson.AssignmentVersion),
+            HasSubmissionsInCurrentAssignmentVersion = hasSubmissionsInCurrentAssignmentVersion,
+            IsCurrentAssignmentVersionLocked = isCurrentAssignmentVersionLocked,
+            FachId = lesson.FachId,
+            FachName = lesson.Fach != null ? lesson.Fach.Name : null,
             Title = lesson.Title,
             Summary = lesson.Summary,
             Content = lesson.Content,
@@ -1632,6 +1654,26 @@ public class DashboardService(
             {
                 return (false, "La leçon est introuvable.");
             }
+
+            var lessonExerciseIds = lesson.Exercises.Select(ex => ex.Id).ToList();
+            var hasAttemptsInCurrentVersion = lessonExerciseIds.Count > 0 && await dbContext.ExerciseAttempts
+                .AsNoTracking()
+                .AnyAsync(attempt => attempt.AssignmentVersion == lesson.AssignmentVersion
+                    && lessonExerciseIds.Contains(attempt.ExerciseId), cancellationToken);
+
+            var nowUtc = DateTime.UtcNow;
+            var dueAtUtc = lesson.ExerciseSubmissionDueAtUtc;
+            var dueStillRunning = dueAtUtc.HasValue && nowUtc <= dueAtUtc.Value;
+
+            if (hasAttemptsInCurrentVersion && dueStillRunning)
+            {
+                return (false, "Cette leçon a déjà des réponses d'élèves pour la session en cours. Les modifications seront possibles après la date limite ou via une nouvelle session.");
+            }
+
+            if (hasAttemptsInCurrentVersion && (!dueAtUtc.HasValue || nowUtc > dueAtUtc.Value))
+            {
+                lesson.AssignmentVersion = Math.Max(1, lesson.AssignmentVersion) + 1;
+            }
         }
         else
         {
@@ -1640,6 +1682,7 @@ public class DashboardService(
         }
 
         lesson.KlasseId = model.CourseId;
+        lesson.FachId = await ResolveOrCreateFachIdForCourseAsync(model.CourseId, model.FachId, model.NeueFachBezeichnung, cancellationToken);
         lesson.Title = model.Title.Trim();
         lesson.Summary = model.Summary.Trim();
         lesson.Content = model.Content.Trim();
@@ -1652,6 +1695,65 @@ public class DashboardService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return (true, model.LessonId.HasValue ? "La leçon a été mise à jour." : "La leçon a été créée.");
+    }
+
+    private async Task<Guid?> ResolveOrCreateFachIdForCourseAsync(
+        Guid courseId,
+        Guid? fachId,
+        string? neueFachBezeichnung,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasse.Id == courseId)
+            .Select(klasse => klasse.SchoolId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(neueFachBezeichnung))
+        {
+            if (schoolId is null)
+            {
+                return null;
+            }
+
+            var normalized = neueFachBezeichnung.Trim();
+            if (normalized.Length == 0)
+            {
+                return null;
+            }
+
+            var normalizedKey = normalized.ToUpperInvariant();
+            var existing = await dbContext.Faecher
+                .FirstOrDefaultAsync(
+                    fach => fach.SchoolId == schoolId.Value && fach.Name.ToUpper() == normalizedKey,
+                    cancellationToken);
+
+            if (existing is not null)
+            {
+                return existing.Id;
+            }
+
+            var neuesFach = new Fach
+            {
+                SchoolId = schoolId.Value,
+                Name = normalized
+            };
+            await dbContext.Faecher.AddAsync(neuesFach, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return neuesFach.Id;
+        }
+
+        if (!fachId.HasValue)
+        {
+            return null;
+        }
+
+        var isValid = schoolId.HasValue
+            && await dbContext.Faecher
+                .AsNoTracking()
+                .AnyAsync(fach => fach.Id == fachId.Value && fach.SchoolId == schoolId.Value, cancellationToken);
+
+        return isValid ? fachId : null;
     }
 
     private void SyncLessonExercises(Lesson lesson, List<LessonExerciseFormModel> exerciseForms)

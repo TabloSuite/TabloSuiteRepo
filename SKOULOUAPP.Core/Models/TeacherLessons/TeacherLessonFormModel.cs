@@ -17,6 +17,10 @@ public class TeacherLessonFormModel
     [StringLength(200)]
     public string Title { get; set; } = string.Empty;
 
+    public Guid? FachId { get; set; }
+    public string? FachName { get; set; }
+    public string? NeueFachBezeichnung { get; set; }
+
     [StringLength(1000)]
     public string Summary { get; set; } = string.Empty;
 

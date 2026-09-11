@@ -15,13 +15,13 @@ public class EmailTemplatesTests
         var html = EmailTemplates.Wrap("Bienvenue", "<p>Bonjour</p>");
 
         // Header
-        Assert.Contains("HALLOAPP", html);
-        Assert.Contains("https://meinehalloapp.com", html);
+        Assert.Contains("SKOULOUAPP", html);
+        Assert.Contains("https://skoulouapp.com", html);
 
         // Footer
         Assert.Contains("APPRENDRE. PROGRESSER. RÉUSSIR.", html);
         Assert.Contains("CONTACT", html);
-        Assert.Contains("kontakt.etse@meinehalloapp.com", html);
+        Assert.Contains("kontakt@skoulouapp.com", html);
         Assert.Contains("+49 176 61221600", html);
         Assert.Contains("Lomé, Togo", html);
         Assert.Contains($"{DateTime.UtcNow.Year}", html);

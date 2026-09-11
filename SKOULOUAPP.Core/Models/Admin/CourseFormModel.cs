@@ -30,6 +30,11 @@ public class CourseFormModel
     [Range(0, 1000000, ErrorMessage = "Veuillez saisir un prix valide.")]
     public decimal Price { get; set; } = 10000;
 
+    [Range(1, 10000, ErrorMessage = "Veuillez saisir un nombre de places valide.")]
+    public int? MaxPlaetze { get; set; }
+
+    public int CurrentStudentCount { get; set; }
+
     /// <summary>
     /// Schule, der diese Klasse gehört. Null = globales, festes Sprachschul-System-Niveau.
     /// Für schul-eigene Klassen (Sprachschul-Zusatzkurs bzw. Klassen einer normalen Schule)

@@ -378,11 +378,11 @@ public sealed class SchoolUserImportService(
             baseLocalPart = $"user{DateTime.UtcNow:yyyyMMddHHmmss}";
         }
 
-        var candidate = $"{baseLocalPart}@halloapp.com";
+        var candidate = $"{baseLocalPart}@skoulou.com";
         var suffix = 2;
         while (!usedEmails.Add(NormalizeEmailKey(candidate)))
         {
-            candidate = $"{baseLocalPart}{suffix}@halloapp.com";
+            candidate = $"{baseLocalPart}{suffix}@skoulou.com";
             suffix++;
         }
 

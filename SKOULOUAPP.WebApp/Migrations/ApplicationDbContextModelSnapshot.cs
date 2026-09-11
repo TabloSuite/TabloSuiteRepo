@@ -56,6 +56,9 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<Guid?>("KlassenStufeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("MaxPlaetze")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(12, 2)
                         .HasColumnType("decimal(12,2)");
@@ -538,6 +541,11 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<DateTime>("AnsweredAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("AssignmentVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("AwardedPoints")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -548,6 +556,10 @@ namespace HalloApp.WebApp.Migrations
 
                     b.Property<Guid>("ExerciseId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExerciseSnapshotJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("GapAnswersJson")
                         .HasColumnType("nvarchar(max)");
@@ -591,6 +603,8 @@ namespace HalloApp.WebApp.Migrations
                     b.HasIndex("StudentId");
 
                     b.HasIndex("ExerciseId", "StudentId");
+
+                    b.HasIndex("ExerciseId", "StudentId", "AssignmentVersion");
 
                     b.ToTable("ExerciseAttempts");
                 });
@@ -934,6 +948,9 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("ProfilBildAssetId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -969,6 +986,8 @@ namespace HalloApp.WebApp.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex("ProfilBildAssetId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -1148,6 +1167,11 @@ namespace HalloApp.WebApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AssignmentVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1157,6 +1181,9 @@ namespace HalloApp.WebApp.Migrations
 
                     b.Property<DateTime?>("ExerciseSubmissionDueAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FachId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
@@ -1181,6 +1208,8 @@ namespace HalloApp.WebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FachId");
 
                     b.HasIndex("KlasseId");
 
@@ -1284,6 +1313,9 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("FachId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
@@ -1318,6 +1350,8 @@ namespace HalloApp.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("FachId");
 
                     b.HasIndex("VideoAssetId");
 
@@ -1467,6 +1501,62 @@ namespace HalloApp.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CommissionSettings");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.Fach", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Faecher");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.LehrerFachZuordnung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FachId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("LehrerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FachId");
+
+                    b.HasIndex("LehrerId", "FachId")
+                        .IsUnique();
+
+                    b.ToTable("LehrerFachZuordnungen");
                 });
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Schools.LehrerNiveauZuordnung", b =>
@@ -2171,6 +2261,16 @@ namespace HalloApp.WebApp.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Identity.AppUser", b =>
+                {
+                    b.HasOne("HalloApp.Core.DataModels.Lessons.BlobMediaAsset", "ProfilBildAsset")
+                        .WithMany()
+                        .HasForeignKey("ProfilBildAssetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ProfilBildAsset");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Identity.AppUserRole", b =>
                 {
                     b.HasOne("HalloApp.Core.DataModels.Identity.Role", "Role")
@@ -2237,11 +2337,17 @@ namespace HalloApp.WebApp.Migrations
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.Lesson", b =>
                 {
+                    b.HasOne("HalloApp.Core.DataModels.Schools.Fach", "Fach")
+                        .WithMany("Lessons")
+                        .HasForeignKey("FachId");
+
                     b.HasOne("HalloApp.Core.DataModels.Courses.Klasse", "Klasse")
                         .WithMany("Lessons")
                         .HasForeignKey("KlasseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Fach");
 
                     b.Navigation("Klasse");
                 });
@@ -2283,6 +2389,11 @@ namespace HalloApp.WebApp.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("HalloApp.Core.DataModels.Schools.Fach", "Fach")
+                        .WithMany("TeacherLessons")
+                        .HasForeignKey("FachId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("HalloApp.Core.DataModels.Courses.Klasse", "Klasse")
                         .WithMany()
                         .HasForeignKey("KlasseId")
@@ -2295,6 +2406,8 @@ namespace HalloApp.WebApp.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Author");
+
+                    b.Navigation("Fach");
 
                     b.Navigation("Klasse");
 
@@ -2321,6 +2434,36 @@ namespace HalloApp.WebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Schule");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.Fach", b =>
+                {
+                    b.HasOne("HalloApp.Core.DataModels.Schools.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("School");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.LehrerFachZuordnung", b =>
+                {
+                    b.HasOne("HalloApp.Core.DataModels.Schools.Fach", "Fach")
+                        .WithMany("LehrerZuordnungen")
+                        .HasForeignKey("FachId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HalloApp.Core.DataModels.Identity.AppUser", "Lehrer")
+                        .WithMany("LehrerFachZuordnungen")
+                        .HasForeignKey("LehrerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Fach");
+
+                    b.Navigation("Lehrer");
                 });
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Schools.LehrerNiveauZuordnung", b =>
@@ -2552,6 +2695,8 @@ namespace HalloApp.WebApp.Migrations
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Identity.AppUser", b =>
                 {
+                    b.Navigation("LehrerFachZuordnungen");
+
                     b.Navigation("LevelEnrollments");
 
                     b.Navigation("StudentProfiles");
@@ -2588,6 +2733,15 @@ namespace HalloApp.WebApp.Migrations
             modelBuilder.Entity("HalloApp.Core.DataModels.Schools.Abrechnungsperiode", b =>
                 {
                     b.Navigation("Freischaltungen");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.Fach", b =>
+                {
+                    b.Navigation("LehrerZuordnungen");
+
+                    b.Navigation("Lessons");
+
+                    b.Navigation("TeacherLessons");
                 });
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Schools.School", b =>

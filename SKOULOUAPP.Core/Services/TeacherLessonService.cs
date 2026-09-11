@@ -73,6 +73,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Include(x => x.Klasse)
             .Include(x => x.Author)
             .Include(x => x.Pages)
+            .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
             .Where(x => x.AuthorId == teacherId && !x.Klasse.IstSystemNiveau)
             .AsQueryable();
@@ -118,6 +119,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Include(x => x.Klasse)
             .Include(x => x.Author)
             .Include(x => x.Pages)
+            .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
             .Where(x => !x.Klasse.IstSystemNiveau
                 && (x.AuthorId == userId
@@ -153,7 +155,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Select(x => new { x.SchoolId, x.CurrentKlasseId })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (profile is null)
+        if (profile?.CurrentKlasseId is not Guid currentKlasseId)
         {
             return [];
         }
@@ -169,6 +171,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Include(x => x.Klasse)
             .Include(x => x.Author)
             .Include(x => x.Pages)
+            .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
             .Where(x => x.IsPublished
                         && klasseIds.Contains(x.KlasseId)
@@ -182,6 +185,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         {
             var item = MapToListItem(lesson);
             item.IsPdfExportEnabled = lesson.IsPdfExportEnabled;
+            item.IsCurrentKlasse = lesson.KlasseId == currentKlasseId;
             return item;
         }).ToList();
     }
@@ -339,6 +343,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .AsNoTracking()
             .Include(x => x.Klasse)
             .Include(x => x.Pages)
+            .Include(x => x.Fach)
             .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsSharedWithSchool, cancellationToken);
         if (lesson?.Klasse.SchoolId is not Guid schoolId)
         {
@@ -378,6 +383,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         var lesson = await dbContext.TeacherLessons
             .AsNoTracking()
             .Include(x => x.Pages)
+            .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
             .FirstOrDefaultAsync(x => x.Id == lessonId && x.AuthorId == authorId && !x.Klasse.IstSystemNiveau, cancellationToken);
 
@@ -392,6 +398,8 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             KlasseId = lesson.KlasseId,
             Title = lesson.Title,
             Summary = lesson.Summary,
+            FachId = lesson.FachId,
+            FachName = lesson.Fach?.Name,
             CourseTheme = lesson.CourseTheme,
             Order = lesson.Order,
             IsPublished = lesson.IsPublished,
@@ -449,6 +457,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         }
 
         lesson.KlasseId = model.KlasseId;
+        lesson.FachId = await ResolveTeacherFachAsync(authorId, model.KlasseId, model.FachId, model.NeueFachBezeichnung, cancellationToken);
         lesson.Title = model.Title.Trim();
         lesson.Summary = model.Summary?.Trim() ?? string.Empty;
         lesson.CourseTheme = string.IsNullOrWhiteSpace(model.CourseTheme) ? null : model.CourseTheme.Trim();
@@ -463,6 +472,125 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return lesson.Id;
+    }
+
+    public async Task<IReadOnlyList<FachOptionItem>> GetTeacherFachOptionsAsync(
+        Guid teacherId,
+        CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId)
+            .Select(link => link.SchoolId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var items = await dbContext.LehrerFachZuordnungen
+            .AsNoTracking()
+            .Where(assignment => assignment.LehrerId == teacherId && schoolIds.Contains(assignment.Fach.SchoolId))
+            .Select(assignment => new FachOptionItem
+            {
+                FachId = assignment.FachId,
+                Name = assignment.Fach.Name,
+                SchoolId = assignment.Fach.SchoolId,
+                SchoolName = assignment.Fach.School.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        return items
+            .DistinctBy(item => item.FachId)
+            .OrderBy(item => item.SchoolName)
+            .ThenBy(item => item.Name)
+            .ToList();
+    }
+
+    public async Task<Guid?> ResolveTeacherFachAsync(
+        Guid teacherId,
+        Guid klasseId,
+        Guid? fachId,
+        string? neueFachBezeichnung,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = await dbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasse.Id == klasseId)
+            .Select(klasse => klasse.SchoolId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (schoolId is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(neueFachBezeichnung))
+        {
+            var normalized = neueFachBezeichnung.Trim();
+            if (normalized.Length == 0)
+            {
+                return null;
+            }
+
+            var normalizedKey = normalized.ToUpperInvariant();
+            var existing = await dbContext.Faecher
+                .FirstOrDefaultAsync(
+                    item => item.SchoolId == schoolId.Value && item.Name.ToUpper() == normalizedKey,
+                    cancellationToken);
+
+            var selected = existing;
+            if (selected is null)
+            {
+                selected = new Fach
+                {
+                    SchoolId = schoolId.Value,
+                    Name = normalized
+                };
+                await dbContext.Faecher.AddAsync(selected, cancellationToken);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            await EnsureTeacherFachAssignmentAsync(teacherId, selected.Id, cancellationToken);
+            return selected.Id;
+        }
+
+        if (!fachId.HasValue)
+        {
+            return null;
+        }
+
+        var valid = await dbContext.Faecher
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == fachId.Value && item.SchoolId == schoolId.Value, cancellationToken);
+        if (!valid)
+        {
+            return null;
+        }
+
+        await EnsureTeacherFachAssignmentAsync(teacherId, fachId.Value, cancellationToken);
+        return fachId.Value;
+    }
+
+    private async Task EnsureTeacherFachAssignmentAsync(Guid teacherId, Guid fachId, CancellationToken cancellationToken)
+    {
+        var exists = await dbContext.LehrerFachZuordnungen
+            .AsNoTracking()
+            .AnyAsync(assignment => assignment.LehrerId == teacherId && assignment.FachId == fachId, cancellationToken);
+
+        if (exists)
+        {
+            return;
+        }
+
+        await dbContext.LehrerFachZuordnungen.AddAsync(new LehrerFachZuordnung
+        {
+            LehrerId = teacherId,
+            FachId = fachId
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Setzt den Veröffentlichungsstatus eines Kursskripts.</summary>
@@ -484,6 +612,75 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         lesson.IsPublished = isPublished;
         lesson.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Kopiert eine eigene Lehrerlektion als neuen Entwurf in eine andere Klasse.</summary>
+    public async Task<Guid> CopyLessonToKlasseAsync(
+        Guid lessonId,
+        Guid authorId,
+        Guid targetKlasseId,
+        bool publishDirectly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var source = await dbContext.TeacherLessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .Include(x => x.Fach)
+            .Include(x => x.Pages)
+            .FirstOrDefaultAsync(x => x.Id == lessonId && x.AuthorId == authorId, cancellationToken)
+            ?? throw new InvalidOperationException("Le cours source est introuvable.");
+
+        if (source.Klasse.IstSystemNiveau)
+        {
+            throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
+        }
+
+        var targetKlasse = await dbContext.Klassen
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == targetKlasseId, cancellationToken)
+            ?? throw new InvalidOperationException("La classe cible est introuvable.");
+
+        if (targetKlasse.IstSystemNiveau)
+        {
+            throw new InvalidOperationException("La copie vers un niveau standard n'est pas autorisée.");
+        }
+
+        var nextOrder = await dbContext.TeacherLessons
+            .AsNoTracking()
+            .Where(x => x.KlasseId == targetKlasseId)
+            .Select(x => (int?)x.Order)
+            .MaxAsync(cancellationToken) ?? 0;
+
+        var fachId = source.FachId.HasValue && source.Fach is not null && source.Fach.SchoolId == targetKlasse.SchoolId
+            ? source.FachId
+            : null;
+
+        var copy = new TeacherLesson
+        {
+            KlasseId = targetKlasseId,
+            AuthorId = authorId,
+            FachId = fachId,
+            Title = $"{source.Title} (copie)",
+            Summary = source.Summary,
+            CourseTheme = source.CourseTheme,
+            Order = nextOrder + 1,
+            IsPublished = publishDirectly,
+            IsSharedWithSchool = source.IsSharedWithSchool,
+            IsPdfExportEnabled = source.IsPdfExportEnabled,
+            VideoAssetId = null,
+            Pages = source.Pages
+                .OrderBy(page => page.PageNumber)
+                .Select((page, index) => new TeacherLessonPage
+                {
+                    PageNumber = index + 1,
+                    ContentHtml = page.ContentHtml
+                })
+                .ToList()
+        };
+
+        await dbContext.TeacherLessons.AddAsync(copy, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return copy.Id;
     }
 
     /// <summary>Löscht ein Kursskript inkl. aller Seiten.</summary>
@@ -557,9 +754,12 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         Id = lesson.Id,
         Title = lesson.Title,
         Summary = lesson.Summary,
+        FachId = lesson.FachId,
+        FachName = lesson.Fach?.Name,
         CourseTheme = lesson.CourseTheme,
         CourseCode = lesson.Klasse?.Code ?? string.Empty,
         KlasseId = lesson.KlasseId,
+        KlasseTitle = lesson.Klasse?.Title,
         Order = lesson.Order,
         IsPublished = lesson.IsPublished,
         PageCount = lesson.Pages?.Count ?? 0,
@@ -576,6 +776,8 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         Id = lesson.Id,
         Title = lesson.Title,
         Summary = lesson.Summary,
+        FachId = lesson.FachId,
+        FachName = lesson.Fach?.Name,
         CourseTheme = lesson.CourseTheme,
         CourseCode = lesson.Klasse.Code,
         IsPublished = lesson.IsPublished,

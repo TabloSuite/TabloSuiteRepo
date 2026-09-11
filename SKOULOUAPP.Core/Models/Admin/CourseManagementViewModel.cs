@@ -13,6 +13,7 @@ public class CourseManagementViewModel
     public string Description { get; set; } = string.Empty;
     public int RecommendedLessonCount { get; set; }
     public decimal Price { get; set; }
+    public int? MaxPlaetze { get; set; }
     public int ExamCount { get; set; }
     public int MediaCount { get; set; }
     public int StudentCount { get; set; }

@@ -18,6 +18,8 @@ public class AppUser : IdentityUser<Guid>
     public Geschlecht Geschlecht { get; set; } = Geschlecht.Divers;
     public bool IsBlocked { get; set; }
     public bool IsSelfRegistered { get; set; }
+    public Guid? ProfilBildAssetId { get; set; }
+    public BlobMediaAsset? ProfilBildAsset { get; set; }
 
     /// <summary>
     /// Kennung der aktuell erlaubten Browser-Sitzung. Jede neue Anmeldung ersetzt
@@ -40,6 +42,7 @@ public class AppUser : IdentityUser<Guid>
     public ICollection<UserSchool> UserSchools { get; set; } = new List<UserSchool>();
     public ICollection<StudentProfile> StudentProfiles { get; set; } = new List<StudentProfile>();
     public ICollection<LevelEnrollment> LevelEnrollments { get; set; } = new List<LevelEnrollment>();
+    public ICollection<LehrerFachZuordnung> LehrerFachZuordnungen { get; set; } = new List<LehrerFachZuordnung>();
 }
 
 

@@ -9,6 +9,7 @@ public class LehrerNiveauZuordnungItem
     public Guid SchulID { get; set; }
     public string SchulName { get; set; } = string.Empty;
     public Guid KlasseId { get; set; }
+    public string? ReferenceName { get; set; }
     public string NiveauCode { get; set; } = string.Empty;
     public string NiveauTitel { get; set; } = string.Empty;
     public bool IstZugeordnet { get; set; }

@@ -49,7 +49,7 @@ public partial class Admin
 
         var localPart = string.Join('.', builder.ToString().Split(new[] { '.', ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(part => part.All(char.IsLetterOrDigit)));
-        return $"{localPart}@halloapp.com";
+        return $"{localPart}@skoulou.com";
     }
 
     [Inject]

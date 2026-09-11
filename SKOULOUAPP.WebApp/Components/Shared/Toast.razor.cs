@@ -14,7 +14,7 @@ public partial class Toast : IDisposable
     public ToastKind Kind { get; set; } = ToastKind.Success;
 
     [Parameter]
-    public int DurationMs { get; set; } = 3500;
+    public int DurationMs { get; set; } = 10500;
 
     private string? currentMessage;
     private bool visible;

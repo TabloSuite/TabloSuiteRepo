@@ -1,13 +1,13 @@
 @if (visible && !string.IsNullOrWhiteSpace(currentMessage))
 {
-    <div class="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4 sm:justify-end sm:pr-6">
+    <div class="pointer-events-none fixed inset-x-0 bottom-6 z-[2400] flex justify-center px-4 sm:justify-end sm:pr-6">
         <div class="pointer-events-auto flex items-center gap-3 rounded-2xl @AccentClass px-5 py-3 shadow-2xl shadow-slate-900/20 ring-1 ring-black/5 transition duration-300 @(leaving ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100")"
              role="status">
             <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="@IconPath" />
             </svg>
             <span class="text-sm font-semibold">@currentMessage</span>
-            <button type="button" class="ml-2 rounded-full p-1 transition duration-200 hover:bg-black/10" aria-label="Fermer" @onclick="DismissAsync">
+            <button type="button" class="ml-2 rounded-full p-1 transition duration-200 hover:bg-black/10" aria-label="Fermer" @onclick="DismissAsync" @onclick:stopPropagation="true">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>

@@ -36,12 +36,20 @@ public partial class TeacherLessons
 
     private IReadOnlyList<TeacherLessonListItem>? lessons;
     private List<KlasseOption> klasses = [];
+    private Dictionary<Guid, Guid?> klasseSchoolById = [];
+    private List<FachOptionItem> fachOptions = [];
+    private List<FachOptionItem> filteredFachOptions = [];
     private Guid currentUserId;
     private bool canViewSharedDirectionLessons;
     private bool canManageLessons = true;
 
     private bool isEditing;
     private TeacherLessonFormModel? form;
+    private bool copyModalOpen;
+    private Guid copySourceLessonId;
+    private Guid? copyTargetKlasseId;
+    private bool copyPublishDirectly;
+    private bool isCopying;
     private RichTextEditor? lessonEditor;
     private RichTextEditor? imageLibraryTargetEditor;
     private string editorHtml = string.Empty;
@@ -49,6 +57,8 @@ public partial class TeacherLessons
     private string? statusMessage;
     private bool isSaving;
     private bool imageLibraryOpen;
+    private string newFachName = string.Empty;
+    private bool isAddingFach;
     private IReadOnlyCollection<string> currentRoles = [];
     private IBrowserFile? selectedVideoFile;
     private decimal videoDurationMinutes;
@@ -79,11 +89,43 @@ public partial class TeacherLessons
         .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
         .ToList();
 
+    private IReadOnlyList<ModernDropdownOption<Guid?>> CopyTargetKlasseOptions =>
+    [
+        new(null, "— Classe cible —"),
+        .. klasses
+            .OrderBy(klasse => klasse.Code)
+            .ThenBy(klasse => klasse.Title)
+            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
+    ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> FachOptions =>
+    [
+        new(null, "— Matière (optionnel) —"),
+        .. filteredFachOptions
+            .Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, $"{fach.Name} · {fach.SchoolName}"))
+    ];
+
     private Task SetLessonKlasseAsync(Guid? klasseId)
     {
         if (form is not null)
         {
             form.KlasseId = klasseId ?? Guid.Empty;
+            FilterFachOptionsForCurrentKlasse();
+
+            if (form.FachId.HasValue && filteredFachOptions.All(fach => fach.FachId != form.FachId.Value))
+            {
+                form.FachId = null;
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetLessonFachAsync(Guid? fachId)
+    {
+        if (form is not null)
+        {
+            form.FachId = fachId;
         }
 
         return Task.CompletedTask;
@@ -143,6 +185,13 @@ public partial class TeacherLessons
                 .Select(x => new KlasseOption(x.Id, x.Code, x.Title))
                 .ToListAsync(ComponentToken);
 
+            klasseSchoolById = await DbContext.Klassen
+                .AsNoTracking()
+                .Where(x => !x.IstSystemNiveau)
+                .ToDictionaryAsync(x => x.Id, x => x.SchoolId, ComponentToken);
+
+            fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(currentUserId, ComponentToken)).ToList();
+
             await ReloadLessonsAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
@@ -176,6 +225,8 @@ public partial class TeacherLessons
             Order = (lessons?.Count ?? 0) + 1,
             Pages = [new TeacherLessonPageFormModel { PageNumber = 1, ContentHtml = string.Empty }]
         };
+        FilterFachOptionsForCurrentKlasse();
+        newFachName = string.Empty;
         editorHtml = string.Empty;
         pageCount = 1;
         isEditing = true;
@@ -201,6 +252,8 @@ public partial class TeacherLessons
         }
 
         form = loaded;
+        FilterFachOptionsForCurrentKlasse();
+        newFachName = string.Empty;
         editorHtml = MergePages(loaded.Pages);
         pageCount = Math.Max(1, loaded.Pages.Count);
         isEditing = true;
@@ -219,6 +272,119 @@ public partial class TeacherLessons
         selectedVideoFile = null;
         videoUploadMessage = null;
         videoUploadError = null;
+        newFachName = string.Empty;
+    }
+
+    private void OpenCopyModal(TeacherLessonListItem lesson)
+    {
+        copySourceLessonId = lesson.Id;
+        copyTargetKlasseId = null;
+        copyPublishDirectly = false;
+        copyModalOpen = true;
+        statusMessage = null;
+    }
+
+    private void OnCopyModalOpenChanged(bool open)
+    {
+        copyModalOpen = open;
+        if (!open)
+        {
+            copySourceLessonId = Guid.Empty;
+            copyTargetKlasseId = null;
+            copyPublishDirectly = false;
+        }
+    }
+
+    private Task SetCopyTargetKlasseAsync(Guid? klasseId)
+    {
+        copyTargetKlasseId = klasseId;
+        return Task.CompletedTask;
+    }
+
+    private async Task CopyLessonAsync()
+    {
+        if (isCopying || copySourceLessonId == Guid.Empty || copyTargetKlasseId is not Guid targetKlasseId)
+        {
+            statusMessage = "Sélectionne d'abord la classe cible.";
+            return;
+        }
+
+        isCopying = true;
+        try
+        {
+            var publishDirectly = copyPublishDirectly;
+            await TeacherLessonService.CopyLessonToKlasseAsync(
+                copySourceLessonId,
+                currentUserId,
+                targetKlasseId,
+                publishDirectly,
+                ComponentToken);
+            copyModalOpen = false;
+            copySourceLessonId = Guid.Empty;
+            copyTargetKlasseId = null;
+            copyPublishDirectly = false;
+            statusMessage = publishDirectly
+                ? "La copie du cours a été créée et publiée dans la classe cible."
+                : "La copie du cours a été créée dans la classe cible (brouillon).";
+            await ReloadLessonsAsync();
+        }
+        catch (Exception ex) when (!IstAbbruch(ex))
+        {
+            statusMessage = ex.Message;
+        }
+        finally
+        {
+            isCopying = false;
+        }
+    }
+
+    private void FilterFachOptionsForCurrentKlasse()
+    {
+        if (form is null)
+        {
+            filteredFachOptions = [];
+            return;
+        }
+
+        if (!klasseSchoolById.TryGetValue(form.KlasseId, out var schoolId))
+        {
+            filteredFachOptions = [];
+            form.FachId = null;
+            return;
+        }
+
+        filteredFachOptions = schoolId is Guid id
+            ? fachOptions.Where(fach => fach.SchoolId == id).OrderBy(fach => fach.Name).ToList()
+            : [];
+    }
+
+    private async Task AddFachAsync()
+    {
+        if (isAddingFach || string.IsNullOrWhiteSpace(newFachName) || form is null)
+        {
+            return;
+        }
+
+        isAddingFach = true;
+        try
+        {
+            var fachId = await TeacherLessonService.ResolveTeacherFachAsync(currentUserId, form.KlasseId, null, newFachName.Trim(), ComponentToken);
+            if (!fachId.HasValue)
+            {
+                statusMessage = "La matière n'a pas pu être ajoutée.";
+                return;
+            }
+
+            fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(currentUserId, ComponentToken)).ToList();
+            FilterFachOptionsForCurrentKlasse();
+            form.FachId = fachId.Value;
+            newFachName = string.Empty;
+            statusMessage = "La matière a été ajoutée.";
+        }
+        finally
+        {
+            isAddingFach = false;
+        }
     }
 
     private async Task OnVideoSelected(InputFileChangeEventArgs args)
