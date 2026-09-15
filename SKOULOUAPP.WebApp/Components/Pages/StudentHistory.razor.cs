@@ -81,5 +81,5 @@ public partial class StudentHistory
     }
 
     private void OpenLesson(Guid lessonId)
-        => Navigation.NavigateTo($"/student/cours/{lessonId}");
+        => Navigation.NavigateTo($"/student/lessons/support/{lessonId}");
 }

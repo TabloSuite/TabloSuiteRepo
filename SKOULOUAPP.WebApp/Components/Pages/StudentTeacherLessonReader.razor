@@ -1,4 +1,4 @@
-@page "/student/cours/{LessonId:guid}"
+@page "/student/lessons/support/{LessonId:guid}"
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits HalloApp.WebApp.Components.CancelableComponentBase
@@ -14,7 +14,7 @@
             Tu peux ouvrir seulement les supports publiés pour les élèves par un enseignant de ton école et rattachés à ta classe.
             Ce support est peut-être encore en brouillon, supprimé, ou lié à une autre classe.
         </p>
-        <button type="button" class="mt-4 rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux cours</button>
+        <button type="button" class="mt-4 rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux leçons</button>
     </div>
 }
 else if (lesson is null)
@@ -27,7 +27,7 @@ else
         <div class="hallo-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/30">@lesson.CourseCode</span>
-                <button type="button" class="rounded-full bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25" @onclick="GoBack">← Retour aux cours</button>
+                <button type="button" class="rounded-full bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25" @onclick="GoBack">← Retour aux leçons</button>
             </div>
             <h1 class="mt-3 text-3xl font-black">@lesson.Title</h1>
             @if (!string.IsNullOrWhiteSpace(lesson.CourseTheme))
@@ -60,7 +60,7 @@ else
         @if (lesson.Pages.Count == 0)
         {
             <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <p class="text-sm text-slate-600">Ce cours ne contient aucune page.</p>
+                <p class="text-sm text-slate-600">Cette leçon ne contient aucune page.</p>
             </div>
         }
         else
@@ -88,7 +88,7 @@ else
             </div>
 
             <div class="flex justify-center">
-                <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux cours</button>
+                <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux leçons</button>
             </div>
         }
 

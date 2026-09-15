@@ -649,9 +649,12 @@ window.SKOULOUAPPRichText = {
         close.addEventListener('click', function () { palette.remove(); });
         palette.appendChild(close);
 
-        const rect = formulaButton.getBoundingClientRect();
-        palette.style.top = Math.min(window.innerHeight - 24, rect.bottom + 8) + 'px';
-        palette.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - 420)) + 'px';
+        const paletteWidth = Math.min(520, window.innerWidth - 24);
+        const maxHeight = Math.min(window.innerHeight * 0.76, 680);
+        const top = Math.max(12, (window.innerHeight - maxHeight) / 2);
+        const left = Math.max(12, (window.innerWidth - paletteWidth) / 2);
+        palette.style.top = top + 'px';
+        palette.style.left = left + 'px';
         document.body.appendChild(palette);
 
         requestAnimationFrame(function () {

@@ -21,6 +21,9 @@ public partial class TailwindDateTimePicker : ComponentBase
     [Parameter]
     public bool ShowTime { get; set; } = true;
 
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
     private bool isOpen;
     private DateTime viewMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private int stunde;
@@ -62,6 +65,11 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private void Toggle()
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         isOpen = !isOpen;
         if (isOpen)
         {
@@ -78,6 +86,11 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private async Task SelectDayAsync(DateTime tag)
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         viewMonth = new DateTime(tag.Year, tag.Month, 1);
         var std = ShowTime ? stunde : 0;
         var min = ShowTime ? minute : 0;
@@ -91,6 +104,11 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private async Task OnStundeChanged(ChangeEventArgs e)
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         if (int.TryParse(e.Value?.ToString(), out var wert))
         {
             stunde = Math.Clamp(wert, 0, 23);
@@ -100,6 +118,11 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private async Task OnMinuteChanged(ChangeEventArgs e)
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         if (int.TryParse(e.Value?.ToString(), out var wert))
         {
             minute = Math.Clamp(wert, 0, 59);
@@ -116,6 +139,11 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private async Task HeuteAsync()
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         var jetzt = DateTime.Now;
         stunde = jetzt.Hour;
         minute = jetzt.Minute;
@@ -126,12 +154,22 @@ public partial class TailwindDateTimePicker : ComponentBase
 
     private async Task ClearAsync()
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         await SetValueAsync(null);
         isOpen = false;
     }
 
     private async Task AccepterAsync()
     {
+        if (IsDisabled)
+        {
+            return;
+        }
+
         if (Value is null)
         {
             await SetValueAsync(new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.Today.Day, stunde, minute, 0, DateTimeKind.Local));

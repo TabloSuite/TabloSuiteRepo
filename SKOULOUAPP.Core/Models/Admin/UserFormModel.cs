@@ -39,6 +39,7 @@ public class UserFormModel
     public bool IsBlocked { get; set; }
     public bool IsSelfRegistered { get; set; }
     public List<Guid> SchoolIds { get; set; } = [];
+    public List<Guid> FachIds { get; set; } = [];
     public Guid? CurrentKlasseId { get; set; }
     public List<TeacherClassAssignmentFormModel> TeacherClassAssignments { get; set; } = [];
 

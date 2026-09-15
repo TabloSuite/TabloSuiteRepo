@@ -2,6 +2,7 @@ namespace HalloApp.Core.DataModels.Exams;
 
 public enum ExamReleaseTarget
 {
-    SchoolLeader = 0,
-    ClassStudents = 1
+    PrivateAuthor = 0,
+    SchoolLeader = 1,
+    ClassStudents = 2
 }

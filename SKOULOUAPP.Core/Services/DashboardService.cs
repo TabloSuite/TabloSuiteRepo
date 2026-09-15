@@ -275,17 +275,17 @@ public class DashboardService(
             .Select(exercise => new { exercise.Id, exercise.Points })
             .ToDictionaryAsync(x => x.Id, x => x.Points, cancellationToken);
 
-        var abschlussExamIds = await dbContext.Exams
+        var examsVisibleToStudents = await dbContext.Exams
             .AsNoTracking()
-            .Where(exam => exam.ExamType == ExamType.AbschlussRelevant)
+            .Where(exam => exam.IsPublishedToStudents)
             .Select(exam => exam.Id)
-            .ToListAsync(cancellationToken);
+            .ToHashSetAsync(cancellationToken);
 
         var examAttempts = await dbContext.ExamAttempts
             .AsNoTracking()
             .Where(a => a.IsCompleted
                         && !a.RequiresManualGrading
-                        && !abschlussExamIds.Contains(a.ExamId)
+                        && examsVisibleToStudents.Contains(a.ExamId)
                         && studentIds.Contains(a.StudentId))
             .Select(a => new
             {
@@ -409,6 +409,29 @@ public class DashboardService(
             return null;
         }
 
+        var hasCurrentKlasseAssignment = profile.CurrentKlasseId.HasValue;
+
+        var currentClassCycle = hasCurrentKlasseAssignment
+            ? await dbContext.KursNiveauDurchlaeufe
+                .AsNoTracking()
+                .Where(run => run.KlasseId == profile.CurrentKlasseId!.Value)
+                .OrderByDescending(run => run.StartDatum)
+                .ThenByDescending(run => run.ErstelltAmUtc)
+                .Select(run => new { run.EndDatum })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var hasCurrentClassCycle = currentClassCycle is not null;
+        var isCurrentClassCycleClosed = currentClassCycle?.EndDatum is not null;
+
+        var currentClassEnrollment = hasCurrentKlasseAssignment
+            ? await dbContext.LevelEnrollments
+                .AsNoTracking()
+                .Where(enrollment => enrollment.StudentId == userId && enrollment.KlasseId == profile.CurrentKlasseId!.Value)
+                .Select(enrollment => new { enrollment.IsUnlocked, enrollment.IsPaid })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
         var courseProgress = await dbContext.Klassen
             .AsNoTracking()
             .Include(x => x.Lessons)
@@ -469,6 +492,8 @@ public class DashboardService(
         var combinedScores = await GetCombinedProgressScoresAsync([userId], cancellationToken);
         combinedScores.TryGetValue(userId, out var combined);
         var hasActiveSubscription = unlockedKlasseIds.Count > 0;
+        var isCurrentClassUnlocked = currentClassEnrollment?.IsUnlocked == true;
+        var isCurrentClassPaid = currentClassEnrollment?.IsPaid == true;
         var hasPaidHalloAppAbo = await dbContext.LevelEnrollments
             .AsNoTracking()
             .AnyAsync(enrollment => enrollment.StudentId == userId && enrollment.IsPaid, cancellationToken);
@@ -481,6 +506,11 @@ public class DashboardService(
             FullName = profile.AppUser.FullName,
             SchoolName = profile.School.Name,
             CurrentLevelCode = profile.CurrentLevelCode ?? string.Empty,
+            HasCurrentKlasseAssignment = hasCurrentKlasseAssignment,
+            HasCurrentClassCycle = hasCurrentClassCycle,
+            IsCurrentClassCycleClosed = isCurrentClassCycleClosed,
+            IsCurrentClassUnlocked = isCurrentClassUnlocked,
+            IsCurrentClassPaid = isCurrentClassPaid,
             CompletedLessonsCount = profile.CompletedLessonsCount,
             IsBlocked = profile.AppUser.IsBlocked,
             CanTakeFinalExam = canTakeFinalExam,
@@ -915,6 +945,59 @@ public class DashboardService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return (true, "L'école a été créée et t'est maintenant attribuée.");
+    }
+
+    public async Task<(bool Succeeded, string Message)> UpdateSchoolForSchoolLeaderAsync(
+        Guid schoolLeaderId,
+        SchoolFormModel model,
+        CancellationToken cancellationToken = default)
+    {
+        if (!model.Id.HasValue)
+        {
+            return (false, "L'école est introuvable.");
+        }
+
+        var schoolLeader = await userManager.FindByIdAsync(schoolLeaderId.ToString());
+        if (schoolLeader is null || (!await userManager.IsInRoleAsync(schoolLeader, Rollen.SchulLeiter) && !await userManager.IsInRoleAsync(schoolLeader, Rollen.Koordinator)))
+        {
+            return (false, "Seule la direction peut modifier cette école.");
+        }
+
+        var normalizedName = model.Name.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedName) || string.IsNullOrWhiteSpace(model.City) || string.IsNullOrWhiteSpace(model.Country))
+        {
+            return (false, "Veuillez renseigner le nom, la ville et le pays de l'école.");
+        }
+
+        var hasAccess = await dbContext.UserSchools
+            .AsNoTracking()
+            .AnyAsync(link => link.AppUserId == schoolLeaderId && link.SchoolId == model.Id.Value && link.CanManageStudents, cancellationToken);
+        if (!hasAccess)
+        {
+            return (false, "Vous ne pouvez pas modifier cette école.");
+        }
+
+        var duplicateExists = await dbContext.Schools
+            .AnyAsync(school => school.Name == normalizedName && school.Id != model.Id.Value, cancellationToken);
+        if (duplicateExists)
+        {
+            return (false, "Une école avec ce nom existe déjà.");
+        }
+
+        var school = await dbContext.Schools.FirstOrDefaultAsync(s => s.Id == model.Id.Value, cancellationToken);
+        if (school is null)
+        {
+            return (false, "L'école est introuvable.");
+        }
+
+        school.Name = normalizedName;
+        school.City = model.City.Trim();
+        school.Country = model.Country.Trim();
+        school.IsActive = model.IsActive;
+        school.GeaendertAmUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "L'école a été mise à jour.");
     }
 
     public async Task<SchoolFormModel?> GetSchoolForEditAsync(Guid schoolId, CancellationToken cancellationToken = default)
@@ -1567,6 +1650,7 @@ public class DashboardService(
             .Include(x => x.Exercises)
                 .ThenInclude(x => x.Options)
             .Include(x => x.Fach)
+            .Include(x => x.MediaItems)
             .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);
 
         if (lesson is null)
@@ -1597,6 +1681,10 @@ public class DashboardService(
             Summary = lesson.Summary,
             Content = lesson.Content,
             Order = lesson.Order,
+            VideoAssetId = TryParseLessonVideoAssetId(lesson),
+            VideoDisplayName = await GetLessonVideoDisplayNameAsync(lesson, cancellationToken),
+            VideoDuration = await GetLessonVideoDurationAsync(lesson, cancellationToken),
+            VideoUrl = BuildLessonVideoUrl(lesson),
             Exercises = lesson.Exercises
                 .OrderBy(x => x.Order)
                 .Select(exercise =>
@@ -1649,6 +1737,7 @@ public class DashboardService(
             lesson = await dbContext.Lessons
                 .Include(x => x.Exercises)
                     .ThenInclude(x => x.Options)
+                .Include(x => x.MediaItems)
                 .FirstOrDefaultAsync(x => x.Id == model.LessonId.Value, cancellationToken) ?? new Lesson();
             if (lesson.Id == Guid.Empty)
             {
@@ -1690,6 +1779,8 @@ public class DashboardService(
         lesson.IsPublished = model.IsPublished;
         lesson.ExerciseSubmissionDueAtUtc = model.ExerciseSubmissionDueAtUtc;
         lesson.GeaendertAmUtc = DateTime.UtcNow;
+
+        await SyncLessonVideoMediaAsync(lesson, model, cancellationToken);
 
         SyncLessonExercises(lesson, model.Exercises);
 
@@ -1754,6 +1845,119 @@ public class DashboardService(
                 .AnyAsync(fach => fach.Id == fachId.Value && fach.SchoolId == schoolId.Value, cancellationToken);
 
         return isValid ? fachId : null;
+    }
+
+    private async Task SyncLessonVideoMediaAsync(Lesson lesson, LessonFormModel model, CancellationToken cancellationToken)
+    {
+        var existingVideoEntries = lesson.MediaItems
+            .Where(media => string.Equals(media.MediaType, "video", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (!model.VideoAssetId.HasValue)
+        {
+            if (existingVideoEntries.Count > 0)
+            {
+                dbContext.LessonMedia.RemoveRange(existingVideoEntries);
+            }
+
+            return;
+        }
+
+        var assetIdText = model.VideoAssetId.Value.ToString("D");
+        var videoAssetExists = await dbContext.BlobMediaAssets
+            .AsNoTracking()
+            .AnyAsync(asset => asset.Id == model.VideoAssetId.Value, cancellationToken);
+        if (!videoAssetExists)
+        {
+            return;
+        }
+
+        var targetPath = $"/media-library/videos/{assetIdText}?lessonId={lesson.Id}";
+        if (existingVideoEntries.Any(entry => string.Equals(entry.RelativePath, targetPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (existingVideoEntries.Count > 0)
+        {
+            dbContext.LessonMedia.RemoveRange(existingVideoEntries);
+        }
+
+        lesson.MediaItems.Add(new LessonMedia
+        {
+            LessonId = lesson.Id,
+            MediaType = "video",
+            RelativePath = targetPath,
+            AltText = model.VideoDisplayName?.Trim() ?? "Vidéo de la leçon",
+            StorageProvider = "AzureBlob"
+        });
+    }
+
+    private static Guid? TryParseLessonVideoAssetId(Lesson lesson)
+    {
+        var mediaPath = lesson.MediaItems
+            .Where(media => string.Equals(media.MediaType, "video", StringComparison.OrdinalIgnoreCase))
+            .Select(media => media.RelativePath)
+            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+        if (string.IsNullOrWhiteSpace(mediaPath))
+        {
+            return null;
+        }
+
+        var cleanPath = mediaPath;
+        var queryIndex = cleanPath.IndexOf('?', StringComparison.Ordinal);
+        if (queryIndex >= 0)
+        {
+            cleanPath = cleanPath[..queryIndex];
+        }
+
+        var marker = "/media-library/videos/";
+        var markerIndex = cleanPath.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return null;
+        }
+
+        var idText = cleanPath[(markerIndex + marker.Length)..].Trim('/');
+        return Guid.TryParse(idText, out var assetId) ? assetId : null;
+    }
+
+    private async Task<string?> GetLessonVideoDisplayNameAsync(Lesson lesson, CancellationToken cancellationToken)
+    {
+        var assetId = TryParseLessonVideoAssetId(lesson);
+        if (!assetId.HasValue)
+        {
+            return null;
+        }
+
+        return await dbContext.BlobMediaAssets
+            .AsNoTracking()
+            .Where(asset => asset.Id == assetId.Value)
+            .Select(asset => asset.DisplayName)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<TimeSpan?> GetLessonVideoDurationAsync(Lesson lesson, CancellationToken cancellationToken)
+    {
+        var assetId = TryParseLessonVideoAssetId(lesson);
+        if (!assetId.HasValue)
+        {
+            return null;
+        }
+
+        return await dbContext.BlobMediaAssets
+            .AsNoTracking()
+            .Where(asset => asset.Id == assetId.Value)
+            .Select(asset => asset.VideoDuration)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static string? BuildLessonVideoUrl(Lesson lesson)
+    {
+        var assetId = TryParseLessonVideoAssetId(lesson);
+        return assetId.HasValue
+            ? $"/media-library/videos/{assetId.Value}?lessonId={lesson.Id}"
+            : null;
     }
 
     private void SyncLessonExercises(Lesson lesson, List<LessonExerciseFormModel> exerciseForms)
@@ -2396,6 +2600,7 @@ public class DashboardService(
             .ToList();
 
         await ApplyStudentProgressScoresAsync(profiles, cancellationToken);
+        await ApplySchoolFeeInfoAsync(profiles, cancellationToken);
 
         return profiles;
     }
@@ -2835,6 +3040,15 @@ public class DashboardService(
                 .ToListAsync(cancellationToken)
             : [];
 
+        var teacherFachIds = roleName == Rollen.Lehrer
+            ? await dbContext.LehrerFachZuordnungen
+                .AsNoTracking()
+                .Where(assignment => assignment.LehrerId == user.Id && schoolIds.Contains(assignment.Fach.SchoolId))
+                .Select(assignment => assignment.FachId)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+            : [];
+
         return new UserFormModel
         {
             UserId = user.Id,
@@ -2852,6 +3066,7 @@ public class DashboardService(
                 .Where(profile => profile.AppUserId == user.Id)
                 .Select(profile => profile.CurrentKlasseId)
                 .FirstOrDefaultAsync(cancellationToken),
+            FachIds = teacherFachIds,
             TeacherClassAssignments = teacherClassAssignments
         };
     }
@@ -2946,6 +3161,7 @@ public class DashboardService(
             }
 
             await SetLehrerNiveauZuordnungenAsync(directorId, teacherId.Value, assignments, cancellationToken);
+            await SetLehrerFachZuordnungenAsync(directorId, teacherId.Value, model.FachIds, cancellationToken);
 
             var obsoleteAssignments = await dbContext.LehrerNiveauZuordnungen
                 .Where(assignment => assignment.LehrerID == teacherId.Value && !selectedSchoolIds.Contains(assignment.SchulID))
@@ -2959,6 +3175,228 @@ public class DashboardService(
         }
 
         return result;
+    }
+
+    public async Task<IReadOnlyList<FachOptionItem>> GetSchoolFachOptionsForDirectionAsync(Guid directorId, Guid? schoolId = null, CancellationToken cancellationToken = default)
+    {
+        var directorSchoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (directorSchoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        var targetSchoolIds = schoolId.HasValue
+            ? (directorSchoolIds.Contains(schoolId.Value) ? [schoolId.Value] : [])
+            : directorSchoolIds;
+
+        if (targetSchoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Faecher
+            .AsNoTracking()
+            .Where(fach => targetSchoolIds.Contains(fach.SchoolId))
+            .Select(fach => new FachOptionItem
+            {
+                FachId = fach.Id,
+                Name = fach.Name,
+                SchoolId = fach.SchoolId,
+                SchoolName = fach.School.Name,
+                IstLehrerZugewiesen = dbContext.LehrerFachZuordnungen.Any(zuordnung => zuordnung.FachId == fach.Id)
+            })
+            .OrderBy(item => item.SchoolName)
+            .ThenBy(item => item.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message)> DeleteSchoolFachForDirectionAsync(Guid directorId, Guid fachId, CancellationToken cancellationToken = default)
+    {
+        var fach = await dbContext.Faecher
+            .AsNoTracking()
+            .Where(item => item.Id == fachId)
+            .Select(item => new { item.Id, item.SchoolId, item.Name })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (fach is null)
+        {
+            return (false, "La matière est introuvable.");
+        }
+
+        var canManageSchool = await dbContext.UserSchools
+            .AsNoTracking()
+            .AnyAsync(link => link.AppUserId == directorId && link.SchoolId == fach.SchoolId && link.CanManageStudents, cancellationToken);
+        if (!canManageSchool)
+        {
+            return (false, "Vous ne pouvez pas supprimer cette matière.");
+        }
+
+        var isAssigned = await dbContext.LehrerFachZuordnungen
+            .AsNoTracking()
+            .AnyAsync(assignment => assignment.FachId == fachId, cancellationToken);
+        if (isAssigned)
+        {
+            return (false, "Cette matière est déjà attribuée à un enseignant et ne peut pas être supprimée.");
+        }
+
+        var entity = await dbContext.Faecher.FirstOrDefaultAsync(item => item.Id == fachId, cancellationToken);
+        if (entity is null)
+        {
+            return (false, "La matière est introuvable.");
+        }
+
+        dbContext.Faecher.Remove(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "La matière a été supprimée.");
+    }
+
+    public async Task<IReadOnlyList<LehrerFachZuordnungItem>> GetLehrerFachZuordnungenAsync(Guid directorId, Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var lehrerSchulIds = await GetGemeinsameLehrerSchulenMitDirektionAsync(directorId, teacherId, cancellationToken);
+        if (lehrerSchulIds.Count == 0)
+        {
+            return [];
+        }
+
+        var schulen = await dbContext.Schools
+            .AsNoTracking()
+            .Where(s => lehrerSchulIds.Contains(s.Id))
+            .Select(s => new { s.Id, s.Name })
+            .ToListAsync(cancellationToken);
+
+        var faecher = await dbContext.Faecher
+            .AsNoTracking()
+            .Where(fach => lehrerSchulIds.Contains(fach.SchoolId))
+            .OrderBy(fach => fach.Name)
+            .Select(fach => new { fach.Id, fach.Name, fach.SchoolId })
+            .ToListAsync(cancellationToken);
+
+        var aktiveFachIds = (await dbContext.LehrerFachZuordnungen
+            .AsNoTracking()
+            .Where(zuordnung => zuordnung.LehrerId == teacherId)
+            .Select(zuordnung => zuordnung.FachId)
+            .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        return faecher
+            .Join(
+                schulen,
+                fach => fach.SchoolId,
+                schule => schule.Id,
+                (fach, schule) => new LehrerFachZuordnungItem
+                {
+                    SchulID = schule.Id,
+                    SchulName = schule.Name,
+                    FachId = fach.Id,
+                    FachName = fach.Name,
+                    IstZugeordnet = aktiveFachIds.Contains(fach.Id)
+                })
+            .OrderBy(item => item.SchulName)
+            .ThenBy(item => item.FachName)
+            .ToList();
+    }
+
+    public async Task SetLehrerFachZuordnungenAsync(Guid directorId, Guid teacherId, IReadOnlyList<Guid> fachIds, CancellationToken cancellationToken = default)
+    {
+        var lehrerSchulIds = await GetGemeinsameLehrerSchulenMitDirektionAsync(directorId, teacherId, cancellationToken);
+        if (lehrerSchulIds.Count == 0)
+        {
+            return;
+        }
+
+        var bestehende = await dbContext.LehrerFachZuordnungen
+            .Where(zuordnung => zuordnung.LehrerId == teacherId && lehrerSchulIds.Contains(zuordnung.Fach.SchoolId))
+            .ToListAsync(cancellationToken);
+
+        dbContext.LehrerFachZuordnungen.RemoveRange(bestehende);
+
+        var erlaubteFachIds = await dbContext.Faecher
+            .AsNoTracking()
+            .Where(fach => lehrerSchulIds.Contains(fach.SchoolId))
+            .Select(fach => fach.Id)
+            .ToListAsync(cancellationToken);
+
+        var erlaubteFachIdSet = erlaubteFachIds.ToHashSet();
+        foreach (var fachId in (fachIds ?? []).Where(id => erlaubteFachIdSet.Contains(id)).Distinct())
+        {
+            await dbContext.LehrerFachZuordnungen.AddAsync(new LehrerFachZuordnung
+            {
+                LehrerId = teacherId,
+                FachId = fachId
+            }, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message, Guid? FachId)> CreateFachForSchoolByDirectionAsync(Guid directorId, Guid schoolId, string fachName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(fachName))
+        {
+            return (false, "Veuillez saisir une matière.", null);
+        }
+
+        var directorSchoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (!directorSchoolIds.Contains(schoolId))
+        {
+            return (false, "Vous ne pouvez pas gérer les matières de cette école.", null);
+        }
+
+        var normalizedName = fachName.Trim();
+        var normalizedKey = normalizedName.ToUpperInvariant();
+
+        var existing = await dbContext.Faecher
+            .FirstOrDefaultAsync(fach => fach.SchoolId == schoolId && fach.Name.ToUpper() == normalizedKey, cancellationToken);
+        if (existing is not null)
+        {
+            return (true, "La matière existe déjà.", existing.Id);
+        }
+
+        var created = new Fach
+        {
+            SchoolId = schoolId,
+            Name = normalizedName
+        };
+
+        await dbContext.Faecher.AddAsync(created, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "La matière a été créée.", created.Id);
+    }
+
+    public async Task<IReadOnlyList<TeacherAssignmentOption>> GetGemeinsameLehrerSchulenAsync(Guid directorId, Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var gemeinsameSchulen = await GetGemeinsameLehrerSchulenMitDirektionAsync(directorId, teacherId, cancellationToken);
+        if (gemeinsameSchulen.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Schools
+            .AsNoTracking()
+            .Where(school => gemeinsameSchulen.Contains(school.Id))
+            .OrderBy(school => school.Name)
+            .Select(school => new TeacherAssignmentOption
+            {
+                TeacherId = school.Id,
+                TeacherName = school.Name,
+                Email = string.Empty,
+                IsAssigned = true
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<List<Guid>> GetGemeinsameLehrerSchulenMitDirektionAsync(Guid directorId, Guid teacherId, CancellationToken cancellationToken)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        if (schoolIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.UserSchools
+            .AsNoTracking()
+            .Where(link => link.AppUserId == teacherId && schoolIds.Contains(link.SchoolId))
+            .Select(link => link.SchoolId)
+            .ToListAsync(cancellationToken);
     }
 
     private async Task<HashSet<string>> GetManageableSchoolUserRolesAsync(Guid managerUserId, CancellationToken cancellationToken)

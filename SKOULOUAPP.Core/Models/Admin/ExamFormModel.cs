@@ -30,7 +30,7 @@ public class ExamFormModel
     /// <summary>Testexam oder abschlussrelevantes Exam.</summary>
     public ExamType ExamType { get; set; } = ExamType.TestExam;
 
-    public ExamReleaseTarget ReleaseTarget { get; set; } = ExamReleaseTarget.ClassStudents;
+    public ExamReleaseTarget ReleaseTarget { get; set; } = ExamReleaseTarget.PrivateAuthor;
 
     public bool IsPdfExportEnabled { get; set; }
 

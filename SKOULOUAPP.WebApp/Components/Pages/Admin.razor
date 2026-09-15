@@ -44,11 +44,11 @@ else
         </div>
 
         <CollapsibleCard Title="Vue d'ensemble des écoles"
-                             Eyebrow="Gestion des écoles"
-                             Icon="??"
-                             Accent="cyan"
-                             Expanded="schoolOverviewExpanded"
-                             ExpandedChanged="v => schoolOverviewExpanded = v">
+                     Eyebrow="Gestion des écoles"
+                     Icon="??"
+                     Accent="cyan"
+                     Expanded="schoolOverviewExpanded"
+                     ExpandedChanged="v => schoolOverviewExpanded = v">
                 <HeaderRight>
                     <Badge Accent="slate">Écoles : @summary.SchoolCount · Enseignants : @summary.TeacherCount · Élèves : @summary.StudentCount · Classes : @summary.CourseCount</Badge>
                 </HeaderRight>
@@ -574,11 +574,11 @@ else
             @* Medien werden für SuperAdmin/ProductOwner unten anstelle des Klassen-/Niveau-Blocks angezeigt. *@
 
         <CollapsibleCard Title="Bibliothèque de médias"
-                         Eyebrow="Médias par école"
-                         Icon="???"
-                         Accent="amber"
-                         Expanded="mediaExpanded"
-                         ExpandedChanged="v => mediaExpanded = v">
+                 Eyebrow="Médias par école"
+                 Icon="???"
+                 Accent="amber"
+                 Expanded="mediaExpanded"
+                 ExpandedChanged="v => mediaExpanded = v">
             <HeaderRight>
                 <Badge Accent="amber">@FilteredMediaLibraryItems.Count / @mediaLibraryItems.Count médias · @FormatFileSize(FilteredMediaBytes)</Badge>
             </HeaderRight>
@@ -881,7 +881,19 @@ else
                         </div>
                         <div>
                             <label class="hallo-label">Fichier</label>
-                            <InputFile OnChange="HandleMediaSelected" accept="@MediaFileAccept" class="hallo-input" />
+                            <div class="hallo-file-picker mt-1">
+                                <div class="relative inline-flex">
+                                    <span class="hallo-file-trigger @(isDatabaseActionInProgress ? "hallo-file-trigger-disabled" : string.Empty)">
+                                        Choisir un fichier
+                                    </span>
+                                    <InputFile id="admin-media-file-input"
+                                               OnChange="HandleMediaSelected"
+                                               accept="@MediaFileAccept"
+                                               class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                               disabled="@isDatabaseActionInProgress" />
+                                </div>
+                                <span class="hallo-file-selected-name">@(selectedMediaFile?.Name ?? "Aucun fichier sélectionné")</span>
+                            </div>
                         </div>
                     </div>
                     <div>

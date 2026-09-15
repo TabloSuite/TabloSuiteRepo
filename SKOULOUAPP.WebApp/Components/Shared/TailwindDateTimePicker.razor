@@ -2,7 +2,8 @@
 
 <div class="relative inline-block text-left">
     <button type="button"
-            class="flex min-w-[13rem] items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-indigo-400 focus:border-indigo-400"
+            class="flex min-w-[13rem] items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-indigo-400 focus:border-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            disabled="@IsDisabled"
             @onclick="Toggle">
         <span class="@(Value is null ? "text-slate-400" : "font-semibold text-slate-800")">
             @(Value is { } v ? v.ToString(ShowTime ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy") : EffektiverPlatzhalter)
@@ -42,6 +43,7 @@
                     var istHeute = tag.Date == DateTime.Today;
                     <button type="button"
                             class="@ZellenKlasse(istAktuellerMonat, istAusgewaehlt, istHeute)"
+                            disabled="@IsDisabled"
                             @onclick="() => SelectDayAsync(tag)">
                         @tag.Day
                     </button>
@@ -50,22 +52,22 @@
 
             <div class="mt-3 flex items-center justify-center gap-2 border-t border-slate-100 pt-3" hidden="@(!ShowTime)">
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Heure</span>
-                <input type="number" min="0" max="23" value="@stunde" @onchange="OnStundeChanged"
+                <input type="number" min="0" max="23" value="@stunde" @onchange="OnStundeChanged" disabled="@IsDisabled"
                        class="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm outline-none focus:border-indigo-400" />
                 <span class="font-bold text-slate-400">:</span>
-                <input type="number" min="0" max="59" value="@minute" @onchange="OnMinuteChanged"
+                <input type="number" min="0" max="59" value="@minute" @onchange="OnMinuteChanged" disabled="@IsDisabled"
                        class="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm outline-none focus:border-indigo-400" />
             </div>
 
             <div class="mt-3 flex items-center justify-between">
-                <button type="button" class="text-sm font-semibold text-slate-500 transition hover:text-rose-600" @onclick="ClearAsync">Effacer</button>
-                <button type="button" class="text-sm font-semibold text-indigo-600 transition hover:text-indigo-700" @onclick="HeuteAsync">Aujourd'hui</button>
+                <button type="button" class="text-sm font-semibold text-slate-500 transition hover:text-rose-600 disabled:cursor-not-allowed disabled:text-slate-300" disabled="@IsDisabled" @onclick="ClearAsync">Effacer</button>
+                <button type="button" class="text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-300" disabled="@IsDisabled" @onclick="HeuteAsync">Aujourd'hui</button>
             </div>
 
             @if (ShowTime)
             {
                 <div class="mt-3 border-t border-slate-100 pt-3">
-                    <button type="button" class="hallo-btn-accent w-full rounded-full px-4 py-2 text-sm font-semibold transition" @onclick="AccepterAsync">Accepter</button>
+                    <button type="button" class="hallo-btn-accent w-full rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50" disabled="@IsDisabled" @onclick="AccepterAsync">Accepter</button>
                 </div>
             }
         </div>

@@ -1,4 +1,4 @@
-@page "/student/cours/{LessonId:guid}/pdf"
+@page "/student/lessons/support/{LessonId:guid}/pdf"
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits HalloApp.WebApp.Components.CancelableComponentBase

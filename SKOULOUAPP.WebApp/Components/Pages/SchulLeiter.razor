@@ -79,17 +79,26 @@
         {
             @if (HasMultipleSchools)
             {
-                <button type="button"
-                        class="rounded-2xl border-2 bg-white px-4 py-3 text-left shadow-md shadow-slate-200/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg @(schoolFilterName == school.SchoolName ? "border-indigo-600 bg-indigo-50/50 shadow-indigo-200/40" : "border-transparent")"
-                        @onclick="() => SelectSchoolFilterAsync(school.SchoolName)">
-                    <div class="text-lg font-black text-slate-900">@school.SchoolName</div>
-                    <div class="text-sm text-slate-500">@school.City</div>
-                    <div class="mt-2 flex flex-wrap gap-3 text-sm">
-                        <span class="font-semibold text-slate-700">@school.StudentCount élèves</span>
-                        <span class="font-semibold text-rose-600">@school.PendingApprovalCount en attente</span>
-                        <span class="font-semibold text-indigo-600">@school.TeacherCount professeur@(school.TeacherCount > 1 ? "s" : "")</span>
+                <div class="rounded-2xl border-2 bg-white px-4 py-3 text-left shadow-md shadow-slate-200/60 transition-all duration-300 @(schoolFilterName == school.SchoolName ? "border-indigo-600 bg-indigo-50/50 shadow-indigo-200/40" : "border-transparent")">
+                    <button type="button"
+                            class="w-full text-left"
+                            @onclick="() => SelectSchoolFilterAsync(school.SchoolName)">
+                        <div class="text-lg font-black text-slate-900">@school.SchoolName</div>
+                        <div class="text-sm text-slate-500">@school.City</div>
+                        <div class="mt-2 flex flex-wrap gap-3 text-sm">
+                            <span class="font-semibold text-slate-700">@school.StudentCount élèves</span>
+                            <span class="font-semibold text-rose-600">@school.PendingApprovalCount en attente</span>
+                            <span class="font-semibold text-indigo-600">@school.TeacherCount professeur@(school.TeacherCount > 1 ? "s" : "")</span>
+                        </div>
+                    </button>
+                    <div class="mt-3 flex justify-end">
+                        <button type="button"
+                                class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                                @onclick="() => OpenEditSchoolAsync(school.SchoolId)">
+                            ✏️ Modifier école
+                        </button>
                     </div>
-                </button>
+                </div>
             }
             else
             {
@@ -101,10 +110,95 @@
                         <span class="font-semibold text-rose-600">@school.PendingApprovalCount en attente</span>
                         <span class="font-semibold text-indigo-600">@school.TeacherCount professeur@(school.TeacherCount > 1 ? "s" : "")</span>
                     </div>
+                    <div class="mt-3 flex justify-end">
+                        <button type="button"
+                                class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                                @onclick="() => OpenEditSchoolAsync(school.SchoolId)">
+                            ✏️ Modifier école
+                        </button>
+                    </div>
                 </div>
             }
         }
     </div>
+
+    <CollapsibleCard Title="Matières de l'école"
+                     Eyebrow="Gestion des matières"
+                     Subtitle="Gestion scolaire des matières. Elles seront disponibles dans le formulaire enseignant."
+                     Icon="📘"
+                     Accent="indigo"
+                     Expanded="fachVerwaltungExpanded"
+                     ExpandedChanged="value => fachVerwaltungExpanded = value">
+        <ChildContent>
+
+        @if (!string.IsNullOrWhiteSpace(fachVerwaltungErrorMessage))
+        {
+            <div class="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">@fachVerwaltungErrorMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(fachVerwaltungStatusMessage))
+        {
+            <div class="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">@fachVerwaltungStatusMessage</div>
+        }
+
+        <div class="mt-3 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900 ring-1 ring-indigo-100">
+            @if (SelectedSchoolForManagement is null)
+            {
+                <span>Sélectionne une école en haut de la page pour gérer les matières.</span>
+            }
+            else
+            {
+                <span>École active : @SelectedSchoolForManagement.SchoolName</span>
+            }
+        </div>
+
+        <div class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+                <label class="hallo-label">Recherche matière</label>
+                <input @bind="fachSuchbegriff" @bind:event="oninput" class="hallo-input" placeholder="Rechercher une matière" />
+            </div>
+            <div>
+                <label class="hallo-label">Nouvelle matière</label>
+                <input @bind="neueSchulFachBezeichnung" @bind:event="oninput" class="hallo-input" disabled="@isDatabaseActionInProgress" />
+            </div>
+            <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-sm font-semibold text-white"
+                               Disabled="@(!CanAddSchoolFach)"
+                               IsBusy="@isDatabaseActionInProgress"
+                               BusyLabel="Ajout..."
+                               OnClick="@(_ => AddSchoolFachAsync())">
+                Ajouter
+            </AsyncActionButton>
+        </div>
+
+        @if (SelectedSchoolForManagement is null)
+        {
+            <p class="mt-4 text-xs text-slate-500">La liste des matières s'affiche après sélection d'une école.</p>
+        }
+        else if (GefilterteSchoolFachOptions.Count == 0)
+        {
+            <p class="mt-4 text-xs text-slate-500">Aucune matière pour la sélection actuelle.</p>
+        }
+        else
+        {
+            <div class="mt-4 max-h-[7.9rem] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div class="grid gap-2 sm:grid-cols-2">
+                @foreach (var fach in GefilterteSchoolFachOptions)
+                {
+                    <div class="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+                        <span class="text-xs font-semibold text-slate-700">@fach.Name</span>
+                        <button type="button"
+                                class="rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled="@fach.IstLehrerZugewiesen"
+                                title="@(fach.IstLehrerZugewiesen ? "Attribuée à un enseignant" : $"Supprimer {fach.Name}")"
+                                @onclick="() => AskDeleteSchoolFach(fach)">
+                            Supprimer
+                        </button>
+                    </div>
+                }
+                </div>
+            </div>
+        }
+        </ChildContent>
+    </CollapsibleCard>
 
     <div class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow ring-1 ring-slate-100">
         Espace directeur · Administration scolaire
@@ -131,18 +225,6 @@
             @if (!klasseModalOpen && !string.IsNullOrEmpty(klasseWarnMessage))
             {
                 <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">@klasseWarnMessage</div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(klassenabschlussHinweis))
-            {
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-900 ring-1 ring-cyan-100">
-                    <span>@klassenabschlussHinweis</span>
-                    <button type="button"
-                            class="rounded-full bg-cyan-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700"
-                            @onclick="OpenLetztePromotionAsync">
-                        Ouvrir l'historique
-                    </button>
-                </div>
             }
 
             @if (SelectedKlasseSchoolId is null)
@@ -236,14 +318,12 @@
                                     <button type="button" class="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700" @onclick="() => OpenNewStudentForKlasseAsync(klasse)">Ajouter élève</button>
                                     @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var aktuellerDurchlauf) && aktuellerDurchlauf.IstAktiv)
                                     {
-                                        <button type="button" class="hallo-btn-accent rounded-full px-4 py-2 text-xs font-semibold" @onclick="() => OpenKlassenAbschlussAsync(aktuellerDurchlauf)">Scores & note finale</button>
                                         <button type="button" class="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700" @onclick="() => OpenDurchlaufEndeModal(aktuellerDurchlauf)">Clôturer le cycle</button>
                                     }
                                     else
                                     {
                                         @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var letzterDurchlauf))
                                         {
-                                            <button type="button" class="hallo-btn-accent rounded-full px-4 py-2 text-xs font-semibold" @onclick="() => OpenKlassenAbschlussAsync(letzterDurchlauf)">Historique, scores & note finale</button>
                                         }
                                         <button type="button" class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700" @onclick="() => OpenDurchlaufStartModalAsync(klasse)">Démarrer le cycle</button>
                                     }
@@ -800,7 +880,7 @@
 <div class="mt-8">
 
 <ModalDialog @bind-Open="schoolModalOpen"
-             Title="Nouvelle école"
+             Title="@schoolModalTitle"
              Eyebrow="Mes écoles"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-xl">
@@ -814,6 +894,10 @@
         <div>
             <label class="hallo-label">Nom de l'école</label>
             <InputText @bind-Value="schoolForm.Name" class="hallo-input" />
+            @if (schoolNameAlreadyExists)
+            {
+                <p class="mt-1 text-xs font-semibold text-rose-700">Une école avec ce nom existe déjà.</p>
+            }
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
             <div><label class="hallo-label">Ville</label><InputText @bind-Value="schoolForm.City" class="hallo-input" /></div>
@@ -827,9 +911,33 @@
         </div>
         <div class="mt-2 flex justify-end gap-3">
             <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="() => schoolModalOpen = false">Annuler</button>
-            <AsyncActionButton Type="submit" Class="rounded-full bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white" IsBusy="@isDatabaseActionInProgress" BusyLabel="Création...">Créer l'école</AsyncActionButton>
+            <AsyncActionButton Type="submit" Class="rounded-full bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white" Disabled="@schoolNameAlreadyExists" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@schoolModalSubmitLabel</AsyncActionButton>
         </div>
     </EditForm>
+</ModalDialog>
+
+<ModalDialog Open="fachDeleteConfirmOpen"
+             OpenChanged="OnFachDeleteConfirmOpenChanged"
+             Title="Supprimer la matière"
+             Eyebrow="Confirmation"
+             CloseOnBackdrop="false"
+             MaxWidthClass="max-w-md">
+    <p class="text-sm text-slate-700">Veux-tu vraiment supprimer la matière <strong>@fachToDeleteName</strong> ?</p>
+    <p class="mt-2 text-xs text-slate-500">La suppression n'est possible que si la matière n'est attribuée à aucun enseignant.</p>
+    <div class="mt-5 flex justify-end gap-2">
+        <button type="button"
+                class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                disabled="@isDatabaseActionInProgress"
+                @onclick="() => OnFachDeleteConfirmOpenChanged(false)">
+            Annuler
+        </button>
+        <AsyncActionButton Class="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                           IsBusy="@isDatabaseActionInProgress"
+                           BusyLabel="Suppression..."
+                           OnClick="@(_ => ConfirmDeleteSchoolFachAsync())">
+            Supprimer
+        </AsyncActionButton>
+    </div>
 </ModalDialog>
 
 <ModalDialog Open="userModalOpen"
@@ -939,11 +1047,33 @@
                                 <input type="checkbox"
                                        checked="@IsTeacherClassAssigned(option.SchulID, option.KlasseId)"
                                        @onchange="args => SetTeacherClassAssignment(option, args.Value as bool? == true)" />
-                                @option.SchulName · @option.NiveauCode · @option.NiveauTitel
+                                @GetTeacherClassAssignmentLabel(option)
                             </label>
                         }
                     </div>
                     <p class="mt-1 text-xs text-slate-500">Les classes sélectionnées déterminent les élèves et contenus accessibles à l'enseignant.</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="hallo-label">Matières attribuées</label>
+                    @if (UserFormTeacherFachOptions.Count == 0)
+                    {
+                        <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Aucune matière disponible pour les écoles attribuées. Ajoute d'abord les matières de l'école ci-dessus.</p>
+                    }
+                    else
+                    {
+                        <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
+                            @foreach (var option in UserFormTeacherFachOptions)
+                            {
+                                <label class="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox"
+                                           checked="@IsTeacherFachAssigned(option.FachId)"
+                                           @onchange="args => SetTeacherFachAssignment(option.FachId, args.Value as bool? == true)" />
+                                    @GetTeacherFachAssignmentLabel(option)
+                                </label>
+                            }
+                        </div>
+                    }
+                    <p class="mt-1 text-xs text-slate-500">Ces matières seront proposées à l'enseignant lors de la création de « Leçon + exercices ».</p>
                 </div>
             }
             else
@@ -1177,88 +1307,7 @@
     </EditForm>
 </ModalDialog>
 
-<ModalDialog @bind-Open="abschlussModalOpen"
-             Title="Notes finales et réussite"
-             Eyebrow="@klassenAbschluss?.KlasseCode"
-             CloseOnBackdrop="false"
-             MaxWidthClass="max-w-5xl">
-    @if (klassenAbschluss is not null)
-    {
-        <p class="text-sm leading-6 text-slate-600">La note finale est saisie manuellement pour chaque élève (format libre : 10/20, 16 de Moyenne, 10/10, etc.). La décision de réussite reste optionnelle et indépendante.</p>
-        @if (!string.IsNullOrWhiteSpace(abschlussStatusMessage))
-        {
-            <div class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">@abschlussStatusMessage</div>
-        }
-        @if (!string.IsNullOrWhiteSpace(abschlussErrorMessage))
-        {
-            <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">@abschlussErrorMessage</div>
-        }
-        <div class="mt-4 rounded-2xl px-4 py-3 text-sm font-semibold @(klassenAbschluss.IstAktiv ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100" : "bg-slate-50 text-slate-700 ring-1 ring-slate-100")">
-            @(klassenAbschluss.IstAktiv
-                ? "Cycle en cours : seules les élèves actuellement dans cette classe sont affichés. Les décisions et notes peuvent encore être modifiées."
-                : "Cycle clôturé : cette vue montre l'historique de la cohorte. Les décisions restent en lecture seule, mais la note finale peut encore être ajustée si nécessaire.")
-        </div>
-        <p class="mt-3 text-xs text-slate-500">"Non défini" signifie simplement qu'aucune décision n'a encore été choisie (ni "Réussi", ni "Non réussi"). Ce n'est pas lié au démarrage du cycle.</p>
 
-        <section class="mt-5 max-h-96 overflow-auto rounded-2xl border border-slate-200">
-            <table class="min-w-full text-left text-sm">
-                <thead class="sticky top-0 z-10 bg-slate-50/95 text-xs uppercase tracking-wide text-slate-500 backdrop-blur">
-                    <tr>
-                        <th class="px-4 py-3">Élève</th>
-                        <th class="px-4 py-3">Note finale</th>
-                        <th class="px-4 py-3">Décision</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach (var eleve in klassenAbschluss.Schueler)
-                    {
-                        <tr class="transition-colors duration-150 odd:bg-white even:bg-slate-50/40 hover:bg-cyan-50/60">
-                            <td class="px-4 py-3 font-semibold text-slate-900">@eleve.Name</td>
-                            <td class="px-4 py-3">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <input type="text"
-                                           class="hallo-input max-w-xs text-sm"
-                                           value="@(manuelleAbschlussNoten.TryGetValue(eleve.StudentId, out var noteText) ? noteText : eleve.AbschlussNoteText)"
-                                           @oninput="args => manuelleAbschlussNoten[eleve.StudentId] = args.Value?.ToString()"
-                                           placeholder="Ex: 10/20 ou 16 de Moyenne" />
-                                    <button type="button"
-                                            class="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-200"
-                                            @onclick="() => SaveAbschlussNoteAsync(eleve.StudentId)">
-                                        Enregistrer
-                                    </button>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3">
-                                @if (klassenAbschluss.IstAktiv)
-                                {
-                                    <div class="flex gap-2">
-                                        <button type="button"
-                                                class="rounded-full px-3 py-1.5 text-xs font-semibold @(eleve.IsBestanden == true ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700")"
-                                                @onclick="() => SetBestandenAsync(eleve.StudentId, true)">
-                                            Réussi
-                                        </button>
-                                        <button type="button"
-                                                class="rounded-full px-3 py-1.5 text-xs font-semibold @(eleve.IsBestanden == false ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700")"
-                                                @onclick="() => SetBestandenAsync(eleve.StudentId, false)">
-                                            Non réussi
-                                        </button>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <Badge Accent="@(eleve.IsBestanden == true ? "emerald" : eleve.IsBestanden == false ? "rose" : "slate")">
-                                        @(eleve.IsBestanden == true ? "Réussi" : eleve.IsBestanden == false ? "Non réussi" : "Non défini")
-                                    </Badge>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </section>
-        <div class="mt-6 flex justify-end"><button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700" @onclick="() => abschlussModalOpen = false">Fermer</button></div>
-    }
-</ModalDialog>
 
 <ModalDialog @bind-Open="durchlaufStartModalOpen"
              Title="Démarrer le cycle"

@@ -6,6 +6,11 @@ public class StudentDashboardViewModel
     public string SchoolName { get; set; } = string.Empty;
 
     public string CurrentLevelCode { get; set; } = string.Empty;
+    public bool HasCurrentKlasseAssignment { get; set; }
+    public bool HasCurrentClassCycle { get; set; }
+    public bool IsCurrentClassCycleClosed { get; set; }
+    public bool IsCurrentClassUnlocked { get; set; }
+    public bool IsCurrentClassPaid { get; set; }
     public int CompletedLessonsCount { get; set; }
     public bool IsBlocked { get; set; }
 

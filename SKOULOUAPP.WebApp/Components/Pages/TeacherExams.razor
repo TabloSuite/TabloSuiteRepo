@@ -51,7 +51,7 @@
             <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
                 <div>
                     <h2 class="font-bold text-slate-900">@exam.Title</h2>
-                    <p class="text-sm text-slate-500">@exam.NiveauCode · @(exam.ExamType == ExamType.AbschlussRelevant ? "Examen final" : "Test") · @exam.ExerciseCount exercice(s) · @exam.QuestionCount question(s) · @exam.DurationInMinutes min · @exam.AttemptCount tentative(s)</p>
+                    <p class="text-sm text-slate-500">@exam.NiveauCode · @(exam.ReleaseTarget == ExamReleaseTarget.ClassStudents ? "Assigné aux élèves (score)" : exam.ReleaseTarget == ExamReleaseTarget.SchoolLeader ? "Direction / impression (hors score)" : "Privé enseignant (hors score)") · @exam.ExerciseCount exercice(s) · @exam.QuestionCount question(s) · @exam.DurationInMinutes min · @exam.AttemptCount tentative(s)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <a class="rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-100" href="@($"/teacher-exams/{exam.ExamId}/pdf?solutions=true")" target="_blank">PDF corrigé</a>
@@ -66,15 +66,18 @@
 
 @if (editorOpen && form is not null)
 {
-    <div class="fixed inset-0 z-[2200] flex items-center justify-center overflow-hidden bg-slate-900/50 p-6 sm:p-8">
-        <div class="hallo-modal-surface my-auto max-h-[calc(100dvh-4rem)] w-full max-w-5xl rounded-3xl bg-white shadow-xl sm:max-h-[calc(100dvh-6rem)]">
+    <div class="fixed inset-0 z-[2200] flex items-center justify-center overflow-hidden bg-slate-900/50 p-4 sm:p-5">
+        <div class="hallo-modal-surface my-auto flex h-full w-full max-w-6xl flex-col rounded-3xl bg-white shadow-xl">
             <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
                 <h2 class="text-lg font-bold text-slate-900">@(form.ExamId is null ? "Nouvel examen" : "Modifier l'examen")</h2>
                 <button type="button" class="rounded-full bg-slate-100 p-1.5 text-xs font-semibold text-slate-700" @onclick="CloseEditor">✕</button>
             </div>
 
-            <div class="hallo-modal-scroll px-4 py-4 sm:px-5">
-            <div class="mt-3 grid gap-4">
+            <EditForm Model="form" OnValidSubmit="SaveExam" FormName="teacher-exam-form" class="flex min-h-0 flex-1 flex-col">
+                <DataAnnotationsValidator />
+                <div @ref="editorScrollContainer" class="hallo-modal-scroll flex-1 px-4 py-4 sm:px-5">
+                <ValidationSummary />
+                <div class="mt-3 grid gap-4">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-slate-600">Titre</label>
@@ -93,7 +96,14 @@
                     {
                         <div class="sm:col-span-2">
                             <label class="mb-2 block text-xs font-semibold text-slate-600">Destinataire de l'examen</label>
-                            <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="grid gap-3 sm:grid-cols-3">
+                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ReleaseTarget == ExamReleaseTarget.PrivateAuthor ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
+                                    <input type="radio" name="exam-release-target" checked="@(form.ReleaseTarget == ExamReleaseTarget.PrivateAuthor)" @onchange="() => form.ReleaseTarget = ExamReleaseTarget.PrivateAuthor" class="mt-1" />
+                                    <span>
+                                        <span class="block font-semibold text-slate-800">Moi uniquement</span>
+                                        <span class="block text-sm text-slate-500">Brouillon privé pour préparation ou impression personnelle.</span>
+                                    </span>
+                                </label>
                                 <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ReleaseTarget == ExamReleaseTarget.SchoolLeader ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
                                     <input type="radio" name="exam-release-target" checked="@(form.ReleaseTarget == ExamReleaseTarget.SchoolLeader)" @onchange="() => form.ReleaseTarget = ExamReleaseTarget.SchoolLeader" class="mt-1" />
                                     <span>
@@ -123,16 +133,10 @@
                         <label class="mb-1 block text-xs font-semibold text-slate-600">Score de réussite (%)</label>
                         <input type="number" min="0" max="100" class="hallo-input text-sm" @bind="form.PassingScore" />
                     </div>
-                    <div>
-                        <ModernDropdown TValue="ExamType?" Label="Type d'examen" Value="form.ExamType" ValueChanged="SetExamTypeAsync" Options="ExamTypeOptions" />
-                    </div>
                 </div>
-                @if (form.ExamType == ExamType.AbschlussRelevant)
-                {
-                    <p class="rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">Les résultats de cette épreuve comptent automatiquement pour la note finale de la classe. La direction ou l'enseignant peut compléter une note jusqu'à la clôture du cycle.</p>
-                }
+                <p class="rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">Règle de score : une épreuve compte dans les scores uniquement si elle est assignée aux élèves de la classe. Une épreuve créée pour la direction (impression/PDF) ne compte pas dans les scores.</p>
                 <div>
-                    <label class="mb-1 block text-xs font-semibold text-slate-600">Description / consignes générales</label>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600">Description / consignes générales (optionnel)</label>
                     <RichTextEditor @bind-Value="form.Description" Placeholder="Ex. : Lisez attentivement chaque exercice." EnableLargeEditor="true" />
                 </div>
 
@@ -143,7 +147,7 @@
                     <div class="rounded-2xl border-2 border-violet-100 bg-violet-50/40 p-4">
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex-1">
-                                <label class="mb-1 block text-xs font-semibold text-violet-800">Exercice @exerciseNumber — titre</label>
+                                <label class="mb-1 block text-xs font-semibold text-violet-800">Exercice @exerciseNumber — titre (optionnel)</label>
                                 <input class="hallo-input text-sm" placeholder="Ex. : Compréhension écrite" @bind="exercise.Title" />
                             </div>
                             @if (form.Exercises.Count > 1)
@@ -153,20 +157,21 @@
                         </div>
 
                         <div class="mt-3">
-                            <label class="mb-1 block text-xs font-semibold text-slate-600">Consigne</label>
-                            <RichTextEditor @bind-Value="exercise.Consigne" Placeholder="Ex. : Choisissez les vraies réponses." EnableLargeEditor="true" />
+                            <label class="mb-1 block text-xs font-semibold text-slate-600">Consigne (optionnel)</label>
+                            <RichTextEditor @bind-Value="exercise.Consigne" Placeholder="Ex. : Choisissez les vraies réponses." EnableLargeEditor="true" MinEditorHeightRem="4" />
                         </div>
 
                         <div class="mt-4 grid gap-4">
                             @foreach (var question in exercise.Questions)
                             {
                                 var radioName = $"exam-correct-{exercise.GetHashCode()}-{question.GetHashCode()}";
+                                var isManualCorrectionType = question.QuestionType is ExamQuestionType.FreeText or ExamQuestionType.SentenceBuilding or ExamQuestionType.AudioText;
                                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
                                     <div class="flex items-center justify-between gap-3">
                                         <label class="mb-1 block text-xs font-semibold text-slate-600">Question</label>
                                         <button type="button" class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100" @onclick="() => RemoveQuestion(exercise, question)">Supprimer</button>
                                     </div>
-                                    <RichTextEditor @bind-Value="question.Prompt" Placeholder="Énoncé de la question..." EnableLargeEditor="true" />
+                                    <RichTextEditor @bind-Value="question.Prompt" Placeholder="Énoncé de la question..." EnableLargeEditor="true" MinEditorHeightRem="7" />
 
                                     <div class="mt-3 flex flex-wrap items-center gap-3">
                                         <div>
@@ -188,15 +193,20 @@
                                         </div>
                                     </div>
 
+                                    @if (isManualCorrectionType)
+                                    {
+                                        <p class="mt-2 text-xs text-amber-700">Conseil : ce type de question passe en correction manuelle si « Solutions modèles » reste vide.</p>
+                                    }
+
                                     @if (IsAudioType(question.QuestionType))
                                     {
                                         <div class="mt-3 grid gap-3 md:grid-cols-2">
                                             <div>
-                                                <label class="mb-1 block text-xs font-semibold text-slate-600">Texte à lire à voix haute (audio)</label>
+                                                <label class="mb-1 block text-xs font-semibold text-slate-600">Texte à lire à voix haute (audio) (optionnel)</label>
                                                 <textarea rows="2" class="hallo-input text-sm" placeholder="Texte prononcé par la synthèse vocale..." @bind="question.AudioText"></textarea>
                                             </div>
                                             <div>
-                                                <ModernDropdown TValue="string" Label="Langue audio" Value="question.TtsLanguage" ValueChanged="lang => SetQuestionTtsLanguageAsync(question, lang)" Options="TtsLanguageOptions" />
+                                                <ModernDropdown TValue="string" Label="Langue audio (optionnel)" Value="question.TtsLanguage" ValueChanged="lang => SetQuestionTtsLanguageAsync(question, lang)" Options="TtsLanguageOptions" />
                                             </div>
                                         </div>
                                     }
@@ -216,7 +226,7 @@
                                                     {
                                                         <input type="radio" name="@radioName" checked="@option.IsCorrect" @onchange="() => SelectSingleCorrectOption(question, option)" />
                                                     }
-                                                    <input class="hallo-input flex-1 text-sm" @bind="option.Text" />
+                                                    <input class="hallo-input flex-1 text-sm" placeholder="Ex. : Réponse A" @bind="option.Text" />
                                                     <button type="button" class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100" @onclick="() => question.Options.Remove(option)">✕</button>
                                                 </div>
                                             }
@@ -226,6 +236,7 @@
                                     else if (question.QuestionType == ExamQuestionType.GapFill)
                                     {
                                         <div class="mt-3 grid gap-2">
+                                            <p class="text-xs text-indigo-700">Conseil : dans l’énoncé de la question, utilise les marqueurs <strong>[[1]]</strong>, <strong>[[2]]</strong>, <strong>[[3]]</strong>… puis définis ci-dessous les réponses acceptées pour chaque trou (une variante par ligne). Exemple : « Je <strong>[[1]]</strong> à l'école et je <strong>[[2]]</strong> mes amis. » → Trou 1: vais, Trou 2: vois.</p>
                                             <p class="text-xs text-slate-500">Utilise les marqueurs [[1]], [[2]] … dans l'énoncé. Définis les réponses acceptées par trou (une variante par ligne).</p>
                                             @for (var gapIndex = 0; gapIndex < question.Gaps.Count; gapIndex++)
                                             {
@@ -257,12 +268,13 @@
                 <button type="button" class="w-fit rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700" @onclick="AddExercise">+ Ajouter un exercice</button>
             </div>
 
-            </div>
+                </div>
 
-            <div class="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
-                <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700" @onclick="CloseEditor">Annuler</button>
-                <button type="button" class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" @onclick="SaveExam">Enregistrer</button>
-            </div>
+                <div class="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
+                    <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700" disabled="@isSavingExam" @onclick="CloseEditor">Annuler</button>
+                    <AsyncActionButton Type="submit" Class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" IsBusy="@isSavingExam" BusyLabel="Enregistrement...">Enregistrer</AsyncActionButton>
+                </div>
+            </EditForm>
         </div>
     </div>
 }

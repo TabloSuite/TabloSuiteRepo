@@ -85,7 +85,7 @@ else
             <p class="mt-1 text-sm text-slate-500">Consulte le statut et la progression des élèves de tes classes.</p>
         </div>
 
-        <CollapsibleCard Title="Schülerstatus"
+        <CollapsibleCard Title="Statut des élèves"
                          Eyebrow="Statut"
                          Subtitle="Consulter le statut des élèves"
                          Icon="??"
@@ -129,6 +129,7 @@ else
                                         <p class="mt-2 text-sm text-slate-500">@student.Email · @student.SchoolName · Classe @student.CurrentLevelCode</p>
                                         <p class="mt-2 text-sm text-slate-600">Leçons terminées : @student.CompletedLessonsCount</p>
                                         <div class="mt-2 flex flex-wrap gap-2">
+                                            <Badge Accent="@GetAboStatusAccent(student)">@GetAboStatusLabel(student)</Badge>
                                             <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200">
                                                 <span aria-hidden="true">??</span>
                                                 <span class="text-slate-600">Score exercices & examens :</span>
@@ -152,7 +153,7 @@ else
             </ChildContent>
         </CollapsibleCard>
 
-        <CollapsibleCard Title="Fortschritt der Schüler"
+        <CollapsibleCard Title="Progression des élèves"
                          Eyebrow="Suivi de progression"
                          Subtitle="Leçons, exercices et examens"
                          Icon="??"
@@ -166,7 +167,7 @@ else
                 <DataListPanel Items="filteredProgress"
                                PageSize="10"
                                SearchPlaceholder="Rechercher un élève..."
-                               EmptyText="Noch keine Fortschrittsdaten verfügbar."
+                               EmptyText="Aucune donnée de progression disponible pour le moment."
                                ResultLabelSingular="élève"
                                ResultLabelPlural="élèves"
                                Chips="progressChips"

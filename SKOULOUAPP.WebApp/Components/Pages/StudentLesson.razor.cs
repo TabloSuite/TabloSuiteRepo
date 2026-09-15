@@ -48,6 +48,7 @@ public partial class StudentLesson
     private int currentExerciseIndex;
 
     private readonly Dictionary<Guid, ExerciseState> exerciseStates = [];
+    private List<ExerciseDisplayItem> exerciseDisplayItems = [];
 
     private int LessonPercent => lesson is null || lesson.Exercises.Count == 0
         ? 0
@@ -58,28 +59,26 @@ public partial class StudentLesson
     private List<ExerciseViewModel> OrderedExercises
         => lesson?.Exercises.OrderBy(e => e.Order).ToList() ?? [];
 
-    private ExerciseViewModel? CurrentExercise
-    {
-        get
-        {
-            var ordered = OrderedExercises;
-            return currentExerciseIndex >= 0 && currentExerciseIndex < ordered.Count
-                ? ordered[currentExerciseIndex]
-                : null;
-        }
-    }
+    private ExerciseDisplayItem? CurrentExerciseDisplay
+        => currentExerciseIndex >= 0 && currentExerciseIndex < exerciseDisplayItems.Count
+            ? exerciseDisplayItems[currentExerciseIndex]
+            : null;
+
+    private int TotalExerciseBlocks => exerciseDisplayItems.Select(item => item.BlockIndex).Distinct().Count();
 
     private string? GetLessonAudioUrl()
         => lesson?.Media.FirstOrDefault(media => string.Equals(media.MediaType, "Audio", StringComparison.OrdinalIgnoreCase))?.Url;
 
+    private string? LessonVideoUrl
+        => lesson?.Media.FirstOrDefault(media => string.Equals(media.MediaType, "video", StringComparison.OrdinalIgnoreCase))?.Url;
+
     private bool IsFirstExercise => currentExerciseIndex <= 0;
 
-    private bool IsLastExercise => currentExerciseIndex >= OrderedExercises.Count - 1;
+    private bool IsLastExercise => currentExerciseIndex >= exerciseDisplayItems.Count - 1;
 
     private void GoToExercise(int index)
     {
-        var ordered = OrderedExercises;
-        if (index < 0 || index >= ordered.Count)
+        if (index < 0 || index >= exerciseDisplayItems.Count)
         {
             return;
         }
@@ -103,6 +102,15 @@ public partial class StudentLesson
         public List<string> GapValues { get; set; } = [];
         public bool RequiresManualGrading { get; set; }
         public bool IsGradedManually { get; set; }
+    }
+
+    private sealed class ExerciseDisplayItem
+    {
+        public required ExerciseViewModel Exercise { get; init; }
+        public required int BlockIndex { get; init; }
+        public required int QuestionIndex { get; init; }
+        public required int QuestionCount { get; init; }
+        public required string BlockTitle { get; init; }
     }
 
     protected override async Task OnInitializedAsync()
@@ -143,6 +151,8 @@ public partial class StudentLesson
                     Feedback = exercise.IsAnsweredCorrectly ? "Richtig!" : null
                 };
             }
+
+            RebuildExerciseDisplayItems();
 
             RecalculateCorrectCount();
 
@@ -412,5 +422,45 @@ public partial class StudentLesson
         }
 
         return baseClass + "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50";
+    }
+
+    private void RebuildExerciseDisplayItems()
+    {
+        exerciseDisplayItems = [];
+        var ordered = OrderedExercises;
+        if (ordered.Count == 0)
+        {
+            return;
+        }
+
+        var blocks = new List<(string Title, List<ExerciseViewModel> Questions)>();
+        foreach (var exercise in ordered)
+        {
+            var title = string.IsNullOrWhiteSpace(exercise.Title) ? "Exercice" : exercise.Title.Trim();
+            if (blocks.Count == 0 || !string.Equals(blocks[^1].Title, title, StringComparison.OrdinalIgnoreCase))
+            {
+                blocks.Add((title, [exercise]));
+            }
+            else
+            {
+                blocks[^1].Questions.Add(exercise);
+            }
+        }
+
+        for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+        {
+            var block = blocks[blockIndex];
+            for (var questionIndex = 0; questionIndex < block.Questions.Count; questionIndex++)
+            {
+                exerciseDisplayItems.Add(new ExerciseDisplayItem
+                {
+                    Exercise = block.Questions[questionIndex],
+                    BlockIndex = blockIndex + 1,
+                    QuestionIndex = questionIndex + 1,
+                    QuestionCount = block.Questions.Count,
+                    BlockTitle = block.Title
+                });
+            }
+        }
     }
 }

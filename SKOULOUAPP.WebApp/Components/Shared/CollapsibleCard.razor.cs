@@ -65,4 +65,20 @@ public partial class CollapsibleCard
         "violet" => "bg-violet-50 text-violet-700",
         _ => "bg-slate-100 text-slate-700"
     };
+
+    private bool HasPlaceholderIcon
+        => !string.IsNullOrWhiteSpace(Icon)
+           && Icon.Trim().All(character => character == '?');
+
+    private string FallbackIconPath => Accent switch
+    {
+        "blue" => "M3.75 12h16.5m-8.25-8.25v16.5",
+        "indigo" => "M3.75 12h16.5m-8.25-8.25v16.5",
+        "emerald" => "m4.5 12.75 6 6 9-13.5",
+        "amber" => "M12 3.75 3.75 8.25v7.5L12 20.25l8.25-4.5v-7.5L12 3.75Z",
+        "rose" => "m4.5 12.75 6 6 9-13.5",
+        "cyan" => "M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5",
+        "violet" => "M12 6v6l3.75 2.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+        _ => "M3.75 12h16.5"
+    };
 }

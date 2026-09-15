@@ -3,10 +3,13 @@ using HalloApp.Core.Interfaces;
 using HalloApp.Core.Models.Admin;
 using HalloApp.Core.Models.TeacherLessons;
 using HalloApp.Core.Services;
+using HalloApp.Core.Services.Storage;
 using HalloApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace HalloApp.WebApp.Components.Pages;
 
@@ -30,15 +33,22 @@ public partial class TeacherLessonExercises
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private IBlobMediaLibraryService BlobMediaLibraryService { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+
+    private ElementReference editorScrollContainer;
+
     private List<LessonEditorListItem> lessons = [];
     private List<KlasseOption> klasses = [];
     private LessonFormModel? form;
+    private List<LessonExerciseBlockEditorModel> exerciseBlocks = [];
     private string selectedLessonCode = string.Empty;
     private Dictionary<Guid, Guid?> klasseSchoolById = [];
     private List<FachOptionItem> fachOptions = [];
     private List<FachOptionItem> filteredFachOptions = [];
-    private string newFachName = string.Empty;
-    private bool isAddingFach;
 
     private bool isLoading = true;
     private bool editorOpen;
@@ -50,9 +60,52 @@ public partial class TeacherLessonExercises
     private List<PendingManualExerciseReviewItem> pendingManualReviews = [];
     private Dictionary<Guid, string> manualFeedbackByAttempt = [];
     private Dictionary<Guid, int> manualPointsByAttempt = [];
+    private IReadOnlyCollection<string> currentRoles = [];
+    private IBrowserFile? selectedVideoFile;
+    private decimal videoDurationMinutes;
+    private const string VideoFileInputId = "teacher-lesson-exercise-video-file";
+    private const long MaxVideoUploadSizeBytes = 2L * 1024L * 1024L * 1024L;
+    private string? videoUploadMessage;
+    private string? videoUploadError;
+    private bool isVideoUploading;
+    private long videoUploadBytesUploaded;
+    private long videoUploadBytesTotal;
+    private int videoUploadPercent;
+    private bool pendingModalScrollTop;
 
     private Guid currentTeacherId;
     private HashSet<Guid> allowedCourseIds = [];
+
+    private string VideoDurationLabel => videoDurationMinutes > 0m
+        ? $"{Math.Round(videoDurationMinutes, 1)} min"
+        : "—";
+
+    private bool ShowVideoUploadProgress => isVideoUploading && videoUploadBytesTotal > 0;
+
+    private string VideoUploadProgressLabel => videoUploadBytesTotal > 0
+        ? $"{FormatFileSize(videoUploadBytesUploaded)} / {FormatFileSize(videoUploadBytesTotal)} ({videoUploadPercent} %)"
+        : string.Empty;
+
+    private int VideoUploadPercent => videoUploadPercent;
+
+    private static string FormatKlasseLabel(string? code, string? title)
+    {
+        var normalizedCode = code?.Trim() ?? string.Empty;
+        var normalizedTitle = title?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+        {
+            return normalizedTitle;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedTitle)
+            || string.Equals(normalizedCode, normalizedTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedCode;
+        }
+
+        return $"{normalizedCode} — {normalizedTitle}";
+    }
 
     private sealed class KlasseOption
     {
@@ -73,16 +126,41 @@ public partial class TeacherLessonExercises
         public string CourseCode { get; set; } = string.Empty;
     }
 
+    private sealed class LessonExerciseBlockEditorModel
+    {
+        public Guid BlockId { get; set; } = Guid.NewGuid();
+        public string Title { get; set; } = string.Empty;
+        public List<LessonExerciseQuestionEditorModel> Questions { get; set; } = [];
+    }
+
+    private sealed class LessonExerciseQuestionEditorModel
+    {
+        public Guid? ExerciseId { get; set; }
+        public string Instructions { get; set; } = string.Empty;
+        public string Question { get; set; } = string.Empty;
+        public int Points { get; set; } = 10;
+        public string ExerciseType { get; set; } = "SingleChoice";
+        public string? AudioText { get; set; }
+        public string TtsLanguage { get; set; } = "de-DE";
+        public string? AcceptedAnswers { get; set; }
+        public List<LessonExerciseGapFormModel> Gaps { get; set; } = [];
+        public List<LessonExerciseOptionFormModel> Options { get; set; } = [];
+    }
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> CourseOptions =>
     [
-        .. klasses.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
+        .. klasses.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
     ];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> FachOptions =>
     [
-        new(null, "— Matière (optionnel) —"),
+        new(null, "— Choisir une matière —"),
         .. filteredFachOptions.Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, $"{fach.Name} · {fach.SchoolName}"))
     ];
+
+    private bool HasValidSelectedFach
+        => form?.FachId is Guid fachId
+           && filteredFachOptions.Any(option => option.FachId == fachId);
 
     private Task SetLessonCourseAsync(Guid? courseId)
     {
@@ -115,24 +193,22 @@ public partial class TeacherLessonExercises
 
     private IReadOnlyList<ModernDropdownOption<string?>> LessonExerciseTypeOptions =>
     [
-        new("SingleChoice", "Single Choice"),
-        new("MultipleChoice", "Multiple Choice"),
-        new("Text", "Text"),
-        new("SentenceBuilding", "Sentence Building"),
-        new("GapFill", "Gap Fill"),
-        new("AudioText", "Audio Text"),
-        new("AudioSingleChoice", "Audio Single Choice"),
-        new("AudioMultipleChoice", "Audio Multiple Choice")
+        new("SingleChoice", "Choix unique"),
+        new("MultipleChoice", "Choix multiple"),
+        new("Text", "Texte"),
+        new("SentenceBuilding", "Construction de phrase"),
+        new("GapFill", "Texte à trous"),
+        new("AudioText", "Audio → réponse texte"),
+        new("AudioSingleChoice", "Audio → choix unique"),
+        new("AudioMultipleChoice", "Audio → choix multiple")
     ];
 
     private IReadOnlyList<ModernDropdownOption<string?>> TtsLanguageOptions =>
     [
-        new("de-DE", "Deutsch (DE)"),
+        new("de-DE", "Allemand (DE)"),
         new("fr-FR", "Français (FR)"),
-        new("en-US", "English (EN)")
+        new("en-US", "Anglais (EN)")
     ];
-
-    private bool IsAddFachDisabled => isCurrentAssignmentVersionLocked || string.IsNullOrWhiteSpace(newFachName);
 
     protected override async Task OnInitializedAsync()
     {
@@ -158,6 +234,8 @@ public partial class TeacherLessonExercises
                 isLoading = false;
                 return;
             }
+
+            currentRoles = authState.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
             await LoadAsync();
         }
@@ -195,17 +273,23 @@ public partial class TeacherLessonExercises
             .Where(klasse => allowedCourseIds.Contains(klasse.Id))
             .ToDictionaryAsync(klasse => klasse.Id, klasse => klasse.SchoolId, ComponentToken);
 
-        fachOptions = await DbContext.LehrerFachZuordnungen
+        var teacherFachIds = DbContext.LehrerFachZuordnungen
             .AsNoTracking()
             .Where(assignment => assignment.LehrerId == currentTeacherId)
-            .Select(assignment => new FachOptionItem
+            .Select(assignment => assignment.FachId)
+            .Distinct();
+
+        fachOptions = await DbContext.Faecher
+            .AsNoTracking()
+            .Where(fach => teacherFachIds.Contains(fach.Id))
+            .Select(fach => new FachOptionItem
             {
-                FachId = assignment.FachId,
-                Name = assignment.Fach.Name,
-                SchoolId = assignment.Fach.SchoolId,
-                SchoolName = assignment.Fach.School.Name
+                FachId = fach.Id,
+                Name = fach.Name,
+                SchoolId = fach.SchoolId,
+                SchoolName = fach.School.Name,
+                IstLehrerZugewiesen = true
             })
-            .DistinctBy(item => item.FachId)
             .OrderBy(item => item.SchoolName)
             .ThenBy(item => item.Name)
             .ToListAsync(ComponentToken);
@@ -247,6 +331,10 @@ public partial class TeacherLessonExercises
     {
         errorMessage = null;
         statusMessage = null;
+        videoUploadError = null;
+        videoUploadMessage = null;
+        selectedVideoFile = null;
+        videoDurationMinutes = 0m;
 
         var meta = await DbContext.Lessons
             .AsNoTracking()
@@ -270,22 +358,23 @@ public partial class TeacherLessonExercises
 
         form = loaded;
         isCurrentAssignmentVersionLocked = loaded.IsCurrentAssignmentVersionLocked;
-        if (form.Exercises.Count == 0)
-        {
-            form.Exercises.Add(CreateDefaultLessonExercise());
-            ReorderLessonExercises();
-        }
+        MapFormExercisesToEditorBlocks();
 
         selectedLessonCode = meta.Code;
         FilterFachOptionsForCurrentCourse();
-        newFachName = string.Empty;
+        EnsureSelectedFachForCurrentCourse();
         editorOpen = true;
+        pendingModalScrollTop = true;
     }
 
     private async Task OpenCreateAsync()
     {
         errorMessage = null;
         statusMessage = null;
+        videoUploadError = null;
+        videoUploadMessage = null;
+        selectedVideoFile = null;
+        videoDurationMinutes = 0m;
 
         var firstCourseId = klasses.FirstOrDefault()?.Id ?? Guid.Empty;
         if (firstCourseId == Guid.Empty)
@@ -308,23 +397,235 @@ public partial class TeacherLessonExercises
             IsPublished = false
         };
         isCurrentAssignmentVersionLocked = false;
-        form.Exercises.Add(CreateDefaultLessonExercise());
-        ReorderLessonExercises();
+        exerciseBlocks = [];
 
         selectedLessonCode = klasses.FirstOrDefault(klasse => klasse.Id == firstCourseId)?.Code ?? string.Empty;
         FilterFachOptionsForCurrentCourse();
-        newFachName = string.Empty;
+        EnsureSelectedFachForCurrentCourse();
         editorOpen = true;
+        pendingModalScrollTop = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (!editorOpen || !pendingModalScrollTop)
+        {
+            return;
+        }
+
+        pendingModalScrollTop = false;
+        await ScrollModalToTopAsync();
     }
 
     private void CloseEditor()
     {
         editorOpen = false;
+        pendingModalScrollTop = false;
         form = null;
+        exerciseBlocks = [];
         isCurrentAssignmentVersionLocked = false;
         selectedLessonCode = string.Empty;
-        newFachName = string.Empty;
         filteredFachOptions = [];
+        selectedVideoFile = null;
+        videoDurationMinutes = 0m;
+        videoUploadError = null;
+        videoUploadMessage = null;
+    }
+
+    private async Task OnVideoSelected(InputFileChangeEventArgs args)
+    {
+        selectedVideoFile = args.File;
+        videoDurationMinutes = 0m;
+        videoUploadBytesUploaded = 0;
+        videoUploadBytesTotal = selectedVideoFile.Size;
+        videoUploadPercent = 0;
+        videoUploadMessage = null;
+        videoUploadError = null;
+
+        try
+        {
+            var durationSeconds = await JSRuntime.InvokeAsync<double?>("SKOULOUAPPVideoMetadata.getDurationInSeconds", VideoFileInputId);
+            if (durationSeconds is null or <= 0d)
+            {
+                videoUploadError = "La durée réelle de la vidéo ne peut pas être lue.";
+                selectedVideoFile = null;
+                return;
+            }
+
+            videoDurationMinutes = (decimal)(durationSeconds.Value / 60d);
+            if (videoDurationMinutes > 60m)
+            {
+                videoUploadError = "La vidéo doit durer au maximum 1 heure.";
+                selectedVideoFile = null;
+            }
+        }
+        catch (JSException)
+        {
+            videoUploadError = "La durée réelle de la vidéo ne peut pas être lue.";
+            selectedVideoFile = null;
+        }
+    }
+
+    private async Task UploadVideoAsync()
+    {
+        if (form is null || selectedVideoFile is null)
+        {
+            return;
+        }
+
+        if (videoDurationMinutes <= 0m || videoDurationMinutes > 60m)
+        {
+            videoUploadError = "La durée réelle de la vidéo doit être comprise entre 1 seconde et 1 heure.";
+            return;
+        }
+
+        var schoolId = await DbContext.Klassen
+            .AsNoTracking()
+            .Where(klasse => klasse.Id == form.CourseId && klasse.SchoolId.HasValue)
+            .Select(klasse => klasse.SchoolId!.Value)
+            .FirstOrDefaultAsync(ComponentToken);
+        if (schoolId == Guid.Empty)
+        {
+            videoUploadError = "La classe choisie n'appartient à aucune école.";
+            return;
+        }
+
+        isVideoUploading = true;
+        videoUploadBytesUploaded = 0;
+        videoUploadBytesTotal = selectedVideoFile.Size;
+        videoUploadPercent = 0;
+        try
+        {
+            await using var sourceStream = selectedVideoFile.OpenReadStream(maxAllowedSize: MaxVideoUploadSizeBytes, cancellationToken: ComponentToken);
+            await using var stream = new ProgressReadStream(sourceStream, ReportVideoUploadProgress);
+            var asset = await BlobMediaLibraryService.UploadVideoAsync(
+                currentTeacherId,
+                currentRoles,
+                schoolId,
+                form.CourseId,
+                stream,
+                selectedVideoFile.Name,
+                string.IsNullOrWhiteSpace(form.Title) ? Path.GetFileNameWithoutExtension(selectedVideoFile.Name) : form.Title,
+                selectedVideoFile.ContentType,
+                TimeSpan.FromMinutes((double)videoDurationMinutes),
+                ComponentToken);
+
+            form.VideoAssetId = asset.Id;
+            form.VideoDisplayName = asset.DisplayName;
+            form.VideoDuration = asset.VideoDuration;
+            form.VideoUrl = asset.VideoUrl;
+            selectedVideoFile = null;
+            videoUploadMessage = "La vidéo a été téléversée via Azure Storage.";
+            videoUploadError = null;
+        }
+        catch (IOException ex) when (ex.Message.Contains("maximum", StringComparison.OrdinalIgnoreCase))
+        {
+            videoUploadError = "Le fichier vidéo est trop volumineux. Taille maximale autorisée : 2 Go.";
+            videoUploadMessage = null;
+        }
+        catch (Exception ex) when (!IstAbbruch(ex))
+        {
+            videoUploadError = ex.Message;
+            videoUploadMessage = null;
+        }
+        finally
+        {
+            isVideoUploading = false;
+        }
+    }
+
+    private void RemoveVideo()
+    {
+        if (form is null)
+        {
+            return;
+        }
+
+        form.VideoAssetId = null;
+        form.VideoDisplayName = null;
+        form.VideoDuration = null;
+        form.VideoUrl = null;
+        selectedVideoFile = null;
+        videoDurationMinutes = 0m;
+        videoUploadError = null;
+        videoUploadMessage = null;
+    }
+
+    private void ReportVideoUploadProgress(int bytesRead)
+    {
+        if (bytesRead <= 0 || videoUploadBytesTotal <= 0)
+        {
+            return;
+        }
+
+        videoUploadBytesUploaded = Math.Min(videoUploadBytesTotal, videoUploadBytesUploaded + bytesRead);
+        var newPercent = (int)Math.Round(videoUploadBytesUploaded * 100d / videoUploadBytesTotal);
+        if (newPercent == videoUploadPercent && videoUploadBytesUploaded < videoUploadBytesTotal)
+        {
+            return;
+        }
+
+        videoUploadPercent = Math.Clamp(newPercent, 0, 100);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        const decimal megabyte = 1024m * 1024m;
+        const decimal gigabyte = megabyte * 1024m;
+        return bytes >= (long)gigabyte
+            ? $"{bytes / gigabyte:N1} Go"
+            : $"{bytes / megabyte:N1} Mo";
+    }
+
+    private sealed class ProgressReadStream(Stream innerStream, Action<int> reportProgress) : Stream
+    {
+        public override bool CanRead => innerStream.CanRead;
+        public override bool CanSeek => innerStream.CanSeek;
+        public override bool CanWrite => false;
+        public override long Length => innerStream.Length;
+        public override long Position
+        {
+            get => innerStream.Position;
+            set => innerStream.Position = value;
+        }
+
+        public override void Flush() => innerStream.Flush();
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = innerStream.Read(buffer, offset, count);
+            reportProgress(read);
+            return read;
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            var read = innerStream.Read(buffer);
+            reportProgress(read);
+            return read;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await innerStream.ReadAsync(buffer, cancellationToken);
+            reportProgress(read);
+            return read;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => innerStream.Seek(offset, origin);
+        public override void SetLength(long value) => innerStream.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override ValueTask DisposeAsync() => innerStream.DisposeAsync();
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                innerStream.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 
     private void FilterFachOptionsForCurrentCourse()
@@ -348,79 +649,19 @@ public partial class TeacherLessonExercises
             .ToList();
     }
 
-    private async Task AddFachAsync()
+    private void EnsureSelectedFachForCurrentCourse()
     {
-        if (isAddingFach || form is null || string.IsNullOrWhiteSpace(newFachName))
+        if (form is null)
         {
             return;
         }
 
-        isAddingFach = true;
-        errorMessage = null;
-        try
+        if (HasValidSelectedFach)
         {
-            var schoolId = klasseSchoolById.GetValueOrDefault(form.CourseId);
-            if (schoolId is not Guid validSchoolId)
-            {
-                errorMessage = "Impossible de déterminer l'école de cette classe.";
-                return;
-            }
-
-            var normalizedName = newFachName.Trim();
-            var existing = await DbContext.Faecher
-                .AsNoTracking()
-                .FirstOrDefaultAsync(fach => fach.SchoolId == validSchoolId && fach.Name == normalizedName, ComponentToken);
-
-            Guid fachId;
-            if (existing is not null)
-            {
-                fachId = existing.Id;
-            }
-            else
-            {
-                var created = new Fach { SchoolId = validSchoolId, Name = normalizedName };
-                await DbContext.Faecher.AddAsync(created, ComponentToken);
-                await DbContext.SaveChangesAsync(ComponentToken);
-                fachId = created.Id;
-            }
-
-            var hasAssignment = await DbContext.LehrerFachZuordnungen
-                .AsNoTracking()
-                .AnyAsync(assignment => assignment.LehrerId == currentTeacherId && assignment.FachId == fachId, ComponentToken);
-            if (!hasAssignment)
-            {
-                await DbContext.LehrerFachZuordnungen.AddAsync(new LehrerFachZuordnung
-                {
-                    LehrerId = currentTeacherId,
-                    FachId = fachId
-                }, ComponentToken);
-                await DbContext.SaveChangesAsync(ComponentToken);
-            }
-
-            fachOptions = await DbContext.LehrerFachZuordnungen
-                .AsNoTracking()
-                .Where(assignment => assignment.LehrerId == currentTeacherId)
-                .Select(assignment => new FachOptionItem
-                {
-                    FachId = assignment.FachId,
-                    Name = assignment.Fach.Name,
-                    SchoolId = assignment.Fach.SchoolId,
-                    SchoolName = assignment.Fach.School.Name
-                })
-                .DistinctBy(item => item.FachId)
-                .OrderBy(item => item.SchoolName)
-                .ThenBy(item => item.Name)
-                .ToListAsync(ComponentToken);
-
-            FilterFachOptionsForCurrentCourse();
-            form.FachId = fachId;
-            newFachName = string.Empty;
-            statusMessage = "La matière a été ajoutée à ton profil enseignant.";
+            return;
         }
-        finally
-        {
-            isAddingFach = false;
-        }
+
+        form.FachId = filteredFachOptions.FirstOrDefault()?.FachId;
     }
 
     private async Task SaveAsync()
@@ -465,7 +706,15 @@ public partial class TeacherLessonExercises
             return;
         }
 
-        ReorderLessonExercises();
+        if (!HasValidSelectedFach)
+        {
+            errorMessage = filteredFachOptions.Count == 0
+                ? "Aucune matière ne vous est attribuée pour cette classe. Demandez à la direction de configurer vos matières."
+                : "Veuillez sélectionner une matière attribuée à votre profil enseignant.";
+            return;
+        }
+
+        MapEditorBlocksToFormExercises();
 
         isSaving = true;
         errorMessage = null;
@@ -531,7 +780,7 @@ public partial class TeacherLessonExercises
         }
     }
 
-    private static Task SetLessonExerciseTypeAsync(LessonExerciseFormModel exercise, string? exerciseType)
+    private static Task SetLessonExerciseTypeAsync(LessonExerciseQuestionEditorModel exercise, string? exerciseType)
     {
         exercise.ExerciseType = NormalizeLessonExerciseType(exerciseType);
 
@@ -577,7 +826,7 @@ public partial class TeacherLessonExercises
         return Task.CompletedTask;
     }
 
-    private static Task SetLessonExerciseTtsLanguageAsync(LessonExerciseFormModel exercise, string? language)
+    private static Task SetLessonExerciseTtsLanguageAsync(LessonExerciseQuestionEditorModel exercise, string? language)
     {
         exercise.TtsLanguage = language switch
         {
@@ -591,17 +840,31 @@ public partial class TeacherLessonExercises
 
     private void AddLessonExercise()
     {
-        form?.Exercises.Add(CreateDefaultLessonExercise());
-        ReorderLessonExercises();
+        var nextNumber = exerciseBlocks.Count + 1;
+        exerciseBlocks.Add(new LessonExerciseBlockEditorModel
+        {
+            Title = $"Exercice {nextNumber}",
+            Questions = [CreateDefaultLessonQuestion()]
+        });
     }
 
-    private void RemoveLessonExercise(LessonExerciseFormModel exercise)
+    private void AddLessonQuestion(LessonExerciseBlockEditorModel block)
     {
-        form?.Exercises.Remove(exercise);
-        ReorderLessonExercises();
+        block.Questions.Add(CreateDefaultLessonQuestion());
     }
 
-    private static LessonExerciseFormModel CreateDefaultLessonExercise()
+    private static void RemoveLessonQuestion(LessonExerciseBlockEditorModel block, LessonExerciseQuestionEditorModel question)
+    {
+        block.Questions.Remove(question);
+    }
+
+    private void RemoveLessonExercise(LessonExerciseBlockEditorModel exercise)
+    {
+        exerciseBlocks.Remove(exercise);
+        ReorderExerciseBlocks();
+    }
+
+    private static LessonExerciseQuestionEditorModel CreateDefaultLessonQuestion()
         => new()
         {
             Points = 10,
@@ -614,19 +877,19 @@ public partial class TeacherLessonExercises
             ]
         };
 
-    private static void AddLessonExerciseOption(LessonExerciseFormModel exercise)
+    private static void AddLessonExerciseOption(LessonExerciseQuestionEditorModel exercise)
         => exercise.Options.Add(new LessonExerciseOptionFormModel());
 
-    private static void RemoveLessonExerciseOption(LessonExerciseFormModel exercise, LessonExerciseOptionFormModel option)
+    private static void RemoveLessonExerciseOption(LessonExerciseQuestionEditorModel exercise, LessonExerciseOptionFormModel option)
         => exercise.Options.Remove(option);
 
-    private static void AddLessonGap(LessonExerciseFormModel exercise)
+    private static void AddLessonGap(LessonExerciseQuestionEditorModel exercise)
         => exercise.Gaps.Add(new LessonExerciseGapFormModel());
 
-    private static void RemoveLessonGap(LessonExerciseFormModel exercise, LessonExerciseGapFormModel gap)
+    private static void RemoveLessonGap(LessonExerciseQuestionEditorModel exercise, LessonExerciseGapFormModel gap)
         => exercise.Gaps.Remove(gap);
 
-    private static void SelectSingleCorrectLessonOption(LessonExerciseFormModel exercise, LessonExerciseOptionFormModel selected)
+    private static void SelectSingleCorrectLessonOption(LessonExerciseQuestionEditorModel exercise, LessonExerciseOptionFormModel selected)
     {
         foreach (var option in exercise.Options)
         {
@@ -634,17 +897,93 @@ public partial class TeacherLessonExercises
         }
     }
 
-    private void ReorderLessonExercises()
+    private void ReorderExerciseBlocks()
+    {
+        for (var i = 0; i < exerciseBlocks.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(exerciseBlocks[i].Title))
+            {
+                exerciseBlocks[i].Title = $"Exercice {i + 1}";
+            }
+        }
+    }
+
+    private void MapFormExercisesToEditorBlocks()
+    {
+        exerciseBlocks = [];
+        if (form is null)
+        {
+            return;
+        }
+
+        var ordered = form.Exercises
+            .OrderBy(x => x.Order)
+            .ToList();
+
+        if (ordered.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var existing in ordered)
+        {
+            exerciseBlocks.Add(new LessonExerciseBlockEditorModel
+            {
+                Title = string.IsNullOrWhiteSpace(existing.Title) ? "Exercice" : existing.Title,
+                Questions =
+                [
+                    new LessonExerciseQuestionEditorModel
+                    {
+                        ExerciseId = existing.ExerciseId,
+                        Instructions = existing.Instructions,
+                        Question = existing.Question,
+                        Points = existing.Points,
+                        ExerciseType = NormalizeLessonExerciseType(existing.ExerciseType),
+                        AudioText = existing.AudioText,
+                        TtsLanguage = existing.TtsLanguage,
+                        AcceptedAnswers = existing.AcceptedAnswers,
+                        Gaps = (existing.Gaps ?? []).Select(g => new LessonExerciseGapFormModel { AcceptedAnswers = g.AcceptedAnswers }).ToList(),
+                        Options = (existing.Options ?? []).Select(o => new LessonExerciseOptionFormModel { OptionId = o.OptionId, Text = o.Text, IsCorrect = o.IsCorrect }).ToList()
+                    }
+                ]
+            });
+        }
+    }
+
+    private void MapEditorBlocksToFormExercises()
     {
         if (form is null)
         {
             return;
         }
 
-        for (var i = 0; i < form.Exercises.Count; i++)
+        var flattened = new List<LessonExerciseFormModel>();
+        var runningOrder = 1;
+
+        foreach (var block in exerciseBlocks)
         {
-            form.Exercises[i].Order = i + 1;
+            var blockTitle = string.IsNullOrWhiteSpace(block.Title) ? $"Exercice {runningOrder}" : block.Title.Trim();
+            foreach (var question in block.Questions)
+            {
+                flattened.Add(new LessonExerciseFormModel
+                {
+                    ExerciseId = question.ExerciseId,
+                    Title = blockTitle,
+                    Instructions = question.Instructions,
+                    Question = question.Question,
+                    Points = question.Points,
+                    ExerciseType = NormalizeLessonExerciseType(question.ExerciseType),
+                    Order = runningOrder++,
+                    AudioText = question.AudioText,
+                    TtsLanguage = question.TtsLanguage,
+                    AcceptedAnswers = question.AcceptedAnswers,
+                    Gaps = (question.Gaps ?? []).Select(g => new LessonExerciseGapFormModel { AcceptedAnswers = g.AcceptedAnswers }).ToList(),
+                    Options = (question.Options ?? []).Select(o => new LessonExerciseOptionFormModel { OptionId = o.OptionId, Text = o.Text, IsCorrect = o.IsCorrect }).ToList()
+                });
+            }
         }
+
+        form.Exercises = flattened;
     }
 
     private static bool IsChoiceType(string? exerciseType)
@@ -684,5 +1023,16 @@ public partial class TeacherLessonExercises
             "audiotext" or "audio" => "AudioText",
             _ => "SingleChoice"
         };
+    }
+
+    private async Task ScrollModalToTopAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("SKOULOUAPPScroll.scrollElementToTop", editorScrollContainer);
+        }
+        catch (JSException)
+        {
+        }
     }
 }

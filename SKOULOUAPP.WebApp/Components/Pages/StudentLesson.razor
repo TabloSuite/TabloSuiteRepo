@@ -58,6 +58,15 @@ else
         <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 sm:text-sm">Contenu</p>
             <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">@lesson.Summary</h2>
+
+            @if (LessonVideoUrl is { Length: > 0 })
+            {
+                <div class="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
+                    <p class="text-sm font-semibold text-cyan-900">Vidéo de la leçon</p>
+                    <video class="mt-3 w-full rounded-xl bg-slate-950" controls preload="metadata" playsinline src="@LessonVideoUrl"></video>
+                </div>
+            }
+
             <div class="rich-content mt-3 text-sm leading-7 text-slate-700 sm:text-base sm:leading-8">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
 
             @if (!exerciseStarted)
@@ -103,30 +112,32 @@ else
                 </div>
 
                 <div class="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-                    @for (var i = 0; i < OrderedExercises.Count; i++)
+                    @for (var i = 0; i < exerciseDisplayItems.Count; i++)
                     {
                         var dotIndex = i;
-                        var dotState = exerciseStates[OrderedExercises[dotIndex].ExerciseId];
+                        var dotState = exerciseStates[exerciseDisplayItems[dotIndex].Exercise.ExerciseId];
                         <button type="button"
-                                title="@("Exercice " + (dotIndex + 1))"
+                                title="@($"Exercice {exerciseDisplayItems[dotIndex].BlockIndex} · Question {exerciseDisplayItems[dotIndex].QuestionIndex}")"
                                 class="@GetDotClass(dotIndex, dotState)"
                                 @onclick="() => GoToExercise(dotIndex)"></button>
                     }
                 </div>
 
-                var exercise = CurrentExercise;
-                @if (exercise is not null)
+                var currentItem = CurrentExerciseDisplay;
+                var exercise = currentItem?.Exercise;
+                @if (exercise is not null && currentItem is not null)
                 {
                     var state = exerciseStates[exercise.ExerciseId];
                     <div class="mt-4 grid gap-4 sm:gap-5">
                         <article class="card-stack-enter rounded-2xl border border-slate-200 p-3 sm:p-4 lg:rounded-3xl lg:p-5 @(state.IsCorrect ? "bounce-on-correct" : "")" @key="exercise.ExerciseId">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-500">Exercice @(currentExerciseIndex + 1) / @OrderedExercises.Count</p>
-                                    <h3 class="mt-1 text-base font-bold text-slate-900 sm:text-lg">@exercise.Title</h3>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-500">Exercice @currentItem.BlockIndex / @TotalExerciseBlocks</p>
+                                    <h3 class="mt-1 text-base font-bold text-slate-900 sm:text-lg">@currentItem.BlockTitle</h3>
+                                    <p class="mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Question @currentItem.QuestionIndex / @currentItem.QuestionCount</p>
                                     @if (!string.IsNullOrWhiteSpace(exercise.Instructions))
                                     {
-                                        <p class="mt-1 text-xs text-slate-500 sm:text-sm">@exercise.Instructions</p>
+                                        <div class="rich-content mt-1 text-xs text-slate-500 sm:text-sm">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(exercise.Instructions))</div>
                                     }
                                 </div>
                                 @if (state.IsCorrect)
@@ -136,7 +147,7 @@ else
                             </div>
 
                             <div class="mt-4 flex flex-wrap items-center gap-3">
-                                <p class="text-base font-semibold text-slate-900">@exercise.Question</p>
+                                <div class="rich-content text-base font-semibold text-slate-900">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(exercise.Question))</div>
                                 @if (IsAudioType(exercise.ExerciseType) && !string.IsNullOrWhiteSpace(exercise.AudioText))
                                 {
                                     <button type="button"

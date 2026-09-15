@@ -94,11 +94,6 @@ public class ExamService(IHalloAppDbContext dbContext)
             return null;
         }
 
-        if (exam.ExamType != ExamType.TestExam)
-        {
-            return null;
-        }
-
         var isAssignedToCurrentClass = await dbContext.StudentProfiles
             .AsNoTracking()
             .AnyAsync(x => x.AppUserId == studentId
@@ -392,7 +387,7 @@ public class ExamService(IHalloAppDbContext dbContext)
         exam.Description = Text.HtmlSanitizer.Sanitize(model.Description);
         exam.DurationInMinutes = model.DurationInMinutes;
         exam.PassingScore = model.PassingScore;
-        exam.ExamType = model.ExamType;
+        exam.ExamType = ExamType.TestExam;
         exam.IsPublishedToStudents = model.ReleaseTarget == ExamReleaseTarget.ClassStudents;
         exam.IsSharedWithSchool = model.ReleaseTarget == ExamReleaseTarget.SchoolLeader;
         exam.IsPdfExportEnabled = model.IsPdfExportEnabled;
@@ -485,7 +480,11 @@ public class ExamService(IHalloAppDbContext dbContext)
                 QuestionCount = exam.Questions.Count,
                 AttemptCount = exam.Attempts.Count,
                 ExamType = exam.ExamType,
-                ReleaseTarget = exam.IsPublishedToStudents ? ExamReleaseTarget.ClassStudents : ExamReleaseTarget.SchoolLeader
+                ReleaseTarget = exam.IsPublishedToStudents
+                    ? ExamReleaseTarget.ClassStudents
+                    : exam.IsSharedWithSchool
+                        ? ExamReleaseTarget.SchoolLeader
+                        : ExamReleaseTarget.PrivateAuthor
             })
             .ToList();
     }
@@ -517,7 +516,11 @@ public class ExamService(IHalloAppDbContext dbContext)
             DurationInMinutes = exam.DurationInMinutes,
             PassingScore = exam.PassingScore,
             ExamType = exam.ExamType,
-            ReleaseTarget = exam.IsPublishedToStudents ? ExamReleaseTarget.ClassStudents : ExamReleaseTarget.SchoolLeader,
+            ReleaseTarget = exam.IsPublishedToStudents
+                ? ExamReleaseTarget.ClassStudents
+                : exam.IsSharedWithSchool
+                    ? ExamReleaseTarget.SchoolLeader
+                    : ExamReleaseTarget.PrivateAuthor,
             IsPdfExportEnabled = exam.IsPdfExportEnabled,
             Exercises = BuildExerciseFormModels(exam)
         };

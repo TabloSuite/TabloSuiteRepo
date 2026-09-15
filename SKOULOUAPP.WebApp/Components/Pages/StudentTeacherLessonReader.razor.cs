@@ -72,5 +72,5 @@ public partial class StudentTeacherLessonReader
     }
 
     private void GoBack()
-        => Navigation.NavigateTo("/student/cours");
+        => Navigation.NavigateTo("/student/lessons");
 }

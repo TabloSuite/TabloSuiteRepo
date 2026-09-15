@@ -12,6 +12,7 @@ public partial class AsyncActionButton
     [Parameter] public string BusyLabel { get; set; } = "Traitement...";
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ButtonClass => string.IsNullOrWhiteSpace(Class)
         ? "inline-flex items-center justify-center gap-2 disabled:cursor-wait disabled:opacity-70"

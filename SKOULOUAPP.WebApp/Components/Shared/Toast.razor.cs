@@ -20,6 +20,7 @@ public partial class Toast : IDisposable
     private bool visible;
     private bool leaving;
     private System.Timers.Timer? timer;
+    private bool isDisposed;
 
     public enum ToastKind
     {
@@ -30,6 +31,11 @@ public partial class Toast : IDisposable
 
     protected override void OnParametersSet()
     {
+        if (isDisposed)
+        {
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(Message) && Message != currentMessage)
         {
             Show(Message);
@@ -38,19 +44,57 @@ public partial class Toast : IDisposable
 
     private void Show(string message)
     {
+        if (isDisposed)
+        {
+            return;
+        }
+
         currentMessage = message;
         visible = true;
         leaving = false;
 
         timer?.Stop();
+        if (timer is not null)
+        {
+            timer.Elapsed -= OnTimerElapsed;
+        }
         timer?.Dispose();
         timer = new System.Timers.Timer(DurationMs) { AutoReset = false };
-        timer.Elapsed += async (_, _) => await InvokeAsync(BeginLeaveAsync);
+        timer.Elapsed += OnTimerElapsed;
         timer.Start();
+    }
+
+    private async void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                if (isDisposed)
+                {
+                    return;
+                }
+
+                await BeginLeaveAsync();
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private async Task BeginLeaveAsync()
     {
+        if (isDisposed)
+        {
+            return;
+        }
+
         leaving = true;
         StateHasChanged();
         await Task.Delay(300);
@@ -59,6 +103,11 @@ public partial class Toast : IDisposable
 
     private async Task DismissAsync()
     {
+        if (isDisposed)
+        {
+            return;
+        }
+
         timer?.Stop();
         visible = false;
         leaving = false;
@@ -88,7 +137,13 @@ public partial class Toast : IDisposable
 
     public void Dispose()
     {
+        isDisposed = true;
         timer?.Stop();
+        if (timer is not null)
+        {
+            timer.Elapsed -= OnTimerElapsed;
+        }
         timer?.Dispose();
+        timer = null;
     }
 }

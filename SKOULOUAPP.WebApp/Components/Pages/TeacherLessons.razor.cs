@@ -85,8 +85,27 @@ public partial class TeacherLessons
 
     private int VideoUploadPercent => videoUploadPercent;
 
+    private static string FormatKlasseLabel(string? code, string? title)
+    {
+        var normalizedCode = code?.Trim() ?? string.Empty;
+        var normalizedTitle = title?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+        {
+            return normalizedTitle;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedTitle)
+            || string.Equals(normalizedCode, normalizedTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedCode;
+        }
+
+        return $"{normalizedCode} — {normalizedTitle}";
+    }
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseOptions => klasses
-        .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
+        .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
         .ToList();
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> CopyTargetKlasseOptions =>
@@ -95,7 +114,7 @@ public partial class TeacherLessons
         .. klasses
             .OrderBy(klasse => klasse.Code)
             .ThenBy(klasse => klasse.Title)
-            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, $"{klasse.Code} — {klasse.Title}"))
+            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
     ];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> FachOptions =>

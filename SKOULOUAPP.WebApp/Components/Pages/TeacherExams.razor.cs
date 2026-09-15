@@ -7,6 +7,7 @@ using HalloApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 
 namespace HalloApp.WebApp.Components.Pages;
 
@@ -27,10 +28,16 @@ public partial class TeacherExams
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+
+    private ElementReference editorScrollContainer;
+
     private List<ExamManagementItem> exams = [];
     private IReadOnlyList<(Guid KlasseId, string Code, string Title)> niveauOptions = [];
     private ExamFormModel? form;
     private bool editorOpen;
+    private bool isSavingExam;
     private string? formError;
     private string? statusMessage;
     private Guid currentTeacherId;
@@ -39,20 +46,34 @@ public partial class TeacherExams
     private IReadOnlyList<ModernDropdownOption<string?>> NiveauOptions =>
     [
         new(string.Empty, "— Choisir —"),
-        .. niveauOptions.Select(niveau => new ModernDropdownOption<string?>(niveau.Code, $"{niveau.Code} — {niveau.Title}"))
+        .. niveauOptions.Select(niveau => new ModernDropdownOption<string?>(niveau.Code, FormatKlasseLabel(niveau.Code, niveau.Title)))
     ];
 
-    private IReadOnlyList<ModernDropdownOption<ExamType?>> ExamTypeOptions =>
-    [
-        new(ExamType.TestExam, "Test — ne compte pas pour la note finale"),
-        new(ExamType.AbschlussRelevant, "Examen final — compte pour la note finale")
-    ];
+    private static string FormatKlasseLabel(string? code, string? title)
+    {
+        var normalizedCode = code?.Trim() ?? string.Empty;
+        var normalizedTitle = title?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+        {
+            return normalizedTitle;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedTitle)
+            || string.Equals(normalizedCode, normalizedTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedCode;
+        }
+
+        return $"{normalizedCode} — {normalizedTitle}";
+    }
+
 
     private IReadOnlyList<ModernDropdownOption<string?>> TtsLanguageOptions =>
     [
-        new("de-DE", "Deutsch (DE)"),
+        new("de-DE", "Allemand (DE)"),
         new("fr-FR", "Français (FR)"),
-        new("en-US", "English (EN)")
+        new("en-US", "Anglais (EN)")
     ];
 
     private Task SetNiveauAsync(string? niveauCode)
@@ -60,16 +81,6 @@ public partial class TeacherExams
         if (form is not null)
         {
             form.NiveauCode = niveauCode ?? string.Empty;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private Task SetExamTypeAsync(ExamType? examType)
-    {
-        if (form is not null && examType is ExamType value)
-        {
-            form.ExamType = value;
         }
 
         return Task.CompletedTask;
@@ -150,8 +161,17 @@ public partial class TeacherExams
             form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
             form.IsPdfExportEnabled = true;
         }
+        else if (form is not null && form.ExamId is null)
+        {
+            form.ReleaseTarget = ExamReleaseTarget.PrivateAuthor;
+        }
 
         editorOpen = true;
+        await InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            await ScrollModalToTopAsync();
+        });
     }
 
     private void CloseEditor()
@@ -211,18 +231,40 @@ public partial class TeacherExams
     private static bool IsChoiceType(ExamQuestionType type)
         => type is ExamQuestionType.SingleChoice or ExamQuestionType.MultipleChoice or ExamQuestionType.AudioSingleChoice or ExamQuestionType.AudioMultipleChoice;
 
-    private async Task SaveExam()
+    private async Task ScrollModalToTopAsync()
     {
-        formError = null;
         try
         {
-            if (isSchoolDirectionUser && form is not null)
+            await JSRuntime.InvokeVoidAsync("SKOULOUAPPScroll.scrollElementToTop", editorScrollContainer);
+            await Task.Delay(220, ComponentToken);
+            await JSRuntime.InvokeVoidAsync("SKOULOUAPPScroll.scrollElementToTop", editorScrollContainer);
+        }
+        catch (JSException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task SaveExam()
+    {
+        if (isSavingExam || form is null)
+        {
+            return;
+        }
+
+        formError = null;
+        isSavingExam = true;
+        try
+        {
+            if (isSchoolDirectionUser)
             {
                 form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
                 form.IsPdfExportEnabled = true;
             }
 
-            await ExamService.SaveExamAsync(currentTeacherId, form!, ComponentToken);
+            await ExamService.SaveExamAsync(currentTeacherId, form, ComponentToken);
             statusMessage = "L'examen a été enregistré.";
             CloseEditor();
             await LoadAsync();
@@ -230,6 +272,10 @@ public partial class TeacherExams
         catch (InvalidOperationException ex)
         {
             formError = ex.Message;
+        }
+        finally
+        {
+            isSavingExam = false;
         }
     }
 

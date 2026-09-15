@@ -120,7 +120,7 @@
                 </label>
                 <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.KlasseId" ValueChanged="SetLessonKlasseAsync" Options="KlasseOptions" />
                 <label class="block sm:col-span-2">
-                    <span class="text-sm font-semibold text-slate-700">Résumé</span>
+                    <span class="text-sm font-semibold text-slate-700">Résumé (optionnel)</span>
                     <input type="text" class="hallo-input mt-1 text-sm" @bind="form.Summary" />
                 </label>
                 <div class="sm:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
@@ -174,7 +174,19 @@
                     <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
                         <label class="block">
                             <span class="text-xs font-semibold text-slate-600">Fichier vidéo</span>
-                            <InputFile id="teacher-lesson-video-file" OnChange="OnVideoSelected" accept="video/mp4,video/quicktime,.mp4,.m4v,.mov" class="mt-1 block w-full rounded-xl border border-cyan-100 bg-white px-3 py-2 text-sm" />
+                            <div class="hallo-file-picker mt-1">
+                                <div class="relative inline-flex">
+                                    <span class="hallo-file-trigger @(isVideoUploading ? "hallo-file-trigger-disabled" : string.Empty)">
+                                        Choisir une vidéo
+                                    </span>
+                                    <InputFile id="teacher-lesson-video-file"
+                                               OnChange="OnVideoSelected"
+                                               accept="video/mp4,video/quicktime,.mp4,.m4v,.mov"
+                                               class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                               disabled="@isVideoUploading" />
+                                </div>
+                                <span class="hallo-file-selected-name">@(selectedVideoFile?.Name ?? "Aucun fichier sélectionné")</span>
+                            </div>
                         </label>
                         <div class="block">
                             <span class="text-xs font-semibold text-slate-600">Durée détectée</span>

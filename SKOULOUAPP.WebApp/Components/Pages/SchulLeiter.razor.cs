@@ -3,7 +3,6 @@ using HalloApp.Core.DataModels.Finanzen;
 using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Models.Admin;
 using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Models.Exams;
 using HalloApp.Core.Models.Import;
 using HalloApp.Core.Services;
 using HalloApp.WebApp.Components.Shared;
@@ -66,8 +65,6 @@ public partial class SchulLeiter
     [Inject]
     private FinanzService FinanzService { get; set; } = default!;
 
-    [Inject]
-    private ExamService ExamService { get; set; } = default!;
 
     [Inject]
     private SchoolUserImportService SchoolUserImportService { get; set; } = default!;
@@ -174,6 +171,25 @@ public partial class SchulLeiter
             .OrderBy(stufe => stufe.Name)
             .Select(stufe => new ModernDropdownOption<Guid?>((Guid?)stufe.Id, stufe.Name))
     ];
+
+    private IReadOnlyList<FachOptionItem> SchoolFachOptionsForSelectedSchool
+        => SelectedSchoolForManagement is { SchoolId: var schoolId }
+            ? schoolFachOptions.Where(option => option.SchoolId == schoolId).OrderBy(option => option.Name).ToList()
+            : [];
+
+    private Guid? ActiveFachSchoolId => SelectedSchoolForManagement?.SchoolId;
+
+    private bool CanAddSchoolFach
+        => ActiveFachSchoolId.HasValue && !string.IsNullOrWhiteSpace(neueSchulFachBezeichnung);
+
+    private IReadOnlyList<FachOptionItem> UserFormTeacherFachOptions
+        => userForm.RoleName == Rollen.Lehrer
+            ? schoolFachOptions
+                .Where(option => userForm.SchoolIds.Contains(option.SchoolId))
+                .OrderBy(option => option.SchoolName)
+                .ThenBy(option => option.Name)
+                .ToList()
+            : [];
 
     private IReadOnlyList<ModernDropdownOption<string?>> DurchlaufStatusOptions =>
     [
@@ -366,7 +382,6 @@ public partial class SchulLeiter
     [
         new(null, "— Classe cible —"),
         .. schoolKlassen
-            .Where(klasse => klasse.CourseId != klassenAbschluss?.KlasseId)
             .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, GetKlassenAnzeige(klasse)))
     ];
 
@@ -588,8 +603,14 @@ public partial class SchulLeiter
     private async Task SetSchoolUserRoleAsync(string? roleName)
     {
         userForm.RoleName = roleName ?? Rollen.Schueler;
+        if (userForm.RoleName != Rollen.Lehrer)
+        {
+            userForm.FachIds.Clear();
+        }
+
         teacherClassReferenceFilter = null;
         await LoadUserFormTeacherClassOptionsAsync();
+        EnsureTeacherFachSelectionInUserForm();
     }
 
     private Task SetTeacherClassReferenceFilterAsync(string? referenceName)
@@ -683,7 +704,7 @@ public partial class SchulLeiter
     // Die globale Aktion hat Vorrang und synchronisiert alle Karten dieser
     // Seite. Einzelne Karten können anschließend wieder separat bedient werden.
     private bool AllSectionsExpanded =>
-        usersExpanded && userImportExpanded && klassenExpanded;
+        usersExpanded && userImportExpanded && klassenExpanded && fachVerwaltungExpanded;
 
     private void ToggleAllSections()
     {
@@ -691,6 +712,7 @@ public partial class SchulLeiter
         usersExpanded = next;
         userImportExpanded = next;
         klassenExpanded = next;
+        fachVerwaltungExpanded = next;
     }
 
     private string? message;
@@ -740,9 +762,46 @@ public partial class SchulLeiter
     private Guid zuordnungLehrerId;
     private string zuordnungLehrerName = string.Empty;
     private List<LehrerNiveauZuordnungItem> zuordnungItems = [];
+    private List<FachOptionItem> schoolFachOptions = [];
+    private bool fachVerwaltungExpanded;
+    private string fachSuchbegriff = string.Empty;
+    private string neueSchulFachBezeichnung = string.Empty;
+    private string? fachVerwaltungStatusMessage;
+    private string? fachVerwaltungErrorMessage;
+    private bool fachDeleteConfirmOpen;
+    private Guid? fachToDeleteId;
+    private string fachToDeleteName = string.Empty;
+
+    private IReadOnlyList<FachOptionItem> GefilterteSchoolFachOptions
+        => SchoolFachOptionsForSelectedSchool
+            .Where(option => string.IsNullOrWhiteSpace(fachSuchbegriff)
+                || option.Name.Contains(fachSuchbegriff.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
     private IReadOnlyList<SharedTeacherContentItem> sharedTeacherContent = [];
     private bool sharedContentExpanded;
     private bool canViewSharedTeacherContent;
+
+    private TeacherSchoolOverview? SelectedSchoolForManagement
+        => schools.FirstOrDefault(school => school.SchoolName == schoolFilterName)
+           ?? (schools.Count == 1 ? schools[0] : null);
+
+    private string schoolModalTitle => schoolForm.Id.HasValue ? "Modifier l'école" : "Nouvelle école";
+    private string schoolModalSubmitLabel => schoolForm.Id.HasValue ? "Enregistrer l'école" : "Créer l'école";
+    private bool schoolNameAlreadyExists
+    {
+        get
+        {
+            var normalizedName = schoolForm.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                return false;
+            }
+
+            return schools.Any(school =>
+                school.SchoolId != schoolForm.Id
+                && string.Equals(school.SchoolName?.Trim(), normalizedName, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     private string userModalTitle => userForm.UserId.HasValue ? "Modifier l'utilisateur" : "Nouvel utilisateur";
 
@@ -758,12 +817,45 @@ public partial class SchulLeiter
         schoolModalOpen = true;
     }
 
+    private Task OpenEditSelectedSchoolAsync() => RunDatabaseActionAsync(OpenEditSelectedSchoolCoreAsync);
+
+    private Task OpenEditSchoolAsync(Guid schoolId) => RunDatabaseActionAsync(() => OpenEditSchoolCoreAsync(schoolId));
+
+    private async Task OpenEditSchoolCoreAsync(Guid schoolId)
+    {
+        schoolErrorMessage = null;
+        var loaded = await DashboardService.GetSchoolForEditAsync(schoolId, ComponentToken);
+        if (loaded is null)
+        {
+            schoolErrorMessage = "Impossible de charger l'école.";
+            return;
+        }
+
+        schoolForm = loaded;
+        schoolModalOpen = true;
+    }
+
+    private async Task OpenEditSelectedSchoolCoreAsync()
+    {
+        schoolErrorMessage = null;
+        var school = SelectedSchoolForManagement;
+        if (school is null)
+        {
+            schoolErrorMessage = "Sélectionne d'abord une école.";
+            return;
+        }
+
+        await OpenEditSchoolCoreAsync(school.SchoolId);
+    }
+
     private Task SaveOwnSchoolAsync() => RunDatabaseActionAsync(SaveOwnSchoolCoreAsync);
 
     private async Task SaveOwnSchoolCoreAsync()
     {
         schoolErrorMessage = null;
-        var result = await DashboardService.CreateSchoolForSchoolLeaderAsync(currentUserId, schoolForm, ComponentToken);
+        var result = schoolForm.Id.HasValue
+            ? await DashboardService.UpdateSchoolForSchoolLeaderAsync(currentUserId, schoolForm, ComponentToken)
+            : await DashboardService.CreateSchoolForSchoolLeaderAsync(currentUserId, schoolForm, ComponentToken);
         if (!result.Succeeded)
         {
             schoolErrorMessage = result.Message;
@@ -816,6 +908,7 @@ public partial class SchulLeiter
                 ? await LessonService.GetSharedContentForSchoolLeaderAsync(userId, token)
                 : [];
             await LoadSchoolKlassenAsync();
+            await LoadSchoolFachOptionsAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -869,6 +962,7 @@ public partial class SchulLeiter
         SetSchoolFilter(schoolName);
         ResetImportState();
         await LoadSchoolKlassenAsync();
+        await LoadSchoolFachOptionsAsync();
     }
 
     private void ResetImportState()
@@ -877,6 +971,90 @@ public partial class SchulLeiter
         studentImportPreview = null;
         teacherImportCsv = null;
         studentImportCsv = null;
+    }
+
+    private async Task LoadSchoolFachOptionsAsync()
+    {
+        var filteredSchoolId = ActiveFachSchoolId;
+
+        schoolFachOptions = (await DashboardService.GetSchoolFachOptionsForDirectionAsync(currentUserId, filteredSchoolId, ComponentToken)).ToList();
+
+        EnsureTeacherFachSelectionInUserForm();
+    }
+
+    private Task AddSchoolFachAsync() => RunDatabaseActionAsync(AddSchoolFachCoreAsync);
+
+    private async Task AddSchoolFachCoreAsync()
+    {
+        fachVerwaltungErrorMessage = null;
+        fachVerwaltungStatusMessage = null;
+
+        if (ActiveFachSchoolId is not Guid schoolId)
+        {
+            fachVerwaltungErrorMessage = "Sélectionne d'abord une école en haut de la page.";
+            return;
+        }
+
+        var result = await DashboardService.CreateFachForSchoolByDirectionAsync(currentUserId, schoolId, neueSchulFachBezeichnung, ComponentToken);
+        if (!result.Succeeded)
+        {
+            fachVerwaltungErrorMessage = result.Message;
+            return;
+        }
+
+        neueSchulFachBezeichnung = string.Empty;
+        fachVerwaltungStatusMessage = result.Message;
+        await LoadSchoolFachOptionsAsync();
+    }
+
+    private void AskDeleteSchoolFach(FachOptionItem fach)
+    {
+        fachVerwaltungErrorMessage = null;
+        fachVerwaltungStatusMessage = null;
+
+        if (fach.IstLehrerZugewiesen)
+        {
+            fachVerwaltungErrorMessage = "Cette matière est déjà attribuée à un enseignant et ne peut pas être supprimée.";
+            return;
+        }
+
+        fachToDeleteId = fach.FachId;
+        fachToDeleteName = fach.Name;
+        fachDeleteConfirmOpen = true;
+    }
+
+    private void OnFachDeleteConfirmOpenChanged(bool open)
+    {
+        fachDeleteConfirmOpen = open;
+        if (!open)
+        {
+            fachToDeleteId = null;
+            fachToDeleteName = string.Empty;
+        }
+    }
+
+    private Task ConfirmDeleteSchoolFachAsync() => RunDatabaseActionAsync(ConfirmDeleteSchoolFachCoreAsync);
+
+    private async Task ConfirmDeleteSchoolFachCoreAsync()
+    {
+        if (fachToDeleteId is not Guid fachId)
+        {
+            fachDeleteConfirmOpen = false;
+            return;
+        }
+
+        var result = await DashboardService.DeleteSchoolFachForDirectionAsync(currentUserId, fachId, ComponentToken);
+        fachDeleteConfirmOpen = false;
+
+        if (!result.Succeeded)
+        {
+            fachVerwaltungErrorMessage = result.Message;
+            return;
+        }
+
+        fachVerwaltungStatusMessage = result.Message;
+        fachVerwaltungErrorMessage = null;
+        await LoadSchoolFachOptionsAsync();
     }
 
     private Task OnTeacherImportFileSelectedAsync(InputFileChangeEventArgs args)
@@ -1157,11 +1335,14 @@ public partial class SchulLeiter
                 userForm.SchoolIds.Add(schoolId);
             }
 
+            EnsureTeacherFachSelectionInUserForm();
+
             return;
         }
 
         userForm.SchoolIds.Remove(schoolId);
         EnsureTeacherClassReferenceFilter();
+        EnsureTeacherFachSelectionInUserForm();
     }
 
     private async Task OpenEditUserAsync(Guid userId)
@@ -1177,6 +1358,7 @@ public partial class SchulLeiter
         teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
         await LoadUserFormTeacherClassOptionsAsync();
+        EnsureTeacherFachSelectionInUserForm();
         userStatusMessage = null;
         userErrorMessage = null;
         userModalOpen = true;
@@ -1192,6 +1374,43 @@ public partial class SchulLeiter
             userFormTeacherClassOptions = [];
             teacherClassReferenceFilter = null;
         }
+    }
+
+    private bool IsTeacherFachAssigned(Guid fachId)
+        => userForm.FachIds.Contains(fachId);
+
+    private void SetTeacherFachAssignment(Guid fachId, bool isAssigned)
+    {
+        if (isAssigned)
+        {
+            if (!userForm.FachIds.Contains(fachId))
+            {
+                userForm.FachIds.Add(fachId);
+            }
+
+            return;
+        }
+
+        userForm.FachIds.Remove(fachId);
+    }
+
+    private void EnsureTeacherFachSelectionInUserForm()
+    {
+        if (userForm.RoleName != Rollen.Lehrer)
+        {
+            userForm.FachIds.Clear();
+            return;
+        }
+
+        var allowedFachIds = schoolFachOptions
+            .Where(option => userForm.SchoolIds.Contains(option.SchoolId))
+            .Select(option => option.FachId)
+            .ToHashSet();
+
+        userForm.FachIds = userForm.FachIds
+            .Where(fachId => allowedFachIds.Contains(fachId))
+            .Distinct()
+            .ToList();
     }
 
     private void EnsureTeacherClassReferenceFilter()
@@ -1263,6 +1482,7 @@ public partial class SchulLeiter
         zuordnungModalOpen = true;
     }
 
+
     private void OnZuordnungModalOpenChanged(bool open)
     {
         zuordnungModalOpen = open;
@@ -1271,6 +1491,7 @@ public partial class SchulLeiter
             zuordnungItems = [];
         }
     }
+
 
     private Task SaveZuordnungenAsync() => RunDatabaseActionAsync(SaveZuordnungenCoreAsync);
 
@@ -1426,13 +1647,6 @@ public partial class SchulLeiter
     private bool durchlaufEndeModalOpen;
     private DurchlaufUebersicht? zuBeendenderDurchlauf;
     private DateTime durchlaufEndDatum = DateTime.Today;
-    private bool abschlussModalOpen;
-    private KlassenAbschlussUebersicht? klassenAbschluss;
-    private Dictionary<Guid, string?> manuelleAbschlussNoten = new();
-    private string? abschlussStatusMessage;
-    private string? abschlussErrorMessage;
-    private Guid? zuletztGeschlossenerDurchlaufId;
-    private string? klassenabschlussHinweis;
     private bool zahlungModalOpen;
     private DurchlaufUebersicht? zahlungDurchlauf;
     private Guid zahlungStudentId;
@@ -1468,6 +1682,46 @@ public partial class SchulLeiter
         => string.IsNullOrWhiteSpace(klasse.ReferenceName)
             ? klasse.Title
             : $"{klasse.Title} · Réf. {klasse.ReferenceName}";
+
+    private string GetTeacherClassAssignmentLabel(LehrerNiveauZuordnungItem option)
+    {
+        var code = option.NiveauCode?.Trim();
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            return code;
+        }
+
+        if (!string.IsNullOrWhiteSpace(option.NiveauTitel))
+        {
+            return option.NiveauTitel.Trim();
+        }
+
+        return BuildClassCodeWithReference(option.NiveauCode, option.ReferenceName);
+    }
+
+    private string GetTeacherFachAssignmentLabel(FachOptionItem option)
+        => option.Name;
+
+    private static string BuildClassCodeWithReference(string? code, string? reference)
+    {
+        var normalizedCode = code?.Trim() ?? string.Empty;
+        var normalizedReference = reference?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+        {
+            return string.IsNullOrWhiteSpace(normalizedReference)
+                ? "Classe sans code"
+                : $"Classe réf. {normalizedReference}";
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedReference)
+            || normalizedCode.Contains(normalizedReference, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedCode;
+        }
+
+        return $"{normalizedCode} · Réf. {normalizedReference}";
+    }
 
     private static int? GetRemainingPlaetze(CourseFormModel klasse)
         => klasse.MaxPlaetze.HasValue ? klasse.MaxPlaetze.Value - klasse.CurrentStudentCount : null;
@@ -1548,79 +1802,6 @@ public partial class SchulLeiter
         zahlungModalOpen = true;
     }
 
-    private async Task OpenKlassenAbschlussAsync(DurchlaufUebersicht durchlauf)
-    {
-        klasseErrorMessage = null;
-        abschlussStatusMessage = null;
-        abschlussErrorMessage = null;
-        klassenAbschluss = await ExamService.GetKlassenAbschlussUebersichtAsync(durchlauf.DurchlaufID, ComponentToken);
-        manuelleAbschlussNoten = klassenAbschluss?.Schueler.ToDictionary(
-            x => x.StudentId,
-            x => x.AbschlussNoteText) ?? new Dictionary<Guid, string?>();
-        abschlussModalOpen = klassenAbschluss is not null;
-        if (klassenAbschluss is null)
-        {
-            klasseErrorMessage = "Le cycle est introuvable.";
-        }
-    }
-
-    private async Task SetBestandenAsync(Guid studentId, bool isBestanden)
-    {
-        if (klassenAbschluss is null)
-        {
-            return;
-        }
-
-        var result = await ExamService.SetKlassenBestandenEntscheidungAsync(
-            klassenAbschluss.DurchlaufId, studentId, isBestanden, currentUserId, ComponentToken);
-        if (!result.Succeeded)
-        {
-            abschlussErrorMessage = result.Message;
-            return;
-        }
-        abschlussStatusMessage = "Décision enregistrée.";
-        abschlussErrorMessage = null;
-        await OpenKlassenAbschlussAsync(new DurchlaufUebersicht { DurchlaufID = klassenAbschluss.DurchlaufId });
-        abschlussStatusMessage = "Décision enregistrée.";
-    }
-
-    private async Task SaveAbschlussNoteAsync(Guid studentId)
-    {
-        if (klassenAbschluss is null)
-        {
-            return;
-        }
-
-        manuelleAbschlussNoten.TryGetValue(studentId, out string? noteText);
-        var result = await ExamService.SetManuelleAbschlussNoteAsync(
-            klassenAbschluss.DurchlaufId,
-            studentId,
-            noteText,
-            currentUserId,
-            ComponentToken);
-        if (!result.Succeeded)
-        {
-            abschlussErrorMessage = result.Message;
-            return;
-        }
-        abschlussStatusMessage = "Note finale enregistrée.";
-        abschlussErrorMessage = null;
-        if (klassenAbschluss is not null)
-        {
-            await OpenKlassenAbschlussAsync(new DurchlaufUebersicht { DurchlaufID = klassenAbschluss.DurchlaufId });
-            abschlussStatusMessage = "Note finale enregistrée.";
-        }
-    }
-
-    private async Task OpenLetztePromotionAsync()
-    {
-        if (zuletztGeschlossenerDurchlaufId is not Guid durchlaufId)
-        {
-            return;
-        }
-
-        await OpenKlassenAbschlussAsync(new DurchlaufUebersicht { DurchlaufID = durchlaufId });
-    }
 
     private void OnZahlungsArtChanged()
     {
@@ -1852,12 +2033,9 @@ public partial class SchulLeiter
             return;
         }
 
-        var geschlossenerDurchlaufId = zuBeendenderDurchlauf.DurchlaufID;
         klasseStatusMessage = result.OffeneSchuld > 0
             ? $"Le cycle est clôturé. La dette restante de {result.OffeneSchuld:N0} FCFA est indiquée comme perte."
             : "Le cycle est clôturé.";
-        klassenabschlussHinweis = "Classe clôturée. Ouvre l'historique pour finaliser les notes. La prochaine composition de classe se fait manuellement lors du redémarrage.";
-        zuletztGeschlossenerDurchlaufId = geschlossenerDurchlaufId;
         durchlaufEndeModalOpen = false;
         zuBeendenderDurchlauf = null;
         await LoadSchoolKlassenAsync();

@@ -181,6 +181,48 @@ public partial class Teacher
     {
     }
 
+    private static string GetAboStatusLabel(StudentApprovalItem student)
+    {
+        if (!student.CurrentKlasseId.HasValue)
+        {
+            return "Classe non attribuée";
+        }
+
+        if (!student.HasActiveSchoolFeeCycle)
+        {
+            return "Cycle non démarré";
+        }
+
+        if (!student.HasActiveSubscription)
+        {
+            return "Aucun abo actif";
+        }
+
+        return student.HasPaidEnrollment
+            ? "Abo actif (payé)"
+            : "Abo actif";
+    }
+
+    private static string GetAboStatusAccent(StudentApprovalItem student)
+    {
+        if (!student.CurrentKlasseId.HasValue)
+        {
+            return "slate";
+        }
+
+        if (!student.HasActiveSchoolFeeCycle)
+        {
+            return "amber";
+        }
+
+        if (!student.HasActiveSubscription)
+        {
+            return "rose";
+        }
+
+        return student.HasPaidEnrollment ? "emerald" : "cyan";
+    }
+
     private void ClearDateFilter()
     {
         enrolledFromDate = null;

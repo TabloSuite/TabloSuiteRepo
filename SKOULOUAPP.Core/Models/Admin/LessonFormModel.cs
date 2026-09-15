@@ -17,7 +17,6 @@ public class LessonFormModel
     [StringLength(200)]
     public string Title { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Veuillez saisir un résumé.")]
     public string Summary { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Veuillez saisir un contenu.")]
@@ -28,6 +27,11 @@ public class LessonFormModel
 
     public bool IsPublished { get; set; } = true;
     public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
+
+    public Guid? VideoAssetId { get; set; }
+    public string? VideoDisplayName { get; set; }
+    public TimeSpan? VideoDuration { get; set; }
+    public string? VideoUrl { get; set; }
 
     public List<LessonExerciseFormModel> Exercises { get; set; } = [];
 }
