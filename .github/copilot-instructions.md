@@ -105,6 +105,7 @@
 - Pro-Niveau-Redaktionsrunde soll später durchgeführt werden; aktuelle Qualitätsrunde bleibt zunächst global, spätere Feinschleife pro Niveau ist gewünscht.
 - Der Nutzer will alle verbleibenden Sprachschule-/CEFR-/Standardkurskatalog-Reste konsequent entfernen; insbesondere keine festen Seed-Level oder CSV-Kurskatalog-Initialisierung mehr im Initializer belassen.
 - **Der Nutzer möchte, dass alle Schulen als gleichwertig betrachtet werden, ohne Unterscheidung zwischen verschiedenen Schultypen.**
+- Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend dem Assistenten.
 - Wenn der Nutzer in diesem Workspace von 'Projekt' spricht, ist konkret SKOULOUAPP (SKOULOUAPPMAPPE) gemeint.
 
 ## Code Style
@@ -128,6 +129,7 @@
 
 ## Kernprozess-Prüfungen
 - Bei Kernprozess-/Business-Regel-Änderungen sollen immer auch die betroffenen Blazor-UI-Flows geprüft und angepasst werden; UI gehört ausdrücklich zum notwendigen Umfang.
+- Der Nutzer erwartet proaktive, ganzheitliche Anpassungen betroffener UI-Flows und weist darauf hin, bei Änderungen mitzudenken (insbesondere auch Historie-Seiten prüfen).
 
 ## Home-Seite
 - Mobile Home-Hero muss wie eine echte Hero-Section den kompletten Handy-Bildschirm füllen; die darunterliegenden Intro-/CTA-/Statistik-Inhalte dürfen erst nach dem Scrollen sichtbar werden. Hero bleibt nur Bild plus themefarbener Badge. Home-Hero-Badge soll als kreatives Overlay etwas höher über dem unteren Bildrand liegen und einen Registrierungslink enthalten. Für angemeldete Nutzer soll der CTA sinnvoll zu den Lektionen führen.

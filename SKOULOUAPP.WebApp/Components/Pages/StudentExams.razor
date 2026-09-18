@@ -22,8 +22,17 @@ else
         @if (exams.Count == 0)
         {
             <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <h2 class="text-lg font-black text-slate-900">Aucune épreuve disponible</h2>
-                <p class="mt-2 text-sm text-slate-600">Aucune épreuve n'est encore disponible pour ta classe actuelle.</p>
+                @if (!hasPaidHalloAppAbo)
+                {
+                    <h2 class="text-lg font-black text-slate-900">Abo SKOULOUAPP requis</h2>
+                    <p class="mt-2 text-sm text-slate-600">Les épreuves de ta classe sont disponibles après activation de ton abonnement scolaire.</p>
+                    <p class="mt-2 text-xs font-semibold text-amber-700">Demande à ton école d'activer ton accès pour consulter les contenus publiés.</p>
+                }
+                else
+                {
+                    <h2 class="text-lg font-black text-slate-900">Aucune épreuve disponible</h2>
+                    <p class="mt-2 text-sm text-slate-600">Aucune épreuve n'est encore disponible pour ta classe actuelle.</p>
+                }
             </div>
         }
         else

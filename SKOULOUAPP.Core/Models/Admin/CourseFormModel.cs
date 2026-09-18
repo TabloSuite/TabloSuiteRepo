@@ -66,4 +66,10 @@ public class CourseFormModel
     /// automatisch mit dem Standard-Abo HALLOAPP (AboTyp.HalloApp) vorbereitet.
     /// </summary>
     public bool AutoAssignHalloAppAboOnCycleStart { get; set; }
+
+    /// <summary>
+    /// UI-Bestätigung: Beim Aktivieren während eines laufenden Zyklus sollen
+    /// bestehende Schüler sofort das Abo erhalten.
+    /// </summary>
+    public bool ConfirmAutoAssignActivationForActiveCycle { get; set; }
 }

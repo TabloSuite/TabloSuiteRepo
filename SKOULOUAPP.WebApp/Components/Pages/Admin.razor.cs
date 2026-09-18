@@ -35,6 +35,42 @@ public partial class Admin
     private decimal SchoolSubscriptionPriceDisplay
         => schoolForm.SubscriptionPriceOverride ?? commissionSettings.GlobalSubscriptionPrice;
 
+    private decimal EffectiveSchoolLeaderCommissionPercent
+        => schoolForm.SchoolLeaderCommissionPercentOverride ?? commissionSettings.SchoolLeaderPercent;
+
+    private decimal EffectiveTeacherCommissionPercent
+        => schoolForm.TeacherCommissionPercentOverride ?? commissionSettings.TeacherPercent;
+
+    private decimal EffectiveProductOwnerCommissionPercent
+        => schoolForm.ProductOwnerCommissionPercentOverride ?? commissionSettings.ProductOwnerPercent;
+
+    private decimal EffectiveSchoolLeaderCommissionAmount
+        => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveSchoolLeaderCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
+
+    private decimal EffectiveTeacherCommissionAmount
+        => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveTeacherCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
+
+    private decimal EffectiveProductOwnerCommissionAmount
+        => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveProductOwnerCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
+
+    private decimal SchoolLeaderCommissionFieldValue
+    {
+        get => schoolForm.SchoolLeaderCommissionPercentOverride ?? commissionSettings.SchoolLeaderPercent;
+        set => schoolForm.SchoolLeaderCommissionPercentOverride = value;
+    }
+
+    private decimal TeacherCommissionFieldValue
+    {
+        get => schoolForm.TeacherCommissionPercentOverride ?? commissionSettings.TeacherPercent;
+        set => schoolForm.TeacherCommissionPercentOverride = value;
+    }
+
+    private decimal ProductOwnerCommissionFieldValue
+    {
+        get => schoolForm.ProductOwnerCommissionPercentOverride ?? commissionSettings.ProductOwnerPercent;
+        set => schoolForm.ProductOwnerCommissionPercentOverride = value;
+    }
+
     private static string BuildHalloAppEmail(string vorname, string nachname)
     {
         var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);

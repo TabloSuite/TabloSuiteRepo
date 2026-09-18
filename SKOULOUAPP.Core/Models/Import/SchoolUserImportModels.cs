@@ -59,7 +59,7 @@ public sealed class SchoolUserImportRowPreview
 
 public static class SchoolUserImportDefaults
 {
-    public const string InitialPassword = "Passwort123!";
+    public const string InitialPassword = "MotDePasse1";
 
     public const string TeacherTemplate = "Prénom;Nom;Classe;E-mail;Téléphone\nJean;Koffi;CM1A;jean.koffi@example.com;90000000\nAmah;Mensah;CM1A,CM2B;;";
 

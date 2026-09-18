@@ -347,7 +347,7 @@
     <HeaderRight>
         <button type="button"
                 class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg"
-                @onclick="OpenNewUserModal">
+                @onclick="OpenNewUserModalAsync">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -457,9 +457,10 @@
             <label class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <input type="checkbox"
                        class="h-4 w-4 rounded border-slate-300"
+                       disabled="@(ArchivableFilteredStudents.Count == 0)"
                        checked="@AreAllFilteredStudentsSelectedForArchive"
                        @onchange="args => ToggleSelectAllFilteredStudentsForArchiveAsync(args.Value as bool? == true)" />
-                Tout sélectionner (@FilteredStudents.Count)
+                Tout sélectionner (@ArchivableFilteredStudents.Count)
             </label>
             <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-indigo-700">Sélectionnés: @ArchiveSelectedCount</span>
@@ -497,10 +498,15 @@
                                 <label class="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
                                     <input type="checkbox"
                                            class="h-4 w-4 rounded border-slate-300"
+                                            disabled="@(!IsStudentArchivable(student))"
                                            checked="@IsStudentSelectedForArchive(student.UserId)"
                                            @onchange="args => ToggleArchiveStudentAsync(student.UserId, args.Value as bool? == true)" />
                                     Sélectionner pour archivage
                                 </label>
+                                @if (!IsStudentArchivable(student))
+                                {
+                                    <p class="mb-2 text-xs font-medium text-slate-500">Archivage possible uniquement pour les élèves sans classe active.</p>
+                                }
                                 <div class="flex flex-wrap items-center gap-2">
                                     <div class="font-bold text-slate-900">@student.FullName</div>
                                     @if (!student.IsBlocked)
@@ -582,6 +588,11 @@
                                         </button>
                                     }
                                 }
+                                <button type="button"
+                                        class="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                        @onclick="() => OpenEditStudentPersonalAsync(student.UserId)">
+                                    Modifier
+                                </button>
                                  <button type="button"
                                         class="inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                         @onclick="() => ToggleLevelPanelAsync(student.UserId)">
@@ -981,9 +992,18 @@
             <ValidationSummary />
         </div>
 
-        <div>
-            <ModernDropdown TValue="string" Label="Rôle" Value="userForm.RoleName" ValueChanged="SetSchoolUserRoleAsync" Options="SchoolUserRoleOptions" />
-        </div>
+        @if (isStudentPersonalEditMode)
+        {
+            <div class="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+                Seules les informations personnelles de l'élève sont modifiables ici.
+            </div>
+        }
+        else
+        {
+            <div>
+                <ModernDropdown TValue="string" Label="Rôle" Value="userForm.RoleName" ValueChanged="SetSchoolUserRoleAsync" Options="SchoolUserRoleOptions" />
+            </div>
+        }
 
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
@@ -1009,88 +1029,106 @@
             <div class="grid gap-4 sm:grid-cols-2"><div><label class="hallo-label">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternTelefonNummer" type="tel" class="hallo-input" /></div><div><label class="hallo-label">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternEmail" type="email" class="hallo-input" /></div></div>
         }
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            @if (userForm.RoleName == "Lehrer")
-            {
-                <div class="sm:col-span-2">
-                    <label class="hallo-label">Écoles attribuées <span class="text-rose-600">*</span></label>
-                    <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                        @foreach (var school in schools)
-                        {
-                            var isAssigned = userForm.SchoolIds.Contains(school.SchoolId);
-                            <label class="flex items-center gap-2 text-sm text-slate-700">
-                                <input type="checkbox"
-                                       checked="@isAssigned"
-                                       @onchange="args => SetTeacherSchoolAssignment(school.SchoolId, args.Value as bool? == true)" />
-                                @school.SchoolName
-                            </label>
-                        }
-                    </div>
-                    <p class="mt-1 text-xs text-slate-500">Un enseignant doit être attribué à au moins une école avant de recevoir des classes.</p>
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="hallo-label">Classes attribuées</label>
-                    @if (TeacherClassReferenceFilterOptions.Count > 1)
-                    {
-                        <div class="mb-3 max-w-sm">
-                            <ModernDropdown TValue="string"
-                                            Label="Classe de référence"
-                                            Value="teacherClassReferenceFilter"
-                                            ValueChanged="SetTeacherClassReferenceFilterAsync"
-                                            Options="TeacherClassReferenceFilterOptions" />
-                        </div>
-                    }
-                    <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                        @foreach (var option in FilteredUserFormTeacherClassOptions)
-                        {
-                            <label class="flex items-center gap-2 text-sm text-slate-700">
-                                <input type="checkbox"
-                                       checked="@IsTeacherClassAssigned(option.SchulID, option.KlasseId)"
-                                       @onchange="args => SetTeacherClassAssignment(option, args.Value as bool? == true)" />
-                                @GetTeacherClassAssignmentLabel(option)
-                            </label>
-                        }
-                    </div>
-                    <p class="mt-1 text-xs text-slate-500">Les classes sélectionnées déterminent les élèves et contenus accessibles à l'enseignant.</p>
-                </div>
-                <div class="sm:col-span-2">
-                    <label class="hallo-label">Matières attribuées</label>
-                    @if (UserFormTeacherFachOptions.Count == 0)
-                    {
-                        <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Aucune matière disponible pour les écoles attribuées. Ajoute d'abord les matières de l'école ci-dessus.</p>
-                    }
-                    else
-                    {
+        @if (!isStudentPersonalEditMode)
+        {
+            <div class="grid gap-4 sm:grid-cols-2">
+                @if (userForm.RoleName == "Lehrer")
+                {
+                    <div class="sm:col-span-2">
+                        <label class="hallo-label">Écoles attribuées <span class="text-rose-600">*</span></label>
                         <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                            @foreach (var option in UserFormTeacherFachOptions)
+                            @foreach (var school in schools)
                             {
+                                var isAssigned = userForm.SchoolIds.Contains(school.SchoolId);
                                 <label class="flex items-center gap-2 text-sm text-slate-700">
                                     <input type="checkbox"
-                                           checked="@IsTeacherFachAssigned(option.FachId)"
-                                           @onchange="args => SetTeacherFachAssignment(option.FachId, args.Value as bool? == true)" />
-                                    @GetTeacherFachAssignmentLabel(option)
+                                           checked="@isAssigned"
+                                           @onchange="args => SetTeacherSchoolAssignment(school.SchoolId, args.Value as bool? == true)" />
+                                    @school.SchoolName
                                 </label>
                             }
                         </div>
-                    }
-                    <p class="mt-1 text-xs text-slate-500">Ces matières seront proposées à l'enseignant lors de la création de « Leçon + exercices ».</p>
-                </div>
-            }
-            else
-            {
-                <div>
-                    <ModernDropdown TValue="Guid?" Label="École *" Value="SelectedStudentSchoolId" ValueChanged="SetSelectedStudentSchoolAsync" Options="UserSchoolOptions" />
-                    <p class="mt-1 text-xs text-slate-500">@SchoolAssignmentHintText</p>
-                </div>
-                @if (userForm.RoleName == "Schüler")
-                {
-                    <div>
-                        <ModernDropdown TValue="Guid?" Label="Classe actuelle" Value="userForm.CurrentKlasseId" ValueChanged="SetUserCurrentClassAsync" Options="UserCurrentClassOptions" />
-                        <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOUAPP.</p>
+                        <p class="mt-1 text-xs text-slate-500">Un enseignant doit être attribué à au moins une école avant de recevoir des classes.</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="hallo-label">Classes attribuées</label>
+                        @if (TeacherClassReferenceFilterOptions.Count > 1)
+                        {
+                            <div class="mb-3 max-w-sm">
+                                <ModernDropdown TValue="string"
+                                                Label="Classe de référence"
+                                                Value="teacherClassReferenceFilter"
+                                                ValueChanged="SetTeacherClassReferenceFilterAsync"
+                                                Options="TeacherClassReferenceFilterOptions" />
+                            </div>
+                        }
+                        <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
+                            @foreach (var option in FilteredUserFormTeacherClassOptions)
+                            {
+                                <label class="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox"
+                                           checked="@IsTeacherClassAssigned(option.SchulID, option.KlasseId)"
+                                           @onchange="args => SetTeacherClassAssignment(option, args.Value as bool? == true)" />
+                                    @GetTeacherClassAssignmentLabel(option)
+                                </label>
+                            }
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Les classes sélectionnées déterminent les élèves et contenus accessibles à l'enseignant.</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="hallo-label">Matières attribuées</label>
+                        @if (UserFormTeacherFachOptions.Count == 0)
+                        {
+                            <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Aucune matière disponible pour les écoles attribuées. Ajoute d'abord les matières de l'école ci-dessus.</p>
+                        }
+                        else
+                        {
+                            <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
+                                @foreach (var option in UserFormTeacherFachOptions)
+                                {
+                                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                                        <input type="checkbox"
+                                               checked="@IsTeacherFachAssigned(option.FachId)"
+                                               @onchange="args => SetTeacherFachAssignment(option.FachId, args.Value as bool? == true)" />
+                                        @GetTeacherFachAssignmentLabel(option)
+                                    </label>
+                                }
+                            </div>
+                        }
+                        <p class="mt-1 text-xs text-slate-500">Ces matières seront proposées à l'enseignant lors de la création de « Leçon + exercices ».</p>
                     </div>
                 }
-            }
-        </div>
+                else
+                {
+                    <div>
+                        <ModernDropdown TValue="Guid?" Label="École *" Value="SelectedStudentSchoolId" ValueChanged="SetSelectedStudentSchoolAsync" Options="UserSchoolOptions" />
+                        <p class="mt-1 text-xs text-slate-500">@SchoolAssignmentHintText</p>
+                    </div>
+                    @if (userForm.RoleName == "Schüler")
+                    {
+                        <div>
+                        @if (SelectedStudentSchoolId == Guid.Empty)
+                        {
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                                Choisis d'abord l'école pour afficher les classes disponibles.
+                            </div>
+                        }
+                        else
+                        {
+                            <ModernDropdown TValue="Guid?"
+                                           Label="Classe actuelle"
+                                           Value="userForm.CurrentKlasseId"
+                                           ValueChanged="SetUserCurrentClassAsync"
+                                           Options="UserCurrentClassOptions"
+                                           Searchable="true"
+                                           SearchPlaceholder="Rechercher une classe..." />
+                            <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOUAPP.</p>
+                        }
+                        </div>
+                    }
+                }
+            </div>
+        }
 
         @if (!userForm.UserId.HasValue)
         {
@@ -1098,7 +1136,8 @@
                 <div>
                     <label class="hallo-label">Mot de passe (optionnel)</label>
                     <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
-                    <p class="mt-1 text-xs text-slate-500">Si vide, un mot de passe par défaut sera utilisé.</p>
+                    <p class="mt-1 text-xs text-slate-500">Si vide, le mot de passe par défaut « MotDePasse1 » sera utilisé.</p>
+                    <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
                 </div>
                 <div>
                     <label class="hallo-label">Confirmer le mot de passe</label>
@@ -1277,6 +1316,8 @@
                 if (selectedSchool is not null)
                 {
                     <p class="mt-1 text-xs text-cyan-700">Prix d'abonnement affich&eacute; pour cette &eacute;cole : <strong>@selectedSchool.EffectiveSubscriptionPrice.ToString("N0") FCFA</strong></p>
+                    <p class="mt-1 text-xs text-cyan-700">Part direction : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.SchoolLeaderCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0") FCFA</strong> (@selectedSchool.SchoolLeaderCommissionPercent.ToString("N2") %)</p>
+                    <p class="mt-1 text-xs text-cyan-700">Part enseignants : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.TeacherCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0") FCFA</strong> (@selectedSchool.TeacherCommissionPercent.ToString("N2") %)</p>
                 }
             }
         </div>
@@ -1299,12 +1340,46 @@
                 <span class="mt-1 block text-xs font-normal text-cyan-800">Quand le cycle démarre, les élèves actifs de cette classe reçoivent automatiquement l'abonnement SKOULOUAPP activé et marqué payé.</span>
             </span>
         </label>
+        @if (IsAutoAssignActivationPendingConfirmation)
+        {
+            <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                Attention : ce cycle est déjà actif. En enregistrant, tous les élèves déjà attribués à cette classe recevront immédiatement l'abonnement. Cette action n'est plus annulable pendant ce cycle.
+            </p>
+        }
 
         <div class="mt-2 flex justify-end gap-3">
             <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="() => OnKlasseModalOpenChanged(false)">Annuler</button>
             <AsyncActionButton Type="submit" Class="hallo-btn-accent rounded-full px-5 py-3 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(klasseForm.CourseId.HasValue ? "Enregistrer la classe" : "Créer la classe")</AsyncActionButton>
         </div>
     </EditForm>
+</ModalDialog>
+
+<ModalDialog Open="autoAssignConfirmOpen"
+             OpenChanged="OnAutoAssignConfirmOpenChanged"
+             Title="Confirmer l'activation automatique"
+             Eyebrow="Confirmation"
+             CloseOnBackdrop="false"
+             MaxWidthClass="max-w-lg">
+    <p class="text-sm leading-6 text-slate-700">
+        Ce cycle est actif. Si tu continues, tous les élèves actuellement attribués à cette classe recevront immédiatement l'abonnement SKOULOUAPP.
+    </p>
+    <p class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+        Cette action n'est plus réversible pendant ce cycle. Le retour en arrière sera possible seulement après ouverture d'un nouveau cycle.
+    </p>
+    <div class="mt-5 flex justify-end gap-3">
+        <button type="button"
+                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled="@isDatabaseActionInProgress"
+                @onclick="() => OnAutoAssignConfirmOpenChanged(false)">
+            Annuler
+        </button>
+        <AsyncActionButton Class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                           IsBusy="@isDatabaseActionInProgress"
+                           BusyLabel="Activation..."
+                           OnClick="@(_ => ConfirmAutoAssignActivationAsync())">
+            Oui, activer maintenant
+        </AsyncActionButton>
+    </div>
 </ModalDialog>
 
 

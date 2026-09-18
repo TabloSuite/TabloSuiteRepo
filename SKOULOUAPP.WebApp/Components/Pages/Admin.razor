@@ -107,18 +107,18 @@ else
                     <div class="grid gap-4 xl:grid-cols-3">
                         <div>
                             <label class="hallo-label">Commission directeur (%)</label>
-                            <InputNumber @bind-Value="schoolForm.SchoolLeaderCommissionPercentOverride" class="hallo-input" />
-                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                            <InputNumber @bind-Value="SchoolLeaderCommissionFieldValue" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveSchoolLeaderCommissionPercent.ToString("N2") % (@EffectiveSchoolLeaderCommissionAmount.ToString("N0") FCFA) @(schoolForm.SchoolLeaderCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                         <div>
                             <label class="hallo-label">Commission enseignants (%)</label>
-                            <InputNumber @bind-Value="schoolForm.TeacherCommissionPercentOverride" class="hallo-input" />
-                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                            <InputNumber @bind-Value="TeacherCommissionFieldValue" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveTeacherCommissionPercent.ToString("N2") % (@EffectiveTeacherCommissionAmount.ToString("N0") FCFA) @(schoolForm.TeacherCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                         <div>
                             <label class="hallo-label">Commission du responsable produit (%)</label>
-                            <InputNumber @bind-Value="schoolForm.ProductOwnerCommissionPercentOverride" class="hallo-input" />
-                            <p class="mt-1 text-xs text-slate-500">Vide = commission globale.</p>
+                            <InputNumber @bind-Value="ProductOwnerCommissionFieldValue" class="hallo-input" />
+                            <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveProductOwnerCommissionPercent.ToString("N2") % (@EffectiveProductOwnerCommissionAmount.ToString("N0") FCFA) @(schoolForm.ProductOwnerCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                     </div>
 
@@ -309,18 +309,22 @@ else
                         <div class="grid gap-4 xl:grid-cols-2"><div><label class="hallo-label">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternTelefonNummer" type="tel" class="hallo-input" /></div><div><label class="hallo-label">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternEmail" type="email" class="hallo-input" /></div></div>
                     }
 
-                    <div>
-                        <label class="hallo-label">Mot de passe initial (nouveau / optionnel)</label>
-                        <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
-                    </div>
-
-                    <div class="grid gap-4 xl:grid-cols-2">
+                    @if (!userForm.UserId.HasValue)
+                    {
                         <div>
-                            <label class="hallo-label">Confirmer le mot de passe</label>
-                            <PasswordInput @bind-Value="userForm.PasswordConfirmation" Autocomplete="new-password" />
-                            <ValidationMessage For="() => userForm.PasswordConfirmation" class="mt-1 text-xs text-rose-600" />
+                            <label class="hallo-label">Mot de passe initial (nouveau / optionnel)</label>
+                            <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
+                            <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
                         </div>
-                    </div>
+
+                        <div class="grid gap-4 xl:grid-cols-2">
+                            <div>
+                                <label class="hallo-label">Confirmer le mot de passe</label>
+                                <PasswordInput @bind-Value="userForm.PasswordConfirmation" Autocomplete="new-password" />
+                                <ValidationMessage For="() => userForm.PasswordConfirmation" class="mt-1 text-xs text-rose-600" />
+                            </div>
+                        </div>
+                    }
 
                     <div class="grid gap-3 xl:grid-cols-2">
                         <label class="inline-flex items-center gap-3 text-sm text-slate-600">

@@ -1,6 +1,7 @@
 using HalloApp.Core.DataModels.Courses;
 using HalloApp.Core.DataModels.Exams;
 using HalloApp.Core.DataModels.Exercises;
+using HalloApp.Core.DataModels.Finanzen;
 using HalloApp.Core.DataModels.Identity;
 using HalloApp.Core.DataModels.Lessons;
 using HalloApp.Core.DataModels.Schools;
@@ -806,6 +807,60 @@ public class DashboardServiceTests
         Assert.False(result.Succeeded);
         Assert.Contains("100", result.Message);
         Assert.Empty(db.Schools);
+    }
+
+    [Fact]
+    public async Task SaveSchoolAsync_BehaeltDirektorZuordnungBeimLehrerSync()
+    {
+        using var db = TestDbContext.CreateInMemory();
+
+        var schoolId = Guid.NewGuid();
+        var teacherId = Guid.NewGuid();
+        var direktorId = Guid.NewGuid();
+
+        db.Schools.Add(new School
+        {
+            Id = schoolId,
+            Name = "École A",
+            City = "Lomé",
+            Country = "Togo",
+            IsActive = true
+        });
+
+        db.Users.AddRange(
+            new AppUser { Id = teacherId, FullName = "Prof A", UserName = "prof.a", Email = "prof.a@skoulou.com" },
+            new AppUser { Id = direktorId, FullName = "Directeur A", UserName = "directeur.a", Email = "directeur.a@skoulou.com" });
+
+        db.UserSchools.AddRange(
+            new UserSchool { AppUserId = teacherId, SchoolId = schoolId, CanManageStudents = true },
+            new UserSchool { AppUserId = direktorId, SchoolId = schoolId, CanManageStudents = true });
+
+        await db.SaveChangesAsync();
+
+        var teacherUser = new AppUser { Id = teacherId, FullName = "Prof A", UserName = "prof.a", Email = "prof.a@skoulou.com" };
+        var direktorUser = new AppUser { Id = direktorId, FullName = "Directeur A", UserName = "directeur.a", Email = "directeur.a@skoulou.com" };
+        var userManager = TestUserManager.Create(new[] { teacherUser, direktorUser });
+        userManager.SeedRole(teacherUser, Rollen.Lehrer);
+        userManager.SeedRole(direktorUser, Rollen.SchulLeiter);
+
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+
+        var form = new SchoolFormModel
+        {
+            Id = schoolId,
+            Name = "École A",
+            City = "Lomé",
+            Country = "Togo",
+            IsActive = true
+        };
+
+        var result = await service.SaveSchoolAsync(form, []);
+
+        Assert.True(result.Succeeded, result.Message);
+
+        var links = db.UserSchools.Where(link => link.SchoolId == schoolId && link.CanManageStudents).ToList();
+        Assert.DoesNotContain(links, link => link.AppUserId == teacherId);
+        Assert.Contains(links, link => link.AppUserId == direktorId);
     }
 
     [Fact]

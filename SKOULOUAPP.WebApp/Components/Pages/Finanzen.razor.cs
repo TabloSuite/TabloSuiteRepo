@@ -6,6 +6,7 @@ using HalloApp.WebApp.Components.Shared;
 using HalloApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace HalloApp.WebApp.Components.Pages;
@@ -17,6 +18,7 @@ public partial class Finanzen
     [Inject] private DatabaseActionGuard ActionGuard { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private ILogger<Finanzen> Logger { get; set; } = default!;
 
     private Guid currentUserId;
     private bool istSuperAdmin;
@@ -25,6 +27,7 @@ public partial class Finanzen
     // Schulkontext
     private List<FinanzAuswahl> schulen = new();
     private Guid? aktiveSchulID;
+    private bool schulenGeladen;
 
     // Niveaus
     private List<FinanzAuswahl> niveaus = new();
@@ -129,9 +132,22 @@ public partial class Finanzen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
-    private decimal CommissionSchulleiter => uebersicht?.Zeilen
-        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboSchulleiterAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
-        .Sum(zeile => zeile.Betrag) ?? 0m;
+    private decimal CommissionSchulleiter
+    {
+        get
+        {
+            var direkteSchulleiterBuchung = uebersicht?.Zeilen
+                .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboSchulleiterAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+                .Sum(zeile => zeile.Betrag) ?? 0m;
+
+            if (direkteSchulleiterBuchung > 0m)
+            {
+                return direkteSchulleiterBuchung;
+            }
+
+            return Math.Max(0m, HalloAppAboTotal - CommissionLehrer - CommissionProductOwner - BetragFuerHalloAppPlattform);
+        }
+    }
 
     private decimal CommissionProductOwner => uebersicht?.Zeilen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
@@ -157,21 +173,48 @@ public partial class Finanzen
 
     private decimal EchteBuchungenSaldo => EchteBuchungenEntrees - EchteBuchungenSorties;
 
-    private bool includeSkoulouAppSharesInPeriodSummary;
-
     private decimal ZeitraumSortiesBasis => EchteBuchungenSorties;
 
-    private decimal ZeitraumSortiesMitAnteil => ZeitraumSortiesBasis + CommissionSchulleiter + CommissionLehrer;
+    private decimal SkoulouAboAnteilFuerSaldo => Math.Max(0m, HalloAppAboTotal - CommissionSchulleiter - CommissionLehrer);
 
-    private decimal ZeitraumSortiesAnzeige => includeSkoulouAppSharesInPeriodSummary
-        ? ZeitraumSortiesMitAnteil
-        : ZeitraumSortiesBasis;
+    private decimal ZeitraumSoldeAvantPartSkoulou => EchteBuchungenEntrees + HalloAppAboTotal - ZeitraumSortiesBasis;
 
-    private decimal ZeitraumSaldoAnzeige => EchteBuchungenEntrees - ZeitraumSortiesAnzeige;
+    private decimal ZeitraumSortiesAnzeige => ZeitraumSortiesBasis;
 
-    private string ZeitraumOptionLabel => includeSkoulouAppSharesInPeriodSummary
-        ? "Sorties + parts SKOULOUAPP (direction + enseignants)"
-        : "Sorties réelles (sans parts SKOULOUAPP)";
+    private decimal ZeitraumSaldoAnzeige => ZeitraumSoldeAvantPartSkoulou - SkoulouAboAnteilFuerSaldo;
+
+    private string ZeitraumOptionLabel => "Part SKOULOUAPP = Abo total - (parts direction + enseignants)";
+
+    private static string GetMaskedErfasstVonForPdf(string? erfasstVon)
+    {
+        if (string.IsNullOrWhiteSpace(erfasstVon))
+        {
+            return "Utilisateur masqué";
+        }
+
+        var teile = erfasstVon
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(MaskiereNameTeil)
+            .Where(teil => teil.Length > 0)
+            .ToArray();
+
+        return teile.Length == 0 ? "Utilisateur masqué" : string.Join(' ', teile);
+    }
+
+    private static string MaskiereNameTeil(string teil)
+    {
+        if (string.IsNullOrWhiteSpace(teil))
+        {
+            return string.Empty;
+        }
+
+        if (teil.Length == 1)
+        {
+            return "*";
+        }
+
+        return string.Concat(teil[0], new string('*', Math.Min(teil.Length - 1, 5)));
+    }
 
     private decimal SchulgebuehrenEinnahmen => EchteSchulBuchungen
         .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung && zeile.Richtung == FinanzRichtung.Einnahme)
@@ -199,6 +242,32 @@ public partial class Finanzen
 
     private static string SoldeFarbe(decimal betrag)
         => betrag < 0m ? "text-rose-700" : "text-emerald-700";
+
+    private static string SoldeEtatLabel(decimal betrag)
+        => betrag switch
+        {
+            < 0m => "Critique",
+            < 50000m => "À surveiller",
+            _ => "Sain"
+        };
+
+    private static string SoldeEtatBadgeClass(decimal betrag)
+        => betrag switch
+        {
+            < 0m => "bg-rose-100 text-rose-800 ring-rose-200",
+            < 50000m => "bg-amber-100 text-amber-800 ring-amber-200",
+            _ => "bg-emerald-100 text-emerald-800 ring-emerald-200"
+        };
+
+    private string PaiementsAttenteEtatLabel
+        => (direktorKontostand?.OffeneSchulgebuehrenAktiveKlassen ?? 0m) <= 0m
+            ? "Aucun retard"
+            : "Paiements en attente";
+
+    private string PaiementsAttenteBadgeClass
+        => (direktorKontostand?.OffeneSchulgebuehrenAktiveKlassen ?? 0m) <= 0m
+            ? "bg-cyan-100 text-cyan-800 ring-cyan-200"
+            : "bg-indigo-100 text-indigo-800 ring-indigo-200";
 
     private static string GetKategorieLabel(FinanzUebersichtZeile zeile)
         => zeile.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung
@@ -346,6 +415,10 @@ public partial class Finanzen
         catch (Exception ex) when (IstAbbruch(ex))
         {
             // Komponente wurde während des Ladens verworfen (Navigationswechsel).
+        }
+        finally
+        {
+            schulenGeladen = true;
         }
     }
 
@@ -858,7 +931,21 @@ public partial class Finanzen
     }
 
     private async Task DruckenAsync()
-        => await JS.InvokeVoidAsync("SKOULOUAPPPrint.open");
+    {
+        try
+        {
+            var ok = await JS.InvokeAsync<bool>("SKOULOUAPPPrint.openElement", ".finance-pdf-export", "Journal financier");
+            if (!ok)
+            {
+                errorMessage = "Impossible d'ouvrir la fenêtre d'impression. Autorise les fenêtres contextuelles puis réessaie.";
+            }
+        }
+        catch (JSException exception)
+        {
+            Logger.LogError(exception, "Erreur JS lors de l'export PDF (Finanzen). UserId={UserId}, SchoolId={SchoolId}", currentUserId, aktiveSchulID);
+            errorMessage = "Export PDF indisponible. Recharge la page puis réessaie.";
+        }
+    }
 
     // -------------------- Formularmodelle --------------------
 

@@ -21,6 +21,7 @@ public partial class StudentExams
     private NavigationManager Navigation { get; set; } = default!;
 
     private IReadOnlyList<ExamListItem>? exams;
+    private bool hasPaidHalloAppAbo;
 
     protected override async Task OnInitializedAsync()
     {
@@ -35,6 +36,7 @@ public partial class StudentExams
             }
 
             var dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
+            hasPaidHalloAppAbo = dashboard?.HasPaidHalloAppAbo == true;
             exams = await ExamService.GetExamsForStudentAsync(userId, dashboard?.CurrentLevelCode, ComponentToken);
         }
         catch (Exception ex) when (IstAbbruch(ex))

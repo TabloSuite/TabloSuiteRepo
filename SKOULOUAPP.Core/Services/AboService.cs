@@ -28,6 +28,33 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             .Select(x => (decimal?)x.GlobalSubscriptionPrice)
             .FirstOrDefaultAsync(cancellationToken)
         ?? HalloAppKonstanten.StandardPreisAbo;
+    private async Task<Guid> ResolveErfasserUserIdAsync(
+        Guid erfasstVonUserId,
+        Guid schoolId,
+        Guid fallbackUserId,
+        CancellationToken cancellationToken)
+    {
+        if (erfasstVonUserId != Guid.Empty)
+        {
+            return erfasstVonUserId;
+        }
+
+        if (schoolId != Guid.Empty)
+        {
+            var schulErfasserUserId = await dbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.SchoolId == schoolId && link.CanManageStudents)
+                .Select(link => link.AppUserId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (schulErfasserUserId != Guid.Empty)
+            {
+                return schulErfasserUserId;
+            }
+        }
+
+        return fallbackUserId;
+    }
 
     /// <summary>
     /// Legt einmalig ein Abo für ein Niveau fest oder führt ausschließlich ein
@@ -171,7 +198,12 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
 
         if (!warVorherBezahlt)
         {
-            var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVonUserId, cancellationToken);
+            var erfasserUserId = await ResolveErfasserUserIdAsync(
+                erfasstVonUserId,
+                profil.SchoolId,
+                studentId,
+                cancellationToken);
+            var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
             if (!financeOk)
             {
                 return (false, financeError);
@@ -210,7 +242,16 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         enrollment.GeaendertAmUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVonUserId, cancellationToken);
+        var schoolId = await dbContext.StudentProfiles
+            .Where(profile => profile.AppUserId == studentId)
+            .Select(profile => profile.SchoolId)
+            .FirstOrDefaultAsync(cancellationToken);
+        var erfasserUserId = await ResolveErfasserUserIdAsync(
+            erfasstVonUserId,
+            schoolId,
+            studentId,
+            cancellationToken);
+        var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
         if (!financeOk)
         {
             return (false, financeError);

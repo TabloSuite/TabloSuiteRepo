@@ -249,11 +249,15 @@ public partial class SchulLeiter
 
     private int ArchiveSelectedCount => archiveSelectedStudentIds.Count;
 
+    private IReadOnlyList<StudentApprovalItem> ArchivableFilteredStudents => FilteredStudents
+        .Where(IsStudentArchivable)
+        .ToList();
+
     private bool CanArchiveSelectedStudents => archiveSelectedStudentIds.Count > 0
         && !isDatabaseActionInProgress;
 
-    private bool AreAllFilteredStudentsSelectedForArchive => FilteredStudents.Count > 0
-        && FilteredStudents.All(student => archiveSelectedStudentIds.Contains(student.UserId));
+    private bool AreAllFilteredStudentsSelectedForArchive => ArchivableFilteredStudents.Count > 0
+        && ArchivableFilteredStudents.All(student => archiveSelectedStudentIds.Contains(student.UserId));
 
     private bool CanSubmitReassign => reassignTargetKlasseId.HasValue
         && reassignSelectedStudentIds.Count > 0
@@ -322,8 +326,27 @@ public partial class SchulLeiter
         .. userFormKlassen
             .OrderBy(klasse => klasse.Code)
             .ThenBy(klasse => klasse.Title)
-            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, $"{klasse.Code} · {klasse.Title}"))
+            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, BuildUserCurrentClassLabel(klasse)))
     ];
+
+    private static string BuildUserCurrentClassLabel(CourseFormModel klasse)
+    {
+        var code = klasse.Code?.Trim() ?? string.Empty;
+        var title = klasse.Title?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return title;
+        }
+
+        if (string.IsNullOrWhiteSpace(title)
+            || string.Equals(code, title, StringComparison.OrdinalIgnoreCase))
+        {
+            return code;
+        }
+
+        return $"{code} · {title}";
+    }
 
     private IReadOnlyList<LehrerNiveauZuordnungItem> UserFormTeacherClassOptionsForSelectedSchools =>
         userFormTeacherClassOptions
@@ -430,7 +453,7 @@ public partial class SchulLeiter
 
     private async Task OpenNewStudentForKlasseAsync(CourseFormModel klasse)
     {
-        OpenNewUserModal();
+        await OpenNewUserModalAsync();
         userForm.RoleName = Rollen.Schueler;
 
         if (SelectedKlasseSchoolId is Guid schoolId)
@@ -470,8 +493,18 @@ public partial class SchulLeiter
     private bool IsStudentSelectedForArchive(Guid studentId)
         => archiveSelectedStudentIds.Contains(studentId);
 
+    private static bool IsStudentArchivable(StudentApprovalItem student)
+        => !student.CurrentKlasseId.HasValue;
+
     private Task ToggleArchiveStudentAsync(Guid studentId, bool selected)
     {
+        var student = students.FirstOrDefault(item => item.UserId == studentId);
+        if (student is null || !IsStudentArchivable(student))
+        {
+            archiveSelectedStudentIds.Remove(studentId);
+            return Task.CompletedTask;
+        }
+
         if (selected)
         {
             archiveSelectedStudentIds.Add(studentId);
@@ -488,7 +521,7 @@ public partial class SchulLeiter
     {
         if (selected)
         {
-            foreach (var studentId in FilteredStudents.Select(student => student.UserId))
+            foreach (var studentId in ArchivableFilteredStudents.Select(student => student.UserId))
             {
                 archiveSelectedStudentIds.Add(studentId);
             }
@@ -506,7 +539,7 @@ public partial class SchulLeiter
     private async Task ArchiveSelectedStudentsCoreAsync()
     {
         var selectedIds = archiveSelectedStudentIds
-            .Where(studentId => FilteredStudents.Any(student => student.UserId == studentId))
+            .Where(studentId => ArchivableFilteredStudents.Any(student => student.UserId == studentId))
             .Distinct()
             .ToList();
 
@@ -739,6 +772,7 @@ public partial class SchulLeiter
     private UserFormModel userForm = new();
     private string? userStatusMessage;
     private string? userErrorMessage;
+    private bool isStudentPersonalEditMode;
     private SchoolUserImportPreviewResult? teacherImportPreview;
     private SchoolUserImportPreviewResult? studentImportPreview;
     private string? teacherImportCsv;
@@ -803,7 +837,10 @@ public partial class SchulLeiter
         }
     }
 
-    private string userModalTitle => userForm.UserId.HasValue ? "Modifier l'utilisateur" : "Nouvel utilisateur";
+    private string userModalTitle
+        => isStudentPersonalEditMode
+            ? "Modifier les données personnelles"
+            : userForm.UserId.HasValue ? "Modifier l'utilisateur" : "Nouvel utilisateur";
 
     protected override async Task OnInitializedAsync()
     {
@@ -902,7 +939,7 @@ public partial class SchulLeiter
             currentUserId = userId;
             schools = await DashboardService.GetSchoolLeaderSchoolsAsync(userId, token);
             students = await DashboardService.GetSchoolLeaderStudentsAsync(userId, token);
-            archiveSelectedStudentIds.IntersectWith(students.Select(student => student.UserId).ToHashSet());
+            archiveSelectedStudentIds.IntersectWith(students.Where(IsStudentArchivable).Select(student => student.UserId).ToHashSet());
             schoolUsers = await DashboardService.GetSchoolUsersAsync(userId, token);
             sharedTeacherContent = canViewSharedTeacherContent
                 ? await LessonService.GetSharedContentForSchoolLeaderAsync(userId, token)
@@ -1251,13 +1288,25 @@ public partial class SchulLeiter
         }
     }
 
-    private void OpenNewUserModal()
+    private async Task OpenNewUserModalAsync()
     {
+        isStudentPersonalEditMode = false;
         userForm = new UserFormModel
         {
             RoleName = AllowedSchoolUserRoles.FirstOrDefault() ?? Rollen.Schueler,
             SchoolIds = []
         };
+
+        if (schools.Count == 1)
+        {
+            userForm.SchoolIds = [schools[0].SchoolId];
+            await LoadUserFormKlassenAsync();
+        }
+        else
+        {
+            userFormKlassen = [];
+        }
+
         teacherClassReferenceFilter = null;
         userStatusMessage = null;
         userErrorMessage = null;
@@ -1354,6 +1403,7 @@ public partial class SchulLeiter
             return;
         }
 
+        isStudentPersonalEditMode = model.RoleName == Rollen.Schueler;
         userForm = model;
         teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
@@ -1364,11 +1414,36 @@ public partial class SchulLeiter
         userModalOpen = true;
     }
 
+    private async Task OpenEditStudentPersonalAsync(Guid studentId)
+    {
+        var model = await DashboardService.GetSchoolUserForEditAsync(currentUserId, studentId, ComponentToken);
+        if (model is null)
+        {
+            userErrorMessage = "Impossible de charger l'élève.";
+            return;
+        }
+
+        if (model.RoleName != Rollen.Schueler)
+        {
+            userErrorMessage = "Seules les données personnelles d'un élève peuvent être modifiées ici.";
+            return;
+        }
+
+        isStudentPersonalEditMode = true;
+        userForm = model;
+        teacherClassReferenceFilter = null;
+        await LoadUserFormKlassenAsync();
+        userStatusMessage = null;
+        userErrorMessage = null;
+        userModalOpen = true;
+    }
+
     private void OnUserModalOpenChanged(bool open)
     {
         userModalOpen = open;
         if (!open)
         {
+            isStudentPersonalEditMode = false;
             userForm = new UserFormModel();
             userFormKlassen = [];
             userFormTeacherClassOptions = [];
@@ -1442,7 +1517,49 @@ public partial class SchulLeiter
         var email = userForm.Email?.Trim() ?? string.Empty;
         var vorname = userForm.Vorname?.Trim() ?? string.Empty;
 
-        var result = await DashboardService.SaveSchoolUserAsync(currentUserId, userForm);
+        var modelToSave = userForm;
+        if (isStudentPersonalEditMode)
+        {
+            if (!userForm.UserId.HasValue)
+            {
+                userErrorMessage = "La modification des données personnelles nécessite un élève existant.";
+                return;
+            }
+
+            var existing = await DashboardService.GetSchoolUserForEditAsync(currentUserId, userForm.UserId.Value, ComponentToken);
+            if (existing is null || existing.RoleName != Rollen.Schueler)
+            {
+                userErrorMessage = "Cet élève n'est plus accessible pour modification.";
+                return;
+            }
+
+            modelToSave = new UserFormModel
+            {
+                UserId = existing.UserId,
+                Vorname = userForm.Vorname,
+                Nachname = userForm.Nachname,
+                Email = userForm.Email,
+                TelefonNummer = userForm.TelefonNummer,
+                ElternTelefonNummer = userForm.ElternTelefonNummer,
+                ElternEmail = userForm.ElternEmail,
+                RoleName = existing.RoleName,
+                IsBlocked = existing.IsBlocked,
+                IsSelfRegistered = existing.IsSelfRegistered,
+                SchoolIds = existing.SchoolIds.ToList(),
+                FachIds = existing.FachIds.ToList(),
+                CurrentKlasseId = existing.CurrentKlasseId,
+                TeacherClassAssignments = existing.TeacherClassAssignments
+                    .Select(assignment => new TeacherClassAssignmentFormModel
+                    {
+                        SchoolId = assignment.SchoolId,
+                        KlasseId = assignment.KlasseId,
+                        Wochenstunden = assignment.Wochenstunden
+                    })
+                    .ToList()
+            };
+        }
+
+        var result = await DashboardService.SaveSchoolUserAsync(currentUserId, modelToSave, ComponentToken);
         if (!result.Succeeded)
         {
             userErrorMessage = result.Message;
@@ -1458,6 +1575,7 @@ public partial class SchulLeiter
 
         userStatusMessage = result.Message;
         userModalOpen = false;
+        isStudentPersonalEditMode = false;
         userForm = new UserFormModel();
         await LoadAsync();
     }
@@ -1639,6 +1757,7 @@ public partial class SchulLeiter
     private string? klasseStatusMessage;
     private string? klasseErrorMessage;
     private string? klasseWarnMessage;
+    private bool autoAssignConfirmOpen;
 
     private bool durchlaufStartModalOpen;
     private CourseFormModel? startKlasse;
@@ -1677,6 +1796,22 @@ public partial class SchulLeiter
         .Where(klasse => !klassenStufeFilterId.HasValue
                          || klasse.KlassenStufeId == klassenStufeFilterId)
         .ToList();
+
+    private CourseFormModel? ExistingKlasseFromForm
+        => klasseForm.CourseId is Guid klasseId
+            ? schoolKlassen.FirstOrDefault(klasse => klasse.CourseId == klasseId)
+            : null;
+
+    private bool IsAktiverCycleForKlasseForm
+        => ExistingKlasseFromForm?.CourseId is Guid klasseId
+            && durchlaeufeNachKlasse.TryGetValue(klasseId, out var durchlauf)
+            && durchlauf.IstAktiv;
+
+    private bool IsAutoAssignActivationPendingConfirmation
+        => ExistingKlasseFromForm is not null
+            && !ExistingKlasseFromForm.AutoAssignHalloAppAboOnCycleStart
+            && klasseForm.AutoAssignHalloAppAboOnCycleStart
+            && IsAktiverCycleForKlasseForm;
 
     private static string GetKlassenAnzeige(CourseFormModel klasse)
         => string.IsNullOrWhiteSpace(klasse.ReferenceName)
@@ -1882,6 +2017,7 @@ public partial class SchulLeiter
             MaxPlaetze = null,
             AutoAssignHalloAppAboOnCycleStart = false
         };
+        autoAssignConfirmOpen = false;
         klasseStatusMessage = null;
         klasseErrorMessage = null;
         klasseWarnMessage = null;
@@ -1919,8 +2055,10 @@ public partial class SchulLeiter
             CurrentStudentCount = klasse.CurrentStudentCount,
             SchoolId = klasse.SchoolId,
             IstSystemNiveau = klasse.IstSystemNiveau,
-            AutoAssignHalloAppAboOnCycleStart = klasse.AutoAssignHalloAppAboOnCycleStart
+            AutoAssignHalloAppAboOnCycleStart = klasse.AutoAssignHalloAppAboOnCycleStart,
+            ConfirmAutoAssignActivationForActiveCycle = false
         };
+        autoAssignConfirmOpen = false;
         klasseStatusMessage = null;
         klasseErrorMessage = null;
         klasseWarnMessage = null;
@@ -1932,9 +2070,26 @@ public partial class SchulLeiter
         klasseModalOpen = open;
         if (!open)
         {
+            autoAssignConfirmOpen = false;
             klasseForm = new CourseFormModel();
         }
     }
+
+    private void OnAutoAssignConfirmOpenChanged(bool open)
+    {
+        autoAssignConfirmOpen = open;
+        if (!open)
+        {
+            klasseForm.ConfirmAutoAssignActivationForActiveCycle = false;
+        }
+    }
+
+    private Task ConfirmAutoAssignActivationAsync() => RunDatabaseActionAsync(async () =>
+    {
+        autoAssignConfirmOpen = false;
+        klasseForm.ConfirmAutoAssignActivationForActiveCycle = true;
+        await SaveKlasseCoreAsync();
+    });
 
     private Task SaveKlasseAsync() => RunDatabaseActionAsync(SaveKlasseCoreAsync);
 
@@ -1950,9 +2105,16 @@ public partial class SchulLeiter
             return;
         }
 
+        if (IsAutoAssignActivationPendingConfirmation && !klasseForm.ConfirmAutoAssignActivationForActiveCycle)
+        {
+            autoAssignConfirmOpen = true;
+            return;
+        }
+
         var result = await DashboardService.SaveSchoolKlasseForSchoolLeaderAsync(currentUserId, schoolId, klasseForm, ComponentToken);
         if (!result.Succeeded)
         {
+            klasseForm.ConfirmAutoAssignActivationForActiveCycle = false;
             klasseErrorMessage = result.Message;
             return;
         }
@@ -1965,8 +2127,9 @@ public partial class SchulLeiter
             klasseWarnMessage = "Référence incohérente : vérifie la correspondance entre nom de référence et classe (ex. CP1 ↔ CP1A/CP1B).";
         }
         klasseModalOpen = false;
+        autoAssignConfirmOpen = false;
         klasseForm = new CourseFormModel();
-        await LoadSchoolKlassenAsync();
+        await LoadAsync();
     }
 
     private async Task OpenDurchlaufStartModalAsync(CourseFormModel klasse)

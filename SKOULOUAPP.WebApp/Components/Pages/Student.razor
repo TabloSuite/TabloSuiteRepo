@@ -53,17 +53,7 @@ else
             </div>
             <div class="student-dashboard-actions mt-6 flex flex-wrap items-center gap-3">
                     <a class="student-dashboard-action student-dashboard-action-primary inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-center text-sm font-semibold text-indigo-700 no-underline transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" href="/student/lessons">Leçons & exercices</a>
-                    @if (dashboard.CanTakeFinalExam)
-                    {
-                        <a class="student-dashboard-action student-dashboard-action-secondary inline-flex items-center justify-center rounded-full border border-white/30 px-4 py-2 text-center text-sm font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-white/10" href="/student/exams">Examens assignés</a>
-                    }
-                    else
-                    {
-                        <span class="student-dashboard-action student-dashboard-action-locked inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-center text-sm font-semibold text-white/50" title="Termine toutes les leçons et exercices de ta classe pour débloquer l'épreuve finale.">
-                            <span aria-hidden="true">🔒</span>
-                            Examens assignés
-                        </span>
-                    }
+                    <a class="student-dashboard-action student-dashboard-action-secondary inline-flex items-center justify-center rounded-full border border-white/30 px-4 py-2 text-center text-sm font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-white/10" href="/student/exams">Examens assignés</a>
             </div>
             </div>
         </div>
@@ -183,7 +173,7 @@ else
                 </div>
                 <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
                     <h3 class="font-semibold text-slate-900">3. Réussir l'épreuve</h3>
-                    <p class="mt-2 text-sm text-slate-600">Après plusieurs leçons, tu peux commencer l'épreuve finale.</p>
+                    <p class="mt-2 text-sm text-slate-600">Dès qu'un enseignant t'assigne une épreuve pendant le cycle actif, tu peux la passer quand tu veux.</p>
                 </div>
             </div>
         </div>

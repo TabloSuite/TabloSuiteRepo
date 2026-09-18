@@ -80,11 +80,8 @@
     <script src="@Assets["js/tts.js"]"></script>
     <script src="@Assets["js/studentExerciseFeedback.js"]"></script>
     <script src="@Assets["js/audioTest.js"]"></script>
+    <script src="@Assets["js/print.js"]"></script>
     <script>
-        window.SKOULOUAPPPrint = {
-            open: () => window.setTimeout(() => window.print(), 0)
-        };
-
         window.SKOULOUAPPFormulas = {
             render: () => document.querySelectorAll('.ql-formula[data-value]').forEach(element => {
                 if (element.dataset.formulaRendered === 'true' || typeof katex === 'undefined') return;

@@ -20,20 +20,19 @@ public class ExamService(IHalloAppDbContext dbContext)
         string? levelCode = null,
         CancellationToken cancellationToken = default)
     {
-        var klasseId = await dbContext.StudentProfiles
+        var studentProfile = await dbContext.StudentProfiles
             .AsNoTracking()
             .Where(x => x.AppUserId == studentId)
-            .Select(x => x.CurrentKlasseId)
+            .Select(x => new { x.CurrentKlasseId, x.SchoolId })
             .FirstOrDefaultAsync(cancellationToken);
-        if (!klasseId.HasValue)
+
+        if (studentProfile?.CurrentKlasseId is not Guid klasseId)
         {
             return [];
         }
 
-        var hasActiveSubscription = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .AnyAsync(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked, cancellationToken);
-        if (!hasActiveSubscription)
+        var hasActiveCycle = await HasActiveClassCycleAsync(studentProfile.SchoolId, klasseId, cancellationToken);
+        if (!hasActiveCycle)
         {
             return [];
         }
@@ -42,7 +41,7 @@ public class ExamService(IHalloAppDbContext dbContext)
             .AsNoTracking()
             .Include(x => x.Klasse)
             .Include(x => x.Questions)
-            .Where(x => x.KlasseId == klasseId.Value && x.IsPublishedToStudents)
+            .Where(x => x.KlasseId == klasseId && x.IsPublishedToStudents)
             .AsQueryable();
 
         var exams = await query
@@ -94,14 +93,17 @@ public class ExamService(IHalloAppDbContext dbContext)
             return null;
         }
 
-        var isAssignedToCurrentClass = await dbContext.StudentProfiles
+        var studentProfile = await dbContext.StudentProfiles
             .AsNoTracking()
-            .AnyAsync(x => x.AppUserId == studentId
-                && x.CurrentKlasseId == exam.KlasseId, cancellationToken);
-        var hasActiveSubscription = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .AnyAsync(enrollment => enrollment.StudentId == studentId && enrollment.KlasseId == exam.KlasseId && enrollment.IsUnlocked, cancellationToken);
-        if (!exam.IsPublishedToStudents || !isAssignedToCurrentClass || !hasActiveSubscription)
+            .Where(x => x.AppUserId == studentId)
+            .Select(x => new { x.CurrentKlasseId, x.SchoolId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var isAssignedToCurrentClass = studentProfile?.CurrentKlasseId == exam.KlasseId;
+        var hasActiveCycle = isAssignedToCurrentClass
+            && studentProfile is not null
+            && await HasActiveClassCycleAsync(studentProfile.SchoolId, exam.KlasseId, cancellationToken);
+        if (!exam.IsPublishedToStudents || !isAssignedToCurrentClass || !hasActiveCycle)
         {
             return null;
         }
@@ -155,6 +157,16 @@ public class ExamService(IHalloAppDbContext dbContext)
                 .ToList()
         };
     }
+
+    private Task<bool> HasActiveClassCycleAsync(Guid schoolId, Guid klasseId, CancellationToken cancellationToken)
+        => dbContext.KursNiveauDurchlaeufe
+            .AsNoTracking()
+            .AnyAsync(
+                durchlauf => durchlauf.SchulID == schoolId
+                    && durchlauf.KlasseId == klasseId
+                    && durchlauf.EndDatum == null
+                    && durchlauf.StartDatum <= DateTime.UtcNow,
+                cancellationToken);
 
     public async Task<ExamResult> SubmitExamAsync(
         Guid attemptId,

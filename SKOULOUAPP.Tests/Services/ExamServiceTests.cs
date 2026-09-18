@@ -45,6 +45,16 @@ public class ExamServiceTests
             IsPublishedToStudents = true
         };
 
+        db.KursNiveauDurchlaeufe.Add(new KursNiveauDurchlauf
+        {
+            Id = Guid.NewGuid(),
+            SchulID = school.Id,
+            KlasseId = level.Id,
+            NiveauPreis = 7500,
+            StartDatum = DateTime.UtcNow.AddDays(-1),
+            ErstelltVonUserID = Guid.NewGuid()
+        });
+
         db.Exams.Add(exam);
         await db.SaveChangesAsync();
 
@@ -87,6 +97,82 @@ public class ExamServiceTests
 
         // Assert
         Assert.Null(session);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_AktiverCycleOhneFreischaltung_LiefertSession()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var service = new ExamService(db);
+        var studentId = Guid.NewGuid();
+
+        var schoolId = db.Klassen.Where(x => x.Id == exam.KlasseId).Select(x => x.SchoolId).Single()!.Value;
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentLevelCode = "A1.1",
+            CurrentKlasseId = exam.KlasseId
+        });
+        await db.SaveChangesAsync();
+
+        var session = await service.StartExamAsync(exam.Id, studentId);
+
+        Assert.NotNull(session);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_OhneAktivenCycle_LiefertNull()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var service = new ExamService(db);
+        var studentId = Guid.NewGuid();
+
+        var schoolId = db.Klassen.Where(x => x.Id == exam.KlasseId).Select(x => x.SchoolId).Single()!.Value;
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentLevelCode = "A1.1",
+            CurrentKlasseId = exam.KlasseId
+        });
+
+        var durchlauf = db.KursNiveauDurchlaeufe.Single(x => x.KlasseId == exam.KlasseId);
+        durchlauf.EndDatum = DateTime.UtcNow.AddHours(-1);
+        await db.SaveChangesAsync();
+
+        var session = await service.StartExamAsync(exam.Id, studentId);
+
+        Assert.Null(session);
+    }
+
+    [Fact]
+    public async Task GetExamsForStudentAsync_AktiverCycleOhneFreischaltung_LiefertExamen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var service = new ExamService(db);
+        var studentId = Guid.NewGuid();
+
+        var schoolId = db.Klassen.Where(x => x.Id == exam.KlasseId).Select(x => x.SchoolId).Single()!.Value;
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentLevelCode = "A1.1",
+            CurrentKlasseId = exam.KlasseId
+        });
+        await db.SaveChangesAsync();
+
+        var exams = await service.GetExamsForStudentAsync(studentId, "A1.1");
+
+        var examItem = Assert.Single(exams);
+        Assert.Equal(exam.Id, examItem.ExamId);
     }
 
     [Fact]
@@ -378,6 +464,16 @@ public class ExamServiceTests
             IsPublishedToStudents = true
         };
 
+        db.KursNiveauDurchlaeufe.Add(new KursNiveauDurchlauf
+        {
+            Id = Guid.NewGuid(),
+            SchulID = school.Id,
+            KlasseId = level.Id,
+            NiveauPreis = 7500,
+            StartDatum = DateTime.UtcNow.AddDays(-1),
+            ErstelltVonUserID = Guid.NewGuid()
+        });
+
         db.Exams.Add(exam);
         await db.SaveChangesAsync();
 
@@ -423,7 +519,8 @@ public class ExamServiceTests
         var (exam, richtig) = await SeedExamAsync(db);
         var service = new ExamService(db);
         var studentId = Guid.NewGuid();
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = studentId, SchoolId = Guid.NewGuid(), CurrentLevelCode = "A1.1", CurrentKlasseId = exam.KlasseId });
+        var schoolId = db.Klassen.Where(x => x.Id == exam.KlasseId).Select(x => x.SchoolId).Single()!.Value;
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = studentId, SchoolId = schoolId, CurrentLevelCode = "A1.1", CurrentKlasseId = exam.KlasseId });
         db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = exam.KlasseId, IsUnlocked = true });
         db.SaveChanges();
 

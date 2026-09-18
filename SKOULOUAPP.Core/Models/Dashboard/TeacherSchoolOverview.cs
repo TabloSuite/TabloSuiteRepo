@@ -10,5 +10,7 @@ public class TeacherSchoolOverview
     public int BlockedStudentCount { get; set; }
     public int TeacherCount { get; set; }
     public decimal EffectiveSubscriptionPrice { get; set; }
+    public decimal SchoolLeaderCommissionPercent { get; set; }
+    public decimal TeacherCommissionPercent { get; set; }
 
 }

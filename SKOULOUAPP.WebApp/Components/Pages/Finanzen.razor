@@ -16,20 +16,48 @@
                 <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Journal opérationnel</p>
                 <h1 class="mt-2 text-2xl font-black">Journal des écritures réelles</h1>
                 <p class="mt-2 text-sm text-slate-600">@AktiveSchuleName · @BerichtZeitraumLabel · @BerichtTypLabel</p>
-                <div class="mt-5 grid grid-cols-3 gap-3 border-y border-slate-200 py-4 text-sm">
-                    <div><span class="text-slate-500">Entrées</span><p class="font-black text-emerald-700">@EchteBuchungenEntrees.ToString("N0") FCFA</p></div>
-                    <div><span class="text-slate-500">Sorties</span><p class="font-black text-rose-700">@ZeitraumSortiesAnzeige.ToString("N0") FCFA</p></div>
-                    <div><span class="text-slate-500">Solde</span><p class="font-black text-indigo-700">@ZeitraumSaldoAnzeige.ToString("N0") FCFA</p></div>
-                </div>
-                <p class="mt-2 text-xs text-slate-500">Mode de calcul: @ZeitraumOptionLabel</p>
-                @if (includeSkoulouAppSharesInPeriodSummary)
-                {
-                    <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
-                        <div class="rounded-xl bg-slate-50 px-3 py-2"><span class="text-slate-500">Part direction</span><p class="font-bold text-slate-900">@CommissionSchulleiter.ToString("N0") FCFA</p></div>
-                        <div class="rounded-xl bg-slate-50 px-3 py-2"><span class="text-slate-500">Part enseignants</span><p class="font-bold text-slate-900">@CommissionLehrer.ToString("N0") FCFA</p></div>
+                <div class="mt-5 space-y-2 border-y border-slate-200 py-4 text-sm">
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Entrées période</span>
+                        <span class="text-right text-base font-bold text-emerald-700">@EchteBuchungenEntrees.ToString("N0") FCFA</span>
                     </div>
-                }
-                <table class="mt-5 min-w-full text-left text-sm"><thead><tr class="border-b border-slate-300 text-xs uppercase text-slate-500"><th class="px-3 py-2">Date</th><th class="px-3 py-2">Catégorie</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Montant</th><th class="px-3 py-2">Saisi par</th></tr></thead><tbody>@foreach (var z in EchteSchulBuchungen) { <tr class="border-b border-slate-100"><td class="px-3 py-2">@z.Wirkungsdatum.ToString("dd.MM.yyyy")</td><td class="px-3 py-2 font-semibold">@GetKategorieLabel(z)</td><td class="px-3 py-2">@(z.Richtung == FinanzRichtung.Einnahme ? "Recette" : "Dépense")</td><td class="px-3 py-2 text-right font-bold">@(z.Richtung == FinanzRichtung.Einnahme ? "+" : "−")@z.Betrag.ToString("N0")</td><td class="px-3 py-2">@z.ErfasstVon</td></tr>}</tbody></table>
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Entrées SKOULOUAPP</span>
+                        <span class="text-right text-base font-bold text-emerald-700">@HalloAppAboTotal.ToString("N0") FCFA</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Sorties période</span>
+                        <span class="text-right text-base font-bold text-rose-700">@ZeitraumSortiesBasis.ToString("N0") FCFA</span>
+                    </div>
+                </div>
+                <div class="border-b border-dashed border-slate-300 py-3">
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-xl font-extrabold text-slate-900">Sous-total avant part SKOULOUAPP</span>
+                        <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSoldeAvantPartSkoulou.ToString("N0") FCFA</span>
+                    </div>
+                </div>
+                <div class="space-y-2 py-3 text-sm">
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Part direction</span>
+                        <span class="text-right font-semibold text-slate-900">@CommissionSchulleiter.ToString("N0") FCFA</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Part enseignants</span>
+                        <span class="text-right font-semibold text-slate-900">@CommissionLehrer.ToString("N0") FCFA</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-slate-600">Part SKOULOUAPP</span>
+                        <span class="text-right text-base font-bold text-rose-700">- @SkoulouAboAnteilFuerSaldo.ToString("N0") FCFA</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Calcul: @HalloAppAboTotal.ToString("N0") FCFA - (@CommissionSchulleiter.ToString("N0") FCFA + @CommissionLehrer.ToString("N0") FCFA)</p>
+                </div>
+                <div class="border-t border-dashed border-slate-300 pt-3">
+                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                        <span class="text-2xl font-extrabold text-slate-900">Solde final</span>
+                        <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSaldoAnzeige.ToString("N0") FCFA</span>
+                    </div>
+                </div>
+                <table class="mt-5 min-w-full text-left text-sm"><thead><tr class="border-b border-slate-300 text-xs uppercase text-slate-500"><th class="px-3 py-2">Date</th><th class="px-3 py-2">Catégorie</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Montant</th></tr></thead><tbody>@foreach (var z in EchteSchulBuchungen) { <tr class="border-b border-slate-100"><td class="px-3 py-2">@z.Wirkungsdatum.ToString("dd.MM.yyyy")</td><td class="px-3 py-2 font-semibold">@GetKategorieLabel(z)</td><td class="px-3 py-2 font-semibold @(z.Richtung == FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(z.Richtung == FinanzRichtung.Einnahme ? "Recette" : "Dépense")</td><td class="px-3 py-2 text-right font-bold @(z.Richtung == FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(z.Richtung == FinanzRichtung.Einnahme ? "+" : "−")@z.Betrag.ToString("N0")</td></tr>}</tbody></table>
             </div>
         </div>
     }
@@ -43,7 +71,13 @@
         </div>
     </div>
 
-    @if (schulen.Count == 0)
+    @if (!schulenGeladen)
+    {
+        <div class="rounded-[2rem] bg-white px-6 py-5 text-slate-700 ring-1 ring-slate-100">
+            <p class="text-sm font-semibold">Chargement des écoles...</p>
+        </div>
+    }
+    else if (schulen.Count == 0)
     {
         <div class="rounded-[2rem] bg-amber-50 px-6 py-5 text-amber-800 ring-1 ring-amber-100">
             <h2 class="text-lg font-black text-amber-950">Aucune école disponible</h2>
@@ -86,16 +120,41 @@
                             <div class="bg-gradient-to-r from-cyan-700 via-blue-800 to-indigo-900 p-6">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="text-xs font-bold uppercase tracking-[0.18em] text-cyan-100">Trésorerie actuelle · @AktiveSchuleName</p>
-                                    <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-cyan-100">Indépendante des filtres</span>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-cyan-100">Indépendante des filtres</span>
+                                        <span class="rounded-full px-3 py-1 text-xs font-bold ring-1 @SoldeEtatBadgeClass(direktorKontostand.WirklicherKontostandNachAboVerteilung)">@SoldeEtatLabel(direktorKontostand.WirklicherKontostandNachAboVerteilung)</span>
+                                    </div>
                                 </div>
                                 <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
                                     <div>
-                                        <h2 class="text-2xl font-black">Solde avant versement des parts SKOULOUAPP</h2>
-                                        <p class="mt-2 max-w-xl text-sm leading-6 text-cyan-100">Toutes les écritures de l'école et les abonnements SKOULOUAPP encaissés, avant le versement des différentes parts.</p>
+                                        <h2 class="text-2xl font-black sm:text-3xl">Solde provisoire avant règlement SKOULOUAPP</h2>
+                                        <p class="mt-2 text-sm font-semibold text-cyan-50 sm:hidden">Montant total avant déduction de la part SKOULOUAPP.</p>
+                                        <p class="mt-2 hidden max-w-xl text-sm leading-6 text-cyan-100 sm:block">Ce montant inclut toutes les recettes et dépenses de l'école avant le règlement de la part SKOULOUAPP.</p>
                                     </div>
-                                    <div class="rounded-2xl bg-white px-5 py-4 text-right text-slate-950 shadow-xl print:border print:border-slate-200">
-                                        <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Solde provisoire avant répartition</p>
-                                        <p class="mt-1 text-4xl font-black @SoldeFarbe(direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen)">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
+                                    <div class="w-full rounded-2xl bg-white px-5 py-4 text-left text-slate-950 shadow-xl sm:w-auto sm:text-right print:border print:border-slate-200">
+                                        <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Avant règlement SKOULOUAPP</p>
+                                        <p class="mt-1 text-4xl font-black tabular-nums sm:text-5xl @SoldeFarbe(direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen)">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
+                                        <p class="mt-1 text-xs font-semibold text-slate-500">Après règlement SKOULOUAPP (prévision): @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                                    <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Avant règlement SKOULOUAPP</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOUAPP à régler</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-rose-300">@direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Parts gardées par l'école</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@((direktorKontostand.SchulleiterAboAnteil + direktorKontostand.LehrerAboAnteil).ToString("N0")) FCFA</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Paiements de scolarité en attente</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-cyan-100">@direktorKontostand.OffeneSchulgebuehrenAktiveKlassen.ToString("N0") FCFA</p>
+                                        <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 @PaiementsAttenteBadgeClass">@PaiementsAttenteEtatLabel</span>
                                     </div>
                                 </div>
                             </div>
@@ -124,11 +183,11 @@
                                         <div class="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-semibold text-cyan-100">Montant encaissé pour le compte de SKOULOUAPP</div>
                                     </div>
                                     <div class="mt-4 grid gap-2 sm:grid-cols-3">
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part direction à réserver</p><p class="mt-1 font-black text-white">− @direktorKontostand.SchulleiterAboAnteil.ToString("N0") FCFA</p></div>
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part enseignants</p><p class="mt-1 font-black text-white">− @direktorKontostand.LehrerAboAnteil.ToString("N0") FCFA</p></div>
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP</p><p class="mt-1 font-black text-white">− @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part direction (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.SchulleiterAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part enseignants (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.LehrerAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP à régler</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p></div>
                                     </div>
-                                    <p class="mt-3 text-xs leading-5 text-cyan-100">Seule la part SKOULOUAPP est déduite du solde affiché ci-dessous. Les parts direction et enseignants restent gérées par l'école.</p>
+                                    <p class="mt-3 text-xs leading-5 text-cyan-100">Calcul appliqué: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA − @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA = @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA.</p>
                                 </div>
                             </div>
 
@@ -137,7 +196,10 @@
                                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">Paiements encore attendus · tous les cycles actifs</p>
                                     <p class="mt-1 text-sm text-slate-300">Montant que les familles doivent encore régler. Il n'est pas inclus dans le solde actuel ni dans le rapport filtré.</p>
                                 </div>
-                                <p class="text-3xl font-black text-cyan-200">@direktorKontostand.OffeneSchulgebuehrenAktiveKlassen.ToString("N0") FCFA</p>
+                                <div class="text-right">
+                                    <p class="text-3xl font-black text-cyan-200">@direktorKontostand.OffeneSchulgebuehrenAktiveKlassen.ToString("N0") FCFA</p>
+                                    <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 @PaiementsAttenteBadgeClass">@PaiementsAttenteEtatLabel</span>
+                                </div>
                             </div>
                             @if (offeneHalloAppAbrechnungen.Count > 0)
                             {
@@ -154,13 +216,15 @@
                             }
                             <div class="mx-5 mb-5 mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-5 py-4 text-slate-950 shadow-lg ring-1 ring-slate-200 print:border print:border-slate-300">
                                 <div>
-                                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Trésorerie finale de l'école</p>
-                                    <h3 class="mt-1 text-xl font-black">Solde réellement disponible</h3>
-                                    <p class="mt-1 text-sm text-slate-600">Après toutes les recettes, les dépenses et le règlement de la part SKOULOUAPP.</p>
+                                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Récapitulatif du calcul</p>
+                                    <h3 class="mt-1 text-xl font-black">Solde disponible après règlement</h3>
+                                    <p class="mt-1 text-sm text-slate-600">La part direction et la part enseignants restent dans l'école. Seule la part SKOULOUAPP est déduite.</p>
                                     <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
                                         <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOUAPP&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">−</span>
                                         <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP à régler&nbsp;: @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</span>
+                                        <span class="text-lg text-slate-400">=</span>
+                                        <span class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">Solde disponible après règlement&nbsp;: @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</span>
                                     </div>
                                 </div>
                                 <p class="text-4xl font-black @SoldeFarbe(direktorKontostand.WirklicherKontostandNachAboVerteilung)">@direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</p>
@@ -207,53 +271,82 @@
                                     <AsyncActionButton Class="hallo-btn-accent rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm" IsBusy="IsBusy" OnClick="LadeUebersichtAsync">Appliquer</AsyncActionButton>
                                 </div>
                             </div>
-                            <div class="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-white/90 px-3 py-2 ring-1 ring-slate-200">
-                                <InputCheckbox @bind-Value="includeSkoulouAppSharesInPeriodSummary" class="h-4 w-4 rounded border-slate-300" />
-                                <span class="text-xs font-semibold text-slate-700">Inclure les parts SKOULOUAPP (direction + enseignants) dans le solde de période</span>
+                            <div class="mt-4 rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                                Mode de calcul actif: @ZeitraumOptionLabel
                             </div>
                         </div>
-                        <div class="finance-journal-export">
-                        <CollapsibleCard Title="Journal des écritures réelles"
-                                         Subtitle="Entrées et sorties manuelles pour la période sélectionnée (hors SKOULOUAPPABO automatique)"
+                        <div class="finance-journal-export space-y-3">
+                        <CollapsibleCard Title="Synthèse du journal réel"
+                                         Subtitle="Vue de calcul pour la période sélectionnée"
                                          Eyebrow="Journal opérationnel"
                                          Icon="🧾"
                                          Accent="indigo"
-                                          InitiallyExpanded="false">
+                                         InitiallyExpanded="false">
                             <HeaderRight>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <Badge Accent="slate">@EchteSchulBuchungen.Count lignes</Badge>
-                                    <Badge Accent="emerald">Entrées: @EchteBuchungenEntrees.ToString("N0") FCFA</Badge>
-                                    <Badge Accent="rose">Sorties: @EchteBuchungenSorties.ToString("N0") FCFA</Badge>
-                                    <Badge Accent="indigo">Solde: @EchteBuchungenSaldo.ToString("N0") FCFA</Badge>
+                                    <Badge Accent="emerald">Entrées période: @EchteBuchungenEntrees.ToString("N0") FCFA</Badge>
+                                    <Badge Accent="rose">Sorties période: @ZeitraumSortiesBasis.ToString("N0") FCFA</Badge>
+                                    <Badge Accent="indigo">Solde App: @ZeitraumSaldoAnzeige.ToString("N0") FCFA</Badge>
                                 </div>
                             </HeaderRight>
                             <ChildContent>
-                                <div class="max-h-[28rem] overflow-auto rounded-2xl border border-slate-100 print:border-slate-300">
-                                    <div class="grid gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-700">
-                                        <div class="flex flex-wrap items-center justify-between gap-2">
-                                            <span class="font-semibold">Entrées période</span>
-                                            <span class="font-black text-emerald-700">@EchteBuchungenEntrees.ToString("N0") FCFA</span>
+                                <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+                                        <div class="space-y-2 border-y border-slate-200 py-3 text-sm">
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-slate-600">Entrées période</span>
+                                                <span class="text-right text-base font-bold text-emerald-700">@EchteBuchungenEntrees.ToString("N0") FCFA</span>
+                                            </div>
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-slate-600">Entrées SKOULOUAPP</span>
+                                                <span class="text-right text-base font-bold text-emerald-700">@HalloAppAboTotal.ToString("N0") FCFA</span>
+                                            </div>
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-slate-600">Sorties période</span>
+                                                <span class="text-right text-base font-bold text-rose-700">@ZeitraumSortiesBasis.ToString("N0") FCFA</span>
+                                            </div>
                                         </div>
-                                        <div class="flex flex-wrap items-center justify-between gap-2">
-                                            <span class="font-semibold">Sorties période</span>
-                                            <span class="font-black text-rose-700">@ZeitraumSortiesAnzeige.ToString("N0") FCFA</span>
+                                        <div class="border-b border-dashed border-slate-300 py-3">
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-xl font-extrabold text-slate-900">Sous-total avant part SKOULOUAPP</span>
+                                                <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSoldeAvantPartSkoulou.ToString("N0") FCFA</span>
+                                            </div>
                                         </div>
-                                        <div class="flex flex-wrap items-center justify-between gap-2">
-                                            <span class="font-semibold">Solde période</span>
-                                            <span class="font-black text-indigo-700">@ZeitraumSaldoAnzeige.ToString("N0") FCFA</span>
-                                        </div>
-                                        @if (includeSkoulouAppSharesInPeriodSummary)
-                                        {
-                                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="space-y-2 py-3 text-sm">
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
                                                 <span class="text-slate-600">Part direction</span>
-                                                <span class="font-semibold text-slate-800">@CommissionSchulleiter.ToString("N0") FCFA</span>
+                                                <span class="text-right font-semibold text-slate-900">@CommissionSchulleiter.ToString("N0") FCFA</span>
                                             </div>
-                                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
                                                 <span class="text-slate-600">Part enseignants</span>
-                                                <span class="font-semibold text-slate-800">@CommissionLehrer.ToString("N0") FCFA</span>
+                                                <span class="text-right font-semibold text-slate-900">@CommissionLehrer.ToString("N0") FCFA</span>
                                             </div>
-                                        }
-                                    </div>
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-slate-600">Part SKOULOUAPP</span>
+                                                <span class="text-right text-base font-bold text-rose-700">- @SkoulouAboAnteilFuerSaldo.ToString("N0") FCFA</span>
+                                            </div>
+                                            <p class="text-xs text-slate-500">Calcul: @HalloAppAboTotal.ToString("N0") FCFA - (@CommissionSchulleiter.ToString("N0") FCFA + @CommissionLehrer.ToString("N0") FCFA)</p>
+                                        </div>
+                                        <div class="border-t border-dashed border-slate-300 pt-3">
+                                            <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
+                                                <span class="text-2xl font-extrabold text-slate-900">Solde final</span>
+                                                <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSaldoAnzeige.ToString("N0") FCFA</span>
+                                            </div>
+                                        </div>
+                                </div>
+                            </ChildContent>
+                        </CollapsibleCard>
+
+                        <CollapsibleCard Title="Détail des écritures"
+                                         Subtitle="Entrées et sorties manuelles filtrées"
+                                         Eyebrow="Journal opérationnel"
+                                         Icon="📋"
+                                         Accent="indigo"
+                                         InitiallyExpanded="false">
+                            <HeaderRight>
+                                <Badge Accent="slate">@EchteSchulBuchungen.Count lignes</Badge>
+                            </HeaderRight>
+                            <ChildContent>
+                                <div class="max-h-[28rem] overflow-auto rounded-2xl border border-slate-100 print:border-slate-300">
                                     <table class="min-w-full text-left text-sm">
                                         <thead>
                                             <tr class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-xs uppercase text-slate-500 backdrop-blur">
