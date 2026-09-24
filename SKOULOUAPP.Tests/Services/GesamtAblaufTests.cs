@@ -373,7 +373,6 @@ public class GesamtAblaufTests
         Assert.True(studentDashboard.CanTakeFinalExam);
         Assert.Equal(0, studentDashboard.CompletedLessonsCount);
         Assert.True(studentDashboard.CombinedScorePercent >= 60);
-        Assert.True(studentDashboard.XpPoints > 0);
         Assert.Contains(studentDashboard.CourseProgress, x => x.CourseTitle == "CP1A" && x.IsUnlocked);
         Assert.Contains(studentDashboard.CourseProgress, x => x.CourseTitle == "CP2A" && !x.IsCurrentLevel);
 

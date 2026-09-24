@@ -37,20 +37,29 @@ public class StudentDashboardViewModel
     /// <summary>Anzahl der Datenpunkte (versuchte Übungen + Prüfungen) im kombinierten Score.</summary>
     public int CombinedScoreCount { get; set; }
 
+    /// <summary>Tatsächlich erworbene Punkte aus Lektionsaufgaben (Übungen) der aktuellen Klasse.</summary>
+    public int ExercisePointsEarned { get; set; }
+
+    /// <summary>Maximal erreichbare Punkte aus Lektionsaufgaben (Übungen) der aktuellen Klasse.</summary>
+    public int ExercisePointsTotal { get; set; }
+
+    /// <summary>Tatsächlich erworbene Punkte aus Examens der aktuellen Klasse.</summary>
+    public int ExamPointsEarned { get; set; }
+
+    /// <summary>Maximal erreichbare Punkte aus Examens der aktuellen Klasse.</summary>
+    public int ExamPointsTotal { get; set; }
+
     /// <summary>
     /// Anzahl aufeinanderfolgender Tage (bis heute oder gestern), an denen der Schüler
     /// mindestens eine Übung, Lektion oder Prüfung abgeschlossen/beantwortet hat.
     /// </summary>
     public int StreakDays { get; set; }
 
-    /// <summary>
-    /// Gesammelte Erfahrungspunkte (XP) aus richtig beantworteten Übungen, abgeschlossenen
-    /// Lektionen und Prüfungen.
-    /// </summary>
-    public int XpPoints { get; set; }
+    /// <summary>Anzahl freigeschalteter Lektionen der aktuellen Klasse, die noch nicht abgeschlossen sind.</summary>
+    public int OpenLessonsCount { get; set; }
 
-    /// <summary>Aus XpPoints abgeleitetes, einfaches Level (alle 100 XP ein Level, beginnend bei 1).</summary>
-    public int XpLevel => (XpPoints / 100) + 1;
+    /// <summary>Anzahl veröffentlichter Examens der aktuellen Klasse, die der Schüler noch nicht bestanden hat.</summary>
+    public int OpenExamsCount { get; set; }
 
     public List<StudentCourseProgressItem> CourseProgress { get; set; } = [];
     public List<StudentClassHistoryItem> ClassHistory { get; set; } = [];

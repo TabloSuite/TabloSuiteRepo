@@ -30,15 +30,12 @@ public partial class Teacher
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
 
     private bool statusExpanded;
-    private bool progressExpanded;
 
-    private bool AllExpanded => statusExpanded && progressExpanded;
+    private bool AllExpanded => statusExpanded;
 
     private void ToggleAllSections()
     {
-        var next = !AllExpanded;
-        statusExpanded = next;
-        progressExpanded = next;
+        statusExpanded = !statusExpanded;
     }
 
     private int pendingCount => filteredStudents.Count(s => s.IsBlocked);
@@ -71,46 +68,28 @@ public partial class Teacher
         new()
         {
             Key = "scoreDesc",
-            Label = "Score global (élevé ? bas)",
+            Label = "Score global (Ã©levÃ© â†’ bas)",
             KeySelector = s => s.CombinedScorePercent ?? -1,
+            SecondaryKeySelector = s => s.FullName,
             Descending = true
         },
         new()
         {
             Key = "scoreAsc",
-            Label = "Score global (bas ? élevé)",
+            Label = "Score global (bas â†’ Ã©levÃ©)",
             KeySelector = s => s.CombinedScorePercent ?? int.MaxValue,
+            SecondaryKeySelector = s => s.FullName,
             Descending = false
         },
         new()
         {
             Key = "lessons",
-            Label = "Leçons terminées",
+            Label = "LeÃ§ons terminÃ©es",
             KeySelector = s => s.CompletedLessonsCount,
+            SecondaryKeySelector = s => s.FullName,
             Descending = true
         }
     ];
-
-    private IReadOnlyList<DataListChip<StudentProgressItem>> progressChips =>
-    [
-        new()
-        {
-            Key = "active",
-            Label = "Actifs",
-            Accent = "emerald",
-            Predicate = p => !p.IsBlocked,
-            Count = progress.Count(p => !p.IsBlocked)
-        },
-        new()
-        {
-            Key = "blocked",
-            Label = "Bloqués",
-            Accent = "rose",
-            Predicate = p => p.IsBlocked,
-            Count = progress.Count(p => p.IsBlocked)
-        }
-    ];
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -143,15 +122,15 @@ public partial class Teacher
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
-            // Komponente wurde während des Ladens verworfen (z. B. schneller
-            // Navigationswechsel). Ergebnisse werden nicht mehr benötigt.
+            // Komponente wurde wÃ¤hrend des Ladens verworfen (z. B. schneller
+            // Navigationswechsel). Ergebnisse werden nicht mehr benÃ¶tigt.
         }
         catch
         {
             teacherSchools = [];
             students = [];
             progress = [];
-            loadErrorMessage = "Le tableau de bord n'a pas pu être chargé. Réessaie dans quelques instants.";
+            loadErrorMessage = "Le tableau de bord n'a pas pu Ãªtre chargÃ©. RÃ©essaie dans quelques instants.";
         }
         finally
         {
@@ -172,10 +151,13 @@ public partial class Teacher
             .Where(s => !enrolledToDate.HasValue || s.EnrolledAtUtc.Date <= enrolledToDate.Value.Date)
             .ToList();
 
-    private IReadOnlyList<StudentProgressItem> filteredProgress =>
+    private Dictionary<Guid, StudentProgressItem> progressByUserId =>
         progress
-            .Where(item => !selectedSchoolId.HasValue || item.SchoolId == selectedSchoolId.Value)
-            .ToList();
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+    private StudentProgressItem? GetProgress(Guid userId) =>
+        progressByUserId.TryGetValue(userId, out var item) ? item : null;
 
     private void OnDateFilterChanged()
     {
@@ -185,12 +167,12 @@ public partial class Teacher
     {
         if (!student.CurrentKlasseId.HasValue)
         {
-            return "Classe non attribuée";
+            return "Classe non attribuÃ©e";
         }
 
         if (!student.HasActiveSchoolFeeCycle)
         {
-            return "Cycle non démarré";
+            return "Cycle non dÃ©marrÃ©";
         }
 
         if (!student.HasActiveSubscription)
@@ -199,7 +181,7 @@ public partial class Teacher
         }
 
         return student.HasPaidEnrollment
-            ? "Abo actif (payé)"
+            ? "Abo actif (payÃ©)"
             : "Abo actif";
     }
 

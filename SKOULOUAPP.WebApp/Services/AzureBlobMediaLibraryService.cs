@@ -326,6 +326,10 @@ public sealed class AzureBlobMediaLibraryService(
         var isPrivilegedUser = roles.Any(role => role is Rollen.SuperAdmin or Rollen.ProduktOwner or Rollen.SchulLeiter or Rollen.Koordinator or Rollen.Lehrer);
         var canOpenPublishedTeacherLessonVideo = roles.Contains(Rollen.Schueler)
             && await CanStudentOpenPublishedTeacherLessonVideoAsync(assetId, userId, lessonId, cancellationToken);
+        var canOpenPublishedLessonVideo = !canOpenPublishedTeacherLessonVideo
+            && roles.Contains(Rollen.Schueler)
+            && hasActiveSubscription
+            && await CanStudentOpenPublishedLessonVideoAsync(assetId, userId, lessonId, cancellationToken);
 
         if (!hasActiveSubscription && !isPrivilegedUser && !canOpenPublishedTeacherLessonVideo)
         {
@@ -333,7 +337,7 @@ public sealed class AzureBlobMediaLibraryService(
         }
 
         var query = dbContext.BlobMediaAssets.AsNoTracking().AsQueryable();
-        if (!canOpenPublishedTeacherLessonVideo)
+        if (!canOpenPublishedTeacherLessonVideo && !canOpenPublishedLessonVideo)
         {
             query = await ApplyVisibilityAsync(query, userId, roles, cancellationToken);
         }
@@ -466,6 +470,49 @@ public sealed class AzureBlobMediaLibraryService(
                     && lesson.AuthorId.HasValue
                     && lesson.Author!.UserSchools.Any(link => link.SchoolId == profile.SchoolId),
                     cancellationToken);
+    }
+
+    private async Task<bool> CanStudentOpenPublishedLessonVideoAsync(
+        Guid assetId,
+        Guid studentId,
+        Guid? lessonId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(profile => profile.AppUserId == studentId)
+            .Select(profile => new { profile.SchoolId, profile.CurrentKlasseId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (profile is null)
+        {
+            return false;
+        }
+
+        var unlockedKlasseIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Select(enrollment => enrollment.KlasseId)
+            .ToListAsync(cancellationToken);
+
+        var klasseIds = unlockedKlasseIds.Count > 0
+            ? unlockedKlasseIds.ToHashSet()
+            : profile.CurrentKlasseId is Guid currentKlasseId ? [currentKlasseId] : [];
+
+        if (klasseIds.Count == 0)
+        {
+            return false;
+        }
+
+        var mediaMarker = $"/media-library/videos/{assetId:D}";
+        return await dbContext.Lessons
+            .AsNoTracking()
+            .AnyAsync(lesson => lesson.IsPublished
+                && (!lessonId.HasValue || lesson.Id == lessonId.Value)
+                && lesson.Klasse.SchoolId == profile.SchoolId
+                && klasseIds.Contains(lesson.KlasseId)
+                && lesson.MediaItems.Any(media => media.MediaType == "video" && media.RelativePath.Contains(mediaMarker)),
+                cancellationToken);
     }
 
     private static void ValidateVideo(string contentType, TimeSpan duration)

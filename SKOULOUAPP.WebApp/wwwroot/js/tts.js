@@ -7,6 +7,10 @@ window.SKOULOUAPPTts = (function () {
     let delegatedHandlersInstalled = false;
     let lastStatus = 'idle';
     let currentAudio = null;
+    // iOS/Safari kann eine SpeechSynthesisUtterance vorzeitig durch den Garbage
+    // Collector entfernen, wodurch die Wiedergabe stumm bleibt. Eine feste
+    // Referenz verhindert das.
+    let currentUtterance = null;
 
     function normalizeLanguage(lang) {
         const value = (lang || '').trim().toLowerCase();
@@ -104,6 +108,9 @@ window.SKOULOUAPPTts = (function () {
         }
 
         const utterance = createUtterance(text, lang, rate);
+        // Referenz behalten, sonst kann iOS/Safari die Utterance vor dem
+        // Abspielen wegräumen und die Wiedergabe bleibt stumm.
+        currentUtterance = utterance;
         lastStatus = 'queued';
         window.speechSynthesis.speak(utterance);
         window.setTimeout(() => {
@@ -116,7 +123,12 @@ window.SKOULOUAPPTts = (function () {
     }
 
     async function speakText(text, lang, rate) {
-        await window.SKOULOUAPPAudio?.unlock?.();
+        // iOS/Safari verlangt, dass speak() synchron innerhalb der Nutzergeste
+        // aufgerufen wird. Ein "await" davor kann die Erlaubnis zur Wiedergabe
+        // (User Activation) verlieren lassen, wodurch die Sprachausgabe stumm
+        // bleibt. Deshalb wird speakTextNow() sofort aufgerufen; das Freischalten
+        // des AudioContext läuft parallel im Hintergrund.
+        window.SKOULOUAPPAudio?.unlock?.();
         return speakTextNow(text, lang, rate);
     }
 
@@ -126,7 +138,10 @@ window.SKOULOUAPPTts = (function () {
         }
 
         try {
-            await window.SKOULOUAPPAudio?.unlock?.();
+            // Siehe Hinweis in speakText: play() muss synchron innerhalb der
+            // Nutzergeste angestoßen werden, daher kein await vor dem Erstellen
+            // und Starten des Audio-Elements.
+            window.SKOULOUAPPAudio?.unlock?.();
             window.speechSynthesis?.cancel?.();
             if (currentAudio) {
                 currentAudio.pause();
@@ -151,7 +166,7 @@ window.SKOULOUAPPTts = (function () {
         } catch (e) {
             lastStatus = `html5-error:${e?.name || 'unknown'}`;
             return false;
-        }
+
     }
 
     async function playAudioOrSpeak(audioUrl, text, lang, rate) {

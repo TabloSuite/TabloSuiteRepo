@@ -698,6 +698,7 @@ public partial class SchulLeiter
             Key = "scoreDesc",
             Label = "Score global (élevé → bas)",
             KeySelector = s => s.CombinedScorePercent ?? -1,
+            SecondaryKeySelector = s => s.FullName,
             Descending = true
         },
         new()
@@ -705,6 +706,7 @@ public partial class SchulLeiter
             Key = "scoreAsc",
             Label = "Score global (bas → élevé)",
             KeySelector = s => s.CombinedScorePercent ?? int.MaxValue,
+            SecondaryKeySelector = s => s.FullName,
             Descending = false
         },
         new()
@@ -712,6 +714,7 @@ public partial class SchulLeiter
             Key = "levelScoreDesc",
             Label = "Progression (élevée → basse)",
             KeySelector = s => s.CompletedLessonsCount,
+            SecondaryKeySelector = s => s.FullName,
             Descending = true
         },
         new()
@@ -719,6 +722,7 @@ public partial class SchulLeiter
             Key = "lessons",
             Label = "Leçons terminées",
             KeySelector = s => s.CompletedLessonsCount,
+            SecondaryKeySelector = s => s.FullName,
             Descending = true
         }
     ];

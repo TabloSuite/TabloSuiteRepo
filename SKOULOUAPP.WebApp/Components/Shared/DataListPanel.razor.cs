@@ -44,9 +44,14 @@ public partial class DataListPanel<TItem> : ComponentBase
         => SortOptions?.FirstOrDefault(s => s.Key == activeSortKey)
            ?? SortOptions?.FirstOrDefault();
 
-    private void OnSortChanged(ChangeEventArgs args)
+    private IReadOnlyList<ModernDropdownOption<string>> sortDropdownOptions
+        => (SortOptions ?? Array.Empty<DataListSort<TItem>>())
+            .Select(option => new ModernDropdownOption<string>(option.Key, option.Label))
+            .ToList();
+
+    private void OnSortValueChanged(string? value)
     {
-        activeSortKey = args.Value?.ToString();
+        activeSortKey = value;
         currentPage = 0;
     }
 
@@ -88,9 +93,13 @@ public partial class DataListPanel<TItem> : ComponentBase
 
             if (sort is not null)
             {
-                source = sort.Descending
+                var ordered = sort.Descending
                     ? source.OrderByDescending(sort.KeySelector)
                     : source.OrderBy(sort.KeySelector);
+
+                source = sort.SecondaryKeySelector is not null
+                    ? ordered.ThenBy(sort.SecondaryKeySelector)
+                    : ordered;
             }
             else if (ReferenceEquals(source, Items))
             {

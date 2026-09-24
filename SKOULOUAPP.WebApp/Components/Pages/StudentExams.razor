@@ -12,11 +12,11 @@
 }
 else
 {
-    <section class="student-exams-page grid gap-6">
-        <div class="rounded-[2rem] bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 p-6 text-white shadow-2xl shadow-orange-200/60 sm:p-8">
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-amber-100">Espace épreuves</p>
-            <h1 class="mt-3 text-3xl font-black">Mes épreuves</h1>
-            <p class="mt-3 max-w-2xl text-sm leading-7 text-amber-50">Lance une épreuve quand tu es prêt. Le chronomètre démarre dès le début – tes réponses sont évaluées automatiquement.</p>
+    <section class="student-exams-page grid gap-4 sm:gap-6">
+        <div class="rounded-[1.5rem] bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 p-4 text-white shadow-2xl shadow-orange-200/60 sm:rounded-[2rem] sm:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100 sm:text-sm">Espace épreuves</p>
+            <h1 class="mt-2 text-2xl font-black sm:mt-3 sm:text-3xl">Mes épreuves</h1>
+            <p class="mt-2 max-w-2xl text-xs leading-6 text-amber-50 sm:mt-3 sm:text-sm sm:leading-7">Lance une épreuve quand tu es prêt. Le chronomètre démarre dès le début – tes réponses sont évaluées automatiquement.</p>
         </div>
 
         @if (exams.Count == 0)
@@ -70,7 +70,7 @@ else
                         </div>
 
                         <button type="button"
-                                class="mt-5 inline-flex w-fit self-start items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="mt-5 inline-flex w-full items-center justify-center rounded-full bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit sm:self-start sm:py-2"
                                 disabled="@(exam.QuestionCount == 0)"
                                 @onclick="() => StartExam(exam.ExamId)">
                             @(exam.HasAttempt ? "Réessayer" : "Commencer l'épreuve")

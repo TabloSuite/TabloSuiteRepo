@@ -243,10 +243,14 @@ public class DashboardService(
     /// abgeschlossene Prüfung (ScorePercent) ist ein gleichgewichteter Datenpunkt. Der Score
     /// gilt für ALLE Schüler und wird durch Wiederholungen automatisch aktualisiert.
     /// Liefert nur Einträge für Schüler mit mindestens einem Datenpunkt.
+    /// Enthält zusätzlich die tatsächlich erworbenen Punkte getrennt nach Lektionsaufgaben
+    /// (Übungen) und Examens im Verhältnis zur maximal erreichbaren Punktzahl, damit
+    /// "erworbene Punkte von Total" separat pro Kategorie angezeigt werden kann.
     /// </summary>
-    private async Task<Dictionary<Guid, (int AverageScorePercent, int Count)>> GetCombinedProgressScoresAsync(
+    private async Task<Dictionary<Guid, CombinedProgressScore>> GetCombinedProgressScoresAsync(
         IReadOnlyCollection<Guid> studentIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? restrictToKlasseId = null)
     {
         if (studentIds.Count == 0)
         {
@@ -254,9 +258,16 @@ public class DashboardService(
         }
 
         // Übungsversuche (nur bereits automatisch/manuell bewertete, keine offenen manuellen).
-        var exerciseAttempts = await dbContext.ExerciseAttempts
+        var exerciseAttemptsQuery = dbContext.ExerciseAttempts
             .AsNoTracking()
-            .Where(a => !a.RequiresManualGrading && studentIds.Contains(a.StudentId))
+            .Where(a => !a.RequiresManualGrading && studentIds.Contains(a.StudentId));
+
+        if (restrictToKlasseId.HasValue)
+        {
+            exerciseAttemptsQuery = exerciseAttemptsQuery.Where(a => a.Exercise.Lesson.KlasseId == restrictToKlasseId.Value);
+        }
+
+        var exerciseAttempts = await exerciseAttemptsQuery
             .Select(a => new
             {
                 a.StudentId,
@@ -277,7 +288,7 @@ public class DashboardService(
 
         var examsVisibleToStudents = await dbContext.Exams
             .AsNoTracking()
-            .Where(exam => exam.IsPublishedToStudents)
+            .Where(exam => exam.IsPublishedToStudents && (!restrictToKlasseId.HasValue || exam.KlasseId == restrictToKlasseId.Value))
             .Select(exam => exam.Id)
             .ToHashSetAsync(cancellationToken);
 
@@ -290,11 +301,13 @@ public class DashboardService(
             .Select(a => new
             {
                 a.StudentId,
-                a.ScorePercent
+                a.ScorePercent,
+                a.CorrectAnswers,
+                a.TotalQuestions
             })
             .ToListAsync(cancellationToken);
 
-        var perStudent = new Dictionary<Guid, (int Sum, int Count)>();
+        var perStudent = new Dictionary<Guid, (int ExerciseSum, int ExerciseCount, int ExercisePointsEarned, int ExercisePointsTotal, int ExamSum, int ExamCount, int ExamPointsEarned, int ExamPointsTotal)>();
 
         foreach (var attempt in exerciseAttempts
             .GroupBy(a => new { a.StudentId, a.ExerciseId })
@@ -306,21 +319,64 @@ public class DashboardService(
             perStudent.TryGetValue(attempt.StudentId, out var acc);
             var hasExercisePoints = exercisePointsById.TryGetValue(attempt.ExerciseId, out var configuredPoints);
             var maxPoints = configuredPoints > 0 ? configuredPoints : 10;
-            var percent = attempt.AwardedPoints > 0 && hasExercisePoints
-                ? (int)Math.Round(Math.Clamp(attempt.AwardedPoints, 0, maxPoints) * 100d / maxPoints)
-                : (attempt.IsCorrect ? 100 : 0);
-            perStudent[attempt.StudentId] = (acc.Sum + percent, acc.Count + 1);
+            var earnedPoints = attempt.AwardedPoints > 0
+                ? Math.Clamp(attempt.AwardedPoints, 0, maxPoints)
+                : (attempt.IsCorrect ? maxPoints : 0);
+            var percent = (int)Math.Round(earnedPoints * 100d / maxPoints);
+            perStudent[attempt.StudentId] = acc with
+            {
+                ExerciseSum = acc.ExerciseSum + percent,
+                ExerciseCount = acc.ExerciseCount + 1,
+                ExercisePointsEarned = acc.ExercisePointsEarned + earnedPoints,
+                ExercisePointsTotal = acc.ExercisePointsTotal + maxPoints
+            };
         }
 
         foreach (var attempt in examAttempts)
         {
             perStudent.TryGetValue(attempt.StudentId, out var acc);
-            perStudent[attempt.StudentId] = (acc.Sum + attempt.ScorePercent, acc.Count + 1);
+            var examMaxPoints = attempt.TotalQuestions > 0 ? attempt.TotalQuestions : 1;
+            var examEarnedPoints = attempt.TotalQuestions > 0 ? attempt.CorrectAnswers : (attempt.ScorePercent >= 50 ? 1 : 0);
+            perStudent[attempt.StudentId] = acc with
+            {
+                ExamSum = acc.ExamSum + attempt.ScorePercent,
+                ExamCount = acc.ExamCount + 1,
+                ExamPointsEarned = acc.ExamPointsEarned + examEarnedPoints,
+                ExamPointsTotal = acc.ExamPointsTotal + examMaxPoints
+            };
         }
 
         return perStudent.ToDictionary(
             x => x.Key,
-            x => ((int)Math.Round((double)x.Value.Sum / x.Value.Count), x.Value.Count));
+            x =>
+            {
+                var totalCount = x.Value.ExerciseCount + x.Value.ExamCount;
+                var totalSum = x.Value.ExerciseSum + x.Value.ExamSum;
+                return new CombinedProgressScore(
+                    totalCount > 0 ? (int)Math.Round((double)totalSum / totalCount) : 0,
+                    totalCount,
+                    x.Value.ExercisePointsEarned,
+                    x.Value.ExercisePointsTotal,
+                    x.Value.ExamPointsEarned,
+                    x.Value.ExamPointsTotal);
+            });
+    }
+
+    /// <summary>
+    /// Kombinierter Fortschritts-Score eines Schülers, getrennt nach Lektionsaufgaben
+    /// (Übungen) und Examens, damit "erworbene Punkte von Total" pro Kategorie angezeigt
+    /// werden kann.
+    /// </summary>
+    private readonly record struct CombinedProgressScore(
+        int AverageScorePercent,
+        int Count,
+        int ExercisePointsEarned,
+        int ExercisePointsTotal,
+        int ExamPointsEarned,
+        int ExamPointsTotal)
+    {
+        public int PointsEarned => ExercisePointsEarned + ExamPointsEarned;
+        public int PointsTotal => ExercisePointsTotal + ExamPointsTotal;
     }
 
     public async Task<IReadOnlyList<CourseManagementViewModel>> GetCourseManagementAsync(CancellationToken cancellationToken = default)
@@ -489,7 +545,28 @@ public class DashboardService(
         var canTakeFinalExam = currentLevelLessonIds.Count > 0
             && completedLessonIds.Count == currentLevelLessonIds.Count;
 
-        var combinedScores = await GetCombinedProgressScoresAsync([userId], cancellationToken);
+        var openLessonsCount = currentLevelLessonIds.Count - completedLessonIds.Count;
+
+        var openExamsCount = 0;
+        if (hasCurrentKlasseAssignment)
+        {
+            var currentLevelExamIds = await dbContext.Exams
+                .AsNoTracking()
+                .Where(x => x.KlasseId == profile.CurrentKlasseId!.Value && x.IsPublishedToStudents)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+
+            var passedExamIds = await dbContext.ExamAttempts
+                .AsNoTracking()
+                .Where(x => x.StudentId == userId && x.IsPassed && currentLevelExamIds.Contains(x.ExamId))
+                .Select(x => x.ExamId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            openExamsCount = currentLevelExamIds.Count - passedExamIds.Count;
+        }
+
+        var combinedScores = await GetCombinedProgressScoresAsync([userId], cancellationToken, profile.CurrentKlasseId);
         combinedScores.TryGetValue(userId, out var combined);
         var hasActiveSubscription = unlockedKlasseIds.Count > 0;
         var isCurrentClassUnlocked = currentClassEnrollment?.IsUnlocked == true;
@@ -498,7 +575,7 @@ public class DashboardService(
             .AsNoTracking()
             .AnyAsync(enrollment => enrollment.StudentId == userId && enrollment.IsPaid, cancellationToken);
 
-        var (streakDays, xpPoints) = await GetStreakAndXpAsync(userId, cancellationToken);
+        var streakDays = await GetStreakAsync(userId, profile.CurrentKlasseId, cancellationToken);
         var classHistory = await GetStudentClassHistoryAsync(userId, profile.SchoolId, profile.CurrentKlasseId, cancellationToken);
 
         return new StudentDashboardViewModel
@@ -519,10 +596,15 @@ public class DashboardService(
             HasPaidHalloAppAbo = hasPaidHalloAppAbo,
             CombinedScorePercent = combined.Count > 0 ? combined.AverageScorePercent : null,
             CombinedScoreCount = combined.Count,
+            ExercisePointsEarned = combined.ExercisePointsEarned,
+            ExercisePointsTotal = combined.ExercisePointsTotal,
+            ExamPointsEarned = combined.ExamPointsEarned,
+            ExamPointsTotal = combined.ExamPointsTotal,
             StreakDays = streakDays,
-            XpPoints = xpPoints,
             CourseProgress = courseProgress,
-            ClassHistory = classHistory
+            ClassHistory = classHistory,
+            OpenLessonsCount = Math.Max(0, openLessonsCount),
+            OpenExamsCount = Math.Max(0, openExamsCount)
         };
     }
 
@@ -558,7 +640,6 @@ public class DashboardService(
             .Include(lesson => lesson.Pages)
             .Where(lesson => klasseIds.Contains(lesson.KlasseId)
                 && lesson.IsPublished
-                && lesson.IsSharedWithSchool
                 && lesson.AuthorId.HasValue
                 && lesson.Author!.UserSchools.Any(link => link.SchoolId == schoolId))
             .OrderBy(lesson => lesson.Klasse.Code)
@@ -701,33 +782,50 @@ public class DashboardService(
     /// Streak: Anzahl aufeinanderfolgender Kalendertage (endend heute oder gestern) mit
     /// mindestens einer Aktivität (Übung, Lektion oder Prüfung).
     /// </summary>
-    private async Task<(int StreakDays, int XpPoints)> GetStreakAndXpAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task<int> GetStreakAsync(Guid userId, Guid? currentKlasseId, CancellationToken cancellationToken)
     {
-        var exerciseAttempts = await dbContext.ExerciseAttempts
+        var exerciseAttemptsQuery = dbContext.ExerciseAttempts
             .AsNoTracking()
-            .Where(a => a.StudentId == userId)
-            .Select(a => new { a.IsCorrect, a.AnsweredAtUtc })
+            .Where(a => a.StudentId == userId);
+
+        if (currentKlasseId.HasValue)
+        {
+            exerciseAttemptsQuery = exerciseAttemptsQuery.Where(a => a.Exercise.Lesson.KlasseId == currentKlasseId.Value);
+        }
+
+        var exerciseAttempts = await exerciseAttemptsQuery
+            .Select(a => a.AnsweredAtUtc)
             .ToListAsync(cancellationToken);
 
-        var lessonCompletions = await dbContext.LessonProgresses
+        var lessonCompletionsQuery = dbContext.LessonProgresses
             .AsNoTracking()
-            .Where(x => x.StudentId == userId && x.IsCompleted && x.CompletedAtUtc != null)
+            .Where(x => x.StudentId == userId && x.IsCompleted && x.CompletedAtUtc != null);
+
+        if (currentKlasseId.HasValue)
+        {
+            lessonCompletionsQuery = lessonCompletionsQuery.Where(x => x.Lesson.KlasseId == currentKlasseId.Value);
+        }
+
+        var lessonCompletions = await lessonCompletionsQuery
             .Select(x => x.CompletedAtUtc!.Value)
             .ToListAsync(cancellationToken);
 
-        var examAttempts = await dbContext.ExamAttempts
+        var examAttemptsQuery = dbContext.ExamAttempts
             .AsNoTracking()
-            .Where(a => a.StudentId == userId && a.IsCompleted && a.SubmittedAtUtc != null)
-            .Select(a => new { a.ScorePercent, SubmittedAtUtc = a.SubmittedAtUtc!.Value })
+            .Where(a => a.StudentId == userId && a.IsCompleted && a.SubmittedAtUtc != null);
+
+        if (currentKlasseId.HasValue)
+        {
+            examAttemptsQuery = examAttemptsQuery.Where(a => a.Exam.KlasseId == currentKlasseId.Value);
+        }
+
+        var examAttempts = await examAttemptsQuery
+            .Select(a => a.SubmittedAtUtc!.Value)
             .ToListAsync(cancellationToken);
 
-        var xpPoints = exerciseAttempts.Count(a => a.IsCorrect) * 10
-            + lessonCompletions.Count * 20
-            + examAttempts.Sum(a => a.ScorePercent);
-
-        var activityDates = exerciseAttempts.Select(a => a.AnsweredAtUtc.Date)
+        var activityDates = exerciseAttempts.Select(d => d.Date)
             .Concat(lessonCompletions.Select(d => d.Date))
-            .Concat(examAttempts.Select(a => a.SubmittedAtUtc.Date))
+            .Concat(examAttempts.Select(d => d.Date))
             .ToHashSet();
 
         var streakDays = 0;
@@ -743,7 +841,7 @@ public class DashboardService(
             }
         }
 
-        return (streakDays, xpPoints);
+        return streakDays;
     }
 
     public async Task<IReadOnlyList<SchoolManagementViewModel>> GetSchoolManagementAsync(CancellationToken cancellationToken = default)

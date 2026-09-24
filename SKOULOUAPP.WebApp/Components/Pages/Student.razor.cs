@@ -17,6 +17,15 @@ public partial class Student
     private StudentDashboardViewModel? dashboard;
     private const string KlassenLabel = "Classe";
 
+    private HalloApp.Core.Models.Student.StudentCourseProgressItem? CurrentClassCard
+        => dashboard?.CourseProgress.FirstOrDefault(course => course.IsCurrentLevel);
+
+    private HalloApp.Core.Models.Student.StudentClassHistoryItem? CurrentClassHistory
+        => dashboard?.ClassHistory.FirstOrDefault(course => course.IsCurrent);
+
+    private List<HalloApp.Core.Models.Student.StudentClassHistoryItem> OtherClasses
+        => dashboard?.ClassHistory.Where(course => !course.IsCurrent).ToList() ?? [];
+
     private string CurrentClassDisplay
         => dashboard is null
             ? "—"
@@ -134,6 +143,33 @@ public partial class Student
         }
 
         return $"{normalizedCode} · {normalizedTitle}";
+    }
+
+    private bool HasOpenItemsHint
+        => dashboard is not null && (dashboard.OpenLessonsCount > 0 || dashboard.OpenExamsCount > 0);
+
+    private string OpenItemsHintText
+    {
+        get
+        {
+            if (dashboard is null)
+            {
+                return string.Empty;
+            }
+
+            var parts = new List<string>();
+            if (dashboard.OpenLessonsCount > 0)
+            {
+                parts.Add($"{dashboard.OpenLessonsCount} leçon{(dashboard.OpenLessonsCount > 1 ? "s" : string.Empty)} à terminer");
+            }
+
+            if (dashboard.OpenExamsCount > 0)
+            {
+                parts.Add($"{dashboard.OpenExamsCount} examen{(dashboard.OpenExamsCount > 1 ? "s" : string.Empty)} à passer");
+            }
+
+            return string.Join(" · ", parts);
+        }
     }
 
     protected override async Task OnInitializedAsync()

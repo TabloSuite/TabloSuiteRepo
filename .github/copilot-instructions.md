@@ -105,7 +105,7 @@
 - Pro-Niveau-Redaktionsrunde soll später durchgeführt werden; aktuelle Qualitätsrunde bleibt zunächst global, spätere Feinschleife pro Niveau ist gewünscht.
 - Der Nutzer will alle verbleibenden Sprachschule-/CEFR-/Standardkurskatalog-Reste konsequent entfernen; insbesondere keine festen Seed-Level oder CSV-Kurskatalog-Initialisierung mehr im Initializer belassen.
 - **Der Nutzer möchte, dass alle Schulen als gleichwertig betrachtet werden, ohne Unterscheidung zwischen verschiedenen Schultypen.**
-- Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend dem Assistenten.
+- Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend dem Assistenten. **UI-Verschönerungen dürfen jederzeit ohne Rückfrage vorgenommen werden, wenn dies sinnvoll erscheint.**
 - Wenn der Nutzer in diesem Workspace von 'Projekt' spricht, ist konkret SKOULOUAPP (SKOULOUAPPMAPPE) gemeint.
 
 ## Code Style

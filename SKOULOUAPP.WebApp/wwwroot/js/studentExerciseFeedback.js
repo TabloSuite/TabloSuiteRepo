@@ -37,12 +37,17 @@ window.halloStudentExerciseFeedback = (() => {
         oscillator.stop(context.currentTime + start + duration + 0.03);
     }
 
-    async function speak(text, rate = 1.08, pitch = 1.15, delay = 260) {
+    function speak(text, rate = 1.08, pitch = 1.15, delay = 260) {
         if (!('speechSynthesis' in window)) {
             return;
         }
 
-        await window.SKOULOUAPPAudio?.unlock?.();
+        // iOS/Safari verlangt, dass speechSynthesis.speak() synchron innerhalb
+        // der Nutzergeste (Tap) aufgerufen wird. Ein "await" davor lässt die
+        // Erlaubnis zur Wiedergabe (User Activation) verfallen, wodurch die
+        // Sprachausgabe stumm bleibt. Deshalb wird unlock() im Hintergrund
+        // gestartet, ohne die Wiedergabe zu blockieren.
+        window.SKOULOUAPPAudio?.unlock?.();
 
         window.setTimeout(() => {
             if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
@@ -65,9 +70,12 @@ window.halloStudentExerciseFeedback = (() => {
         return `${baseMessage}${namePart} !${nextPart}`;
     }
 
-    async function play(percent, isCorrect, requiresManualGrading, studentName, hasNextExercise) {
+    function play(percent, isCorrect, requiresManualGrading, studentName, hasNextExercise) {
         try {
-            await window.SKOULOUAPPAudio?.unlock?.();
+            // Nicht "await" davor: playTone()/speak() müssen synchron innerhalb
+            // der Nutzergeste (Klick auf "Vérifier la réponse") ausgeführt werden,
+            // sonst verliert iOS/Safari die User-Activation und bleibt stumm.
+            window.SKOULOUAPPAudio?.unlock?.();
 
             if (requiresManualGrading) {
                 playTone(440, 0, 0.12, 'triangle', 0.045);
@@ -81,20 +89,6 @@ window.halloStudentExerciseFeedback = (() => {
                 playTone(659, 0.12, 0.11, 'sine', 0.07);
                 playTone(784, 0.24, 0.16, 'sine', 0.08);
                 speak(buildMessage('Bravo, parfait', studentName, hasNextExercise), 1.04, 1.12, 430);
-                return;
-            }
-
-            if (percent >= 75) {
-                playTone(494, 0, 0.12, 'triangle', 0.06);
-                playTone(659, 0.14, 0.16, 'triangle', 0.065);
-                speak(buildMessage('Super, tu progresses', studentName, hasNextExercise), 1.04, 1.08, 360);
-                return;
-            }
-
-            if (percent >= 50) {
-                playTone(392, 0, 0.12, 'triangle', 0.055);
-                playTone(523, 0.16, 0.14, 'triangle', 0.055);
-                speak(buildMessage('Bien joué, continue', studentName, hasNextExercise), 1.02, 1.04, 340);
                 return;
             }
 
