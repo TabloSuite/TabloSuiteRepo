@@ -118,6 +118,7 @@
                     <span class="text-sm font-semibold text-slate-700">Titre</span>
                     <input type="text" class="hallo-input mt-1 text-sm" @bind="form.Title" />
                 </label>
+                <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" />
                 <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.KlasseId" ValueChanged="SetLessonKlasseAsync" Options="KlasseOptions" />
                 <label class="block sm:col-span-2">
                     <span class="text-sm font-semibold text-slate-700">Résumé (optionnel)</span>

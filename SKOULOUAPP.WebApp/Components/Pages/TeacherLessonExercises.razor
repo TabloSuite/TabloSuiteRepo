@@ -154,6 +154,9 @@
                             <InputText @bind-Value="form.Title" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div>
+                            <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" Disabled="@isCurrentAssignmentVersionLocked" />
+                        </div>
+                        <div>
                             <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div class="xl:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">

@@ -77,7 +77,7 @@ public partial class Teacher
         {
             Key = "scoreAsc",
             Label = "Score global (bas → élevé)",
-            KeySelector = s => s.CombinedScorePercent ?? int.MaxValue,
+            KeySelector = s => s.CombinedScorePercent ?? -1,
             SecondaryKeySelector = s => s.FullName,
             Descending = false
         },

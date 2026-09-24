@@ -36,6 +36,7 @@ public partial class TeacherLessons
 
     private IReadOnlyList<TeacherLessonListItem>? lessons;
     private List<KlasseOption> klasses = [];
+    private Guid? selectedSchoolId;
     private Dictionary<Guid, Guid?> klasseSchoolById = [];
     private List<FachOptionItem> fachOptions = [];
     private List<FachOptionItem> filteredFachOptions = [];
@@ -71,7 +72,7 @@ public partial class TeacherLessons
     private long videoUploadBytesTotal;
     private int videoUploadPercent;
 
-    private sealed record KlasseOption(Guid Id, string Code, string Title);
+    private sealed record KlasseOption(Guid Id, Guid? SchoolId, string SchoolName, string Code, string Title);
 
     private string VideoDurationLabel => videoDurationMinutes > 0m
         ? $"{Math.Round(videoDurationMinutes, 1)} min"
@@ -104,7 +105,22 @@ public partial class TeacherLessons
         return $"{normalizedCode} — {normalizedTitle}";
     }
 
-    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseOptions => klasses
+    private IReadOnlyList<KlasseOption> FilteredKlasses => selectedSchoolId is Guid schoolId
+        ? klasses.Where(klasse => klasse.SchoolId == schoolId).ToList()
+        : klasses;
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolOptions =>
+    [
+        new(null, "— Choisir une école —"),
+        .. klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .GroupBy(klasse => klasse.SchoolId!.Value)
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().SchoolName))
+            .OrderByDescending(option => selectedSchoolId.HasValue && option.Value == selectedSchoolId.Value)
+            .ThenBy(option => option.Label)
+    ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseOptions => FilteredKlasses
         .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
         .ToList();
 
@@ -121,8 +137,42 @@ public partial class TeacherLessons
     [
         new(null, "— Matière (optionnel) —"),
         .. filteredFachOptions
-            .Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, $"{fach.Name} · {fach.SchoolName}"))
+            .Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, fach.Name))
     ];
+
+    private Task SetLessonSchoolAsync(Guid? schoolId)
+    {
+        if (form is null)
+        {
+            selectedSchoolId = schoolId;
+            return Task.CompletedTask;
+        }
+
+        selectedSchoolId = schoolId;
+        var availableKlasses = FilteredKlasses;
+
+        if (availableKlasses.Count == 0)
+        {
+            form.KlasseId = Guid.Empty;
+            form.FachId = null;
+            filteredFachOptions = [];
+            return Task.CompletedTask;
+        }
+
+        if (!availableKlasses.Any(klasse => klasse.Id == form.KlasseId))
+        {
+            form.KlasseId = availableKlasses[0].Id;
+        }
+
+        FilterFachOptionsForCurrentKlasse();
+
+        if (form.FachId.HasValue && filteredFachOptions.All(fach => fach.FachId != form.FachId.Value))
+        {
+            form.FachId = null;
+        }
+
+        return Task.CompletedTask;
+    }
 
     private Task SetLessonKlasseAsync(Guid? klasseId)
     {
@@ -201,8 +251,18 @@ public partial class TeacherLessons
                 .AsNoTracking()
                 .Where(x => !x.IstSystemNiveau)
                 .OrderBy(x => x.Code)
-                .Select(x => new KlasseOption(x.Id, x.Code, x.Title))
+                .Select(x => new KlasseOption(
+                    x.Id,
+                    x.SchoolId,
+                    x.School != null ? x.School.Name : string.Empty,
+                    x.Code,
+                    x.Title))
                 .ToListAsync(ComponentToken);
+
+            selectedSchoolId = klasses
+                .Where(klasse => klasse.SchoolId.HasValue)
+                .Select(klasse => klasse.SchoolId)
+                .FirstOrDefault();
 
             klasseSchoolById = await DbContext.Klassen
                 .AsNoTracking()
@@ -240,10 +300,11 @@ public partial class TeacherLessons
 
         form = new TeacherLessonFormModel
         {
-            KlasseId = klasses.FirstOrDefault()?.Id ?? Guid.Empty,
+            KlasseId = FilteredKlasses.FirstOrDefault()?.Id ?? klasses.FirstOrDefault()?.Id ?? Guid.Empty,
             Order = (lessons?.Count ?? 0) + 1,
             Pages = [new TeacherLessonPageFormModel { PageNumber = 1, ContentHtml = string.Empty }]
         };
+        selectedSchoolId = klasseSchoolById.TryGetValue(form.KlasseId, out var schoolId) ? schoolId : selectedSchoolId;
         FilterFachOptionsForCurrentKlasse();
         newFachName = string.Empty;
         editorHtml = string.Empty;
@@ -271,6 +332,7 @@ public partial class TeacherLessons
         }
 
         form = loaded;
+        selectedSchoolId = klasseSchoolById.TryGetValue(form.KlasseId, out var schoolId) ? schoolId : selectedSchoolId;
         FilterFachOptionsForCurrentKlasse();
         newFachName = string.Empty;
         editorHtml = MergePages(loaded.Pages);

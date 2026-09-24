@@ -705,7 +705,7 @@ public partial class SchulLeiter
         {
             Key = "scoreAsc",
             Label = "Score global (bas → élevé)",
-            KeySelector = s => s.CombinedScorePercent ?? int.MaxValue,
+            KeySelector = s => s.CombinedScorePercent ?? -1,
             SecondaryKeySelector = s => s.FullName,
             Descending = false
         },
@@ -2171,7 +2171,7 @@ public partial class SchulLeiter
         durchlaufStartModalOpen = false;
         klasseStatusMessage = $"Le cycle de {startKlasse.Title} a démarré.";
         startKlasse = null;
-        await LoadSchoolKlassenAsync();
+        await LoadAsync();
     }
 
     private void OpenDurchlaufEndeModal(DurchlaufUebersicht durchlauf)

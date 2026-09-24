@@ -43,6 +43,7 @@ public partial class TeacherLessonExercises
 
     private List<LessonEditorListItem> lessons = [];
     private List<KlasseOption> klasses = [];
+    private Guid? selectedSchoolId;
     private LessonFormModel? form;
     private List<LessonExerciseBlockEditorModel> exerciseBlocks = [];
     private string selectedLessonCode = string.Empty;
@@ -110,6 +111,8 @@ public partial class TeacherLessonExercises
     private sealed class KlasseOption
     {
         public Guid Id { get; set; }
+        public Guid? SchoolId { get; set; }
+        public string SchoolName { get; set; } = string.Empty;
         public string Code { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
     }
@@ -147,20 +150,71 @@ public partial class TeacherLessonExercises
         public List<LessonExerciseOptionFormModel> Options { get; set; } = [];
     }
 
+    private IReadOnlyList<KlasseOption> FilteredKlasses => selectedSchoolId is Guid schoolId
+        ? klasses.Where(klasse => klasse.SchoolId == schoolId).ToList()
+        : klasses;
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolOptions =>
+    [
+        new(null, "— Choisir une école —"),
+        .. klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .GroupBy(klasse => klasse.SchoolId!.Value)
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().SchoolName))
+            .OrderByDescending(option => selectedSchoolId.HasValue && option.Value == selectedSchoolId.Value)
+            .ThenBy(option => option.Label)
+    ];
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> CourseOptions =>
     [
-        .. klasses.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
+        .. FilteredKlasses.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
     ];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> FachOptions =>
     [
         new(null, "— Choisir une matière —"),
-        .. filteredFachOptions.Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, $"{fach.Name} · {fach.SchoolName}"))
+        .. filteredFachOptions.Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, fach.Name))
     ];
 
     private bool HasValidSelectedFach
         => form?.FachId is Guid fachId
            && filteredFachOptions.Any(option => option.FachId == fachId);
+
+    private Task SetLessonSchoolAsync(Guid? schoolId)
+    {
+        if (form is null)
+        {
+            selectedSchoolId = schoolId;
+            return Task.CompletedTask;
+        }
+
+        selectedSchoolId = schoolId;
+        var availableKlasses = FilteredKlasses;
+
+        if (availableKlasses.Count == 0)
+        {
+            form.CourseId = Guid.Empty;
+            form.FachId = null;
+            filteredFachOptions = [];
+            selectedLessonCode = string.Empty;
+            return Task.CompletedTask;
+        }
+
+        if (!availableKlasses.Any(klasse => klasse.Id == form.CourseId))
+        {
+            var firstKlasse = availableKlasses[0];
+            form.CourseId = firstKlasse.Id;
+            selectedLessonCode = firstKlasse.Code;
+        }
+        else
+        {
+            selectedLessonCode = availableKlasses.First(klasse => klasse.Id == form.CourseId).Code;
+        }
+
+        FilterFachOptionsForCurrentCourse();
+        EnsureSelectedFachForCurrentCourse();
+        return Task.CompletedTask;
+    }
 
     private Task SetLessonCourseAsync(Guid? courseId)
     {
@@ -263,10 +317,17 @@ public partial class TeacherLessonExercises
             .Select(klasse => new KlasseOption
             {
                 Id = klasse.Id,
+                SchoolId = klasse.SchoolId,
+                SchoolName = klasse.School != null ? klasse.School.Name : string.Empty,
                 Code = klasse.Code,
                 Title = klasse.Title
             })
             .ToListAsync(ComponentToken);
+
+        selectedSchoolId = klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .Select(klasse => klasse.SchoolId)
+            .FirstOrDefault();
 
         klasseSchoolById = await DbContext.Klassen
             .AsNoTracking()
@@ -357,6 +418,7 @@ public partial class TeacherLessonExercises
         }
 
         form = loaded;
+        selectedSchoolId = klasseSchoolById.TryGetValue(form.CourseId, out var editSchoolId) ? editSchoolId : selectedSchoolId;
         isCurrentAssignmentVersionLocked = loaded.IsCurrentAssignmentVersionLocked;
         MapFormExercisesToEditorBlocks();
 
@@ -376,7 +438,9 @@ public partial class TeacherLessonExercises
         selectedVideoFile = null;
         videoDurationMinutes = 0m;
 
-        var firstCourseId = klasses.FirstOrDefault()?.Id ?? Guid.Empty;
+        var firstCourseId = FilteredKlasses.FirstOrDefault()?.Id
+            ?? klasses.FirstOrDefault()?.Id
+            ?? Guid.Empty;
         if (firstCourseId == Guid.Empty)
         {
             errorMessage = "Aucune classe n'est attribuée à votre profil.";
@@ -396,6 +460,7 @@ public partial class TeacherLessonExercises
             Order = nextOrder,
             IsPublished = false
         };
+        selectedSchoolId = klasseSchoolById.TryGetValue(firstCourseId, out var createSchoolId) ? createSchoolId : selectedSchoolId;
         isCurrentAssignmentVersionLocked = false;
         exerciseBlocks = [];
 
