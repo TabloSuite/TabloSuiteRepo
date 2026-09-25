@@ -114,6 +114,7 @@
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <button type="button" class="rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-800 transition hover:bg-indigo-200" @onclick="() => OpenDueDateModalAsync(lesson)">Modifier la date limite</button>
                                     <button type="button" class="rounded-full bg-violet-100 px-4 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenReassignFromListAsync(lesson.LessonId)">Modifier et réattribuer</button>
+                                    <a class="rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="/teacher/lesson-exercises/@lesson.LessonId/pdf-file" target="_blank">Exporter PDF</a>
                                     <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="() => OpenEditorAsync(lesson.LessonId)">Modifier la leçon</button>
                                 </div>
                             </div>

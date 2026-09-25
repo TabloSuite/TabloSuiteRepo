@@ -22,6 +22,7 @@ public class TeacherLessonListItem
     public Guid? AuthorId { get; set; }
     public bool IsPdfExportEnabled { get; set; }
     public bool IsSharedWithSchool { get; set; }
+    public bool IsExerciseLesson { get; set; }
     public bool HasVideo { get; set; }
     public string? VideoDisplayName { get; set; }
 }

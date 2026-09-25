@@ -400,8 +400,11 @@ public class ExamService(IHalloAppDbContext dbContext)
         exam.DurationInMinutes = model.DurationInMinutes;
         exam.PassingScore = model.PassingScore;
         exam.ExamType = ExamType.TestExam;
-        exam.IsPublishedToStudents = model.ReleaseTarget == ExamReleaseTarget.ClassStudents;
-        exam.IsSharedWithSchool = model.ReleaseTarget == ExamReleaseTarget.SchoolLeader;
+        var publishToStudents = model.AssignToClassStudents || model.ReleaseTarget == ExamReleaseTarget.ClassStudents;
+        var shareWithDirection = model.ShareWithSchoolDirection || model.ReleaseTarget == ExamReleaseTarget.SchoolLeader;
+
+        exam.IsPublishedToStudents = publishToStudents;
+        exam.IsSharedWithSchool = shareWithDirection;
         exam.IsPdfExportEnabled = model.IsPdfExportEnabled;
         exam.GeaendertAmUtc = DateTime.UtcNow;
 
@@ -492,6 +495,8 @@ public class ExamService(IHalloAppDbContext dbContext)
                 QuestionCount = exam.Questions.Count,
                 AttemptCount = exam.Attempts.Count,
                 ExamType = exam.ExamType,
+                IsPublishedToStudents = exam.IsPublishedToStudents,
+                IsSharedWithSchool = exam.IsSharedWithSchool,
                 ReleaseTarget = exam.IsPublishedToStudents
                     ? ExamReleaseTarget.ClassStudents
                     : exam.IsSharedWithSchool
@@ -528,6 +533,8 @@ public class ExamService(IHalloAppDbContext dbContext)
             DurationInMinutes = exam.DurationInMinutes,
             PassingScore = exam.PassingScore,
             ExamType = exam.ExamType,
+            AssignToClassStudents = exam.IsPublishedToStudents,
+            ShareWithSchoolDirection = exam.IsSharedWithSchool,
             ReleaseTarget = exam.IsPublishedToStudents
                 ? ExamReleaseTarget.ClassStudents
                 : exam.IsSharedWithSchool
@@ -565,7 +572,11 @@ public class ExamService(IHalloAppDbContext dbContext)
     /// <summary>
     /// Projektion einer Prüfung für den druckbaren Schüler-Prüfungsbogen (ohne Lösungen).
     /// </summary>
-    public async Task<ExamPdfViewModel?> GetExamForPdfAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default)
+    public async Task<ExamPdfViewModel?> GetExamForPdfAsync(
+        Guid userId,
+        Guid examId,
+        bool includeSharedWithDirection = false,
+        CancellationToken cancellationToken = default)
     {
         var exam = await dbContext.Exams
             .AsNoTracking()
@@ -575,9 +586,23 @@ public class ExamService(IHalloAppDbContext dbContext)
                     .ThenInclude(x => x.Options)
             .Include(x => x.Questions)
                 .ThenInclude(x => x.Options)
-            .FirstOrDefaultAsync(x => x.Id == examId && x.AuthorId == authorId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == examId, cancellationToken);
 
         if (exam is null)
+        {
+            return null;
+        }
+
+        var isAuthor = exam.AuthorId == userId;
+        var canViewAsDirection = includeSharedWithDirection
+            && exam.IsSharedWithSchool
+            && exam.IsPdfExportEnabled
+            && exam.Klasse.SchoolId.HasValue
+            && await dbContext.UserSchools
+                .AsNoTracking()
+                .AnyAsync(link => link.AppUserId == userId && link.SchoolId == exam.Klasse.SchoolId.Value, cancellationToken);
+
+        if (!isAuthor && !canViewAsDirection)
         {
             return null;
         }

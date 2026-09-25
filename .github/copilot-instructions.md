@@ -164,3 +164,5 @@
 - ProduktOwner haben ähnlich wie SuperAdmins Verwaltungsrechte für ihre zugewiesenen Schulen, dürfen jedoch keine globalen App-Kontostände sehen und sollen Abrechnungen nur für ihre zugewiesenen Schulen erstellen können. **ProduktOwner sollen ihre zugewiesenen Schulen selbstständig verwalten und nur die Abo-Anteile dieser Schulen sehen. Globale App-Umsätze, App-Kontostände und Finanzdaten anderer Schulen dürfen ihnen nicht angezeigt werden.**
 
 - In der App darf nirgends mehr 'HALLOAPP' als sichtbarer Text erscheinen; stattdessen nur SKOULOU, SKOULOUAPP oder SKOULOUAPPABO verwenden.
+
+- Bevorzugte Bezeichnung für den Menüpunkt ist „Contenus pédagogiques des enseignants“ statt „Supports publiés des enseignants“.

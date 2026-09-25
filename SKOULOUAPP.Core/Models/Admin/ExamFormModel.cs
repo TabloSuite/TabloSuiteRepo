@@ -32,6 +32,10 @@ public class ExamFormModel
 
     public ExamReleaseTarget ReleaseTarget { get; set; } = ExamReleaseTarget.PrivateAuthor;
 
+    public bool ShareWithSchoolDirection { get; set; }
+
+    public bool AssignToClassStudents { get; set; }
+
     public bool IsPdfExportEnabled { get; set; }
 
     public List<ExamExerciseFormModel> Exercises { get; set; } = [];

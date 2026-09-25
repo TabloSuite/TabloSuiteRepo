@@ -4,7 +4,9 @@ using HalloApp.Core.DataModels.Lessons;
 using HalloApp.Core.Interfaces;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Models.TeacherLessons;
+using HalloApp.Core.Services.Text;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using System.Text.Json;
 
 namespace HalloApp.Core.Services;
@@ -183,6 +185,277 @@ public class LearningService(IHalloAppDbContext dbContext)
                         SelectedOptionId = lastCorrect?.SelectedOptionId,
                         SubmittedTextAnswer = lastAttempt?.TextAnswer,
                         SubmittedGapValues = AnswerMatchingService.ParseStudentGapValues(lastAttempt?.GapAnswersJson).ToList(),
+                        Options = exercise.Options
+                            .OrderBy(o => o.Order)
+                            .Select(o => new ExerciseOptionViewModel
+                            {
+                                OptionId = o.Id,
+                                Text = o.Text,
+                                Order = o.Order
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    public async Task<LessonDetailViewModel?> GetLessonDetailForTeacherOrDirectionReadOnlyAsync(
+        Guid lessonId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var lesson = await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .Include(x => x.MediaItems)
+            .Include(x => x.Exercises)
+                .ThenInclude(x => x.Options)
+            .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsPublished, cancellationToken);
+
+        if (lesson is null)
+        {
+            return null;
+        }
+
+        var isDirectionOfSchool = lesson.Klasse.SchoolId.HasValue
+            && await dbContext.UserSchools
+                .AsNoTracking()
+                .AnyAsync(link => link.AppUserId == userId && link.SchoolId == lesson.Klasse.SchoolId.Value, cancellationToken);
+
+        var isAssignedTeacher = await dbContext.LehrerNiveauZuordnungen
+            .AsNoTracking()
+            .AnyAsync(link => link.LehrerID == userId && link.KlasseId == lesson.KlasseId, cancellationToken);
+
+        if (!isDirectionOfSchool && !isAssignedTeacher)
+        {
+            return null;
+        }
+
+        return new LessonDetailViewModel
+        {
+            LessonId = lesson.Id,
+            Title = lesson.Title,
+            Summary = lesson.Summary,
+            Content = lesson.Content,
+            CourseCode = lesson.Klasse.Code,
+            IsCompleted = false,
+            ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
+            Media = lesson.MediaItems
+                .Select(m => new LessonMediaViewModel
+                {
+                    MediaType = m.MediaType,
+                    Url = NormalizeMediaUrl(m.RelativePath),
+                    AltText = m.AltText
+                })
+                .ToList(),
+            Exercises = lesson.Exercises
+                .OrderBy(x => x.Order)
+                .Select(exercise =>
+                {
+                    var normalizedType = NormalizeExerciseType(exercise.ExerciseType);
+                    var gapDefinition = AnswerMatchingService.ParseGapAnswers(exercise.GapAnswersJson);
+
+                    return new ExerciseViewModel
+                    {
+                        ExerciseId = exercise.Id,
+                        Title = exercise.Title,
+                        Instructions = exercise.Instructions,
+                        Question = exercise.Question,
+                        Order = exercise.Order,
+                        ExerciseType = normalizedType,
+                        AudioText = exercise.AudioText,
+                        TtsLanguage = string.IsNullOrWhiteSpace(exercise.TtsLanguage) ? "de-DE" : exercise.TtsLanguage,
+                        GapCount = gapDefinition.Count,
+                        HasAutomaticGrading = false,
+                        IsPendingManualGrading = false,
+                        IsManuallyReviewed = false,
+                        ManualFeedback = null,
+                        IsAnsweredCorrectly = false,
+                        SelectedOptionId = null,
+                        SubmittedTextAnswer = null,
+                        SubmittedGapValues = Enumerable.Repeat(string.Empty, gapDefinition.Count).ToList(),
+                        Options = exercise.Options
+                            .OrderBy(o => o.Order)
+                            .Select(o => new ExerciseOptionViewModel
+                            {
+                                OptionId = o.Id,
+                                Text = o.Text,
+                                Order = o.Order
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    public async Task<TeacherLessonDetailViewModel?> GetLessonDetailForDirectionPdfExportAsync(
+        Guid lessonId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var lesson = await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .Include(x => x.Exercises)
+            .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsPublished, cancellationToken);
+
+        if (lesson?.Klasse.SchoolId is not Guid schoolId)
+        {
+            return null;
+        }
+
+        var belongsToDirectionSchool = await dbContext.UserSchools
+            .AsNoTracking()
+            .AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
+        if (!belongsToDirectionSchool)
+        {
+            return null;
+        }
+
+        var textParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(lesson.Content))
+        {
+            textParts.Add(lesson.Content);
+        }
+
+        foreach (var exercise in lesson.Exercises.OrderBy(x => x.Order))
+        {
+            var plainTitle = HtmlSanitizer.ToPlainText(exercise.Title);
+            if (!string.IsNullOrWhiteSpace(plainTitle))
+            {
+                textParts.Add($"<p><strong>{WebUtility.HtmlEncode(plainTitle)}</strong></p>");
+            }
+
+            var plainInstructions = HtmlSanitizer.ToPlainText(exercise.Instructions);
+            if (!string.IsNullOrWhiteSpace(plainInstructions))
+            {
+                textParts.Add($"<p>{WebUtility.HtmlEncode(plainInstructions)}</p>");
+            }
+
+            var plainQuestion = HtmlSanitizer.ToPlainText(exercise.Question);
+            if (!string.IsNullOrWhiteSpace(plainQuestion))
+            {
+                textParts.Add($"<p>{WebUtility.HtmlEncode(plainQuestion)}</p>");
+            }
+
+            var normalizedType = NormalizeExerciseType(exercise.ExerciseType);
+            if (normalizedType is "SingleChoice" or "Choice" or "AudioChoice" or "AudioSingleChoice")
+            {
+                foreach (var option in exercise.Options.OrderBy(option => option.Order))
+                {
+                    textParts.Add($"<p>○ {WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
+                }
+            }
+            else if (normalizedType is "MultipleChoice" or "AudioMultipleChoice")
+            {
+                foreach (var option in exercise.Options.OrderBy(option => option.Order))
+                {
+                    textParts.Add($"<p>□ {WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
+                }
+            }
+            else if (normalizedType == "GapFill")
+            {
+                var gapCount = Math.Max(1, AnswerMatchingService.ParseGapAnswers(exercise.GapAnswersJson).Count);
+                textParts.Add($"<p>{string.Join(" ", Enumerable.Repeat("______", gapCount))}</p>");
+            }
+            else
+            {
+                textParts.Add("<p>________________________________________</p>");
+                textParts.Add("<p>________________________________________</p>");
+            }
+        }
+
+        return new TeacherLessonDetailViewModel
+        {
+            Id = lesson.Id,
+            Title = lesson.Title,
+            Summary = lesson.Summary,
+            CourseCode = lesson.Klasse.Code,
+            IsPublished = true,
+            IsPdfExportEnabled = true,
+            Pages =
+            [
+                new TeacherLessonPageViewModel
+                {
+                    Id = lesson.Id,
+                    PageNumber = 1,
+                    ContentHtml = string.Join("<hr/>", textParts)
+                }
+            ]
+        };
+    }
+
+    public async Task<LessonDetailViewModel?> GetLessonDetailForDirectionReadOnlyAsync(
+        Guid lessonId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var lesson = await dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .Include(x => x.MediaItems)
+            .Include(x => x.Exercises)
+                .ThenInclude(x => x.Options)
+            .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsPublished, cancellationToken);
+
+        if (lesson?.Klasse.SchoolId is not Guid schoolId)
+        {
+            return null;
+        }
+
+        var belongsToDirectionSchool = await dbContext.UserSchools
+            .AsNoTracking()
+            .AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
+        if (!belongsToDirectionSchool)
+        {
+            return null;
+        }
+
+        return new LessonDetailViewModel
+        {
+            LessonId = lesson.Id,
+            Title = lesson.Title,
+            Summary = lesson.Summary,
+            Content = lesson.Content,
+            CourseCode = lesson.Klasse.Code,
+            IsCompleted = false,
+            ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
+            Media = lesson.MediaItems
+                .Select(m => new LessonMediaViewModel
+                {
+                    MediaType = m.MediaType,
+                    Url = NormalizeMediaUrl(m.RelativePath),
+                    AltText = m.AltText
+                })
+                .ToList(),
+            Exercises = lesson.Exercises
+                .OrderBy(x => x.Order)
+                .Select(exercise =>
+                {
+                    var normalizedType = NormalizeExerciseType(exercise.ExerciseType);
+                    var gapDefinition = AnswerMatchingService.ParseGapAnswers(exercise.GapAnswersJson);
+
+                    return new ExerciseViewModel
+                    {
+                        ExerciseId = exercise.Id,
+                        Title = exercise.Title,
+                        Instructions = exercise.Instructions,
+                        Question = exercise.Question,
+                        Order = exercise.Order,
+                        ExerciseType = normalizedType,
+                        AudioText = exercise.AudioText,
+                        TtsLanguage = string.IsNullOrWhiteSpace(exercise.TtsLanguage) ? "de-DE" : exercise.TtsLanguage,
+                        GapCount = gapDefinition.Count,
+                        HasAutomaticGrading = false,
+                        IsPendingManualGrading = false,
+                        IsManuallyReviewed = false,
+                        ManualFeedback = null,
+                        IsAnsweredCorrectly = false,
+                        SelectedOptionId = null,
+                        SubmittedTextAnswer = null,
+                        SubmittedGapValues = Enumerable.Repeat(string.Empty, gapDefinition.Count).ToList(),
                         Options = exercise.Options
                             .OrderBy(o => o.Order)
                             .Select(o => new ExerciseOptionViewModel

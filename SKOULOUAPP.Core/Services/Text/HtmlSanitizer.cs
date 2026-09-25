@@ -101,7 +101,9 @@ public static partial class HtmlSanitizer
             return string.Empty;
         }
 
-        var text = GefaehrlicheBloeckeRegex().Replace(html, " ");
+        var decoded = System.Net.WebUtility.HtmlDecode(html);
+
+        var text = GefaehrlicheBloeckeRegex().Replace(decoded, " ");
         text = KommentarRegex().Replace(text, " ");
         text = TagRegex().Replace(text, " ");
 

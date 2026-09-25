@@ -17,4 +17,6 @@ public class ExamManagementItem
     public int AttemptCount { get; set; }
     public ExamType ExamType { get; set; }
     public ExamReleaseTarget ReleaseTarget { get; set; }
+    public bool IsSharedWithSchool { get; set; }
+    public bool IsPublishedToStudents { get; set; }
 }

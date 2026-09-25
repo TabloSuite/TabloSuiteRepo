@@ -4,6 +4,7 @@
 @inherits HalloApp.WebApp.Components.CancelableComponentBase
 @using HalloApp.Core.DataModels.Exams
 @using HalloApp.Core.Models.Admin
+@using HalloApp.Core.Services.Text
 @using HalloApp.WebApp.Components.Shared
 
 @if (!Embedded)
@@ -51,18 +52,131 @@
             <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
                 <div>
                     <h2 class="font-bold text-slate-900">@exam.Title</h2>
-                    <p class="text-sm text-slate-500">@exam.NiveauCode · @(exam.ReleaseTarget == ExamReleaseTarget.ClassStudents ? "Assigné aux élèves (score)" : exam.ReleaseTarget == ExamReleaseTarget.SchoolLeader ? "Direction / impression (hors score)" : "Privé enseignant (hors score)") · @exam.ExerciseCount exercice(s) · @exam.QuestionCount question(s) · @exam.DurationInMinutes min · @exam.AttemptCount tentative(s)</p>
+                    <p class="text-sm text-slate-500">@exam.NiveauCode · @GetAudienceLabel(exam) · @exam.ExerciseCount exercice(s) · @exam.QuestionCount question(s) · @exam.DurationInMinutes min · @exam.AttemptCount tentative(s)</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <a class="rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-100" href="@($"/teacher-exams/{exam.ExamId}/pdf?solutions=true")" target="_blank">PDF corrigé</a>
-                    <a class="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100" href="@($"/teacher-exams/{exam.ExamId}/pdf?solutions=false")" target="_blank">PDF sans solutions</a>
+                    <button type="button" class="rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-100" @onclick="() => OpenExamPdfPreviewAsync(exam.ExamId, true)">Aperçu corrigé</button>
+                    <button type="button" class="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100" @onclick="() => OpenExamPdfPreviewAsync(exam.ExamId, false)">Aperçu sans solutions</button>
                     <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="() => OpenEditor(exam.ExamId)">Modifier</button>
                     <button type="button" class="rounded-full bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100" @onclick="() => DeleteExam(exam.ExamId)">Supprimer</button>
                 </div>
             </div>
         }
+
     </div>
 </section>
+
+@if (pdfPreviewExam is not null)
+{
+    <div class="fixed inset-0 z-[2300] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Aperçu avant export PDF">
+        <div class="hallo-modal-surface flex h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+            <div class="relative flex items-center justify-end gap-3 border-b border-white/20 px-4 py-3 text-white sm:px-6" style="background: linear-gradient(135deg, var(--hallo-accent-1), var(--hallo-accent-2));">
+                <h3 class="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-black text-white">Aperçu du contenu à exporter (@(pdfPreviewIncludeSolutions ? "avec solutions" : "sans solutions"))</h3>
+                <button type="button" class="rounded-full bg-rose-500/90 px-4 py-2 text-xs font-semibold text-white ring-1 ring-rose-200/70 hover:bg-rose-500" @onclick="CloseExamPdfPreview">Fermer l’aperçu</button>
+            </div>
+
+            <div class="hallo-modal-scroll min-h-0 flex-1 px-4 py-4 sm:px-6">
+                <article class="rounded-xl border border-slate-200 bg-white p-6 text-slate-900">
+                    <header class="border-b border-cyan-600 pb-4 text-center">
+                        <p class="text-xs font-semibold uppercase tracking-[.18em] text-cyan-700">@pdfPreviewExam.NiveauCode · @pdfPreviewExam.DurationInMinutes min · @pdfPreviewExam.TotalPoints pts</p>
+                        <h4 class="mt-2 text-2xl font-black">@pdfPreviewExam.Title</h4>
+                        @if (!string.IsNullOrWhiteSpace(pdfPreviewExam.Description))
+                        {
+                            <div class="mt-2 text-sm text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(pdfPreviewExam.Description))</div>
+                        }
+                    </header>
+
+                    @foreach (var block in pdfPreviewExam.Exercises)
+                    {
+                        var blockPoints = block.Questions.Sum(question => question.Points);
+                        <section class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">Exercice @block.Number</span>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">@blockPoints pt@(blockPoints > 1 ? "s" : string.Empty)</span>
+                            </div>
+                            <h5 class="mt-2 text-lg font-bold text-slate-900">@(string.IsNullOrWhiteSpace(block.Title) ? $"Exercice {block.Number}" : block.Title)</h5>
+                            @if (!string.IsNullOrWhiteSpace(block.Consigne))
+                            {
+                                <div class="mt-1 text-sm italic text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(block.Consigne))</div>
+                            }
+
+                            <div class="mt-3 grid gap-3">
+                                @foreach (var question in block.Questions)
+                                {
+                                    <div class="rounded-xl border border-slate-200 bg-white p-3">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="text-sm font-semibold text-slate-900">@question.Number. @((MarkupString)HtmlSanitizer.Sanitize(question.Prompt))</div>
+                                            <span class="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-800">@question.Points pt@(question.Points > 1 ? "s" : string.Empty)</span>
+                                        </div>
+
+                                        @if (question.QuestionType is "Choice" or "SingleChoice" or "MultipleChoice" or "AudioChoice" or "AudioSingleChoice" or "AudioMultipleChoice" && question.Options.Count > 0)
+                                        {
+                                            var useRadioComponent = question.QuestionType is "Choice" or "SingleChoice" or "AudioChoice" or "AudioSingleChoice";
+                                            <div class="mt-2 space-y-2">
+                                                @foreach (var option in question.Options)
+                                                {
+                                                    var isCorrect = pdfPreviewIncludeSolutions && question.CorrectOptions.Contains(option);
+                                                    <div class="flex items-center gap-2 text-sm @(isCorrect ? "font-bold text-emerald-700" : "font-medium text-slate-900")">
+                                                        @if (useRadioComponent)
+                                                        {
+                                                            <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-700" aria-hidden="true"></span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="inline-flex h-4 w-4 items-center justify-center rounded-[3px] border-2 border-slate-700" aria-hidden="true"></span>
+                                                        }
+                                                        <span>@HtmlSanitizer.ToPlainText(option) @(isCorrect ? "✓" : string.Empty)</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else if (question.QuestionType == "GapFill")
+                                        {
+                                            <div class="mt-2 flex flex-wrap gap-2">
+                                                @for (var i = 0; i < Math.Max(question.GapCount, 1); i++)
+                                                {
+                                                    <input type="text" disabled class="hallo-input w-32 bg-slate-50 text-xs" />
+                                                }
+                                            </div>
+                                            @if (pdfPreviewIncludeSolutions && question.GapSolutions.Count > 0)
+                                            {
+                                                <p class="mt-1 text-xs text-emerald-700">Solutions : @string.Join(" · ", question.GapSolutions)</p>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @if (question.QuestionType is "SentenceBuilding" or "FreeText" or "AudioText")
+                                            {
+                                                <textarea disabled class="hallo-input mt-2 min-h-24 w-full bg-slate-50 text-sm" placeholder="Réponse de l'élève..."></textarea>
+                                            }
+                                            else
+                                            {
+                                                <div class="mt-2 space-y-2">
+                                                    <div class="border-b border-slate-300"></div>
+                                                    <div class="border-b border-slate-300"></div>
+                                                    <div class="border-b border-slate-300"></div>
+                                                </div>
+                                            }
+                                            @if (pdfPreviewIncludeSolutions && !string.IsNullOrWhiteSpace(question.AcceptedAnswers))
+                                            {
+                                                <p class="mt-1 text-xs text-emerald-700">Solution(s) : @question.AcceptedAnswers</p>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    }
+                </article>
+            </div>
+
+            <div class="flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-6">
+                <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="CloseExamPdfPreview">Annuler</button>
+                <a class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800" href="@GetPdfFileUrl()" target="_blank" @onclick="CloseExamPdfPreview">Télécharger le PDF</a>
+            </div>
+        </div>
+    </div>
+}
 
 @if (editorOpen && form is not null)
 {
@@ -96,29 +210,23 @@
                     {
                         <div class="sm:col-span-2">
                             <label class="mb-2 block text-xs font-semibold text-slate-600">Destinataire de l'examen</label>
-                            <div class="grid gap-3 sm:grid-cols-3">
-                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ReleaseTarget == ExamReleaseTarget.PrivateAuthor ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
-                                    <input type="radio" name="exam-release-target" checked="@(form.ReleaseTarget == ExamReleaseTarget.PrivateAuthor)" @onchange="() => form.ReleaseTarget = ExamReleaseTarget.PrivateAuthor" class="mt-1" />
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ShareWithSchoolDirection ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
+                                    <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300" @bind="form.ShareWithSchoolDirection" />
                                     <span>
-                                        <span class="block font-semibold text-slate-800">Moi uniquement</span>
-                                        <span class="block text-sm text-slate-500">Brouillon privé pour préparation ou impression personnelle.</span>
+                                        <span class="block font-semibold text-slate-800">Direction</span>
+                                        <span class="block text-sm text-slate-500">Visible dans les contenus pédagogiques de la direction.</span>
                                     </span>
                                 </label>
-                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ReleaseTarget == ExamReleaseTarget.SchoolLeader ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
-                                    <input type="radio" name="exam-release-target" checked="@(form.ReleaseTarget == ExamReleaseTarget.SchoolLeader)" @onchange="() => form.ReleaseTarget = ExamReleaseTarget.SchoolLeader" class="mt-1" />
-                                    <span>
-                                        <span class="block font-semibold text-slate-800">Direction uniquement</span>
-                                        <span class="block text-sm text-slate-500">L'examen est visible pour la direction, pas encore pour les élèves.</span>
-                                    </span>
-                                </label>
-                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.ReleaseTarget == ExamReleaseTarget.ClassStudents ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
-                                    <input type="radio" name="exam-release-target" checked="@(form.ReleaseTarget == ExamReleaseTarget.ClassStudents)" @onchange="() => form.ReleaseTarget = ExamReleaseTarget.ClassStudents" class="mt-1" />
+                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 @(form.AssignToClassStudents ? "border-indigo-500 bg-indigo-50" : "border-slate-200")">
+                                    <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300" @bind="form.AssignToClassStudents" />
                                     <span>
                                         <span class="block font-semibold text-slate-800">Élèves de la classe</span>
-                                        <span class="block text-sm text-slate-500">L'examen est publié pour les élèves abonnés de la classe concernée.</span>
+                                        <span class="block text-sm text-slate-500">Publié pour les élèves abonnés de la classe concernée (compte dans le score).</span>
                                     </span>
                                 </label>
                             </div>
+                            <p class="mt-2 text-xs text-slate-500">Si aucune case n'est cochée, l'examen reste privé mais reste toujours visible pour son auteur.</p>
                         </div>
                     }
                     <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">

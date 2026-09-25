@@ -72,8 +72,8 @@ else
             <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux supports</button>
             @if (lesson.IsPdfExportEnabled)
             {
-                <a class="rounded-full bg-cyan-100 px-6 py-2.5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-200" href="teacher-lessons/@lesson.Id/pdf?solutions=true" target="_blank">Exporter PDF avec solutions</a>
-                <a class="rounded-full bg-amber-100 px-6 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-200" href="teacher-lessons/@lesson.Id/pdf?solutions=false" target="_blank">Exporter sans solutions</a>
+                <a class="rounded-full bg-cyan-100 px-6 py-2.5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-200" href="teacher-lessons/@lesson.Id/pdf-file?solutions=true" target="_blank">Exporter PDF avec solutions</a>
+                <a class="rounded-full bg-amber-100 px-6 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-200" href="teacher-lessons/@lesson.Id/pdf-file?solutions=false" target="_blank">Exporter sans solutions</a>
             }
         </div>
     </section>

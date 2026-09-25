@@ -112,14 +112,14 @@
         <AuthorizeView Roles="Lehrer,SchulLeiter,Koordinator" Context="pedagogicState">
             <Authorized>
                 <div class="nav-section-label nav-section-spacing">Espace pédagogique</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="teacher" Match="NavLinkMatch.All" data-enhance-nav="false">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
-                        <span>Tableau pédagogique</span>
-                    </NavLink>
-                </div>
                 @if (pedagogicState.User.IsInRole("Lehrer") && !pedagogicState.User.IsInRole("SchulLeiter") && !pedagogicState.User.IsInRole("Koordinator"))
                 {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="teacher" Match="NavLinkMatch.All" data-enhance-nav="false">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                            <span>Tableau pédagogique</span>
+                        </NavLink>
+                    </div>
                     <div class="nav-item">
                         <NavLink class="nav-link" href="teacher/create" data-enhance-nav="false">
                             <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
@@ -132,7 +132,7 @@
                     <div class="nav-item">
                         <NavLink class="nav-link" href="teacher/lessons" data-enhance-nav="false">
                             <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Supports publiés des enseignants</span>
+                            <span>Contenus pédagogiques des enseignants</span>
                         </NavLink>
                     </div>
                     <div class="nav-item">

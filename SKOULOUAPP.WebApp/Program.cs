@@ -18,9 +18,13 @@ using Serilog;
 using System.Security.Claims;
 using HalloApp.Core.DataModels.Identity;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using HalloApp.WebApp.Services;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Host.UseSerilog((_, services, loggerConfiguration) => loggerConfiguration
     .MinimumLevel.Information()
@@ -245,6 +249,144 @@ app.MapGet("/media-library/{assetId:guid}", async (
         ? Results.NotFound()
         : Results.File(image.Content, image.ContentType, enableRangeProcessing: true);
 }).RequireAuthorization();
+
+app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
+    Guid examId,
+    bool? solutions,
+    ClaimsPrincipal user,
+    ExamService examService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var includeSolutions = solutions ?? false;
+    var canExportSharedDirectionContent = user.IsInRole(Rollen.SchulLeiter) || user.IsInRole(Rollen.Koordinator);
+    var exam = await examService.GetExamForPdfAsync(
+        userId,
+        examId,
+        canExportSharedDirectionContent,
+        cancellationToken);
+    if (exam is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = new ExamPdfDocument(exam, includeSolutions).GeneratePdf();
+    var safeTitle = string.IsNullOrWhiteSpace(exam.Title)
+        ? "examen"
+        : string.Concat(exam.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
+    if (string.IsNullOrWhiteSpace(safeTitle))
+    {
+        safeTitle = "examen";
+    }
+
+    var fileName = $"{safeTitle}{(includeSolutions ? "-corrige" : "-sans-solutions")}.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
+}).RequireAuthorization("RequireTeacher");
+
+app.MapGet("/teacher/lesson-exercises/{lessonId:guid}/pdf-file", async (
+    Guid lessonId,
+    ClaimsPrincipal user,
+    LearningService learningService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var lesson = await learningService.GetLessonDetailForTeacherOrDirectionReadOnlyAsync(lessonId, userId, cancellationToken);
+    if (lesson is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = new DirectionLessonExercisePdfDocument(lesson).GeneratePdf();
+    var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
+        ? "support"
+        : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
+    if (string.IsNullOrWhiteSpace(safeTitle))
+    {
+        safeTitle = "support";
+    }
+
+    return Results.File(bytes, "application/pdf", $"{safeTitle}-sans-solutions.pdf");
+}).RequireAuthorization("RequireTeacher");
+
+app.MapGet("/teacher-lessons/{lessonId:guid}/pdf-file", async (
+    Guid lessonId,
+    bool? solutions,
+    ClaimsPrincipal user,
+    TeacherLessonService teacherLessonService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var includeSolutions = solutions ?? true;
+    var canExportSharedDirectionContent = user.IsInRole(Rollen.SchulLeiter) || user.IsInRole(Rollen.Koordinator);
+
+    var lesson = await teacherLessonService.GetLessonDetailForPdfExportAsync(
+        lessonId,
+        userId,
+        canExportSharedDirectionContent,
+        cancellationToken);
+    if (lesson is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = new LessonPdfDocument(lesson, includeSolutions).GeneratePdf();
+    var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
+        ? "support"
+        : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
+    if (string.IsNullOrWhiteSpace(safeTitle))
+    {
+        safeTitle = "support";
+    }
+
+    var fileName = $"{safeTitle}{(includeSolutions ? "-avec-solutions" : "-sans-solutions")}.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
+}).RequireAuthorization("RequireTeacher");
+
+app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
+    Guid lessonId,
+    ClaimsPrincipal user,
+    TeacherLessonService teacherLessonService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var lesson = await teacherLessonService.GetLessonDetailForStudentPdfExportAsync(lessonId, userId, cancellationToken);
+    if (lesson is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = new LessonPdfDocument(lesson, includeSolutions: false).GeneratePdf();
+    var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
+        ? "support"
+        : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
+    if (string.IsNullOrWhiteSpace(safeTitle))
+    {
+        safeTitle = "support";
+    }
+
+    var fileName = $"{safeTitle}-eleve.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
+}).RequireAuthorization("RequireStudent");
 
 app.MapGet("/media-library/videos/{assetId:guid}", async (
     Guid assetId,

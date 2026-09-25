@@ -1,0 +1,114 @@
+@page "/teacher/lesson-exercises/{LessonId:guid}/view"
+@attribute [Authorize(Policy = "RequireSchulLeiter")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Models.Student
+@using HalloApp.Core.Services.Text
+
+<PageTitle>@(lesson?.Title ?? "Leçon")</PageTitle>
+
+@if (notFound)
+{
+    <div class="rounded-[2rem] bg-white p-8 text-left shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+        <p class="text-sm font-bold text-slate-900">Ce contenu n'est pas disponible pour ton rôle.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-600">La direction et la coordination voient uniquement les leçons publiées de leurs écoles, en lecture seule.</p>
+        <button type="button" class="mt-4 rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux supports</button>
+    </div>
+}
+else if (lesson is null)
+{
+    <SkeletonLoader CardCount="2" />
+}
+else
+{
+    <section class="grid gap-6">
+        <div class="hallo-hero rounded-[2rem] p-4 text-white shadow-2xl sm:p-5">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/30">@lesson.CourseCode</span>
+                <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800">Lecture seule</span>
+            </div>
+            <h1 class="mt-2 text-2xl font-black sm:text-[1.7rem]">@lesson.Title</h1>
+            @if (!string.IsNullOrWhiteSpace(lesson.Summary))
+            {
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-indigo-50">@lesson.Summary</p>
+            }
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-3">
+            <button type="button" class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="GoBack">Retour aux supports</button>
+            <a class="rounded-full bg-cyan-100 px-6 py-2.5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-200" href="/teacher/lesson-exercises/@lesson.LessonId/pdf-file" target="_blank">Exporter PDF</a>
+        </div>
+
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 sm:text-sm">Contenu</p>
+            <div class="rich-content mt-3 text-sm leading-7 text-slate-700 sm:text-base sm:leading-8">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
+        </div>
+
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 sm:text-sm">Exercices</p>
+            <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">Consultation uniquement</h2>
+
+            @if (lesson.Exercises.Count == 0)
+            {
+                <p class="mt-4 text-sm text-slate-500">Aucun exercice n'est disponible pour cette leçon.</p>
+            }
+            else
+            {
+                <div class="mt-4 grid gap-3">
+                    @foreach (var exercise in lesson.Exercises.OrderBy(x => x.Order))
+                    {
+                        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">Exercice @exercise.Order</span>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">@exercise.ExerciseType</span>
+                            </div>
+                            <p class="mt-2 text-sm font-bold text-slate-900">@exercise.Title</p>
+                            @if (!string.IsNullOrWhiteSpace(exercise.Instructions))
+                            {
+                                <p class="mt-1 text-sm text-slate-600">@HtmlSanitizer.ToPlainText(exercise.Instructions)</p>
+                            }
+                            <p class="mt-2 text-sm text-slate-700">@HtmlSanitizer.ToPlainText(exercise.Question)</p>
+                            @if (exercise.Options.Count > 0)
+                            {
+                                @if (exercise.ExerciseType is "SingleChoice" or "Choice" or "AudioChoice" or "AudioSingleChoice")
+                                {
+                                    <div class="mt-2 space-y-2">
+                                        @foreach (var option in exercise.Options.OrderBy(o => o.Order))
+                                        {
+                                            <label class="flex items-center gap-2 text-sm font-medium text-slate-900">
+                                                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-700" aria-hidden="true"></span>
+                                                <span>@HtmlSanitizer.ToPlainText(option.Text)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                                else if (exercise.ExerciseType is "MultipleChoice" or "AudioMultipleChoice")
+                                {
+                                    <div class="mt-2 space-y-2">
+                                        @foreach (var option in exercise.Options.OrderBy(o => o.Order))
+                                        {
+                                            <label class="flex items-center gap-2 text-sm font-medium text-slate-900">
+                                                <span class="inline-flex h-4 w-4 items-center justify-center rounded-[3px] border-2 border-slate-700" aria-hidden="true"></span>
+                                                <span>@HtmlSanitizer.ToPlainText(option.Text)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                                        @foreach (var option in exercise.Options.OrderBy(o => o.Order))
+                                        {
+                                            <li>@HtmlSanitizer.ToPlainText(option.Text)</li>
+                                        }
+                                    </ul>
+                                }
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+
+    </section>
+}

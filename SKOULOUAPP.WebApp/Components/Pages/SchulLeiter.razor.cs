@@ -18,6 +18,26 @@ namespace HalloApp.WebApp.Components.Pages;
 
 public partial class SchulLeiter
 {
+    private const string DirectorTabSubjects = "subjects";
+    private const string DirectorTabClasses = "classes";
+    private const string DirectorTabUsers = "users";
+    private const string DirectorTabReassign = "reassign";
+    private const string DirectorTabImport = "import";
+    private const string DirectorTabShared = "shared";
+
+    private string activeDirectorTab = DirectorTabSubjects;
+
+    private bool IsDirectorTabActive(string tabKey)
+        => string.Equals(activeDirectorTab, tabKey, StringComparison.Ordinal);
+
+    private void SetDirectorTab(string tabKey)
+        => activeDirectorTab = tabKey;
+
+    private string GetDirectorTabButtonClass(string tabKey)
+        => IsDirectorTabActive(tabKey)
+            ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
+            : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700";
+
     private bool CanSuggestHalloAppEmail => CanCurrentUserUseHalloAppEmail
         && !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
@@ -928,6 +948,12 @@ public partial class SchulLeiter
             && !authState.User.IsInRole(Rollen.Schueler);
         canViewSharedTeacherContent = authState.User.IsInRole(Rollen.SchulLeiter)
             || authState.User.IsInRole(Rollen.Koordinator);
+
+        if (!canViewSharedTeacherContent && IsDirectorTabActive(DirectorTabShared))
+        {
+            activeDirectorTab = DirectorTabSubjects;
+        }
+
         var userIdValue = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdValue, out var userId))
         {

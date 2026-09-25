@@ -31,7 +31,10 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
                 && schoolIds.Contains(lesson.Klasse.SchoolId.Value))
             .Select(lesson => new SharedTeacherContentItem
             {
+                ContentId = lesson.Id,
                 SchoolId = lesson.Klasse.SchoolId,
+                SchoolName = lesson.Klasse.School != null ? lesson.Klasse.School.Name : string.Empty,
+                KlasseId = lesson.KlasseId,
                 ContentType = "Support de cours",
                 Title = lesson.Title,
                 CourseCode = lesson.Klasse.Code,
@@ -47,7 +50,10 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
                 && schoolIds.Contains(exam.Klasse.SchoolId.Value))
             .Select(exam => new SharedTeacherContentItem
             {
+                ContentId = exam.Id,
                 SchoolId = exam.Klasse.SchoolId,
+                SchoolName = exam.Klasse.School != null ? exam.Klasse.School.Name : string.Empty,
+                KlasseId = exam.KlasseId,
                 ContentType = "Examen",
                 Title = exam.Title,
                 CourseCode = exam.Klasse.Code,
@@ -123,7 +129,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Include(x => x.VideoAsset)
             .Where(x => !x.Klasse.IstSystemNiveau
                 && (x.AuthorId == userId
-                    || (x.IsPublished
+                    || (x.AuthorId.HasValue
                         && x.Klasse.SchoolId.HasValue
                         && schoolIds.Contains(x.Klasse.SchoolId.Value))))
             .AsQueryable();
@@ -331,8 +337,8 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
     }
 
     /// <summary>
-    /// Liefert eine reine Leseansicht für Schulleitung/Koordination, wenn der
-    /// Lehrer den Inhalt explizit für die Direktion freigegeben hat.
+    /// Liefert eine reine Leseansicht für Schulleitung/Koordination für alle
+    /// Lehrer-Lektionen der eigenen Schulen.
     /// </summary>
     public async Task<TeacherLessonDetailViewModel?> GetLessonDetailForDirectionAsync(
         Guid lessonId,
@@ -344,7 +350,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             .Include(x => x.Klasse)
             .Include(x => x.Pages)
             .Include(x => x.Fach)
-            .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsSharedWithSchool, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);
         if (lesson?.Klasse.SchoolId is not Guid schoolId)
         {
             return null;

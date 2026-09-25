@@ -28,6 +28,12 @@ public partial class TeacherExams
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [SupplyParameterFromQuery(Name = "viewExam")]
+    public Guid? ViewExamId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "solutions")]
+    public bool? ViewExamWithSolutions { get; set; }
+
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = default!;
 
@@ -42,6 +48,10 @@ public partial class TeacherExams
     private string? statusMessage;
     private Guid currentTeacherId;
     private bool isSchoolDirectionUser;
+    private ExamPdfViewModel? pdfPreviewExam;
+    private bool pdfPreviewIncludeSolutions;
+    private Guid? pdfPreviewExamId;
+    private bool examPreviewOpenedFromQuery;
 
     private IReadOnlyList<ModernDropdownOption<string?>> NiveauOptions =>
     [
@@ -106,6 +116,7 @@ public partial class TeacherExams
             Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentTeacherId);
             isSchoolDirectionUser = state.User.IsInRole("SchulLeiter") || state.User.IsInRole("Koordinator");
             await LoadAsync();
+            await TryOpenExamPreviewFromQueryAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -117,12 +128,34 @@ public partial class TeacherExams
     {
         exams = (await ExamService.GetTeacherExamsAsync(currentTeacherId, ComponentToken)).ToList();
 
-        var zugeordneteKlassenIds = await DbContext.LehrerNiveauZuordnungen
-            .AsNoTracking()
-            .Where(z => z.LehrerID == currentTeacherId)
-            .Select(z => z.KlasseId)
-            .Distinct()
-            .ToListAsync(ComponentToken);
+        List<Guid> zugeordneteKlassenIds;
+        if (isSchoolDirectionUser)
+        {
+            var schoolIds = await DbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.AppUserId == currentTeacherId)
+                .Select(link => link.SchoolId)
+                .Distinct()
+                .ToListAsync(ComponentToken);
+
+            zugeordneteKlassenIds = schoolIds.Count == 0
+                ? []
+                : await DbContext.Klassen
+                    .AsNoTracking()
+                    .Where(klasse => klasse.SchoolId.HasValue && schoolIds.Contains(klasse.SchoolId.Value) && !klasse.IstSystemNiveau)
+                    .Select(klasse => klasse.Id)
+                    .Distinct()
+                    .ToListAsync(ComponentToken);
+        }
+        else
+        {
+            zugeordneteKlassenIds = await DbContext.LehrerNiveauZuordnungen
+                .AsNoTracking()
+                .Where(z => z.LehrerID == currentTeacherId)
+                .Select(z => z.KlasseId)
+                .Distinct()
+                .ToListAsync(ComponentToken);
+        }
 
         var query = DbContext.Klassen
             .AsNoTracking()
@@ -159,11 +192,15 @@ public partial class TeacherExams
         if (isSchoolDirectionUser && form is not null)
         {
             form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
+            form.ShareWithSchoolDirection = true;
+            form.AssignToClassStudents = false;
             form.IsPdfExportEnabled = true;
         }
         else if (form is not null && form.ExamId is null)
         {
             form.ReleaseTarget = ExamReleaseTarget.PrivateAuthor;
+            form.ShareWithSchoolDirection = false;
+            form.AssignToClassStudents = false;
         }
 
         editorOpen = true;
@@ -172,6 +209,71 @@ public partial class TeacherExams
             await Task.Yield();
             await ScrollModalToTopAsync();
         });
+    }
+
+    private async Task OpenExamPdfPreviewAsync(Guid examId, bool includeSolutions)
+    {
+        pdfPreviewExam = await ExamService.GetExamForPdfAsync(
+            currentTeacherId,
+            examId,
+            isSchoolDirectionUser,
+            ComponentToken);
+        pdfPreviewIncludeSolutions = includeSolutions;
+        pdfPreviewExamId = pdfPreviewExam is null ? null : examId;
+    }
+
+    private async Task TryOpenExamPreviewFromQueryAsync()
+    {
+        if (examPreviewOpenedFromQuery || !ViewExamId.HasValue)
+        {
+            return;
+        }
+
+        examPreviewOpenedFromQuery = true;
+
+        await OpenExamPdfPreviewAsync(ViewExamId.Value, ViewExamWithSolutions ?? false);
+
+        if (pdfPreviewExam is null)
+        {
+            formError = "Le contenu de cet examen n'est pas disponible pour votre accès actuel.";
+        }
+    }
+
+    private void CloseExamPdfPreview()
+    {
+        pdfPreviewExam = null;
+        pdfPreviewExamId = null;
+        pdfPreviewIncludeSolutions = false;
+    }
+
+    private string GetPdfFileUrl()
+    {
+        if (!pdfPreviewExamId.HasValue)
+        {
+            return "#";
+        }
+
+        return $"/teacher-exams/{pdfPreviewExamId.Value}/pdf-file?solutions={(pdfPreviewIncludeSolutions ? "true" : "false")}";
+    }
+
+    private static string GetAudienceLabel(ExamManagementItem exam)
+    {
+        if (exam.IsSharedWithSchool && exam.IsPublishedToStudents)
+        {
+            return "Direction + élèves (score)";
+        }
+
+        if (exam.IsPublishedToStudents)
+        {
+            return "Assigné aux élèves (score)";
+        }
+
+        if (exam.IsSharedWithSchool)
+        {
+            return "Direction / impression (hors score)";
+        }
+
+        return "Privé enseignant (hors score)";
     }
 
     private void CloseEditor()
@@ -261,7 +363,21 @@ public partial class TeacherExams
             if (isSchoolDirectionUser)
             {
                 form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
+                form.ShareWithSchoolDirection = true;
                 form.IsPdfExportEnabled = true;
+            }
+
+            if (!form.ShareWithSchoolDirection && !form.AssignToClassStudents)
+            {
+                form.ReleaseTarget = ExamReleaseTarget.PrivateAuthor;
+            }
+            else if (form.AssignToClassStudents)
+            {
+                form.ReleaseTarget = ExamReleaseTarget.ClassStudents;
+            }
+            else
+            {
+                form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
             }
 
             await ExamService.SaveExamAsync(currentTeacherId, form, ComponentToken);

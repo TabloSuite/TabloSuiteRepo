@@ -122,6 +122,62 @@
         }
     </div>
 
+    <div class="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Navigation direction">
+            <button type="button"
+                    role="tab"
+                    aria-selected="@IsDirectorTabActive(DirectorTabSubjects)"
+                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabSubjects)"
+                    @onclick="() => SetDirectorTab(DirectorTabSubjects)">
+                Matières
+            </button>
+            <button type="button"
+                    role="tab"
+                    aria-selected="@IsDirectorTabActive(DirectorTabClasses)"
+                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabClasses)"
+                    @onclick="() => SetDirectorTab(DirectorTabClasses)">
+                Classes
+            </button>
+            <button type="button"
+                    role="tab"
+                    aria-selected="@IsDirectorTabActive(DirectorTabUsers)"
+                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabUsers)"
+                    @onclick="() => SetDirectorTab(DirectorTabUsers)">
+                Utilisateurs
+            </button>
+            <button type="button"
+                    role="tab"
+                    aria-selected="@IsDirectorTabActive(DirectorTabReassign)"
+                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabReassign)"
+                    @onclick="() => SetDirectorTab(DirectorTabReassign)">
+                Réattribution
+            </button>
+            <button type="button"
+                    role="tab"
+                    aria-selected="@IsDirectorTabActive(DirectorTabImport)"
+                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabImport)"
+                    @onclick="() => SetDirectorTab(DirectorTabImport)">
+                Import
+            </button>
+            @if (canViewSharedTeacherContent)
+            {
+                <button type="button"
+                        role="tab"
+                        aria-selected="@IsDirectorTabActive(DirectorTabShared)"
+                        class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabShared)"
+                        @onclick="() => SetDirectorTab(DirectorTabShared)">
+                    Contenus partagés
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow ring-1 ring-slate-100">
+        Espace directeur · Administration scolaire
+    </div>
+
+    @if (IsDirectorTabActive(DirectorTabSubjects))
+    {
     <CollapsibleCard Title="Matières de l'école"
                      Eyebrow="Gestion des matières"
                      Subtitle="Gestion scolaire des matières. Elles seront disponibles dans le formulaire enseignant."
@@ -199,11 +255,10 @@
         }
         </ChildContent>
     </CollapsibleCard>
+    }
 
-    <div class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow ring-1 ring-slate-100">
-        Espace directeur · Administration scolaire
-    </div>
-
+    @if (IsDirectorTabActive(DirectorTabClasses))
+    {
     <CollapsibleCard Title="Classes de mon école"
                       Eyebrow="Gestion des classes"
                       Subtitle="Crée et gère uniquement les classes propres à ton école."
@@ -337,7 +392,10 @@
             }
         </ChildContent>
     </CollapsibleCard>
+    }
 
+    @if (IsDirectorTabActive(DirectorTabUsers))
+    {
     <CollapsibleCard Title="@SchoolUsersCardTitle"
                  Eyebrow="Gestion des utilisateurs"
                  Icon="👥"
@@ -668,7 +726,10 @@
 
     </ChildContent>
 </CollapsibleCard>
+    }
 
+    @if (IsDirectorTabActive(DirectorTabReassign))
+    {
     <CollapsibleCard Title="Réassignation des élèves sans classe active"
                      Eyebrow="Session de réattribution"
                      Subtitle="À gauche: classe cible. À droite: élèves sans classe active avec recherche et sélection multiple."
@@ -735,7 +796,10 @@
             }
         </ChildContent>
     </CollapsibleCard>
+    }
 
+    @if (IsDirectorTabActive(DirectorTabImport))
+    {
     <CollapsibleCard Title="Import utilisateurs"
                      Eyebrow="Création automatique"
                      Subtitle="Ajoute beaucoup d'enseignants ou d'élèves à partir d'un fichier CSV Excel. Champs obligatoires : Prénom, Nom, Classe."
@@ -852,8 +916,9 @@
             </div>
         </ChildContent>
     </CollapsibleCard>
+    }
 
-    @if (canViewSharedTeacherContent)
+    @if (canViewSharedTeacherContent && IsDirectorTabActive(DirectorTabShared))
     {
         <CollapsibleCard Title="Contenus partagés par les enseignants"
                          Eyebrow="Consultation"
