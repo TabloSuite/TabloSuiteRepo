@@ -93,6 +93,9 @@ public interface IHalloAppDbContext
     /// <summary>Seiten eines Kursskripts.</summary>
     DbSet<TeacherLessonPage> TeacherLessonPages { get; }
 
+    /// <summary>Benutzerspezifische Formel-Favoriten.</summary>
+    DbSet<FormelFavorit> FormelFavoriten { get; }
+
     /// <summary>Übungen.</summary>
     DbSet<Exercise> Exercises { get; }
 

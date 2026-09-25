@@ -180,11 +180,14 @@ else
                                         var gapIndex = i;
                                         <div class="flex items-center gap-3">
                                             <span class="text-sm font-semibold text-slate-500">Blanc @(gapIndex + 1)</span>
-                                            <input type="text"
-                                                   class="flex-1 rounded-2xl border border-slate-200 px-4 py-2 text-base focus:border-indigo-400 focus:outline-none"
-                                                   disabled="@state.IsCorrect"
-                                                   value="@GetGapValue(state, gapIndex)"
-                                                   @onchange="e => SetGapValue(exercise.ExerciseId, exercise.GapCount, gapIndex, e.Value?.ToString())" />
+                                            <div class="flex-1">
+                                                <RichTextEditor Value="@GetGapValue(state, gapIndex)"
+                                                                ValueChanged="value => SetGapValue(exercise.ExerciseId, exercise.GapCount, gapIndex, value)"
+                                                                Placeholder="Ta réponse..."
+                                                                ReadOnly="@state.IsCorrect"
+                                                                EnableLargeEditor="true"
+                                                                MinEditorHeightRem="3" />
+                                            </div>
                                         </div>
                                     }
                                 </div>

@@ -25,6 +25,9 @@ public partial class ModalDialog
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    [Parameter]
+    public bool ScrollBody { get; set; } = true;
+
     private async Task CloseAsync()
     {
         if (OpenChanged.HasDelegate)

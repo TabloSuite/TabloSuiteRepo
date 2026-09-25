@@ -1161,6 +1161,44 @@ namespace HalloApp.WebApp.Migrations
                     b.ToTable("BlobMediaAssets");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.FormelFavorit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BenutzerID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Bezeichnung")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LaTeX")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Vorschau")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BenutzerID", "LaTeX")
+                        .IsUnique();
+
+                    b.ToTable("FormelFavoriten");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.Lesson", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2333,6 +2371,17 @@ namespace HalloApp.WebApp.Migrations
                     b.Navigation("Owner");
 
                     b.Navigation("School");
+                });
+
+            modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.FormelFavorit", b =>
+                {
+                    b.HasOne("HalloApp.Core.DataModels.Identity.AppUser", "Benutzer")
+                        .WithMany()
+                        .HasForeignKey("BenutzerID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Benutzer");
                 });
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.Lesson", b =>

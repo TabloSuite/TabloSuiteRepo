@@ -47,7 +47,11 @@ public partial class TeacherExamPdfExport
     {
         try
         {
-            await JS.InvokeVoidAsync("SKOULOUAPPPrint.open");
+            var ok = await JS.InvokeAsync<bool>("SKOULOUAPPPrint.openElement", ".exam-pdf-export", "Examen");
+            if (!ok)
+            {
+                await JS.InvokeVoidAsync("SKOULOUAPPPrint.open");
+            }
         }
         catch (TaskCanceledException)
         {

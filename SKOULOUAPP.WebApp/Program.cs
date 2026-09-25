@@ -166,6 +166,7 @@ builder.Services.AddTransient<DashboardService>();
 builder.Services.AddTransient<LearningService>();
 builder.Services.AddTransient<TeacherLessonService>();
 builder.Services.AddTransient<ExamService>();
+builder.Services.AddTransient<FormelFavoritService>();
 builder.Services.AddTransient<AboService>();
 builder.Services.AddTransient<NiveauGruppenService>();
 builder.Services.AddTransient<AbrechnungService>();
@@ -314,5 +315,60 @@ app.MapPost("/auth/logout", async (SignInManager<AppUser> signInManager) =>
     return Results.Redirect("/");
 });
 
+app.MapGet("/api/formules/favoris", async (
+    ClaimsPrincipal user,
+    FormelFavoritService favoritService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var favoriten = await favoritService.LadeAsync(userId, cancellationToken);
+    return Results.Ok(favoriten);
+}).RequireAuthorization();
+
+app.MapPost("/api/formules/favoris", async (
+    ClaimsPrincipal user,
+    FormelFavoritService favoritService,
+    FormelFavoritAnfrage request,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var favorit = await favoritService.HinzufuegenAsync(userId, request.Latex, request.Bezeichnung, request.Vorschau, cancellationToken);
+    return favorit is null ? Results.BadRequest() : Results.Ok(favorit);
+}).RequireAuthorization();
+
+app.MapDelete("/api/formules/favoris", async (
+    HttpContext httpContext,
+    ClaimsPrincipal user,
+    FormelFavoritService favoritService,
+    CancellationToken cancellationToken) =>
+{
+    var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var latex = httpContext.Request.Query["latex"].ToString();
+    if (string.IsNullOrWhiteSpace(latex))
+    {
+        return Results.BadRequest();
+    }
+
+    var entfernt = await favoritService.EntfernenAsync(userId, latex, cancellationToken);
+    return entfernt ? Results.NoContent() : Results.NotFound();
+}).RequireAuthorization();
+
 app.Run();
+
+internal sealed record FormelFavoritAnfrage(string? Latex, string? Bezeichnung, string? Vorschau);
 

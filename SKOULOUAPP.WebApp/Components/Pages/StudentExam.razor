@@ -124,10 +124,14 @@ else if (session is not null)
                             var gapIndex = i;
                             <div class="flex items-center gap-3">
                                 <span class="text-sm font-semibold text-slate-500">Blanc @(gapIndex + 1)</span>
-                                <input type="text"
-                                       class="hallo-input flex-1 text-base"
-                                       value="@GetGapValue(question.QuestionId, gapIndex)"
-                                       @onchange="e => SetGapValue(question.QuestionId, question.GapCount, gapIndex, e.Value?.ToString())" />
+                                <div class="flex-1">
+                                    <RichTextEditor Value="@GetGapValue(question.QuestionId, gapIndex)"
+                                                    ValueChanged="value => SetGapValue(question.QuestionId, question.GapCount, gapIndex, value)"
+                                                    Placeholder="Ta réponse..."
+                                                    ReadOnly="@(result is not null)"
+                                                    EnableLargeEditor="true"
+                                                    MinEditorHeightRem="3" />
+                                </div>
                             </div>
                         }
                     </div>

@@ -24,6 +24,9 @@ public partial class TailwindDateTimePicker : ComponentBase
     [Parameter]
     public bool IsDisabled { get; set; }
 
+    [Parameter]
+    public bool OpenUp { get; set; }
+
     private bool isOpen;
     private DateTime viewMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private int stunde;

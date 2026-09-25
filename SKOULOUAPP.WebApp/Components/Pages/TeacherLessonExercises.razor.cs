@@ -52,6 +52,7 @@ public partial class TeacherLessonExercises
     private List<FachOptionItem> filteredFachOptions = [];
 
     private bool isLoading = true;
+    private bool isOpeningEditor;
     private bool editorOpen;
     private bool isSaving;
     private bool isSavingManualReview;
@@ -73,6 +74,11 @@ public partial class TeacherLessonExercises
     private long videoUploadBytesTotal;
     private int videoUploadPercent;
     private bool pendingModalScrollTop;
+    private bool dueDateModalOpen;
+    private Guid dueDateLessonId;
+    private string dueDateLessonTitle = string.Empty;
+    private DateTime? dueDateModalValue;
+    private bool isReassignCreationMode;
 
     private Guid currentTeacherId;
     private HashSet<Guid> allowedCourseIds = [];
@@ -127,6 +133,7 @@ public partial class TeacherLessonExercises
         public string Summary { get; set; } = string.Empty;
         public int ExerciseCount { get; set; }
         public string CourseCode { get; set; } = string.Empty;
+        public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
     }
 
     private sealed class LessonExerciseBlockEditorModel
@@ -377,7 +384,8 @@ public partial class TeacherLessonExercises
                 Title = lesson.Title,
                 Summary = lesson.Summary,
                 ExerciseCount = lesson.Exercises.Count,
-                CourseCode = lesson.Klasse.Code
+                CourseCode = lesson.Klasse.Code,
+                ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc
             })
             .ToListAsync(ComponentToken);
 
@@ -390,6 +398,15 @@ public partial class TeacherLessonExercises
 
     private async Task OpenEditorAsync(Guid lessonId)
     {
+        if (isOpeningEditor)
+        {
+            return;
+        }
+
+        isOpeningEditor = true;
+        try
+        {
+        isReassignCreationMode = false;
         errorMessage = null;
         statusMessage = null;
         videoUploadError = null;
@@ -427,10 +444,16 @@ public partial class TeacherLessonExercises
         EnsureSelectedFachForCurrentCourse();
         editorOpen = true;
         pendingModalScrollTop = true;
+        }
+        finally
+        {
+            isOpeningEditor = false;
+        }
     }
 
     private async Task OpenCreateAsync()
     {
+        isReassignCreationMode = false;
         errorMessage = null;
         statusMessage = null;
         videoUploadError = null;
@@ -486,6 +509,7 @@ public partial class TeacherLessonExercises
 
     private void CloseEditor()
     {
+        isReassignCreationMode = false;
         editorOpen = false;
         pendingModalScrollTop = false;
         form = null;
@@ -497,6 +521,90 @@ public partial class TeacherLessonExercises
         videoDurationMinutes = 0m;
         videoUploadError = null;
         videoUploadMessage = null;
+    }
+
+    private Task OpenDueDateModalAsync(LessonEditorListItem lesson)
+    {
+        dueDateLessonId = lesson.LessonId;
+        dueDateLessonTitle = lesson.Title;
+        dueDateModalValue = lesson.ExerciseSubmissionDueAtUtc?.ToLocalTime();
+        dueDateModalOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmDueDateAsync()
+    {
+        if (dueDateLessonId == Guid.Empty)
+        {
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            DateTime? dueDateUtc = null;
+            if (dueDateModalValue.HasValue)
+            {
+                dueDateUtc = DateTime.SpecifyKind(dueDateModalValue.Value, DateTimeKind.Local).ToUniversalTime();
+            }
+
+            var lesson = await DbContext.Lessons
+                .FirstOrDefaultAsync(x => x.Id == dueDateLessonId, ComponentToken);
+            if (lesson is null || !allowedCourseIds.Contains(lesson.KlasseId))
+            {
+                errorMessage = "Cette leçon n'est pas autorisée pour votre profil enseignant.";
+                return;
+            }
+
+            lesson.ExerciseSubmissionDueAtUtc = dueDateUtc;
+            lesson.GeaendertAmUtc = DateTime.UtcNow;
+            await DbContext.SaveChangesAsync(ComponentToken);
+
+            dueDateModalOpen = false;
+            dueDateLessonId = Guid.Empty;
+            dueDateLessonTitle = string.Empty;
+            dueDateModalValue = null;
+            statusMessage = "La date limite a été mise à jour.";
+            await LoadAsync();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task OpenReassignFromListAsync(Guid lessonId)
+    {
+        if (isOpeningEditor)
+        {
+            return;
+        }
+
+        await OpenEditorAsync(lessonId);
+        if (form is null)
+        {
+            return;
+        }
+
+        isReassignCreationMode = true;
+        isCurrentAssignmentVersionLocked = false;
+        selectedSchoolId = klasseSchoolById.TryGetValue(form.CourseId, out var schoolId)
+            ? schoolId
+            : selectedSchoolId;
+        form.LessonId = null;
+        form.HasSubmissionsInCurrentAssignmentVersion = false;
+        form.IsCurrentAssignmentVersionLocked = false;
+        form.AssignmentVersion = 1;
+        form.IsPublished = true;
+        form.ExerciseSubmissionDueAtUtc = null;
+        form.Title = string.Empty;
+
+        var nextOrder = await DbContext.Lessons
+            .AsNoTracking()
+            .Where(lesson => lesson.KlasseId == form.CourseId)
+            .MaxAsync(lesson => (int?)lesson.Order, ComponentToken) ?? 0;
+        form.Order = nextOrder + 1;
     }
 
     private async Task OnVideoSelected(InputFileChangeEventArgs args)
@@ -744,6 +852,24 @@ public partial class TeacherLessonExercises
 
         if (form.LessonId.HasValue)
         {
+            var originalCourseId = await DbContext.Lessons
+                .AsNoTracking()
+                .Where(x => x.Id == form.LessonId.Value)
+                .Select(x => (Guid?)x.KlasseId)
+                .FirstOrDefaultAsync(ComponentToken);
+
+            if (!originalCourseId.HasValue)
+            {
+                errorMessage = "La leçon est introuvable.";
+                return;
+            }
+
+            if (form.CourseId != originalCourseId.Value)
+            {
+                errorMessage = "La classe de cette leçon ne peut pas être modifiée ici. Utilisez « Modifier et réattribuer » pour créer une nouvelle attribution.";
+                return;
+            }
+
             var allowed = await DbContext.Lessons
                 .AsNoTracking()
                 .AnyAsync(x => x.Id == form.LessonId.Value && allowedCourseIds.Contains(x.KlasseId), ComponentToken);
@@ -769,6 +895,28 @@ public partial class TeacherLessonExercises
         {
             errorMessage = "Veuillez saisir un titre de leçon.";
             return;
+        }
+
+        if (isReassignCreationMode)
+        {
+            if (!selectedSchoolId.HasValue)
+            {
+                errorMessage = "Veuillez sélectionner une école cible.";
+                return;
+            }
+
+            if (!allowedCourseIds.Contains(form.CourseId))
+            {
+                errorMessage = "Veuillez sélectionner une classe cible autorisée.";
+                return;
+            }
+
+            var nextOrder = await DbContext.Lessons
+                .AsNoTracking()
+                .Where(lesson => lesson.KlasseId == form.CourseId)
+                .MaxAsync(lesson => (int?)lesson.Order, ComponentToken) ?? 0;
+            form.Order = nextOrder + 1;
+            form.IsPublished = true;
         }
 
         if (!HasValidSelectedFach)
@@ -798,9 +946,14 @@ public partial class TeacherLessonExercises
             }
 
             statusMessage = "Les exercices de la leçon ont été enregistrés.";
+            if (isReassignCreationMode)
+            {
+                statusMessage = "Nouvelle leçon + exercices créés et publiés.";
+            }
             editorOpen = false;
             form = null;
             selectedLessonCode = string.Empty;
+            isReassignCreationMode = false;
             await LoadAsync();
         }
         finally

@@ -199,7 +199,20 @@ public static class AnswerMatchingService
             return [];
         }
 
-        return multiLine
+        // RichText-Editor liefert HTML. Für Varianten behalten wir Zeilen-/Blocktrennungen
+        // bei (p/div/li/br), damit "eine Variante pro Zeile" weiterhin korrekt funktioniert.
+        var normalized = multiLine
+            .Replace("<br>", "\n", StringComparison.OrdinalIgnoreCase)
+            .Replace("<br/>", "\n", StringComparison.OrdinalIgnoreCase)
+            .Replace("<br />", "\n", StringComparison.OrdinalIgnoreCase)
+            .Replace("</p>", "\n", StringComparison.OrdinalIgnoreCase)
+            .Replace("</div>", "\n", StringComparison.OrdinalIgnoreCase)
+            .Replace("</li>", "\n", StringComparison.OrdinalIgnoreCase);
+
+        var plainText = Regex.Replace(normalized, "<[^>]+>", " ");
+        plainText = WebUtility.HtmlDecode(plainText);
+
+        return plainText
             .Replace("\r\n", "\n")
             .Split('\n')
             .Select(x => x.Trim())

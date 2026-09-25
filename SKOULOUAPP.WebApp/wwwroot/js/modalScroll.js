@@ -5,23 +5,24 @@ window.SKOULOUAPPScroll.scrollElementToTop = function (element) {
         return;
     }
 
-    const startedAt = performance.now();
-    const durationMs = 1400;
+    let userInteracted = false;
+    const markUserInteraction = function () {
+        userInteracted = true;
+    };
+
+    element.addEventListener('wheel', markUserInteraction, { passive: true, once: true });
+    element.addEventListener('touchstart', markUserInteraction, { passive: true, once: true });
+    element.addEventListener('pointerdown', markUserInteraction, { passive: true, once: true });
 
     const forceTop = function () {
+        if (userInteracted) {
+            return;
+        }
         element.scrollTop = 0;
     };
 
-    const tick = function () {
-        forceTop();
-        if ((performance.now() - startedAt) < durationMs) {
-            requestAnimationFrame(tick);
-        }
-    };
-
-    tick();
-    setTimeout(forceTop, 50);
-    setTimeout(forceTop, 180);
-    setTimeout(forceTop, 500);
-    setTimeout(forceTop, 900);
+    forceTop();
+    requestAnimationFrame(forceTop);
+    setTimeout(forceTop, 40);
+    setTimeout(forceTop, 120);
 };

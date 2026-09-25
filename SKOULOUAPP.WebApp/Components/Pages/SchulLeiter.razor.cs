@@ -2171,7 +2171,28 @@ public partial class SchulLeiter
         durchlaufStartModalOpen = false;
         klasseStatusMessage = $"Le cycle de {startKlasse.Title} a démarré.";
         startKlasse = null;
-        await LoadAsync();
+        await ReloadSchoolLeaderStatusDataAsync();
+    }
+
+    private async Task ReloadSchoolLeaderStatusDataAsync()
+    {
+        if (currentUserId == Guid.Empty)
+        {
+            return;
+        }
+
+        try
+        {
+            students = await DashboardService.GetSchoolLeaderStudentsAsync(currentUserId, ComponentToken);
+            archiveSelectedStudentIds.IntersectWith(students.Where(IsStudentArchivable).Select(student => student.UserId).ToHashSet());
+            await LoadSchoolKlassenAsync();
+            await LoadSchoolFachOptionsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex) when (IstAbbruch(ex))
+        {
+            // Komponente wurde während des Ladens verworfen (Navigationswechsel).
+        }
     }
 
     private void OpenDurchlaufEndeModal(DurchlaufUebersicht durchlauf)

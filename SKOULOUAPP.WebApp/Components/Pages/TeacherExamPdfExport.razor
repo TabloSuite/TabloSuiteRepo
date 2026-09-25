@@ -32,20 +32,21 @@
                     <button type="button" class="rounded-full bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950" @onclick="@(_ => PrintAsync())">Exporter en PDF</button>
                 </div>
             </div>
-            <article class="pdf-document bg-white p-10 text-slate-900 shadow-sm ring-1 ring-slate-200">
-                <header class="border-b-2 border-cyan-600 pb-5">
-                    <p class="text-sm font-semibold uppercase tracking-[.18em] text-cyan-700">@exam.NiveauCode · @exam.DurationInMinutes min · @exam.TotalPoints pts</p>
-                    <h1 class="mt-2 text-3xl font-black">@exam.Title</h1>
-                    @if (!string.IsNullOrWhiteSpace(exam.Description))
-                    {
-                        <div class="mt-3 rich-content text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(exam.Description))</div>
-                    }
-                    <div class="mt-4 flex flex-wrap gap-6 text-sm text-slate-500">
-                        <span>Nom : ______________________________</span>
-                        <span>Date : ______________</span>
-                        <span>Note : ______ / @exam.TotalPoints</span>
-                    </div>
-                </header>
+            <div class="exam-pdf-export">
+                <article class="pdf-document bg-white p-10 text-slate-900 shadow-sm ring-1 ring-slate-200">
+                    <header class="border-b-2 border-cyan-600 pb-5">
+                        <p class="text-sm font-semibold uppercase tracking-[.18em] text-cyan-700">@exam.NiveauCode · @exam.DurationInMinutes min · @exam.TotalPoints pts</p>
+                        <h1 class="mt-2 text-3xl font-black">@exam.Title</h1>
+                        @if (!string.IsNullOrWhiteSpace(exam.Description))
+                        {
+                            <div class="mt-3 rich-content text-slate-600">@((MarkupString)HtmlSanitizer.Sanitize(exam.Description))</div>
+                        }
+                        <div class="mt-4 flex flex-wrap gap-6 text-sm text-slate-500">
+                            <span>Nom : ______________________________</span>
+                            <span>Date : ______________</span>
+                            <span>Note : ______ / @exam.TotalPoints</span>
+                        </div>
+                    </header>
 
                 @foreach (var block in exam.Exercises)
                 {
@@ -102,7 +103,9 @@
                         }
                     </section>
                 }
+                    <footer class="mt-10 border-t border-slate-200 pt-3 text-xs text-slate-500">Export @PdfModeLabel · SKOULOUAPP</footer>
             </article>
+            </div>
         </section>
     }
 </div>

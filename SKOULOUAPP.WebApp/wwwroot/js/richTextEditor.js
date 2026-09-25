@@ -3,6 +3,8 @@
 // RichTextEditor.razor-Komponente aufgerufen.
 window.SKOULOUAPPRichText = {
     instances: {},
+    favoriteFormulas: [],
+    favoriteFormulasLoaded: false,
 
     // Maximal erlaubte Bildgröße für eingebettete data:-URLs (5 MB).
     maxImageBytes: 5 * 1024 * 1024,
@@ -66,6 +68,134 @@ window.SKOULOUAPPRichText = {
         ,{ group: 'Ensembles & probabilités', label: 'Écart type', preview: '\\sigma=\\sqrt{\\frac{1}{n}\\sum_{i=1}^{n}(x_{i}-\\overline{x})^{2}}', latex: '\\sigma=\\sqrt{\\frac{1}{n}\\sum_{i=1}^{n}(x_{i}-\\overline{x})^{2}}' }
         ,{ group: 'Ensembles & probabilités', label: 'Factorielle', preview: 'n!=n\\cdot(n-1)\\cdots1', latex: 'n!=n\\cdot(n-1)\\cdots1' }
     ],
+
+    ensureFavoriteFormulasLoaded: async function () {
+        if (this.favoriteFormulasLoaded) {
+            return this.favoriteFormulas;
+        }
+
+        try {
+            const response = await fetch('/api/formules/favoris', {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                this.favoriteFormulas = [];
+                this.favoriteFormulasLoaded = true;
+                return this.favoriteFormulas;
+            }
+
+            const data = await response.json();
+            this.favoriteFormulas = Array.isArray(data)
+                ? data.map(function (item) {
+                    return {
+                        id: item.id || item.Id || null,
+                        latex: item.latex || item.Latex || '',
+                        label: item.bezeichnung || item.Bezeichnung || item.latex || item.Latex || '',
+                        preview: item.vorschau || item.Vorschau || item.latex || item.Latex || ''
+                    };
+                }).filter(function (item) { return !!item.latex; })
+                : [];
+        } catch {
+            this.favoriteFormulas = [];
+        }
+
+        this.favoriteFormulasLoaded = true;
+        return this.favoriteFormulas;
+    },
+
+    isFormulaFavorite: function (latex) {
+        if (!latex) {
+            return false;
+        }
+
+        return this.favoriteFormulas.some(function (item) {
+            return item.latex === latex;
+        });
+    },
+
+    isBuiltInFormula: function (latex) {
+        if (!latex) {
+            return false;
+        }
+
+        return this.formulaTemplates.some(function (template) {
+            return template.latex === latex;
+        });
+    },
+
+    addFormulaFavorite: async function (template) {
+        if (!template || !template.latex) {
+            return false;
+        }
+
+        try {
+            const response = await fetch('/api/formules/favoris', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    latex: template.latex,
+                    bezeichnung: template.label,
+                    vorschau: template.preview || template.latex
+                })
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const item = await response.json();
+            const normalized = {
+                id: item.id || item.Id || null,
+                latex: item.latex || item.Latex || template.latex,
+                label: item.bezeichnung || item.Bezeichnung || template.label || template.latex,
+                preview: item.vorschau || item.Vorschau || template.preview || template.latex
+            };
+
+            this.favoriteFormulas = this.favoriteFormulas.filter(function (x) {
+                return x.latex !== normalized.latex;
+            });
+            this.favoriteFormulas.push(normalized);
+            this.favoriteFormulas.sort(function (a, b) {
+                return (a.label || '').localeCompare((b.label || ''), 'fr', { sensitivity: 'base' });
+            });
+            this.favoriteFormulasLoaded = true;
+            return true;
+        } catch {
+            return false;
+        }
+    },
+
+    removeFormulaFavorite: async function (latex) {
+        if (!latex) {
+            return false;
+        }
+
+        try {
+            const response = await fetch('/api/formules/favoris?latex=' + encodeURIComponent(latex), {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (!response.ok && response.status !== 404) {
+                return false;
+            }
+
+            this.favoriteFormulas = this.favoriteFormulas.filter(function (item) {
+                return item.latex !== latex;
+            });
+            this.favoriteFormulasLoaded = true;
+            return true;
+        } catch {
+            return false;
+        }
+    },
 
     // Registriert Schriftarten und Größen einmalig bei Quill.
     ensureFormatsRegistered: function () {
@@ -567,7 +697,7 @@ window.SKOULOUAPPRichText = {
         });
     },
 
-    openFormulaPalette: function (quill, toolbarElement) {
+    openFormulaPalette: async function (quill, toolbarElement) {
         document.querySelectorAll('.halloapp-formula-palette').forEach(function (palette) { palette.remove(); });
 
         const savedRange = quill.getSelection(true) || { index: Math.max(0, quill.getLength() - 1), length: 0 };
@@ -586,12 +716,66 @@ window.SKOULOUAPPRichText = {
         title.textContent = 'Insérer une formule';
         palette.appendChild(title);
 
+        await this.ensureFavoriteFormulasLoaded();
+
         const groups = {};
         this.formulaTemplates.forEach(function (template) {
             (groups[template.group] ||= []).push(template);
         });
 
-        Object.keys(groups).forEach(function (groupName) {
+        const self = this;
+
+        const insertFormula = function (template) {
+            const index = Math.min(savedRange.index, Math.max(0, quill.getLength() - 1));
+            const activeFormats = quill.getFormat(savedRange);
+            quill.focus();
+            quill.deleteText(index, savedRange.length, 'user');
+            quill.insertEmbed(index, 'formula', template.latex, 'user');
+            if (activeFormats.size) {
+                quill.formatText(index, 1, 'size', activeFormats.size, 'user');
+            }
+            quill.insertText(index + 1, ' ', 'user');
+            quill.setSelection(index + 2, 0, 'silent');
+            palette.remove();
+        };
+
+        const renderGroups = function () {
+            palette.querySelectorAll('.halloapp-formula-group').forEach(function (node) { node.remove(); });
+
+            const favoriteBuiltIn = self.favoriteFormulas
+                .filter(function (x) { return self.isBuiltInFormula(x.latex); })
+                .map(function (x) {
+                    return {
+                        latex: x.latex,
+                        label: x.label || x.latex,
+                        preview: x.preview || x.latex,
+                        group: 'Favoris',
+                        favoriteOnly: true
+                    };
+                });
+
+            const favoriteCustom = self.favoriteFormulas
+                .filter(function (x) { return !self.isBuiltInFormula(x.latex); })
+                .map(function (x) {
+                    return {
+                        latex: x.latex,
+                        label: x.label || 'Formule personnelle',
+                        preview: x.preview || x.latex,
+                        group: 'Mes formules',
+                        favoriteOnly: true
+                    };
+                });
+
+            const allGroups = [];
+            if (favoriteBuiltIn.length > 0) {
+                allGroups.push('Favoris');
+            }
+            if (favoriteCustom.length > 0) {
+                allGroups.push('Mes formules');
+            }
+            Object.keys(groups).forEach(function (groupName) { allGroups.push(groupName); });
+
+            allGroups.forEach(function (groupName) {
             const group = document.createElement('section');
             group.className = 'halloapp-formula-group';
             const heading = document.createElement('h3');
@@ -600,7 +784,13 @@ window.SKOULOUAPPRichText = {
 
             const grid = document.createElement('div');
             grid.className = 'halloapp-formula-grid';
-            groups[groupName].forEach(function (template) {
+            const entries = groupName === 'Favoris'
+                ? favoriteBuiltIn
+                : groupName === 'Mes formules'
+                    ? favoriteCustom
+                    : (groups[groupName] || []);
+
+            entries.forEach(function (template) {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'halloapp-formula-template';
@@ -622,25 +812,75 @@ window.SKOULOUAPPRichText = {
                 const label = document.createElement('span');
                 label.className = 'halloapp-formula-label';
                 label.textContent = template.label;
-                button.append(math, label);
-                button.addEventListener('click', function () {
-                    const index = Math.min(savedRange.index, Math.max(0, quill.getLength() - 1));
-                    const activeFormats = quill.getFormat(savedRange);
-                    quill.focus();
-                    quill.deleteText(index, savedRange.length, 'user');
-                    quill.insertEmbed(index, 'formula', template.latex, 'user');
-                    if (activeFormats.size) {
-                        quill.formatText(index, 1, 'size', activeFormats.size, 'user');
+                const isCustomEntry = template.group === 'Mes formules';
+                const favoriteToggle = document.createElement('span');
+                favoriteToggle.className = isCustomEntry
+                    ? 'halloapp-formula-favorite-toggle halloapp-formula-delete-toggle'
+                    : 'halloapp-formula-favorite-toggle';
+                favoriteToggle.setAttribute('role', 'button');
+                favoriteToggle.setAttribute('tabindex', '0');
+                favoriteToggle.setAttribute('aria-label', isCustomEntry ? 'Supprimer la formule' : 'Ajouter ou retirer des favoris');
+                favoriteToggle.title = isCustomEntry ? 'Supprimer' : 'Favori';
+                const setFavoriteVisual = function (isFavorite) {
+                    if (isCustomEntry) {
+                        favoriteToggle.textContent = '🗑';
+                        favoriteToggle.classList.add('is-active');
+                        return;
                     }
-                    quill.insertText(index + 1, ' ', 'user');
-                    quill.setSelection(index + 2, 0, 'silent');
-                    palette.remove();
+                    favoriteToggle.textContent = isFavorite ? '★' : '☆';
+                    favoriteToggle.classList.toggle('is-active', isFavorite);
+                };
+                setFavoriteVisual(self.isFormulaFavorite(template.latex));
+
+                favoriteToggle.addEventListener('click', async function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    if (isCustomEntry) {
+                        const removedCustom = await self.removeFormulaFavorite(template.latex);
+                        if (removedCustom) {
+                            renderGroups();
+                        }
+                        return;
+                    }
+
+                    const isFavorite = self.isFormulaFavorite(template.latex);
+                    if (isFavorite) {
+                        const removed = await self.removeFormulaFavorite(template.latex);
+                        if (removed) {
+                            setFavoriteVisual(false);
+                            renderGroups();
+                        }
+                    } else {
+                        const added = await self.addFormulaFavorite(template);
+                        if (added) {
+                            setFavoriteVisual(true);
+                            renderGroups();
+                        }
+                    }
+                });
+
+                favoriteToggle.addEventListener('keydown', async function (event) {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    favoriteToggle.click();
+                });
+
+                button.append(favoriteToggle, math, label);
+                button.addEventListener('click', function () {
+                    insertFormula(template);
                 });
                 grid.appendChild(button);
             });
             group.appendChild(grid);
             palette.appendChild(group);
         });
+        };
+
+        renderGroups();
 
         const close = document.createElement('button');
         close.type = 'button';
@@ -724,6 +964,46 @@ window.SKOULOUAPPRichText = {
 
         const actions = document.createElement('div');
         actions.className = 'halloapp-formula-editor-actions';
+        const self = this;
+
+        const favoriteToggle = document.createElement('button');
+        favoriteToggle.type = 'button';
+        favoriteToggle.className = 'halloapp-formula-editor-favorite';
+        const setFavoriteEditorVisual = function (isFavorite) {
+            favoriteToggle.textContent = isFavorite ? '☑ Ajoutée à mes formules' : '☐ Ajouter à mes formules';
+        };
+        setFavoriteEditorVisual(self.isFormulaFavorite(input.value.trim()));
+
+        favoriteToggle.addEventListener('click', async function () {
+            const latex = input.value.trim();
+            if (!latex) {
+                input.focus();
+                return;
+            }
+
+            const isFavorite = self.isFormulaFavorite(latex);
+            if (isFavorite) {
+                const removed = await self.removeFormulaFavorite(latex);
+                if (removed) {
+                    setFavoriteEditorVisual(false);
+                }
+                return;
+            }
+
+            const added = await self.addFormulaFavorite({
+                latex: latex,
+                label: 'Formule personnelle',
+                preview: latex
+            });
+            if (added) {
+                setFavoriteEditorVisual(true);
+            }
+        });
+
+        input.addEventListener('input', function () {
+            setFavoriteEditorVisual(self.isFormulaFavorite(input.value.trim()));
+        });
+
         const cancel = document.createElement('button');
         cancel.type = 'button';
         cancel.className = 'halloapp-formula-editor-cancel';
@@ -734,7 +1014,7 @@ window.SKOULOUAPPRichText = {
         save.type = 'button';
         save.className = 'halloapp-formula-editor-save';
         save.textContent = 'Enregistrer';
-        const apply = function () {
+        const apply = async function () {
             const latex = input.value.trim();
             if (!latex) {
                 input.focus();
@@ -751,17 +1031,21 @@ window.SKOULOUAPPRichText = {
             quill.focus();
             editor.remove();
         };
-        save.addEventListener('click', apply);
+        save.addEventListener('click', function () { void apply(); });
         input.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                apply();
+                void apply();
             } else if (event.key === 'Escape') {
                 editor.remove();
             }
         });
 
-        actions.append(cancel, save);
+        const primaryActions = document.createElement('div');
+        primaryActions.className = 'halloapp-formula-editor-primary-actions';
+        primaryActions.append(cancel, save);
+
+        actions.append(favoriteToggle, primaryActions);
         editor.append(title, input, preview, actions);
         document.body.appendChild(editor);
 

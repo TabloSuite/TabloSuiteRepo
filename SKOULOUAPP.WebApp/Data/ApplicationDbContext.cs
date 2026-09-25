@@ -22,6 +22,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<LessonProgress> LessonProgresses => Set<LessonProgress>();
     public DbSet<TeacherLesson> TeacherLessons => Set<TeacherLesson>();
     public DbSet<TeacherLessonPage> TeacherLessonPages => Set<TeacherLessonPage>();
+    public DbSet<FormelFavorit> FormelFavoriten => Set<FormelFavorit>();
     public DbSet<Exam> Exams => Set<Exam>();
     public DbSet<ExamExercise> ExamExercises => Set<ExamExercise>();
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
@@ -492,6 +493,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(x => x.Pages)
             .HasForeignKey(x => x.TeacherLessonId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FormelFavorit>().Property(x => x.LaTeX).HasMaxLength(1000);
+        modelBuilder.Entity<FormelFavorit>().Property(x => x.Bezeichnung).HasMaxLength(200);
+        modelBuilder.Entity<FormelFavorit>().Property(x => x.Vorschau).HasMaxLength(400);
+
+        modelBuilder.Entity<FormelFavorit>()
+            .HasOne(x => x.Benutzer)
+            .WithMany()
+            .HasForeignKey(x => x.BenutzerID)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FormelFavorit>()
+            .HasIndex(x => new { x.BenutzerID, x.LaTeX })
+            .IsUnique();
 
         modelBuilder.Entity<TeacherLessonPage>()
             .HasIndex(x => new { x.TeacherLessonId, x.PageNumber })

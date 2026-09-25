@@ -35,6 +35,7 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
     public DbSet<LessonProgress> LessonProgresses => Set<LessonProgress>();
     public DbSet<TeacherLesson> TeacherLessons => Set<TeacherLesson>();
     public DbSet<TeacherLessonPage> TeacherLessonPages => Set<TeacherLessonPage>();
+    public DbSet<FormelFavorit> FormelFavoriten => Set<FormelFavorit>();
     public DbSet<Exam> Exams => Set<Exam>();
     public DbSet<ExamExercise> ExamExercises => Set<ExamExercise>();
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();

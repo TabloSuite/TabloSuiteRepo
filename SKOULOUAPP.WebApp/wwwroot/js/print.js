@@ -14,11 +14,25 @@ window.SKOULOUAPPPrint = {
         const contentHtml = source.innerHTML;
         const styles = `
             <style>
-                @page { size: A4; margin: 14mm; }
+                @page { size: auto; }
                 * { box-sizing: border-box; }
                 html, body { margin: 0; padding: 0; background: #fff; color: #0f172a; font-family: Inter, Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .pdf-print-shell { width: 100%; max-width: 186mm; margin: 0 auto; }
-                .pdf-print-shell > div { border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; }
+                body { display: flex; justify-content: center; align-items: flex-start; padding: 0; }
+                .pdf-print-shell { width: 100%; margin: 0 auto; }
+                .pdf-print-shell > div { width: 100%; border: 0; border-radius: 0; padding: 8px; margin: 0 auto; }
+
+                @media screen {
+                    html, body { min-height: 100vh; }
+                    .pdf-print-shell { min-height: 100vh; }
+                    .pdf-print-shell > div { min-height: calc(100vh - 4mm); }
+                }
+
+                @media print {
+                    .pdf-print-shell,
+                    .pdf-print-shell > div {
+                        min-height: 0 !important;
+                    }
+                }
 
                 p, h1 { margin: 0; }
                 .text-xs { font-size: 11px; }

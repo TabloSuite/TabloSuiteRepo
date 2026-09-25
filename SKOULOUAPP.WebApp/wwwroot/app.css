@@ -85,7 +85,7 @@ html {
 }
 
 .hallo-modal-surface {
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
 }
@@ -166,12 +166,13 @@ html {
     border: 1px solid #e2e8f0;
     border-radius: 1rem;
     background: #ffffff;
-    padding: 1rem;
+    padding: 1.1rem;
     box-shadow: 0 20px 45px rgba(15, 23, 42, 0.24);
 }
 
 .halloapp-formula-palette-title {
-    margin-bottom: .75rem;
+    margin-bottom: .9rem;
+    font-size: 1.2rem;
     font-weight: 800;
     color: #0f172a;
 }
@@ -182,7 +183,7 @@ html {
 
 .halloapp-formula-group h3 {
     margin: 0 0 .35rem;
-    font-size: .68rem;
+    font-size: .8rem;
     font-weight: 800;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -196,16 +197,17 @@ html {
 }
 
 .halloapp-formula-template {
+    position: relative;
     display: flex;
-    min-height: 3.5rem;
+    min-height: 4.2rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .2rem;
+    gap: .28rem;
     border: 1px solid #e2e8f0;
     border-radius: .55rem;
     background: #f8fafc;
-    padding: .3rem;
+    padding: .45rem .35rem;
     color: #0f172a;
     transition: border-color .15s ease, background .15s ease, transform .15s ease;
 }
@@ -219,17 +221,47 @@ html {
 }
 
 .halloapp-formula-preview {
-    min-height: 1.15rem;
+    min-height: 1.35rem;
     display: grid;
     place-items: center;
-    font-size: .92rem;
+    font-size: 1.15rem;
 }
 
 .halloapp-formula-label {
-    font-size: .58rem;
+    font-size: .72rem;
     font-weight: 700;
     color: #475569;
     text-align: center;
+}
+
+.halloapp-formula-favorite-toggle {
+    position: absolute;
+    top: .2rem;
+    right: .2rem;
+    width: 1.3rem;
+    height: 1.3rem;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, .9);
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.halloapp-formula-favorite-toggle.is-active {
+    color: #f59e0b;
+}
+
+.halloapp-formula-delete-toggle {
+    color: #dc2626;
+    background: rgba(254, 242, 242, .96);
+}
+
+.halloapp-formula-delete-toggle.is-active {
+    color: #dc2626;
 }
 
 @media (max-width: 430px) {
@@ -303,9 +335,17 @@ html {
 
 .halloapp-formula-editor-actions {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
     gap: .5rem;
     margin-top: .85rem;
+}
+
+.halloapp-formula-editor-primary-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .5rem;
 }
 
 .halloapp-formula-editor-actions button {
@@ -324,6 +364,12 @@ html {
 .halloapp-formula-editor-save {
     background: #4f46e5;
     color: #ffffff;
+}
+
+.halloapp-formula-editor-favorite {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #86efac;
 }
 
 /* ==========================================================================
