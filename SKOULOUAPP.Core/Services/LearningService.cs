@@ -8,6 +8,7 @@ using HalloApp.Core.Services.Text;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HalloApp.Core.Services;
 
@@ -38,36 +39,146 @@ public class LearningService(IHalloAppDbContext dbContext)
         var query = dbContext.Lessons
             .AsNoTracking()
             .Include(x => x.Klasse)
+            .Include(x => x.Fach)
+            .Include(x => x.CreatedByTeacher)
             .Include(x => x.Exercises)
             .Where(x => x.IsPublished && x.Klasse.SchoolId == profile.SchoolId && accessibleKlasseIds.Contains(x.KlasseId))
             .AsQueryable();
 
         var lessons = await query
-            .OrderBy(x => x.Klasse.Code)
-            .ThenBy(x => x.Order)
+            .OrderBy(x => x.ErstelltAmUtc)
+            .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
+        var teacherIds = lessons
+            .Where(lesson => lesson.CreatedByTeacherId.HasValue)
+            .Select(lesson => lesson.CreatedByTeacherId!.Value)
+            .Distinct()
+            .ToList();
+
+        var teacherNames = await dbContext.Users
+            .AsNoTracking()
+            .Where(user => teacherIds.Contains(user.Id))
+            .Select(user => new { user.Id, Name = user.FullName })
+            .ToDictionaryAsync(user => user.Id, user => user.Name, cancellationToken);
+
         var lessonIds = lessons.Select(x => x.Id).ToList();
+        var exerciseIds = lessons.SelectMany(lesson => lesson.Exercises).Select(exercise => exercise.Id).ToList();
 
         var progresses = await dbContext.LessonProgresses
             .AsNoTracking()
             .Where(x => x.StudentId == studentId && lessonIds.Contains(x.LessonId))
             .ToListAsync(cancellationToken);
 
+        var attempts = await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(x => x.StudentId == studentId && exerciseIds.Contains(x.ExerciseId))
+            .Select(x => new AttemptProgressState
+            {
+                AttemptId = x.Id,
+                ExerciseId = x.ExerciseId,
+                AnsweredAtUtc = x.AnsweredAtUtc,
+                IsCorrect = x.IsCorrect,
+                RequiresManualGrading = x.RequiresManualGrading,
+                IsManuallyReviewed = x.ManuallyGradedAtUtc.HasValue,
+                AssignmentVersion = x.AssignmentVersion,
+                AwardedPoints = x.AwardedPoints
+            })
+            .ToListAsync(cancellationToken);
+
+        var exerciseMetadata = lessons
+            .SelectMany(lesson => lesson.Exercises.Select(exercise => new
+            {
+                ExerciseId = exercise.Id,
+                LessonId = lesson.Id,
+                LessonVersion = lesson.AssignmentVersion,
+                HasAutomaticGrading = IsChoiceExerciseType(NormalizeExerciseType(exercise.ExerciseType))
+                    || NormalizeExerciseType(exercise.ExerciseType) == "GapFill"
+                    || AnswerMatchingService.ParseAcceptedAnswers(exercise.AcceptedAnswersJson).Count > 0
+            }))
+            .ToDictionary(x => x.ExerciseId, x => x);
+
+        var latestAttemptsByExercise = attempts
+            .Where(attempt => exerciseMetadata.TryGetValue(attempt.ExerciseId, out var meta)
+                && attempt.AssignmentVersion == meta.LessonVersion)
+            .GroupBy(attempt => attempt.ExerciseId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderByDescending(attempt => attempt.AnsweredAtUtc)
+                    .ThenByDescending(attempt => attempt.AttemptId)
+                    .First());
+
+        var solvedCountsByLesson = lessonIds.ToDictionary(id => id, _ => 0);
+        Dictionary<Guid, (int Earned, int Total)> pointsByLesson = lessonIds.ToDictionary(
+            id => id,
+            _ => (Earned: 0, Total: 0));
+
+        var totalPointsByExerciseId = lessons
+            .SelectMany(lesson => lesson.Exercises)
+            .ToDictionary(exercise => exercise.Id, exercise => exercise.Points > 0 ? exercise.Points : 10);
+
+        foreach (var lesson in lessons)
+        {
+            var lessonTotal = lesson.Exercises.Sum(exercise => exercise.Points > 0 ? exercise.Points : 10);
+            pointsByLesson[lesson.Id] = (Earned: 0, Total: lessonTotal);
+        }
+
+        foreach (var exercise in exerciseMetadata.Values)
+        {
+            if (!latestAttemptsByExercise.TryGetValue(exercise.ExerciseId, out var latestAttempt))
+            {
+                continue;
+            }
+
+            var maxPoints = totalPointsByExerciseId.TryGetValue(exercise.ExerciseId, out var configuredPoints)
+                ? configuredPoints
+                : 10;
+
+            var earnedPoints = Math.Clamp(latestAttempt.AwardedPoints, 0, maxPoints);
+            var lessonPoints = pointsByLesson[exercise.LessonId];
+            pointsByLesson[exercise.LessonId] = (lessonPoints.Earned + earnedPoints, lessonPoints.Total);
+
+            var solved = latestAttempt.IsCorrect
+                || (!exercise.HasAutomaticGrading
+                    && latestAttempt.IsManuallyReviewed
+                    && !latestAttempt.RequiresManualGrading);
+
+            if (solved)
+            {
+                solvedCountsByLesson[exercise.LessonId]++;
+            }
+        }
+
         return lessons
             .Select(lesson =>
             {
                 var progress = progresses.FirstOrDefault(p => p.LessonId == lesson.Id);
+                var solvedCount = solvedCountsByLesson.TryGetValue(lesson.Id, out var count)
+                    ? count
+                    : (progress?.CorrectExerciseCount ?? 0);
+                (int Earned, int Total) points = pointsByLesson.TryGetValue(lesson.Id, out var lessonPoints)
+                    ? lessonPoints
+                    : (Earned: 0, Total: lesson.Exercises.Sum(exercise => exercise.Points > 0 ? exercise.Points : 10));
+                var isCompleted = lesson.Exercises.Count > 0 && solvedCount >= lesson.Exercises.Count;
+
                 return new LessonListItem
                 {
                     LessonId = lesson.Id,
                     Title = lesson.Title,
                     Summary = lesson.Summary,
+                    FachName = lesson.Fach != null ? lesson.Fach.Name : string.Empty,
+                    TeacherId = lesson.CreatedByTeacherId,
+                    TeacherName = lesson.CreatedByTeacherId.HasValue && teacherNames.TryGetValue(lesson.CreatedByTeacherId.Value, out var lessonTeacherName)
+                        ? lessonTeacherName
+                        : string.Empty,
                     Order = lesson.Order,
                     CourseCode = lesson.Klasse.Code,
                     ExerciseCount = lesson.Exercises.Count,
-                    CorrectExerciseCount = progress?.CorrectExerciseCount ?? 0,
-                    IsCompleted = progress?.IsCompleted ?? false,
+                    CorrectExerciseCount = solvedCount,
+                    ExercisePointsEarned = points.Earned,
+                    ExercisePointsTotal = points.Total,
+                    IsCompleted = isCompleted,
                     IsUnlocked = true
                 };
             })
@@ -173,6 +284,8 @@ public class LearningService(IHalloAppDbContext dbContext)
                         Instructions = exercise.Instructions,
                         Question = exercise.Question,
                         Order = exercise.Order,
+                        MaxPoints = exercise.Points,
+                        AwardedPoints = lastAttempt?.AwardedPoints,
                         ExerciseType = normalizedType,
                         AudioText = exercise.AudioText,
                         TtsLanguage = string.IsNullOrWhiteSpace(exercise.TtsLanguage) ? "de-DE" : exercise.TtsLanguage,
@@ -182,7 +295,10 @@ public class LearningService(IHalloAppDbContext dbContext)
                         IsManuallyReviewed = lastManualReview is not null,
                         ManualFeedback = lastManualReview?.ManualFeedback,
                         IsAnsweredCorrectly = lastCorrect is not null,
-                        SelectedOptionId = lastCorrect?.SelectedOptionId,
+                        SelectedOptionId = lastAttempt?.SelectedOptionId,
+                        SubmittedSelectedOptionIds = ParseGuidIdList(lastAttempt?.SelectedOptionIdsJson),
+                        CorrectOptionIds = exercise.Options.Where(option => option.IsCorrect).Select(option => option.Id).ToList(),
+                        HasSubmittedAttempt = lastAttempt is not null,
                         SubmittedTextAnswer = lastAttempt?.TextAnswer,
                         SubmittedGapValues = AnswerMatchingService.ParseStudentGapValues(lastAttempt?.GapAnswersJson).ToList(),
                         Options = exercise.Options
@@ -263,6 +379,8 @@ public class LearningService(IHalloAppDbContext dbContext)
                         Instructions = exercise.Instructions,
                         Question = exercise.Question,
                         Order = exercise.Order,
+                        MaxPoints = exercise.Points,
+                        AwardedPoints = null,
                         ExerciseType = normalizedType,
                         AudioText = exercise.AudioText,
                         TtsLanguage = string.IsNullOrWhiteSpace(exercise.TtsLanguage) ? "de-DE" : exercise.TtsLanguage,
@@ -273,6 +391,9 @@ public class LearningService(IHalloAppDbContext dbContext)
                         ManualFeedback = null,
                         IsAnsweredCorrectly = false,
                         SelectedOptionId = null,
+                        SubmittedSelectedOptionIds = [],
+                        CorrectOptionIds = exercise.Options.Where(option => option.IsCorrect).Select(option => option.Id).ToList(),
+                        HasSubmittedAttempt = false,
                         SubmittedTextAnswer = null,
                         SubmittedGapValues = Enumerable.Repeat(string.Empty, gapDefinition.Count).ToList(),
                         Options = exercise.Options
@@ -444,6 +565,8 @@ public class LearningService(IHalloAppDbContext dbContext)
                         Instructions = exercise.Instructions,
                         Question = exercise.Question,
                         Order = exercise.Order,
+                        MaxPoints = exercise.Points,
+                        AwardedPoints = null,
                         ExerciseType = normalizedType,
                         AudioText = exercise.AudioText,
                         TtsLanguage = string.IsNullOrWhiteSpace(exercise.TtsLanguage) ? "de-DE" : exercise.TtsLanguage,
@@ -454,6 +577,9 @@ public class LearningService(IHalloAppDbContext dbContext)
                         ManualFeedback = null,
                         IsAnsweredCorrectly = false,
                         SelectedOptionId = null,
+                        SubmittedSelectedOptionIds = [],
+                        CorrectOptionIds = exercise.Options.Where(option => option.IsCorrect).Select(option => option.Id).ToList(),
+                        HasSubmittedAttempt = false,
                         SubmittedTextAnswer = null,
                         SubmittedGapValues = Enumerable.Repeat(string.Empty, gapDefinition.Count).ToList(),
                         Options = exercise.Options
@@ -657,6 +783,8 @@ public class LearningService(IHalloAppDbContext dbContext)
             IsCorrect = isCorrect,
             RequiresManualGrading = requiresManualGrading,
             CorrectOptionId = correctOptionId ?? Guid.Empty,
+            AwardedPoints = awardedPoints,
+            MaxPoints = exercise.Points > 0 ? exercise.Points : 10,
             LessonCompleted = lessonCompleted,
             CorrectExerciseCount = correctCount,
             TotalExerciseCount = totalCount,
@@ -684,6 +812,8 @@ public class LearningService(IHalloAppDbContext dbContext)
             .AsNoTracking()
             .Include(x => x.Exercise)
                 .ThenInclude(x => x.Lesson)
+                    .ThenInclude(x => x.Klasse)
+                        .ThenInclude(x => x.School)
             .Include(x => x.Student)
             .Where(x => x.RequiresManualGrading
                         && x.Exercise.Lesson.IsPublished
@@ -700,6 +830,10 @@ public class LearningService(IHalloAppDbContext dbContext)
             {
                 AttemptId = attempt.Id,
                 LessonId = attempt.Exercise.LessonId,
+                KlasseId = attempt.Exercise.Lesson.KlasseId,
+                SchoolId = attempt.Exercise.Lesson.Klasse.SchoolId,
+                SchoolName = attempt.Exercise.Lesson.Klasse.School != null ? attempt.Exercise.Lesson.Klasse.School.Name : string.Empty,
+                CourseCode = attempt.Exercise.Lesson.Klasse.Code,
                 LessonTitle = attempt.Exercise.Lesson.Title,
                 ExerciseId = attempt.ExerciseId,
                 ExerciseTitle = attempt.Exercise.Title,
@@ -815,7 +949,14 @@ public class LearningService(IHalloAppDbContext dbContext)
     {
         var exercises = await dbContext.Exercises
             .Where(x => x.LessonId == lessonId)
-            .Select(x => new { x.Id, LessonVersion = x.Lesson.AssignmentVersion })
+            .Select(x => new
+            {
+                x.Id,
+                x.Points,
+                x.AcceptedAnswersJson,
+                x.ExerciseType,
+                LessonVersion = x.Lesson.AssignmentVersion
+            })
             .ToListAsync(cancellationToken);
 
         var currentVersion = exercises.Select(x => x.LessonVersion).FirstOrDefault();
@@ -823,28 +964,76 @@ public class LearningService(IHalloAppDbContext dbContext)
 
         var totalCount = exerciseIds.Count;
 
-        var pendingAttempts = dbContext.ChangeTracker
+        var persistedAttempts = await dbContext.ExerciseAttempts
+            .Where(x => x.StudentId == studentId
+                && x.AssignmentVersion == currentVersion
+                && exerciseIds.Contains(x.ExerciseId))
+            .Select(x => new AttemptProgressState
+            {
+                AttemptId = x.Id,
+                ExerciseId = x.ExerciseId,
+                AnsweredAtUtc = x.AnsweredAtUtc,
+                IsCorrect = x.IsCorrect,
+                RequiresManualGrading = x.RequiresManualGrading,
+                IsManuallyReviewed = x.ManuallyGradedAtUtc.HasValue
+            })
+            .ToListAsync(cancellationToken);
+
+        var pendingTrackedAttempts = dbContext.ChangeTracker
             .Entries<ExerciseAttempt>()
             .Where(e => e.State == EntityState.Added)
             .Select(e => e.Entity)
             .Where(a => a.StudentId == studentId
-                && a.IsCorrect
                 && a.AssignmentVersion == currentVersion
                 && exerciseIds.Contains(a.ExerciseId))
-            .Select(a => a.ExerciseId);
+            .ToList();
 
-        var persistedCorrect = await dbContext.ExerciseAttempts
-            .Where(x => x.StudentId == studentId
-                && x.IsCorrect
-                && x.AssignmentVersion == currentVersion
-                && exerciseIds.Contains(x.ExerciseId))
-            .Select(x => x.ExerciseId)
-            .ToListAsync(cancellationToken);
+        var allAttempts = persistedAttempts.ToList();
 
-        var correctCount = persistedCorrect
-            .Concat(pendingAttempts)
-            .Distinct()
-            .Count();
+        foreach (var tracked in pendingTrackedAttempts)
+        {
+            allAttempts.Add(new AttemptProgressState
+            {
+                AttemptId = tracked.Id,
+                ExerciseId = tracked.ExerciseId,
+                AnsweredAtUtc = tracked.AnsweredAtUtc,
+                IsCorrect = tracked.IsCorrect,
+                RequiresManualGrading = tracked.RequiresManualGrading,
+                IsManuallyReviewed = tracked.ManuallyGradedAtUtc.HasValue
+            });
+        }
+
+        var latestByExercise = allAttempts
+            .GroupBy(x => x.ExerciseId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderByDescending(x => x.AnsweredAtUtc)
+                    .ThenByDescending(x => x.AttemptId)
+                    .First());
+
+        var correctCount = exercises.Count(exercise =>
+        {
+            if (!latestByExercise.TryGetValue(exercise.Id, out var latestAttempt))
+            {
+                return false;
+            }
+
+            if (latestAttempt.IsCorrect)
+            {
+                return true;
+            }
+
+            var normalizedType = NormalizeExerciseType(exercise.ExerciseType);
+            var acceptedAnswers = AnswerMatchingService.ParseAcceptedAnswers(exercise.AcceptedAnswersJson);
+            var hasAutomaticGrading = IsChoiceExerciseType(normalizedType)
+                || normalizedType == "GapFill"
+                || acceptedAnswers.Count > 0;
+
+            return !hasAutomaticGrading
+                && latestAttempt.IsManuallyReviewed
+                && !latestAttempt.RequiresManualGrading;
+        });
 
         var isCompleted = totalCount > 0 && correctCount >= totalCount;
 
@@ -879,6 +1068,18 @@ public class LearningService(IHalloAppDbContext dbContext)
         }
 
         return (correctCount, totalCount, isCompleted);
+    }
+
+    private sealed class AttemptProgressState
+    {
+        public Guid AttemptId { get; set; }
+        public Guid ExerciseId { get; set; }
+        public DateTime AnsweredAtUtc { get; set; }
+        public bool IsCorrect { get; set; }
+        public bool RequiresManualGrading { get; set; }
+        public bool IsManuallyReviewed { get; set; }
+        public int AssignmentVersion { get; set; }
+        public int AwardedPoints { get; set; }
     }
 
     private async Task SyncCompletedLessonsCountAsync(Guid studentId, CancellationToken cancellationToken)
@@ -926,5 +1127,43 @@ public class LearningService(IHalloAppDbContext dbContext)
         };
 
         return JsonSerializer.Serialize(snapshot);
+    }
+
+    private static List<Guid> ParseGuidIdList(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        try
+        {
+            var direct = JsonSerializer.Deserialize<List<Guid>>(json);
+            if (direct is { Count: > 0 })
+            {
+                return direct;
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            var textValues = JsonSerializer.Deserialize<List<string>>(json);
+            if (textValues is null || textValues.Count == 0)
+            {
+                return [];
+            }
+
+            return textValues
+                .Select(value => Guid.TryParse(value, out var parsed) ? parsed : Guid.Empty)
+                .Where(value => value != Guid.Empty)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
     }
 }

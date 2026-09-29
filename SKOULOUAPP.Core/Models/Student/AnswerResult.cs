@@ -5,6 +5,8 @@ public class AnswerResult
     public bool Succeeded { get; set; }
     public bool IsCorrect { get; set; }
     public Guid CorrectOptionId { get; set; }
+    public int AwardedPoints { get; set; }
+    public int MaxPoints { get; set; }
     public bool LessonCompleted { get; set; }
     public int CorrectExerciseCount { get; set; }
     public int TotalExerciseCount { get; set; }

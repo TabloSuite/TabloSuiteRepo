@@ -40,12 +40,14 @@
         }
     </div>
 
-    @if (activeMode == TeacherCreateMode.Lesson)
-    {
-        <TeacherLessonExercises Embedded="true" />
-    }
-    else
-    {
-        <TeacherExams Embedded="true" />
-    }
+    <div class="min-h-[30rem]">
+        @if (activeMode == TeacherCreateMode.Lesson)
+        {
+            <TeacherLessonExercises Embedded="true" />
+        }
+        else
+        {
+            <TeacherExams Embedded="true" />
+        }
+    </div>
 </section>

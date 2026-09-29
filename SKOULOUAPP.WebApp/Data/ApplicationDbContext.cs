@@ -97,6 +97,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(x => x.SchoolId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Lesson>()
+            .HasOne(x => x.CreatedByTeacher)
+            .WithMany()
+            .HasForeignKey(x => x.CreatedByTeacherId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Lesson>()
+            .HasIndex(x => x.CreatedByTeacherId);
         modelBuilder.Entity<LehrerFachZuordnung>()
             .HasOne(x => x.Lehrer)
             .WithMany(x => x.LehrerFachZuordnungen)

@@ -103,7 +103,7 @@
                                         <p class="mt-2 text-xs text-slate-500">@GetDirectionSchoolName(exam) · Classe: @exam.CourseCode · Enseignant: @exam.AuthorName</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <a class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" href="/teacher-exams/@exam.ContentId/view">
+                                        <a class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" href="/teacher-exams/@exam.ContentId/view?scope=shared&from=teacher-lessons">
                                             Voir le contenu
                                         </a>
                                         <a class="rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="/teacher-exams/@exam.ContentId/pdf-file?solutions=false" target="_blank">

@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Services;
+using HalloApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -27,6 +28,35 @@ public partial class StudentLessons
     private bool IsPathView { get; set; } = true;
 
     private int lessonJumpNumber = 1;
+    private string searchTerm = string.Empty;
+    private string selectedFach = string.Empty;
+    private string selectedStatus = "all";
+    private Guid? selectedTeacherId;
+
+    private IReadOnlyList<ModernDropdownOption<string>> FachFilterOptions
+        =>
+        [
+            new(string.Empty, "Toutes les matières"),
+            .. FachOptions.Select(fach => new ModernDropdownOption<string>(fach, fach))
+        ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> TeacherFilterOptions
+        =>
+        [
+            new(null, "Tous les enseignants"),
+            .. (lessons ?? [])
+                .Where(x => x.TeacherId.HasValue && !string.IsNullOrWhiteSpace(x.TeacherName))
+                .GroupBy(x => new { TeacherId = x.TeacherId!.Value, x.TeacherName })
+                .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.TeacherId, group.Key.TeacherName))
+                .OrderBy(option => option.Label)
+        ];
+
+    private static readonly IReadOnlyList<ModernDropdownOption<string>> StatusFilterOptions =
+    [
+        new("all", "Tous"),
+        new("inprogress", "En cours"),
+        new("completed", "Terminé")
+    ];
 
     private int completedCount => lessons?.Count(x => x.IsCompleted) ?? 0;
     private int totalExercises => lessons?.Sum(x => x.ExerciseCount) ?? 0;
@@ -38,8 +68,79 @@ public partial class StudentLessons
     private List<LessonListItem> OrderedLessons
         => lessons?.OrderBy(x => x.CourseCode).ThenBy(x => x.Order).ToList() ?? [];
 
+    private List<string> FachOptions
+        => lessons?
+            .Select(x => x.FachName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList() ?? [];
+
+    private List<LessonListItem> VisibleLessons
+        => OrderedLessons.Where(PassesSearchAndFilters).ToList();
+
+    private int VisibleCount => VisibleLessons.Count;
+
     private bool CanJumpToLesson
         => lessonJumpNumber >= 1 && lessonJumpNumber <= OrderedLessons.Count;
+
+    private bool PassesSearchAndFilters(LessonListItem lesson)
+    {
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            var matches = Contains(lesson.Title, term)
+                || Contains(lesson.CourseCode, term)
+                || Contains(lesson.Summary, term)
+                || Contains(lesson.FachName, term)
+                || Contains(lesson.TeacherName, term);
+
+            if (!matches)
+            {
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedFach)
+            && !string.Equals(lesson.FachName, selectedFach, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (selectedTeacherId.HasValue && lesson.TeacherId != selectedTeacherId.Value)
+        {
+            return false;
+        }
+
+        return selectedStatus switch
+        {
+            "completed" => lesson.IsCompleted,
+            "inprogress" => !lesson.IsCompleted,
+            _ => true
+        };
+    }
+
+    private static bool Contains(string? value, string term)
+        => !string.IsNullOrWhiteSpace(value)
+            && value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    private Task SetSelectedFachAsync(string? value)
+    {
+        selectedFach = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task SetSelectedStatusAsync(string? value)
+    {
+        selectedStatus = value ?? "all";
+        return Task.CompletedTask;
+    }
+
+    private Task SetSelectedTeacherAsync(Guid? teacherId)
+    {
+        selectedTeacherId = teacherId;
+        return Task.CompletedTask;
+    }
 
     /// <summary>
     /// Ermittelt für jede Lektion des Lernpfads den Anzeigestatus:
@@ -76,7 +177,7 @@ public partial class StudentLessons
 
         if (lesson.IsCompleted)
         {
-            return "Refaire";
+            return "Revoir la leçon";
         }
 
         return lesson.CorrectExerciseCount > 0 ? "Poursuivre la leçon" : "Commencer la leçon";

@@ -92,6 +92,9 @@
 - Quiz-Zuweisung: Ein Lehrer erstellt ein Quiz für seine konkrete Klasse (z. B. A1/CEP1). Das Quiz darf ausschließlich Schülern dieser Klasse mit HalloPlus-Abo zugewiesen werden. Gibt es mindestens einen berechtigten Schüler, bietet die UI „alle HalloPlus-Schüler“ sowie eine durchsuchbare Einzelschülerauswahl. Gibt es keinen berechtigten Schüler, ist die Zuweisungsaktion deaktiviert und zeigt den Hinweis „Keiner der Klasse hat das AboPlus“ an.
 - Im Schulleiterbereich soll der Zahlungsdialog für Schüler größer sein und eine Schülersuche bieten. Kursdurchläufe benötigen Filter für „en cours“/„clôturés“ sowie nach Niveau/Klasse. Bei Barzahlung darf der festgelegte Gesamtpreis nicht geändert werden.
 
+## Projektrichtlinien
+- Der Nutzer erwartet in der Entwicklungsphase ausdrücklich die Einführung von CreatedByTeacherId für Lessons statt abgeleiteter Lehrerzuordnung.
+
 ## Abrechnungsworkflow
 - Wenn ein ProductOwner für eine zugewiesene Schule eine Abo-Rechnung erstellt oder deren Zahlung erhält, soll der SuperAdmin benachrichtigt werden und den Erhalt separat als erledigt bestätigen können. Auch selbst erstellte Rechnungen an Leiter sollen vom SuperAdmin als erledigt markiert werden können.
 

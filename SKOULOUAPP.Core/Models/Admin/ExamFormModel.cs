@@ -18,8 +18,10 @@ public class ExamFormModel
     [StringLength(2000)]
     public string Description { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Veuillez choisir un niveau.")]
+    [Required(ErrorMessage = "Veuillez choisir une classe.")]
     public string NiveauCode { get; set; } = string.Empty;
+
+    public Guid? KlasseId { get; set; }
 
     [Range(1, 600, ErrorMessage = "Durée entre 1 et 600 minutes.")]
     public int DurationInMinutes { get; set; } = 60;

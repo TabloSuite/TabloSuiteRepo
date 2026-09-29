@@ -28,19 +28,16 @@ public partial class TeacherExams
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    [SupplyParameterFromQuery(Name = "viewExam")]
-    public Guid? ViewExamId { get; set; }
-
-    [SupplyParameterFromQuery(Name = "solutions")]
-    public bool? ViewExamWithSolutions { get; set; }
-
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = default!;
 
     private ElementReference editorScrollContainer;
 
     private List<ExamManagementItem> exams = [];
-    private IReadOnlyList<(Guid KlasseId, string Code, string Title)> niveauOptions = [];
+    private IReadOnlyList<(Guid KlasseId, string Code, string Title, Guid? SchoolId, string SchoolName)> klasseOptions = [];
+    private IReadOnlyList<(Guid SchoolId, string SchoolName)> schoolOptions = [];
+    private Guid? selectedSchoolFilterId;
+    private Guid? selectedKlasseFilterId;
     private ExamFormModel? form;
     private bool editorOpen;
     private bool isSavingExam;
@@ -48,15 +45,59 @@ public partial class TeacherExams
     private string? statusMessage;
     private Guid currentTeacherId;
     private bool isSchoolDirectionUser;
-    private ExamPdfViewModel? pdfPreviewExam;
-    private bool pdfPreviewIncludeSolutions;
-    private Guid? pdfPreviewExamId;
-    private bool examPreviewOpenedFromQuery;
+    private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolFilterOptions =>
+    [
+        new(null, "Toutes les écoles"),
+        .. schoolOptions.Select(school => new ModernDropdownOption<Guid?>((Guid?)school.SchoolId, school.SchoolName))
+    ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseFilterOptions
+    {
+        get
+        {
+            var filtered = selectedSchoolFilterId.HasValue
+                ? klasseOptions.Where(k => k.SchoolId == selectedSchoolFilterId.Value)
+                : klasseOptions;
+
+            return
+            [
+                new(null, "Toutes les classes"),
+                .. filtered
+                    .OrderBy(k => k.Code)
+                    .Select(k => new ModernDropdownOption<Guid?>((Guid?)k.KlasseId, FormatKlasseLabel(k.Code, k.Title)))
+            ];
+        }
+    }
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseOptions =>
+    [
+        new(null, "— Choisir une classe —"),
+        .. klasseOptions.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.KlasseId, FormatKlasseLabel(klasse.Code, klasse.Title)))
+    ];
+
+    private IReadOnlyList<ExamManagementItem> VisibleExams
+    {
+        get
+        {
+            IEnumerable<ExamManagementItem> query = exams;
+            if (selectedSchoolFilterId.HasValue)
+            {
+                query = query.Where(x => x.SchoolId == selectedSchoolFilterId.Value);
+            }
+
+            if (selectedKlasseFilterId.HasValue)
+            {
+                query = query.Where(x => x.KlasseId == selectedKlasseFilterId.Value);
+            }
+
+            return query.ToList();
+        }
+    }
 
     private IReadOnlyList<ModernDropdownOption<string?>> NiveauOptions =>
     [
-        new(string.Empty, "— Choisir —"),
-        .. niveauOptions.Select(niveau => new ModernDropdownOption<string?>(niveau.Code, FormatKlasseLabel(niveau.Code, niveau.Title)))
+        new(string.Empty, "— Choisir une classe —"),
+        .. klasseOptions.Select(klasse => new ModernDropdownOption<string?>(klasse.Code, FormatKlasseLabel(klasse.Code, klasse.Title)))
     ];
 
     private static string FormatKlasseLabel(string? code, string? title)
@@ -91,8 +132,39 @@ public partial class TeacherExams
         if (form is not null)
         {
             form.NiveauCode = niveauCode ?? string.Empty;
+            form.KlasseId = klasseOptions.FirstOrDefault(x => string.Equals(x.Code, niveauCode, StringComparison.OrdinalIgnoreCase)).KlasseId;
         }
 
+        return Task.CompletedTask;
+    }
+
+    private Task SetKlasseAsync(Guid? klasseId)
+    {
+        if (form is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        form.KlasseId = klasseId;
+        var option = klasseOptions.FirstOrDefault(x => x.KlasseId == klasseId);
+        form.NiveauCode = option.KlasseId == Guid.Empty ? string.Empty : option.Code;
+        return Task.CompletedTask;
+    }
+
+    private Task SetSchoolFilterAsync(Guid? schoolId)
+    {
+        selectedSchoolFilterId = schoolId;
+        if (selectedKlasseFilterId.HasValue && !VisibleExams.Any(x => x.KlasseId == selectedKlasseFilterId.Value))
+        {
+            selectedKlasseFilterId = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetKlasseFilterAsync(Guid? klasseId)
+    {
+        selectedKlasseFilterId = klasseId;
         return Task.CompletedTask;
     }
 
@@ -116,7 +188,6 @@ public partial class TeacherExams
             Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentTeacherId);
             isSchoolDirectionUser = state.User.IsInRole("SchulLeiter") || state.User.IsInRole("Koordinator");
             await LoadAsync();
-            await TryOpenExamPreviewFromQueryAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -166,10 +237,22 @@ public partial class TeacherExams
             query = query.Where(x => zugeordneteKlassenIds.Contains(x.Id));
         }
 
-        niveauOptions = await query
+        klasseOptions = await query
             .OrderBy(x => x.Code)
-            .Select(x => new ValueTuple<Guid, string, string>(x.Id, x.Code, x.Title))
+            .Select(x => new ValueTuple<Guid, string, string, Guid?, string>(
+                x.Id,
+                x.Code,
+                x.Title,
+                x.SchoolId,
+                x.School != null ? x.School.Name : string.Empty))
             .ToListAsync(ComponentToken);
+
+        schoolOptions = klasseOptions
+            .Where(x => x.SchoolId.HasValue)
+            .GroupBy(x => new { SchoolId = x.SchoolId!.Value, x.SchoolName })
+            .Select(g => (g.Key.SchoolId, g.Key.SchoolName))
+            .OrderBy(x => x.SchoolName)
+            .ToList();
     }
 
     private async Task OpenEditor(Guid? examId)
@@ -211,49 +294,10 @@ public partial class TeacherExams
         });
     }
 
-    private async Task OpenExamPdfPreviewAsync(Guid examId, bool includeSolutions)
+    private string GetExamPreviewHref(Guid examId, bool includeSolutions)
     {
-        pdfPreviewExam = await ExamService.GetExamForPdfAsync(
-            currentTeacherId,
-            examId,
-            isSchoolDirectionUser,
-            ComponentToken);
-        pdfPreviewIncludeSolutions = includeSolutions;
-        pdfPreviewExamId = pdfPreviewExam is null ? null : examId;
-    }
-
-    private async Task TryOpenExamPreviewFromQueryAsync()
-    {
-        if (examPreviewOpenedFromQuery || !ViewExamId.HasValue)
-        {
-            return;
-        }
-
-        examPreviewOpenedFromQuery = true;
-
-        await OpenExamPdfPreviewAsync(ViewExamId.Value, ViewExamWithSolutions ?? false);
-
-        if (pdfPreviewExam is null)
-        {
-            formError = "Le contenu de cet examen n'est pas disponible pour votre accès actuel.";
-        }
-    }
-
-    private void CloseExamPdfPreview()
-    {
-        pdfPreviewExam = null;
-        pdfPreviewExamId = null;
-        pdfPreviewIncludeSolutions = false;
-    }
-
-    private string GetPdfFileUrl()
-    {
-        if (!pdfPreviewExamId.HasValue)
-        {
-            return "#";
-        }
-
-        return $"/teacher-exams/{pdfPreviewExamId.Value}/pdf-file?solutions={(pdfPreviewIncludeSolutions ? "true" : "false")}";
+        var from = Embedded ? "teacher-create" : "teacher-exams";
+        return $"/teacher-exams/{examId}/view?solutions={(includeSolutions ? "true" : "false")}&from={from}&scope=owner";
     }
 
     private static string GetAudienceLabel(ExamManagementItem exam)

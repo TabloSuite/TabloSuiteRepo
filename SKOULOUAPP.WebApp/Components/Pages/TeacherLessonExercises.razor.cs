@@ -44,6 +44,8 @@ public partial class TeacherLessonExercises
     private List<LessonEditorListItem> lessons = [];
     private List<KlasseOption> klasses = [];
     private Guid? selectedSchoolId;
+    private Guid? lessonListSchoolFilterId;
+    private Guid? lessonListKlasseFilterId;
     private LessonFormModel? form;
     private List<LessonExerciseBlockEditorModel> exerciseBlocks = [];
     private string selectedLessonCode = string.Empty;
@@ -62,6 +64,8 @@ public partial class TeacherLessonExercises
     private List<PendingManualExerciseReviewItem> pendingManualReviews = [];
     private Dictionary<Guid, string> manualFeedbackByAttempt = [];
     private Dictionary<Guid, int> manualPointsByAttempt = [];
+    private Guid? pendingReviewSchoolFilterId;
+    private Guid? pendingReviewKlasseFilterId;
     private IReadOnlyCollection<string> currentRoles = [];
     private IBrowserFile? selectedVideoFile;
     private decimal videoDurationMinutes;
@@ -94,6 +98,119 @@ public partial class TeacherLessonExercises
         : string.Empty;
 
     private int VideoUploadPercent => videoUploadPercent;
+
+    private string PendingManualReviewEmptyMessage
+    {
+        get
+        {
+            if (pendingReviewSchoolFilterId.HasValue || pendingReviewKlasseFilterId.HasValue)
+            {
+                return "Aucune correction manuelle ne correspond aux filtres sélectionnés.";
+            }
+
+            var hasFutureDueDate = lessons.Any(lesson =>
+                lesson.ExerciseSubmissionDueAtUtc.HasValue
+                && lesson.ExerciseSubmissionDueAtUtc.Value > DateTime.UtcNow);
+
+            return hasFutureDueDate
+                ? "Des réponses ouvertes peuvent exister, mais la date limite n'est pas encore passée."
+                : "Aucune réponse ouverte à corriger pour le moment (après date limite).";
+        }
+    }
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> PendingReviewSchoolFilterOptions =>
+    [
+        new(null, "Toutes les écoles"),
+        .. pendingManualReviews
+            .Where(review => review.SchoolId.HasValue)
+            .GroupBy(review => new { SchoolId = review.SchoolId!.Value, review.SchoolName })
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.SchoolId, group.Key.SchoolName))
+            .OrderBy(option => option.Label)
+    ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> PendingReviewKlasseFilterOptions
+    {
+        get
+        {
+            var filtered = pendingReviewSchoolFilterId.HasValue
+                ? pendingManualReviews.Where(review => review.SchoolId == pendingReviewSchoolFilterId.Value)
+                : pendingManualReviews;
+
+            return
+            [
+                new(null, "Toutes les classes"),
+                .. filtered
+                    .GroupBy(review => new { review.KlasseId, review.CourseCode })
+                    .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.KlasseId, group.Key.CourseCode))
+                    .OrderBy(option => option.Label)
+            ];
+        }
+    }
+
+    private IReadOnlyList<PendingManualExerciseReviewItem> VisiblePendingManualReviews
+    {
+        get
+        {
+            IEnumerable<PendingManualExerciseReviewItem> query = pendingManualReviews;
+
+            if (pendingReviewSchoolFilterId.HasValue)
+            {
+                query = query.Where(review => review.SchoolId == pendingReviewSchoolFilterId.Value);
+            }
+
+            if (pendingReviewKlasseFilterId.HasValue)
+            {
+                query = query.Where(review => review.KlasseId == pendingReviewKlasseFilterId.Value);
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private Task SetPendingReviewSchoolFilterAsync(Guid? schoolId)
+    {
+        pendingReviewSchoolFilterId = schoolId;
+
+        if (pendingReviewKlasseFilterId.HasValue
+            && !VisiblePendingManualReviews.Any(review => review.KlasseId == pendingReviewKlasseFilterId.Value))
+        {
+            pendingReviewKlasseFilterId = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetPendingReviewKlasseFilterAsync(Guid? klasseId)
+    {
+        pendingReviewKlasseFilterId = klasseId;
+        return Task.CompletedTask;
+    }
+
+    private int GetManualPoints(Guid attemptId, int fallbackMaxPoints)
+        => manualPointsByAttempt.TryGetValue(attemptId, out var points)
+            ? points
+            : fallbackMaxPoints;
+
+    private string GetManualFeedback(Guid attemptId)
+        => manualFeedbackByAttempt.TryGetValue(attemptId, out var feedback)
+            ? feedback
+            : string.Empty;
+
+    private void OnManualPointsInput(Guid attemptId, int maxPoints, ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out var parsed))
+        {
+            return;
+        }
+
+        parsed = Math.Clamp(parsed, 0, Math.Max(0, maxPoints));
+        manualPointsByAttempt[attemptId] = parsed;
+    }
+
+    private void OnManualFeedbackInput(Guid attemptId, ChangeEventArgs args)
+    {
+        manualFeedbackByAttempt[attemptId] = args.Value?.ToString() ?? string.Empty;
+    }
 
     private static string FormatKlasseLabel(string? code, string? title)
     {
@@ -182,6 +299,74 @@ public partial class TeacherLessonExercises
         new(null, "— Choisir une matière —"),
         .. filteredFachOptions.Select(fach => new ModernDropdownOption<Guid?>((Guid?)fach.FachId, fach.Name))
     ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> LessonListSchoolFilterOptions =>
+    [
+        new(null, "Toutes les écoles"),
+        .. klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .GroupBy(klasse => klasse.SchoolId!.Value)
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().SchoolName))
+            .OrderBy(option => option.Label)
+    ];
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> LessonListKlasseFilterOptions
+    {
+        get
+        {
+            var filteredKlasses = lessonListSchoolFilterId is Guid schoolId
+                ? klasses.Where(klasse => klasse.SchoolId == schoolId)
+                : klasses;
+
+            return
+            [
+                new(null, "Toutes les classes"),
+                .. filteredKlasses
+                    .OrderBy(klasse => klasse.Code)
+                    .ThenBy(klasse => klasse.Title)
+                    .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
+            ];
+        }
+    }
+
+    private IReadOnlyList<LessonEditorListItem> VisibleLessons
+    {
+        get
+        {
+            IEnumerable<LessonEditorListItem> query = lessons;
+
+            if (lessonListSchoolFilterId is Guid schoolId)
+            {
+                query = query.Where(lesson => klasseSchoolById.TryGetValue(lesson.KlasseId, out var currentSchoolId) && currentSchoolId == schoolId);
+            }
+
+            if (lessonListKlasseFilterId is Guid klasseId)
+            {
+                query = query.Where(lesson => lesson.KlasseId == klasseId);
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private Task SetLessonListSchoolFilterAsync(Guid? schoolId)
+    {
+        lessonListSchoolFilterId = schoolId;
+
+        if (lessonListKlasseFilterId.HasValue
+            && !VisibleLessons.Any(lesson => lesson.KlasseId == lessonListKlasseFilterId.Value))
+        {
+            lessonListKlasseFilterId = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetLessonListKlasseFilterAsync(Guid? klasseId)
+    {
+        lessonListKlasseFilterId = klasseId;
+        return Task.CompletedTask;
+    }
 
     private bool HasValidSelectedFach
         => form?.FachId is Guid fachId
@@ -310,12 +495,38 @@ public partial class TeacherLessonExercises
         isLoading = true;
         errorMessage = null;
 
-        allowedCourseIds = await DbContext.LehrerNiveauZuordnungen
-            .AsNoTracking()
-            .Where(x => x.LehrerID == currentTeacherId)
-            .Select(x => x.KlasseId)
-            .Distinct()
-            .ToHashSetAsync(ComponentToken);
+        var isSchoolDirectionUser = currentRoles.Contains("SchulLeiter", StringComparer.OrdinalIgnoreCase)
+            || currentRoles.Contains("Koordinator", StringComparer.OrdinalIgnoreCase);
+
+        if (isSchoolDirectionUser)
+        {
+            var schoolIds = await DbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.AppUserId == currentTeacherId)
+                .Select(link => link.SchoolId)
+                .Distinct()
+                .ToListAsync(ComponentToken);
+
+            allowedCourseIds = schoolIds.Count == 0
+                ? []
+                : await DbContext.Klassen
+                    .AsNoTracking()
+                    .Where(klasse => klasse.SchoolId.HasValue
+                        && schoolIds.Contains(klasse.SchoolId.Value)
+                        && !klasse.IstSystemNiveau)
+                    .Select(klasse => klasse.Id)
+                    .Distinct()
+                    .ToHashSetAsync(ComponentToken);
+        }
+        else
+        {
+            allowedCourseIds = await DbContext.LehrerNiveauZuordnungen
+                .AsNoTracking()
+                .Where(x => x.LehrerID == currentTeacherId)
+                .Select(x => x.KlasseId)
+                .Distinct()
+                .ToHashSetAsync(ComponentToken);
+        }
 
         klasses = await DbContext.Klassen
             .AsNoTracking()
@@ -938,7 +1149,7 @@ public partial class TeacherLessonExercises
                 form.ExerciseSubmissionDueAtUtc = DateTime.SpecifyKind(form.ExerciseSubmissionDueAtUtc.Value, DateTimeKind.Local).ToUniversalTime();
             }
 
-            var result = await DashboardService.SaveLessonAsync(form, ComponentToken);
+            var result = await DashboardService.SaveLessonAsync(form, currentTeacherId, ComponentToken);
             if (!result.Succeeded)
             {
                 errorMessage = result.Message;

@@ -21,6 +21,9 @@ public partial class DirectionLessonExerciseReader
     [Parameter]
     public Guid LessonId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "from")]
+    public string? FromPage { get; set; }
+
     private LessonDetailViewModel? lesson;
     private bool notFound;
 
@@ -29,14 +32,14 @@ public partial class DirectionLessonExerciseReader
         try
         {
             var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            if ((!state.User.IsInRole(Rollen.SchulLeiter) && !state.User.IsInRole(Rollen.Koordinator))
+            if ((!state.User.IsInRole(Rollen.SchulLeiter) && !state.User.IsInRole(Rollen.Koordinator) && !state.User.IsInRole(Rollen.Lehrer))
                 || !Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
             {
                 notFound = true;
                 return;
             }
 
-            lesson = await LearningService.GetLessonDetailForDirectionReadOnlyAsync(LessonId, userId, ComponentToken);
+            lesson = await LearningService.GetLessonDetailForTeacherOrDirectionReadOnlyAsync(LessonId, userId, ComponentToken);
             notFound = lesson is null;
         }
         catch (Exception ex) when (IstAbbruch(ex))
@@ -46,5 +49,13 @@ public partial class DirectionLessonExerciseReader
     }
 
     private void GoBack()
-        => Navigation.NavigateTo("/teacher/lessons");
+    {
+        if (string.Equals(FromPage, "teacher-create", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/teacher/create");
+            return;
+        }
+
+        Navigation.NavigateTo("/teacher/lessons");
+    }
 }

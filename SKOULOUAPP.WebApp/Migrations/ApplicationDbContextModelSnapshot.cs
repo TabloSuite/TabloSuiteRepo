@@ -1214,6 +1214,9 @@ namespace HalloApp.WebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("CreatedByTeacherId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -1246,6 +1249,8 @@ namespace HalloApp.WebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByTeacherId");
 
                     b.HasIndex("FachId");
 
@@ -2386,6 +2391,11 @@ namespace HalloApp.WebApp.Migrations
 
             modelBuilder.Entity("HalloApp.Core.DataModels.Lessons.Lesson", b =>
                 {
+                    b.HasOne("HalloApp.Core.DataModels.Identity.AppUser", "CreatedByTeacher")
+                        .WithMany()
+                        .HasForeignKey("CreatedByTeacherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("HalloApp.Core.DataModels.Schools.Fach", "Fach")
                         .WithMany("Lessons")
                         .HasForeignKey("FachId");
@@ -2395,6 +2405,8 @@ namespace HalloApp.WebApp.Migrations
                         .HasForeignKey("KlasseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("CreatedByTeacher");
 
                     b.Navigation("Fach");
 

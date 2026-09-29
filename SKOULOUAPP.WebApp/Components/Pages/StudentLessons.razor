@@ -36,6 +36,46 @@ else
                         </div>
                     </div>
                 </div>
+
+                <div class="mt-4 w-full rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:p-4 md:p-5">
+                    <div class="grid gap-3 md:grid-cols-12">
+                        <label class="md:col-span-12">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Recherche rapide</span>
+                        <input type="text"
+                               class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:border-indigo-400 focus:outline-none"
+                               placeholder="Titre, classe, résumé, matière..."
+                               @bind="searchTerm"
+                               @bind:event="oninput" />
+                    </label>
+
+                    <ModernDropdown TValue="string"
+                                    Label="Matière"
+                                    Value="selectedFach"
+                                    ValueChanged="SetSelectedFachAsync"
+                                    Options="FachFilterOptions"
+                                    ContainerClass="md:col-span-6"
+                                    Searchable="true"
+                                    SearchPlaceholder="Rechercher une matière..." />
+
+                    <ModernDropdown TValue="Guid?"
+                                    Label="Enseignant"
+                                    Value="selectedTeacherId"
+                                    ValueChanged="SetSelectedTeacherAsync"
+                                    Options="TeacherFilterOptions"
+                                    ContainerClass="md:col-span-4"
+                                    Searchable="true"
+                                    SearchPlaceholder="Rechercher un enseignant..." />
+
+                    <ModernDropdown TValue="string"
+                                    Label="Statut"
+                                    Value="selectedStatus"
+                                    ValueChanged="SetSelectedStatusAsync"
+                                    Options="StatusFilterOptions"
+                                    ContainerClass="md:col-span-2" />
+                    </div>
+
+                    <p class="mt-3 text-xs font-semibold text-slate-500">@VisibleCount leçon(s) affichée(s)</p>
+                </div>
             }
         </div>
 
@@ -100,7 +140,7 @@ else
             {
                 <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
                     <div class="lesson-path">
-                        @foreach (var lesson in lessons.OrderBy(x => x.Order))
+                        @foreach (var lesson in VisibleLessons)
                         {
                             var status = GetPathNodeStatus(lesson);
                             <div class="lesson-path-item lesson-path-item--@status card-stack-enter">
@@ -122,7 +162,7 @@ else
                                  <div class="lesson-path-card rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-4">
                                     <div class="flex flex-wrap items-start justify-between gap-3">
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">@lesson.CourseCode · Leçon @lesson.Order</p>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">@lesson.CourseCode</p>
                                             <h2 class="mt-1 text-base font-bold text-slate-900">@lesson.Title</h2>
                                         </div>
                                         @if (status == "current")
@@ -135,10 +175,22 @@ else
                                         }
                                     </div>
                                     <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
+                                    @if (!string.IsNullOrWhiteSpace(lesson.FachName))
+                                    {
+                                        <p class="mt-1 text-xs font-semibold text-indigo-600">Matière : @lesson.FachName</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(lesson.TeacherName))
+                                    {
+                                        <p class="mt-1 text-xs font-semibold text-cyan-700">Par : @lesson.TeacherName</p>
+                                    }
                                     <div class="mt-3">
-                                        <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                                        <div class="flex items-center justify-between text-sm font-semibold text-slate-500">
                                             <span>@lesson.CorrectExerciseCount / @lesson.ExerciseCount exercices</span>
                                             <span>@lesson.ProgressPercent %</span>
+                                        </div>
+                                        <div class="mt-1 flex items-center justify-between text-sm font-semibold text-indigo-600">
+                                            <span>Points de la leçon</span>
+                                            <span>@lesson.ExercisePointsEarned / @lesson.ExercisePointsTotal</span>
                                         </div>
                                         <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                                             <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width:@(lesson.ProgressPercent)%"></div>
@@ -167,12 +219,12 @@ else
                                ResultLabelPlural="leçons"
                                Filter="@((LessonListItem l, string term) => Contains(l.Title, term) || Contains(l.CourseCode, term) || Contains(l.Summary, term))">
                     <div class="grid gap-4 xl:grid-cols-2">
-                        @foreach (var lesson in context)
+                        @foreach (var lesson in context.Where(PassesSearchAndFilters))
                         {
                     <article class="card-stack-enter flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-xl">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">@lesson.CourseCode · Leçon @lesson.Order</p>
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">@lesson.CourseCode</p>
                                 <h2 class="mt-1 text-lg font-bold text-slate-900">@lesson.Title</h2>
                             </div>
                             <Badge Accent="@(lesson.IsCompleted ? "emerald" : "slate")">
@@ -180,11 +232,23 @@ else
                             </Badge>
                         </div>
                         <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
+                        @if (!string.IsNullOrWhiteSpace(lesson.FachName))
+                        {
+                            <p class="mt-1 text-xs font-semibold text-indigo-600">Matière : @lesson.FachName</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(lesson.TeacherName))
+                        {
+                            <p class="mt-1 text-xs font-semibold text-cyan-700">Par : @lesson.TeacherName</p>
+                        }
 
                         <div class="mt-4">
-                            <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                            <div class="flex items-center justify-between text-sm font-semibold text-slate-500">
                                 <span>@lesson.CorrectExerciseCount / @lesson.ExerciseCount exercices</span>
                                 <span>@lesson.ProgressPercent %</span>
+                            </div>
+                            <div class="mt-1 flex items-center justify-between text-sm font-semibold text-indigo-600">
+                                <span>Points de la leçon</span>
+                                <span>@lesson.ExercisePointsEarned / @lesson.ExercisePointsTotal</span>
                             </div>
                             <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                                 <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width:@(lesson.ProgressPercent)%"></div>

@@ -1900,7 +1900,10 @@ public class DashboardService(
         };
     }
 
-    public async Task<(bool Succeeded, string Message)> SaveLessonAsync(LessonFormModel model, CancellationToken cancellationToken = default)
+    public async Task<(bool Succeeded, string Message)> SaveLessonAsync(
+        LessonFormModel model,
+        Guid? currentTeacherId = null,
+        CancellationToken cancellationToken = default)
     {
         var courseExists = await dbContext.Klassen.AnyAsync(x => x.Id == model.CourseId, cancellationToken);
         if (!courseExists)
@@ -1955,6 +1958,17 @@ public class DashboardService(
         lesson.Order = model.Order;
         lesson.IsPublished = model.IsPublished;
         lesson.ExerciseSubmissionDueAtUtc = model.ExerciseSubmissionDueAtUtc;
+
+        if (!model.LessonId.HasValue && currentTeacherId.HasValue)
+        {
+            lesson.CreatedByTeacherId = currentTeacherId.Value;
+        }
+
+        if (model.LessonId.HasValue && !lesson.CreatedByTeacherId.HasValue && currentTeacherId.HasValue)
+        {
+            lesson.CreatedByTeacherId = currentTeacherId.Value;
+        }
+
         lesson.GeaendertAmUtc = DateTime.UtcNow;
 
         await SyncLessonVideoMediaAsync(lesson, model, cancellationToken);

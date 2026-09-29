@@ -9,7 +9,10 @@ public class ExamManagementItem
 {
     public Guid ExamId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public Guid KlasseId { get; set; }
     public string NiveauCode { get; set; } = string.Empty;
+    public Guid? SchoolId { get; set; }
+    public string SchoolName { get; set; } = string.Empty;
     public int DurationInMinutes { get; set; }
     public int PassingScore { get; set; }
     public int ExerciseCount { get; set; }

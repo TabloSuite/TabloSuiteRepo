@@ -38,6 +38,9 @@ public class Lesson : AuditableModel
     public Guid? FachId { get; set; }
     public Fach? Fach { get; set; }
 
+    public Guid? CreatedByTeacherId { get; set; }
+    public AppUser? CreatedByTeacher { get; set; }
+
     public ICollection<LessonMedia> MediaItems { get; set; } = new List<LessonMedia>();
     public ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
 }

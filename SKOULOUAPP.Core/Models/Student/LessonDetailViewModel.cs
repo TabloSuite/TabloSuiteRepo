@@ -27,8 +27,13 @@ public class ExerciseViewModel
     public string Instructions { get; set; } = string.Empty;
     public string Question { get; set; } = string.Empty;
     public int Order { get; set; }
+    public int MaxPoints { get; set; }
+    public int? AwardedPoints { get; set; }
     public bool IsAnsweredCorrectly { get; set; }
     public Guid? SelectedOptionId { get; set; }
+    public List<Guid> SubmittedSelectedOptionIds { get; set; } = [];
+    public List<Guid> CorrectOptionIds { get; set; } = [];
+    public bool HasSubmittedAttempt { get; set; }
 
     /// <summary>
     /// Aufgabentyp: bestimmt das Eingabewidget. Werte: "SingleChoice", "MultipleChoice", "Text", "GapFill", "SentenceBuilding", "AudioText", "AudioSingleChoice", "AudioMultipleChoice".

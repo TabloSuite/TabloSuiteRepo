@@ -361,10 +361,20 @@ public class ExamService(IHalloAppDbContext dbContext)
     {
         ValidateExamForm(model);
 
-        var niveauCode = model.NiveauCode.Trim();
-        var klasse = await dbContext.Klassen
-            .FirstOrDefaultAsync(x => x.Code == niveauCode, cancellationToken)
-            ?? throw new InvalidOperationException("Le niveau sélectionné est introuvable.");
+        Klasse klasse;
+        if (model.KlasseId.HasValue)
+        {
+            klasse = await dbContext.Klassen
+                .FirstOrDefaultAsync(x => x.Id == model.KlasseId.Value, cancellationToken)
+                ?? throw new InvalidOperationException("La classe sélectionnée est introuvable.");
+        }
+        else
+        {
+            var klasseCode = model.NiveauCode.Trim();
+            klasse = await dbContext.Klassen
+                .FirstOrDefaultAsync(x => x.Code == klasseCode, cancellationToken)
+                ?? throw new InvalidOperationException("La classe sélectionnée est introuvable.");
+        }
         if (klasse.IstSystemNiveau)
         {
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
@@ -488,7 +498,10 @@ public class ExamService(IHalloAppDbContext dbContext)
             {
                 ExamId = exam.Id,
                 Title = exam.Title,
+                KlasseId = exam.KlasseId,
                 NiveauCode = exam.Klasse.Code,
+                SchoolId = exam.Klasse.SchoolId,
+                SchoolName = exam.Klasse.School != null ? exam.Klasse.School.Name : string.Empty,
                 DurationInMinutes = exam.DurationInMinutes,
                 PassingScore = exam.PassingScore,
                 ExerciseCount = exam.Exercises.Count,
@@ -530,6 +543,7 @@ public class ExamService(IHalloAppDbContext dbContext)
             Title = exam.Title,
             Description = exam.Description,
             NiveauCode = exam.Klasse.Code,
+            KlasseId = exam.KlasseId,
             DurationInMinutes = exam.DurationInMinutes,
             PassingScore = exam.PassingScore,
             ExamType = exam.ExamType,
@@ -1038,7 +1052,7 @@ public class ExamService(IHalloAppDbContext dbContext)
 
         if (string.IsNullOrWhiteSpace(model.NiveauCode))
         {
-            throw new InvalidOperationException("Veuillez choisir un niveau.");
+            throw new InvalidOperationException("Veuillez choisir une classe.");
         }
 
         if (model.Exercises.Count == 0)

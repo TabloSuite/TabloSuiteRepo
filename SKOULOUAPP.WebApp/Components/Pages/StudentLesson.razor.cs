@@ -102,6 +102,8 @@ public partial class StudentLesson
         public List<string> GapValues { get; set; } = [];
         public bool RequiresManualGrading { get; set; }
         public bool IsGradedManually { get; set; }
+        public int MaxPoints { get; set; }
+        public int? AwardedPoints { get; set; }
     }
 
     private sealed class ExerciseDisplayItem
@@ -144,11 +146,20 @@ public partial class StudentLesson
                 {
                     IsCorrect = exercise.IsAnsweredCorrectly,
                     SelectedOptionId = exercise.SelectedOptionId,
+                    SelectedOptionIds = exercise.SubmittedSelectedOptionIds.Count > 0
+                        ? [.. exercise.SubmittedSelectedOptionIds]
+                        : [],
                     TextAnswer = exercise.SubmittedTextAnswer,
+                    MaxPoints = exercise.MaxPoints > 0 ? exercise.MaxPoints : 10,
+                    AwardedPoints = exercise.AwardedPoints,
                     GapValues = exercise.SubmittedGapValues.Count > 0
                         ? [.. exercise.SubmittedGapValues]
                         : Enumerable.Repeat(string.Empty, exercise.GapCount).ToList(),
-                    Feedback = exercise.IsAnsweredCorrectly ? "Richtig!" : null
+                    RequiresManualGrading = exercise.IsPendingManualGrading,
+                    IsGradedManually = exercise.IsPendingManualGrading || exercise.IsManuallyReviewed,
+                    Feedback = exercise.IsAnsweredCorrectly
+                        ? "Richtig!"
+                        : (exercise.HasSubmittedAttempt ? "Réponse enregistrée." : null)
                 };
             }
 
@@ -203,6 +214,12 @@ public partial class StudentLesson
             return;
         }
 
+        if (IsManualExerciseSubmissionClosed(exercise))
+        {
+            state.Feedback = "La date limite est dépassée pour cet exercice ouvert.";
+            return;
+        }
+
         state.IsSubmitting = true;
         try
         {
@@ -221,6 +238,7 @@ public partial class StudentLesson
                 state.IsCorrect = result.IsCorrect;
                 state.RequiresManualGrading = result.RequiresManualGrading;
                 state.IsGradedManually = result.RequiresManualGrading;
+                state.AwardedPoints = result.AwardedPoints;
                 if (result.IsCorrect)
                 {
                     state.AnsweredCorrectOptionId = result.CorrectOptionId;
@@ -387,6 +405,20 @@ public partial class StudentLesson
         return !string.IsNullOrWhiteSpace(state.TextAnswer);
     }
 
+    private bool IsManualExerciseSubmissionClosed(ExerciseViewModel exercise)
+    {
+        if (exercise.HasAutomaticGrading)
+        {
+            return false;
+        }
+
+        return lesson?.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc
+            && DateTime.UtcNow > dueAtUtc;
+    }
+
+    private string GetSubmitButtonLabel(ExerciseViewModel exercise)
+        => exercise.HasAutomaticGrading ? "Vérifier la réponse" : "Envoyer la réponse";
+
     private void RecalculateCorrectCount()
         => correctCount = exerciseStates.Values.Count(x => x.IsCorrect);
 
@@ -410,6 +442,21 @@ public partial class StudentLesson
     private static string GetOptionClass(ExerciseState state, bool isSelected, bool isCorrectOption)
     {
         const string baseClass = "w-full rounded-2xl border px-4 py-3 text-left text-base font-medium transition duration-150 ";
+
+        if (state.IsGradedManually)
+        {
+            if (isCorrectOption)
+            {
+                return baseClass + "border-emerald-300 bg-emerald-50 text-emerald-800";
+            }
+
+            if (isSelected)
+            {
+                return baseClass + "border-rose-300 bg-rose-50 text-rose-800";
+            }
+
+            return baseClass + "border-slate-200 bg-white text-slate-700";
+        }
 
         if (state.IsCorrect && isCorrectOption)
         {
