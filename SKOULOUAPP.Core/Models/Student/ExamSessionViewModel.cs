@@ -10,6 +10,8 @@ public class ExamSessionViewModel
     public int DurationInMinutes { get; set; }
     public int PassingScore { get; set; }
     public DateTime DeadlineUtc { get; set; }
+    public bool IsResumed { get; set; }
+    public List<ExamAnswerSubmission> SavedAnswers { get; set; } = [];
     public List<ExamQuestionViewModel> Questions { get; set; } = [];
 }
 

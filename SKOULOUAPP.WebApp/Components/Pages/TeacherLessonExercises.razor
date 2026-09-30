@@ -150,6 +150,14 @@
                                             <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@lesson.FachName</span>
                                         }
                                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">@lesson.ExerciseCount exercice(s)</span>
+                                         @if (lesson.IsCurrentAssignmentVersionLocked)
+                                         {
+                                             <span class="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">Leçon verrouillée</span>
+                                         }
+                                         else if (lesson.HasSubmissionsInCurrentAssignmentVersion)
+                                         {
+                                             <span class="rounded-full border border-indigo-200 bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">Soumissions existantes (v@lesson.AssignmentVersion)</span>
+                                         }
                                     </div>
                                     <h2 class="mt-2 text-lg font-bold text-slate-900">@lesson.Title</h2>
                                     <p class="mt-1 text-sm text-slate-500">@lesson.Summary</p>
@@ -190,7 +198,11 @@
                     <div class="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-indigo-900">
                         @if (isCurrentAssignmentVersionLocked)
                         {
-                            <p class="font-semibold">@($"Session d'attribution actuelle : v{form.AssignmentVersion}")</p>
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <p class="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">Leçon verrouillée</p>
+                                <button type="button" class="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenReassignFromListAsync(form.LessonId!.Value)">Modifier et réattribuer</button>
+                            </div>
+                            <p class="mt-2 font-semibold">@($"Session d'attribution actuelle : v{form.AssignmentVersion}")</p>
                             <p class="mt-1">Cette session est verrouillée: des élèves ont déjà soumis et la date limite n'est pas encore atteinte. Après la date limite, tes modifications ouvriront automatiquement une nouvelle session.</p>
                         }
                         else if (form.HasSubmissionsInCurrentAssignmentVersion)
@@ -222,17 +234,11 @@
                                        placeholder="@(isReassignCreationMode ? "Saisir le nouveau titre (obligatoire)" : null)" />
                         </div>
                         <div>
-                            <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" Disabled="@(isCurrentAssignmentVersionLocked || form.LessonId.HasValue)" />
+                            <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div>
-                            <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" Disabled="@(isCurrentAssignmentVersionLocked || form.LessonId.HasValue)" />
+                            <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
-                        @if (form.LessonId.HasValue)
-                        {
-                            <div class="xl:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                                La classe et l'école de cette leçon existante sont verrouillées ici. Utilise « Modifier et réattribuer » pour créer une nouvelle attribution.
-                            </div>
-                        }
                         <div class="xl:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
                             <ModernDropdown TValue="Guid?" Label="Matière" Value="form.FachId" ValueChanged="SetLessonFachAsync" Options="FachOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                             @if (filteredFachOptions.Count == 0)
@@ -246,11 +252,15 @@
                         </div>
                         <div class="xl:col-span-2">
                             <label class="hallo-label">Contenu de la leçon</label>
-                            <RichTextEditor @bind-Value="form.Content" Placeholder="Rédige le contenu de la leçon..." MinEditorHeightRem="28" ReadOnly="@isCurrentAssignmentVersionLocked" />
+                            <RichTextEditor @ref="lessonContentEditor"
+                                            @bind-Value="form.Content"
+                                            Placeholder="Rédige le contenu de la leçon..."
+                                            MinEditorHeightRem="28"
+                                            Paged="true"
+                                            ReadOnly="@isCurrentAssignmentVersionLocked" />
                         </div>
-                        <div>
-                            <label class="hallo-label">Ordre</label>
-                            <InputNumber @bind-Value="form.Order" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
+                        <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
+                            L'ordre d'affichage est attribué automatiquement.
                         </div>
                         <label class="flex items-center gap-2">
                             <input type="checkbox" class="h-4 w-4 rounded border-slate-300" @bind="form.IsPublished" disabled="@isCurrentAssignmentVersionLocked" />

@@ -1,6 +1,6 @@
 @namespace HalloApp.WebApp.Components.Shared
 
-<div class="halloapp-richtext" style="@ContainerStyle">
+<div class="halloapp-richtext @(Paged ? "halloapp-richtext--paged" : null)" style="@ContainerStyle">
     @if (EnableLargeEditor && !ReadOnly)
     {
         <div class="mb-2 flex justify-end">
@@ -33,6 +33,7 @@
                                 EnableImages="@EnableImages"
                                  RequestImageLibrary="@RequestImageLibrary"
                                  ImageLibraryTargetRequested="@ImageLibraryTargetRequested"
+                                Paged="@Paged"
                                 EnableLargeEditor="false"
                                 DefaultFont="@DefaultFont"
                                 DefaultSize="@DefaultSize" />

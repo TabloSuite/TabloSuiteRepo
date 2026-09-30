@@ -99,7 +99,10 @@
                         <input class="hallo-input text-sm" @bind="form.Title" />
                     </div>
                     <div>
-                        <ModernDropdown TValue="Guid?" Label="Classe" Value="form.KlasseId" ValueChanged="SetKlasseAsync" Options="KlasseOptions" />
+                        <ModernDropdown TValue="Guid?" Label="École" Value="editorSchoolId" ValueChanged="SetEditorSchoolAsync" Options="EditorSchoolOptions" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <ModernDropdown TValue="Guid?" Label="Classe" Value="form.KlasseId" ValueChanged="SetKlasseAsync" Options="KlasseOptions" Disabled="@(!editorSchoolId.HasValue)" />
                     </div>
                     @if (isSchoolDirectionUser)
                     {

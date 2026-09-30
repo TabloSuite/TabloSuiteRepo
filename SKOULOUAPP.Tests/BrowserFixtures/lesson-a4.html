@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<link rel="stylesheet" href="../../SKOULOUAPP.WebApp/wwwroot/app.css">
+<link rel="stylesheet" href="../../SKOULOUAPP.WebApp/wwwroot/css/lesson-a4.css">
+<style>body { margin: 0; } .halloapp-richtext { width: 210mm; margin: auto; } @media print { .halloapp-richtext, #result { display: none; } }</style>
+</head>
+<body>
+<div class="halloapp-richtext halloapp-richtext--paged"><div id="editor"></div></div>
+<div class="lesson-a4-pages" id="reader"></div>
+<pre id="result">PENDING</pre>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="../../SKOULOUAPP.WebApp/wwwroot/js/richTextEditor.js"></script>
+<script>
+(async function () {
+    try {
+        if (!window.Quill) { throw new Error('Quill CDN nicht geladen'); }
+        const api = window.SKOULOUAPPRichText;
+        const editor = document.getElementById('editor');
+        const kind = new URLSearchParams(location.search).get('kind');
+        let modalBody;
+        if (kind === 'modal') {
+            modalBody = document.createElement('div');
+            modalBody.className = 'halloapp-large-editor-body';
+            modalBody.style.cssText = 'height:600px; width:850px; margin:auto; padding:16px; box-sizing:border-box;';
+            editor.parentElement.before(modalBody);
+            modalBody.appendChild(editor.parentElement);
+        }
+        const dotNetRef = { invokeMethodAsync: function () { return Promise.resolve(); } };
+        api.init(editor, dotNetRef, '', '', false, true, 0, 'inter', '20px', true);
+        const quill = editor._quillInstance;
+        const text = 'Une phrase suffisamment longue pour tester les retours à la ligne et le contenu réel. ';
+        const longParagraph = '<p>' + text.repeat(460) + '</p>';
+        const list = '<ol>' + Array.from({length: 65}, (_, index) => '<li>Élément ' + (index + 1) + ' – ' + text.repeat(2) + '</li>').join('') + '</ol>';
+        const image = '<p><img src="../../SKOULOUAPP.WebApp/wwwroot/media/a1.1/lesson-1/b432ee4579ec4f63a0bc46b8b40105e5.jpg"></p>';
+        quill.setContents(quill.clipboard.convert({html: kind === 'paragraph' ? longParagraph : kind === 'list' ? list : kind === 'image' ? image : longParagraph + list + image}), 'silent');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const pages = api.splitIntoPages(editor);
+        const pageCount = api.renderPageSheets(quill, null);
+        const sheets = [...editor.querySelectorAll('.halloapp-page-sheet')];
+        const blocks = api.getPageUnits(quill.root);
+        const firstTop = sheets[0].getBoundingClientRect().top;
+        const contentHeight = api.a4ContentHeightPx();
+        const span = api.a4SheetHeightPx + api.a4GapPx;
+        const overflow = blocks.flatMap(block => {
+            const rect = block.getBoundingClientRect();
+            const pageIndex = Math.floor((rect.top - firstTop) / span);
+            const bottom = firstTop + pageIndex * span + api.a4PaddingPx + contentHeight;
+            return rect.bottom > bottom + 2 ? [{tag: block.tagName, top: Math.round(rect.top), bottom: Math.round(rect.bottom), pageIndex, max: Math.round(bottom)}] : [];
+        });
+        const reader = document.getElementById('reader');
+        pages.forEach((html, index) => {
+            const article = document.createElement('article');
+            article.className = 'lesson-a4-page ql-snow';
+            article.innerHTML = '<div class="ql-editor">' + html + '</div><p class="lesson-a4-page-number">Page ' + (index + 1) + '</p>';
+            reader.appendChild(article);
+        });
+        const readerOverflow = [...reader.querySelectorAll('.lesson-a4-page')].flatMap(article => {
+            const content = article.querySelector('.ql-editor').getBoundingClientRect();
+            const sheet = article.getBoundingClientRect();
+            return content.bottom > sheet.top + api.a4SheetHeightPx - api.a4PaddingPx + 2 ? [{bottom: Math.round(content.bottom - sheet.top), limit: Math.round(api.a4SheetHeightPx - api.a4PaddingPx)}] : [];
+        });
+        let modal;
+        if (modalBody) {
+            const container = editor;
+            const second = sheets[1];
+            modalBody.scrollTop = second.getBoundingClientRect().top - modalBody.getBoundingClientRect().top;
+            modal = {scrollHeight: modalBody.scrollHeight, clientHeight: modalBody.clientHeight, scrollTop: modalBody.scrollTop, editorOverflow: getComputedStyle(quill.root).overflowY, containerOverflow: getComputedStyle(container).overflowY, secondPageTop: Math.round(second.getBoundingClientRect().top - modalBody.getBoundingClientRect().top), sheetColor: getComputedStyle(second).backgroundColor};
+        }
+        document.getElementById('result').textContent = JSON.stringify({savedPages:pages.length, sheetCount:sheets.length, blocks:blocks.length, overflow:overflow.slice(0, 10), overflowCount:overflow.length, readerOverflow, firstPageLength:pages[0].length, lastPageLength:pages.at(-1).length, imageCount:reader.querySelectorAll('img').length, contentHeight:Math.round(contentHeight), modal});
+    } catch (error) { document.getElementById('result').textContent = 'ERROR: ' + error.stack; }
+})();
+</script>
+</body>
+</html>

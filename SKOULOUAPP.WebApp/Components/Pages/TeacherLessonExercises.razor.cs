@@ -15,6 +15,8 @@ namespace HalloApp.WebApp.Components.Pages;
 
 public partial class TeacherLessonExercises
 {
+    private const string LessonPageBreakMarker = "<!--SKOULOUAPP_PAGE_BREAK-->";
+
     [Parameter]
     public bool Embedded { get; set; }
 
@@ -47,6 +49,7 @@ public partial class TeacherLessonExercises
     private Guid? lessonListSchoolFilterId;
     private Guid? lessonListKlasseFilterId;
     private LessonFormModel? form;
+    private RichTextEditor? lessonContentEditor;
     private List<LessonExerciseBlockEditorModel> exerciseBlocks = [];
     private string selectedLessonCode = string.Empty;
     private Dictionary<Guid, Guid?> klasseSchoolById = [];
@@ -231,6 +234,38 @@ public partial class TeacherLessonExercises
         return $"{normalizedCode} — {normalizedTitle}";
     }
 
+    private static string GetLessonCardClass(LessonEditorListItem lesson)
+        => lesson.IsCurrentAssignmentVersionLocked
+            ? "rounded-3xl border border-amber-200 bg-amber-50/30 p-5 shadow-lg shadow-amber-100/60 ring-1 ring-amber-100"
+            : lesson.HasSubmissionsInCurrentAssignmentVersion
+                ? "rounded-3xl border border-indigo-200 bg-indigo-50/20 p-5 shadow-lg shadow-indigo-100/60 ring-1 ring-indigo-100"
+                : "rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100";
+
+    private static string GetLessonEditButtonClass(LessonEditorListItem lesson)
+        => lesson.IsCurrentAssignmentVersionLocked
+            ? "rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-900 transition hover:bg-amber-200"
+            : "rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800";
+
+    private static string GetLessonEditButtonLabel(LessonEditorListItem lesson)
+        => lesson.IsCurrentAssignmentVersionLocked
+            ? "Leçon verrouillée"
+            : "Modifier la leçon";
+
+    private static string GetLessonStatusText(LessonEditorListItem lesson)
+    {
+        if (lesson.IsCurrentAssignmentVersionLocked)
+        {
+            return $"Session v{lesson.AssignmentVersion} verrouillée (soumissions en cours).";
+        }
+
+        if (lesson.HasSubmissionsInCurrentAssignmentVersion)
+        {
+            return $"Session v{lesson.AssignmentVersion} avec soumissions. La prochaine modification créera une nouvelle version.";
+        }
+
+        return "Aucune soumission active. Modification directe disponible.";
+    }
+
     private sealed class KlasseOption
     {
         public Guid Id { get; set; }
@@ -251,6 +286,9 @@ public partial class TeacherLessonExercises
         public int ExerciseCount { get; set; }
         public string CourseCode { get; set; } = string.Empty;
         public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
+        public int AssignmentVersion { get; set; }
+        public bool HasSubmissionsInCurrentAssignmentVersion { get; set; }
+        public bool IsCurrentAssignmentVersionLocked { get; set; }
     }
 
     private sealed class LessonExerciseBlockEditorModel
@@ -596,7 +634,16 @@ public partial class TeacherLessonExercises
                 Summary = lesson.Summary,
                 ExerciseCount = lesson.Exercises.Count,
                 CourseCode = lesson.Klasse.Code,
-                ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc
+                ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
+                AssignmentVersion = Math.Max(1, lesson.AssignmentVersion),
+                HasSubmissionsInCurrentAssignmentVersion = DbContext.ExerciseAttempts.Any(attempt =>
+                    attempt.AssignmentVersion == lesson.AssignmentVersion
+                    && attempt.Exercise.LessonId == lesson.Id),
+                IsCurrentAssignmentVersionLocked = lesson.ExerciseSubmissionDueAtUtc.HasValue
+                    && lesson.ExerciseSubmissionDueAtUtc.Value >= DateTime.UtcNow
+                    && DbContext.ExerciseAttempts.Any(attempt =>
+                        attempt.AssignmentVersion == lesson.AssignmentVersion
+                        && attempt.Exercise.LessonId == lesson.Id)
             })
             .ToListAsync(ComponentToken);
 
@@ -681,17 +728,9 @@ public partial class TeacherLessonExercises
             return;
         }
 
-        var maxOrder = await DbContext.Lessons
-            .AsNoTracking()
-            .Where(lesson => lesson.KlasseId == firstCourseId)
-            .MaxAsync(lesson => (int?)lesson.Order, ComponentToken) ?? 0;
-
-        var nextOrder = maxOrder + 1;
-
         form = new LessonFormModel
         {
             CourseId = firstCourseId,
-            Order = nextOrder,
             IsPublished = false
         };
         selectedSchoolId = klasseSchoolById.TryGetValue(firstCourseId, out var createSchoolId) ? createSchoolId : selectedSchoolId;
@@ -811,11 +850,6 @@ public partial class TeacherLessonExercises
         form.ExerciseSubmissionDueAtUtc = null;
         form.Title = string.Empty;
 
-        var nextOrder = await DbContext.Lessons
-            .AsNoTracking()
-            .Where(lesson => lesson.KlasseId == form.CourseId)
-            .MaxAsync(lesson => (int?)lesson.Order, ComponentToken) ?? 0;
-        form.Order = nextOrder + 1;
     }
 
     private async Task OnVideoSelected(InputFileChangeEventArgs args)
@@ -1055,6 +1089,22 @@ public partial class TeacherLessonExercises
             return;
         }
 
+        // Save-Flow-Härtung: den aktuell sichtbaren Quill-Inhalt direkt aus dem
+        // Editor lesen und seitenweise 1:1 persistieren. So verhindern wir
+        // Binding-Races zwischen OnContentChanged und Submit.
+        if (lessonContentEditor is not null)
+        {
+            var pages = await lessonContentEditor.SplitIntoPagesAsync();
+            if (pages.Count > 0)
+            {
+                form.Content = string.Join(LessonPageBreakMarker, pages);
+            }
+            else
+            {
+                form.Content = await lessonContentEditor.GetHtmlAsync();
+            }
+        }
+
         if (!allowedCourseIds.Contains(form.CourseId))
         {
             errorMessage = "Cette classe n'est pas autorisée pour votre profil enseignant.";
@@ -1122,11 +1172,6 @@ public partial class TeacherLessonExercises
                 return;
             }
 
-            var nextOrder = await DbContext.Lessons
-                .AsNoTracking()
-                .Where(lesson => lesson.KlasseId == form.CourseId)
-                .MaxAsync(lesson => (int?)lesson.Order, ComponentToken) ?? 0;
-            form.Order = nextOrder + 1;
             form.IsPublished = true;
         }
 

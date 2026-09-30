@@ -407,7 +407,6 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
             FachId = lesson.FachId,
             FachName = lesson.Fach?.Name,
             CourseTheme = lesson.CourseTheme,
-            Order = lesson.Order,
             IsPublished = lesson.IsPublished,
             IsSharedWithSchool = lesson.IsSharedWithSchool,
             IsPdfExportEnabled = lesson.IsPdfExportEnabled,
@@ -467,7 +466,14 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
         lesson.Title = model.Title.Trim();
         lesson.Summary = model.Summary?.Trim() ?? string.Empty;
         lesson.CourseTheme = string.IsNullOrWhiteSpace(model.CourseTheme) ? null : model.CourseTheme.Trim();
-        lesson.Order = model.Order;
+        if (!model.Id.HasValue)
+        {
+            var nextOrder = await dbContext.TeacherLessons
+                .AsNoTracking()
+                .Where(existingLesson => existingLesson.KlasseId == model.KlasseId)
+                .MaxAsync(existingLesson => (int?)existingLesson.Order, cancellationToken) ?? 0;
+            lesson.Order = nextOrder + 1;
+        }
         lesson.IsPublished = model.IsPublished;
         lesson.IsSharedWithSchool = model.IsSharedWithSchool;
         lesson.IsPdfExportEnabled = model.IsPdfExportEnabled;

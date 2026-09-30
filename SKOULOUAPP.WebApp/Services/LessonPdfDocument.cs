@@ -63,12 +63,19 @@ public sealed class LessonPdfDocument(TeacherLessonDetailViewModel lesson, bool 
         {
             column.Spacing(14);
 
-            foreach (var lessonPage in _lesson.Pages.OrderBy(item => item.PageNumber))
+            var orderedPages = _lesson.Pages.OrderBy(item => item.PageNumber).ToList();
+            for (var index = 0; index < orderedPages.Count; index++)
             {
+                var lessonPage = orderedPages[index];
                 var styled = ExtractStyledText(lessonPage.ContentHtml);
                 if (string.IsNullOrWhiteSpace(styled.Text))
                 {
                     continue;
+                }
+
+                if (index > 0)
+                {
+                    column.Item().PageBreak();
                 }
 
                 column.Item().Column(pageColumn =>

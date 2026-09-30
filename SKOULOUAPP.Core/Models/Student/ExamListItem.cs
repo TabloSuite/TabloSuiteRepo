@@ -11,6 +11,8 @@ public class ExamListItem
     public int QuestionCount { get; set; }
 
     public bool HasAttempt { get; set; }
+    public bool HasActiveAttempt { get; set; }
+    public bool CanDownloadPdf { get; set; }
     public bool IsPassed { get; set; }
     public int BestScorePercent { get; set; }
 }

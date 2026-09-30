@@ -32,7 +32,6 @@ public class TeacherLessonServiceTests
             KlasseId = level.Id,
             Title = "Grammatik",
             Summary = "Einführung",
-            Order = 1,
             IsPublished = true,
             Pages =
             [

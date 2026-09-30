@@ -168,13 +168,36 @@ public partial class TeacherLessons
 
     private IEnumerable<string?> GetDirectionTeacherNames()
     {
+        var relevantKlasseIds = GetRelevantDirectionKlasseIds();
+
+        foreach (var klasseId in relevantKlasseIds)
+        {
+            if (!classTeacherNamesByKlasseId.TryGetValue(klasseId, out var teachers))
+            {
+                continue;
+            }
+
+            foreach (var teacher in teachers)
+            {
+                yield return teacher;
+            }
+        }
+
         foreach (var lesson in lessons ?? [])
         {
-            yield return lesson.AuthorName;
+            if (IsKlasseInDirectionScope(lesson.KlasseId))
+            {
+                yield return lesson.AuthorName;
+            }
         }
 
         foreach (var lesson in directionExerciseLessons)
         {
+            if (!IsKlasseInDirectionScope(lesson.KlasseId))
+            {
+                continue;
+            }
+
             if (!string.IsNullOrWhiteSpace(lesson.AuthorName))
             {
                 yield return lesson.AuthorName;
@@ -192,12 +215,85 @@ public partial class TeacherLessons
 
         foreach (var exam in sharedDirectionExams)
         {
-            yield return exam.AuthorName;
+            if (IsSharedItemInDirectionScope(exam))
+            {
+                yield return exam.AuthorName;
+            }
         }
 
         foreach (var lesson in sharedDirectionLessons)
         {
-            yield return lesson.AuthorName;
+            if (IsSharedItemInDirectionScope(lesson))
+            {
+                yield return lesson.AuthorName;
+            }
+        }
+    }
+
+    private HashSet<Guid> GetRelevantDirectionKlasseIds()
+    {
+        if (directionKlasseFilterId.HasValue)
+        {
+            return [directionKlasseFilterId.Value];
+        }
+
+        return klasses
+            .Where(klasse => !directionSchoolFilterId.HasValue || klasse.SchoolId == directionSchoolFilterId)
+            .Select(klasse => klasse.Id)
+            .ToHashSet();
+    }
+
+    private bool IsKlasseInDirectionScope(Guid klasseId)
+    {
+        if (directionKlasseFilterId.HasValue)
+        {
+            return klasseId == directionKlasseFilterId.Value;
+        }
+
+        if (!directionSchoolFilterId.HasValue)
+        {
+            return true;
+        }
+
+        return klasseSchoolById.TryGetValue(klasseId, out var schoolId)
+            && schoolId == directionSchoolFilterId.Value;
+    }
+
+    private bool IsSharedItemInDirectionScope(SharedTeacherContentItem item)
+    {
+        if (directionKlasseFilterId.HasValue)
+        {
+            return item.KlasseId == directionKlasseFilterId.Value;
+        }
+
+        if (!directionSchoolFilterId.HasValue)
+        {
+            return true;
+        }
+
+        if (item.SchoolId.HasValue)
+        {
+            return item.SchoolId.Value == directionSchoolFilterId.Value;
+        }
+
+        return item.KlasseId.HasValue
+            && klasseSchoolById.TryGetValue(item.KlasseId.Value, out var schoolId)
+            && schoolId == directionSchoolFilterId.Value;
+    }
+
+    private void EnsureDirectionTeacherFilterIsValid()
+    {
+        if (string.IsNullOrWhiteSpace(directionTeacherFilter))
+        {
+            return;
+        }
+
+        var exists = DirectionTeacherFilterOptions
+            .Any(option => string.Equals(option.Value, directionTeacherFilter, StringComparison.OrdinalIgnoreCase));
+
+        if (!exists)
+        {
+            directionTeacherFilter = null;
         }
     }
 
@@ -310,12 +406,15 @@ public partial class TeacherLessons
             }
         }
 
+        EnsureDirectionTeacherFilterIsValid();
+
         return Task.CompletedTask;
     }
 
     private Task SetDirectionKlasseFilterAsync(Guid? klasseId)
     {
         directionKlasseFilterId = klasseId;
+        EnsureDirectionTeacherFilterIsValid();
         return Task.CompletedTask;
     }
 
@@ -645,7 +744,6 @@ public partial class TeacherLessons
         form = new TeacherLessonFormModel
         {
             KlasseId = FilteredKlasses.FirstOrDefault()?.Id ?? klasses.FirstOrDefault()?.Id ?? Guid.Empty,
-            Order = (lessons?.Count ?? 0) + 1,
             Pages = [new TeacherLessonPageFormModel { PageNumber = 1, ContentHtml = string.Empty }]
         };
         selectedSchoolId = klasseSchoolById.TryGetValue(form.KlasseId, out var schoolId) ? schoolId : selectedSchoolId;

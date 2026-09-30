@@ -14,6 +14,34 @@ namespace HalloApp.Core.Services;
 
 public class LearningService(IHalloAppDbContext dbContext)
 {
+    private const string LessonPageBreakMarker = "<!--SKOULOUAPP_PAGE_BREAK-->";
+
+    private static List<LessonContentPageViewModel> SplitLessonContentPages(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return
+            [
+                new LessonContentPageViewModel { PageNumber = 1, ContentHtml = "<p><br></p>" }
+            ];
+        }
+
+        var pages = html
+            .Split(LessonPageBreakMarker, StringSplitOptions.None)
+            .Select((part, index) => new LessonContentPageViewModel
+            {
+                PageNumber = index + 1,
+                ContentHtml = string.IsNullOrWhiteSpace(part) ? "<p><br></p>" : part
+            })
+            .ToList();
+
+        return pages.Count == 0
+            ? [new LessonContentPageViewModel { PageNumber = 1, ContentHtml = "<p><br></p>" }]
+            : pages;
+    }
+
+    private static string JoinLessonContentPages(IEnumerable<LessonContentPageViewModel> pages)
+        => string.Join(LessonPageBreakMarker, pages.OrderBy(x => x.PageNumber).Select(x => x.ContentHtml ?? string.Empty));
     public async Task<IReadOnlyList<LessonListItem>> GetLessonsForStudentAsync(
         Guid studentId,
         string? levelCode = null,
@@ -238,6 +266,7 @@ public class LearningService(IHalloAppDbContext dbContext)
             Title = lesson.Title,
             Summary = lesson.Summary,
             Content = lesson.Content,
+            ContentPages = SplitLessonContentPages(lesson.Content),
             CourseCode = lesson.Klasse.Code,
             IsCompleted = progress?.IsCompleted ?? false,
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
@@ -354,6 +383,7 @@ public class LearningService(IHalloAppDbContext dbContext)
             Title = lesson.Title,
             Summary = lesson.Summary,
             Content = lesson.Content,
+            ContentPages = SplitLessonContentPages(lesson.Content),
             CourseCode = lesson.Klasse.Code,
             IsCompleted = false,
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
@@ -416,32 +446,19 @@ public class LearningService(IHalloAppDbContext dbContext)
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var lesson = await dbContext.Lessons
-            .AsNoTracking()
-            .Include(x => x.Klasse)
-            .Include(x => x.Exercises)
-            .FirstOrDefaultAsync(x => x.Id == lessonId && x.IsPublished, cancellationToken);
-
-        if (lesson?.Klasse.SchoolId is not Guid schoolId)
-        {
-            return null;
-        }
-
-        var belongsToDirectionSchool = await dbContext.UserSchools
-            .AsNoTracking()
-            .AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
-        if (!belongsToDirectionSchool)
+        var lessonDetail = await GetLessonDetailAsync(lessonId, userId, cancellationToken);
+        if (lessonDetail is null)
         {
             return null;
         }
 
         var textParts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(lesson.Content))
+        if (!string.IsNullOrWhiteSpace(lessonDetail.Content))
         {
-            textParts.Add(lesson.Content);
+            textParts.Add(lessonDetail.Content);
         }
 
-        foreach (var exercise in lesson.Exercises.OrderBy(x => x.Order))
+        foreach (var exercise in lessonDetail.Exercises.OrderBy(x => x.Order))
         {
             var plainTitle = HtmlSanitizer.ToPlainText(exercise.Title);
             if (!string.IsNullOrWhiteSpace(plainTitle))
@@ -478,7 +495,7 @@ public class LearningService(IHalloAppDbContext dbContext)
             }
             else if (normalizedType == "GapFill")
             {
-                var gapCount = Math.Max(1, AnswerMatchingService.ParseGapAnswers(exercise.GapAnswersJson).Count);
+                var gapCount = Math.Max(1, exercise.GapCount);
                 textParts.Add($"<p>{string.Join(" ", Enumerable.Repeat("______", gapCount))}</p>");
             }
             else
@@ -490,17 +507,17 @@ public class LearningService(IHalloAppDbContext dbContext)
 
         return new TeacherLessonDetailViewModel
         {
-            Id = lesson.Id,
-            Title = lesson.Title,
-            Summary = lesson.Summary,
-            CourseCode = lesson.Klasse.Code,
+            Id = lessonDetail.LessonId,
+            Title = lessonDetail.Title,
+            Summary = lessonDetail.Summary,
+            CourseCode = lessonDetail.CourseCode,
             IsPublished = true,
             IsPdfExportEnabled = true,
             Pages =
             [
                 new TeacherLessonPageViewModel
                 {
-                    Id = lesson.Id,
+                    Id = lessonDetail.LessonId,
                     PageNumber = 1,
                     ContentHtml = string.Join("<hr/>", textParts)
                 }
@@ -540,6 +557,7 @@ public class LearningService(IHalloAppDbContext dbContext)
             Title = lesson.Title,
             Summary = lesson.Summary,
             Content = lesson.Content,
+            ContentPages = SplitLessonContentPages(lesson.Content),
             CourseCode = lesson.Klasse.Code,
             IsCompleted = false,
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,

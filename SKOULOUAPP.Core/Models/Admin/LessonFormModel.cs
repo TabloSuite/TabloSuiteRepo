@@ -22,9 +22,6 @@ public class LessonFormModel
     [Required(ErrorMessage = "Veuillez saisir un contenu.")]
     public string Content { get; set; } = string.Empty;
 
-    [Range(1, 500)]
-    public int Order { get; set; } = 1;
-
     public bool IsPublished { get; set; } = true;
     public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
 

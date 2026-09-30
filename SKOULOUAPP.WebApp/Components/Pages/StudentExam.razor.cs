@@ -32,11 +32,14 @@ public partial class StudentExam : CancelableComponentBase
     private ExamResult? result;
     private bool notFound;
     private bool isSubmitting;
+    private bool showLeaveConfirmation;
+    private bool isSaving;
     private Guid studentId;
     private int remainingSeconds;
     private int totalSeconds;
     private Timer? timer;
     private int currentQuestionIndex;
+    private int lastSavedSecond = -1;
 
     private readonly Dictionary<Guid, Guid> answers = [];
     private readonly Dictionary<Guid, HashSet<Guid>> multiAnswers = [];
@@ -131,7 +134,14 @@ public partial class StudentExam : CancelableComponentBase
             }
 
             remainingSeconds = (int)Math.Max(0, (session.DeadlineUtc - DateTime.UtcNow).TotalSeconds);
-            totalSeconds = remainingSeconds;
+            totalSeconds = session.DurationInMinutes * 60;
+            foreach (var answer in session.SavedAnswers)
+            {
+                if (answer.SelectedOptionId is Guid optionId) answers[answer.QuestionId] = optionId;
+                if (answer.SelectedOptionIds is not null) multiAnswers[answer.QuestionId] = answer.SelectedOptionIds.ToHashSet();
+                if (answer.TextAnswer is not null) textAnswers[answer.QuestionId] = answer.TextAnswer;
+                if (answer.GapValues is not null) gapAnswers[answer.QuestionId] = answer.GapValues;
+            }
             timer = new Timer(OnTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
         catch (Exception ex) when (IstAbbruch(ex))
@@ -142,12 +152,19 @@ public partial class StudentExam : CancelableComponentBase
 
     private async void OnTick(object? state)
     {
-        remainingSeconds--;
+        if (session is null) return;
+        remainingSeconds = (int)Math.Max(0, (session.DeadlineUtc - DateTime.UtcNow).TotalSeconds);
         if (remainingSeconds <= 0)
         {
             remainingSeconds = 0;
             await InvokeAsync(async () => await SubmitAsync(true));
             return;
+        }
+
+        if (remainingSeconds % 5 == 0 && lastSavedSecond != remainingSeconds)
+        {
+            lastSavedSecond = remainingSeconds;
+            await InvokeAsync(SaveDraftAsync);
         }
 
         await InvokeAsync(StateHasChanged);
@@ -241,6 +258,30 @@ public partial class StudentExam : CancelableComponentBase
     private static bool IsAudioType(string questionType)
         => questionType is "AudioText" or "AudioChoice" or "AudioSingleChoice" or "AudioMultipleChoice";
 
+    private List<ExamAnswerSubmission> CollectAnswers()
+        => session!.Questions.Select(q => new ExamAnswerSubmission
+        {
+            QuestionId = q.QuestionId,
+            SelectedOptionId = answers.TryGetValue(q.QuestionId, out var opt) ? opt : null,
+            SelectedOptionIds = multiAnswers.TryGetValue(q.QuestionId, out var multi) ? multi.ToList() : null,
+            TextAnswer = textAnswers.TryGetValue(q.QuestionId, out var txt) ? txt : null,
+            GapValues = gapAnswers.TryGetValue(q.QuestionId, out var gaps) ? gaps : null
+        }).ToList();
+
+    private async Task SaveDraftAsync()
+    {
+        if (session is null || isSaving || isSubmitting) return;
+        isSaving = true;
+        try { await ExamService.SaveDraftAsync(session.AttemptId, studentId, CollectAnswers(), ComponentToken); }
+        finally { isSaving = false; }
+    }
+
+    private async Task LeaveExamAsync()
+    {
+        await SaveDraftAsync();
+        Navigation.NavigateTo("/student/exams");
+    }
+
     private async Task SubmitAsync(bool auto)
     {
         if (isSubmitting || result is not null || session is null)
@@ -256,16 +297,7 @@ public partial class StudentExam : CancelableComponentBase
         {
             await DatabaseActionGuard.RunAsync(async () =>
             {
-                var submissions = session.Questions.Select(q => new ExamAnswerSubmission
-                {
-                    QuestionId = q.QuestionId,
-                    SelectedOptionId = answers.TryGetValue(q.QuestionId, out var opt) ? opt : null,
-                    SelectedOptionIds = multiAnswers.TryGetValue(q.QuestionId, out var multi) ? multi.ToList() : null,
-                    TextAnswer = textAnswers.TryGetValue(q.QuestionId, out var txt) ? txt : null,
-                    GapValues = gapAnswers.TryGetValue(q.QuestionId, out var gaps) ? gaps : null
-                }).ToList();
-
-                result = await ExamService.SubmitExamAsync(session.AttemptId, studentId, submissions);
+                result = await ExamService.SubmitExamAsync(session.AttemptId, studentId, CollectAnswers());
             });
         }
         finally

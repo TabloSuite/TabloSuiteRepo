@@ -32,8 +32,8 @@
 
     @if (isOpen)
     {
-        <div class="fixed inset-0 z-40" @onclick="CloseAsync"></div>
-        <div class="absolute left-0 right-0 z-50 mt-2 max-h-72 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/15">
+        <div class="fixed inset-0 z-[3990]" @onclick="CloseAsync"></div>
+        <div class="absolute left-0 right-0 z-[4000] max-h-72 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/15 @(OpenUpward ? "bottom-full mb-2" : "mt-2")">
             @if (Options.Count == 0)
             {
                 <div class="px-4 py-3 text-sm text-slate-500">@EmptyText</div>

@@ -45,15 +45,16 @@ else
         }
         else
         {
-            <div class="mx-auto w-full max-w-3xl rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <div class="ql-snow">
-                    <div class="ql-editor" style="padding:0;">
-                        @((MarkupString)(CurrentPage?.ContentHtml ?? string.Empty))
+            <div class="lesson-a4-pages mx-auto w-full">
+                <article class="lesson-a4-page ql-snow">
+                    <div class="ql-editor">
+                        @((MarkupString)HtmlSanitizer.SanitizeMitBildern(CurrentPage?.ContentHtml))
                     </div>
-                </div>
+                    <p class="lesson-a4-page-number">Page @(currentPageIndex + 1)</p>
+                </article>
             </div>
 
-            <div class="sticky bottom-0 z-30 -mx-1 flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white/95 px-4 py-3 shadow-lg shadow-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+            <div class="lesson-content-nav sticky bottom-0 z-30 -mx-1 flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white/95 px-4 py-3 shadow-lg shadow-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/80">
                 <button type="button"
                         class="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-40"
                         @onclick="PreviousPage" disabled="@(currentPageIndex == 0)">

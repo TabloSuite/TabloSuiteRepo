@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using HalloApp.Core.Services.Text
 
 <PageTitle>@(session?.Title ?? "Épreuve")</PageTitle>
 
@@ -38,6 +39,16 @@ else if (result is not null)
 else if (session is not null)
 {
     <section class="grid gap-6">
+        @if (showLeaveConfirmation)
+        {
+            <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p>Le chronomètre continue si tu quittes l'épreuve. Tu pourras reprendre avec le temps restant. Tes réponses sont enregistrées.</p>
+                <div class="mt-3 flex gap-3">
+                    <button type="button" class="rounded-full bg-amber-700 px-4 py-2 font-semibold text-white" @onclick="LeaveExamAsync">Quitter l'épreuve</button>
+                    <button type="button" class="rounded-full bg-white px-4 py-2 font-semibold" @onclick="() => showLeaveConfirmation = false">Continuer l'épreuve</button>
+                </div>
+            </div>
+        }
         <div class="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white/90 p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 backdrop-blur">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">@session.CourseCode · @session.Title</p>
@@ -75,7 +86,7 @@ else if (session is not null)
             <article class="card-stack-enter rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6" @key="question.QuestionId">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">Question @question.Order</p>
                 <div class="mt-1 flex flex-wrap items-center gap-3">
-                    <p class="text-base font-semibold text-slate-900">@question.Prompt</p>
+                    <div class="ql-snow min-w-0 flex-1"><div class="ql-editor p-0 text-base font-semibold text-slate-900">@((MarkupString)HtmlSanitizer.Sanitize(question.Prompt))</div></div>
                     @if (IsAudioType(question.QuestionType) && !string.IsNullOrWhiteSpace(question.AudioText))
                     {
                         <button type="button"
@@ -97,7 +108,7 @@ else if (session is not null)
                             <button type="button"
                                     class="@(isSelected ? "w-full rounded-2xl border border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-800" : "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-amber-200 hover:bg-slate-50")"
                                     @onclick="() => ToggleOption(question.QuestionId, option.OptionId)">
-                                <span class="mr-2">@(isSelected ? "☑" : "☐")</span>@option.Text
+                                <span class="mr-2">@(isSelected ? "☑" : "☐")</span>@HtmlSanitizer.ToPlainText(option.Text)
                             </button>
                         }
                     </div>
@@ -111,7 +122,7 @@ else if (session is not null)
                             <button type="button"
                                     class="@(isSelected ? "w-full rounded-2xl border border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-800" : "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-amber-200 hover:bg-slate-50")"
                                     @onclick="() => Select(question.QuestionId, option.OptionId)">
-                                @option.Text
+                                @HtmlSanitizer.ToPlainText(option.Text)
                             </button>
                         }
                     </div>
@@ -130,6 +141,7 @@ else if (session is not null)
                                                     Placeholder="Ta réponse..."
                                                     ReadOnly="@(result is not null)"
                                                     EnableLargeEditor="true"
+                                                    Paged="true"
                                                     MinEditorHeightRem="3" />
                                 </div>
                             </div>
@@ -142,6 +154,7 @@ else if (session is not null)
                         <RichTextEditor Value="@GetTextAnswer(question.QuestionId)"
                                         ValueChanged="value => SetTextAnswer(question.QuestionId, value)"
                                         Placeholder="Ta réponse..."
+                                        Paged="true"
                                         ReadOnly="@(result is not null)" />
                     </div>
                 }
@@ -164,7 +177,7 @@ else if (session is not null)
         }
 
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <a class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 no-underline transition hover:bg-slate-50" href="/student/exams">Annuler</a>
+            <button type="button" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" @onclick="() => showLeaveConfirmation = true">Quitter l'épreuve</button>
             <button type="button"
                     class="rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled="@isSubmitting"

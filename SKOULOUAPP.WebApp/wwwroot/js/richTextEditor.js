@@ -493,7 +493,7 @@ window.SKOULOUAPPRichText = {
             } else {
                 quill.on('text-change', function () {
                     self.normalizeLinks(quill.root);
-                    dotNetRef.invokeMethodAsync('OnContentChanged', quill.root.innerHTML);
+                    dotNetRef.invokeMethodAsync('OnContentChanged', self.getNormalizedHtml(quill));
                 });
             }
         }
@@ -504,13 +504,68 @@ window.SKOULOUAPPRichText = {
 
     // A4-Maße in Pixeln bei 96 DPI. Das Umbruch-Raster entspricht damit exakt
     // den visuell gerenderten A4-Blättern (Word-ähnliche Darstellung).
-    a4SheetHeightPx: Math.round(297 / 25.4 * 96),
-    a4PaddingPx: Math.round(16 / 25.4 * 96),
+    a4SheetHeightPx: 297 / 25.4 * 96,
+    a4PaddingPx: 16 / 25.4 * 96,
     a4GapPx: 40,
 
     // Nutzbare Inhaltshöhe pro Seite (Blatthöhe abzüglich oberem/unterem Rand).
     a4ContentHeightPx: function () {
         return this.a4SheetHeightPx - 2 * this.a4PaddingPx;
+    },
+
+    splitOversizedParagraphs: function (quill) {
+        const root = quill.root;
+        const limit = this.a4ContentHeightPx();
+        Array.from(root.children).forEach(function (block) {
+            block.style.marginTop = '';
+            block.classList.remove('halloapp-page-break-before');
+        });
+        let selection = quill.getSelection();
+        for (let attempt = 0; attempt < 100; attempt++) {
+            const block = Array.from(root.children).find(function (item) {
+                return /^(P|H[1-6]|BLOCKQUOTE)$/.test(item.tagName)
+                    && item.getBoundingClientRect().height > limit + 1
+                    && item.textContent.length > 1;
+            });
+            if (!block) {
+                break;
+            }
+
+            const blot = Quill.find(block);
+            if (!blot) {
+                break;
+            }
+            const start = quill.getIndex(blot);
+            const length = blot.length() - 1;
+            let low = 1;
+            let high = length - 1;
+            let fit = 0;
+            const top = block.getBoundingClientRect().top;
+            while (low <= high) {
+                const middle = Math.floor((low + high) / 2);
+                const bounds = quill.getBounds(start + middle, 0);
+                const bottom = quill.container.getBoundingClientRect().top + bounds.top + bounds.height;
+                if (bottom - top <= limit - 2) {
+                    fit = middle;
+                    low = middle + 1;
+                } else {
+                    high = middle - 1;
+                }
+            }
+            if (!fit) {
+                break;
+            }
+            const text = quill.getText(start, length);
+            const wordEnd = text.lastIndexOf(' ', fit);
+            const splitAt = wordEnd > fit / 2 ? wordEnd + 1 : fit;
+            quill.insertText(start + splitAt, '\n', 'silent');
+            if (selection && selection.index >= start + splitAt) {
+                selection = { index: selection.index + 1, length: selection.length };
+            }
+        }
+        if (selection) {
+            quill.setSelection(Math.min(selection.index, quill.getLength() - 1), selection.length, 'silent');
+        }
     },
 
     // Richtet den Word-ähnlichen Seitenmodus ein: visuelle A4-Blätter hinter
@@ -546,8 +601,12 @@ window.SKOULOUAPPRichText = {
 
         quill.on('text-change', function () {
             self.normalizeLinks(quill.root);
+            // Vor dem Serialisieren die aktuellen visuellen Seitenumbrüche
+            // sofort berechnen, damit persistente Marker 1:1 den A4-Umbruch
+            // widerspiegeln.
+            self.applyPageBreaks(quill);
             schedule();
-            dotNetRef.invokeMethodAsync('OnContentChanged', quill.root.innerHTML);
+            dotNetRef.invokeMethodAsync('OnContentChanged', self.getNormalizedHtml(quill));
         });
 
         // Cursor stets im sichtbaren Bereich halten.
@@ -580,6 +639,7 @@ window.SKOULOUAPPRichText = {
     // DOM-Änderung – so entsteht keine Drift.
     applyPageBreaks: function (quill) {
         const root = quill.root;
+        this.splitOversizedParagraphs(quill);
         const contentPerPage = this.a4ContentHeightPx();
         const gap = this.a4GapPx;
         const pad = this.a4PaddingPx;
@@ -587,7 +647,7 @@ window.SKOULOUAPPRichText = {
             return 1;
         }
 
-        const blocks = Array.from(root.children);
+        const blocks = this.getPageUnits(root);
         // Zuvor gesetzte Umbrüche zurücksetzen und Naturhöhen erfassen.
         const heights = blocks.map(function (block) {
             block.style.marginTop = '';
@@ -624,6 +684,42 @@ window.SKOULOUAPPRichText = {
         return pageCount;
     },
 
+    getPageUnits: function (root) {
+        return Array.from(root.children).flatMap(function (block) {
+            return /^(OL|UL)$/.test(block.tagName) ? Array.from(block.children) : [block];
+        });
+    },
+
+    getPagedHtml: function (root) {
+        const pages = [[]];
+        this.getPageUnits(root).forEach(function (unit) {
+            if (unit.classList.contains('halloapp-page-break-before') && pages.at(-1).length) {
+                pages.push([]);
+            }
+            const clone = unit.cloneNode(true);
+            clone.style.marginTop = '';
+            clone.classList.remove('halloapp-page-break-before');
+            if (!clone.getAttribute('style')) {
+                clone.removeAttribute('style');
+            }
+            if (unit.parentElement !== root) {
+                const parent = unit.parentElement;
+                const previous = pages.at(-1).at(-1);
+                if (previous && previous.tagName === parent.tagName && previous.getAttribute('class') === parent.getAttribute('class')) {
+                    previous.appendChild(clone);
+                } else {
+                    const list = parent.cloneNode(false);
+                    list.removeAttribute('style');
+                    list.appendChild(clone);
+                    pages.at(-1).push(list);
+                }
+            } else {
+                pages.at(-1).push(clone);
+            }
+        });
+        return pages.map(function (page) { return page.map(function (block) { return block.outerHTML; }).join('') || '<p><br></p>'; });
+    },
+
     // Zeichnet die weißen A4-Blätter passend zur Seitenanzahl und meldet sie
     // an Blazor.
     renderPageSheets: function (quill, dotNetRef) {
@@ -651,7 +747,13 @@ window.SKOULOUAPPRichText = {
                 layer.appendChild(sheet);
             }
             // Gesamthöhe der Blätter-Ebene festlegen.
-            layer.style.height = (pageCount * sheetHeight + (pageCount - 1) * gap) + 'px';
+            const totalHeight = (pageCount * sheetHeight + (pageCount - 1) * gap);
+            layer.style.height = totalHeight + 'px';
+
+            // Wichtig: Der Editor-Inhalt muss mindestens die gleiche Höhe haben,
+            // sonst ragt die Blatt-Ebene unter den Editor hinaus und überlagert
+            // nachfolgende Form-Elemente.
+            quill.root.style.minHeight = totalHeight + 'px';
 
             if (dotNetRef) {
                 dotNetRef.invokeMethodAsync('OnPageCountChanged', pageCount);
@@ -670,31 +772,7 @@ window.SKOULOUAPPRichText = {
         this.applyPageBreaks(quill);
         this.normalizeLinks(quill.root);
 
-        const blocks = Array.from(quill.root.children);
-        if (blocks.length === 0) {
-            return ['<p><br></p>'];
-        }
-
-        const pages = [];
-        let current = [];
-        blocks.forEach(function (block) {
-            if (block.classList.contains('halloapp-page-break-before') && current.length > 0) {
-                pages.push(current);
-                current = [];
-            }
-            // Klon ohne die rein visuellen Umbruch-Stile/Klassen speichern.
-            const clone = block.cloneNode(true);
-            clone.style.marginTop = '';
-            clone.classList.remove('halloapp-page-break-before');
-            current.push(clone.outerHTML);
-        });
-        if (current.length > 0) {
-            pages.push(current);
-        }
-
-        return pages.map(function (parts) {
-            return parts.length ? parts.join('') : '<p><br></p>';
-        });
+        return this.getPagedHtml(quill.root);
     },
 
     openFormulaPalette: async function (quill, toolbarElement) {
@@ -1095,8 +1173,30 @@ window.SKOULOUAPPRichText = {
             return '';
         }
 
-        this.normalizeLinks(element._quillInstance.root);
-        return element._quillInstance.root.innerHTML;
+        const quill = element._quillInstance;
+        this.normalizeLinks(quill.root);
+
+        // Beim expliziten Auslesen (Speichern/PDF-Vorbereitung) sicherstellen,
+        // dass die Marker den neuesten Seitenfluss enthalten.
+        if (quill._halloappPaged) {
+            this.applyPageBreaks(quill);
+            this.renderPageSheets(quill, null);
+        }
+
+        return this.getNormalizedHtml(quill);
+    },
+
+    getNormalizedHtml: function (quill) {
+        if (!quill || !quill.root) {
+            return '';
+        }
+
+        if (!quill._halloappPaged) {
+            return quill.root.innerHTML;
+        }
+
+        const marker = '<!--SKOULOUAPP_PAGE_BREAK-->';
+        return this.getPagedHtml(quill.root).join(marker);
     },
 
     focusPageAtEnd: function (pageIndex) {

@@ -53,8 +53,14 @@ public class ExamService(IHalloAppDbContext dbContext)
 
         var attempts = await dbContext.ExamAttempts
             .AsNoTracking()
-            .Where(x => x.StudentId == studentId && x.IsCompleted && examIds.Contains(x.ExamId))
+            .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
             .ToListAsync(cancellationToken);
+
+        foreach (var expired in attempts.Where(a => !a.IsCompleted && a.DeadlineUtc <= DateTime.UtcNow))
+        {
+            await SubmitExamAsync(expired.Id, studentId, [], cancellationToken);
+            expired.IsCompleted = true;
+        }
 
         return exams
             .Select(exam =>
@@ -69,9 +75,11 @@ public class ExamService(IHalloAppDbContext dbContext)
                     DurationInMinutes = exam.DurationInMinutes,
                     PassingScore = exam.PassingScore,
                     QuestionCount = exam.Questions.Count,
-                    HasAttempt = examAttempts.Count > 0,
-                    IsPassed = examAttempts.Any(a => a.IsPassed),
-                    BestScorePercent = examAttempts.Count > 0 ? examAttempts.Max(a => a.ScorePercent) : 0
+                    HasAttempt = examAttempts.Any(a => a.IsCompleted),
+                    HasActiveAttempt = examAttempts.Any(a => !a.IsCompleted),
+                    CanDownloadPdf = exam.IsPdfExportEnabled && examAttempts.Any(a => a.IsCompleted),
+                    IsPassed = examAttempts.Any(a => a.IsCompleted && a.IsPassed),
+                    BestScorePercent = examAttempts.Where(a => a.IsCompleted).Select(a => a.ScorePercent).DefaultIfEmpty().Max()
                 };
             })
             .ToList();
@@ -109,18 +117,31 @@ public class ExamService(IHalloAppDbContext dbContext)
         }
 
         var now = DateTime.UtcNow;
-        var attempt = new ExamAttempt
+        var attempt = await dbContext.ExamAttempts
+            .Include(a => a.Answers)
+            .Where(a => a.ExamId == examId && a.StudentId == studentId && !a.IsCompleted)
+            .OrderBy(a => a.StartedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (attempt is not null && attempt.DeadlineUtc <= now)
         {
-            ExamId = examId,
-            StudentId = studentId,
-            StartedAtUtc = now,
-            DeadlineUtc = now.AddMinutes(exam.DurationInMinutes),
-            TotalQuestions = exam.Questions.Count,
-            IsCompleted = false
-        };
+            await SubmitExamAsync(attempt.Id, studentId, [], cancellationToken);
+            return null;
+        }
 
-        await dbContext.ExamAttempts.AddAsync(attempt, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        var isResumed = attempt is not null;
+        if (attempt is null)
+        {
+            attempt = new ExamAttempt
+            {
+                ExamId = examId,
+                StudentId = studentId,
+                StartedAtUtc = now,
+                DeadlineUtc = now.AddMinutes(exam.DurationInMinutes),
+                TotalQuestions = exam.Questions.Count
+            };
+            await dbContext.ExamAttempts.AddAsync(attempt, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return new ExamSessionViewModel
         {
@@ -132,6 +153,15 @@ public class ExamService(IHalloAppDbContext dbContext)
             DurationInMinutes = exam.DurationInMinutes,
             PassingScore = exam.PassingScore,
             DeadlineUtc = attempt.DeadlineUtc,
+            IsResumed = isResumed,
+            SavedAnswers = attempt.Answers.Select(a => new ExamAnswerSubmission
+            {
+                QuestionId = a.ExamQuestionId,
+                SelectedOptionId = a.SelectedOptionId,
+                SelectedOptionIds = string.IsNullOrWhiteSpace(a.SelectedOptionIdsJson) ? null : System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(a.SelectedOptionIdsJson),
+                TextAnswer = a.FreeTextAnswer,
+                GapValues = string.IsNullOrWhiteSpace(a.GapAnswersJson) ? null : System.Text.Json.JsonSerializer.Deserialize<List<string>>(a.GapAnswersJson)
+            }).ToList(),
             Questions = exam.Questions
                 .OrderBy(q => q.Order)
                 .Select(q => new ExamQuestionViewModel
@@ -168,6 +198,41 @@ public class ExamService(IHalloAppDbContext dbContext)
                     && durchlauf.StartDatum <= DateTime.UtcNow,
                 cancellationToken);
 
+    public async Task<bool> SaveDraftAsync(Guid attemptId, Guid studentId, IReadOnlyList<ExamAnswerSubmission> submissions, CancellationToken cancellationToken = default)
+    {
+        var attempt = await dbContext.ExamAttempts
+            .Include(a => a.Answers)
+            .FirstOrDefaultAsync(a => a.Id == attemptId && a.StudentId == studentId, cancellationToken);
+        if (attempt is null || attempt.IsCompleted || attempt.DeadlineUtc <= DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        var questions = await dbContext.ExamQuestions
+            .AsNoTracking()
+            .Where(q => q.ExamId == attempt.ExamId)
+            .Select(q => q.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var submission in submissions.Where(s => questions.Contains(s.QuestionId)).GroupBy(s => s.QuestionId).Select(g => g.Last()))
+        {
+            var answer = attempt.Answers.FirstOrDefault(a => a.ExamQuestionId == submission.QuestionId);
+            if (answer is null)
+            {
+                answer = new ExamAnswer { ExamAttemptId = attempt.Id, ExamQuestionId = submission.QuestionId };
+                await dbContext.ExamAnswers.AddAsync(answer, cancellationToken);
+                attempt.Answers.Add(answer);
+            }
+
+            answer.SelectedOptionId = submission.SelectedOptionId;
+            answer.SelectedOptionIdsJson = submission.SelectedOptionIds is null ? null : System.Text.Json.JsonSerializer.Serialize(submission.SelectedOptionIds);
+            answer.FreeTextAnswer = submission.TextAnswer;
+            answer.GapAnswersJson = submission.GapValues is null ? null : System.Text.Json.JsonSerializer.Serialize(submission.GapValues);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<ExamResult> SubmitExamAsync(
         Guid attemptId,
         Guid studentId,
@@ -191,6 +256,7 @@ public class ExamService(IHalloAppDbContext dbContext)
         CancellationToken cancellationToken = default)
     {
         var attempt = await dbContext.ExamAttempts
+            .Include(x => x.Answers)
             .FirstOrDefaultAsync(x => x.Id == attemptId && x.StudentId == studentId, cancellationToken);
 
         if (attempt is null)
@@ -223,9 +289,9 @@ public class ExamService(IHalloAppDbContext dbContext)
         }
 
         var now = DateTime.UtcNow;
-        var timedOut = now > attempt.DeadlineUtc.AddSeconds(5);
+        var timedOut = now >= attempt.DeadlineUtc;
 
-        var submissionByQuestion = submissions
+        var submissionByQuestion = (timedOut ? Array.Empty<ExamAnswerSubmission>() : submissions)
             .GroupBy(s => s.QuestionId)
             .ToDictionary(g => g.Key, g => g.Last());
 
@@ -236,12 +302,23 @@ public class ExamService(IHalloAppDbContext dbContext)
         foreach (var question in exam.Questions)
         {
             submissionByQuestion.TryGetValue(question.Id, out var submission);
-
-            var answer = new ExamAnswer
+            var answer = attempt.Answers.FirstOrDefault(a => a.ExamQuestionId == question.Id);
+            if (submission is null && answer is not null)
             {
-                ExamAttemptId = attempt.Id,
-                ExamQuestionId = question.Id
-            };
+                submission = new ExamAnswerSubmission
+                {
+                    QuestionId = question.Id,
+                    SelectedOptionId = answer.SelectedOptionId,
+                    SelectedOptionIds = string.IsNullOrWhiteSpace(answer.SelectedOptionIdsJson) ? null : System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(answer.SelectedOptionIdsJson),
+                    TextAnswer = answer.FreeTextAnswer,
+                    GapValues = string.IsNullOrWhiteSpace(answer.GapAnswersJson) ? null : System.Text.Json.JsonSerializer.Deserialize<List<string>>(answer.GapAnswersJson)
+                };
+            }
+            if (answer is null)
+            {
+                answer = new ExamAnswer { ExamAttemptId = attempt.Id, ExamQuestionId = question.Id };
+                await dbContext.ExamAnswers.AddAsync(answer, cancellationToken);
+            }
 
             switch (question.QuestionType)
             {
@@ -302,7 +379,6 @@ public class ExamService(IHalloAppDbContext dbContext)
                 correctAnswers++;
             }
 
-            await dbContext.ExamAnswers.AddAsync(answer, cancellationToken);
         }
 
         var scorePercent = totalQuestions == 0
@@ -361,6 +437,11 @@ public class ExamService(IHalloAppDbContext dbContext)
     {
         ValidateExamForm(model);
 
+        if (!model.KlasseId.HasValue)
+        {
+            throw new InvalidOperationException("Veuillez choisir une classe.");
+        }
+
         Klasse klasse;
         if (model.KlasseId.HasValue)
         {
@@ -378,6 +459,18 @@ public class ExamService(IHalloAppDbContext dbContext)
         if (klasse.IstSystemNiveau)
         {
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
+        }
+
+        var isAssignedTeacher = await dbContext.LehrerNiveauZuordnungen.AsNoTracking()
+            .AnyAsync(link => link.LehrerID == authorId && link.KlasseId == klasse.Id && link.SchulID == klasse.SchoolId, cancellationToken);
+        var isSchoolDirection = klasse.SchoolId.HasValue
+            && await dbContext.UserSchools.AsNoTracking()
+                .AnyAsync(link => link.AppUserId == authorId && link.SchoolId == klasse.SchoolId.Value, cancellationToken)
+            && await dbContext.Users.AsNoTracking()
+                .AnyAsync(user => user.Id == authorId && user.UserRoles.Any(role => role.Role.Name == "SchulLeiter" || role.Role.Name == "Koordinator"), cancellationToken);
+        if (!isAssignedTeacher && !isSchoolDirection)
+        {
+            throw new InvalidOperationException("Cette classe n'est pas attribuée à votre compte.");
         }
 
         Exam exam;
@@ -621,6 +714,11 @@ public class ExamService(IHalloAppDbContext dbContext)
             return null;
         }
 
+        return MapExamForPdf(exam);
+    }
+
+    private static ExamPdfViewModel MapExamForPdf(Exam exam)
+    {
         var groupedQuestions = exam.Questions.Where(q => q.ExamExerciseId.HasValue).ToList();
         var ungrouped = exam.Questions.Where(q => !q.ExamExerciseId.HasValue).OrderBy(q => q.Order).ToList();
 
@@ -672,6 +770,27 @@ public class ExamService(IHalloAppDbContext dbContext)
         }
 
         return pdf;
+    }
+
+    public async Task<ExamPdfViewModel?> GetExamForStudentPdfAsync(Guid studentId, Guid examId, CancellationToken cancellationToken = default)
+    {
+        var profile = await dbContext.StudentProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.AppUserId == studentId, cancellationToken);
+        var exam = await dbContext.Exams.AsNoTracking().Include(e => e.Klasse)
+            .FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
+        if (profile is null || exam is null || !exam.IsPublishedToStudents || !exam.IsPdfExportEnabled
+            || profile.CurrentKlasseId != exam.KlasseId || exam.Klasse.SchoolId != profile.SchoolId
+            || !await dbContext.ExamAttempts.AsNoTracking().AnyAsync(a => a.ExamId == examId && a.StudentId == studentId && a.IsCompleted, cancellationToken))
+        {
+            return null;
+        }
+
+        var completeExam = await dbContext.Exams.AsNoTracking()
+            .Include(e => e.Klasse)
+            .Include(e => e.Exercises).ThenInclude(e => e.Questions).ThenInclude(q => q.Options)
+            .Include(e => e.Questions).ThenInclude(q => q.Options)
+            .FirstAsync(e => e.Id == examId, cancellationToken);
+        return MapExamForPdf(completeExam);
     }
 
     /// <summary>

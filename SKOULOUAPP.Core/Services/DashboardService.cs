@@ -1857,7 +1857,6 @@ public class DashboardService(
             Title = lesson.Title,
             Summary = lesson.Summary,
             Content = lesson.Content,
-            Order = lesson.Order,
             VideoAssetId = TryParseLessonVideoAssetId(lesson),
             VideoDisplayName = await GetLessonVideoDisplayNameAsync(lesson, cancellationToken),
             VideoDuration = await GetLessonVideoDurationAsync(lesson, cancellationToken),
@@ -1955,7 +1954,14 @@ public class DashboardService(
         lesson.Title = model.Title.Trim();
         lesson.Summary = model.Summary.Trim();
         lesson.Content = model.Content.Trim();
-        lesson.Order = model.Order;
+        if (!model.LessonId.HasValue)
+        {
+            var nextOrder = await dbContext.Lessons
+                .AsNoTracking()
+                .Where(existingLesson => existingLesson.KlasseId == model.CourseId)
+                .MaxAsync(existingLesson => (int?)existingLesson.Order, cancellationToken) ?? 0;
+            lesson.Order = nextOrder + 1;
+        }
         lesson.IsPublished = model.IsPublished;
         lesson.ExerciseSubmissionDueAtUtc = model.ExerciseSubmissionDueAtUtc;
 

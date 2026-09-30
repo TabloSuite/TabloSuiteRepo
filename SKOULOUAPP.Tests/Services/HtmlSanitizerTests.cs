@@ -126,6 +126,14 @@ public class HtmlSanitizerTests
     }
 
     [Fact]
+    public void SanitizeMitBildern_PrivateMedienId_BleibtErhalten_AberKeineFremdpfade()
+    {
+        var id = Guid.NewGuid();
+        Assert.Contains($"src=\"/media-library/{id}\"", HtmlSanitizer.SanitizeMitBildern($"<img src=\"/media-library/{id}\">"));
+        Assert.DoesNotContain("src=", HtmlSanitizer.SanitizeMitBildern("<img src=\"/media-library/../../secret\">"));
+    }
+
+    [Fact]
     public void SanitizeMitBildern_GefaehrlicheBildQuelleUndHandler_WerdenEntfernt()
     {
         var eingabe = "<img src=\"javascript:alert(1)\" onerror=\"alert(1)\" />";

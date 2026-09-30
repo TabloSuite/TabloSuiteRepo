@@ -703,15 +703,9 @@ else
                     <div>
                         <ModernDropdown TValue="Guid?" Label="Classe / niveau" Value="lessonForm.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" />
                     </div>
-                    <div class="grid gap-4 xl:grid-cols-[1fr_120px]">
-                        <div>
-                            <label class="hallo-label">Titre</label>
-                            <InputText @bind-Value="lessonForm.Title" class="hallo-input" />
-                        </div>
-                        <div>
-                            <label class="hallo-label">Ordre</label>
-                            <InputNumber @bind-Value="lessonForm.Order" class="hallo-input" />
-                        </div>
+                    <div>
+                        <label class="hallo-label">Titre</label>
+                        <InputText @bind-Value="lessonForm.Title" class="hallo-input" />
                     </div>
                     <div>
                         <label class="hallo-label">Résumé</label>

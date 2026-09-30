@@ -43,6 +43,9 @@ public class ModernDropdownBase<TValue> : ComponentBase
     [Parameter]
     public string SearchPlaceholder { get; set; } = "Rechercher...";
 
+    [Parameter]
+    public bool OpenUpward { get; set; }
+
     protected ModernDropdownOption<TValue?>? SelectedOption => Options
         .FirstOrDefault(option => EqualityComparer<TValue?>.Default.Equals(option.Value, Value));
 

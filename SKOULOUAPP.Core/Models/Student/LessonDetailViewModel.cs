@@ -6,11 +6,18 @@ public class LessonDetailViewModel
     public string Title { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public List<LessonContentPageViewModel> ContentPages { get; set; } = [];
     public string CourseCode { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }
     public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
     public List<LessonMediaViewModel> Media { get; set; } = [];
     public List<ExerciseViewModel> Exercises { get; set; } = [];
+}
+
+public class LessonContentPageViewModel
+{
+    public int PageNumber { get; set; }
+    public string ContentHtml { get; set; } = string.Empty;
 }
 
 public class LessonMediaViewModel

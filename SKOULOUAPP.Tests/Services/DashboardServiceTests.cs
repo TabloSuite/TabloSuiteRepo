@@ -1572,7 +1572,6 @@ public class DashboardServiceTests
             Title = "Leçon modifiée",
             Summary = "Résumé",
             Content = "Contenu",
-            Order = 1,
             IsPublished = true,
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
             Exercises =
@@ -1648,7 +1647,6 @@ public class DashboardServiceTests
             Title = "Leçon modifiée",
             Summary = "Résumé 2",
             Content = "Contenu 2",
-            Order = 2,
             IsPublished = true,
             ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddDays(3),
             Exercises =

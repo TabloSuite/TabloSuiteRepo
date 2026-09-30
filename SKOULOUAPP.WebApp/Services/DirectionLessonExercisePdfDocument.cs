@@ -62,10 +62,31 @@ public sealed class DirectionLessonExercisePdfDocument(LessonDetailViewModel les
         {
             column.Spacing(14);
 
-            var bodyText = HtmlSanitizer.ToPlainText(_lesson.Content);
-            if (!string.IsNullOrWhiteSpace(bodyText))
+            var contentPages = _lesson.ContentPages
+                .OrderBy(p => p.PageNumber)
+                .ToList();
+
+            if (contentPages.Count == 0 && !string.IsNullOrWhiteSpace(_lesson.Content))
             {
-                ComposeContentWithColorAccents(column.Item(), _lesson.Content);
+                contentPages.Add(new LessonContentPageViewModel
+                {
+                    PageNumber = 1,
+                    ContentHtml = _lesson.Content
+                });
+            }
+
+            for (var index = 0; index < contentPages.Count; index++)
+            {
+                var contentPage = contentPages[index];
+                if (index > 0)
+                {
+                    column.Item().PageBreak();
+                }
+
+                ComposeCompactContentBlock(column.Item(), contentPage.ContentHtml);
+                column.Item().AlignRight().Text($"Page source {contentPage.PageNumber}")
+                    .FontSize(8)
+                    .FontColor(Colors.Grey.Darken1);
             }
 
             if (_lesson.Exercises.Count == 0)
@@ -138,6 +159,33 @@ public sealed class DirectionLessonExercisePdfDocument(LessonDetailViewModel les
                     }
                 });
             }
+        });
+    }
+
+    private static void ComposeCompactContentBlock(IContainer container, string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return;
+        }
+
+        var decoded = WebUtility.HtmlDecode(html);
+        var sanitized = HtmlSanitizer.SanitizeMitBildern(decoded);
+        var textWithBreaks = Regex.Replace(sanitized, "<\\s*br\\s*/?>", "\n", RegexOptions.IgnoreCase);
+        textWithBreaks = Regex.Replace(textWithBreaks, "<\\s*/\\s*(p|div|li)\\s*>", "\n", RegexOptions.IgnoreCase);
+        var plainText = HtmlSanitizer.ToPlainText(textWithBreaks);
+
+        if (string.IsNullOrWhiteSpace(plainText))
+        {
+            return;
+        }
+
+        container.Text(text =>
+        {
+            text.Span(plainText)
+                .FontSize(11)
+                .LineHeight(1.35f)
+                .FontColor(Colors.Grey.Darken4);
         });
     }
 

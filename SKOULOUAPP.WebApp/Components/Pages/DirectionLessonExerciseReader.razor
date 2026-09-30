@@ -45,17 +45,33 @@ else
         <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 sm:text-sm">Contenu</p>
             <div class="mt-4 flex justify-center">
-                <article class="w-full max-w-[840px] rounded-xl border border-slate-200 bg-white p-6 text-slate-900">
+                <div class="lesson-a4-pages w-full">
                     @if (!string.IsNullOrWhiteSpace(lessonVideoUrl))
                     {
-                        <div class="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
+                        <div class="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
                             <p class="text-sm font-semibold text-cyan-900">Vidéo de la leçon</p>
                             <video class="mt-3 w-full rounded-xl bg-slate-950" controls preload="metadata" playsinline src="@lessonVideoUrl"></video>
                             <p class="mt-2 text-xs font-semibold text-cyan-900">La vidéo est visible ici uniquement et n'apparaît pas dans l'export PDF.</p>
                         </div>
                     }
-                    <div class="rich-content text-sm leading-7 text-slate-700 sm:text-base sm:leading-8">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
-                </article>
+
+                    @if (lesson.ContentPages.Count == 0)
+                    {
+                        <article class="lesson-a4-page ql-snow">
+                            <div class="ql-editor">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
+                        </article>
+                    }
+                    else
+                    {
+                        @foreach (var contentPage in lesson.ContentPages.OrderBy(p => p.PageNumber))
+                        {
+                            <article class="lesson-a4-page ql-snow">
+                                <div class="ql-editor">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(contentPage.ContentHtml))</div>
+                                <p class="lesson-a4-page-number">Page @contentPage.PageNumber</p>
+                            </article>
+                        }
+                    }
+                </div>
             </div>
         </div>
 

@@ -233,9 +233,11 @@ public static partial class HtmlSanitizer
                     return null;
                 }
 
-                // Nur eingebettete Bild-Daten oder sichere https-URLs zulassen.
+                // Nur eingebettete Bild-Daten, HTTPS oder eigene geschützte Medien-IDs zulassen.
                 if (normalisiert.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)
-                    || normalisiert.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    || normalisiert.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    || (normalisiert.StartsWith("/media-library/", StringComparison.Ordinal)
+                        && Guid.TryParseExact(normalisiert["/media-library/".Length..], "D", out _)))
                 {
                     return System.Net.WebUtility.HtmlEncode(normalisiert);
                 }

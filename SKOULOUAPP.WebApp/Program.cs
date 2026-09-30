@@ -168,6 +168,7 @@ builder.Services.AddTransient<IBlobMediaLibraryService, AzureBlobMediaLibrarySer
 builder.Services.AddTransient<HomePageService>();
 builder.Services.AddTransient<DashboardService>();
 builder.Services.AddTransient<LearningService>();
+builder.Services.AddTransient<LessonExerciseA4PdfService>();
 builder.Services.AddTransient<TeacherLessonService>();
 builder.Services.AddTransient<ExamService>();
 builder.Services.AddTransient<FormelFavoritService>();
@@ -255,6 +256,7 @@ app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
     bool? solutions,
     ClaimsPrincipal user,
     ExamService examService,
+    LessonExerciseA4PdfService pdfService,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -275,7 +277,7 @@ app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = new ExamPdfDocument(exam, includeSolutions).GeneratePdf();
+    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions), cancellationToken);
     var safeTitle = string.IsNullOrWhiteSpace(exam.Title)
         ? "examen"
         : string.Concat(exam.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
@@ -292,6 +294,8 @@ app.MapGet("/teacher/lesson-exercises/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
     ClaimsPrincipal user,
     LearningService learningService,
+    LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -306,7 +310,7 @@ app.MapGet("/teacher/lesson-exercises/{lessonId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = new DirectionLessonExercisePdfDocument(lesson).GeneratePdf();
+    var bytes = await pdfService.GeneratePdfAsync(lesson, mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
     var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
         ? "support"
         : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
@@ -323,6 +327,8 @@ app.MapGet("/teacher-lessons/{lessonId:guid}/pdf-file", async (
     bool? solutions,
     ClaimsPrincipal user,
     TeacherLessonService teacherLessonService,
+    LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -344,7 +350,7 @@ app.MapGet("/teacher-lessons/{lessonId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = new LessonPdfDocument(lesson, includeSolutions).GeneratePdf();
+    var bytes = await pdfService.GeneratePdfAsync(lesson, mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
     var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
         ? "support"
         : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
@@ -361,6 +367,8 @@ app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
     ClaimsPrincipal user,
     TeacherLessonService teacherLessonService,
+    LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -375,7 +383,7 @@ app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = new LessonPdfDocument(lesson, includeSolutions: false).GeneratePdf();
+    var bytes = await pdfService.GeneratePdfAsync(lesson, mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
     var safeTitle = string.IsNullOrWhiteSpace(lesson.Title)
         ? "support"
         : string.Concat(lesson.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
@@ -386,6 +394,51 @@ app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
 
     var fileName = $"{safeTitle}-eleve.pdf";
     return Results.File(bytes, "application/pdf", fileName);
+}).RequireAuthorization("RequireStudent");
+
+app.MapGet("/student/exams/{examId:guid}/pdf-file", async (
+    Guid examId,
+    ClaimsPrincipal user,
+    ExamService examService,
+    LessonExerciseA4PdfService pdfService,
+    CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var exam = await examService.GetExamForStudentPdfAsync(userId, examId, cancellationToken);
+    if (exam is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions: false), cancellationToken);
+    return Results.File(bytes, "application/pdf", "epreuve-sans-solutions.pdf");
+}).RequireAuthorization("RequireStudent");
+
+app.MapGet("/student/lessons/{lessonId:guid}/pdf-file", async (
+    Guid lessonId,
+    ClaimsPrincipal user,
+    LearningService learningService,
+    LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
+    CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var lesson = await learningService.GetLessonDetailAsync(lessonId, userId, cancellationToken);
+    if (lesson is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bytes = await pdfService.GeneratePdfAsync(lesson, mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
+    return Results.File(bytes, "application/pdf", "lecon-et-exercices-sans-solutions.pdf");
 }).RequireAuthorization("RequireStudent");
 
 app.MapGet("/media-library/videos/{assetId:guid}", async (

@@ -30,6 +30,7 @@ else
                         <span class="progress-ring-label text-slate-900">@LessonPercent%</span>
                     </div>
                     <a class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 sm:px-4 sm:py-2 sm:text-sm" href="/student/lessons">Retour</a>
+                    <a class="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-800 no-underline sm:px-4 sm:py-2 sm:text-sm" href="/student/lessons/@LessonId/pdf-file" target="_blank">Télécharger la leçon et les exercices (sans solutions)</a>
                 </div>
             </div>
         </div>
@@ -60,7 +61,7 @@ else
             <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">@lesson.Summary</h2>
 
             <div class="mt-4 flex justify-center">
-                <article class="w-full max-w-[840px] rounded-xl border border-slate-200 bg-white p-6 text-slate-900">
+                <div class="w-full">
                     @if (LessonVideoUrl is { Length: > 0 })
                     {
                         <div class="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
@@ -69,7 +70,22 @@ else
                         </div>
                     }
 
-                    <div class="rich-content @(LessonVideoUrl is { Length: > 0 } ? "mt-4" : string.Empty) text-sm leading-7 text-slate-700 sm:text-base sm:leading-8">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div>
+                    <div class="lesson-a4-pages @(LessonVideoUrl is { Length: > 0 } ? "mt-4" : string.Empty)">
+                        @if (lesson.ContentPages.Count == 0)
+                        {
+                            <article class="lesson-a4-page ql-snow"><div class="ql-editor">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(lesson.Content))</div></article>
+                        }
+                        else
+                        {
+                            @foreach (var contentPage in lesson.ContentPages.OrderBy(p => p.PageNumber))
+                            {
+                                <article class="lesson-a4-page ql-snow">
+                                    <div class="ql-editor">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(contentPage.ContentHtml))</div>
+                                    <p class="lesson-a4-page-number">Page @contentPage.PageNumber</p>
+                                </article>
+                            }
+                        }
+                    </div>
 
                     @if (!exerciseStarted)
                     {
@@ -79,7 +95,7 @@ else
                             Commencer les exercices
                         </button>
                     }
-                </article>
+                </div>
             </div>
         </div>
 
@@ -197,6 +213,7 @@ else
                                                                 Placeholder="Ta réponse..."
                                                                 ReadOnly="@(state.IsCorrect || state.IsGradedManually)"
                                                                 EnableLargeEditor="true"
+                                                                Paged="true"
                                                                 MinEditorHeightRem="3" />
                                             </div>
                                         </div>
@@ -209,6 +226,7 @@ else
                                     <RichTextEditor Value="@state.TextAnswer"
                                                     ValueChanged="value => SetTextAnswer(exercise.ExerciseId, value)"
                                                     Placeholder="Ta réponse..."
+                                                    Paged="true"
                                                     ReadOnly="@(state.IsCorrect || state.IsGradedManually)" />
                                     @if (!exercise.HasAutomaticGrading)
                                     {

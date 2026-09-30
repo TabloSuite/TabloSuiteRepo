@@ -27,9 +27,6 @@ public class TeacherLessonFormModel
     [StringLength(200)]
     public string? CourseTheme { get; set; }
 
-    [Range(1, 500)]
-    public int Order { get; set; } = 1;
-
     public bool IsPublished { get; set; }
 
     /// <summary>Neue Lehrmaterialien sind standardmäßig für die Schulleitung sichtbar.</summary>

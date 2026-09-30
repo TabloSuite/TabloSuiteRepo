@@ -3,6 +3,7 @@ using HalloApp.Core.DataModels.Exams;
 using HalloApp.Core.DataModels.Finanzen;
 using HalloApp.Core.DataModels.Identity;
 using HalloApp.Core.DataModels.Schools;
+using HalloApp.Core.Models.Admin;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Services;
 using HalloApp.Tests.Infrastructure;
@@ -83,6 +84,74 @@ public class ExamServiceTests
         Assert.Equal("A1-Prüfung", session!.Title);
         Assert.Single(session.Questions);
         Assert.Single(db.ExamAttempts);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_SetztOffenenVersuchMitAntwortUndUrspruenglicherFristFort()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, option) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        var first = (await service.StartExamAsync(exam.Id, studentId))!;
+        Assert.True(await service.SaveDraftAsync(first.AttemptId, studentId,
+            [new ExamAnswerSubmission { QuestionId = first.Questions[0].QuestionId, SelectedOptionId = option.Id }]));
+        var resumed = (await service.StartExamAsync(exam.Id, studentId))!;
+
+        Assert.True(resumed.IsResumed);
+        Assert.Equal(first.AttemptId, resumed.AttemptId);
+        Assert.Equal(first.DeadlineUtc, resumed.DeadlineUtc);
+        Assert.Equal(option.Id, Assert.Single(resumed.SavedAnswers).SelectedOptionId);
+        Assert.Single(db.ExamAttempts);
+        await service.SubmitExamAsync(first.AttemptId, studentId, []);
+        Assert.Single(db.ExamAnswers);
+        Assert.True(db.ExamAttempts.Single().IsPassed);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_NachFristende_BewertetGespeichertenEntwurfUndStartetNichtNeu()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, option) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        var first = (await service.StartExamAsync(exam.Id, studentId))!;
+        await service.SaveDraftAsync(first.AttemptId, studentId,
+            [new ExamAnswerSubmission { QuestionId = first.Questions[0].QuestionId, SelectedOptionId = option.Id }]);
+        db.ExamAttempts.Single().DeadlineUtc = DateTime.UtcNow.AddSeconds(-10);
+        await db.SaveChangesAsync();
+
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        Assert.Single(db.ExamAttempts);
+        Assert.True(db.ExamAttempts.Single().IsCompleted);
+        Assert.Single(db.ExamAnswers);
+    }
+
+    [Fact]
+    public async Task GetExamForStudentPdfAsync_ErstNachAbschlussUndFreigabe()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        exam.IsPdfExportEnabled = true;
+        var studentId = Guid.NewGuid();
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        Assert.Null(await service.GetExamForStudentPdfAsync(studentId, exam.Id));
+        var session = (await service.StartExamAsync(exam.Id, studentId))!;
+        Assert.Null(await service.GetExamForStudentPdfAsync(studentId, exam.Id));
+        await service.SubmitExamAsync(session.AttemptId, studentId, []);
+        Assert.NotNull(await service.GetExamForStudentPdfAsync(studentId, exam.Id));
+        exam.IsPdfExportEnabled = false;
+        await db.SaveChangesAsync();
+        Assert.Null(await service.GetExamForStudentPdfAsync(studentId, exam.Id));
+        Assert.Null(await service.GetExamForStudentPdfAsync(Guid.NewGuid(), exam.Id));
     }
 
     [Fact]
@@ -193,6 +262,31 @@ public class ExamServiceTests
 
         var exam = Assert.Single(exams);
         Assert.Equal("Examen interne", exam.Title);
+    }
+
+    [Fact]
+    public async Task SaveExamAsync_LehntFremdeKlasseTrotzGleichemCodeAb()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var authorId = Guid.NewGuid();
+        var school = new School { Id = Guid.NewGuid(), Name = "École", IsActive = true };
+        var otherSchool = new School { Id = Guid.NewGuid(), Name = "Autre école", IsActive = true };
+        var allowed = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "A1", Title = "A1" };
+        var foreign = new Klasse { Id = Guid.NewGuid(), SchoolId = otherSchool.Id, Code = "A1", Title = "A1" };
+        db.Schools.AddRange(school, otherSchool);
+        db.Klassen.AddRange(allowed, foreign);
+        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { LehrerID = authorId, SchulID = school.Id, KlasseId = allowed.Id });
+        await db.SaveChangesAsync();
+
+        var model = new ExamFormModel
+        {
+            Title = "Test", NiveauCode = "A1", KlasseId = foreign.Id,
+            Exercises = [new ExamExerciseFormModel { Questions = [new ExamQuestionFormModel { Prompt = "Frage", Options = [new() { Text = "Ja", IsCorrect = true }, new() { Text = "Nein" }] }] }]
+        };
+        var service = new ExamService(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveExamAsync(authorId, model));
+        Assert.Empty(db.Exams);
     }
 
     [Fact]

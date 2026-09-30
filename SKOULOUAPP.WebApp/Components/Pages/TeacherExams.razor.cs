@@ -38,6 +38,7 @@ public partial class TeacherExams
     private IReadOnlyList<(Guid SchoolId, string SchoolName)> schoolOptions = [];
     private Guid? selectedSchoolFilterId;
     private Guid? selectedKlasseFilterId;
+    private Guid? editorSchoolId;
     private ExamFormModel? form;
     private bool editorOpen;
     private bool isSavingExam;
@@ -69,10 +70,17 @@ public partial class TeacherExams
         }
     }
 
+    private IReadOnlyList<ModernDropdownOption<Guid?>> EditorSchoolOptions =>
+    [
+        new(null, "— Choisir une école —"),
+        .. schoolOptions.Select(school => new ModernDropdownOption<Guid?>((Guid?)school.SchoolId, school.SchoolName))
+    ];
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseOptions =>
     [
         new(null, "— Choisir une classe —"),
-        .. klasseOptions.Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.KlasseId, FormatKlasseLabel(klasse.Code, klasse.Title)))
+        .. klasseOptions.Where(klasse => editorSchoolId.HasValue && klasse.SchoolId == editorSchoolId.Value)
+            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.KlasseId, FormatKlasseLabel(klasse.Code, klasse.Title)))
     ];
 
     private IReadOnlyList<ExamManagementItem> VisibleExams
@@ -133,6 +141,18 @@ public partial class TeacherExams
         {
             form.NiveauCode = niveauCode ?? string.Empty;
             form.KlasseId = klasseOptions.FirstOrDefault(x => string.Equals(x.Code, niveauCode, StringComparison.OrdinalIgnoreCase)).KlasseId;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SetEditorSchoolAsync(Guid? schoolId)
+    {
+        editorSchoolId = schoolId;
+        if (form is not null && !klasseOptions.Any(klasse => klasse.KlasseId == form.KlasseId && klasse.SchoolId == schoolId))
+        {
+            form.KlasseId = null;
+            form.NiveauCode = string.Empty;
         }
 
         return Task.CompletedTask;
@@ -232,10 +252,7 @@ public partial class TeacherExams
             .AsNoTracking()
             .Where(x => !x.IstSystemNiveau);
 
-        if (zugeordneteKlassenIds.Count > 0)
-        {
-            query = query.Where(x => zugeordneteKlassenIds.Contains(x.Id));
-        }
+        query = query.Where(x => zugeordneteKlassenIds.Contains(x.Id));
 
         klasseOptions = await query
             .OrderBy(x => x.Code)
@@ -285,6 +302,10 @@ public partial class TeacherExams
             form.ShareWithSchoolDirection = false;
             form.AssignToClassStudents = false;
         }
+
+        editorSchoolId = form?.KlasseId is Guid klasseId
+            ? klasseOptions.FirstOrDefault(klasse => klasse.KlasseId == klasseId).SchoolId
+            : selectedSchoolFilterId ?? (schoolOptions.Count == 1 ? schoolOptions[0].SchoolId : null);
 
         editorOpen = true;
         await InvokeAsync(async () =>
