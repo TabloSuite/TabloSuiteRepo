@@ -210,11 +210,17 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<bool>("IsSharedWithSchool")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsSuperseded")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("KlasseId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("PassingScore")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmissionDueAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
                         .IsRequired()

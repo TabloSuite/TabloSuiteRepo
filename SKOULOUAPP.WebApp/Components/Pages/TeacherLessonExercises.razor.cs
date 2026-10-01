@@ -693,6 +693,7 @@ public partial class TeacherLessonExercises
         }
 
         form = loaded;
+        form.ExerciseSubmissionDueAtUtc = loaded.ExerciseSubmissionDueAtUtc?.ToLocalTime();
         selectedSchoolId = klasseSchoolById.TryGetValue(form.CourseId, out var editSchoolId) ? editSchoolId : selectedSchoolId;
         isCurrentAssignmentVersionLocked = loaded.IsCurrentAssignmentVersionLocked;
         MapFormExercisesToEditorBlocks();
@@ -799,23 +800,18 @@ public partial class TeacherLessonExercises
                 dueDateUtc = DateTime.SpecifyKind(dueDateModalValue.Value, DateTimeKind.Local).ToUniversalTime();
             }
 
-            var lesson = await DbContext.Lessons
-                .FirstOrDefaultAsync(x => x.Id == dueDateLessonId, ComponentToken);
-            if (lesson is null || !allowedCourseIds.Contains(lesson.KlasseId))
+            var result = await DashboardService.ChangeLessonSubmissionDueAsync(dueDateLessonId, dueDateUtc, currentTeacherId, ComponentToken);
+            if (!result.Succeeded)
             {
-                errorMessage = "Cette leçon n'est pas autorisée pour votre profil enseignant.";
+                errorMessage = result.Message;
                 return;
             }
-
-            lesson.ExerciseSubmissionDueAtUtc = dueDateUtc;
-            lesson.GeaendertAmUtc = DateTime.UtcNow;
-            await DbContext.SaveChangesAsync(ComponentToken);
 
             dueDateModalOpen = false;
             dueDateLessonId = Guid.Empty;
             dueDateLessonTitle = string.Empty;
             dueDateModalValue = null;
-            statusMessage = "La date limite a été mise à jour.";
+            statusMessage = result.Message;
             await LoadAsync();
         }
         finally

@@ -134,6 +134,60 @@ public class ExamServiceTests
     }
 
     [Fact]
+    public async Task GetExamsForStudentAsync_ZeigtRestfristUndAbschlussNachZeitablauf()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        var session = (await service.StartExamAsync(exam.Id, studentId))!;
+
+        var active = Assert.Single(await service.GetExamsForStudentAsync(studentId));
+        Assert.True(active.HasActiveAttempt);
+        Assert.True(active.CanStart);
+        Assert.Equal(session.DeadlineUtc, active.FirstDeadlineUtc);
+
+        db.ExamAttempts.Single().DeadlineUtc = DateTime.UtcNow.AddSeconds(-10);
+        await db.SaveChangesAsync();
+        var expired = Assert.Single(await service.GetExamsForStudentAsync(studentId));
+        Assert.False(expired.HasActiveAttempt);
+        Assert.True(expired.HasAttempt);
+        Assert.False(expired.CanStart);
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        Assert.Single(db.ExamAttempts);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_NachAbgabeVorFrist_VerlangtNeueZuweisung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        var first = (await service.StartExamAsync(exam.Id, studentId))!;
+        await service.SubmitExamAsync(first.AttemptId, studentId, []);
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        var submittedExam = Assert.Single(await service.GetExamsForStudentAsync(studentId));
+        Assert.True(submittedExam.HasAttempt);
+        Assert.False(submittedExam.CanStart);
+        Assert.False(submittedExam.IsPassed);
+
+        foreach (var attempt in db.ExamAttempts)
+        {
+            attempt.DeadlineUtc = DateTime.UtcNow.AddSeconds(-10);
+        }
+        await db.SaveChangesAsync();
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        Assert.True(db.ExamAttempts.Single(a => a.Id == first.AttemptId).IsCompleted);
+        Assert.Single(db.ExamAttempts);
+    }
+
+    [Fact]
     public async Task GetExamForStudentPdfAsync_ErstNachAbschlussUndFreigabe()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -287,6 +341,170 @@ public class ExamServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveExamAsync(authorId, model));
         Assert.Empty(db.Exams);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_OffenerVersuch_UebernimmtGeaenderteFrist()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        var first = (await service.StartExamAsync(exam.Id, studentId))!;
+        var neueFrist = first.DeadlineUtc.AddMinutes(20);
+        db.ExamAttempts.Single(a => a.Id == first.AttemptId).DeadlineUtc = neueFrist;
+        await db.SaveChangesAsync();
+
+        var resumed = (await service.StartExamAsync(exam.Id, studentId))!;
+
+        Assert.True(resumed.IsResumed);
+        Assert.Equal(first.AttemptId, resumed.AttemptId);
+        Assert.Equal(neueFrist, resumed.DeadlineUtc);
+    }
+
+    [Fact]
+    public async Task StartExamAsync_AuchBeiGeaenderterFristKeinNeuerVersuchOhneNeueZuweisung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        var first = (await service.StartExamAsync(exam.Id, studentId))!;
+        await service.SubmitExamAsync(first.AttemptId, studentId, []);
+
+        var storedAttempt = db.ExamAttempts.Single(a => a.Id == first.AttemptId);
+        storedAttempt.DeadlineUtc = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+
+        var verlaengerteFrist = DateTime.UtcNow.AddMinutes(30);
+        storedAttempt.DeadlineUtc = verlaengerteFrist;
+        await db.SaveChangesAsync();
+
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        Assert.Single(db.ExamAttempts);
+    }
+
+    [Fact]
+    public async Task ChangeSubmissionDueAsync_PasstLaufendeFristAn_OhneErgebnisseZuVerlieren()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var authorId = Guid.NewGuid();
+        exam.AuthorId = authorId;
+        exam.SubmissionDueAtUtc = DateTime.UtcNow.AddHours(1);
+        var attempt = new ExamAttempt
+        {
+            Id = Guid.NewGuid(), ExamId = exam.Id, StudentId = Guid.NewGuid(),
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-5), DeadlineUtc = DateTime.UtcNow.AddMinutes(25)
+        };
+        db.ExamAttempts.Add(attempt);
+        await db.SaveChangesAsync();
+        var newDue = DateTime.UtcNow.AddMinutes(10);
+
+        await new ExamService(db).ChangeSubmissionDueAsync(authorId, exam.Id, newDue);
+
+        Assert.Equal(newDue, exam.SubmissionDueAtUtc);
+        Assert.Equal(newDue, attempt.DeadlineUtc);
+        Assert.Single(db.ExamAttempts);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ExamService(db).ChangeSubmissionDueAsync(Guid.NewGuid(), exam.Id, newDue));
+    }
+
+    [Fact]
+    public async Task ChangeSubmissionDueAsync_NachAbgeschlossenemVersuch_EroeffnetKeineNeueBearbeitung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var authorId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var newStudentId = Guid.NewGuid();
+        exam.AuthorId = authorId;
+        exam.SubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(-20);
+        var schoolId = db.Klassen.Single(k => k.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.AddRange(
+            new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId },
+            new StudentProfile { AppUserId = newStudentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        var oldAttempt = new ExamAttempt
+        {
+            Id = Guid.NewGuid(), ExamId = exam.Id, StudentId = studentId, IsCompleted = true,
+            StartedAtUtc = DateTime.UtcNow.AddHours(-1), DeadlineUtc = DateTime.UtcNow.AddMinutes(-30), ScorePercent = 33
+        };
+        db.ExamAttempts.Add(oldAttempt);
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        await service.ChangeSubmissionDueAsync(authorId, exam.Id, DateTime.UtcNow.AddHours(1));
+
+        var studentExam = Assert.Single(await service.GetExamsForStudentAsync(studentId));
+        Assert.True(studentExam.HasAttempt);
+        Assert.False(studentExam.CanStart);
+        Assert.Null(await service.StartExamAsync(exam.Id, studentId));
+        Assert.Equal(33, oldAttempt.ScorePercent);
+        Assert.True(Assert.Single(await service.GetExamsForStudentAsync(newStudentId)).CanStart);
+    }
+
+    [Fact]
+    public async Task ReassignExamAsync_ErstelltNeueRunde_OhneAlteAntwortenZuLoeschen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, option) = await SeedExamAsync(db);
+        var authorId = Guid.NewGuid();
+        exam.AuthorId = authorId;
+        exam.SubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung
+        {
+            LehrerID = authorId, KlasseId = exam.KlasseId, SchulID = exam.Klasse.SchoolId!.Value
+        });
+        var attempt = new ExamAttempt
+        {
+            Id = Guid.NewGuid(), ExamId = exam.Id, StudentId = Guid.NewGuid(), IsCompleted = true,
+            StartedAtUtc = DateTime.UtcNow.AddHours(-1), DeadlineUtc = DateTime.UtcNow.AddMinutes(-10)
+        };
+        db.ExamAttempts.Add(attempt);
+        await db.SaveChangesAsync();
+        var model = new ExamFormModel
+        {
+            Title = "Nouvelle session", KlasseId = exam.KlasseId,
+            SubmissionDueAtUtc = DateTime.UtcNow.AddDays(1),
+            Exercises = [new ExamExerciseFormModel { Questions = [new ExamQuestionFormModel
+            {
+                Prompt = "Nouvelle question", Options = [new() { Text = "Oui", IsCorrect = true }, new() { Text = "Non" }]
+            }] }]
+        };
+
+        var newId = await new ExamService(db).ReassignExamAsync(authorId, exam.Id, model);
+
+        Assert.NotEqual(exam.Id, newId);
+        Assert.True(exam.IsSuperseded);
+        Assert.True(db.Exams.Single(e => e.Id == newId).IsPublishedToStudents);
+        Assert.Equal(option.Id, db.Exams.Single(e => e.Id == exam.Id).Questions.Single().Options.First().Id);
+        Assert.Equal(exam.Id, db.ExamAttempts.Single().ExamId);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ExamService(db).ReassignExamAsync(authorId, exam.Id, model));
+    }
+
+    [Fact]
+    public async Task DeleteExamAsync_MitVersuchen_LehntLoeschungAb()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, _) = await SeedExamAsync(db);
+        var authorId = Guid.NewGuid();
+        exam.AuthorId = authorId;
+        db.ExamAttempts.Add(new ExamAttempt { Id = Guid.NewGuid(), ExamId = exam.Id, StudentId = Guid.NewGuid() });
+        await db.SaveChangesAsync();
+
+        var (succeeded, _) = await new ExamService(db).DeleteExamAsync(authorId, exam.Id);
+
+        Assert.False(succeeded);
+        Assert.Single(db.Exams);
+        Assert.Single(db.ExamAttempts);
     }
 
     [Fact]

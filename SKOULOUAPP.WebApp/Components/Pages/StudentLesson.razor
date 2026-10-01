@@ -50,8 +50,8 @@ else
             <div class="rounded-[1.5rem] p-4 ring-1 sm:p-5 @(isPastDue ? "bg-amber-50 text-amber-900 ring-amber-100" : "bg-cyan-50 text-cyan-900 ring-cyan-100")">
                 <p class="text-sm font-semibold">
                     @(isPastDue
-                        ? $"Date limite passée ({dueLabel}). Les réponses ouvertes ne peuvent plus être envoyées et seront corrigées par l'enseignant."
-                        : $"Date limite des réponses ouvertes: {dueLabel}.")
+                        ? $"Date limite passée ({dueLabel}). Les réponses ne peuvent plus être envoyées."
+                        : $"Tu peux modifier et envoyer tes réponses jusqu'au {dueLabel}, même après un premier envoi.")
                 </p>
             </div>
         }
@@ -258,7 +258,7 @@ else
 
                             @if (!state.IsCorrect && !state.IsGradedManually)
                             {
-                                 var isManualClosed = IsManualExerciseSubmissionClosed(exercise);
+                                 var isManualClosed = IsExerciseSubmissionClosed();
                                 <button type="button"
                                         class="hallo-btn-accent mt-4 rounded-full px-5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:opacity-50"
                                          disabled="@(!CanSubmit(exercise, state) || state.IsSubmitting || isManualClosed)"

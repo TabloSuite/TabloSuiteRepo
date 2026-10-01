@@ -13,6 +13,12 @@ public class ExamListItem
     public bool HasAttempt { get; set; }
     public bool HasActiveAttempt { get; set; }
     public bool CanDownloadPdf { get; set; }
+    public DateTime? FirstDeadlineUtc { get; set; }
+    public DateTime? SubmissionDueAtUtc { get; set; }
+    public bool IsSuperseded { get; set; }
+    public bool CanStart => QuestionCount > 0 && !IsSuperseded && !HasAttempt
+        && (!FirstDeadlineUtc.HasValue || FirstDeadlineUtc.Value > DateTime.UtcNow)
+        && (!SubmissionDueAtUtc.HasValue || SubmissionDueAtUtc.Value > DateTime.UtcNow);
     public bool IsPassed { get; set; }
     public int BestScorePercent { get; set; }
 }

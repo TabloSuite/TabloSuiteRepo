@@ -42,6 +42,8 @@ public partial class TeacherExams
     private ExamFormModel? form;
     private bool editorOpen;
     private bool isSavingExam;
+    private bool isReassigning;
+    private Guid? sourceExamId;
     private string? formError;
     private string? statusMessage;
     private Guid currentTeacherId;
@@ -275,6 +277,8 @@ public partial class TeacherExams
     private async Task OpenEditor(Guid? examId)
     {
         formError = null;
+        isReassigning = false;
+        sourceExamId = null;
         if (examId is null)
         {
             form = new ExamFormModel();
@@ -315,6 +319,36 @@ public partial class TeacherExams
         });
     }
 
+    private async Task OpenReassignmentAsync(Guid examId)
+    {
+        await OpenEditor(examId);
+        if (form is null || form.ExamId != examId) return;
+        isReassigning = true;
+        sourceExamId = examId;
+        form.ExamId = null;
+        form.SubmissionDueAtUtc = null;
+        form.AssignToClassStudents = true;
+        form.ReleaseTarget = ExamReleaseTarget.ClassStudents;
+        foreach (var exercise in form.Exercises)
+        {
+            exercise.ExerciseId = null;
+            foreach (var question in exercise.Questions)
+            {
+                question.QuestionId = null;
+                foreach (var option in question.Options) option.OptionId = null;
+            }
+        }
+    }
+
+    private DateTime? ReassignmentDueDateLocal
+    {
+        get => form?.SubmissionDueAtUtc?.ToLocalTime();
+        set
+        {
+            if (form is not null) form.SubmissionDueAtUtc = value?.ToUniversalTime();
+        }
+    }
+
     private string GetExamPreviewHref(Guid examId, bool includeSolutions)
     {
         var from = Embedded ? "teacher-create" : "teacher-exams";
@@ -345,6 +379,8 @@ public partial class TeacherExams
     {
         editorOpen = false;
         form = null;
+        isReassigning = false;
+        sourceExamId = null;
     }
 
     private void AddExercise()
@@ -445,8 +481,16 @@ public partial class TeacherExams
                 form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
             }
 
-            await ExamService.SaveExamAsync(currentTeacherId, form, ComponentToken);
-            statusMessage = "L'examen a été enregistré.";
+            if (isReassigning && sourceExamId is Guid previousId)
+            {
+                await ExamService.ReassignExamAsync(currentTeacherId, previousId, form, ComponentToken);
+                statusMessage = "Une nouvelle attribution a été créée. Les résultats précédents restent disponibles.";
+            }
+            else
+            {
+                await ExamService.SaveExamAsync(currentTeacherId, form, ComponentToken);
+                statusMessage = "L'examen a été enregistré.";
+            }
             CloseEditor();
             await LoadAsync();
         }

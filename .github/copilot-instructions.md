@@ -69,6 +69,7 @@
 - Hard-Delete nicht akzeptierter Selbstregistrierungen durch Schulleiter ist zu ermöglichen.
 - Nach erfolgreichem Schließen einer Klasse soll direkt ein Hinweis erscheinen, dass bestandene Schüler jetzt versetzt werden können; optionaler direkter Einstieg zur Promotion. Nach erfolgreicher Promotion soll ein Hinweis erscheinen, dass die Schüler in der neuen Klasse sind und der neue Klassenzyklus gestartet werden soll.
 - Lehrer kann Klassen-Test-Exams Schülern zuweisen; diese werden wie Lektionsaufgaben behandelt (automatische oder manuelle Antworten) und fließen in den Score ein. Abschluss-Exams sind druckbasiert/manuell korrigiert; Lehrkraft trägt daraus die Abschlussnote ein.
+- Fristverlängerung soll bei Lektion+Aufgaben allen Schülern unabhängig von bisheriger Abgabe oder altem Fristablauf erneute Bearbeitung und Abgabe ermöglichen. Bei Examens soll die individuelle Prüfungsdauer nicht verlängert werden; Lehrer weisen nach Ende der Bearbeitung stattdessen eine neue Prüfungsrunde zu.
 
 ## Projektrichtlinien
 - UI-Präferenz im Projekt: horizontale Scrollbars immer vermeiden, Layout auf Tablet/Mobil vollständig responsiv halten, Rollen-/Technologieinfos aus der Navigation entfernen und Anmelden/Registrieren im Profilbereich oben rechts platzieren.
@@ -93,7 +94,8 @@
 - Im Schulleiterbereich soll der Zahlungsdialog für Schüler größer sein und eine Schülersuche bieten. Kursdurchläufe benötigen Filter für „en cours“/„clôturés“ sowie nach Niveau/Klasse. Bei Barzahlung darf der festgelegte Gesamtpreis nicht geändert werden.
 
 ## Projektrichtlinien
-- Der Nutzer erwartet in der Entwicklungsphase ausdrücklich die Einführung von CreatedByTeacherId für Lessons statt abgeleiteter Lehrerzuordnung.
+- Der Nutzer erwartet in der Entwicklungsphase ausdrücklich die Einführung von CreatedByTeacherId für Lessons statt abgeleitener Lehrerzuordnung.
+- Bei der Umsetzung eines bestehenden Flows (z. B. Examens-Neuzuweisung nach dem Muster von Lektion+Aufgaben) darf die Architektur, der Code und die UI verbessert werden; keine starre 1:1-Übernahme, wenn eine bessere Lösung möglich ist.
 
 ## Abrechnungsworkflow
 - Wenn ein ProductOwner für eine zugewiesene Schule eine Abo-Rechnung erstellt oder deren Zahlung erhält, soll der SuperAdmin benachrichtigt werden und den Erhalt separat als erledigt bestätigen können. Auch selbst erstellte Rechnungen an Leiter sollen vom SuperAdmin als erledigt markiert werden können.

@@ -214,9 +214,9 @@ public partial class StudentLesson
             return;
         }
 
-        if (IsManualExerciseSubmissionClosed(exercise))
+        if (IsExerciseSubmissionClosed())
         {
-            state.Feedback = "La date limite est dépassée pour cet exercice ouvert.";
+            state.Feedback = "La date limite est dépassée pour cet exercice.";
             return;
         }
 
@@ -405,16 +405,9 @@ public partial class StudentLesson
         return !string.IsNullOrWhiteSpace(state.TextAnswer);
     }
 
-    private bool IsManualExerciseSubmissionClosed(ExerciseViewModel exercise)
-    {
-        if (exercise.HasAutomaticGrading)
-        {
-            return false;
-        }
-
-        return lesson?.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc
+    private bool IsExerciseSubmissionClosed()
+        => lesson?.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc
             && DateTime.UtcNow > dueAtUtc;
-    }
 
     private string GetSubmitButtonLabel(ExerciseViewModel exercise)
         => exercise.HasAutomaticGrading ? "Vérifier la réponse" : "Envoyer la réponse";

@@ -45,18 +45,27 @@ public partial class StudentLessons
         [
             new(null, "Tous les enseignants"),
             .. (lessons ?? [])
-                .Where(x => x.TeacherId.HasValue && !string.IsNullOrWhiteSpace(x.TeacherName))
-                .GroupBy(x => new { TeacherId = x.TeacherId!.Value, x.TeacherName })
-                .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.TeacherId, group.Key.TeacherName))
+                .SelectMany(x => x.FilterTeachers)
+                .GroupBy(x => x.Id)
+                .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().Name))
                 .OrderBy(option => option.Label)
         ];
 
-    private static readonly IReadOnlyList<ModernDropdownOption<string>> StatusFilterOptions =
-    [
-        new("all", "Tous"),
-        new("inprogress", "En cours"),
-        new("completed", "Terminé")
-    ];
+    private IReadOnlyList<ModernDropdownOption<string>> StatusFilterOptions
+    {
+        get
+        {
+            var matching = OrderedLessons.Where(x => MatchesSearch(x)
+                && (!selectedTeacherId.HasValue || x.FilterTeacherIds.Contains(selectedTeacherId.Value))
+                && (string.IsNullOrWhiteSpace(selectedFach) || string.Equals(x.FachName, selectedFach, StringComparison.OrdinalIgnoreCase))).ToList();
+            return
+            [
+                new("all", "Tous", Badge: matching.Count.ToString()),
+                new("inprogress", "En cours", Badge: matching.Count(x => !x.IsCompleted).ToString()),
+                new("completed", "Terminé", Badge: matching.Count(x => x.IsCompleted).ToString())
+            ];
+        }
+    }
 
     private int completedCount => lessons?.Count(x => x.IsCompleted) ?? 0;
     private int totalExercises => lessons?.Sum(x => x.ExerciseCount) ?? 0;
@@ -70,6 +79,7 @@ public partial class StudentLessons
 
     private List<string> FachOptions
         => lessons?
+            .Where(x => MatchesSearch(x) && (!selectedTeacherId.HasValue || x.FilterTeacherIds.Contains(selectedTeacherId.Value)))
             .Select(x => x.FachName)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -86,20 +96,7 @@ public partial class StudentLessons
 
     private bool PassesSearchAndFilters(LessonListItem lesson)
     {
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim();
-            var matches = Contains(lesson.Title, term)
-                || Contains(lesson.CourseCode, term)
-                || Contains(lesson.Summary, term)
-                || Contains(lesson.FachName, term)
-                || Contains(lesson.TeacherName, term);
-
-            if (!matches)
-            {
-                return false;
-            }
-        }
+        if (!MatchesSearch(lesson)) return false;
 
         if (!string.IsNullOrWhiteSpace(selectedFach)
             && !string.Equals(lesson.FachName, selectedFach, StringComparison.OrdinalIgnoreCase))
@@ -107,7 +104,7 @@ public partial class StudentLessons
             return false;
         }
 
-        if (selectedTeacherId.HasValue && lesson.TeacherId != selectedTeacherId.Value)
+        if (selectedTeacherId.HasValue && !lesson.FilterTeacherIds.Contains(selectedTeacherId.Value))
         {
             return false;
         }
@@ -118,6 +115,18 @@ public partial class StudentLessons
             "inprogress" => !lesson.IsCompleted,
             _ => true
         };
+    }
+
+    private bool MatchesSearch(LessonListItem lesson)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm)) return true;
+        var term = searchTerm.Trim();
+        return Contains(lesson.Title, term)
+            || Contains(lesson.CourseCode, term)
+            || Contains(lesson.Summary, term)
+            || Contains(lesson.FachName, term)
+            || Contains(lesson.TeacherName, term)
+            || lesson.FilterTeachers.Any(teacher => Contains(teacher.Name, term));
     }
 
     private static bool Contains(string? value, string term)
@@ -139,6 +148,10 @@ public partial class StudentLessons
     private Task SetSelectedTeacherAsync(Guid? teacherId)
     {
         selectedTeacherId = teacherId;
+        if (!FachOptions.Contains(selectedFach, StringComparer.OrdinalIgnoreCase))
+        {
+            selectedFach = string.Empty;
+        }
         return Task.CompletedTask;
     }
 

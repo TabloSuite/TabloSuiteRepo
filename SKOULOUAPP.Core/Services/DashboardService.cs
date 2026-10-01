@@ -272,6 +272,8 @@ public class DashboardService(
             {
                 a.StudentId,
                 a.ExerciseId,
+                LessonId = a.Exercise.LessonId,
+                a.AssignmentVersion,
                 a.IsCorrect,
                 a.AwardedPoints,
                 a.AnsweredAtUtc,
@@ -279,7 +281,37 @@ public class DashboardService(
             })
             .ToListAsync(cancellationToken);
 
-        var exerciseIds = exerciseAttempts.Select(a => a.ExerciseId).Distinct().ToList();
+        // Bei neuen Abgabephasen (AssignmentVersion) pro Lektion nur die jeweils
+        // neueste Phase pro Schüler berücksichtigen, damit ältere Phasen nicht
+        // zusätzlich in den kombinierten Score einfließen.
+        var latestLessonVersions = exerciseAttempts
+            .GroupBy(a => new { a.StudentId, a.LessonId })
+            .Select(group => new
+            {
+                group.Key.StudentId,
+                group.Key.LessonId,
+                AssignmentVersion = group.Max(item => item.AssignmentVersion > 0 ? item.AssignmentVersion : 1)
+            })
+            .ToList();
+
+        var exerciseAttemptsForScoring = (from attempt in exerciseAttempts
+                                          join latest in latestLessonVersions
+                                              on new
+                                              {
+                                                  attempt.StudentId,
+                                                  attempt.LessonId,
+                                                  AssignmentVersion = attempt.AssignmentVersion > 0 ? attempt.AssignmentVersion : 1
+                                              }
+                                              equals new
+                                              {
+                                                  latest.StudentId,
+                                                  latest.LessonId,
+                                                  latest.AssignmentVersion
+                                              }
+                                          select attempt)
+            .ToList();
+
+        var exerciseIds = exerciseAttemptsForScoring.Select(a => a.ExerciseId).Distinct().ToList();
         var exercisePointsById = await dbContext.Exercises
             .AsNoTracking()
             .Where(exercise => exerciseIds.Contains(exercise.Id))
@@ -309,7 +341,7 @@ public class DashboardService(
 
         var perStudent = new Dictionary<Guid, (int ExerciseSum, int ExerciseCount, int ExercisePointsEarned, int ExercisePointsTotal, int ExamSum, int ExamCount, int ExamPointsEarned, int ExamPointsTotal)>();
 
-        foreach (var attempt in exerciseAttempts
+        foreach (var attempt in exerciseAttemptsForScoring
             .GroupBy(a => new { a.StudentId, a.ExerciseId })
             .Select(group => group
                 .OrderByDescending(a => a.AnsweredAtUtc)
@@ -1852,6 +1884,7 @@ public class DashboardService(
             AssignmentVersion = Math.Max(1, lesson.AssignmentVersion),
             HasSubmissionsInCurrentAssignmentVersion = hasSubmissionsInCurrentAssignmentVersion,
             IsCurrentAssignmentVersionLocked = isCurrentAssignmentVersionLocked,
+            ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
             FachId = lesson.FachId,
             FachName = lesson.Fach != null ? lesson.Fach.Name : null,
             Title = lesson.Title,
@@ -1983,6 +2016,41 @@ public class DashboardService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return (true, model.LessonId.HasValue ? "La leçon a été mise à jour." : "La leçon a été créée.");
+    }
+
+    public async Task<(bool Succeeded, string Message)> ChangeLessonSubmissionDueAsync(
+        Guid lessonId, DateTime? dueAtUtc, Guid teacherId, CancellationToken cancellationToken = default)
+    {
+        var lesson = await dbContext.Lessons
+            .Include(x => x.Exercises)
+            .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);
+        if (lesson is null || (lesson.CreatedByTeacherId != teacherId
+            && (lesson.CreatedByTeacherId.HasValue || !await dbContext.LehrerNiveauZuordnungen.AsNoTracking()
+                .AnyAsync(x => x.LehrerID == teacherId && x.KlasseId == lesson.KlasseId, cancellationToken))))
+        {
+            return (false, "Cette leçon n'est pas autorisée pour votre profil enseignant.");
+        }
+
+        if (dueAtUtc.HasValue && dueAtUtc.Value <= DateTime.UtcNow)
+        {
+            return (false, "Choisissez une date limite future.");
+        }
+
+        var previousDueAtUtc = lesson.ExerciseSubmissionDueAtUtc;
+        if (dueAtUtc.HasValue && (!previousDueAtUtc.HasValue || dueAtUtc.Value > previousDueAtUtc.Value))
+        {
+            var exerciseIds = lesson.Exercises.Select(x => x.Id).ToList();
+            if (exerciseIds.Count > 0 && await dbContext.ExerciseAttempts.AsNoTracking()
+                .AnyAsync(a => exerciseIds.Contains(a.ExerciseId) && a.AssignmentVersion == lesson.AssignmentVersion, cancellationToken))
+            {
+                lesson.AssignmentVersion = Math.Max(1, lesson.AssignmentVersion) + 1;
+            }
+        }
+
+        lesson.ExerciseSubmissionDueAtUtc = dueAtUtc;
+        lesson.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "La date limite a été mise à jour. Tous les élèves peuvent envoyer de nouvelles réponses jusqu'à cette date.");
     }
 
     private async Task<Guid?> ResolveOrCreateFachIdForCourseAsync(

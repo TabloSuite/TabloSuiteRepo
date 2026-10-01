@@ -26,6 +26,8 @@ public class ExamFormModel
     [Range(1, 600, ErrorMessage = "Durée entre 1 et 600 minutes.")]
     public int DurationInMinutes { get; set; } = 60;
 
+    public DateTime? SubmissionDueAtUtc { get; set; }
+
     [Range(0, 100, ErrorMessage = "Score de réussite entre 0 et 100.")]
     public int PassingScore { get; set; } = 50;
 

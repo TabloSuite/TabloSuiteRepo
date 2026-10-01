@@ -84,6 +84,21 @@ public class LearningService(IHalloAppDbContext dbContext)
             .Distinct()
             .ToList();
 
+        var klasseIds = lessons.Where(lesson => !lesson.CreatedByTeacherId.HasValue)
+            .Select(lesson => lesson.KlasseId).Distinct().ToList();
+        var fachIds = lessons.Where(lesson => !lesson.CreatedByTeacherId.HasValue && lesson.FachId.HasValue)
+            .Select(lesson => lesson.FachId!.Value).Distinct().ToList();
+        var klasseTeachers = await dbContext.LehrerNiveauZuordnungen.AsNoTracking()
+            .Where(link => klasseIds.Contains(link.KlasseId) && link.SchulID == profile.SchoolId)
+            .Select(link => new { link.KlasseId, TeacherId = link.LehrerID })
+            .ToListAsync(cancellationToken);
+        var fachTeachers = await dbContext.LehrerFachZuordnungen.AsNoTracking()
+            .Where(link => fachIds.Contains(link.FachId))
+            .Select(link => new { link.FachId, TeacherId = link.LehrerId })
+            .ToListAsync(cancellationToken);
+
+        teacherIds.AddRange(klasseTeachers.Select(link => link.TeacherId));
+
         var teacherNames = await dbContext.Users
             .AsNoTracking()
             .Where(user => teacherIds.Contains(user.Id))
@@ -181,6 +196,11 @@ public class LearningService(IHalloAppDbContext dbContext)
         return lessons
             .Select(lesson =>
             {
+                var filterTeacherIds = lesson.CreatedByTeacherId.HasValue
+                    ? [lesson.CreatedByTeacherId.Value]
+                    : klasseTeachers.Where(link => link.KlasseId == lesson.KlasseId
+                            && (!lesson.FachId.HasValue || fachTeachers.Any(fach => fach.FachId == lesson.FachId.Value && fach.TeacherId == link.TeacherId)))
+                        .Select(link => link.TeacherId).Distinct().ToList();
                 var progress = progresses.FirstOrDefault(p => p.LessonId == lesson.Id);
                 var solvedCount = solvedCountsByLesson.TryGetValue(lesson.Id, out var count)
                     ? count
@@ -200,12 +220,16 @@ public class LearningService(IHalloAppDbContext dbContext)
                     TeacherName = lesson.CreatedByTeacherId.HasValue && teacherNames.TryGetValue(lesson.CreatedByTeacherId.Value, out var lessonTeacherName)
                         ? lessonTeacherName
                         : string.Empty,
+                    FilterTeacherIds = filterTeacherIds,
+                    FilterTeachers = filterTeacherIds.Where(teacherNames.ContainsKey)
+                        .Select(id => (id, teacherNames[id])).ToList(),
                     Order = lesson.Order,
                     CourseCode = lesson.Klasse.Code,
                     ExerciseCount = lesson.Exercises.Count,
                     CorrectExerciseCount = solvedCount,
                     ExercisePointsEarned = points.Earned,
                     ExercisePointsTotal = points.Total,
+                    ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
                     IsCompleted = isCompleted,
                     IsUnlocked = true
                 };
@@ -256,10 +280,6 @@ public class LearningService(IHalloAppDbContext dbContext)
                 && exerciseIds.Contains(x.ExerciseId))
             .ToListAsync(cancellationToken);
 
-        var progress = await dbContext.LessonProgresses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.LessonId == lessonId && x.StudentId == studentId, cancellationToken);
-
         return new LessonDetailViewModel
         {
             LessonId = lesson.Id,
@@ -268,7 +288,15 @@ public class LearningService(IHalloAppDbContext dbContext)
             Content = lesson.Content,
             ContentPages = SplitLessonContentPages(lesson.Content),
             CourseCode = lesson.Klasse.Code,
-            IsCompleted = progress?.IsCompleted ?? false,
+            IsCompleted = lesson.Exercises.Count > 0 && lesson.Exercises.All(exercise =>
+            {
+                var latest = attempts.Where(a => a.ExerciseId == exercise.Id)
+                    .OrderByDescending(a => a.AnsweredAtUtc)
+                    .ThenByDescending(a => a.Id)
+                    .FirstOrDefault();
+                return latest is not null && (latest.IsCorrect ||
+                    (!latest.RequiresManualGrading && latest.ManuallyGradedAtUtc.HasValue));
+            }),
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
             Media = lesson.MediaItems
                 .Select(m => new LessonMediaViewModel
@@ -681,6 +709,11 @@ public class LearningService(IHalloAppDbContext dbContext)
         if (!exercise.Lesson.IsPublished)
         {
             return new AnswerResult { Succeeded = false, Message = "Cette leçon n'est pas encore publiée." };
+        }
+
+        if (exercise.Lesson.ExerciseSubmissionDueAtUtc is DateTime submissionDueAtUtc && DateTime.UtcNow > submissionDueAtUtc)
+        {
+            return new AnswerResult { Succeeded = false, Message = "La date limite est dépassée pour cet exercice." };
         }
 
         var normalizedType = NormalizeExerciseType(exercise.ExerciseType);

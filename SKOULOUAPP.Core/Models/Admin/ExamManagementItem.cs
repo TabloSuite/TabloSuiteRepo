@@ -18,6 +18,9 @@ public class ExamManagementItem
     public int ExerciseCount { get; set; }
     public int QuestionCount { get; set; }
     public int AttemptCount { get; set; }
+    public DateTime? SubmissionDueAtUtc { get; set; }
+    public bool IsSuperseded { get; set; }
+    public bool HasRunningAttempt { get; set; }
     public ExamType ExamType { get; set; }
     public ExamReleaseTarget ReleaseTarget { get; set; }
     public bool IsSharedWithSchool { get; set; }

@@ -12,9 +12,17 @@ public partial class Student
     private DashboardService DashboardService { get; set; } = default!;
 
     [Inject]
+    private LearningService LearningService { get; set; } = default!;
+
+    [Inject]
+    private ExamService ExamService { get; set; } = default!;
+
+    [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     private StudentDashboardViewModel? dashboard;
+    private int openLessonsCount;
+    private int openExamsCount;
     private const string KlassenLabel = "Classe";
 
     private HalloApp.Core.Models.Student.StudentCourseProgressItem? CurrentClassCard
@@ -146,7 +154,7 @@ public partial class Student
     }
 
     private bool HasOpenItemsHint
-        => dashboard is not null && (dashboard.OpenLessonsCount > 0 || dashboard.OpenExamsCount > 0);
+        => dashboard is not null && (openLessonsCount > 0 || openExamsCount > 0);
 
     private string OpenItemsHintText
     {
@@ -158,14 +166,14 @@ public partial class Student
             }
 
             var parts = new List<string>();
-            if (dashboard.OpenLessonsCount > 0)
+            if (openLessonsCount > 0)
             {
-                parts.Add($"{dashboard.OpenLessonsCount} leçon{(dashboard.OpenLessonsCount > 1 ? "s" : string.Empty)} à terminer");
+                parts.Add($"{openLessonsCount} leçon{(openLessonsCount > 1 ? "s" : string.Empty)} à terminer");
             }
 
-            if (dashboard.OpenExamsCount > 0)
+            if (openExamsCount > 0)
             {
-                parts.Add($"{dashboard.OpenExamsCount} examen{(dashboard.OpenExamsCount > 1 ? "s" : string.Empty)} à passer");
+                parts.Add($"{openExamsCount} examen{(openExamsCount > 1 ? "s" : string.Empty)} à passer");
             }
 
             return string.Join(" · ", parts);
@@ -184,6 +192,13 @@ public partial class Student
             }
 
             dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
+            if (dashboard is not null)
+            {
+                var lessons = await LearningService.GetLessonsForStudentAsync(userId, dashboard.CurrentLevelCode, ComponentToken);
+                var exams = await ExamService.GetExamsForStudentAsync(userId, dashboard.CurrentLevelCode, ComponentToken);
+                openLessonsCount = lessons.Count(lesson => lesson.ExerciseCount > 0 && !lesson.IsCompleted);
+                openExamsCount = exams.Count(exam => exam.CanStart && !exam.HasAttempt);
+            }
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {

@@ -1,5 +1,6 @@
 using HalloApp.Core.DataModels.Courses;
 using HalloApp.Core.DataModels.Exercises;
+using HalloApp.Core.DataModels.Identity;
 using HalloApp.Core.DataModels.Lessons;
 using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Models.Student;
@@ -15,6 +16,37 @@ namespace HalloApp.Tests.Services;
 /// </summary>
 public class LearningServiceTests
 {
+    [Fact]
+    public async Task GetLessonsForStudentAsync_AutorloseLektionenFilternNachKlasseUndFach()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1A", Title = "CP1A" };
+        var fach = new Fach { Id = Guid.NewGuid(), SchoolId = school.Id, Name = "Histoire" };
+        var teacher = new AppUser { Id = Guid.NewGuid(), UserName = "prof-histoire", FullName = "Prof Histoire" };
+        var otherTeacher = new AppUser { Id = Guid.NewGuid(), UserName = "prof-maths", FullName = "Prof Maths" };
+        var studentId = Guid.NewGuid();
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Faecher.Add(fach);
+        db.Users.AddRange(teacher, otherTeacher);
+        db.LehrerNiveauZuordnungen.AddRange(
+            new LehrerNiveauZuordnung { Id = Guid.NewGuid(), SchulID = school.Id, KlasseId = klasse.Id, LehrerID = teacher.Id },
+            new LehrerNiveauZuordnung { Id = Guid.NewGuid(), SchulID = school.Id, KlasseId = klasse.Id, LehrerID = otherTeacher.Id });
+        db.LehrerFachZuordnungen.Add(new LehrerFachZuordnung { Id = Guid.NewGuid(), FachId = fach.Id, LehrerId = teacher.Id });
+        db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, FachId = fach.Id, Title = "Histoire", IsPublished = true });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = studentId, SchoolId = school.Id, CurrentKlasseId = klasse.Id });
+        db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = klasse.Id, IsUnlocked = true });
+        await db.SaveChangesAsync();
+
+        var lesson = Assert.Single(await new LearningService(db).GetLessonsForStudentAsync(studentId));
+
+        Assert.Null(lesson.TeacherId);
+        Assert.Equal(string.Empty, lesson.TeacherName);
+        Assert.Equal([teacher.Id], lesson.FilterTeacherIds);
+        Assert.Equal((teacher.Id, teacher.FullName), Assert.Single(lesson.FilterTeachers));
+    }
+
     [Fact]
     public async Task GetLessonsForStudentAsync_ZeigtNurLektionenFreigeschalteterNiveaus()
     {
@@ -326,6 +358,64 @@ public class LearningServiceTests
         Assert.NotNull(detail);
         var vm = Assert.Single(detail!.Exercises);
         Assert.False(vm.IsAnsweredCorrectly);
+        Assert.False(detail.IsCompleted);
+    }
+
+    [Fact]
+    public async Task GetLessonDetailAsync_NachFristverlaengerung_ErlaubtAllenSchuelernErneuteAbgabe()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var submittedStudentId = Guid.NewGuid();
+        var waitingStudentId = Guid.NewGuid();
+        var (exercise, correct1, correct2, _) = await SeedMultipleChoiceUebungAsync(db, submittedStudentId);
+        exercise.Lesson.CreatedByTeacherId = Guid.NewGuid();
+        exercise.Lesson.ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(5);
+        var schoolId = exercise.Lesson.Klasse.SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            AppUserId = waitingStudentId, SchoolId = schoolId, CurrentKlasseId = exercise.Lesson.KlasseId
+        });
+        db.LevelEnrollments.Add(new LevelEnrollment
+        {
+            StudentId = waitingStudentId, KlasseId = exercise.Lesson.KlasseId, IsUnlocked = true
+        });
+        await db.SaveChangesAsync();
+        var learning = new LearningService(db);
+        Assert.True((await learning.SubmitExerciseAsync(exercise.Id, submittedStudentId, new ExerciseSubmission
+        {
+            SelectedOptionIds = [correct1.Id, correct2.Id]
+        })).Succeeded);
+        Assert.True((await learning.GetLessonDetailAsync(exercise.LessonId, submittedStudentId))!.IsCompleted);
+
+        exercise.Lesson.ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        await db.SaveChangesAsync();
+        Assert.False((await learning.SubmitExerciseAsync(exercise.Id, waitingStudentId, new ExerciseSubmission
+        {
+            SelectedOptionIds = [correct1.Id, correct2.Id]
+        })).Succeeded);
+
+        var dashboard = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+        var extended = await dashboard.ChangeLessonSubmissionDueAsync(exercise.LessonId, DateTime.UtcNow.AddDays(1), exercise.Lesson.CreatedByTeacherId!.Value);
+
+        Assert.True(extended.Succeeded, extended.Message);
+        Assert.Equal(2, exercise.Lesson.AssignmentVersion);
+        var openLessons = await learning.GetLessonsForStudentAsync(submittedStudentId);
+        Assert.Equal(1, openLessons.Count(x => x.ExerciseCount > 0 && !x.IsCompleted));
+        Assert.Equal(exercise.Lesson.ExerciseSubmissionDueAtUtc, Assert.Single(openLessons).ExerciseSubmissionDueAtUtc);
+        var previousDetail = (await learning.GetLessonDetailAsync(exercise.LessonId, submittedStudentId))!;
+        Assert.False(previousDetail.IsCompleted);
+        Assert.False(Assert.Single(previousDetail.Exercises).HasSubmittedAttempt);
+        Assert.False((await learning.GetLessonDetailAsync(exercise.LessonId, waitingStudentId))!.IsCompleted);
+        Assert.True((await learning.SubmitExerciseAsync(exercise.Id, submittedStudentId, new ExerciseSubmission
+        {
+            SelectedOptionIds = [correct1.Id, correct2.Id]
+        })).Succeeded);
+        Assert.True((await learning.SubmitExerciseAsync(exercise.Id, waitingStudentId, new ExerciseSubmission
+        {
+            SelectedOptionIds = [correct1.Id, correct2.Id]
+        })).Succeeded);
+        Assert.Equal(1, db.ExerciseAttempts.Count(a => a.AssignmentVersion == 1));
+        Assert.Equal(2, db.ExerciseAttempts.Count(a => a.AssignmentVersion == 2));
     }
 
     [Fact]

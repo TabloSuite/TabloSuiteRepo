@@ -41,7 +41,8 @@ public class ExamService(IHalloAppDbContext dbContext)
             .AsNoTracking()
             .Include(x => x.Klasse)
             .Include(x => x.Questions)
-            .Where(x => x.KlasseId == klasseId && x.IsPublishedToStudents)
+            .Where(x => x.KlasseId == klasseId && x.IsPublishedToStudents
+                && (!x.IsSuperseded || x.Attempts.Any(a => a.StudentId == studentId && a.IsCompleted)))
             .AsQueryable();
 
         var exams = await query
@@ -56,10 +57,18 @@ public class ExamService(IHalloAppDbContext dbContext)
             .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
             .ToListAsync(cancellationToken);
 
-        foreach (var expired in attempts.Where(a => !a.IsCompleted && a.DeadlineUtc <= DateTime.UtcNow))
+        var expiredAttempts = attempts.Where(a => !a.IsCompleted && a.DeadlineUtc <= DateTime.UtcNow).ToList();
+        foreach (var expired in expiredAttempts)
         {
             await SubmitExamAsync(expired.Id, studentId, [], cancellationToken);
-            expired.IsCompleted = true;
+        }
+
+        if (expiredAttempts.Count > 0)
+        {
+            attempts = await dbContext.ExamAttempts
+                .AsNoTracking()
+                .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
+                .ToListAsync(cancellationToken);
         }
 
         return exams
@@ -78,6 +87,9 @@ public class ExamService(IHalloAppDbContext dbContext)
                     HasAttempt = examAttempts.Any(a => a.IsCompleted),
                     HasActiveAttempt = examAttempts.Any(a => !a.IsCompleted),
                     CanDownloadPdf = exam.IsPdfExportEnabled && examAttempts.Any(a => a.IsCompleted),
+                    FirstDeadlineUtc = examAttempts.OrderBy(a => a.StartedAtUtc).Select(a => (DateTime?)a.DeadlineUtc).FirstOrDefault(),
+                    SubmissionDueAtUtc = exam.SubmissionDueAtUtc,
+                    IsSuperseded = exam.IsSuperseded,
                     IsPassed = examAttempts.Any(a => a.IsCompleted && a.IsPassed),
                     BestScorePercent = examAttempts.Where(a => a.IsCompleted).Select(a => a.ScorePercent).DefaultIfEmpty().Max()
                 };
@@ -111,12 +123,37 @@ public class ExamService(IHalloAppDbContext dbContext)
         var hasActiveCycle = isAssignedToCurrentClass
             && studentProfile is not null
             && await HasActiveClassCycleAsync(studentProfile.SchoolId, exam.KlasseId, cancellationToken);
-        if (!exam.IsPublishedToStudents || !isAssignedToCurrentClass || !hasActiveCycle)
+        if (!exam.IsPublishedToStudents || exam.IsSuperseded || exam.SubmissionDueAtUtc <= DateTime.UtcNow || !isAssignedToCurrentClass || !hasActiveCycle)
         {
             return null;
         }
 
         var now = DateTime.UtcNow;
+        var firstAttempt = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(a => a.ExamId == examId && a.StudentId == studentId)
+            .OrderBy(a => a.StartedAtUtc)
+            .Select(a => new { a.DeadlineUtc, a.IsCompleted })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (firstAttempt?.IsCompleted == true || await dbContext.ExamAttempts.AsNoTracking()
+            .AnyAsync(a => a.ExamId == examId && a.StudentId == studentId && a.IsCompleted, cancellationToken))
+        {
+            return null;
+        }
+        if (firstAttempt is not null && firstAttempt.DeadlineUtc <= now)
+        {
+            var unfinishedAttempts = await dbContext.ExamAttempts
+                .AsNoTracking()
+                .Where(a => a.ExamId == examId && a.StudentId == studentId && !a.IsCompleted && a.DeadlineUtc <= now)
+                .Select(a => a.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var unfinishedId in unfinishedAttempts)
+            {
+                await SubmitExamAsync(unfinishedId, studentId, [], cancellationToken);
+            }
+            return null;
+        }
+
         var attempt = await dbContext.ExamAttempts
             .Include(a => a.Answers)
             .Where(a => a.ExamId == examId && a.StudentId == studentId && !a.IsCompleted)
@@ -136,7 +173,9 @@ public class ExamService(IHalloAppDbContext dbContext)
                 ExamId = examId,
                 StudentId = studentId,
                 StartedAtUtc = now,
-                DeadlineUtc = now.AddMinutes(exam.DurationInMinutes),
+                DeadlineUtc = firstAttempt?.DeadlineUtc ?? (exam.SubmissionDueAtUtc is DateTime dueAtUtc
+                    ? (dueAtUtc < now.AddMinutes(exam.DurationInMinutes) ? dueAtUtc : now.AddMinutes(exam.DurationInMinutes))
+                    : now.AddMinutes(exam.DurationInMinutes)),
                 TotalQuestions = exam.Questions.Count
             };
             await dbContext.ExamAttempts.AddAsync(attempt, cancellationToken);
@@ -220,7 +259,6 @@ public class ExamService(IHalloAppDbContext dbContext)
             {
                 answer = new ExamAnswer { ExamAttemptId = attempt.Id, ExamQuestionId = submission.QuestionId };
                 await dbContext.ExamAnswers.AddAsync(answer, cancellationToken);
-                attempt.Answers.Add(answer);
             }
 
             answer.SelectedOptionId = submission.SelectedOptionId;
@@ -437,6 +475,12 @@ public class ExamService(IHalloAppDbContext dbContext)
     {
         ValidateExamForm(model);
 
+        if ((model.AssignToClassStudents || model.ReleaseTarget == ExamReleaseTarget.ClassStudents)
+            && model.SubmissionDueAtUtc is DateTime dueAt && dueAt <= DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("La date limite doit être dans le futur pour attribuer l'épreuve aux élèves.");
+        }
+
         if (!model.KlasseId.HasValue)
         {
             throw new InvalidOperationException("Veuillez choisir une classe.");
@@ -486,6 +530,11 @@ public class ExamService(IHalloAppDbContext dbContext)
                 ?? throw new InvalidOperationException("L'examen est introuvable.");
 
             // Bestehende Fragen/Blöcke entfernen und neu aufbauen.
+            if (exam.IsSuperseded || await dbContext.ExamAttempts.AsNoTracking().AnyAsync(a => a.ExamId == exam.Id, cancellationToken))
+            {
+                throw new InvalidOperationException("Une épreuve déjà commencée ne peut plus être modifiée. Modifiez uniquement sa date limite ou créez une nouvelle attribution.");
+            }
+
             dbContext.ExamQuestions.RemoveRange(exam.Questions);
             dbContext.ExamExercises.RemoveRange(exam.Exercises);
             exam.Questions.Clear();
@@ -501,6 +550,7 @@ public class ExamService(IHalloAppDbContext dbContext)
         exam.Title = model.Title.Trim();
         exam.Description = Text.HtmlSanitizer.Sanitize(model.Description);
         exam.DurationInMinutes = model.DurationInMinutes;
+        exam.SubmissionDueAtUtc = model.SubmissionDueAtUtc;
         exam.PassingScore = model.PassingScore;
         exam.ExamType = ExamType.TestExam;
         var publishToStudents = model.AssignToClassStudents || model.ReleaseTarget == ExamReleaseTarget.ClassStudents;
@@ -572,6 +622,74 @@ public class ExamService(IHalloAppDbContext dbContext)
         return exam.Id;
     }
 
+    public async Task ChangeSubmissionDueAsync(Guid authorId, Guid examId, DateTime dueAtUtc, CancellationToken cancellationToken = default)
+    {
+        var exam = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == examId && e.AuthorId == authorId, cancellationToken)
+            ?? throw new InvalidOperationException("L'examen est introuvable.");
+        if (exam.IsSuperseded || !exam.IsPublishedToStudents || dueAtUtc <= DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("Choisissez une date limite future pour une épreuve active.");
+        }
+
+        var attempts = await dbContext.ExamAttempts.Where(a => a.ExamId == examId).ToListAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        if (attempts.Any(a => !a.IsCompleted && a.DeadlineUtc <= now))
+        {
+            throw new InvalidOperationException("Une tentative a déjà expiré. Créez une nouvelle attribution au lieu de prolonger cette session.");
+        }
+
+        exam.SubmissionDueAtUtc = dueAtUtc;
+        exam.GeaendertAmUtc = now;
+        foreach (var attempt in attempts.Where(a => !a.IsCompleted))
+        {
+            var maximumDuration = attempt.StartedAtUtc.AddMinutes(exam.DurationInMinutes);
+            attempt.DeadlineUtc = dueAtUtc < maximumDuration ? dueAtUtc : maximumDuration;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<Guid> ReassignExamAsync(Guid authorId, Guid sourceExamId, ExamFormModel model, CancellationToken cancellationToken = default)
+    {
+        var source = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == sourceExamId && e.AuthorId == authorId, cancellationToken)
+            ?? throw new InvalidOperationException("L'examen est introuvable.");
+        if (source.IsSuperseded || !source.IsPublishedToStudents)
+        {
+            throw new InvalidOperationException("Seule une épreuve attribuée et encore active peut être réattribuée.");
+        }
+
+        var now = DateTime.UtcNow;
+        var hasRunningAttempt = await dbContext.ExamAttempts.AsNoTracking()
+            .AnyAsync(a => a.ExamId == sourceExamId && !a.IsCompleted && a.DeadlineUtc > now, cancellationToken);
+        if (hasRunningAttempt || (source.SubmissionDueAtUtc.HasValue && source.SubmissionDueAtUtc.Value > now))
+        {
+            throw new InvalidOperationException("Attendez la fin de la session actuelle avant de créer une nouvelle attribution.");
+        }
+
+        if (model.SubmissionDueAtUtc is not DateTime dueAtUtc || dueAtUtc <= now || model.KlasseId != source.KlasseId)
+        {
+            throw new InvalidOperationException("Choisissez une nouvelle date limite future pour la même classe.");
+        }
+
+        var expiredIds = await dbContext.ExamAttempts.AsNoTracking()
+            .Where(a => a.ExamId == sourceExamId && !a.IsCompleted && a.DeadlineUtc <= now)
+            .Select(a => new { a.Id, a.StudentId })
+            .ToListAsync(cancellationToken);
+        foreach (var expired in expiredIds)
+        {
+            await SubmitExamAsync(expired.Id, expired.StudentId, [], cancellationToken);
+        }
+
+        model.ExamId = null;
+        model.AssignToClassStudents = true;
+        model.ReleaseTarget = ExamReleaseTarget.ClassStudents;
+        var newExamId = await SaveExamAsync(authorId, model, cancellationToken);
+        source.IsSuperseded = true;
+        source.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return newExamId;
+    }
+
     /// <summary>Prüfungen für die Lehrer-/Schulleiterverwaltung.</summary>
     public async Task<IReadOnlyList<ExamManagementItem>> GetTeacherExamsAsync(Guid authorId, CancellationToken cancellationToken = default)
     {
@@ -600,6 +718,9 @@ public class ExamService(IHalloAppDbContext dbContext)
                 ExerciseCount = exam.Exercises.Count,
                 QuestionCount = exam.Questions.Count,
                 AttemptCount = exam.Attempts.Count,
+                SubmissionDueAtUtc = exam.SubmissionDueAtUtc,
+                IsSuperseded = exam.IsSuperseded,
+                HasRunningAttempt = exam.Attempts.Any(a => !a.IsCompleted && a.DeadlineUtc > DateTime.UtcNow),
                 ExamType = exam.ExamType,
                 IsPublishedToStudents = exam.IsPublishedToStudents,
                 IsSharedWithSchool = exam.IsSharedWithSchool,
@@ -638,6 +759,7 @@ public class ExamService(IHalloAppDbContext dbContext)
             NiveauCode = exam.Klasse.Code,
             KlasseId = exam.KlasseId,
             DurationInMinutes = exam.DurationInMinutes,
+            SubmissionDueAtUtc = exam.SubmissionDueAtUtc,
             PassingScore = exam.PassingScore,
             ExamType = exam.ExamType,
             AssignToClassStudents = exam.IsPublishedToStudents,
@@ -669,6 +791,11 @@ public class ExamService(IHalloAppDbContext dbContext)
         if (exam.Klasse.IstSystemNiveau)
         {
             return (false, "Cet examen standard fait partie du matériel pédagogique et ne peut pas être supprimé.");
+        }
+
+        if (exam.Attempts.Count > 0)
+        {
+            return (false, "Cette épreuve possède des résultats d'élèves et ne peut pas être supprimée.");
         }
 
         dbContext.Exams.Remove(exam);
@@ -1169,7 +1296,7 @@ public class ExamService(IHalloAppDbContext dbContext)
             throw new InvalidOperationException("Veuillez saisir un titre.");
         }
 
-        if (string.IsNullOrWhiteSpace(model.NiveauCode))
+        if (!model.KlasseId.HasValue)
         {
             throw new InvalidOperationException("Veuillez choisir une classe.");
         }

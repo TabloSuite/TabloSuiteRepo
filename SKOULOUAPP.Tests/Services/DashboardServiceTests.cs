@@ -652,10 +652,14 @@ public class DashboardServiceTests
         db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { Id = Guid.NewGuid(), LehrerID = teacherId, SchulID = schuleId, KlasseId = levelA1.Id });
 
         // Übungsversuche: eine richtig (100), eine falsch (0). Ein offener manueller Versuch zählt nicht.
+        var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = levelA1.Id, Title = "Leçon", Order = 1 };
+        db.Lessons.Add(lesson);
+        var exercises = Enumerable.Range(0, 3).Select(i => new Exercise { Id = Guid.NewGuid(), LessonId = lesson.Id, Title = $"Exercice {i}", Order = i }).ToArray();
+        db.Exercises.AddRange(exercises);
         db.ExerciseAttempts.AddRange(
-            new ExerciseAttempt { ExerciseId = Guid.NewGuid(), StudentId = schueler.Id, IsCorrect = true, RequiresManualGrading = false },
-            new ExerciseAttempt { ExerciseId = Guid.NewGuid(), StudentId = schueler.Id, IsCorrect = false, RequiresManualGrading = false },
-            new ExerciseAttempt { ExerciseId = Guid.NewGuid(), StudentId = schueler.Id, IsCorrect = false, RequiresManualGrading = true });
+            new ExerciseAttempt { ExerciseId = exercises[0].Id, StudentId = schueler.Id, IsCorrect = true, RequiresManualGrading = false },
+            new ExerciseAttempt { ExerciseId = exercises[1].Id, StudentId = schueler.Id, IsCorrect = false, RequiresManualGrading = false },
+            new ExerciseAttempt { ExerciseId = exercises[2].Id, StudentId = schueler.Id, IsCorrect = false, RequiresManualGrading = true });
 
         // Prüfungsversuch: abgeschlossen, automatisch bewertet mit 80 %. Ein nicht abgeschlossener zählt nicht.
         var veroeffentlichtesExamId = Guid.NewGuid();
@@ -1521,6 +1525,36 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task GetLessonForEditAsync_BehaeltFristBeimBearbeiten()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "6e", Title = "Sixième" };
+        var dueAtUtc = DateTime.UtcNow.AddDays(2);
+        var lesson = new Lesson
+        {
+            Id = Guid.NewGuid(), KlasseId = klasse.Id, Title = "Leçon", Summary = "Résumé",
+            Content = "Contenu", ExerciseSubmissionDueAtUtc = dueAtUtc
+        };
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Lessons.Add(lesson);
+        await db.SaveChangesAsync();
+
+        var service = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+        var form = await service.GetLessonForEditAsync(lesson.Id);
+
+        Assert.NotNull(form);
+        Assert.Equal(dueAtUtc, form.ExerciseSubmissionDueAtUtc);
+        form.Title = "Leçon modifiée";
+        var result = await service.SaveLessonAsync(form);
+
+        Assert.True(result.Succeeded, result.Message);
+        var saved = await db.Lessons.AsNoTracking().SingleAsync(x => x.Id == lesson.Id);
+        Assert.Equal(dueAtUtc, saved.ExerciseSubmissionDueAtUtc);
+    }
+
+    [Fact]
     public async Task SaveLessonAsync_MitAbgabenVorFrist_SperrtBearbeitungInAktuellerRunde()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -1670,4 +1704,50 @@ public class DashboardServiceTests
         Assert.Equal("Leçon modifiée", persisted.Title);
     }
 
+    [Fact]
+    public async Task ChangeLessonSubmissionDueAsync_VerlaengerungOeffnetNeueAbgabeversionFuerAlle()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var teacherId = Guid.NewGuid();
+        var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Lomé" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "6e", Title = "Sixième" };
+        var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, Title = "Leçon", Summary = "Résumé", Content = "Contenu", CreatedByTeacherId = teacherId, AssignmentVersion = 1, ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddHours(-1), IsPublished = true };
+        var exercise = new Exercise { Id = Guid.NewGuid(), LessonId = lesson.Id, Title = "Exercice", Question = "Question", ExerciseType = "SingleChoice", Order = 1 };
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Lessons.Add(lesson);
+        db.Exercises.Add(exercise);
+        db.ExerciseAttempts.Add(new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = exercise.Id, StudentId = Guid.NewGuid(), AssignmentVersion = 1, IsCorrect = true });
+        await db.SaveChangesAsync();
+        var service = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+        var newDueAtUtc = DateTime.UtcNow.AddDays(1);
+
+        var result = await service.ChangeLessonSubmissionDueAsync(lesson.Id, newDueAtUtc, teacherId);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Equal(2, lesson.AssignmentVersion);
+        Assert.Equal(newDueAtUtc, lesson.ExerciseSubmissionDueAtUtc);
+        Assert.Equal(1, db.ExerciseAttempts.Single().AssignmentVersion);
+        await service.ChangeLessonSubmissionDueAsync(lesson.Id, newDueAtUtc, teacherId);
+        Assert.Equal(2, lesson.AssignmentVersion);
+    }
+
+    [Fact]
+    public async Task ChangeLessonSubmissionDueAsync_FremderLehrerDarfNichtVerlaengern()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Lomé" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "6e", Title = "Sixième" };
+        var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, Title = "Leçon", CreatedByTeacherId = Guid.NewGuid(), AssignmentVersion = 1 };
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Lessons.Add(lesson);
+        await db.SaveChangesAsync();
+
+        var result = await new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService())
+            .ChangeLessonSubmissionDueAsync(lesson.Id, DateTime.UtcNow.AddDays(1), Guid.NewGuid());
+
+        Assert.False(result.Succeeded);
+        Assert.Null(lesson.ExerciseSubmissionDueAtUtc);
+    }
 }

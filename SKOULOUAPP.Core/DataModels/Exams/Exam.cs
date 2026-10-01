@@ -15,6 +15,8 @@ public class Exam : AuditableModel
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int DurationInMinutes { get; set; }
+    public DateTime? SubmissionDueAtUtc { get; set; }
+    public bool IsSuperseded { get; set; }
     public int PassingScore { get; set; }
     public ExamType ExamType { get; set; } = ExamType.TestExam;
 
