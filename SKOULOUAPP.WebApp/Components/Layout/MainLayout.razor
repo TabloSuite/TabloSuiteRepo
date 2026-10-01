@@ -21,6 +21,7 @@
         }
 
         <article class="app-content @(isStudentChromeHidden ? "app-content--student" : "")">
+            <AnkuendigungAnzeige @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
             @Body
         </article>
 
@@ -44,8 +45,8 @@
 
                 <div class="app-footer-contact">
                     <p class="app-footer-heading">Contact</p>
-                    <a href="https://skoulouapp.com" target="_blank" rel="noopener noreferrer">skoulouapp.com</a>
-                    <a href="mailto:kontakt@skoulouapp.com">kontakt@skoulouapp.com</a>
+                    <a href="https://skoulou.etsetech.com" target="_blank" rel="noopener noreferrer">skoulou.etsetech.com</a>
+                    <a href="mailto:contact.skoulou@etsetech.com">contact.skoulou@etsetech.com</a>
                     <span>Lomé, Togo</span>
                     <span>Tel: <a href="tel:+4917661221600">+49 176 61221600</a></span>
 

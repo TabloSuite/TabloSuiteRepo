@@ -77,6 +77,12 @@
                             <span>Espace administrateur</span>
                         </NavLink>
                     </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="admin/broadcast" data-enhance-nav="false">
+                            <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
+                            <span>Annonces &amp; e-mails</span>
+                        </NavLink>
+                    </div>
 
                     @if (espaceState.User.IsInRole("SuperAdmin"))
                     {
@@ -88,6 +94,17 @@
                         </div>
                     }
                 }
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,ProduktOwner">
+            <Authorized>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="admin/courrier" data-enhance-nav="false">
+                        <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
+                        <span>Messagerie</span>
+                    </NavLink>
+                </div>
             </Authorized>
         </AuthorizeView>
 
@@ -147,6 +164,8 @@
 
         <AuthorizeView Roles="SchulLeiter,Koordinator,SuperAdmin">
             <Authorized Context="financeState">
+                @if (!financeState.User.IsInRole("Koordinator") || financeState.User.IsInRole("SchulLeiter") || coordinatorHasFinanceAccess)
+                {
                 <div class="nav-section-label nav-section-spacing">Finances</div>
                 @if (financeState.User.IsInRole("SuperAdmin"))
                 {
@@ -177,6 +196,7 @@
                             <span>Comptabilité & infos SKOULOUAPPABO</span>
                         </NavLink>
                     </div>
+                }
                 }
             </Authorized>
         </AuthorizeView>

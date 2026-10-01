@@ -88,7 +88,7 @@ else if (session is not null)
             <article class="card-stack-enter rounded-[2rem] bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-6" @key="question.QuestionId">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">Question @question.Order</p>
                 <div class="mt-1 flex flex-wrap items-center gap-3">
-                    <div class="ql-snow min-w-0 flex-1"><div class="ql-editor p-0 text-base font-semibold text-slate-900">@((MarkupString)HtmlSanitizer.Sanitize(question.Prompt))</div></div>
+                    <div class="ql-snow min-w-0 flex-1"><div class="ql-editor p-0 text-base font-semibold text-slate-900">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(question.Prompt))</div></div>
                     @if (IsAudioType(question.QuestionType) && !string.IsNullOrWhiteSpace(question.AudioText))
                     {
                         <button type="button"

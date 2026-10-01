@@ -119,16 +119,16 @@ Domains ist eine manuelle Freigabe nötig (**Request approval**):
 ### 5.1 User Secrets (lokale Entwicklung)
 
 Die Postmark-Zugangsdaten liegen in den **User Secrets** des Projekts
-`HalloApp.WebApp` (nicht in `appsettings.json`, da geheim):
+`SKOULOUAPP.WebApp` (nicht in `appsettings.json`, da geheim):
 
 ```json
 {
   "Postmark": {
 	"Enabled": true,
 	"ServerToken": "<geheimer-server-token>",
-	"FromEmail": "kontakt.etse@skoulou.com",
-	"FromName": "HALLO-APP",
-	"SupportEmail": "kontakt.etse@skoulou.com",
+	"FromEmail": "contact.skoulou@etsetech.com",
+	"FromName": "SKOULOUAPP",
+	"SupportEmail": "contact.skoulou@etsetech.com",
 	"MessageStream": "outbound"
   }
 }
@@ -137,12 +137,50 @@ Die Postmark-Zugangsdaten liegen in den **User Secrets** des Projekts
 Bearbeiten über die Kommandozeile:
 
 ```powershell
-cd HalloApp.WebApp
+cd SKOULOUAPP.WebApp
 dotnet user-secrets set "Postmark:ServerToken" "<token>"
 ```
 
 > Der `ServerToken` ist der **Server-API-Token** aus Postmark
 > (Servers → \<dein Server\> → API Tokens), **nicht** der Account-Token.
+
+Für die App wird `contact.skoulou@etsetech.com` als verifizierter Absender verwendet.
+Registrierungs- und Passwort-Mails gehen an die vom Nutzer angegebene Adresse;
+das Kontaktformular sendet an `Postmark:SupportEmail` und setzt die Nutzeradresse
+als `Reply-To`. Nach Einrichtung eines neuen Server-Tokens in User Secrets kann
+`Postmark:Enabled=true` für einen gezielten Versandtest gesetzt werden. Der
+transaktionale Stream bleibt `outbound`; einen Broadcast-Stream nicht für
+Willkommens- oder Passwort-Mails verwenden. Einen zuvor sichtbaren Token zuerst
+in Postmark rotieren und niemals einchecken.
+
+**Empfang:** Eine verifizierte Versanddomain ist kein Postfach. Das
+Kontaktformular speichert Nachrichten direkt im App-Posteingang und versucht
+zusätzlich eine Benachrichtigung an die Supportadresse. Für externe Antworten
+ist ein Postfach bzw. eine Weiterleitung für `contact.skoulou@etsetech.com`
+erforderlich. Dieses Postfach muss eingehende E-Mails an die von Postmark im
+Inbound-Stream angegebene Inbound-Adresse weiterleiten; die MX-Einträge der
+gesamten Domain `etsetech.com` nicht vorschnell auf Postmark umstellen.
+
+Postmark Inbound Processing auf demselben Server aktivieren und unter dem
+Inbound-Stream einen HTTPS-Webhook konfigurieren:
+`https://skoulou:<starkes-zufälliges-secret>@<app-host>/api/postmark/inbound`.
+Der Teil vor `@<app-host>` ist HTTP Basic Auth; Secret ausschließlich über
+`Postmark:InboundWebhookSecret` als User Secret bzw. Azure App Setting
+`Postmark__InboundWebhookSecret` hinterlegen. Die URL enthält das Secret:
+nicht in Tickets, Logs oder Screenshots teilen. Bei Fehlern Postmark-Retries
+prüfen; `MessageID` verhindert doppelte Speicherung. Erst nach einem
+erfolgreichen End-to-End-Test mit einer externen E-Mail den Empfang als
+betriebsbereit betrachten. In Azure zusätzlich `Postmark__ServerToken` und
+`Postmark__Enabled=true` konfigurieren. Lokale App ohne öffentliche HTTPS-URL
+kann keine externen Webhooks empfangen.
+
+Die Messagerie ist nur für SuperAdmin und ProductOwner zugänglich:
+ProductOwner sehen ausschließlich Nachrichten ihrer zugewiesenen Schulen;
+SuperAdmin sehen alle und können nach ProductOwner filtern. Eingehende externe
+Nachrichten bleiben zunächst ausschließlich im SuperAdmin-Posteingang, da die
+Absenderadresse keine verlässliche Schulidentität nachweist. Erst nach der
+manuellen Zuordnung durch den SuperAdmin sieht der zuständige ProductOwner
+diese Nachricht.
 
 ### 5.2 Produktion
 

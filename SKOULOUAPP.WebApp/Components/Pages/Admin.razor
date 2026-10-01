@@ -93,6 +93,11 @@ else
                                         SearchPlaceholder="Rechercher un pays..." />
                     </div>
 
+                    <div>
+                        <label class="hallo-label">Description de l'école (facultatif)</label>
+                        <RichTextEditor @bind-Value="schoolForm.DescriptionHtml" EnableImages="false" EnableLargeEditor="true" Placeholder="Présentez l'établissement..." />
+                    </div>
+
                     <label class="inline-flex items-center gap-3 text-sm text-slate-600">
                         <InputCheckbox @bind-Value="schoolForm.IsActive" />
                         <span>L'école est active</span>

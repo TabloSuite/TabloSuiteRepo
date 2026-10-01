@@ -266,7 +266,7 @@
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="text-sm font-black text-cyan-950">Vidéo de cours optionnelle</p>
-                            <p class="mt-1 text-xs leading-5 text-cyan-800">La vidéo est stockée uniquement via Azure Storage et ignorée dans l'export PDF. Formats recommandés : MP4/MOV. Durée maximale réelle : 1 heure.</p>
+                            <p class="mt-1 text-xs leading-5 text-cyan-800">Choisis une vidéo enregistrée ou téléverse-en une nouvelle. La vidéo n'apparaît pas dans le PDF. Durée maximale : 1 heure.</p>
                         </div>
                         @if (form.VideoAssetId.HasValue)
                         {
@@ -283,6 +283,8 @@
                             }
                         </div>
                     }
+                    <button type="button" class="mt-4 rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800" @onclick="() => videoLibraryOpen = true">Choisir ou ajouter une vidéo</button>
+                    @* Le transfert direct avec progression reste disponible pour les fichiers volumineux. *@
                     <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
                         <label class="block">
                             <span class="text-xs font-semibold text-slate-600">Fichier vidéo</span>
@@ -340,6 +342,7 @@
 <AzureBlobImageLibrary Open="imageLibraryOpen"
                        OpenChanged="@(open => imageLibraryOpen = open)"
                        ImageSelected="InsertLibraryImageAsync" />
+<AzureBlobImageLibrary Open="videoLibraryOpen" OpenChanged="@(open => videoLibraryOpen = open)" VideoMode="true" ImageSelected="ChooseLibraryVideoAsync" />
 
             <div class="mt-6 flex flex-wrap gap-2">
                 <button type="button" class="hallo-btn-accent rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg transition disabled:opacity-50" @onclick="SaveAsync" disabled="@isSaving">Enregistrer</button>

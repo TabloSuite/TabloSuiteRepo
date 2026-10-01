@@ -22,6 +22,7 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
     public static readonly Guid DefaultKlasseId = Guid.Parse("10000000-0000-0000-0000-000000000001");
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<School> Schools => Set<School>();
+    public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<KlassenStufe> KlassenStufen => Set<KlassenStufe>();
     public DbSet<Fach> Faecher => Set<Fach>();
@@ -53,6 +54,7 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
     public DbSet<CommissionSettings> CommissionSettings => Set<CommissionSettings>();
     public DbSet<FinanzKategorie> FinanzKategorien => Set<FinanzKategorie>();
     public DbSet<FinanzBuchung> FinanzBuchungen => Set<FinanzBuchung>();
+    public DbSet<FinanzBeleg> FinanzBelege => Set<FinanzBeleg>();
     public DbSet<KursNiveauDurchlauf> KursNiveauDurchlaeufe => Set<KursNiveauDurchlauf>();
     public DbSet<RatenZahlung> RatenZahlungen => Set<RatenZahlung>();
     public DbSet<KlassenAbschlussEntscheidung> KlassenAbschlussEntscheidungen => Set<KlassenAbschlussEntscheidung>();

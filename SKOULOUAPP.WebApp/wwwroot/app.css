@@ -1016,6 +1016,30 @@ main {
     }
 }
 
+.school-page-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.school-page-tabs button {
+    min-height: 2.75rem;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+@media (max-width: 640px) {
+    .school-page-tabs button {
+        flex: 1 1 auto;
+        font-size: .875rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .school-page-tabs button {
+        transition: none;
+    }
+}
+
 .app-shell {
     min-height: 100vh;
     display: flex;
@@ -1770,6 +1794,131 @@ section {
 }
 
 /* ===== Rich-Text-Editor: Schriftarten ===== */
+/* Picker liegen über dem positionierten A4-Inhalt; die lange Liste scrollt
+   innerhalb des Menüs statt über den Text hinauszulaufen. */
+.halloapp-richtext .ql-toolbar.ql-snow {
+    position: relative;
+    z-index: 3;
+    background: #fff;
+}
+
+.halloapp-richtext .ql-toolbar .ql-picker.ql-expanded {
+    z-index: 4;
+}
+
+.halloapp-richtext .ql-toolbar .ql-picker-options {
+    max-height: min(18rem, 50dvh);
+    overflow-y: auto;
+}
+
+.halloapp-richtext .ql-toolbar .ql-picker.ql-font {
+    width: 10rem;
+}
+
+.halloapp-richtext .halloapp-image-size {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    border: 2px solid #2563eb;
+    pointer-events: none;
+}
+
+.halloapp-richtext .halloapp-image-size[hidden] {
+    display: none;
+}
+
+.halloapp-image-size .halloapp-image-align {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 8px;
+    background: #1e293b;
+    box-shadow: 0 2px 8px #0f172a55;
+    pointer-events: auto;
+}
+
+.halloapp-image-align button {
+    min-width: 32px;
+    min-height: 32px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #fff;
+}
+
+.halloapp-image-align button:hover,
+.halloapp-image-align button:focus-visible {
+    background: #475569;
+}
+
+.halloapp-richtext {
+    position: relative;
+}
+
+.halloapp-richtext .ql-editor img {
+    cursor: grab;
+    touch-action: none;
+}
+
+.ql-editor img.ql-image-align-left,
+.ql-editor img.ql-image-align-center,
+.ql-editor img.ql-image-align-right {
+    display: block;
+    max-width: 100%;
+}
+
+.ql-editor img.ql-image-align-left {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.ql-editor img.ql-image-align-center {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ql-editor img.ql-image-align-right {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.halloapp-richtext .ql-editor.halloapp-image-moving,
+.halloapp-richtext .ql-editor.halloapp-image-moving img {
+    cursor: grabbing;
+}
+
+.halloapp-richtext .halloapp-image-drop-marker {
+    position: absolute;
+    z-index: 2;
+    width: 3px;
+    border-radius: 3px;
+    background: #2563eb;
+    pointer-events: none;
+}
+
+.halloapp-richtext .halloapp-image-drop-marker[hidden] {
+    display: none;
+}
+
+.halloapp-image-size .halloapp-image-size-handle {
+    position: absolute;
+    right: -9px;
+    bottom: -9px;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #fff;
+    border-radius: 5px;
+    background: #2563eb;
+    box-shadow: 0 1px 5px #0f172a66;
+    cursor: nwse-resize;
+    touch-action: none;
+    pointer-events: auto;
+}
+
 /* Lesbare Beschriftungen im Schriftart-Dropdown und tatsächliche Anwendung der Schrift. */
 .ql-snow .ql-picker.ql-font .ql-picker-label[data-value]::before,
 .ql-snow .ql-picker.ql-font .ql-picker-item[data-value]::before {
@@ -1856,7 +2005,7 @@ section {
 .ql-font-roboto { font-family: "Roboto", Arial, sans-serif; }
 .ql-font-nunito { font-family: "Nunito", Arial, sans-serif; }
 .ql-font-arial { font-family: Arial, sans-serif; }
-.ql-font-arial-black { font-family: "Arial Black", Arial, sans-serif; }
+.ql-font-arial-black { font-family: "Arial Black", Arial, sans-serif; font-weight: 900; }
 .ql-font-georgia { font-family: Georgia, serif; }
 .ql-font-times-new-roman { font-family: "Times New Roman", Times, serif; }
 .ql-font-comic-sans { font-family: "Comic Sans MS", "Comic Sans", cursive; }
@@ -1873,22 +2022,22 @@ section {
 
 .ql-snow .ql-picker.ql-size .ql-picker-label:not([data-value])::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item:not([data-value])::before {
-    content: "Normal";
+    content: "Par défaut";
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
-    content: "Small";
+    content: "Petit";
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
-    content: "Large";
+    content: "Grand";
 }
 
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
-    content: "Huge";
+    content: "Très grand";
 }
 
 .ql-size-10px { font-size: 10px; }

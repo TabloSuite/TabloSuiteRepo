@@ -6,6 +6,28 @@
 
 <PageTitle>Envoi d'e-mails</PageTitle>
 
+<section class="mx-auto mt-8 w-full max-w-3xl rounded-[2rem] bg-white p-6 shadow-lg ring-1 ring-slate-100 sm:p-8">
+    <h1 class="text-2xl font-black text-slate-900">Annonces affichées dans l'application</h1>
+    <p class="mt-2 text-sm text-slate-600">Les annonces restent visibles jusqu'à leur expiration ou leur suppression par l'Administrateur.</p>
+    @if (!string.IsNullOrWhiteSpace(announcementMessage))
+    {
+        <p class="mt-3 rounded-xl bg-cyan-50 p-3 text-sm text-cyan-900" role="status">@announcementMessage</p>
+    }
+    <div class="mt-5 grid gap-4">
+        <label class="block"><span class="hallo-label">Titre</span><input class="hallo-input" @bind="announcement.Title" maxlength="200" /></label>
+        <div><label class="hallo-label">Message</label><RichTextEditor @bind-Value="announcement.Body" EnableImages="false" EnableLargeEditor="true" /></div>
+        <label class="block"><span class="hallo-label">Expiration (heure locale)</span><input type="datetime-local" class="hallo-input" @bind="announcement.ExpiresAtLocal" @bind:format="yyyy-MM-ddTHH:mm" /></label>
+        <AsyncActionButton Class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" IsBusy="@isSavingAnnouncement" BusyLabel="Publication..." OnClick="PublishAnnouncementAsync">Publier l'annonce</AsyncActionButton>
+    </div>
+    @foreach (var item in announcements)
+    {
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4" @key="item.Id">
+            <div><strong class="text-slate-900">@item.Titel</strong><p class="text-xs text-slate-600">Expire le @item.AblaufAmUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
+            <AsyncActionButton Class="rounded-full bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-800" IsBusy="@isSavingAnnouncement" BusyLabel="Suppression..." OnClick="@(_ => DeleteAnnouncementAsync(item.Id))">Supprimer</AsyncActionButton>
+        </div>
+    }
+</section>
+
 <section class="mx-auto mt-16 w-full max-w-3xl rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
     <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Communication</p>
     <h1 class="mt-3 text-3xl font-black text-slate-900">Envoi d'e-mails groupés</h1>

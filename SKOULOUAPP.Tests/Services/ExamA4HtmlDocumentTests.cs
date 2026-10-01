@@ -66,6 +66,19 @@ public class ExamA4HtmlDocumentTests
         Assert.Equal(1, Regex.Matches(pdf, @"/Type\s*/Page\b").Count);
     }
 
+    [Fact]
+    public void BuildHtml_PreservesPrivateQuestionImagesWithoutExposingSolutions()
+    {
+        var exam = CreateExam();
+        var imageId = Guid.NewGuid();
+        exam.Exercises[0].Questions[0].Prompt = $"<p>Décris l'image :</p><img src=\"/media-library/{imageId}\" alt=\"Illustration\">";
+
+        var html = ExamA4HtmlDocument.BuildHtml(exam, false);
+
+        Assert.Contains($"src=\"/media-library/{imageId}\"", html);
+        Assert.DoesNotContain("solution\">✓", html);
+    }
+
     private sealed class BrowserEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = string.Empty;

@@ -41,7 +41,9 @@ public sealed class LessonExerciseA4PdfService(IConfiguration configuration, IWe
         foreach (var page in pages)
         {
             html.Append("<article class=\"lesson-a4-page ql-snow\"><div class=\"ql-editor\">");
-            html.Append(HtmlSanitizer.SanitizeMitBildern(page.ContentHtml));
+            var sanitizedContent = HtmlSanitizer.SanitizeMitBildern(page.ContentHtml);
+            sanitizedContent = Regex.Replace(sanitizedContent, "<img\\b[^>]*>", match => PrivateImageRegex.IsMatch(match.Value) ? match.Value : string.Empty, RegexOptions.IgnoreCase);
+            html.Append(sanitizedContent);
             html.Append("</div><p class=\"lesson-a4-page-number\">Page ");
             html.Append(page.PageNumber);
             html.Append("</p></article>");
@@ -59,7 +61,7 @@ public sealed class LessonExerciseA4PdfService(IConfiguration configuration, IWe
                 html.Append("</h3><p>");
                 html.Append(WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(exercise.Instructions)));
                 html.Append("</p><p>");
-                html.Append(WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(exercise.Question)));
+                html.Append(PrivateImagesOnly(HtmlSanitizer.SanitizeMitBildern(exercise.Question)));
                 html.Append("</p>");
                 foreach (var option in exercise.Options.OrderBy(option => option.Order))
                 {
@@ -94,6 +96,12 @@ public sealed class LessonExerciseA4PdfService(IConfiguration configuration, IWe
 
     public Task<byte[]> GenerateHtmlPdfAsync(string html, CancellationToken cancellationToken = default)
         => GeneratePdfHtmlAsync(html, cancellationToken);
+
+    public async Task<byte[]> GenerateHtmlPdfAsync(string html, IBlobMediaLibraryService mediaLibrary, Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default)
+        => await GeneratePdfHtmlAsync(await EmbedPrivateImagesAsync(PrivateImagesOnly(html), mediaLibrary, userId, roles, cancellationToken), cancellationToken);
+
+    private static string PrivateImagesOnly(string html)
+        => Regex.Replace(html, "<img\\b[^>]*>", match => PrivateImageRegex.IsMatch(match.Value) ? match.Value : string.Empty, RegexOptions.IgnoreCase);
 
     public async Task<byte[]> GeneratePdfAsync(LessonDetailViewModel lesson, IBlobMediaLibraryService mediaLibrary, Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default)
         => await GeneratePdfHtmlAsync(await EmbedPrivateImagesAsync(BuildHtml(lesson), mediaLibrary, userId, roles, cancellationToken), cancellationToken);

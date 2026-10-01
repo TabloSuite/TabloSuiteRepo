@@ -20,6 +20,87 @@ window.SKOULOUAPPRichText = {
     // Konkrete Größen plus relative Quill-Stufen; 16 px ist der Standard.
     sizeWhitelist: ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '48px', 'small', false, 'large', 'huge'],
 
+    setPickerValue: function (container, formatName, value) {
+        if (!container) {
+            return;
+        }
+        const picker = container.querySelector('.ql-picker.ql-' + formatName);
+        const nativeSelect = container.querySelector('select.ql-' + formatName);
+
+        // Quill verwaltet geöffnete Picker selbst; eine Synchronisierung
+        // während der Auswahl darf das Menü nicht vor dem Klick schließen.
+        if (picker?.classList.contains('ql-expanded')) {
+            return;
+        }
+
+        const valueText = value == null || value === false ? '' : value.toString();
+        if (nativeSelect) {
+            nativeSelect.value = valueText;
+        }
+
+        if (picker) {
+            const label = picker.querySelector('.ql-picker-label');
+            const items = picker.querySelectorAll('.ql-picker-item');
+
+            picker.classList.toggle('ql-active', !!valueText);
+            if (label) {
+                if (valueText) {
+                    label.setAttribute('data-value', valueText);
+                } else {
+                    label.removeAttribute('data-value');
+                }
+            }
+
+            items.forEach(function (item) {
+                const isActive = (item.getAttribute('data-value') || '') === valueText;
+                item.classList.toggle('ql-selected', isActive);
+            });
+        }
+    },
+
+    syncSelectionFormats: function (quill, stickyFormat, inlineKeys, updateToolbar) {
+        const sel = quill.getSelection();
+        if (!sel) {
+            return false;
+        }
+        if (sel.length > 0) {
+            updateToolbar();
+            return true;
+        }
+        const [line] = quill.getLine(sel.index);
+        if (line && line.domNode.textContent.trim()) {
+            const fmt = quill.getFormat(sel);
+            inlineKeys.forEach(function (key) {
+                if (fmt[key] === undefined || fmt[key] === false) {
+                    delete stickyFormat[key];
+                }
+            });
+            updateToolbar();
+            return true;
+        }
+        return false;
+    },
+
+    applySelectedFormat: function (quill, formatName, value, range) {
+        if (range && range.length > 0) {
+            quill.formatText(range.index, range.length, formatName, value, 'user');
+            quill.setSelection(range.index, range.length, 'silent');
+        } else {
+            quill.focus();
+            quill.format(formatName, value, 'user');
+        }
+    },
+
+    applyToolbarFormat: function (quill, formatName, value, range) {
+        if (['bold', 'italic', 'underline', 'strike'].includes(formatName)) {
+            const current = range
+                ? quill.getFormat(range.index, range.length)[formatName]
+                : quill.getFormat()[formatName];
+            value = !current;
+        }
+        this.applySelectedFormat(quill, formatName, value, range);
+    },
+
     formulaTemplates: [
         { group: 'Bases', label: 'Fraction', preview: '\\frac{a}{b}', latex: '\\frac{a}{b}' },
         { group: 'Bases', label: 'Fraction avec somme', preview: '\\frac{a+b}{c+d}', latex: '\\frac{a+b}{c+d}' },
@@ -211,6 +292,31 @@ window.SKOULOUAPPRichText = {
         SizeAttributor.whitelist = this.sizeWhitelist.filter(function (s) { return s; });
         Quill.register(SizeAttributor, true);
 
+        const Image = Quill.import('formats/image');
+        class AlignedImage extends Image {
+            static formats(node) {
+                const formats = super.formats(node);
+                const alignment = ['left', 'center', 'right'].find(function (value) {
+                    return node.classList.contains('ql-image-align-' + value);
+                });
+                if (alignment) {
+                    formats.imageAlign = alignment;
+                }
+                return formats;
+            }
+
+            format(name, value) {
+                if (name === 'imageAlign') {
+                    ['left', 'center', 'right'].forEach(function (alignment) {
+                        this.domNode.classList.toggle('ql-image-align-' + alignment, value === alignment);
+                    }, this);
+                    return;
+                }
+                super.format(name, value);
+            }
+        }
+        Quill.register(AlignedImage, true);
+
         this._formatsRegistered = true;
     },
 
@@ -252,6 +358,27 @@ window.SKOULOUAPPRichText = {
         if (readOnly !== true) {
             const toolbar = quill.getModule('toolbar');
             if (toolbar) {
+                let toolbarSelection = null;
+                toolbar.container.addEventListener('pointerdown', function (event) {
+                    if (!event.target.closest('button, .ql-picker')) {
+                        toolbarSelection = null;
+                        return;
+                    }
+                    const range = quill.getSelection();
+                    if (range) {
+                        toolbarSelection = { index: range.index, length: range.length };
+                    }
+                });
+                quill.root.addEventListener('pointerdown', function () { toolbarSelection = null; });
+
+                ['font', 'size', 'bold', 'italic', 'underline', 'strike', 'color', 'background'].forEach(function (formatName) {
+                    toolbar.addHandler(formatName, function (value) {
+                        const range = toolbarSelection || quill.getSelection();
+                        toolbarSelection = null;
+                        self.applyToolbarFormat(quill, formatName, value, range);
+                    });
+                });
+
                 toolbar.addHandler('formula', function () {
                     self.openFormulaPalette(quill, toolbar.container);
                 });
@@ -284,35 +411,6 @@ window.SKOULOUAPPRichText = {
                 stickyFormat.size = defaultSize;
             }
 
-            const setPickerValue = function (container, formatName, value) {
-                if (!container || value === undefined || value === false) {
-                    return;
-                }
-                const valueText = value.toString();
-                const picker = container.querySelector('.ql-picker.ql-' + formatName);
-                const nativeSelect = container.querySelector('select.ql-' + formatName);
-
-                if (nativeSelect) {
-                    nativeSelect.value = valueText;
-                }
-
-                if (picker) {
-                    const label = picker.querySelector('.ql-picker-label');
-                    const items = picker.querySelectorAll('.ql-picker-item');
-
-                    picker.classList.remove('ql-expanded');
-                    picker.classList.toggle('ql-active', true);
-                    if (label) {
-                        label.setAttribute('data-value', valueText);
-                    }
-
-                    items.forEach(function (item) {
-                        const isActive = (item.getAttribute('data-value') || '') === valueText;
-                        item.classList.toggle('ql-selected', isActive);
-                    });
-                }
-            };
-
             const syncStickyToolbar = function () {
                 const toolbarModule = quill.getModule('toolbar');
                 const toolbar = toolbarModule?.container || quill.container.previousElementSibling;
@@ -320,8 +418,8 @@ window.SKOULOUAPPRichText = {
                     return;
                 }
 
-                setPickerValue(toolbar, 'size', stickyFormat.size);
-                setPickerValue(toolbar, 'font', stickyFormat.font);
+                self.setPickerValue(toolbar, 'size', stickyFormat.size);
+                self.setPickerValue(toolbar, 'font', stickyFormat.font);
             };
 
             // Aktualisiert die Toolbar-Anzeige (Dropdowns/Buttons) anhand der
@@ -334,7 +432,13 @@ window.SKOULOUAPPRichText = {
                     toolbarModule.update(sel);
                     const fmt = quill.getFormat(sel);
                     if (sel.length === 0 && (!fmt.size || !fmt.font)) {
-                        syncStickyToolbar();
+                        const [line] = quill.getLine(sel.index);
+                        if (line && !line.domNode.textContent.trim()) {
+                            syncStickyToolbar();
+                        }
+                    }
+                    if (!fmt.font && (sel.length > 0 || quill.getLine(sel.index)[0]?.domNode.textContent.trim())) {
+                        self.setPickerValue(toolbarModule.container, 'font', null);
                     }
                 }
             };
@@ -365,6 +469,7 @@ window.SKOULOUAPPRichText = {
                 if (!sel) {
                     return;
                 }
+                if (self.syncSelectionFormats(quill, stickyFormat, inlineKeys, updateToolbar)) return;
                 const fmt = quill.getFormat(sel);
                 const hasInline = inlineKeys.some(function (key) {
                     return fmt[key] !== undefined && fmt[key] !== false;
@@ -478,6 +583,9 @@ window.SKOULOUAPPRichText = {
 
         if (readOnly !== true) {
             self.setupFormulaEditing(quill);
+            if (enableImages) {
+                self.setupImageSizing(quill);
+            }
         }
 
         if (typeof window.SKOULOUAPPFormulas !== 'undefined') {
@@ -500,6 +608,49 @@ window.SKOULOUAPPRichText = {
 
         element._quillInstance = quill;
         return true;
+    },
+
+    alignImage: function (quill, index, alignment) {
+        const [blot] = quill.getLeaf(index);
+        if (blot?.domNode?.tagName !== 'IMG' || !['left', 'center', 'right'].includes(alignment)) {
+            return false;
+        }
+        quill.formatText(index, 1, 'imageAlign', alignment, 'user');
+        return true;
+    },
+
+    moveImage: function (quill, from, to) {
+        const [blot] = quill.getLeaf(from);
+        const image = quill.getContents(from, 1).ops[0];
+        if (blot?.domNode?.tagName !== 'IMG' || !image?.insert?.image || to === from || to === from + 1
+            || to < 0 || to >= quill.getLength()) {
+            return false;
+        }
+        const Delta = Quill.import('delta');
+        const change = new Delta();
+        if (to > from) {
+            change.retain(from).delete(1).retain(to - from - 1).insert(image.insert, image.attributes);
+        } else {
+            change.retain(to).insert(image.insert, image.attributes).retain(from - to).delete(1);
+        }
+        quill.updateContents(change, 'user');
+        return true;
+    },
+
+    imageDropIndex: function (quill, x, y) {
+        const caret = document.caretRangeFromPoint?.(x, y);
+        const position = caret || document.caretPositionFromPoint?.(x, y);
+        const node = caret?.startContainer || position?.offsetNode;
+        const offset = caret?.startOffset ?? position?.offset;
+        if (!node || !quill.root.contains(node)) {
+            return null;
+        }
+        const child = node.nodeType === 1 ? node.childNodes[offset] : null;
+        const blot = Quill.find(child || node, true);
+        if (!blot) {
+            return null;
+        }
+        return Math.min(quill.getLength() - 1, quill.getIndex(blot) + (node.nodeType === 3 ? offset : 0));
     },
 
     // A4-Maße in Pixeln bei 96 DPI. Das Umbruch-Raster entspricht damit exakt
@@ -1156,6 +1307,7 @@ window.SKOULOUAPPRichText = {
         const delta = quill.clipboard.convert({ html: html || '' });
         quill.setContents(delta, 'silent');
         this.normalizeLinks(quill.root);
+        quill._halloappImageSizingRefresh?.(true);
 
         // Blazor rendert während des Seitenflusses den gebundenen HTML-Wert
         // erneut. Quill verliert dabei sonst seine Auswahl und setzt den Cursor
@@ -1240,14 +1392,281 @@ window.SKOULOUAPPRichText = {
         }
     },
 
+    imageWidth: function (image) {
+        const width = Number(image.getAttribute('width')) || image.getBoundingClientRect().width;
+        return Math.min(670, Math.max(80, Math.round(width)));
+    },
+
+    draggedImageWidth: function (startWidth, startX, clientX) {
+        return Math.min(670, Math.max(80, Math.round(startWidth + clientX - startX)));
+    },
+
+    resizeImage: function (quill, index, width) {
+        const [blot] = quill.getLeaf(index);
+        if (!blot || blot.domNode?.tagName !== 'IMG') {
+            return false;
+        }
+        const safeWidth = Math.min(670, Math.max(80, Math.round(Number(width))));
+        if (!Number.isFinite(safeWidth)) {
+            return false;
+        }
+        quill.formatText(index, 1, 'width', String(safeWidth), 'user');
+        if (blot.domNode.hasAttribute('height')) {
+            quill.formatText(index, 1, 'height', false, 'user');
+        }
+        return true;
+    },
+
+    setupImageSizing: function (quill) {
+        const container = quill.container.parentElement;
+        if (!container) {
+            return;
+        }
+
+        const controls = document.createElement('div');
+        controls.className = 'halloapp-image-size';
+        controls.hidden = true;
+        const handle = document.createElement('button');
+        handle.type = 'button';
+        handle.className = 'halloapp-image-size-handle';
+        handle.setAttribute('aria-label', "Redimensionner l’image en faisant glisser");
+        handle.title = "Glisser pour redimensionner l’image";
+        controls.appendChild(handle);
+        const alignmentControls = document.createElement('div');
+        alignmentControls.className = 'halloapp-image-align';
+        [['left', 'Gauche', '◀'], ['center', 'Centre', '↔'], ['right', 'Droite', '▶']].forEach(function ([value, label, icon]) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = icon;
+            button.title = 'Aligner l’image : ' + label.toLowerCase();
+            button.setAttribute('aria-label', button.title);
+            button.addEventListener('pointerdown', function (event) { event.preventDefault(); });
+            button.addEventListener('click', function () {
+                position();
+                if (imageIndex !== null && window.SKOULOUAPPRichText.alignImage(quill, imageIndex, value)) {
+                    refresh();
+                }
+            });
+            alignmentControls.appendChild(button);
+        });
+        controls.appendChild(alignmentControls);
+        container.appendChild(controls);
+        const dropMarker = document.createElement('div');
+        dropMarker.className = 'halloapp-image-drop-marker';
+        dropMarker.hidden = true;
+        container.appendChild(dropMarker);
+
+        let selectedImage = null;
+        let selectedImageOrdinal = 0;
+        let imageIndex = null;
+        let dragging = null;
+        let moving = null;
+        let ignoreCapturedClick = false;
+        const stopMoving = function () {
+            moving = null;
+            dropMarker.hidden = true;
+            quill.root.classList.remove('halloapp-image-moving');
+        };
+        const hide = function () {
+            controls.hidden = true;
+            selectedImage = null;
+            imageIndex = null;
+        };
+        const position = function (reimported = false) {
+            if (!selectedImage) {
+                return;
+            }
+            if (!quill.root.contains(selectedImage) && reimported) {
+                const images = Array.from(quill.root.querySelectorAll('img')).filter(function (image) {
+                    return image.getAttribute('src') === selectedImage.getAttribute('src');
+                });
+                selectedImage = images[selectedImageOrdinal] || null;
+            }
+            if (!selectedImage || !quill.root.contains(selectedImage)) {
+                hide();
+                return;
+            }
+            const blot = Quill.find(selectedImage);
+            if (!blot) {
+                hide();
+                return;
+            }
+            imageIndex = quill.getIndex(blot);
+            const rect = selectedImage.getBoundingClientRect();
+            const parent = container.getBoundingClientRect();
+            controls.style.left = (rect.left - parent.left) + 'px';
+            controls.style.top = (rect.top - parent.top) + 'px';
+            controls.style.width = rect.width + 'px';
+            controls.style.height = rect.height + 'px';
+        };
+        const refresh = function (reimported = false) {
+            position(reimported);
+            requestAnimationFrame(function () { position(); });
+        };
+        quill.root.addEventListener('click', function (event) {
+            const image = event.target.closest('img');
+            if (!image || !quill.root.contains(image)) {
+                if (ignoreCapturedClick) {
+                    ignoreCapturedClick = false;
+                    return;
+                }
+                hide();
+                return;
+            }
+            ignoreCapturedClick = false;
+            const blot = Quill.find(image);
+            if (!blot) {
+                return;
+            }
+            selectedImage = image;
+            selectedImageOrdinal = Array.from(quill.root.querySelectorAll('img')).filter(function (item) {
+                return item.getAttribute('src') === image.getAttribute('src');
+            }).indexOf(image);
+            controls.hidden = false;
+            refresh();
+        });
+        quill.root.addEventListener('dragstart', function (event) {
+            if (event.target.closest('img')) {
+                event.preventDefault();
+            }
+        });
+        quill.root.addEventListener('pointerdown', function (event) {
+            const image = event.target.closest('img');
+            if (!image || !quill.root.contains(image)) {
+                ignoreCapturedClick = false;
+                return;
+            }
+            event.preventDefault();
+            ignoreCapturedClick = true;
+            selectedImage = image;
+            selectedImageOrdinal = Array.from(quill.root.querySelectorAll('img')).filter(function (item) {
+                return item.getAttribute('src') === image.getAttribute('src');
+            }).indexOf(image);
+            controls.hidden = false;
+            refresh();
+            moving = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false, target: null };
+            quill.root.setPointerCapture(event.pointerId);
+        });
+        quill.root.addEventListener('pointermove', function (event) {
+            if (!moving || moving.pointerId !== event.pointerId) {
+                return;
+            }
+            if (!moving.active && Math.hypot(event.clientX - moving.startX, event.clientY - moving.startY) < 6) {
+                return;
+            }
+            moving.active = true;
+            quill.root.classList.add('halloapp-image-moving');
+            moving.target = window.SKOULOUAPPRichText.imageDropIndex(quill, event.clientX, event.clientY);
+            dropMarker.hidden = moving.target === null;
+            if (moving.target !== null) {
+                const bounds = quill.getBounds(moving.target);
+                const editor = quill.container.getBoundingClientRect();
+                const parent = container.getBoundingClientRect();
+                dropMarker.style.left = (editor.left - parent.left + bounds.left) + 'px';
+                dropMarker.style.top = (editor.top - parent.top + bounds.top) + 'px';
+                dropMarker.style.height = Math.max(20, bounds.height) + 'px';
+            }
+        });
+        quill.root.addEventListener('pointerup', function (event) {
+            if (!moving || moving.pointerId !== event.pointerId) {
+                return;
+            }
+            const { active, target, startX, startY } = moving;
+            stopMoving();
+            position();
+            if (!active || imageIndex === null) {
+                return;
+            }
+            const horizontal = selectedImage && Math.abs(event.clientX - startX) > Math.abs(event.clientY - startY)
+                && Math.abs(event.clientY - startY) < 24;
+            if (horizontal) {
+                const rect = quill.root.getBoundingClientRect();
+                if (event.clientX >= rect.left && event.clientX <= rect.right
+                    && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+                    const fraction = (event.clientX - rect.left) / rect.width;
+                    const alignment = fraction < 1 / 3 ? 'left' : fraction > 2 / 3 ? 'right' : 'center';
+                    window.SKOULOUAPPRichText.alignImage(quill, imageIndex, alignment);
+                    refresh();
+                }
+            } else if (target !== null && target !== imageIndex && target !== imageIndex + 1) {
+                window.SKOULOUAPPRichText.moveImage(quill, imageIndex, target);
+                refresh(true);
+            }
+        });
+        quill.root.addEventListener('pointercancel', stopMoving);
+        handle.addEventListener('pointerdown', function (event) {
+            if (imageIndex === null) {
+                return;
+            }
+            position();
+            if (imageIndex === null) {
+                hide();
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            dragging = { pointerId: event.pointerId, startX: event.clientX, startWidth: window.SKOULOUAPPRichText.imageWidth(selectedImage) };
+            handle.setPointerCapture(event.pointerId);
+        });
+        handle.addEventListener('pointermove', function (event) {
+            if (!dragging || event.pointerId !== dragging.pointerId) {
+                return;
+            }
+            position();
+            if (imageIndex === null) {
+                dragging = null;
+                return;
+            }
+            const width = window.SKOULOUAPPRichText.draggedImageWidth(dragging.startWidth, dragging.startX, event.clientX);
+            if (!window.SKOULOUAPPRichText.resizeImage(quill, imageIndex, width)) {
+                hide();
+                dragging = null;
+                return;
+            }
+            refresh();
+        });
+        const stopDragging = function (event) {
+            if (dragging?.pointerId === event.pointerId) {
+                dragging = null;
+                refresh();
+            }
+        };
+        handle.addEventListener('pointerup', stopDragging);
+        handle.addEventListener('pointercancel', stopDragging);
+        const onTextChange = function () {
+            if (selectedImage && !quill.root.contains(selectedImage)) {
+                refresh(true);
+                return;
+            }
+            refresh();
+        };
+        quill.on('text-change', onTextChange);
+        quill._halloappImageSizingRefresh = refresh;
+        window.addEventListener('resize', position);
+        window.addEventListener('scroll', position, true);
+        container.addEventListener('scroll', position, true);
+        quill.container._halloappImageSizingCleanup = function () {
+            stopMoving();
+            quill.off('text-change', onTextChange);
+            delete quill._halloappImageSizingRefresh;
+            window.removeEventListener('resize', position);
+            window.removeEventListener('scroll', position, true);
+            container.removeEventListener('scroll', position, true);
+        };
+    },
+
     destroy: function (element) {
         if (element && element._quillInstance) {
+            element._halloappImageSizingCleanup?.();
+            delete element._halloappImageSizingCleanup;
             element._quillInstance = null;
             // Von Quill hinzugefügte Toolbar entfernen, damit keine Duplikate entstehen.
             const container = element.parentElement;
             if (container) {
                 const toolbars = container.querySelectorAll('.ql-toolbar');
                 toolbars.forEach(function (tb) { tb.remove(); });
+                container.querySelectorAll('.halloapp-image-size').forEach(function (controls) { controls.remove(); });
+                container.querySelectorAll('.halloapp-image-drop-marker').forEach(function (marker) { marker.remove(); });
             }
             element.classList.remove('ql-container', 'ql-snow');
             element.innerHTML = '';

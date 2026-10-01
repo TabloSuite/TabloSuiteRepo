@@ -18,6 +18,9 @@ public partial class AdminBroadcast
     private HomePageService HomePageService { get; set; } = default!;
 
     [Inject]
+    private AnkuendigungService AnkuendigungService { get; set; } = default!;
+
+    [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
 
     private IReadOnlyList<School> schools = [];
@@ -34,6 +37,10 @@ public partial class AdminBroadcast
     private string? message;
     private bool succeeded;
     private bool isSubmitting;
+    private bool isSavingAnnouncement;
+    private string? announcementMessage;
+    private List<Ankuendigung> announcements = [];
+    private AnnouncementInput announcement = new();
 
     private IReadOnlyList<ModernDropdownOption<BroadcastAudience?>> AudienceOptions =>
     [
@@ -71,6 +78,7 @@ public partial class AdminBroadcast
         try
         {
             schools = await HomePageService.GetSchoolsAsync(ComponentToken);
+            announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -84,6 +92,47 @@ public partial class AdminBroadcast
         SchoolId = Guid.TryParse(Model.SchoolId, out var id) ? id : null,
         ZusaetzlicheAdressen = ParseAdressen(Model.ManualRecipients)
     };
+
+    private async Task PublishAnnouncementAsync()
+    {
+        if (isSavingAnnouncement) return;
+        isSavingAnnouncement = true;
+        try
+        {
+            await DatabaseActionGuard.RunAsync(async () =>
+            {
+                var expiryUtc = announcement.ExpiresAtLocal.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(announcement.ExpiresAtLocal, DateTimeKind.Local).ToUniversalTime()
+                    : announcement.ExpiresAtLocal.ToUniversalTime();
+                var result = await AnkuendigungService.ErstellenAsync(announcement.Title, announcement.Body, expiryUtc, DateTime.UtcNow, ComponentToken);
+                announcementMessage = result.Message;
+                if (result.Succeeded)
+                {
+                    announcement = new();
+                    announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+                }
+            });
+        }
+        finally { isSavingAnnouncement = false; }
+    }
+
+    private async Task DeleteAnnouncementAsync(Guid id)
+    {
+        if (isSavingAnnouncement) return;
+        isSavingAnnouncement = true;
+        try
+        {
+            await DatabaseActionGuard.RunAsync(async () =>
+            {
+                if (await AnkuendigungService.LoeschenAsync(id, ComponentToken))
+                {
+                    announcementMessage = "Annonce supprimée.";
+                    announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+                }
+            });
+        }
+        finally { isSavingAnnouncement = false; }
+    }
 
     /// <summary>
     /// Zerlegt die Freitexteingabe in einzelne Adressen. Erlaubt sind Komma,
@@ -141,6 +190,13 @@ public partial class AdminBroadcast
         {
             isSubmitting = false;
         }
+    }
+
+    private sealed class AnnouncementInput
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public DateTime ExpiresAtLocal { get; set; } = DateTime.Now.AddDays(7);
     }
 
     private sealed class BroadcastInput

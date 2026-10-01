@@ -27,7 +27,7 @@ public static class ExamA4HtmlDocument
             if (!string.IsNullOrWhiteSpace(block.Consigne)) html.Append("<div class=\"ql-editor intro\">").Append(HtmlSanitizer.Sanitize(block.Consigne)).Append("</div>");
             foreach (var question in block.Questions.OrderBy(question => question.Number))
             {
-                html.Append("<div class=\"question\"><div class=\"prompt\">").Append(question.Number).Append(". <div class=\"ql-editor\">").Append(HtmlSanitizer.Sanitize(question.Prompt)).Append("</div> (").Append(question.Points).Append(" pts)</div>");
+                html.Append("<div class=\"question\"><div class=\"prompt\">").Append(question.Number).Append(". <div class=\"ql-editor\">").Append(HtmlSanitizer.SanitizeMitBildern(question.Prompt)).Append("</div> (").Append(question.Points).Append(" pts)</div>");
                 var isChoice = question.QuestionType is "Choice" or "SingleChoice" or "MultipleChoice" or "AudioChoice" or "AudioSingleChoice" or "AudioMultipleChoice";
                 if (isChoice && question.Options.Count > 0)
                 {

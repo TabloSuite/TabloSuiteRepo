@@ -115,6 +115,10 @@ public class GesamtAblaufTests
         Assert.Contains(Rollen.SchulLeiter, await userManager.GetRolesAsync(director));
         Assert.Contains(Rollen.Lehrer, await userManager.GetRolesAsync(director));
         Assert.True(await db.UserSchools.AnyAsync(x => x.AppUserId == director.Id && x.SchoolId == school.Id && x.CanManageStudents, CancellationToken.None));
+        var directorRole = new Role { Id = Guid.NewGuid(), Name = Rollen.SchulLeiter };
+        db.Roles.Add(directorRole);
+        db.UserRoles.Add(new AppUserRole { UserId = director.Id, RoleId = directorRole.Id });
+        await db.SaveChangesAsync();
         Assert.Single(emailService.Gesendet);
 
         director.IsBlocked = false;

@@ -39,6 +39,14 @@ public class FinanzBuchung : AuditableModel
     /// <summary>Optionale Notiz als Rich-Text-HTML (RTF-Editor).</summary>
     public string? BeschreibungHtml { get; set; }
 
+    /// <summary>Beleg- oder Rechnungsnummer manueller Buchungen; bei Bestandsdaten optional.</summary>
+    public string? Belegnummer { get; set; }
+
+    private string? buchungsnummer;
+
+    /// <summary>Unveränderliche interne Nummer der Buchung, keine externe Rechnungsnummer.</summary>
+    public string Buchungsnummer => buchungsnummer ?? $"B-{Id:N}".ToUpperInvariant();
+
     /// <summary>Im Hintergrund erfasster Nutzer, der die Buchung angelegt hat.</summary>
     public Guid ErfasstVonUserID { get; set; }
     public AppUser? ErfasstVon { get; set; }

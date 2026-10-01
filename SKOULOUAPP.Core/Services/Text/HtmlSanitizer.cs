@@ -301,14 +301,14 @@ public static partial class HtmlSanitizer
                 return null;
 
             case "style":
-                return BereinigeStil(normalisiert);
+                return BereinigeStil(normalisiert, istBild);
 
             default:
                 return null;
         }
     }
 
-    private static string? BereinigeStil(string stil)
+    private static string? BereinigeStil(string stil, bool istBild)
     {
         var deklarationen = new List<string>();
         foreach (var teil in stil.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -321,6 +321,15 @@ public static partial class HtmlSanitizer
 
             var eigenschaft = teil[..index].Trim().ToLowerInvariant();
             var wert = teil[(index + 1)..].Trim();
+
+            if (istBild && eigenschaft is "width" or "height")
+            {
+                if (Regex.IsMatch(wert, @"^\d+(\.\d+)?(px|%)?$", RegexOptions.IgnoreCase))
+                {
+                    deklarationen.Add($"{eigenschaft}: {wert}");
+                }
+                continue;
+            }
 
             if (!ErlaubteStilEigenschaften.Contains(eigenschaft))
             {

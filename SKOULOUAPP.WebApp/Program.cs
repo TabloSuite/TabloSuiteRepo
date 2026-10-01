@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using System.Security.Claims;
 using HalloApp.Core.DataModels.Identity;
+using HalloApp.Core.DataModels.Finanzen;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using HalloApp.WebApp.Services;
 using QuestPDF.Fluent;
@@ -150,6 +151,10 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.PostConfigure<AzureBlobStorageOptions>(options => options.Enabled = false);
 }
+else
+{
+    builder.Services.PostConfigure<AzureBlobStorageOptions>(options => options.Enabled = true);
+}
 builder.Services.Configure<PostmarkOptions>(builder.Configuration.GetSection(PostmarkOptions.SectionName));
 
 builder.Services.AddHttpClient("Postmark", client =>
@@ -159,13 +164,19 @@ builder.Services.AddHttpClient("Postmark", client =>
 });
 builder.Services.AddScoped<IEmailService, PostmarkEmailService>();
 builder.Services.AddScoped<BroadcastEmailService>();
+builder.Services.AddTransient<MailboxService>();
 
 builder.Services.AddTransient<ICourseRepository, CourseRepository>();
 builder.Services.AddTransient<ISchoolRepository, SchoolRepository>();
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
-builder.Services.AddTransient<IMediaStorageService, LocalMediaStorageService>();
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddTransient<IMediaStorageService, LocalMediaStorageService>();
+else
+    builder.Services.AddTransient<IMediaStorageService, ProductionMediaStorageService>();
 builder.Services.AddTransient<IBlobMediaLibraryService, AzureBlobMediaLibraryService>();
+builder.Services.AddTransient<IFinanzBelegStorage, AzureFinanzBelegStorage>();
 builder.Services.AddTransient<HomePageService>();
+builder.Services.AddTransient<AnkuendigungService>();
 builder.Services.AddTransient<DashboardService>();
 builder.Services.AddTransient<LearningService>();
 builder.Services.AddTransient<LessonExerciseA4PdfService>();
@@ -177,6 +188,7 @@ builder.Services.AddTransient<NiveauGruppenService>();
 builder.Services.AddTransient<AbrechnungService>();
 builder.Services.AddTransient<ProvisionsService>();
 builder.Services.AddTransient<FinanzService>();
+builder.Services.AddTransient<FinanzBerichtPdfService>();
 builder.Services.AddTransient<SchoolUserImportService>();
 builder.Services.AddScoped<ITextToSpeechProvider, BrowserSpeechProvider>();
 var app = builder.Build();
@@ -232,6 +244,25 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration config, MailboxService mailbox, CancellationToken cancellationToken) =>
+{
+    var secret = config["Postmark:InboundWebhookSecret"];
+    var authorization = request.Headers.Authorization.ToString();
+    var expected = "Basic " + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("skoulou:" + secret));
+    if (string.IsNullOrWhiteSpace(secret) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(System.Text.Encoding.UTF8.GetBytes(expected), System.Text.Encoding.UTF8.GetBytes(authorization)))
+        return Results.Unauthorized();
+
+    using var document = await System.Text.Json.JsonDocument.ParseAsync(request.Body, cancellationToken: cancellationToken);
+    var root = document.RootElement;
+    static string Value(System.Text.Json.JsonElement value, string key) => value.TryGetProperty(key, out var item) && item.ValueKind == System.Text.Json.JsonValueKind.String ? item.GetString() ?? string.Empty : string.Empty;
+    var from = Value(root, "From");
+    var to = Value(root, "To");
+    var id = Value(root, "MessageID");
+    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(from) || !to.Contains("contact.skoulou@etsetech.com", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest();
+    await mailbox.EmpfangenAsync(from, to, Value(root, "Subject"), Value(root, "HtmlBody") is { Length: > 0 } html ? html : System.Net.WebUtility.HtmlEncode(Value(root, "TextBody")), id, cancellationToken: cancellationToken);
+    return Results.Ok();
+}).DisableAntiforgery();
+
 app.MapGet("/media-library/{assetId:guid}", async (
     Guid assetId,
     ClaimsPrincipal user,
@@ -251,12 +282,53 @@ app.MapGet("/media-library/{assetId:guid}", async (
         : Results.File(image.Content, image.ContentType, enableRangeProcessing: true);
 }).RequireAuthorization();
 
+app.MapGet("/finanzen/rapport/pdf-file", async (
+    Guid schoolId,
+    DateTime? from,
+    DateTime? to,
+    FinanzRichtung? direction,
+    FinanzSortierung? sort,
+    ClaimsPrincipal user,
+    FinanzService finanzService,
+    FinanzBerichtPdfService pdfService,
+    CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        return Results.Unauthorized();
+
+    var bericht = await finanzService.GetFinanzBerichtAsync(userId, user.IsInRole(Rollen.SuperAdmin), new FinanzFilter
+    {
+        SchulID = schoolId,
+        Von = from,
+        Bis = to,
+        Richtung = direction,
+        Sortierung = sort ?? FinanzSortierung.WirkungsdatumAbsteigend
+    }, cancellationToken);
+    if (bericht is null) return Results.NotFound();
+
+    var bytes = pdfService.Generate(bericht);
+    return Results.File(bytes, "application/pdf");
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.SchulLeiter, Rollen.Koordinator));
+
+app.MapGet("/finanzen/justificatif/{buchungId:guid}", async (
+    Guid buchungId, ClaimsPrincipal user, FinanzService finanzService, CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        return Results.Unauthorized();
+    var beleg = await finanzService.GetFinanzBelegAsync(buchungId, userId, cancellationToken);
+    if (beleg is null) return Results.NotFound();
+    var inhalt = await finanzService.OeffneFinanzBelegAsync(beleg, cancellationToken);
+    return inhalt is null ? Results.NotFound() : Results.File(inhalt, beleg.Inhaltstyp, enableRangeProcessing: false);
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.SchulLeiter, Rollen.Koordinator));
+
 app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
     Guid examId,
     bool? solutions,
+    HttpResponse response,
     ClaimsPrincipal user,
     ExamService examService,
     LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -277,7 +349,7 @@ app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions), cancellationToken);
+    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions), mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
     var safeTitle = string.IsNullOrWhiteSpace(exam.Title)
         ? "examen"
         : string.Concat(exam.Title.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
@@ -287,11 +359,12 @@ app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
     }
 
     var fileName = $"{safeTitle}{(includeSolutions ? "-corrige" : "-sans-solutions")}.pdf";
-    return Results.File(bytes, "application/pdf", fileName);
+    return InlinePdfResponse.Create(response, bytes, fileName);
 }).RequireAuthorization("RequireTeacher");
 
 app.MapGet("/teacher/lesson-exercises/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
+    HttpResponse response,
     ClaimsPrincipal user,
     LearningService learningService,
     LessonExerciseA4PdfService pdfService,
@@ -319,12 +392,13 @@ app.MapGet("/teacher/lesson-exercises/{lessonId:guid}/pdf-file", async (
         safeTitle = "support";
     }
 
-    return Results.File(bytes, "application/pdf", $"{safeTitle}-sans-solutions.pdf");
+    return InlinePdfResponse.Create(response, bytes, $"{safeTitle}-sans-solutions.pdf");
 }).RequireAuthorization("RequireTeacher");
 
 app.MapGet("/teacher-lessons/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
     bool? solutions,
+    HttpResponse response,
     ClaimsPrincipal user,
     TeacherLessonService teacherLessonService,
     LessonExerciseA4PdfService pdfService,
@@ -360,11 +434,12 @@ app.MapGet("/teacher-lessons/{lessonId:guid}/pdf-file", async (
     }
 
     var fileName = $"{safeTitle}{(includeSolutions ? "-avec-solutions" : "-sans-solutions")}.pdf";
-    return Results.File(bytes, "application/pdf", fileName);
+    return InlinePdfResponse.Create(response, bytes, fileName);
 }).RequireAuthorization("RequireTeacher");
 
 app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
+    HttpResponse response,
     ClaimsPrincipal user,
     TeacherLessonService teacherLessonService,
     LessonExerciseA4PdfService pdfService,
@@ -393,14 +468,16 @@ app.MapGet("/student/lessons/support/{lessonId:guid}/pdf-file", async (
     }
 
     var fileName = $"{safeTitle}-eleve.pdf";
-    return Results.File(bytes, "application/pdf", fileName);
+    return InlinePdfResponse.Create(response, bytes, fileName);
 }).RequireAuthorization("RequireStudent");
 
 app.MapGet("/student/exams/{examId:guid}/pdf-file", async (
     Guid examId,
+    HttpResponse response,
     ClaimsPrincipal user,
     ExamService examService,
     LessonExerciseA4PdfService pdfService,
+    IBlobMediaLibraryService mediaLibrary,
     CancellationToken cancellationToken) =>
 {
     if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -414,12 +491,13 @@ app.MapGet("/student/exams/{examId:guid}/pdf-file", async (
         return Results.NotFound();
     }
 
-    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions: false), cancellationToken);
-    return Results.File(bytes, "application/pdf", "epreuve-sans-solutions.pdf");
+    var bytes = await pdfService.GenerateHtmlPdfAsync(ExamA4HtmlDocument.BuildHtml(exam, includeSolutions: false), mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
+    return InlinePdfResponse.Create(response, bytes, "epreuve-sans-solutions.pdf");
 }).RequireAuthorization("RequireStudent");
 
 app.MapGet("/student/lessons/{lessonId:guid}/pdf-file", async (
     Guid lessonId,
+    HttpResponse response,
     ClaimsPrincipal user,
     LearningService learningService,
     LessonExerciseA4PdfService pdfService,
@@ -438,7 +516,7 @@ app.MapGet("/student/lessons/{lessonId:guid}/pdf-file", async (
     }
 
     var bytes = await pdfService.GeneratePdfAsync(lesson, mediaLibrary, userId, user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray(), cancellationToken);
-    return Results.File(bytes, "application/pdf", "lecon-et-exercices-sans-solutions.pdf");
+    return InlinePdfResponse.Create(response, bytes, "lecon-et-exercices-sans-solutions.pdf");
 }).RequireAuthorization("RequireStudent");
 
 app.MapGet("/media-library/videos/{assetId:guid}", async (

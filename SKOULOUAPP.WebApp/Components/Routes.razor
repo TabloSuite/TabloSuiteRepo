@@ -1,10 +1,21 @@
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-            <NotAuthorized>
-                <RedirectToLogin />
-            </NotAuthorized>
-        </AuthorizeRouteView>
+        <ProtokollierendeFehlergrenze @key="routeData.PageType">
+            <ChildContent>
+                <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                    <NotAuthorized>
+                        <RedirectToLogin />
+                    </NotAuthorized>
+                </AuthorizeRouteView>
+            </ChildContent>
+            <ErrorContent>
+                <section class="mx-auto max-w-3xl rounded-2xl bg-white p-6 text-slate-800 shadow ring-1 ring-rose-100" role="alert">
+                    <h1 class="text-xl font-bold">Une erreur inattendue s'est produite.</h1>
+                    <p class="mt-2 text-sm">Rechargez la page pour réessayer.</p>
+                    <a class="mt-4 inline-block text-sm font-semibold text-indigo-700 underline" href="/">Retour à l'accueil</a>
+                </section>
+            </ErrorContent>
+        </ProtokollierendeFehlergrenze>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <Navigating>

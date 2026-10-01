@@ -11,6 +11,7 @@ using HalloApp.Core.Models.TeacherLessons;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text;
 
@@ -18,6 +19,8 @@ namespace HalloApp.WebApp.Components.Pages;
 
 public partial class SchulLeiter
 {
+    [Inject] private ILogger<SchulLeiter> Logger { get; set; } = default!;
+
     private const string DirectorTabSubjects = "subjects";
     private const string DirectorTabClasses = "classes";
     private const string DirectorTabUsers = "users";
@@ -794,6 +797,43 @@ public partial class SchulLeiter
 
     private bool userModalOpen;
     private UserFormModel userForm = new();
+    private readonly Dictionary<Guid, (bool Menu, bool Dashboard, bool Entries, bool Cycles)> coordinatorFinanceAccess = new();
+    private Guid? coordinatorFinanceSchoolId;
+    private bool coordinatorFinanceMenu;
+    private bool coordinatorFinanceDashboard;
+    private bool coordinatorFinanceEntries;
+    private bool coordinatorFinanceCycles;
+
+    private void SelectCoordinatorFinanceSchool(Guid? schoolId)
+    {
+        coordinatorFinanceSchoolId = schoolId;
+        var access = schoolId.HasValue && coordinatorFinanceAccess.TryGetValue(schoolId.Value, out var saved)
+            ? saved : default;
+        coordinatorFinanceMenu = access.Menu;
+        coordinatorFinanceDashboard = access.Dashboard;
+        coordinatorFinanceEntries = access.Entries;
+        coordinatorFinanceCycles = access.Cycles;
+    }
+
+    private async Task SaveCoordinatorFinanceAccessAsync()
+    {
+        if (coordinatorFinanceSchoolId is not Guid schoolId || userForm.UserId is not Guid coordinatorId) return;
+        if (!userForm.SchoolIds.Contains(schoolId))
+        {
+            userErrorMessage = "Enregistrez d'abord l'affectation du coordinateur à cette école.";
+            return;
+        }
+
+        var result = await FinanzService.SetCoordinatorFinanceAccessAsync(currentUserId, coordinatorId, schoolId,
+            coordinatorFinanceMenu, coordinatorFinanceDashboard, coordinatorFinanceEntries, coordinatorFinanceCycles, ComponentToken);
+        if (result.Succeeded)
+        {
+            coordinatorFinanceAccess[schoolId] = (coordinatorFinanceMenu, coordinatorFinanceDashboard, coordinatorFinanceEntries, coordinatorFinanceCycles);
+            userStatusMessage = result.Message;
+            userErrorMessage = null;
+        }
+        else userErrorMessage = result.Message;
+    }
     private string? userStatusMessage;
     private string? userErrorMessage;
     private bool isStudentPersonalEditMode;
@@ -1138,10 +1178,31 @@ public partial class SchulLeiter
             return;
         }
 
+        if (!string.Equals(Path.GetExtension(file.Name), ".csv", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(Path.GetExtension(file.Name), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            SetResult(false, "Utilise un fichier CSV ou Excel (.xlsx).");
+            return;
+        }
+
+        if (kind == SchoolUserImportKind.Teacher) { teacherImportCsv = null; teacherImportPreview = null; }
+        else { studentImportCsv = null; studentImportPreview = null; }
+
         try
         {
             await using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024, cancellationToken: ComponentToken);
-            var csv = await ReadCsvFileAsync(stream, ComponentToken);
+            string csv;
+            if (string.Equals(Path.GetExtension(file.Name), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                using var memory = new MemoryStream();
+                await stream.CopyToAsync(memory, ComponentToken);
+                memory.Position = 0;
+                csv = ExcelImportConverter.ConvertToCsv(memory);
+            }
+            else
+            {
+                csv = await ReadCsvFileAsync(stream, ComponentToken);
+            }
             var preview = await SchoolUserImportService.PreviewAsync(new SchoolUserImportPreviewRequest
             {
                 DirectorId = currentUserId,
@@ -1165,9 +1226,10 @@ public partial class SchulLeiter
                 ? $"Prévisualisation prête: {preview.ValidRowCount} ligne(s) valide(s)."
                 : "La prévisualisation contient des erreurs. Corrige le fichier puis recharge-le.");
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Xml.XmlException)
         {
-            SetResult(false, "Le fichier n'a pas pu être lu. Utilise un fichier CSV de moins de 2 MB.");
+            Logger.LogError(ex, "Importdatei für Schule {SchoolId} konnte nicht gelesen werden.", schoolId);
+            SetResult(false, "Le fichier n'a pas pu être lu. Utilise un fichier CSV ou Excel (.xlsx) de moins de 2 Mo.");
         }
     }
 
@@ -1207,7 +1269,7 @@ public partial class SchulLeiter
         var csv = kind == SchoolUserImportKind.Teacher ? teacherImportCsv : studentImportCsv;
         if (string.IsNullOrWhiteSpace(csv))
         {
-            SetResult(false, "Charge d'abord un fichier CSV et vérifie la prévisualisation.");
+            SetResult(false, "Charge d'abord un fichier CSV ou Excel et vérifie la prévisualisation.");
             return;
         }
 
@@ -1435,6 +1497,16 @@ public partial class SchulLeiter
 
         isStudentPersonalEditMode = model.RoleName == Rollen.Schueler;
         userForm = model;
+        coordinatorFinanceAccess.Clear();
+        if (!isKoordinator && model.RoleName == Rollen.Koordinator)
+        {
+            foreach (var schoolId in model.SchoolIds)
+            {
+                coordinatorFinanceAccess[schoolId] = await FinanzService.GetFinanceAccessAsync(userId, schoolId, cancellationToken: ComponentToken);
+            }
+            coordinatorFinanceSchoolId = model.SchoolIds.FirstOrDefault();
+            SelectCoordinatorFinanceSchool(coordinatorFinanceSchoolId);
+        }
         teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
         await LoadUserFormTeacherClassOptionsAsync();

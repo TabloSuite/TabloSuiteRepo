@@ -115,6 +115,45 @@ public class HtmlSanitizerTests
     }
 
     [Fact]
+    public void SanitizeMitBildern_SpeichertBildbreiteUndEntferntUnsichereAngaben()
+    {
+        var id = Guid.NewGuid();
+        var bild = $"<img src=\"/media-library/{id}\" alt=\"Photo\" width=\"230\" onload=\"alert(1)\">";
+
+        var ergebnis = HtmlSanitizer.SanitizeMitBildern(bild);
+
+        Assert.Contains("width=\"230\"", ergebnis);
+        Assert.Contains($"src=\"/media-library/{id}\"", ergebnis);
+        Assert.DoesNotContain("onload", ergebnis);
+        Assert.DoesNotContain("width=", HtmlSanitizer.SanitizeMitBildern($"<img src=\"/media-library/{id}\" width=\"calc(100%)\">"));
+    }
+
+    [Fact]
+    public void SanitizeMitBildern_BewahrtAusrichtungDesBildes()
+    {
+        var id = Guid.NewGuid();
+        var eingabe = $"<img src=\"/media-library/{id}\" width=\"230\" class=\"ql-image-align-right malicious\">";
+
+        var ergebnis = HtmlSanitizer.SanitizeMitBildern(eingabe);
+
+        Assert.Contains("ql-image-align-right", ergebnis);
+        Assert.Contains("width=\"230\"", ergebnis);
+        Assert.DoesNotContain("malicious", ergebnis);
+    }
+
+    [Fact]
+    public void SanitizeMitBildern_BewahrtNumerischeBestandsbildStyles()
+    {
+        var id = Guid.NewGuid();
+        var ergebnis = HtmlSanitizer.SanitizeMitBildern($"<img src=\"/media-library/{id}\" style=\"width: 180px; height: 120px; width: calc(100%); background-image: url(javascript:alert(1))\">");
+
+        Assert.Contains("width: 180px", ergebnis);
+        Assert.Contains("height: 120px", ergebnis);
+        Assert.DoesNotContain("calc(", ergebnis);
+        Assert.DoesNotContain("javascript:", ergebnis);
+    }
+
+    [Fact]
     public void SanitizeMitBildern_HttpsBild_BleibtErhalten()
     {
         var eingabe = "<img src=\"https://example.com/bild.png\" />";

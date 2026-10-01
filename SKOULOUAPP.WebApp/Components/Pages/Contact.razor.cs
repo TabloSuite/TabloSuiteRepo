@@ -10,6 +10,9 @@ public partial class Contact
     private AuthService AuthService { get; set; } = default!;
 
     [Inject]
+    private MailboxService MailboxService { get; set; } = default!;
+
+    [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
 
     private ContactInput? model;
@@ -38,6 +41,8 @@ public partial class Contact
         {
             await DatabaseActionGuard.RunAsync(async () =>
             {
+                if (string.IsNullOrWhiteSpace(Model.Message) || Model.Message.Length < 10) return;
+                await MailboxService.EmpfangenAsync(Model.Email.Trim(), "contact.skoulou@etsetech.com", $"[Contact] {Model.Subject}", $"<p>Nom : {System.Net.WebUtility.HtmlEncode(Model.Name)}</p>{Model.Message}", null);
                 var result = await AuthService.SendContactMessageAsync(Model.Name, Model.Email, Model.Subject, Model.Message);
                 succeeded = result.Succeeded;
                 message = result.Message;

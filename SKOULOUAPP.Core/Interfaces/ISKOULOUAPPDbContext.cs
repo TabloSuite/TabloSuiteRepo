@@ -39,6 +39,8 @@ public interface IHalloAppDbContext
     /// <summary>Schulen.</summary>
     DbSet<School> Schools { get; }
 
+    DbSet<Ankuendigung> Ankuendigungen { get; }
+
     /// <summary>Zuordnung Benutzer zu Schulen.</summary>
     DbSet<UserSchool> UserSchools { get; }
 
@@ -128,6 +130,7 @@ public interface IHalloAppDbContext
 
     /// <summary>Finanzbuchungen (Einnahmen und Ausgaben) je Schule.</summary>
     DbSet<FinanzBuchung> FinanzBuchungen { get; }
+    DbSet<FinanzBeleg> FinanzBelege { get; }
 
     /// <summary>KursNiveau-Durchläufe (Zeiträume für Ratenzahlungen).</summary>
     DbSet<KursNiveauDurchlauf> KursNiveauDurchlaeufe { get; }

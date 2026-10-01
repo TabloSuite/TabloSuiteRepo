@@ -17,8 +17,8 @@ public enum BlobMediaType
 /// </summary>
 public class BlobMediaAsset : AuditableModel
 {
-    public Guid SchoolId { get; set; }
-    public School School { get; set; } = null!;
+    public Guid? SchoolId { get; set; }
+    public School? School { get; set; }
 
     public Guid OwnerId { get; set; }
     public AppUser Owner { get; set; } = null!;

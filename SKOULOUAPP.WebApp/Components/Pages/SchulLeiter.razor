@@ -123,7 +123,7 @@
     </div>
 
     <div class="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Navigation direction">
+        <div class="school-page-tabs" role="tablist" aria-label="Navigation direction">
             <button type="button"
                     role="tab"
                     aria-selected="@IsDirectorTabActive(DirectorTabSubjects)"
@@ -825,9 +825,9 @@
                                 <li><strong>1. Ouvre Excel</strong> et crée un nouveau tableau.</li>
                                 <li><strong>2. Copie les titres de colonnes</strong> indiqués dans l'exemple correspondant.</li>
                                 <li><strong>3. Ajoute une personne par ligne.</strong> Les champs optionnels peuvent rester vides.</li>
-                                <li><strong>4. Enregistre le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong>, puis charge-le ci-dessous.</li>
+                                <li><strong>4. Enregistre le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong> ou <strong>Excel (*.xlsx)</strong>, puis charge-le ci-dessous.</li>
                             </ol>
-                            <p class="mt-3 text-xs font-medium text-cyan-900">Les classes doivent déjà exister dans l'école sélectionnée. Taille maximale : 2 MB par fichier.</p>
+                            <p class="mt-3 text-xs font-medium text-cyan-900">Les classes doivent déjà exister dans l'école sélectionnée. Seule la première feuille Excel est lue. Taille maximale : 2 Mo par fichier.</p>
                         </div>
                     </div>
                 </article>
@@ -838,7 +838,7 @@
                             <h3 class="text-lg font-black text-slate-900">Ajouter des enseignants</h3>
                             <p class="mt-1 text-sm text-slate-600">Un enseignant peut être attribué à une ou plusieurs classes. Sépare plusieurs classes par une virgule.</p>
                         </div>
-                        <Badge Accent="cyan">CSV</Badge>
+                        <Badge Accent="cyan">CSV / Excel</Badge>
                     </div>
                     <div class="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-100">
                         <p class="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Exemple dans Excel</p>
@@ -856,12 +856,12 @@
                             <span class="flex items-center gap-3">
                                 <span class="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-100 text-xl text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white">📄</span>
                                 <span>
-                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV</span>
-                                    <span class="block text-xs font-semibold text-slate-500">CSV UTF-8 ou Excel CSV · max. 2 MB</span>
+                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
+                                    <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
                                 </span>
                             </span>
                             <span class="rounded-full bg-cyan-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition group-hover:bg-cyan-700">Parcourir</span>
-                            <InputFile class="sr-only" OnChange="OnTeacherImportFileSelectedAsync" accept=".csv,text/csv" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
+                            <InputFile class="sr-only" OnChange="OnTeacherImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
                         </label>
                         @if (teacherImportPreview is not null)
                         {
@@ -879,7 +879,7 @@
                             <h3 class="text-lg font-black text-slate-900">Ajouter des élèves</h3>
                             <p class="mt-1 text-sm text-slate-600">Attribue chaque élève à une classe existante. L'e-mail et le téléphone sont optionnels.</p>
                         </div>
-                        <Badge Accent="emerald">CSV</Badge>
+                        <Badge Accent="emerald">CSV / Excel</Badge>
                     </div>
                     <div class="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-100">
                         <p class="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Exemple dans Excel</p>
@@ -897,12 +897,12 @@
                             <span class="flex items-center gap-3">
                                 <span class="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-xl text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">📄</span>
                                 <span>
-                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV</span>
-                                    <span class="block text-xs font-semibold text-slate-500">CSV UTF-8 ou Excel CSV · max. 2 MB</span>
+                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
+                                    <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
                                 </span>
                             </span>
                             <span class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition group-hover:bg-emerald-700">Parcourir</span>
-                            <InputFile class="sr-only" OnChange="OnStudentImportFileSelectedAsync" accept=".csv,text/csv" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
+                            <InputFile class="sr-only" OnChange="OnStudentImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
                         </label>
                         @if (studentImportPreview is not null)
                         {
@@ -984,6 +984,10 @@
                             Options="SchoolCountryOptions"
                             Searchable="true"
                             SearchPlaceholder="Rechercher un pays..." />
+        </div>
+        <div>
+            <label class="hallo-label">Description de l'école (facultatif)</label>
+            <RichTextEditor @bind-Value="schoolForm.DescriptionHtml" EnableImages="false" EnableLargeEditor="true" Placeholder="Présente ton établissement..." />
         </div>
         <div class="mt-2 flex justify-end gap-3">
             <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="() => schoolModalOpen = false">Annuler</button>
@@ -1192,6 +1196,33 @@
                         </div>
                     }
                 }
+            </div>
+        }
+
+        @if (!isKoordinator && userForm.RoleName == "Koordinator" && userForm.UserId.HasValue && userForm.SchoolIds.Count > 0)
+        {
+            <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-slate-800">
+                <h3 class="font-bold">Accès financier du coordinateur</h3>
+                <p class="mt-1 text-xs text-slate-600">Choisis une école, active le menu, puis les onglets autorisés. Les droits sont propres à chaque école.</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @foreach (var schoolId in userForm.SchoolIds)
+                    {
+                        var name = schools.FirstOrDefault(s => s.SchoolId == schoolId)?.SchoolName ?? "École";
+                        <button type="button" class="rounded-full px-3 py-1.5 text-xs font-semibold @(coordinatorFinanceSchoolId == schoolId ? "bg-indigo-600 text-white" : "bg-white text-slate-700")" @onclick="() => SelectCoordinatorFinanceSchool(schoolId)">@name</button>
+                    }
+                </div>
+                <label class="mt-3 flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceMenu" />Afficher le menu Finances</label>
+                @if (coordinatorFinanceMenu)
+                {
+                    <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceDashboard" />Finances de l'école</label>
+                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceEntries" />Nouvelle écriture</label>
+                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceCycles" />Paiements des cycles</label>
+                    </div>
+                }
+                <button type="button" class="mt-4 rounded-full bg-indigo-600 px-4 py-2 text-xs font-bold text-white" @onclick="SaveCoordinatorFinanceAccessAsync">Enregistrer les accès financiers</button>
+                @if (!string.IsNullOrWhiteSpace(userErrorMessage)) { <p class="mt-2 text-xs text-rose-700">@userErrorMessage</p> }
+                @if (!string.IsNullOrWhiteSpace(userStatusMessage)) { <p class="mt-2 text-xs text-emerald-700">@userStatusMessage</p> }
             </div>
         }
 

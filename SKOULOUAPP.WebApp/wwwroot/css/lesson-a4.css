@@ -49,6 +49,13 @@
     object-fit: contain;
 }
 
+.lesson-a4-page .ql-editor img.ql-image-align-left,
+.lesson-a4-page .ql-editor img.ql-image-align-center,
+.lesson-a4-page .ql-editor img.ql-image-align-right { display: block; }
+.lesson-a4-page .ql-editor img.ql-image-align-left { margin-left: 0; margin-right: auto; }
+.lesson-a4-page .ql-editor img.ql-image-align-center { margin-left: auto; margin-right: auto; }
+.lesson-a4-page .ql-editor img.ql-image-align-right { margin-left: auto; margin-right: 0; }
+
 .lesson-a4-page .ql-size-10px { font-size: 10px; }
 .lesson-a4-page .ql-size-12px { font-size: 12px; }
 .lesson-a4-page .ql-size-14px { font-size: 14px; }
@@ -66,7 +73,7 @@
 .lesson-a4-page .ql-font-monospace { font-family: monospace; }
 .lesson-a4-page .ql-font-roboto { font-family: Roboto, Arial, sans-serif; }
 .lesson-a4-page .ql-font-nunito { font-family: Nunito, Arial, sans-serif; }
-.lesson-a4-page .ql-font-arial-black { font-family: 'Arial Black', Arial, sans-serif; }
+.lesson-a4-page .ql-font-arial-black { font-family: 'Arial Black', Arial, sans-serif; font-weight: 900; }
 .lesson-a4-page .ql-font-georgia { font-family: Georgia, serif; }
 .lesson-a4-page .ql-font-times-new-roman { font-family: 'Times New Roman', serif; }
 .lesson-a4-page .ql-font-comic-sans { font-family: 'Comic Sans MS', cursive; }

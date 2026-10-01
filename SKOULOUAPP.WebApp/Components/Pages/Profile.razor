@@ -1,6 +1,7 @@
 @page "/profil"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Mon profil</PageTitle>
 
@@ -11,6 +12,7 @@
     <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Profil</p>
         <h1 class="mt-3 text-3xl font-black text-slate-900">Mon profil</h1>
+        <a href="/" class="mt-3 inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">← Retour à l’accueil</a>
 
         @if (isLoading)
         {
@@ -47,13 +49,20 @@
                         }
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-cyan-800 ring-1 ring-cyan-200" @onclick="OpenImageLibraryAsync">Choisir la photo</button>
+                        <label class="relative inline-flex cursor-pointer items-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-cyan-800 ring-1 ring-cyan-200 hover:bg-cyan-50">
+                            Choisir une photo
+                            <InputFile OnChange="SelectProfileImage" accept="image/png,image/jpeg,image/gif,image/webp" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                        </label>
                         @if (ProfileModel.ProfilBildAssetId.HasValue)
                         {
                             <button type="button" class="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-700" @onclick="RemoveProfileImageAsync">Retirer</button>
                         }
                     </div>
                 </div>
+                @if (selectedProfileImage is not null)
+                {
+                    <p class="mt-2 text-xs font-semibold text-cyan-800">@selectedProfileImage.Name · La photo sera enregistrée avec le profil (5 Mo maximum).</p>
+                }
 
             <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
                 <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">Thème de couleur</p>
@@ -159,11 +168,6 @@
             </div>
         }
     </div>
-
-    <AzureBlobImageLibrary Open="imageLibraryOpen"
-                           OpenChanged="@(open => imageLibraryOpen = open)"
-                       ProfileImageMode="true"
-                           ImageSelected="OnProfileImageSelectedAsync" />
 
     <div id="change-password" class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
         <h2 class="text-2xl font-black text-slate-900">Changer le mot de passe</h2>

@@ -15,6 +15,10 @@ public class UserSchool
     public School School { get; set; } = null!;
 
     public bool CanManageStudents { get; set; }
+    public bool CanAccessFinances { get; set; }
+    public bool CanViewFinanceDashboard { get; set; }
+    public bool CanCreateFinanceEntries { get; set; }
+    public bool CanManageCyclePayments { get; set; }
 }
 
 

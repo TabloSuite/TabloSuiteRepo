@@ -65,6 +65,7 @@ public partial class TeacherLessons
     private string? statusMessage;
     private bool isSaving;
     private bool imageLibraryOpen;
+    private bool videoLibraryOpen;
     private string newFachName = string.Empty;
     private bool isAddingFach;
     private IReadOnlyCollection<string> currentRoles = [];
@@ -576,6 +577,23 @@ public partial class TeacherLessons
         }
 
         imageLibraryTargetEditor = null;
+    }
+
+    private Task ChooseLibraryVideoAsync(BlobMediaAssetItem video)
+    {
+        if (form is not null && video.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Video
+            && video.SchoolId == selectedSchoolId && video.KlasseId == form.KlasseId)
+        {
+            form.VideoAssetId = video.Id;
+            form.VideoDisplayName = video.DisplayName;
+            form.VideoDuration = video.VideoDuration;
+            form.VideoUrl = video.VideoUrl;
+        }
+        else
+        {
+            videoUploadError = "Choisis une vidéo de la même école et de la même classe que le cours.";
+        }
+        return Task.CompletedTask;
     }
 
     protected override async Task OnInitializedAsync()

@@ -7,6 +7,7 @@ using HalloApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
 namespace HalloApp.WebApp.Components.Pages;
@@ -22,7 +23,9 @@ public partial class Finanzen
 
     private Guid currentUserId;
     private bool istSuperAdmin;
-    private bool istSchulleiter;
+    private bool canViewDashboard;
+    private bool canCreateEntries;
+    private bool canManageCycles;
 
     // Schulkontext
     private List<FinanzAuswahl> schulen = new();
@@ -44,11 +47,14 @@ public partial class Finanzen
     private AbrechnungsUebersicht? halloAppAboUebersicht;
     private IReadOnlyList<Abrechnungsperiode> offeneHalloAppAbrechnungen = [];
     private DirektorKontostandUebersicht? direktorKontostand;
+    private FinanzAbgleich? finanzAbgleich;
     private FinanzFilter filter = new();
     private List<FinanzKategorie> alleKategorien = new();
 
     // ---- Buchung erfassen ----
     private BuchungFormModel buchungForm = new();
+    private IBrowserFile? buchungBelegDatei;
+    private int buchungBelegInputVersion;
     private bool kategorieAnlegenModus;
     private string neueKategorieBezeichnung = string.Empty;
     private FinanzRichtung neueKategorieRichtung = FinanzRichtung.Ausgabe;
@@ -82,6 +88,11 @@ public partial class Finanzen
     private bool IsBusy => ActionGuard.IsBusy;
 
     private string AktiveSchuleName => schulen.FirstOrDefault(schule => schule.Id == aktiveSchulID)?.Name ?? "École";
+
+    private string FinanzBerichtUrl => $"/finanzen/rapport?schoolId={aktiveSchulID:D}&sort={filter.Sortierung}"
+        + (filter.Von.HasValue ? $"&from={filter.Von:yyyy-MM-dd}" : string.Empty)
+        + (filter.Bis.HasValue ? $"&to={filter.Bis:yyyy-MM-dd}" : string.Empty)
+        + (filter.Richtung.HasValue ? $"&direction={filter.Richtung}" : string.Empty);
 
     private string BerichtZeitraumLabel => filter switch
     {
@@ -175,7 +186,7 @@ public partial class Finanzen
 
     private decimal ZeitraumSortiesBasis => EchteBuchungenSorties;
 
-    private decimal SkoulouAboAnteilFuerSaldo => Math.Max(0m, HalloAppAboTotal - CommissionSchulleiter - CommissionLehrer);
+    private decimal SkoulouAboAnteilFuerSaldo => BetragFuerHalloAppPlattform;
 
     private decimal ZeitraumSoldeAvantPartSkoulou => EchteBuchungenEntrees + HalloAppAboTotal - ZeitraumSortiesBasis;
 
@@ -183,7 +194,7 @@ public partial class Finanzen
 
     private decimal ZeitraumSaldoAnzeige => ZeitraumSoldeAvantPartSkoulou - SkoulouAboAnteilFuerSaldo;
 
-    private string ZeitraumOptionLabel => "Part SKOULOUAPP = Abo total - (parts direction + enseignants)";
+    private string ZeitraumOptionLabel => "Part SKOULOUAPP issue des écritures enregistrées; les filtres s'appliquent à chaque écriture.";
 
     private static string GetMaskedErfasstVonForPdf(string? erfasstVon)
     {
@@ -241,21 +252,26 @@ public partial class Finanzen
     private decimal SoldeActuelAffiche => SoldeTotalOhneHalloAppPart;
 
     private static string SoldeFarbe(decimal betrag)
-        => betrag < 0m ? "text-rose-700" : "text-emerald-700";
+        => DirektorKontostandUebersicht.BestimmeSaldoStatus(betrag) switch
+        {
+            FinanzSaldoStatus.Verlust => "text-rose-700",
+            FinanzSaldoStatus.Ausgeglichen => "text-slate-700",
+            _ => "text-emerald-700"
+        };
 
     private static string SoldeEtatLabel(decimal betrag)
-        => betrag switch
+        => DirektorKontostandUebersicht.BestimmeSaldoStatus(betrag) switch
         {
-            < 0m => "Critique",
-            < 50000m => "À surveiller",
-            _ => "Sain"
+            FinanzSaldoStatus.Verlust => "Perte",
+            FinanzSaldoStatus.Ausgeglichen => "Aucun bénéfice",
+            _ => "Bénéfice"
         };
 
     private static string SoldeEtatBadgeClass(decimal betrag)
-        => betrag switch
+        => DirektorKontostandUebersicht.BestimmeSaldoStatus(betrag) switch
         {
-            < 0m => "bg-rose-100 text-rose-800 ring-rose-200",
-            < 50000m => "bg-amber-100 text-amber-800 ring-amber-200",
+            FinanzSaldoStatus.Verlust => "bg-rose-100 text-rose-800 ring-rose-200",
+            FinanzSaldoStatus.Ausgeglichen => "bg-slate-100 text-slate-800 ring-slate-200",
             _ => "bg-emerald-100 text-emerald-800 ring-emerald-200"
         };
 
@@ -393,7 +409,6 @@ public partial class Finanzen
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
             istSuperAdmin = user.IsInRole("SuperAdmin");
-            istSchulleiter = user.IsInRole("SchulLeiter");
 
             var idValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             Guid.TryParse(idValue, out currentUserId);
@@ -406,6 +421,7 @@ public partial class Finanzen
 
             if (aktiveSchulID.HasValue)
             {
+                await LoadFinanceAccessAsync();
                 niveaus = await FinanzService.GetNiveausAsync(aktiveSchulID.Value, ComponentToken);
                 StelleDurchlaufFilterFuerAktuelleSchuleWiederHer();
             }
@@ -420,6 +436,36 @@ public partial class Finanzen
         {
             schulenGeladen = true;
         }
+    }
+
+    private async Task LoadFinanceAccessAsync()
+    {
+        if (aktiveSchulID is not Guid schoolId) return;
+        var access = await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId, istSuperAdmin, ComponentToken);
+        canViewDashboard = access.Dashboard;
+        canCreateEntries = access.Entries;
+        canManageCycles = access.Cycles;
+        if (!IsTabAllowed(aktiverTab))
+        {
+            aktiverTab = canViewDashboard ? "dashboard" : canCreateEntries ? "erfassen" : "durchlaeufe";
+        }
+    }
+
+    private bool IsTabAllowed(string tab) => tab switch
+    {
+        "dashboard" => canViewDashboard,
+        "erfassen" => canCreateEntries,
+        "durchlaeufe" => canManageCycles,
+        _ => false
+    };
+
+    private async Task<bool> EnsureFinanceTabAccessAsync(string tab)
+    {
+        if (aktiveSchulID is not Guid schoolId) return false;
+        var access = await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId, istSuperAdmin, ComponentToken);
+        var allowed = tab == "erfassen" ? access.Entries : access.Cycles;
+        if (!allowed) errorMessage = "Vous n'êtes pas autorisé à utiliser cet onglet pour cette école.";
+        return allowed;
     }
 
     private async Task LadeAllesAsync()
@@ -438,18 +484,22 @@ public partial class Finanzen
             }
         }
 
-        alleKategorien = await FinanzService.GetKategorienAsync(aktiveSchulID.Value);
-        await LadeUebersichtAsync();
-        durchlaeufe = await FinanzService.GetDurchlaeufeAsync(aktiveSchulID.Value);
-        halloAppAboUebersicht = await AbrechnungService.GetOffeneUebersichtAsync(aktiveSchulID.Value, cancellationToken: ComponentToken);
-        offeneHalloAppAbrechnungen = istSchulleiter
+        alleKategorien = canCreateEntries ? await FinanzService.GetKategorienAsync(aktiveSchulID.Value) : [];
+        if (canViewDashboard) await LadeUebersichtAsync();
+        else uebersicht = null;
+        durchlaeufe = canManageCycles ? await FinanzService.GetDurchlaeufeAsync(aktiveSchulID.Value) : [];
+        halloAppAboUebersicht = canViewDashboard
+            ? await AbrechnungService.GetOffeneUebersichtAsync(aktiveSchulID.Value, cancellationToken: ComponentToken) : null;
+        offeneHalloAppAbrechnungen = canViewDashboard
             ? (await AbrechnungService.GetHistorieAsync(aktiveSchulID.Value, ComponentToken))
                 .Where(periode => periode.Status is AbrechnungStatus.Erstellt or AbrechnungStatus.Akzeptiert)
                 .ToList()
             : [];
-        direktorKontostand = !istSchulleiter
+        direktorKontostand = !canViewDashboard
             ? null
             : await FinanzService.GetDirektorKontostandUebersichtAsync(aktiveSchulID.Value, filter, ComponentToken);
+        finanzAbgleich = canViewDashboard
+            ? await FinanzService.GetFinanzAbgleichAsync(aktiveSchulID.Value, ComponentToken) : null;
     }
 
     private async Task LadeUebersichtAsync()
@@ -461,9 +511,11 @@ public partial class Finanzen
 
         filter.SchulID = aktiveSchulID;
         uebersicht = await FinanzService.GetUebersichtAsync(filter);
-        direktorKontostand = !istSchulleiter
+        direktorKontostand = !canViewDashboard
             ? null
             : await FinanzService.GetDirektorKontostandUebersichtAsync(aktiveSchulID.Value, cancellationToken: ComponentToken);
+        finanzAbgleich = canViewDashboard
+            ? await FinanzService.GetFinanzAbgleichAsync(aktiveSchulID.Value, ComponentToken) : null;
     }
 
     private async Task SchuleWechselnAsync(ChangeEventArgs e)
@@ -484,6 +536,7 @@ public partial class Finanzen
         MerkeDurchlaufFilterFuerAktuelleSchule();
 
         aktiveSchulID = id.Value;
+        await LoadFinanceAccessAsync();
         niveaus = await FinanzService.GetNiveausAsync(id.Value, ComponentToken);
         durchlaufForm = new();
         StelleDurchlaufFilterFuerAktuelleSchuleWiederHer();
@@ -588,6 +641,7 @@ public partial class Finanzen
 
     private void SetTab(string tab)
     {
+        if (!IsTabAllowed(tab)) return;
         aktiverTab = tab;
         message = null;
         errorMessage = null;
@@ -644,6 +698,7 @@ public partial class Finanzen
 
     private async Task BuchungErfassenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("erfassen")) return;
         if (aktiveSchulID is null)
         {
             return;
@@ -651,6 +706,27 @@ public partial class Finanzen
 
         await ActionGuard.RunAsync(async () =>
         {
+            byte[]? belegInhalt = null;
+            if (buchungBelegDatei is not null)
+            {
+                if (buchungBelegDatei.Size > 5 * 1024 * 1024)
+                {
+                    errorMessage = "Le justificatif ne doit pas dépasser 5 Mo.";
+                    return;
+                }
+                try
+                {
+                    await using var stream = buchungBelegDatei.OpenReadStream(5 * 1024 * 1024, ComponentToken);
+                    using var memory = new MemoryStream();
+                    await stream.CopyToAsync(memory, ComponentToken);
+                    belegInhalt = memory.ToArray();
+                }
+                catch (IOException)
+                {
+                    errorMessage = "Le justificatif n'a pas pu être lu.";
+                    return;
+                }
+            }
             var (ok, err, _) = await FinanzService.BuchungErfassenAsync(
                 aktiveSchulID.Value,
                 buchungForm.KategorieID,
@@ -659,15 +735,21 @@ public partial class Finanzen
                 currentUserId,
                 buchungForm.BeschreibungHtml,
                 istSuperAdmin,
-                autorisierungErzwingen: true);
+                autorisierungErzwingen: true,
+                belegnummer: buchungForm.Belegnummer,
+                dateiname: buchungBelegDatei?.Name,
+                belegInhalt: belegInhalt);
 
             if (ok)
             {
                 message = "L'écriture a été enregistrée.";
                 errorMessage = null;
                 buchungForm = new();
+                buchungBelegDatei = null;
+                buchungBelegInputVersion++;
                 await LadeUebersichtAsync();
             }
+
             else
             {
                 errorMessage = err;
@@ -675,8 +757,18 @@ public partial class Finanzen
         });
     }
 
+    private void BelegDateiWaehlen(InputFileChangeEventArgs args)
+        => buchungBelegDatei = args.File;
+
+    private void BelegDateiEntfernen()
+    {
+        buchungBelegDatei = null;
+        buchungBelegInputVersion++;
+    }
+
     private async Task KategorieAnlegenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("erfassen")) return;
         if (aktiveSchulID is null)
         {
             return;
@@ -707,6 +799,7 @@ public partial class Finanzen
 
     private async Task KategorieLoeschenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("erfassen")) return;
         if (!KannAusgewaehlteKategorieLoeschen || buchungForm.KategorieID == Guid.Empty)
         {
             return;
@@ -735,6 +828,7 @@ public partial class Finanzen
 
     private async Task BuchungLoeschenAsync(Guid buchungId)
     {
+        if (!await EnsureFinanceTabAccessAsync("erfassen")) return;
         await ActionGuard.RunAsync(async () =>
         {
             var (ok, err) = await FinanzService.BuchungLoeschenAsync(buchungId, currentUserId, istSuperAdmin);
@@ -764,6 +858,7 @@ public partial class Finanzen
 
     private async Task DurchlaufStartenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("durchlaeufe")) return;
         if (aktiveSchulID is null || durchlaufForm.KlasseId == Guid.Empty)
         {
             errorMessage = "Veuillez sélectionner une classe.";
@@ -837,6 +932,7 @@ public partial class Finanzen
 
     private async Task DurchlaufBeendenBestaetigenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("durchlaeufe")) return;
         if (beendenDurchlauf is null || aktiveSchulID is null)
         {
             return;
@@ -890,6 +986,7 @@ public partial class Finanzen
 
     private async Task ZahlungBuchenAsync()
     {
+        if (!await EnsureFinanceTabAccessAsync("durchlaeufe")) return;
         if (ausgewaehlterDurchlauf is null || zahlungForm.StudentId == Guid.Empty)
         {
             errorMessage = "Veuillez sélectionner un élève.";
@@ -930,23 +1027,6 @@ public partial class Finanzen
         });
     }
 
-    private async Task DruckenAsync()
-    {
-        try
-        {
-            var ok = await JS.InvokeAsync<bool>("SKOULOUAPPPrint.openElement", ".finance-pdf-export", "Journal financier");
-            if (!ok)
-            {
-                errorMessage = "Impossible d'ouvrir la fenêtre d'impression. Autorise les fenêtres contextuelles puis réessaie.";
-            }
-        }
-        catch (JSException exception)
-        {
-            Logger.LogError(exception, "Erreur JS lors de l'export PDF (Finanzen). UserId={UserId}, SchoolId={SchoolId}", currentUserId, aktiveSchulID);
-            errorMessage = "Export PDF indisponible. Recharge la page puis réessaie.";
-        }
-    }
-
     // -------------------- Formularmodelle --------------------
 
     private sealed class BuchungFormModel
@@ -954,6 +1034,7 @@ public partial class Finanzen
         public Guid KategorieID { get; set; }
         public decimal Betrag { get; set; }
         public DateTime Wirkungsdatum { get; set; } = DateTime.Today;
+        public string? Belegnummer { get; set; }
         public string? BeschreibungHtml { get; set; }
     }
 

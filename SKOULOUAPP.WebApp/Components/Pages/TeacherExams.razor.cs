@@ -40,6 +40,8 @@ public partial class TeacherExams
     private Guid? selectedKlasseFilterId;
     private Guid? editorSchoolId;
     private ExamFormModel? form;
+    private bool imageLibraryOpen;
+    private RichTextEditor? imageLibraryTargetEditor;
     private bool editorOpen;
     private bool isSavingExam;
     private bool isReassigning;
@@ -48,6 +50,31 @@ public partial class TeacherExams
     private string? statusMessage;
     private Guid currentTeacherId;
     private bool isSchoolDirectionUser;
+    private Task SetImageLibraryTarget(RichTextEditor editor)
+    {
+        imageLibraryTargetEditor = editor;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenImageLibrary()
+    {
+        if (form is not null)
+        {
+            imageLibraryOpen = true;
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task InsertLibraryImageAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem image)
+    {
+        if (form is not null && imageLibraryTargetEditor is not null
+            && image.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+            && image.SchoolId == editorSchoolId)
+        {
+            await imageLibraryTargetEditor.InsertImageAsync(image.ImageUrl, image.AltText);
+        }
+        imageLibraryTargetEditor = null;
+    }
     private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolFilterOptions =>
     [
         new(null, "Toutes les écoles"),

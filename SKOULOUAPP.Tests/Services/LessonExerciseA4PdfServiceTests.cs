@@ -153,4 +153,47 @@ public class LessonExerciseA4PdfServiceTests
         var pdf = Encoding.Latin1.GetString(await service.GeneratePdfAsync(lesson));
         Assert.Equal(3, Regex.Matches(pdf, @"/Type\s*/Page\b").Count);
     }
+
+    [Fact]
+    public void BuildHtml_TeacherLesson_PreservesOnlyAuthorizedPrivateImageUrls()
+    {
+        var imageId = Guid.NewGuid();
+        var lesson = new TeacherLessonDetailViewModel
+        {
+            Pages = [new TeacherLessonPageViewModel
+            {
+                PageNumber = 1,
+                ContentHtml = $"<p>Illustration</p><img src=\"/media-library/{imageId}\" alt=\"Schéma\" width=\"230\" class=\"ql-image-align-right\"><img src=\"https://example.org/remote.png\" alt=\"externe\">"
+            }]
+        };
+
+        var html = CreateService().BuildHtml(lesson);
+
+        Assert.Contains($"/media-library/{imageId}", html);
+        Assert.Contains("width=\"230\"", html);
+        Assert.Contains("class=\"ql-image-align-right\"", html);
+        Assert.Contains(".ql-image-align-right { margin-left: auto; margin-right: 0; }", html);
+        Assert.DoesNotContain("remote.png", html);
+    }
+
+    [Fact]
+    public void BuildHtml_LessonExercise_PreservesQuestionImageAndRejectsExternalImage()
+    {
+        var imageId = Guid.NewGuid();
+        var lesson = new LessonDetailViewModel
+        {
+            Exercises = [new ExerciseViewModel
+            {
+                Order = 1,
+                Question = $"<p>Décris cette image</p><img src=\"/media-library/{imageId}\" style=\"width: 180px; height: 120px;\"><img src=\"https://example.org/remote.png\">"
+            }]
+        };
+
+        var html = CreateService().BuildHtml(lesson);
+
+        Assert.Contains($"src=\"/media-library/{imageId}\"", html);
+        Assert.Matches("(?i)width\\s*:\\s*180px", html);
+        Assert.Matches("(?i)height\\s*:\\s*120px", html);
+        Assert.DoesNotContain("remote.png", html);
+    }
 }

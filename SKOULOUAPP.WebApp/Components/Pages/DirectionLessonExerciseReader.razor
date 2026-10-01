@@ -98,7 +98,7 @@ else
                             {
                                 <p class="mt-1 text-sm text-slate-600">@HtmlSanitizer.ToPlainText(exercise.Instructions)</p>
                             }
-                            <p class="mt-2 text-sm text-slate-700">@HtmlSanitizer.ToPlainText(exercise.Question)</p>
+                            <div class="rich-content mt-2 text-sm text-slate-700">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(exercise.Question))</div>
                             @if (exercise.Options.Count > 0)
                             {
                                 @if (exercise.ExerciseType is "SingleChoice" or "Choice" or "AudioChoice" or "AudioSingleChoice")

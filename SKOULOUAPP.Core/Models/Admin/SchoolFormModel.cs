@@ -18,6 +18,8 @@ public class SchoolFormModel
     [StringLength(120)]
     public string Country { get; set; } = string.Empty;
 
+    public string DescriptionHtml { get; set; } = string.Empty;
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>

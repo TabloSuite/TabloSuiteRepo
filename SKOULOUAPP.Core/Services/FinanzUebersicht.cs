@@ -38,6 +38,7 @@ public enum FinanzSortierung
 public class FinanzUebersichtZeile
 {
     public Guid BuchungID { get; set; }
+    public string Buchungsnummer { get; set; } = string.Empty;
     public DateTime Wirkungsdatum { get; set; }
     public DateTime ErstelltAmUtc { get; set; }
     public string SchulName { get; set; } = string.Empty;
@@ -45,6 +46,9 @@ public class FinanzUebersichtZeile
     public FinanzSystemCode? KategorieSystemCode { get; set; }
     public FinanzRichtung Richtung { get; set; }
     public decimal Betrag { get; set; }
+    public string? Belegnummer { get; set; }
+    public bool HatBelegdatei { get; set; }
+    public string? BelegDateiname { get; set; }
     public string? BeschreibungHtml { get; set; }
     public string ErfasstVon { get; set; } = string.Empty;
 }
@@ -58,8 +62,29 @@ public class FinanzUebersicht
     public decimal Saldo => SummeEinnahmen - SummeAusgaben;
 }
 
+public sealed record FinanzBericht(string SchulName, FinanzFilter Filter, FinanzUebersicht Uebersicht);
+
+public sealed record FinanzAbgleich(
+    decimal SchulgebuehrenZahlungen,
+    decimal SchulgebuehrenBuchungen,
+    int SchulgebuehrenAbweichungen,
+    decimal PlattformRechnungen,
+    decimal PlattformBuchungenZuRechnungen,
+    decimal BestaetigtePlattformZahlungen,
+    int PlattformRechnungenMitAbweichung);
+
+public enum FinanzSaldoStatus
+{
+    Verlust,
+    Ausgeglichen,
+    Gewinn
+}
+
 public class DirektorKontostandUebersicht
 {
+    public static FinanzSaldoStatus BestimmeSaldoStatus(decimal saldo)
+        => saldo < 0m ? FinanzSaldoStatus.Verlust : saldo > 0m ? FinanzSaldoStatus.Gewinn : FinanzSaldoStatus.Ausgeglichen;
+
     public decimal IstKontostand { get; set; }
     public decimal SchulgebuehrenEingenommen { get; set; }
     public decimal SonstigeEinnahmen { get; set; }

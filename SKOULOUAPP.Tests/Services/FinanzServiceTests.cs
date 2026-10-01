@@ -16,6 +16,17 @@ namespace HalloApp.Tests.Services;
 /// </summary>
 public class FinanzServiceTests
 {
+    private static readonly byte[] TestPdf = "%PDF-1.4\nTest"u8.ToArray();
+    [Theory]
+    [InlineData(-1, FinanzSaldoStatus.Verlust)]
+    [InlineData(0, FinanzSaldoStatus.Ausgeglichen)]
+    [InlineData(1, FinanzSaldoStatus.Gewinn)]
+    [InlineData(49_999, FinanzSaldoStatus.Gewinn)]
+    public void BestimmeSaldoStatus_RichtetSichNurNachDemVorzeichen(int saldo, FinanzSaldoStatus erwartet)
+    {
+        Assert.Equal(erwartet, DirektorKontostandUebersicht.BestimmeSaldoStatus(saldo));
+    }
+
     [Fact]
     public async Task GetSchulenAsync_SchulLeiterSiehtNurEigeneSchulen()
     {
@@ -29,6 +40,9 @@ public class FinanzServiceTests
             SchoolId = ownSchool.Id,
             CanManageStudents = true
         });
+        var directorRole = new Role { Id = Guid.NewGuid(), Name = Rollen.SchulLeiter };
+        db.Roles.Add(directorRole);
+        db.UserRoles.Add(new AppUserRole { UserId = directorId, RoleId = directorRole.Id });
         await db.SaveChangesAsync();
 
         var service = new FinanzService(db);
@@ -153,6 +167,58 @@ public class FinanzServiceTests
         return coordinatorId;
     }
 
+    [Fact]
+    public async Task GetFinanzBerichtAsync_BeschraenktSchuleUndFilterAuchBeiManipulierterUrl()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = SeedSchule(db, "École autorisée");
+        var other = SeedSchule(db, "École étrangère");
+        var director = await SeedSchulLeiterAsync(db, school);
+        var coordinator = await SeedKoordinatorAsync(db, school);
+        var service = new FinanzService(db);
+        var date = new DateTime(2026, 10, 1);
+        foreach (var item in new[] { (school, date, 100m), (school, date.AddDays(1).AddHours(12), 200m), (school, date.AddDays(2), 300m), (other, date, 400m) })
+        {
+            var category = new FinanzKategorie { Id = Guid.NewGuid(), SchulID = item.Item1.Id, Bezeichnung = "Scolarité", Richtung = FinanzRichtung.Einnahme };
+            db.FinanzKategorien.Add(category);
+            db.FinanzBuchungen.Add(new FinanzBuchung { Id = Guid.NewGuid(), SchulID = item.Item1.Id, Schule = item.Item1, KategorieID = category.Id, Kategorie = category, ErfasstVonUserID = director, Richtung = FinanzRichtung.Einnahme, Betrag = item.Item3, Wirkungsdatum = item.Item2 });
+        }
+        await db.SaveChangesAsync();
+
+        var filter = new FinanzFilter { SchulID = school.Id, Von = date.AddDays(1), Bis = date.AddDays(1), Richtung = FinanzRichtung.Einnahme };
+        Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, filter));
+        Assert.True((await service.SetCoordinatorFinanceAccessAsync(director, coordinator, school.Id, true, true, false, false)).Succeeded);
+        var report = await service.GetFinanzBerichtAsync(coordinator, false, filter);
+        Assert.NotNull(report);
+        Assert.Equal("École autorisée", report.SchulName);
+        Assert.Equal(200m, report.Uebersicht.SummeEinnahmen);
+        Assert.Single(report.Uebersicht.Zeilen);
+        Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, new FinanzFilter { SchulID = other.Id }));
+        Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, new FinanzFilter { SchulID = school.Id, Von = date.AddDays(2), Bis = date }));
+    }
+
+    [Fact]
+    public async Task GetFinanceAccessAsync_KoordinatorSiehtNurFreigegebenenDashboardTab()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = SeedSchule(db);
+        var directorId = await SeedSchulLeiterAsync(db, school);
+        var coordinatorId = await SeedKoordinatorAsync(db, school);
+        var service = new FinanzService(db);
+
+        Assert.Equal(default, await service.GetFinanceAccessAsync(coordinatorId, school.Id));
+        var granted = await service.SetCoordinatorFinanceAccessAsync(directorId, coordinatorId, school.Id,
+            menu: true, dashboard: true, entries: false, cycles: false);
+        Assert.True(granted.Succeeded, granted.Message);
+
+        var access = await service.GetFinanceAccessAsync(coordinatorId, school.Id);
+        Assert.True(access.Menu);
+        Assert.True(access.Dashboard);
+        Assert.False(access.Entries);
+        Assert.False(access.Cycles);
+        Assert.Single(await service.GetSchulenAsync(coordinatorId, false));
+    }
+
     // -------------------- Kategorien --------------------
 
     [Fact]
@@ -225,10 +291,10 @@ public class FinanzServiceTests
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
         var leiterId = await SeedSchulLeiterAsync(db, schule);
-        var service = new FinanzService(db);
+        var service = new FinanzService(db, new FakeFinanzBelegStorage());
         var (_, _, freieKategorie) = await service.KategorieAnlegenAsync(schule.Id, "Vente de scripts", FinanzRichtung.Einnahme);
         var (_, _, verwendeteKategorie) = await service.KategorieAnlegenAsync(schule.Id, "Matériel", FinanzRichtung.Ausgabe);
-        await service.BuchungErfassenAsync(schule.Id, verwendeteKategorie!.Id, 1_000m, DateTime.UtcNow, leiterId);
+        await service.BuchungErfassenAsync(schule.Id, verwendeteKategorie!.Id, 1_000m, DateTime.UtcNow, leiterId, belegnummer: "REF-01", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         var freieKategorieErgebnis = await service.KategorieLoeschenAsync(freieKategorie!.Id, leiterId, istSuperAdmin: false);
         var verwendeteKategorieErgebnis = await service.KategorieLoeschenAsync(verwendeteKategorie.Id, leiterId, istSuperAdmin: false);
@@ -278,18 +344,96 @@ public class FinanzServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
-        var service = new FinanzService(db);
+        var storage = new FakeFinanzBelegStorage();
+        var service = new FinanzService(db, storage);
         var (_, _, kategorie) = await service.KategorieAnlegenAsync(schule.Id, "Miete", FinanzRichtung.Ausgabe);
         var user = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = user, UserName = "buchhalter" });
+        await db.SaveChangesAsync();
 
         var (succeeded, _, buchung) = await service.BuchungErfassenAsync(
-            schule.Id, kategorie!.Id, 5000m, DateTime.UtcNow.AddDays(-3), user);
+            schule.Id, kategorie!.Id, 5000m, DateTime.UtcNow.AddDays(-3), user, belegnummer: " FAC-42 ", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         Assert.True(succeeded);
         Assert.NotNull(buchung);
         Assert.Equal(FinanzRichtung.Ausgabe, buchung!.Richtung);
         Assert.Equal(5000m, buchung.Betrag);
         Assert.Equal(user, buchung.ErfasstVonUserID);
+        Assert.Equal("FAC-42", buchung.Belegnummer);
+        Assert.Equal($"B-{buchung.Id:N}".ToUpperInvariant(), buchung.Buchungsnummer);
+        var journal = await service.GetUebersichtAsync(new FinanzFilter { SchulID = schule.Id });
+        Assert.Equal(buchung.Buchungsnummer, Assert.Single(journal.Zeilen).Buchungsnummer);
+        Assert.True(Assert.Single(journal.Zeilen).HatBelegdatei);
+        Assert.Equal("facture.pdf", Assert.Single(journal.Zeilen).BelegDateiname);
+        var beleg = Assert.Single(db.FinanzBelege);
+        Assert.Empty(beleg.Inhalt);
+        Assert.Equal(TestPdf, storage.Dateien[beleg.BlobName!]);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task BuchungErfassenAsync_ErlaubtBuchungOhneReferenzUndDatei(string? belegnummer)
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var storage = new FakeFinanzBelegStorage();
+        var service = new FinanzService(db, storage);
+        var (_, _, kategorie) = await service.KategorieAnlegenAsync(schule.Id, "Frais", FinanzRichtung.Ausgabe);
+        var user = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = user, UserName = "comptable" });
+        await db.SaveChangesAsync();
+
+        var (ok, _, buchung) = await service.BuchungErfassenAsync(
+            schule.Id, kategorie!.Id, 100m, DateTime.Today, user, belegnummer: belegnummer);
+
+        Assert.True(ok);
+        Assert.NotNull(buchung);
+        Assert.Null(buchung.Belegnummer);
+        Assert.Empty(db.FinanzBelege);
+        var zeile = Assert.Single((await service.GetUebersichtAsync(new FinanzFilter { SchulID = schule.Id })).Zeilen);
+        Assert.False(zeile.HatBelegdatei);
+        Assert.Null(zeile.BelegDateiname);
+    }
+
+    [Theory]
+    [InlineData("facture.pdf", "texte")]
+    [InlineData("facture.exe", "%PDF-1.4")]
+    [InlineData(null, "%PDF-1.4")]
+    public async Task BuchungErfassenAsync_LehntUngueltigeDateiAb(string? dateiname, string inhalt)
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var service = new FinanzService(db);
+        var (_, _, kategorie) = await service.KategorieAnlegenAsync(schule.Id, "Frais", FinanzRichtung.Ausgabe);
+        var (ok, _, _) = await service.BuchungErfassenAsync(schule.Id, kategorie!.Id, 100m,
+            DateTime.Today, Guid.NewGuid(), belegnummer: "REF", dateiname: dateiname,
+            belegInhalt: System.Text.Encoding.UTF8.GetBytes(inhalt));
+        Assert.False(ok);
+        Assert.Empty(db.FinanzBelege);
+    }
+
+    [Fact]
+    public async Task GetFinanzBelegAsync_IsoliertSchulenUndBerechtigungen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var fremdeSchule = SeedSchule(db, "Autre école");
+        var autor = await SeedSchulLeiterAsync(db, schule);
+        var fremd = await SeedSchulLeiterAsync(db, fremdeSchule);
+        var service = new FinanzService(db, new FakeFinanzBelegStorage());
+        var (_, _, kategorie) = await service.KategorieAnlegenAsync(schule.Id, "Frais", FinanzRichtung.Ausgabe);
+        var (ok, _, buchung) = await service.BuchungErfassenAsync(schule.Id, kategorie!.Id, 100m,
+            DateTime.Today, autor, belegnummer: "FAC", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        Assert.True(ok);
+        Assert.NotNull(await service.GetFinanzBelegAsync(buchung!.Id, autor));
+        Assert.Null(await service.GetFinanzBelegAsync(buchung.Id, fremd));
+        Assert.Null(await service.GetFinanzBelegAsync(buchung.Id, Guid.Empty));
+        var beleg = await service.GetFinanzBelegAsync(buchung.Id, autor);
+        await using var stream = (await service.OeffneFinanzBelegAsync(beleg!))!;
+        using var bytes = new MemoryStream();
+        await stream.CopyToAsync(bytes);
+        Assert.Equal(TestPdf, bytes.ToArray());
     }
 
     [Fact]
@@ -311,7 +455,7 @@ public class FinanzServiceTests
         var service = new FinanzService(db);
 
         var (succeeded, error, buchung) = await service.BuchungErfassenAsync(
-            schule.Id, kategorie.Id, 1000m, DateTime.UtcNow, Guid.NewGuid());
+            schule.Id, kategorie.Id, 1000m, DateTime.UtcNow, Guid.NewGuid(), belegnummer: "REF-02", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         Assert.False(succeeded);
         Assert.Contains("automatiques", error);
@@ -338,11 +482,17 @@ public class FinanzServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
-        var service = new FinanzService(db);
+        var storage = new FakeFinanzBelegStorage();
+        var service = new FinanzService(db, storage);
         var (_, _, kategorie) = await service.KategorieAnlegenAsync(schule.Id, "Sonstiges", FinanzRichtung.Einnahme);
         var ersteller = Guid.NewGuid();
+        db.UserSchools.Add(new UserSchool { AppUserId = ersteller, SchoolId = schule.Id, CanManageStudents = true });
+        var directorRole = new Role { Id = Guid.NewGuid(), Name = Rollen.SchulLeiter };
+        db.Roles.Add(directorRole);
+        db.UserRoles.Add(new AppUserRole { UserId = ersteller, RoleId = directorRole.Id });
+        await db.SaveChangesAsync();
         var (_, _, buchung) = await service.BuchungErfassenAsync(
-            schule.Id, kategorie!.Id, 1000m, DateTime.UtcNow, ersteller);
+            schule.Id, kategorie!.Id, 1000m, DateTime.UtcNow, ersteller, belegnummer: "REF-03", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         var fremd = await service.BuchungLoeschenAsync(buchung!.Id, Guid.NewGuid(), istSuperAdmin: false);
         Assert.False(fremd.Succeeded);
@@ -350,6 +500,7 @@ public class FinanzServiceTests
         var eigen = await service.BuchungLoeschenAsync(buchung.Id, ersteller, istSuperAdmin: false);
         Assert.True(eigen.Succeeded);
         Assert.Empty(db.FinanzBuchungen);
+        Assert.Empty(storage.Dateien);
     }
 
     [Fact]
@@ -367,7 +518,7 @@ public class FinanzServiceTests
         enrollment.TeacherCommissionAtEnrollment = 1600m;
         enrollment.ProductOwnerCommissionAtEnrollment = 400m;
         await db.SaveChangesAsync();
-        var service = new FinanzService(db);
+        var service = new FinanzService(db, new FakeFinanzBelegStorage());
         var erfasstVon = Guid.NewGuid();
 
         var result = await service.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVon);
@@ -375,6 +526,8 @@ public class FinanzServiceTests
         Assert.True(result.Succeeded, result.ErrorMessage);
         var buchungen = db.FinanzBuchungen.OrderBy(buchung => buchung.Betrag).ToList();
         Assert.Equal(3, buchungen.Count);
+        Assert.Equal(3, buchungen.Select(buchung => buchung.Buchungsnummer).Distinct().Count());
+        Assert.All(buchungen, buchung => Assert.Equal($"B-{buchung.Id:N}".ToUpperInvariant(), buchung.Buchungsnummer));
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Einnahme && buchung.Betrag == 20000m);
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Ausgabe && buchung.Betrag == 17600m);
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Ausgabe && buchung.Betrag == 1600m);
@@ -413,11 +566,17 @@ public class FinanzServiceTests
         var (ausgabeOk, _, ausgabeKategorie) = await service.KategorieAnlegenAsync(schule.Id, "Matériel", FinanzRichtung.Ausgabe);
         Assert.True(einnahmeOk);
         Assert.True(ausgabeOk);
-        await service.BuchungErfassenAsync(schule.Id, einnahmeKategorie!.Id, 5_000m, DateTime.Today, erfasstVon);
-        await service.BuchungErfassenAsync(schule.Id, ausgabeKategorie!.Id, 2_000m, DateTime.Today, erfasstVon);
+        await service.BuchungErfassenAsync(schule.Id, einnahmeKategorie!.Id, 5_000m, DateTime.Today, erfasstVon, belegnummer: "REF-04", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        await service.BuchungErfassenAsync(schule.Id, ausgabeKategorie!.Id, 2_000m, DateTime.Today, erfasstVon, belegnummer: "REF-05", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         var journal = await service.GetUebersichtAsync(new FinanzFilter { SchulID = schule.Id });
         Assert.Contains(journal.Zeilen, zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboZahlung);
+        Assert.Equal(25_000m, journal.SummeEinnahmen);
+        Assert.Equal(21_200m, journal.SummeAusgaben);
+        Assert.Equal(3_800m, journal.Saldo);
+        Assert.Equal(17_600m, journal.Zeilen
+            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboAnteil)
+            .Sum(zeile => zeile.Betrag));
         var ausgabenJournal = await service.GetUebersichtAsync(new FinanzFilter
         {
             SchulID = schule.Id,
@@ -733,6 +892,72 @@ public class FinanzServiceTests
         Assert.NotNull(zahlung);
         Assert.Equal(ZahlungsArt.Cash, zahlung!.ZahlungsArt);
         Assert.Equal(12500m, zahlung.Betrag);
+        Assert.Equal($"B-{zahlung.FinanzBuchung!.Id:N}".ToUpperInvariant(), zahlung.FinanzBuchung.Buchungsnummer);
+    }
+
+    [Fact]
+    public async Task GetFinanzAbgleichAsync_ErkenntFehlendeZahlungsbuchung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (level, student) = SeedNiveauMitSchueler(db, schule, preis: 12500m);
+        var service = new FinanzService(db);
+        var (_, _, durchlauf) = await service.DurchlaufStartenAsync(
+            schule.Id, level.Id, 12500m, DateTime.UtcNow, Guid.NewGuid());
+        var (ok, _, zahlung) = await service.ZahlungBuchenAsync(
+            durchlauf!.Id, student.Id, 12500m, ZahlungsArt.Cash, DateTime.UtcNow, Guid.NewGuid());
+        Assert.True(ok);
+
+        var korrekt = await service.GetFinanzAbgleichAsync(schule.Id);
+        Assert.Equal(12500m, korrekt.SchulgebuehrenZahlungen);
+        Assert.Equal(12500m, korrekt.SchulgebuehrenBuchungen);
+        Assert.Equal(0, korrekt.SchulgebuehrenAbweichungen);
+
+        db.FinanzBuchungen.Remove(zahlung!.FinanzBuchung!);
+        await db.SaveChangesAsync();
+        var abweichend = await service.GetFinanzAbgleichAsync(schule.Id);
+        Assert.Equal(1, abweichend.SchulgebuehrenAbweichungen);
+        Assert.Equal(0m, abweichend.SchulgebuehrenBuchungen);
+    }
+
+    [Fact]
+    public async Task GetFinanzAbgleichAsync_TrenntPlattformRechnungVonBestaetigterZahlung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        SeedNiveauMitSchueler(db, schule);
+        var enrollment = db.LevelEnrollments.Single();
+        enrollment.IsPaid = true;
+        enrollment.PaidAtUtc = DateTime.UtcNow;
+        enrollment.PriceAtEnrollment = 20_000m;
+        enrollment.SchoolLeaderCommissionAtEnrollment = 800m;
+        enrollment.TeacherCommissionAtEnrollment = 1_600m;
+        var userId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = userId, UserName = "buchhalter" });
+        var rechnung = new Abrechnungsperiode { SchulID = schule.Id, Umsatz = 17_600m, Status = AbrechnungStatus.Erstellt };
+        db.Abrechnungsperioden.Add(rechnung);
+        enrollment.AbgerechnetInPeriodeId = rechnung.Id;
+        await db.SaveChangesAsync();
+        var service = new FinanzService(db);
+        var gebucht = await service.HalloAppAboBuchungenErstellenAsync(enrollment.Id, userId);
+        Assert.True(gebucht.Succeeded);
+
+        var offen = await service.GetFinanzAbgleichAsync(schule.Id);
+        Assert.Equal(17_600m, offen.PlattformRechnungen);
+        Assert.Equal(17_600m, offen.PlattformBuchungenZuRechnungen);
+        Assert.Equal(0m, offen.BestaetigtePlattformZahlungen);
+        Assert.Equal(0, offen.PlattformRechnungenMitAbweichung);
+
+        rechnung.Status = AbrechnungStatus.Bestaetigt;
+        await db.SaveChangesAsync();
+        var bestaetigt = await service.GetFinanzAbgleichAsync(schule.Id);
+        Assert.Equal(17_600m, bestaetigt.BestaetigtePlattformZahlungen);
+        Assert.Equal(17_600m, bestaetigt.PlattformBuchungenZuRechnungen);
+
+        rechnung.Umsatz = 17_500m;
+        await db.SaveChangesAsync();
+        var abweichend = await service.GetFinanzAbgleichAsync(schule.Id);
+        Assert.Equal(1, abweichend.PlattformRechnungenMitAbweichung);
     }
 
     [Fact]
@@ -829,14 +1054,14 @@ public class FinanzServiceTests
         db.Users.Add(user);
         db.SaveChanges();
 
-        var service = new FinanzService(db);
+        var service = new FinanzService(db, new FakeFinanzBelegStorage());
         var (_, _, einnahmeKat) = await service.KategorieAnlegenAsync(schule.Id, "Verkauf", FinanzRichtung.Einnahme);
         var (_, _, ausgabeKat) = await service.KategorieAnlegenAsync(schule.Id, "Miete", FinanzRichtung.Ausgabe);
 
-        var b1 = await service.BuchungErfassenAsync(schule.Id, einnahmeKat!.Id, 10000m, new DateTime(2026, 1, 10), user.Id);
+        var b1 = await service.BuchungErfassenAsync(schule.Id, einnahmeKat!.Id, 10000m, new DateTime(2026, 1, 10), user.Id, belegnummer: "REF-06", dateiname: "facture.pdf", belegInhalt: TestPdf);
         Assert.True(b1.Succeeded, b1.ErrorMessage);
-        await service.BuchungErfassenAsync(schule.Id, einnahmeKat.Id, 2000m, new DateTime(2026, 3, 5), user.Id);
-        await service.BuchungErfassenAsync(schule.Id, ausgabeKat!.Id, 3000m, new DateTime(2026, 2, 1), user.Id);
+        await service.BuchungErfassenAsync(schule.Id, einnahmeKat.Id, 2000m, new DateTime(2026, 3, 5), user.Id, belegnummer: "REF-07", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        await service.BuchungErfassenAsync(schule.Id, ausgabeKat!.Id, 3000m, new DateTime(2026, 2, 1), user.Id, belegnummer: "REF-08", dateiname: "facture.pdf", belegInhalt: TestPdf);
 
         return (service, schule);
     }

@@ -12,6 +12,7 @@ using HalloApp.Core.Models.Home;
 using HalloApp.Core.Models.Student;
 using HalloApp.Core.Models.TeacherLessons;
 using HalloApp.Core.Services.Storage;
+using HalloApp.Core.Services.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -1012,6 +1013,7 @@ public class DashboardService(
         school.Name = normalizedName;
         school.City = model.City.Trim();
         school.Country = model.Country.Trim();
+        school.DescriptionHtml = HtmlSanitizer.Sanitize(model.DescriptionHtml);
         school.IsActive = model.IsActive;
         school.SubscriptionPriceOverride = model.SubscriptionPriceOverride;
         school.SchoolLeaderCommissionPercentOverride = model.SchoolLeaderCommissionPercentOverride;
@@ -1062,6 +1064,7 @@ public class DashboardService(
             Name = normalizedName,
             City = model.City.Trim(),
             Country = model.Country.Trim(),
+            DescriptionHtml = HtmlSanitizer.Sanitize(model.DescriptionHtml),
             IsActive = true
         };
 
@@ -1123,6 +1126,7 @@ public class DashboardService(
         school.Name = normalizedName;
         school.City = model.City.Trim();
         school.Country = model.Country.Trim();
+        school.DescriptionHtml = HtmlSanitizer.Sanitize(model.DescriptionHtml);
         school.IsActive = model.IsActive;
         school.GeaendertAmUtc = DateTime.UtcNow;
 
@@ -1141,6 +1145,7 @@ public class DashboardService(
                 Name = x.Name,
                 City = x.City,
                 Country = x.Country,
+                DescriptionHtml = x.DescriptionHtml,
                 IsActive = x.IsActive,
                 SubscriptionPriceOverride = x.SubscriptionPriceOverride,
                 SchoolLeaderCommissionPercentOverride = x.SchoolLeaderCommissionPercentOverride,

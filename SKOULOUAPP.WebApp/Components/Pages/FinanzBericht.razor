@@ -1,0 +1,56 @@
+@page "/finanzen/rapport"
+@attribute [Authorize(Roles = "SchulLeiter,Koordinator,SuperAdmin")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inherits HalloApp.WebApp.Components.CancelableComponentBase
+
+<PageTitle>Rapport financier · SKOULOU</PageTitle>
+
+<section class="mx-auto grid max-w-5xl gap-5 px-2 py-4 sm:px-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <a class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-200" href="/finanzen">← Retour aux finances</a>
+        @if (bericht is not null)
+        {
+            <a class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" href="@PdfUrl" target="_blank" rel="noopener">Ouvrir / imprimer le PDF</a>
+        }
+    </div>
+    @if (error is not null)
+    {
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-900" role="alert">@error</div>
+    }
+    else if (bericht is null)
+    {
+        <div class="rounded-2xl bg-white p-6 text-sm text-slate-700">Chargement du rapport...</div>
+    }
+    else
+    {
+        <div class="rounded-3xl bg-white p-5 shadow ring-1 ring-slate-100 sm:p-8">
+            <p class="text-xs font-black uppercase tracking-wider text-indigo-700">SKOULOU · Finances de l'école</p>
+            <h1 class="mt-2 text-2xl font-black text-slate-950">Rapport financier · @bericht.SchulName</h1>
+            <p class="mt-2 text-sm text-slate-600">@HalloApp.WebApp.Services.FinanzBerichtPdfService.DescribeFilter(bericht.Filter)</p>
+            <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-emerald-50 p-4 text-emerald-900"><p class="text-sm">Recettes</p><p class="text-xl font-black">@bericht.Uebersicht.SummeEinnahmen.ToString("N0") FCFA</p></div>
+                <div class="rounded-2xl bg-rose-50 p-4 text-rose-900"><p class="text-sm">Dépenses</p><p class="text-xl font-black">@bericht.Uebersicht.SummeAusgaben.ToString("N0") FCFA</p></div>
+                <div class="rounded-2xl bg-indigo-50 p-4 text-indigo-900"><p class="text-sm">Solde</p><p class="text-xl font-black">@bericht.Uebersicht.Saldo.ToString("N0") FCFA</p></div>
+            </div>
+            <h2 class="mt-8 text-lg font-bold text-slate-900">Écritures filtrées</h2>
+            @if (bericht.Uebersicht.Zeilen.Count == 0)
+            {
+                <p class="mt-3 text-sm text-slate-600">Aucune écriture pour les filtres sélectionnés.</p>
+            }
+            else
+            {
+                <div class="mt-3 grid gap-2">
+                    @foreach (var row in bericht.Uebersicht.Zeilen)
+                    {
+                        <div class="grid min-w-0 gap-1 rounded-xl border border-slate-100 p-3 text-sm sm:grid-cols-[6rem_1fr_6rem_9rem] sm:items-center" @key="row.BuchungID">
+                            <span class="text-slate-500">@row.Wirkungsdatum.ToString("dd/MM/yyyy")</span>
+                            <span class="min-w-0 break-words font-semibold text-slate-800">@(row.KategorieSystemCode == HalloApp.Core.DataModels.Finanzen.FinanzSystemCode.KursNiveauZahlung ? "Scolarité" : row.Kategorie)</span>
+                            <span class="text-slate-600">@(row.Richtung == HalloApp.Core.DataModels.Finanzen.FinanzRichtung.Einnahme ? "Recette" : "Dépense")</span>
+                            <span class="font-bold tabular-nums sm:text-right @(row.Richtung == HalloApp.Core.DataModels.Finanzen.FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(row.Richtung == HalloApp.Core.DataModels.Finanzen.FinanzRichtung.Einnahme ? "+" : "−")@row.Betrag.ToString("N0") FCFA</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</section>

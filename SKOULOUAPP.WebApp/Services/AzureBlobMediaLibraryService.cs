@@ -73,7 +73,7 @@ public sealed class AzureBlobMediaLibraryService(
             .Include(asset => asset.School)
             .Include(asset => asset.Owner)
             .Include(asset => asset.Klasse)
-            .Where(asset => asset.MediaType == BlobMediaType.Image)
+            .Where(asset => asset.MediaType == BlobMediaType.Image && asset.SchoolId != null)
             .AsQueryable();
 
         query = await ApplyVisibilityAsync(query, userId, roles, cancellationToken);
@@ -94,7 +94,7 @@ public sealed class AzureBlobMediaLibraryService(
             .Include(asset => asset.School)
             .Include(asset => asset.Owner)
             .Include(asset => asset.Klasse)
-            .Where(asset => asset.MediaType == BlobMediaType.Video)
+            .Where(asset => asset.MediaType == BlobMediaType.Video && asset.SchoolId != null)
             .AsQueryable();
 
         query = await ApplyVisibilityAsync(query, userId, roles, cancellationToken);
@@ -116,11 +116,25 @@ public sealed class AzureBlobMediaLibraryService(
         string contentType,
         string altText,
         CancellationToken cancellationToken = default)
+        => await UploadImageCoreAsync(userId, roles, schoolId, klasseId, content, originalFileName, displayName, contentType, altText, false, cancellationToken);
+
+    public async Task<BlobMediaAssetItem> UploadProfileImageAsync(Guid userId, Guid? schoolId, Stream content, string originalFileName, string contentType, CancellationToken cancellationToken = default)
+        => await UploadImageCoreAsync(userId, [], schoolId, null, content, originalFileName, Path.GetFileNameWithoutExtension(originalFileName), contentType, "Photo de profil", true, cancellationToken);
+
+    private async Task<BlobMediaAssetItem> UploadImageCoreAsync(
+        Guid userId, IReadOnlyCollection<string> roles, Guid? schoolId, Guid? klasseId, Stream content,
+        string originalFileName, string displayName, string contentType, string altText, bool profileImage,
+        CancellationToken cancellationToken)
     {
         var normalizedContentType = NormalizeImageContentType(contentType, originalFileName);
         ValidateImage(normalizedContentType, altText);
 
-        if (!await CanUploadToSchoolAsync(userId, roles, schoolId, cancellationToken))
+        if (!(profileImage
+            ? schoolId.HasValue
+                ? await dbContext.UserSchools.AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId.Value, cancellationToken)
+                : await dbContext.Users.AnyAsync(owner => owner.Id == userId, cancellationToken)
+                    && !await dbContext.UserSchools.AnyAsync(link => link.AppUserId == userId, cancellationToken)
+            : schoolId.HasValue && await CanUploadToSchoolAsync(userId, roles, schoolId.Value, cancellationToken)))
         {
             throw new UnauthorizedAccessException("Vous n’êtes pas autorisé à ajouter une image pour cette école.");
         }
@@ -134,7 +148,9 @@ public sealed class AzureBlobMediaLibraryService(
         if (storageOptions.Enabled)
         {
             ValidateConfiguration();
-            blobName = BuildBlobStoragePath(schoolId, klasseId, originalFileName, displayName, "images");
+            blobName = profileImage && !schoolId.HasValue
+                ? $"{BlobStorageRootPrefix}/profiles/{userId:N}/{Guid.NewGuid():N}{Path.GetExtension(originalFileName).ToLowerInvariant()}"
+                : BuildBlobStoragePath(schoolId!.Value, klasseId, originalFileName, displayName, "images");
             var blob = GetContainerClient().GetBlobClient(blobName);
             await blob.UploadAsync(content, new BlobUploadOptions
             {
@@ -144,7 +160,9 @@ public sealed class AzureBlobMediaLibraryService(
         }
         else
         {
-            blobName = BuildLocalMediaPath(schoolId, klasseId, originalFileName, displayName, "images");
+            blobName = profileImage && !schoolId.HasValue
+                ? $"profiles/{userId:N}/{Guid.NewGuid():N}{Path.GetExtension(originalFileName).ToLowerInvariant()}"
+                : BuildLocalMediaPath(schoolId!.Value, klasseId, originalFileName, displayName, "images");
             var physicalPath = GetLocalMediaPath(blobName);
             Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
             await using var fileStream = File.Create(physicalPath);
@@ -184,6 +202,12 @@ public sealed class AzureBlobMediaLibraryService(
     {
         var query = dbContext.BlobMediaAssets.AsNoTracking().AsQueryable();
         query = await ApplyVisibilityAsync(query, userId, roles, cancellationToken);
+        query = query.Union(dbContext.BlobMediaAssets.AsNoTracking().Where(asset => asset.Id == assetId
+            && asset.OwnerId == userId && dbContext.Users.Any(owner => owner.Id == userId && owner.ProfilBildAssetId == asset.Id)));
+        if (roles.Contains(Rollen.Schueler) && await CanStudentOpenImageAsync(assetId, userId, cancellationToken))
+        {
+            query = query.Union(dbContext.BlobMediaAssets.AsNoTracking().Where(asset => asset.Id == assetId));
+        }
         var asset = await query.SingleOrDefaultAsync(item => item.Id == assetId && item.MediaType == BlobMediaType.Image, cancellationToken);
         if (asset is null)
         {
@@ -433,6 +457,36 @@ public sealed class AzureBlobMediaLibraryService(
         await GetContainerClient().GetBlobClient(asset.BlobName).DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
+    private async Task<bool> CanStudentOpenImageAsync(Guid assetId, Guid studentId, CancellationToken cancellationToken)
+    {
+        var profile = await dbContext.StudentProfiles.AsNoTracking()
+            .Where(item => item.AppUserId == studentId)
+            .Select(item => new { item.SchoolId, item.CurrentKlasseId })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (profile?.CurrentKlasseId is not Guid klasseId)
+        {
+            return false;
+        }
+
+        var imageUrl = $"/media-library/{assetId:D}";
+        var hasImageInLesson = await dbContext.Lessons.AsNoTracking()
+            .AnyAsync(lesson => lesson.IsPublished && lesson.KlasseId == klasseId
+                && lesson.Klasse.SchoolId == profile.SchoolId
+                && (lesson.Content.Contains(imageUrl) || lesson.Exercises.Any(exercise => exercise.Question.Contains(imageUrl))), cancellationToken);
+        var hasImageInTeacherLesson = await dbContext.TeacherLessons.AsNoTracking()
+            .AnyAsync(lesson => lesson.IsPublished && lesson.KlasseId == klasseId
+                && lesson.Klasse.SchoolId == profile.SchoolId
+                && lesson.Pages.Any(page => page.ContentHtml.Contains(imageUrl)), cancellationToken);
+        var hasImageInExam = await dbContext.Exams.AsNoTracking()
+            .AnyAsync(exam => exam.IsPublishedToStudents && exam.KlasseId == klasseId
+                && exam.Klasse.SchoolId == profile.SchoolId
+                && exam.Questions.Any(question => question.Prompt.Contains(imageUrl)), cancellationToken);
+
+        return (hasImageInLesson || hasImageInTeacherLesson || hasImageInExam)
+            && await dbContext.BlobMediaAssets.AsNoTracking().AnyAsync(asset => asset.Id == assetId
+                && asset.SchoolId == profile.SchoolId && asset.MediaType == BlobMediaType.Image, cancellationToken);
+    }
+
     private async Task<bool> CanStudentOpenPublishedTeacherLessonVideoAsync(
         Guid assetId,
         Guid studentId,
@@ -536,7 +590,7 @@ public sealed class AzureBlobMediaLibraryService(
     {
         if (roles.Contains(Rollen.SuperAdmin) || roles.Contains(Rollen.ProduktOwner))
         {
-            return query;
+            return query.Where(asset => asset.SchoolId != null);
         }
 
         var schoolIds = await dbContext.UserSchools
@@ -546,12 +600,12 @@ public sealed class AzureBlobMediaLibraryService(
 
         if (roles.Contains(Rollen.SchulLeiter) || roles.Contains(Rollen.Koordinator))
         {
-            return query.Where(asset => schoolIds.Contains(asset.SchoolId));
+            return query.Where(asset => asset.SchoolId.HasValue && schoolIds.Contains(asset.SchoolId.Value));
         }
 
         if (roles.Contains(Rollen.Lehrer))
         {
-            return query.Where(asset => asset.OwnerId == userId || schoolIds.Contains(asset.SchoolId));
+            return query.Where(asset => asset.SchoolId.HasValue && (asset.OwnerId == userId || schoolIds.Contains(asset.SchoolId.Value)));
         }
 
         return query.Where(_ => false);
@@ -638,7 +692,7 @@ public sealed class AzureBlobMediaLibraryService(
     {
         Id = asset.Id,
         SchoolId = asset.SchoolId,
-        SchoolName = asset.School.Name,
+        SchoolName = asset.School?.Name ?? string.Empty,
         OwnerId = asset.OwnerId,
         OwnerName = asset.Owner.FullName,
         KlasseId = asset.KlasseId,

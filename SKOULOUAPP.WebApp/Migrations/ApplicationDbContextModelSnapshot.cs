@@ -176,6 +176,61 @@ namespace HalloApp.WebApp.Migrations
                     b.ToTable("LevelEnrollments");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Email.MailNachricht", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Absender")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Betreff")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Empfaenger")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GesendetVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Inhalt")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IstEingehend")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PostmarkMessageID")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostmarkMessageID")
+                        .IsUnique()
+                        .HasFilter("[PostmarkMessageID] IS NOT NULL");
+
+                    b.HasIndex("SchulID", "ErstelltAmUtc");
+
+                    b.ToTable("MailNachrichten");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Exams.Exam", b =>
                 {
                     b.Property<Guid>("Id")
@@ -648,11 +703,61 @@ namespace HalloApp.WebApp.Migrations
                     b.ToTable("ExerciseOptions");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Finanzen.FinanzBeleg", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BlobName")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("BuchungID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Dateiname")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("Inhalt")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("Inhaltstyp")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<Guid>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuchungID")
+                        .IsUnique();
+
+                    b.HasIndex("SchulID");
+
+                    b.ToTable("FinanzBelege");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Finanzen.FinanzBuchung", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Belegnummer")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("BeschreibungHtml")
                         .HasColumnType("nvarchar(max)");
@@ -660,6 +765,13 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<decimal>("Betrag")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Buchungsnummer")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(34)
+                        .HasColumnType("nvarchar(34)")
+                        .HasComputedColumnSql("'B-' + REPLACE(CONVERT(varchar(36), [Id]), '-', '')", true);
 
                     b.Property<Guid>("ErfasstVonUserID")
                         .HasColumnType("uniqueidentifier");
@@ -686,6 +798,9 @@ namespace HalloApp.WebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Buchungsnummer")
+                        .IsUnique();
 
                     b.HasIndex("ErfasstVonUserID");
 
@@ -1148,7 +1263,7 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("SchoolId")
+                    b.Property<Guid?>("SchoolId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<TimeSpan?>("VideoDuration")
@@ -1519,6 +1634,34 @@ namespace HalloApp.WebApp.Migrations
                     b.ToTable("Abrechnungsperioden");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Schools.Ankuendigung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AblaufAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InhaltHtml")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Titel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AblaufAmUtc");
+
+                    b.ToTable("Ankuendigungen");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Schools.CommissionSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1747,6 +1890,10 @@ namespace HalloApp.WebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DescriptionHtml")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -1849,7 +1996,19 @@ namespace HalloApp.WebApp.Migrations
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("CanAccessFinances")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanCreateFinanceEntries")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanManageCyclePayments")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("CanManageStudents")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanViewFinanceDashboard")
                         .HasColumnType("bit");
 
                     b.HasKey("AppUserId", "SchoolId");
@@ -2186,6 +2345,17 @@ namespace HalloApp.WebApp.Migrations
                     b.Navigation("Exercise");
                 });
 
+            modelBuilder.Entity("HalloApp.Core.DataModels.Finanzen.FinanzBeleg", b =>
+                {
+                    b.HasOne("HalloApp.Core.DataModels.Finanzen.FinanzBuchung", "Buchung")
+                        .WithOne()
+                        .HasForeignKey("HalloApp.Core.DataModels.Finanzen.FinanzBeleg", "BuchungID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Buchung");
+                });
+
             modelBuilder.Entity("HalloApp.Core.DataModels.Finanzen.FinanzBuchung", b =>
                 {
                     b.HasOne("HalloApp.Core.DataModels.Identity.AppUser", "ErfasstVon")
@@ -2374,8 +2544,7 @@ namespace HalloApp.WebApp.Migrations
                     b.HasOne("HalloApp.Core.DataModels.Schools.School", "School")
                         .WithMany()
                         .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Klasse");
 

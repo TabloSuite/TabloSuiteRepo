@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using HalloApp.Core.Interfaces;
+using HalloApp.Core.DataModels.Email;
 
 namespace HalloApp.WebApp.Data;
 
@@ -9,6 +10,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<School> Schools => Set<School>();
+    public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
+    public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<KlassenStufe> KlassenStufen => Set<KlassenStufe>();
     public DbSet<Fach> Faecher => Set<Fach>();
@@ -42,6 +45,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<FinanzKategorie> FinanzKategorien => Set<FinanzKategorie>();
     public DbSet<FinanzBuchung> FinanzBuchungen => Set<FinanzBuchung>();
+    public DbSet<FinanzBeleg> FinanzBelege => Set<FinanzBeleg>();
     public DbSet<KursNiveauDurchlauf> KursNiveauDurchlaeufe => Set<KursNiveauDurchlauf>();
     public DbSet<RatenZahlung> RatenZahlungen => Set<RatenZahlung>();
     public DbSet<KlassenAbschlussEntscheidung> KlassenAbschlussEntscheidungen => Set<KlassenAbschlussEntscheidung>();
@@ -51,6 +55,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<School>().Property(x => x.Name).HasMaxLength(200);
+        modelBuilder.Entity<Ankuendigung>().Property(x => x.Titel).HasMaxLength(200);
+        modelBuilder.Entity<Ankuendigung>().HasIndex(x => x.AblaufAmUtc);
+        modelBuilder.Entity<MailNachricht>().Property(x => x.Absender).HasMaxLength(256);
+        modelBuilder.Entity<MailNachricht>().Property(x => x.Empfaenger).HasMaxLength(256);
+        modelBuilder.Entity<MailNachricht>().Property(x => x.Betreff).HasMaxLength(300);
+        modelBuilder.Entity<MailNachricht>().Property(x => x.PostmarkMessageID).HasMaxLength(100);
+        modelBuilder.Entity<MailNachricht>().HasIndex(x => x.PostmarkMessageID).IsUnique().HasFilter("[PostmarkMessageID] IS NOT NULL");
+        modelBuilder.Entity<MailNachricht>().HasIndex(x => new { x.SchulID, x.ErstelltAmUtc });
         modelBuilder.Entity<School>().Property(x => x.SchoolLeaderCommissionPercentOverride).HasPrecision(5, 2);
         modelBuilder.Entity<School>().Property(x => x.TeacherCommissionPercentOverride).HasPrecision(5, 2);
         modelBuilder.Entity<School>().Property(x => x.ProductOwnerCommissionPercentOverride).HasPrecision(5, 2);
@@ -536,6 +548,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         // --- FinanzBuchung ---
         modelBuilder.Entity<FinanzBuchung>().Property(x => x.Betrag).HasPrecision(18, 2);
+        modelBuilder.Entity<FinanzBuchung>().Property(x => x.Belegnummer).HasMaxLength(100);
+        modelBuilder.Entity<FinanzBuchung>().Property(x => x.Buchungsnummer)
+            .HasField("buchungsnummer")
+            .HasMaxLength(34)
+            .HasComputedColumnSql("'B-' + REPLACE(CONVERT(varchar(36), [Id]), '-', '')", stored: true);
+        modelBuilder.Entity<FinanzBuchung>().HasIndex(x => x.Buchungsnummer).IsUnique();
         modelBuilder.Entity<FinanzBuchung>().HasIndex(x => new { x.SchulID, x.Wirkungsdatum });
         modelBuilder.Entity<FinanzBuchung>().HasIndex(x => new { x.SchulID, x.Richtung, x.Wirkungsdatum });
 
@@ -556,6 +574,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(x => x.ErfasstVonUserID)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FinanzBeleg>().HasIndex(x => x.BuchungID).IsUnique();
+        modelBuilder.Entity<FinanzBeleg>().HasIndex(x => x.SchulID);
+        modelBuilder.Entity<FinanzBeleg>().Property(x => x.Dateiname).HasMaxLength(255);
+        modelBuilder.Entity<FinanzBeleg>().Property(x => x.Inhaltstyp).HasMaxLength(80);
+        modelBuilder.Entity<FinanzBeleg>().Property(x => x.BlobName).HasMaxLength(500);
+        modelBuilder.Entity<FinanzBeleg>()
+            .HasOne(x => x.Buchung)
+            .WithOne()
+            .HasForeignKey<FinanzBeleg>(x => x.BuchungID)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // --- KursNiveauDurchlauf ---
         modelBuilder.Entity<KursNiveauDurchlauf>().Property(x => x.NiveauPreis).HasPrecision(18, 2);

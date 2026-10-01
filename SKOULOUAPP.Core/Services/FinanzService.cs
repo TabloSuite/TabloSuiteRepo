@@ -2,6 +2,7 @@ using HalloApp.Core.DataModels.Finanzen;
 using HalloApp.Core.DataModels.Identity;
 using HalloApp.Core.DataModels.Schools;
 using HalloApp.Core.Interfaces;
+using HalloApp.Core.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace HalloApp.Core.Services;
@@ -18,18 +19,80 @@ namespace HalloApp.Core.Services;
 /// Löschen von Buchungen: der Ersteller darf löschen. Automatisch erzeugte
 /// HalloApp-Abo-Buchungen dürfen nur vom SuperAdmin storniert werden.
 /// </summary>
-public class FinanzService(IHalloAppDbContext dbContext)
+public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? belegStorage = null)
 {
+    public async Task<(bool Menu, bool Dashboard, bool Entries, bool Cycles)> GetFinanceAccessAsync(
+        Guid userId, Guid schoolId, bool isSuperAdmin = false, CancellationToken cancellationToken = default)
+    {
+        if (isSuperAdmin)
+        {
+            return (true, true, true, true);
+        }
+
+        var link = await dbContext.UserSchools.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.AppUserId == userId && x.SchoolId == schoolId && x.CanManageStudents, cancellationToken);
+        if (link is null)
+        {
+            return default;
+        }
+
+        var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                           join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                           where userRole.UserId == userId
+                           select role.Name).ToListAsync(cancellationToken);
+        if (roles.Contains(Rollen.SchulLeiter))
+        {
+            return (true, true, true, true);
+        }
+
+        return roles.Contains(Rollen.Koordinator) && link.CanAccessFinances
+            ? (true, link.CanViewFinanceDashboard, link.CanCreateFinanceEntries, link.CanManageCyclePayments)
+            : default;
+    }
+
+    public async Task<(bool Succeeded, string Message)> SetCoordinatorFinanceAccessAsync(
+        Guid directorId, Guid coordinatorId, Guid schoolId, bool menu, bool dashboard, bool entries, bool cycles,
+        CancellationToken cancellationToken = default)
+    {
+        var director = await GetFinanceAccessAsync(directorId, schoolId, cancellationToken: cancellationToken);
+        var isDirector = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                                join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                                where userRole.UserId == directorId && role.Name == Rollen.SchulLeiter
+                                select userRole.UserId).AnyAsync(cancellationToken);
+        if (!director.Menu || !isDirector)
+        {
+            return (false, "Seul le directeur de cette école peut autoriser l'accès financier.");
+        }
+
+        var isCoordinator = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                                   join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                                   where userRole.UserId == coordinatorId && role.Name == Rollen.Koordinator
+                                   select userRole.UserId).AnyAsync(cancellationToken);
+        var link = await dbContext.UserSchools.FirstOrDefaultAsync(x => x.AppUserId == coordinatorId && x.SchoolId == schoolId && x.CanManageStudents, cancellationToken);
+        if (!isCoordinator || link is null || (menu && !(dashboard || entries || cycles)))
+        {
+            return (false, "Sélectionnez un coordinateur de l'école et au moins un onglet.");
+        }
+
+        link.CanAccessFinances = menu;
+        link.CanViewFinanceDashboard = menu && dashboard;
+        link.CanCreateFinanceEntries = menu && entries;
+        link.CanManageCyclePayments = menu && cycles;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "Accès financier du coordinateur mis à jour.");
+    }
+
     private async Task<bool> DarfSchuleVerwaltenAsync(
         Guid userId,
         bool istSuperAdmin,
         Guid schulId,
-        CancellationToken cancellationToken)
-        => userId == Guid.Empty || istSuperAdmin || await dbContext.UserSchools
-            .AsNoTracking()
-            .AnyAsync(link => link.AppUserId == userId
-                && link.SchoolId == schulId
-                && link.CanManageStudents, cancellationToken);
+        CancellationToken cancellationToken,
+        bool cycles = false)
+    {
+        if (userId == Guid.Empty || istSuperAdmin) return true;
+        var access = await GetFinanceAccessAsync(userId, schulId, cancellationToken: cancellationToken);
+        return cycles ? access.Cycles : access.Entries;
+    }
 
     private async Task<bool> DarfSchulleiterFinanzenVerwaltenAsync(
         Guid userId,
@@ -43,7 +106,7 @@ public class FinanzService(IHalloAppDbContext dbContext)
             where userSchool.AppUserId == userId
                 && userSchool.SchoolId == schulId
                 && userSchool.CanManageStudents
-                && (role.Name == Rollen.SchulLeiter || role.Name == Rollen.Koordinator)
+                && role.Name == Rollen.SchulLeiter
             select userSchool.AppUserId)
             .AnyAsync(cancellationToken);
 
@@ -260,7 +323,10 @@ public class FinanzService(IHalloAppDbContext dbContext)
         string? beschreibungHtml = null,
         bool istSuperAdmin = false,
         bool autorisierungErzwingen = false,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? belegnummer = null,
+        string? dateiname = null,
+        byte[]? belegInhalt = null)
     {
         if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(erfasstVonUserId, istSuperAdmin, schulId, cancellationToken))
         {
@@ -270,6 +336,18 @@ public class FinanzService(IHalloAppDbContext dbContext)
         if (betrag <= 0)
         {
             return (false, "Le montant doit être supérieur à 0.", null);
+        }
+
+        if (belegnummer?.Trim().Length > 100)
+        {
+            return (false, "La référence du justificatif ne doit pas dépasser 100 caractères.", null);
+        }
+
+        string? inhaltstyp = null;
+        if ((dateiname is not null || belegInhalt is not null)
+            && !VersucheBelegZuPruefen(dateiname, belegInhalt, out inhaltstyp))
+        {
+            return (false, "Le justificatif doit être un fichier PDF, JPG ou PNG valide (5 Mo maximum).", null);
         }
 
         var kategorie = await dbContext.FinanzKategorien
@@ -297,12 +375,116 @@ public class FinanzService(IHalloAppDbContext dbContext)
             Betrag = betrag,
             Wirkungsdatum = wirkungsdatum,
             BeschreibungHtml = beschreibungHtml,
+            Belegnummer = string.IsNullOrWhiteSpace(belegnummer) ? null : belegnummer.Trim(),
             ErfasstVonUserID = erfasstVonUserId
         };
 
+        string? hochgeladenerBlob = null;
+        if (belegInhalt is not null)
+        {
+            if (belegStorage is null)
+                return (false, "Le stockage privé des justificatifs n'est pas configuré.", null);
+            var belegId = Guid.NewGuid();
+            try
+            {
+                using var stream = new MemoryStream(belegInhalt, writable: false);
+                hochgeladenerBlob = await belegStorage.SpeichernAsync(schulId, belegId, stream, inhaltstyp!, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return (false, "Le justificatif n'a pas pu être enregistré dans le stockage privé.", null);
+            }
+            dbContext.FinanzBelege.Add(new FinanzBeleg
+            {
+                Id = belegId,
+                BuchungID = buchung.Id,
+                Buchung = buchung,
+                SchulID = schulId,
+                Dateiname = Path.GetFileName(dateiname!),
+                Inhaltstyp = inhaltstyp!,
+                BlobName = hochgeladenerBlob
+            });
+        }
         dbContext.FinanzBuchungen.Add(buchung);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            if (hochgeladenerBlob is not null)
+            {
+                try { await belegStorage!.LoeschenAsync(hochgeladenerBlob, CancellationToken.None); }
+                catch { /* Original database failure takes precedence. */ }
+            }
+            throw;
+        }
         return (true, string.Empty, buchung);
+    }
+
+    private static bool VersucheBelegZuPruefen(string? dateiname, byte[]? inhalt, out string? inhaltstyp)
+    {
+        inhaltstyp = null;
+        if (string.IsNullOrWhiteSpace(dateiname) || Path.GetFileName(dateiname).Length > 255
+            || inhalt is not { Length: > 4 and <= 5 * 1024 * 1024 }) return false;
+
+        var endung = Path.GetExtension(dateiname).ToLowerInvariant();
+        inhaltstyp = endung switch
+        {
+            ".pdf" when inhalt.AsSpan().StartsWith("%PDF-"u8) => "application/pdf",
+            ".png" when inhalt.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a }) => "image/png",
+            ".jpg" or ".jpeg" when inhalt.AsSpan().StartsWith(new byte[] { 0xff, 0xd8, 0xff }) => "image/jpeg",
+            _ => null
+        };
+        return inhaltstyp is not null;
+    }
+
+    public async Task<FinanzBeleg?> GetFinanzBelegAsync(Guid buchungId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty) return null;
+        var beleg = await dbContext.FinanzBelege.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.BuchungID == buchungId, cancellationToken);
+        if (beleg is null) return null;
+        var istSuperAdmin = await dbContext.UserRoles.AsNoTracking()
+            .AnyAsync(x => x.UserId == userId && x.Role.Name == Rollen.SuperAdmin, cancellationToken);
+        var access = await GetFinanceAccessAsync(userId, beleg.SchulID, istSuperAdmin, cancellationToken);
+        return access.Dashboard || access.Entries ? beleg : null;
+    }
+
+    public async Task<Stream?> OeffneFinanzBelegAsync(FinanzBeleg beleg, CancellationToken cancellationToken = default)
+    {
+        if (beleg.BlobName is not null)
+            return belegStorage is null ? null : await belegStorage.OeffnenAsync(beleg.BlobName, cancellationToken);
+        return beleg.Inhalt.Length == 0 ? null : new MemoryStream(beleg.Inhalt, writable: false);
+    }
+
+    public async Task<int> BestehendeFinanzBelegeMigrierenAsync(CancellationToken cancellationToken = default)
+    {
+        if (belegStorage is null)
+            throw new InvalidOperationException("Le stockage privé des justificatifs n'est pas configuré.");
+
+        var belegIds = await dbContext.FinanzBelege.AsNoTracking()
+            .Where(x => x.BlobName == null && x.Inhalt.Length > 0)
+            .Select(x => x.Id).ToListAsync(cancellationToken);
+        var anzahl = 0;
+        foreach (var id in belegIds)
+        {
+            var beleg = await dbContext.FinanzBelege.FirstAsync(x => x.Id == id, cancellationToken);
+            using var stream = new MemoryStream(beleg.Inhalt, writable: false);
+            var blobName = await belegStorage.SpeichernAsync(beleg.SchulID, beleg.Id, stream, beleg.Inhaltstyp, cancellationToken);
+            beleg.BlobName = blobName;
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                anzahl++;
+            }
+            catch
+            {
+                await belegStorage.LoeschenAsync(blobName, CancellationToken.None);
+                throw;
+            }
+        }
+        return anzahl;
     }
 
     /// <summary>
@@ -335,8 +517,17 @@ public class FinanzService(IHalloAppDbContext dbContext)
             return (false, "Seul l'auteur (ou un Administrateur) peut supprimer cette écriture.");
         }
 
+        if (!await DarfSchuleVerwaltenAsync(aktuellerUserId, istSuperAdmin, buchung.SchulID, cancellationToken))
+        {
+            return (false, "Vous n'êtes pas autorisé à gérer les écritures de cette école.");
+        }
+
+        var beleg = await dbContext.FinanzBelege.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.BuchungID == buchungId, cancellationToken);
         dbContext.FinanzBuchungen.Remove(buchung);
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (beleg?.BlobName is not null && belegStorage is not null)
+            await belegStorage.LoeschenAsync(beleg.BlobName, cancellationToken);
         return (true, string.Empty);
     }
 
@@ -490,7 +681,8 @@ public class FinanzService(IHalloAppDbContext dbContext)
         bool autorisierungErzwingen = false,
         CancellationToken cancellationToken = default)
     {
-        if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(erstelltVonUserId, istSuperAdmin, schulId, cancellationToken))
+        if (autorisierungErzwingen
+            && !await DarfSchuleVerwaltenAsync(erstelltVonUserId, istSuperAdmin, schulId, cancellationToken, cycles: true))
         {
             return (false, "Vous n'êtes pas autorisé à gérer cette école.", null);
         }
@@ -717,7 +909,7 @@ public class FinanzService(IHalloAppDbContext dbContext)
                 return (false, "Le cycle est introuvable.", 0m, null);
             }
 
-            if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(beendetVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken))
+            if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(beendetVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken, cycles: true))
             {
                 return (false, "Vous n'êtes pas autorisé à gérer cette école.", 0m, null);
             }
@@ -871,7 +1063,7 @@ public class FinanzService(IHalloAppDbContext dbContext)
             return (false, "Le cycle est introuvable.", null);
         }
 
-        if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(erfasstVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken))
+        if (autorisierungErzwingen && !await DarfSchuleVerwaltenAsync(erfasstVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken, cycles: true))
         {
             return (false, "Vous n'êtes pas autorisé à gérer cette école.", null);
         }
@@ -1009,12 +1201,17 @@ public class FinanzService(IHalloAppDbContext dbContext)
         };
 
         var buchungen = await query.ToListAsync(cancellationToken);
+        var belegDateien = (await dbContext.FinanzBelege.AsNoTracking()
+            .Where(x => filter.SchulID == null || x.SchulID == filter.SchulID)
+            .Select(x => new { x.BuchungID, x.Dateiname }).ToListAsync(cancellationToken))
+            .ToDictionary(x => x.BuchungID, x => x.Dateiname);
 
         var uebersicht = new FinanzUebersicht
         {
             Zeilen = buchungen.Select(x => new FinanzUebersichtZeile
             {
                 BuchungID = x.Id,
+                Buchungsnummer = x.Buchungsnummer,
                 Wirkungsdatum = x.Wirkungsdatum,
                 ErstelltAmUtc = x.ErstelltAmUtc,
                 SchulName = x.Schule.Name,
@@ -1022,6 +1219,9 @@ public class FinanzService(IHalloAppDbContext dbContext)
                 KategorieSystemCode = x.Kategorie.SystemCode,
                 Richtung = x.Richtung,
                 Betrag = x.Betrag,
+                Belegnummer = x.Belegnummer,
+                HatBelegdatei = belegDateien.ContainsKey(x.Id),
+                BelegDateiname = belegDateien.GetValueOrDefault(x.Id),
                 BeschreibungHtml = x.BeschreibungHtml,
                 ErfasstVon = x.ErfasstVon?.FullName ?? string.Empty
             }).ToList(),
@@ -1032,6 +1232,104 @@ public class FinanzService(IHalloAppDbContext dbContext)
         return uebersicht;
     }
 
+    public async Task<FinanzAbgleich> GetFinanzAbgleichAsync(Guid schulId, CancellationToken cancellationToken = default)
+    {
+        var zahlungen = await dbContext.RatenZahlungen.AsNoTracking()
+            .Where(x => x.Durchlauf.SchulID == schulId)
+            .Select(x => new { x.Id, x.Betrag, x.FinanzBuchungID })
+            .ToListAsync(cancellationToken);
+        var buchungen = await dbContext.FinanzBuchungen.AsNoTracking()
+            .Where(x => x.SchulID == schulId)
+            .Select(x => new { x.Id, x.HerkunftReferenzID, x.Betrag, x.Richtung, SystemCode = x.Kategorie.SystemCode })
+            .ToListAsync(cancellationToken);
+        var buchungenNachId = buchungen.ToDictionary(x => x.Id);
+        var gebuchteSchulgebuehren = buchungen
+            .Where(x => x.SystemCode == FinanzSystemCode.KursNiveauZahlung && x.Richtung == FinanzRichtung.Einnahme)
+            .ToList();
+        var zahlungsIds = zahlungen.Select(x => x.Id).ToHashSet();
+        var abweichungen = zahlungen.Count(zahlung =>
+            zahlung.FinanzBuchungID is not Guid buchungId
+            || !buchungenNachId.TryGetValue(buchungId, out var buchung)
+            || buchung.SystemCode != FinanzSystemCode.KursNiveauZahlung
+            || buchung.Richtung != FinanzRichtung.Einnahme
+            || buchung.HerkunftReferenzID != zahlung.Id
+            || buchung.Betrag != zahlung.Betrag)
+            + gebuchteSchulgebuehren.Count(buchung => buchung.HerkunftReferenzID is not Guid id
+                || !zahlungsIds.Contains(id)
+                || zahlungen.All(zahlung => zahlung.Id != id || zahlung.FinanzBuchungID != buchung.Id));
+
+        var rechnungen = await dbContext.Abrechnungsperioden.AsNoTracking()
+            .Where(x => x.SchulID == schulId)
+            .Select(x => new { x.Id, x.Umsatz, x.Status })
+            .ToListAsync(cancellationToken);
+        var rechnungsIds = rechnungen.Select(x => x.Id).ToList();
+        var positionen = await dbContext.LevelEnrollments.AsNoTracking()
+            .Where(x => x.AbgerechnetInPeriodeId != null && rechnungsIds.Contains(x.AbgerechnetInPeriodeId.Value))
+            .Select(x => new { x.Id, x.AbgerechnetInPeriodeId, x.PriceAtEnrollment, x.SchoolLeaderCommissionAtEnrollment, x.TeacherCommissionAtEnrollment })
+            .ToListAsync(cancellationToken);
+        var plattformBuchungen = buchungen
+            .Where(x => x.SystemCode == FinanzSystemCode.HalloAppAboAnteil && x.Richtung == FinanzRichtung.Ausgabe)
+            .ToList();
+        var positionenNachRechnung = positionen.GroupBy(x => x.AbgerechnetInPeriodeId!.Value)
+            .ToDictionary(x => x.Key, x => x.ToList());
+        var plattformAbweichungen = 0;
+        var zugeordneteBuchungen = 0m;
+        foreach (var rechnung in rechnungen)
+        {
+            var rechnungsPositionen = positionenNachRechnung.GetValueOrDefault(rechnung.Id) ?? [];
+            var erwarteteForderung = rechnungsPositionen.Sum(x => Math.Max(0m,
+                x.PriceAtEnrollment - x.SchoolLeaderCommissionAtEnrollment - x.TeacherCommissionAtEnrollment));
+            var gebuchteForderung = rechnungsPositionen.Sum(x => plattformBuchungen
+                .Where(b => b.HerkunftReferenzID == x.Id).Sum(b => b.Betrag));
+            zugeordneteBuchungen += gebuchteForderung;
+            if (rechnung.Umsatz != erwarteteForderung || rechnung.Umsatz != gebuchteForderung
+                || rechnungsPositionen.Any(x => plattformBuchungen.Count(b => b.HerkunftReferenzID == x.Id) != 1))
+                plattformAbweichungen++;
+        }
+
+        return new FinanzAbgleich(
+            zahlungen.Sum(x => x.Betrag), gebuchteSchulgebuehren.Sum(x => x.Betrag), abweichungen,
+            rechnungen.Sum(x => x.Umsatz), zugeordneteBuchungen,
+            rechnungen.Where(x => x.Status == AbrechnungStatus.Bestaetigt).Sum(x => x.Umsatz),
+            plattformAbweichungen);
+    }
+
+    public async Task<FinanzBericht?> GetFinanzBerichtAsync(
+        Guid userId, bool istSuperAdmin, FinanzFilter filter, CancellationToken cancellationToken = default)
+    {
+        if (filter.SchulID is not Guid schoolId || userId == Guid.Empty || filter.Von > filter.Bis)
+        {
+            return null;
+        }
+
+        if (!(await GetFinanceAccessAsync(userId, schoolId, istSuperAdmin, cancellationToken)).Dashboard)
+        {
+            return null;
+        }
+
+        var name = await dbContext.Schools.AsNoTracking()
+            .Where(x => x.Id == schoolId && x.IsActive)
+            .Select(x => x.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (name is null)
+        {
+            return null;
+        }
+
+        var berichtFilter = new FinanzFilter
+        {
+            SchulID = schoolId,
+            Von = filter.Von?.Date,
+            Bis = filter.Bis?.Date.AddDays(1).AddTicks(-1),
+            Richtung = filter.Richtung,
+            KategorieID = filter.KategorieID,
+            Sortierung = filter.Sortierung
+        };
+
+        var uebersicht = await GetUebersichtAsync(berichtFilter, cancellationToken);
+        return new FinanzBericht(name, berichtFilter, uebersicht);
+    }
+
     // -------------------- UI-Lesemethoden --------------------
 
     /// <summary>Liefert aktive Schulen, die der Nutzer verwalten darf; SuperAdmins erhalten alle Schulen.</summary>
@@ -1039,11 +1337,19 @@ public class FinanzService(IHalloAppDbContext dbContext)
         Guid userId,
         bool istSuperAdmin,
         CancellationToken cancellationToken = default)
-        => await dbContext.Schools
-            .Where(x => x.IsActive && (istSuperAdmin || x.UserSchools.Any(link => link.AppUserId == userId && link.CanManageStudents)))
+    {
+        var isDirector = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                                join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                                where userRole.UserId == userId && role.Name == Rollen.SchulLeiter
+                                select userRole.UserId).AnyAsync(cancellationToken);
+        return await dbContext.Schools
+            .Where(x => x.IsActive && (istSuperAdmin || x.UserSchools.Any(link => link.AppUserId == userId
+                && link.CanManageStudents && (isDirector || link.CanAccessFinances
+                    && (link.CanViewFinanceDashboard || link.CanCreateFinanceEntries || link.CanManageCyclePayments)))))
             .OrderBy(x => x.Name)
             .Select(x => new FinanzAuswahl { Id = x.Id, Name = x.Name })
             .ToListAsync(cancellationToken);
+    }
 
     /// <summary>Nur die schuleigenen Klassen einer Schule als Auswahlliste.</summary>
     public async Task<List<FinanzAuswahl>> GetNiveausAsync(Guid schulId, CancellationToken cancellationToken = default)

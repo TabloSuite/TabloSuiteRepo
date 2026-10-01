@@ -8,6 +8,8 @@ public interface IBlobMediaLibraryService
     Task<IReadOnlyList<BlobMediaAssetItem>> GetVisibleImagesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<BlobMediaAssetItem>> GetVisibleVideosAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken = default);
 
+    Task<BlobMediaAssetItem> UploadProfileImageAsync(Guid userId, Guid? schoolId, Stream content, string originalFileName, string contentType, CancellationToken cancellationToken = default);
+
     Task<BlobMediaAssetItem> UploadImageAsync(
         Guid userId,
         IReadOnlyCollection<string> roles,

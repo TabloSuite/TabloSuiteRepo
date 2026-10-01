@@ -529,6 +529,21 @@ public class AuthService(
             return (false, "Utilisateur introuvable.");
         }
 
+        if (request.ProfilBildAssetId.HasValue)
+        {
+            await using var validationDb = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var ownsImage = await validationDb.BlobMediaAssets.AsNoTracking().AnyAsync(asset =>
+                asset.Id == request.ProfilBildAssetId.Value && asset.OwnerId == userId
+                && asset.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+                && (asset.SchoolId.HasValue
+                    ? validationDb.UserSchools.Any(link => link.AppUserId == userId && link.SchoolId == asset.SchoolId)
+                    : !validationDb.UserSchools.Any(link => link.AppUserId == userId)), cancellationToken);
+            if (!ownsImage)
+            {
+                return (false, "Cette photo de profil ne vous appartient pas ou ne correspond pas à votre école.");
+            }
+        }
+
         user.Vorname = request.Vorname.Trim();
         user.Nachname = request.Nachname.Trim();
         user.FullName = $"{request.Vorname.Trim()} {request.Nachname.Trim()}".Trim();
@@ -814,6 +829,10 @@ public class AuthService(
     public async Task<(bool Succeeded, string Message)> SendContactMessageAsync(
         string senderName, string senderEmail, string subject, string messageBody, CancellationToken cancellationToken = default)
     {
+        var normalizedSenderName = (senderName ?? string.Empty).Trim();
+        var normalizedSenderEmail = (senderEmail ?? string.Empty).Trim();
+        var normalizedSubject = (subject ?? string.Empty).Trim();
+
         var supportEmail = postmarkOptions.Value.SupportEmail;
         if (string.IsNullOrWhiteSpace(supportEmail))
         {
@@ -822,6 +841,7 @@ public class AuthService(
 
         if (string.IsNullOrWhiteSpace(supportEmail))
         {
+            logger.LogWarning("Kontaktformular: Keine Support- oder From-E-Mail konfiguriert.");
             return (false, "Le formulaire de contact n'est pas encore configuré.");
         }
 
@@ -829,29 +849,36 @@ public class AuthService(
         var plainMessage = HtmlSanitizer.ToPlainText(sanitizedMessage);
         if (plainMessage.Length < 10)
         {
+            logger.LogInformation("Kontaktformular abgelehnt: Nachricht zu kurz (Length={Length}).", plainMessage.Length);
             return (false, "Le message doit contenir au moins 10 caractères.");
         }
 
         var html = EmailTemplates.Wrap(
             "Nouveau message de contact",
             $"""
-            <p><strong>Nom :</strong> {System.Net.WebUtility.HtmlEncode(senderName)}</p>
-            <p><strong>E-mail :</strong> {System.Net.WebUtility.HtmlEncode(senderEmail)}</p>
-            <p><strong>Sujet :</strong> {System.Net.WebUtility.HtmlEncode(subject)}</p>
+            <p><strong>Nom :</strong> {System.Net.WebUtility.HtmlEncode(normalizedSenderName)}</p>
+            <p><strong>E-mail :</strong> {System.Net.WebUtility.HtmlEncode(normalizedSenderEmail)}</p>
+            <p><strong>Sujet :</strong> {System.Net.WebUtility.HtmlEncode(normalizedSubject)}</p>
             <hr/>
             <div>{sanitizedMessage}</div>
             """);
 
+        logger.LogInformation("Kontaktformular: Versand an Support wird gestartet (To={SupportEmail}).", supportEmail);
         var result = await emailService.SendAsync(
             new EmailRecipient(supportEmail),
             new EmailMessage
             {
-                Subject = $"[Contact] {subject}",
+                Subject = $"[Contact] {normalizedSubject}",
                 HtmlBody = html,
-                TextBody = $"Nom: {senderName}\nE-mail: {senderEmail}\nSujet: {subject}\n\n{plainMessage}",
-                ReplyTo = string.IsNullOrWhiteSpace(senderEmail) ? null : senderEmail
+                TextBody = $"Nom: {normalizedSenderName}\nE-mail: {normalizedSenderEmail}\nSujet: {normalizedSubject}\n\n{plainMessage}",
+                ReplyTo = string.IsNullOrWhiteSpace(normalizedSenderEmail) ? null : normalizedSenderEmail
             },
             cancellationToken);
+
+        if (!result.Succeeded)
+        {
+            logger.LogWarning("Kontaktformular: Versand fehlgeschlagen: {Error}", result.ErrorMessage);
+        }
 
         return result.Succeeded
             ? (true, "Merci ! Ton message a bien été envoyé.")

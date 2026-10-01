@@ -6,7 +6,7 @@ using HalloApp.Core.DataModels.Lessons;
 public sealed class BlobMediaAssetItem
 {
     public Guid Id { get; init; }
-    public Guid SchoolId { get; init; }
+    public Guid? SchoolId { get; init; }
     public string SchoolName { get; init; } = string.Empty;
     public Guid OwnerId { get; init; }
     public string OwnerName { get; init; } = string.Empty;

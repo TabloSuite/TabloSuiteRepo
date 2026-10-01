@@ -50,6 +50,8 @@ public partial class TeacherLessonExercises
     private Guid? lessonListKlasseFilterId;
     private LessonFormModel? form;
     private RichTextEditor? lessonContentEditor;
+    private RichTextEditor? imageLibraryTargetEditor;
+    private bool imageLibraryOpen;
     private List<LessonExerciseBlockEditorModel> exerciseBlocks = [];
     private string selectedLessonCode = string.Empty;
     private Dictionary<Guid, Guid?> klasseSchoolById = [];
@@ -77,6 +79,7 @@ public partial class TeacherLessonExercises
     private string? videoUploadMessage;
     private string? videoUploadError;
     private bool isVideoUploading;
+    private bool videoLibraryOpen;
     private long videoUploadBytesUploaded;
     private long videoUploadBytesTotal;
     private int videoUploadPercent;
@@ -181,6 +184,32 @@ public partial class TeacherLessonExercises
         }
 
         return Task.CompletedTask;
+    }
+
+    private Task SetImageLibraryTarget(RichTextEditor editor)
+    {
+        imageLibraryTargetEditor = editor;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenImageLibrary()
+    {
+        if (!isCurrentAssignmentVersionLocked && form is not null)
+        {
+            imageLibraryOpen = true;
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task InsertLibraryImageAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem image)
+    {
+        if (!isCurrentAssignmentVersionLocked && form is not null && imageLibraryTargetEditor is not null
+            && image.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+            && image.SchoolId == selectedSchoolId)
+        {
+            await imageLibraryTargetEditor.InsertImageAsync(image.ImageUrl, image.AltText);
+        }
+        imageLibraryTargetEditor = null;
     }
 
     private Task SetPendingReviewKlasseFilterAsync(Guid? klasseId)
@@ -772,6 +801,25 @@ public partial class TeacherLessonExercises
         videoDurationMinutes = 0m;
         videoUploadError = null;
         videoUploadMessage = null;
+    }
+
+    private Task ChooseLibraryVideoAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem video)
+    {
+        if (form is not null && !isCurrentAssignmentVersionLocked
+            && video.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Video
+            && video.SchoolId == selectedSchoolId && video.KlasseId == form.CourseId)
+        {
+            form.VideoAssetId = video.Id;
+            form.VideoDisplayName = video.DisplayName;
+            form.VideoDuration = video.VideoDuration;
+            form.VideoUrl = video.VideoUrl;
+            videoUploadError = null;
+        }
+        else
+        {
+            videoUploadError = "Choisis une vidéo de la même école et de la même classe que la leçon.";
+        }
+        return Task.CompletedTask;
     }
 
     private Task OpenDueDateModalAsync(LessonEditorListItem lesson)

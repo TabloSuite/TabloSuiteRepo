@@ -1,13 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using HalloApp.Core.Services.Storage;
 using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Models.Media;
 using HalloApp.Core.Models.Profile;
 using HalloApp.Core.Models.TeacherLessons;
 using HalloApp.WebApp.Components.Shared;
 using HalloApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
 namespace HalloApp.WebApp.Components.Pages;
@@ -29,6 +30,9 @@ public partial class Profile
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = default!;
 
+    [Inject]
+    private IBlobMediaLibraryService MediaLibrary { get; set; } = default!;
+
     private Guid userId;
     private string? email;
     private bool isLoading = true;
@@ -40,7 +44,7 @@ public partial class Profile
     private HashSet<Guid> selectedFachIds = [];
     private string newFachName = string.Empty;
     private bool isAddingFach;
-    private bool imageLibraryOpen;
+    private IBrowserFile? selectedProfileImage;
     private string? profileImageUrl;
     private string currentTheme = "navy";
 
@@ -148,6 +152,23 @@ public partial class Profile
         {
             await DatabaseActionGuard.RunAsync(async () =>
             {
+                if (selectedProfileImage is not null)
+                {
+                    var schoolId = fullProfile?.Schulen.FirstOrDefault()?.SchoolId;
+                    try
+                    {
+                        await using var imageStream = selectedProfileImage.OpenReadStream(5 * 1024 * 1024);
+                        var uploaded = await MediaLibrary.UploadProfileImageAsync(userId, schoolId, imageStream, selectedProfileImage.Name, selectedProfileImage.ContentType);
+                        ProfileModel.ProfilBildAssetId = uploaded.Id;
+                    }
+                    catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+                    {
+                        profileToastKind = Toast.ToastKind.Error;
+                        profileToastMessage = ex is IOException ? "La photo dépasse la taille maximale de 5 Mo." : ex.Message;
+                        return;
+                    }
+                }
+
                 var request = new UpdateUserProfileRequest
                 {
                     Vorname = ProfileModel.Vorname,
@@ -167,6 +188,8 @@ public partial class Profile
                 if (result.Succeeded)
                 {
                     fullProfile = await AuthService.GetUserProfileAsync(userId);
+                    profileImageUrl = fullProfile?.ProfilBildUrl;
+                    selectedProfileImage = null;
                 }
             });
         }
@@ -214,23 +237,13 @@ public partial class Profile
         }
     }
 
-    private Task OpenImageLibraryAsync()
-    {
-        imageLibraryOpen = true;
-        return Task.CompletedTask;
-    }
+    private void SelectProfileImage(InputFileChangeEventArgs args) => selectedProfileImage = args.File;
 
     private Task RemoveProfileImageAsync()
     {
+        selectedProfileImage = null;
         ProfileModel.ProfilBildAssetId = null;
         profileImageUrl = null;
-        return Task.CompletedTask;
-    }
-
-    private Task OnProfileImageSelectedAsync(BlobMediaAssetItem image)
-    {
-        ProfileModel.ProfilBildAssetId = image.Id;
-        profileImageUrl = image.ImageUrl;
         return Task.CompletedTask;
     }
 

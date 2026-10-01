@@ -9,58 +9,6 @@
 <PageTitle>Finances</PageTitle>
 
 <section class="pdf-export-container flex flex-col gap-4">
-    @if (uebersicht is not null)
-    {
-        <div class="pdf-export-root finance-pdf-export hidden print:block">
-            <div class="rounded-2xl border border-slate-200 bg-white p-7 text-slate-900 shadow-none">
-                <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Journal opérationnel</p>
-                <h1 class="mt-2 text-2xl font-black">Journal des écritures réelles</h1>
-                <p class="mt-2 text-sm text-slate-600">@AktiveSchuleName · @BerichtZeitraumLabel · @BerichtTypLabel</p>
-                <div class="mt-5 space-y-2 border-y border-slate-200 py-4 text-sm">
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Entrées période</span>
-                        <span class="text-right text-base font-bold text-emerald-700">@EchteBuchungenEntrees.ToString("N0") FCFA</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Entrées SKOULOUAPP</span>
-                        <span class="text-right text-base font-bold text-emerald-700">@HalloAppAboTotal.ToString("N0") FCFA</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Sorties période</span>
-                        <span class="text-right text-base font-bold text-rose-700">@ZeitraumSortiesBasis.ToString("N0") FCFA</span>
-                    </div>
-                </div>
-                <div class="border-b border-dashed border-slate-300 py-3">
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-xl font-extrabold text-slate-900">Sous-total avant part SKOULOUAPP</span>
-                        <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSoldeAvantPartSkoulou.ToString("N0") FCFA</span>
-                    </div>
-                </div>
-                <div class="space-y-2 py-3 text-sm">
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Part direction</span>
-                        <span class="text-right font-semibold text-slate-900">@CommissionSchulleiter.ToString("N0") FCFA</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Part enseignants</span>
-                        <span class="text-right font-semibold text-slate-900">@CommissionLehrer.ToString("N0") FCFA</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-slate-600">Part SKOULOUAPP</span>
-                        <span class="text-right text-base font-bold text-rose-700">- @SkoulouAboAnteilFuerSaldo.ToString("N0") FCFA</span>
-                    </div>
-                    <p class="text-xs text-slate-500">Calcul: @HalloAppAboTotal.ToString("N0") FCFA - (@CommissionSchulleiter.ToString("N0") FCFA + @CommissionLehrer.ToString("N0") FCFA)</p>
-                </div>
-                <div class="border-t border-dashed border-slate-300 pt-3">
-                    <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                        <span class="text-2xl font-extrabold text-slate-900">Solde final</span>
-                        <span class="text-right text-2xl font-extrabold text-emerald-700">@ZeitraumSaldoAnzeige.ToString("N0") FCFA</span>
-                    </div>
-                </div>
-                <table class="mt-5 min-w-full text-left text-sm"><thead><tr class="border-b border-slate-300 text-xs uppercase text-slate-500"><th class="px-3 py-2">Date</th><th class="px-3 py-2">Catégorie</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Montant</th></tr></thead><tbody>@foreach (var z in EchteSchulBuchungen) { <tr class="border-b border-slate-100"><td class="px-3 py-2">@z.Wirkungsdatum.ToString("dd.MM.yyyy")</td><td class="px-3 py-2 font-semibold">@GetKategorieLabel(z)</td><td class="px-3 py-2 font-semibold @(z.Richtung == FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(z.Richtung == FinanzRichtung.Einnahme ? "Recette" : "Dépense")</td><td class="px-3 py-2 text-right font-bold @(z.Richtung == FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(z.Richtung == FinanzRichtung.Einnahme ? "+" : "−")@z.Betrag.ToString("N0")</td></tr>}</tbody></table>
-            </div>
-        </div>
-    }
     <div class="hallo-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl">
         <div class="relative">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Gestion financière</p>
@@ -102,19 +50,28 @@
         <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
         @* Tabs *@
-        <div class="flex flex-wrap gap-2 print:hidden">
-            <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Tableau de bord</button>
-            <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button>
-            <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button>
+        <div class="school-page-tabs print:hidden">
+            @if (canViewDashboard) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Finances de l'école</button> }
+            @if (canCreateEntries) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button> }
+            @if (canManageCycles) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button> }
         </div>
 
-        @if (aktiverTab == "dashboard")
+        @if (aktiverTab == "dashboard" && canViewDashboard)
         {
             @* -------------------- DASHBOARD -------------------- *@
             <div class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100">
+                @if (finanzAbgleich is not null)
+                {
+                    <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                        <h2 class="font-bold text-slate-900">Rapprochement des justificatifs et des écritures</h2>
+                        <p class="mt-2">Scolarité : paiements enregistrés @finanzAbgleich.SchulgebuehrenZahlungen.ToString("N0") FCFA · écritures liées @finanzAbgleich.SchulgebuehrenBuchungen.ToString("N0") FCFA · anomalies @finanzAbgleich.SchulgebuehrenAbweichungen</p>
+                        <p class="mt-1">Factures SKOULOUAPP : total facturé @finanzAbgleich.PlattformRechnungen.ToString("N0") FCFA · parts comptabilisées pour ces factures @finanzAbgleich.PlattformBuchungenZuRechnungen.ToString("N0") FCFA · virements confirmés @finanzAbgleich.BestaetigtePlattformZahlungen.ToString("N0") FCFA · factures à vérifier @finanzAbgleich.PlattformRechnungenMitAbweichung</p>
+                        <p class="mt-1 text-xs text-slate-500">Les factures en attente ne sont pas des paiements reçus. La confirmation d'un virement ne crée pas une seconde dépense.</p>
+                    </div>
+                }
                 @if (uebersicht is not null)
                 {
-                    @if (istSchulleiter && direktorKontostand is not null)
+                    @if (direktorKontostand is not null)
                     {
                         <div class="mt-5 overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-2xl print:border print:border-slate-300 print:bg-white print:text-slate-950 print:shadow-none">
                             <div class="bg-gradient-to-r from-cyan-700 via-blue-800 to-indigo-900 p-6">
@@ -144,7 +101,7 @@
                                         <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOUAPP à régler</p>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOUAPP comptabilisée</p>
                                         <p class="mt-1 text-xl font-black tabular-nums text-rose-300">@direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
@@ -152,7 +109,7 @@
                                         <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@((direktorKontostand.SchulleiterAboAnteil + direktorKontostand.LehrerAboAnteil).ToString("N0")) FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Paiements de scolarité en attente</p>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Scolarité restant à payer (cycles actifs)</p>
                                         <p class="mt-1 text-xl font-black tabular-nums text-cyan-100">@direktorKontostand.OffeneSchulgebuehrenAktiveKlassen.ToString("N0") FCFA</p>
                                         <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 @PaiementsAttenteBadgeClass">@PaiementsAttenteEtatLabel</span>
                                     </div>
@@ -185,7 +142,7 @@
                                     <div class="mt-4 grid gap-2 sm:grid-cols-3">
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part direction (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.SchulleiterAboAnteil.ToString("N0") FCFA</p></div>
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part enseignants (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.LehrerAboAnteil.ToString("N0") FCFA</p></div>
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP à régler</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP comptabilisée</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p></div>
                                     </div>
                                     <p class="mt-3 text-xs leading-5 text-cyan-100">Calcul appliqué: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA − @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA = @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA.</p>
                                 </div>
@@ -194,7 +151,7 @@
                             <div class="mx-5 mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5">
                                 <div>
                                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">Paiements encore attendus · tous les cycles actifs</p>
-                                    <p class="mt-1 text-sm text-slate-300">Montant que les familles doivent encore régler. Il n'est pas inclus dans le solde actuel ni dans le rapport filtré.</p>
+                                    <p class="mt-1 text-sm text-slate-300">Estimation à partir des prix des cycles et des paiements enregistrés, non facturée ici. Elle n'est pas incluse dans le solde ni dans le rapport filtré.</p>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-3xl font-black text-cyan-200">@direktorKontostand.OffeneSchulgebuehrenAktiveKlassen.ToString("N0") FCFA</p>
@@ -218,11 +175,11 @@
                                 <div>
                                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Récapitulatif du calcul</p>
                                     <h3 class="mt-1 text-xl font-black">Solde disponible après règlement</h3>
-                                    <p class="mt-1 text-sm text-slate-600">La part direction et la part enseignants restent dans l'école. Seule la part SKOULOUAPP est déduite.</p>
+                                    <p class="mt-1 text-sm text-slate-600">Solde calculé à partir des écritures enregistrées. Les parts direction et enseignants restent dans l'école; seule la part SKOULOUAPP comptabilisée est déduite. Les factures encore à régler sont indiquées séparément.</p>
                                     <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
                                         <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOUAPP&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">−</span>
-                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP à régler&nbsp;: @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</span>
+                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP comptabilisée&nbsp;: @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">=</span>
                                         <span class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">Solde disponible après règlement&nbsp;: @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</span>
                                     </div>
@@ -253,7 +210,7 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">@BerichtZeitraumLabel · @BerichtTypLabel</span>
-                                    <button type="button" class="rounded-full bg-slate-800 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-700" @onclick="DruckenAsync">PDF</button>
+                    <a class="rounded-full bg-slate-800 px-4 py-2 text-sm font-bold text-white no-underline shadow-sm transition hover:bg-slate-700" href="@FinanzBerichtUrl">Voir le rapport</a>
                                 </div>
                             </div>
                             <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -324,7 +281,7 @@
                                                 <span class="text-slate-600">Part SKOULOUAPP</span>
                                                 <span class="text-right text-base font-bold text-rose-700">- @SkoulouAboAnteilFuerSaldo.ToString("N0") FCFA</span>
                                             </div>
-                                            <p class="text-xs text-slate-500">Calcul: @HalloAppAboTotal.ToString("N0") FCFA - (@CommissionSchulleiter.ToString("N0") FCFA + @CommissionLehrer.ToString("N0") FCFA)</p>
+                                            <p class="text-xs text-slate-500">Part SKOULOUAPP issue des écritures de la période; les parts direction et enseignants sont présentées pour information.</p>
                                         </div>
                                         <div class="border-t border-dashed border-slate-300 pt-3">
                                             <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
@@ -352,6 +309,7 @@
                                             <tr class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-xs uppercase text-slate-500 backdrop-blur">
                                                 <th class="px-3 py-2 pr-4">Date</th>
                                                 <th class="px-3 py-2 pr-4">Catégorie</th>
+                                                <th class="px-3 py-2 pr-4">Justificatif</th>
                                                 <th class="px-3 py-2 pr-4">Type</th>
                                                 <th class="px-3 py-2 pr-4 text-right">Montant</th>
                                                 <th class="px-3 py-2 pr-4">Saisi par</th>
@@ -364,6 +322,25 @@
                                                 <tr class="transition-colors duration-150 odd:bg-white even:bg-slate-50/40 hover:bg-cyan-50/60 print:bg-transparent">
                                                     <td class="px-3 py-2 pr-4">@z.Wirkungsdatum.ToString("dd.MM.yyyy")</td>
                                                     <td class="px-3 py-2 pr-4 font-semibold text-slate-800">@GetKategorieLabel(z)</td>
+                                                    <td class="px-3 py-2 pr-4 text-slate-600">
+                                                        @if (!string.IsNullOrWhiteSpace(z.Belegnummer)) { <span class="block text-xs font-semibold text-slate-700">Référence : @z.Belegnummer</span> }
+                                                        @if (z.HatBelegdatei)
+                                                        {
+                                                            <a class="block max-w-48 truncate text-xs font-semibold text-cyan-700 underline" title="@z.BelegDateiname" target="_blank" rel="noopener noreferrer" href="/finanzen/justificatif/@z.BuchungID">Voir le justificatif : @z.BelegDateiname</a>
+                                                        }
+                                                        else if (z.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung)
+                                                        {
+                                                            <span class="block text-xs text-slate-500">Paiement lié au cycle</span>
+                                                        }
+                                                        else if (z.KategorieSystemCode is null or FinanzSystemCode.Keiner)
+                                                        {
+                                                            <span class="block text-xs text-slate-500">Sans document joint</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="block text-xs text-slate-500">Écriture automatique</span>
+                                                        }
+                                                    </td>
                                                     <td class="px-3 py-2 pr-4">
                                                         <span class="rounded-full px-2 py-0.5 text-xs font-semibold @(z.Richtung == FinanzRichtung.Einnahme ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")">
                                                             @(z.Richtung == FinanzRichtung.Einnahme ? "Recette" : "Dépense")
@@ -372,7 +349,7 @@
                                                     <td class="px-3 py-2 pr-4 text-right font-black @(z.Richtung == FinanzRichtung.Einnahme ? "text-emerald-700" : "text-rose-700")">@(z.Richtung == FinanzRichtung.Einnahme ? "+" : "-")@z.Betrag.ToString("N0")</td>
                                                     <td class="px-3 py-2 pr-4 text-slate-500">@z.ErfasstVon</td>
                                                     <td class="px-3 py-2 pr-4 print:hidden">
-                                                        @if (z.KategorieSystemCode is null or FinanzSystemCode.Keiner)
+                                                        @if (canCreateEntries && (z.KategorieSystemCode is null or FinanzSystemCode.Keiner))
                                                         {
                                                             <button type="button" class="text-xs font-semibold text-rose-600 hover:underline" @onclick="() => BuchungLoeschenAsync(z.BuchungID)">Annuler</button>
                                                         }
@@ -385,7 +362,7 @@
                                             }
                                             @if (EchteSchulBuchungen.Count == 0)
                                             {
-                                                <tr><td colspan="6" class="py-6 text-center text-slate-400">Aucune écriture réelle pour les filtres sélectionnés.</td></tr>
+                                                <tr><td colspan="7" class="py-6 text-center text-slate-400">Aucune écriture réelle pour les filtres sélectionnés.</td></tr>
                                             }
                                         </tbody>
                                     </table>
@@ -397,7 +374,7 @@
                 }
             </div>
         }
-        else if (aktiverTab == "erfassen")
+        else if (aktiverTab == "erfassen" && canCreateEntries)
         {
             @* -------------------- BUCHUNG ERFASSEN -------------------- *@
             <div class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100">
@@ -431,6 +408,21 @@
                         <input type="number" step="1" min="0" class="hallo-input text-sm" @bind="buchungForm.Betrag" />
                         <label class="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date d'effet (rétroactif possible)</label>
                         <TailwindDateTimePicker Value="buchungForm.Wirkungsdatum" ValueChanged="SetBuchungWirkungsdatumAsync" ShowTime="false" />
+                        <label class="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">Référence du justificatif ou de la facture (facultatif)</label>
+                        <input class="hallo-input text-sm" maxlength="100" @bind="buchungForm.Belegnummer" placeholder="N° de facture ou référence du reçu" />
+                        <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Document justificatif (facultatif)</p>
+                        <label class="group relative mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/50 px-4 py-3 transition hover:border-cyan-500 hover:bg-cyan-50 focus-within:ring-2 focus-within:ring-cyan-400">
+                            <span class="flex min-w-0 items-center gap-3">
+                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-xl text-cyan-700 shadow-sm" aria-hidden="true">📄</span>
+                                <span class="min-w-0"><span class="block truncate text-sm font-bold text-slate-800">@(buchungBelegDatei?.Name ?? "Ajouter un justificatif")</span><span class="block text-xs text-slate-500">PDF, JPG ou PNG · 5 Mo max.</span></span>
+                            </span>
+                            <span class="shrink-0 rounded-full bg-cyan-700 px-3 py-2 text-xs font-bold text-white transition group-hover:bg-cyan-800">Parcourir</span>
+                            <InputFile @key="buchungBelegInputVersion" OnChange="BelegDateiWaehlen" accept=".pdf,.jpg,.jpeg,.png" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Choisir un justificatif facultatif" />
+                        </label>
+                        @if (buchungBelegDatei is not null)
+                        {
+                            <button type="button" class="mt-2 text-xs font-semibold text-rose-700 hover:underline" @onclick="BelegDateiEntfernen">Retirer le fichier</button>
+                        }
                     </div>
                 </div>
                 <div class="mt-4">
@@ -444,7 +436,7 @@
                 </div>
             </div>
         }
-        else if (aktiverTab == "durchlaeufe")
+        else if (aktiverTab == "durchlaeufe" && canManageCycles)
         {
             @* -------------------- KLASSENZYKLEN -------------------- *@
             <div class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100">

@@ -202,7 +202,7 @@
                         <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="CloseEditor">Retour</button>
                     </div>
 
-                    <div @ref="editorScrollContainer" class="hallo-modal-scroll flex-1 px-4 py-4 sm:px-5">
+                    <div @ref="editorScrollContainer" class="hallo-modal-scroll min-w-0 flex-1 px-3 py-4 sm:px-5">
 
                 @if (form.LessonId.HasValue && (isCurrentAssignmentVersionLocked || form.HasSubmissionsInCurrentAssignmentVersion))
                 {
@@ -265,6 +265,9 @@
                             <label class="hallo-label">Contenu de la leçon</label>
                             <RichTextEditor @ref="lessonContentEditor"
                                             @bind-Value="form.Content"
+                                            EnableImages="true"
+                                            RequestImageLibrary="OpenImageLibrary"
+                                            ImageLibraryTargetRequested="SetImageLibraryTarget"
                                             Placeholder="Rédige le contenu de la leçon..."
                                             MinEditorHeightRem="28"
                                             Paged="true"
@@ -287,7 +290,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="text-sm font-black text-cyan-950">Vidéo de la leçon (optionnel)</p>
-                                <p class="mt-1 text-xs leading-5 text-cyan-800">Téléverse et lie une vidéo à cette leçon. Durée maximale : 1 heure.</p>
+                                <p class="mt-1 text-xs leading-5 text-cyan-800">Choisis une vidéo existante ou téléverse-en une nouvelle. Durée maximale : 1 heure.</p>
                             </div>
                             @if (form.VideoAssetId.HasValue)
                             {
@@ -306,8 +309,9 @@
                             </div>
                         }
 
-                        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                            <label class="block">
+                        <button type="button" class="mt-4 rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => videoLibraryOpen = true">Choisir ou ajouter une vidéo</button>
+                        <div class="mt-4 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                            <label class="block min-w-0">
                                 <span class="text-xs font-semibold text-slate-600">Fichier vidéo (optionnel)</span>
                                 <div class="hallo-file-picker mt-1">
                                     <div class="relative inline-flex">
@@ -320,14 +324,14 @@
                                                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                                    disabled="@(isCurrentAssignmentVersionLocked || isVideoUploading)" />
                                     </div>
-                                    <span class="hallo-file-selected-name">@(selectedVideoFile?.Name ?? "Aucun fichier sélectionné")</span>
+                                    <span class="hallo-file-selected-name max-w-full truncate" title="@selectedVideoFile?.Name">@(selectedVideoFile?.Name ?? "Aucun fichier sélectionné")</span>
                                 </div>
                             </label>
                             <div class="block">
                                 <span class="text-xs font-semibold text-slate-600">Durée détectée</span>
                                 <div class="mt-1 rounded-xl border border-cyan-100 bg-white px-3 py-2 text-sm text-slate-700 sm:w-32">@VideoDurationLabel</div>
                             </div>
-                            <button type="button" class="rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:opacity-50" disabled="@(selectedVideoFile is null || isVideoUploading || isCurrentAssignmentVersionLocked)" @onclick="UploadVideoAsync">@(isVideoUploading ? "Téléversement..." : "Téléverser")</button>
+                            <button type="button" class="rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:opacity-50 sm:self-end" disabled="@(selectedVideoFile is null || isVideoUploading || isCurrentAssignmentVersionLocked)" @onclick="UploadVideoAsync">@(isVideoUploading ? "Téléversement..." : "Téléverser")</button>
                         </div>
 
                         @if (ShowVideoUploadProgress)
@@ -416,6 +420,9 @@
                                                     <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
                                                         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Question</p>
                                                         <RichTextEditor @bind-Value="question.Question"
+                                                                        EnableImages="true"
+                                                                        RequestImageLibrary="OpenImageLibrary"
+                                                                        ImageLibraryTargetRequested="SetImageLibraryTarget"
                                                                         Placeholder="Énoncé de la question..."
                                                                         EnableLargeEditor="true"
                                                                         MinEditorHeightRem="7"
@@ -530,6 +537,9 @@
             </div>
         }
     }
+
+    <AzureBlobImageLibrary Open="imageLibraryOpen" OpenChanged="@(open => imageLibraryOpen = open)" RequiredSchoolId="selectedSchoolId" ImageSelected="InsertLibraryImageAsync" />
+    <AzureBlobImageLibrary Open="videoLibraryOpen" OpenChanged="@(open => videoLibraryOpen = open)" VideoMode="true" ImageSelected="ChooseLibraryVideoAsync" />
 
     <ModalDialog @bind-Open="dueDateModalOpen"
                  Title="Modifier la date limite"

@@ -10,5 +10,6 @@ public class AzureBlobStorageOptions
     public bool Enabled { get; set; }
     public string BlobConnectionString { get; set; } = string.Empty;
     public string ContainerName { get; set; } = "skoulou-media";
+    public string FinanzBelegContainerName { get; set; } = "skoulou-finance-private";
     public string LocalDataRootPath { get; set; } = "wwwroot/media-library";
 }
