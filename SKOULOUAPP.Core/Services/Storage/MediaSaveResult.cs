@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Services.Storage;
+namespace SkoulouApp.Core.Services.Storage;
 
 /// <summary>
 /// Ergebnis einer Medienspeicherung mit relativem Pfad und Speicheranbieter.

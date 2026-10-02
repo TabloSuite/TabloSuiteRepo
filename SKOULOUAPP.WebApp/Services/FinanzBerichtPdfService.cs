@@ -1,10 +1,10 @@
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class FinanzBerichtPdfService
 {

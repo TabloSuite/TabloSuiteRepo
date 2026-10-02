@@ -1,15 +1,15 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="LearningService"/>, insbesondere die Niveau-Freischaltung.

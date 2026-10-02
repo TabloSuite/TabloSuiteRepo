@@ -6,7 +6,7 @@ window.SKOULOUAPPAudioTest = (() => {
     };
 
     function report() {
-        const element = document.getElementById('halloapp-audio-test-result');
+        const element = document.getElementById('skoulouapp-audio-test-result');
         if (element) {
             element.textContent = `HTML5: ${results.html5} | WebAudio: ${results.webaudio} | TTS: ${results.tts}`;
         }
@@ -144,11 +144,11 @@ window.SKOULOUAPPAudioTest = (() => {
     function install() {
         const bind = (id, handler) => {
             const button = document.getElementById(id);
-            if (!button || button.dataset.halloappBound === 'true') {
+            if (!button || button.dataset.skoulouappBound === 'true') {
                 return;
             }
 
-            button.dataset.halloappBound = 'true';
+            button.dataset.skoulouappBound = 'true';
             ['pointerdown', 'touchstart', 'click'].forEach(eventName => {
                 button.addEventListener(eventName, event => {
                     event.preventDefault();
@@ -158,9 +158,9 @@ window.SKOULOUAPPAudioTest = (() => {
             });
         };
 
-        bind('halloapp-test-html5', testHtml5);
-        bind('halloapp-test-webaudio', testWebAudio);
-        bind('halloapp-test-tts', testTts);
+        bind('skoulouapp-test-html5', testHtml5);
+        bind('skoulouapp-test-webaudio', testWebAudio);
+        bind('skoulouapp-test-tts', testTts);
         report();
     }
 

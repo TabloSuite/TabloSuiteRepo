@@ -1,18 +1,18 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services.Text;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
-public class LearningService(IHalloAppDbContext dbContext)
+public class LearningService(ISkoulouAppDbContext dbContext)
 {
     private const string LessonPageBreakMarker = "<!--SKOULOUAPP_PAGE_BREAK-->";
 
@@ -957,7 +957,7 @@ public class LearningService(IHalloAppDbContext dbContext)
     private async Task<HashSet<Guid>> GetAccessibleKlasseIdsAsync(Guid studentId, CancellationToken cancellationToken)
         => await dbContext.LevelEnrollments
             .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
             .Select(enrollment => enrollment.KlasseId)
             .ToHashSetAsync(cancellationToken);
 

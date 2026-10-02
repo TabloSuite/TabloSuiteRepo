@@ -194,13 +194,13 @@ Quellcode oder in eingecheckten Dateien.
 
 | Baustein                  | Datei                                                       |
 |---------------------------|------------------------------------------------------------|
-| Optionen                  | `HalloApp.Core/Options/PostmarkOptions.cs`                 |
-| Abstraktion               | `HalloApp.Core/Services/Email/IEmailService.cs`            |
-| Postmark-Implementierung  | `HalloApp.Core/Services/Email/PostmarkEmailService.cs`     |
-| Broadcast-Versand         | `HalloApp.Core/Services/Email/BroadcastEmailService.cs`    |
-| E-Mail-Vorlagen           | `HalloApp.WebApp/Services/EmailTemplates.cs`               |
-| Auth-/Kontakt-Mails       | `HalloApp.WebApp/Services/AuthService.cs`                  |
-| DI-Registrierung          | `HalloApp.WebApp/Program.cs`                               |
+| Optionen                  | `SkoulouApp.Core/Options/PostmarkOptions.cs`                 |
+| Abstraktion               | `SkoulouApp.Core/Services/Email/IEmailService.cs`            |
+| Postmark-Implementierung  | `SkoulouApp.Core/Services/Email/PostmarkEmailService.cs`     |
+| Broadcast-Versand         | `SkoulouApp.Core/Services/Email/BroadcastEmailService.cs`    |
+| E-Mail-Vorlagen           | `SkoulouApp.WebApp/Services/EmailTemplates.cs`               |
+| Auth-/Kontakt-Mails       | `SkoulouApp.WebApp/Services/AuthService.cs`                  |
+| DI-Registrierung          | `SkoulouApp.WebApp/Program.cs`                               |
 
 **Streams:**
 - **Transaktional** (`outbound`): Registrierung, Passwort-Reset, Passwort-
@@ -224,7 +224,7 @@ $stream = $secrets.Postmark.MessageStream
 $body = @{
 	From          = $from
 	To            = "kontakt.etse@skoulou.com"
-	Subject       = "HalloApp Postmark Test"
+	Subject       = "SkoulouApp Postmark Test"
 	HtmlBody      = "<h2>Test erfolgreich</h2>"
 	TextBody      = "Test erfolgreich."
 	MessageStream = $stream
@@ -412,7 +412,7 @@ Was hilft:
 |----------|-----|
 | Klartext-Teil für jede Mail (reine HTML-Mails werden abgewertet) | `PostmarkEmailService.FallbackText` |
 | Open-/Link-Tracking deaktiviert | `PostmarkEmailService.BuildPayload` |
-| Absendername `HALLO-APP` statt einer URL | `appsettings.json` → `Postmark:FromName` |
+| Absendername `SKOULOU-APP` statt einer URL | `appsettings.json` → `Postmark:FromName` |
 | Empfänger als `Name <adresse>` statt nackter Adresse | `PostmarkEmailService.BuildPayload` |
 | Tabellen-Layout mit Inline-Styles und `bgcolor`-Attributen | `EmailTemplates.Wrap` |
 

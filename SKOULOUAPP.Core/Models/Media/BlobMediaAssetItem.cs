@@ -1,6 +1,6 @@
-namespace HalloApp.Core.Models.Media;
+namespace SkoulouApp.Core.Models.Media;
 
-using HalloApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Lessons;
 
 /// <summary>Darstellung eines auswählbaren Bildes in der Lektionsbibliothek.</summary>
 public sealed class BlobMediaAssetItem

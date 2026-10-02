@@ -1,0 +1,152 @@
+@using SkoulouApp.Core.Models.Exams
+@using SkoulouApp.Core.DataModels.Schools
+@using SkoulouApp.Core.Services
+@inject ExamService ExamService
+
+<ModalDialog Open="Open" OpenChanged="OpenChanged" Title="Notes finales et décisions" Eyebrow="Clôture du cycle" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
+    @if (bericht is null)
+    {
+        <p class="text-sm text-slate-600">Chargement des élèves...</p>
+    }
+    else
+    {
+        <p class="mb-4 text-sm text-slate-600">Saisis une note finale et indique si chaque élève a réussi. Les résultats ne pourront plus être modifiés après la clôture.</p>
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <p class="mb-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800">@error</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">@message</p>
+        }
+        <div class="grid max-h-[60dvh] gap-3 overflow-y-auto">
+            @foreach (var schueler in bericht.Schueler)
+            {
+                <div class="grid gap-3 rounded-2xl border p-4 sm:grid-cols-2 lg:grid-cols-4 @(string.IsNullOrWhiteSpace(schueler.AbschlussNoteText) || schueler.IsBestanden is null ? "border-amber-300 bg-amber-50/40" : "border-slate-200")" @key="schueler.StudentId">
+                    <strong class="self-center text-sm text-slate-900">@schueler.Name</strong>
+                    <div>
+                        <label class="skoulou-label">Note finale</label>
+                        <input class="skoulou-input" maxlength="64" @bind="schueler.AbschlussNoteText" placeholder="Ex. 12/20" />
+                    </div>
+                    <div>
+                        <ModernDropdown TValue="bool?" Label="Décision" Value="schueler.IsBestanden" ValueChanged="value => SetDecision(schueler, value)" Options="DecisionOptions" />
+                    </div>
+                    <div>
+                        <ModernDropdown TValue="Guid?" Label="Mention (facultative)" Value="GetMentionId(schueler)" ValueChanged="value => SetMention(schueler, value)" Options="MentionOptions(schueler)" />
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-sm font-semibold text-slate-700">@bericht.Schueler.Count(s => !string.IsNullOrWhiteSpace(s.AbschlussNoteText) && s.IsBestanden.HasValue) / @bericht.Schueler.Count résultat(s) complets</span>
+            <div class="flex gap-2">
+                <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold" @onclick="() => OpenChanged.InvokeAsync(false)">Fermer</button>
+                <button type="button" class="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled="@saving" @onclick="SaveAsync">Enregistrer</button>
+            </div>
+        </div>
+    }
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public Guid? DurchlaufId { get; set; }
+    [Parameter] public Guid BearbeiterId { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private KlassenAbschlussUebersicht? bericht;
+    private Guid? loadedId;
+    private string? error;
+    private string? message;
+    private bool saving;
+    private IReadOnlyList<AbschlussMention> mentions = [];
+    private readonly Dictionary<Guid, Guid?> selectedMentions = [];
+    private readonly HashSet<Guid> changedMentions = [];
+    private static readonly IReadOnlyList<ModernDropdownOption<bool?>> DecisionOptions =
+    [
+        new(null, "À renseigner"),
+        new(true, "Réussi"),
+        new(false, "Non réussi")
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && DurchlaufId is Guid id && (loadedId != id || bericht is null))
+        {
+            loadedId = id;
+            bericht = await ExamService.GetKlassenAbschlussUebersichtAsync(id);
+            mentions = bericht is null ? [] : await ExamService.GetAbschlussMentionsAsync(bericht.SchulID, BearbeiterId);
+            selectedMentions.Clear();
+            changedMentions.Clear();
+            if (bericht is not null)
+                foreach (var student in bericht.Schueler)
+                    selectedMentions[student.StudentId] = mentions.FirstOrDefault(m => m.Text == student.MentionText)?.Id
+                        ?? (string.IsNullOrWhiteSpace(student.MentionText) ? null : Guid.Empty);
+            error = null;
+            message = null;
+        }
+        else if (!Open)
+        {
+            loadedId = null;
+            bericht = null;
+        }
+    }
+
+    private static void SetDecision(KlassenAbschlussSchueler schueler, bool? value)
+        => schueler.IsBestanden = value;
+
+    private Guid? GetMentionId(KlassenAbschlussSchueler student)
+        => selectedMentions.GetValueOrDefault(student.StudentId);
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> MentionOptions(KlassenAbschlussSchueler student)
+    {
+        var options = new List<ModernDropdownOption<Guid?>> { new(null, "Aucune mention") };
+        if (!string.IsNullOrWhiteSpace(student.MentionText) && !mentions.Any(m => m.Text == student.MentionText))
+            options.Add(new(Guid.Empty, $"{student.MentionText} (archivée)"));
+        options.AddRange(mentions.Select(m => new ModernDropdownOption<Guid?>(m.Id, m.Text)));
+        return options;
+    }
+
+    private void SetMention(KlassenAbschlussSchueler student, Guid? mentionId)
+    {
+        selectedMentions[student.StudentId] = mentionId;
+        changedMentions.Add(student.StudentId);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (bericht is null || !bericht.IstAktiv || DurchlaufId is not Guid id) return;
+        var missing = bericht.Schueler.Count(s => string.IsNullOrWhiteSpace(s.AbschlussNoteText) || s.IsBestanden is null);
+        if (missing > 0)
+        {
+            error = $"Complète la note et la décision pour {missing} élève(s) avant d'enregistrer.";
+            return;
+        }
+
+        saving = true;
+        error = null;
+        try
+        {
+            foreach (var schueler in bericht.Schueler)
+            {
+                var (noteOk, noteMessage) = await ExamService.SetManuelleAbschlussNoteAsync(id, schueler.StudentId, schueler.AbschlussNoteText, BearbeiterId);
+                if (!noteOk) { error = noteMessage; return; }
+                var (decisionOk, decisionMessage) = await ExamService.SetKlassenBestandenEntscheidungAsync(id, schueler.StudentId, schueler.IsBestanden!.Value, BearbeiterId);
+                if (!decisionOk) { error = decisionMessage; return; }
+                if (changedMentions.Contains(schueler.StudentId))
+                {
+                    var mentionId = GetMentionId(schueler);
+                    if (mentionId == Guid.Empty) continue;
+                    var (mentionOk, mentionMessage) = await ExamService.SetAbschlussMentionAsync(id, schueler.StudentId, mentionId, BearbeiterId);
+                    if (!mentionOk) { error = mentionMessage; return; }
+                }
+            }
+            message = "Tous les résultats ont été enregistrés. Tu peux clôturer le cycle.";
+            await OnSaved.InvokeAsync();
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

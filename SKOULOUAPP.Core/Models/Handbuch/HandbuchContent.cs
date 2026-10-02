@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.Models.Handbuch;
+namespace SkoulouApp.Core.Models.Handbuch;
 
 public sealed record HandbuchPanel(
     string TabId,

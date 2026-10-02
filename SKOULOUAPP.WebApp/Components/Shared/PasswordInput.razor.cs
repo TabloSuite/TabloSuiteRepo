@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Shared;
+namespace SkoulouApp.WebApp.Components.Shared;
 
 public partial class PasswordInput : ComponentBase
 {
@@ -20,7 +20,7 @@ public partial class PasswordInput : ComponentBase
     public bool Required { get; set; }
 
     [Parameter]
-    public string InputClass { get; set; } = "hallo-input pr-12";
+    public string InputClass { get; set; } = "skoulou-input pr-12";
 
     private bool isVisible;
 

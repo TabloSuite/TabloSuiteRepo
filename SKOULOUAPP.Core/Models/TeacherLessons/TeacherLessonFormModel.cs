@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Models.TeacherLessons;
+namespace SkoulouApp.Core.Models.TeacherLessons;
 
 /// <summary>
 /// Formularmodell zum Erstellen/Bearbeiten eines Kursskripts durch den Lehrer.

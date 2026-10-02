@@ -1,14 +1,14 @@
-using HalloApp.WebApp.Components;
-using HalloApp.WebApp.Data;
-using HalloApp.Core.DataModels;
-using HalloApp.WebApp.Services;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Interfaces.IRepositories;
-using HalloApp.Core.Options;
-using HalloApp.Core.Repositories;
-using HalloApp.Core.Services;
-using HalloApp.Core.Services.Email;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.WebApp.Components;
+using SkoulouApp.WebApp.Data;
+using SkoulouApp.Core.DataModels;
+using SkoulouApp.WebApp.Services;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Core.Repositories;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Core.Services.Email;
+using SkoulouApp.Core.Services.Storage;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
@@ -16,10 +16,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Finanzen;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using HalloApp.WebApp.Services;
+using SkoulouApp.WebApp.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 
@@ -79,7 +79,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
 
 builder.Services.AddTransient<ApplicationDbContext>(provider =>
     provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
-builder.Services.AddTransient<IHalloAppDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+builder.Services.AddTransient<ISkoulouAppDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 builder.Services.AddHttpContextAccessor();
 
 builder.Services
@@ -117,7 +117,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
         var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<AppUser>>();
         var user = await userManager.FindByIdAsync(userId);
-        var sessionValue = context.Principal?.FindFirstValue("halloapp_session");
+        var sessionValue = context.Principal?.FindFirstValue("skoulouapp_session");
         if (user is null
             || user.IsBlocked
             || !Guid.TryParse(sessionValue, out var sessionId)
@@ -132,7 +132,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireSuperAdmin", policy => policy.RequireRole("SuperAdmin"));
-    options.AddPolicy("RequireSchulLeiter", policy => policy.RequireRole("SchulLeiter", "Koordinator", "ProduktOwner"));
+    options.AddPolicy("RequireSchulLeiter", policy => policy.RequireRole("SchulLeiter", "Koordinator"));
     options.AddPolicy("RequireTeacher", policy => policy.RequireRole("Lehrer", "SchulLeiter", "Koordinator"));
     options.AddPolicy("RequireStudent", policy => policy.RequireRole("Schüler"));
 });
@@ -162,9 +162,12 @@ builder.Services.AddHttpClient("Postmark", client =>
     client.BaseAddress = new Uri("https://api.postmarkapp.com/");
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
-builder.Services.AddScoped<IEmailService, PostmarkEmailService>();
+builder.Services.AddScoped<PostmarkEmailService>();
+builder.Services.AddScoped<IEmailService>(services => new SkoulouEmailService(services.GetRequiredService<PostmarkEmailService>()));
 builder.Services.AddScoped<BroadcastEmailService>();
 builder.Services.AddTransient<MailboxService>();
+builder.Services.AddTransient<KontoBenachrichtigungService>();
+builder.Services.AddTransient<AbrechnungBenachrichtigungService>();
 
 builder.Services.AddTransient<ICourseRepository, CourseRepository>();
 builder.Services.AddTransient<ISchoolRepository, SchoolRepository>();
@@ -216,7 +219,7 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    await HalloApp.WebApp.Data.Seed.ApplicationDbInitializer.SeedAsync(
+    await SkoulouApp.WebApp.Data.Seed.ApplicationDbInitializer.SeedAsync(
         dbContext,
         roleManager,
         userManager,
@@ -308,7 +311,7 @@ app.MapGet("/finanzen/rapport/pdf-file", async (
 
     var bytes = pdfService.Generate(bericht);
     return Results.File(bytes, "application/pdf");
-}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.SchulLeiter, Rollen.Koordinator));
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.ProduktOwner, Rollen.SchulLeiter, Rollen.Koordinator));
 
 app.MapGet("/finanzen/justificatif/{buchungId:guid}", async (
     Guid buchungId, ClaimsPrincipal user, FinanzService finanzService, CancellationToken cancellationToken) =>
@@ -319,7 +322,7 @@ app.MapGet("/finanzen/justificatif/{buchungId:guid}", async (
     if (beleg is null) return Results.NotFound();
     var inhalt = await finanzService.OeffneFinanzBelegAsync(beleg, cancellationToken);
     return inhalt is null ? Results.NotFound() : Results.File(inhalt, beleg.Inhaltstyp, enableRangeProcessing: false);
-}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.SchulLeiter, Rollen.Koordinator));
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.ProduktOwner, Rollen.SchulLeiter, Rollen.Koordinator));
 
 app.MapGet("/teacher-exams/{examId:guid}/pdf-file", async (
     Guid examId,
@@ -524,7 +527,7 @@ app.MapGet("/media-library/videos/{assetId:guid}", async (
     Guid? lessonId,
     ClaimsPrincipal user,
     IBlobMediaLibraryService mediaLibrary,
-    HalloApp.Core.Interfaces.IHalloAppDbContext dbContext,
+    SkoulouApp.Core.Interfaces.ISkoulouAppDbContext dbContext,
     CancellationToken cancellationToken) =>
 {
     var userIdValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -534,9 +537,9 @@ app.MapGet("/media-library/videos/{assetId:guid}", async (
     }
 
     var roles = user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray();
-    var hasActiveSubscription = roles.Any(role => role is HalloApp.Core.DataModels.Identity.Rollen.SuperAdmin or HalloApp.Core.DataModels.Identity.Rollen.ProduktOwner or HalloApp.Core.DataModels.Identity.Rollen.SchulLeiter or HalloApp.Core.DataModels.Identity.Rollen.Koordinator or HalloApp.Core.DataModels.Identity.Rollen.Lehrer)
+    var hasActiveSubscription = roles.Any(role => role is SkoulouApp.Core.DataModels.Identity.Rollen.SuperAdmin or SkoulouApp.Core.DataModels.Identity.Rollen.ProduktOwner or SkoulouApp.Core.DataModels.Identity.Rollen.SchulLeiter or SkoulouApp.Core.DataModels.Identity.Rollen.Koordinator or SkoulouApp.Core.DataModels.Identity.Rollen.Lehrer)
         || await dbContext.LevelEnrollments.AnyAsync(enrollment => enrollment.StudentId == userId
-            && enrollment.IsUnlocked,
+            && enrollment.IstAktuell && enrollment.IsUnlocked,
             cancellationToken);
     var video = await mediaLibrary.OpenVideoAsync(assetId, userId, roles, hasActiveSubscription, lessonId, cancellationToken);
     return video is null
@@ -560,7 +563,9 @@ app.MapPost("/auth/login/submit", async (
     var result = await authService.PasswordSignInAsync(email, password, rememberMe);
     if (!result.Succeeded)
     {
-        return Results.Redirect("/auth/login?error=invalid-credentials");
+        return Results.Redirect(result.ErrorMessage == AuthService.BlockedAccountMessage
+            ? "/auth/login?error=account-blocked"
+            : "/auth/login?error=invalid-credentials");
     }
 
     var signedInUser = await userManager.FindByEmailAsync(email);

@@ -1,4 +1,4 @@
-﻿namespace HalloApp.Core.Models.Admin;
+﻿namespace SkoulouApp.Core.Models.Admin;
 
 public class SchoolManagementViewModel
 {
@@ -12,8 +12,6 @@ public class SchoolManagementViewModel
     public decimal OutstandingDebt { get; set; }
     public decimal EffectiveSubscriptionPrice { get; set; }
     public decimal? SubscriptionPriceOverride { get; set; }
-    public decimal PreisHalloBasis => EffectiveSubscriptionPrice;
-    public decimal PreisHalloPlus => EffectiveSubscriptionPrice;
     public List<TeacherAssignmentOption> DirectorAssignments { get; set; } = [];
     public List<TeacherAssignmentOption> TeacherAssignments { get; set; } = [];
 }

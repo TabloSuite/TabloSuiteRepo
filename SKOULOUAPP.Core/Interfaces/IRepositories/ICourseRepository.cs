@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Courses;
 
-namespace HalloApp.Core.Interfaces.IRepositories;
+namespace SkoulouApp.Core.Interfaces.IRepositories;
 
 /// <summary>
 /// Repository für Kursniveaus inkl. Katalogabfrage.

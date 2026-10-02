@@ -1,11 +1,11 @@
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Zentrale Logik der Finanzverwaltung (Einnahmen/Ausgaben) pro Schule inklusive
@@ -17,16 +17,23 @@ namespace HalloApp.Core.Services;
 /// - Lehrer: kein Zugriff.
 ///
 /// Löschen von Buchungen: der Ersteller darf löschen. Automatisch erzeugte
-/// HalloApp-Abo-Buchungen dürfen nur vom SuperAdmin storniert werden.
+/// SkoulouApp-Abo-Buchungen dürfen nur vom SuperAdmin storniert werden.
 /// </summary>
-public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? belegStorage = null)
+public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? belegStorage = null)
 {
     public async Task<(bool Menu, bool Dashboard, bool Entries, bool Cycles)> GetFinanceAccessAsync(
         Guid userId, Guid schoolId, bool isSuperAdmin = false, CancellationToken cancellationToken = default)
     {
-        if (isSuperAdmin)
+        var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                           join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                           where userRole.UserId == userId
+                           select role.Name).ToListAsync(cancellationToken);
+        if (roles.Contains(Rollen.SuperAdmin)) return (true, true, false, false);
+        if (roles.Contains(Rollen.ProduktOwner))
         {
-            return (true, true, true, true);
+            var assigned = await dbContext.UserSchools.AsNoTracking()
+                .AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
+            return assigned ? (true, true, false, false) : default;
         }
 
         var link = await dbContext.UserSchools.AsNoTracking()
@@ -36,10 +43,6 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             return default;
         }
 
-        var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
-                           join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
-                           where userRole.UserId == userId
-                           select role.Name).ToListAsync(cancellationToken);
         if (roles.Contains(Rollen.SchulLeiter))
         {
             return (true, true, true, true);
@@ -69,17 +72,18 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                                    where userRole.UserId == coordinatorId && role.Name == Rollen.Koordinator
                                    select userRole.UserId).AnyAsync(cancellationToken);
         var link = await dbContext.UserSchools.FirstOrDefaultAsync(x => x.AppUserId == coordinatorId && x.SchoolId == schoolId && x.CanManageStudents, cancellationToken);
-        if (!isCoordinator || link is null || (menu && !(dashboard || entries || cycles)))
+        if (!isCoordinator || link is null)
         {
-            return (false, "Sélectionnez un coordinateur de l'école et au moins un onglet.");
+            return (false, "Sélectionnez un coordinateur de l'école.");
         }
 
+        menu = menu && (dashboard || entries || cycles);
         link.CanAccessFinances = menu;
         link.CanViewFinanceDashboard = menu && dashboard;
         link.CanCreateFinanceEntries = menu && entries;
         link.CanManageCyclePayments = menu && cycles;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "Accès financier du coordinateur mis à jour.");
+        return (true, menu ? "Accès financier du coordinateur mis à jour." : "Accès financier du coordinateur désactivé.");
     }
 
     private async Task<bool> DarfSchuleVerwaltenAsync(
@@ -89,17 +93,21 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         CancellationToken cancellationToken,
         bool cycles = false)
     {
-        if (userId == Guid.Empty || istSuperAdmin) return true;
+        if (userId == Guid.Empty) return true;
         var access = await GetFinanceAccessAsync(userId, schulId, cancellationToken: cancellationToken);
         return cycles ? access.Cycles : access.Entries;
     }
+
+    private async Task<bool> IstPlattformRolleAsync(Guid userId, CancellationToken cancellationToken)
+        => await dbContext.UserRoles.AsNoTracking().AnyAsync(userRole => userRole.UserId == userId
+            && (userRole.Role.Name == Rollen.SuperAdmin || userRole.Role.Name == Rollen.ProduktOwner), cancellationToken);
 
     private async Task<bool> DarfSchulleiterFinanzenVerwaltenAsync(
         Guid userId,
         bool istSuperAdmin,
         Guid schulId,
         CancellationToken cancellationToken)
-        => userId == Guid.Empty || istSuperAdmin || await (
+        => userId == Guid.Empty || await (
             from userSchool in dbContext.UserSchools.AsNoTracking()
             join userRole in dbContext.Set<AppUserRole>().AsNoTracking() on userSchool.AppUserId equals userRole.UserId
             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
@@ -118,18 +126,10 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         return localDayEnd.ToUniversalTime();
     }
 
-    private async Task<DateTime> ErmittleAbrechnungsZeitraumBeginnAsync(School schule, CancellationToken cancellationToken)
-    {
-        var letzte = await dbContext.Abrechnungsperioden
-            .Where(x => x.SchulID == schule.Id)
-            .OrderByDescending(x => x.BisUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return letzte?.BisUtc ?? schule.ErstelltAmUtc;
-    }
-
-    private async Task<List<DataModels.Courses.LevelEnrollment>> LadeOffeneHalloAppAboPositionenAsync(
+    private async Task<List<DataModels.Courses.LevelEnrollment>> LadeOffeneSkoulouAppAboPositionenAsync(
         Guid schulId,
+        Guid klasseId,
+        Guid durchlaufId,
         DateTime vonUtc,
         DateTime bisUtc,
         CancellationToken cancellationToken)
@@ -141,6 +141,8 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
 
         return await dbContext.LevelEnrollments
             .Where(x => studentIds.Contains(x.StudentId)
+                && x.KlasseId == klasseId
+                && (x.DurchlaufId == durchlaufId || x.DurchlaufId == null && x.PaidAtUtc >= vonUtc && x.PaidAtUtc <= bisUtc)
                 && x.IsPaid
                 && x.PriceAtEnrollment > 0m
                 && (x.SchoolLeaderCommissionAtEnrollment > 0m || x.TeacherCommissionAtEnrollment > 0m)
@@ -180,12 +182,12 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         {
             var bezeichnung = kategorie.SystemCode switch
             {
-                FinanzSystemCode.HalloAppAboZahlung => "HALLOAPP-Abo · Paiement élève",
+                FinanzSystemCode.SkoulouAppAboZahlung => "SKOULOUAPP-Abo · Paiement élève",
                 FinanzSystemCode.KursNiveauZahlung => "Paiement de classe",
-                FinanzSystemCode.HalloAppAboAnteil => "HALLOAPP-Abo · Part plateforme",
-                FinanzSystemCode.HalloAppAboLehrerAnteil => "HALLOAPP-Abo · Fonds enseignants",
-                FinanzSystemCode.HalloAppAboSchulleiterAnteil => "HALLOAPP-Abo · Part direction",
-                FinanzSystemCode.HalloAppAboProductOwnerAnteil => "Abonnement HALLOAPP · Part du responsable produit",
+                FinanzSystemCode.SkoulouAppAboAnteil => "SKOULOUAPP-Abo · Part plateforme",
+                FinanzSystemCode.SkoulouAppAboLehrerAnteil => "SKOULOUAPP-Abo · Fonds enseignants",
+                FinanzSystemCode.SkoulouAppAboSchulleiterAnteil => "SKOULOUAPP-Abo · Part direction",
+                FinanzSystemCode.SkoulouAppAboProductOwnerAnteil => "Abonnement SKOULOUAPP · Part du responsable produit",
                 _ => kategorie.Bezeichnung
             };
 
@@ -228,7 +230,8 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             return (false, "Vous n'êtes pas autorisé à gérer cette école.", null);
         }
 
-        if (autorisierungErzwingen && schulId is null && !istSuperAdmin)
+        if (autorisierungErzwingen && schulId is null && (!istSuperAdmin || !await dbContext.UserRoles.AsNoTracking().AnyAsync(
+            role => role.UserId == erstelltVonUserId && role.Role.Name == Rollen.SuperAdmin, cancellationToken)))
         {
             return (false, "Seul un Administrateur peut créer une catégorie globale.", null);
         }
@@ -364,7 +367,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
 
         if (kategorie.SystemCode != FinanzSystemCode.Keiner)
         {
-            return (false, "Les catégories automatiques HALLOAPP ne peuvent pas être saisies manuellement.", null);
+            return (false, "Les catégories automatiques SKOULOUAPP ne peuvent pas être saisies manuellement.", null);
         }
 
         var buchung = new FinanzBuchung
@@ -505,6 +508,12 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             return (false, "L'écriture est introuvable.");
         }
 
+        var isAdmin = await dbContext.UserRoles.AsNoTracking().AnyAsync(role => role.UserId == aktuellerUserId
+            && role.Role.Name == Rollen.SuperAdmin, cancellationToken);
+        if (await IstPlattformRolleAsync(aktuellerUserId, cancellationToken)
+            && !(isAdmin && istSuperAdmin && buchung.Kategorie.SystemCode != FinanzSystemCode.Keiner))
+            return (false, "Les finances de l'école sont en lecture seule pour votre rôle.");
+
         var istSystemBuchung = buchung.Kategorie.SystemCode != FinanzSystemCode.Keiner;
 
         if (istSystemBuchung && !istSuperAdmin)
@@ -517,7 +526,8 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             return (false, "Seul l'auteur (ou un Administrateur) peut supprimer cette écriture.");
         }
 
-        if (!await DarfSchuleVerwaltenAsync(aktuellerUserId, istSuperAdmin, buchung.SchulID, cancellationToken))
+        if (!(isAdmin && istSuperAdmin && buchung.Kategorie.SystemCode != FinanzSystemCode.Keiner)
+            && !await DarfSchuleVerwaltenAsync(aktuellerUserId, istSuperAdmin, buchung.SchulID, cancellationToken))
         {
             return (false, "Vous n'êtes pas autorisé à gérer les écritures de cette école.");
         }
@@ -532,11 +542,11 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
     }
 
     /// <summary>
-    /// Bucht die Schulfinanz-Effekte eines bezahlten HALLOAPP-Abos:
+    /// Bucht die Schulfinanz-Effekte eines bezahlten SKOULOUAPP-Abos:
     /// voller Abo-Preis als Einnahme, Plattform-/SuperAdmin-, Lehrerpool- und ProductOwner-Anteil als Ausgaben.
     /// Der Schulleiter-/Schulanteil bleibt als Netto-Rest in der Schule sichtbar.
     /// </summary>
-    public async Task<(bool Succeeded, string ErrorMessage)> HalloAppAboBuchungenErstellenAsync(
+    public async Task<(bool Succeeded, string ErrorMessage)> SkoulouAppAboBuchungenErstellenAsync(
         Guid enrollmentId,
         Guid erfasstVonUserId,
         CancellationToken cancellationToken = default)
@@ -551,7 +561,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
 
         if (!enrollment.IsPaid || enrollment.PaidAtUtc is null)
         {
-            return (false, "L'abonnement HALLOAPP n'a pas encore été payé.");
+            return (false, "L'abonnement SKOULOUAPP n'a pas encore été payé.");
         }
 
         if (enrollment.PriceAtEnrollment <= 0m)
@@ -570,10 +580,10 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
 
         var alreadyBooked = await dbContext.FinanzBuchungen
             .AnyAsync(buchung => buchung.HerkunftReferenzID == enrollment.Id
-                && (buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboZahlung
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboAnteil
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil),
+                && (buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil),
                 cancellationToken);
         if (alreadyBooked)
         {
@@ -589,22 +599,22 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         }
 
         var zahlungKategorie = await GetOderErstelleSystemKategorieAsync(
-            FinanzSystemCode.HalloAppAboZahlung,
-            "HALLOAPP-Abo · Paiement élève",
+            FinanzSystemCode.SkoulouAppAboZahlung,
+            "SKOULOUAPP-Abo · Paiement élève",
             FinanzRichtung.Einnahme,
             cancellationToken);
         var plattformKategorie = await GetOderErstelleSystemKategorieAsync(
-            FinanzSystemCode.HalloAppAboAnteil,
-            "HALLOAPP-Abo · Part plateforme",
+            FinanzSystemCode.SkoulouAppAboAnteil,
+            "SKOULOUAPP-Abo · Part plateforme",
             FinanzRichtung.Ausgabe,
             cancellationToken);
         var lehrerKategorie = await GetOderErstelleSystemKategorieAsync(
-            FinanzSystemCode.HalloAppAboLehrerAnteil,
-            "HALLOAPP-Abo · Fonds enseignants",
+            FinanzSystemCode.SkoulouAppAboLehrerAnteil,
+            "SKOULOUAPP-Abo · Fonds enseignants",
             FinanzRichtung.Ausgabe,
             cancellationToken);
         var wirkungsdatum = enrollment.PaidAtUtc.Value.Date;
-        var beschreibung = $"Abonnement HALLOAPP {enrollment.AboTyp} · {enrollment.Klasse?.Code ?? string.Empty} · Prix total : {enrollment.PriceAtEnrollment:N0} FCFA.";
+        var beschreibung = $"Abonnement SKOULOUAPP {enrollment.AboTyp} · {enrollment.Klasse?.Code ?? string.Empty} · Prix total : {enrollment.PriceAtEnrollment:N0} FCFA.";
         dbContext.FinanzBuchungen.Add(new FinanzBuchung
         {
             SchulID = schoolId.Value,
@@ -671,6 +681,21 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
     /// Startet einen neuen Klassenzyklus. Pro Schule + Klasse darf nur ein
     /// aktiver Durchlauf existieren. Der Preis ist vorbelegt und überschreibbar.
     /// </summary>
+    public async Task<bool> HatNichtGemeldeteCycleUeberweisungAsync(Guid schulId, Guid klasseId, CancellationToken cancellationToken = default)
+    {
+        var letzterDurchlaufId = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
+            .Where(x => x.SchulID == schulId && x.KlasseId == klasseId && x.EndDatum != null)
+            .OrderByDescending(x => x.EndDatum)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return letzterDurchlaufId.HasValue && await dbContext.Abrechnungsperioden.AsNoTracking()
+            .AnyAsync(x => x.SchulID == schulId && x.AutomatischDurchKlassenabschlussErstellt
+                && x.AusgeloestDurchDurchlaufId == letzterDurchlaufId.Value
+                && x.Status != AbrechnungStatus.Akzeptiert && x.Status != AbrechnungStatus.Bestaetigt,
+                cancellationToken);
+    }
+
     public async Task<(bool Succeeded, string ErrorMessage, KursNiveauDurchlauf? Durchlauf)> DurchlaufStartenAsync(
         Guid schulId,
         Guid klasseId,
@@ -708,6 +733,11 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             return (false, "Un cycle est déjà actif pour cette classe. Veuillez d'abord le clôturer.", null);
         }
 
+        if (await HatNichtGemeldeteCycleUeberweisungAsync(schulId, klasseId, cancellationToken))
+        {
+            return (false, "Avant de démarrer un nouveau cycle, déclarez le virement de la facturation du cycle précédent dans Facturation SKOULOUAPP.", null);
+        }
+
         var durchlauf = new KursNiveauDurchlauf
         {
             SchulID = schulId,
@@ -718,6 +748,12 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             ErstelltVonUserID = erstelltVonUserId
         };
 
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+        await using var transaction = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
         dbContext.KursNiveauDurchlaeufe.Add(durchlauf);
 
         var klasse = await dbContext.Klassen
@@ -725,7 +761,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             .FirstOrDefaultAsync(x => x.Id == klasseId && x.SchoolId == schulId, cancellationToken);
 
         var autoBezahltEnrollments = new List<LevelEnrollment>();
-        if (klasse?.AutoAssignHalloAppAboOnCycleStart == true)
+        if (klasse is not null)
         {
             var studentIds = await dbContext.StudentProfiles
                 .Where(profile => profile.SchoolId == schulId && profile.CurrentKlasseId == klasseId)
@@ -740,7 +776,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                     .OrderBy(x => x.ErstelltAmUtc)
                     .Select(x => (decimal?)x.GlobalSubscriptionPrice)
                     .FirstOrDefaultAsync(cancellationToken)
-                    ?? HalloAppKonstanten.StandardPreisAbo;
+                    ?? SkoulouAppKonstanten.StandardPreisAbo;
                 var schule = await dbContext.Schools
                     .AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Id == schulId, cancellationToken);
@@ -752,20 +788,20 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                     .FirstOrDefaultAsync(cancellationToken);
                 var schoolLeaderPercent = schule?.SchoolLeaderCommissionPercentOverride
                     ?? commissionSettings?.SchoolLeaderPercent
-                    ?? HalloAppKonstanten.StandardProvisionSchulleiterProzent;
+                    ?? SkoulouAppKonstanten.StandardProvisionSchulleiterProzent;
                 var teacherPercent = schule?.TeacherCommissionPercentOverride
                     ?? commissionSettings?.TeacherPercent
-                    ?? HalloAppKonstanten.StandardProvisionLehrerProzent;
+                    ?? SkoulouAppKonstanten.StandardProvisionLehrerProzent;
                 var productOwnerPercent = schule?.ProductOwnerCommissionPercentOverride
                     ?? commissionSettings?.ProductOwnerPercent
-                    ?? HalloAppKonstanten.StandardProvisionProductOwnerProzent;
-                var schoolLeaderCommission = HalloAppKonstanten.BerechneProvision(
+                    ?? SkoulouAppKonstanten.StandardProvisionProductOwnerProzent;
+                var schoolLeaderCommission = SkoulouAppKonstanten.BerechneProvision(
                     effektiverAboPreis,
                     schoolLeaderPercent);
-                var teacherCommission = HalloAppKonstanten.BerechneProvision(
+                var teacherCommission = SkoulouAppKonstanten.BerechneProvision(
                     effektiverAboPreis,
                     teacherPercent);
-                var productOwnerCommission = HalloAppKonstanten.BerechneProvision(
+                var productOwnerCommission = SkoulouAppKonstanten.BerechneProvision(
                     effektiverAboPreis,
                     productOwnerPercent);
 
@@ -775,50 +811,39 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                 }
 
                 var existingEnrollments = await dbContext.LevelEnrollments
-                    .Where(enrollment => enrollment.KlasseId == klasseId && studentIds.Contains(enrollment.StudentId))
+                    .Where(enrollment => enrollment.KlasseId == klasseId && enrollment.IstAktuell)
                     .ToListAsync(cancellationToken);
                 var existingEnrollmentsByStudent = existingEnrollments.ToDictionary(enrollment => enrollment.StudentId);
+
+                foreach (var enrollment in existingEnrollmentsByStudent.Values)
+                {
+                    enrollment.IstAktuell = false;
+                }
+                await dbContext.SaveChangesAsync(cancellationToken);
 
                 var nowUtc = DateTime.UtcNow;
                 foreach (var studentId in studentIds)
                 {
-                    if (!existingEnrollmentsByStudent.TryGetValue(studentId, out var enrollment))
+                    var autoBezahlt = klasse.AutoAssignSkoulouAppAboOnCycleStart;
+                    var neuePosition = new LevelEnrollment
                     {
-                        enrollment = new LevelEnrollment
-                        {
-                            StudentId = studentId,
-                            KlasseId = klasseId,
-                            AboTyp = AboTyp.HalloApp,
-                            IsUnlocked = true,
-                            IsPaid = true,
-                            PriceAtEnrollment = effektiverAboPreis,
-                            SchoolLeaderCommissionAtEnrollment = schoolLeaderCommission,
-                            TeacherCommissionAtEnrollment = teacherCommission,
-                            ProductOwnerCommissionAtEnrollment = productOwnerCommission,
-                            UnlockedAtUtc = nowUtc,
-                            PaidAtUtc = nowUtc,
-                            GeaendertAmUtc = nowUtc,
-                            ErstelltAmUtc = nowUtc
-                        };
-                        dbContext.LevelEnrollments.Add(enrollment);
-                        autoBezahltEnrollments.Add(enrollment);
-                        continue;
-                    }
-
-                    if (!enrollment.IsPaid)
-                    {
-                        enrollment.IsUnlocked = true;
-                        enrollment.IsPaid = true;
-                        enrollment.AboTyp = AboTyp.HalloApp;
-                        enrollment.PriceAtEnrollment = effektiverAboPreis;
-                        enrollment.SchoolLeaderCommissionAtEnrollment = schoolLeaderCommission;
-                        enrollment.TeacherCommissionAtEnrollment = teacherCommission;
-                        enrollment.ProductOwnerCommissionAtEnrollment = productOwnerCommission;
-                        enrollment.UnlockedAtUtc ??= nowUtc;
-                        enrollment.PaidAtUtc ??= nowUtc;
-                        enrollment.GeaendertAmUtc = nowUtc;
-                        autoBezahltEnrollments.Add(enrollment);
-                    }
+                        StudentId = studentId,
+                        KlasseId = klasseId,
+                        DurchlaufId = durchlauf.Id,
+                        AboTyp = AboTyp.SkoulouApp,
+                        IsUnlocked = autoBezahlt,
+                        IsPaid = autoBezahlt,
+                        PriceAtEnrollment = autoBezahlt ? effektiverAboPreis : 0,
+                        SchoolLeaderCommissionAtEnrollment = autoBezahlt ? schoolLeaderCommission : 0,
+                        TeacherCommissionAtEnrollment = autoBezahlt ? teacherCommission : 0,
+                        ProductOwnerCommissionAtEnrollment = autoBezahlt ? productOwnerCommission : 0,
+                        UnlockedAtUtc = autoBezahlt ? nowUtc : null,
+                        PaidAtUtc = autoBezahlt ? nowUtc : null,
+                        GeaendertAmUtc = nowUtc,
+                        ErstelltAmUtc = nowUtc
+                    };
+                    dbContext.LevelEnrollments.Add(neuePosition);
+                    if (autoBezahlt) autoBezahltEnrollments.Add(neuePosition);
                 }
             }
         }
@@ -829,7 +854,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         {
             foreach (var enrollment in autoBezahltEnrollments)
             {
-                var (ok, error) = await HalloAppAboBuchungenErstellenAsync(enrollment.Id, erstelltVonUserId, cancellationToken);
+                var (ok, error) = await SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erstelltVonUserId, cancellationToken);
                 if (!ok)
                 {
                     return (false, error, null);
@@ -837,7 +862,9 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             }
         }
 
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, durchlauf);
+        });
     }
 
     /// <summary>
@@ -859,12 +886,12 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             beendetVonUserId,
             istSuperAdmin,
             autorisierungErzwingen,
-            automatischeHalloAppAbrechnungErstellen: false,
+            automatischeSkoulouAppAbrechnungErstellen: false,
             cancellationToken);
         return (succeeded, errorMessage, offeneSchuld);
     }
 
-    public async Task<(bool Succeeded, string ErrorMessage, decimal OffeneSchuld, string? AutomatischeAbrechnungMessage)> DurchlaufBeendenMitAutomatischerHalloAppAbrechnungAsync(
+    public async Task<(bool Succeeded, string ErrorMessage, decimal OffeneSchuld, string? AutomatischeAbrechnungMessage)> DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
         Guid durchlaufId,
         DateTime endDatum,
         Guid beendetVonUserId,
@@ -878,7 +905,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             beendetVonUserId,
             istSuperAdmin,
             autorisierungErzwingen,
-            automatischeHalloAppAbrechnungErstellen: true,
+            automatischeSkoulouAppAbrechnungErstellen: true,
             cancellationToken);
 
         return (succeeded, errorMessage, offeneSchuld, automatischeAbrechnungMessage);
@@ -890,7 +917,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
         Guid beendetVonUserId,
         bool istSuperAdmin,
         bool autorisierungErzwingen,
-        bool automatischeHalloAppAbrechnungErstellen,
+        bool automatischeSkoulouAppAbrechnungErstellen,
         CancellationToken cancellationToken)
     {
         var strategy = dbContext.Database.CreateExecutionStrategy();
@@ -914,11 +941,11 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                 return (false, "Vous n'êtes pas autorisé à gérer cette école.", 0m, null);
             }
 
-            if (automatischeHalloAppAbrechnungErstellen
+            if (automatischeSkoulouAppAbrechnungErstellen
                 && autorisierungErzwingen
                 && !await DarfSchulleiterFinanzenVerwaltenAsync(beendetVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken))
             {
-                return (false, "Seul le directeur de l'école peut déclencher cette facturation HALLOAPP automatique lors de la clôture.", 0m, null);
+                return (false, "Seul le directeur de l'école peut déclencher cette facturation SKOULOUAPP automatique lors de la clôture.", 0m, null);
             }
 
             if (durchlauf.EndDatum is not null)
@@ -931,10 +958,28 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                 return (false, "La date de fin ne peut pas être antérieure à la date de début.", 0m, null);
             }
 
+            var teilnehmer = await dbContext.StudentProfiles
+                .Where(profile => profile.SchoolId == durchlauf.SchulID && profile.CurrentKlasseId == durchlauf.KlasseId)
+                .ToListAsync(cancellationToken);
+            var teilnehmerIds = teilnehmer.Select(profile => profile.AppUserId).ToList();
+            var abschluesse = await dbContext.KlassenAbschlussEntscheidungen
+                .AsNoTracking()
+                .Where(entscheidung => entscheidung.DurchlaufId == durchlauf.Id && teilnehmerIds.Contains(entscheidung.StudentId))
+                .ToListAsync(cancellationToken);
+            var vollstaendigeIds = abschluesse
+                .Where(entscheidung => !string.IsNullOrWhiteSpace(entscheidung.AbschlussNoteText) && entscheidung.IsBestanden.HasValue)
+                .Select(entscheidung => entscheidung.StudentId)
+                .ToHashSet();
+            var fehlende = teilnehmerIds.Where(id => !vollstaendigeIds.Contains(id)).ToList();
+            if (fehlende.Count > 0)
+            {
+                return (false, $"Renseignez la note finale et la décision de réussite pour les {fehlende.Count} élève(s) avant de clôturer le cycle.", 0m, null);
+            }
+
             var offeneSchuld = await BerechneOffeneSchuldAsync(durchlauf, cancellationToken);
             string? automatischeAbrechnungMessage = null;
 
-            if (automatischeHalloAppAbrechnungErstellen)
+            if (automatischeSkoulouAppAbrechnungErstellen)
             {
                 var schule = await dbContext.Schools.FirstOrDefaultAsync(x => x.Id == durchlauf.SchulID, cancellationToken);
                 if (schule is null)
@@ -942,9 +987,9 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                     return (false, "L'école est introuvable.", 0m, null);
                 }
 
-                var vonUtc = await ErmittleAbrechnungsZeitraumBeginnAsync(schule, cancellationToken);
+                var vonUtc = durchlauf.StartDatum;
                 var bisUtc = ToInclusiveUtcDayEnd(endDatum);
-                var positionen = await LadeOffeneHalloAppAboPositionenAsync(durchlauf.SchulID, vonUtc, bisUtc, cancellationToken);
+                var positionen = await LadeOffeneSkoulouAppAboPositionenAsync(durchlauf.SchulID, durchlauf.KlasseId, durchlauf.Id, vonUtc, bisUtc, cancellationToken);
                 if (positionen.Count > 0)
                 {
                     var jetztUtc = DateTime.UtcNow;
@@ -953,8 +998,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                         SchulID = durchlauf.SchulID,
                         VonUtc = vonUtc,
                         BisUtc = bisUtc,
-                        AnzahlHalloBasis = positionen.Count,
-                        AnzahlHalloPlus = 0,
+                        AnzahlAbonnements = positionen.Count,
                         Umsatz = positionen.Sum(position => Math.Max(0m,
                             position.PriceAtEnrollment
                             - position.SchoolLeaderCommissionAtEnrollment
@@ -977,11 +1021,27 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                         position.GeaendertAmUtc = jetztUtc;
                     }
 
-                    automatischeAbrechnungMessage = $"Facturation HALLOAPP automatique créée pour {positionen.Count} abonnement(s), montant {periode.Umsatz:N0} FCFA. Elle attend la suite du workflow normal.";
+                    automatischeAbrechnungMessage = $"Facturation SKOULOUAPP automatique créée pour {positionen.Count} abonnement(s), montant {periode.Umsatz:N0} FCFA. Elle attend la suite du workflow normal.";
                 }
             }
 
             durchlauf.EndDatum = endDatum;
+
+            foreach (var profil in teilnehmer)
+            {
+                profil.CurrentKlasseId = null;
+                profil.CurrentLevelCode = string.Empty;
+                profil.GeaendertAmUtc = DateTime.UtcNow;
+            }
+
+            var einschreibungen = await dbContext.LevelEnrollments
+                .Where(enrollment => enrollment.KlasseId == durchlauf.KlasseId
+                    && enrollment.IstAktuell && teilnehmerIds.Contains(enrollment.StudentId))
+                .ToListAsync(cancellationToken);
+            foreach (var enrollment in einschreibungen)
+            {
+                enrollment.IstAktuell = false;
+            }
 
             var lessonsInKlasse = await dbContext.Lessons
                 .Where(lesson => lesson.KlasseId == durchlauf.KlasseId)
@@ -1268,7 +1328,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             .Select(x => new { x.Id, x.AbgerechnetInPeriodeId, x.PriceAtEnrollment, x.SchoolLeaderCommissionAtEnrollment, x.TeacherCommissionAtEnrollment })
             .ToListAsync(cancellationToken);
         var plattformBuchungen = buchungen
-            .Where(x => x.SystemCode == FinanzSystemCode.HalloAppAboAnteil && x.Richtung == FinanzRichtung.Ausgabe)
+            .Where(x => x.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil && x.Richtung == FinanzRichtung.Ausgabe)
             .ToList();
         var positionenNachRechnung = positionen.GroupBy(x => x.AbgerechnetInPeriodeId!.Value)
             .ToDictionary(x => x.Key, x => x.ToList());
@@ -1342,10 +1402,18 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                                 join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
                                 where userRole.UserId == userId && role.Name == Rollen.SchulLeiter
                                 select userRole.UserId).AnyAsync(cancellationToken);
+        var isAdmin = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                             where userRole.UserId == userId && role.Name == Rollen.SuperAdmin
+                             select userRole.UserId).AnyAsync(cancellationToken);
+        var isOwner = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                             where userRole.UserId == userId && role.Name == Rollen.ProduktOwner
+                             select userRole.UserId).AnyAsync(cancellationToken);
         return await dbContext.Schools
-            .Where(x => x.IsActive && (istSuperAdmin || x.UserSchools.Any(link => link.AppUserId == userId
-                && link.CanManageStudents && (isDirector || link.CanAccessFinances
-                    && (link.CanViewFinanceDashboard || link.CanCreateFinanceEntries || link.CanManageCyclePayments)))))
+            .Where(x => x.IsActive && (isAdmin || x.UserSchools.Any(link => link.AppUserId == userId
+                && (isOwner || link.CanManageStudents && (isDirector || link.CanAccessFinances
+                    && (link.CanViewFinanceDashboard || link.CanCreateFinanceEntries || link.CanManageCyclePayments))))))
             .OrderBy(x => x.Name)
             .Select(x => new FinanzAuswahl { Id = x.Id, Name = x.Name })
             .ToListAsync(cancellationToken);
@@ -1386,7 +1454,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             .OrderBy(x => x.ErstelltAmUtc)
             .Select(x => (decimal?)x.GlobalSubscriptionPrice)
             .FirstOrDefaultAsync(cancellationToken)
-            ?? HalloAppKonstanten.StandardPreisAbo;
+            ?? SkoulouAppKonstanten.StandardPreisAbo;
         return schule?.EffektiverPreis(globalSubscriptionPrice) ?? globalSubscriptionPrice;
     }
 
@@ -1425,7 +1493,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
 
     /// <summary>
     /// Liefert für einen Kursdurchlauf den vollständigen Finanzbericht: Schulgebühren
-    /// aus Ratenzahlungen sowie HALLO-Abo- und Zahlungsstatus aller Teilnehmer.
+    /// aus Ratenzahlungen sowie SKOULOU-Abo- und Zahlungsstatus aller Teilnehmer.
     /// </summary>
     public async Task<KlassenFinanzbericht?> GetKlassenFinanzberichtAsync(
         Guid durchlaufId,
@@ -1449,7 +1517,8 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             .ToListAsync(cancellationToken);
         var einschreibungen = await dbContext.LevelEnrollments
             .AsNoTracking()
-            .Where(enrollment => teilnehmerIds.Contains(enrollment.StudentId) && enrollment.KlasseId == durchlauf.KlasseId)
+            .Where(enrollment => teilnehmerIds.Contains(enrollment.StudentId) && enrollment.KlasseId == durchlauf.KlasseId
+                && enrollment.DurchlaufId == durchlauf.Id)
             .ToDictionaryAsync(enrollment => enrollment.StudentId, cancellationToken);
 
         var zahlungenNachSchueler = durchlauf.RatenZahlungen
@@ -1473,9 +1542,9 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
                     Name = item.FullName,
                     SchulgebuehrSoll = durchlauf.NiveauPreis,
                     SchulgebuehrBezahlt = zahlungenNachSchueler.GetValueOrDefault(item.StudentId),
-                    AboTyp = einschreibungen.TryGetValue(item.StudentId, out var enrollment) ? enrollment.AboTyp : AboTyp.HalloApp,
-                    HalloAboPreis = enrollment?.PriceAtEnrollment ?? 0m,
-                    HalloAboBezahlt = enrollment?.IsPaid ?? false
+                    AboTyp = einschreibungen.TryGetValue(item.StudentId, out var enrollment) ? enrollment.AboTyp : AboTyp.SkoulouApp,
+                    SkoulouAboPreis = enrollment?.PriceAtEnrollment ?? 0m,
+                    SkoulouAboBezahlt = enrollment?.IsPaid ?? false
                 })
                 .ToList()
         };
@@ -1495,43 +1564,43 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung
                 && zeile.Richtung == FinanzRichtung.Einnahme)
             .Sum(zeile => zeile.Betrag);
-        var halloAppAboEingenommen = finanzUebersicht.Zeilen
-            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboZahlung
+        var skoulouAppAboEingenommen = finanzUebersicht.Zeilen
+            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung
                 && zeile.Richtung == FinanzRichtung.Einnahme)
             .Sum(zeile => zeile.Betrag);
         var lehrerAboAnteil = finanzUebersicht.Zeilen
-            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil
+            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
                 && zeile.Richtung == FinanzRichtung.Ausgabe)
             .Sum(zeile => zeile.Betrag);
-        var halloAppAboAnteil = finanzUebersicht.Zeilen
-            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboAnteil
+        var skoulouAppAboAnteil = finanzUebersicht.Zeilen
+            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboAnteil
                 && zeile.Richtung == FinanzRichtung.Ausgabe)
             .Sum(zeile => zeile.Betrag);
-        var schulleiterAboAnteil = Math.Max(0m, halloAppAboEingenommen - lehrerAboAnteil - halloAppAboAnteil);
+        var schulleiterAboAnteil = Math.Max(0m, skoulouAppAboEingenommen - lehrerAboAnteil - skoulouAppAboAnteil);
         var sonstigeEinnahmen = finanzUebersicht.Zeilen
             .Where(zeile => zeile.Richtung == FinanzRichtung.Einnahme
-                && zeile.KategorieSystemCode is not FinanzSystemCode.KursNiveauZahlung and not FinanzSystemCode.HalloAppAboZahlung)
+                && zeile.KategorieSystemCode is not FinanzSystemCode.KursNiveauZahlung and not FinanzSystemCode.SkoulouAppAboZahlung)
             .Sum(zeile => zeile.Betrag);
         var betrieblicheAusgaben = finanzUebersicht.Zeilen
             .Where(zeile => zeile.Richtung == FinanzRichtung.Ausgabe
-                && zeile.KategorieSystemCode is not FinanzSystemCode.HalloAppAboAnteil
-                    and not FinanzSystemCode.HalloAppAboSchulleiterAnteil
-                    and not FinanzSystemCode.HalloAppAboLehrerAnteil
-                    and not FinanzSystemCode.HalloAppAboProductOwnerAnteil)
+                && zeile.KategorieSystemCode is not FinanzSystemCode.SkoulouAppAboAnteil
+                    and not FinanzSystemCode.SkoulouAppAboSchulleiterAnteil
+                    and not FinanzSystemCode.SkoulouAppAboLehrerAnteil
+                    and not FinanzSystemCode.SkoulouAppAboProductOwnerAnteil)
             .Sum(zeile => zeile.Betrag);
 
         var kontostand = new DirektorKontostandUebersicht
         {
             IstKontostand = finanzUebersicht.Zeilen
-                .Where(zeile => zeile.KategorieSystemCode != FinanzSystemCode.HalloAppAboProductOwnerAnteil)
+                .Where(zeile => zeile.KategorieSystemCode != FinanzSystemCode.SkoulouAppAboProductOwnerAnteil)
                 .Sum(zeile => zeile.Richtung == FinanzRichtung.Einnahme ? zeile.Betrag : -zeile.Betrag),
             SchulgebuehrenEingenommen = schulgebuehrenEingenommen,
             SonstigeEinnahmen = sonstigeEinnahmen,
             BetrieblicheAusgaben = betrieblicheAusgaben,
-            HalloAppAboEingenommen = halloAppAboEingenommen,
+            SkoulouAppAboEingenommen = skoulouAppAboEingenommen,
             SchulleiterAboAnteil = schulleiterAboAnteil,
             LehrerAboAnteil = lehrerAboAnteil,
-            HalloAppAboAnteil = halloAppAboAnteil
+            SkoulouAppAboAnteil = skoulouAppAboAnteil
         };
 
         var aktiveDurchlaeufe = await dbContext.KursNiveauDurchlaeufe
@@ -1584,6 +1653,7 @@ public class FinanzService(IHalloAppDbContext dbContext, IFinanzBelegStorage? be
             join profile in dbContext.StudentProfiles.AsNoTracking() on enrollment.StudentId equals profile.AppUserId
             where profile.SchoolId == schulId
                   && klasseIds.Contains(enrollment.KlasseId)
+                  && enrollment.IstAktuell
                   && enrollment.IsUnlocked
                   && !enrollment.IsPaid
                   && enrollment.PriceAtEnrollment > 0m

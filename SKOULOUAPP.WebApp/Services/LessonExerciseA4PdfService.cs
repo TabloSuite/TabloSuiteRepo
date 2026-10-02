@@ -2,12 +2,12 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services.Text;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services.Text;
+using SkoulouApp.Core.Services.Storage;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class LessonExerciseA4PdfService(IConfiguration configuration, IWebHostEnvironment environment)
 {

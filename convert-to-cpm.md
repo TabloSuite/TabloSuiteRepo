@@ -2,15 +2,15 @@
 
 ## Overview
 
-Scope: `HALLOAPPMAPPE.slnx`
+Scope: `SKOULOUAPPMAPPE.slnx`
 
 Converted the solution from per-project NuGet package versions to NuGet Central Package Management using `Directory.Packages.props`.
 
 ## Projects Converted
 
-- `HalloApp.Core/HalloApp.Core.csproj`
-- `HalloApp.WebApp/HalloApp.WebApp.csproj`
-- `HalloApp.Tests/HalloApp.Tests.csproj`
+- `SkoulouApp.Core/SkoulouApp.Core.csproj`
+- `SkoulouApp.WebApp/SkoulouApp.WebApp.csproj`
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj`
 
 ## Packages Centralized
 
@@ -51,13 +51,13 @@ The conversion preserved the package versions already validated after the .NET 1
 ## Commands Run
 
 ```powershell
-dotnet build "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx"
-dotnet list "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx" package --format json > "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\baseline-packages.json"
-dotnet build "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx"
-dotnet list "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx" package --format json > "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\after-cpm-packages.json"
-dotnet test "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HalloApp.Tests\HalloApp.Tests.csproj"
-dotnet list "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx" package --outdated
-dotnet list "C:\ETSE\NETAPPS\HALLOAPPRepo\HALLOAPPMAPPE\HALLOAPPMAPPE.slnx" package --vulnerable --include-transitive
+dotnet build "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx"
+dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx" package --format json > "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\baseline-packages.json"
+dotnet build "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx"
+dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx" package --format json > "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\after-cpm-packages.json"
+dotnet test "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SkoulouApp.Tests\SkoulouApp.Tests.csproj"
+dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx" package --outdated
+dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\SKOULOUAPPMAPPE\SKOULOUAPPMAPPE.slnx" package --vulnerable --include-transitive
 ```
 
 ## Risk Assessment

@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.BaseModel;
 using System.Linq.Expressions;
 
-namespace HalloApp.Core.Interfaces.IRepositories;
+namespace SkoulouApp.Core.Interfaces.IRepositories;
 
 /// <summary>
 /// Generisches Repository für auditierbare Entitäten.

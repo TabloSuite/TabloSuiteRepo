@@ -1,13 +1,13 @@
 using System.Security.Claims;
-using HalloApp.Core.Models.Admin;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
-using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
+using SkoulouApp.Core.Models.Dashboard;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Teacher
 {

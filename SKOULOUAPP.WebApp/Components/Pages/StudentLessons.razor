@@ -1,8 +1,8 @@
 ﻿@page "/student/lessons"
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.Models.Student
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Models.Student
 
 <PageTitle>Mes leçons</PageTitle>
 
@@ -13,7 +13,7 @@
 else
 {
     <section class="student-learning-page grid gap-4 sm:gap-5 lg:gap-6">
-        <div class="hallo-hero rounded-[1.5rem] p-4 text-white shadow-xl sm:rounded-[2rem] sm:p-5 lg:p-8">
+        <div class="skoulou-hero rounded-[1.5rem] p-4 text-white shadow-xl sm:rounded-[2rem] sm:p-5 lg:p-8">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-100 sm:text-sm">Espace d'apprentissage</p>
             <h1 class="mt-2 text-2xl font-black sm:text-3xl">Mes leçons</h1>
             <p class="mt-2 max-w-2xl text-xs leading-6 text-indigo-50 sm:text-sm sm:leading-7">Retrouve les leçons, les supports et les exercices publiés pour ta classe. Tes résultats sont enregistrés automatiquement.</p>
@@ -82,7 +82,7 @@ else
         @if (lessons.Count == 0)
         {
             <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                @if (!HasPaidHalloAppAbo)
+                @if (!HasPaidSkoulouAppAbo)
                 {
                     <h2 class="text-lg font-black text-slate-900">Abo SKOULOUAPP requis</h2>
                     <p class="mt-2 text-sm text-slate-600">Les leçons et exercices de ta classe sont disponibles après activation de ton abonnement scolaire.</p>
@@ -127,7 +127,7 @@ else
                                @bind="lessonJumpNumber"
                                @bind:event="oninput" />
                         <button type="button"
-                                class="hallo-btn-accent inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                class="skoulou-btn-accent inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
                                 disabled="@(!CanJumpToLesson)"
                                 @onclick="JumpToLesson">
                             Ouvrir
@@ -209,7 +209,7 @@ else
                                         </div>
                                     </div>
                                     <button type="button"
-                                            class="hallo-btn-accent mt-4 inline-flex w-fit items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                            class="skoulou-btn-accent mt-4 inline-flex w-fit items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
                                             disabled="@(!lesson.IsUnlocked)"
                                             @onclick="() => OpenLesson(lesson.LessonId)">
                                         @GetLessonActionText(lesson)
@@ -280,7 +280,7 @@ else
                         </div>
 
                         <button type="button"
-                                class="hallo-btn-accent mt-5 inline-flex w-fit self-start items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
+                                class="skoulou-btn-accent mt-5 inline-flex w-fit self-start items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:translate-y-0"
                                 disabled="@(!lesson.IsUnlocked)"
                                 @onclick="() => OpenLesson(lesson.LessonId)">
                             @GetLessonActionText(lesson)

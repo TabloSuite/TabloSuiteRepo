@@ -1,9 +1,9 @@
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Options;
-using HalloApp.Tests.Infrastructure;
-using HalloApp.WebApp.Data;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Tests.Infrastructure;
+using SkoulouApp.WebApp.Data;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für die rollenabhängige Willkommensmail in
@@ -165,6 +165,69 @@ public class WillkommensMailTests
         Assert.Contains("SKOULOUAPP", html);
         Assert.Contains("CONTACT", html);
         Assert.Contains("Tous droits réservés", html);
+    }
+
+    [Theory]
+    [InlineData(false, "modifié")]
+    [InlineData(true, "réinitialisé")]
+    public async Task ErfolgreichePasswortaktion_SendetBestaetigungOhnePasswortOderToken(bool reset, string wording)
+    {
+        var email = new FakeEmailService();
+        var user = new AppUser { Id = Guid.NewGuid(), Email = "jean@test.local", Vorname = "Jean", FullName = "Jean Dupont" };
+        var manager = TestUserManager.Create([user]);
+        var factory = new TestApplicationDbContextFactory();
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, email,
+            Options.Create(new PostmarkOptions()), new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
+
+        var result = reset
+            ? await service.ResetPasswordAsync(user.Email, "secret-token", "Secret123!")
+            : await service.ChangePasswordAsync(user.Id, "old-secret", "Secret123!");
+
+        Assert.True(result.Succeeded);
+        var sent = Assert.Single(email.Gesendet);
+        Assert.Equal(user.Email, sent.Recipient.Email);
+        Assert.Contains(wording, sent.Message.HtmlBody);
+        Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
+        Assert.DoesNotContain("Secret123!", sent.Message.HtmlBody);
+        Assert.DoesNotContain("secret-token", sent.Message.HtmlBody);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FehlgeschlagenePasswortaktion_SendetKeineMail(bool reset)
+    {
+        var email = new FakeEmailService();
+        var user = new AppUser { Id = Guid.NewGuid(), Email = "jean@test.local" };
+        var manager = TestUserManager.Create([user]);
+        var failure = IdentityResult.Failed(new IdentityError { Description = "Mot de passe invalide." });
+        if (reset) manager.ResetPasswordResult = failure;
+        else manager.ChangePasswordResult = failure;
+        var factory = new TestApplicationDbContextFactory();
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, email,
+            Options.Create(new PostmarkOptions()), new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
+
+        var result = reset
+            ? await service.ResetPasswordAsync(user.Email, "invalid", "Secret123!")
+            : await service.ChangePasswordAsync(user.Id, "invalid", "Secret123!");
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(email.Gesendet);
+    }
+
+    [Fact]
+    public async Task FehlerBeimPasswortMailversand_MachtErfolgreichenPasswortwechselNichtRueckgaengig()
+    {
+        var email = new FakeEmailService { WirftAusnahme = new HttpRequestException("Réseau indisponible") };
+        var user = new AppUser { Id = Guid.NewGuid(), Email = "jean@test.local" };
+        var factory = new TestApplicationDbContextFactory();
+        var service = new AuthService(factory.CreateDbContext(), factory, TestUserManager.Create([user]), null!, email,
+            Options.Create(new PostmarkOptions()), new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
+
+        var result = await service.ChangePasswordAsync(user.Id, "old", "new");
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(email.Gesendet);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Finanzen;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>Filter- und Sortieroptionen für die Finanzübersicht.</summary>
 public class FinanzFilter
@@ -89,14 +89,14 @@ public class DirektorKontostandUebersicht
     public decimal SchulgebuehrenEingenommen { get; set; }
     public decimal SonstigeEinnahmen { get; set; }
     public decimal BetrieblicheAusgaben { get; set; }
-    public decimal HalloAppAboEingenommen { get; set; }
+    public decimal SkoulouAppAboEingenommen { get; set; }
     public decimal SchulleiterAboAnteil { get; set; }
     public decimal LehrerAboAnteil { get; set; }
-    public decimal HalloAppAboAnteil { get; set; }
-    public decimal AboVerteilungGesamt => SchulleiterAboAnteil + LehrerAboAnteil + HalloAppAboAnteil;
+    public decimal SkoulouAppAboAnteil { get; set; }
+    public decimal AboVerteilungGesamt => SchulleiterAboAnteil + LehrerAboAnteil + SkoulouAppAboAnteil;
     public decimal VerfuegbarerKontostand => IstKontostand;
-    public decimal KontostandMitNichtUeberwiesenenHalloAppAnteilen => IstKontostand + LehrerAboAnteil + HalloAppAboAnteil;
-    public decimal WirklicherKontostandNachAboVerteilung => KontostandMitNichtUeberwiesenenHalloAppAnteilen - HalloAppAboAnteil;
+    public decimal KontostandMitNichtUeberwiesenenSkoulouAppAnteilen => IstKontostand + LehrerAboAnteil + SkoulouAppAboAnteil;
+    public decimal WirklicherKontostandNachAboVerteilung => KontostandMitNichtUeberwiesenenSkoulouAppAnteilen - SkoulouAppAboAnteil;
     public decimal OffeneSchulgebuehrenAktiveKlassen { get; set; }
     public decimal OffeneAboGebuehrenAktiveKlassen { get; set; }
     public int OffeneAboAnzahlAktiveKlassen { get; set; }
@@ -157,12 +157,12 @@ public class KlassenFinanzbericht
     public decimal SchulgebuehrSoll => Schueler.Sum(x => x.SchulgebuehrSoll);
     public decimal SchulgebuehrBezahlt => Schueler.Sum(x => x.SchulgebuehrBezahlt);
     public decimal SchulgebuehrOffen => Schueler.Sum(x => x.SchulgebuehrOffen);
-    public int HalloBasisAnzahl => Schueler.Count(x => x.AboTyp == HalloApp.Core.DataModels.Schools.AboTyp.HalloApp);
-    public int HalloPlusAnzahl => 0;
-    public int HalloAboBezahltAnzahl => Schueler.Count(x => x.HalloAboBezahlt);
-    public int HalloAboOffenAnzahl => Schueler.Count(x => !x.HalloAboBezahlt);
-    public decimal HalloAboSoll => Schueler.Sum(x => x.HalloAboPreis);
-    public decimal HalloAboOffen => Schueler.Where(x => !x.HalloAboBezahlt).Sum(x => x.HalloAboPreis);
+    public int SkoulouBasisAnzahl => Schueler.Count(x => x.AboTyp == SkoulouApp.Core.DataModels.Schools.AboTyp.SkoulouApp);
+    public int SkoulouPlusAnzahl => 0;
+    public int SkoulouAboBezahltAnzahl => Schueler.Count(x => x.SkoulouAboBezahlt);
+    public int SkoulouAboOffenAnzahl => Schueler.Count(x => !x.SkoulouAboBezahlt);
+    public decimal SkoulouAboSoll => Schueler.Sum(x => x.SkoulouAboPreis);
+    public decimal SkoulouAboOffen => Schueler.Where(x => !x.SkoulouAboBezahlt).Sum(x => x.SkoulouAboPreis);
 }
 
 /// <summary>Zahlungs- und Abozustand eines Schülers im Klassenfinanzbericht.</summary>
@@ -174,7 +174,7 @@ public class KlassenFinanzberichtSchueler
     public decimal SchulgebuehrBezahlt { get; set; }
     public decimal SchulgebuehrOffen => Math.Max(0m, SchulgebuehrSoll - SchulgebuehrBezahlt);
     public bool SchulgebuehrVollBezahlt => SchulgebuehrBezahlt >= SchulgebuehrSoll;
-    public HalloApp.Core.DataModels.Schools.AboTyp AboTyp { get; set; }
-    public decimal HalloAboPreis { get; set; }
-    public bool HalloAboBezahlt { get; set; }
+    public SkoulouApp.Core.DataModels.Schools.AboTyp AboTyp { get; set; }
+    public decimal SkoulouAboPreis { get; set; }
+    public bool SkoulouAboBezahlt { get; set; }
 }

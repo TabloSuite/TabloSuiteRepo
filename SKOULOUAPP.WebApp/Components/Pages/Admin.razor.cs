@@ -1,36 +1,37 @@
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Models.Billing;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Dashboard;
+using SkoulouApp.Core.Models.Billing;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Hosting;
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Admin
 {
-    private bool CanSuggestHalloAppEmail => CanCurrentUserUseHalloAppEmail
+    private bool CanSuggestSkoulouAppEmail => CanCurrentUserUseSkoulouAppEmail
         && !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
 
-    private string halloAppEmailButtonLabel => "E-mail auto";
+    private string skoulouAppEmailButtonLabel => "E-mail auto";
 
-    private void SuggestHalloAppEmail()
+    private void SuggestSkoulouAppEmail()
     {
-        if (CanSuggestHalloAppEmail)
+        if (CanSuggestSkoulouAppEmail)
         {
-            userForm.Email = BuildHalloAppEmail(userForm.Vorname, userForm.Nachname);
+            userForm.Email = BuildSkoulouAppEmail(userForm.Vorname, userForm.Nachname);
         }
     }
 
-    private bool ShowHalloAppEmailButton => CanCurrentUserUseHalloAppEmail;
-    private bool CanCurrentUserUseHalloAppEmail => canCurrentUserUseHalloAppEmail;
+    private bool ShowSkoulouAppEmailButton => CanCurrentUserUseSkoulouAppEmail;
+    private bool CanCurrentUserUseSkoulouAppEmail => canCurrentUserUseSkoulouAppEmail;
 
     private decimal SchoolSubscriptionPriceDisplay
         => schoolForm.SubscriptionPriceOverride ?? commissionSettings.GlobalSubscriptionPrice;
@@ -71,7 +72,7 @@ public partial class Admin
         set => schoolForm.ProductOwnerCommissionPercentOverride = value;
     }
 
-    private static string BuildHalloAppEmail(string vorname, string nachname)
+    private static string BuildSkoulouAppEmail(string vorname, string nachname)
     {
         var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(source.Length);
@@ -99,6 +100,9 @@ public partial class Admin
 
     [Inject]
     private AuthService AuthService { get; set; } = default!;
+
+    [Inject]
+    private KontoBenachrichtigungService KontoBenachrichtigungService { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -164,7 +168,9 @@ public partial class Admin
 
     private bool IsDevelopment => HostEnvironment.IsDevelopment();
     private bool isProduktOwner;
-    private bool canCurrentUserUseHalloAppEmail;
+    private Guid currentUserId;
+    private UserManagementItem? viewedUser;
+    private bool canCurrentUserUseSkoulouAppEmail;
 
     // Filter der Nutzerliste auf eine bestimmte Schule (null = alle Schulen).
     private string? userSchoolFilter;
@@ -282,14 +288,9 @@ public partial class Admin
     }
 
     private IReadOnlyList<ModernDropdownOption<string?>> RoleOptions =>
-    [
-        new("Schüler", "Élève"),
-        new("Lehrer", "Enseignant"),
-        new("SchulLeiter", "Directeur"),
-        new("Koordinator", "Coordinateur"),
-        new("ProduktOwner", "Responsable produit"),
-        new("SuperAdmin", "Administrateur")
-    ];
+        isProduktOwner
+            ? [new("SchulLeiter", "Directeur")]
+            : [new("SchulLeiter", "Directeur"), new("ProduktOwner", "Responsable produit"), new("SuperAdmin", "Administrateur")];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> UserClassOptions =>
     [
@@ -364,7 +365,7 @@ public partial class Admin
 
     private async Task SetUserRoleAsync(string? roleName)
     {
-        userForm.RoleName = roleName ?? "Schüler";
+        userForm.RoleName = roleName ?? "SchulLeiter";
         await OnUserRoleChangedAsync();
     }
 
@@ -600,9 +601,10 @@ public partial class Admin
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            canCurrentUserUseHalloAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
+            canCurrentUserUseSkoulouAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
                 && !authState.User.IsInRole(Rollen.Schueler);
             isProduktOwner = authState.User.IsInRole("ProduktOwner") && !authState.User.IsInRole("SuperAdmin");
+            Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out currentUserId);
             await LoadAsync();
             commissionSettings = await CommissionService.GetCommissionSettingsAsync();
         }
@@ -614,21 +616,25 @@ public partial class Admin
 
     private async Task LoadAsync()
     {
-        summary = await DashboardService.GetAdminSummaryAsync();
-        schoolManagementItems = await DashboardService.GetSchoolManagementAsync();
+        summary = await DashboardService.GetPlatformSummaryAsync(currentUserId, ComponentToken);
+        schoolManagementItems = await DashboardService.GetPlatformSchoolsAsync(currentUserId, ComponentToken);
         if (schoolDirectorFilter.HasValue && !schoolManagementItems.Any(school => school.DirectorAssignments.Any(director => director.TeacherId == schoolDirectorFilter.Value)))
         {
             schoolDirectorFilter = null;
         }
-        teacherOptions = await DashboardService.GetTeacherOptionsAsync(schoolForm.Id);
-        schoolOptions = await DashboardService.GetSchoolOptionsAsync(userForm.UserId);
-        userManagementItems = (await DashboardService.GetUserManagementAsync())
+        teacherOptions = isProduktOwner ? [] : await DashboardService.GetTeacherOptionsAsync(schoolForm.Id);
+        var allowedSchools = await DashboardService.GetPlatformSchoolIdsAsync(currentUserId, ComponentToken);
+        schoolOptions = (await DashboardService.GetSchoolOptionsAsync(userForm.UserId))
+            .Where(option => allowedSchools.Contains(option.TeacherId)).ToList();
+        // Plattformansicht auf Basis bereinigter Schülerkennzahlen laden.
+        userManagementItems = (await DashboardService.GetPlatformUsersAsync(currentUserId, ComponentToken))
             .OrderBy(u => GetRoleRank(u.RoleName))
             .ThenBy(u => u.FullName)
             .ToList();
-        courseManagementItems = await DashboardService.GetCourseManagementAsync();
-        mediaLibraryItems = await DashboardService.GetMediaLibraryAsync();
-        lessonOptions = await DashboardService.GetLessonOptionsAsync();
+        courseManagementItems = isProduktOwner ? [] : await DashboardService.GetCourseManagementAsync();
+        mediaLibraryItems = (await DashboardService.GetMediaLibraryAsync())
+            .Where(media => !isProduktOwner || media.SchoolId.HasValue && allowedSchools.Contains(media.SchoolId.Value)).ToList();
+        lessonOptions = isProduktOwner ? [] : await DashboardService.GetLessonOptionsAsync();
     }
 
     private Task SaveSchoolAsync() => RunDatabaseActionAsync(SaveSchoolCoreAsync);
@@ -637,6 +643,12 @@ public partial class Admin
     {
         errorMessage = null;
         statusMessage = null;
+
+        if (isProduktOwner)
+        {
+            errorMessage = "La gestion des écoles appartient au directeur et à l'Administrateur.";
+            return;
+        }
 
         var result = await DashboardService.SaveSchoolAsync(schoolForm, selectedTeacherIds.ToList());
         if (!result.Succeeded)
@@ -653,7 +665,7 @@ public partial class Admin
 
     private void RequestHardDeleteSchoolLeader(UserManagementItem user)
     {
-        if (!IsDevelopment || user.RoleName != "SchulLeiter")
+        if (isProduktOwner || !IsDevelopment || user.RoleName != "SchulLeiter")
         {
             return;
         }
@@ -667,6 +679,7 @@ public partial class Admin
 
     private async Task ConfirmHardDeleteSchoolLeaderCoreAsync()
     {
+        if (isProduktOwner) return;
         confirmHardDeleteSchoolLeaderOpen = false;
         userErrorMessage = null;
         userStatusMessage = null;
@@ -684,6 +697,7 @@ public partial class Admin
 
     private async Task EditSchoolAsync(Guid schoolId)
     {
+        if (isProduktOwner) return;
         var model = await DashboardService.GetSchoolForEditAsync(schoolId);
         if (model is null)
         {
@@ -701,6 +715,7 @@ public partial class Admin
 
     private async Task OpenNewSchoolModalAsync()
     {
+        if (isProduktOwner) return;
         await ResetFormAsync();
         statusMessage = null;
         errorMessage = null;
@@ -724,6 +739,7 @@ public partial class Admin
 
     private async Task SaveCommissionSettingsAsync()
     {
+        if (isProduktOwner) return;
         commissionStatusMessage = null;
         commissionErrorMessage = null;
         await RunDatabaseActionAsync(async () =>
@@ -774,7 +790,7 @@ public partial class Admin
     {
         schoolForm = new SchoolFormModel();
         selectedTeacherIds = [];
-        teacherOptions = await DashboardService.GetTeacherOptionsAsync();
+        teacherOptions = isProduktOwner ? [] : await DashboardService.GetTeacherOptionsAsync();
     }
 
     private Task SaveUserAsync() => RunDatabaseActionAsync(SaveUserCoreAsync);
@@ -783,15 +799,7 @@ public partial class Admin
     {
         userErrorMessage = null;
         userStatusMessage = null;
-        userForm.SchoolIds = userForm.RoleName is "ProduktOwner" or "SuperAdmin"
-            ? []
-            : selectedUserSchoolIds.ToList();
-
-        if (isProduktOwner && userForm.RoleName is "ProduktOwner" or "SuperAdmin")
-        {
-            userErrorMessage = "Seul l'Administrateur peut créer ou modifier des Product Owners et des Administrateurs.";
-            return;
-        }
+        userForm.SchoolIds = userForm.RoleName == "SuperAdmin" ? [] : selectedUserSchoolIds.ToList();
 
         // Vor dem Speichern merken, ob es sich um eine Neuanlage handelt:
         // Nur dann wird anschließend eine Willkommensmail versendet.
@@ -799,7 +807,7 @@ public partial class Admin
         var email = userForm.Email?.Trim() ?? string.Empty;
         var vorname = userForm.Vorname?.Trim() ?? string.Empty;
 
-        var result = await DashboardService.SaveUserAsync(userForm);
+        var result = await DashboardService.CreatePlatformUserAsync(currentUserId, userForm, ComponentToken);
         if (!result.Succeeded)
         {
             userErrorMessage = result.Message;
@@ -819,46 +827,28 @@ public partial class Admin
         await LoadAsync();
     }
 
-    private async Task EditUserAsync(Guid userId)
+    private void ViewUser(UserManagementItem user)
     {
-        var model = await DashboardService.GetUserForEditAsync(userId);
-        if (model is null)
-        {
-            userErrorMessage = "Impossible de charger l'utilisateur.";
-            return;
-        }
-
-        userForm = model;
-        if (isProduktOwner && userForm.RoleName is "ProduktOwner" or "SuperAdmin")
-        {
-            userErrorMessage = "Seul l'Administrateur peut modifier des Product Owners et des Administrateurs.";
-            userForm = new UserFormModel();
-            return;
-        }
-        selectedUserSchoolIds = userForm.SchoolIds.ToHashSet();
-        schoolOptions = await DashboardService.GetSchoolOptionsAsync(userId);
-        await LoadUserFormClassOptionsAsync();
-        userStatusMessage = null;
-        userErrorMessage = null;
-        userModalOpen = true;
+        viewedUser = userManagementItems.FirstOrDefault(item => item.UserId == user.UserId);
     }
 
     private Task SetUserBlockedAsync(Guid userId, bool isBlocked) => RunDatabaseActionAsync(() => SetUserBlockedCoreAsync(userId, isBlocked));
 
     private async Task SetUserBlockedCoreAsync(Guid userId, bool isBlocked)
     {
-        if (isProduktOwner)
-        {
-            userErrorMessage = "La gestion des blocages de comptes est réservée à l'Administrateur.";
-            return;
-        }
-
         userErrorMessage = null;
         userStatusMessage = null;
 
-        await DashboardService.SetStudentBlockedStateAsync(userId, isBlocked, allowBlockingPaidStudent: true);
-        userStatusMessage = isBlocked ? "L'utilisateur a été bloqué." : "L'utilisateur a été activé.";
-        await LoadAsync();
+        var vorher = !isBlocked ? await KontoBenachrichtigungService.LadeEmpfaengerAsync(userId, ComponentToken) : null;
+        var result = await DashboardService.SetPlatformUserBlockedAsync(currentUserId, userId, isBlocked, ComponentToken);
+        if (result.Succeeded)
+        {
+            await KontoBenachrichtigungService.RegistrierungFreigegebenAsync(vorher, ComponentToken);
+            userStatusMessage = result.Message;
+            await LoadAsync();
+            viewedUser = userManagementItems.FirstOrDefault(user => user.UserId == userId);
+        }
+        else userErrorMessage = result.Message;
     }
 
     private async Task ToggleEnrollmentPanelAsync(Guid studentId)
@@ -977,9 +967,11 @@ public partial class Admin
 
     private async Task ResetUserFormAsync()
     {
-        userForm = new UserFormModel();
+        userForm = new UserFormModel { RoleName = "SchulLeiter" };
         selectedUserSchoolIds = [];
-        schoolOptions = await DashboardService.GetSchoolOptionsAsync();
+        var allowedSchools = await DashboardService.GetPlatformSchoolIdsAsync(currentUserId, ComponentToken);
+        schoolOptions = (await DashboardService.GetSchoolOptionsAsync())
+            .Where(option => allowedSchools.Contains(option.TeacherId)).ToList();
         userFormClassOptions = [];
     }
 
@@ -1006,7 +998,9 @@ public partial class Admin
 
     private async Task OnUserRoleChangedAsync()
     {
-        if (userForm.RoleName is "ProduktOwner" or "SuperAdmin")
+        if (!RoleOptions.Any(option => option.Value == userForm.RoleName))
+            userForm.RoleName = "SchulLeiter";
+        if (userForm.RoleName == "SuperAdmin")
         {
             selectedUserSchoolIds = [];
         }
@@ -1336,10 +1330,10 @@ public partial class Admin
         _ => roleName
     };
 
-    private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isHalloPlus)
+    private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isSkoulouPlus)
         => hasPaidEnrollment
             ? "Abo actuel : SKOULOUAPP pay\u00e9"
-            : isHalloPlus
+            : isSkoulouPlus
                 ? "Abo actuel : SKOULOUAPP actif"
                 : "Abo actuel : non pay\u00e9";
 

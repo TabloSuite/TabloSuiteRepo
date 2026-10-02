@@ -1,10 +1,10 @@
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
-public sealed class FormelFavoritService(IHalloAppDbContext dbContext)
+public sealed class FormelFavoritService(ISkoulouAppDbContext dbContext)
 {
     public async Task<IReadOnlyList<FormelFavoritDto>> LadeAsync(Guid benutzerId, CancellationToken cancellationToken = default)
     {

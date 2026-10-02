@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.WebApp.Data;
+namespace SkoulouApp.WebApp.Data;
 
 public class ExceptionLog
 {

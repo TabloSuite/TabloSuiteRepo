@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using HalloApp.WebApp.Services;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class ForgotPassword
 {

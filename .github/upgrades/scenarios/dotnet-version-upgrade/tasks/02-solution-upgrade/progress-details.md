@@ -1,23 +1,23 @@
 ## Files Modified
-- `HalloApp.Core/HalloApp.Core.csproj`
-- `HalloApp.WebApp/HalloApp.WebApp.csproj`
-- `HalloApp.Tests/HalloApp.Tests.csproj`
-- `HalloApp.WebApp/Components/Pages/Login.razor.cs`
-- `HalloApp.Tests/Services/ProvisionsServiceTests.cs`
+- `SkoulouApp.Core/SkoulouApp.Core.csproj`
+- `SkoulouApp.WebApp/SkoulouApp.WebApp.csproj`
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj`
+- `SkoulouApp.WebApp/Components/Pages/Login.razor.cs`
+- `SkoulouApp.Tests/Services/ProvisionsServiceTests.cs`
 - `.github/upgrades/scenarios/dotnet-version-upgrade/tasks/02-solution-upgrade/task.md`
 - `.github/upgrades/scenarios/dotnet-version-upgrade/tasks/02-solution-upgrade/progress-details.md`
 
 ## Build Result
 - Errors: 0
 - Warnings: 0
-- Projects built: `HALLOAPPMAPPE.slnx`
-- Command: `dotnet build HALLOAPPMAPPE.slnx`
+- Projects built: `SKOULOUAPPMAPPE.slnx`
+- Command: `dotnet build SKOULOUAPPMAPPE.slnx`
 
 ## Test Result
 - Tests run: 106
 - Passed: 106
 - Failed: 0
-- Command: `dotnet test HalloApp.Tests/HalloApp.Tests.csproj`
+- Command: `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj`
 
 ## Changes Summary
 - Updated all projects from `net9.0` to `net10.0`.
@@ -26,5 +26,5 @@
 - Verified restore, full solution build, and test suite.
 
 ## Issues Encountered
-- `run_build` could not build the `.slnx` path from the IDE context, so `dotnet build HALLOAPPMAPPE.slnx` was used as the build gate.
+- `run_build` could not build the `.slnx` path from the IDE context, so `dotnet build SKOULOUAPPMAPPE.slnx` was used as the build gate.
 - `xunit.runner.visualstudio` supported version lookup returned `4.0.0-pre.5`; preview was avoided. Final package audit found stable `3.1.5`, which was applied and validated successfully.

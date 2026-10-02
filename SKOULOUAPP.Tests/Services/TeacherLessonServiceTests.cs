@@ -1,14 +1,14 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="TeacherLessonService"/>: Speichern mit Seiten,

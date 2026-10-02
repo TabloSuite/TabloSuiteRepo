@@ -1,8 +1,8 @@
-using HalloApp.Core.Services.Storage;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Services.Storage;
+using SkoulouApp.WebApp.Services;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class ProductionMediaStorageServiceTests
 {

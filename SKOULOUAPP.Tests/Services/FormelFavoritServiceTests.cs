@@ -1,9 +1,9 @@
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
-using HalloApp.WebApp.Data;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
+using SkoulouApp.WebApp.Data;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class FormelFavoritServiceTests
 {

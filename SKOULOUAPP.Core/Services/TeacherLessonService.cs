@@ -1,17 +1,17 @@
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.TeacherLessons;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Verwaltet die vom Lehrer erstellten Kursskripte (Vorlesungsskripte).
 /// Getrennt vom übungsbasierten <see cref="LearningService"/>. Schüler sehen
 /// veröffentlichte Skripte für ihre aktuelle und früheren Klassen – unabhängig vom Abo.
 /// </summary>
-public class TeacherLessonService(IHalloAppDbContext dbContext)
+public class TeacherLessonService(ISkoulouAppDbContext dbContext)
 {
     /// <summary>Liefert nur Inhalte, die Lehrkräfte bewusst mit ihrem Schulleiter geteilt haben.</summary>
     public async Task<IReadOnlyList<SharedTeacherContentItem>> GetSharedContentForSchoolLeaderAsync(
@@ -260,7 +260,7 @@ public class TeacherLessonService(IHalloAppDbContext dbContext)
     {
         return await dbContext.LevelEnrollments
             .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
             .Select(enrollment => enrollment.KlasseId)
             .ToHashSetAsync(cancellationToken);
     }

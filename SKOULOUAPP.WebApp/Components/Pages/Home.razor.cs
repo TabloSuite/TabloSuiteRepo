@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Home
 {

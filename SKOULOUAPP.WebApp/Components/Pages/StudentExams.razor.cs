@@ -1,10 +1,10 @@
 ﻿using System.Security.Claims;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentExams : IDisposable
 {
@@ -21,7 +21,7 @@ public partial class StudentExams : IDisposable
     private NavigationManager Navigation { get; set; } = default!;
 
     private IReadOnlyList<ExamListItem>? exams;
-    private bool hasPaidHalloAppAbo;
+    private bool hasPaidSkoulouAppAbo;
     private Timer? countdownTimer;
     private DateTime nowUtc = DateTime.UtcNow;
 
@@ -46,7 +46,7 @@ public partial class StudentExams : IDisposable
             }
 
             var dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
-            hasPaidHalloAppAbo = dashboard?.HasPaidHalloAppAbo == true;
+            hasPaidSkoulouAppAbo = dashboard?.HasPaidSkoulouAppAbo == true;
             exams = await ExamService.GetExamsForStudentAsync(userId, dashboard?.CurrentLevelCode, ComponentToken);
             if (exams.Any(exam => exam.HasActiveAttempt && exam.CanStart))
             {

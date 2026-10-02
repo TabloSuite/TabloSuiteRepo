@@ -1,4 +1,4 @@
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// Serialisiert Datenbankaktionen innerhalb eines Blazor-Circuits und verhindert so schnelle Mehrfachauslösungen.

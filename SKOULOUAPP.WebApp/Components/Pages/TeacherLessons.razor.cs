@@ -1,19 +1,19 @@
 using System.Security.Claims;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Models.Media;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Services;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Models.Media;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Core.Services.Storage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Components.Shared;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class TeacherLessons
 {
@@ -21,7 +21,7 @@ public partial class TeacherLessons
     private TeacherLessonService TeacherLessonService { get; set; } = default!;
 
     [Inject]
-    private IHalloAppDbContext DbContext { get; set; } = default!;
+    private ISkoulouAppDbContext DbContext { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -581,7 +581,7 @@ public partial class TeacherLessons
 
     private Task ChooseLibraryVideoAsync(BlobMediaAssetItem video)
     {
-        if (form is not null && video.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Video
+        if (form is not null && video.MediaType == SkoulouApp.Core.DataModels.Lessons.BlobMediaType.Video
             && video.SchoolId == selectedSchoolId && video.KlasseId == form.KlasseId)
         {
             form.VideoAssetId = video.Id;

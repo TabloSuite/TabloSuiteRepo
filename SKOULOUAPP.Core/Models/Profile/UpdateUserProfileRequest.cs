@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Validation;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Validation;
 using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Models.Profile;
+namespace SkoulouApp.Core.Models.Profile;
 
 public class UpdateUserProfileRequest
 {

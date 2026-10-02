@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.TeacherLessons;
+namespace SkoulouApp.Core.Models.TeacherLessons;
 
 /// <summary>
 /// Übersichtseintrag für ein Kursskript – für Lehrer-Verwaltung und Schülerliste.

@@ -1,14 +1,14 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class LessonExerciseA4PdfServiceTests
 {

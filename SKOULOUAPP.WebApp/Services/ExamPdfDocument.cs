@@ -1,10 +1,10 @@
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Services.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class ExamPdfDocument(ExamPdfViewModel exam, bool includeSolutions) : IDocument
 {

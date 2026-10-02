@@ -95,12 +95,11 @@
 - Quiz-Zuweisung: Ein Lehrer erstellt ein Quiz für seine konkrete Klasse (z. B. A1/CEP1). Das Quiz darf ausschließlich Schülern dieser Klasse mit HalloPlus-Abo zugewiesen werden. Gibt es mindestens einen berechtigten Schüler, bietet die UI „alle HalloPlus-Schüler“ sowie eine durchsuchbare Einzelschülerauswahl. Gibt es keinen berechtigten Schüler, ist die Zuweisungsaktion deaktiviert und zeigt den Hinweis „Keiner der Klasse hat das AboPlus“ an.
 - Im Schulleiterbereich soll der Zahlungsdialog für Schüler größer sein und eine Schülersuche bieten. Kursdurchläufe benötigen Filter für „en cours“/„clôturés“ sowie nach Niveau/Klasse. Bei Barzahlung darf der festgelegte Gesamtpreis nicht geändert werden.
 
-## Projektrichtlinien
-- Der Nutzer erwartet in der Entwicklungsphase ausdrücklich die Einführung von CreatedByTeacherId für Lessons statt abgeleitener Lehrerzuordnung.
-- Bei der Umsetzung eines bestehenden Flows (z. B. Examens-Neuzuweisung nach dem Muster von Lektion+Aufgaben) darf die Architektur, der Code und die UI verbessert werden; keine starre 1:1-Übernahme, wenn eine bessere Lösung möglich ist.
+## Koordinatorenrechte
+- Bei neu angelegten Koordinatoren sollen in „Accès financier du coordinateur“ standardmäßig „Afficher le menu Finances“, „Nouvelle écriture“ und „Paiements des cycles“ ausgewählt sein, während „Finances de l'école“ nicht ausgewählt ist. Bestehende Koordinatorrechte dürfen durch die Vorauswahl nicht verändert werden.
 
 ## Abrechnungsworkflow
-- Wenn ein ProductOwner für eine zugewiesene Schule eine Abo-Rechnung erstellt oder deren Zahlung erhält, soll der SuperAdmin benachrichtigt werden und den Erhalt separat als erledigt bestätigen können. Auch selbst erstellte Rechnungen an Leiter sollen vom SuperAdmin als erledigt markiert werden können.
+- Wenn ein ProductOwner für eine zugewiesene Schule eine Abo-Rechnung erstellt oder deren Zahlung erhält, soll der SuperAdmin benachrichtigt werden und den Erhalt separat als erledigt bestätigen können. Auch selbst erstellte Rechnungen an Leiter sollen vom SuperAdmin als erledigt markiert werden.
 
 ## Finanzen-Navigation
 - Directeur sieht genau einen kombinierten Tab mit Buchungen + HALLOAPPABO-Infos; SuperAdmin sieht zwei getrennte Tabs (Finances des écoles und HALLOAPP-ABOs-Verwaltung inkl. Festlegen/Ändern/Buchung).
@@ -113,65 +112,5 @@
 - Der Nutzer will alle verbleibenden Sprachschule-/CEFR-/Standardkurskatalog-Reste konsequent entfernen; insbesondere keine festen Seed-Level oder CSV-Kurskatalog-Initialisierung mehr im Initializer belassen.
 - **Der Nutzer möchte, dass alle Schulen als gleichwertig betrachtet werden, ohne Unterscheidung zwischen verschiedenen Schultypen.**
 - Der Nutzer erwartet proaktiv, dass ich Verbesserungen prüfe und meine konkrete Empfehlung frühzeitig mitteile, statt nur punktuell umzusetzen.
-- Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend dem Assistenten. **UI-Verschönerungen dürfen jederzeit ohne Rückfrage vorgenommen werden, wenn dies sinnvoll erscheint.**
-- Wenn der Nutzer in diesem Workspace von 'Projekt' spricht, ist konkret SKOULOUAPP (SKOULOUAPPMAPPE) gemeint.
-
-## Code Style
-- Bevorzuge Blazor-Komponenten mit separaten Code-Behind-Dateien (.razor.cs) statt @code-Blöcken in .razor-Dateien, wie im HALLOAPPprj-Projekt.
-- Die verwendete Identity-UI soll gestaltet werden.
-- Ein kreativer HALLOAPP-Footer mit Kontaktinfos ist zu implementieren.
-- Single-Device-Login soll ermöglicht werden.
-
-## PDF-Export
-- PDF-Print-Layout-Feinschliff wurde vorerst zurückgestellt: vertikale Position/Mittigkeit in Chrome-Druckvorschau bleibt später zu optimieren; aktueller Stand soll zunächst bleiben.
-
-## Benutzer-/Rollenübersichten
-- In Benutzer-/Rollenübersichten und Filtern muss die Rolle Koordinator sichtbar berücksichtigt werden, insbesondere neben Directeur, Product Owner, Enseignants und Élèves.
-- Koordinatoren haben keinen Zugriff auf Finanzverwaltung/Finanzen und verwalten keine Schulgebühren. Finanz- und Schulgebührenverwaltung bleibt beim Schulleiter bzw. SuperAdmin, nicht beim Koordinator.
-
-## Provision
-- Lehrer erhalten keine individuellen automatisch berechneten/ausge zahlten Commission-Anteile mehr und müssen keinen Erhalt bestätigen. Lehrer- und Schul-Commission werden pro Schule aggregiert berechnet und angezeigt; die Schule verteilt Lehreranteile intern selbst. Klassen-Gebühr ist Pflicht pro Schüler/Klasse, HALLOAPP-Abo ist optional; mindestens ein Abo gewährt Zugriff auf Standard-Lehrmaterial und Lehrer-Lektionen/Übungen, HALLOPlus erlaubt Quizze.
-
-## Handbuch-Erweiterung
-- Bei der Handbuch-Erweiterung darf die Architektur angepasst werden; das Handbuch soll mit mehr Kontext und UI-Schnitten/rollenbezogenen UI-Abschnitten erweitert werden.
-
-## Kernprozess-Prüfungen
-- Bei Kernprozess-/Business-Regel-Änderungen sollen immer auch die betroffenen Blazor-UI-Flows geprüft und angepasst werden; UI gehört ausdrücklich zum notwendigen Umfang.
-- Der Nutzer erwartet proaktive, ganzheitliche Anpassungen betroffener UI-Flows und weist darauf hin, bei Veränderungen mitzudenken (insbesondere auch Historie-Seiten prüfen).
-
-## Home-Seite
-- Mobile Home-Hero muss wie eine echte Hero-Section den kompletten Handy-Bildschirm füllen; die darunterliegenden Intro-/CTA-/Statistik-Inhalte dürfen erst nach dem Scrollen sichtbar werden. Hero bleibt nur Bild plus themefarbener Badge. Home-Hero-Badge soll als kreatives Overlay etwas höher über dem unteren Bildrand liegen und einen Registrierungslink enthalten. Für angemeldete Nutzer soll der CTA sinnvoll zu den Lektionen führen.
-- Das Bild „hero-halloapp - mobile.png“ soll als dezenter, nur schwach sichtbarer Hintergrund eingebunden werden; Verlauf, Texte und CTAs bleiben klar lesbar.
-- Die hellen Akzentflächen oben und rechts im Verlauf sollen durch die jeweils aktive Theme-Farbe ersetzt werden.
-- Bei klick-/submit-auslösenden Buttons soll sofort sichtbares Feedback erscheinen (ProgressRing/Loading-State) und Doppelklicks sollen verhindert werden, damit Nutzer nicht das Gefühl haben, dass nichts passiert.
-- Loading-/Progress-Feedback und Doppelklick-Schutz sollen nicht nur beim Login, sondern app-weit für relevante Buttons, Form-Submits und datenbankauslösende Aktionen geprüft und konsistent umgesetzt werden.
-- Korrektur: Mit der hellen Fläche „oben am Hero“ ist der horizontale helle Streifen direkt unter der mobilen Kopfzeile und oberhalb des Hero-Inhalts gemeint; dieser soll die aktive Theme-Farbe verwenden.
-- Den Scroll-Hinweis im Home-Hero dauerhaft vollständig entfernen.
-
-## SEO-Anforderungen
-- Globale Open-Graph-Meta-Tags für HALLOAPP hinzufügen, damit Vorschauen beim Teilen in sozialen Netzwerken die Marke, Beschreibung und ein passendes Vorschaubild enthalten.
-
-## Willkommensmails
-- Die aktuelle Regel für Willkommensmails bleibt unverändert: Versand bei Selbstregistrierung sowie manueller Neuanlage durch SuperAdmin oder Schulleiter; beim CSV-Import erfolgt weiterhin kein Versand.
-- Bei Länderauswahlfeldern soll eine vollständige Länder-Liste mit Suchfunktion angeboten werden.
-- Bei leeren Kursdurchläufen soll die Kursdurchlaufüberschrift sichtbar bleiben; nur die irreführende Leerzustandsmeldung beziehungsweise der leere Inhaltsbereich soll ausgeblendet werden.
-
-## Tests
-- Bei neuen Services sollen immer Tests ergänzt bzw. die Testsuite vervollständigt werden.
-
-## Datenbankmigration
-- Nutzer bevorzugt explizite EF-Migrationen und möchte keine automatischen Datenbankmigrationen beim App-Start.
-
-- Für nutzerseitige Texte soll die Rollenbezeichnung „SuperAdmin“ als „Administrateur“ angezeigt werden.
-
-- **Business-Regel präzisiert:** IsUnlocked und IsPaid bleiben im Model; beim Schulleiter-Flow soll 'Enregistrer comme payé' beide Flags (IsUnlocked + IsPaid) in einem Schritt auf true setzen.
-
-- SuperAdmin soll Schulen nach Direktor filtern können (nicht Schüler nach Direktor).
-
-- ProduktOwner haben ähnlich wie SuperAdmins Verwaltungsrechte für ihre zugewiesenen Schulen, dürfen jedoch keine globalen App-Kontostände sehen und sollen Abrechnungen nur für ihre zugewiesenen Schulen erstellen können. **ProduktOwner sollen ihre zugewiesenen Schulen selbstständig verwalten und nur die Abo-Anteile dieser Schulen sehen. Globale App-Umsätze, App-Kontostände und Finanzdaten anderer Schulen dürfen ihnen nicht angezeigt werden.**
-
-- In der App darf nirgends mehr 'HALLOAPP' als sichtbarer Text erscheinen; stattdessen nur SKOULOU, SKOULOUAPP oder SKOULOUAPPABO verwenden.
-
-- Bevorzugte Bezeichnung für den Menüpunkt ist „Contenus pédagogiques des enseignants“ statt „Supports publiés des enseignants“. 
-
-- In diesem Workspace werden derzeit nur Belege, Lektionsvideos, Bilder und Profilbilder als persistente Nutzerdateien gespeichert; Blob-Audits sollen sich auf diese Dateitypen konzentrieren.- Bevorzugte Bezeichnung für den Menüpunkt ist „Contenus pédagogiques des enseignants“ statt „Supports publiés des enseignants“.
+- Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend. 
+- Der Nutzer schätzt proaktives Mitdenken bei Codeänderungen, insbesondere sinnvolle Modellverbesserungen vor einer Migration.

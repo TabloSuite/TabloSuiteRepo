@@ -1,7 +1,7 @@
 // Text-to-Speech über die Web Speech API (Browser-TTS).
 // Austauschbares Modul: später kann hier optional ein OpenAI-TTS-Player ergänzt werden.
 window.SKOULOUAPPTts = (function () {
-    const preferredLanguageStorageKey = 'halloapp_tts_lang';
+    const preferredLanguageStorageKey = 'skoulouapp_tts_lang';
     const fallbackLanguage = 'de-DE';
     let voicesLoaded = false;
     let delegatedHandlersInstalled = false;
@@ -184,29 +184,29 @@ window.SKOULOUAPPTts = (function () {
     }
 
     function handleDirectTts(event) {
-        const button = event.target?.closest?.('[data-halloapp-tts-text]');
+        const button = event.target?.closest?.('[data-skoulouapp-tts-text]');
         if (!button || button.disabled) {
             return;
         }
 
         event.preventDefault();
         event.stopPropagation();
-        const text = button.getAttribute('data-halloapp-tts-text') || '';
-        const audioUrl = button.getAttribute('data-halloapp-audio-url') || '';
-        const lang = button.getAttribute('data-halloapp-tts-lang') || getPreferredLanguage();
-        const rate = Number.parseFloat(button.getAttribute('data-halloapp-tts-rate') || '1') || 1;
+        const text = button.getAttribute('data-skoulouapp-tts-text') || '';
+        const audioUrl = button.getAttribute('data-skoulouapp-audio-url') || '';
+        const lang = button.getAttribute('data-skoulouapp-tts-lang') || getPreferredLanguage();
+        const rate = Number.parseFloat(button.getAttribute('data-skoulouapp-tts-rate') || '1') || 1;
         playAudioOrSpeak(audioUrl, text, lang, rate);
     }
 
     function handleLanguageSelection(event) {
-        const button = event.target?.closest?.('[data-halloapp-tts-set-lang]');
+        const button = event.target?.closest?.('[data-skoulouapp-tts-set-lang]');
         if (!button || button.disabled) {
             return;
         }
 
         event.preventDefault();
         event.stopPropagation();
-        const selected = button.getAttribute('data-halloapp-tts-set-lang');
+        const selected = button.getAttribute('data-skoulouapp-tts-set-lang');
         setPreferredLanguage(selected);
     }
 

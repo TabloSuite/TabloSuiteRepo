@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Identity;
-namespace HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Identity;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 /// <summary>
 /// Ordnet einen Lehrer einer konkreten Klasse innerhalb einer

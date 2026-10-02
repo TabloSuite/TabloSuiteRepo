@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 /// <summary>
 /// Eingefrorener ProduktOwner-Provisionsanteil einer abgerechneten Freischaltung.

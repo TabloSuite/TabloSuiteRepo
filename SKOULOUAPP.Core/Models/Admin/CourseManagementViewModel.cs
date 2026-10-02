@@ -1,4 +1,4 @@
-﻿namespace HalloApp.Core.Models.Admin;
+﻿namespace SkoulouApp.Core.Models.Admin;
 
 public class CourseManagementViewModel
 {

@@ -1,10 +1,10 @@
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Billing;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Billing;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Verwaltet die periodenbasierte Abrechnung zwischen Schule und Betreiber.
@@ -18,7 +18,7 @@ namespace HalloApp.Core.Services;
 /// - Der nächste offene Zeitraum beginnt automatisch am Ende der zuletzt
 ///   abgeschlossenen Periode.
 /// </summary>
-public class AbrechnungService(IHalloAppDbContext dbContext)
+public class AbrechnungService(ISkoulouAppDbContext dbContext)
 {
     private static decimal BerechnePlattformforderung(DataModels.Courses.LevelEnrollment position)
         => Math.Max(0m, position.PriceAtEnrollment
@@ -42,7 +42,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
 
     /// <summary>
     /// Liefert die offene Abrechnungsübersicht einer Schule (bezahlte, noch nicht
-    /// abgerechnete HALLOAPP-Abos im aktuellen Zeitraum). Optional kann das Ende des
+    /// abgerechnete SKOULOUAPP-Abos im aktuellen Zeitraum). Optional kann das Ende des
     /// betrachteten Zeitraums frei festgelegt werden (Beginn ist immer die letzte Facturation).
     /// </summary>
     public async Task<AbrechnungsUebersicht> GetOffeneUebersichtAsync(Guid schulId, DateTime? bisUtcFilter = null, CancellationToken cancellationToken = default)
@@ -62,8 +62,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
             SchulName = schule.Name,
             VonUtc = vonUtc,
             BisUtc = bisUtc,
-            AnzahlHalloBasis = positionen.Count,
-            AnzahlHalloPlus = 0,
+            AnzahlAbonnements = positionen.Count,
             OffenerUmsatz = positionen.Sum(BerechnePlattformforderung)
         };
     }
@@ -88,8 +87,8 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                 && enrollment.AbgerechnetInPeriodeId == null
                 && enrollment.PaidAtUtc != null
                 && durchlauf.EndDatum != null
-                && enrollment.PaidAtUtc >= durchlauf.StartDatum
-                && enrollment.PaidAtUtc <= durchlauf.EndDatum
+                && (enrollment.DurchlaufId == durchlauf.Id
+                    || enrollment.DurchlaufId == null && enrollment.PaidAtUtc >= durchlauf.StartDatum && enrollment.PaidAtUtc <= durchlauf.EndDatum)
             select new
             {
                 EnrollmentId = enrollment.Id,
@@ -135,15 +134,15 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
     }
 
     /// <summary>
-    /// Liefert noch nicht fakturierte HALLOAPP-Abos, deren Zahlung mindestens drei
-    /// Monate zurückliegt und deren Klasse weiterhin aktiv ist.
+    /// Liefert noch nicht fakturierte SKOULOUAPP-Abos, deren Zahlung mindestens zehn
+    /// Monate zurückliegt und deren Klassenzyklus ebenso lange aktiv ist.
     /// </summary>
     public async Task<List<AktiveKlasseUeberfaelligeAboForderung>> GetUeberfaelligeForderungenAusAktivenKlassenAsync(
         DateTime? jetztUtc = null,
         CancellationToken cancellationToken = default)
     {
         var referenzZeitpunktUtc = jetztUtc ?? DateTime.UtcNow;
-        var stichtagUtc = referenzZeitpunktUtc.AddMonths(-3);
+        var stichtagUtc = referenzZeitpunktUtc.AddMonths(-10);
         var positionen = await (
             from enrollment in dbContext.LevelEnrollments.AsNoTracking()
             join profil in dbContext.StudentProfiles.AsNoTracking() on enrollment.StudentId equals profil.AppUserId
@@ -158,7 +157,9 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                 && enrollment.PaidAtUtc != null
                 && enrollment.PaidAtUtc <= stichtagUtc
                 && durchlauf.EndDatum == null
-                && enrollment.PaidAtUtc >= durchlauf.StartDatum
+                && durchlauf.StartDatum <= stichtagUtc
+                && (enrollment.DurchlaufId == durchlauf.Id
+                    || enrollment.DurchlaufId == null && enrollment.PaidAtUtc >= durchlauf.StartDatum)
             select new
             {
                 EnrollmentId = enrollment.Id,
@@ -213,7 +214,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
         var positionen = await GetOffenePositionenAusGeschlossenenKlassenAsync(cancellationToken);
         if (positionen.Count == 0)
         {
-            return (false, "Il n'existe aucun abonnement HALLOAPP ouvert issu de cycles de classes clôturés.");
+            return (false, "Il n'existe aucun abonnement SKOULOUAPP ouvert issu de cycles de classes clôturés.");
         }
 
         var anzahlAbrechnungen = 0;
@@ -225,8 +226,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                 SchulID = gruppe.Key,
                 VonUtc = abrechnungsPositionen.Min(position => position.PaidAtUtc!.Value),
                 BisUtc = DateTime.UtcNow,
-                AnzahlHalloBasis = abrechnungsPositionen.Count,
-                AnzahlHalloPlus = 0,
+                AnzahlAbonnements = abrechnungsPositionen.Count,
                 Umsatz = abrechnungsPositionen.Sum(BerechnePlattformforderung),
                 Status = AbrechnungStatus.Erstellt,
                 IstAbgeschlossen = false,
@@ -261,8 +261,8 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                 && enrollment.AbgerechnetInPeriodeId == null
                 && enrollment.PaidAtUtc != null
                 && durchlauf.EndDatum != null
-                && enrollment.PaidAtUtc >= durchlauf.StartDatum
-                && enrollment.PaidAtUtc <= durchlauf.EndDatum
+                && (enrollment.DurchlaufId == durchlauf.Id
+                    || enrollment.DurchlaufId == null && enrollment.PaidAtUtc >= durchlauf.StartDatum && enrollment.PaidAtUtc <= durchlauf.EndDatum)
             select new { profil.SchoolId, Enrollment = enrollment, ZyklusEnde = durchlauf.EndDatum.Value })
             .ToListAsync(cancellationToken);
 
@@ -274,7 +274,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
     }
 
     /// <summary>
-    /// Ermittelt die bezahlten, noch nicht abgerechneten HALLOAPP-Abo-Freischaltungen einer Schule
+    /// Ermittelt die bezahlten, noch nicht abgerechneten SKOULOUAPP-Abo-Freischaltungen einer Schule
     /// im angegebenen Zeitraum (nach PaidAtUtc).
     /// </summary>
     private async Task<List<DataModels.Courses.LevelEnrollment>> OffenePositionenAsync(
@@ -311,10 +311,20 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
         CancellationToken cancellationToken = default,
         Guid? erstellerId = null)
     {
+        var result = await ManuelleAbrechnungErstellenAsync(schulId, bisUtc, cancellationToken, erstellerId);
+        return (result.Succeeded, result.ErrorMessage);
+    }
+
+    public async Task<(bool Succeeded, string ErrorMessage, Guid? PeriodeId)> ManuelleAbrechnungErstellenAsync(
+        Guid schulId,
+        DateTime? bisUtc = null,
+        CancellationToken cancellationToken = default,
+        Guid? erstellerId = null)
+    {
         if (erstellerId is Guid benutzerId
             && !await DarfAbrechnungErstellenAsync(benutzerId, schulId, cancellationToken))
         {
-            return (false, "Vous n'êtes pas autorisé à créer une facturation pour cette école.");
+            return (false, "Vous n'êtes pas autorisé à créer une facturation pour cette école.", null);
         }
 
         return await AbrechnungErstellenCoreAsync(
@@ -325,7 +335,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
             cancellationToken);
     }
 
-    private async Task<(bool Succeeded, string ErrorMessage)> AbrechnungErstellenCoreAsync(
+    private async Task<(bool Succeeded, string ErrorMessage, Guid? PeriodeId)> AbrechnungErstellenCoreAsync(
         Guid schulId,
         DateTime? bisUtc,
         bool automatischDurchKlassenabschluss,
@@ -335,7 +345,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
         var schule = await dbContext.Schools.FirstOrDefaultAsync(x => x.Id == schulId, cancellationToken);
         if (schule is null)
         {
-            return (false, "L'école est introuvable.");
+            return (false, "L'école est introuvable.", null);
         }
 
         var vonUtc = await ErmittleZeitraumBeginnAsync(schule, cancellationToken);
@@ -346,7 +356,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
         var positionen = await OffenePositionenAsync(schulId, vonUtc, periodeBisUtc, cancellationToken);
         if (positionen.Count == 0)
         {
-            return (false, "Aucun paiement d'abonnement HALLOAPP ouvert n'est à facturer pour cette période.");
+            return (false, "Aucun paiement d'abonnement SKOULOUAPP ouvert n'est à facturer pour cette période.", null);
         }
 
         var periode = new Abrechnungsperiode
@@ -354,8 +364,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
             SchulID = schulId,
             VonUtc = vonUtc,
             BisUtc = periodeBisUtc,
-            AnzahlHalloBasis = positionen.Count,
-            AnzahlHalloPlus = 0,
+            AnzahlAbonnements = positionen.Count,
             Umsatz = positionen.Sum(BerechnePlattformforderung),
             Status = AbrechnungStatus.Erstellt,
             IstAbgeschlossen = false,
@@ -372,9 +381,9 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
 
         await dbContext.SaveChangesAsync(cancellationToken);
         var prefix = automatischDurchKlassenabschluss
-            ? "La facturation HALLOAPP a été créée automatiquement lors de la clôture de la classe."
+            ? "La facturation SKOULOUAPP a été créée automatiquement lors de la clôture de la classe."
             : "La facturation a été créée.";
-        return (true, $"{prefix} Montant : {periode.Umsatz:N0} FCFA.");
+        return (true, $"{prefix} Montant : {periode.Umsatz:N0} FCFA.", periode.Id);
     }
 
     /// <summary>
@@ -438,8 +447,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
 
         return rollen.Contains(Rollen.ProduktOwner)
             && await dbContext.UserSchools.AnyAsync(link => link.AppUserId == benutzerId
-                && link.SchoolId == schulId
-                && link.CanManageStudents, cancellationToken);
+                && link.SchoolId == schulId, cancellationToken);
     }
 
     private async Task<bool> DarfZahlungMeldenAsync(Guid benutzerId, Guid schulId, CancellationToken cancellationToken)
@@ -450,10 +458,11 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                             select role.Name)
             .ToListAsync(cancellationToken);
 
-        return rollen.Any(rolle => rolle is Rollen.SchulLeiter or Rollen.ProduktOwner)
-            && await dbContext.UserSchools.AnyAsync(link => link.AppUserId == benutzerId
-                && link.SchoolId == schulId
-                && link.CanManageStudents, cancellationToken);
+        return await dbContext.UserSchools.AnyAsync(link => link.AppUserId == benutzerId
+            && link.SchoolId == schulId && link.CanManageStudents
+            && (rollen.Contains(Rollen.SchulLeiter)
+                || (rollen.Contains(Rollen.Koordinator) && link.CanAccessFinances && link.CanManageCyclePayments)),
+            cancellationToken);
     }
 
     /// <summary>
@@ -519,7 +528,7 @@ public class AbrechnungService(IHalloAppDbContext dbContext)
                 SchulID = periode.SchulID,
                 SchulName = schule.Name,
                 Umsatz = periode.Umsatz,
-                AnzahlAbonnements = periode.AnzahlHalloBasis + periode.AnzahlHalloPlus,
+                AnzahlAbonnements = periode.AnzahlAbonnements,
                 ZahlungGemeldetAmUtc = periode.SchulLeiterReaktionAmUtc,
                 ZahlungGemeldetVon = melder == null ? "Direction de l'école (historique)" : melder.FullName,
                 RechnungErstelltVon = ersteller == null ? "Administrateur (historique)" : ersteller.FullName,

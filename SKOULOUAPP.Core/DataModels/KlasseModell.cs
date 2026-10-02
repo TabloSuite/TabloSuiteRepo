@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.BaseModel;
 
-namespace HalloApp.Core.DataModels;
+namespace SkoulouApp.Core.DataModels;
 
 public class KlasseModell : AuditableModel
 {

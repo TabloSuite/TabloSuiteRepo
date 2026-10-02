@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.TeacherLessons;
+namespace SkoulouApp.Core.Models.TeacherLessons;
 
 /// <summary>
 /// Detailansicht eines Kursskripts inkl. aller Seiten – für den seitenweisen

@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Models.Handbuch;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Models.Handbuch;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class HandbuchRoleTests
 {

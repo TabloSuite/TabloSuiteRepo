@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Layout;
+namespace SkoulouApp.WebApp.Components.Layout;
 
 public partial class ScrollToTopButton : IDisposable
 {

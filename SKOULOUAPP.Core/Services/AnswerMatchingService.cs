@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Zentrale Hilfsklasse für den toleranten Vergleich von Freitext-/Lücken-/Satzbau-Antworten.

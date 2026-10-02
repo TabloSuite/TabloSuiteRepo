@@ -1,11 +1,12 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-namespace HalloApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Courses;
 
 /// <summary>
 /// Repräsentiert die Freischaltung eines Niveaus (Klasse) für einen Schüler.
@@ -21,11 +22,15 @@ public class LevelEnrollment : AuditableModel
     public Guid KlasseId { get; set; }
     public Klasse Klasse { get; set; } = null!;
 
+    public Guid? DurchlaufId { get; set; }
+    public KursNiveauDurchlauf? Durchlauf { get; set; }
+    public bool IstAktuell { get; set; } = true;
+
     /// <summary>
-    /// Gewähltes HALLOAPP-Abo für diese Klasse.
+    /// Gewähltes SKOULOUAPP-Abo für diese Klasse.
     /// Wird vom SchulLeiter nach der Registrierung des Schülers festgelegt.
     /// </summary>
-    public AboTyp AboTyp { get; set; } = AboTyp.HalloApp;
+    public AboTyp AboTyp { get; set; } = AboTyp.SkoulouApp;
 
     /// <summary>
     /// Steuert, ob der Schüler auf die Lektionen dieses Niveaus zugreifen darf.

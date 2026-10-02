@@ -1,12 +1,14 @@
 @page "/admin/broadcast"
 @attribute [Authorize(Roles = "SuperAdmin")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using HalloApp.Core.Services.Email
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Services.Email
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 
-<PageTitle>Envoi d'e-mails</PageTitle>
+<PageTitle>Communication</PageTitle>
 
-<section class="mx-auto mt-8 w-full max-w-3xl rounded-[2rem] bg-white p-6 shadow-lg ring-1 ring-slate-100 sm:p-8">
+@if (ShowAnnouncements)
+{
+<section class="mx-auto mt-4 w-full max-w-6xl rounded-[2rem] bg-white p-6 shadow-lg ring-1 ring-slate-100 sm:p-8">
     <h1 class="text-2xl font-black text-slate-900">Annonces affichées dans l'application</h1>
     <p class="mt-2 text-sm text-slate-600">Les annonces restent visibles jusqu'à leur expiration ou leur suppression par l'Administrateur.</p>
     @if (!string.IsNullOrWhiteSpace(announcementMessage))
@@ -14,10 +16,10 @@
         <p class="mt-3 rounded-xl bg-cyan-50 p-3 text-sm text-cyan-900" role="status">@announcementMessage</p>
     }
     <div class="mt-5 grid gap-4">
-        <label class="block"><span class="hallo-label">Titre</span><input class="hallo-input" @bind="announcement.Title" maxlength="200" /></label>
-        <div><label class="hallo-label">Message</label><RichTextEditor @bind-Value="announcement.Body" EnableImages="false" EnableLargeEditor="true" /></div>
-        <label class="block"><span class="hallo-label">Expiration (heure locale)</span><input type="datetime-local" class="hallo-input" @bind="announcement.ExpiresAtLocal" @bind:format="yyyy-MM-ddTHH:mm" /></label>
-        <AsyncActionButton Class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" IsBusy="@isSavingAnnouncement" BusyLabel="Publication..." OnClick="PublishAnnouncementAsync">Publier l'annonce</AsyncActionButton>
+        <label class="block"><span class="skoulou-label">Titre</span><input class="skoulou-input" @bind="announcement.Title" maxlength="200" /></label>
+        <div><label class="skoulou-label">Message</label><RichTextEditor @bind-Value="announcement.Body" EnableImages="false" EnableLargeEditor="true" /></div>
+        <label class="block"><span class="skoulou-label">Expiration (heure locale)</span><input type="datetime-local" class="skoulou-input" @bind="announcement.ExpiresAtLocal" @bind:format="yyyy-MM-ddTHH:mm" /></label>
+        <AsyncActionButton Class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" IsBusy="@isSavingAnnouncement" BusyLabel="Publication..." OnClick="PublishAnnouncementAsync">Publier l'annonce</AsyncActionButton>
     </div>
     @foreach (var item in announcements)
     {
@@ -27,11 +29,14 @@
         </div>
     }
 </section>
+}
 
-<section class="mx-auto mt-16 w-full max-w-3xl rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
+@if (ShowEmailComposer)
+{
+<section class="w-full rounded-[2rem] bg-white p-2 sm:p-4">
     <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Communication</p>
-    <h1 class="mt-3 text-3xl font-black text-slate-900">Envoi d'e-mails groupés</h1>
-    <p class="mt-4 text-sm leading-7 text-slate-600">Envoie un message aux directeurs, enseignants ou élèves — pour toutes les écoles ou une école précise.</p>
+    <h2 class="mt-3 text-2xl font-black text-slate-900">Rédiger un e-mail</h2>
+    <p class="mt-4 text-sm leading-7 text-slate-600">Adressez-vous à une seule personne ou à un groupe de directeurs, d'enseignants ou d'élèves.</p>
 
     @if (!string.IsNullOrWhiteSpace(message))
     {
@@ -48,18 +53,18 @@
         </div>
 
         <div>
-            <label class="hallo-label">Adresses e-mail supplémentaires</label>
-            <InputTextArea @bind-Value="Model.ManualRecipients" rows="2" placeholder="nom@exemple.com, autre@exemple.com" class="hallo-input" />
-            <p class="mt-2 text-xs text-slate-500">Sépare les adresses par une virgule, un point-virgule ou un retour à la ligne. Elles reçoivent le message même si elles ne sont pas enregistrées.</p>
+            <label class="skoulou-label">Adresses e-mail @(Model.Audience == BroadcastAudience.ManualAddresses ? "destinataires" : "supplémentaires")</label>
+            <InputTextArea @bind-Value="Model.ManualRecipients" rows="2" placeholder="nom@exemple.com, autre@exemple.com" class="skoulou-input" />
+            <p class="mt-2 text-xs text-slate-500">Une adresse suffit. Pour plusieurs, séparez-les par une virgule, un point-virgule ou un retour à la ligne.</p>
         </div>
 
         <div>
-            <label class="hallo-label">Sujet</label>
-            <InputText @bind-Value="Model.Subject" class="hallo-input" />
+            <label class="skoulou-label">Sujet</label>
+            <InputText @bind-Value="Model.Subject" class="skoulou-input" />
         </div>
 
         <div>
-            <label class="hallo-label">Message</label>
+            <label class="skoulou-label">Message</label>
             <RichTextEditor @bind-Value="Model.Body"
                             Placeholder="Écris ton message..."
                             EnableImages="false" />
@@ -70,3 +75,4 @@
         </div>
     </EditForm>
 </section>
+}

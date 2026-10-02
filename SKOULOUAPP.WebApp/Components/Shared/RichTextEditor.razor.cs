@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Shared;
+namespace SkoulouApp.WebApp.Components.Shared;
 
 public partial class RichTextEditor : ComponentBase, IAsyncDisposable
 {
@@ -68,7 +68,7 @@ public partial class RichTextEditor : ComponentBase, IAsyncDisposable
     public double? MinEditorHeightRem { get; set; } = 10;
 
     private string? ContainerStyle => MinEditorHeightRem is > 0
-        ? $"--hallo-richtext-min-height:{MinEditorHeightRem:0.##}rem;"
+        ? $"--skoulou-richtext-min-height:{MinEditorHeightRem:0.##}rem;"
         : null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

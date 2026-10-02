@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Options;
+namespace SkoulouApp.Core.Options;
 
 /// <summary>
 /// Konfiguration für den E-Mail-Versand über Postmark.
@@ -15,7 +15,7 @@ public class PostmarkOptions
     public string FromEmail { get; set; } = string.Empty;
 
     /// <summary>Angezeigter Absendername.</summary>
-    public string FromName { get; set; } = "HalloApp";
+    public string FromName { get; set; } = "SkoulouApp";
 
     /// <summary>Zieladresse für das Kontaktformular / Support-Nachrichten.</summary>
     public string SupportEmail { get; set; } = string.Empty;

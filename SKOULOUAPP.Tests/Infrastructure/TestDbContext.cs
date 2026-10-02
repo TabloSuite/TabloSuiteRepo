@@ -1,27 +1,28 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
-/// In-Memory-Datenbankkontext für Tests. Implementiert <see cref="IHalloAppDbContext"/>,
+/// In-Memory-Datenbankkontext für Tests. Implementiert <see cref="ISkoulouAppDbContext"/>,
 /// damit die Core-Services ohne die WebApp-Implementierung getestet werden können.
 /// </summary>
 public class TestDbContext(DbContextOptions<TestDbContext> options)
-    : IdentityDbContext<AppUser, Role, Guid, IdentityUserClaim<Guid>, AppUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>(options), IHalloAppDbContext
+    : IdentityDbContext<AppUser, Role, Guid, IdentityUserClaim<Guid>, AppUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>(options), ISkoulouAppDbContext
 {
     public static readonly Guid DefaultKlasseId = Guid.Parse("10000000-0000-0000-0000-000000000001");
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<School> Schools => Set<School>();
+    public DbSet<AbschlussMention> AbschlussMentions => Set<AbschlussMention>();
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<KlassenStufe> KlassenStufen => Set<KlassenStufe>();

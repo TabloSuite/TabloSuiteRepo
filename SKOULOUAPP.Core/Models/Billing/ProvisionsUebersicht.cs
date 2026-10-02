@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Billing;
+namespace SkoulouApp.Core.Models.Billing;
 
 /// <summary>
 /// Aggregierte Provisions-Übersicht für einen Zeitraum bzw. eine Abrechnungsperiode.
@@ -33,11 +33,6 @@ public class ProvisionsUebersicht
     /// <summary>Anzahl der berücksichtigten bezahlten Freischaltungen.</summary>
     public int AnzahlPositionen { get; set; }
 
-    /// <summary>Anzahl der berücksichtigten HALLOBASIS-Abos.</summary>
-    public int AnzahlHalloBasis { get; set; }
-
-    /// <summary>Anzahl der berücksichtigten HALLOPLUS-Abos.</summary>
-    public int AnzahlHalloPlus { get; set; }
 
     /// <summary>Alle Einzelanteile, aus denen die Summen gebildet wurden.</summary>
     public List<ProvisionsAnteil> Anteile { get; set; } = new();

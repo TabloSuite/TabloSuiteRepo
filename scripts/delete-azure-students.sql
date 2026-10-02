@@ -1,4 +1,4 @@
--- Löscht optional alle Schüler aus der HALLOAPP-Datenbank.
+-- Löscht optional alle Schüler aus der SKOULOUAPP-Datenbank.
 -- Standardmäßig wird NICHT gelöscht. Erst @ExecuteDelete = 1 führt die Löschung aus.
 -- Vor Ausführung in Azure SQL: Backup/Export erstellen.
 

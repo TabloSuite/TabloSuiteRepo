@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Shared;
+namespace SkoulouApp.WebApp.Components.Shared;
 
 public partial class TailwindDateTimePicker : ComponentBase
 {

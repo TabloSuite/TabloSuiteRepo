@@ -8,7 +8,7 @@
     height: 3rem;
     border-radius: 999px;
     border: 2px solid rgba(255, 255, 255, 0.85);
-    background: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%);
+    background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
     color: #ffffff;
     font-weight: 800;
     font-size: 1rem;
@@ -36,7 +36,7 @@
 }
 
 .user-menu-open .user-menu-avatar {
-    box-shadow: 0 0 0 3px var(--hallo-focus-ring), 0 16px 36px rgba(15, 23, 42, 0.22);
+    box-shadow: 0 0 0 3px var(--skoulou-focus-ring), 0 16px 36px rgba(15, 23, 42, 0.22);
 }
 
 .user-menu-backdrop {
@@ -88,7 +88,7 @@
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 999px;
-    background: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%);
+    background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
     color: #ffffff;
     font-weight: 800;
     display: inline-flex;

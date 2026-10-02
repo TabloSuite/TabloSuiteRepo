@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Identity;
+namespace SkoulouApp.Core.DataModels.Identity;
 
 /// <summary>
 /// Geschlecht eines Benutzers. Wird bei der Registrierung ausgewählt.

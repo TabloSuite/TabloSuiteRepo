@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.DataModels;
+using SkoulouApp.Core.Services;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="SchuelerProfilService"/> (In-Memory-Verwaltung von Schülerprofilen).

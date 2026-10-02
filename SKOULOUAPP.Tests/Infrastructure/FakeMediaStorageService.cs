@@ -1,6 +1,6 @@
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Services.Storage;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
 /// Test-Double für <see cref="IMediaStorageService"/>. Führt keine Datei-E/A aus,

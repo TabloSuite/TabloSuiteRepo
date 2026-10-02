@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Core.Models.Billing;
+namespace SkoulouApp.Core.Models.Billing;
 
 /// <summary>
 /// Rolle, die eine Provision aus einem bezahlten Abo erhält.

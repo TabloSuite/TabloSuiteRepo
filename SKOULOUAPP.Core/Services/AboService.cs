@@ -1,13 +1,13 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
-/// Verwaltet die Abos (HALLOBASIS/HALLOPLUS) der Schüler pro Niveau
+/// Verwaltet die Abos (SKOULOUBASIS/SKOULOUPLUS) der Schüler pro Niveau
 /// sowie den Bezahlstatus. Nur Schüler haben Abos; SchulLeiter und Lehrer
 /// bezahlen nicht.
 ///
@@ -16,7 +16,7 @@ namespace HalloApp.Core.Services;
 /// - Bezahlt = true setzen: SchulLeiter der Schule (oder SuperAdmin). NICHT rückgängig machbar durch SchulLeiter.
 /// - Bezahlt = false (rückgängig): nur SuperAdmin.
 /// </summary>
-public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? niveauGruppenService = null, FinanzService? finanzService = null)
+public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? niveauGruppenService = null, FinanzService? finanzService = null)
 {
     // Optionaler Parameter, damit bestehende Aufrufe (u. a. Tests) unveraendert bleiben.
     private readonly NiveauGruppenService _niveauGruppen = niveauGruppenService ?? new NiveauGruppenService(dbContext);
@@ -27,7 +27,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             .OrderBy(x => x.ErstelltAmUtc)
             .Select(x => (decimal?)x.GlobalSubscriptionPrice)
             .FirstOrDefaultAsync(cancellationToken)
-        ?? HalloAppKonstanten.StandardPreisAbo;
+        ?? SkoulouAppKonstanten.StandardPreisAbo;
     private async Task<Guid> ResolveErfasserUserIdAsync(
         Guid erfasstVonUserId,
         Guid schoolId,
@@ -58,7 +58,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
 
     /// <summary>
     /// Legt einmalig ein Abo für ein Niveau fest oder führt ausschließlich ein
-    /// Upgrade von HALLOBASIS auf HALLOPLUS durch. Eine Stornierung sowie eine
+    /// Upgrade von SKOULOUBASIS auf SKOULOUPLUS durch. Eine Stornierung sowie eine
     /// Rückstufung sind fachlich ausgeschlossen.
     /// </summary>
     public async Task<(bool Succeeded, string ErrorMessage)> AboZuweisenAsync(
@@ -85,14 +85,16 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             return (false, "Le niveau sélectionné est introuvable.");
         }
 
-        var hasActiveClassCycle = await dbContext.KursNiveauDurchlaeufe
+        var activeClassCycleId = await dbContext.KursNiveauDurchlaeufe
             .AsNoTracking()
-            .AnyAsync(durchlauf => durchlauf.SchulID == profil.SchoolId
+            .Where(durchlauf => durchlauf.SchulID == profil.SchoolId
                 && durchlauf.KlasseId == klasseId
-                && durchlauf.EndDatum == null, cancellationToken);
-        if (!hasActiveClassCycle)
+                && durchlauf.EndDatum == null)
+            .Select(durchlauf => (Guid?)durchlauf.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (activeClassCycleId is null)
         {
-            return (false, "Démarre d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement HALLOAPP.");
+            return (false, "Démarre d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOUAPP.");
         }
 
         // Ein Schüler darf ausschließlich Niveaus seiner eigenen Niveaugruppe belegen
@@ -110,17 +112,17 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             .FirstOrDefaultAsync(cancellationToken);
         var schoolLeaderPercent = profil.School.SchoolLeaderCommissionPercentOverride
             ?? commissionSettings?.SchoolLeaderPercent
-            ?? HalloAppKonstanten.StandardProvisionSchulleiterProzent;
+            ?? SkoulouAppKonstanten.StandardProvisionSchulleiterProzent;
         var teacherPercent = profil.School.TeacherCommissionPercentOverride
             ?? commissionSettings?.TeacherPercent
-            ?? HalloAppKonstanten.StandardProvisionLehrerProzent;
+            ?? SkoulouAppKonstanten.StandardProvisionLehrerProzent;
         var productOwnerPercent = profil.School.ProductOwnerCommissionPercentOverride
             ?? commissionSettings?.ProductOwnerPercent
-            ?? HalloAppKonstanten.StandardProvisionProductOwnerProzent;
+            ?? SkoulouAppKonstanten.StandardProvisionProductOwnerProzent;
 
-        var schoolLeaderCommission = HalloAppKonstanten.BerechneProvision(preis, schoolLeaderPercent);
-        var teacherCommission = HalloAppKonstanten.BerechneProvision(preis, teacherPercent);
-        var productOwnerCommission = HalloAppKonstanten.BerechneProvision(preis, productOwnerPercent);
+        var schoolLeaderCommission = SkoulouAppKonstanten.BerechneProvision(preis, schoolLeaderPercent);
+        var teacherCommission = SkoulouAppKonstanten.BerechneProvision(preis, teacherPercent);
+        var productOwnerCommission = SkoulouAppKonstanten.BerechneProvision(preis, productOwnerPercent);
 
         if (schoolLeaderCommission + teacherCommission + productOwnerCommission > preis)
         {
@@ -128,7 +130,19 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         }
 
         var enrollment = await dbContext.LevelEnrollments
-            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
+
+        if (enrollment is not null && enrollment.DurchlaufId != activeClassCycleId
+            && enrollment.DurchlaufId is not null)
+        {
+            enrollment.IstAktuell = false;
+            enrollment = null;
+        }
+
+        if (enrollment is not null && enrollment.DurchlaufId is null)
+        {
+            enrollment.DurchlaufId = activeClassCycleId;
+        }
 
         var nowUtc = DateTime.UtcNow;
         var warVorherBezahlt = enrollment?.IsPaid ?? false;
@@ -139,7 +153,8 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             {
                 StudentId = studentId,
                 KlasseId = klasseId,
-                AboTyp = AboTyp.HalloApp,
+                DurchlaufId = activeClassCycleId,
+                AboTyp = AboTyp.SkoulouApp,
                 IsUnlocked = true,
                 IsPaid = true,
                 PriceAtEnrollment = preis,
@@ -161,13 +176,13 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
                 && !enrollment.IsPaid
                 && enrollment.AbgerechnetInPeriodeId is null;
 
-            var istNochKeinFinalesHalloAppAbo = enrollment.SchoolLeaderCommissionAtEnrollment <= 0m
+            var istNochKeinFinalesSkoulouAppAbo = enrollment.SchoolLeaderCommissionAtEnrollment <= 0m
                 && enrollment.TeacherCommissionAtEnrollment <= 0m;
-            if (istNochKeinFinalesHalloAppAbo
+            if (istNochKeinFinalesSkoulouAppAbo
                 || kannDeaktiviertesAboNeuAktivieren
                 || kannUnbezahltesAboDerAktuellenKlasseNeuFestgelegtWerden)
             {
-                enrollment.AboTyp = AboTyp.HalloApp;
+                enrollment.AboTyp = AboTyp.SkoulouApp;
                 enrollment.IsUnlocked = true;
                 enrollment.IsPaid = true;
                 enrollment.PriceAtEnrollment = preis;
@@ -180,7 +195,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             }
             else
             {
-                return (false, "L'abonnement HALLOAPP de cette classe est déjà attribué et ne peut plus être modifié.");
+                return (false, "L'abonnement SKOULOUAPP de cette classe est déjà attribué et ne peut plus être modifié.");
             }
         }
 
@@ -203,7 +218,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
                 profil.SchoolId,
                 studentId,
                 cancellationToken);
-            var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
+            var (financeOk, financeError) = await _finanzService.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
             if (!financeOk)
             {
                 return (false, financeError);
@@ -225,7 +240,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         CancellationToken cancellationToken = default)
     {
         var enrollment = await dbContext.LevelEnrollments
-            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 
         if (enrollment is null)
         {
@@ -235,6 +250,11 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         if (enrollment.IsPaid)
         {
             return (false, "Ce niveau est déjà marqué comme payé.");
+        }
+
+        if (enrollment.PriceAtEnrollment <= 0m)
+        {
+            return await AboZuweisenAsync(studentId, klasseId, AboTyp.SkoulouApp, erfasstVonUserId, cancellationToken);
         }
 
         enrollment.IsPaid = true;
@@ -251,7 +271,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
             schoolId,
             studentId,
             cancellationToken);
-        var (financeOk, financeError) = await _finanzService.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
+        var (financeOk, financeError) = await _finanzService.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erfasserUserId, cancellationToken);
         if (!financeOk)
         {
             return (false, financeError);
@@ -273,11 +293,11 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
     {
         if (!istSuperAdmin)
         {
-            return (false, "Seul l'Administrateur peut annuler un paiement HALLOAPP.");
+            return (false, "Seul l'Administrateur peut annuler un paiement SKOULOUAPP.");
         }
 
         var enrollment = await dbContext.LevelEnrollments
-            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 
         if (enrollment is null)
         {
@@ -310,7 +330,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
                 && durchlauf.EndDatum == null, cancellationToken);
         if (!hasActiveClassCycle)
         {
-            return (false, "Le paiement HALLOAPP ne peut être annulé que tant que le cycle de cette classe est encore ouvert.");
+            return (false, "Le paiement SKOULOUAPP ne peut être annulé que tant que le cycle de cette classe est encore ouvert.");
         }
 
         enrollment.IsPaid = false;
@@ -320,10 +340,10 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         var buchenZuEntfernen = await dbContext.FinanzBuchungen
             .Include(buchung => buchung.Kategorie)
             .Where(buchung => buchung.HerkunftReferenzID == enrollment.Id
-                && (buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboZahlung
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboAnteil
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil
-                    || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil))
+                && (buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
+                    || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil))
             .ToListAsync(cancellationToken);
 
         if (buchenZuEntfernen.Count > 0)
@@ -338,7 +358,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
     /// <summary>
     /// Ein festgelegtes Abo kann nur vom SuperAdmin storniert werden
     /// und nur solange es noch nicht in einer Abrechnungsperiode enthalten ist.
-    /// Bei bereits bezahlten Abos werden die zugehörigen HALLOAPP-Finanzbuchungen
+    /// Bei bereits bezahlten Abos werden die zugehörigen SKOULOUAPP-Finanzbuchungen
     /// automatisch zurückgenommen.
     /// </summary>
     public async Task<(bool Succeeded, string ErrorMessage)> AboEntfernenAsync(
@@ -353,7 +373,7 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         }
 
         var enrollment = await dbContext.LevelEnrollments
-            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
         if (enrollment is null)
         {
             return (false, "Aucune attribution d'abonnement n'a été trouvée pour cette classe.");
@@ -368,10 +388,10 @@ public class AboService(IHalloAppDbContext dbContext, NiveauGruppenService? nive
         {
             var buchungen = await dbContext.FinanzBuchungen
                 .Where(buchung => buchung.HerkunftReferenzID == enrollment.Id
-                    && (buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboZahlung
-                        || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboAnteil
-                        || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil
-                        || buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil))
+                    && (buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil))
                 .ToListAsync(cancellationToken);
 
             if (buchungen.Count > 0)

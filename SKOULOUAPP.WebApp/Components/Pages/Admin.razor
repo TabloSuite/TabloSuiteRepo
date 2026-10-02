@@ -1,10 +1,10 @@
 @page "/admin"
-@attribute [Authorize(Policy = "RequireSuperAdmin")]
+@attribute [Authorize(Roles = "SuperAdmin,ProduktOwner")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.Models.Admin
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Models.Admin
 
-<PageTitle>Tableau administrateur</PageTitle>
+<PageTitle>@(isProduktOwner ? "Espace responsable produit" : "Tableau administrateur")</PageTitle>
 
 @if (summary is null)
 {
@@ -18,13 +18,13 @@
 else
 {
     <section class="grid gap-6">
-        <div class="hallo-hero relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-indigo-900 to-cyan-800 p-5 text-white shadow-xl shadow-indigo-300/30 sm:p-6 xl:p-7">
+        <div class="skoulou-hero relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-indigo-900 to-cyan-800 p-5 text-white shadow-xl shadow-indigo-300/30 sm:p-6 xl:p-7">
             <div class="pointer-events-none absolute -top-16 -right-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl"></div>
             <div class="pointer-events-none absolute -bottom-14 -left-8 h-36 w-36 rounded-full bg-fuchsia-500/15 blur-3xl"></div>
             <div class="relative">
-                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">Administrateur</p>
-                <h1 class="mt-3 text-3xl font-black xl:text-4xl">Vue d'ensemble de la plateforme et des écoles</h1>
-                <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Tu vois ici toutes les écoles, le nombre d'enseignants et d'élèves ainsi que l'état des contenus de la plateforme.</p>
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">@(isProduktOwner ? "Responsable produit" : "Administrateur")</p>
+                <h1 class="mt-3 text-3xl font-black xl:text-4xl">@(isProduktOwner ? "Vue d'ensemble de vos écoles" : "Vue d'ensemble de la plateforme et des écoles")</h1>
+                <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">@(isProduktOwner ? "Consultez les écoles qui vous sont attribuées et leurs utilisateurs. Les données scolaires sont gérées par chaque direction." : "Consultez les écoles, leurs utilisateurs et les données de la plateforme.")</p>
                 <button type="button"
                         class="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition duration-200 hover:bg-white/20"
                         @onclick="ToggleAllSections">
@@ -38,7 +38,7 @@ else
 
         <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             <div class="group rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 p-4 text-white shadow-md shadow-cyan-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.SchoolCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-cyan-50">Écoles</div></div>
-            <div class="hallo-hero-badge group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 p-4 text-white shadow-md shadow-indigo-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.TeacherCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-indigo-50">Enseignants</div></div>
+            <div class="skoulou-hero-badge group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 p-4 text-white shadow-md shadow-indigo-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.TeacherCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-indigo-50">Enseignants</div></div>
             <div class="group rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-4 text-white shadow-md shadow-emerald-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.StudentCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-50">Élèves</div></div>
             <div class="group rounded-2xl bg-gradient-to-br from-rose-500 to-orange-600 p-4 text-white shadow-md shadow-rose-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.BlockedAccountCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-rose-50">En attente / bloqués</div><div class="mt-1 text-[11px] text-rose-100">dont @summary.BlockedStudentCount élève(s)</div></div>
         </div>
@@ -57,12 +57,15 @@ else
                 <Toast Message="@(schoolModalOpen ? null : errorMessage)" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
                 <div class="mt-6 flex justify-end">
+                    @if (!isProduktOwner)
+                    {
                     <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" @onclick="OpenNewSchoolModalAsync">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                         Nouvelle école
                     </button>
+                    }
                 </div>
 
                 <ModalDialog Open="schoolModalOpen"
@@ -75,14 +78,14 @@ else
                     <ValidationSummary />
 
                     <div>
-                        <label class="hallo-label">Nom de l'école</label>
-                        <InputText @bind-Value="schoolForm.Name" class="hallo-input" />
+                        <label class="skoulou-label">Nom de l'école</label>
+                        <InputText @bind-Value="schoolForm.Name" class="skoulou-input" />
                     </div>
 
                     <div class="grid gap-4 xl:grid-cols-2">
                         <div>
-                            <label class="hallo-label">Ville</label>
-                            <InputText @bind-Value="schoolForm.City" class="hallo-input" />
+                            <label class="skoulou-label">Ville</label>
+                            <InputText @bind-Value="schoolForm.City" class="skoulou-input" />
                         </div>
                         <ModernDropdown TValue="string"
                                         Label="Pays"
@@ -94,7 +97,7 @@ else
                     </div>
 
                     <div>
-                        <label class="hallo-label">Description de l'école (facultatif)</label>
+                        <label class="skoulou-label">Description de l'école (facultatif)</label>
                         <RichTextEditor @bind-Value="schoolForm.DescriptionHtml" EnableImages="false" EnableLargeEditor="true" Placeholder="Présentez l'établissement..." />
                     </div>
 
@@ -104,25 +107,25 @@ else
                     </label>
 
                     <div>
-                        <label class="hallo-label">Prix de l'abonnement (FCFA)</label>
-                        <div class="hallo-input">@SchoolSubscriptionPriceDisplay.ToString("N0") FCFA</div>
+                        <label class="skoulou-label">Prix de l'abonnement (FCFA)</label>
+                        <div class="skoulou-input">@SchoolSubscriptionPriceDisplay.ToString("N0") FCFA</div>
                         <p class="mt-1 text-xs text-slate-500">Affichage uniquement. Le prix est défini par l'admin.</p>
                     </div>
 
                     <div class="grid gap-4 xl:grid-cols-3">
                         <div>
-                            <label class="hallo-label">Commission directeur (%)</label>
-                            <InputNumber @bind-Value="SchoolLeaderCommissionFieldValue" class="hallo-input" />
+                            <label class="skoulou-label">Commission directeur (%)</label>
+                            <InputNumber @bind-Value="SchoolLeaderCommissionFieldValue" class="skoulou-input" />
                             <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveSchoolLeaderCommissionPercent.ToString("N2") % (@EffectiveSchoolLeaderCommissionAmount.ToString("N0") FCFA) @(schoolForm.SchoolLeaderCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                         <div>
-                            <label class="hallo-label">Commission enseignants (%)</label>
-                            <InputNumber @bind-Value="TeacherCommissionFieldValue" class="hallo-input" />
+                            <label class="skoulou-label">Commission enseignants (%)</label>
+                            <InputNumber @bind-Value="TeacherCommissionFieldValue" class="skoulou-input" />
                             <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveTeacherCommissionPercent.ToString("N2") % (@EffectiveTeacherCommissionAmount.ToString("N0") FCFA) @(schoolForm.TeacherCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                         <div>
-                            <label class="hallo-label">Commission du responsable produit (%)</label>
-                            <InputNumber @bind-Value="ProductOwnerCommissionFieldValue" class="hallo-input" />
+                            <label class="skoulou-label">Commission du responsable produit (%)</label>
+                            <InputNumber @bind-Value="ProductOwnerCommissionFieldValue" class="skoulou-input" />
                             <p class="mt-1 text-xs text-slate-500">Valeur active : @EffectiveProductOwnerCommissionPercent.ToString("N2") % (@EffectiveProductOwnerCommissionAmount.ToString("N0") FCFA) @(schoolForm.ProductOwnerCommissionPercentOverride.HasValue ? "- école" : "- globale").</p>
                         </div>
                     </div>
@@ -148,6 +151,21 @@ else
                         <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(schoolForm.Id.HasValue ? "Enregistrer l'ecole" : "Creer l'ecole")</AsyncActionButton>
                     </div>
                 </EditForm>
+                </ModalDialog>
+
+                <ModalDialog Open="@(viewedUser is not null)" OpenChanged="open => { if (!open) viewedUser = null; }"
+                             Title="Données de l'utilisateur" Eyebrow="Consultation" MaxWidthClass="max-w-lg">
+                    @if (viewedUser is not null)
+                    {
+                        <div class="grid gap-3 text-sm text-slate-700">
+                            <p><strong>Nom :</strong> @viewedUser.FullName</p>
+                            <p><strong>E-mail :</strong> @viewedUser.Email</p>
+                            <p><strong>Rôle :</strong> @GetRoleLabel(viewedUser.RoleName)</p>
+                            <p><strong>Écoles :</strong> @(viewedUser.Schools.Count == 0 ? "Aucune affectation" : string.Join(", ", viewedUser.Schools))</p>
+                            <p><strong>Statut :</strong> @(viewedUser.IsBlocked ? "Compte bloqué" : "Compte actif")</p>
+                            <p><strong>Auto-inscription :</strong> @(viewedUser.IsSelfRegistered ? "Oui" : "Non")</p>
+                        </div>
+                    }
                 </ModalDialog>
 
                 <div class="mt-6">
@@ -207,12 +225,15 @@ else
                             }
                         </div>
                         <div class="mt-3">
+                            @if (!isProduktOwner)
+                            {
                             <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditSchoolAsync(school.SchoolId)">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="@(school.IsActive ? "m4.5 15.75 7.5-7.5 7.5 7.5" : "m19.5 8.25-7.5 7.5-7.5-7.5")" />
                                 </svg>
                                 Modifier
                             </button>
+                            }
                         </div>
                                   </article>
                                      }
@@ -274,7 +295,7 @@ else
                 <EditForm Model="userForm" OnValidSubmit="SaveUserAsync" FormName="admin-user-form" class="grid gap-4">
                     <DataAnnotationsValidator />
 
-                    <div class="hallo-modal-sticky-messages">
+                    <div class="skoulou-modal-sticky-messages">
                         <ValidationSummary />
                     </div>
 
@@ -289,42 +310,42 @@ else
 
                     <div class="grid gap-4 xl:grid-cols-2">
                         <div>
-                            <label class="hallo-label">Prénom</label>
-                            <InputText @bind-Value="userForm.Vorname" class="hallo-input" />
+                            <label class="skoulou-label">Prénom</label>
+                            <InputText @bind-Value="userForm.Vorname" class="skoulou-input" />
                         </div>
                         <div>
-                            <label class="hallo-label">Nom de famille</label>
-                            <InputText @bind-Value="userForm.Nachname" class="hallo-input" />
+                            <label class="skoulou-label">Nom de famille</label>
+                            <InputText @bind-Value="userForm.Nachname" class="skoulou-input" />
                         </div>
                     </div>
 
                     <div class="grid gap-4 xl:grid-cols-2">
                         <div class="xl:col-span-2">
-                            <label class="hallo-label">E-mail</label>
-                            <div class="flex gap-2"><InputText @bind-Value="userForm.Email" class="hallo-input min-w-0 flex-1" />@if (ShowHalloAppEmailButton) { <button type="button" class="w-44 shrink-0 rounded-2xl bg-slate-100 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled="@(!CanSuggestHalloAppEmail)" @onclick="SuggestHalloAppEmail">@halloAppEmailButtonLabel</button> }</div>
+                            <label class="skoulou-label">E-mail</label>
+                            <div class="flex gap-2"><InputText @bind-Value="userForm.Email" class="skoulou-input min-w-0 flex-1" />@if (ShowSkoulouAppEmailButton) { <button type="button" class="w-44 shrink-0 rounded-2xl bg-slate-100 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50" disabled="@(!CanSuggestSkoulouAppEmail)" @onclick="SuggestSkoulouAppEmail">@skoulouAppEmailButtonLabel</button> }</div>
                         </div>
                         <div>
-                            <label class="hallo-label">Téléphone <span class="font-normal text-slate-400">(optionnel)</span></label>
-                            <InputText @bind-Value="userForm.TelefonNummer" type="tel" class="hallo-input" />
+                            <label class="skoulou-label">Téléphone <span class="font-normal text-slate-400">(optionnel)</span></label>
+                            <InputText @bind-Value="userForm.TelefonNummer" type="tel" class="skoulou-input" />
                         </div>
                     </div>
 
                     @if (userForm.RoleName == "Schüler")
                     {
-                        <div class="grid gap-4 xl:grid-cols-2"><div><label class="hallo-label">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternTelefonNummer" type="tel" class="hallo-input" /></div><div><label class="hallo-label">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternEmail" type="email" class="hallo-input" /></div></div>
+                        <div class="grid gap-4 xl:grid-cols-2"><div><label class="skoulou-label">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternTelefonNummer" type="tel" class="skoulou-input" /></div><div><label class="skoulou-label">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label><InputText @bind-Value="userForm.ElternEmail" type="email" class="skoulou-input" /></div></div>
                     }
 
                     @if (!userForm.UserId.HasValue)
                     {
                         <div>
-                            <label class="hallo-label">Mot de passe initial (nouveau / optionnel)</label>
+                            <label class="skoulou-label">Mot de passe initial (nouveau / optionnel)</label>
                             <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
                             <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
                         </div>
 
                         <div class="grid gap-4 xl:grid-cols-2">
                             <div>
-                                <label class="hallo-label">Confirmer le mot de passe</label>
+                                <label class="skoulou-label">Confirmer le mot de passe</label>
                                 <PasswordInput @bind-Value="userForm.PasswordConfirmation" Autocomplete="new-password" />
                                 <ValidationMessage For="() => userForm.PasswordConfirmation" class="mt-1 text-xs text-rose-600" />
                             </div>
@@ -342,7 +363,7 @@ else
                         </label>
                     </div>
 
-                    @if (userForm.RoleName is "ProduktOwner" or "SuperAdmin")
+                    @if (userForm.RoleName == "SuperAdmin")
                     {
                         <div class="rounded-2xl bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
                             Ce rôle n'est attribué à aucune école.
@@ -402,14 +423,14 @@ else
                         <div class="mb-4 flex flex-wrap items-center gap-2">
                             <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">École :</span>
                             <button type="button"
-                                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter is null ? "hallo-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
+                                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter is null ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
                                     @onclick="() => SetUserSchoolFilter(null)">
                                 Toutes
                             </button>
                             @foreach (var name in SchoolFilterNames)
                             {
                                 <button type="button"
-                                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter == name ? "hallo-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
+                                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter == name ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
                                         @onclick="() => SetUserSchoolFilter(name)">
                                     @name
                                 </button>
@@ -440,9 +461,9 @@ else
                                 <div>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <h3 class="text-base font-bold text-slate-900">@user.FullName</h3>
-                                        @if (user.RoleName == "Schüler" && !user.IsBlocked)
+                                        @if (!isProduktOwner && user.RoleName == "Schüler" && !user.IsBlocked)
                                         {
-                                            <Badge Accent="@(user.HasPaidEnrollment ? "emerald" : "amber")">@GetStudentAboHeaderLabel(user.HasPaidEnrollment, user.IsHalloPlus)</Badge>
+                                            <Badge Accent="@(user.HasPaidEnrollment ? "emerald" : "amber")">@GetStudentAboHeaderLabel(user.HasPaidEnrollment, user.IsSkoulouPlus)</Badge>
                                             @if (user.HasSchoolFeeInfo)
                                             {
                                                 <Badge Accent="@(user.IsSchoolFeeFullyPaid ? "emerald" : user.SchoolFeePaidAmount > 0m ? "cyan" : "amber")">@GetSchoolFeeHeaderLabel(user.SchoolFeePaidAmount, user.SchoolFeeAmount, user.HasActiveSchoolFeeCycle)</Badge>
@@ -454,7 +475,7 @@ else
                                 <div class="flex flex-wrap gap-2">
                                     <Badge Accent="slate">@GetRoleLabel(user.RoleName)</Badge>
                                     <Badge Accent="@(user.IsBlocked ? "rose" : "emerald")">@(user.IsBlocked ? "Compte bloqué" : "Compte actif")</Badge>
-                                    @if (user.RoleName == "Schüler" && !user.IsBlocked)
+                                    @if (!isProduktOwner && user.RoleName == "Schüler" && !user.IsBlocked)
                                     {
                                         <Badge Accent="emerald">Enregistrement validé</Badge>
                                         @if (user.HasPaidEnrollment)
@@ -489,11 +510,11 @@ else
                                 </div>
                             }
                             <div class="mt-3 flex flex-wrap gap-2">
-                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditUserAsync(user.UserId)">
+                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => ViewUser(user)">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487a2.25 2.25 0 1 1 3.182 3.182L8.25 19.463 4.5 20.25l.787-3.75L16.862 4.487z" />
                                     </svg>
-                                    Modifier
+                                    Voir les données
                                 </button>
                             @if (user.IsBlocked)
                             {
@@ -509,7 +530,7 @@ else
                                     Bloquer
                                 </button>
                             }
-                            @if (IsDevelopment && user.RoleName == "SchulLeiter")
+                            @if (!isProduktOwner && IsDevelopment && user.RoleName == "SchulLeiter")
                             {
                                 <button type="button"
                                         class="inline-flex items-center gap-2 rounded-full bg-rose-950 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-900 hover:shadow-md"
@@ -518,7 +539,7 @@ else
                                 </button>
                             }
                         </div>
-                        @if (user.RoleName == "Schüler")
+                        @if (!isProduktOwner && user.RoleName == "Schüler")
                         {
                             <div class="mt-4">
                                 <button type="button"
@@ -664,8 +685,8 @@ else
                     <ValidationSummary />
                     <div class="grid gap-4 xl:grid-cols-2">
                         <div>
-                            <label class="hallo-label">Nom du niveau</label>
-                            <InputText @bind-Value="courseForm.Code" class="hallo-input" />
+                            <label class="skoulou-label">Nom du niveau</label>
+                            <InputText @bind-Value="courseForm.Code" class="skoulou-input" />
                         </div>
                         <div>
                             <ModernDropdown TValue="string" Label="Niveau CECR (Cadre européen)" Value="courseForm.CEFRGroup" ValueChanged="SetCourseCefrAsync" Options="CefrOptions" />
@@ -673,21 +694,21 @@ else
                         </div>
                     </div>
                     <div>
-                        <label class="hallo-label">Titre</label>
-                        <InputText @bind-Value="courseForm.Title" class="hallo-input" />
+                        <label class="skoulou-label">Titre</label>
+                        <InputText @bind-Value="courseForm.Title" class="skoulou-input" />
                     </div>
                     <div>
-                        <label class="hallo-label">Description</label>
-                        <InputTextArea @bind-Value="courseForm.Description" class="hallo-input min-h-28" />
+                        <label class="skoulou-label">Description</label>
+                        <InputTextArea @bind-Value="courseForm.Description" class="skoulou-input min-h-28" />
                     </div>
                     <div class="grid gap-4 xl:grid-cols-2">
                         <div>
-                            <label class="hallo-label">Leçons recommandées</label>
-                            <InputNumber @bind-Value="courseForm.RecommendedLessonCount" class="hallo-input" />
+                            <label class="skoulou-label">Leçons recommandées</label>
+                            <InputNumber @bind-Value="courseForm.RecommendedLessonCount" class="skoulou-input" />
                         </div>
                         <div>
-                            <label class="hallo-label">Prix du niveau (FCFA)</label>
-                            <InputNumber @bind-Value="courseForm.Price" class="hallo-input" />
+                            <label class="skoulou-label">Prix du niveau (FCFA)</label>
+                            <InputNumber @bind-Value="courseForm.Price" class="skoulou-input" />
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-end gap-3">
@@ -709,15 +730,15 @@ else
                         <ModernDropdown TValue="Guid?" Label="Classe / niveau" Value="lessonForm.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" />
                     </div>
                     <div>
-                        <label class="hallo-label">Titre</label>
-                        <InputText @bind-Value="lessonForm.Title" class="hallo-input" />
+                        <label class="skoulou-label">Titre</label>
+                        <InputText @bind-Value="lessonForm.Title" class="skoulou-input" />
                     </div>
                     <div>
-                        <label class="hallo-label">Résumé</label>
-                        <InputTextArea @bind-Value="lessonForm.Summary" class="hallo-input min-h-24" />
+                        <label class="skoulou-label">Résumé</label>
+                        <InputTextArea @bind-Value="lessonForm.Summary" class="skoulou-input min-h-24" />
                     </div>
                     <div>
-                        <label class="hallo-label">Contenu</label>
+                        <label class="skoulou-label">Contenu</label>
                         <RichTextEditor @bind-Value="lessonForm.Content" Placeholder="Contenu HTML de la le?on..." />
                     </div>
                     <div class="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:grid-cols-2">
@@ -726,7 +747,7 @@ else
                             <span class="text-sm font-semibold text-slate-700">Publier la leçon et ses exercices</span>
                         </label>
                         <div>
-                            <label class="hallo-label">Date limite des réponses ouvertes (optionnel)</label>
+                            <label class="skoulou-label">Date limite des réponses ouvertes (optionnel)</label>
                             <TailwindDateTimePicker @bind-Value="lessonForm.ExerciseSubmissionDueAtUtc" />
                         </div>
                     </div>
@@ -757,8 +778,8 @@ else
                                     <div class="grid gap-3">
                                         <div class="grid gap-3 xl:grid-cols-2">
                                             <div>
-                                                <label class="hallo-label">Titre de l'exercice</label>
-                                                <InputText @bind-Value="exercise.Title" class="hallo-input" />
+                                                <label class="skoulou-label">Titre de l'exercice</label>
+                                                <InputText @bind-Value="exercise.Title" class="skoulou-input" />
                                             </div>
                                             <div>
                                                 <ModernDropdown TValue="string?" Label="Type d'exercice" Value="exercise.ExerciseType" ValueChanged="value => SetLessonExerciseTypeAsync(exercise, value)" Options="LessonExerciseTypeOptions" />
@@ -766,18 +787,18 @@ else
                                         </div>
 
                                         <div>
-                                            <label class="hallo-label">Consigne (optionnel)</label>
-                                            <InputTextArea @bind-Value="exercise.Instructions" class="hallo-input min-h-20" />
+                                            <label class="skoulou-label">Consigne (optionnel)</label>
+                                            <InputTextArea @bind-Value="exercise.Instructions" class="skoulou-input min-h-20" />
                                         </div>
 
                                         <div>
-                                            <label class="hallo-label">Question</label>
-                                            <InputTextArea @bind-Value="exercise.Question" class="hallo-input min-h-20" />
+                                            <label class="skoulou-label">Question</label>
+                                            <InputTextArea @bind-Value="exercise.Question" class="skoulou-input min-h-20" />
                                         </div>
 
                                         <div>
-                                            <label class="hallo-label">Points</label>
-                                            <InputNumber @bind-Value="exercise.Points" class="hallo-input" />
+                                            <label class="skoulou-label">Points</label>
+                                            <InputNumber @bind-Value="exercise.Points" class="skoulou-input" />
                                         </div>
 
                                         @if (isAudioType)
@@ -785,8 +806,8 @@ else
                                             <div class="rounded-2xl border border-cyan-100 bg-cyan-50 p-3">
                                                 <div class="grid gap-3 xl:grid-cols-2">
                                                     <div>
-                                                        <label class="hallo-label">Texte audio (TTS)</label>
-                                                        <InputTextArea @bind-Value="exercise.AudioText" class="hallo-input min-h-20" />
+                                                        <label class="skoulou-label">Texte audio (TTS)</label>
+                                                        <InputTextArea @bind-Value="exercise.AudioText" class="skoulou-input min-h-20" />
                                                     </div>
                                                     <div>
                                                         <ModernDropdown TValue="string?" Label="Langue TTS" Value="exercise.TtsLanguage" ValueChanged="value => SetLessonExerciseTtsLanguageAsync(exercise, value)" Options="TtsLanguageOptions" />
@@ -810,7 +831,7 @@ else
                                                             <span class="text-xs font-bold text-slate-700">Trou @(gapIndex + 1)</span>
                                                             <button type="button" class="text-xs font-semibold text-rose-600" @onclick="() => RemoveLessonGap(exercise, gap)">Supprimer</button>
                                                         </div>
-                                                        <InputTextArea @bind-Value="gap.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                                        <InputTextArea @bind-Value="gap.AcceptedAnswers" class="skoulou-input min-h-16" placeholder="Une variante par ligne" />
                                                     </div>
                                                 }
                                             </div>
@@ -818,8 +839,8 @@ else
                                         else if (!isChoiceType)
                                         {
                                             <div>
-                                                <label class="hallo-label">Réponses acceptées (optionnel)</label>
-                                                <InputTextArea @bind-Value="exercise.AcceptedAnswers" class="hallo-input min-h-16" placeholder="Une variante par ligne" />
+                                                <label class="skoulou-label">Réponses acceptées (optionnel)</label>
+                                                <InputTextArea @bind-Value="exercise.AcceptedAnswers" class="skoulou-input min-h-16" placeholder="Une variante par ligne" />
                                             </div>
                                         }
 
@@ -844,7 +865,7 @@ else
                                                             {
                                                                 <input type="checkbox" @bind="option.IsCorrect" />
                                                             }
-                                                            <InputText @bind-Value="option.Text" class="hallo-input" />
+                                                            <InputText @bind-Value="option.Text" class="skoulou-input" />
                                                             <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
                                                         </div>
                                                     </div>
@@ -883,10 +904,10 @@ else
                             <ModernDropdown TValue="string" Label="Type de média" Value="mediaUploadForm.MediaType" ValueChanged="SetMediaTypeAsync" Options="MediaTypeOptions" />
                         </div>
                         <div>
-                            <label class="hallo-label">Fichier</label>
-                            <div class="hallo-file-picker mt-1">
+                            <label class="skoulou-label">Fichier</label>
+                            <div class="skoulou-file-picker mt-1">
                                 <div class="relative inline-flex">
-                                    <span class="hallo-file-trigger @(isDatabaseActionInProgress ? "hallo-file-trigger-disabled" : string.Empty)">
+                                    <span class="skoulou-file-trigger @(isDatabaseActionInProgress ? "skoulou-file-trigger-disabled" : string.Empty)">
                                         Choisir un fichier
                                     </span>
                                     <InputFile id="admin-media-file-input"
@@ -895,13 +916,13 @@ else
                                                class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                                disabled="@isDatabaseActionInProgress" />
                                 </div>
-                                <span class="hallo-file-selected-name">@(selectedMediaFile?.Name ?? "Aucun fichier sélectionné")</span>
+                                <span class="skoulou-file-selected-name">@(selectedMediaFile?.Name ?? "Aucun fichier sélectionné")</span>
                             </div>
                         </div>
                     </div>
                     <div>
-                        <label class="hallo-label">Texte alternatif</label>
-                        <InputText @bind-Value="mediaUploadForm.AltText" class="hallo-input" />
+                        <label class="skoulou-label">Texte alternatif</label>
+                        <InputText @bind-Value="mediaUploadForm.AltText" class="skoulou-input" />
                     </div>
                     <div class="flex flex-wrap justify-end gap-3">
                         <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseMediaModal">Annuler</button>
@@ -990,6 +1011,8 @@ else
         </div>
     </section>
 
+    @if (!isProduktOwner)
+    {
     <section class="mt-10 rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mt-12 sm:p-8">
         <p class="text-sm font-semibold uppercase tracking-[.18em] text-violet-700">Administrateur</p>
         <h2 class="mt-2 text-2xl font-black text-slate-900">Prix général et commissions des abonnements</h2>
@@ -999,8 +1022,8 @@ else
         <Toast Message="@commissionErrorMessage" MessageChanged="v => commissionErrorMessage = v" Kind="Toast.ToastKind.Error" />
 
         <div class="mt-5 max-w-md rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <label class="hallo-label">Prix général de l'abonnement (FCFA)</label>
-            <InputNumber @bind-Value="commissionSettings.GlobalSubscriptionPrice" class="hallo-input" />
+            <label class="skoulou-label">Prix général de l'abonnement (FCFA)</label>
+            <InputNumber @bind-Value="commissionSettings.GlobalSubscriptionPrice" class="skoulou-input" />
             <p class="mt-1 text-xs text-slate-500">Prix par défaut pour toutes les écoles sans tarif spécifique.</p>
         </div>
 
@@ -1012,6 +1035,7 @@ else
         </div>
         <AsyncActionButton Class="mt-5 rounded-full bg-violet-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement..." OnClick="@(_ => SaveCommissionSettingsAsync())">Enregistrer les commissions</AsyncActionButton>
     </section>
+    }
 
     <ModalDialog @bind-Open="confirmRemovePaymentOpen"
                  Title="Retirer le paiement"

@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Courses;
 
-namespace HalloApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 /// <summary>
 /// Repräsentiert einen Abrechnungszeitraum einer Schule.
@@ -27,11 +27,8 @@ public class Abrechnungsperiode : AuditableModel
     /// </summary>
     public decimal Umsatz { get; set; }
 
-    /// <summary>Anzahl der in diesem Zeitraum abgerechneten HALLOBASIS-Niveaus.</summary>
-    public int AnzahlHalloBasis { get; set; }
-
-    /// <summary>Anzahl der in diesem Zeitraum abgerechneten HALLOPLUS-Niveaus.</summary>
-    public int AnzahlHalloPlus { get; set; }
+    /// <summary>Anzahl der in diesem Zeitraum abgerechneten Abonnements.</summary>
+    public int AnzahlAbonnements { get; set; }
 
     /// <summary>Gibt an, ob der Zeitraum vom SuperAdmin abgeschlossen wurde.</summary>
     public bool IstAbgeschlossen { get; set; }

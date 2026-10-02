@@ -18,7 +18,7 @@
                         <span>Historique</span>
                     </NavLink>
 
-                    <NavLink class="student-bottom-nav-popup-item" href="profil" Match="NavLinkMatch.All" @onclick="CloseMoreMenu">
+                    <NavLink class="student-bottom-nav-popup-item" href="@ProfileLink" Match="NavLinkMatch.All" @onclick="CloseMoreMenu">
                         <span class="student-bottom-nav-popup-icon" aria-hidden="true">
                             <svg viewBox="0 0 16 16" role="img" aria-hidden="true" focusable="false">
                                 <path d="M6.5 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
@@ -91,6 +91,16 @@
 
 @code {
     private bool isMoreMenuOpen;
+    private string ProfileLink
+    {
+        get
+        {
+            var source = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).TrimStart('/');
+            return source.Split('?', '#')[0].Equals("/profil", StringComparison.OrdinalIgnoreCase)
+                ? "profil"
+                : $"profil?returnUrl={Uri.EscapeDataString(source)}";
+        }
+    }
 
     private bool IsMoreSectionActive
     {

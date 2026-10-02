@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Core.DataModels.Courses;
+namespace SkoulouApp.Core.DataModels.Courses;
 
 /// <summary>
 /// Schulgebundene Klassenstufe einer normalen Schule, z. B. CEP1.

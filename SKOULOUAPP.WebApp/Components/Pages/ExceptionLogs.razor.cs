@@ -1,13 +1,13 @@
 using System.Security.Claims;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Data;
-using HalloApp.WebApp.Services;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Data;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class ExceptionLogs
 {

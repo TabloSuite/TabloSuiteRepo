@@ -1,8 +1,8 @@
-global using HalloApp.Core.DataModels.Courses;
-global using HalloApp.Core.DataModels.Exams;
-global using HalloApp.Core.DataModels.Exercises;
-global using HalloApp.Core.DataModels.Identity;
-global using HalloApp.Core.DataModels.Lessons;
-global using HalloApp.Core.DataModels.Schools;
+global using SkoulouApp.Core.DataModels.Courses;
+global using SkoulouApp.Core.DataModels.Exams;
+global using SkoulouApp.Core.DataModels.Exercises;
+global using SkoulouApp.Core.DataModels.Identity;
+global using SkoulouApp.Core.DataModels.Lessons;
+global using SkoulouApp.Core.DataModels.Schools;
 
 

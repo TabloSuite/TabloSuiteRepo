@@ -1,17 +1,17 @@
 using System.Security.Claims;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services;
-using HalloApp.Core.Services.Storage;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Core.Services.Storage;
+using SkoulouApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.Forms;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class TeacherLessonExercises
 {
@@ -30,7 +30,7 @@ public partial class TeacherLessonExercises
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     [Inject]
-    private IHalloAppDbContext DbContext { get; set; } = default!;
+    private ISkoulouAppDbContext DbContext { get; set; } = default!;
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
@@ -201,10 +201,10 @@ public partial class TeacherLessonExercises
         return Task.CompletedTask;
     }
 
-    private async Task InsertLibraryImageAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem image)
+    private async Task InsertLibraryImageAsync(SkoulouApp.Core.Models.Media.BlobMediaAssetItem image)
     {
         if (!isCurrentAssignmentVersionLocked && form is not null && imageLibraryTargetEditor is not null
-            && image.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+            && image.MediaType == SkoulouApp.Core.DataModels.Lessons.BlobMediaType.Image
             && image.SchoolId == selectedSchoolId)
         {
             await imageLibraryTargetEditor.InsertImageAsync(image.ImageUrl, image.AltText);
@@ -803,10 +803,10 @@ public partial class TeacherLessonExercises
         videoUploadMessage = null;
     }
 
-    private Task ChooseLibraryVideoAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem video)
+    private Task ChooseLibraryVideoAsync(SkoulouApp.Core.Models.Media.BlobMediaAssetItem video)
     {
         if (form is not null && !isCurrentAssignmentVersionLocked
-            && video.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Video
+            && video.MediaType == SkoulouApp.Core.DataModels.Lessons.BlobMediaType.Video
             && video.SchoolId == selectedSchoolId && video.KlasseId == form.CourseId)
         {
             form.VideoAssetId = video.Id;

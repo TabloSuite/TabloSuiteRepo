@@ -1,14 +1,14 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Interfaces.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Repositories;
+namespace SkoulouApp.Core.Repositories;
 
 /// <summary>
 /// Repository für Kursniveaus inkl. vollständigem Katalog (Lektionen, Übungen, Prüfungen).
 /// </summary>
-public class CourseRepository(IHalloAppDbContext dbContext) : GenericRepository<Klasse>(dbContext), ICourseRepository
+public class CourseRepository(ISkoulouAppDbContext dbContext) : GenericRepository<Klasse>(dbContext), ICourseRepository
 {
     public async Task<IReadOnlyList<Klasse>> GetCatalogAsync(CancellationToken cancellationToken = default)
         => await DbContext.Klassen

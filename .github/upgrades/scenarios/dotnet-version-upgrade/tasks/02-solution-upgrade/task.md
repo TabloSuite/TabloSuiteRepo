@@ -1,6 +1,6 @@
 # 02-solution-upgrade: Upgrade projects and NuGet packages to .NET 10
 
-Upgrade `HalloApp.Core`, `HalloApp.WebApp`, and `HalloApp.Tests` together from `net9.0` to `net10.0`. Update Microsoft EF Core, ASP.NET Core Identity EF, EF provider/tooling packages, and test packages where supported. Resolve package incompatibility and the API compatibility findings in the Blazor WebApp inline rather than deferring stubs.
+Upgrade `SkoulouApp.Core`, `SkoulouApp.WebApp`, and `SkoulouApp.Tests` together from `net9.0` to `net10.0`. Update Microsoft EF Core, ASP.NET Core Identity EF, EF provider/tooling packages, and test packages where supported. Resolve package incompatibility and the API compatibility findings in the Blazor WebApp inline rather than deferring stubs.
 
 The assessment highlights package updates for EF Core 9.x packages to 10.x and flags `xunit` as outdated in the test project. It also reports API compatibility findings around configuration/identity extension methods, `TimeSpan.FromSeconds`, `System.Uri`, and exception handling behavior in the WebApp; these should be researched and fixed only where code or build output requires changes.
 
@@ -9,16 +9,16 @@ The assessment highlights package updates for EF Core 9.x packages to 10.x and f
 ## Research Findings
 
 ### Projects Affected
-- `HalloApp.Core/HalloApp.Core.csproj` — TargetFramework von `net9.0` auf `net10.0`; EF Core/Identity EF Pakete von `9.0.0` auf `10.0.10`.
-- `HalloApp.WebApp/HalloApp.WebApp.csproj` — Blazor WebApp; TargetFramework von `net9.0` auf `net10.0`; EF Core/Identity/SqlServer/Design/Tools Pakete von `9.0.0` auf `10.0.10`.
-- `HalloApp.Tests/HalloApp.Tests.csproj` — Testprojekt; TargetFramework von `net9.0` auf `net10.0`; `Microsoft.EntityFrameworkCore.InMemory` auf `10.0.10`, `Microsoft.NET.Test.Sdk` auf `18.8.1`, `xunit` auf `2.9.3`.
+- `SkoulouApp.Core/SkoulouApp.Core.csproj` — TargetFramework von `net9.0` auf `net10.0`; EF Core/Identity EF Pakete von `9.0.0` auf `10.0.10`.
+- `SkoulouApp.WebApp/SkoulouApp.WebApp.csproj` — Blazor WebApp; TargetFramework von `net9.0` auf `net10.0`; EF Core/Identity/SqlServer/Design/Tools Pakete von `9.0.0` auf `10.0.10`.
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj` — Testprojekt; TargetFramework von `net9.0` auf `net10.0`; `Microsoft.EntityFrameworkCore.InMemory` auf `10.0.10`, `Microsoft.NET.Test.Sdk` auf `18.8.1`, `xunit` auf `2.9.3`.
 
 ### Files Modified
-- `HalloApp.Core/HalloApp.Core.csproj` — TFM und PackageReference-Versionen.
-- `HalloApp.WebApp/HalloApp.WebApp.csproj` — TFM und PackageReference-Versionen.
-- `HalloApp.Tests/HalloApp.Tests.csproj` — TFM und PackageReference-Versionen.
-- `HalloApp.WebApp/Components/Pages/Login.razor.cs` — Blazor-Warnung BL0008 behoben, indem das Formularmodell ohne `[SupplyParameterFromForm]`-Initializer bereitgestellt wird.
-- `HalloApp.Tests/Services/ProvisionsServiceTests.cs` — xUnit Analyzer-Warnung xUnit2031 behoben.
+- `SkoulouApp.Core/SkoulouApp.Core.csproj` — TFM und PackageReference-Versionen.
+- `SkoulouApp.WebApp/SkoulouApp.WebApp.csproj` — TFM und PackageReference-Versionen.
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj` — TFM und PackageReference-Versionen.
+- `SkoulouApp.WebApp/Components/Pages/Login.razor.cs` — Blazor-Warnung BL0008 behoben, indem das Formularmodell ohne `[SupplyParameterFromForm]`-Initializer bereitgestellt wird.
+- `SkoulouApp.Tests/Services/ProvisionsServiceTests.cs` — xUnit Analyzer-Warnung xUnit2031 behoben.
 
 ### Packages Updated
 | Package | Current | Target | Notes |
@@ -39,9 +39,9 @@ The assessment highlights package updates for EF Core 9.x packages to 10.x and f
 - `ProvisionsServiceTests.cs`: `Assert.Single(collection.Where(...))` auf `Assert.Single(collection, predicate)` umgestellt.
 
 ### Validation
-- `dotnet restore HALLOAPPMAPPE.slnx` erfolgreich.
-- `dotnet build HALLOAPPMAPPE.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
-- `dotnet test HalloApp.Tests/HalloApp.Tests.csproj` erfolgreich: 106 Tests bestanden, 0 fehlgeschlagen.
+- `dotnet restore SKOULOUAPPMAPPE.slnx` erfolgreich.
+- `dotnet build SKOULOUAPPMAPPE.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
+- `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj` erfolgreich: 106 Tests bestanden, 0 fehlgeschlagen.
 
 ### Decisions Made
 - `xunit.runner.visualstudio` wurde nicht auf `4.0.0-pre.5` aktualisiert, weil diese Version als Preview gemeldet wurde; stattdessen wurde das stabile verfügbare Update `3.1.5` übernommen.

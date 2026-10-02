@@ -1,7 +1,7 @@
 ﻿@page "/student/lessons/{LessonId:guid}"
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 
 <PageTitle>@(lesson?.Title ?? "Leçon")</PageTitle>
 
@@ -9,7 +9,7 @@
 {
     <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
         <p class="text-sm text-slate-600">Cette leçon est introuvable.</p>
-        <a class="hallo-btn-accent mt-4 inline-block rounded-full px-5 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Retour à la liste</a>
+        <a class="skoulou-btn-accent mt-4 inline-block rounded-full px-5 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Retour à la liste</a>
     </div>
 }
 else if (lesson is null)
@@ -90,7 +90,7 @@ else
                     @if (!exerciseStarted)
                     {
                         <button type="button"
-                                class="hallo-btn-accent mt-6 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5"
+                                class="skoulou-btn-accent mt-6 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5"
                                 @onclick="StartExercises">
                             Commencer les exercices
                         </button>
@@ -161,9 +161,9 @@ else
                                 {
                                     <button type="button"
                                             class="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-700"
-                                            data-halloapp-tts-text="@exercise.AudioText"
-                                             data-halloapp-audio-url="@GetLessonAudioUrl()"
-                                             data-halloapp-tts-lang="@exercise.TtsLanguage">
+                                            data-skoulouapp-tts-text="@exercise.AudioText"
+                                             data-skoulouapp-audio-url="@GetLessonAudioUrl()"
+                                             data-skoulouapp-tts-lang="@exercise.TtsLanguage">
                                         🔊 Écouter
                                     </button>
                                 }
@@ -260,7 +260,7 @@ else
                             {
                                  var isManualClosed = IsExerciseSubmissionClosed();
                                 <button type="button"
-                                        class="hallo-btn-accent mt-4 rounded-full px-5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:opacity-50"
+                                        class="skoulou-btn-accent mt-4 rounded-full px-5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 disabled:opacity-50"
                                          disabled="@(!CanSubmit(exercise, state) || state.IsSubmitting || isManualClosed)"
                                         @onclick="() => SubmitAsync(exercise.ExerciseId)">
                                      @(state.IsSubmitting ? "Envoi..." : GetSubmitButtonLabel(exercise))

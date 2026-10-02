@@ -1,11 +1,11 @@
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Services.Text;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
-public sealed class AnkuendigungService(IHalloAppDbContext dbContext)
+public sealed class AnkuendigungService(ISkoulouAppDbContext dbContext)
 {
     public Task<List<Ankuendigung>> GetAktiveAsync(DateTime jetztUtc, CancellationToken cancellationToken = default)
         => dbContext.Ankuendigungen.AsNoTracking()

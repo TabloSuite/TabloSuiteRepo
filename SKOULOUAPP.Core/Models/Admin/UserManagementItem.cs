@@ -1,4 +1,4 @@
-﻿namespace HalloApp.Core.Models.Admin;
+﻿namespace SkoulouApp.Core.Models.Admin;
 
 public class UserManagementItem
 {
@@ -13,8 +13,8 @@ public class UserManagementItem
     /// <summary>Gibt an, ob der Schüler mindestens ein bezahltes Niveau besitzt.</summary>
     public bool HasPaidEnrollment { get; set; }
 
-    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein HalloPlus-Abo hat.</summary>
-    public bool IsHalloPlus { get; set; }
+    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein SkoulouPlus-Abo hat.</summary>
+    public bool IsSkoulouPlus { get; set; }
 
     /// <summary>Zu zahlende Schul-/Klassengebühr für den aktuellen Durchlauf.</summary>
     public decimal? SchoolFeeAmount { get; set; }

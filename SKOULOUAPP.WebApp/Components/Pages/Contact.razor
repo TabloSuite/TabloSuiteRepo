@@ -29,22 +29,22 @@
 
         <div class="grid gap-5 sm:grid-cols-2">
             <div>
-                <label class="hallo-label">Ton nom</label>
-                <InputText @bind-Value="Model.Name" class="hallo-input" />
+                <label class="skoulou-label">Ton nom</label>
+                <InputText @bind-Value="Model.Name" class="skoulou-input" />
             </div>
             <div>
-                <label class="hallo-label">Ton e-mail</label>
-                <InputText @bind-Value="Model.Email" type="email" class="hallo-input" />
+                <label class="skoulou-label">Ton e-mail</label>
+                <InputText @bind-Value="Model.Email" type="email" class="skoulou-input" />
             </div>
         </div>
 
         <div>
-            <label class="hallo-label">Sujet</label>
-            <InputText @bind-Value="Model.Subject" class="hallo-input" />
+            <label class="skoulou-label">Sujet</label>
+            <InputText @bind-Value="Model.Subject" class="skoulou-input" />
         </div>
 
         <div>
-            <label class="hallo-label">Message</label>
+            <label class="skoulou-label">Message</label>
             <RichTextEditor @bind-Value="Model.Message"
                             Placeholder="Écris ton message..."
                             EnableImages="false" />

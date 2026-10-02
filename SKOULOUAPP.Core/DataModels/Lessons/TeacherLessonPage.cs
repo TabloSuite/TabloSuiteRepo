@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.BaseModel;
 
-namespace HalloApp.Core.DataModels.Lessons;
+namespace SkoulouApp.Core.DataModels.Lessons;
 
 /// <summary>
 /// Eine einzelne Seite eines <see cref="TeacherLesson"/>-Kursskripts.

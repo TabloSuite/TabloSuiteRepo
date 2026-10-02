@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class TeacherLessonDirectionReader
 {

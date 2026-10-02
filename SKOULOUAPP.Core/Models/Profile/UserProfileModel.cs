@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.Models.Profile;
+namespace SkoulouApp.Core.Models.Profile;
 
 public class UserProfileModel
 {

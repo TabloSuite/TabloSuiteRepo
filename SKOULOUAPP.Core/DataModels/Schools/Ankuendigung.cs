@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 public class Ankuendigung
 {

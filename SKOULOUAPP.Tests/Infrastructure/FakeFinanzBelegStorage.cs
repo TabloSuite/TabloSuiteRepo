@@ -1,6 +1,6 @@
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Services.Storage;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 public sealed class FakeFinanzBelegStorage : IFinanzBelegStorage
 {

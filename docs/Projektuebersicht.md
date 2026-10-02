@@ -1,8 +1,8 @@
-# HALLO-APP – technische Projektübersicht
+# SKOULOU-APP – technische Projektübersicht
 
 ## Zweck
 
-HALLO-APP ist eine mandantenfähige Lernplattform für Deutschunterricht. Schulen, Lehrkräfte und Schüler arbeiten rollenbasiert mit Kursen/Klassen, Lektionen, Lehrerunterlagen, Übungen, Quizzen, Prüfungen, Abonnements, Abrechnung, Provisionen und Schulfinanzen.
+SKOULOU-APP ist eine mandantenfähige Lernplattform für Deutschunterricht. Schulen, Lehrkräfte und Schüler arbeiten rollenbasiert mit Kursen/Klassen, Lektionen, Lehrerunterlagen, Übungen, Quizzen, Prüfungen, Abonnements, Abrechnung, Provisionen und Schulfinanzen.
 
 Die Anwendung ist eine .NET-10-Blazor-Web-App mit interaktivem Server-Rendering. Die sichtbaren Texte sind überwiegend Französisch; der Projektcode und die fachlichen Datenmodelle verwenden überwiegend deutsche Namen.
 
@@ -10,19 +10,19 @@ Die Anwendung ist eine .NET-10-Blazor-Web-App mit interaktivem Server-Rendering.
 
 | Projekt | Verantwortung |
 |---|---|
-| `HalloApp.WebApp` | Blazor-Oberfläche, Startup/DI, EF-Core-DbContext, Migrationen, Authentifizierung, Seed-Ablauf, JavaScript und statische Inhalte. |
-| `HalloApp.Core` | Fachmodell, View-/Form-Modelle, Schnittstellen, Repositories, Services sowie eingebettete Vokabel-JSON-Ressourcen. |
-| `HalloApp.Tests` | xUnit-Tests der Core-Services mit einem EF-Core-InMemory-DbContext und Testdoubles. |
+| `SkoulouApp.WebApp` | Blazor-Oberfläche, Startup/DI, EF-Core-DbContext, Migrationen, Authentifizierung, Seed-Ablauf, JavaScript und statische Inhalte. |
+| `SkoulouApp.Core` | Fachmodell, View-/Form-Modelle, Schnittstellen, Repositories, Services sowie eingebettete Vokabel-JSON-Ressourcen. |
+| `SkoulouApp.Tests` | xUnit-Tests der Core-Services mit einem EF-Core-InMemory-DbContext und Testdoubles. |
 
 Alle Projekte zielen auf `net10.0`, Nullable Reference Types und implizite Usings sind aktiviert.
 
 ## Laufzeit und Komposition
 
-`HalloApp.WebApp/Program.cs` ist der Einstiegspunkt.
+`SkoulouApp.WebApp/Program.cs` ist der Einstiegspunkt.
 
 - Blazor wird mit `AddRazorComponents().AddInteractiveServerComponents()` betrieben.
 - EF Core nutzt SQL Server über `AddDbContextFactory<ApplicationDbContext>`; pro Scope wird daraus ein `ApplicationDbContext` erstellt.
-- `IHalloAppDbContext` abstrahiert den DbContext für die Core-Services und Tests.
+- `ISkoulouAppDbContext` abstrahiert den DbContext für die Core-Services und Tests.
 - ASP.NET Core Identity verwendet `AppUser`, `Role` und GUID-Schlüssel.
 - Serilog protokolliert auf Konsole und über `DatabaseExceptionLogSink` zusätzlich Exceptions in der Datenbank.
 - Beim Start führt `ApplicationDbInitializer.SeedAsync(...)` Migrationen, Basisdaten-Seed und Rückfüllungen aus.
@@ -66,11 +66,11 @@ Die Azure-Produktionsverbindung gehört ausschließlich in User Secrets, nicht i
 
 ## Fachmodell und Persistenz
 
-`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den HALLO-APP-Tabellen. Die aktuelle Basismigration ist `20260729141230_InitialCreate`.
+`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den SKOULOU-APP-Tabellen. Die aktuelle Basismigration ist `20260729141230_InitialCreate`.
 
 ### Schule, Benutzer und Klassen
 
-- `School`: Mandant mit Standort, Aktivstatus, Schultyp, individuellen HALLOBASIS-/HALLOPLUS-Preisen und PDF-Export-Freigabe.
+- `School`: Mandant mit Standort, Aktivstatus, Schultyp, individuellen SKOULOUBASIS-/SKOULOUPLUS-Preisen und PDF-Export-Freigabe.
 - `SchulTyp`: `Sprachschule` oder `NormaleSchule`.
 - `AppUser`, `StudentProfile`, `UserSchool`: Identity, Schülerprofil und Schulzuordnung.
 - `Klasse`: Kurs/Klasse. Globale Systemniveaus einer Sprachschule besitzen keine `SchoolId` und sind unveränderlich (`IstSystemNiveau`). Schulbezogene Klassen gehören genau einer Schule.
@@ -106,7 +106,7 @@ Unterstützt werden u. a. Single Choice, Multiple Choice, Freitext, Lückentext 
 |---|---|
 | `DashboardService` | Administrative, Lehrer-, Schulleiter- und Schülerprojekte; DB-Katalog für Home und `/lektionen`. |
 | `LearningService` | Freigeschaltete Lektionen, Übungsabgaben, automatische Bewertung und Fortschritt. |
-| `QuizService` | Quiz erstellen, zuweisen, durchführen und bewerten. Quizzuweisungen sind auf HALLOPLUS ausgerichtet. |
+| `QuizService` | Quiz erstellen, zuweisen, durchführen und bewerten. Quizzuweisungen sind auf SKOULOUPLUS ausgerichtet. |
 | `ExamService` | Prüfungen, Versuche, Bewertung und Ergebnisdarstellung. |
 | `TeacherLessonService` | Lehrerlektionen, Seiten, Berechtigungen und PDF-Export. |
 | `AboService` | Abo-Typ, Preis und Level-Freischaltung. |
@@ -115,11 +115,11 @@ Unterstützt werden u. a. Single Choice, Multiple Choice, Freitext, Lückentext 
 | `AuthService` | Registrierung, Schule, Rollen und Profilzuordnung. |
 | `HomePageService` | Startseitennahe Daten/Logik. |
 
-Services verwenden `IHalloAppDbContext`, EF-Core-Async-Methoden und optional `CancellationToken`. Leseabfragen verwenden häufig `AsNoTracking()` und View-Model-Projektionen.
+Services verwenden `ISkoulouAppDbContext`, EF-Core-Async-Methoden und optional `CancellationToken`. Leseabfragen verwenden häufig `AsNoTracking()` und View-Model-Projektionen.
 
 ## Katalog und Seeding
 
-Standardlektionen und deren Übungen werden beim Seeding aus CSV-Dateien im externen Ordner `C:\ETSE\HalloAppSeed` gelesen. Erwartet werden `lektionen.csv`, `uebungen.csv` und `antworten.csv`. Audio-Übungen verwenden `AudioText` für Text-to-Speech; es werden keine Audio- oder Bilddateien importiert.
+Standardlektionen und deren Übungen werden beim Seeding aus CSV-Dateien im externen Ordner `C:\ETSE\SkoulouAppSeed` gelesen. Erwartet werden `lektionen.csv`, `uebungen.csv` und `antworten.csv`. Audio-Übungen verwenden `AudioText` für Text-to-Speech; es werden keine Audio- oder Bilddateien importiert.
 
 Der Ablauf in `ApplicationDbInitializer` lautet:
 
@@ -135,7 +135,7 @@ Der Ablauf in `ApplicationDbInitializer` lautet:
 
 ## Tests
 
-`HalloApp.Tests` ist eine xUnit-Testsuite für die Services. `TestDbContext` implementiert dieselbe `IHalloAppDbContext`-Schnittstelle mit EF Core InMemory; zusätzliche Fakes stehen für Medien, Unit of Work und UserManager bereit.
+`SkoulouApp.Tests` ist eine xUnit-Testsuite für die Services. `TestDbContext` implementiert dieselbe `ISkoulouAppDbContext`-Schnittstelle mit EF Core InMemory; zusätzliche Fakes stehen für Medien, Unit of Work und UserManager bereit.
 
 Wichtige Testbereiche sind:
 
@@ -153,11 +153,11 @@ Die Tests prüfen vor allem fachliche Service-Logik; UI- und Browser-Interaktion
 
 | Thema | Zuerst ansehen |
 |---|---|
-| Seite oder UI-Änderung | Passende Dateien unter `HalloApp.WebApp/Components/Pages`, anschließend zugehörige `.razor.cs` und Shared Components. |
-| Fachregel | Zuständigen Service unter `HalloApp.Core/Services` und dessen Tests. |
-| Neue/angepasste Daten | Datenmodell unter `HalloApp.Core/DataModels`, danach `ApplicationDbContext`, Migration und Tests. |
+| Seite oder UI-Änderung | Passende Dateien unter `SkoulouApp.WebApp/Components/Pages`, anschließend zugehörige `.razor.cs` und Shared Components. |
+| Fachregel | Zuständigen Service unter `SkoulouApp.Core/Services` und dessen Tests. |
+| Neue/angepasste Daten | Datenmodell unter `SkoulouApp.Core/DataModels`, danach `ApplicationDbContext`, Migration und Tests. |
 | Rechte und Rollen | `Program.cs`, `NavMenu.razor`, Seitenattribut `[Authorize]`, plus die Service-Prüfung. |
-| Katalog-/Übungsinhalte | CSV-Dateien unter `C:\ETSE\HalloAppSeed` und `ApplicationDbInitializer`. |
+| Katalog-/Übungsinhalte | CSV-Dateien unter `C:\ETSE\SkoulouAppSeed` und `ApplicationDbInitializer`. |
 | Finanz-/Abo-Thema | `AboService`, `AbrechnungService`, `ProvisionsService`, `FinanzService` und die dazugehörigen Datenmodelle. |
 | Fehlerprotokollierung | `DatabaseExceptionLogSink`, `ExceptionLog`, `ExceptionLogs.razor`. |
 

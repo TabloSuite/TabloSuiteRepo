@@ -1,9 +1,9 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Zentrale Stelle fuer die Frage: Welche Kursniveaus darf ein Schueler
@@ -20,7 +20,7 @@ namespace HalloApp.Core.Services;
 /// - Ist weder CECR noch Klassenstufe hinterlegt (Altdaten), bleibt das
 ///   bisherige Verhalten ohne Einschraenkung erhalten.
 /// </summary>
-public class NiveauGruppenService(IHalloAppDbContext dbContext)
+public class NiveauGruppenService(ISkoulouAppDbContext dbContext)
 {
     /// <summary>
     /// Kennzeichnet Klassen ausserhalb des europaeischen Referenzrahmens.

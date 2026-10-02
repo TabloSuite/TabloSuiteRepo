@@ -1,12 +1,12 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für die CECR-basierten Niveaugruppen: Ein Schüler darf ausschließlich
@@ -153,7 +153,7 @@ public class NiveauGruppenServiceTests
         await StarteAktivenDurchlaufAsync(db, schulId, a21);
         var service = new AboService(db);
 
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, a21.Id, AboTyp.HalloBasis);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, a21.Id, AboTyp.SkoulouApp);
 
         Assert.False(succeeded);
         Assert.Equal(NiveauGruppenService.NichtErlaubtMeldung, message);
@@ -169,7 +169,7 @@ public class NiveauGruppenServiceTests
         await StarteAktivenDurchlaufAsync(db, schulId, a12);
         var service = new AboService(db);
 
-        var (succeeded, _) = await service.AboZuweisenAsync(student.Id, a12.Id, AboTyp.HalloBasis);
+        var (succeeded, _) = await service.AboZuweisenAsync(student.Id, a12.Id, AboTyp.SkoulouApp);
 
         Assert.True(succeeded);
         Assert.Single(db.LevelEnrollments);

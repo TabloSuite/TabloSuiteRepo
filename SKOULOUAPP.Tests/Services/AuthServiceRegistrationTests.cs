@@ -1,16 +1,17 @@
-using HalloApp.Core.Options;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Tests.Infrastructure;
-using HalloApp.WebApp.Data;
-using HalloApp.WebApp.Models.Auth;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Tests.Infrastructure;
+using SkoulouApp.WebApp.Data;
+using SkoulouApp.WebApp.Models.Auth;
+using SkoulouApp.WebApp.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class AuthServiceRegistrationTests
 {
@@ -45,6 +46,44 @@ public class AuthServiceRegistrationTests
 
         Assert.False(result.Succeeded);
         Assert.Contains("conditions d'utilisation", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Selbstregistrierung_NachErfolgVersendetGenauEineWillkommensmail(bool director)
+    {
+        var factory = new TestApplicationDbContextFactory();
+        var email = new FakeEmailService();
+        var manager = TestUserManager.Create();
+        manager.OnUserCreated = user =>
+        {
+            using var db = factory.CreateDbContext();
+            db.Users.Add(user);
+            db.SaveChanges();
+        };
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            if (!director) db.Schools.Add(new School { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "École élève", IsActive = true });
+            db.Roles.Add(new Role { Id = Guid.NewGuid(), Name = director ? Rollen.SchulLeiter : Rollen.Schueler });
+            await db.SaveChangesAsync();
+        }
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, email,
+            postmarkOptions: Options.Create(new PostmarkOptions { Enabled = false }),
+            configuration: new ConfigurationBuilder().Build(), logger: NullLogger<AuthService>.Instance);
+        var input = new RegisterInputModel
+        {
+            Vorname = "Afi", Nachname = "Mensah", Email = "afi@example.org", Password = "Secret123!",
+            AgbAccepted = true, SchulName = "Nouvelle école", SchulStadt = "Lomé",
+            SelectedSchoolId = Guid.Parse("11111111-1111-1111-1111-111111111111")
+        };
+
+        var result = director ? await service.RegisterSchulLeiterAsync(input) : await service.RegisterStudentAsync(input);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        var sent = Assert.Single(email.Gesendet);
+        Assert.Equal(input.Email, sent.Recipient.Email);
+        Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
     }
 
     [Fact]

@@ -1,20 +1,21 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.Models.Billing;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.Models.Billing;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Finanzen
 {
     [Inject] private FinanzService FinanzService { get; set; } = default!;
+    [Inject] private KontoBenachrichtigungService KontoBenachrichtigungService { get; set; } = default!;
     [Inject] private AbrechnungService AbrechnungService { get; set; } = default!;
     [Inject] private DatabaseActionGuard ActionGuard { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -23,6 +24,8 @@ public partial class Finanzen
 
     private Guid currentUserId;
     private bool istSuperAdmin;
+    private bool istDirektor;
+    private bool isPlatformViewer;
     private bool canViewDashboard;
     private bool canCreateEntries;
     private bool canManageCycles;
@@ -44,8 +47,8 @@ public partial class Finanzen
 
     // ---- Dashboard ----
     private FinanzUebersicht? uebersicht;
-    private AbrechnungsUebersicht? halloAppAboUebersicht;
-    private IReadOnlyList<Abrechnungsperiode> offeneHalloAppAbrechnungen = [];
+    private AbrechnungsUebersicht? skoulouAppAboUebersicht;
+    private IReadOnlyList<Abrechnungsperiode> offeneSkoulouAppAbrechnungen = [];
     private DirektorKontostandUebersicht? direktorKontostand;
     private FinanzAbgleich? finanzAbgleich;
     private FinanzFilter filter = new();
@@ -74,10 +77,17 @@ public partial class Finanzen
 
     // ---- Durchlauf beenden (Bestätigung) ----
     private DurchlaufUebersicht? beendenDurchlauf;
+    private bool abschlussNotenOpen;
+    private Guid? abschlussNotenDurchlaufId;
+    private void OpenAbschlussNoten(Guid durchlaufId)
+    {
+        abschlussNotenDurchlaufId = durchlaufId;
+        abschlussNotenOpen = true;
+    }
     private DateTime beendenDatum = DateTime.Today;
     private decimal beendenOffeneSchuld;
-    private int beendenOffeneHalloAppAbos;
-    private decimal beendenOffenerHalloAppUmsatz;
+    private int beendenOffeneSkoulouAppAbos;
+    private decimal beendenOffenerSkoulouAppUmsatz;
 
     private static DateTime ToInclusiveUtcDayEnd(DateTime date)
     {
@@ -119,11 +129,11 @@ public partial class Finanzen
     };
 
     private static bool IstAboSystemBuchung(FinanzUebersichtZeile zeile)
-        => zeile.KategorieSystemCode is FinanzSystemCode.HalloAppAboZahlung
-            or FinanzSystemCode.HalloAppAboAnteil
-            or FinanzSystemCode.HalloAppAboSchulleiterAnteil
-            or FinanzSystemCode.HalloAppAboLehrerAnteil
-            or FinanzSystemCode.HalloAppAboProductOwnerAnteil;
+        => zeile.KategorieSystemCode is FinanzSystemCode.SkoulouAppAboZahlung
+            or FinanzSystemCode.SkoulouAppAboAnteil
+            or FinanzSystemCode.SkoulouAppAboSchulleiterAnteil
+            or FinanzSystemCode.SkoulouAppAboLehrerAnteil
+            or FinanzSystemCode.SkoulouAppAboProductOwnerAnteil;
 
     private IReadOnlyList<FinanzUebersichtZeile> EchteSchulBuchungen => uebersicht?.Zeilen
         .Where(zeile => !IstAboSystemBuchung(zeile))
@@ -135,12 +145,12 @@ public partial class Finanzen
     private decimal SortiesComptables => Math.Max(0m, SummeSorties - CommissionLehrer);
     private decimal SoldeNetApresSorties => SummeEntrees - SortiesComptables;
 
-    private decimal HalloAppAboTotal => uebersicht?.Zeilen
-        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboZahlung && zeile.Richtung == FinanzRichtung.Einnahme)
+    private decimal SkoulouAppAboTotal => uebersicht?.Zeilen
+        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung && zeile.Richtung == FinanzRichtung.Einnahme)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
     private decimal CommissionLehrer => uebersicht?.Zeilen
-        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboLehrerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
     private decimal CommissionSchulleiter
@@ -148,7 +158,7 @@ public partial class Finanzen
         get
         {
             var direkteSchulleiterBuchung = uebersicht?.Zeilen
-                .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboSchulleiterAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+                .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboSchulleiterAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
                 .Sum(zeile => zeile.Betrag) ?? 0m;
 
             if (direkteSchulleiterBuchung > 0m)
@@ -156,23 +166,23 @@ public partial class Finanzen
                 return direkteSchulleiterBuchung;
             }
 
-            return Math.Max(0m, HalloAppAboTotal - CommissionLehrer - CommissionProductOwner - BetragFuerHalloAppPlattform);
+            return Math.Max(0m, SkoulouAppAboTotal - CommissionLehrer - CommissionProductOwner - BetragFuerSkoulouAppPlattform);
         }
     }
 
     private decimal CommissionProductOwner => uebersicht?.Zeilen
-        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
-    private decimal BetragFuerHalloAppPlattform => uebersicht?.Zeilen
-        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
+    private decimal BetragFuerSkoulouAppPlattform => uebersicht?.Zeilen
+        .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboAnteil && zeile.Richtung == FinanzRichtung.Ausgabe)
         .Sum(zeile => zeile.Betrag) ?? 0m;
 
-    private decimal CommissionSchule => Math.Max(0m, HalloAppAboTotal - CommissionLehrer - CommissionProductOwner - BetragFuerHalloAppPlattform);
+    private decimal CommissionSchule => Math.Max(0m, SkoulouAppAboTotal - CommissionLehrer - CommissionProductOwner - BetragFuerSkoulouAppPlattform);
 
-    private decimal TotalAvecHalloAppAbo => SummeEntrees;
+    private decimal TotalAvecSkoulouAppAbo => SummeEntrees;
 
-    private decimal ResteApresPartHalloApp => SummeEntrees - BetragFuerHalloAppPlattform;
+    private decimal ResteApresPartSkoulouApp => SummeEntrees - BetragFuerSkoulouAppPlattform;
 
     private decimal EchteBuchungenEntrees => EchteSchulBuchungen
         .Where(zeile => zeile.Richtung == FinanzRichtung.Einnahme)
@@ -186,9 +196,9 @@ public partial class Finanzen
 
     private decimal ZeitraumSortiesBasis => EchteBuchungenSorties;
 
-    private decimal SkoulouAboAnteilFuerSaldo => BetragFuerHalloAppPlattform;
+    private decimal SkoulouAboAnteilFuerSaldo => BetragFuerSkoulouAppPlattform;
 
-    private decimal ZeitraumSoldeAvantPartSkoulou => EchteBuchungenEntrees + HalloAppAboTotal - ZeitraumSortiesBasis;
+    private decimal ZeitraumSoldeAvantPartSkoulou => EchteBuchungenEntrees + SkoulouAppAboTotal - ZeitraumSortiesBasis;
 
     private decimal ZeitraumSortiesAnzeige => ZeitraumSortiesBasis;
 
@@ -237,9 +247,9 @@ public partial class Finanzen
 
     private decimal SoldeApresBuchungen => SchulgebuehrenEinnahmen + WeitereEchteEntrees - EchteBuchungenSorties;
 
-    private decimal SoldeTotalAvecAbo => SoldeApresBuchungen + HalloAppAboTotal;
+    private decimal SoldeTotalAvecAbo => SoldeApresBuchungen + SkoulouAppAboTotal;
 
-    private decimal SoldeTotalOhneHalloAppPart => SoldeTotalAvecAbo - BetragFuerHalloAppPlattform;
+    private decimal SoldeTotalOhneSkoulouAppPart => SoldeTotalAvecAbo - BetragFuerSkoulouAppPlattform;
 
     private decimal OffeneSchulgebuehren => direktorKontostand?.OffeneSchulgebuehrenAktiveKlassen ?? 0m;
 
@@ -247,9 +257,9 @@ public partial class Finanzen
 
     private decimal SoldeCibleAvecAbo => SoldeTotalAvecAbo + OffeneSchulgebuehren + OffeneAboGebuehren;
 
-    private decimal SoldeCibleOhneHalloAppPart => SoldeCibleAvecAbo - BetragFuerHalloAppPlattform;
+    private decimal SoldeCibleOhneSkoulouAppPart => SoldeCibleAvecAbo - BetragFuerSkoulouAppPlattform;
 
-    private decimal SoldeActuelAffiche => SoldeTotalOhneHalloAppPart;
+    private decimal SoldeActuelAffiche => SoldeTotalOhneSkoulouAppPart;
 
     private static string SoldeFarbe(decimal betrag)
         => DirektorKontostandUebersicht.BestimmeSaldoStatus(betrag) switch
@@ -409,6 +419,8 @@ public partial class Finanzen
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
             istSuperAdmin = user.IsInRole("SuperAdmin");
+            istDirektor = user.IsInRole("SchulLeiter");
+            isPlatformViewer = istSuperAdmin || user.IsInRole("ProduktOwner");
 
             var idValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             Guid.TryParse(idValue, out currentUserId);
@@ -443,8 +455,8 @@ public partial class Finanzen
         if (aktiveSchulID is not Guid schoolId) return;
         var access = await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId, istSuperAdmin, ComponentToken);
         canViewDashboard = access.Dashboard;
-        canCreateEntries = access.Entries;
-        canManageCycles = access.Cycles;
+        canCreateEntries = !isPlatformViewer && access.Entries;
+        canManageCycles = !isPlatformViewer && access.Cycles;
         if (!IsTabAllowed(aktiverTab))
         {
             aktiverTab = canViewDashboard ? "dashboard" : canCreateEntries ? "erfassen" : "durchlaeufe";
@@ -461,6 +473,11 @@ public partial class Finanzen
 
     private async Task<bool> EnsureFinanceTabAccessAsync(string tab)
     {
+        if (isPlatformViewer)
+        {
+            errorMessage = "Les finances de l'école sont en lecture seule pour votre rôle.";
+            return false;
+        }
         if (aktiveSchulID is not Guid schoolId) return false;
         var access = await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId, istSuperAdmin, ComponentToken);
         var allowed = tab == "erfassen" ? access.Entries : access.Cycles;
@@ -488,9 +505,9 @@ public partial class Finanzen
         if (canViewDashboard) await LadeUebersichtAsync();
         else uebersicht = null;
         durchlaeufe = canManageCycles ? await FinanzService.GetDurchlaeufeAsync(aktiveSchulID.Value) : [];
-        halloAppAboUebersicht = canViewDashboard
+        skoulouAppAboUebersicht = canViewDashboard
             ? await AbrechnungService.GetOffeneUebersichtAsync(aktiveSchulID.Value, cancellationToken: ComponentToken) : null;
-        offeneHalloAppAbrechnungen = canViewDashboard
+        offeneSkoulouAppAbrechnungen = canViewDashboard
             ? (await AbrechnungService.GetHistorieAsync(aktiveSchulID.Value, ComponentToken))
                 .Where(periode => periode.Status is AbrechnungStatus.Erstellt or AbrechnungStatus.Akzeptiert)
                 .ToList()
@@ -528,7 +545,7 @@ public partial class Finanzen
 
     private async Task SchuleWechselnAsync(Guid? id)
     {
-        if (id is null)
+        if (id is null || !schulen.Any(school => school.Id == id.Value))
         {
             return;
         }
@@ -865,6 +882,13 @@ public partial class Finanzen
             return;
         }
 
+        if (await FinanzService.HatNichtGemeldeteCycleUeberweisungAsync(aktiveSchulID.Value, durchlaufForm.KlasseId, ComponentToken))
+        {
+            durchlaufStartDurchUeberweisungGesperrt = true;
+            errorMessage = "Déclarez d'abord le virement de la facturation du cycle précédent.";
+            return;
+        }
+
         await ActionGuard.RunAsync(async () =>
         {
             var (ok, err, _) = await FinanzService.DurchlaufStartenAsync(
@@ -896,7 +920,7 @@ public partial class Finanzen
         beendenDurchlauf = d;
         beendenDatum = DateTime.Today;
         beendenOffeneSchuld = d.SummeOffen;
-        await LadeOffeneHalloAppAbosFuerBeendenAsync();
+        await LadeOffeneSkoulouAppAbosFuerBeendenAsync();
     }
 
     private void BeendenAbbrechen() => beendenDurchlauf = null;
@@ -908,17 +932,17 @@ public partial class Finanzen
             beendenDatum = datum.Date;
         }
 
-        _ = InvokeAsync(LadeOffeneHalloAppAbosFuerBeendenAsync);
+        _ = InvokeAsync(LadeOffeneSkoulouAppAbosFuerBeendenAsync);
 
         return Task.CompletedTask;
     }
 
-    private async Task LadeOffeneHalloAppAbosFuerBeendenAsync()
+    private async Task LadeOffeneSkoulouAppAbosFuerBeendenAsync()
     {
         if (aktiveSchulID is null || beendenDurchlauf is null)
         {
-            beendenOffeneHalloAppAbos = 0;
-            beendenOffenerHalloAppUmsatz = 0m;
+            beendenOffeneSkoulouAppAbos = 0;
+            beendenOffenerSkoulouAppUmsatz = 0m;
             return;
         }
 
@@ -926,8 +950,8 @@ public partial class Finanzen
             aktiveSchulID.Value,
             ToInclusiveUtcDayEnd(beendenDatum),
             ComponentToken);
-        beendenOffeneHalloAppAbos = uebersicht.AnzahlHalloBasis + uebersicht.AnzahlHalloPlus;
-        beendenOffenerHalloAppUmsatz = uebersicht.OffenerUmsatz;
+            beendenOffeneSkoulouAppAbos = uebersicht.AnzahlAbonnements;
+        beendenOffenerSkoulouAppUmsatz = uebersicht.OffenerUmsatz;
     }
 
     private async Task DurchlaufBeendenBestaetigenAsync()
@@ -941,23 +965,21 @@ public partial class Finanzen
         var durchlaufId = beendenDurchlauf.DurchlaufID;
         await ActionGuard.RunAsync(async () =>
         {
-            var (ok, err, offen) = await FinanzService.DurchlaufBeendenAsync(
-                durchlaufId,
-                beendenDatum,
-                currentUserId,
-                istSuperAdmin,
-                autorisierungErzwingen: true,
-                ComponentToken);
+            var (ok, err, offen, abrechnungsMeldung) = istDirektor
+                ? await FinanzService.DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
+                    durchlaufId, beendenDatum, currentUserId,
+                    autorisierungErzwingen: true, cancellationToken: ComponentToken)
+                : await BeendeOhneAutomatischeRechnungAsync(durchlaufId);
             if (ok)
             {
                 var schliessenMessage = offen > 0
                     ? $"Le cycle est clôturé. Le solde impayé ({offen:N0} FCFA) est enregistré comme perte."
                     : "Le cycle a été clôturé.";
-                message = schliessenMessage;
+                message = abrechnungsMeldung is null ? schliessenMessage : $"{schliessenMessage} {abrechnungsMeldung}";
                 errorMessage = null;
                 beendenDurchlauf = null;
-                beendenOffeneHalloAppAbos = 0;
-                beendenOffenerHalloAppUmsatz = 0m;
+                beendenOffeneSkoulouAppAbos = 0;
+                beendenOffenerSkoulouAppUmsatz = 0m;
                 durchlaeufe = await FinanzService.GetDurchlaeufeAsync(aktiveSchulID.Value);
             }
             else
@@ -965,6 +987,14 @@ public partial class Finanzen
                 errorMessage = err;
             }
         });
+    }
+
+    private async Task<(bool Succeeded, string ErrorMessage, decimal OffeneSchuld, string? AutomatischeAbrechnungMessage)> BeendeOhneAutomatischeRechnungAsync(Guid durchlaufId)
+    {
+        var (succeeded, error, offeneSchuld) = await FinanzService.DurchlaufBeendenAsync(
+            durchlaufId, beendenDatum, currentUserId, istSuperAdmin,
+            autorisierungErzwingen: true, cancellationToken: ComponentToken);
+        return (succeeded, error, offeneSchuld, null);
     }
 
     // -------------------- Zahlung buchen --------------------
@@ -996,7 +1026,7 @@ public partial class Finanzen
         var durchlaufId = ausgewaehlterDurchlauf.DurchlaufID;
         await ActionGuard.RunAsync(async () =>
         {
-            var (ok, err, _) = await FinanzService.ZahlungBuchenAsync(
+            var (ok, err, zahlung) = await FinanzService.ZahlungBuchenAsync(
                 durchlaufId,
                 zahlungForm.StudentId,
                 zahlungForm.Betrag,
@@ -1009,6 +1039,8 @@ public partial class Finanzen
 
             if (ok)
             {
+                if (zahlung is not null)
+                    await KontoBenachrichtigungService.PaiementEnregistreAsync(zahlung.Id);
                 message = "Le paiement a été enregistré.";
                 errorMessage = null;
                 var aktualisiert = await FinanzService.GetDurchlaufUebersichtAsync(durchlaufId);
@@ -1046,18 +1078,20 @@ public partial class Finanzen
     }
 
     private bool durchlaufStartModalOpen;
+    private bool durchlaufStartDurchUeberweisungGesperrt;
 
-    private Task DurchlaufStartModalOeffnenAsync()
+    private async Task DurchlaufStartModalOeffnenAsync()
     {
         if (durchlaufForm.KlasseId == Guid.Empty)
         {
             errorMessage = "Veuillez sélectionner une classe.";
-            return Task.CompletedTask;
+            return;
         }
 
+        durchlaufStartDurchUeberweisungGesperrt = aktiveSchulID is Guid schulId
+            && await FinanzService.HatNichtGemeldeteCycleUeberweisungAsync(schulId, durchlaufForm.KlasseId, ComponentToken);
         errorMessage = null;
         durchlaufStartModalOpen = true;
-        return Task.CompletedTask;
     }
 
     private void DurchlaufStartModalSchliessen()

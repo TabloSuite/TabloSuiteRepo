@@ -33,12 +33,12 @@
   },
   "projects": [
     {
-      "path": "HalloApp.Core\\HalloApp.Core.csproj",
+      "path": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
       "startingProject": true,
       "issues": 2,
       "storyPoints": 3,
       "properties": {
-        "appName": "HalloApp.Core",
+        "appName": "SkoulouApp.Core",
         "projectKind": "ClassLibrary",
         "frameworks": [
           "net9.0"
@@ -62,7 +62,7 @@
         {
           "incidentId": "c5322693-8685-483b-83d4-7a74276f220b",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "projectPath": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -70,7 +70,7 @@
               "protected": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "path": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
             "snippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
             "protectedSnippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
             "label": "Microsoft.AspNetCore.Identity.EntityFrameworkCore 9.0.0",
@@ -85,7 +85,7 @@
         {
           "incidentId": "ed370f3c-09fe-4cac-bd5b-2c0ccca42b09",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "projectPath": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -93,7 +93,7 @@
               "protected": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "path": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
             "snippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
             "label": "Microsoft.EntityFrameworkCore 9.0.0",
@@ -108,7 +108,7 @@
         {
           "incidentId": "1b1e5b82-dbf8-43f4-99f9-5006810552f3",
           "ruleId": "Project.0002",
-          "projectPath": "HalloApp.Core\\HalloApp.Core.csproj",
+          "projectPath": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -116,7 +116,7 @@
               "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
             },
             "kind": "File",
-            "path": "HalloApp.Core\\HalloApp.Core.csproj",
+            "path": "SkoulouApp.Core\\SkoulouApp.Core.csproj",
             "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "properties": {
@@ -129,12 +129,12 @@
       "features": []
     },
     {
-      "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+      "path": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
       "startingProject": true,
       "issues": 3,
       "storyPoints": 3,
       "properties": {
-        "appName": "HalloApp.Tests",
+        "appName": "SkoulouApp.Tests",
         "projectKind": "DotNetCoreApp",
         "frameworks": [
           "net9.0"
@@ -158,7 +158,7 @@
         {
           "incidentId": "777c13e2-ab56-44a1-8162-c1712ba97f41",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "projectPath": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -166,7 +166,7 @@
               "protected": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "path": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
             "snippet": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore.InMemory, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.InMemory, and replace with new package Microsoft.EntityFrameworkCore.InMemory 10.0.10",
             "label": "Microsoft.EntityFrameworkCore.InMemory 9.0.0",
@@ -181,7 +181,7 @@
         {
           "incidentId": "e667b5b1-5f25-41c4-b727-513f3baa0e33",
           "ruleId": "NuGet.0005",
-          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "projectPath": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -189,7 +189,7 @@
               "protected": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3"
             },
             "kind": "File",
-            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "path": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
             "snippet": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
             "protectedSnippet": "xunit, 2.9.2\n\nEmpfehlung:\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
             "label": "xunit 2.9.2",
@@ -204,7 +204,7 @@
         {
           "incidentId": "dba13893-68b9-48d3-896b-6807242ebbd4",
           "ruleId": "Project.0002",
-          "projectPath": "HalloApp.Tests\\HalloApp.Tests.csproj",
+          "projectPath": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -212,7 +212,7 @@
               "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
             },
             "kind": "File",
-            "path": "HalloApp.Tests\\HalloApp.Tests.csproj",
+            "path": "SkoulouApp.Tests\\SkoulouApp.Tests.csproj",
             "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "properties": {
@@ -225,12 +225,12 @@
       "features": []
     },
     {
-      "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+      "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
       "startingProject": true,
       "issues": 5,
       "storyPoints": 16,
       "properties": {
-        "appName": "HalloApp.WebApp",
+        "appName": "SkoulouApp.WebApp",
         "projectKind": "AspNetCore",
         "frameworks": [
           "net9.0"
@@ -254,7 +254,7 @@
         {
           "incidentId": "eb3a126c-3057-414c-9c5a-b0cfbe0dc664",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -262,7 +262,7 @@
               "protected": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
             "protectedSnippet": "Microsoft.AspNetCore.Identity.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.AspNetCore.Identity.EntityFrameworkCore, and replace with new package Microsoft.AspNetCore.Identity.EntityFrameworkCore 10.0.10",
             "label": "Microsoft.AspNetCore.Identity.EntityFrameworkCore 9.0.0",
@@ -277,7 +277,7 @@
         {
           "incidentId": "63c01d09-5ec9-498d-b3f2-38e0dd7418be",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -285,7 +285,7 @@
               "protected": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore, and replace with new package Microsoft.EntityFrameworkCore 10.0.10",
             "label": "Microsoft.EntityFrameworkCore 9.0.0",
@@ -300,7 +300,7 @@
         {
           "incidentId": "a5734192-24f5-4a9b-80d5-c90b16c644f9",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -308,7 +308,7 @@
               "protected": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore.Design, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Design, and replace with new package Microsoft.EntityFrameworkCore.Design 10.0.10",
             "label": "Microsoft.EntityFrameworkCore.Design 9.0.0",
@@ -323,7 +323,7 @@
         {
           "incidentId": "273a17c6-450b-479b-8b87-f096c6a24a4d",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -331,7 +331,7 @@
               "protected": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore.SqlServer, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.SqlServer, and replace with new package Microsoft.EntityFrameworkCore.SqlServer 10.0.10",
             "label": "Microsoft.EntityFrameworkCore.SqlServer 9.0.0",
@@ -346,7 +346,7 @@
         {
           "incidentId": "9130e4a1-5050-43a6-9120-3c37fe70d550",
           "ruleId": "NuGet.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -354,7 +354,7 @@
               "protected": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10",
             "protectedSnippet": "Microsoft.EntityFrameworkCore.Tools, 9.0.0\n\nEmpfehlung:\n\nRemove Microsoft.EntityFrameworkCore.Tools, and replace with new package Microsoft.EntityFrameworkCore.Tools 10.0.10",
             "label": "Microsoft.EntityFrameworkCore.Tools 9.0.0",
@@ -369,7 +369,7 @@
         {
           "incidentId": "664d96ac-7e99-42e3-a526-a61efd376b07",
           "ruleId": "Project.0002",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -377,7 +377,7 @@
               "protected": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+            "path": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
             "snippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "protectedSnippet": "Aktuelles Zielframework: net9.0\nEmpfohlenes Zielframework: net10.0",
             "properties": {
@@ -390,7 +390,7 @@
           "incidentId": "76aaf470-3475-469b-9431-c525e6e56df2",
           "ruleId": "Api.0003",
           "description": "Breaking change: URI length limits removed ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -398,7 +398,7 @@
               "protected": "T:System.Uri"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\obj\\Debug\\net9.0\\Microsoft.CodeAnalysis.Razor.Compiler\\Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator\\Components/Auth/RedirectToLogin_razor.g.cs",
+            "path": "SkoulouApp.WebApp\\obj\\Debug\\net9.0\\Microsoft.CodeAnalysis.Razor.Compiler\\Microsoft.NET.Sdk.Razor.SourceGenerators.RazorSourceGenerator\\Components/Auth/RedirectToLogin_razor.g.cs",
             "snippet": "var returnUrl = Uri.EscapeDataString(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));",
             "protectedSnippet": "T:System.Uri",
             "label": "T:System.Uri",
@@ -417,7 +417,7 @@
           "incidentId": "00be86d9-63da-47f8-97c6-c36b360a4339",
           "ruleId": "Api.0002",
           "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -425,7 +425,7 @@
               "protected": "M:System.TimeSpan.FromSeconds(System.Int64)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
+            "path": "SkoulouApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
             "snippet": "timer = new Timer(OnTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));",
             "protectedSnippet": "M:System.TimeSpan.FromSeconds(System.Int64)",
             "label": "M:System.TimeSpan.FromSeconds(System.Int64)",
@@ -444,7 +444,7 @@
           "incidentId": "327af9b5-f2e1-4ea0-8988-23e52c27bad5",
           "ruleId": "Api.0002",
           "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -452,7 +452,7 @@
               "protected": "M:System.TimeSpan.FromSeconds(System.Int64)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
+            "path": "SkoulouApp.WebApp\\Components\\Pages\\StudentExam.razor.cs",
             "snippet": "TimeSpan.FromSeconds(Math.Max(0, remainingSeconds))",
             "protectedSnippet": "M:System.TimeSpan.FromSeconds(System.Int64)",
             "label": "M:System.TimeSpan.FromSeconds(System.Int64)",
@@ -471,7 +471,7 @@
           "incidentId": "5f07e8be-118e-436d-a882-f099ddf9847a",
           "ruleId": "Api.0003",
           "description": "Breaking change: Exception diagnostics are suppressed when IExceptionHandler.TryHandleAsync returns true ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -479,7 +479,7 @@
               "protected": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "app.UseExceptionHandler(\u0022/Error\u0022, createScopeForErrors: true);",
             "protectedSnippet": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)",
             "label": "M:Microsoft.AspNetCore.Builder.ExceptionHandlerExtensions.UseExceptionHandler(Microsoft.AspNetCore.Builder.IApplicationBuilder,System.String,System.Boolean)",
@@ -498,7 +498,7 @@
           "incidentId": "eed88350-badc-49a8-a41a-0ea0304928e8",
           "ruleId": "Api.0001",
           "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -506,7 +506,7 @@
               "protected": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "var reseedCourseCatalog = app.Configuration.GetValue\u003Cbool\u003E(\u0022Seeding:ReseedCourseCatalog\u0022);",
             "protectedSnippet": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)",
             "label": "M:Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue\u0060\u00601(Microsoft.Extensions.Configuration.IConfiguration,System.String)",
@@ -525,7 +525,7 @@
           "incidentId": "6b2ac2f2-f092-46cc-8a2f-2464c4c0e019",
           "ruleId": "Api.0001",
           "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -533,7 +533,7 @@
               "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "builder.Services.Configure\u003CAzureSqlOptions\u003E(builder.Configuration.GetSection(AzureSqlOptions.SectionName));",
             "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
             "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
@@ -552,7 +552,7 @@
           "incidentId": "ec0e0ed6-5045-479f-8f68-d43d4e794027",
           "ruleId": "Api.0001",
           "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -560,7 +560,7 @@
               "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "builder.Services.Configure\u003CAzureBlobStorageOptions\u003E(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));",
             "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
             "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
@@ -579,7 +579,7 @@
           "incidentId": "5caecdea-4930-4023-bba7-6c8506cd3b8d",
           "ruleId": "Api.0001",
           "description": "Breaking change: DynamicallyAccessedMembers annotation removed from trim-unsafe configuration APIs ",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -587,7 +587,7 @@
               "protected": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "builder.Services.Configure\u003CMediaStorageOptions\u003E(builder.Configuration.GetSection(MediaStorageOptions.SectionName));",
             "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
             "label": "M:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure\u0060\u00601(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)",
@@ -606,7 +606,7 @@
           "incidentId": "bb0716d1-e72c-47de-9080-6f8e13fae3b8",
           "ruleId": "Api.0002",
           "description": "API is available in package Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6. Add package reference to Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -614,7 +614,7 @@
               "protected": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
             "protectedSnippet": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions",
             "label": "T:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions",
@@ -630,7 +630,7 @@
           "incidentId": "ab72e8e5-4672-4944-97ea-e465925c0868",
           "ruleId": "Api.0002",
           "description": "API is available in package Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6. Add package reference to Microsoft.AspNetCore.Identity.EntityFrameworkCore, 8.0.6",
-          "projectPath": "HalloApp.WebApp\\HalloApp.WebApp.csproj",
+          "projectPath": "SkoulouApp.WebApp\\SkoulouApp.WebApp.csproj",
           "state": "Active",
           "location": {
             "snippetModel": {
@@ -638,7 +638,7 @@
               "protected": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)"
             },
             "kind": "File",
-            "path": "HalloApp.WebApp\\Program.cs",
+            "path": "SkoulouApp.WebApp\\Program.cs",
             "snippet": "builder.Services\r\n    .AddIdentityCore\u003CAppUser\u003E(options =\u003E\r\n    {\r\n        options.User.RequireUniqueEmail = true;\r\n        options.Password.RequireDigit = true;\r\n        options.Password.RequireLowercase = true;\r\n        options.Password.RequireUppercase = false;\r\n        options.Password.RequireNonAlphanumeric = false;\r\n        options.Password.RequiredLength = 6;\r\n        options.SignIn.RequireConfirmedAccount = false;\r\n    })\r\n    .AddRoles\u003CRole\u003E()\r\n    .AddEntityFrameworkStores\u003CApplicationDbContext\u003E()\r\n    .AddSignInManager()\r\n    .AddDefaultTokenProviders();",
             "protectedSnippet": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)",
             "label": "M:Microsoft.Extensions.DependencyInjection.IdentityEntityFrameworkBuilderExtensions.AddEntityFrameworkStores\u0060\u00601(Microsoft.AspNetCore.Identity.IdentityBuilder)",

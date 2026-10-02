@@ -1,20 +1,20 @@
 # Migration nach Azure SQL Database
 
-Diese Anleitung beschreibt den Umzug der HALLO-APP-Datenbank von der lokalen
+Diese Anleitung beschreibt den Umzug der SKOULOU-APP-Datenbank von der lokalen
 SQL-Server-Instanz auf eine Azure SQL Database.
 
 ## 1. Azure SQL Database anlegen
 
 ```powershell
-az sql server create --name halloapp-sql --resource-group halloapp-rg --location westeurope --enable-ad-only-auth --external-admin-name "<Entra-Gruppe>" --external-admin-type Group --external-admin-sid "<Objekt-Id>"
-az sql db create --resource-group halloapp-rg --server halloapp-sql --name HALLOAPPDb --service-objective S0 --backup-storage-redundancy Local
+az sql server create --name skoulouapp-sql --resource-group skoulouapp-rg --location westeurope --enable-ad-only-auth --external-admin-name "<Entra-Gruppe>" --external-admin-type Group --external-admin-sid "<Objekt-Id>"
+az sql db create --resource-group skoulouapp-rg --server skoulouapp-sql --name SKOULOUAPPDb --service-objective S0 --backup-storage-redundancy Local
 ```
 
 Firewall für Azure-Dienste und den eigenen Client freigeben:
 
 ```powershell
-az sql server firewall-rule create --resource-group halloapp-rg --server halloapp-sql --name AllowAzure --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
-az sql server firewall-rule create --resource-group halloapp-rg --server halloapp-sql --name MeinClient --start-ip-address <eigene-IP> --end-ip-address <eigene-IP>
+az sql server firewall-rule create --resource-group skoulouapp-rg --server skoulouapp-sql --name AllowAzure --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+az sql server firewall-rule create --resource-group skoulouapp-rg --server skoulouapp-sql --name MeinClient --start-ip-address <eigene-IP> --end-ip-address <eigene-IP>
 ```
 
 ## 2. Verbindungszeichenfolge konfigurieren
@@ -29,36 +29,36 @@ Repository landen.
 ### Empfohlen: Managed Identity (ohne Passwort)
 
 ```
-Server=tcp:halloapp-sql.database.windows.net,1433;Database=HALLOAPPDb;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+Server=tcp:skoulouapp-sql.database.windows.net,1433;Database=SKOULOUAPPDb;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
 ```
 
 ### Alternative: SQL-Benutzer
 
 ```
-Server=tcp:halloapp-sql.database.windows.net,1433;Database=HALLOAPPDb;User ID=<benutzer>;Password=<kennwort>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+Server=tcp:skoulouapp-sql.database.windows.net,1433;Database=SKOULOUAPPDb;User ID=<benutzer>;Password=<kennwort>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
 ```
 
 Wert lokal per User Secrets setzen (nicht in `appsettings.json` eintragen):
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:AzureDefaultConnection" "<verbindungszeichenfolge>" --project HalloApp.WebApp
-dotnet user-secrets set "Database:ConnectionStringName" "AzureDefaultConnection" --project HalloApp.WebApp
+dotnet user-secrets set "ConnectionStrings:AzureDefaultConnection" "<verbindungszeichenfolge>" --project SkoulouApp.WebApp
+dotnet user-secrets set "Database:ConnectionStringName" "AzureDefaultConnection" --project SkoulouApp.WebApp
 ```
 
 In Azure App Service stattdessen als App-Einstellung hinterlegen:
 
 ```powershell
-az webapp config appsettings set --resource-group halloapp-rg --name halloapp-web --settings "Database__ConnectionStringName=AzureDefaultConnection"
-az webapp config connection-string set --resource-group halloapp-rg --name halloapp-web --connection-string-type SQLAzure --settings AzureDefaultConnection="<verbindungszeichenfolge>"
+az webapp config appsettings set --resource-group skoulouapp-rg --name skoulouapp-web --settings "Database__ConnectionStringName=AzureDefaultConnection"
+az webapp config connection-string set --resource-group skoulouapp-rg --name skoulouapp-web --connection-string-type SQLAzure --settings AzureDefaultConnection="<verbindungszeichenfolge>"
 ```
 
 Bei Managed Identity muss die Identität einmalig in der Datenbank berechtigt werden:
 
 ```sql
-CREATE USER [halloapp-web] FROM EXTERNAL PROVIDER;
-ALTER ROLE db_datareader ADD MEMBER [halloapp-web];
-ALTER ROLE db_datawriter ADD MEMBER [halloapp-web];
-ALTER ROLE db_ddladmin ADD MEMBER [halloapp-web];
+CREATE USER [skoulouapp-web] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [skoulouapp-web];
+ALTER ROLE db_datawriter ADD MEMBER [skoulouapp-web];
+ALTER ROLE db_ddladmin ADD MEMBER [skoulouapp-web];
 ```
 
 `db_ddladmin` wird nur benötigt, wenn die Migrationen beim Start automatisch
@@ -71,7 +71,7 @@ also beim ersten Start automatisch. Für Produktivumgebungen ist ein
 kontrollierter Rollout über ein Skript vorzuziehen:
 
 ```powershell
-dotnet ef migrations script --idempotent --project HalloApp.WebApp --startup-project HalloApp.WebApp --output azure-schema.sql
+dotnet ef migrations script --idempotent --project SkoulouApp.WebApp --startup-project SkoulouApp.WebApp --output azure-schema.sql
 ```
 
 Das idempotente Skript kann gefahrlos mehrfach ausgeführt werden. Alternativ direkt anwenden:
@@ -79,7 +79,7 @@ Das idempotente Skript kann gefahrlos mehrfach ausgeführt werden. Alternativ di
 ```powershell
 $env:ConnectionStrings__AzureDefaultConnection = "<verbindungszeichenfolge>"
 $env:Database__ConnectionStringName = "AzureDefaultConnection"
-dotnet ef database update --project HalloApp.WebApp --startup-project HalloApp.WebApp
+dotnet ef database update --project SkoulouApp.WebApp --startup-project SkoulouApp.WebApp
 ```
 
 ## 4. Bestandsdaten übernehmen (optional)
@@ -88,8 +88,8 @@ Nur nötig, wenn vorhandene Daten aus der lokalen Datenbank übernommen werden
 sollen. Empfohlen ist der BACPAC-Weg:
 
 ```powershell
-SqlPackage /Action:Export /SourceConnectionString:"Server=localhost;Database=HALLOAPPDb;Trusted_Connection=True;TrustServerCertificate=True" /TargetFile:"HALLOAPPDb.bacpac"
-SqlPackage /Action:Import /TargetConnectionString:"<azure-verbindungszeichenfolge>" /SourceFile:"HALLOAPPDb.bacpac"
+SqlPackage /Action:Export /SourceConnectionString:"Server=localhost;Database=SKOULOUAPPDb;Trusted_Connection=True;TrustServerCertificate=True" /TargetFile:"SKOULOUAPPDb.bacpac"
+SqlPackage /Action:Import /TargetConnectionString:"<azure-verbindungszeichenfolge>" /SourceFile:"SKOULOUAPPDb.bacpac"
 ```
 
 Danach Abschnitt 3 ausführen, damit fehlende Migrationen nachgezogen werden.

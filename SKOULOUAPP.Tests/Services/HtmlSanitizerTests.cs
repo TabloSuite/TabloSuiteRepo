@@ -1,7 +1,7 @@
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.Services.Text;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="HtmlSanitizer"/>, die sicherstellen, dass erlaubte
@@ -24,7 +24,7 @@ public class HtmlSanitizerTests
     [Fact]
     public void Sanitize_SkriptTag_WirdEntfernt()
     {
-        var eingabe = "<p>Hallo</p><script>alert('xss')</script>";
+        var eingabe = "<p>Skoulou</p><script>alert('xss')</script>";
 
         var ergebnis = HtmlSanitizer.Sanitize(eingabe);
 

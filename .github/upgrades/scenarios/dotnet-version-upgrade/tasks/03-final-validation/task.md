@@ -7,14 +7,14 @@ Run full solution validation after the atomic upgrade. This includes building th
 ## Research Findings
 
 ### Projects Affected
-- `HALLOAPPMAPPE.slnx` — finaler Build- und Paketstatus-Gate.
-- `HalloApp.Tests/HalloApp.Tests.csproj` — finales Paket-Audit meldete `xunit.runner.visualstudio` als stabil aktualisierbar; Update von `2.8.2` auf `3.1.5` wurde übernommen.
+- `SKOULOUAPPMAPPE.slnx` — finaler Build- und Paketstatus-Gate.
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj` — finales Paket-Audit meldete `xunit.runner.visualstudio` als stabil aktualisierbar; Update von `2.8.2` auf `3.1.5` wurde übernommen.
 
 ### Validation Performed
-- `dotnet build HALLOAPPMAPPE.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
-- `dotnet test HalloApp.Tests/HalloApp.Tests.csproj` erfolgreich: 106 Tests bestanden, 0 fehlgeschlagen, 0 übersprungen.
-- `dotnet list HALLOAPPMAPPE.slnx package --outdated` meldet keine verbleibenden Updates.
-- `dotnet list HALLOAPPMAPPE.slnx package --vulnerable --include-transitive` meldet keine anfälligen Pakete.
+- `dotnet build SKOULOUAPPMAPPE.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
+- `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj` erfolgreich: 106 Tests bestanden, 0 fehlgeschlagen, 0 übersprungen.
+- `dotnet list SKOULOUAPPMAPPE.slnx package --outdated` meldet keine verbleibenden Updates.
+- `dotnet list SKOULOUAPPMAPPE.slnx package --vulnerable --include-transitive` meldet keine anfälligen Pakete.
 
 ### Deferred Recommendations
 - Central Package Management (`Directory.Packages.props`) kann später separat eingeführt werden. Der Upgrade-Plan hat CPM bewusst zurückgestellt, damit das Framework-/Paketupgrade klein und überprüfbar bleibt.

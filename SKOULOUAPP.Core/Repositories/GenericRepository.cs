@@ -1,18 +1,18 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Interfaces.IRepositories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace HalloApp.Core.Repositories;
+namespace SkoulouApp.Core.Repositories;
 
 /// <summary>
-/// Generische Repository-Implementierung auf Basis von <see cref="IHalloAppDbContext"/>.
+/// Generische Repository-Implementierung auf Basis von <see cref="ISkoulouAppDbContext"/>.
 /// </summary>
-public class GenericRepository<TEntity>(IHalloAppDbContext dbContext) : IGenericRepository<TEntity>
+public class GenericRepository<TEntity>(ISkoulouAppDbContext dbContext) : IGenericRepository<TEntity>
     where TEntity : AuditableModel
 {
-    protected readonly IHalloAppDbContext DbContext = dbContext;
+    protected readonly ISkoulouAppDbContext DbContext = dbContext;
     protected readonly DbSet<TEntity> DbSet = dbContext.Set<TEntity>();
 
     public async Task<IReadOnlyList<TEntity>> GetAllAsync(CancellationToken cancellationToken = default)

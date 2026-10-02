@@ -1,4 +1,4 @@
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// Austauschbare Text-to-Speech-Abstraktion. Standardimplementierung nutzt die Browser-Web-Speech-API

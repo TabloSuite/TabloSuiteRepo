@@ -1,11 +1,11 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using HalloApp.Core.Options;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Core.Services.Storage;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class AzureFinanzBelegStorage(IOptions<AzureBlobStorageOptions> options, IWebHostEnvironment environment) : IFinanzBelegStorage
 {

@@ -6,9 +6,9 @@
         {
           "title": "Se saluer",
           "summary": "Dire bonjour, au revoir et merci",
-          "content": "Dans cette leçon, tu apprends les premières formules de politesse en allemand. Mots à retenir :\nHallo (bonjour, familier)\nGuten Morgen (bonjour le matin)\nGuten Tag (bonjour la journée)\nGuten Abend (bonsoir)\nTschüss (salut/au revoir)\nAuf Wiedersehen (au revoir)\nDanke (merci)\nBitte (s'il te plaît / de rien)\nJa (oui)\nNein (non).",
+          "content": "Dans cette leçon, tu apprends les premières formules de politesse en allemand. Mots à retenir :\nSkoulou (bonjour, familier)\nGuten Morgen (bonjour le matin)\nGuten Tag (bonjour la journée)\nGuten Abend (bonsoir)\nTschüss (salut/au revoir)\nAuf Wiedersehen (au revoir)\nDanke (merci)\nBitte (s'il te plaît / de rien)\nJa (oui)\nNein (non).",
           "vocabulary": [
-            { "fr": "bonjour (familier)", "de": "Hallo" },
+            { "fr": "bonjour (familier)", "de": "Skoulou" },
             { "fr": "bonjour (le matin)", "de": "Guten Morgen" },
             { "fr": "bonjour (la journée)", "de": "Guten Tag" },
             { "fr": "bonsoir", "de": "Guten Abend" },

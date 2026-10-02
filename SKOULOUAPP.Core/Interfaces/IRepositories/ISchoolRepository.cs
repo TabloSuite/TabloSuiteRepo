@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Core.Interfaces.IRepositories;
+namespace SkoulouApp.Core.Interfaces.IRepositories;
 
 /// <summary>
 /// Repository für Schulen inkl. Lehrer- und Schülerbeziehungen.

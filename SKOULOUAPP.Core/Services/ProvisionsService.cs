@@ -1,13 +1,13 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Billing;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Billing;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
-/// Berechnet die Provisionsverteilung aus bezahlten HALLOAPP-Abo-Freischaltungen.
+/// Berechnet die Provisionsverteilung aus bezahlten SKOULOUAPP-Abo-Freischaltungen.
 ///
 /// Aus jedem bezahlten Abo entstehen schulweit aggregierte Anteile für Schule,
 /// Lehrerpool, ProductOwner und Admin/Betreiber. Bei alten Daten ohne Snapshot
@@ -19,7 +19,7 @@ namespace HalloApp.Core.Services;
 /// - ProductOwner sehen ihren ProductOwner-Anteil der zugewiesenen Schule(n).
 /// - SuperAdmin sieht alle Anteile.
 /// </summary>
-public class ProvisionsService(IHalloAppDbContext dbContext)
+public class ProvisionsService(ISkoulouAppDbContext dbContext)
 {
     /// <summary>Lädt die zentrale Konfiguration oder die bestätigten Standardwerte.</summary>
     public async Task<CommissionSettingsModel> GetCommissionSettingsAsync(CancellationToken cancellationToken = default)
@@ -31,11 +31,11 @@ public class ProvisionsService(IHalloAppDbContext dbContext)
 
         return new CommissionSettingsModel
         {
-            ReferencePrice = settings?.GlobalSubscriptionPrice ?? HalloAppKonstanten.KommissionsBasisPreis,
-            GlobalSubscriptionPrice = settings?.GlobalSubscriptionPrice ?? HalloAppKonstanten.StandardPreisAbo,
-            SchoolLeaderPercent = settings?.SchoolLeaderPercent ?? HalloAppKonstanten.StandardProvisionSchulleiterProzent,
-            TeacherPercent = settings?.TeacherPercent ?? HalloAppKonstanten.StandardProvisionLehrerProzent,
-            ProductOwnerPercent = settings?.ProductOwnerPercent ?? HalloAppKonstanten.StandardProvisionProductOwnerProzent
+            ReferencePrice = settings?.GlobalSubscriptionPrice ?? SkoulouAppKonstanten.KommissionsBasisPreis,
+            GlobalSubscriptionPrice = settings?.GlobalSubscriptionPrice ?? SkoulouAppKonstanten.StandardPreisAbo,
+            SchoolLeaderPercent = settings?.SchoolLeaderPercent ?? SkoulouAppKonstanten.StandardProvisionSchulleiterProzent,
+            TeacherPercent = settings?.TeacherPercent ?? SkoulouAppKonstanten.StandardProvisionLehrerProzent,
+            ProductOwnerPercent = settings?.ProductOwnerPercent ?? SkoulouAppKonstanten.StandardProvisionProductOwnerProzent
         };
     }
 
@@ -287,13 +287,13 @@ public class ProvisionsService(IHalloAppDbContext dbContext)
             var niveauCode = levelCodes.TryGetValue(position.KlasseId, out var code) ? code : string.Empty;
             var schoolShare = position.SchoolLeaderCommissionAtEnrollment > 0m
                 ? position.SchoolLeaderCommissionAtEnrollment
-                : HalloAppKonstanten.BerechneProvision(position.PriceAtEnrollment, HalloAppKonstanten.StandardProvisionSchulleiterProzent);
+                : SkoulouAppKonstanten.BerechneProvision(position.PriceAtEnrollment, SkoulouAppKonstanten.StandardProvisionSchulleiterProzent);
             var teacherShare = position.TeacherCommissionAtEnrollment > 0m
                 ? position.TeacherCommissionAtEnrollment
-                : HalloAppKonstanten.BerechneProvision(position.PriceAtEnrollment, HalloAppKonstanten.StandardProvisionLehrerProzent);
+                : SkoulouAppKonstanten.BerechneProvision(position.PriceAtEnrollment, SkoulouAppKonstanten.StandardProvisionLehrerProzent);
             var productOwnerShare = position.ProductOwnerCommissionAtEnrollment > 0m
                 ? position.ProductOwnerCommissionAtEnrollment
-                : HalloAppKonstanten.BerechneProvision(position.PriceAtEnrollment, HalloAppKonstanten.StandardProvisionProductOwnerProzent);
+                : SkoulouAppKonstanten.BerechneProvision(position.PriceAtEnrollment, SkoulouAppKonstanten.StandardProvisionProductOwnerProzent);
             var adminShare = position.PriceAtEnrollment - schoolShare - teacherShare - productOwnerShare;
 
             anteile.Add(new ProvisionsAnteil
@@ -355,7 +355,6 @@ public class ProvisionsService(IHalloAppDbContext dbContext)
 
     private static void SetzeAboTypZaehler(ProvisionsUebersicht uebersicht, List<LevelEnrollment> positionen)
     {
-        uebersicht.AnzahlHalloBasis = positionen.Count(position => position.AboTyp == AboTyp.HalloApp);
-        uebersicht.AnzahlHalloPlus = 0;
+        uebersicht.AnzahlPositionen = positionen.Count(position => position.AboTyp == AboTyp.SkoulouApp);
     }
 }

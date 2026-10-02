@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using HalloApp.Core.Validation;
+using SkoulouApp.Core.Validation;
 
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 public class UserFormModel
 {
@@ -42,6 +42,7 @@ public class UserFormModel
     public List<Guid> FachIds { get; set; } = [];
     public Guid? CurrentKlasseId { get; set; }
     public List<TeacherClassAssignmentFormModel> TeacherClassAssignments { get; set; } = [];
+    public List<CoordinatorFinanceAccessFormModel> CoordinatorFinanceAccesses { get; set; } = [];
 
     [DataType(DataType.Password)]
     [MinLength(6, ErrorMessage = "Le mot de passe doit contenir au moins 6 caractères.")]
@@ -50,4 +51,13 @@ public class UserFormModel
     [DataType(DataType.Password)]
     [Compare(nameof(Password), ErrorMessage = "Les mots de passe ne correspondent pas.")]
     public string? PasswordConfirmation { get; set; }
+}
+
+public class CoordinatorFinanceAccessFormModel
+{
+    public Guid SchoolId { get; set; }
+    public bool Menu { get; set; }
+    public bool Dashboard { get; set; }
+    public bool Entries { get; set; }
+    public bool Cycles { get; set; }
 }

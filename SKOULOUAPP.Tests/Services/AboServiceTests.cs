@@ -1,12 +1,12 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="AboService"/>: Abo-Zuweisung, Preis-Einfrieren
@@ -24,8 +24,7 @@ public class AboServiceTests
             Id = Guid.NewGuid(),
             Name = "Schule A",
             IsActive = true,
-            PreisHalloBasis = preisBasis,
-            PreisHalloPlus = preisPlus
+            SubscriptionPriceOverride = preisPlus ?? preisBasis
         };
 
         var studentUser = new AppUser { Id = Guid.NewGuid(), FullName = "Schüler", UserName = "schueler" };
@@ -73,7 +72,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        var (succeeded, _) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, _) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert
         Assert.True(succeeded);
@@ -81,8 +80,8 @@ public class AboServiceTests
         Assert.True(enrollment.IsUnlocked);
         Assert.True(enrollment.IsPaid);
         Assert.NotNull(enrollment.PaidAtUtc);
-        Assert.Equal(AboTyp.HalloApp, enrollment.AboTyp);
-        Assert.Equal(HalloAppKonstanten.StandardPreisAbo, enrollment.PriceAtEnrollment);
+        Assert.Equal(AboTyp.SkoulouApp, enrollment.AboTyp);
+        Assert.Equal(SkoulouAppKonstanten.StandardPreisAbo, enrollment.PriceAtEnrollment);
     }
 
     [Fact]
@@ -95,7 +94,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert
         var enrollment = Assert.Single(db.LevelEnrollments);
@@ -123,7 +122,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert
         Assert.True(succeeded, message);
@@ -134,7 +133,7 @@ public class AboServiceTests
     }
 
     [Fact]
-    public async Task AboZuweisenAsync_InitialisiertBestehendeKlassenfreischaltungAlsHalloAppAbo()
+    public async Task AboZuweisenAsync_InitialisiertBestehendeKlassenfreischaltungAlsSkoulouAppAbo()
     {
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, level) = SeedBasis(db, preisBasis: 12500m);
@@ -145,7 +144,7 @@ public class AboServiceTests
             StudentId = student.Id,
             KlasseId = level.Id,
             IsUnlocked = true,
-            AboTyp = AboTyp.HalloApp,
+            AboTyp = AboTyp.SkoulouApp,
             PriceAtEnrollment = 50000m,
             SchoolLeaderCommissionAtEnrollment = 0m,
             TeacherCommissionAtEnrollment = 0m
@@ -153,7 +152,7 @@ public class AboServiceTests
         await db.SaveChangesAsync();
         var service = new AboService(db);
 
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.True(succeeded, message);
         var enrollment = Assert.Single(db.LevelEnrollments);
@@ -171,7 +170,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert
         Assert.False(succeeded);
@@ -187,7 +186,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        var (succeeded, message) = await service.AboZuweisenAsync(Guid.NewGuid(), Guid.NewGuid(), AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(Guid.NewGuid(), Guid.NewGuid(), AboTyp.SkoulouApp);
 
         // Assert
         Assert.False(succeeded);
@@ -195,7 +194,7 @@ public class AboServiceTests
     }
 
     [Fact]
-    public async Task AboZuweisenAsync_BereitsFinalesHalloAppNachZahlung_KannNichtErneutGesetztWerden()
+    public async Task AboZuweisenAsync_BereitsFinalesSkoulouAppNachZahlung_KannNichtErneutGesetztWerden()
     {
         // Arrange
         using var db = TestDbContext.CreateInMemory();
@@ -207,56 +206,56 @@ public class AboServiceTests
         {
             StudentId = student.Id,
             KlasseId = level.Id,
-            AboTyp = AboTyp.HalloApp,
+            AboTyp = AboTyp.SkoulouApp,
             IsUnlocked = true,
             IsPaid = false,
-            PriceAtEnrollment = HalloAppKonstanten.StandardPreisAbo,
-            SchoolLeaderCommissionAtEnrollment = HalloAppKonstanten.ProvisionSchulleiterBasis,
-            TeacherCommissionAtEnrollment = HalloAppKonstanten.ProvisionLehrerBasis,
-            ProductOwnerCommissionAtEnrollment = HalloAppKonstanten.ProvisionProductOwnerBasis,
+            PriceAtEnrollment = SkoulouAppKonstanten.StandardPreisAbo,
+            SchoolLeaderCommissionAtEnrollment = SkoulouAppKonstanten.ProvisionSchulleiterBasis,
+            TeacherCommissionAtEnrollment = SkoulouAppKonstanten.ProvisionLehrerBasis,
+            ProductOwnerCommissionAtEnrollment = SkoulouAppKonstanten.ProvisionProductOwnerBasis,
             UnlockedAtUtc = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         // Act
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert
         Assert.False(succeeded);
         Assert.Contains("déjà attribué", message);
-        Assert.Equal(AboTyp.HalloApp, db.LevelEnrollments.Single().AboTyp);
+        Assert.Equal(AboTyp.SkoulouApp, db.LevelEnrollments.Single().AboTyp);
     }
 
     [Fact]
-    public async Task AboZuweisenAsync_HalloBasisKannNichtErneutFestgelegtWerden()
+    public async Task AboZuweisenAsync_SkoulouBasisKannNichtErneutFestgelegtWerden()
     {
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.False(succeeded);
         Assert.Contains("déjà attribué", message);
     }
 
     [Fact]
-    public async Task AboZuweisenAsync_HalloPlusKannNichtZuBasisHerabgestuftWerden()
+    public async Task AboZuweisenAsync_SkoulouPlusKannNichtZuBasisHerabgestuftWerden()
     {
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
-        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.False(succeeded);
-        Assert.Contains("HALLOAPP", message);
-        Assert.Equal(AboTyp.HalloApp, db.LevelEnrollments.Single().AboTyp);
+        Assert.Contains("SKOULOUAPP", message);
+        Assert.Equal(AboTyp.SkoulouApp, db.LevelEnrollments.Single().AboTyp);
     }
 
     [Fact]
@@ -267,7 +266,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         var (undoSucceeded, undoMessage) = await service.BezahltZuruecknehmenAsync(student.Id, level.Id, istSuperAdmin: true);
         Assert.True(undoSucceeded, undoMessage);
 
@@ -289,7 +288,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         // Act
@@ -310,7 +309,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         // Act
@@ -330,7 +329,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         db.KursNiveauDurchlaeufe.Single().EndDatum = DateTime.UtcNow;
@@ -353,7 +352,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         var periode = new Abrechnungsperiode
@@ -391,7 +390,7 @@ public class AboServiceTests
         var service = new AboService(db);
 
         // Act
-        await service.AboZuweisenAsync(student.Id, hoeheresLevel.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, hoeheresLevel.Id, AboTyp.SkoulouApp);
 
         // Assert
         var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
@@ -411,10 +410,10 @@ public class AboServiceTests
         await StarteAktivenDurchlaufAsync(db, schule, level);
 
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, hoeheresLevel.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, hoeheresLevel.Id, AboTyp.SkoulouApp);
 
         // Act – niedrigeres Niveau freischalten
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Assert – aktuelles Niveau bleibt beim höheren
         var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
@@ -429,7 +428,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         // Act
         var (succeeded, _) = await service.AboEntfernenAsync(student.Id, level.Id);
@@ -447,7 +446,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         Assert.NotEmpty(db.FinanzBuchungen);
 
         // Act
@@ -470,7 +469,7 @@ public class AboServiceTests
         var (schule, student, level) = SeedBasis(db);
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
-        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await service.BezahltSetzenAsync(student.Id, level.Id);
 
         var periode = new Abrechnungsperiode
@@ -508,7 +507,7 @@ public class AboServiceTests
         await StarteAktivenDurchlaufAsync(db, schule, level);
         var service = new AboService(db);
 
-        var (firstAssignSucceeded, firstAssignMessage) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (firstAssignSucceeded, firstAssignMessage) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         Assert.True(firstAssignSucceeded, firstAssignMessage);
 
         var (undoPaymentSucceeded, undoPaymentMessage) = await service.BezahltZuruecknehmenAsync(student.Id, level.Id, istSuperAdmin: true);
@@ -521,7 +520,7 @@ public class AboServiceTests
         Assert.Equal(level.Id, profil.CurrentKlasseId);
         Assert.Equal(level.Code, profil.CurrentLevelCode);
 
-        var (reassignSucceeded, reassignMessage) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloApp);
+        var (reassignSucceeded, reassignMessage) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.True(reassignSucceeded, reassignMessage);
         var enrollment = Assert.Single(db.LevelEnrollments);

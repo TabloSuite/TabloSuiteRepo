@@ -1,6 +1,6 @@
 using Microsoft.Net.Http.Headers;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 internal static class InlinePdfResponse
 {

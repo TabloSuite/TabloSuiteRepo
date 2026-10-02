@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IJSRuntime JS
 @inject AuthService AuthService
+@inject NavigationManager Navigation
 
 <AuthorizeView Context="authState">
     <Authorized>
@@ -39,15 +40,11 @@
                     </div>
 
                     <nav class="user-menu-links">
-                        <a class="user-menu-link" href="profil" @onclick="CloseMenu">
+                        <a class="user-menu-link" href="@ProfileLink" @onclick="CloseMenu">
                             <span class="user-menu-link-icon" aria-hidden="true">👤</span>
                             Mon profil
                         </a>
-                        <a class="user-menu-link" href="profil#personal-data" @onclick="CloseMenu">
-                            <span class="user-menu-link-icon" aria-hidden="true">🪪</span>
-                            Mes données personnelles
-                        </a>
-                        <a class="user-menu-link" href="profil#change-password" @onclick="CloseMenu">
+                        <a class="user-menu-link" href="@(ProfileLink + "#change-password")" @onclick="CloseMenu">
                             <span class="user-menu-link-icon" aria-hidden="true">🔒</span>
                             Changer le mot de passe
                         </a>
@@ -85,6 +82,16 @@
 
 @code {
     private bool isOpen;
+    private string ProfileLink
+    {
+        get
+        {
+            var source = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).TrimStart('/');
+            return source.Split('?', '#')[0].Equals("/profil", StringComparison.OrdinalIgnoreCase)
+                ? "profil"
+                : $"profil?returnUrl={Uri.EscapeDataString(source)}";
+        }
+    }
     private string currentTheme = "navy";
     private bool themeSynced;
     private int themeSyncAttempts;

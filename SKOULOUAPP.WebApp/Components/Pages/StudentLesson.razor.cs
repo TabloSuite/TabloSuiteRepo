@@ -1,14 +1,14 @@
 ﻿using System.Security.Claims;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentLesson
 {
@@ -25,7 +25,7 @@ public partial class StudentLesson
     private NavigationManager Navigation { get; set; } = default!;
 
     [Inject]
-    private IHalloAppDbContext DbContext { get; set; } = default!;
+    private ISkoulouAppDbContext DbContext { get; set; } = default!;
 
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = default!;
@@ -274,7 +274,7 @@ public partial class StudentLesson
         try
         {
             await JsRuntime.InvokeVoidAsync(
-                "halloStudentExerciseFeedback.play",
+                "skoulouStudentExerciseFeedback.play",
                 LessonPercent,
                 isCorrect,
                 requiresManualGrading,

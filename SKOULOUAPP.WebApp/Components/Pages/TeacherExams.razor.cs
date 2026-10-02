@@ -1,15 +1,15 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class TeacherExams
 {
@@ -20,7 +20,7 @@ public partial class TeacherExams
     private ExamService ExamService { get; set; } = default!;
 
     [Inject]
-    private IHalloAppDbContext DbContext { get; set; } = default!;
+    private ISkoulouAppDbContext DbContext { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -65,10 +65,10 @@ public partial class TeacherExams
         return Task.CompletedTask;
     }
 
-    private async Task InsertLibraryImageAsync(HalloApp.Core.Models.Media.BlobMediaAssetItem image)
+    private async Task InsertLibraryImageAsync(SkoulouApp.Core.Models.Media.BlobMediaAssetItem image)
     {
         if (form is not null && imageLibraryTargetEditor is not null
-            && image.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+            && image.MediaType == SkoulouApp.Core.DataModels.Lessons.BlobMediaType.Image
             && image.SchoolId == editorSchoolId)
         {
             await imageLibraryTargetEditor.InsertImageAsync(image.ImageUrl, image.AltText);

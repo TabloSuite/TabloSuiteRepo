@@ -1,9 +1,9 @@
-using HalloApp.WebApp.Services;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class InlinePdfResponseTests
 {

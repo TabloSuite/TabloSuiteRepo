@@ -1,10 +1,11 @@
-﻿using System.Security.Claims;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
+﻿using System.Globalization;
+using System.Security.Claims;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Student
 {
@@ -25,13 +26,13 @@ public partial class Student
     private int openExamsCount;
     private const string KlassenLabel = "Classe";
 
-    private HalloApp.Core.Models.Student.StudentCourseProgressItem? CurrentClassCard
+    private SkoulouApp.Core.Models.Student.StudentCourseProgressItem? CurrentClassCard
         => dashboard?.CourseProgress.FirstOrDefault(course => course.IsCurrentLevel);
 
-    private HalloApp.Core.Models.Student.StudentClassHistoryItem? CurrentClassHistory
+    private SkoulouApp.Core.Models.Student.StudentClassHistoryItem? CurrentClassHistory
         => dashboard?.ClassHistory.FirstOrDefault(course => course.IsCurrent);
 
-    private List<HalloApp.Core.Models.Student.StudentClassHistoryItem> OtherClasses
+    private List<SkoulouApp.Core.Models.Student.StudentClassHistoryItem> OtherClasses
         => dashboard?.ClassHistory.Where(course => !course.IsCurrent).ToList() ?? [];
 
     private string CurrentClassDisplay
@@ -155,6 +156,30 @@ public partial class Student
 
     private bool HasOpenItemsHint
         => dashboard is not null && (openLessonsCount > 0 || openExamsCount > 0);
+
+    private string LastActivityText
+    {
+        get
+        {
+            if (dashboard?.LastActivityAtUtc is not DateTime lastActivity)
+            {
+                return "Aucune activité pour le moment";
+            }
+
+            var today = DateTime.UtcNow.Date;
+            if (lastActivity.Date == today)
+            {
+                return "Dernière activité : aujourd’hui";
+            }
+
+            if (lastActivity.Date == today.AddDays(-1))
+            {
+                return "Dernière activité : hier";
+            }
+
+            return $"Dernière activité : le {lastActivity.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR"))}";
+        }
+    }
 
     private string OpenItemsHintText
     {

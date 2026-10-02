@@ -1,4 +1,4 @@
-namespace HalloApp.WebApp.Components.Shared;
+namespace SkoulouApp.WebApp.Components.Shared;
 
 public static class CountryOptions
 {

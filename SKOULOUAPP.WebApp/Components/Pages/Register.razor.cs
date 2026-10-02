@@ -1,13 +1,13 @@
-using HalloApp.Core.DataModels;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.WebApp.Models.Auth;
-using HalloApp.WebApp.Services;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.Core.DataModels;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.WebApp.Models.Auth;
+using SkoulouApp.WebApp.Services;
+using SkoulouApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Globalization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Register
 {

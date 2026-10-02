@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.BaseModel;
+namespace SkoulouApp.Core.DataModels.BaseModel;
 
 public abstract class AuditableModel
 {

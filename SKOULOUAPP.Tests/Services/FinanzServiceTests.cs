@@ -1,14 +1,14 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="FinanzService"/>: Kategorien, manuelle Buchungen,
@@ -17,6 +17,35 @@ namespace HalloApp.Tests.Services;
 public class FinanzServiceTests
 {
     private static readonly byte[] TestPdf = "%PDF-1.4\nTest"u8.ToArray();
+
+    [Fact]
+    public async Task GetFinanceAccessAsync_PlattformrollenSehenNurOhneSchreibrechte()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var own = SeedSchule(db, "École A");
+        var other = SeedSchule(db, "École B");
+        var admin = Guid.NewGuid();
+        var owner = Guid.NewGuid();
+        var adminRole = new Role { Id = Guid.NewGuid(), Name = Rollen.SuperAdmin };
+        var ownerRole = new Role { Id = Guid.NewGuid(), Name = Rollen.ProduktOwner };
+        db.Users.AddRange(new AppUser { Id = admin, UserName = "admin" }, new AppUser { Id = owner, UserName = "owner" });
+        db.Roles.AddRange(adminRole, ownerRole);
+        db.UserRoles.AddRange(new AppUserRole { UserId = admin, RoleId = adminRole.Id },
+            new AppUserRole { UserId = owner, RoleId = ownerRole.Id });
+        db.UserSchools.Add(new UserSchool { AppUserId = owner, SchoolId = own.Id, CanManageStudents = true });
+        await db.SaveChangesAsync();
+        var service = new FinanzService(db);
+
+        Assert.Equal((true, true, false, false), await service.GetFinanceAccessAsync(admin, other.Id, true));
+        Assert.Equal((true, true, false, false), await service.GetFinanceAccessAsync(owner, own.Id));
+        Assert.Equal(default, await service.GetFinanceAccessAsync(owner, other.Id, true));
+        Assert.Single(await service.GetSchulenAsync(owner, true));
+        Assert.Null(await service.GetFinanzBerichtAsync(owner, true, new FinanzFilter { SchulID = other.Id }));
+        var mutation = await service.BuchungErfassenAsync(own.Id, Guid.NewGuid(), 100m,
+            DateTime.Today, owner, istSuperAdmin: true, autorisierungErzwingen: true);
+        Assert.False(mutation.Succeeded);
+    }
+
     [Theory]
     [InlineData(-1, FinanzSaldoStatus.Verlust)]
     [InlineData(0, FinanzSaldoStatus.Ausgeglichen)]
@@ -219,6 +248,59 @@ public class FinanzServiceTests
         Assert.Single(await service.GetSchulenAsync(coordinatorId, false));
     }
 
+    [Fact]
+    public async Task ZahlungBuchenAsync_KoordinatorBrauchtCycleRechtFuerSchulgebuehr()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = SeedSchule(db);
+        var (klasse, student) = SeedNiveauMitSchueler(db, school);
+        var director = await SeedSchulLeiterAsync(db, school);
+        var coordinator = await SeedKoordinatorAsync(db, school);
+        var service = new FinanzService(db);
+        var (_, _, durchlauf) = await service.DurchlaufStartenAsync(school.Id, klasse.Id, 12500m, DateTime.UtcNow, director);
+
+        Assert.True((await service.SetCoordinatorFinanceAccessAsync(director, coordinator, school.Id,
+            menu: true, dashboard: false, entries: true, cycles: false)).Succeeded);
+        var (verweigert, _, _) = await service.ZahlungBuchenAsync(durchlauf!.Id, student.Id, 5000m,
+            ZahlungsArt.Rate, DateTime.UtcNow, coordinator, autorisierungErzwingen: true);
+        Assert.False(verweigert);
+        Assert.Empty(db.RatenZahlungen);
+
+        Assert.True((await service.SetCoordinatorFinanceAccessAsync(director, coordinator, school.Id,
+            menu: true, dashboard: false, entries: true, cycles: true)).Succeeded);
+        var (erlaubt, fehler, _) = await service.ZahlungBuchenAsync(durchlauf.Id, student.Id, 5000m,
+            ZahlungsArt.Rate, DateTime.UtcNow, coordinator, autorisierungErzwingen: true);
+        Assert.True(erlaubt, fehler);
+        Assert.Single(db.RatenZahlungen);
+    }
+
+    [Fact]
+    public async Task SetCoordinatorFinanceAccessAsync_OhneOngletsEntziehtAlleFinanzrechte()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = SeedSchule(db);
+        var directorId = await SeedSchulLeiterAsync(db, school);
+        var coordinatorId = await SeedKoordinatorAsync(db, school);
+        var service = new FinanzService(db);
+
+        var granted = await service.SetCoordinatorFinanceAccessAsync(directorId, coordinatorId, school.Id,
+            menu: true, dashboard: false, entries: true, cycles: true);
+        Assert.True(granted.Succeeded, granted.Message);
+
+        var revoked = await service.SetCoordinatorFinanceAccessAsync(directorId, coordinatorId, school.Id,
+            menu: true, dashboard: false, entries: false, cycles: false);
+
+        Assert.True(revoked.Succeeded, revoked.Message);
+        Assert.Contains("désactivé", revoked.Message);
+        Assert.Equal(default, await service.GetFinanceAccessAsync(coordinatorId, school.Id));
+        var link = Assert.Single(db.UserSchools.Where(item => item.AppUserId == coordinatorId));
+        Assert.False(link.CanAccessFinances);
+        Assert.False(link.CanViewFinanceDashboard);
+        Assert.False(link.CanCreateFinanceEntries);
+        Assert.False(link.CanManageCyclePayments);
+        Assert.Empty(await service.GetSchulenAsync(coordinatorId, false));
+    }
+
     // -------------------- Kategorien --------------------
 
     [Fact]
@@ -251,6 +333,75 @@ public class FinanzServiceTests
         Assert.False(succeeded);
         Assert.Null(kategorie);
         Assert.NotEmpty(error);
+    }
+
+    [Theory]
+    [InlineData(AbrechnungStatus.Erstellt, false)]
+    [InlineData(AbrechnungStatus.Abgelehnt, false)]
+    [InlineData(AbrechnungStatus.Akzeptiert, true)]
+    [InlineData(AbrechnungStatus.Bestaetigt, true)]
+    public async Task DurchlaufStartenAsync_VorherigeAutomatischeRechnungErfordertUeberweisungsmeldung(
+        AbrechnungStatus status, bool darfStarten)
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (klasse, _) = SeedNiveauMitSchueler(db, schule);
+        var service = new FinanzService(db);
+        var (_, _, alterDurchlauf) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-30), Guid.NewGuid());
+        alterDurchlauf!.EndDatum = DateTime.UtcNow.AddDays(-1);
+        db.Abrechnungsperioden.Add(new Abrechnungsperiode
+        {
+            SchulID = schule.Id,
+            AusgeloestDurchDurchlaufId = alterDurchlauf.Id,
+            AutomatischDurchKlassenabschlussErstellt = true,
+            Status = status
+        });
+        await db.SaveChangesAsync();
+
+        var (succeeded, error, neuerDurchlauf) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow, Guid.NewGuid());
+
+        Assert.Equal(darfStarten, succeeded);
+        Assert.Equal(darfStarten, neuerDurchlauf is not null);
+        if (!darfStarten)
+            Assert.Contains("virement", error);
+    }
+
+    [Fact]
+    public async Task DurchlaufStartenAsync_FremdeUndAeltereRechnungenBlockierenNicht()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (klasse, _) = SeedNiveauMitSchueler(db, schule);
+        var service = new FinanzService(db);
+        var (_, _, alterDurchlauf) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-60), Guid.NewGuid());
+        alterDurchlauf!.EndDatum = DateTime.UtcNow.AddDays(-30);
+        db.Abrechnungsperioden.Add(new Abrechnungsperiode
+        {
+            SchulID = schule.Id, AusgeloestDurchDurchlaufId = alterDurchlauf.Id,
+            AutomatischDurchKlassenabschlussErstellt = true, Status = AbrechnungStatus.Erstellt
+        });
+        await db.SaveChangesAsync();
+
+        var (blocked, _, _) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-29), Guid.NewGuid());
+        Assert.False(blocked);
+
+        var rechnung = db.Abrechnungsperioden.Single();
+        rechnung.Status = AbrechnungStatus.Akzeptiert;
+        await db.SaveChangesAsync();
+        var (ok, error, letzterDurchlauf) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-29), Guid.NewGuid());
+        Assert.True(ok, error);
+        letzterDurchlauf!.EndDatum = DateTime.UtcNow.AddDays(-1);
+        rechnung.Status = AbrechnungStatus.Erstellt;
+        await db.SaveChangesAsync();
+
+        var (erneutOk, erneutError, _) = await service.DurchlaufStartenAsync(
+            schule.Id, klasse.Id, 12500m, DateTime.UtcNow, Guid.NewGuid());
+        Assert.True(erneutOk, erneutError);
     }
 
     [Fact]
@@ -437,16 +588,16 @@ public class FinanzServiceTests
     }
 
     [Fact]
-    public async Task BuchungErfassenAsync_LehntManuelleHalloAppSystemKategorieAb()
+    public async Task BuchungErfassenAsync_LehntManuelleSkoulouAppSystemKategorieAb()
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
         var kategorie = new FinanzKategorie
         {
             Id = Guid.NewGuid(),
-            Bezeichnung = "HALLOAPP-Abo · Part plateforme",
+            Bezeichnung = "SKOULOUAPP-Abo · Part plateforme",
             Richtung = FinanzRichtung.Ausgabe,
-            SystemCode = FinanzSystemCode.HalloAppAboAnteil,
+            SystemCode = FinanzSystemCode.SkoulouAppAboAnteil,
             IstSystemTyp = true,
             IstAktiv = true
         };
@@ -504,15 +655,15 @@ public class FinanzServiceTests
     }
 
     [Fact]
-    public async Task HalloAppAboBuchungenErstellenAsync_BuchtVollenPreisAlsEingangUndPlattformLehrerAlsAusgang()
+    public async Task SkoulouAppAboBuchungenErstellenAsync_BuchtVollenPreisAlsEingangUndPlattformLehrerAlsAusgang()
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
         var (level, student) = SeedNiveauMitSchueler(db, schule);
-        var enrollment = db.LevelEnrollments.Single();
+        var enrollment = db.LevelEnrollments.Single(item => item.StudentId == student.Id && item.IstAktuell);
         enrollment.IsPaid = true;
         enrollment.PaidAtUtc = DateTime.UtcNow;
-        enrollment.AboTyp = AboTyp.HalloPlus;
+        enrollment.AboTyp = AboTyp.SkoulouApp;
         enrollment.PriceAtEnrollment = 20000m;
         enrollment.SchoolLeaderCommissionAtEnrollment = 800m;
         enrollment.TeacherCommissionAtEnrollment = 1600m;
@@ -521,7 +672,7 @@ public class FinanzServiceTests
         var service = new FinanzService(db, new FakeFinanzBelegStorage());
         var erfasstVon = Guid.NewGuid();
 
-        var result = await service.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVon);
+        var result = await service.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVon);
 
         Assert.True(result.Succeeded, result.ErrorMessage);
         var buchungen = db.FinanzBuchungen.OrderBy(buchung => buchung.Betrag).ToList();
@@ -531,7 +682,7 @@ public class FinanzServiceTests
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Einnahme && buchung.Betrag == 20000m);
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Ausgabe && buchung.Betrag == 17600m);
         Assert.Contains(buchungen, buchung => buchung.Richtung == FinanzRichtung.Ausgabe && buchung.Betrag == 1600m);
-        Assert.DoesNotContain(buchungen, buchung => buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboProductOwnerAnteil);
+        Assert.DoesNotContain(buchungen, buchung => buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil);
         Assert.All(buchungen, buchung =>
         {
             Assert.Equal(schule.Id, buchung.SchulID);
@@ -555,27 +706,29 @@ public class FinanzServiceTests
         enrollment.ProductOwnerCommissionAtEnrollment = 400m;
         await db.SaveChangesAsync();
 
-        var service = new FinanzService(db);
+        var service = new FinanzService(db, new FakeFinanzBelegStorage());
         var erfasstVon = Guid.NewGuid();
         db.Users.Add(new AppUser { Id = erfasstVon, UserName = "buchhalter" });
         await db.SaveChangesAsync();
-        var aboBuchung = await service.HalloAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVon);
+        var aboBuchung = await service.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erfasstVon);
         Assert.True(aboBuchung.Succeeded, aboBuchung.ErrorMessage);
-        Assert.Contains(db.FinanzBuchungen, buchung => buchung.Kategorie.SystemCode == FinanzSystemCode.HalloAppAboZahlung);
+        Assert.Contains(db.FinanzBuchungen, buchung => buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung);
         var (einnahmeOk, _, einnahmeKategorie) = await service.KategorieAnlegenAsync(schule.Id, "Don", FinanzRichtung.Einnahme);
         var (ausgabeOk, _, ausgabeKategorie) = await service.KategorieAnlegenAsync(schule.Id, "Matériel", FinanzRichtung.Ausgabe);
         Assert.True(einnahmeOk);
         Assert.True(ausgabeOk);
-        await service.BuchungErfassenAsync(schule.Id, einnahmeKategorie!.Id, 5_000m, DateTime.Today, erfasstVon, belegnummer: "REF-04", dateiname: "facture.pdf", belegInhalt: TestPdf);
-        await service.BuchungErfassenAsync(schule.Id, ausgabeKategorie!.Id, 2_000m, DateTime.Today, erfasstVon, belegnummer: "REF-05", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        var einnahme = await service.BuchungErfassenAsync(schule.Id, einnahmeKategorie!.Id, 5_000m, DateTime.Today, erfasstVon, belegnummer: "REF-04", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        var ausgabe = await service.BuchungErfassenAsync(schule.Id, ausgabeKategorie!.Id, 2_000m, DateTime.Today, erfasstVon, belegnummer: "REF-05", dateiname: "facture.pdf", belegInhalt: TestPdf);
+        Assert.True(einnahme.Succeeded, einnahme.ErrorMessage);
+        Assert.True(ausgabe.Succeeded, ausgabe.ErrorMessage);
 
         var journal = await service.GetUebersichtAsync(new FinanzFilter { SchulID = schule.Id });
-        Assert.Contains(journal.Zeilen, zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboZahlung);
+        Assert.Contains(journal.Zeilen, zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung);
         Assert.Equal(25_000m, journal.SummeEinnahmen);
         Assert.Equal(21_200m, journal.SummeAusgaben);
         Assert.Equal(3_800m, journal.Saldo);
         Assert.Equal(17_600m, journal.Zeilen
-            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.HalloAppAboAnteil)
+            .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboAnteil)
             .Sum(zeile => zeile.Betrag));
         var ausgabenJournal = await service.GetUebersichtAsync(new FinanzFilter
         {
@@ -588,15 +741,15 @@ public class FinanzServiceTests
             schule.Id,
             new FinanzFilter { Richtung = FinanzRichtung.Ausgabe });
 
-        Assert.Equal(20_000m, uebersicht.HalloAppAboEingenommen);
+        Assert.Equal(20_000m, uebersicht.SkoulouAppAboEingenommen);
         Assert.Equal(800m, uebersicht.SchulleiterAboAnteil);
         Assert.Equal(1_600m, uebersicht.LehrerAboAnteil);
-        Assert.Equal(17_600m, uebersicht.HalloAppAboAnteil);
+        Assert.Equal(17_600m, uebersicht.SkoulouAppAboAnteil);
         Assert.Equal(5_000m, uebersicht.SonstigeEinnahmen);
         Assert.Equal(2_000m, uebersicht.BetrieblicheAusgaben);
         Assert.Equal(3_800m, uebersicht.IstKontostand);
         Assert.Equal(3_800m, uebersicht.VerfuegbarerKontostand);
-        Assert.Equal(23_000m, uebersicht.KontostandMitNichtUeberwiesenenHalloAppAnteilen);
+        Assert.Equal(23_000m, uebersicht.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen);
         Assert.Equal(5_400m, uebersicht.WirklicherKontostandNachAboVerteilung);
     }
 
@@ -633,6 +786,37 @@ public class FinanzServiceTests
 
         Assert.False(succeeded);
         Assert.NotEmpty(error);
+    }
+
+    [Fact]
+    public async Task DurchlaufBeendenAsync_VerlangtNoteUndEntscheidungUndTrenntAlleSchueler()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (klasse, student) = SeedNiveauMitSchueler(db, schule);
+        var service = new FinanzService(db);
+        var (_, _, durchlauf) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-20), Guid.NewGuid());
+        var enrollment = db.LevelEnrollments.Single(x => x.StudentId == student.Id && x.IstAktuell);
+        var (ohneErgebnis, fehler, _) = await service.DurchlaufBeendenAsync(durchlauf!.Id, DateTime.UtcNow);
+        Assert.False(ohneErgebnis);
+        Assert.Contains("note finale", fehler);
+        Assert.Null(db.KursNiveauDurchlaeufe.Single(x => x.Id == durchlauf.Id).EndDatum);
+
+        var examService = new ExamService(db);
+        Assert.True((await examService.SetManuelleAbschlussNoteAsync(durchlauf.Id, student.Id, "11/20", Guid.NewGuid())).Succeeded);
+        var (ohneEntscheidung, _, _) = await service.DurchlaufBeendenAsync(durchlauf.Id, DateTime.UtcNow);
+        Assert.False(ohneEntscheidung);
+        Assert.True((await examService.SetKlassenBestandenEntscheidungAsync(durchlauf.Id, student.Id, false, Guid.NewGuid())).Succeeded);
+
+        var (geschlossen, meldung, _) = await service.DurchlaufBeendenAsync(durchlauf.Id, DateTime.UtcNow);
+        Assert.True(geschlossen, meldung);
+        Assert.Null(db.StudentProfiles.Single(x => x.AppUserId == student.Id).CurrentKlasseId);
+        Assert.Equal(string.Empty, db.StudentProfiles.Single(x => x.AppUserId == student.Id).CurrentLevelCode);
+        Assert.False(enrollment.IstAktuell);
+        Assert.Equal("11/20", db.KlassenAbschlussEntscheidungen.Single().AbschlussNoteText);
+        Assert.False(db.KlassenAbschlussEntscheidungen.Single().IsBestanden);
+        Assert.False((await examService.SetManuelleAbschlussNoteAsync(durchlauf.Id, student.Id, "12/20", Guid.NewGuid())).Succeeded);
+        Assert.False((await examService.SetKlassenBestandenEntscheidungAsync(durchlauf.Id, student.Id, true, Guid.NewGuid())).Succeeded);
     }
 
     [Fact]
@@ -699,6 +883,149 @@ public class FinanzServiceTests
         Assert.False(db.Exams.Single().IsPublishedToStudents);
     }
 
+    [Fact]
+    public async Task AutomatischerCycleAbschluss_BewahrtRechnungGebuehrenSaldoUndMaterialBeimNeustart()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (klasse, student) = SeedNiveauMitSchueler(db, schule);
+        var direktor = await SeedSchulLeiterAsync(db, schule);
+        var lehrer = new AppUser { Id = Guid.NewGuid(), UserName = "teacher" };
+        db.Users.Add(lehrer);
+        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { LehrerID = lehrer.Id, SchulID = schule.Id, KlasseId = klasse.Id, Wochenstunden = 2 });
+        db.Lessons.Add(new Lesson { KlasseId = klasse.Id, Title = "Leçon", Summary = "Résumé", Content = "Contenu", IsPublished = true });
+        await db.SaveChangesAsync();
+
+        var service = new FinanzService(db);
+        var abrechnung = new AbrechnungService(db);
+        var start = DateTime.UtcNow.AddDays(-30);
+        var (_, startFehler, erster) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m, start,
+            direktor, autorisierungErzwingen: true);
+        Assert.NotNull(erster);
+        Assert.True(string.IsNullOrEmpty(startFehler), startFehler);
+        var enrollment = db.LevelEnrollments.Single(item => item.StudentId == student.Id && item.IstAktuell);
+        enrollment.IsPaid = true;
+        enrollment.IsUnlocked = true;
+        enrollment.PaidAtUtc = start.AddDays(1);
+        enrollment.PriceAtEnrollment = 20000m;
+        enrollment.SchoolLeaderCommissionAtEnrollment = 800m;
+        enrollment.TeacherCommissionAtEnrollment = 1600m;
+        var (andereKlasse, andererSchueler) = SeedNiveauMitSchueler(db, schule);
+        var anderesAbo = db.LevelEnrollments.Single(item => item.StudentId == andererSchueler.Id);
+        anderesAbo.IsPaid = true;
+        anderesAbo.PaidAtUtc = start.AddDays(1);
+        anderesAbo.PriceAtEnrollment = 20000m;
+        anderesAbo.SchoolLeaderCommissionAtEnrollment = 800m;
+        anderesAbo.TeacherCommissionAtEnrollment = 1600m;
+        await db.SaveChangesAsync();
+        Assert.True((await service.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, direktor)).Succeeded);
+        Assert.True((await service.SkoulouAppAboBuchungenErstellenAsync(anderesAbo.Id, direktor)).Succeeded);
+        var (zahlungOk, zahlungFehler, _) = await service.ZahlungBuchenAsync(erster!.Id, student.Id, 8000m,
+            ZahlungsArt.Rate, start.AddDays(2), direktor, autorisierungErzwingen: true);
+        Assert.True(zahlungOk, zahlungFehler);
+        await SetzeAbschlussEntscheidungAsync(db, erster.Id, student.Id);
+
+        var (beendet, fehler, restschuld, meldung) = await service.DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
+            erster.Id, DateTime.UtcNow.AddDays(-1), direktor, autorisierungErzwingen: true);
+        Assert.True(beendet, fehler);
+        Assert.Equal(4500m, restschuld);
+        Assert.NotNull(meldung);
+        var rechnung = Assert.Single(db.Abrechnungsperioden);
+        Assert.Equal(erster.Id, rechnung.AusgeloestDurchDurchlaufId);
+        Assert.Equal(17600m, rechnung.Umsatz);
+        Assert.Equal(rechnung.Id, enrollment.AbgerechnetInPeriodeId);
+        Assert.Null(anderesAbo.AbgerechnetInPeriodeId);
+        Assert.Equal(andereKlasse.Id, anderesAbo.KlasseId);
+        Assert.False(db.Lessons.Single().IsPublished);
+        Assert.Single(db.LehrerNiveauZuordnungen);
+        Assert.Equal(8000m, (await service.GetKlassenFinanzberichtAsync(erster.Id))!.SchulgebuehrBezahlt);
+        Assert.Equal(0, (await service.GetFinanzAbgleichAsync(schule.Id)).PlattformRechnungenMitAbweichung);
+
+        var (vorherOk, _, _) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m,
+            DateTime.UtcNow, direktor, autorisierungErzwingen: true);
+        Assert.False(vorherOk);
+        Assert.True((await abrechnung.SchulLeiterStatusSetzenAsync(rechnung.Id, true, schulLeiterId: direktor)).Succeeded);
+        var profilWiederholung = db.StudentProfiles.Single(profile => profile.AppUserId == student.Id);
+        profilWiederholung.CurrentKlasseId = klasse.Id;
+        profilWiederholung.CurrentLevelCode = klasse.Code;
+        await db.SaveChangesAsync();
+        var (wiederOk, wiederFehler, zweiter) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m,
+            DateTime.UtcNow, direktor, autorisierungErzwingen: true);
+        Assert.True(wiederOk, wiederFehler);
+        Assert.NotNull(zweiter);
+        var aktuellePosition = Assert.Single(db.LevelEnrollments.Where(item => item.StudentId == student.Id && item.IstAktuell));
+        Assert.NotEqual(enrollment.Id, aktuellePosition.Id);
+        Assert.Equal(zweiter.Id, aktuellePosition.DurchlaufId);
+        Assert.False(enrollment.IstAktuell);
+        Assert.Equal(rechnung.Id, enrollment.AbgerechnetInPeriodeId);
+        Assert.False(aktuellePosition.IsPaid);
+        Assert.False(aktuellePosition.IsUnlocked);
+        Assert.Equal(0m, (await service.GetKlassenFinanzberichtAsync(zweiter!.Id))!.SchulgebuehrBezahlt);
+        Assert.False((await service.GetKlassenFinanzberichtAsync(zweiter.Id))!.Schueler.Single(item => item.StudentId == student.Id).SkoulouAboBezahlt);
+        var aboService = new AboService(db);
+        Assert.True((await aboService.AboZuweisenAsync(student.Id, klasse.Id, AboTyp.SkoulouApp, direktor)).Succeeded);
+        Assert.True(aktuellePosition.IsPaid);
+        Assert.Equal(2, db.FinanzBuchungen.Count(item => item.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+            && (item.HerkunftReferenzID == enrollment.Id || item.HerkunftReferenzID == aktuellePosition.Id)));
+        Assert.Equal(rechnung.Id, enrollment.AbgerechnetInPeriodeId);
+        Assert.Null(aktuellePosition.AbgerechnetInPeriodeId);
+        Assert.Equal(0, (await service.GetFinanzAbgleichAsync(schule.Id)).PlattformRechnungenMitAbweichung);
+        Assert.Equal(AbrechnungStatus.Akzeptiert, rechnung.Status);
+        Assert.False(db.Lessons.Single().IsPublished);
+        Assert.Single(db.LehrerNiveauZuordnungen);
+    }
+
+    [Fact]
+    public async Task WiederholungMitAutoAbo_ErstelltNeueBezahltePositionUndNeueRechnung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var (klasse, student) = SeedNiveauMitSchueler(db, schule);
+        klasse.AutoAssignSkoulouAppAboOnCycleStart = true;
+        var direktor = await SeedSchulLeiterAsync(db, schule);
+        await db.SaveChangesAsync();
+        var service = new FinanzService(db);
+        var abrechnung = new AbrechnungService(db);
+        var start = DateTime.UtcNow.AddDays(-20);
+        var (ok1, fehler1, erster) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m, start, direktor);
+        Assert.True(ok1, fehler1);
+        var erstesAbo = Assert.Single(db.LevelEnrollments.Where(x => x.StudentId == student.Id && x.IstAktuell));
+        Assert.True(erstesAbo.IsPaid);
+        erstesAbo.PaidAtUtc = start.AddDays(1);
+        await db.SaveChangesAsync();
+        await SetzeAbschlussEntscheidungAsync(db, erster!.Id, student.Id);
+        var (geschlossen1, fehler2, _, _) = await service.DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
+            erster.Id, DateTime.UtcNow.AddDays(-1), direktor);
+        Assert.True(geschlossen1, fehler2);
+        var ersteRechnung = Assert.Single(db.Abrechnungsperioden);
+        Assert.Equal(ersteRechnung.Id, erstesAbo.AbgerechnetInPeriodeId);
+        Assert.True((await abrechnung.SchulLeiterStatusSetzenAsync(ersteRechnung.Id, true, schulLeiterId: direktor)).Succeeded);
+
+        var profilWiederholung = db.StudentProfiles.Single(profile => profile.AppUserId == student.Id);
+        profilWiederholung.CurrentKlasseId = klasse.Id;
+        profilWiederholung.CurrentLevelCode = klasse.Code;
+        await db.SaveChangesAsync();
+        var (ok2, fehler3, zweiter) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m, DateTime.UtcNow, direktor);
+        Assert.True(ok2, fehler3);
+        var zweitesAbo = Assert.Single(db.LevelEnrollments.Where(x => x.StudentId == student.Id && x.IstAktuell));
+        Assert.NotEqual(erstesAbo.Id, zweitesAbo.Id);
+        Assert.Equal(zweiter!.Id, zweitesAbo.DurchlaufId);
+        Assert.True(zweitesAbo.IsPaid);
+        Assert.False(erstesAbo.IstAktuell);
+        Assert.Equal(ersteRechnung.Id, erstesAbo.AbgerechnetInPeriodeId);
+        Assert.Equal(2, db.FinanzBuchungen.Count(x => x.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil));
+        await SetzeAbschlussEntscheidungAsync(db, zweiter.Id, student.Id);
+        var (geschlossen2, fehler4, _, _) = await service.DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
+            zweiter.Id, DateTime.UtcNow.AddDays(1), direktor);
+        Assert.True(geschlossen2, fehler4);
+        var zweiteRechnung = Assert.Single(db.Abrechnungsperioden.Where(x => x.AusgeloestDurchDurchlaufId == zweiter.Id));
+        Assert.NotEqual(ersteRechnung.Id, zweiteRechnung.Id);
+        Assert.Equal(ersteRechnung.Id, erstesAbo.AbgerechnetInPeriodeId);
+        Assert.Equal(zweiteRechnung.Id, zweitesAbo.AbgerechnetInPeriodeId);
+        Assert.Equal(1, ersteRechnung.AnzahlAbonnements);
+        Assert.Equal(1, zweiteRechnung.AnzahlAbonnements);
+    }
+
     // -------------------- Ratenzahlungen --------------------
 
     [Fact]
@@ -732,14 +1059,14 @@ public class FinanzServiceTests
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
         var (level, student) = SeedNiveauMitSchueler(db, schule, preis: 12500m);
-        var enrollment = db.LevelEnrollments.Single();
-        enrollment.AboTyp = AboTyp.HalloApp;
-        enrollment.PriceAtEnrollment = 5000m;
-        enrollment.IsPaid = false;
-        await db.SaveChangesAsync();
         var service = new FinanzService(db);
         var (_, _, durchlauf) = await service.DurchlaufStartenAsync(
             schule.Id, level.Id, 12500m, DateTime.UtcNow, Guid.NewGuid());
+        var enrollment = db.LevelEnrollments.Single(item => item.StudentId == student.Id && item.IstAktuell);
+        enrollment.AboTyp = AboTyp.SkoulouApp;
+        enrollment.PriceAtEnrollment = 5000m;
+        enrollment.IsPaid = false;
+        await db.SaveChangesAsync();
         await service.ZahlungBuchenAsync(
             durchlauf!.Id, student.Id, 5000m, ZahlungsArt.Rate, DateTime.UtcNow, Guid.NewGuid());
 
@@ -749,12 +1076,12 @@ public class FinanzServiceTests
         Assert.Equal(1, bericht!.SchuelerAnzahl);
         Assert.Equal(5000m, bericht.SchulgebuehrBezahlt);
         Assert.Equal(7500m, bericht.SchulgebuehrOffen);
-        Assert.Equal(0, bericht.HalloPlusAnzahl);
-        Assert.Equal(5000m, bericht.HalloAboOffen);
+        Assert.Equal(0, bericht.SkoulouPlusAnzahl);
+        Assert.Equal(5000m, bericht.SkoulouAboOffen);
         var berichtsSchueler = Assert.Single(bericht.Schueler);
         Assert.Equal(student.Id, berichtsSchueler.StudentId);
         Assert.Equal(7500m, berichtsSchueler.SchulgebuehrOffen);
-        Assert.False(berichtsSchueler.HalloAboBezahlt);
+        Assert.False(berichtsSchueler.SkoulouAboBezahlt);
     }
 
     [Fact]
@@ -785,6 +1112,9 @@ public class FinanzServiceTests
         var oldProfile = db.StudentProfiles.Single(profile => profile.AppUserId == oldStudent.Id);
         oldProfile.CurrentKlasseId = Guid.NewGuid();
         oldProfile.CurrentLevelCode = "A2.1";
+        var newProfile = db.StudentProfiles.Single(profile => profile.AppUserId == newStudent.Id);
+        newProfile.CurrentKlasseId = level.Id;
+        newProfile.CurrentLevelCode = level.Code;
         await db.SaveChangesAsync();
         var (_, _, zweiterDurchlauf) = await service.DurchlaufStartenAsync(schule.Id, level.Id, 12500m, DateTime.UtcNow, Guid.NewGuid());
 
@@ -850,6 +1180,7 @@ public class FinanzServiceTests
         {
             DurchlaufId = durchlaufId,
             StudentId = studentId,
+            AbschlussNoteText = "12/20",
             IsBestanden = isBestanden,
             EntscheidetAmUtc = DateTime.UtcNow,
             EntscheidetVonUserId = Guid.NewGuid()
@@ -939,7 +1270,7 @@ public class FinanzServiceTests
         enrollment.AbgerechnetInPeriodeId = rechnung.Id;
         await db.SaveChangesAsync();
         var service = new FinanzService(db);
-        var gebucht = await service.HalloAppAboBuchungenErstellenAsync(enrollment.Id, userId);
+        var gebucht = await service.SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, userId);
         Assert.True(gebucht.Succeeded);
 
         var offen = await service.GetFinanzAbgleichAsync(schule.Id);
@@ -1013,9 +1344,9 @@ public class FinanzServiceTests
         var kategorie = new FinanzKategorie
         {
             SchulID = null,
-            Bezeichnung = "HalloApp-Abo-Zahlung",
+            Bezeichnung = "SkoulouApp-Abo-Zahlung",
             Richtung = FinanzRichtung.Einnahme,
-            SystemCode = FinanzSystemCode.HalloAppAboZahlung,
+            SystemCode = FinanzSystemCode.SkoulouAppAboZahlung,
             IstSystemTyp = true,
             IstAktiv = true
         };
@@ -1031,6 +1362,11 @@ public class FinanzServiceTests
             ErfasstVonUserID = ersteller
         };
         db.FinanzBuchungen.Add(buchung);
+        var admin = new AppUser { Id = Guid.NewGuid(), UserName = "admin" };
+        var adminRole = new Role { Id = Guid.NewGuid(), Name = Rollen.SuperAdmin };
+        db.Users.Add(admin);
+        db.Roles.Add(adminRole);
+        db.UserRoles.Add(new AppUserRole { UserId = admin.Id, RoleId = adminRole.Id });
         db.SaveChanges();
         var service = new FinanzService(db);
 
@@ -1040,7 +1376,7 @@ public class FinanzServiceTests
         Assert.NotEmpty(alsErsteller.ErrorMessage);
 
         // SuperAdmin darf stornieren.
-        var alsSuperAdmin = await service.BuchungLoeschenAsync(buchung.Id, Guid.NewGuid(), istSuperAdmin: true);
+        var alsSuperAdmin = await service.BuchungLoeschenAsync(buchung.Id, admin.Id, istSuperAdmin: true);
         Assert.True(alsSuperAdmin.Succeeded);
         Assert.Empty(db.FinanzBuchungen);
     }

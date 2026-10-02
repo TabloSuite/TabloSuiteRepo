@@ -1,13 +1,13 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Billing;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Billing;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="ProvisionsService"/>: Provisionsverteilung (Schulleiter/Lehrer/Admin)
@@ -35,7 +35,7 @@ public class ProvisionsServiceTests
         await db.SaveChangesAsync();
 
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var billing = new AbrechnungService(db);
         await billing.AbrechnungErstellenAsync(schule.Id);
@@ -51,7 +51,7 @@ public class ProvisionsServiceTests
         Assert.False(receipt.Succeeded);
         Assert.Contains("n'est plus nécessaire", receipt.Message);
         var uebersicht = await service.GetPeriodeUebersichtAsync(period.Id);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerBasis, uebersicht.ProvisionLehrer);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerBasis, uebersicht.ProvisionLehrer);
     }
 
     private static (School Schule, AppUser Student, AppUser Lehrer, Klasse Level) SeedBasis(
@@ -115,7 +115,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var service = new ProvisionsService(db);
 
@@ -124,14 +124,14 @@ public class ProvisionsServiceTests
 
         // Assert
         Assert.Equal(1, uebersicht.AnzahlPositionen);
-        Assert.Equal(HalloAppKonstanten.ProvisionSchulleiterBasis, uebersicht.ProvisionSchulleiter);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerBasis, uebersicht.ProvisionLehrer);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionSchulleiterBasis, uebersicht.ProvisionSchulleiter);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerBasis, uebersicht.ProvisionLehrer);
         Assert.Equal(
-            HalloAppKonstanten.StandardPreisHalloBasis
-                - HalloAppKonstanten.ProvisionSchulleiterBasis
-                - HalloAppKonstanten.ProvisionLehrerBasis,
+            SkoulouAppKonstanten.StandardPreisAbo
+                - SkoulouAppKonstanten.ProvisionSchulleiterBasis
+                - SkoulouAppKonstanten.ProvisionLehrerBasis,
             uebersicht.ProvisionAdmin);
-        Assert.Equal(HalloAppKonstanten.StandardPreisHalloBasis, uebersicht.Gesamtumsatz);
+        Assert.Equal(SkoulouAppKonstanten.StandardPreisAbo, uebersicht.Gesamtumsatz);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloPlus);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var service = new ProvisionsService(db);
 
@@ -149,14 +149,14 @@ public class ProvisionsServiceTests
         var uebersicht = await service.GetOffeneUebersichtAsync(schule.Id);
 
         // Assert
-        Assert.Equal(HalloAppKonstanten.ProvisionSchulleiterPlus, uebersicht.ProvisionSchulleiter);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerPlus, uebersicht.ProvisionLehrer);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionSchulleiterPlus, uebersicht.ProvisionSchulleiter);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerPlus, uebersicht.ProvisionLehrer);
         Assert.Equal(
-            HalloAppKonstanten.StandardPreisHalloPlus
-                - HalloAppKonstanten.ProvisionSchulleiterPlus
-                - HalloAppKonstanten.ProvisionLehrerPlus,
+            SkoulouAppKonstanten.StandardPreisAbo
+                - SkoulouAppKonstanten.ProvisionSchulleiterPlus
+                - SkoulouAppKonstanten.ProvisionLehrerPlus,
             uebersicht.ProvisionAdmin);
-        Assert.Equal(HalloAppKonstanten.StandardPreisHalloPlus, uebersicht.Gesamtumsatz);
+        Assert.Equal(SkoulouAppKonstanten.StandardPreisAbo, uebersicht.Gesamtumsatz);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class ProvisionsServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db);
-        schule.PreisHalloPlus = 20000m;
+        schule.SubscriptionPriceOverride = 20000m;
         db.CommissionSettings.Add(new CommissionSettings
         {
             Id = Guid.NewGuid(),
@@ -175,7 +175,7 @@ public class ProvisionsServiceTests
         await db.SaveChangesAsync();
 
         var abo = new AboService(db);
-        var result = await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloPlus);
+        var result = await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.True(result.Succeeded);
         var enrollment = Assert.Single(db.LevelEnrollments);
@@ -205,7 +205,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         var enrollment = db.LevelEnrollments.Single();
         enrollment.IsPaid = false;
         enrollment.PaidAtUtc = null;
@@ -227,7 +227,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db, mitLehrerZuordnung: false);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var service = new ProvisionsService(db);
 
@@ -237,7 +237,7 @@ public class ProvisionsServiceTests
         // Assert
         var lehrerAnteil = Assert.Single(uebersicht.Anteile, x => x.Empfaenger == ProvisionsEmpfaenger.Lehrer);
         Assert.Null(lehrerAnteil.LehrerID);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerBasis, lehrerAnteil.Betrag);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerBasis, lehrerAnteil.Betrag);
     }
 
     [Fact]
@@ -247,7 +247,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, _, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloPlus);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var abrechnung = new AbrechnungService(db);
         await abrechnung.AbrechnungErstellenAsync(schule.Id);
@@ -260,7 +260,7 @@ public class ProvisionsServiceTests
         // Assert
         Assert.Equal(periode.Id, uebersicht.PeriodeID);
         Assert.Equal(1, uebersicht.AnzahlPositionen);
-        Assert.Equal(HalloAppKonstanten.StandardPreisHalloPlus, uebersicht.Gesamtumsatz);
+        Assert.Equal(SkoulouAppKonstanten.StandardPreisAbo, uebersicht.Gesamtumsatz);
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, lehrer, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var abrechnung = new AbrechnungService(db);
         await abrechnung.AbrechnungErstellenAsync(schule.Id);
@@ -285,14 +285,14 @@ public class ProvisionsServiceTests
 
         // Assert
         var eintrag = Assert.Single(meineUebersicht);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerBasis, eintrag.ProvisionLehrer);
-        Assert.Equal(HalloAppKonstanten.ProvisionSchulleiterBasis, eintrag.ProvisionSchulleiter);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerBasis, eintrag.ProvisionLehrer);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionSchulleiterBasis, eintrag.ProvisionSchulleiter);
         Assert.Equal(
-            HalloAppKonstanten.StandardPreisHalloBasis
-                - HalloAppKonstanten.ProvisionSchulleiterBasis
-                - HalloAppKonstanten.ProvisionLehrerBasis,
+            SkoulouAppKonstanten.StandardPreisAbo
+                - SkoulouAppKonstanten.ProvisionSchulleiterBasis
+                - SkoulouAppKonstanten.ProvisionLehrerBasis,
             eintrag.ProvisionAdmin);
-        Assert.Equal(HalloAppKonstanten.ProvisionLehrerBasis, eintrag.SichtbarerBetrag);
+        Assert.Equal(SkoulouAppKonstanten.ProvisionLehrerBasis, eintrag.SichtbarerBetrag);
         Assert.Empty(fremdeUebersicht);
     }
 
@@ -303,7 +303,7 @@ public class ProvisionsServiceTests
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, lehrer, level) = SeedBasis(db);
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var abrechnung = new AbrechnungService(db);
         await abrechnung.AbrechnungErstellenAsync(schule.Id);
@@ -337,7 +337,7 @@ public class ProvisionsServiceTests
         await db.SaveChangesAsync();
 
         var abo = new AboService(db);
-        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.HalloBasis);
+        await abo.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
         await abo.BezahltSetzenAsync(student.Id, level.Id);
         var enrollment = db.LevelEnrollments.Single();
 

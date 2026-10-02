@@ -1,17 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using HalloApp.Core.Services.Storage;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Models.Profile;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Services.Storage;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Models.Profile;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Profile
 {
@@ -26,6 +26,22 @@ public partial class Profile
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? ReturnUrl { get; set; }
+
+    private string ReturnTarget => ValidReturnTarget(ReturnUrl);
+    private bool HasReturnTarget => ReturnTarget != "/";
+
+    private static string ValidReturnTarget(string? target)
+    {
+        if (string.IsNullOrWhiteSpace(target) || !target.StartsWith('/') || target.StartsWith("//")
+            || target.Contains('\\') || target.Any(char.IsControl)
+            || Uri.TryCreate(target, UriKind.Absolute, out _)) return "/";
+
+        var path = target.Split('?', '#')[0].TrimEnd('/');
+        return path.Equals("/profil", StringComparison.OrdinalIgnoreCase) ? "/" : target;
+    }
 
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = default!;

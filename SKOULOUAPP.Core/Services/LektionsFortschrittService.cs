@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels;
+using SkoulouApp.Core.Interfaces;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 public class LektionsFortschrittService : ILektionsFortschrittService
 {

@@ -2,11 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using HalloApp.Core.Options;
+using SkoulouApp.Core.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace HalloApp.Core.Services.Email;
+namespace SkoulouApp.Core.Services.Email;
 
 /// <summary>
 /// E-Mail-Versand über die Postmark REST-API (https://api.postmarkapp.com).

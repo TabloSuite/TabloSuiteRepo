@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Dashboard;
+namespace SkoulouApp.Core.Models.Dashboard;
 
 public class StudentApprovalItem
 {
@@ -23,8 +23,8 @@ public class StudentApprovalItem
     /// </summary>
     public bool HasPaidEnrollment { get; set; }
 
-    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein HalloPlus-Abo hat.</summary>
-    public bool IsHalloPlus { get; set; }
+    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein SkoulouPlus-Abo hat.</summary>
+    public bool IsSkoulouPlus { get; set; }
 
     /// <summary>True, wenn mindestens eine aktive (freigeschaltete) Abo-Zuordnung existiert.</summary>
     public bool HasActiveSubscription { get; set; }

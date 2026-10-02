@@ -1,9 +1,9 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces.IRepositories;
-using HalloApp.Core.Models.Dashboard;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.Models.Dashboard;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 public class HomePageService(IUnitOfWork unitOfWork, DashboardService dashboardService)
 {

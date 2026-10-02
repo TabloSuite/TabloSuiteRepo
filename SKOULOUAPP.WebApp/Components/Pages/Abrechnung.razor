@@ -1,26 +1,26 @@
 @page "/abrechnung"
-@attribute [Authorize(Roles = "SuperAdmin,ProduktOwner,SchulLeiter")]
+@attribute [Authorize(Roles = "SuperAdmin,SchulLeiter,Koordinator,ProduktOwner")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.DataModels.Schools
-@using HalloApp.Core.Models.Billing
-@using HalloApp.Core.Models.Dashboard
-@using HalloApp.WebApp.Components.Shared
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.DataModels.Schools
+@using SkoulouApp.Core.Models.Billing
+@using SkoulouApp.Core.Models.Dashboard
+@using SkoulouApp.WebApp.Components.Shared
 
 <PageTitle>Facturation SKOULOUAPP</PageTitle>
 
 <section class="grid gap-6">
-    <div class="hallo-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+    <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
         <div class="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-emerald-400/25 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl"></div>
         <div class="relative">
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">@(isProduktOwner ? "Responsable produit" : isReadOnly ? "Directeur" : "Administrateur")</p>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">@(isProduktOwner ? "Responsable produit" : isKoordinator ? "Coordinateur" : isReadOnly ? "Directeur" : "Administrateur")</p>
             <h1 class="mt-3 text-3xl font-black">Facturation SKOULOUAPP</h1>
             <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
                 @(isProduktOwner
                     ? "Gère les facturations des écoles qui te sont attribuées. Seuls les abonnements de ces écoles sont visibles."
                     : isReadOnly
-                    ? "Consulte les facturations SKOULOUAPP ouvertes pour ton école ainsi que le détail des trois dernières périodes."
+                    ? "Consulte toutes les facturations SKOULOUAPP de ton école et déclare les virements effectués."
                     : "Gère les facturations SKOULOUAPP par école et clôture une période une fois le paiement reçu.")
             </p>
         </div>
@@ -40,28 +40,31 @@
     {
     @if (isSuperAdmin && ueberfaelligeForderungenAusAktivenKlassen.Count > 0)
     {
-        <div class="rounded-[2rem] border border-rose-200 bg-rose-50 p-5 text-rose-950 shadow-sm sm:p-6">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-rose-700">Attention requise</p>
-                    <h2 class="mt-1 text-xl font-black">Abonnements SKOULOUAPP ouverts depuis plus de 3 mois</h2>
-                    <p class="mt-2 max-w-3xl text-sm leading-6 text-rose-900">Ces abonnements sont payés, mais leur classe est toujours active et ils ne sont pas encore inclus dans une facturation. Contacte le directeur ou crée la facturation existante de l'école.</p>
+        <details class="group rounded-[2rem] border border-rose-200 bg-rose-50 p-5 text-rose-950 shadow-sm sm:p-6">
+            <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 focus-visible:rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-600">
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-rose-700">Attention requise · @ueberfaelligeForderungenAusAktivenKlassen.Count classe(s)</p>
+                    <h2 class="mt-1 text-xl font-black">Cycles actifs et abonnements payés depuis au moins 10 mois</h2>
+                    <p class="mt-2 text-sm leading-6 text-rose-900">Facturations encore ouvertes : contacte la direction pour connaître la raison. Afficher les classes concernées.</p>
                 </div>
-                <div class="rounded-2xl bg-white px-4 py-3 text-right ring-1 ring-rose-200">
-                    <p class="text-xs font-bold uppercase tracking-wide text-rose-700">Total ouvert</p>
-                    <p class="mt-1 text-2xl font-black text-rose-800">@ueberfaelligeForderungenAusAktivenKlassen.Sum(forderung => forderung.Plattformforderung).ToString("N0") FCFA</p>
+                <div class="flex items-center gap-3">
+                    <div class="rounded-2xl bg-white px-4 py-3 text-right ring-1 ring-rose-200">
+                        <p class="text-xs font-bold uppercase tracking-wide text-rose-700">Total à facturer</p>
+                        <p class="mt-1 text-xl font-black text-rose-800">@ueberfaelligeForderungenAusAktivenKlassen.Sum(forderung => forderung.Plattformforderung).ToString("N0") FCFA</p>
+                    </div>
+                    <svg aria-hidden="true" class="h-5 w-5 shrink-0 text-rose-700 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
                 </div>
-            </div>
-            <div class="mt-4 grid gap-2">
+            </summary>
+            <div class="mt-5 grid gap-2 border-t border-rose-200 pt-4">
                 @foreach (var forderung in ueberfaelligeForderungenAusAktivenKlassen)
                 {
-                    <button type="button" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-left text-sm ring-1 ring-rose-100 transition hover:bg-rose-100" @onclick="() => SelectSchoolAsync(forderung.SchulID)">
-                        <span><strong>@forderung.SchulName</strong><span class="text-slate-500"> · @forderung.KlasseCode · @forderung.KlasseTitel · depuis le @forderung.AeltesteZahlungAmUtc.ToLocalTime().ToString("dd.MM.yyyy") · @forderung.TageOffen jours</span></span>
-                        <span class="font-black text-rose-800">@forderung.Plattformforderung.ToString("N0") FCFA <span class="font-medium text-slate-500">· @forderung.AnzahlAbonnements abo(s)</span></span>
+                    <button type="button" class="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-left text-sm ring-1 ring-rose-100 transition hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-600" @onclick="() => SelectSchoolAsync(forderung.SchulID)">
+                        <span class="min-w-0"><strong>@forderung.SchulName</strong><span class="block text-slate-600">@forderung.KlasseCode · @forderung.KlasseTitel · paiement le @forderung.AeltesteZahlungAmUtc.ToLocalTime().ToString("dd.MM.yyyy") · @forderung.TageOffen jours</span></span>
+                        <span class="font-black text-rose-800">@forderung.Plattformforderung.ToString("N0") FCFA <span class="block font-medium text-slate-500">@forderung.AnzahlAbonnements abonnement(s)</span></span>
                     </button>
                 }
             </div>
-        </div>
+        </details>
     }
 
     @if (isSuperAdmin && offeneForderungenAusGeschlossenenKlassen.Count > 0)
@@ -104,7 +107,7 @@
             <h2 class="text-xl font-black text-slate-900">Écoles</h2>
             @if (schools.Count > 1)
             {
-                <input type="search" class="hallo-input w-full sm:w-72" placeholder="Rechercher une école..." @bind="schoolSearchTerm" @bind:event="oninput" />
+                <input type="search" class="skoulou-input w-full sm:w-72" placeholder="Rechercher une école..." @bind="schoolSearchTerm" @bind:event="oninput" />
             }
         </div>
         <div class="mt-4 grid gap-3">
@@ -129,10 +132,10 @@
 
     @if (uebersicht is not null)
     {
-        @if (!isSuperAdmin && PendingDirectorApprovals.Count > 0)
+        @if (darfZahlungMelden && PendingDirectorApprovals.Count > 0)
         {
             <div class="rounded-[2rem] border border-amber-100 bg-amber-50 p-5 text-amber-900 shadow-sm">
-                <h2 class="text-lg font-black">Action requise · Directeur</h2>
+                <h2 class="text-lg font-black">Action requise · Direction</h2>
                 <p class="mt-1 text-sm font-semibold">Tu as @PendingDirectorApprovals.Count facturation(s) SKOULOUAPPABO à valider après virement.</p>
                 <div class="mt-3 grid gap-2">
                     @foreach (var periode in PendingDirectorApprovals.Take(3))
@@ -165,7 +168,7 @@
                         <div class="rounded-2xl bg-white/80 px-4 py-3 text-sm ring-1 ring-sky-100">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span class="font-semibold">@uebersicht.SchulName</span>
-                                <span>@periode.Umsatz.ToString("N0") FCFA · @(periode.AnzahlHalloBasis + periode.AnzahlHalloPlus) abo(s)</span>
+                                <span>@periode.Umsatz.ToString("N0") FCFA · @periode.AnzahlAbonnements abo(s)</span>
                             </div>
                             <p class="mt-1 text-xs text-sky-700">
                                 Créée automatiquement le @((periode.AutomatischErstelltAmUtc ?? periode.ErstelltAmUtc).ToLocalTime().ToString("dd.MM.yyyy HH:mm")) · statut actuel : @StatusLabelFr(periode.Status)
@@ -235,14 +238,10 @@
                     }
                 </div>
 
-            <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                <div class="rounded-3xl bg-gradient-to-br from-cyan-500 to-blue-700 p-5 text-white shadow-lg shadow-cyan-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                    <div class="text-3xl font-black">@uebersicht.AnzahlHalloBasis</div>
-                    <div class="mt-1 text-sm text-cyan-50">HALLOBASIS</div>
-                </div>
-                <div class="hallo-hero-badge rounded-3xl p-5 text-white shadow-lg transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                    <div class="text-3xl font-black">@uebersicht.AnzahlHalloPlus</div>
-                    <div class="mt-1 text-sm text-indigo-50">HALLOPLUS</div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="skoulou-hero-badge rounded-3xl p-5 text-white shadow-lg transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+                    <div class="text-3xl font-black">@uebersicht.AnzahlAbonnements</div>
+                    <div class="mt-1 text-sm text-indigo-50">Abonnements SKOULOUAPP</div>
                 </div>
                 <div class="rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 p-5 text-white shadow-lg shadow-emerald-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
                     <div class="text-3xl font-black">@uebersicht.OffenerUmsatz.ToString("N0") FCFA</div>
@@ -254,7 +253,7 @@
                 @if (CanManageBilling)
                 {
                     <button type="button"
-                            class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+                            class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
                             disabled="@(uebersicht.AnzahlPositionen == 0)"
                             @onclick="() => confirmCreateOpen = true">
                         Créer et envoyer la facturation
@@ -263,8 +262,8 @@
             </div>
         </div>
 
-        <CollapsibleCard Title="@(isReadOnly ? "3 dernières facturations" : "Facturations créées")"
-                         Subtitle="@(historie.Count > 0 ? $"Dernière : {historie[0].VonUtc.ToLocalTime():dd.MM.yyyy} – {historie[0].BisUtc.ToLocalTime():dd.MM.yyyy} · {historie[0].Umsatz:N0} FCFA" : "Aucune facturation pour le moment")"
+        <CollapsibleCard Title="Facturations de l'école"
+                         Subtitle="@(historie.Count > 0 ? $"{HistorieInBearbeitungAnzahl} en cours · {HistorieAbgeschlossenAnzahl} terminée(s)" : "Aucune facturation pour le moment")"
                          Icon="🧾"
                          InitiallyExpanded="false">
             <HeaderRight>
@@ -274,10 +273,30 @@
                 }
             </HeaderRight>
             <ChildContent>
+            <div class="mb-4 flex flex-wrap gap-2" role="group" aria-label="Statut des facturations">
+                <button type="button" class="rounded-full px-4 py-2 text-sm font-bold transition @(historieNurAbgeschlossene ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "bg-amber-600 text-white shadow-sm")" aria-pressed="@(!historieNurAbgeschlossene)" @onclick="() => historieNurAbgeschlossene = false">En cours (@HistorieInBearbeitungAnzahl)</button>
+                <button type="button" class="rounded-full px-4 py-2 text-sm font-bold transition @(historieNurAbgeschlossene ? "bg-emerald-700 text-white shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200")" aria-pressed="@historieNurAbgeschlossene" @onclick="() => historieNurAbgeschlossene = true">Terminées (@HistorieAbgeschlossenAnzahl)</button>
+            </div>
+            <div class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 p-4">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600" for="historie-von">Période : du</label>
+                    <input id="historie-von" type="date" class="skoulou-input" @bind="historieVonDatum" @bind:format="yyyy-MM-dd" />
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-600" for="historie-bis">Au</label>
+                    <input id="historie-bis" type="date" class="skoulou-input" @bind="historieBisDatum" @bind:format="yyyy-MM-dd" />
+                </div>
+                <button type="button" class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100" @onclick="() => { historieVonDatum = null; historieBisDatum = null; }">Effacer les dates</button>
+                <span class="text-xs text-slate-500">@GefilterteHistorie.Count facturation(s) affichée(s)</span>
+            </div>
+            @if (historieVonDatum > historieBisDatum)
+            {
+                <p class="mb-3 text-sm text-rose-700">La date de début doit précéder la date de fin.</p>
+            }
             @if (historie.Count > 0)
             {
                 <div class="grid gap-3">
-                    @foreach (var periode in (isReadOnly ? historie.Take(3) : historie))
+                    @foreach (var periode in GefilterteHistorie)
                     {
                         <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
                             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -285,7 +304,7 @@
                                     @periode.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") – @periode.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
                                 </div>
                                 <div class="flex flex-wrap items-center gap-4 text-sm">
-                                    <span class="text-slate-500">@(periode.AnzahlHalloBasis + periode.AnzahlHalloPlus) abo(s) SKOULOUAPP</span>
+                                    <span class="text-slate-500">@periode.AnzahlAbonnements abo(s) SKOULOUAPP</span>
                                     <span class="font-semibold text-slate-900">@periode.Umsatz.ToString("N0") FCFA</span>
                                      <Badge Accent="@StatusAccent(periode.Status)">@StatusLabelFr(periode.Status)</Badge>
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">@SourceLabel(periode)</span>
@@ -325,7 +344,7 @@
                                             <span>Générée automatiquement lors d'une clôture de cycle. Le processus normal reste nécessaire.</span>
                                         }
                                     }
-                                    else
+                                    else if (!isProduktOwner)
                                     {
                                         @if (periode.Status == AbrechnungStatus.Erstellt)
                                         {
@@ -351,20 +370,31 @@
                             }
 
                             <div class="mt-3 flex flex-wrap justify-end gap-2">
+                                @if (CanManageBilling && periode.Status == AbrechnungStatus.Erstellt
+                                    && !periode.AutomatischDurchKlassenabschlussErstellt
+                                    && !periode.IstSammelabrechnungAusGeschlossenenKlassen)
+                                {
+                                    <button type="button"
+                                            class="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            disabled="@isDatabaseActionInProgress"
+                                            @onclick="() => RenvoyerFacturationAsync(periode.Id)">
+                                        Renvoyer l'e-mail
+                                    </button>
+                                }
                                 @if (isSuperAdmin && periode.Status == AbrechnungStatus.Akzeptiert)
                                 {
                                     <button type="button"
-                                            class="hallo-btn-accent rounded-full px-4 py-2 text-xs font-semibold"
+                                            class="skoulou-btn-accent rounded-full px-4 py-2 text-xs font-semibold"
                                             @onclick="() => confirmPeriodId = periode.Id">
                                         Marquer comme payé (compte reçu)
                                     </button>
                                 }
-                                @if (!isSuperAdmin && periode.Status != AbrechnungStatus.Bestaetigt)
+                                @if (darfZahlungMelden && periode.Status != AbrechnungStatus.Bestaetigt)
                                 {
                                     @if (periode.Status != AbrechnungStatus.Akzeptiert)
                                     {
                                         <button type="button"
-                                                class="hallo-btn-accent rounded-full px-4 py-2 text-xs font-semibold"
+                                                class="skoulou-btn-accent rounded-full px-4 py-2 text-xs font-semibold"
                                                 @onclick="() => AcceptAsync(periode.Id)">
                                             Accepter &amp; virement effectué
                                         </button>
@@ -381,12 +411,16 @@
                             </div>
                         </div>
                     }
+                    @if (GefilterteHistorie.Count == 0)
+                    {
+                        <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Aucune facturation dans cette vue. Vérifie les dates ou change de statut.</p>
+                    }
                 </div>
             }
             else
             {
                 <p class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 ring-1 ring-slate-100">
-                    @(isReadOnly
+                    @(isReadOnly && !isProduktOwner
                         ? "Aucune facturation n'a encore été créée pour ton école."
                         : "Aucune facturation créée pour le moment. Crée la première facturation à partir de la période ouverte ci-dessus.")
                 </p>
@@ -412,7 +446,7 @@
                 @onclick="() => confirmCreateOpen = false">
             Annuler
         </button>
-                    <AsyncActionButton Class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+                    <AsyncActionButton Class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
                                        IsBusy="@isDatabaseActionInProgress"
                                        BusyLabel="Création..."
                                        OnClick="@(_ => ConfirmCreateAsync())">
@@ -436,7 +470,7 @@
                 @onclick="() => confirmPeriodId = null">
             Annuler
         </button>
-        <AsyncActionButton Class="hallo-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+        <AsyncActionButton Class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
                            IsBusy="@isDatabaseActionInProgress"
                            BusyLabel="Confirmation..."
                            OnClick="@(_ => ConfirmBestaetigenAsync())">
@@ -454,7 +488,7 @@
         Indique le motif du refus. Le statut pourra être modifié plus tard une fois la situation clarifiée.
     </p>
     <textarea @bind="rejectReason" rows="3"
-              class="hallo-input mt-4 text-sm"
+              class="skoulou-input mt-4 text-sm"
               placeholder="Motif du refus..."></textarea>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"

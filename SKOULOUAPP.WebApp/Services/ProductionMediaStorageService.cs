@@ -1,6 +1,6 @@
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.Services.Storage;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class ProductionMediaStorageService : IMediaStorageService
 {

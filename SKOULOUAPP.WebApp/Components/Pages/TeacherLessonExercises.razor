@@ -1,10 +1,10 @@
 @page "/teacher/lesson-exercises"
 @attribute [Authorize(Policy = "RequireTeacher")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.Models.Admin
-@using HalloApp.Core.Services.Text
-@using HalloApp.WebApp.Components.Shared
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Models.Admin
+@using SkoulouApp.Core.Services.Text
+@using SkoulouApp.WebApp.Components.Shared
 
 @if (!Embedded)
 {
@@ -14,7 +14,7 @@
 <section class="grid gap-6 @(Embedded ? "teacher-create-embedded" : string.Empty)">
     @if (!Embedded)
     {
-        <div class="hallo-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+        <div class="skoulou-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
             <h1 class="mt-3 text-3xl font-black">Exercices des leçons</h1>
             <p class="mt-3 max-w-3xl text-sm leading-7 text-indigo-50">Gère les exercices de tes leçons avec la même structure que les examens.</p>
@@ -40,7 +40,7 @@
         @if (!editorOpen)
         {
             <div class="flex justify-end">
-                <button type="button" class="hallo-btn-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg transition" @onclick="OpenCreateAsync">
+                <button type="button" class="skoulou-btn-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg transition" @onclick="OpenCreateAsync">
                     + Nouvelle leçon + exercices
                 </button>
             </div>
@@ -94,17 +94,17 @@
                                     </div>
                                 </div>
                                 <div class="mt-3">
-                                    <label class="hallo-label">Points attribués</label>
+                                    <label class="skoulou-label">Points attribués</label>
                                     <input type="number"
-                                           class="hallo-input"
+                                           class="skoulou-input"
                                            min="0"
                                            max="@review.ExercisePoints"
                                            value="@GetManualPoints(review.AttemptId, review.ExercisePoints)"
                                            @oninput="(ChangeEventArgs e) => OnManualPointsInput(review.AttemptId, review.ExercisePoints, e)" />
                                 </div>
                                 <div class="mt-3">
-                                    <label class="hallo-label">Feedback (optionnel)</label>
-                                    <textarea class="hallo-input min-h-16"
+                                    <label class="skoulou-label">Feedback (optionnel)</label>
+                                    <textarea class="skoulou-input min-h-16"
                                               @oninput="(ChangeEventArgs e) => OnManualFeedbackInput(review.AttemptId, e)">@GetManualFeedback(review.AttemptId)</textarea>
                                 </div>
                                 <div class="mt-3 flex flex-wrap gap-2">
@@ -193,7 +193,7 @@
         else if (form is not null)
         {
             <div class="fixed inset-0 z-[2200] flex items-center justify-center overflow-hidden bg-slate-900/50 p-4 sm:p-5">
-                <div class="hallo-modal-surface mx-auto flex h-full w-full max-w-6xl flex-col rounded-3xl bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+                <div class="skoulou-modal-surface mx-auto flex h-full w-full max-w-6xl flex-col rounded-3xl bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">@selectedLessonCode</p>
@@ -202,7 +202,7 @@
                         <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="CloseEditor">Retour</button>
                     </div>
 
-                    <div @ref="editorScrollContainer" class="hallo-modal-scroll min-w-0 flex-1 px-3 py-4 sm:px-5">
+                    <div @ref="editorScrollContainer" class="skoulou-modal-scroll min-w-0 flex-1 px-3 py-4 sm:px-5">
 
                 @if (form.LessonId.HasValue && (isCurrentAssignmentVersionLocked || form.HasSubmissionsInCurrentAssignmentVersion))
                 {
@@ -238,9 +238,9 @@
 
                     <div class="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:grid-cols-2">
                         <div>
-                            <label class="hallo-label">@(isReassignCreationMode ? "Nouveau titre de la leçon" : "Titre de la leçon")</label>
+                            <label class="skoulou-label">@(isReassignCreationMode ? "Nouveau titre de la leçon" : "Titre de la leçon")</label>
                             <InputText @bind-Value="form.Title"
-                                       class="hallo-input"
+                                       class="skoulou-input"
                                        disabled="@isCurrentAssignmentVersionLocked"
                                        placeholder="@(isReassignCreationMode ? "Saisir le nouveau titre (obligatoire)" : null)" />
                         </div>
@@ -258,11 +258,11 @@
                             }
                         </div>
                         <div class="xl:col-span-2">
-                            <label class="hallo-label">Résumé (optionnel)</label>
-                            <InputTextArea @bind-Value="form.Summary" class="hallo-input min-h-16" disabled="@isCurrentAssignmentVersionLocked" />
+                            <label class="skoulou-label">Résumé (optionnel)</label>
+                            <InputTextArea @bind-Value="form.Summary" class="skoulou-input min-h-16" disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div class="xl:col-span-2">
-                            <label class="hallo-label">Contenu de la leçon</label>
+                            <label class="skoulou-label">Contenu de la leçon</label>
                             <RichTextEditor @ref="lessonContentEditor"
                                             @bind-Value="form.Content"
                                             EnableImages="true"
@@ -281,7 +281,7 @@
                             <span class="text-sm font-semibold text-slate-700">Publier la leçon et ses exercices</span>
                         </label>
                         <div>
-                            <label class="hallo-label">Date limite des réponses ouvertes (optionnel)</label>
+                            <label class="skoulou-label">Date limite des réponses ouvertes (optionnel)</label>
                             <TailwindDateTimePicker @bind-Value="form.ExerciseSubmissionDueAtUtc" IsDisabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                     </div>
@@ -313,9 +313,9 @@
                         <div class="mt-4 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                             <label class="block min-w-0">
                                 <span class="text-xs font-semibold text-slate-600">Fichier vidéo (optionnel)</span>
-                                <div class="hallo-file-picker mt-1">
+                                <div class="skoulou-file-picker mt-1">
                                     <div class="relative inline-flex">
-                                        <span class="hallo-file-trigger @((isCurrentAssignmentVersionLocked || isVideoUploading) ? "hallo-file-trigger-disabled" : string.Empty)">
+                                        <span class="skoulou-file-trigger @((isCurrentAssignmentVersionLocked || isVideoUploading) ? "skoulou-file-trigger-disabled" : string.Empty)">
                                             Choisir une vidéo
                                         </span>
                                         <InputFile id="teacher-lesson-exercise-video-file"
@@ -324,7 +324,7 @@
                                                    class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                                                    disabled="@(isCurrentAssignmentVersionLocked || isVideoUploading)" />
                                     </div>
-                                    <span class="hallo-file-selected-name max-w-full truncate" title="@selectedVideoFile?.Name">@(selectedVideoFile?.Name ?? "Aucun fichier sélectionné")</span>
+                                    <span class="skoulou-file-selected-name max-w-full truncate" title="@selectedVideoFile?.Name">@(selectedVideoFile?.Name ?? "Aucun fichier sélectionné")</span>
                                 </div>
                             </label>
                             <div class="block">
@@ -370,8 +370,8 @@
 
                                     <div class="grid gap-3">
                                         <div>
-                                            <label class="hallo-label">Titre de l'exercice</label>
-                                            <InputText @bind-Value="exerciseBlock.Title" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
+                                            <label class="skoulou-label">Titre de l'exercice</label>
+                                            <InputText @bind-Value="exerciseBlock.Title" class="skoulou-input" disabled="@isCurrentAssignmentVersionLocked" />
                                         </div>
 
                                         <div class="mt-1 space-y-4">
@@ -398,8 +398,8 @@
                                                             <ModernDropdown TValue="string?" Label="Type" Value="question.ExerciseType" ValueChanged="value => SetLessonExerciseTypeAsync(question, value)" Options="LessonExerciseTypeOptions" Disabled="@isCurrentAssignmentVersionLocked" />
                                                         </div>
                                                         <div>
-                                                            <label class="hallo-label">Points</label>
-                                                            <InputNumber @bind-Value="question.Points" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
+                                                            <label class="skoulou-label">Points</label>
+                                                            <InputNumber @bind-Value="question.Points" class="skoulou-input" disabled="@isCurrentAssignmentVersionLocked" />
                                                         </div>
                                                     </div>
 
@@ -434,8 +434,8 @@
                                                         <div class="rounded-2xl border border-cyan-100 bg-cyan-50 p-3">
                                                             <div class="grid gap-3 xl:grid-cols-2">
                                                                 <div>
-                                                                    <label class="hallo-label">Texte audio (TTS) (optionnel)</label>
-                                                                    <InputTextArea @bind-Value="question.AudioText" class="hallo-input min-h-20" placeholder="Ex. : Écoute puis réponds à la question." disabled="@isCurrentAssignmentVersionLocked" />
+                                                                    <label class="skoulou-label">Texte audio (TTS) (optionnel)</label>
+                                                                    <InputTextArea @bind-Value="question.AudioText" class="skoulou-input min-h-20" placeholder="Ex. : Écoute puis réponds à la question." disabled="@isCurrentAssignmentVersionLocked" />
                                                                 </div>
                                                                 <div>
                                                                     <ModernDropdown TValue="string?" Label="Langue TTS (optionnel)" Value="question.TtsLanguage" ValueChanged="value => SetLessonExerciseTtsLanguageAsync(question, value)" Options="TtsLanguageOptions" Disabled="@isCurrentAssignmentVersionLocked" />
@@ -472,7 +472,7 @@
                                                     else if (!isChoiceType)
                                                     {
                                                         <div>
-                                                            <label class="hallo-label">Réponses acceptées (optionnel)</label>
+                                                            <label class="skoulou-label">Réponses acceptées (optionnel)</label>
                                                             <RichTextEditor @bind-Value="question.AcceptedAnswers"
                                                                             Placeholder="Une variante par ligne"
                                                                             EnableLargeEditor="true"
@@ -501,7 +501,7 @@
                                                                         {
                                                                             <input type="checkbox" @bind="option.IsCorrect" disabled="@isCurrentAssignmentVersionLocked" />
                                                                         }
-                                                                        <InputText @bind-Value="option.Text" class="hallo-input" disabled="@isCurrentAssignmentVersionLocked" />
+                                                                        <InputText @bind-Value="option.Text" class="skoulou-input" disabled="@isCurrentAssignmentVersionLocked" />
                                                                         <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 disabled:opacity-50" disabled="@isCurrentAssignmentVersionLocked" @onclick="() => RemoveLessonExerciseOption(question, option)">Supprimer</button>
                                                                     </div>
                                                                 </div>

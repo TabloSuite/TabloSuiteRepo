@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Login
 {
@@ -28,9 +28,12 @@ public partial class Login
 
     protected override void OnParametersSet()
     {
-        errorMessage = Error == "invalid-credentials"
-            ? "Adresse e-mail ou mot de passe incorrect."
-            : null;
+        errorMessage = Error switch
+        {
+            "account-blocked" => "Ton compte n'a pas encore été validé ou a été bloqué. Contacte ton établissement pour en savoir plus.",
+            "invalid-credentials" => "Adresse e-mail ou mot de passe incorrect.",
+            _ => null
+        };
 
         infoMessage = Info == "password-updated"
             ? "Ton mot de passe a été modifié. Connecte-toi à nouveau."

@@ -1,8 +1,8 @@
 using System.Reflection;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Components.Shared;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class AzureBlobImageLibraryValidationTests
 {

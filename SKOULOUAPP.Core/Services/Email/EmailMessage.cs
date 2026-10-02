@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Services.Email;
+namespace SkoulouApp.Core.Services.Email;
 
 /// <summary>
 /// Ein einzelner E-Mail-Empfänger.

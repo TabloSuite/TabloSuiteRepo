@@ -1,12 +1,12 @@
 using System.Security.Claims;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentTeacherLessonReader
 {
@@ -14,7 +14,7 @@ public partial class StudentTeacherLessonReader
     private TeacherLessonService TeacherLessonService { get; set; } = default!;
 
     [Inject]
-    private IHalloAppDbContext DbContext { get; set; } = default!;
+    private ISkoulouAppDbContext DbContext { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;

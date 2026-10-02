@@ -1,4 +1,4 @@
-﻿namespace HalloApp.WebApp.Components.Shared;
+﻿namespace SkoulouApp.WebApp.Components.Shared;
 
 public sealed class DataListChip<TItem>
 {

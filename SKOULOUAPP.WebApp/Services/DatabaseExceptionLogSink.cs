@@ -1,12 +1,12 @@
 using System.Security.Claims;
-using HalloApp.WebApp.Data;
+using SkoulouApp.WebApp.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Core;
 using Serilog.Events;
 using System.Threading;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// Speichert Serilog-Ereignisse mit Exception als administrierbare ExceptionLogs.

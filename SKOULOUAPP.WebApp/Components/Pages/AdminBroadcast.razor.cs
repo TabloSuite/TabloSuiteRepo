@@ -1,18 +1,27 @@
 using System.ComponentModel.DataAnnotations;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Services;
-using HalloApp.Core.Services.Email;
-using HalloApp.Core.Services.Text;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
+using System.Security.Claims;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Core.Services.Email;
+using SkoulouApp.Core.Services.Text;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class AdminBroadcast
 {
+    [Parameter] public bool ShowAnnouncements { get; set; } = true;
+    [Parameter] public bool ShowEmailComposer { get; set; } = true;
+    [Parameter] public EventCallback EmailSent { get; set; }
+
     [Inject]
-    private BroadcastEmailService BroadcastEmailService { get; set; } = default!;
+    private MailboxService MailboxService { get; set; } = default!;
+
+    [Inject]
+    private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     [Inject]
     private HomePageService HomePageService { get; set; } = default!;
@@ -78,7 +87,7 @@ public partial class AdminBroadcast
         try
         {
             schools = await HomePageService.GetSchoolsAsync(ComponentToken);
-            announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+            if (ShowAnnouncements) announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -171,19 +180,28 @@ public partial class AdminBroadcast
                     Model.Subject,
                     $"<div>{sanitizedBody}</div>");
 
-                var result = await BroadcastEmailService.SendBroadcastAsync(
+                var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (!Guid.TryParse(auth.User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminId))
+                {
+                    succeeded = false;
+                    message = "Accès refusé.";
+                    return;
+                }
+
+                var result = await MailboxService.SendenAnGruppeAsync(adminId,
                     BuildCriteria(),
                     new EmailMessage
                     {
                         Subject = Model.Subject,
                         HtmlBody = html,
                         TextBody = plainBody
-                    });
+                    }, ComponentToken);
 
                 succeeded = result.FailedCount == 0 && result.SentCount > 0;
                 message = result.SentCount > 0
                     ? $"{result.SentCount} e-mail(s) envoyé(s)." + (result.FailedCount > 0 ? $" {result.FailedCount} échec(s)." : string.Empty)
                     : "Aucun e-mail n'a été envoyé. " + string.Join(" ", result.Errors);
+                if (result.SentCount > 0) await EmailSent.InvokeAsync();
             });
         }
         finally
@@ -201,7 +219,7 @@ public partial class AdminBroadcast
 
     private sealed class BroadcastInput
     {
-        public BroadcastAudience Audience { get; set; } = BroadcastAudience.Students;
+        public BroadcastAudience Audience { get; set; } = BroadcastAudience.ManualAddresses;
 
         public string? SchoolId { get; set; }
 

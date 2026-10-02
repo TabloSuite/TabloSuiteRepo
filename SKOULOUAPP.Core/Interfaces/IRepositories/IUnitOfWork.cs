@@ -1,10 +1,10 @@
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.Interfaces.IRepositories;
 
-namespace HalloApp.Core.Interfaces.IRepositories;
+namespace SkoulouApp.Core.Interfaces.IRepositories;
 
 /// <summary>
 /// Bündelt die Repositories und die Speicherung als eine Arbeitseinheit.

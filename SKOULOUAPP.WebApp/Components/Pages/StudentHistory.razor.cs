@@ -1,16 +1,20 @@
 using System.Security.Claims;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentHistory
 {
     [Inject]
     private TeacherLessonService TeacherLessonService { get; set; } = default!;
+
+    [Inject]
+    private DashboardService DashboardService { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -19,6 +23,7 @@ public partial class StudentHistory
     private NavigationManager Navigation { get; set; } = default!;
 
     private IReadOnlyList<TeacherLessonListItem>? historyLessons;
+    private IReadOnlyList<StudentClassHistoryItem> classHistory = [];
     private Guid? selectedTeacherId;
     private Guid? selectedFachId;
 
@@ -61,6 +66,7 @@ public partial class StudentHistory
 
             var lessons = await TeacherLessonService.GetLessonsForStudentAsync(userId, ComponentToken);
             historyLessons = lessons.Where(item => !item.IsCurrentKlasse).ToList();
+            classHistory = (await DashboardService.GetStudentDashboardAsync(userId, ComponentToken))?.ClassHistory ?? [];
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {

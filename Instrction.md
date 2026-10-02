@@ -1,8 +1,8 @@
-# HALLOAPPMAPPE – Übergabe für neuen Chat
+# SKOULOUAPPMAPPE – Übergabe für neuen Chat
 
 ## Projektkontext
 - Stack: Blazor (.NET 10)
-- Solution: `HALLOAPPMAPPE.slnx`
+- Solution: `SKOULOUAPPMAPPE.slnx`
 - Aktueller Branch: `upgrade-dotnet-10`
 
 ## Zuletzt behobene Abo-Regressionsfälle
@@ -15,12 +15,12 @@
    - Fix: erneute Festlegung für aktuelle Klasse erlaubt, wenn unbezahlt und nicht abgerechnet.
 
 ## Relevante Dateien
-- `HalloApp.Core/Services/AboService.cs`
-- `HalloApp.Core/Services/DashboardService.cs`
-- `HalloApp.WebApp/Components/Pages/Admin.razor`
-- `HalloApp.WebApp/Components/Pages/SchulLeiter.razor.cs`
-- `HalloApp.WebApp/Components/Pages/SchulLeiter.razor`
-- `HalloApp.Tests/Services/AboServiceTests.cs`
+- `SkoulouApp.Core/Services/AboService.cs`
+- `SkoulouApp.Core/Services/DashboardService.cs`
+- `SkoulouApp.WebApp/Components/Pages/Admin.razor`
+- `SkoulouApp.WebApp/Components/Pages/SchulLeiter.razor.cs`
+- `SkoulouApp.WebApp/Components/Pages/SchulLeiter.razor`
+- `SkoulouApp.Tests/Services/AboServiceTests.cs`
 
 ## Hinzugefügter Regressionstest
 - `AboZuweisenAsync_NachDeaktivierungUndErneuterKlassenzuordnung_KannWiederAktiviertWerden`

@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Exams;
+namespace SkoulouApp.Core.DataModels.Exams;
 
 public enum ExamReleaseTarget
 {

@@ -1,13 +1,13 @@
 using System.Linq.Expressions;
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces.IRepositories;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
 /// Fake-<see cref="IUnitOfWork"/> für Tests. Liefert vorkonfigurierte Kataloge

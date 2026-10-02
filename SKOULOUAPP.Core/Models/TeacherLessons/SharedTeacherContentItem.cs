@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.TeacherLessons;
+namespace SkoulouApp.Core.Models.TeacherLessons;
 
 /// <summary>Schreibgeschützte Übersicht eines von Lehrkräften mit der Schule geteilten Inhalts.</summary>
 public class SharedTeacherContentItem

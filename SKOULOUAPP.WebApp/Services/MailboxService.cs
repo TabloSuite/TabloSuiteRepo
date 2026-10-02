@@ -1,14 +1,51 @@
-using HalloApp.Core.DataModels.Email;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Services.Email;
-using HalloApp.Core.Services.Text;
-using HalloApp.WebApp.Data;
+using SkoulouApp.Core.DataModels.Email;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Services.Email;
+using SkoulouApp.Core.Services.Text;
+using SkoulouApp.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
+
+public sealed record MailEmpfaenger(Guid Id, string Name, string Email, bool IstDirektion, bool IstLehrer, bool IstSchueler);
 
 public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbContextFactory, IEmailService emailService)
 {
+    public async Task<EmailBatchResult> SendenAnGruppeAsync(Guid adminId, BroadcastCriteria criteria, EmailMessage message, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!await IstAdminAsync(db, adminId, cancellationToken))
+            return new EmailBatchResult(0, 0, ["Accès refusé."]);
+        if (criteria.SchoolId is Guid schoolId && !await db.Schools.AnyAsync(school => school.Id == schoolId, cancellationToken))
+            return new EmailBatchResult(0, 0, ["École introuvable."]);
+
+        var recipients = await new BroadcastEmailService(db, emailService).ResolveRecipientsAsync(criteria, cancellationToken);
+        if (recipients.Count == 0)
+            return new EmailBatchResult(0, 0, ["Aucun destinataire correspondant n'a été trouvé."]);
+
+        var sent = 0;
+        var errors = new List<string>();
+        var content = HtmlSanitizer.Sanitize(message.HtmlBody);
+        foreach (var recipient in recipients)
+        {
+            var result = await emailService.SendAsync(recipient, message, cancellationToken);
+            if (!result.Succeeded)
+            {
+                errors.Add(result.ErrorMessage ?? $"Échec : {recipient.Email}");
+                continue;
+            }
+
+            db.MailNachrichten.Add(new MailNachricht
+            {
+                SchulID = criteria.SchoolId, GesendetVonID = adminId, Absender = "contact.skoulou@etsetech.com",
+                Empfaenger = recipient.Email, Betreff = message.Subject, Inhalt = content
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            sent++;
+        }
+        return new EmailBatchResult(sent, errors.Count, errors);
+    }
+
     public async Task<IReadOnlyList<MailNachricht>> LadeAsync(Guid userId, bool istAdmin, Guid? produktOwnerFilter, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -50,6 +87,26 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
             .OrderBy(user => user.FullName).Select(user => new ValueTuple<Guid, string>(user.Id, user.FullName)).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<MailEmpfaenger>> EmpfaengerAsync(Guid userId, Guid schulId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!await IstAdminAsync(db, userId, cancellationToken)
+            && !await db.UserSchools.AnyAsync(link => link.AppUserId == userId && link.SchoolId == schulId
+                && link.AppUser.UserRoles.Any(role => role.Role.Name == Rollen.ProduktOwner), cancellationToken)) return [];
+
+        return await db.Users.AsNoTracking()
+            .Where(user => !user.IsBlocked && user.Email != null && user.Email != ""
+                && user.UserSchools.Any(link => link.SchoolId == schulId)
+                && user.UserRoles.Any(role => role.Role.Name == Rollen.SchulLeiter || role.Role.Name == Rollen.Koordinator
+                    || role.Role.Name == Rollen.Lehrer || role.Role.Name == Rollen.Schueler))
+            .OrderBy(user => user.FullName).ThenBy(user => user.Email)
+            .Select(user => new MailEmpfaenger(user.Id, user.FullName, user.Email!,
+                user.UserRoles.Any(role => role.Role.Name == Rollen.SchulLeiter || role.Role.Name == Rollen.Koordinator),
+                user.UserRoles.Any(role => role.Role.Name == Rollen.Lehrer),
+                user.UserRoles.Any(role => role.Role.Name == Rollen.Schueler)))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<(bool Succeeded, string Message)> SendenAsync(Guid userId, bool istAdmin, Guid? schulId, string empfaenger, string betreff, string inhalt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(empfaenger) || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(empfaenger.Trim())
@@ -61,6 +118,7 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         istAdmin = await IstAdminAsync(db, userId, cancellationToken);
         if (!istAdmin && !await IstOwnerAsync(db, userId, cancellationToken)) return (false, "Accès refusé.");
+        if (!istAdmin && !schulId.HasValue) return (false, "Choisissez une école pour envoyer ce message.");
         if (!istAdmin && (!schulId.HasValue || !await db.UserSchools.AnyAsync(link => link.AppUserId == userId && link.SchoolId == schulId.Value
             && link.AppUser.UserRoles.Any(role => role.Role.Name == Rollen.ProduktOwner), cancellationToken)))
         {

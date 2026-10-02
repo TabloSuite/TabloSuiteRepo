@@ -1,9 +1,9 @@
 using System.Security.Claims;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Layout;
+namespace SkoulouApp.WebApp.Components.Layout;
 
 public partial class NavMenu
 {

@@ -1,11 +1,11 @@
-using HalloApp.Core.Options;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Options;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class AzureFinanzBelegStorageTests
 {

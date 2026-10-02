@@ -1,6 +1,6 @@
-using HalloApp.Core.Models.Media;
+using SkoulouApp.Core.Models.Media;
 
-namespace HalloApp.Core.Services.Storage;
+namespace SkoulouApp.Core.Services.Storage;
 
 /// <summary>Verwaltet die private, rollen- und schulbezogene Azure-Medienbibliothek.</summary>
 public interface IBlobMediaLibraryService

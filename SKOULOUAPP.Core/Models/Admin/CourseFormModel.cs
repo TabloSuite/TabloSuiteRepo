@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 public class CourseFormModel
 {
@@ -63,9 +63,9 @@ public class CourseFormModel
 
     /// <summary>
     /// Wenn aktiv, werden beim Start eines Klassenzyklus die Schüler der Klasse
-    /// automatisch mit dem Standard-Abo HALLOAPP (AboTyp.HalloApp) vorbereitet.
+    /// automatisch mit dem Standard-Abo SKOULOUAPP (AboTyp.SkoulouApp) vorbereitet.
     /// </summary>
-    public bool AutoAssignHalloAppAboOnCycleStart { get; set; }
+    public bool AutoAssignSkoulouAppAboOnCycleStart { get; set; }
 
     /// <summary>
     /// UI-Bestätigung: Beim Aktivieren während eines laufenden Zyklus sollen

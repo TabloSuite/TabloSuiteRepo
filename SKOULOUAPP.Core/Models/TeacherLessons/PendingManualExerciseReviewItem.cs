@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.TeacherLessons;
+namespace SkoulouApp.Core.Models.TeacherLessons;
 
 public class PendingManualExerciseReviewItem
 {

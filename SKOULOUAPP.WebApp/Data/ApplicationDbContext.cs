@@ -1,15 +1,16 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.DataModels.Email;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Email;
 
-namespace HalloApp.WebApp.Data;
+namespace SkoulouApp.WebApp.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<AppUser, Role, Guid, IdentityUserClaim<Guid>, AppUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>(options), IHalloAppDbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<AppUser, Role, Guid, IdentityUserClaim<Guid>, AppUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>(options), ISkoulouAppDbContext
 {
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<School> Schools => Set<School>();
+    public DbSet<AbschlussMention> AbschlussMentions => Set<AbschlussMention>();
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<Klasse> Klassen => Set<Klasse>();
@@ -55,6 +56,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<School>().Property(x => x.Name).HasMaxLength(200);
+        modelBuilder.Entity<AbschlussMention>().Property(x => x.Text).HasMaxLength(80);
+        modelBuilder.Entity<AbschlussMention>().HasIndex(x => new { x.SchulID, x.Text }).IsUnique();
+        modelBuilder.Entity<AbschlussMention>().HasOne(x => x.Schule).WithMany()
+            .HasForeignKey(x => x.SchulID).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Ankuendigung>().Property(x => x.Titel).HasMaxLength(200);
         modelBuilder.Entity<Ankuendigung>().HasIndex(x => x.AblaufAmUtc);
         modelBuilder.Entity<MailNachricht>().Property(x => x.Absender).HasMaxLength(256);
@@ -394,7 +399,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         modelBuilder.Entity<LevelEnrollment>()
             .HasIndex(x => new { x.StudentId, x.KlasseId })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[IstAktuell] = 1");
+
+        modelBuilder.Entity<LevelEnrollment>()
+            .HasIndex(x => new { x.StudentId, x.DurchlaufId })
+            .IsUnique()
+            .HasFilter("[DurchlaufId] IS NOT NULL");
+
+        modelBuilder.Entity<LevelEnrollment>()
+            .HasOne(x => x.Durchlauf)
+            .WithMany()
+            .HasForeignKey(x => x.DurchlaufId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<LevelEnrollment>()
             .Property(x => x.AboTyp)
@@ -406,8 +423,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(x => x.AbgerechnetInPeriodeId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        modelBuilder.Entity<School>().Property(x => x.PreisHalloBasis).HasPrecision(12, 2);
-        modelBuilder.Entity<School>().Property(x => x.PreisHalloPlus).HasPrecision(12, 2);
+        modelBuilder.Entity<School>().Property(x => x.SubscriptionPriceOverride).HasPrecision(12, 2);
 
         modelBuilder.Entity<Abrechnungsperiode>().Property(x => x.Umsatz).HasPrecision(12, 2);
         modelBuilder.Entity<LehrerProvisionsAuszahlung>().Property(x => x.WochenstundenSnapshot).HasPrecision(5, 2);
@@ -611,6 +627,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // --- KlassenAbschlussEntscheidung ---
         modelBuilder.Entity<KlassenAbschlussEntscheidung>().Property(x => x.AbschlussNote).HasPrecision(5, 2);
         modelBuilder.Entity<KlassenAbschlussEntscheidung>().Property(x => x.AbschlussNoteText).HasMaxLength(64);
+        modelBuilder.Entity<KlassenAbschlussEntscheidung>().Property(x => x.MentionText).HasMaxLength(80);
         modelBuilder.Entity<KlassenAbschlussEntscheidung>()
             .HasIndex(x => new { x.DurchlaufId, x.StudentId })
             .IsUnique();

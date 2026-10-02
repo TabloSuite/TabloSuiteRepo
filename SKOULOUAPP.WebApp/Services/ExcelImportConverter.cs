@@ -3,7 +3,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public static class ExcelImportConverter
 {

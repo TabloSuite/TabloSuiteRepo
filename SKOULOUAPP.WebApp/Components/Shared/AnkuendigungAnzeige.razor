@@ -1,5 +1,5 @@
 @implements IAsyncDisposable
-@inject HalloApp.Core.Services.AnkuendigungService AnkuendigungService
+@inject SkoulouApp.Core.Services.AnkuendigungService AnkuendigungService
 
 @if (ankuendigungen.Count > 0)
 {
@@ -17,7 +17,7 @@
 }
 
 @code {
-    private List<HalloApp.Core.DataModels.Schools.Ankuendigung> ankuendigungen = [];
+    private List<SkoulouApp.Core.DataModels.Schools.Ankuendigung> ankuendigungen = [];
     private readonly CancellationTokenSource cancellation = new();
     private Task? refreshTask;
 

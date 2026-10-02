@@ -1,24 +1,24 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Media;
-using HalloApp.Core.Options;
-using HalloApp.Core.Services.Storage;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Media;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Core.Services.Storage;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// Speichert Bilder in einem privaten Azure-Blob-Container und setzt die
 /// Sichtbarkeit über die zugehörigen Datenbankmetadaten durch.
 /// </summary>
 public sealed class AzureBlobMediaLibraryService(
-    IHalloAppDbContext dbContext,
+    ISkoulouAppDbContext dbContext,
     IWebHostEnvironment environment,
     IOptions<AzureBlobStorageOptions> options) : IBlobMediaLibraryService
 {
@@ -506,7 +506,7 @@ public sealed class AzureBlobMediaLibraryService(
 
         var unlockedKlasseIds = await dbContext.LevelEnrollments
             .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
             .Select(enrollment => enrollment.KlasseId)
             .ToListAsync(cancellationToken);
 
@@ -545,7 +545,7 @@ public sealed class AzureBlobMediaLibraryService(
 
         var unlockedKlasseIds = await dbContext.LevelEnrollments
             .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IsUnlocked)
+            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
             .Select(enrollment => enrollment.KlasseId)
             .ToListAsync(cancellationToken);
 

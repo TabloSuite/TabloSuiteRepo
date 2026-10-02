@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.BaseModel;
 
-namespace HalloApp.Core.DataModels.Exams;
+namespace SkoulouApp.Core.DataModels.Exams;
 
 /// <summary>
 /// Speichert die Antwort eines Schülers auf eine einzelne Prüfungsfrage.

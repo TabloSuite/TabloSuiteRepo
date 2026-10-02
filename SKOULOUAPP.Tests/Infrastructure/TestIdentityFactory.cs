@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 public static class TestIdentityFactory
 {

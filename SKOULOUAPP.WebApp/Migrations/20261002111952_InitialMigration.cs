@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace HalloApp.WebApp.Migrations
+namespace SkoulouApp.WebApp.Migrations
 {
     /// <inheritdoc />
     public partial class InitialMigration : Migration
@@ -11,6 +11,21 @@ namespace HalloApp.WebApp.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Ankuendigungen",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Titel = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    InhaltHtml = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AblaufAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Ankuendigungen", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -46,6 +61,27 @@ namespace HalloApp.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "MailNachrichten",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SchulID = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    GesendetVonID = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Absender = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Empfaenger = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Betreff = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
+                    Inhalt = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PostmarkMessageID = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    IstEingehend = table.Column<bool>(type: "bit", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MailNachrichten", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Permissions",
                 columns: table => new
                 {
@@ -68,9 +104,9 @@ namespace HalloApp.WebApp.Migrations
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     City = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Country = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DescriptionHtml = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    PreisHalloBasis = table.Column<decimal>(type: "decimal(12,2)", precision: 12, scale: 2, nullable: true),
-                    PreisHalloPlus = table.Column<decimal>(type: "decimal(12,2)", precision: 12, scale: 2, nullable: true),
+                    SubscriptionPriceOverride = table.Column<decimal>(type: "decimal(12,2)", precision: 12, scale: 2, nullable: true),
                     SchoolLeaderCommissionPercentOverride = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: true),
                     TeacherCommissionPercentOverride = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: true),
                     ProductOwnerCommissionPercentOverride = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: true),
@@ -136,8 +172,7 @@ namespace HalloApp.WebApp.Migrations
                     VonUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     BisUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Umsatz = table.Column<decimal>(type: "decimal(12,2)", precision: 12, scale: 2, nullable: false),
-                    AnzahlHalloBasis = table.Column<int>(type: "int", nullable: false),
-                    AnzahlHalloPlus = table.Column<int>(type: "int", nullable: false),
+                    AnzahlAbonnements = table.Column<int>(type: "int", nullable: false),
                     IstAbgeschlossen = table.Column<bool>(type: "bit", nullable: false),
                     AbgeschlossenAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
@@ -275,7 +310,7 @@ namespace HalloApp.WebApp.Migrations
                     SchoolId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     KlassenStufeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     IstSystemNiveau = table.Column<bool>(type: "bit", nullable: false),
-                    AutoAssignHalloAppAboOnCycleStart = table.Column<bool>(type: "bit", nullable: false),
+                    AutoAssignSkoulouAppAboOnCycleStart = table.Column<bool>(type: "bit", nullable: false),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -294,116 +329,6 @@ namespace HalloApp.WebApp.Migrations
                         principalTable: "Schools",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Lessons",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    KlasseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Summary = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Order = table.Column<int>(type: "int", nullable: false),
-                    IsPublished = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    ExerciseSubmissionDueAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    AssignmentVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    FachId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Lessons", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Lessons_Faecher_FachId",
-                        column: x => x.FachId,
-                        principalTable: "Faecher",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Lessons_Klassen_KlasseId",
-                        column: x => x.KlasseId,
-                        principalTable: "Klassen",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Exercises",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Instructions = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ExerciseType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Order = table.Column<int>(type: "int", nullable: false),
-                    Question = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    Points = table.Column<int>(type: "int", nullable: false, defaultValue: 10),
-                    AudioText = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TtsLanguage = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false, defaultValue: "de-DE"),
-                    AcceptedAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    GapAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Exercises", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Exercises_Lessons_LessonId",
-                        column: x => x.LessonId,
-                        principalTable: "Lessons",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "LessonMedia",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MediaType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RelativePath = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AltText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    StorageProvider = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LessonMedia", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_LessonMedia_Lessons_LessonId",
-                        column: x => x.LessonId,
-                        principalTable: "Lessons",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ExerciseOptions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ExerciseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Text = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    IsCorrect = table.Column<bool>(type: "bit", nullable: false),
-                    Order = table.Column<int>(type: "int", nullable: false),
-                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ExerciseOptions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ExerciseOptions_Exercises_ExerciseId",
-                        column: x => x.ExerciseId,
-                        principalTable: "Exercises",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -517,7 +442,7 @@ namespace HalloApp.WebApp.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SchoolId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SchoolId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     OwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     KlasseId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     BlobName = table.Column<string>(type: "nvarchar(600)", maxLength: 600, nullable: false),
@@ -563,6 +488,8 @@ namespace HalloApp.WebApp.Migrations
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DurationInMinutes = table.Column<int>(type: "int", nullable: false),
+                    SubmissionDueAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsSuperseded = table.Column<bool>(type: "bit", nullable: false),
                     PassingScore = table.Column<int>(type: "int", nullable: false),
                     ExamType = table.Column<int>(type: "int", nullable: false),
                     AuthorId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -589,47 +516,6 @@ namespace HalloApp.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ExerciseAttempts",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ExerciseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SelectedOptionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    SelectedOptionIdsJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TextAnswer = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    GapAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsCorrect = table.Column<bool>(type: "bit", nullable: false),
-                    AssignmentVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    ExerciseSnapshotJson = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
-                    RequiresManualGrading = table.Column<bool>(type: "bit", nullable: false),
-                    ManuallyGradedIsCorrect = table.Column<bool>(type: "bit", nullable: true),
-                    ManualFeedback = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
-                    AwardedPoints = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    ManuallyGradedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    ManuallyGradedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    AnsweredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ExerciseAttempts", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ExerciseAttempts_AspNetUsers_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ExerciseAttempts_Exercises_ExerciseId",
-                        column: x => x.ExerciseId,
-                        principalTable: "Exercises",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "FinanzBuchungen",
                 columns: table => new
                 {
@@ -640,6 +526,8 @@ namespace HalloApp.WebApp.Migrations
                     Betrag = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Wirkungsdatum = table.Column<DateTime>(type: "datetime2", nullable: false),
                     BeschreibungHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Belegnummer = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Buchungsnummer = table.Column<string>(type: "nvarchar(34)", maxLength: 34, nullable: false, computedColumnSql: "'B-' + REPLACE(CONVERT(varchar(36), [Id]), '-', '')", stored: true),
                     ErfasstVonUserID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     HerkunftReferenzID = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -664,6 +552,29 @@ namespace HalloApp.WebApp.Migrations
                         name: "FK_FinanzBuchungen_Schools_SchulID",
                         column: x => x.SchulID,
                         principalTable: "Schools",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FormelFavoriten",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BenutzerID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LaTeX = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    Bezeichnung = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Vorschau = table.Column<string>(type: "nvarchar(400)", maxLength: 400, nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormelFavoriten", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FormelFavoriten_AspNetUsers_BenutzerID",
+                        column: x => x.BenutzerID,
+                        principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -768,33 +679,41 @@ namespace HalloApp.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LessonProgresses",
+                name: "Lessons",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CorrectExerciseCount = table.Column<int>(type: "int", nullable: false),
-                    TotalExerciseCount = table.Column<int>(type: "int", nullable: false),
-                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
-                    CompletedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastActivityUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    KlasseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Summary = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Order = table.Column<int>(type: "int", nullable: false),
+                    IsPublished = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    ExerciseSubmissionDueAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AssignmentVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    FachId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CreatedByTeacherId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_LessonProgresses", x => x.Id);
+                    table.PrimaryKey("PK_Lessons", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_LessonProgresses_AspNetUsers_StudentId",
-                        column: x => x.StudentId,
+                        name: "FK_Lessons_AspNetUsers_CreatedByTeacherId",
+                        column: x => x.CreatedByTeacherId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_LessonProgresses_Lessons_LessonId",
-                        column: x => x.LessonId,
-                        principalTable: "Lessons",
+                        name: "FK_Lessons_Faecher_FachId",
+                        column: x => x.FachId,
+                        principalTable: "Faecher",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Lessons_Klassen_KlasseId",
+                        column: x => x.KlasseId,
+                        principalTable: "Klassen",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -887,7 +806,11 @@ namespace HalloApp.WebApp.Migrations
                 {
                     AppUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     SchoolId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CanManageStudents = table.Column<bool>(type: "bit", nullable: false)
+                    CanManageStudents = table.Column<bool>(type: "bit", nullable: false),
+                    CanAccessFinances = table.Column<bool>(type: "bit", nullable: false),
+                    CanViewFinanceDashboard = table.Column<bool>(type: "bit", nullable: false),
+                    CanCreateFinanceEntries = table.Column<bool>(type: "bit", nullable: false),
+                    CanManageCyclePayments = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1017,6 +940,31 @@ namespace HalloApp.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FinanzBelege",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BuchungID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SchulID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Dateiname = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Inhaltstyp = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
+                    BlobName = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Inhalt = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FinanzBelege", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FinanzBelege_FinanzBuchungen_BuchungID",
+                        column: x => x.BuchungID,
+                        principalTable: "FinanzBuchungen",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "KlassenAbschlussEntscheidungen",
                 columns: table => new
                 {
@@ -1095,6 +1043,92 @@ namespace HalloApp.WebApp.Migrations
                         name: "FK_RatenZahlungen_KursNiveauDurchlaeufe_DurchlaufID",
                         column: x => x.DurchlaufID,
                         principalTable: "KursNiveauDurchlaeufe",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Exercises",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Instructions = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ExerciseType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Order = table.Column<int>(type: "int", nullable: false),
+                    Question = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    Points = table.Column<int>(type: "int", nullable: false, defaultValue: 10),
+                    AudioText = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TtsLanguage = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false, defaultValue: "de-DE"),
+                    AcceptedAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GapAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Exercises", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Exercises_Lessons_LessonId",
+                        column: x => x.LessonId,
+                        principalTable: "Lessons",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "LessonMedia",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MediaType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RelativePath = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AltText = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    StorageProvider = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LessonMedia", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_LessonMedia_Lessons_LessonId",
+                        column: x => x.LessonId,
+                        principalTable: "Lessons",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "LessonProgresses",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LessonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CorrectExerciseCount = table.Column<int>(type: "int", nullable: false),
+                    TotalExerciseCount = table.Column<int>(type: "int", nullable: false),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    CompletedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastActivityUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LessonProgresses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_LessonProgresses_AspNetUsers_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_LessonProgresses_Lessons_LessonId",
+                        column: x => x.LessonId,
+                        principalTable: "Lessons",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -1230,6 +1264,70 @@ namespace HalloApp.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ExerciseAttempts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExerciseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SelectedOptionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    SelectedOptionIdsJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TextAnswer = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GapAnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsCorrect = table.Column<bool>(type: "bit", nullable: false),
+                    AssignmentVersion = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    ExerciseSnapshotJson = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    RequiresManualGrading = table.Column<bool>(type: "bit", nullable: false),
+                    ManuallyGradedIsCorrect = table.Column<bool>(type: "bit", nullable: true),
+                    ManualFeedback = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    AwardedPoints = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    ManuallyGradedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ManuallyGradedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AnsweredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExerciseAttempts", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExerciseAttempts_AspNetUsers_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ExerciseAttempts_Exercises_ExerciseId",
+                        column: x => x.ExerciseId,
+                        principalTable: "Exercises",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ExerciseOptions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExerciseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsCorrect = table.Column<bool>(type: "bit", nullable: false),
+                    Order = table.Column<int>(type: "int", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExerciseOptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExerciseOptions_Exercises_ExerciseId",
+                        column: x => x.ExerciseId,
+                        principalTable: "Exercises",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ExamAnswers",
                 columns: table => new
                 {
@@ -1290,6 +1388,11 @@ namespace HalloApp.WebApp.Migrations
                 name: "IX_Abrechnungsperioden_SchulID_VonUtc",
                 table: "Abrechnungsperioden",
                 columns: new[] { "SchulID", "VonUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ankuendigungen_AblaufAmUtc",
+                table: "Ankuendigungen",
+                column: "AblaufAmUtc");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -1461,6 +1564,23 @@ namespace HalloApp.WebApp.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_FinanzBelege_BuchungID",
+                table: "FinanzBelege",
+                column: "BuchungID",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FinanzBelege_SchulID",
+                table: "FinanzBelege",
+                column: "SchulID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FinanzBuchungen_Buchungsnummer",
+                table: "FinanzBuchungen",
+                column: "Buchungsnummer",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FinanzBuchungen_ErfasstVonUserID",
                 table: "FinanzBuchungen",
                 column: "ErfasstVonUserID");
@@ -1484,6 +1604,12 @@ namespace HalloApp.WebApp.Migrations
                 name: "IX_FinanzKategorien_SchulID_Richtung_Bezeichnung",
                 table: "FinanzKategorien",
                 columns: new[] { "SchulID", "Richtung", "Bezeichnung" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormelFavoriten_BenutzerID_LaTeX",
+                table: "FormelFavoriten",
+                columns: new[] { "BenutzerID", "LaTeX" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Klassen_KlassenStufeId",
@@ -1594,6 +1720,11 @@ namespace HalloApp.WebApp.Migrations
                 column: "StudentId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Lessons_CreatedByTeacherId",
+                table: "Lessons",
+                column: "CreatedByTeacherId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lessons_FachId",
                 table: "Lessons",
                 column: "FachId");
@@ -1618,6 +1749,18 @@ namespace HalloApp.WebApp.Migrations
                 table: "LevelEnrollments",
                 columns: new[] { "StudentId", "KlasseId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MailNachrichten_PostmarkMessageID",
+                table: "MailNachrichten",
+                column: "PostmarkMessageID",
+                unique: true,
+                filter: "[PostmarkMessageID] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MailNachrichten_SchulID_ErstelltAmUtc",
+                table: "MailNachrichten",
+                columns: new[] { "SchulID", "ErstelltAmUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Permissions_Name",
@@ -1771,6 +1914,9 @@ namespace HalloApp.WebApp.Migrations
                 table: "BlobMediaAssets");
 
             migrationBuilder.DropTable(
+                name: "Ankuendigungen");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
             migrationBuilder.DropTable(
@@ -1804,6 +1950,12 @@ namespace HalloApp.WebApp.Migrations
                 name: "ExerciseOptions");
 
             migrationBuilder.DropTable(
+                name: "FinanzBelege");
+
+            migrationBuilder.DropTable(
+                name: "FormelFavoriten");
+
+            migrationBuilder.DropTable(
                 name: "KlassenAbschlussEntscheidungen");
 
             migrationBuilder.DropTable(
@@ -1820,6 +1972,9 @@ namespace HalloApp.WebApp.Migrations
 
             migrationBuilder.DropTable(
                 name: "LessonProgresses");
+
+            migrationBuilder.DropTable(
+                name: "MailNachrichten");
 
             migrationBuilder.DropTable(
                 name: "ProduktOwnerProvisionsAuszahlungen");

@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Components.Layout;
+namespace SkoulouApp.WebApp.Components.Layout;
 
 public partial class TermsAcceptanceGuard
 {

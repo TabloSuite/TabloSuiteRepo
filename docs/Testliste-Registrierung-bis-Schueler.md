@@ -47,8 +47,8 @@ Legende: ⬜ offen · ✅ bestanden · ❌ fehlgeschlagen
 
 - ⬜ **5.1** Button **Abonnements** öffnet das Level-Panel für den Schüler.
 - ⬜ **5.2** Verfügbare Kurs-Level werden aufgelistet.
-- ⬜ **5.3** Zuweisung **HALLOBASIS** funktioniert (Level wird freigeschaltet).
-- ⬜ **5.4** Zuweisung **HALLOPLUS** funktioniert (Level wird freigeschaltet).
+- ⬜ **5.3** Zuweisung **SKOULOUBASIS** funktioniert (Level wird freigeschaltet).
+- ⬜ **5.4** Zuweisung **SKOULOUPLUS** funktioniert (Level wird freigeschaltet).
 - ⬜ **5.5** Preis wird zum Zeitpunkt der Zuweisung eingefroren (`PriceAtEnrollment`).
 - ⬜ **5.6** Als **Payé** markieren funktioniert und zeigt das Badge korrekt an.
 - ⬜ **5.7** Bezahlung zurücknehmen ist NUR erlaubt, solange nicht abgerechnet.
@@ -57,7 +57,7 @@ Legende: ⬜ offen · ✅ bestanden · ❌ fehlgeschlagen
 
 - ⬜ **6.1** Login als SuperAdmin und Aufruf `/abrechnung`.
 - ⬜ **6.2** Schule aus der Liste auswählbar (Auswahl-Ring sichtbar).
-- ⬜ **6.3** Offene Periode zeigt korrekte Anzahl HALLOBASIS / HALLOPLUS.
+- ⬜ **6.3** Offene Periode zeigt korrekte Anzahl SKOULOUBASIS / SKOULOUPLUS.
 - ⬜ **6.4** Offener Umsatz (`OffenerUmsatz`) wird korrekt berechnet.
 - ⬜ **6.5** „Clôturer la période“ ist deaktiviert, wenn keine Positionen vorhanden.
 - ⬜ **6.6** Periodenabschluss friert bezahlte Positionen ein (`AbgerechnetInPeriodeId` gesetzt).
@@ -86,9 +86,9 @@ Legende: ⬜ offen · ✅ bestanden · ❌ fehlgeschlagen
 
 ## Automatisierte Tests (Referenz)
 
-- ✅ **Gesamtablauf-Test**: `HalloApp.Tests\Services\GesamtAblaufTests.cs` →
+- ✅ **Gesamtablauf-Test**: `SkoulouApp.Tests\Services\GesamtAblaufTests.cs` →
   `VollstaendigerAblauf_VonSchulleiterBisSchueler_FunktioniertDurchgehend`
   deckt den kompletten Fluss (Schulleiter → Lehrer → Schüler → Abo → Abrechnung → Schüler-Dashboard) in einem Test ab.
-- ⬜ Alle xUnit-Tests in `HalloApp.Tests` laufen grün (`dotnet test`).
+- ⬜ Alle xUnit-Tests in `SkoulouApp.Tests` laufen grün (`dotnet test`).
 - ⬜ `AboService`-Tests (Zuweisung, Bezahlung, Rücknahme) bestanden.
 - ⬜ `AbrechnungService`-Tests (offene Übersicht, Abschluss, Historie) bestanden.

@@ -1,8 +1,8 @@
-using HalloApp.Core.Options;
+using SkoulouApp.Core.Options;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace HalloApp.Core.Services.Storage;
+namespace SkoulouApp.Core.Services.Storage;
 
 /// <summary>
 /// Speichert Medien im lokalen Dateisystem unterhalb des konfigurierten Ordners.

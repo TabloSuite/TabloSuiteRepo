@@ -1,7 +1,7 @@
-using HalloApp.WebApp.Services;
+using SkoulouApp.WebApp.Services;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für die gemeinsame E-Mail-Vorlage <see cref="EmailTemplates"/>.
@@ -85,16 +85,16 @@ public class EmailTemplatesTests
     [Fact]
     public void InfoBox_UmschliesstDenInhalt()
     {
-        var html = EmailTemplates.InfoBox("<strong>HalloPlus</strong>");
+        var html = EmailTemplates.InfoBox("<strong>SkoulouPlus</strong>");
 
-        Assert.Contains("<strong>HalloPlus</strong>", html);
+        Assert.Contains("<strong>SkoulouPlus</strong>", html);
         Assert.Contains("border-left", html);
     }
 
     [Fact]
     public void ToPlainText_EntferntMarkupUndDecodiertEntities()
     {
-        var html = EmailTemplates.Wrap("Bienvenue", "<p>Bonjour Jean</p><p>&bull; HalloBasis</p>");
+        var html = EmailTemplates.Wrap("Bienvenue", "<p>Bonjour Jean</p><p>&bull; SkoulouBasis</p>");
 
         var text = EmailTemplates.ToPlainText(html);
 

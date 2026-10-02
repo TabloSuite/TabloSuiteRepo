@@ -100,7 +100,7 @@ window.SKOULOUAPPAudio = (() => {
         });
 
         const directToneHandler = event => {
-            const button = event.target?.closest?.('[data-halloapp-test-tone]');
+            const button = event.target?.closest?.('[data-skoulouapp-test-tone]');
             if (!button || button.disabled) {
                 return;
             }

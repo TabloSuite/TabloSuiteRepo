@@ -5,10 +5,10 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <link rel="stylesheet" href="../../SKOULOUAPP.WebApp/wwwroot/app.css">
 <link rel="stylesheet" href="../../SKOULOUAPP.WebApp/wwwroot/css/lesson-a4.css">
-<style>body { margin: 0; } .halloapp-richtext { width: 210mm; margin: auto; } @media print { .halloapp-richtext, #result { display: none; } }</style>
+<style>body { margin: 0; } .skoulouapp-richtext { width: 210mm; margin: auto; } @media print { .skoulouapp-richtext, #result { display: none; } }</style>
 </head>
 <body>
-<div class="halloapp-richtext halloapp-richtext--paged"><div id="editor"></div></div>
+<div class="skoulouapp-richtext skoulouapp-richtext--paged"><div id="editor"></div></div>
 <div class="lesson-a4-pages" id="reader"></div>
 <pre id="result">PENDING</pre>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
@@ -23,7 +23,7 @@
         let modalBody;
         if (kind === 'modal') {
             modalBody = document.createElement('div');
-            modalBody.className = 'halloapp-large-editor-body';
+            modalBody.className = 'skoulouapp-large-editor-body';
             modalBody.style.cssText = 'height:600px; width:850px; margin:auto; padding:16px; box-sizing:border-box;';
             editor.parentElement.before(modalBody);
             modalBody.appendChild(editor.parentElement);
@@ -39,7 +39,7 @@
         await new Promise(resolve => setTimeout(resolve, 1000));
         const pages = api.splitIntoPages(editor);
         const pageCount = api.renderPageSheets(quill, null);
-        const sheets = [...editor.querySelectorAll('.halloapp-page-sheet')];
+        const sheets = [...editor.querySelectorAll('.skoulouapp-page-sheet')];
         const blocks = api.getPageUnits(quill.root);
         const firstTop = sheets[0].getBoundingClientRect().top;
         const contentHeight = api.a4ContentHeightPx();

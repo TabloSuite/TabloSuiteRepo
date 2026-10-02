@@ -1,5 +1,5 @@
-using HalloApp.Core.DataModels.BaseModel;
-namespace HalloApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.BaseModel;
+namespace SkoulouApp.Core.DataModels.Courses;
 
 public class Klasse : AuditableModel
 {
@@ -42,9 +42,9 @@ public class Klasse : AuditableModel
 
     /// <summary>
     /// Wenn aktiv, werden beim Start eines neuen Klassenzyklus die Schüler der Klasse
-    /// automatisch mit dem Standard-Abo (AboTyp.HalloApp) vorbereitet.
+    /// automatisch mit dem Standard-Abo (AboTyp.SkoulouApp) vorbereitet.
     /// </summary>
-    public bool AutoAssignHalloAppAboOnCycleStart { get; set; }
+    public bool AutoAssignSkoulouAppAboOnCycleStart { get; set; }
 
     public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
     public ICollection<Exam> Exams { get; set; } = new List<Exam>();

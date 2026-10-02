@@ -1,10 +1,11 @@
-namespace HalloApp.Core.Models.Exams;
+namespace SkoulouApp.Core.Models.Exams;
 
 /// <summary>Abschlussübersicht einer Klasse innerhalb eines konkreten Kursdurchlaufs.</summary>
 public class KlassenAbschlussUebersicht
 {
     public Guid DurchlaufId { get; set; }
     public Guid KlasseId { get; set; }
+    public Guid SchulID { get; set; }
     public string KlasseCode { get; set; } = string.Empty;
     public bool IstAktiv { get; set; }
     public List<KlassenAbschlussSchueler> Schueler { get; set; } = [];
@@ -16,6 +17,7 @@ public class KlassenAbschlussSchueler
     public Guid StudentId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? AbschlussNoteText { get; set; }
+    public string? MentionText { get; set; }
     public int AbschlussExamAnzahl { get; set; }
     public bool? IsBestanden { get; set; }
 }

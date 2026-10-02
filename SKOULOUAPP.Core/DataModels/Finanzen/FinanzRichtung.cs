@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 /// <summary>
 /// Legt fest, ob eine Finanzkategorie bzw. -buchung eine Einnahme oder eine

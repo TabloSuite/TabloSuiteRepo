@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Home;
+namespace SkoulouApp.Core.Models.Home;
 
 /// <summary>
 /// Zusammenfassung des Kurskatalogs für die öffentliche Startseite.

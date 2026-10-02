@@ -1,15 +1,15 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Tests für <see cref="ExamService"/> mit In-Memory-Datenbank.
@@ -742,6 +742,47 @@ public class ExamServiceTests
         Assert.Equal(student.Id, result.StudentId);
         Assert.Equal("10/20", result.AbschlussNoteText);
         Assert.True(result.IsBestanden);
+    }
+
+    [Fact]
+    public async Task AbschlussMentions_SchulgebundenAlsSnapshotUndNachSchlussGesperrt()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École A" };
+        var otherSchool = new School { Id = Guid.NewGuid(), Name = "École B" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "A1", Title = "A1", SchoolId = school.Id };
+        var student = new AppUser { Id = Guid.NewGuid(), UserName = "student", FullName = "Élève" };
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "director" };
+        var role = new Role { Id = Guid.NewGuid(), Name = Rollen.SchulLeiter, NormalizedName = Rollen.SchulLeiter.ToUpperInvariant() };
+        var cycle = new KursNiveauDurchlauf { Id = Guid.NewGuid(), SchulID = school.Id, KlasseId = klasse.Id, StartDatum = DateTime.UtcNow.AddDays(-3) };
+        db.Schools.AddRange(school, otherSchool);
+        db.Klassen.Add(klasse);
+        db.Users.AddRange(student, director);
+        db.Roles.Add(role);
+        db.UserRoles.Add(new AppUserRole { UserId = director.Id, RoleId = role.Id });
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = student.Id, SchoolId = school.Id, CurrentKlasseId = klasse.Id });
+        db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = student.Id, KlasseId = klasse.Id });
+        db.KursNiveauDurchlaeufe.Add(cycle);
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+
+        Assert.False((await service.SaveAbschlussMentionAsync(otherSchool.Id, null, "Bien", director.Id)).Succeeded);
+        Assert.True((await service.SaveAbschlussMentionAsync(school.Id, null, "Très bien", director.Id)).Succeeded);
+        var mention = Assert.Single(await service.GetAbschlussMentionsAsync(school.Id, director.Id));
+        Assert.Empty(await service.GetAbschlussMentionsAsync(otherSchool.Id, director.Id));
+        Assert.False((await service.SetAbschlussMentionAsync(cycle.Id, student.Id, Guid.NewGuid(), director.Id)).Succeeded);
+        Assert.True((await service.SetAbschlussMentionAsync(cycle.Id, student.Id, mention.Id, director.Id)).Succeeded);
+        Assert.Equal("Très bien", (await service.GetKlassenAbschlussUebersichtAsync(cycle.Id))!.Schueler.Single().MentionText);
+
+        Assert.True((await service.SaveAbschlussMentionAsync(school.Id, mention.Id, "Bien", director.Id)).Succeeded);
+        Assert.Equal("Très bien", db.KlassenAbschlussEntscheidungen.Single().MentionText);
+        Assert.True((await service.DeleteAbschlussMentionAsync(school.Id, mention.Id, director.Id)).Succeeded);
+        Assert.Equal("Très bien", db.KlassenAbschlussEntscheidungen.Single().MentionText);
+        cycle.EndDatum = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        Assert.False((await service.SetAbschlussMentionAsync(cycle.Id, student.Id, null, director.Id)).Succeeded);
+        Assert.Equal("Très bien", db.KlassenAbschlussEntscheidungen.Single().MentionText);
     }
 
     private static async Task<(Exam exam, ExamQuestionOption richtig1, ExamQuestionOption richtig2, ExamQuestionOption falsch)> SeedMultipleChoiceExamAsync(TestDbContext db)

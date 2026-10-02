@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class FinanzBericht
 {
@@ -17,7 +17,7 @@ public partial class FinanzBericht
     [SupplyParameterFromQuery(Name = "direction")] public string? DirectionValue { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortValue { get; set; }
 
-    private HalloApp.Core.Services.FinanzBericht? bericht;
+    private SkoulouApp.Core.Services.FinanzBericht? bericht;
     private string? error;
 
     private string PdfUrl => $"/finanzen/rapport/pdf-file?{Query}";

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using HalloApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exams;
 
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 /// <summary>
 /// Formmodell zum Erstellen/Bearbeiten einer Prüfung (Exam) mit gruppierten
@@ -31,7 +31,7 @@ public class ExamFormModel
     [Range(0, 100, ErrorMessage = "Score de réussite entre 0 et 100.")]
     public int PassingScore { get; set; } = 50;
 
-    /// <summary>Testexam oder abschlussrelevantes Exam.</summary>
+    /// <summary>Bestehender Examtyp; Schülerexams zählen nur zum Score.</summary>
     public ExamType ExamType { get; set; } = ExamType.TestExam;
 
     public ExamReleaseTarget ReleaseTarget { get; set; } = ExamReleaseTarget.PrivateAuthor;

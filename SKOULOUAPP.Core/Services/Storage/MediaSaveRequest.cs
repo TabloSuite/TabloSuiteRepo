@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Services.Storage;
+namespace SkoulouApp.Core.Services.Storage;
 
 /// <summary>
 /// Anfrage zum Speichern einer Mediendatei (Bild oder Audio) einer Lektion.

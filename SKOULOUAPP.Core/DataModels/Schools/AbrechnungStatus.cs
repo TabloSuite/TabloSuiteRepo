@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 /// <summary>
 /// Status einer Abrechnung im mehrstufigen Workflow zwischen SuperAdmin und SchulLeiter.

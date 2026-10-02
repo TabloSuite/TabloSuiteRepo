@@ -1,12 +1,12 @@
 @page "/teacher/create"
 @attribute [Authorize(Policy = "RequireTeacher")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using HalloApp.WebApp.Components.Pages
+@using SkoulouApp.WebApp.Components.Pages
 
 <PageTitle>Création leçon & examens</PageTitle>
 
 <section class="teacher-create-shell grid gap-6">
-    <div class="hallo-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+    <div class="skoulou-hero rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
         <h1 class="mt-3 text-3xl font-black">Création leçon & examens</h1>
         <p class="mt-3 max-w-3xl text-sm leading-7 text-indigo-50">

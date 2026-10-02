@@ -1,14 +1,14 @@
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Interfaces.IRepositories;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Interfaces.IRepositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Repositories;
+namespace SkoulouApp.Core.Repositories;
 
 /// <summary>
 /// Repository für Schulen inkl. Lehrer- und Schülerbeziehungen.
 /// </summary>
-public class SchoolRepository(IHalloAppDbContext dbContext) : GenericRepository<School>(dbContext), ISchoolRepository
+public class SchoolRepository(ISkoulouAppDbContext dbContext) : GenericRepository<School>(dbContext), ISchoolRepository
 {
     public async Task<IReadOnlyList<School>> GetSchoolsWithTeachersAsync(CancellationToken cancellationToken = default)
         => await DbContext.Schools

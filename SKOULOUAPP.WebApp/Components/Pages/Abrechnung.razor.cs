@@ -1,13 +1,13 @@
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Billing;
-using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Billing;
+using SkoulouApp.Core.Models.Dashboard;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Abrechnung
 {
@@ -15,7 +15,13 @@ public partial class Abrechnung
     private DashboardService DashboardService { get; set; } = default!;
 
     [Inject]
+    private FinanzService FinanzService { get; set; } = default!;
+
+    [Inject]
     private AbrechnungService AbrechnungService { get; set; } = default!;
+
+    [Inject]
+    private AbrechnungBenachrichtigungService AbrechnungBenachrichtigungService { get; set; } = default!;
 
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -23,6 +29,16 @@ public partial class Abrechnung
     private IReadOnlyList<AdminSchoolOverview> schools = [];
     private AbrechnungsUebersicht? uebersicht;
     private IReadOnlyList<Abrechnungsperiode> historie = [];
+    private DateTime? historieVonDatum;
+    private DateTime? historieBisDatum;
+    private bool historieNurAbgeschlossene;
+    private int HistorieInBearbeitungAnzahl => historie.Count(periode => periode.Status != AbrechnungStatus.Bestaetigt);
+    private int HistorieAbgeschlossenAnzahl => historie.Count - HistorieInBearbeitungAnzahl;
+    private IReadOnlyList<Abrechnungsperiode> GefilterteHistorie => historie
+        .Where(periode => (periode.Status == AbrechnungStatus.Bestaetigt) == historieNurAbgeschlossene
+            && (!historieVonDatum.HasValue || periode.BisUtc.ToLocalTime().Date >= historieVonDatum.Value.Date)
+            && (!historieBisDatum.HasValue || periode.VonUtc.ToLocalTime().Date <= historieBisDatum.Value.Date))
+        .ToList();
     private IReadOnlyList<Abrechnungsperiode> automatischeOffenePerioden = [];
     private IReadOnlyList<GeschlosseneKlasseOffeneAboForderung> offeneForderungenAusGeschlossenenKlassen = [];
     private IReadOnlyList<AktiveKlasseUeberfaelligeAboForderung> ueberfaelligeForderungenAusAktivenKlassen = [];
@@ -41,12 +57,14 @@ public partial class Abrechnung
     /// <summary>SuperAdmin: darf erstellen und bestätigen. Sonst SchulLeiter (akzeptieren/ablehnen).</summary>
     private bool isSuperAdmin;
     private bool isProduktOwner;
+    private bool isKoordinator;
+    private bool darfZahlungMelden;
 
     private bool isReadOnly => !isSuperAdmin;
     private bool CanManageBilling => isSuperAdmin || isProduktOwner;
 
     private IReadOnlyList<Abrechnungsperiode> PendingDirectorApprovals =>
-        isSuperAdmin
+        isSuperAdmin || isProduktOwner || !darfZahlungMelden
             ? []
             : historie.Where(periode => periode.Status == AbrechnungStatus.Erstellt).ToList();
 
@@ -92,6 +110,27 @@ public partial class Abrechnung
                     return;
                 }
 
+            if (user.IsInRole("Koordinator") && !user.IsInRole("SchulLeiter"))
+            {
+                isKoordinator = true;
+                if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var koordinatorId))
+                    return;
+
+                currentUserId = koordinatorId;
+                var freigegebeneSchulen = await FinanzService.GetSchulenAsync(koordinatorId, false, token);
+                schools = freigegebeneSchulen.Select(school => new AdminSchoolOverview
+                {
+                    SchoolId = school.Id,
+                    Name = school.Name
+                }).ToList();
+                if (schools.Count == 1)
+                {
+                    selectedSchoolId = schools[0].SchoolId;
+                    await LoadSchoolAsync();
+                }
+                return;
+            }
+
                 currentUserId = superAdminId;
                 schools = await DashboardService.GetAdminSchoolsAsync(token);
                 offeneSuperAdminBestaetigungen = await AbrechnungService.GetOffeneSuperAdminBestaetigungenAsync(token);
@@ -111,14 +150,9 @@ public partial class Abrechnung
                 }
 
                 currentUserId = produktOwnerId;
-                schools = (await DashboardService.GetSchoolLeaderSchoolsAsync(produktOwnerId, token))
-                    .Select(school => new AdminSchoolOverview
-                    {
-                        SchoolId = school.SchoolId,
-                        Name = school.SchoolName,
-                        City = school.City,
-                        StudentCount = school.StudentCount
-                    })
+                var assignedSchoolIds = await DashboardService.GetPlatformSchoolIdsAsync(produktOwnerId, token);
+                schools = (await DashboardService.GetAdminSchoolsAsync(token))
+                    .Where(school => assignedSchoolIds.Contains(school.SchoolId))
                     .ToList();
                 if (schools.Count == 1)
                 {
@@ -166,7 +200,7 @@ public partial class Abrechnung
 
     private async Task SelectSchoolAsync(Guid schoolId)
     {
-        if (isProduktOwner && !schools.Any(school => school.SchoolId == schoolId))
+        if (!schools.Any(school => school.SchoolId == schoolId))
         {
             return;
         }
@@ -186,7 +220,7 @@ public partial class Abrechnung
             return;
         }
 
-        if (isProduktOwner && !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
+        if (!schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
             selectedSchoolId = null;
             uebersicht = null;
@@ -196,6 +230,9 @@ public partial class Abrechnung
         }
 
         var bisUtcFilter = filterBisLokal?.ToUniversalTime();
+        darfZahlungMelden = !isSuperAdmin && !isProduktOwner
+            && (!isKoordinator || (await FinanzService.GetFinanceAccessAsync(currentUserId ?? Guid.Empty, selectedSchoolId.Value,
+                cancellationToken: ComponentToken)).Cycles);
         uebersicht = await AbrechnungService.GetOffeneUebersichtAsync(selectedSchoolId.Value, bisUtcFilter);
         historie = await AbrechnungService.GetHistorieAsync(selectedSchoolId.Value);
         automatischeOffenePerioden = isSuperAdmin
@@ -227,18 +264,48 @@ public partial class Abrechnung
     private async Task ConfirmCreateCoreAsync()
     {
         confirmCreateOpen = false;
-        if (!CanManageBilling || selectedSchoolId is null)
+        if (!CanManageBilling || selectedSchoolId is null || !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
             return;
         }
 
-        var (succeeded, resultMessage) = await AbrechnungService.AbrechnungErstellenAsync(
+        var (succeeded, resultMessage, periodeId) = await AbrechnungService.ManuelleAbrechnungErstellenAsync(
             selectedSchoolId.Value,
             filterBisLokal?.ToUniversalTime(),
             ComponentToken,
             currentUserId);
         SetResult(succeeded, resultMessage);
+        if (succeeded && periodeId is Guid id)
+        {
+            var (gesendet, fehlgeschlagen) = await AbrechnungBenachrichtigungService.ManuelleRechnungSendenAsync(id, ComponentToken);
+            if (fehlgeschlagen > 0)
+                errorMessage = $"La facturation a été créée, mais la notification par e-mail n'a pas pu être envoyée à {fehlgeschlagen} destinataire(s). Consultez la facturation dans l'application.";
+            else
+                message = $"{resultMessage} Notification envoyée à {gesendet} directeur(s).";
+        }
         await LoadSchoolAsync();
+    }
+
+    private Task RenvoyerFacturationAsync(Guid periodeId)
+        => RunDatabaseActionAsync(() => RenvoyerFacturationCoreAsync(periodeId));
+
+    private async Task RenvoyerFacturationCoreAsync(Guid periodeId)
+    {
+        if (!CanManageBilling || currentUserId is not Guid userId
+            || !historie.Any(periode => periode.Id == periodeId
+                && periode.Status == AbrechnungStatus.Erstellt
+                && !periode.AutomatischDurchKlassenabschlussErstellt
+                && !periode.IstSammelabrechnungAusGeschlossenenKlassen))
+            return;
+
+        var (erlaubt, gesendet, fehlgeschlagen) = await AbrechnungBenachrichtigungService.ManuelleRechnungErneutSendenAsync(
+            periodeId, userId, ComponentToken);
+        if (!erlaubt)
+            SetResult(false, "Cette facturation ne peut plus être notifiée ou vous n'êtes pas autorisé à le faire.");
+        else if (fehlgeschlagen > 0 || gesendet == 0)
+            SetResult(false, $"La facturation reste inchangée. L'e-mail n'a pas pu être envoyé à {fehlgeschlagen} destinataire(s).");
+        else
+            SetResult(true, $"E-mail de facturation renvoyé à {gesendet} directeur(s). La facturation reste inchangée.");
     }
 
     private Task SammelabrechnungenAusGeschlossenenKlassenErstellenAsync()
@@ -283,7 +350,8 @@ public partial class Abrechnung
 
     private async Task AcceptCoreAsync(Guid periodId)
     {
-        if (isSuperAdmin)
+        if (isSuperAdmin || isProduktOwner || !darfZahlungMelden || currentUserId is null
+            || !historie.Any(periode => periode.Id == periodId))
         {
             return;
         }
@@ -301,7 +369,8 @@ public partial class Abrechnung
         var grund = rejectReason;
         rejectPeriodId = null;
         rejectReason = string.Empty;
-        if (isSuperAdmin || periodId is null)
+        if (isSuperAdmin || isProduktOwner || !darfZahlungMelden || periodId is null || currentUserId is null
+            || !historie.Any(periode => periode.Id == periodId))
         {
             return;
         }

@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Dashboard;
+namespace SkoulouApp.Core.Models.Dashboard;
 
 /// <summary>
 /// Beschreibt eine mögliche Lehrer-Fach-Zuordnung innerhalb einer Schule des Direktors

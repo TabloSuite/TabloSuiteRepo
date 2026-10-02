@@ -1,8 +1,8 @@
 ﻿@page "/student/exams/{ExamId:guid}"
 @attribute [Authorize(Policy = "RequireStudent")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.Services.Text
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Services.Text
 
 <PageTitle>@(session?.Title ?? "Épreuve")</PageTitle>
 
@@ -93,8 +93,8 @@ else if (session is not null)
                     {
                         <button type="button"
                                 class="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-700"
-                                data-halloapp-tts-text="@question.AudioText"
-                                data-halloapp-tts-lang="@question.TtsLanguage"
+                                data-skoulouapp-tts-text="@question.AudioText"
+                                data-skoulouapp-tts-lang="@question.TtsLanguage"
                                 >
                             🔊 Écouter
                         </button>

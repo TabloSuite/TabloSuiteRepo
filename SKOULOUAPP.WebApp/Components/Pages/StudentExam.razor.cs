@@ -1,12 +1,12 @@
 ﻿using System.Security.Claims;
 using System.Threading;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentExam : CancelableComponentBase
 {

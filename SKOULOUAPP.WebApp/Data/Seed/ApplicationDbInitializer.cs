@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.WebApp.Data.Seed;
+namespace SkoulouApp.WebApp.Data.Seed;
 
 public static class ApplicationDbInitializer
 {

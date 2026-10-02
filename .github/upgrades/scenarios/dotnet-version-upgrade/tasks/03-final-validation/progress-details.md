@@ -1,5 +1,5 @@
 ## Files Modified
-- `HalloApp.Tests/HalloApp.Tests.csproj`
+- `SkoulouApp.Tests/SkoulouApp.Tests.csproj`
 - `.github/upgrades/scenarios/dotnet-version-upgrade/tasks/02-solution-upgrade/task.md`
 - `.github/upgrades/scenarios/dotnet-version-upgrade/tasks/02-solution-upgrade/progress-details.md`
 - `.github/upgrades/scenarios/dotnet-version-upgrade/tasks/03-final-validation/task.md`
@@ -8,19 +8,19 @@
 ## Build Result
 - Errors: 0
 - Warnings: 0
-- Projects built: `HALLOAPPMAPPE.slnx`
-- Command: `dotnet build HALLOAPPMAPPE.slnx`
+- Projects built: `SKOULOUAPPMAPPE.slnx`
+- Command: `dotnet build SKOULOUAPPMAPPE.slnx`
 
 ## Test Result
 - Tests run: 106
 - Passed: 106
 - Failed: 0
 - Skipped: 0
-- Command: `dotnet test HalloApp.Tests/HalloApp.Tests.csproj`
+- Command: `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj`
 
 ## Package Audit
-- Outdated packages: none reported by `dotnet list HALLOAPPMAPPE.slnx package --outdated` after final runner update.
-- Vulnerable packages: none reported by `dotnet list HALLOAPPMAPPE.slnx package --vulnerable --include-transitive`.
+- Outdated packages: none reported by `dotnet list SKOULOUAPPMAPPE.slnx package --outdated` after final runner update.
+- Vulnerable packages: none reported by `dotnet list SKOULOUAPPMAPPE.slnx package --vulnerable --include-transitive`.
 
 ## Changes Summary
 - Re-ran full build and test validation after the .NET 10 upgrade.

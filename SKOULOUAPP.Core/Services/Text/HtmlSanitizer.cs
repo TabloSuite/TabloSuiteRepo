@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace HalloApp.Core.Services.Text;
+namespace SkoulouApp.Core.Services.Text;
 
 /// <summary>
 /// Leichtgewichtiger, allowlist-basierter HTML-Sanitizer ohne externe Abhängigkeit.

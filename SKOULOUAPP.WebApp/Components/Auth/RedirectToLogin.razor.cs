@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Auth;
+namespace SkoulouApp.WebApp.Components.Auth;
 
 public partial class RedirectToLogin
 {

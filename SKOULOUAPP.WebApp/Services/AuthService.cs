@@ -1,17 +1,17 @@
-using HalloApp.Core.Options;
-using HalloApp.Core.Models.Profile;
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Services;
-using HalloApp.Core.Services.Email;
-using HalloApp.Core.Services.Text;
-using HalloApp.WebApp.Data;
-using HalloApp.WebApp.Models.Auth;
+using SkoulouApp.Core.Options;
+using SkoulouApp.Core.Models.Profile;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Core.Services.Email;
+using SkoulouApp.Core.Services.Text;
+using SkoulouApp.WebApp.Data;
+using SkoulouApp.WebApp.Models.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public class AuthService(
     ApplicationDbContext dbContext,
@@ -23,6 +23,7 @@ public class AuthService(
     IConfiguration configuration,
     ILogger<AuthService> logger)
 {
+    public const string BlockedAccountMessage = "Ton compte n'a pas encore été validé ou a été bloqué.";
     private const string AktuelleAgbVersion = "2026-08-05";
     public static string CurrentTermsVersion => AktuelleAgbVersion;
 
@@ -215,15 +216,15 @@ public class AuthService(
             return (false, "L'adresse e-mail ou le mot de passe est invalide.");
         }
 
-        if (user.IsBlocked)
-        {
-            return (false, "Ton compte n'a pas encore été validé ou a été bloqué.");
-        }
-
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
             return (false, "L'adresse e-mail ou le mot de passe est invalide.");
+        }
+
+        if (user.IsBlocked)
+        {
+            return (false, BlockedAccountMessage);
         }
 
         user.ActiveSessionId = Guid.NewGuid();
@@ -234,7 +235,7 @@ public class AuthService(
             return (false, "La connexion n'a pas pu être initialisée.");
         }
 
-        var claims = new[] { new System.Security.Claims.Claim("halloapp_session", user.ActiveSessionId.Value.ToString()) };
+        var claims = new[] { new System.Security.Claims.Claim("skoulouapp_session", user.ActiveSessionId.Value.ToString()) };
         await signInManager.SignInWithClaimsAsync(user, new AuthenticationProperties { IsPersistent = rememberMe }, claims);
         return (true, string.Empty);
     }
@@ -325,9 +326,11 @@ public class AuthService(
         }
 
         var result = await userManager.ResetPasswordAsync(user, token, newPassword);
-        return result.Succeeded
-            ? (true, "Ton mot de passe a été réinitialisé. Tu peux maintenant te connecter.")
-            : (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+        if (!result.Succeeded)
+            return (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+
+        await SendPasswordChangedEmailAsync(user, true);
+        return (true, "Ton mot de passe a été réinitialisé. Tu peux maintenant te connecter.");
     }
 
     // ----------------------------------------------------------------------
@@ -343,9 +346,38 @@ public class AuthService(
         }
 
         var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
-        return result.Succeeded
-            ? (true, "Ton mot de passe a été mis à jour.")
-            : (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+        if (!result.Succeeded)
+            return (false, string.Join(" ", result.Errors.Select(x => x.Description)));
+
+        await SendPasswordChangedEmailAsync(user, false);
+        return (true, "Ton mot de passe a été mis à jour.");
+    }
+
+    private async Task SendPasswordChangedEmailAsync(AppUser user, bool wasReset)
+    {
+        if (!IstPlausibleEmail(user.Email ?? string.Empty)) return;
+
+        var subject = wasReset ? "SKOULOUAPP – Mot de passe réinitialisé" : "SKOULOUAPP – Mot de passe modifié";
+        var body = EmailTemplates.Wrap(
+            "Confirmation de sécurité",
+            $"""
+            <p>Bonjour {System.Net.WebUtility.HtmlEncode(user.Vorname)},</p>
+            <p>Le mot de passe de ton compte SKOULOUAPP a été {(wasReset ? "réinitialisé" : "modifié")}.</p>
+            <p>Si tu n'es pas à l'origine de cette action, demande immédiatement la réinitialisation de ton mot de passe et contacte l'assistance.</p>
+            """);
+
+        try
+        {
+            var result = await emailService.SendAsync(
+                new EmailRecipient(user.Email!, user.FullName),
+                new EmailMessage { Subject = subject, HtmlBody = body, TextBody = EmailTemplates.ToPlainText(body) });
+            if (!result.Succeeded)
+                logger.LogWarning("Bestätigung der Passwortänderung an {Email} konnte nicht gesendet werden: {Error}", user.Email, result.ErrorMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Bestätigung der Passwortänderung an {Email} fehlgeschlagen.", user.Email);
+        }
     }
 
     // ----------------------------------------------------------------------
@@ -534,7 +566,7 @@ public class AuthService(
             await using var validationDb = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             var ownsImage = await validationDb.BlobMediaAssets.AsNoTracking().AnyAsync(asset =>
                 asset.Id == request.ProfilBildAssetId.Value && asset.OwnerId == userId
-                && asset.MediaType == HalloApp.Core.DataModels.Lessons.BlobMediaType.Image
+                && asset.MediaType == SkoulouApp.Core.DataModels.Lessons.BlobMediaType.Image
                 && (asset.SchoolId.HasValue
                     ? validationDb.UserSchools.Any(link => link.AppUserId == userId && link.SchoolId == asset.SchoolId)
                     : !validationDb.UserSchools.Any(link => link.AppUserId == userId)), cancellationToken);

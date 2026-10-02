@@ -386,13 +386,14 @@ window.SKOULOUAPPRichText = {
         }
 
         if (readOnly !== true && !initialHtml && (defaultFont || defaultSize)) {
-            quill.setSelection(0, 0, 'silent');
-            if (defaultFont) {
-                quill.format('font', defaultFont, 'user');
-            }
-            if (defaultSize) {
-                quill.format('size', defaultSize, 'user');
-            }
+            quill.root.addEventListener('focus', function () {
+                if (defaultFont) {
+                    quill.format('font', defaultFont, 'user');
+                }
+                if (defaultSize) {
+                    quill.format('size', defaultSize, 'user');
+                }
+            }, { once: true });
         }
 
         // Enter-Verhalten: Wir fangen die Enter-Taste in der CAPTURE-Phase ab,
@@ -669,7 +670,7 @@ window.SKOULOUAPPRichText = {
         const limit = this.a4ContentHeightPx();
         Array.from(root.children).forEach(function (block) {
             block.style.marginTop = '';
-            block.classList.remove('halloapp-page-break-before');
+            block.classList.remove('skoulouapp-page-break-before');
         });
         let selection = quill.getSelection();
         for (let attempt = 0; attempt < 100; attempt++) {
@@ -726,16 +727,16 @@ window.SKOULOUAPPRichText = {
         const self = this;
         // Der Quill-Container (element) ist die Bühne: die A4-Blätter liegen
         // absolut in ihm, exakt hinter dem .ql-editor-Textbereich.
-        element.classList.add('halloapp-paged');
+        element.classList.add('skoulouapp-paged');
 
-        let sheetLayer = element.querySelector(':scope > .halloapp-page-sheets');
+        let sheetLayer = element.querySelector(':scope > .skoulouapp-page-sheets');
         if (!sheetLayer) {
             sheetLayer = document.createElement('div');
-            sheetLayer.className = 'halloapp-page-sheets';
+            sheetLayer.className = 'skoulouapp-page-sheets';
             element.insertBefore(sheetLayer, element.firstChild);
         }
 
-        quill._halloappPaged = { sheetLayer: sheetLayer, pageCount: 0 };
+        quill._skoulouappPaged = { sheetLayer: sheetLayer, pageCount: 0 };
 
         let scheduled = false;
         const schedule = function () {
@@ -768,9 +769,9 @@ window.SKOULOUAPPRichText = {
         if (!self._pagedResizeBound) {
             self._pagedResizeBound = true;
             window.addEventListener('resize', function () {
-                document.querySelectorAll('.halloapp-paged').forEach(function (containerEl) {
+                document.querySelectorAll('.skoulouapp-paged').forEach(function (containerEl) {
                     const q = containerEl._quillInstance;
-                    if (q && q._halloappPaged) {
+                    if (q && q._skoulouappPaged) {
                         self.renderPageSheets(q, null);
                     }
                 });
@@ -802,7 +803,7 @@ window.SKOULOUAPPRichText = {
         // Zuvor gesetzte Umbrüche zurücksetzen und Naturhöhen erfassen.
         const heights = blocks.map(function (block) {
             block.style.marginTop = '';
-            block.classList.remove('halloapp-page-break-before');
+            block.classList.remove('skoulouapp-page-break-before');
             const rect = block.getBoundingClientRect();
             return rect.height;
         });
@@ -818,7 +819,7 @@ window.SKOULOUAPPRichText = {
             if (used > 0 && used + height > contentPerPage) {
                 const spacer = (contentPerPage - used) + 2 * pad + gap;
                 block.style.marginTop = spacer + 'px';
-                block.classList.add('halloapp-page-break-before');
+                block.classList.add('skoulouapp-page-break-before');
                 pageCount += 1;
                 used = 0;
             }
@@ -844,12 +845,12 @@ window.SKOULOUAPPRichText = {
     getPagedHtml: function (root) {
         const pages = [[]];
         this.getPageUnits(root).forEach(function (unit) {
-            if (unit.classList.contains('halloapp-page-break-before') && pages.at(-1).length) {
+            if (unit.classList.contains('skoulouapp-page-break-before') && pages.at(-1).length) {
                 pages.push([]);
             }
             const clone = unit.cloneNode(true);
             clone.style.marginTop = '';
-            clone.classList.remove('halloapp-page-break-before');
+            clone.classList.remove('skoulouapp-page-break-before');
             if (!clone.getAttribute('style')) {
                 clone.removeAttribute('style');
             }
@@ -874,7 +875,7 @@ window.SKOULOUAPPRichText = {
     // Zeichnet die weißen A4-Blätter passend zur Seitenanzahl und meldet sie
     // an Blazor.
     renderPageSheets: function (quill, dotNetRef) {
-        const state = quill._halloappPaged;
+        const state = quill._skoulouappPaged;
         if (!state) {
             return;
         }
@@ -889,10 +890,10 @@ window.SKOULOUAPPRichText = {
             layer.innerHTML = '';
             for (let i = 0; i < pageCount; i++) {
                 const sheet = document.createElement('div');
-                sheet.className = 'halloapp-page-sheet';
+                sheet.className = 'skoulouapp-page-sheet';
                 sheet.style.top = (i * (sheetHeight + gap)) + 'px';
                 const footer = document.createElement('div');
-                footer.className = 'halloapp-page-sheet-footer';
+                footer.className = 'skoulouapp-page-sheet-footer';
                 footer.textContent = 'Page ' + (i + 1);
                 sheet.appendChild(footer);
                 layer.appendChild(sheet);
@@ -927,7 +928,7 @@ window.SKOULOUAPPRichText = {
     },
 
     openFormulaPalette: async function (quill, toolbarElement) {
-        document.querySelectorAll('.halloapp-formula-palette').forEach(function (palette) { palette.remove(); });
+        document.querySelectorAll('.skoulouapp-formula-palette').forEach(function (palette) { palette.remove(); });
 
         const savedRange = quill.getSelection(true) || { index: Math.max(0, quill.getLength() - 1), length: 0 };
         const formulaButton = toolbarElement?.querySelector('.ql-formula');
@@ -936,12 +937,12 @@ window.SKOULOUAPPRichText = {
         }
 
         const palette = document.createElement('div');
-        palette.className = 'halloapp-formula-palette';
+        palette.className = 'skoulouapp-formula-palette';
         palette.setAttribute('role', 'dialog');
         palette.setAttribute('aria-label', 'Modèles de formules');
 
         const title = document.createElement('div');
-        title.className = 'halloapp-formula-palette-title';
+        title.className = 'skoulouapp-formula-palette-title';
         title.textContent = 'Insérer une formule';
         palette.appendChild(title);
 
@@ -969,7 +970,7 @@ window.SKOULOUAPPRichText = {
         };
 
         const renderGroups = function () {
-            palette.querySelectorAll('.halloapp-formula-group').forEach(function (node) { node.remove(); });
+            palette.querySelectorAll('.skoulouapp-formula-group').forEach(function (node) { node.remove(); });
 
             const favoriteBuiltIn = self.favoriteFormulas
                 .filter(function (x) { return self.isBuiltInFormula(x.latex); })
@@ -1006,13 +1007,13 @@ window.SKOULOUAPPRichText = {
 
             allGroups.forEach(function (groupName) {
             const group = document.createElement('section');
-            group.className = 'halloapp-formula-group';
+            group.className = 'skoulouapp-formula-group';
             const heading = document.createElement('h3');
             heading.textContent = groupName;
             group.appendChild(heading);
 
             const grid = document.createElement('div');
-            grid.className = 'halloapp-formula-grid';
+            grid.className = 'skoulouapp-formula-grid';
             const entries = groupName === 'Favoris'
                 ? favoriteBuiltIn
                 : groupName === 'Mes formules'
@@ -1022,12 +1023,12 @@ window.SKOULOUAPPRichText = {
             entries.forEach(function (template) {
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'halloapp-formula-template';
+                button.className = 'skoulouapp-formula-template';
                 button.title = template.label;
                 button.setAttribute('aria-label', template.label);
 
                 const math = document.createElement('span');
-                math.className = 'halloapp-formula-preview';
+                math.className = 'skoulouapp-formula-preview';
                 if (typeof katex !== 'undefined') {
                     try {
                         katex.render(template.preview, math, { throwOnError: false });
@@ -1039,13 +1040,13 @@ window.SKOULOUAPPRichText = {
                 }
 
                 const label = document.createElement('span');
-                label.className = 'halloapp-formula-label';
+                label.className = 'skoulouapp-formula-label';
                 label.textContent = template.label;
                 const isCustomEntry = template.group === 'Mes formules';
                 const favoriteToggle = document.createElement('span');
                 favoriteToggle.className = isCustomEntry
-                    ? 'halloapp-formula-favorite-toggle halloapp-formula-delete-toggle'
-                    : 'halloapp-formula-favorite-toggle';
+                    ? 'skoulouapp-formula-favorite-toggle skoulouapp-formula-delete-toggle'
+                    : 'skoulouapp-formula-favorite-toggle';
                 favoriteToggle.setAttribute('role', 'button');
                 favoriteToggle.setAttribute('tabindex', '0');
                 favoriteToggle.setAttribute('aria-label', isCustomEntry ? 'Supprimer la formule' : 'Ajouter ou retirer des favoris');
@@ -1113,7 +1114,7 @@ window.SKOULOUAPPRichText = {
 
         const close = document.createElement('button');
         close.type = 'button';
-        close.className = 'halloapp-formula-palette-close';
+        close.className = 'skoulouapp-formula-palette-close';
         close.textContent = 'Fermer';
         close.addEventListener('click', function () { palette.remove(); });
         palette.appendChild(close);
@@ -1151,7 +1152,7 @@ window.SKOULOUAPPRichText = {
     },
 
     openFormulaEditor: function (quill, formulaElement) {
-        document.querySelectorAll('.halloapp-formula-editor').forEach(function (editor) { editor.remove(); });
+        document.querySelectorAll('.skoulouapp-formula-editor').forEach(function (editor) { editor.remove(); });
 
         const blot = Quill.find(formulaElement);
         const index = blot ? quill.getIndex(blot) : -1;
@@ -1160,22 +1161,22 @@ window.SKOULOUAPPRichText = {
         }
 
         const editor = document.createElement('div');
-        editor.className = 'halloapp-formula-editor';
+        editor.className = 'skoulouapp-formula-editor';
         editor.setAttribute('role', 'dialog');
         editor.setAttribute('aria-label', 'Modifier la formule');
 
         const title = document.createElement('label');
-        title.className = 'halloapp-formula-editor-title';
+        title.className = 'skoulouapp-formula-editor-title';
         title.textContent = 'Modifier la formule (LaTeX)';
 
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'halloapp-formula-editor-input';
+        input.className = 'skoulouapp-formula-editor-input';
         input.value = formulaElement.getAttribute('data-value') || '';
         input.setAttribute('aria-label', 'Expression LaTeX');
 
         const preview = document.createElement('div');
-        preview.className = 'halloapp-formula-editor-preview';
+        preview.className = 'skoulouapp-formula-editor-preview';
         const renderPreview = function () {
             preview.replaceChildren();
             if (typeof katex !== 'undefined') {
@@ -1192,12 +1193,12 @@ window.SKOULOUAPPRichText = {
         renderPreview();
 
         const actions = document.createElement('div');
-        actions.className = 'halloapp-formula-editor-actions';
+        actions.className = 'skoulouapp-formula-editor-actions';
         const self = this;
 
         const favoriteToggle = document.createElement('button');
         favoriteToggle.type = 'button';
-        favoriteToggle.className = 'halloapp-formula-editor-favorite';
+        favoriteToggle.className = 'skoulouapp-formula-editor-favorite';
         const setFavoriteEditorVisual = function (isFavorite) {
             favoriteToggle.textContent = isFavorite ? '☑ Ajoutée à mes formules' : '☐ Ajouter à mes formules';
         };
@@ -1235,13 +1236,13 @@ window.SKOULOUAPPRichText = {
 
         const cancel = document.createElement('button');
         cancel.type = 'button';
-        cancel.className = 'halloapp-formula-editor-cancel';
+        cancel.className = 'skoulouapp-formula-editor-cancel';
         cancel.textContent = 'Annuler';
         cancel.addEventListener('click', function () { editor.remove(); });
 
         const save = document.createElement('button');
         save.type = 'button';
-        save.className = 'halloapp-formula-editor-save';
+        save.className = 'skoulouapp-formula-editor-save';
         save.textContent = 'Enregistrer';
         const apply = async function () {
             const latex = input.value.trim();
@@ -1271,7 +1272,7 @@ window.SKOULOUAPPRichText = {
         });
 
         const primaryActions = document.createElement('div');
-        primaryActions.className = 'halloapp-formula-editor-primary-actions';
+        primaryActions.className = 'skoulouapp-formula-editor-primary-actions';
         primaryActions.append(cancel, save);
 
         actions.append(favoriteToggle, primaryActions);
@@ -1307,7 +1308,7 @@ window.SKOULOUAPPRichText = {
         const delta = quill.clipboard.convert({ html: html || '' });
         quill.setContents(delta, 'silent');
         this.normalizeLinks(quill.root);
-        quill._halloappImageSizingRefresh?.(true);
+        quill._skoulouappImageSizingRefresh?.(true);
 
         // Blazor rendert während des Seitenflusses den gebundenen HTML-Wert
         // erneut. Quill verliert dabei sonst seine Auswahl und setzt den Cursor
@@ -1330,7 +1331,7 @@ window.SKOULOUAPPRichText = {
 
         // Beim expliziten Auslesen (Speichern/PDF-Vorbereitung) sicherstellen,
         // dass die Marker den neuesten Seitenfluss enthalten.
-        if (quill._halloappPaged) {
+        if (quill._skoulouappPaged) {
             this.applyPageBreaks(quill);
             this.renderPageSheets(quill, null);
         }
@@ -1343,7 +1344,7 @@ window.SKOULOUAPPRichText = {
             return '';
         }
 
-        if (!quill._halloappPaged) {
+        if (!quill._skoulouappPaged) {
             return quill.root.innerHTML;
         }
 
@@ -1424,16 +1425,16 @@ window.SKOULOUAPPRichText = {
         }
 
         const controls = document.createElement('div');
-        controls.className = 'halloapp-image-size';
+        controls.className = 'skoulouapp-image-size';
         controls.hidden = true;
         const handle = document.createElement('button');
         handle.type = 'button';
-        handle.className = 'halloapp-image-size-handle';
+        handle.className = 'skoulouapp-image-size-handle';
         handle.setAttribute('aria-label', "Redimensionner l’image en faisant glisser");
         handle.title = "Glisser pour redimensionner l’image";
         controls.appendChild(handle);
         const alignmentControls = document.createElement('div');
-        alignmentControls.className = 'halloapp-image-align';
+        alignmentControls.className = 'skoulouapp-image-align';
         [['left', 'Gauche', '◀'], ['center', 'Centre', '↔'], ['right', 'Droite', '▶']].forEach(function ([value, label, icon]) {
             const button = document.createElement('button');
             button.type = 'button';
@@ -1452,7 +1453,7 @@ window.SKOULOUAPPRichText = {
         controls.appendChild(alignmentControls);
         container.appendChild(controls);
         const dropMarker = document.createElement('div');
-        dropMarker.className = 'halloapp-image-drop-marker';
+        dropMarker.className = 'skoulouapp-image-drop-marker';
         dropMarker.hidden = true;
         container.appendChild(dropMarker);
 
@@ -1465,7 +1466,7 @@ window.SKOULOUAPPRichText = {
         const stopMoving = function () {
             moving = null;
             dropMarker.hidden = true;
-            quill.root.classList.remove('halloapp-image-moving');
+            quill.root.classList.remove('skoulouapp-image-moving');
         };
         const hide = function () {
             controls.hidden = true;
@@ -1555,7 +1556,7 @@ window.SKOULOUAPPRichText = {
                 return;
             }
             moving.active = true;
-            quill.root.classList.add('halloapp-image-moving');
+            quill.root.classList.add('skoulouapp-image-moving');
             moving.target = window.SKOULOUAPPRichText.imageDropIndex(quill, event.clientX, event.clientY);
             dropMarker.hidden = moving.target === null;
             if (moving.target !== null) {
@@ -1641,14 +1642,14 @@ window.SKOULOUAPPRichText = {
             refresh();
         };
         quill.on('text-change', onTextChange);
-        quill._halloappImageSizingRefresh = refresh;
+        quill._skoulouappImageSizingRefresh = refresh;
         window.addEventListener('resize', position);
         window.addEventListener('scroll', position, true);
         container.addEventListener('scroll', position, true);
-        quill.container._halloappImageSizingCleanup = function () {
+        quill.container._skoulouappImageSizingCleanup = function () {
             stopMoving();
             quill.off('text-change', onTextChange);
-            delete quill._halloappImageSizingRefresh;
+            delete quill._skoulouappImageSizingRefresh;
             window.removeEventListener('resize', position);
             window.removeEventListener('scroll', position, true);
             container.removeEventListener('scroll', position, true);
@@ -1657,16 +1658,16 @@ window.SKOULOUAPPRichText = {
 
     destroy: function (element) {
         if (element && element._quillInstance) {
-            element._halloappImageSizingCleanup?.();
-            delete element._halloappImageSizingCleanup;
+            element._skoulouappImageSizingCleanup?.();
+            delete element._skoulouappImageSizingCleanup;
             element._quillInstance = null;
             // Von Quill hinzugefügte Toolbar entfernen, damit keine Duplikate entstehen.
             const container = element.parentElement;
             if (container) {
                 const toolbars = container.querySelectorAll('.ql-toolbar');
                 toolbars.forEach(function (tb) { tb.remove(); });
-                container.querySelectorAll('.halloapp-image-size').forEach(function (controls) { controls.remove(); });
-                container.querySelectorAll('.halloapp-image-drop-marker').forEach(function (marker) { marker.remove(); });
+                container.querySelectorAll('.skoulouapp-image-size').forEach(function (controls) { controls.remove(); });
+                container.querySelectorAll('.skoulouapp-image-drop-marker').forEach(function (marker) { marker.remove(); });
             }
             element.classList.remove('ql-container', 'ql-snow');
             element.innerHTML = '';

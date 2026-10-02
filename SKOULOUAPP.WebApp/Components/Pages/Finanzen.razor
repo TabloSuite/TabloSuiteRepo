@@ -1,20 +1,20 @@
 @page "/finanzen"
-@attribute [Authorize(Roles = "SchulLeiter,Koordinator,SuperAdmin")]
+@attribute [Authorize(Roles = "SchulLeiter,Koordinator,SuperAdmin,ProduktOwner")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.DataModels.Finanzen
-@using HalloApp.Core.Services
-@using HalloApp.WebApp.Components.Shared
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.DataModels.Finanzen
+@using SkoulouApp.Core.Services
+@using SkoulouApp.WebApp.Components.Shared
 
 <PageTitle>Finances</PageTitle>
 
 <section class="pdf-export-container flex flex-col gap-4">
-    <div class="hallo-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl">
+    <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl">
         <div class="relative">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Gestion financière</p>
             <h1 class="mt-3 text-3xl font-black">Recettes &amp; dépenses de l'école</h1>
             <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
-                Saisir les recettes/dépenses, gérer les cycles de classes (démarrage/clôture) et suivre les paiements échelonnés des élèves.
+                @(isPlatformViewer ? "Consulte les finances des écoles sans modifier leurs écritures, paiements ou cycles." : "Saisir les recettes/dépenses, gérer les cycles de classes (démarrage/clôture) et suivre les paiements échelonnés des élèves.")
             </p>
         </div>
     </div>
@@ -51,9 +51,9 @@
 
         @* Tabs *@
         <div class="school-page-tabs print:hidden">
-            @if (canViewDashboard) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Finances de l'école</button> }
-            @if (canCreateEntries) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button> }
-            @if (canManageCycles) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "hallo-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button> }
+            @if (canViewDashboard) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Finances de l'école</button> }
+            @if (canCreateEntries) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button> }
+            @if (canManageCycles) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button> }
         </div>
 
         @if (aktiverTab == "dashboard" && canViewDashboard)
@@ -74,7 +74,7 @@
                     @if (direktorKontostand is not null)
                     {
                         <div class="mt-5 overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-2xl print:border print:border-slate-300 print:bg-white print:text-slate-950 print:shadow-none">
-                            <div class="bg-gradient-to-r from-cyan-700 via-blue-800 to-indigo-900 p-6">
+                            <div class="bg-gradient-to-r from-cyan-700 via-blue-800 to-indigo-900 p-6 sm:p-8">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="text-xs font-bold uppercase tracking-[0.18em] text-cyan-100">Trésorerie actuelle · @AktiveSchuleName</p>
                                     <div class="flex flex-wrap items-center gap-2">
@@ -82,27 +82,30 @@
                                         <span class="rounded-full px-3 py-1 text-xs font-bold ring-1 @SoldeEtatBadgeClass(direktorKontostand.WirklicherKontostandNachAboVerteilung)">@SoldeEtatLabel(direktorKontostand.WirklicherKontostandNachAboVerteilung)</span>
                                     </div>
                                 </div>
-                                <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
-                                    <div>
-                                        <h2 class="text-2xl font-black sm:text-3xl">Solde provisoire avant règlement SKOULOUAPP</h2>
-                                        <p class="mt-2 text-sm font-semibold text-cyan-50 sm:hidden">Montant total avant déduction de la part SKOULOUAPP.</p>
-                                        <p class="mt-2 hidden max-w-xl text-sm leading-6 text-cyan-100 sm:block">Ce montant inclut toutes les recettes et dépenses de l'école avant le règlement de la part SKOULOUAPP.</p>
+                                <div class="mt-6 grid items-stretch gap-5 lg:grid-cols-2 lg:gap-8">
+                                    <div class="flex flex-col justify-center">
+                                        <h2 class="text-2xl font-black leading-tight sm:text-3xl">Le solde qui revient à l'école</h2>
+                                        <p class="mt-3 max-w-xl text-sm leading-6 text-cyan-50">Recettes et dépenses de l'école, après déduction de la part SKOULOUAPP comptabilisée. Les paiements encore attendus ne sont pas inclus.</p>
                                     </div>
-                                    <div class="w-full rounded-2xl bg-white px-5 py-4 text-left text-slate-950 shadow-xl sm:w-auto sm:text-right print:border print:border-slate-200">
-                                        <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Avant règlement SKOULOUAPP</p>
-                                        <p class="mt-1 text-4xl font-black tabular-nums sm:text-5xl @SoldeFarbe(direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen)">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
-                                        <p class="mt-1 text-xs font-semibold text-slate-500">Après règlement SKOULOUAPP (prévision): @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</p>
+                                    <div class="min-w-0 rounded-3xl bg-white px-6 py-7 text-slate-950 shadow-xl ring-1 ring-emerald-100 sm:px-8 sm:py-9 print:border print:border-slate-200">
+                                        <p class="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-800">Montant revenant à l'école</p>
+                                        <p class="mt-3 break-words text-4xl font-black leading-none tabular-nums sm:text-5xl xl:text-6xl @SoldeFarbe(direktorKontostand.WirklicherKontostandNachAboVerteilung)">@direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") <span class="text-2xl sm:text-3xl">FCFA</span></p>
+                                        <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-5">
+                                            <p class="text-xs font-bold uppercase tracking-wide text-slate-600">Solde provisoire avant règlement SKOULOUAPP</p>
+                                            <p class="mt-2 break-words text-2xl font-black leading-tight tabular-nums text-slate-900 sm:text-3xl">@direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") <span class="text-lg sm:text-xl">FCFA</span></p>
+                                            <p class="mt-2 text-xs font-semibold text-rose-700 sm:text-sm">(Part SKOULOUAPP comptabilisée : @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA)</p>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Avant règlement SKOULOUAPP</p>
-                                        <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</p>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Solde provisoire avant règlement SKOULOUAPP</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
                                         <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOUAPP comptabilisée</p>
-                                        <p class="mt-1 text-xl font-black tabular-nums text-rose-300">@direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p>
+                                        <p class="mt-1 text-xl font-black tabular-nums text-rose-300">@direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
                                         <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Parts gardées par l'école</p>
@@ -122,12 +125,12 @@
                                     <div class="mt-4 space-y-3 text-sm">
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Scolarité encaissée</span><strong class="text-emerald-300">+ @direktorKontostand.SchulgebuehrenEingenommen.ToString("N0") FCFA</strong></div>
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Autres recettes</span><strong class="text-emerald-300">+ @direktorKontostand.SonstigeEinnahmen.ToString("N0") FCFA</strong></div>
-                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Abonnements SKOULOUAPP encaissés</span><strong class="text-emerald-300">+ @direktorKontostand.HalloAppAboEingenommen.ToString("N0") FCFA</strong></div>
+                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Abonnements SKOULOUAPP encaissés</span><strong class="text-emerald-300">+ @direktorKontostand.SkoulouAppAboEingenommen.ToString("N0") FCFA</strong></div>
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Dépenses de fonctionnement</span><strong class="text-rose-300">− @direktorKontostand.BetrieblicheAusgaben.ToString("N0") FCFA</strong></div>
                                     </div>
                                      <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
                                          <span class="text-xs font-bold uppercase tracking-[0.14em] text-cyan-200">Solde provisoire avant répartition</span>
-                                         <strong class="text-lg @SoldeFarbe(direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen)">@direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</strong>
+                                         <strong class="text-lg @SoldeFarbe(direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen)">@direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</strong>
                                      </div>
                                 </div>
 
@@ -135,16 +138,16 @@
                                     <div class="flex flex-wrap items-start justify-between gap-3">
                                         <div>
                                             <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">Abonnements SKOULOUAPP encaissés</p>
-                                            <p class="mt-1 text-2xl font-black text-cyan-100">@direktorKontostand.HalloAppAboEingenommen.ToString("N0") FCFA</p>
+                                            <p class="mt-1 text-2xl font-black text-cyan-100">@direktorKontostand.SkoulouAppAboEingenommen.ToString("N0") FCFA</p>
                                         </div>
                                         <div class="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-semibold text-cyan-100">Montant encaissé pour le compte de SKOULOUAPP</div>
                                     </div>
                                     <div class="mt-4 grid gap-2 sm:grid-cols-3">
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part direction (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.SchulleiterAboAnteil.ToString("N0") FCFA</p></div>
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part enseignants (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.LehrerAboAnteil.ToString("N0") FCFA</p></div>
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP comptabilisée</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP comptabilisée</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</p></div>
                                     </div>
-                                    <p class="mt-3 text-xs leading-5 text-cyan-100">Calcul appliqué: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA − @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA = @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA.</p>
+                                    <p class="mt-3 text-xs leading-5 text-cyan-100">Calcul appliqué: @direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA − @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA = @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA.</p>
                                 </div>
                             </div>
 
@@ -158,15 +161,15 @@
                                     <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 @PaiementsAttenteBadgeClass">@PaiementsAttenteEtatLabel</span>
                                 </div>
                             </div>
-                            @if (offeneHalloAppAbrechnungen.Count > 0)
+                            @if (offeneSkoulouAppAbrechnungen.Count > 0)
                             {
                                 <div class="mx-5 mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-5 py-4">
                                     <div>
                                         <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Facturation SKOULOUAPP à régler</p>
-                                        <p class="mt-1 text-sm text-amber-50">@offeneHalloAppAbrechnungen.Count facture(s) demandée(s) par l'Administrateur. Les parts du responsable produit ne sont pas affichées dans cet espace.</p>
+                                        <p class="mt-1 text-sm text-amber-50">@offeneSkoulouAppAbrechnungen.Count facture(s) demandée(s) par l'Administrateur. Les parts du responsable produit ne sont pas affichées dans cet espace.</p>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-2xl font-black text-amber-200">@offeneHalloAppAbrechnungen.Sum(periode => periode.Umsatz).ToString("N0") FCFA</p>
+                                        <p class="text-2xl font-black text-amber-200">@offeneSkoulouAppAbrechnungen.Sum(periode => periode.Umsatz).ToString("N0") FCFA</p>
                                         <a href="/abrechnung" class="mt-1 inline-block text-xs font-bold text-white underline">Voir et déclarer le virement</a>
                                     </div>
                                 </div>
@@ -177,9 +180,9 @@
                                     <h3 class="mt-1 text-xl font-black">Solde disponible après règlement</h3>
                                     <p class="mt-1 text-sm text-slate-600">Solde calculé à partir des écritures enregistrées. Les parts direction et enseignants restent dans l'école; seule la part SKOULOUAPP comptabilisée est déduite. Les factures encore à régler sont indiquées séparément.</p>
                                     <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
-                                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOUAPP&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenHalloAppAnteilen.ToString("N0") FCFA</span>
+                                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOUAPP&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">−</span>
-                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP comptabilisée&nbsp;: @direktorKontostand.HalloAppAboAnteil.ToString("N0") FCFA</span>
+                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP comptabilisée&nbsp;: @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">=</span>
                                         <span class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">Solde disponible après règlement&nbsp;: @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</span>
                                     </div>
@@ -225,7 +228,7 @@
                                 <div class="rounded-xl bg-white/90 p-3 shadow-sm ring-1 ring-slate-200"><ModernDropdown TValue="FinanzRichtung?" Label="Type" Value="filter.Richtung" ValueChanged="SetFilterRichtungAsync" Options="RichtungsOptionen" /></div>
                                 <div class="rounded-xl bg-white/90 p-3 shadow-sm ring-1 ring-slate-200"><ModernDropdown TValue="FinanzSortierung?" Label="Tri" Value="filter.Sortierung" ValueChanged="SetFilterSortierungAsync" Options="SortierungsOptionen" /></div>
                                 <div class="flex items-end">
-                                    <AsyncActionButton Class="hallo-btn-accent rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm" IsBusy="IsBusy" OnClick="LadeUebersichtAsync">Appliquer</AsyncActionButton>
+                                    <AsyncActionButton Class="skoulou-btn-accent rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm" IsBusy="IsBusy" OnClick="LadeUebersichtAsync">Appliquer</AsyncActionButton>
                                 </div>
                             </div>
                             <div class="mt-4 rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
@@ -255,7 +258,7 @@
                                             </div>
                                             <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
                                                 <span class="text-slate-600">Entrées SKOULOUAPP</span>
-                                                <span class="text-right text-base font-bold text-emerald-700">@HalloAppAboTotal.ToString("N0") FCFA</span>
+                                                <span class="text-right text-base font-bold text-emerald-700">@SkoulouAppAboTotal.ToString("N0") FCFA</span>
                                             </div>
                                             <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
                                                 <span class="text-slate-600">Sorties période</span>
@@ -395,7 +398,7 @@
                         @if (kategorieAnlegenModus)
                         {
                             <div class="mt-2 rounded-xl bg-slate-50 p-3">
-                                <input class="hallo-input text-sm" placeholder="Nom de la catégorie" @bind="neueKategorieBezeichnung" />
+                                <input class="skoulou-input text-sm" placeholder="Nom de la catégorie" @bind="neueKategorieBezeichnung" />
                                 <div class="mt-2 flex items-center gap-3">
                                     <ModernDropdown TValue="FinanzRichtung?" Value="neueKategorieRichtung" ValueChanged="SetNeueKategorieRichtungAsync" Options="KategorieRichtungsOptionen" ContainerClass="w-40" ButtonClass="rounded-xl px-3 py-2" />
                                     <AsyncActionButton Class="rounded-lg bg-emerald-600 px-3 py-1 text-sm font-semibold text-white" IsBusy="IsBusy" OnClick="KategorieAnlegenAsync">Créer</AsyncActionButton>
@@ -405,11 +408,11 @@
                     </div>
                     <div>
                         <label class="text-xs font-semibold text-slate-500">Montant (FCFA)</label>
-                        <input type="number" step="1" min="0" class="hallo-input text-sm" @bind="buchungForm.Betrag" />
+                        <input type="number" step="1" min="0" class="skoulou-input text-sm" @bind="buchungForm.Betrag" />
                         <label class="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date d'effet (rétroactif possible)</label>
                         <TailwindDateTimePicker Value="buchungForm.Wirkungsdatum" ValueChanged="SetBuchungWirkungsdatumAsync" ShowTime="false" />
                         <label class="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">Référence du justificatif ou de la facture (facultatif)</label>
-                        <input class="hallo-input text-sm" maxlength="100" @bind="buchungForm.Belegnummer" placeholder="N° de facture ou référence du reçu" />
+                        <input class="skoulou-input text-sm" maxlength="100" @bind="buchungForm.Belegnummer" placeholder="N° de facture ou référence du reçu" />
                         <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Document justificatif (facultatif)</p>
                         <label class="group relative mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/50 px-4 py-3 transition hover:border-cyan-500 hover:bg-cyan-50 focus-within:ring-2 focus-within:ring-cyan-400">
                             <span class="flex min-w-0 items-center gap-3">
@@ -453,7 +456,7 @@
                 </div>
                 <div class="mt-3">
                     <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Rechercher un élève</label>
-                    <input class="hallo-input text-sm" placeholder="Nom de l'élève..." @bind="schuelerSuche" @bind:event="oninput" />
+                    <input class="skoulou-input text-sm" placeholder="Nom de l'élève..." @bind="schuelerSuche" @bind:event="oninput" />
                 </div>
             </div>
 
@@ -478,26 +481,30 @@
 @if (durchlaufStartModalOpen)
 {
     <div class="fixed inset-0 z-[2200] flex items-center justify-center bg-black/40 p-6 sm:p-8">
-        <div class="hallo-modal-surface w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <div class="hallo-modal-scroll">
+        <div class="skoulou-modal-surface w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="skoulou-modal-scroll">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">Cycle de classe</p>
                 <h3 class="mt-2 text-2xl font-black text-slate-900">Démarrer le cycle</h3>
                 <p class="mt-5 text-sm leading-6 text-slate-600">Démarre un nouveau cycle pour <span class="font-semibold text-slate-900">@AusgewaehlteKlasseName</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
+                @if (durchlaufStartDurchUeberweisungGesperrt)
+                {
+                    <p class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Déclare d'abord le virement de la facturation du cycle précédent dans <a class="font-bold underline" href="/abrechnung">Facturation SKOULOUAPP</a>.</p>
+                }
 
                 <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="hallo-label">Prix du cycle (FCFA)</label>
-                        <input type="number" step="1" min="0" class="hallo-input text-sm" @bind="durchlaufForm.NiveauPreis" />
+                        <label class="skoulou-label">Prix du cycle (FCFA)</label>
+                        <input type="number" step="1" min="0" class="skoulou-input text-sm" @bind="durchlaufForm.NiveauPreis" />
                     </div>
                     <div>
-                        <label class="hallo-label">Date de début</label>
+                        <label class="skoulou-label">Date de début</label>
                         <TailwindDateTimePicker Value="durchlaufForm.StartDatum" ValueChanged="SetDurchlaufStartDatumAsync" ShowTime="false" />
                     </div>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
                     <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="DurchlaufStartModalSchliessen">Annuler</button>
-                    <AsyncActionButton Class="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700" IsBusy="IsBusy" BusyLabel="Démarrage..." OnClick="DurchlaufStartenAsync">Démarrer</AsyncActionButton>
+                    <button type="button" class="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300" disabled="@(IsBusy || durchlaufStartDurchUeberweisungGesperrt)" @onclick="DurchlaufStartenAsync">Démarrer</button>
                 </div>
             </div>
         </div>
@@ -567,8 +574,8 @@
 @if (ausgewaehlterDurchlauf is not null)
 {
     <div class="fixed inset-0 z-[2200] flex items-center justify-center bg-black/40 p-6 sm:p-8">
-        <div class="hallo-modal-surface w-full max-w-2xl rounded-3xl bg-white p-7 shadow-2xl">
-            <div class="hallo-modal-scroll">
+        <div class="skoulou-modal-surface w-full max-w-2xl rounded-3xl bg-white p-7 shadow-2xl">
+            <div class="skoulou-modal-scroll">
             <p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Gestion des paiements</p>
             <h3 class="mt-1 text-2xl font-black text-slate-900">Paiement — @ausgewaehlterDurchlauf.NiveauCode</h3>
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -580,7 +587,7 @@
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-slate-500">@(IstCashZahlung ? "Montant restant à payer" : "Montant")</label>
-                    <input type="number" step="1" min="0" class="hallo-input text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" @bind="zahlungForm.Betrag" disabled="@IstCashZahlung" />
+                    <input type="number" step="1" min="0" class="skoulou-input text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500" @bind="zahlungForm.Betrag" disabled="@IstCashZahlung" />
                     @if (IstCashZahlung)
                     {
                         <p class="mt-1 text-xs font-semibold text-emerald-700">Montant ouvert appliqué automatiquement.</p>
@@ -601,11 +608,12 @@
 }
 
 @* -------------------- Beenden-Bestätigung (Modal) -------------------- *@
+<AbschlussNotenDialog @bind-Open="abschlussNotenOpen" DurchlaufId="abschlussNotenDurchlaufId" BearbeiterId="currentUserId" />
 @if (beendenDurchlauf is not null)
 {
     <div class="fixed inset-0 z-[2200] flex items-center justify-center bg-black/40 p-6 sm:p-8">
-        <div class="hallo-modal-surface w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <div class="hallo-modal-scroll">
+        <div class="skoulou-modal-surface w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="skoulou-modal-scroll">
             <h3 class="text-lg font-bold text-slate-800">Clôturer le cycle @beendenDurchlauf.NiveauCode ?</h3>
             @if (beendenOffeneSchuld > 0)
             {
@@ -613,13 +621,13 @@
                 ⚠ Dette ouverte : @beendenOffeneSchuld.ToString("N0") FCFA. Si tu continues, elle sera automatiquement comptabilisée comme perte de l'école.
                 </div>
             }
-            @if (beendenOffeneHalloAppAbos > 0)
+            @if (beendenOffeneSkoulouAppAbos > 0 && istDirektor)
             {
                 <div class="mt-3 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-100">
                     <p class="font-semibold">ℹ Abonnements SKOULOUAPP ouverts</p>
                     <p class="mt-1">
-                        @beendenOffeneHalloAppAbos abonnement(s) payé(s) ne sont pas encore facturés
-                        (@beendenOffenerHalloAppUmsatz.ToString("N0") FCFA). En confirmant la clôture,
+                        @beendenOffeneSkoulouAppAbos abonnement(s) payé(s) ne sont pas encore facturés
+                        (@beendenOffenerSkoulouAppUmsatz.ToString("N0") FCFA). En confirmant la clôture,
                         le système générera automatiquement la facturation technique SKOULOUAPP pour cette école.
                     </p>
                     <p class="mt-1 text-xs font-semibold text-sky-700">
@@ -627,13 +635,22 @@
                     </p>
                 </div>
             }
+            @if (beendenOffeneSkoulouAppAbos > 0 && !istDirektor)
+            {
+                <p class="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP.</p>
+            }
             <p class="mt-3 text-sm text-slate-600">Tu peux annuler pour encaisser d'abord les frais scolaires restants, ou continuer et clôturer le cycle. Après la clôture, aucun paiement échelonné n'est possible jusqu'à la réouverture pour la prochaine cohorte.</p>
+            <p class="mt-2 text-sm font-semibold text-rose-800">Avant la clôture, enregistre la note finale et la décision de chaque élève. Après la clôture, les élèves quitteront la classe et les résultats ne pourront plus être modifiés.</p>
             <div class="mt-3">
                 <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Clôturer le</label>
                 <TailwindDateTimePicker Value="beendenDatum" ValueChanged="SetBeendenDatumAsync" ShowTime="false" />
             </div>
             <div class="mt-5 flex justify-end gap-2">
                 <button type="button" class="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700" @onclick="BeendenAbbrechen">Annuler</button>
+                @if (!istSuperAdmin)
+                {
+                    <button type="button" class="rounded-xl bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-800" @onclick="() => OpenAbschlussNoten(beendenDurchlauf.DurchlaufID)">Définir les notes finales</button>
+                }
                 <AsyncActionButton Class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
             </div>
             </div>

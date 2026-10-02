@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.BaseModel;
 
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 public class FinanzBeleg : AuditableModel
 {

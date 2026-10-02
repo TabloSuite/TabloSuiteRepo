@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Dashboard;
+namespace SkoulouApp.Core.Models.Dashboard;
 
 public class SchoolUserItem
 {

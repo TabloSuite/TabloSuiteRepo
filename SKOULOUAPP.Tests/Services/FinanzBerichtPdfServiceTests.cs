@@ -1,10 +1,10 @@
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Services;
 using QuestPDF.Infrastructure;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class FinanzBerichtPdfServiceTests
 {

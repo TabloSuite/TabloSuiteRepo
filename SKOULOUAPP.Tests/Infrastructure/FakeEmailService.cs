@@ -1,6 +1,6 @@
-using HalloApp.Core.Services.Email;
+using SkoulouApp.Core.Services.Email;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
 /// E-Mail-Service für Tests. Es wird <b>kein</b> realer Versand durchgeführt:

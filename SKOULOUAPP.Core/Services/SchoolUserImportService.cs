@@ -1,15 +1,15 @@
 using System.Globalization;
 using System.Text;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Import;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Import;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 public sealed class SchoolUserImportService(
-    IHalloAppDbContext dbContext,
+    ISkoulouAppDbContext dbContext,
     DashboardService dashboardService)
 {
     private static readonly IReadOnlyDictionary<string, string> HeaderAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -118,7 +118,7 @@ public sealed class SchoolUserImportService(
             var providedEmail = NormalizeOptional(Get(parsedRow, "Email"));
             if (string.IsNullOrWhiteSpace(providedEmail))
             {
-                preview.Email = GenerateUniqueHalloAppEmail(preview.Vorname, preview.Nachname, usedEmails);
+                preview.Email = GenerateUniqueSkoulouAppEmail(preview.Vorname, preview.Nachname, usedEmails);
                 preview.EmailGenerated = true;
             }
             else
@@ -370,7 +370,7 @@ public sealed class SchoolUserImportService(
         => string.Equals(code.Trim(), input.Trim(), StringComparison.OrdinalIgnoreCase)
             || string.Equals(title.Trim(), input.Trim(), StringComparison.OrdinalIgnoreCase);
 
-    private static string GenerateUniqueHalloAppEmail(string vorname, string nachname, HashSet<string> usedEmails)
+    private static string GenerateUniqueSkoulouAppEmail(string vorname, string nachname, HashSet<string> usedEmails)
     {
         var baseLocalPart = BuildEmailLocalPart(vorname, nachname);
         if (string.IsNullOrWhiteSpace(baseLocalPart))

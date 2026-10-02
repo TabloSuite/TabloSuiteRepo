@@ -1,11 +1,11 @@
-using HalloApp.Tests.Infrastructure;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Tests.Infrastructure;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class DatabaseExceptionLogSinkTests
 {

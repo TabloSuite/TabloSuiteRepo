@@ -1,4 +1,4 @@
-# HALLO-APP Projektstand
+# SKOULOU-APP Projektstand
 
 Stand: aktuelle Prüfung im Branch `upgrade-dotnet-10`
 
@@ -10,9 +10,9 @@ Das Projekt ist in den zentralen Rollen- und Schulkontexten mehrschulfähig aufg
 
 ### Projekte
 
-- `HalloApp.WebApp` - Blazor Web App mit rollenbasierten Seiten.
-- `HalloApp.Core` - Domänenmodelle, Services, Geschäftslogik und EF-Core-Kontext.
-- `HalloApp.Tests` - xUnit-Regressionstests für Services und zentrale Abläufe.
+- `SkoulouApp.WebApp` - Blazor Web App mit rollenbasierten Seiten.
+- `SkoulouApp.Core` - Domänenmodelle, Services, Geschäftslogik und EF-Core-Kontext.
+- `SkoulouApp.Tests` - xUnit-Regressionstests für Services und zentrale Abläufe.
 
 ### Zentrale Seiten
 
@@ -60,7 +60,7 @@ Das Projekt ist in den zentralen Rollen- und Schulkontexten mehrschulfähig aufg
 ### Fachliche Regeln
 
 - Schüler erhalten bei Anlage keine automatische Klasse `A1.1`.
-- Schüler erhalten bei Anlage kein automatisches HALLO-APP-Abo.
+- Schüler erhalten bei Anlage kein automatisches SKOULOU-APP-Abo.
 - Abos und Zahlungen sind an Schule, Klasse und Durchlauf gebunden.
 - Abgeschlossene Finanzzyklen sind für Abo-Änderungen gesperrt.
 - Finanzdaten sind schulbezogen und werden serverseitig autorisiert.
@@ -81,9 +81,9 @@ Jetzt kann die Methode zusätzlich den aufrufenden Schulleiter erhalten und prü
 
 Betroffene Dateien:
 
-- `HalloApp.Core/Services/AbrechnungService.cs`
-- `HalloApp.WebApp/Components/Pages/Abrechnung.razor.cs`
-- `HalloApp.Tests/Services/AbrechnungServiceTests.cs`
+- `SkoulouApp.Core/Services/AbrechnungService.cs`
+- `SkoulouApp.WebApp/Components/Pages/Abrechnung.razor.cs`
+- `SkoulouApp.Tests/Services/AbrechnungServiceTests.cs`
 
 ### UI-Komponenten: moderne Dropdowns und Datumsfelder
 
@@ -91,9 +91,9 @@ Die sichtbaren Browser-Standardcontrols aus den Finanz- und Admin-Hilfsseiten wu
 
 Neu:
 
-- `HalloApp.WebApp/Components/Shared/ModernDropdown.razor`
-- `HalloApp.WebApp/Components/Shared/ModernDropdown.razor.cs`
-- `HalloApp.WebApp/Components/Shared/ModernDropdownOption.cs`
+- `SkoulouApp.WebApp/Components/Shared/ModernDropdown.razor`
+- `SkoulouApp.WebApp/Components/Shared/ModernDropdown.razor.cs`
+- `SkoulouApp.WebApp/Components/Shared/ModernDropdownOption.cs`
 
 Modernisiert:
 

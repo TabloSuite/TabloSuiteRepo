@@ -1,13 +1,13 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using HalloApp.Core.Models.Admin;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class ExamA4HtmlDocumentTests
 {

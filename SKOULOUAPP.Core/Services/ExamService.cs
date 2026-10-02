@@ -1,19 +1,19 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Interfaces;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Exams;
-using HalloApp.Core.Models.Student;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Interfaces;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Exams;
+using SkoulouApp.Core.Models.Student;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
-public class ExamService(IHalloAppDbContext dbContext)
+public class ExamService(ISkoulouAppDbContext dbContext)
 {
     public async Task<IReadOnlyList<ExamListItem>> GetExamsForStudentAsync(
         Guid studentId,
@@ -955,6 +955,7 @@ public class ExamService(IHalloAppDbContext dbContext)
         {
             DurchlaufId = durchlauf.Id,
             KlasseId = durchlauf.KlasseId,
+            SchulID = durchlauf.SchulID,
             KlasseCode = durchlauf.Klasse.Code,
             IstAktiv = durchlauf.IstAktiv,
             Schueler = schueler.Select(student =>
@@ -968,13 +969,14 @@ public class ExamService(IHalloAppDbContext dbContext)
                     AbschlussNoteText = !string.IsNullOrWhiteSpace(entscheidung?.AbschlussNoteText)
                         ? entscheidung!.AbschlussNoteText
                         : entscheidung?.AbschlussNote?.ToString("N2"),
-                    IsBestanden = entscheidung?.IsBestanden
+                    IsBestanden = entscheidung?.IsBestanden,
+                    MentionText = entscheidung?.MentionText
                 };
             }).ToList()
         };
     }
 
-    /// <summary>Liefert die nachtragbaren Ergebnisse abschlussrelevanter Exams eines aktiven Durchlaufs.</summary>
+    /// <summary>Liefert historische Prüfungsergebnisse ohne Einfluss auf die manuelle Abschlussnote.</summary>
     public async Task<IReadOnlyList<AbschlussExamErgebnis>> GetAbschlussExamErgebnisseAsync(
         Guid durchlaufId,
         CancellationToken cancellationToken = default)
@@ -1138,7 +1140,7 @@ public class ExamService(IHalloAppDbContext dbContext)
         }
 
         var vorhandeneEinschreibungen = await dbContext.LevelEnrollments
-            .Where(x => studentIds.Contains(x.StudentId) && x.KlasseId == zielKlasseId)
+            .Where(x => studentIds.Contains(x.StudentId) && x.KlasseId == zielKlasseId && x.IstAktuell)
             .Select(x => x.StudentId)
             .ToListAsync(cancellationToken);
         foreach (var student in profile)
@@ -1347,6 +1349,84 @@ public class ExamService(IHalloAppDbContext dbContext)
     /// <summary>
     /// Pflegt die manuelle Abschlussnote (Freitext) eines Schülers in einem Durchlauf.
     /// </summary>
+    public async Task<IReadOnlyList<AbschlussMention>> GetAbschlussMentionsAsync(Guid schulId, Guid bearbeiterId, CancellationToken cancellationToken = default)
+    {
+        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, false, cancellationToken)) return [];
+        return await dbContext.AbschlussMentions.AsNoTracking()
+            .Where(x => x.SchulID == schulId).OrderBy(x => x.Text).ToListAsync(cancellationToken);
+    }
+
+    public async Task<(bool Succeeded, string Message)> SaveAbschlussMentionAsync(Guid schulId, Guid? mentionId, string? text, Guid bearbeiterId, CancellationToken cancellationToken = default)
+    {
+        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "Accès refusé à cette école.");
+        var name = text?.Trim();
+        if (string.IsNullOrEmpty(name) || name.Length > 80) return (false, "La mention doit contenir entre 1 et 80 caractères.");
+        var mention = mentionId.HasValue
+            ? await dbContext.AbschlussMentions.FirstOrDefaultAsync(x => x.Id == mentionId && x.SchulID == schulId, cancellationToken)
+            : null;
+        if (mentionId.HasValue && mention is null) return (false, "Mention introuvable.");
+        if (await dbContext.AbschlussMentions.AnyAsync(x => x.SchulID == schulId && x.Text == name && x.Id != mentionId, cancellationToken))
+            return (false, "Cette mention existe déjà dans l'école.");
+        if (mention is null)
+        {
+            mention = new AbschlussMention { SchulID = schulId, Text = name };
+            await dbContext.AbschlussMentions.AddAsync(mention, cancellationToken);
+        }
+        else
+        {
+            mention.Text = name;
+            mention.GeaendertAmUtc = DateTime.UtcNow;
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "Mention enregistrée.");
+    }
+
+    public async Task<(bool Succeeded, string Message)> DeleteAbschlussMentionAsync(Guid schulId, Guid mentionId, Guid bearbeiterId, CancellationToken cancellationToken = default)
+    {
+        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "Accès refusé à cette école.");
+        var mention = await dbContext.AbschlussMentions.FirstOrDefaultAsync(x => x.Id == mentionId && x.SchulID == schulId, cancellationToken);
+        if (mention is null) return (false, "Mention introuvable.");
+        dbContext.AbschlussMentions.Remove(mention);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "Mention supprimée.");
+    }
+
+    public async Task<(bool Succeeded, string Message)> SetAbschlussMentionAsync(Guid durchlaufId, Guid studentId, Guid? mentionId, Guid bearbeiterId, CancellationToken cancellationToken = default)
+    {
+        var bericht = await GetKlassenAbschlussUebersichtAsync(durchlaufId, cancellationToken);
+        if (bericht is null || !bericht.IstAktiv) return (false, "Le cycle est introuvable ou déjà clôturé.");
+        if (!bericht.Schueler.Any(x => x.StudentId == studentId)) return (false, "L'élève n'appartient pas à ce cycle.");
+        if (!await HatMentionZugriffAsync(bericht.SchulID, bearbeiterId, false, cancellationToken)) return (false, "Accès refusé à cette école.");
+        string? text = null;
+        if (mentionId.HasValue)
+        {
+            text = await dbContext.AbschlussMentions.AsNoTracking()
+                .Where(x => x.Id == mentionId && x.SchulID == bericht.SchulID)
+                .Select(x => x.Text).FirstOrDefaultAsync(cancellationToken);
+            if (text is null) return (false, "Cette mention n'appartient pas à l'école du cycle.");
+        }
+        var entscheidung = await dbContext.KlassenAbschlussEntscheidungen
+            .FirstOrDefaultAsync(x => x.DurchlaufId == durchlaufId && x.StudentId == studentId, cancellationToken);
+        if (entscheidung is null)
+        {
+            entscheidung = new KlassenAbschlussEntscheidung { DurchlaufId = durchlaufId, StudentId = studentId };
+            await dbContext.KlassenAbschlussEntscheidungen.AddAsync(entscheidung, cancellationToken);
+        }
+        entscheidung.MentionText = text;
+        entscheidung.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "Mention enregistrée.");
+    }
+
+    private async Task<bool> HatMentionZugriffAsync(Guid schulId, Guid bearbeiterId, bool verwaltung, CancellationToken cancellationToken)
+    {
+        var rollen = verwaltung
+            ? new[] { Rollen.SchulLeiter, Rollen.Koordinator }
+            : new[] { Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Lehrer };
+        return await dbContext.UserSchools.AnyAsync(x => x.SchoolId == schulId && x.AppUserId == bearbeiterId, cancellationToken)
+            && await dbContext.UserRoles.AnyAsync(x => x.UserId == bearbeiterId && rollen.Contains(x.Role.Name!), cancellationToken);
+    }
+
     public async Task<(bool Succeeded, string Message)> SetManuelleAbschlussNoteAsync(
         Guid durchlaufId,
         Guid studentId,
@@ -1358,6 +1438,11 @@ public class ExamService(IHalloAppDbContext dbContext)
         if (bericht is null)
         {
             return (false, "Le cycle est introuvable.");
+        }
+
+        if (!bericht.IstAktiv)
+        {
+            return (false, "Le cycle est déjà clôturé. Les résultats ne peuvent plus être modifiés.");
         }
 
         var schueler = bericht.Schueler.FirstOrDefault(x => x.StudentId == studentId);

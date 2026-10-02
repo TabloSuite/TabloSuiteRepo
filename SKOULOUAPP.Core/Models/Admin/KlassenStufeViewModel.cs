@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 /// <summary>Verwaltbare Klassenstufe einer normalen Schule.</summary>
 public class KlassenStufeViewModel

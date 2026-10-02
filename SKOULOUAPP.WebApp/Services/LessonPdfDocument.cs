@@ -1,12 +1,12 @@
-using HalloApp.Core.Models.TeacherLessons;
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.Services.Text;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System.Net;
 using System.Text.RegularExpressions;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public sealed class LessonPdfDocument(TeacherLessonDetailViewModel lesson, bool includeSolutions) : IDocument
 {

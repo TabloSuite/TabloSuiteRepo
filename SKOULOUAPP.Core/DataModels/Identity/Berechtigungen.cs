@@ -1,4 +1,4 @@
-namespace HalloApp.Core.DataModels.Identity;
+namespace SkoulouApp.Core.DataModels.Identity;
 
 /// <summary>
 /// Zentrale Definition aller Berechtigungsnamen (Permissions).

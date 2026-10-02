@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Services.Email;
+namespace SkoulouApp.Core.Services.Email;
 
 /// <summary>
 /// Austauschbare Abstraktion für den E-Mail-Versand.

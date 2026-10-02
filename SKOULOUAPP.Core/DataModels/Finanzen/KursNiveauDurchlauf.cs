@@ -1,9 +1,9 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 /// <summary>
 /// Ein abgegrenzter Zeitraum, in dem ein KursNiveau an einer Schule "läuft".

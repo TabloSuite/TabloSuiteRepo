@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Student;
+namespace SkoulouApp.Core.Models.Student;
 
 public class AnswerResult
 {

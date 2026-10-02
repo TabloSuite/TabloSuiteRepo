@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 
-namespace HalloApp.WebApp.Components.Shared;
+namespace SkoulouApp.WebApp.Components.Shared;
 
 public sealed class ProtokollierendeFehlergrenze(ILogger<ProtokollierendeFehlergrenze> logger) : ErrorBoundary
 {

@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Interfaces;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace HalloApp.Core.Services.Email;
+namespace SkoulouApp.Core.Services.Email;
 
 /// <summary>
 /// Zielgruppe für einen E-Mail-Broadcast.
@@ -51,7 +51,7 @@ public sealed class BroadcastCriteria
 /// <summary>
 /// Löst Empfänger anhand von Rolle/Schule auf und versendet zielgerichtete Massen-E-Mails.
 /// </summary>
-public sealed class BroadcastEmailService(IHalloAppDbContext dbContext, IEmailService emailService)
+public sealed class BroadcastEmailService(ISkoulouAppDbContext dbContext, IEmailService emailService)
 {
     /// <summary>Ermittelt die passenden Empfänger für die Kriterien (ohne zu senden).</summary>
     public async Task<IReadOnlyList<EmailRecipient>> ResolveRecipientsAsync(BroadcastCriteria criteria, CancellationToken cancellationToken = default)

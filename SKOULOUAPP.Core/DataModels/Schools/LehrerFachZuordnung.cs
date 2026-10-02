@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 public class LehrerFachZuordnung : AuditableModel
 {

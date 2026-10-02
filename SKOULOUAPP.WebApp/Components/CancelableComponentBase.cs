@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components;
+namespace SkoulouApp.WebApp.Components;
 
 /// <summary>
 /// Basisklasse für interaktive Blazor-Server-Seiten, die beim Initialisieren

@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$project = 'HalloApp.WebApp/HalloApp.WebApp.csproj'
+$project = 'SkoulouApp.WebApp/SkoulouApp.WebApp.csproj'
 $secretLine = dotnet user-secrets list --project $project |
 	Where-Object { $_ -like 'ConnectionStrings:AzureDefaultConnection = *' } |
 	Select-Object -First 1

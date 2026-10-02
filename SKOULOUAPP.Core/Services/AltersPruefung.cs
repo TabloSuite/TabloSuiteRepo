@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Services;
+namespace SkoulouApp.Core.Services;
 
 /// <summary>
 /// Reine, UI-unabhängige Hilfslogik zur Altersberechnung.

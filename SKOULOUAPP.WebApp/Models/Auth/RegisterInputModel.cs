@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Validation;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Validation;
 
-namespace HalloApp.WebApp.Models.Auth;
+namespace SkoulouApp.WebApp.Models.Auth;
 
 /// Öffentliche Selbst-Registrierungsart (auf der Registrierungsseite wählbar).
 public enum RegistrierungsArt

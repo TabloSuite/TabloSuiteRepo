@@ -2,7 +2,7 @@
 @attribute [AllowAnonymous]
 <PageTitle>SKOULOU Campus</PageTitle>
 
-<section id="top" class="hallo-full-bleed home-hero-screen">
+<section id="top" class="skoulou-full-bleed home-hero-screen">
     <div class="home-hero-mobile flex h-full flex-col justify-between overflow-hidden px-5 pb-6 pt-8 text-white sm:hidden">
         <div class="pointer-events-none absolute inset-0 overflow-hidden">
             <span class="home-hero-orb home-hero-orb-1"></span>
@@ -93,11 +93,11 @@
     </div>
 </section>
 
-<section id="apropos" class="hallo-full-bleed home-intro-section py-8 sm:py-10 lg:py-12">
+<section id="apropos" class="skoulou-full-bleed home-intro-section py-8 sm:py-10 lg:py-12">
     <div class="mx-auto grid max-w-7xl gap-6 px-2 sm:px-6 lg:grid-cols-[1.25fr_0.75fr] lg:px-8 2xl:max-w-[96rem]">
         <div class="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/70 sm:p-7 lg:p-9">
             <span class="inline-flex max-w-full items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-slate-700 ring-1 ring-slate-200">
-                <span class="h-1.5 w-1.5 rounded-full bg-[var(--hallo-accent-2)]"></span>
+                <span class="h-1.5 w-1.5 rounded-full bg-[var(--skoulou-accent-2)]"></span>
                 Présentation
             </span>
 
@@ -134,10 +134,10 @@
             <div class="mt-6 flex flex-wrap gap-3">
                 <AuthorizeView>
                     <Authorized>
-                        <a class="hallo-btn-accent w-full rounded-full px-6 py-3 text-center text-sm font-bold no-underline shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto" href="/student">🚀 Ouvrir mon espace</a>
+                        <a class="skoulou-btn-accent w-full rounded-full px-6 py-3 text-center text-sm font-bold no-underline shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto" href="/student">🚀 Ouvrir mon espace</a>
                     </Authorized>
                     <NotAuthorized>
-                        <a class="hallo-btn-accent w-full rounded-full px-6 py-3 text-center text-sm font-bold no-underline shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto" href="auth/register">🚀 S'inscrire</a>
+                        <a class="skoulou-btn-accent w-full rounded-full px-6 py-3 text-center text-sm font-bold no-underline shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto" href="auth/register">🚀 S'inscrire</a>
                     </NotAuthorized>
                 </AuthorizeView>
                 <a class="w-full rounded-full border border-slate-200 bg-white px-6 py-3 text-center text-sm font-bold text-slate-700 no-underline shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md sm:w-auto" href="#kurse" onclick="return window.SKOULOUAPPScrollToTop.scrollToId('kurse')">Voir des exemples de groupes</a>
@@ -148,17 +148,17 @@
             <Authorized>
                 <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-1)]">1</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-1)]">1</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Ton accès</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Un espace adapté à ton profil et à tes autorisations.</p>
                     </div>
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-2)]">100%</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-2)]">100%</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Informations ciblées</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Les contenus affichés dépendent de ton établissement et de ton rôle.</p>
                     </div>
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-1)]">1</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-1)]">1</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Plateforme</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Un seul espace pour gérer les études, les cours et le suivi pédagogique.</p>
                     </div>
@@ -167,17 +167,17 @@
             <NotAuthorized>
                 <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-1)]">3</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-1)]">3</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Informations visibles</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Avant connexion, la page montre seulement les groupes types, l'accès et les frais généraux.</p>
                     </div>
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-2)]">100%</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-2)]">100%</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Espace privé</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Les données réelles apparaissent après connexion.</p>
                     </div>
                     <div class="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
-                        <div class="text-4xl font-black text-[var(--hallo-accent-1)]">1</div>
+                        <div class="text-4xl font-black text-[var(--skoulou-accent-1)]">1</div>
                         <div class="mt-1 text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Plateforme</div>
                         <p class="mt-2 text-sm leading-6 text-slate-500">Un seul espace pour gérer études, cours et suivi pédagogique.</p>
                     </div>
@@ -187,7 +187,7 @@
     </div>
 </section>
 
-<section id="inscription" class="hallo-full-bleed hallo-band-teal py-8 sm:py-10">
+<section id="inscription" class="skoulou-full-bleed skoulou-band-teal py-8 sm:py-10">
     <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
         <div class="max-w-3xl">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Accès</p>
@@ -266,7 +266,7 @@
     </div>
 </section>
 
-<section id="abos" class="hallo-full-bleed hallo-band-indigo py-8 sm:py-10">
+<section id="abos" class="skoulou-full-bleed skoulou-band-indigo py-8 sm:py-10">
     <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
         <div class="max-w-3xl">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Frais</p>
@@ -307,7 +307,7 @@
     </div>
 </section>
 
-<section id="kurse" class="hallo-full-bleed hallo-band-slate py-8 sm:py-10">
+<section id="kurse" class="skoulou-full-bleed skoulou-band-slate py-8 sm:py-10">
     <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>

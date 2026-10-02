@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Import;
+namespace SkoulouApp.Core.Models.Import;
 
 public enum SchoolUserImportKind
 {

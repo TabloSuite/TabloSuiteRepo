@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 public class MediaUploadFormModel
 {

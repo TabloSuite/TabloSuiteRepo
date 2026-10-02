@@ -1,6 +1,6 @@
 ﻿@page "/student"
 @attribute [Authorize(Policy = "RequireStudent")]
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 
 <PageTitle>Espace élève</PageTitle>
 
@@ -11,7 +11,7 @@
 else
 {
     <section class="student-dashboard-page grid gap-4 sm:gap-6">
-            <div class="hallo-hero student-dashboard-hero relative overflow-hidden rounded-[1.5rem] p-4 text-white shadow-2xl sm:rounded-[2rem] sm:p-8">
+            <div class="skoulou-hero student-dashboard-hero relative overflow-hidden rounded-[1.5rem] p-4 text-white shadow-2xl sm:rounded-[2rem] sm:p-8">
             <div class="pointer-events-none absolute -top-20 -right-14 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl"></div>
             <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-violet-300/20 blur-3xl"></div>
             <div class="relative">
@@ -19,10 +19,14 @@ else
             <h1 class="mt-3 text-2xl font-black sm:text-3xl">Bienvenue, @dashboard.FullName</h1>
             <p class="mt-3 max-w-3xl text-xs leading-6 text-indigo-50 sm:mt-4 sm:text-sm sm:leading-7">Ton école : @dashboard.SchoolName · @KlassenLabel actuelle : @CurrentClassDisplay</p>
             <div class="student-dashboard-meta mt-4 flex flex-wrap items-center gap-2">
-                <span class="streak-badge">
-                    <span aria-hidden="true">🔥</span>
-                    <span>@dashboard.StreakDays jour@(dashboard.StreakDays > 1 ? "s" : "") de suite</span>
-                </span>
+                @if (dashboard.StreakDays >= 2)
+                {
+                    <span class="streak-badge">
+                        <span aria-hidden="true">🔥</span>
+                        <span>@dashboard.StreakDays jours de suite</span>
+                    </span>
+                }
+                <span class="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-indigo-50 ring-1 ring-white/20 sm:text-sm">@LastActivityText</span>
                 @if (HasOpenItemsHint)
                 {
                     <span class="student-open-items-badge inline-flex items-center gap-2 rounded-full bg-amber-400/20 px-3 py-1.5 text-xs font-semibold text-amber-50 ring-1 ring-amber-200/40 sm:text-sm">
@@ -31,6 +35,10 @@ else
                     </span>
                 }
             </div>
+                    @if (CurrentClassHistory is not null && !string.IsNullOrWhiteSpace(CurrentClassHistory.AbschlussNoteText))
+                    {
+                        <p class="mt-2 rounded-2xl bg-indigo-50 p-3 text-sm text-indigo-900">Note finale : <strong>@CurrentClassHistory.AbschlussNoteText</strong> · @(CurrentClassHistory.IsBestanden == true ? "Réussi" : CurrentClassHistory.IsBestanden == false ? "Non réussi" : "Décision en attente")</p>
+                    }
             <div class="student-dashboard-score-strip mt-4 -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
                 <div class="student-score-card relative flex w-[92%] shrink-0 snap-center flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 px-5 py-4 ring-1 ring-white/30 backdrop-blur-sm sm:w-auto sm:shrink">
                     <div class="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
@@ -155,7 +163,7 @@ else
 
                     @if (course.IsUnlocked)
                     {
-                        <a class="hallo-btn-accent mt-4 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Ouvrir les leçons de la classe</a>
+                        <a class="skoulou-btn-accent mt-4 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Ouvrir les leçons de la classe</a>
                     }
                     else
                     {
@@ -194,6 +202,7 @@ else
                                         <div>
                                             <h3 class="text-lg font-bold text-slate-900">@FormatClasseLabel(course.CourseCode, course.CourseTitle)</h3>
                                             <p class="mt-1 text-sm text-slate-500">Classe précédente</p>
+                                            <p class="mt-1 text-xs text-slate-500">Cycle du @course.StartDatum.ToLocalTime().ToString("dd/MM/yyyy") au @(course.EndDatum?.ToLocalTime().ToString("dd/MM/yyyy") ?? "en cours")</p>
                                         </div>
                                         <Badge Accent="slate">Terminée</Badge>
                                     </div>
@@ -209,6 +218,10 @@ else
                                             <span class="ml-1 text-slate-500">Aucun résultat disponible</span>
                                         }
                                     </div>
+                                    @if (!string.IsNullOrWhiteSpace(course.AbschlussNoteText))
+                                    {
+                                        <p class="mt-2 rounded-2xl p-3 text-sm @(course.IsBestanden == false ? "bg-rose-50 text-rose-800" : "bg-indigo-50 text-indigo-900")">Note finale : <strong>@course.AbschlussNoteText</strong> · <strong>@(course.IsBestanden == true ? "Réussi" : course.IsBestanden == false ? "Non réussi" : "Décision en attente")</strong>@if (!string.IsNullOrWhiteSpace(course.MentionText)) { <span> · Mention : <strong>@course.MentionText</strong></span> }</p>
+                                    }
                                     @if (course.TeacherLessons.Count > 0)
                                     {
                                         <div class="mt-4">

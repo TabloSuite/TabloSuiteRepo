@@ -3,13 +3,13 @@
     display: flex;
     flex-direction: column;
     background:
-        radial-gradient(circle at 10% -10%, var(--hallo-glow-1), transparent 38%),
-        radial-gradient(circle at 90% 0%, var(--hallo-glow-2), transparent 42%),
-        linear-gradient(180deg, var(--hallo-bg-from) 0%, var(--hallo-bg-to) 100%);
+        radial-gradient(circle at 10% -10%, var(--skoulou-glow-1), transparent 38%),
+        radial-gradient(circle at 90% 0%, var(--skoulou-glow-2), transparent 42%),
+        linear-gradient(180deg, var(--skoulou-bg-from) 0%, var(--skoulou-bg-to) 100%);
 }
 
 .app-sidebar {
-    background: linear-gradient(160deg, var(--hallo-sidebar-from) 0%, var(--hallo-sidebar-via) 50%, var(--hallo-sidebar-to) 100%);
+    background: linear-gradient(160deg, var(--skoulou-sidebar-from) 0%, var(--skoulou-sidebar-via) 50%, var(--skoulou-sidebar-to) 100%);
     color: #f8fafc;
     box-shadow: 4px 0 32px rgba(15, 23, 42, 0.18);
     min-width: 0;
@@ -52,7 +52,7 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--hallo-kicker);
+    color: var(--skoulou-kicker);
     font-weight: 700;
 }
 
@@ -61,7 +61,7 @@
     font-size: clamp(1.8rem, 2vw, 2.4rem);
     font-weight: 800;
     letter-spacing: -0.03em;
-    color: var(--hallo-accent-1);
+    color: var(--skoulou-accent-1);
 }
 
 .app-header-actions {
@@ -105,7 +105,7 @@
 
 .app-link-pill-accent {
     color: #ffffff;
-    background: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%);
+    background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
 }
 
 .app-logout-form {
@@ -296,7 +296,7 @@
 
     .app-main {
         padding-top: 3.75rem;
-        background-image: linear-gradient(90deg, var(--hallo-sidebar-from), var(--hallo-accent-1), var(--hallo-accent-2));
+        background-image: linear-gradient(90deg, var(--skoulou-sidebar-from), var(--skoulou-accent-1), var(--skoulou-accent-2));
         background-repeat: no-repeat;
         background-position: top;
         background-size: 100% 3.75rem;
@@ -352,7 +352,7 @@
 
     .app-link-pill-accent {
         color: #ffffff;
-        background: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%);
+        background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
     }
 
     .app-content {

@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Options;
+namespace SkoulouApp.Core.Options;
 
 /// <summary>
 /// Konfiguration für die lokale Medienspeicherung (Bilder/Audio der Lektionen).

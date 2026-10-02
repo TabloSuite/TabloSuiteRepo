@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Validation;
+namespace SkoulouApp.Core.Validation;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
 public sealed class OptionalPhoneAttribute : ValidationAttribute

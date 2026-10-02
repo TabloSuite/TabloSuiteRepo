@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Schools;
 
-namespace HalloApp.Core.Models.Billing;
+namespace SkoulouApp.Core.Models.Billing;
 
 /// <summary>
 /// Aktueller (noch offener) Abrechnungsstand einer Schule für einen Zeitraum.
@@ -16,14 +16,13 @@ public class AbrechnungsUebersicht
     /// <summary>Ende des offenen Zeitraums (aktueller Zeitpunkt).</summary>
     public DateTime BisUtc { get; set; }
 
-    public int AnzahlHalloBasis { get; set; }
-    public int AnzahlHalloPlus { get; set; }
+    public int AnzahlAbonnements { get; set; }
 
     /// <summary>Offener Umsatz (FCFA), den die Schule dem Betreiber schuldet.</summary>
     public decimal OffenerUmsatz { get; set; }
 
     /// <summary>Anzahl der bezahlten, aber noch nicht abgerechneten Niveaus.</summary>
-    public int AnzahlPositionen => AnzahlHalloBasis + AnzahlHalloPlus;
+    public int AnzahlPositionen => AnzahlAbonnements;
 }
 
 /// <summary>Eine von der Schule als überwiesen gemeldete Rechnung, die noch auf die finale Bankprüfung wartet.</summary>

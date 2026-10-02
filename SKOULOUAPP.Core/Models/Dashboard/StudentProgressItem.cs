@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Dashboard;
+namespace SkoulouApp.Core.Models.Dashboard;
 
 public class StudentProgressItem
 {
@@ -26,8 +26,8 @@ public class StudentProgressItem
     /// <summary>Anzahl der Datenpunkte (versuchte Übungen + abgeschlossene Prüfungen) im kombinierten Score.</summary>
     public int CombinedScoreCount { get; set; }
 
-    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein HalloPlus-Abo hat.</summary>
-    public bool IsHalloPlus { get; set; }
+    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein SkoulouPlus-Abo hat.</summary>
+    public bool IsSkoulouPlus { get; set; }
 
     public DateTime? LastActivityUtc { get; set; }
 }

@@ -1,11 +1,11 @@
 ﻿using System.Security.Claims;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class StudentLessons
 {
@@ -23,7 +23,7 @@ public partial class StudentLessons
 
     private IReadOnlyList<LessonListItem>? lessons;
 
-    private bool HasPaidHalloAppAbo { get; set; }
+    private bool HasPaidSkoulouAppAbo { get; set; }
 
     private bool IsPathView { get; set; } = true;
 
@@ -220,7 +220,7 @@ public partial class StudentLessons
             }
 
             var dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
-            HasPaidHalloAppAbo = dashboard?.HasPaidHalloAppAbo == true;
+            HasPaidSkoulouAppAbo = dashboard?.HasPaidSkoulouAppAbo == true;
             lessons = await LearningService.GetLessonsForStudentAsync(userId, dashboard?.CurrentLevelCode, ComponentToken);
         }
         catch (Exception ex) when (IstAbbruch(ex))

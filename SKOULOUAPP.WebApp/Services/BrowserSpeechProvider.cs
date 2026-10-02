@@ -1,6 +1,6 @@
 using Microsoft.JSInterop;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// TTS-Provider auf Basis der Browser-Web-Speech-API (window.SKOULOUAPPTts, definiert in js/tts.js).

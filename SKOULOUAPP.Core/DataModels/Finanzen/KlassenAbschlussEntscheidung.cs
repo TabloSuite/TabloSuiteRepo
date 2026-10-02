@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 /// <summary>
 /// Dokumentiert den individuellen Abschluss eines Schülers in einem Kursdurchlauf.
@@ -21,6 +21,8 @@ public class KlassenAbschlussEntscheidung : AuditableModel
 
     /// <summary>Manuell gepflegte Abschlussnote im freien Format (z. B. 10/20, 16 de Moyenne, 10/10).</summary>
     public string? AbschlussNoteText { get; set; }
+
+    public string? MentionText { get; set; }
 
     /// <summary>Null, solange die zuständige Lehrkraft bzw. Schulleitung noch nicht entschieden hat.</summary>
     public bool? IsBestanden { get; set; }

@@ -1,11 +1,11 @@
-using HalloApp.Core.Models.Billing;
-using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Models.Billing;
+using SkoulouApp.Core.Models.Dashboard;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Provisionen
 {

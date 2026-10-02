@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 public class SchoolFormModel
 {
@@ -37,15 +37,4 @@ public class SchoolFormModel
     [Range(0, 100, ErrorMessage = "Veuillez saisir un pourcentage valide (0-100).")]
     public decimal? ProductOwnerCommissionPercentOverride { get; set; }
 
-    public decimal? PreisHalloBasis
-    {
-        get => SubscriptionPriceOverride;
-        set => SubscriptionPriceOverride = value;
-    }
-
-    public decimal? PreisHalloPlus
-    {
-        get => SubscriptionPriceOverride;
-        set => SubscriptionPriceOverride = value;
-    }
 }

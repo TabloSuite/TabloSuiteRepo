@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Identity;
 
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 /// <summary>
 /// Zahlungsart einer KursNiveau-Zahlung eines Schülers.

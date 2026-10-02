@@ -1,9 +1,9 @@
-namespace HalloApp.Core.DataModels.Finanzen;
+namespace SkoulouApp.Core.DataModels.Finanzen;
 
 /// <summary>
 /// Systemcodes für vordefinierte Finanzkategorien. Kategorien mit einem gesetzten
 /// SystemCode sind eingebaut, nicht löschbar und dienen der automatischen
-/// Verbuchung (z. B. Klassen-Ratenzahlungen oder HalloApp-Abo-Zahlungen).
+/// Verbuchung (z. B. Klassen-Ratenzahlungen oder SkoulouApp-Abo-Zahlungen).
 /// Frei angelegte Kategorien besitzen <see cref="Keiner"/>.
 /// </summary>
 public enum FinanzSystemCode
@@ -18,20 +18,20 @@ public enum FinanzSystemCode
     /// <summary>Verkauf von Lehrmaterial.</summary>
     VerkaufLehrmaterial = 2,
 
-    /// <summary>Schülerzahlung für ein HalloApp-Abo.</summary>
-    HalloAppAboZahlung = 3,
+    /// <summary>Schülerzahlung für ein SkoulouApp-Abo.</summary>
+    SkoulouAppAboZahlung = 3,
 
-    /// <summary>Anteil der Schule am HalloApp-Abo.</summary>
-    HalloAppAboAnteil = 4,
+    /// <summary>Anteil der Schule am SkoulouApp-Abo.</summary>
+    SkoulouAppAboAnteil = 4,
 
-    /// <summary>Automatisch gebuchter Schulleiter-Anteil aus einem HalloApp-Abo.</summary>
-    HalloAppAboSchulleiterAnteil = 6,
+    /// <summary>Automatisch gebuchter Schulleiter-Anteil aus einem SkoulouApp-Abo.</summary>
+    SkoulouAppAboSchulleiterAnteil = 6,
 
-    /// <summary>Automatisch gebuchter Lehrer-Anteil aus einem HalloApp-Abo.</summary>
-    HalloAppAboLehrerAnteil = 7,
+    /// <summary>Automatisch gebuchter Lehrer-Anteil aus einem SkoulouApp-Abo.</summary>
+    SkoulouAppAboLehrerAnteil = 7,
 
-    /// <summary>Automatisch gebuchter ProductOwner-Anteil aus einem HalloApp-Abo.</summary>
-    HalloAppAboProductOwnerAnteil = 8,
+    /// <summary>Automatisch gebuchter ProductOwner-Anteil aus einem SkoulouApp-Abo.</summary>
+    SkoulouAppAboProductOwnerAnteil = 8,
 
     /// <summary>Sonstige Einnahme.</summary>
     SonstigeEinnahme = 5,
@@ -46,8 +46,8 @@ public enum FinanzSystemCode
     /// <summary>Lehrer-Lohnkosten.</summary>
     LehrerLohnKosten = 102,
 
-    /// <summary>Lehrer-Lohn als HalloApp-Abo.</summary>
-    LehrerLohnHalloAppAbo = 103,
+    /// <summary>Lehrer-Lohn als SkoulouApp-Abo.</summary>
+    LehrerLohnSkoulouAppAbo = 103,
 
     /// <summary>Offene Schulgebühr, die beim Schließen eines Klassenzyklus als Verlust ausgebucht wird.</summary>
     SchulgebuehrVerlust = 104,

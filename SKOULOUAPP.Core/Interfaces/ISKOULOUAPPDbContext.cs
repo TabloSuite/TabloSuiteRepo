@@ -1,22 +1,22 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
-namespace HalloApp.Core.Interfaces;
+namespace SkoulouApp.Core.Interfaces;
 
 /// <summary>
 /// Abstraktion des Datenbankkontexts, damit die Business-Services in
-/// HalloApp.Core auf die EF-Core-Daten zugreifen können, ohne die konkrete
-/// ApplicationDbContext-Implementierung (in HalloApp.WebApp) zu kennen.
+/// SkoulouApp.Core auf die EF-Core-Daten zugreifen können, ohne die konkrete
+/// ApplicationDbContext-Implementierung (in SkoulouApp.WebApp) zu kennen.
 /// </summary>
-public interface IHalloAppDbContext
+public interface ISkoulouAppDbContext
 {
     /// <summary>Datenbankzugriff für explizite, transaktionale Wartungsabläufe.</summary>
     DatabaseFacade Database { get; }
@@ -38,6 +38,8 @@ public interface IHalloAppDbContext
 
     /// <summary>Schulen.</summary>
     DbSet<School> Schools { get; }
+
+    DbSet<AbschlussMention> AbschlussMentions { get; }
 
     DbSet<Ankuendigung> Ankuendigungen { get; }
 

@@ -1,9 +1,9 @@
 @page "/teacher"
 @attribute [Authorize(Policy = "RequireTeacher")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@inherits HalloApp.WebApp.Components.CancelableComponentBase
-@using HalloApp.Core.Models.Dashboard
-@using HalloApp.Core.DataModels.Schools
+@inherits SkoulouApp.WebApp.Components.CancelableComponentBase
+@using SkoulouApp.Core.Models.Dashboard
+@using SkoulouApp.Core.DataModels.Schools
 
 <PageTitle>Espace enseignant</PageTitle>
 
@@ -36,7 +36,7 @@ else if (teacherSchools.Count == 0 && students.Count == 0)
 else
 {
     <section class="teacher-dashboard grid gap-6">
-        <div class="hallo-hero relative overflow-hidden rounded-[2rem] p-8 text-white shadow-2xl xl:p-10">
+        <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-8 text-white shadow-2xl xl:p-10">
             <div class="pointer-events-none absolute -top-20 -right-14 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl"></div>
             <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-violet-300/20 blur-3xl"></div>
             <div class="relative">

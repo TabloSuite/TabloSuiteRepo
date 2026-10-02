@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Student;
+namespace SkoulouApp.Core.Models.Student;
 
 public class StudentDashboardViewModel
 {
@@ -20,11 +20,11 @@ public class StudentDashboardViewModel
     /// </summary>
     public bool CanTakeFinalExam { get; set; }
 
-    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein HalloPlus-Abo hat.</summary>
-    public bool IsHalloPlus { get; set; }
+    /// <summary>True, wenn der Schüler für sein aktuelles Niveau ein SkoulouPlus-Abo hat.</summary>
+    public bool IsSkoulouPlus { get; set; }
 
-    /// <summary>True, wenn der Schüler mindestens ein bezahltes HALLOAPP-Abo besitzt.</summary>
-    public bool HasPaidHalloAppAbo { get; set; }
+    /// <summary>True, wenn der Schüler mindestens ein bezahltes SKOULOUAPP-Abo besitzt.</summary>
+    public bool HasPaidSkoulouAppAbo { get; set; }
 
     /// <summary>True, wenn der Schüler aktuell mindestens eine aktive Klassenfreischaltung hat.</summary>
     public bool HasActiveSubscription { get; set; }
@@ -54,6 +54,9 @@ public class StudentDashboardViewModel
     /// mindestens eine Übung, Lektion oder Prüfung abgeschlossen/beantwortet hat.
     /// </summary>
     public int StreakDays { get; set; }
+
+    /// <summary>Letzte Lernaktivität in UTC; null, wenn noch keine Aktivität vorliegt.</summary>
+    public DateTime? LastActivityAtUtc { get; set; }
 
     /// <summary>Anzahl freigeschalteter Lektionen der aktuellen Klasse, die noch nicht abgeschlossen sind.</summary>
     public int OpenLessonsCount { get; set; }

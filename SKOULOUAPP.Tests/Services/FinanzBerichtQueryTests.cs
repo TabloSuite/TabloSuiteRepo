@@ -1,9 +1,9 @@
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.Services;
-using FinanzBerichtPage = HalloApp.WebApp.Components.Pages.FinanzBericht;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.Services;
+using FinanzBerichtPage = SkoulouApp.WebApp.Components.Pages.FinanzBericht;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class FinanzBerichtQueryTests
 {

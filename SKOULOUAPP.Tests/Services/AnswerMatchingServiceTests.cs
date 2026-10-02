@@ -1,7 +1,7 @@
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Services;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 public class AnswerMatchingServiceTests
 {

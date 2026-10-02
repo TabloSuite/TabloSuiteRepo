@@ -1,4 +1,4 @@
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
 /// <summary>
 /// Projektion einer Prüfung für den druckbaren Prüfungsbogen (PDF), optional mit Lösungen.

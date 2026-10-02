@@ -1,7 +1,7 @@
 <div class="brand-panel">
     <div class="brand-copy brand-copy-with-icon">
         <a class="brand-logo" href="" aria-label="SKOULOU – Accueil">
-            <img src="hallo-app-icon.svg" alt="" />
+            <img src="skoulou-app-icon.svg" alt="" />
             <span>SKOULOU</span>
         </a>
         <p class="brand-subtitle">Plateforme de gestion scolaire pour écoles, classes, supports et examens</p>
@@ -55,37 +55,34 @@
                     </div>
                 }
 
-                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator") || espaceState.User.IsInRole("ProduktOwner"))
+                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator"))
                 {
                     <div class="nav-item">
                         <NavLink class="nav-link" href="schulleiter" data-enhance-nav="false">
                             <span class="bi bi-building-nav-menu" aria-hidden="true"></span>
-                            <span>@(espaceState.User.IsInRole("ProduktOwner") && !espaceState.User.IsInRole("SuperAdmin")
-                                ? "Mes écoles attribuées"
-                                : espaceState.User.IsInRole("Koordinator") && !espaceState.User.IsInRole("SchulLeiter")
+                            <span>@(espaceState.User.IsInRole("Koordinator") && !espaceState.User.IsInRole("SchulLeiter")
                                     ? "Espace coordinateur"
                                     : "Espace directeur")</span>
                         </NavLink>
                     </div>
                 }
 
-                @if (espaceState.User.IsInRole("SuperAdmin"))
+                @if (espaceState.User.IsInRole("SuperAdmin") || espaceState.User.IsInRole("ProduktOwner"))
                 {
                     <div class="nav-item">
                         <NavLink class="nav-link" href="admin" Match="NavLinkMatch.All" data-enhance-nav="false">
                             <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span>
-                            <span>Espace administrateur</span>
+                            <span>@(espaceState.User.IsInRole("SuperAdmin") ? "Espace administrateur" : "Espace responsable produit")</span>
                         </NavLink>
                     </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="admin/broadcast" data-enhance-nav="false">
-                            <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
-                            <span>Annonces &amp; e-mails</span>
-                        </NavLink>
-                    </div>
-
                     @if (espaceState.User.IsInRole("SuperAdmin"))
                     {
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="admin/communication" data-enhance-nav="false">
+                                <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
+                                <span>Communication</span>
+                            </NavLink>
+                        </div>
                         <div class="nav-item">
                             <NavLink class="nav-link" href="admin/exception-logs" data-enhance-nav="false">
                                 <span class="bi bi-exclamation-triangle-nav-menu" aria-hidden="true"></span>
@@ -97,7 +94,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Roles="SuperAdmin,ProduktOwner">
+        <AuthorizeView Roles="ProduktOwner">
             <Authorized>
                 <div class="nav-item">
                     <NavLink class="nav-link" href="admin/courrier" data-enhance-nav="false">
@@ -162,7 +159,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Roles="SchulLeiter,Koordinator,SuperAdmin">
+        <AuthorizeView Roles="SchulLeiter,Koordinator,SuperAdmin,ProduktOwner">
             <Authorized Context="financeState">
                 @if (!financeState.User.IsInRole("Koordinator") || financeState.User.IsInRole("SchulLeiter") || coordinatorHasFinanceAccess)
                 {
@@ -173,12 +170,6 @@
                         <NavLink class="nav-link" href="superadmin/finances" data-enhance-nav="false">
                             <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span>
                             <span>Centre financier</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="finanzen" data-enhance-nav="false">
-                            <span class="bi bi-bar-chart-nav-menu" aria-hidden="true"></span>
-                            <span>Finances des écoles</span>
                         </NavLink>
                     </div>
                     <div class="nav-item">
@@ -193,9 +184,18 @@
                     <div class="nav-item">
                         <NavLink class="nav-link" href="finanzen" data-enhance-nav="false">
                             <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span>
-                            <span>Comptabilité & infos SKOULOUAPPABO</span>
+                            <span>@(financeState.User.IsInRole("ProduktOwner") ? "Finances des écoles (lecture seule)" : "Comptabilité & infos SKOULOUAPPABO")</span>
                         </NavLink>
                     </div>
+                    @if (financeState.User.IsInRole("SchulLeiter") || financeState.User.IsInRole("Koordinator") && coordinatorHasFinanceAccess)
+                    {
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="abrechnung" data-enhance-nav="false">
+                                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span>
+                                <span>Facturations SKOULOUAPP</span>
+                            </NavLink>
+                        </div>
+                    }
                 }
                 }
             </Authorized>

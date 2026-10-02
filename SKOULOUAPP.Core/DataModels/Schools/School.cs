@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations.Schema;
-using HalloApp.Core.DataModels.BaseModel;
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-namespace HalloApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.BaseModel;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+namespace SkoulouApp.Core.DataModels.Schools;
 
 public class School : AuditableModel
 {
@@ -16,18 +16,8 @@ public class School : AuditableModel
     public string DescriptionHtml { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
 
-    /// <summary>
-    /// Organisationsmodell der Schule. Wird bei der Registrierung oder Verwaltung festgelegt.
-    /// </summary>
-    /// <summary>
-    /// Bisheriger Kompatibilitätswert. Intern wird ein einziger Abo-Preis verwendet.
-    /// </summary>
-    public decimal? PreisHalloBasis { get; set; }
-
-    /// <summary>
-    /// Bisheriger Kompatibilitätswert. Intern wird ein einziger Abo-Preis verwendet.
-    /// </summary>
-    public decimal? PreisHalloPlus { get; set; }
+    /// <summary>Optionaler schulspezifischer Abo-Preis.</summary>
+    public decimal? SubscriptionPriceOverride { get; set; }
 
     /// <summary>
     /// Optionaler schulspezifischer Provisionsanteil für den Schulleiter in Prozent.
@@ -47,17 +37,6 @@ public class School : AuditableModel
     /// </summary>
     public decimal? ProductOwnerCommissionPercentOverride { get; set; }
 
-    [NotMapped]
-    public decimal? SubscriptionPriceOverride
-    {
-        get => PreisHalloPlus ?? PreisHalloBasis;
-        set
-        {
-            PreisHalloBasis = value;
-            PreisHalloPlus = value;
-        }
-    }
-
     public ICollection<UserSchool> UserSchools { get; set; } = new List<UserSchool>();
     public ICollection<StudentProfile> Students { get; set; } = new List<StudentProfile>();
     public ICollection<KlassenStufe> KlassenStufen { get; set; } = new List<KlassenStufe>();
@@ -72,11 +51,8 @@ public class School : AuditableModel
     /// <summary>
     /// Kompatibilitätsüberladung für ältere Aufrufer mit AboTyp.
     /// </summary>
-    public decimal EffektiverPreis(AboTyp aboTyp) => aboTyp switch
-    {
-        AboTyp.HalloPlus => PreisHalloPlus ?? PreisHalloBasis ?? HalloAppKonstanten.StandardPreisAbo,
-        _ => PreisHalloBasis ?? PreisHalloPlus ?? HalloAppKonstanten.StandardPreisAbo
-    };
+    public decimal EffektiverPreis(AboTyp aboTyp)
+        => SubscriptionPriceOverride ?? SkoulouAppKonstanten.StandardPreisAbo;
 }
 
 

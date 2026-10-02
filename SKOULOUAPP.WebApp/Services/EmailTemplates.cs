@@ -1,4 +1,6 @@
-namespace HalloApp.WebApp.Services;
+using SkoulouApp.Core.Services.Email;
+
+namespace SkoulouApp.WebApp.Services;
 
 /// <summary>
 /// Einheitliche HTML-Vorlage für alle ausgehenden E-Mails.
@@ -7,6 +9,7 @@ namespace HalloApp.WebApp.Services;
 /// </summary>
 internal static class EmailTemplates
 {
+    private const string LayoutMarker = "<!-- SKOULOUAPP-EMAIL-LAYOUT -->";
     private const string BrandName = "SKOULOUAPP";
     private const string BrandClaim = "APPRENDRE. PROGRESSER. RÉUSSIR.";
     private const string BrandDescription = "L'espace d'apprentissage qui rapproche les écoles, les enseignants et les élèves.";
@@ -43,6 +46,7 @@ internal static class EmailTemplates
     public static string Wrap(string heading, string innerHtml, string? preheader = null) =>
         $"""
         <!DOCTYPE html>
+        {LayoutMarker}
         <html lang="fr">
         <head>
             <meta charset="utf-8">
@@ -138,6 +142,23 @@ internal static class EmailTemplates
         </body>
         </html>
         """;
+
+    public static EmailMessage EnsureLayout(EmailMessage message)
+    {
+        if (message.HtmlBody.Contains(LayoutMarker, StringComparison.Ordinal)
+            || message.HtmlBody.Contains("<!-- Header: blaue Navigationsleiste mit Logo-Badge -->", StringComparison.Ordinal)
+                && message.HtmlBody.Contains("<!-- Footer: dunkelblauer Markenbereich -->", StringComparison.Ordinal))
+            return message;
+
+        var html = Wrap(System.Net.WebUtility.HtmlEncode(message.Subject), message.HtmlBody);
+        return new EmailMessage
+        {
+            Subject = message.Subject,
+            HtmlBody = html,
+            TextBody = string.IsNullOrWhiteSpace(message.TextBody) ? ToPlainText(message.HtmlBody) : message.TextBody,
+            ReplyTo = message.ReplyTo
+        };
+    }
 
     /// <summary>
     /// Zentrierter Call-to-Action-Button im Markenstil.

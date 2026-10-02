@@ -6,7 +6,7 @@
 - Errors: 0
 - Warnings: 0
 - Projects built: none; prerequisite restore gate only
-- Restore: `dotnet restore HALLOAPPMAPPE.slnx` succeeded
+- Restore: `dotnet restore SKOULOUAPPMAPPE.slnx` succeeded
 
 ## Test Result
 - Tests run: 0

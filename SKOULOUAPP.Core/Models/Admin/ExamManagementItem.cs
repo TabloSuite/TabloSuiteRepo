@@ -1,6 +1,6 @@
-namespace HalloApp.Core.Models.Admin;
+namespace SkoulouApp.Core.Models.Admin;
 
-using HalloApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exams;
 
 /// <summary>
 /// Übersichtseintrag einer vom Lehrer erstellten Prüfung (Exam) für die Verwaltung.

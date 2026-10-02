@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Services.Text;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Services.Text;
 
-namespace HalloApp.WebApp.Services;
+namespace SkoulouApp.WebApp.Services;
 
 public static class ExamA4HtmlDocument
 {

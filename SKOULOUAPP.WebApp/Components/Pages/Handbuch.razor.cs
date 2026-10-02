@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.Models.Handbuch;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.Models.Handbuch;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Handbuch
 {

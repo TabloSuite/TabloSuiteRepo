@@ -261,7 +261,7 @@ test('Ziehgriff verändert die Bildbreite durch Ziehen direkt am Bild', () => {
     assert.deepEqual(calls, [[8, 1, 'width', '300', 'user']]);
     const reimported = { ...image };
     currentImage = reimported;
-    quill._halloappImageSizingRefresh(true);
+    quill._skoulouappImageSizingRefresh(true);
     assert.equal(overlay.hidden, false);
     handleEvents.get('pointerdown')({ pointerId: 2, clientX: 100, preventDefault: () => {}, stopPropagation: () => {} });
     handleEvents.get('pointermove')({ pointerId: 2, clientX: 120 });
@@ -392,8 +392,8 @@ test('Cursor im bestehenden normalen Text löscht veraltete Schrift, aber nicht 
 });
 
 test('Toolbar liegt über A4-Inhalt und Dropdown ist scrollbar', () => {
-    assert.match(css, /\.halloapp-richtext \.ql-toolbar\.ql-snow\s*\{[^}]*z-index:\s*3\s*;/);
-    assert.match(css, /\.halloapp-richtext \.ql-toolbar \.ql-picker-options\s*\{[^}]*overflow-y:\s*auto\s*;/);
+    assert.match(css, /\.skoulouapp-richtext \.ql-toolbar\.ql-snow\s*\{[^}]*z-index:\s*3\s*;/);
+    assert.match(css, /\.skoulouapp-richtext \.ql-toolbar \.ql-picker-options\s*\{[^}]*overflow-y:\s*auto\s*;/);
     assert.match(css, /\.ql-font-arial-black\s*\{[^}]*font-weight:\s*900\s*;/);
-    assert.ok(css.indexOf('.halloapp-image-size .halloapp-image-align') > css.indexOf('/* ===== Rich-Text-Editor'));
+    assert.ok(css.indexOf('.skoulouapp-image-size .skoulouapp-image-align') > css.indexOf('/* ===== Rich-Text-Editor'));
 });

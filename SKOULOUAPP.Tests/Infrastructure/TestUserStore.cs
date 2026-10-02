@@ -1,7 +1,7 @@
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Identity;
 using Microsoft.AspNetCore.Identity;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
 /// Minimaler In-Memory-<see cref="IUserStore{TUser}"/>, damit ein

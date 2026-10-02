@@ -1,4 +1,4 @@
-window.halloStudentExerciseFeedback = (() => {
+window.skoulouStudentExerciseFeedback = (() => {
     let audioContext;
 
     function getAudioContext() {

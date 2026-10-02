@@ -1,13 +1,13 @@
 using System.Security.Claims;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Dashboard;
-using HalloApp.Core.Models.Import;
-using HalloApp.Core.Services;
-using HalloApp.WebApp.Components.Shared;
-using HalloApp.WebApp.Services;
-using HalloApp.Core.Models.TeacherLessons;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Dashboard;
+using SkoulouApp.Core.Models.Import;
+using SkoulouApp.Core.Services;
+using SkoulouApp.WebApp.Components.Shared;
+using SkoulouApp.WebApp.Services;
+using SkoulouApp.Core.Models.TeacherLessons;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
@@ -15,11 +15,47 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class SchulLeiter
 {
     [Inject] private ILogger<SchulLeiter> Logger { get; set; } = default!;
+    [Inject] private ExamService ExamService { get; set; } = default!;
+
+    private IReadOnlyList<AbschlussMention> schulMentions = [];
+    private Guid? mentionEditId;
+    private string mentionText = string.Empty;
+    private string? mentionMessage;
+    private string? mentionError;
+
+    private async Task SaveMentionAsync()
+    {
+        if (SelectedKlasseSchoolId is not Guid schoolId) return;
+        var result = await ExamService.SaveAbschlussMentionAsync(schoolId, mentionEditId, mentionText, currentUserId, ComponentToken);
+        mentionError = result.Succeeded ? null : result.Message;
+        mentionMessage = result.Succeeded ? result.Message : null;
+        if (result.Succeeded)
+        {
+            mentionEditId = null;
+            mentionText = string.Empty;
+            schulMentions = await ExamService.GetAbschlussMentionsAsync(schoolId, currentUserId, ComponentToken);
+        }
+    }
+
+    private void EditMention(AbschlussMention mention)
+    {
+        mentionEditId = mention.Id;
+        mentionText = mention.Text;
+    }
+
+    private async Task DeleteMentionAsync(Guid mentionId)
+    {
+        if (SelectedKlasseSchoolId is not Guid schoolId) return;
+        var result = await ExamService.DeleteAbschlussMentionAsync(schoolId, mentionId, currentUserId, ComponentToken);
+        mentionError = result.Succeeded ? null : result.Message;
+        mentionMessage = result.Succeeded ? result.Message : null;
+        if (result.Succeeded) schulMentions = await ExamService.GetAbschlussMentionsAsync(schoolId, currentUserId, ComponentToken);
+    }
 
     private const string DirectorTabSubjects = "subjects";
     private const string DirectorTabClasses = "classes";
@@ -41,25 +77,25 @@ public partial class SchulLeiter
             ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
             : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700";
 
-    private bool CanSuggestHalloAppEmail => CanCurrentUserUseHalloAppEmail
+    private bool CanSuggestSkoulouAppEmail => CanCurrentUserUseSkoulouAppEmail
         && !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
 
-    private bool ShowHalloAppEmailButton => CanCurrentUserUseHalloAppEmail;
+    private bool ShowSkoulouAppEmailButton => CanCurrentUserUseSkoulouAppEmail;
 
-    private string halloAppEmailButtonLabel => "E-mail auto";
+    private string skoulouAppEmailButtonLabel => "E-mail auto";
 
-    private void SuggestHalloAppEmail()
+    private void SuggestSkoulouAppEmail()
     {
-        if (CanSuggestHalloAppEmail)
+        if (CanSuggestSkoulouAppEmail)
         {
-            userForm.Email = BuildHalloAppEmail(userForm.Vorname, userForm.Nachname);
+            userForm.Email = BuildSkoulouAppEmail(userForm.Vorname, userForm.Nachname);
         }
     }
 
-    private bool CanCurrentUserUseHalloAppEmail => canCurrentUserUseHalloAppEmail;
+    private bool CanCurrentUserUseSkoulouAppEmail => canCurrentUserUseSkoulouAppEmail;
 
-    private static string BuildHalloAppEmail(string vorname, string nachname)
+    private static string BuildSkoulouAppEmail(string vorname, string nachname)
     {
         var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(source.Length);
@@ -97,6 +133,9 @@ public partial class SchulLeiter
 
     [Inject]
     private AuthService AuthService { get; set; } = default!;
+
+    [Inject]
+    private KontoBenachrichtigungService KontoBenachrichtigungService { get; set; } = default!;
 
     private IReadOnlyList<TeacherSchoolOverview> schools = [];
     private IReadOnlyList<StudentApprovalItem> students = [];
@@ -659,9 +698,27 @@ public partial class SchulLeiter
     private async Task SetSchoolUserRoleAsync(string? roleName)
     {
         userForm.RoleName = roleName ?? Rollen.Schueler;
+        if (userForm.RoleName != Rollen.Koordinator)
+        {
+            userForm.CoordinatorFinanceAccesses.Clear();
+            ResetCoordinatorFinanceDraft();
+        }
+        else if (!userForm.UserId.HasValue)
+        {
+            SetNewCoordinatorFinanceDefaults();
+        }
         if (userForm.RoleName != Rollen.Lehrer)
         {
             userForm.FachIds.Clear();
+        }
+
+        if (userForm.RoleName == Rollen.Schueler)
+        {
+            await LoadUserFormKlassenAsync();
+        }
+        else
+        {
+            userFormKlassen = [];
         }
 
         teacherClassReferenceFilter = null;
@@ -780,7 +837,7 @@ public partial class SchulLeiter
     private bool isDatabaseActionInProgress;
     private bool isProduktOwner;
     private bool isKoordinator;
-    private bool canCurrentUserUseHalloAppEmail;
+    private bool canCurrentUserUseSkoulouAppEmail;
 
     [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
@@ -797,42 +854,47 @@ public partial class SchulLeiter
 
     private bool userModalOpen;
     private UserFormModel userForm = new();
-    private readonly Dictionary<Guid, (bool Menu, bool Dashboard, bool Entries, bool Cycles)> coordinatorFinanceAccess = new();
-    private Guid? coordinatorFinanceSchoolId;
     private bool coordinatorFinanceMenu;
     private bool coordinatorFinanceDashboard;
     private bool coordinatorFinanceEntries;
     private bool coordinatorFinanceCycles;
+    private bool coordinatorFinanceHadDifferentAccess;
 
-    private void SelectCoordinatorFinanceSchool(Guid? schoolId)
+    private void OnCoordinatorFinanceMenuChanged()
     {
-        coordinatorFinanceSchoolId = schoolId;
-        var access = schoolId.HasValue && coordinatorFinanceAccess.TryGetValue(schoolId.Value, out var saved)
-            ? saved : default;
-        coordinatorFinanceMenu = access.Menu;
-        coordinatorFinanceDashboard = access.Dashboard;
-        coordinatorFinanceEntries = access.Entries;
-        coordinatorFinanceCycles = access.Cycles;
+        if (coordinatorFinanceMenu) return;
+
+        coordinatorFinanceDashboard = false;
+        coordinatorFinanceEntries = false;
+        coordinatorFinanceCycles = false;
     }
 
-    private async Task SaveCoordinatorFinanceAccessAsync()
+    private void ResetCoordinatorFinanceDraft()
     {
-        if (coordinatorFinanceSchoolId is not Guid schoolId || userForm.UserId is not Guid coordinatorId) return;
-        if (!userForm.SchoolIds.Contains(schoolId))
+        coordinatorFinanceMenu = false;
+        coordinatorFinanceDashboard = false;
+        coordinatorFinanceEntries = false;
+        coordinatorFinanceCycles = false;
+        coordinatorFinanceHadDifferentAccess = false;
+    }
+
+    private void SetNewCoordinatorFinanceDefaults()
+    {
+        coordinatorFinanceMenu = true;
+        coordinatorFinanceDashboard = false;
+        coordinatorFinanceEntries = true;
+        coordinatorFinanceCycles = true;
+    }
+
+    private void SetCoordinatorSchoolAssignment(Guid schoolId, bool isAssigned)
+    {
+        if (isAssigned)
         {
-            userErrorMessage = "Enregistrez d'abord l'affectation du coordinateur à cette école.";
+            if (!userForm.SchoolIds.Contains(schoolId)) userForm.SchoolIds.Add(schoolId);
             return;
         }
 
-        var result = await FinanzService.SetCoordinatorFinanceAccessAsync(currentUserId, coordinatorId, schoolId,
-            coordinatorFinanceMenu, coordinatorFinanceDashboard, coordinatorFinanceEntries, coordinatorFinanceCycles, ComponentToken);
-        if (result.Succeeded)
-        {
-            coordinatorFinanceAccess[schoolId] = (coordinatorFinanceMenu, coordinatorFinanceDashboard, coordinatorFinanceEntries, coordinatorFinanceCycles);
-            userStatusMessage = result.Message;
-            userErrorMessage = null;
-        }
-        else userErrorMessage = result.Message;
+        userForm.SchoolIds.Remove(schoolId);
     }
     private string? userStatusMessage;
     private string? userErrorMessage;
@@ -971,10 +1033,12 @@ public partial class SchulLeiter
 
     private Task DeletePendingStudentAsync(Guid studentId) => RunDatabaseActionAsync(async () =>
     {
+        var vorher = await KontoBenachrichtigungService.LadeEmpfaengerAsync(studentId, ComponentToken);
         var result = await DashboardService.DeletePendingSelfRegisteredStudentAsync(currentUserId, studentId, ComponentToken);
         SetResult(result.Succeeded, result.Message);
         if (result.Succeeded)
         {
+            await KontoBenachrichtigungService.RegistrierungAbgelehntAsync(vorher, ComponentToken);
             await LoadAsync();
         }
     });
@@ -984,7 +1048,7 @@ public partial class SchulLeiter
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         isProduktOwner = authState.User.IsInRole(Rollen.ProduktOwner) && !authState.User.IsInRole(Rollen.SuperAdmin);
         isKoordinator = authState.User.IsInRole(Rollen.Koordinator) && !authState.User.IsInRole(Rollen.SchulLeiter);
-        canCurrentUserUseHalloAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
+        canCurrentUserUseSkoulouAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
             && !authState.User.IsInRole(Rollen.Schueler);
         canViewSharedTeacherContent = authState.User.IsInRole(Rollen.SchulLeiter)
             || authState.User.IsInRole(Rollen.Koordinator);
@@ -1303,10 +1367,20 @@ public partial class SchulLeiter
 
     private async Task SetBlockedCoreAsync(Guid studentId, bool isBlocked)
     {
-        await DashboardService.SetStudentBlockedStateAsync(studentId, isBlocked);
-        message = isBlocked ? "L'élève a été bloqué." : "L'élève a été validé.";
-        errorMessage = null;
-        await LoadAsync();
+        var vorher = !isBlocked ? await KontoBenachrichtigungService.LadeEmpfaengerAsync(studentId, ComponentToken) : null;
+        var result = await DashboardService.SetSchoolUserBlockedStateAsync(currentUserId, studentId, isBlocked, ComponentToken);
+        if (result.Succeeded)
+        {
+            await KontoBenachrichtigungService.RegistrierungFreigegebenAsync(vorher, ComponentToken);
+            message = isBlocked ? "L'élève a été bloqué." : "L'élève a été validé.";
+            errorMessage = null;
+            await LoadAsync();
+        }
+        else
+        {
+            message = null;
+            errorMessage = result.Message;
+        }
     }
 
     private async Task ToggleLevelPanelAsync(Guid studentId)
@@ -1354,7 +1428,10 @@ public partial class SchulLeiter
 
     private async Task AssignAboCoreAsync(Guid studentId, Guid klasseId, AboTyp aboTyp)
     {
+        var warVorherBezahlt = await KontoBenachrichtigungService.IstAboBezahltAsync(studentId, klasseId);
         var (succeeded, resultMessage) = await AboService.AboZuweisenAsync(studentId, klasseId, aboTyp, currentUserId);
+        if (succeeded)
+            await KontoBenachrichtigungService.AboPaiementEnregistreAsync(studentId, klasseId, warVorherBezahlt);
         SetResult(succeeded, resultMessage);
         await RefreshStudentAfterEnrollmentChangeAsync(studentId);
     }
@@ -1383,6 +1460,7 @@ public partial class SchulLeiter
     private async Task OpenNewUserModalAsync()
     {
         isStudentPersonalEditMode = false;
+        ResetCoordinatorFinanceDraft();
         userForm = new UserFormModel
         {
             RoleName = AllowedSchoolUserRoles.FirstOrDefault() ?? Rollen.Schueler,
@@ -1392,11 +1470,13 @@ public partial class SchulLeiter
         if (schools.Count == 1)
         {
             userForm.SchoolIds = [schools[0].SchoolId];
-            await LoadUserFormKlassenAsync();
         }
-        else
+
+        await LoadUserFormKlassenAsync();
+
+        if (userForm.RoleName == Rollen.Koordinator)
         {
-            userFormKlassen = [];
+            SetNewCoordinatorFinanceDefaults();
         }
 
         teacherClassReferenceFilter = null;
@@ -1497,15 +1577,16 @@ public partial class SchulLeiter
 
         isStudentPersonalEditMode = model.RoleName == Rollen.Schueler;
         userForm = model;
-        coordinatorFinanceAccess.Clear();
+        ResetCoordinatorFinanceDraft();
         if (!isKoordinator && model.RoleName == Rollen.Koordinator)
         {
-            foreach (var schoolId in model.SchoolIds)
-            {
-                coordinatorFinanceAccess[schoolId] = await FinanzService.GetFinanceAccessAsync(userId, schoolId, cancellationToken: ComponentToken);
-            }
-            coordinatorFinanceSchoolId = model.SchoolIds.FirstOrDefault();
-            SelectCoordinatorFinanceSchool(coordinatorFinanceSchoolId);
+            var accesses = model.CoordinatorFinanceAccesses;
+            coordinatorFinanceHadDifferentAccess = accesses.Select(access => (access.Menu, access.Dashboard, access.Entries, access.Cycles))
+                .Distinct().Count() > 1;
+            coordinatorFinanceMenu = accesses.Count == model.SchoolIds.Count && accesses.All(access => access.Menu);
+            coordinatorFinanceDashboard = coordinatorFinanceMenu && accesses.All(access => access.Dashboard);
+            coordinatorFinanceEntries = coordinatorFinanceMenu && accesses.All(access => access.Entries);
+            coordinatorFinanceCycles = coordinatorFinanceMenu && accesses.All(access => access.Cycles);
         }
         teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
@@ -1546,6 +1627,7 @@ public partial class SchulLeiter
         if (!open)
         {
             isStudentPersonalEditMode = false;
+            ResetCoordinatorFinanceDraft();
             userForm = new UserFormModel();
             userFormKlassen = [];
             userFormTeacherClassOptions = [];
@@ -1619,6 +1701,20 @@ public partial class SchulLeiter
         var email = userForm.Email?.Trim() ?? string.Empty;
         var vorname = userForm.Vorname?.Trim() ?? string.Empty;
 
+        if (!isKoordinator && userForm.RoleName == Rollen.Koordinator)
+        {
+            var menu = coordinatorFinanceMenu && (coordinatorFinanceDashboard || coordinatorFinanceEntries || coordinatorFinanceCycles);
+            userForm.CoordinatorFinanceAccesses = userForm.SchoolIds.Select(schoolId =>
+                new CoordinatorFinanceAccessFormModel
+                {
+                    SchoolId = schoolId,
+                    Menu = menu,
+                    Dashboard = menu && coordinatorFinanceDashboard,
+                    Entries = menu && coordinatorFinanceEntries,
+                    Cycles = menu && coordinatorFinanceCycles
+                }).ToList();
+        }
+
         var modelToSave = userForm;
         if (isStudentPersonalEditMode)
         {
@@ -1661,12 +1757,17 @@ public partial class SchulLeiter
             };
         }
 
+        var vorher = modelToSave.UserId is Guid userId
+            ? await KontoBenachrichtigungService.LadeEmpfaengerAsync(userId, ComponentToken)
+            : null;
         var result = await DashboardService.SaveSchoolUserAsync(currentUserId, modelToSave, ComponentToken);
         if (!result.Succeeded)
         {
             userErrorMessage = result.Message;
             return;
         }
+
+        await KontoBenachrichtigungService.AdresseModifieeAsync(vorher, ComponentToken);
 
         if (istNeuanlage)
         {
@@ -1678,6 +1779,7 @@ public partial class SchulLeiter
         userStatusMessage = result.Message;
         userModalOpen = false;
         isStudentPersonalEditMode = false;
+        ResetCoordinatorFinanceDraft();
         userForm = new UserFormModel();
         await LoadAsync();
     }
@@ -1689,9 +1791,18 @@ public partial class SchulLeiter
         userErrorMessage = null;
         userStatusMessage = null;
 
-        await DashboardService.SetStudentBlockedStateAsync(userId, isBlocked);
-        userStatusMessage = isBlocked ? "L'utilisateur a été bloqué." : "L'utilisateur a été activé.";
-        await LoadAsync();
+        var vorher = !isBlocked ? await KontoBenachrichtigungService.LadeEmpfaengerAsync(userId, ComponentToken) : null;
+        var result = await DashboardService.SetSchoolUserBlockedStateAsync(currentUserId, userId, isBlocked, ComponentToken);
+        if (result.Succeeded)
+        {
+            await KontoBenachrichtigungService.RegistrierungFreigegebenAsync(vorher, ComponentToken);
+            userStatusMessage = result.Message;
+            await LoadAsync();
+        }
+        else
+        {
+            userErrorMessage = result.Message;
+        }
     }
 
     private async Task OpenZuordnungAsync(Guid teacherId, string teacherName)
@@ -1759,10 +1870,10 @@ public partial class SchulLeiter
         _ => roleName
     };
 
-    private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isHalloPlus)
+    private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isSkoulouPlus)
         => hasPaidEnrollment
             ? "Abo actuel : SKOULOUAPP payé"
-            : isHalloPlus
+            : isSkoulouPlus
                 ? "Abo actuel : SKOULOUAPP actif (paiement en attente)"
                 : "Abo actuel : aucun abonnement";
 
@@ -1845,6 +1956,19 @@ public partial class SchulLeiter
 
     private bool klassenExpanded;
     private IReadOnlyList<CourseFormModel> schoolKlassen = [];
+    private bool darfCycleZahlungenVerwalten;
+
+    private async Task<bool> PruefeCycleZahlungsrechtAsync()
+    {
+        if (SelectedKlasseSchoolId is not Guid schoolId)
+            return false;
+
+        darfCycleZahlungenVerwalten = (await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId,
+            cancellationToken: ComponentToken)).Cycles;
+        if (!darfCycleZahlungenVerwalten)
+            klasseErrorMessage = "L'accès « Paiements des cycles » est nécessaire pour cette action.";
+        return darfCycleZahlungenVerwalten;
+    }
     private IReadOnlyList<KlassenStufeViewModel> klassenStufen = [];
     private Dictionary<Guid, DurchlaufUebersicht> durchlaeufeNachKlasse = [];
     private IReadOnlyList<DurchlaufUebersicht> durchlaeufe = [];
@@ -1862,12 +1986,20 @@ public partial class SchulLeiter
     private bool autoAssignConfirmOpen;
 
     private bool durchlaufStartModalOpen;
+    private bool durchlaufStartDurchUeberweisungGesperrt;
     private CourseFormModel? startKlasse;
     private decimal durchlaufPreis;
     private DateTime durchlaufStartDatum = DateTime.Today;
     private bool durchlaufEndeModalOpen;
     private DurchlaufUebersicht? zuBeendenderDurchlauf;
     private DateTime durchlaufEndDatum = DateTime.Today;
+    private bool abschlussNotenOpen;
+    private Guid? abschlussNotenDurchlaufId;
+    private void OpenAbschlussNoten(Guid durchlaufId)
+    {
+        abschlussNotenDurchlaufId = durchlaufId;
+        abschlussNotenOpen = true;
+    }
     private bool zahlungModalOpen;
     private DurchlaufUebersicht? zahlungDurchlauf;
     private Guid zahlungStudentId;
@@ -1911,8 +2043,8 @@ public partial class SchulLeiter
 
     private bool IsAutoAssignActivationPendingConfirmation
         => ExistingKlasseFromForm is not null
-            && !ExistingKlasseFromForm.AutoAssignHalloAppAboOnCycleStart
-            && klasseForm.AutoAssignHalloAppAboOnCycleStart
+            && !ExistingKlasseFromForm.AutoAssignSkoulouAppAboOnCycleStart
+            && klasseForm.AutoAssignSkoulouAppAboOnCycleStart
             && IsAktiverCycleForKlasseForm;
 
     private static string GetKlassenAnzeige(CourseFormModel klasse)
@@ -2024,6 +2156,8 @@ public partial class SchulLeiter
 
     private async Task OpenZahlungModalAsync(DurchlaufUebersicht durchlauf)
     {
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         zahlungDurchlauf = await FinanzService.GetDurchlaufUebersichtAsync(durchlauf.DurchlaufID, ComponentToken);
         if (zahlungDurchlauf is null)
         {
@@ -2052,6 +2186,8 @@ public partial class SchulLeiter
 
     private async Task ZahlungBuchenCoreAsync()
     {
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         if (zahlungDurchlauf is null || zahlungStudentId == Guid.Empty)
         {
             klasseErrorMessage = "Sélectionne un élève.";
@@ -2066,6 +2202,7 @@ public partial class SchulLeiter
             zahlungWirkungsdatum,
             currentUserId,
             istSuperAdmin: false,
+            autorisierungErzwingen: true,
             cancellationToken: ComponentToken);
         if (!result.Succeeded)
         {
@@ -2073,6 +2210,8 @@ public partial class SchulLeiter
             return;
         }
 
+        if (result.Zahlung is not null)
+            await KontoBenachrichtigungService.PaiementEnregistreAsync(result.Zahlung.Id, ComponentToken);
         klasseStatusMessage = "Le paiement a été enregistré.";
         zahlungModalOpen = false;
         zahlungDurchlauf = null;
@@ -2081,8 +2220,12 @@ public partial class SchulLeiter
 
     private async Task LoadSchoolKlassenAsync()
     {
+        mentionEditId = null;
+        mentionText = string.Empty;
         if (SelectedKlasseSchoolId is not Guid schoolId)
         {
+            darfCycleZahlungenVerwalten = false;
+            schulMentions = [];
             schoolKlassen = [];
             durchlaeufe = [];
             durchlaeufeNachKlasse = [];
@@ -2093,7 +2236,10 @@ public partial class SchulLeiter
 
         try
         {
+            darfCycleZahlungenVerwalten = (await FinanzService.GetFinanceAccessAsync(currentUserId, schoolId,
+                cancellationToken: ComponentToken)).Cycles;
             schoolKlassen = await DashboardService.GetSchoolKlassenAsync(schoolId, ComponentToken);
+            schulMentions = await ExamService.GetAbschlussMentionsAsync(schoolId, currentUserId, ComponentToken);
             klassenStufen = await DashboardService.GetKlassenStufenAsync(schoolId, ComponentToken);
             durchlaeufe = await FinanzService.GetDurchlaeufeAsync(schoolId, ComponentToken);
             durchlaeufeNachKlasse = durchlaeufe
@@ -2117,7 +2263,7 @@ public partial class SchulLeiter
             CEFRGroup = "Classe",
             RecommendedLessonCount = 1,
             MaxPlaetze = null,
-            AutoAssignHalloAppAboOnCycleStart = false
+            AutoAssignSkoulouAppAboOnCycleStart = false
         };
         autoAssignConfirmOpen = false;
         klasseStatusMessage = null;
@@ -2157,7 +2303,7 @@ public partial class SchulLeiter
             CurrentStudentCount = klasse.CurrentStudentCount,
             SchoolId = klasse.SchoolId,
             IstSystemNiveau = klasse.IstSystemNiveau,
-            AutoAssignHalloAppAboOnCycleStart = klasse.AutoAssignHalloAppAboOnCycleStart,
+            AutoAssignSkoulouAppAboOnCycleStart = klasse.AutoAssignSkoulouAppAboOnCycleStart,
             ConfirmAutoAssignActivationForActiveCycle = false
         };
         autoAssignConfirmOpen = false;
@@ -2241,7 +2387,10 @@ public partial class SchulLeiter
             return;
         }
 
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         startKlasse = klasse;
+        durchlaufStartDurchUeberweisungGesperrt = await FinanzService.HatNichtGemeldeteCycleUeberweisungAsync(schoolId, klasse.CourseId.Value, ComponentToken);
         durchlaufPreis = await FinanzService.GetPreisVorschlagAsync(schoolId, klasse.CourseId.Value, ComponentToken);
         durchlaufStartDatum = DateTime.Today;
         klasseErrorMessage = null;
@@ -2252,8 +2401,17 @@ public partial class SchulLeiter
 
     private async Task StartDurchlaufCoreAsync()
     {
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         if (SelectedKlasseSchoolId is not Guid schoolId || startKlasse?.CourseId is not Guid klasseId)
         {
+            return;
+        }
+
+        if (await FinanzService.HatNichtGemeldeteCycleUeberweisungAsync(schoolId, klasseId, ComponentToken))
+        {
+            durchlaufStartDurchUeberweisungGesperrt = true;
+            klasseErrorMessage = "Déclarez d'abord le virement de la facturation du cycle précédent.";
             return;
         }
 
@@ -2293,8 +2451,10 @@ public partial class SchulLeiter
         }
     }
 
-    private void OpenDurchlaufEndeModal(DurchlaufUebersicht durchlauf)
+    private async Task OpenDurchlaufEndeModal(DurchlaufUebersicht durchlauf)
     {
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         zuBeendenderDurchlauf = durchlauf;
         durchlaufEndDatum = DateTime.Today < durchlauf.StartDatum ? durchlauf.StartDatum : DateTime.Today;
         klasseErrorMessage = null;
@@ -2305,26 +2465,40 @@ public partial class SchulLeiter
 
     private async Task BeendeDurchlaufCoreAsync()
     {
+        if (!await PruefeCycleZahlungsrechtAsync()) return;
+
         if (zuBeendenderDurchlauf is null)
         {
             return;
         }
 
-        var result = await FinanzService.DurchlaufBeendenAsync(
-            zuBeendenderDurchlauf.DurchlaufID, durchlaufEndDatum, currentUserId,
-            istSuperAdmin: false, autorisierungErzwingen: true, cancellationToken: ComponentToken);
-        if (!result.Succeeded)
+        var (succeeded, error, offeneSchuld, abrechnungsMeldung) = !isKoordinator
+            ? await FinanzService.DurchlaufBeendenMitAutomatischerSkoulouAppAbrechnungAsync(
+                zuBeendenderDurchlauf.DurchlaufID, durchlaufEndDatum, currentUserId,
+                autorisierungErzwingen: true, cancellationToken: ComponentToken)
+            : await BeendeOhneAutomatischeRechnungAsync(zuBeendenderDurchlauf.DurchlaufID);
+        if (!succeeded)
         {
-            klasseErrorMessage = result.ErrorMessage;
+            klasseErrorMessage = error;
             return;
         }
 
-        klasseStatusMessage = result.OffeneSchuld > 0
-            ? $"Le cycle est clôturé. La dette restante de {result.OffeneSchuld:N0} FCFA est indiquée comme perte."
+        klasseStatusMessage = offeneSchuld > 0
+            ? $"Le cycle est clôturé. La dette restante de {offeneSchuld:N0} FCFA est indiquée comme perte."
             : "Le cycle est clôturé.";
+        if (abrechnungsMeldung is not null)
+            klasseStatusMessage += $" {abrechnungsMeldung}";
         durchlaufEndeModalOpen = false;
         zuBeendenderDurchlauf = null;
         await LoadSchoolKlassenAsync();
+    }
+
+    private async Task<(bool Succeeded, string ErrorMessage, decimal OffeneSchuld, string? AutomatischeAbrechnungMessage)> BeendeOhneAutomatischeRechnungAsync(Guid durchlaufId)
+    {
+        var (succeeded, error, offeneSchuld) = await FinanzService.DurchlaufBeendenAsync(
+            durchlaufId, durchlaufEndDatum, currentUserId,
+            autorisierungErzwingen: true, cancellationToken: ComponentToken);
+        return (succeeded, error, offeneSchuld, null);
     }
 
 }

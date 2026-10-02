@@ -17,9 +17,9 @@ This document provides a comprehensive overview of the projects and their depend
 - [Projects Relationship Graph](#projects-relationship-graph)
 - [Project Details](#project-details)
 
-  - [HalloApp.Core\HalloApp.Core.csproj](#halloappcorehalloappcorecsproj)
-  - [HalloApp.Tests\HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj)
-  - [HalloApp.WebApp\HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj)
+  - [SkoulouApp.Core\SkoulouApp.Core.csproj](#skoulouappcoreskoulouappcorecsproj)
+  - [SkoulouApp.Tests\SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj)
+  - [SkoulouApp.WebApp\SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj)
 
 
 ## Executive Summary
@@ -40,9 +40,9 @@ This document provides a comprehensive overview of the projects and their depend
 
 | Project | Target Framework | Difficulty | Package Issues | API Issues | Binding Issues | Est. LOC Impact | Description |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| [HalloApp.Core\HalloApp.Core.csproj](#halloappcorehalloappcorecsproj) | net9.0 | 🟢 Low | 2 | 0 | 0 |  | ClassLibrary, Sdk Style = True |
-| [HalloApp.Tests\HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj) | net9.0 | 🟢 Low | 2 | 0 | 0 |  | DotNetCoreApp, Sdk Style = True |
-| [HalloApp.WebApp\HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | net9.0 | 🟢 Low | 5 | 10 | 0 | 10+ | AspNetCore, Sdk Style = True |
+| [SkoulouApp.Core\SkoulouApp.Core.csproj](#skoulouappcoreskoulouappcorecsproj) | net9.0 | 🟢 Low | 2 | 0 | 0 |  | ClassLibrary, Sdk Style = True |
+| [SkoulouApp.Tests\SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj) | net9.0 | 🟢 Low | 2 | 0 | 0 |  | DotNetCoreApp, Sdk Style = True |
+| [SkoulouApp.WebApp\SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | net9.0 | 🟢 Low | 5 | 10 | 0 | 10+ | AspNetCore, Sdk Style = True |
 
 ### Package Compatibility
 
@@ -67,15 +67,15 @@ This document provides a comprehensive overview of the projects and their depend
 
 | Package | Current Version | Suggested Version | Projects | Description |
 | :--- | :---: | :---: | :--- | :--- |
-| Microsoft.AspNetCore.Identity.EntityFrameworkCore | 9.0.0 | 10.0.10 | [HalloApp.Core.csproj](#halloappcorehalloappcorecsproj)<br/>[HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.EntityFrameworkCore | 9.0.0 | 10.0.10 | [HalloApp.Core.csproj](#halloappcorehalloappcorecsproj)<br/>[HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.EntityFrameworkCore.Design | 9.0.0 | 10.0.10 | [HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.EntityFrameworkCore.InMemory | 9.0.0 | 10.0.10 | [HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.EntityFrameworkCore.SqlServer | 9.0.0 | 10.0.10 | [HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.EntityFrameworkCore.Tools | 9.0.0 | 10.0.10 | [HalloApp.WebApp.csproj](#halloappwebapphalloappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
-| Microsoft.NET.Test.Sdk | 17.11.1 |  | [HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj) | ✅Compatible |
-| xunit | 2.9.2 |  | [HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj) | ⚠️Das NuGet-Paket ist veraltet |
-| xunit.runner.visualstudio | 2.8.2 |  | [HalloApp.Tests.csproj](#halloapptestshalloapptestscsproj) | ✅Compatible |
+| Microsoft.AspNetCore.Identity.EntityFrameworkCore | 9.0.0 | 10.0.10 | [SkoulouApp.Core.csproj](#skoulouappcoreskoulouappcorecsproj)<br/>[SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.EntityFrameworkCore | 9.0.0 | 10.0.10 | [SkoulouApp.Core.csproj](#skoulouappcoreskoulouappcorecsproj)<br/>[SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.EntityFrameworkCore.Design | 9.0.0 | 10.0.10 | [SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.EntityFrameworkCore.InMemory | 9.0.0 | 10.0.10 | [SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.EntityFrameworkCore.SqlServer | 9.0.0 | 10.0.10 | [SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.EntityFrameworkCore.Tools | 9.0.0 | 10.0.10 | [SkoulouApp.WebApp.csproj](#skoulouappwebappskoulouappwebappcsproj) | Ein NuGet-Paketupgrade wird empfohlen |
+| Microsoft.NET.Test.Sdk | 17.11.1 |  | [SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj) | ✅Compatible |
+| xunit | 2.9.2 |  | [SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj) | ⚠️Das NuGet-Paket ist veraltet |
+| xunit.runner.visualstudio | 2.8.2 |  | [SkoulouApp.Tests.csproj](#skoulouapptestsskoulouapptestscsproj) | ✅Compatible |
 
 ## Top API Migration Challenges
 
@@ -104,21 +104,21 @@ Legend:
 
 ```mermaid
 flowchart LR
-    P1["<b>📦&nbsp;HalloApp.Core.csproj</b><br/><small>net9.0</small>"]
-    P2["<b>📦&nbsp;HalloApp.Tests.csproj</b><br/><small>net9.0</small>"]
-    P3["<b>📦&nbsp;HalloApp.WebApp.csproj</b><br/><small>net9.0</small>"]
+    P1["<b>📦&nbsp;SkoulouApp.Core.csproj</b><br/><small>net9.0</small>"]
+    P2["<b>📦&nbsp;SkoulouApp.Tests.csproj</b><br/><small>net9.0</small>"]
+    P3["<b>📦&nbsp;SkoulouApp.WebApp.csproj</b><br/><small>net9.0</small>"]
     P2 --> P1
     P3 --> P1
-    click P1 "#halloappcorehalloappcorecsproj"
-    click P2 "#halloapptestshalloapptestscsproj"
-    click P3 "#halloappwebapphalloappwebappcsproj"
+    click P1 "#skoulouappcoreskoulouappcorecsproj"
+    click P2 "#skoulouapptestsskoulouapptestscsproj"
+    click P3 "#skoulouappwebappskoulouappwebappcsproj"
 
 ```
 
 ## Project Details
 
-<a id="halloappcorehalloappcorecsproj"></a>
-### HalloApp.Core\HalloApp.Core.csproj
+<a id="skoulouappcoreskoulouappcorecsproj"></a>
+### SkoulouApp.Core\SkoulouApp.Core.csproj
 
 #### Project Info
 
@@ -142,14 +142,14 @@ Legend:
 ```mermaid
 flowchart TB
     subgraph upstream["Dependants (2)"]
-        P2["<b>📦&nbsp;HalloApp.Tests.csproj</b><br/><small>net9.0</small>"]
-        P3["<b>📦&nbsp;HalloApp.WebApp.csproj</b><br/><small>net9.0</small>"]
-        click P2 "#halloapptestshalloapptestscsproj"
-        click P3 "#halloappwebapphalloappwebappcsproj"
+        P2["<b>📦&nbsp;SkoulouApp.Tests.csproj</b><br/><small>net9.0</small>"]
+        P3["<b>📦&nbsp;SkoulouApp.WebApp.csproj</b><br/><small>net9.0</small>"]
+        click P2 "#skoulouapptestsskoulouapptestscsproj"
+        click P3 "#skoulouappwebappskoulouappwebappcsproj"
     end
-    subgraph current["HalloApp.Core.csproj"]
-        MAIN["<b>📦&nbsp;HalloApp.Core.csproj</b><br/><small>net9.0</small>"]
-        click MAIN "#halloappcorehalloappcorecsproj"
+    subgraph current["SkoulouApp.Core.csproj"]
+        MAIN["<b>📦&nbsp;SkoulouApp.Core.csproj</b><br/><small>net9.0</small>"]
+        click MAIN "#skoulouappcoreskoulouappcorecsproj"
     end
     P2 --> MAIN
     P3 --> MAIN
@@ -166,8 +166,8 @@ flowchart TB
 | ✅ Compatible | 9814 |  |
 | ***Total APIs Analyzed*** | ***9814*** |  |
 
-<a id="halloapptestshalloapptestscsproj"></a>
-### HalloApp.Tests\HalloApp.Tests.csproj
+<a id="skoulouapptestsskoulouapptestscsproj"></a>
+### SkoulouApp.Tests\SkoulouApp.Tests.csproj
 
 #### Project Info
 
@@ -190,13 +190,13 @@ Legend:
 
 ```mermaid
 flowchart TB
-    subgraph current["HalloApp.Tests.csproj"]
-        MAIN["<b>📦&nbsp;HalloApp.Tests.csproj</b><br/><small>net9.0</small>"]
-        click MAIN "#halloapptestshalloapptestscsproj"
+    subgraph current["SkoulouApp.Tests.csproj"]
+        MAIN["<b>📦&nbsp;SkoulouApp.Tests.csproj</b><br/><small>net9.0</small>"]
+        click MAIN "#skoulouapptestsskoulouapptestscsproj"
     end
     subgraph downstream["Dependencies (1"]
-        P1["<b>📦&nbsp;HalloApp.Core.csproj</b><br/><small>net9.0</small>"]
-        click P1 "#halloappcorehalloappcorecsproj"
+        P1["<b>📦&nbsp;SkoulouApp.Core.csproj</b><br/><small>net9.0</small>"]
+        click P1 "#skoulouappcoreskoulouappcorecsproj"
     end
     MAIN --> P1
 
@@ -212,8 +212,8 @@ flowchart TB
 | ✅ Compatible | 4970 |  |
 | ***Total APIs Analyzed*** | ***4970*** |  |
 
-<a id="halloappwebapphalloappwebappcsproj"></a>
-### HalloApp.WebApp\HalloApp.WebApp.csproj
+<a id="skoulouappwebappskoulouappwebappcsproj"></a>
+### SkoulouApp.WebApp\SkoulouApp.WebApp.csproj
 
 #### Project Info
 
@@ -236,13 +236,13 @@ Legend:
 
 ```mermaid
 flowchart TB
-    subgraph current["HalloApp.WebApp.csproj"]
-        MAIN["<b>📦&nbsp;HalloApp.WebApp.csproj</b><br/><small>net9.0</small>"]
-        click MAIN "#halloappwebapphalloappwebappcsproj"
+    subgraph current["SkoulouApp.WebApp.csproj"]
+        MAIN["<b>📦&nbsp;SkoulouApp.WebApp.csproj</b><br/><small>net9.0</small>"]
+        click MAIN "#skoulouappwebappskoulouappwebappcsproj"
     end
     subgraph downstream["Dependencies (1"]
-        P1["<b>📦&nbsp;HalloApp.Core.csproj</b><br/><small>net9.0</small>"]
-        click P1 "#halloappcorehalloappcorecsproj"
+        P1["<b>📦&nbsp;SkoulouApp.Core.csproj</b><br/><small>net9.0</small>"]
+        click P1 "#skoulouappcoreskoulouappcorecsproj"
     end
     MAIN --> P1
 

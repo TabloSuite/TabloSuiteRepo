@@ -1,16 +1,16 @@
-using HalloApp.Core.DataModels.Courses;
-using HalloApp.Core.DataModels.Exams;
-using HalloApp.Core.DataModels.Exercises;
-using HalloApp.Core.DataModels.Finanzen;
-using HalloApp.Core.DataModels.Identity;
-using HalloApp.Core.DataModels.Lessons;
-using HalloApp.Core.DataModels.Schools;
-using HalloApp.Core.Models.Admin;
-using HalloApp.Core.Models.Student;
-using HalloApp.Core.Services;
-using HalloApp.Tests.Infrastructure;
-using HalloApp.WebApp.Models.Auth;
-using HalloApp.WebApp.Services;
+using SkoulouApp.Core.DataModels.Courses;
+using SkoulouApp.Core.DataModels.Exams;
+using SkoulouApp.Core.DataModels.Exercises;
+using SkoulouApp.Core.DataModels.Finanzen;
+using SkoulouApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Lessons;
+using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.Student;
+using SkoulouApp.Core.Services;
+using SkoulouApp.Tests.Infrastructure;
+using SkoulouApp.WebApp.Models.Auth;
+using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace HalloApp.Tests.Services;
+namespace SkoulouApp.Tests.Services;
 
 /// <summary>
 /// Durchgehender End-to-End-Test, der den kompletten Lebenszyklus der App
@@ -32,6 +32,28 @@ namespace HalloApp.Tests.Services;
 public class GesamtAblaufTests
 {
     [Fact]
+    public async Task BlockierterNutzer_ErhaeltHinweisNurNachGueltigemPasswort()
+    {
+        var factory = new TestApplicationDbContextFactory();
+        var user = new AppUser { Id = Guid.NewGuid(), UserName = "student@example.org", Email = "student@example.org", IsBlocked = true };
+        var manager = TestUserManager.Create([user]);
+        var signInManager = new TestSignInManager(manager);
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, signInManager, new FakeEmailService(),
+            Options.Create(new SkoulouApp.Core.Options.PostmarkOptions { Enabled = false }),
+            new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
+
+        signInManager.PasswordValid = false;
+        var invalid = await service.PasswordSignInAsync(user.Email, "incorrect", false);
+        Assert.False(invalid.Succeeded);
+        Assert.DoesNotContain("bloqué", invalid.ErrorMessage);
+
+        signInManager.PasswordValid = true;
+        var blocked = await service.PasswordSignInAsync(user.Email, "correct", false);
+        Assert.False(blocked.Succeeded);
+        Assert.Equal(AuthService.BlockedAccountMessage, blocked.ErrorMessage);
+    }
+
+    [Fact]
     public async Task Schulstartfluss_RegistrierungFreigabeKlassenLehrerSchuelerAufgabenUndScores_FunktioniertAlsEinAblauf()
     {
         var databaseName = Guid.NewGuid().ToString();
@@ -41,8 +63,8 @@ public class GesamtAblaufTests
         var admin = new AppUser
         {
             Id = Guid.NewGuid(),
-            UserName = "admin@hallo.tg",
-            Email = "admin@hallo.tg",
+            UserName = "admin@skoulou.tg",
+            Email = "admin@skoulou.tg",
             FullName = "Admin Central"
         };
 
@@ -85,7 +107,7 @@ public class GesamtAblaufTests
             userManager,
             new TestSignInManager(userManager),
             emailService,
-            Options.Create(new HalloApp.Core.Options.PostmarkOptions { Enabled = false }),
+            Options.Create(new SkoulouApp.Core.Options.PostmarkOptions { Enabled = false }),
             new ConfigurationBuilder().Build(),
             NullLogger<AuthService>.Instance);
 
@@ -107,6 +129,10 @@ public class GesamtAblaufTests
 
         var registeredDirector = await userManager.FindByEmailAsync("directrice@test.tg");
         Assert.NotNull(registeredDirector);
+
+        var blockedLogin = await authService.PasswordSignInAsync("directrice@test.tg", "Start123!", rememberMe: false);
+        Assert.False(blockedLogin.Succeeded);
+        Assert.Equal(AuthService.BlockedAccountMessage, blockedLogin.ErrorMessage);
 
         var director = await db.Users.SingleAsync(x => x.Email == "directrice@test.tg", CancellationToken.None);
         var school = await db.Schools.SingleAsync(x => x.Name == "École Lumière", CancellationToken.None);
@@ -308,7 +334,7 @@ public class GesamtAblaufTests
             enrollment => enrollment.StudentId == studentA.Id && enrollment.KlasseId == klasseCp1.CourseId.Value);
         enrollmentA.IsUnlocked = true;
         enrollmentA.IsPaid = true;
-        enrollmentA.AboTyp = AboTyp.HalloBasis;
+        enrollmentA.AboTyp = AboTyp.SkoulouApp;
         enrollmentA.PriceAtEnrollment = 5000m;
         enrollmentA.PaidAtUtc = DateTime.UtcNow.AddDays(-21);
 
@@ -316,7 +342,7 @@ public class GesamtAblaufTests
             enrollment => enrollment.StudentId == studentB.Id && enrollment.KlasseId == klasseCp2.CourseId.Value);
         enrollmentB.IsUnlocked = true;
         enrollmentB.IsPaid = false;
-        enrollmentB.AboTyp = AboTyp.HalloBasis;
+        enrollmentB.AboTyp = AboTyp.SkoulouApp;
         enrollmentB.PriceAtEnrollment = 5000m;
         db.LessonProgresses.Add(new LessonProgress
         {
@@ -372,7 +398,7 @@ public class GesamtAblaufTests
         var studentDashboard = await dashboard.GetStudentDashboardAsync(studentA.Id);
         Assert.NotNull(studentDashboard);
         Assert.Equal("École Lumière", studentDashboard!.SchoolName);
-        Assert.True(studentDashboard.HasPaidHalloAppAbo);
+        Assert.True(studentDashboard.HasPaidSkoulouAppAbo);
         Assert.True(studentDashboard.HasActiveSubscription);
         Assert.True(studentDashboard.CanTakeFinalExam);
         Assert.Equal(0, studentDashboard.CompletedLessonsCount);
@@ -447,6 +473,8 @@ public class GesamtAblaufTests
         Assert.Equal(13000m, cp2ReportBeforeClose.SchulgebuehrBezahlt);
         Assert.Equal(0m, cp2ReportBeforeClose.SchulgebuehrOffen);
 
+        Assert.True((await examService.SetManuelleAbschlussNoteAsync(cp1Run.Id, studentA.Id, "12/20", director.Id)).Succeeded);
+        Assert.True((await examService.SetManuelleAbschlussNoteAsync(cp2Run.Id, studentB.Id, "14/20", director.Id)).Succeeded);
         var (cp1DecisionOk, cp1DecisionMessage) = await examService.SetKlassenBestandenEntscheidungAsync(
             cp1Run.Id,
             studentA.Id,
@@ -546,12 +574,11 @@ public class GesamtAblaufTests
         var schule = new School
         {
             Id = Guid.NewGuid(),
-            Name = "École Hallo Yaoundé",
+            Name = "École Skoulou Yaoundé",
             City = "Yaoundé",
             IsActive = true,
             ErstelltAmUtc = DateTime.UtcNow.AddMonths(-2),
-            PreisHalloBasis = 5000m,
-            PreisHalloPlus = 8000m
+            SubscriptionPriceOverride = 8000m
         };
 
         var schulleiter = new AppUser
@@ -559,7 +586,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             FullName = "Directeur Mbarga",
             UserName = "directeur",
-            Email = "directeur@hallo.cm"
+            Email = "directeur@skoulou.cm"
         };
 
         // --- 2) Lehrer wird der Schule zugeordnet --------------------
@@ -568,7 +595,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             FullName = "Enseignante Ngo",
             UserName = "enseignante",
-            Email = "enseignante@hallo.cm"
+            Email = "enseignante@skoulou.cm"
         };
 
         var lehrerSchule = new UserSchool
@@ -623,7 +650,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             FullName = "Élève Fotso",
             UserName = "eleve",
-            Email = "eleve@hallo.cm",
+            Email = "eleve@skoulou.cm",
             IsSelfRegistered = true,
             IsBlocked = true,
             GeburtsdatumUtc = DateTime.UtcNow.AddYears(-15)
@@ -685,7 +712,7 @@ public class GesamtAblaufTests
         // --- Schritt A: Lehrer sieht seine Schule + offenen Schüler --
         var lehrerSchulen = await dashboard.GetTeacherSchoolsAsync(lehrer.Id);
         var meineSchule = Assert.Single(lehrerSchulen);
-        Assert.Equal("École Hallo Yaoundé", meineSchule.SchoolName);
+        Assert.Equal("École Skoulou Yaoundé", meineSchule.SchoolName);
         Assert.Equal(1, meineSchule.StudentCount);
         Assert.Equal(1, meineSchule.PendingApprovalCount);
 
@@ -701,13 +728,13 @@ public class GesamtAblaufTests
         Assert.False(nachValidierung!.IsBlocked);
 
         // --- Schritt C: Abo-Zuweisung mit schulspezifischem Preis ----
-        var (aboOk, _) = await abo.AboZuweisenAsync(schuelerUser.Id, niveau.Id, AboTyp.HalloApp);
+        var (aboOk, _) = await abo.AboZuweisenAsync(schuelerUser.Id, niveau.Id, AboTyp.SkoulouApp);
         Assert.True(aboOk);
         var freischaltung = Assert.Single(db.LevelEnrollments);
         Assert.True(freischaltung.IsUnlocked);
         Assert.True(freischaltung.IsPaid);
         Assert.NotNull(freischaltung.PaidAtUtc);
-        Assert.Equal(AboTyp.HalloApp, freischaltung.AboTyp);
+        Assert.Equal(AboTyp.SkoulouApp, freischaltung.AboTyp);
         Assert.Equal(8000m, freischaltung.PriceAtEnrollment); // eingefrorener Schulpreis
 
         // --- Schritt D: Zahlung ist bereits im 1‑Schritt-Flow gesetzt --
@@ -715,8 +742,7 @@ public class GesamtAblaufTests
 
         // --- Schritt E: Offene Abrechnungsübersicht ------------------
         var uebersicht = await abrechnung.GetOffeneUebersichtAsync(schule.Id);
-        Assert.Equal(1, uebersicht.AnzahlHalloBasis);
-        Assert.Equal(0, uebersicht.AnzahlHalloPlus);
+        Assert.Equal(1, uebersicht.AnzahlAbonnements);
         Assert.Equal(
             freischaltung.PriceAtEnrollment
                 - freischaltung.SchoolLeaderCommissionAtEnrollment
@@ -757,7 +783,7 @@ public class GesamtAblaufTests
         var schuelerDashboard = await dashboard.GetStudentDashboardAsync(schuelerUser.Id);
         Assert.NotNull(schuelerDashboard);
         Assert.Equal("Élève Fotso", schuelerDashboard!.FullName);
-        Assert.Equal("École Hallo Yaoundé", schuelerDashboard.SchoolName);
+        Assert.Equal("École Skoulou Yaoundé", schuelerDashboard.SchoolName);
         Assert.False(schuelerDashboard.IsBlocked);
         var kurs = Assert.Single(schuelerDashboard.CourseProgress, x => x.CourseTitle == "Débutant");
         Assert.True(kurs.IsUnlocked);
@@ -811,7 +837,7 @@ public class GesamtAblaufTests
         var schule = new School
         {
             Id = Guid.NewGuid(),
-            Name = "École Hallo Douala",
+            Name = "École Skoulou Douala",
             City = "Douala",
             IsActive = true
         };
@@ -821,7 +847,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             FullName = "Directeur Kamga",
             UserName = "directeur2",
-            Email = "directeur2@hallo.cm"
+            Email = "directeur2@skoulou.cm"
         };
 
         var lehrer = new AppUser
@@ -829,7 +855,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             FullName = "Enseignant Etoa",
             UserName = "enseignant2",
-            Email = "enseignant2@hallo.cm"
+            Email = "enseignant2@skoulou.cm"
         };
 
         // Direktor und Lehrer sind beide der Schule zugeordnet.
@@ -840,8 +866,8 @@ public class GesamtAblaufTests
         var niveauB = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "A2.1", Title = "Élémentaire" };
 
         // Zwei Schüler in unterschiedlichen Niveaus derselben Schule.
-        var schuelerA = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Nkolo", UserName = "eleveA", Email = "eleveA@hallo.cm" };
-        var schuelerB = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Bello", UserName = "eleveB", Email = "eleveB@hallo.cm" };
+        var schuelerA = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Nkolo", UserName = "eleveA", Email = "eleveA@skoulou.cm" };
+        var schuelerB = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Bello", UserName = "eleveB", Email = "eleveB@skoulou.cm" };
 
         var profilA = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schule.Id, CurrentLevelCode = "A1.1", CurrentKlasseId = niveauA.Id };
         var profilB = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schule.Id, CurrentLevelCode = "A2.1", CurrentKlasseId = niveauB.Id };
@@ -910,8 +936,10 @@ public class GesamtAblaufTests
             new TestAuthenticationSchemeProvider(),
             new TestUserConfirmation())
     {
+        public bool PasswordValid { get; set; } = true;
+
         public override Task<SignInResult> CheckPasswordSignInAsync(AppUser user, string password, bool lockoutOnFailure)
-            => Task.FromResult(SignInResult.Success);
+            => Task.FromResult(PasswordValid ? SignInResult.Success : SignInResult.Failed);
 
         public override Task SignInWithClaimsAsync(AppUser user, AuthenticationProperties? authenticationProperties, IEnumerable<System.Security.Claims.Claim> additionalClaims)
             => Task.CompletedTask;

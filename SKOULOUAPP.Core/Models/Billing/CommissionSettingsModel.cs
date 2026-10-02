@@ -1,10 +1,10 @@
-namespace HalloApp.Core.Models.Billing;
+namespace SkoulouApp.Core.Models.Billing;
 
 /// <summary>Bearbeitungsmodell für die globale Abo-Kommissionskonfiguration.</summary>
 public class CommissionSettingsModel
 {
-    public decimal ReferencePrice { get; set; } = HalloApp.Core.DataModels.Schools.HalloAppKonstanten.StandardPreisAbo;
-    public decimal GlobalSubscriptionPrice { get; set; } = HalloApp.Core.DataModels.Schools.HalloAppKonstanten.StandardPreisAbo;
+    public decimal ReferencePrice { get; set; } = SkoulouApp.Core.DataModels.Schools.SkoulouAppKonstanten.StandardPreisAbo;
+    public decimal GlobalSubscriptionPrice { get; set; } = SkoulouApp.Core.DataModels.Schools.SkoulouAppKonstanten.StandardPreisAbo;
     public decimal SchoolLeaderPercent { get; set; } = 4m;
     public decimal TeacherPercent { get; set; } = 8m;
     public decimal ProductOwnerPercent { get; set; } = 0m;

@@ -1,5 +1,8 @@
 <Solution>
-  <Project Path="SKOULOUAPP.Core/SKOULOUAPP.Core.csproj" />
-  <Project Path="SKOULOUAPP.WebApp/SKOULOUAPP.WebApp.csproj" />
-  <Project Path="SKOULOUAPP.Tests/SKOULOUAPP.Tests.csproj" />
+  <Folder Name="/ENote/" />
+  <Folder Name="/Skoulou/">
+    <Project Path="SKOULOUAPP.Core/SKOULOUAPP.Core.csproj" />
+    <Project Path="SKOULOUAPP.Tests/SKOULOUAPP.Tests.csproj" />
+    <Project Path="SKOULOUAPP.WebApp/SKOULOUAPP.WebApp.csproj" />
+  </Folder>
 </Solution>

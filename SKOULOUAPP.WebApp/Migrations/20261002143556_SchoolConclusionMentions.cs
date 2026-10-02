@@ -3,55 +3,58 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace HalloApp.WebApp.Migrations
+namespace SkoulouApp.WebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class AddFinanzBelege : Migration
+    public partial class SchoolConclusionMentions : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "MentionText",
+                table: "KlassenAbschlussEntscheidungen",
+                type: "nvarchar(80)",
+                maxLength: 80,
+                nullable: true);
+
             migrationBuilder.CreateTable(
-                name: "FinanzBelege",
+                name: "AbschlussMentions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BuchungID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     SchulID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Dateiname = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    Inhaltstyp = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
-                    Inhalt = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_FinanzBelege", x => x.Id);
+                    table.PrimaryKey("PK_AbschlussMentions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_FinanzBelege_FinanzBuchungen_BuchungID",
-                        column: x => x.BuchungID,
-                        principalTable: "FinanzBuchungen",
+                        name: "FK_AbschlussMentions_Schools_SchulID",
+                        column: x => x.SchulID,
+                        principalTable: "Schools",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_FinanzBelege_BuchungID",
-                table: "FinanzBelege",
-                column: "BuchungID",
+                name: "IX_AbschlussMentions_SchulID_Text",
+                table: "AbschlussMentions",
+                columns: new[] { "SchulID", "Text" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FinanzBelege_SchulID",
-                table: "FinanzBelege",
-                column: "SchulID");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "FinanzBelege");
+                name: "AbschlussMentions");
+
+            migrationBuilder.DropColumn(
+                name: "MentionText",
+                table: "KlassenAbschlussEntscheidungen");
         }
     }
 }

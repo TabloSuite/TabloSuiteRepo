@@ -2,14 +2,14 @@ html {
     scroll-behavior: smooth;
 }
 
-.hallo-file-picker {
+.skoulou-file-picker {
     display: flex;
     align-items: center;
     gap: .65rem;
     flex-wrap: wrap;
 }
 
-.hallo-file-trigger {
+.skoulou-file-trigger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -26,13 +26,13 @@ html {
     box-shadow: 0 8px 16px rgba(79, 70, 229, .24);
 }
 
-.hallo-file-trigger:hover {
+.skoulou-file-trigger:hover {
     transform: translateY(-1px);
     filter: brightness(1.02);
     box-shadow: 0 10px 18px rgba(79, 70, 229, .28);
 }
 
-.hallo-file-trigger-disabled {
+.skoulou-file-trigger-disabled {
     background: #cbd5e1;
     color: #64748b;
     cursor: not-allowed;
@@ -41,14 +41,14 @@ html {
     filter: none;
 }
 
-.hallo-file-selected-name {
+.skoulou-file-selected-name {
     font-size: .8rem;
     font-weight: 600;
     color: #475569;
     word-break: break-word;
 }
 
-.hallo-file-input::file-selector-button {
+.skoulou-file-input::file-selector-button {
     margin-right: .85rem;
     border: 0;
     border-radius: 999px;
@@ -63,19 +63,19 @@ html {
     box-shadow: 0 8px 16px rgba(79, 70, 229, .24);
 }
 
-.hallo-file-input:hover::file-selector-button {
+.skoulou-file-input:hover::file-selector-button {
     transform: translateY(-1px);
     filter: brightness(1.02);
     box-shadow: 0 10px 18px rgba(79, 70, 229, .28);
 }
 
-.hallo-file-input:active::file-selector-button {
+.skoulou-file-input:active::file-selector-button {
     transform: translateY(0);
     filter: brightness(.98);
 }
 
-.hallo-file-input:disabled::file-selector-button,
-.hallo-file-input[disabled]::file-selector-button {
+.skoulou-file-input:disabled::file-selector-button,
+.skoulou-file-input[disabled]::file-selector-button {
     background: #cbd5e1;
     color: #64748b;
     cursor: not-allowed;
@@ -84,13 +84,13 @@ html {
     filter: none;
 }
 
-.hallo-modal-surface {
+.skoulou-modal-surface {
     overflow: visible;
     display: flex;
     flex-direction: column;
 }
 
-.hallo-modal-scroll {
+.skoulou-modal-scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
@@ -101,18 +101,18 @@ html {
     scrollbar-color: #94a3b8 rgba(148, 163, 184, 0.18);
 }
 
-.hallo-modal-scroll::-webkit-scrollbar {
+.skoulou-modal-scroll::-webkit-scrollbar {
     width: 9px;
     height: 9px;
 }
 
-.hallo-modal-scroll::-webkit-scrollbar-track {
+.skoulou-modal-scroll::-webkit-scrollbar-track {
     margin: 0.65rem 0;
     background: rgba(148, 163, 184, 0.18);
     border-radius: 999px;
 }
 
-.hallo-modal-scroll::-webkit-scrollbar-thumb {
+.skoulou-modal-scroll::-webkit-scrollbar-thumb {
     border-radius: 999px;
     border: 2px solid rgba(255, 255, 255, 0.95);
     background: linear-gradient(180deg, #64748b, #475569);
@@ -120,12 +120,12 @@ html {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
-.hallo-modal-scroll::-webkit-scrollbar-thumb:hover {
+.skoulou-modal-scroll::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, #475569, #334155);
     background-clip: padding-box;
 }
 
-.hallo-modal-scroll .validation-summary-errors {
+.skoulou-modal-scroll .validation-summary-errors {
     position: sticky;
     top: 0;
     z-index: 25;
@@ -138,16 +138,16 @@ html {
     backdrop-filter: blur(2px);
 }
 
-.hallo-modal-scroll .validation-summary-errors ul {
+.skoulou-modal-scroll .validation-summary-errors ul {
     margin: 0;
     padding-left: 1.1rem;
 }
 
-.hallo-modal-scroll .validation-summary-errors li {
+.skoulou-modal-scroll .validation-summary-errors li {
     margin: 0.15rem 0;
 }
 
-.hallo-modal-scroll .hallo-modal-sticky-messages {
+.skoulou-modal-scroll .skoulou-modal-sticky-messages {
     position: sticky;
     top: 0;
     z-index: 30;
@@ -157,7 +157,7 @@ html {
     backdrop-filter: blur(2px);
 }
 
-.halloapp-formula-palette {
+.skoulouapp-formula-palette {
     position: fixed;
     z-index: 4000;
     width: min(520px, calc(100vw - 24px));
@@ -170,18 +170,18 @@ html {
     box-shadow: 0 20px 45px rgba(15, 23, 42, 0.24);
 }
 
-.halloapp-formula-palette-title {
+.skoulouapp-formula-palette-title {
     margin-bottom: .9rem;
     font-size: 1.2rem;
     font-weight: 800;
     color: #0f172a;
 }
 
-.halloapp-formula-group + .halloapp-formula-group {
+.skoulouapp-formula-group + .skoulouapp-formula-group {
     margin-top: .7rem;
 }
 
-.halloapp-formula-group h3 {
+.skoulouapp-formula-group h3 {
     margin: 0 0 .35rem;
     font-size: .8rem;
     font-weight: 800;
@@ -190,13 +190,13 @@ html {
     color: #475569;
 }
 
-.halloapp-formula-grid {
+.skoulouapp-formula-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .35rem;
 }
 
-.halloapp-formula-template {
+.skoulouapp-formula-template {
     position: relative;
     display: flex;
     min-height: 4.2rem;
@@ -212,29 +212,29 @@ html {
     transition: border-color .15s ease, background .15s ease, transform .15s ease;
 }
 
-.halloapp-formula-template:hover,
-.halloapp-formula-template:focus-visible {
-    border-color: var(--hallo-accent-1);
+.skoulouapp-formula-template:hover,
+.skoulouapp-formula-template:focus-visible {
+    border-color: var(--skoulou-accent-1);
     background: #eef2ff;
     outline: none;
     transform: translateY(-1px);
 }
 
-.halloapp-formula-preview {
+.skoulouapp-formula-preview {
     min-height: 1.35rem;
     display: grid;
     place-items: center;
     font-size: 1.15rem;
 }
 
-.halloapp-formula-label {
+.skoulouapp-formula-label {
     font-size: .72rem;
     font-weight: 700;
     color: #475569;
     text-align: center;
 }
 
-.halloapp-formula-favorite-toggle {
+.skoulouapp-formula-favorite-toggle {
     position: absolute;
     top: .2rem;
     right: .2rem;
@@ -251,26 +251,26 @@ html {
     cursor: pointer;
 }
 
-.halloapp-formula-favorite-toggle.is-active {
+.skoulouapp-formula-favorite-toggle.is-active {
     color: #f59e0b;
 }
 
-.halloapp-formula-delete-toggle {
+.skoulouapp-formula-delete-toggle {
     color: #dc2626;
     background: rgba(254, 242, 242, .96);
 }
 
-.halloapp-formula-delete-toggle.is-active {
+.skoulouapp-formula-delete-toggle.is-active {
     color: #dc2626;
 }
 
 @media (max-width: 430px) {
-    .halloapp-formula-grid {
+    .skoulouapp-formula-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-.halloapp-formula-palette-close {
+.skoulouapp-formula-palette-close {
     width: 100%;
     margin-top: 1rem;
     border: 0;
@@ -293,7 +293,7 @@ html {
     outline: 2px solid rgba(79, 70, 229, .22);
 }
 
-.halloapp-formula-editor {
+.skoulouapp-formula-editor {
     position: fixed;
     z-index: 4001;
     width: min(360px, calc(100vw - 24px));
@@ -304,14 +304,14 @@ html {
     box-shadow: 0 20px 45px rgba(15, 23, 42, .24);
 }
 
-.halloapp-formula-editor-title {
+.skoulouapp-formula-editor-title {
     display: block;
     font-size: .8rem;
     font-weight: 800;
     color: #334155;
 }
 
-.halloapp-formula-editor-input {
+.skoulouapp-formula-editor-input {
     width: 100%;
     margin-top: .55rem;
     border: 1px solid #cbd5e1;
@@ -322,7 +322,7 @@ html {
     color: #0f172a;
 }
 
-.halloapp-formula-editor-preview {
+.skoulouapp-formula-editor-preview {
     display: grid;
     min-height: 3.25rem;
     margin-top: .75rem;
@@ -333,7 +333,7 @@ html {
     overflow-x: auto;
 }
 
-.halloapp-formula-editor-actions {
+.skoulouapp-formula-editor-actions {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -341,14 +341,14 @@ html {
     margin-top: .85rem;
 }
 
-.halloapp-formula-editor-primary-actions {
+.skoulouapp-formula-editor-primary-actions {
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
     gap: .5rem;
 }
 
-.halloapp-formula-editor-actions button {
+.skoulouapp-formula-editor-actions button {
     border: 0;
     border-radius: .55rem;
     padding: .55rem .8rem;
@@ -356,17 +356,17 @@ html {
     font-weight: 700;
 }
 
-.halloapp-formula-editor-cancel {
+.skoulouapp-formula-editor-cancel {
     background: #e2e8f0;
     color: #334155;
 }
 
-.halloapp-formula-editor-save {
+.skoulouapp-formula-editor-save {
     background: #4f46e5;
     color: #ffffff;
 }
 
-.halloapp-formula-editor-favorite {
+.skoulouapp-formula-editor-favorite {
     background: #ecfdf5;
     color: #047857;
     border: 1px solid #86efac;
@@ -378,93 +378,93 @@ html {
    ========================================================================== */
 :root,
 [data-theme="navy"] {
-    --hallo-bg-from: #f4f7fb;
-    --hallo-bg-to: #e6ecf5;
-    --hallo-bg-page: #f4f7fb;
-    --hallo-accent-1: #1e3a8a;
-    --hallo-accent-1-dark: #172554;
-    --hallo-accent-2: #2563eb;
-    --hallo-accent-2-dark: #1d4ed8;
-    --hallo-sidebar-from: #050b1f;
-    --hallo-sidebar-via: #1e3a8a;
-    --hallo-sidebar-to: #2563eb;
-    --hallo-kicker: #1e3a8a;
-    --hallo-glow-1: rgba(30, 58, 138, 0.18);
-    --hallo-glow-2: rgba(37, 99, 235, 0.14);
-    --hallo-selection: rgba(30, 58, 138, 0.25);
-    --hallo-focus-ring: rgba(30, 58, 138, 0.35);
+    --skoulou-bg-from: #f4f7fb;
+    --skoulou-bg-to: #e6ecf5;
+    --skoulou-bg-page: #f4f7fb;
+    --skoulou-accent-1: #1e3a8a;
+    --skoulou-accent-1-dark: #172554;
+    --skoulou-accent-2: #2563eb;
+    --skoulou-accent-2-dark: #1d4ed8;
+    --skoulou-sidebar-from: #050b1f;
+    --skoulou-sidebar-via: #1e3a8a;
+    --skoulou-sidebar-to: #2563eb;
+    --skoulou-kicker: #1e3a8a;
+    --skoulou-glow-1: rgba(30, 58, 138, 0.18);
+    --skoulou-glow-2: rgba(37, 99, 235, 0.14);
+    --skoulou-selection: rgba(30, 58, 138, 0.25);
+    --skoulou-focus-ring: rgba(30, 58, 138, 0.35);
 }
 
 [data-theme="ocean"] {
-    --hallo-bg-from: #f0f9ff;
-    --hallo-bg-to: #e0f2fe;
-    --hallo-bg-page: #f0f9ff;
-    --hallo-accent-1: #0284c7;
-    --hallo-accent-1-dark: #075985;
-    --hallo-accent-2: #14b8a6;
-    --hallo-accent-2-dark: #0f766e;
-    --hallo-sidebar-from: #0c1e3d;
-    --hallo-sidebar-via: #0369a1;
-    --hallo-sidebar-to: #14b8a6;
-    --hallo-kicker: #0369a1;
-    --hallo-glow-1: rgba(2, 132, 199, 0.16);
-    --hallo-glow-2: rgba(20, 184, 166, 0.14);
-    --hallo-selection: rgba(2, 132, 199, 0.25);
-    --hallo-focus-ring: rgba(2, 132, 199, 0.35);
+    --skoulou-bg-from: #f0f9ff;
+    --skoulou-bg-to: #e0f2fe;
+    --skoulou-bg-page: #f0f9ff;
+    --skoulou-accent-1: #0284c7;
+    --skoulou-accent-1-dark: #075985;
+    --skoulou-accent-2: #14b8a6;
+    --skoulou-accent-2-dark: #0f766e;
+    --skoulou-sidebar-from: #0c1e3d;
+    --skoulou-sidebar-via: #0369a1;
+    --skoulou-sidebar-to: #14b8a6;
+    --skoulou-kicker: #0369a1;
+    --skoulou-glow-1: rgba(2, 132, 199, 0.16);
+    --skoulou-glow-2: rgba(20, 184, 166, 0.14);
+    --skoulou-selection: rgba(2, 132, 199, 0.25);
+    --skoulou-focus-ring: rgba(2, 132, 199, 0.35);
 }
 
 [data-theme="coral"] {
-    --hallo-bg-from: #fff5f2;
-    --hallo-bg-to: #ffe4de;
-    --hallo-bg-page: #fff5f2;
-    --hallo-accent-1: #ea580c;
-    --hallo-accent-1-dark: #c2410c;
-    --hallo-accent-2: #f43f5e;
-    --hallo-accent-2-dark: #be123c;
-    --hallo-sidebar-from: #4c0519;
-    --hallo-sidebar-via: #ea580c;
-    --hallo-sidebar-to: #f43f5e;
-    --hallo-kicker: #ea580c;
-    --hallo-glow-1: rgba(234, 88, 12, 0.18);
-    --hallo-glow-2: rgba(244, 63, 94, 0.14);
-    --hallo-selection: rgba(234, 88, 12, 0.25);
-    --hallo-focus-ring: rgba(234, 88, 12, 0.35);
+    --skoulou-bg-from: #fff5f2;
+    --skoulou-bg-to: #ffe4de;
+    --skoulou-bg-page: #fff5f2;
+    --skoulou-accent-1: #ea580c;
+    --skoulou-accent-1-dark: #c2410c;
+    --skoulou-accent-2: #f43f5e;
+    --skoulou-accent-2-dark: #be123c;
+    --skoulou-sidebar-from: #4c0519;
+    --skoulou-sidebar-via: #ea580c;
+    --skoulou-sidebar-to: #f43f5e;
+    --skoulou-kicker: #ea580c;
+    --skoulou-glow-1: rgba(234, 88, 12, 0.18);
+    --skoulou-glow-2: rgba(244, 63, 94, 0.14);
+    --skoulou-selection: rgba(234, 88, 12, 0.25);
+    --skoulou-focus-ring: rgba(234, 88, 12, 0.35);
 }
 
 [data-theme="slate"] {
-    --hallo-bg-from: #f8fafc;
-    --hallo-bg-to: #f1f5f9;
-    --hallo-bg-page: #f8fafc;
-    --hallo-accent-1: #334155;
-    --hallo-accent-1-dark: #1e293b;
-    --hallo-accent-2: #64748b;
-    --hallo-accent-2-dark: #475569;
-    --hallo-sidebar-from: #0f172a;
-    --hallo-sidebar-via: #334155;
-    --hallo-sidebar-to: #64748b;
-    --hallo-kicker: #334155;
-    --hallo-glow-1: rgba(51, 65, 85, 0.14);
-    --hallo-glow-2: rgba(100, 116, 139, 0.12);
-    --hallo-selection: rgba(51, 65, 85, 0.22);
-    --hallo-focus-ring: rgba(51, 65, 85, 0.3);
+    --skoulou-bg-from: #f8fafc;
+    --skoulou-bg-to: #f1f5f9;
+    --skoulou-bg-page: #f8fafc;
+    --skoulou-accent-1: #334155;
+    --skoulou-accent-1-dark: #1e293b;
+    --skoulou-accent-2: #64748b;
+    --skoulou-accent-2-dark: #475569;
+    --skoulou-sidebar-from: #0f172a;
+    --skoulou-sidebar-via: #334155;
+    --skoulou-sidebar-to: #64748b;
+    --skoulou-kicker: #334155;
+    --skoulou-glow-1: rgba(51, 65, 85, 0.14);
+    --skoulou-glow-2: rgba(100, 116, 139, 0.12);
+    --skoulou-selection: rgba(51, 65, 85, 0.22);
+    --skoulou-focus-ring: rgba(51, 65, 85, 0.3);
 }
 
 [data-theme="sage"] {
-    --hallo-bg-from: #f6f9f4;
-    --hallo-bg-to: #eaf1e4;
-    --hallo-bg-page: #f6f9f4;
-    --hallo-accent-1: #4d7c4a;
-    --hallo-accent-1-dark: #386641;
-    --hallo-accent-2: #84a98c;
-    --hallo-accent-2-dark: #6b8f71;
-    --hallo-sidebar-from: #1b2f1e;
-    --hallo-sidebar-via: #4d7c4a;
-    --hallo-sidebar-to: #84a98c;
-    --hallo-kicker: #4d7c4a;
-    --hallo-glow-1: rgba(77, 124, 74, 0.15);
-    --hallo-glow-2: rgba(132, 169, 140, 0.12);
-    --hallo-selection: rgba(77, 124, 74, 0.22);
-    --hallo-focus-ring: rgba(77, 124, 74, 0.3);
+    --skoulou-bg-from: #f6f9f4;
+    --skoulou-bg-to: #eaf1e4;
+    --skoulou-bg-page: #f6f9f4;
+    --skoulou-accent-1: #4d7c4a;
+    --skoulou-accent-1-dark: #386641;
+    --skoulou-accent-2: #84a98c;
+    --skoulou-accent-2-dark: #6b8f71;
+    --skoulou-sidebar-from: #1b2f1e;
+    --skoulou-sidebar-via: #4d7c4a;
+    --skoulou-sidebar-to: #84a98c;
+    --skoulou-kicker: #4d7c4a;
+    --skoulou-glow-1: rgba(77, 124, 74, 0.15);
+    --skoulou-glow-2: rgba(132, 169, 140, 0.12);
+    --skoulou-selection: rgba(77, 124, 74, 0.22);
+    --skoulou-focus-ring: rgba(77, 124, 74, 0.3);
 }
 
 
@@ -476,14 +476,14 @@ html {
    Theme-aware hero utility — replaces hardcoded Tailwind "from-indigo..."
    gradients on page hero banners so they follow the active color theme.
    ========================================================================== */
-.hallo-hero {
-    background-image: linear-gradient(135deg, var(--hallo-sidebar-from) 0%, var(--hallo-sidebar-via) 55%, var(--hallo-sidebar-to) 100%) !important;
+.skoulou-hero {
+    background-image: linear-gradient(135deg, var(--skoulou-sidebar-from) 0%, var(--skoulou-sidebar-via) 55%, var(--skoulou-sidebar-to) 100%) !important;
     box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
     position: relative;
     isolation: isolate;
 }
 
-.hallo-hero::before {
+.skoulou-hero::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -493,17 +493,17 @@ html {
     z-index: 0;
 }
 
-.hallo-hero > * {
+.skoulou-hero > * {
     position: relative;
     z-index: 1;
 }
 
-.hallo-hero-badge {
-    background-image: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%) !important;
+.skoulou-hero-badge {
+    background-image: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%) !important;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.hallo-hero-badge:hover {
+.skoulou-hero-badge:hover {
     transform: translateY(-3px);
     box-shadow: 0 18px 32px -12px rgba(15, 23, 42, 0.35);
 }
@@ -525,7 +525,7 @@ html {
 }
 
 .teacher-create-context {
-    border-left: 4px solid var(--hallo-accent-2);
+    border-left: 4px solid var(--skoulou-accent-2);
 }
 
 .teacher-create-embedded {
@@ -643,24 +643,24 @@ html {
 
 /* Theme-aware solid control utility — replaces hardcoded bg-indigo-600/bg-violet-600/
    bg-emerald-600 CTA buttons and active-tab pills so they follow the active theme. */
-.hallo-btn-accent {
+.skoulou-btn-accent {
     background-image: none !important;
-    background-color: var(--hallo-accent-2) !important;
+    background-color: var(--skoulou-accent-2) !important;
     border-color: transparent !important;
     color: #ffffff !important;
     transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.hallo-btn-accent:hover {
-    background-color: var(--hallo-accent-2-dark) !important;
+.skoulou-btn-accent:hover {
+    background-color: var(--skoulou-accent-2-dark) !important;
 }
 
 /* ==========================================================================
    Modern theme-aware form-control utility — consistent inputs/selects/
    textareas across the app: soft border, subtle shadow, smooth focus ring
-   that follows the active color theme (via --hallo-accent-2 / focus-ring).
+   that follows the active color theme (via --skoulou-accent-2 / focus-ring).
    ========================================================================== */
-.hallo-input {
+.skoulou-input {
     width: 100%;
     border-radius: 1rem;
     border: 1px solid rgb(226 232 240);
@@ -673,40 +673,40 @@ html {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.hallo-input:hover {
+.skoulou-input:hover {
     border-color: rgb(203 213 225);
 }
 
-.hallo-input:focus {
-    border-color: var(--hallo-accent-2);
-    box-shadow: 0 0 0 3px var(--hallo-focus-ring), 0 1px 2px rgba(15, 23, 42, 0.04);
+.skoulou-input:focus {
+    border-color: var(--skoulou-accent-2);
+    box-shadow: 0 0 0 3px var(--skoulou-focus-ring), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.hallo-input:disabled {
+.skoulou-input:disabled {
     background-color: rgb(248 250 252);
     color: rgb(100 116 139);
     cursor: not-allowed;
 }
 
-.hallo-input.invalid {
+.skoulou-input.invalid {
     border-color: rgb(244 63 94);
     outline: none;
 }
 
-.hallo-input.invalid:focus {
+.skoulou-input.invalid:focus {
     box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2);
 }
 
-select.hallo-input {
+select.skoulou-input {
     cursor: pointer;
 }
 
-textarea.hallo-input {
+textarea.skoulou-input {
     resize: vertical;
     min-height: 5.5rem;
 }
 
-.hallo-label {
+.skoulou-label {
     display: block;
     margin-bottom: 0.5rem;
     font-size: 0.8125rem;
@@ -714,7 +714,7 @@ textarea.hallo-input {
     color: rgb(51 65 85);
 }
 
-.hallo-btn-accent:disabled {
+.skoulou-btn-accent:disabled {
     background-color: #cbd5e1 !important;
     color: #64748b !important;
 }
@@ -726,14 +726,14 @@ textarea.hallo-input {
     border-right-color: transparent;
     border-radius: 9999px;
     display: inline-block;
-    animation: hallo-spin 0.75s linear infinite;
+    animation: skoulou-spin 0.75s linear infinite;
 }
 
 .is-submit-loading {
     pointer-events: none;
 }
 
-@keyframes hallo-spin {
+@keyframes skoulou-spin {
     to {
         transform: rotate(360deg);
     }
@@ -744,7 +744,7 @@ textarea.hallo-input {
    .app-content horizontal padding to create a clear, edge-to-edge color
    separation between sections, while sidebar/nav layout stays intact.
    ========================================================================== */
-.hallo-full-bleed {
+.skoulou-full-bleed {
     margin-left: -1rem;
     margin-right: -1rem;
     padding-left: 1rem;
@@ -753,7 +753,7 @@ textarea.hallo-input {
 }
 
 @media (min-width: 641px) {
-    .hallo-full-bleed {
+    .skoulou-full-bleed {
         margin-left: -1.5rem;
         margin-right: -1.5rem;
         padding-left: 1.5rem;
@@ -762,7 +762,7 @@ textarea.hallo-input {
 }
 
 @media (min-width: 1200px) {
-    .hallo-full-bleed {
+    .skoulou-full-bleed {
         margin-left: -2rem;
         margin-right: -2rem;
         padding-left: 2rem;
@@ -770,19 +770,19 @@ textarea.hallo-input {
     }
 }
 
-.hallo-band-indigo {
+.skoulou-band-indigo {
     background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
 }
 
-.hallo-band-teal {
+.skoulou-band-teal {
     background: linear-gradient(180deg, #ecfeff 0%, #d1fae5 100%);
 }
 
-.hallo-band-slate {
+.skoulou-band-slate {
     background: #f8fafc;
 }
 
-.hallo-hero-photo {
+.skoulou-hero-photo {
     background-size: cover;
     background-position: center;
 }
@@ -793,7 +793,7 @@ textarea.hallo-input {
 }
 
 @media (max-width: 640px) {
-    .home-hero-screen.hallo-full-bleed {
+    .home-hero-screen.skoulou-full-bleed {
         padding-left: 0;
         padding-right: 0;
     }
@@ -818,16 +818,16 @@ textarea.hallo-input {
     position: relative;
     min-height: auto;
     background:
-        radial-gradient(circle at 15% 12%, color-mix(in srgb, var(--hallo-accent-2) 55%, transparent), transparent 42%),
-        radial-gradient(circle at 85% 78%, color-mix(in srgb, var(--hallo-accent-1) 45%, transparent), transparent 45%),
+        radial-gradient(circle at 15% 12%, color-mix(in srgb, var(--skoulou-accent-2) 55%, transparent), transparent 42%),
+        radial-gradient(circle at 85% 78%, color-mix(in srgb, var(--skoulou-accent-1) 45%, transparent), transparent 45%),
         linear-gradient(
             155deg,
-            color-mix(in srgb, var(--hallo-sidebar-from) 88%, transparent),
-            color-mix(in srgb, var(--hallo-sidebar-via) 86%, transparent) 55%,
-            color-mix(in srgb, var(--hallo-sidebar-to) 88%, transparent)
+            color-mix(in srgb, var(--skoulou-sidebar-from) 88%, transparent),
+            color-mix(in srgb, var(--skoulou-sidebar-via) 86%, transparent) 55%,
+            color-mix(in srgb, var(--skoulou-sidebar-to) 88%, transparent)
         ),
         url("images/hero-SKOULOUAPP - mobile.png") center 38% / cover no-repeat;
-    background-color: var(--hallo-sidebar-from);
+    background-color: var(--skoulou-sidebar-from);
 }
 
 .home-hero-orb {
@@ -836,8 +836,8 @@ textarea.hallo-input {
     filter: blur(2px);
     background: linear-gradient(
         135deg,
-        color-mix(in srgb, var(--hallo-accent-2) 72%, transparent),
-        color-mix(in srgb, var(--hallo-accent-1) 18%, transparent)
+        color-mix(in srgb, var(--skoulou-accent-2) 72%, transparent),
+        color-mix(in srgb, var(--skoulou-accent-1) 18%, transparent)
     );
 }
 
@@ -879,34 +879,34 @@ textarea.hallo-input {
 }
 
 .home-hero-catalog-badge {
-    background: linear-gradient(90deg, var(--hallo-sidebar-from), var(--hallo-accent-1), var(--hallo-accent-2));
+    background: linear-gradient(90deg, var(--skoulou-sidebar-from), var(--skoulou-accent-1), var(--skoulou-accent-2));
 }
 
 .home-intro-section {
     background:
-        radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--hallo-accent-2) 12%, transparent), transparent 34%),
-        radial-gradient(circle at 88% 22%, color-mix(in srgb, var(--hallo-accent-1) 10%, transparent), transparent 32%),
-        linear-gradient(180deg, #ffffff 0%, var(--hallo-bg-page) 100%);
+        radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--skoulou-accent-2) 12%, transparent), transparent 34%),
+        radial-gradient(circle at 88% 22%, color-mix(in srgb, var(--skoulou-accent-1) 10%, transparent), transparent 32%),
+        linear-gradient(180deg, #ffffff 0%, var(--skoulou-bg-page) 100%);
 }
 
 .home-intro-gradient {
-    background-image: linear-gradient(90deg, var(--hallo-accent-1), var(--hallo-accent-2));
+    background-image: linear-gradient(90deg, var(--skoulou-accent-1), var(--skoulou-accent-2));
 }
 
 html, body {
     font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
-    background-color: var(--hallo-bg-page);
+    background-color: var(--skoulou-bg-page);
     color: #0f172a;
     margin: 0;
     padding: 0;
     width: 100%;
     overflow-x: clip;
-    scrollbar-color: var(--hallo-accent-2) rgba(15, 23, 42, 0.08);
+    scrollbar-color: var(--skoulou-accent-2) rgba(15, 23, 42, 0.08);
     scrollbar-width: thin;
 }
 
 ::selection {
-    background: var(--hallo-selection);
+    background: var(--skoulou-selection);
     color: #0f172a;
 }
 
@@ -920,29 +920,29 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--hallo-accent-1), var(--hallo-accent-2));
+    background: linear-gradient(180deg, var(--skoulou-accent-1), var(--skoulou-accent-2));
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, var(--hallo-accent-1-dark), var(--hallo-accent-2-dark));
+    background: linear-gradient(180deg, var(--skoulou-accent-1-dark), var(--skoulou-accent-2-dark));
     background-clip: padding-box;
 }
 
 a, .btn-link {
-    color: var(--hallo-accent-1);
+    color: var(--skoulou-accent-1);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: var(--hallo-accent-1);
-    border-color: var(--hallo-accent-1-dark);
+    background-color: var(--skoulou-accent-1);
+    border-color: var(--skoulou-accent-1-dark);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--hallo-focus-ring);
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--skoulou-focus-ring);
 }
 
 * {
@@ -1045,13 +1045,13 @@ main {
     display: flex;
     flex-direction: column;
     background:
-        radial-gradient(circle at 10% -10%, var(--hallo-glow-1), transparent 38%),
-        radial-gradient(circle at 90% 0%, var(--hallo-glow-2), transparent 42%),
-        linear-gradient(180deg, var(--hallo-bg-from) 0%, var(--hallo-bg-to) 100%);
+        radial-gradient(circle at 10% -10%, var(--skoulou-glow-1), transparent 38%),
+        radial-gradient(circle at 90% 0%, var(--skoulou-glow-2), transparent 42%),
+        linear-gradient(180deg, var(--skoulou-bg-from) 0%, var(--skoulou-bg-to) 100%);
 }
 
 .app-sidebar {
-    background: linear-gradient(160deg, var(--hallo-sidebar-from) 0%, var(--hallo-sidebar-via) 50%, var(--hallo-sidebar-to) 100%);
+    background: linear-gradient(160deg, var(--skoulou-sidebar-from) 0%, var(--skoulou-sidebar-via) 50%, var(--skoulou-sidebar-to) 100%);
     color: #f8fafc;
     box-shadow: 4px 0 32px rgba(15, 23, 42, 0.18);
 }
@@ -1096,7 +1096,7 @@ main {
     font-size: clamp(1.8rem, 2vw, 2.4rem);
     font-weight: 800;
     letter-spacing: -0.03em;
-    color: var(--hallo-accent-1);
+    color: var(--skoulou-accent-1);
 }
 
 .app-header-actions,
@@ -1165,7 +1165,7 @@ main {
 
 .app-link-pill-accent {
     color: #ffffff;
-    background: linear-gradient(135deg, var(--hallo-accent-1) 0%, var(--hallo-accent-2) 100%);
+    background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
 }
 
 .app-link-pill-accent:hover {
@@ -1200,8 +1200,8 @@ main {
     padding: 2.25rem 1.5rem 1.25rem;
     color: rgba(255, 255, 255, 0.82);
     background:
-        radial-gradient(circle at 12% 0%, var(--hallo-glow-2), transparent 35%),
-        linear-gradient(130deg, var(--hallo-sidebar-from) 0%, var(--hallo-sidebar-via) 48%, var(--hallo-sidebar-to) 100%);
+        radial-gradient(circle at 12% 0%, var(--skoulou-glow-2), transparent 35%),
+        linear-gradient(130deg, var(--skoulou-sidebar-from) 0%, var(--skoulou-sidebar-via) 48%, var(--skoulou-sidebar-to) 100%);
     box-shadow: 0 -12px 35px rgba(15, 23, 42, 0.09);
 }
 
@@ -1310,7 +1310,7 @@ main {
     padding: 1.5rem 1.25rem 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     position: relative;
-    background: radial-gradient(circle at 0% 0%, var(--hallo-glow-2), transparent 60%);
+    background: radial-gradient(circle at 0% 0%, var(--skoulou-glow-2), transparent 60%);
 }
 
 .brand-copy {
@@ -1324,7 +1324,7 @@ main {
     letter-spacing: -0.02em;
     color: #ffffff;
     text-decoration: none;
-    text-shadow: 0 0 24px var(--hallo-glow-2);
+    text-shadow: 0 0 24px var(--skoulou-glow-2);
 }
 
 .brand-title:hover {
@@ -1422,7 +1422,7 @@ main {
 .nav-item .nav-link.active {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.3);
-    border-left-color: var(--hallo-accent-2);
+    border-left-color: var(--skoulou-accent-2);
     color: white;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
 }
@@ -1517,7 +1517,7 @@ button {
 }
 
 :where(input[type="checkbox"], input[type="radio"], .form-check-input) {
-    accent-color: var(--hallo-accent-1);
+    accent-color: var(--skoulou-accent-1);
     inline-size: 1.05rem;
     block-size: 1.05rem;
     border: 1.5px solid #94a3b8;
@@ -1528,18 +1528,18 @@ button {
 }
 
 :where(input[type="checkbox"], input[type="radio"], .form-check-input):hover {
-    border-color: var(--hallo-accent-1);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--hallo-accent-1) 18%, white);
+    border-color: var(--skoulou-accent-1);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--skoulou-accent-1) 18%, white);
 }
 
 :where(input[type="checkbox"], input[type="radio"], .form-check-input):focus-visible {
     outline: none;
-    border-color: var(--hallo-accent-1);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--hallo-accent-1) 24%, white), 0 0 0 6px color-mix(in oklab, var(--hallo-accent-2) 20%, white);
+    border-color: var(--skoulou-accent-1);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--skoulou-accent-1) 24%, white), 0 0 0 6px color-mix(in oklab, var(--skoulou-accent-2) 20%, white);
 }
 
 :where(input[type="checkbox"], input[type="radio"], .form-check-input):checked {
-    border-color: var(--hallo-accent-1-dark);
+    border-color: var(--skoulou-accent-1-dark);
     transform: translateY(-0.5px);
 }
 
@@ -1563,7 +1563,7 @@ button {
 }
 
 .gradient-text {
-    color: var(--hallo-accent-1);
+    color: var(--skoulou-accent-1);
 }
 
 @keyframes
@@ -1709,7 +1709,7 @@ section {
         overflow-y: auto;
         overflow-x: clip;
         border-radius: 1.75rem;
-        background: linear-gradient(180deg, var(--hallo-sidebar-from) 0%, var(--hallo-sidebar-via) 55%, var(--hallo-sidebar-to) 100%);
+        background: linear-gradient(180deg, var(--skoulou-sidebar-from) 0%, var(--skoulou-sidebar-via) 55%, var(--skoulou-sidebar-to) 100%);
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
         opacity: 0;
         visibility: hidden;
@@ -1785,37 +1785,37 @@ section {
     text-align: start;
 }
 
-.halloapp-large-editor-modal {
+.skoulouapp-large-editor-modal {
     max-height: 96dvh;
 }
 
-.halloapp-large-editor-body {
+.skoulouapp-large-editor-body {
     overflow-y: auto;
 }
 
 /* ===== Rich-Text-Editor: Schriftarten ===== */
 /* Picker liegen über dem positionierten A4-Inhalt; die lange Liste scrollt
    innerhalb des Menüs statt über den Text hinauszulaufen. */
-.halloapp-richtext .ql-toolbar.ql-snow {
+.skoulouapp-richtext .ql-toolbar.ql-snow {
     position: relative;
     z-index: 3;
     background: #fff;
 }
 
-.halloapp-richtext .ql-toolbar .ql-picker.ql-expanded {
+.skoulouapp-richtext .ql-toolbar .ql-picker.ql-expanded {
     z-index: 4;
 }
 
-.halloapp-richtext .ql-toolbar .ql-picker-options {
+.skoulouapp-richtext .ql-toolbar .ql-picker-options {
     max-height: min(18rem, 50dvh);
     overflow-y: auto;
 }
 
-.halloapp-richtext .ql-toolbar .ql-picker.ql-font {
+.skoulouapp-richtext .ql-toolbar .ql-picker.ql-font {
     width: 10rem;
 }
 
-.halloapp-richtext .halloapp-image-size {
+.skoulouapp-richtext .skoulouapp-image-size {
     position: absolute;
     z-index: 2;
     box-sizing: border-box;
@@ -1823,11 +1823,11 @@ section {
     pointer-events: none;
 }
 
-.halloapp-richtext .halloapp-image-size[hidden] {
+.skoulouapp-richtext .skoulouapp-image-size[hidden] {
     display: none;
 }
 
-.halloapp-image-size .halloapp-image-align {
+.skoulouapp-image-size .skoulouapp-image-align {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 6px);
@@ -1841,7 +1841,7 @@ section {
     pointer-events: auto;
 }
 
-.halloapp-image-align button {
+.skoulouapp-image-align button {
     min-width: 32px;
     min-height: 32px;
     border: 0;
@@ -1850,16 +1850,16 @@ section {
     color: #fff;
 }
 
-.halloapp-image-align button:hover,
-.halloapp-image-align button:focus-visible {
+.skoulouapp-image-align button:hover,
+.skoulouapp-image-align button:focus-visible {
     background: #475569;
 }
 
-.halloapp-richtext {
+.skoulouapp-richtext {
     position: relative;
 }
 
-.halloapp-richtext .ql-editor img {
+.skoulouapp-richtext .ql-editor img {
     cursor: grab;
     touch-action: none;
 }
@@ -1886,12 +1886,12 @@ section {
     margin-right: 0;
 }
 
-.halloapp-richtext .ql-editor.halloapp-image-moving,
-.halloapp-richtext .ql-editor.halloapp-image-moving img {
+.skoulouapp-richtext .ql-editor.skoulouapp-image-moving,
+.skoulouapp-richtext .ql-editor.skoulouapp-image-moving img {
     cursor: grabbing;
 }
 
-.halloapp-richtext .halloapp-image-drop-marker {
+.skoulouapp-richtext .skoulouapp-image-drop-marker {
     position: absolute;
     z-index: 2;
     width: 3px;
@@ -1900,11 +1900,11 @@ section {
     pointer-events: none;
 }
 
-.halloapp-richtext .halloapp-image-drop-marker[hidden] {
+.skoulouapp-richtext .skoulouapp-image-drop-marker[hidden] {
     display: none;
 }
 
-.halloapp-image-size .halloapp-image-size-handle {
+.skoulouapp-image-size .skoulouapp-image-size-handle {
     position: absolute;
     right: -9px;
     bottom: -9px;
@@ -2055,11 +2055,11 @@ section {
 /* Großeditor: Der Quill-Inhalt nutzt die gesamte Modalhöhe zwischen Kopf- und
    Aktionsleiste. Dadurch bleibt auch bei langen Texten eine große, nach unten
    ausgedehnte Bearbeitungsfläche erhalten. */
-.halloapp-large-editor-modal {
+.skoulouapp-large-editor-modal {
     min-height: 34rem;
 }
 
-.halloapp-large-editor-body > .halloapp-richtext {
+.skoulouapp-large-editor-body > .skoulouapp-richtext {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -2067,29 +2067,29 @@ section {
     height: 100%;
 }
 
-.halloapp-large-editor-body .ql-toolbar {
+.skoulouapp-large-editor-body .ql-toolbar {
     flex: 0 0 auto;
 }
 
-.halloapp-large-editor-body .ql-container {
+.skoulouapp-large-editor-body .ql-container {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
     min-height: 0;
 }
 
-.halloapp-large-editor-body .ql-editor {
+.skoulouapp-large-editor-body .ql-editor {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
 }
 
-.halloapp-large-editor-body:has(> .halloapp-richtext--paged) {
+.skoulouapp-large-editor-body:has(> .skoulouapp-richtext--paged) {
     overflow-x: hidden;
     background: #f1f5f9;
 }
 
-.halloapp-large-editor-body > .halloapp-richtext--paged {
+.skoulouapp-large-editor-body > .skoulouapp-richtext--paged {
     flex: none;
     height: auto;
     min-height: 100%;
@@ -2097,40 +2097,40 @@ section {
     margin-inline: auto;
 }
 
-.halloapp-large-editor-body .halloapp-richtext--paged .ql-toolbar {
+.skoulouapp-large-editor-body .skoulouapp-richtext--paged .ql-toolbar {
     position: sticky;
     top: 0;
     z-index: 2;
     background: #fff;
 }
 
-.halloapp-large-editor-body .halloapp-richtext--paged .ql-container.halloapp-paged {
+.skoulouapp-large-editor-body .skoulouapp-richtext--paged .ql-container.skoulouapp-paged {
     display: block;
     flex: none;
     overflow: visible;
 }
 
-.halloapp-large-editor-body .halloapp-richtext--paged .ql-container.halloapp-paged .ql-editor {
+.skoulouapp-large-editor-body .skoulouapp-richtext--paged .ql-container.skoulouapp-paged .ql-editor {
     display: block;
     flex: none;
     overflow: visible;
 }
 
-.halloapp-richtext[style*="--hallo-richtext-min-height"] .ql-container,
-.halloapp-richtext[style*="--hallo-richtext-min-height"] .ql-editor {
-    min-height: var(--hallo-richtext-min-height);
+.skoulouapp-richtext[style*="--skoulou-richtext-min-height"] .ql-container,
+.skoulouapp-richtext[style*="--skoulou-richtext-min-height"] .ql-editor {
+    min-height: var(--skoulou-richtext-min-height);
 }
 
 /* Standardhöhe für alle RichTextEditor-Instanzen ohne explizite Höhenvorgabe:
    ca. 20 Zeilen für konsistente Bearbeitungsfläche. */
-.halloapp-richtext:not([style*="--hallo-richtext-min-height"]) .ql-container,
-.halloapp-richtext:not([style*="--hallo-richtext-min-height"]) .ql-editor {
+.skoulouapp-richtext:not([style*="--skoulou-richtext-min-height"]) .ql-container,
+.skoulouapp-richtext:not([style*="--skoulou-richtext-min-height"]) .ql-editor {
     min-height: 10rem;
 }
 
 /* Globaler A4-Seitenmodus für RichTextEditor (nicht nur im Lehrer-Lektionseditor):
    Visuelle A4-Blätter mit automatischem vertikalem Seitenfluss. */
-.halloapp-richtext--paged .ql-container.halloapp-paged {
+.skoulouapp-richtext--paged .ql-container.skoulouapp-paged {
     position: relative;
     border: none;
     background: transparent;
@@ -2138,14 +2138,14 @@ section {
     overflow: hidden;
 }
 
-.halloapp-richtext--paged .halloapp-page-sheets {
+.skoulouapp-richtext--paged .skoulouapp-page-sheets {
     position: absolute;
     inset: 0;
     z-index: 0;
     pointer-events: none;
 }
 
-.halloapp-richtext--paged .halloapp-page-sheet {
+.skoulouapp-richtext--paged .skoulouapp-page-sheet {
     position: absolute;
     left: 0;
     right: 0;
@@ -2155,7 +2155,7 @@ section {
     box-shadow: 0 10px 34px rgba(15, 23, 42, 0.16);
 }
 
-.halloapp-richtext--paged .halloapp-page-sheet-footer {
+.skoulouapp-richtext--paged .skoulouapp-page-sheet-footer {
     position: absolute;
     bottom: 6mm;
     right: 16mm;
@@ -2165,7 +2165,7 @@ section {
     line-height: 1;
 }
 
-.halloapp-richtext--paged .ql-container.halloapp-paged .ql-editor {
+.skoulouapp-richtext--paged .ql-container.skoulouapp-paged .ql-editor {
     position: relative;
     z-index: 1;
     padding: 16mm;
@@ -2174,7 +2174,7 @@ section {
     background: transparent;
 }
 
-.halloapp-richtext--paged .ql-container.halloapp-paged .ql-editor img {
+.skoulouapp-richtext--paged .ql-container.skoulouapp-paged .ql-editor img {
     max-width: 100%;
     max-height: 250mm;
     object-fit: contain;
@@ -2262,24 +2262,24 @@ section {
     font-size: 0.75rem;
 }
 
-.student-exercise-page .halloapp-richtext .ql-toolbar {
+.student-exercise-page .skoulouapp-richtext .ql-toolbar {
     padding: 0.35rem;
 }
 
-.student-exercise-page .halloapp-richtext .ql-toolbar .ql-formats {
+.student-exercise-page .skoulouapp-richtext .ql-toolbar .ql-formats {
     margin-right: 0.25rem;
 }
 
-.student-exercise-page .halloapp-richtext .ql-container,
-.student-exercise-page .halloapp-richtext .ql-editor {
+.student-exercise-page .skoulouapp-richtext .ql-container,
+.student-exercise-page .skoulouapp-richtext .ql-editor {
     font-size: 16px;
 }
 
-.student-exercise-page .halloapp-richtext .ql-container {
+.student-exercise-page .skoulouapp-richtext .ql-container {
     min-height: 8.5rem;
 }
 
-.student-exercise-page .halloapp-richtext .ql-editor {
+.student-exercise-page .skoulouapp-richtext .ql-editor {
     min-height: 8.5rem;
 }
 
@@ -2313,7 +2313,7 @@ section {
 
 
 @media (max-width: 640px) {
-    .halloapp-large-editor-modal {
+    .skoulouapp-large-editor-modal {
         min-height: 0;
     }
 }
@@ -2340,7 +2340,7 @@ section {
 .ql-snow .ql-toolbar .ql-color.ql-expanded,
 .ql-snow .ql-toolbar .ql-background.ql-expanded {
     background: #f1f5f9;
-    border-color: var(--hallo-accent-1);
+    border-color: var(--skoulou-accent-1);
 }
 
 .ql-snow .ql-toolbar .ql-color .ql-picker-label svg .ql-color-label,
@@ -2357,7 +2357,7 @@ section {
 .ql-snow .ql-toolbar button.ql-align:hover,
 .ql-snow .ql-toolbar button.ql-align.ql-active {
     background: #eef2ff;
-    border-color: var(--hallo-accent-1);
+    border-color: var(--skoulou-accent-1);
 }
 
 /* Quill 2 rendert Nummerierungen/Aufzählungszeichen über .ql-ui::before.
@@ -2650,7 +2650,7 @@ section {
     --ring-size: 4.5rem;
     --ring-thickness: 0.45rem;
     --ring-percent: 0;
-    --ring-color: var(--hallo-accent-2);
+    --ring-color: var(--skoulou-accent-2);
     position: relative;
     width: var(--ring-size);
     height: var(--ring-size);
@@ -2697,14 +2697,14 @@ section {
     gap: 0.35rem;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    background: linear-gradient(135deg, #22c55e, var(--hallo-accent-2));
+    background: linear-gradient(135deg, #22c55e, var(--skoulou-accent-2));
     color: #ffffff;
     font-weight: 700;
     font-size: 0.85rem;
     box-shadow: 0 6px 16px rgba(34, 197, 94, 0.3);
 }
 
-@keyframes hallo-pop-in {
+@keyframes skoulou-pop-in {
     0% {
         opacity: 0;
         transform: translateY(16px) scale(0.98);
@@ -2717,10 +2717,10 @@ section {
 }
 
 .card-stack-enter {
-    animation: hallo-pop-in 0.28s ease both;
+    animation: skoulou-pop-in 0.28s ease both;
 }
 
-@keyframes hallo-bounce {
+@keyframes skoulou-bounce {
     0%, 100% {
         transform: scale(1);
     }
@@ -2735,10 +2735,10 @@ section {
 }
 
 .bounce-on-correct {
-    animation: hallo-bounce 0.4s ease;
+    animation: skoulou-bounce 0.4s ease;
 }
 
-@keyframes hallo-shimmer {
+@keyframes skoulou-shimmer {
     0% {
         background-position: -200% 0;
     }
@@ -2752,10 +2752,10 @@ section {
     border-radius: 0.9rem;
     background: linear-gradient(90deg, rgba(148, 163, 184, 0.15) 25%, rgba(148, 163, 184, 0.3) 37%, rgba(148, 163, 184, 0.15) 63%);
     background-size: 400% 100%;
-    animation: hallo-shimmer 1.4s ease infinite;
+    animation: skoulou-shimmer 1.4s ease infinite;
 }
 
-.hallo-toast-stack {
+.skoulou-toast-stack {
     position: fixed;
     top: 1rem;
     left: 50%;
@@ -2769,7 +2769,7 @@ section {
     width: min(92vw, 26rem);
 }
 
-.hallo-toast {
+.skoulou-toast {
     pointer-events: auto;
     width: 100%;
     padding: 0.75rem 1rem;
@@ -2779,14 +2779,14 @@ section {
     font-weight: 600;
     font-size: 0.9rem;
     box-shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
-    animation: hallo-pop-in 0.25s ease both;
+    animation: skoulou-pop-in 0.25s ease both;
 }
 
-.hallo-toast-success {
+.skoulou-toast-success {
     border-left: 4px solid #22c55e;
 }
 
-.hallo-toast-error {
+.skoulou-toast-error {
     border-left: 4px solid #ef4444;
 }
 
@@ -2859,8 +2859,8 @@ section {
 }
 
 .lesson-path-node--current {
-    background: linear-gradient(135deg, var(--hallo-accent-1), var(--hallo-accent-2));
-    animation: hallo-pulse 1.8s ease infinite;
+    background: linear-gradient(135deg, var(--skoulou-accent-1), var(--skoulou-accent-2));
+    animation: skoulou-pulse 1.8s ease infinite;
 }
 
 .lesson-path-node--open {
@@ -2872,7 +2872,7 @@ section {
     color: #64748b;
 }
 
-@keyframes hallo-pulse {
+@keyframes skoulou-pulse {
     0%, 100% {
         box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25), 0 0 0 0 rgba(99, 102, 241, 0.4);
     }

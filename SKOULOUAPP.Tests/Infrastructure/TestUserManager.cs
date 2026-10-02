@@ -1,8 +1,8 @@
-using HalloApp.Core.DataModels.Identity;
+using SkoulouApp.Core.DataModels.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
-namespace HalloApp.Tests.Infrastructure;
+namespace SkoulouApp.Tests.Infrastructure;
 
 /// <summary>
 /// Test-Double für <see cref="UserManager{AppUser}"/>. Verwaltet Benutzer und
@@ -17,6 +17,8 @@ public class TestUserManager : UserManager<AppUser>
     public Action<AppUser>? OnUserCreated { get; set; }
     public Action<AppUser>? OnUserUpdated { get; set; }
     public Action<AppUser>? OnUserDeleted { get; set; }
+    public IdentityResult ChangePasswordResult { get; set; } = IdentityResult.Success;
+    public IdentityResult ResetPasswordResult { get; set; } = IdentityResult.Success;
 
     private TestUserManager(List<AppUser> users, IUserStore<AppUser> store)
         : base(
@@ -75,6 +77,12 @@ public class TestUserManager : UserManager<AppUser>
 
     public override Task<AppUser?> FindByEmailAsync(string email)
         => Task.FromResult(_users.FirstOrDefault(x => string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase)));
+
+    public override Task<IdentityResult> ChangePasswordAsync(AppUser user, string currentPassword, string newPassword)
+        => Task.FromResult(ChangePasswordResult);
+
+    public override Task<IdentityResult> ResetPasswordAsync(AppUser user, string token, string newPassword)
+        => Task.FromResult(ResetPasswordResult);
 
     public override Task<IdentityResult> CreateAsync(AppUser user, string password)
     {

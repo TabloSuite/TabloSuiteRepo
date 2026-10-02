@@ -1,8 +1,8 @@
-using HalloApp.Core.Models.Home;
-using HalloApp.Core.Services;
+using SkoulouApp.Core.Models.Home;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Components;
 
-namespace HalloApp.WebApp.Components.Pages;
+namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Lektionen
 {

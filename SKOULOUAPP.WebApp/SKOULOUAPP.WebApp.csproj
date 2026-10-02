@@ -30,7 +30,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>HalloApp.WebApp</RootNamespace>
+    <RootNamespace>SkoulouApp.WebApp</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

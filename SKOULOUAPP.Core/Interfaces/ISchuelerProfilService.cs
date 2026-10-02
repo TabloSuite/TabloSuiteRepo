@@ -1,6 +1,6 @@
-using HalloApp.Core.DataModels;
+using SkoulouApp.Core.DataModels;
 
-namespace HalloApp.Core.Interfaces;
+namespace SkoulouApp.Core.Interfaces;
 
 public interface ISchuelerProfilService
 {
