@@ -2122,6 +2122,9 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("CanAccessBilling")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("CanAccessFinances")
                         .HasColumnType("bit");
 

@@ -11,6 +11,9 @@ namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Abrechnung
 {
+    [Parameter] public Guid? SchoolId { get; set; }
+    [Parameter] public bool Embedded { get; set; }
+
     [Inject]
     private DashboardService DashboardService { get; set; } = default!;
 
@@ -27,6 +30,7 @@ public partial class Abrechnung
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     private IReadOnlyList<AdminSchoolOverview> schools = [];
+    private bool schoolsLoaded;
     private AbrechnungsUebersicht? uebersicht;
     private IReadOnlyList<Abrechnungsperiode> historie = [];
     private DateTime? historieVonDatum;
@@ -110,27 +114,6 @@ public partial class Abrechnung
                     return;
                 }
 
-            if (user.IsInRole("Koordinator") && !user.IsInRole("SchulLeiter"))
-            {
-                isKoordinator = true;
-                if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var koordinatorId))
-                    return;
-
-                currentUserId = koordinatorId;
-                var freigegebeneSchulen = await FinanzService.GetSchulenAsync(koordinatorId, false, token);
-                schools = freigegebeneSchulen.Select(school => new AdminSchoolOverview
-                {
-                    SchoolId = school.Id,
-                    Name = school.Name
-                }).ToList();
-                if (schools.Count == 1)
-                {
-                    selectedSchoolId = schools[0].SchoolId;
-                    await LoadSchoolAsync();
-                }
-                return;
-            }
-
                 currentUserId = superAdminId;
                 schools = await DashboardService.GetAdminSchoolsAsync(token);
                 offeneSuperAdminBestaetigungen = await AbrechnungService.GetOffeneSuperAdminBestaetigungenAsync(token);
@@ -163,8 +146,8 @@ public partial class Abrechnung
                 return;
             }
 
-            // Der Direktor (SchulLeiter) darf nicht erstellen, aber akzeptieren/ablehnen.
-            isSuperAdmin = false;
+            // Direktion und Koordination erhalten nur Schulen mit Finanzzugriff.
+            isKoordinator = user.IsInRole("Koordinator") && !user.IsInRole("SchulLeiter");
 
             var directorUserIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(directorUserIdValue, out var userId))
@@ -174,19 +157,28 @@ public partial class Abrechnung
             }
             currentUserId = userId;
 
-            var teacherSchools = await DashboardService.GetTeacherSchoolsAsync(userId, token);
-            schools = teacherSchools
+            var financeSchools = await FinanzService.GetSchulenAsync(userId, false, token);
+            var billingSchools = new List<FinanzAuswahl>();
+            foreach (var school in financeSchools)
+            {
+                if (await FinanzService.CanAccessBillingAsync(userId, school.Id, token))
+                    billingSchools.Add(school);
+            }
+            schools = billingSchools
                 .Select(x => new AdminSchoolOverview
                 {
-                    SchoolId = x.SchoolId,
-                    Name = x.SchoolName,
-                    City = x.City,
-                    StudentCount = x.StudentCount
+                    SchoolId = x.Id,
+                    Name = x.Name
                 })
                 .ToList();
 
             // Bei genau einer Schule automatisch auswählen.
-            if (schools.Count == 1)
+            if (SchoolId is Guid requestedId && schools.Any(school => school.SchoolId == requestedId))
+            {
+                selectedSchoolId = requestedId;
+                await LoadSchoolAsync();
+            }
+            else if (!Embedded && schools.Count == 1)
             {
                 selectedSchoolId = schools[0].SchoolId;
                 await LoadSchoolAsync();
@@ -196,11 +188,25 @@ public partial class Abrechnung
         {
             // Komponente wurde während des Ladens verworfen (Navigationswechsel).
         }
+        finally
+        {
+            schoolsLoaded = true;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Embedded && schoolsLoaded && SchoolId != selectedSchoolId)
+        {
+            selectedSchoolId = SchoolId is Guid id && schools.Any(school => school.SchoolId == id) ? id : null;
+            filterBisLokal = null;
+            await LoadSchoolAsync();
+        }
     }
 
     private async Task SelectSchoolAsync(Guid schoolId)
     {
-        if (!schools.Any(school => school.SchoolId == schoolId))
+        if (Embedded || !schools.Any(school => school.SchoolId == schoolId))
         {
             return;
         }
@@ -220,7 +226,7 @@ public partial class Abrechnung
             return;
         }
 
-        if (!schools.Any(school => school.SchoolId == selectedSchoolId.Value))
+        if (Embedded && selectedSchoolId != SchoolId || !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
             selectedSchoolId = null;
             uebersicht = null;
@@ -230,9 +236,14 @@ public partial class Abrechnung
         }
 
         var bisUtcFilter = filterBisLokal?.ToUniversalTime();
-        darfZahlungMelden = !isSuperAdmin && !isProduktOwner
-            && (!isKoordinator || (await FinanzService.GetFinanceAccessAsync(currentUserId ?? Guid.Empty, selectedSchoolId.Value,
-                cancellationToken: ComponentToken)).Cycles);
+        if (currentUserId is not Guid userId || !await FinanzService.CanAccessBillingAsync(userId, selectedSchoolId.Value, ComponentToken))
+        {
+            uebersicht = null;
+            historie = [];
+            darfZahlungMelden = false;
+            return;
+        }
+        darfZahlungMelden = !isSuperAdmin && !isProduktOwner;
         uebersicht = await AbrechnungService.GetOffeneUebersichtAsync(selectedSchoolId.Value, bisUtcFilter);
         historie = await AbrechnungService.GetHistorieAsync(selectedSchoolId.Value);
         automatischeOffenePerioden = isSuperAdmin

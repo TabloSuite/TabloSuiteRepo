@@ -29,6 +29,7 @@ public partial class Finanzen
     private bool canViewDashboard;
     private bool canCreateEntries;
     private bool canManageCycles;
+    private bool canAccessBilling;
 
     // Schulkontext
     private List<FinanzAuswahl> schulen = new();
@@ -52,6 +53,8 @@ public partial class Finanzen
     private DirektorKontostandUebersicht? direktorKontostand;
     private FinanzAbgleich? finanzAbgleich;
     private FinanzFilter filter = new();
+    private FinanzFilter angewendeterFilter = new();
+    private bool mitSkoulouAbos;
     private List<FinanzKategorie> alleKategorien = new();
 
     // ---- Buchung erfassen ----
@@ -99,27 +102,31 @@ public partial class Finanzen
 
     private string AktiveSchuleName => schulen.FirstOrDefault(schule => schule.Id == aktiveSchulID)?.Name ?? "École";
 
-    private string FinanzBerichtUrl => $"/finanzen/rapport?schoolId={aktiveSchulID:D}&sort={filter.Sortierung}"
-        + (filter.Von.HasValue ? $"&from={filter.Von:yyyy-MM-dd}" : string.Empty)
-        + (filter.Bis.HasValue ? $"&to={filter.Bis:yyyy-MM-dd}" : string.Empty)
-        + (filter.Richtung.HasValue ? $"&direction={filter.Richtung}" : string.Empty);
+    private string FinanzBerichtQuery => $"schoolId={angewendeterFilter.SchulID:D}&sort={angewendeterFilter.Sortierung}&withSubscriptions={mitSkoulouAbos.ToString().ToLowerInvariant()}"
+        + (angewendeterFilter.Von.HasValue ? $"&from={angewendeterFilter.Von:yyyy-MM-dd}" : string.Empty)
+        + (angewendeterFilter.Bis.HasValue ? $"&to={angewendeterFilter.Bis:yyyy-MM-dd}" : string.Empty)
+        + (angewendeterFilter.Richtung.HasValue ? $"&direction={angewendeterFilter.Richtung}" : string.Empty);
 
-    private string BerichtZeitraumLabel => filter switch
+    private string FinanzBerichtUrl => $"/finanzen/rapport?{FinanzBerichtQuery}";
+    private string FinanzPdfUrl => $"/finanzen/rapport/pdf-file?{FinanzBerichtQuery}";
+    private FinanzBerichtDarstellung? BerichtDarstellung => uebersicht is null ? null : FinanzBerichtDarstellung.Erstellen(uebersicht, angewendeterFilter, mitSkoulouAbos);
+
+    private string BerichtZeitraumLabel => angewendeterFilter switch
     {
-        { Von: not null, Bis: not null } => $"Du {filter.Von:dd.MM.yyyy} au {filter.Bis:dd.MM.yyyy}",
-        { Von: not null } => $"À partir du {filter.Von:dd.MM.yyyy}",
-        { Bis: not null } => $"Jusqu'au {filter.Bis:dd.MM.yyyy}",
+        { Von: not null, Bis: not null } => $"Du {angewendeterFilter.Von:dd.MM.yyyy} au {angewendeterFilter.Bis:dd.MM.yyyy}",
+        { Von: not null } => $"À partir du {angewendeterFilter.Von:dd.MM.yyyy}",
+        { Bis: not null } => $"Jusqu'au {angewendeterFilter.Bis:dd.MM.yyyy}",
         _ => "Toutes les dates"
     };
 
-    private string BerichtTypLabel => filter.Richtung switch
+    private string BerichtTypLabel => angewendeterFilter.Richtung switch
     {
         FinanzRichtung.Einnahme => "Recettes uniquement",
         FinanzRichtung.Ausgabe => "Dépenses uniquement",
         _ => "Recettes et dépenses"
     };
 
-    private string BerichtSortierungLabel => filter.Sortierung switch
+    private string BerichtSortierungLabel => angewendeterFilter.Sortierung switch
     {
         FinanzSortierung.WirkungsdatumAufsteigend => "Date croissante",
         FinanzSortierung.BetragAbsteigend => "Montant décroissant",
@@ -129,11 +136,7 @@ public partial class Finanzen
     };
 
     private static bool IstAboSystemBuchung(FinanzUebersichtZeile zeile)
-        => zeile.KategorieSystemCode is FinanzSystemCode.SkoulouAppAboZahlung
-            or FinanzSystemCode.SkoulouAppAboAnteil
-            or FinanzSystemCode.SkoulouAppAboSchulleiterAnteil
-            or FinanzSystemCode.SkoulouAppAboLehrerAnteil
-            or FinanzSystemCode.SkoulouAppAboProductOwnerAnteil;
+        => FinanzBerichtDarstellung.IstAboBuchung(zeile);
 
     private IReadOnlyList<FinanzUebersichtZeile> EchteSchulBuchungen => uebersicht?.Zeilen
         .Where(zeile => !IstAboSystemBuchung(zeile))
@@ -457,9 +460,10 @@ public partial class Finanzen
         canViewDashboard = access.Dashboard;
         canCreateEntries = !isPlatformViewer && access.Entries;
         canManageCycles = !isPlatformViewer && access.Cycles;
+        canAccessBilling = !isPlatformViewer && await FinanzService.CanAccessBillingAsync(currentUserId, schoolId, ComponentToken);
         if (!IsTabAllowed(aktiverTab))
         {
-            aktiverTab = canViewDashboard ? "dashboard" : canCreateEntries ? "erfassen" : "durchlaeufe";
+            aktiverTab = canViewDashboard ? "dashboard" : canCreateEntries ? "erfassen" : canManageCycles ? "durchlaeufe" : "facturation";
         }
     }
 
@@ -468,6 +472,7 @@ public partial class Finanzen
         "dashboard" => canViewDashboard,
         "erfassen" => canCreateEntries,
         "durchlaeufe" => canManageCycles,
+        "facturation" => canAccessBilling,
         _ => false
     };
 
@@ -527,7 +532,24 @@ public partial class Finanzen
         }
 
         filter.SchulID = aktiveSchulID;
-        uebersicht = await FinanzService.GetUebersichtAsync(filter);
+        var neuerFilter = new FinanzFilter
+        {
+            SchulID = aktiveSchulID,
+            Von = filter.Von?.Date,
+            Bis = filter.Bis?.Date,
+            Richtung = filter.Richtung,
+            Sortierung = filter.Sortierung
+        };
+        var ergebnis = await FinanzService.GetUebersichtAsync(new FinanzFilter
+        {
+            SchulID = neuerFilter.SchulID,
+            Von = neuerFilter.Von,
+            Bis = neuerFilter.Bis?.AddDays(1).AddTicks(-1),
+            Richtung = neuerFilter.Richtung,
+            Sortierung = neuerFilter.Sortierung
+        }, ComponentToken);
+        uebersicht = ergebnis;
+        angewendeterFilter = neuerFilter;
         direktorKontostand = !canViewDashboard
             ? null
             : await FinanzService.GetDirektorKontostandUebersichtAsync(aktiveSchulID.Value, cancellationToken: ComponentToken);

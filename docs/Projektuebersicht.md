@@ -1,18 +1,18 @@
-# SKOULOU-APP – technische Projektübersicht
+# SKOULOUAPP – Projekt- und Entwicklerübersicht
 
 ## Zweck
 
-SKOULOU-APP ist eine mandantenfähige Lernplattform für Deutschunterricht. Schulen, Lehrkräfte und Schüler arbeiten rollenbasiert mit Kursen/Klassen, Lektionen, Lehrerunterlagen, Übungen, Quizzen, Prüfungen, Abonnements, Abrechnung, Provisionen und Schulfinanzen.
+SKOULOUAPP ist eine schulbezogene Verwaltungs- und Lernplattform für Bildungseinrichtungen. Schulleitungen und Koordinatoren verwalten Schulen, Klassen, Lehrkräfte, Schüler, Kurszyklen und Zahlungen. Lehrkräfte erstellen Unterrichtsmaterialien und Prüfungen; Schüler bearbeiten freigegebene Inhalte und verfolgen ihren Lernstand. Die Plattform verwaltet außerdem Abonnements, Schulfinanzen, Provisionen und SKOULOUAPP-Facturation.
 
-Die Anwendung ist eine .NET-10-Blazor-Web-App mit interaktivem Server-Rendering. Die sichtbaren Texte sind überwiegend Französisch; der Projektcode und die fachlichen Datenmodelle verwenden überwiegend deutsche Namen.
+Die Anwendung nutzt .NET 10 und Blazor Interactive Server. Sichtbare Anwendungstexte sind Französisch; im Code kommen überwiegend deutsche fachliche Namen und historisch gewachsene englische Bezeichner vor. Verbindliche Projektvorgaben stehen in [`.github/copilot-instructions.md`](../.github/copilot-instructions.md); dieses Dokument beschreibt dagegen die aktuelle Implementierung.
 
 ## Solution-Struktur
 
 | Projekt | Verantwortung |
 |---|---|
-| `SkoulouApp.WebApp` | Blazor-Oberfläche, Startup/DI, EF-Core-DbContext, Migrationen, Authentifizierung, Seed-Ablauf, JavaScript und statische Inhalte. |
-| `SkoulouApp.Core` | Fachmodell, View-/Form-Modelle, Schnittstellen, Repositories, Services sowie eingebettete Vokabel-JSON-Ressourcen. |
-| `SkoulouApp.Tests` | xUnit-Tests der Core-Services mit einem EF-Core-InMemory-DbContext und Testdoubles. |
+| `SKOULOUAPP.WebApp` | Blazor-Oberfläche, Startup/DI, EF-Core-DbContext, Migrationen, Identity, API-/PDF-Endpunkte, Medien, E-Mail und statische Inhalte. |
+| `SKOULOUAPP.Core` | Fachmodelle, Form-/View-Modelle, Schnittstellen, Repositories und Geschäftsservices. |
+| `SKOULOUAPP.Tests` | xUnit-Tests für Services und WebApp-Funktionen mit EF Core InMemory und Testdoubles. |
 
 Alle Projekte zielen auf `net10.0`, Nullable Reference Types und implizite Usings sind aktiviert.
 
@@ -21,20 +21,28 @@ Alle Projekte zielen auf `net10.0`, Nullable Reference Types und implizite Using
 `SkoulouApp.WebApp/Program.cs` ist der Einstiegspunkt.
 
 - Blazor wird mit `AddRazorComponents().AddInteractiveServerComponents()` betrieben.
-- EF Core nutzt SQL Server über `AddDbContextFactory<ApplicationDbContext>`; pro Scope wird daraus ein `ApplicationDbContext` erstellt.
+- EF Core nutzt SQL Server über `AddDbContextFactory<ApplicationDbContext>`; datenbanknutzende Dienste erhalten über die Factory einen eigenen Context statt eines im Blazor-Circuit geteilten Contexts.
 - `ISkoulouAppDbContext` abstrahiert den DbContext für die Core-Services und Tests.
 - ASP.NET Core Identity verwendet `AppUser`, `Role` und GUID-Schlüssel.
 - Serilog protokolliert auf Konsole und über `DatabaseExceptionLogSink` zusätzlich Exceptions in der Datenbank.
-- Beim Start führt `ApplicationDbInitializer.SeedAsync(...)` Migrationen, Basisdaten-Seed und Rückfüllungen aus.
+- Beim Start ruft `Program.cs` `ApplicationDbInitializer.SeedAsync(...)` auf. Nur wenn `Database:ApplyMigrationsOnStartup=true` gesetzt ist, werden zuvor Migrationen angewendet. Der Initializer legt Berechtigungen/Rollen und den initialen SuperAdmin an bzw. gleicht sie ab; er importiert keinen Kurskatalog.
 
 ### Datenbankverbindung
 
 Die Verbindung wird über `Database:ConnectionStringName` ausgewählt:
 
-- `DefaultConnection`: lokale Entwicklung (normaler Standard).
-- `AzureDefaultConnection`: Azure SQL Database, Wert liegt in User Secrets.
+- `DefaultConnection`: lokale Entwicklung; in `appsettings.Development.json` für SQL Server `localhost` konfiguriert.
+- `AzureDefaultConnection`: Standardname in `appsettings.json`; produktive Verbindungsdaten gehören in User Secrets/Umgebungsvariablen.
 
-Die Azure-Produktionsverbindung gehört ausschließlich in User Secrets, nicht in versionierte Konfigurationsdateien.
+Die Azure-Produktionsverbindung gehört nicht in versionierte Dateien. `Database:ApplyMigrationsOnStartup` steht standardmäßig auf `false`; Migrationen müssen bei Schemaänderungen bewusst für die richtige Umgebung ausgeführt werden.
+
+### Lokaler Einstieg
+
+1. .NET-10-SDK und SQL Server bereitstellen. Prüfen, dass der in `SKOULOUAPP.WebApp/appsettings.Development.json` konfigurierte `DefaultConnection` erreichbar ist; Zugangsdaten für andere Umgebungen über User Secrets oder Umgebungsvariablen setzen.
+2. `dotnet restore SKOULOUAPPMAPPE.slnx` und `dotnet build SKOULOUAPPMAPPE.slnx` im Repository-Stamm ausführen.
+3. Ausstehende Migrationen prüfen und gezielt auf die lokale Development-Datenbank anwenden, z. B. `dotnet ef migrations list --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development` und danach `dotnet ef database update --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development`. Vor jeder Anwendung die Zielverbindung prüfen; nie eine Datenbank zurücksetzen.
+4. `dotnet run --project SKOULOUAPP.WebApp --launch-profile https` startet die App lokal laut `launchSettings.json` unter `https://localhost:7064`. Die Anmeldedaten des Seed-Admins stehen in `Data/Seed/ApplicationDbInitializer.cs`; nach dem ersten Start Zugangsdaten sichern/ändern und nicht in Dokumentationen übernehmen.
+5. `dotnet test SKOULOUAPPMAPPE.slnx` führt die automatisierten Tests aus. Browserabläufe werden zusätzlich manuell geprüft.
 
 ## Rollen und Zugriffsmodell
 
@@ -43,38 +51,39 @@ Die Azure-Produktionsverbindung gehört ausschließlich in User Secrets, nicht i
 | `Schüler` | Freigeschaltete Lektionen, Übungen, Lehrerunterlagen, Prüfungen, Quizze und eigene Fortschritte. |
 | `Lehrer` | Pädagogischer Bereich: Schülerfortschritt, Lektionen, Unterrichtsmaterial, Prüfungen und Quizze. |
 | `SchulLeiter` | Lehrerrechte plus Schulverwaltung, Klassen-Governance, Finanzen und Abrechnung der eigenen Schule. |
+| `Koordinator` | Schulbezogene Verwaltung; Finanz-Tabs werden von der Schulleitung pro Schulzuordnung freigegeben. |
+| `ProduktOwner` | Zugewiesene Schulen und berechtigte Plattform-/Facturation-Funktionen. |
 | `SuperAdmin` | Globale Verwaltung, Schulen, Benutzer, Preis-/Kommissionskonfiguration, Broadcast-E-Mails, Fehlerprotokolle und schulübergreifende Finanzen. |
 
-`Routes.razor` setzt `AuthorizeRouteView` ein. Einzelne Seiten ergänzen dies mit Rollen oder Policies (`RequireSuperAdmin`, `RequireSchulLeiter`, `RequireTeacher`, `RequireStudent`). Die Navigation in `Components/Layout/NavMenu.razor` blendet Einträge rollenbasiert ein.
+`Routes.razor` setzt `AuthorizeRouteView` ein. Einzelne Seiten ergänzen dies mit Rollen oder Policies (`RequireSuperAdmin`, `RequireSchulLeiter`, `RequireTeacher`, `RequireStudent`). Die Navigation in `Components/Layout/NavMenu.razor` blendet Einträge rollenbasiert ein; sie ersetzt keine serverseitige Prüfung. `UserSchool` bindet Nutzer an einzelne Schulen und hält die Finanzrechte `CanAccessFinances`, `CanViewFinanceDashboard`, `CanCreateFinanceEntries`, `CanManageCyclePayments` und `CanAccessBilling`. Beim Koordinator müssen Schule und jeweiliges Tab-/Aktionsrecht geprüft werden, auch bei direktem Aufruf von `/abrechnung`.
 
 ## Blazor-Oberfläche
 
 ### Konventionen
 
-- Jede Seite besteht aus `.razor` plus separater `.razor.cs`-Datei.
+- Die größeren Seiten verwenden `.razor` plus `.razor.cs`-Code-behind; einzelne einfache Komponenten sind reine Razor-Dateien.
 - Gemeinsam genutzte UI-Bausteine liegen unter `Components/Shared`, u. a. `AsyncActionButton`, `ProgressRing`, `ModalDialog`, `Toast`, `CollapsibleCard`, `RichTextEditor` und Listen-/Filterhilfen.
 - Datenladende Seiten sollen von `CancelableComponentBase` erben und `ComponentToken` an Service-/EF-Aufrufe weiterreichen. Das verhindert Fehler beim Navigieren während noch laufender DB-Abfragen.
-- `App.razor` bindet Tailwind, Bootstrap, Flatpickr, Quill und eigene JavaScript-Dateien ein. Ein Service Worker und Manifest bilden die PWA-Grundlage.
+- `App.razor` bindet Styles, Quill und eigene JavaScript-Dateien ein; `wwwroot` enthält zudem Manifest und Service Worker. PDF-Dateien werden serverseitig erstellt.
 
 ### Seitenbereiche
 
 - Öffentlich/Auth: Home, Kontakt, Login, Registrierung, Passwort-Reset, Profil.
 - Schüler: Dashboard, DB-Lektionen, Übungen, Lehrerunterlagen, Prüfungen, Quizze.
 - Lehrkräfte: Schüler-/Kursverwaltung, Lehrerlektionen, Prüfungen und PDF-Ausgaben.
-- Schulleitung: Schulverwaltung, Klassen, Schülerfreigabe, Lehrkräfte, Finanzen und Abrechnung.
-- SuperAdmin: globale Verwaltung, E-Mail-Broadcast und Exception-Logs.
+- Schulleitung/Koordinatoren: Schulverwaltung, Klassen, Schülerfreigabe und Lehrkräfte; unter „Comptabilité et paiements“ befinden sich die je Schule freigegebenen Finanz-Tabs einschließlich „Facturation SKOULOUAPP“.
+- SuperAdmin/ProduktOwner: globale bzw. zugewiesene Verwaltungs- und Finanzansichten, Facturation und Exception-Logs entsprechend der Rolle.
 
 ## Fachmodell und Persistenz
 
-`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den SKOULOU-APP-Tabellen. Die aktuelle Basismigration ist `20260729141230_InitialCreate`.
+`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den Anwendungsdaten. Migrationen liegen unter `SKOULOUAPP.WebApp/Migrations`; maßgeblich für die eigene Datenbank ist `__EFMigrationsHistory`. Zuletzt wurde das schulbezogene Koordinatorrecht `CanAccessBilling` in `20261006062702_CoordinatorBillingAccess` ergänzt (Standardwert für bestehende Zuordnungen: `false`). Modelländerungen erfordern eine neue EF-Migration; ein erfolgreicher Build allein ändert das SQL-Schema nicht.
 
 ### Schule, Benutzer und Klassen
 
-- `School`: Mandant mit Standort, Aktivstatus, Schultyp, individuellen SKOULOUBASIS-/SKOULOUPLUS-Preisen und PDF-Export-Freigabe.
-- `SchulTyp`: `Sprachschule` oder `NormaleSchule`.
+- `School`: Mandant mit Standort, Beschreibung, Aktivstatus und optionalem schulspezifischem Abo-Preis sowie optionalen Kommissions-Prozentwerten.
 - `AppUser`, `StudentProfile`, `UserSchool`: Identity, Schülerprofil und Schulzuordnung.
-- `Klasse`: Kurs/Klasse. Globale Systemniveaus einer Sprachschule besitzen keine `SchoolId` und sind unveränderlich (`IstSystemNiveau`). Schulbezogene Klassen gehören genau einer Schule.
-- `LevelEnrollment`: Freischaltung und Zahlungszustand eines Schülers für eine Klasse.
+- `Klasse`: schulbezogene Klasse; Klassenzyklen und Teilnehmerzuweisungen werden separat geführt.
+- `LevelEnrollment`: klassen-/zyklusbezogene Abo-Freischaltung mit Zahlungs- und Abrechnungszustand. Der technische Abo-Typ ist `AboTyp.SkoulouApp`.
 
 Die Datenbank erzwingt wichtige Eindeutigkeiten, etwa School-Name, Benutzer-E-Mail, `(SchoolId, Klasse.Code)`, Lernfortschritt pro Schüler/Lektion und PDF-Exportfreigaben. Die Beziehung `Klasse -> School` nutzt bewusst `Restrict`, um SQL-Server-Kaskadenpfade zu vermeiden.
 
@@ -82,7 +91,7 @@ Die Datenbank erzwingt wichtige Eindeutigkeiten, etwa School-Name, Benutzer-E-Ma
 
 - `Lesson`, `LessonMedia`, `Exercise`, `ExerciseOption`, `ExerciseAttempt`, `LessonProgress` bilden den systemweiten Lernkatalog und den Schülerfortschritt.
 - `TeacherLesson`, `TeacherLessonPage` und `TeacherLessonPdfExportPermission` bilden von Lehrkräften geschriebene, paginierte Unterrichtsmaterialien ab.
-- Inhalte sind HTML/Rich Text; `HtmlSanitizer` verhindert unsichere Inhalte. Die Bildvariante erlaubt gezielt Base64-Bilder (`data:image/...`) und HTTPS-Bilder.
+- Inhalte sind HTML/Rich Text; `HtmlSanitizer` filtert unsichere Inhalte. Bilder dürfen nur im freigegebenen Lektion-/Übungserstellungsbereich über die gespeicherte Medienbibliothek eingefügt werden; der Lektionsmedienpfad verwendet Azure-Blob-Abstraktionen (in Development lokal konfiguriert).
 
 ### Beurteilungen
 
@@ -96,9 +105,9 @@ Unterstützt werden u. a. Single Choice, Multiple Choice, Freitext, Lückentext 
 
 ### Abonnement und Finanzen
 
-- `AboService`, `AbrechnungService` und `ProvisionsService` steuern Freischaltungen, Zahlungs-/Abrechnungsperioden und prozentuale Kommissionsverteilung.
+- `AboService`, `AbrechnungService` und `ProvisionsService` steuern das eine SKOULOUAPP-Abo, Zahlungs-/Abrechnungsperioden und prozentuale Kommissionsverteilung.
 - `FinanzService` verwaltet Einnahmen/Ausgaben, globale oder schulbezogene Kategorien, Kursdurchläufe und Ratenzahlungen.
-- Kursdurchläufe (`KursNiveauDurchlauf`) frieren Preis und Zeitraum ein; Ratenzahlungen sind nur im aktiven Durchlauf zulässig.
+- Klassenzyklen (`KursNiveauDurchlauf`) bilden Start und Abschluss ab; Schulgebühren können sofort oder in Raten bezahlt werden. Die offene Plattformforderung zählt bezahlte, noch nicht abgerechnete Abos. Für den Schulsaldo wird nur der Plattformanteil abgezogen; Direktions- und Lehreranteile verbleiben bei der Schule.
 
 ## Zentrale Services
 
@@ -106,36 +115,24 @@ Unterstützt werden u. a. Single Choice, Multiple Choice, Freitext, Lückentext 
 |---|---|
 | `DashboardService` | Administrative, Lehrer-, Schulleiter- und Schülerprojekte; DB-Katalog für Home und `/lektionen`. |
 | `LearningService` | Freigeschaltete Lektionen, Übungsabgaben, automatische Bewertung und Fortschritt. |
-| `QuizService` | Quiz erstellen, zuweisen, durchführen und bewerten. Quizzuweisungen sind auf SKOULOUPLUS ausgerichtet. |
+| `QuizService` | Quiz erstellen, zuweisen, durchführen und bewerten; Klassenzuweisung und Abo-Berechtigung beachten. |
 | `ExamService` | Prüfungen, Versuche, Bewertung und Ergebnisdarstellung. |
 | `TeacherLessonService` | Lehrerlektionen, Seiten, Berechtigungen und PDF-Export. |
-| `AboService` | Abo-Typ, Preis und Level-Freischaltung. |
+| `AboService` | SKOULOUAPP-Abo, Schulpreis, Freischaltung und Zahlstatus. |
 | `AbrechnungService` / `ProvisionsService` | Abrechnung und Kommissionsanteile. |
 | `FinanzService` | Buchungen, Kategorien, Kursdurchläufe und Ratenzahlungen. |
 | `AuthService` | Registrierung, Schule, Rollen und Profilzuordnung. |
 | `HomePageService` | Startseitennahe Daten/Logik. |
 
-Services verwenden `ISkoulouAppDbContext`, EF-Core-Async-Methoden und optional `CancellationToken`. Leseabfragen verwenden häufig `AsNoTracking()` und View-Model-Projektionen.
+Services verwenden `ISkoulouAppDbContext`, EF-Core-Async-Methoden und optional `CancellationToken`. Leseabfragen verwenden häufig `AsNoTracking()` und View-Model-Projektionen. Bei neuen Blazor-Datenzugriffen Contexts per `IDbContextFactory` statt parallel aus einem gemeinsam genutzten Circuit-Context beziehen.
 
 ## Katalog und Seeding
 
-Standardlektionen und deren Übungen werden beim Seeding aus CSV-Dateien im externen Ordner `C:\ETSE\SkoulouAppSeed` gelesen. Erwartet werden `lektionen.csv`, `uebungen.csv` und `antworten.csv`. Audio-Übungen verwenden `AudioText` für Text-to-Speech; es werden keine Audio- oder Bilddateien importiert.
-
-Der Ablauf in `ApplicationDbInitializer` lautet:
-
-1. `MigrateAsync()`.
-2. Berechtigungen und Rollen anlegen/aktualisieren.
-3. Beispielschulen und Basisbenutzer anlegen/aktualisieren.
-4. Bei `Seeding:ReseedCourseCatalog=true`: Katalog und abhängigen Fortschritt gezielt löschen.
-5. Feste System-Niveaus (`A1.1`, `A1.2`, `A2.1`, `A2.2`, `B1.1`, `B1.2`, `B2.1`, `B2.2`, `C1`, `C2`) anlegen/aktualisieren.
-6. Lektionen, Übungen und Antworten aus den CSV-Dateien importieren und validieren.
-7. Historische Einschreibungen rückfüllen.
-
-`ReseedCourseCatalog` betrifft den Kurskatalog, nicht Benutzer oder Schulen. Nach einem bewussten Reseed muss die Einstellung wieder auf `false` stehen.
+`ApplicationDbInitializer` legt nur Rollen/Berechtigungen und den initialen SuperAdmin an bzw. aktualisiert sie. Schulen und andere Benutzer werden über die Anwendung erfasst. Es gibt im Initializer keinen automatischen CSV-Katalogimport und kein automatisches Zurücksetzen von Lernfortschritten. Änderungen am Lernkatalog sind getrennt von Datenbankmigrationen zu behandeln; Text-to-Speech verwendet Text statt importierter Audiodateipfade.
 
 ## Tests
 
-`SkoulouApp.Tests` ist eine xUnit-Testsuite für die Services. `TestDbContext` implementiert dieselbe `ISkoulouAppDbContext`-Schnittstelle mit EF Core InMemory; zusätzliche Fakes stehen für Medien, Unit of Work und UserManager bereit.
+`SKOULOUAPP.Tests` ist eine xUnit-Testsuite. `TestDbContext` implementiert dieselbe `ISkoulouAppDbContext`-Schnittstelle mit EF Core InMemory; zusätzliche Fakes stehen für Medien, Unit of Work und UserManager bereit. InMemory-Tests ersetzen keine SQL-Migrationsprüfung.
 
 Wichtige Testbereiche sind:
 
@@ -153,18 +150,18 @@ Die Tests prüfen vor allem fachliche Service-Logik; UI- und Browser-Interaktion
 
 | Thema | Zuerst ansehen |
 |---|---|
-| Seite oder UI-Änderung | Passende Dateien unter `SkoulouApp.WebApp/Components/Pages`, anschließend zugehörige `.razor.cs` und Shared Components. |
-| Fachregel | Zuständigen Service unter `SkoulouApp.Core/Services` und dessen Tests. |
-| Neue/angepasste Daten | Datenmodell unter `SkoulouApp.Core/DataModels`, danach `ApplicationDbContext`, Migration und Tests. |
+| Seite oder UI-Änderung | Passende Dateien unter `SKOULOUAPP.WebApp/Components/Pages`, anschließend zugehörige `.razor.cs` und Shared Components. |
+| Fachregel | Zuständigen Service unter `SKOULOUAPP.Core/Services` und dessen Tests. |
+| Neue/angepasste Daten | Datenmodell unter `SKOULOUAPP.Core/DataModels`, danach `ApplicationDbContext`, Migration und Tests. |
 | Rechte und Rollen | `Program.cs`, `NavMenu.razor`, Seitenattribut `[Authorize]`, plus die Service-Prüfung. |
-| Katalog-/Übungsinhalte | CSV-Dateien unter `C:\ETSE\SkoulouAppSeed` und `ApplicationDbInitializer`. |
+| Katalog-/Übungsinhalte | `SKOULOUAPP.Core/DataModels/Lessons`, `LearningService`, `TeacherLessonService` und die verantwortlichen Import-/Medienpfade. |
 | Finanz-/Abo-Thema | `AboService`, `AbrechnungService`, `ProvisionsService`, `FinanzService` und die dazugehörigen Datenmodelle. |
 | Fehlerprotokollierung | `DatabaseExceptionLogSink`, `ExceptionLog`, `ExceptionLogs.razor`. |
 
 ## Aktuelle Leitlinien
 
 - Keine horizontalen Scrollbars; Tablet/Mobil responsiv halten.
-- Endanwendertexte und technische Interna sauber trennen; öffentliche Übungsinformationen deutsch, Erklärtexte überwiegend französisch.
+- Endanwendertexte auf Französisch, technische Interna und Berechtigungsdetails nicht in die Endnutzeroberfläche übernehmen.
 - Core-Datenmodelle und Properties deutsch benennen; IDs folgen der vereinbarten Benennung (`Id`, sonst zusammengesetzte deutsche Namen mit `ID`).
 - Neue Blazor-Logik bevorzugt im Code-behind, nicht in `@code`-Blöcken.
-- Build-Warnungen wie Fehler behandeln und relevante Tests nach jeder fachlichen Änderung ausführen.
+- Vor Service-/Datenmodelländerungen auf abhängige UI-Flüsse, Rechte, Schultrennung und Finanzkonsistenz prüfen; relevante Tests und Lösungsbuild nach Änderungen ausführen.

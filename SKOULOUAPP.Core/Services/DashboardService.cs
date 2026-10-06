@@ -3528,7 +3528,8 @@ public class DashboardService(
                         Menu = link.CanAccessFinances,
                         Dashboard = link.CanViewFinanceDashboard,
                         Entries = link.CanCreateFinanceEntries,
-                        Cycles = link.CanManageCyclePayments
+                        Cycles = link.CanManageCyclePayments,
+                        Billing = link.CanAccessBilling
                     })
                     .ToList()
                 : []
@@ -3577,7 +3578,7 @@ public class DashboardService(
                 || !await userManager.IsInRoleAsync(manager, Rollen.SchulLeiter)
                 || financeAccesses.Any(access => !selectedSchoolIds.Contains(access.SchoolId))
                 || financeAccesses.Select(access => access.SchoolId).Distinct().Count() != selectedSchoolIds.Count
-                || financeAccesses.Select(access => (access.Menu, access.Dashboard, access.Entries, access.Cycles))
+                || financeAccesses.Select(access => (access.Menu, access.Dashboard, access.Entries, access.Cycles, access.Billing))
                     .Distinct().Count() != 1)
             {
                 return (false, "Les accès financiers ne peuvent être définis que pour un coordinateur de vos écoles.");
@@ -3638,11 +3639,12 @@ public class DashboardService(
             foreach (var financeAccess in financeAccesses)
             {
                 var coordinatorLink = coordinatorLinks.Single(link => link.SchoolId == financeAccess.SchoolId);
-                var financeMenu = financeAccess.Menu && (financeAccess.Dashboard || financeAccess.Entries || financeAccess.Cycles);
+                var financeMenu = financeAccess.Menu && (financeAccess.Dashboard || financeAccess.Entries || financeAccess.Cycles || financeAccess.Billing);
                 coordinatorLink.CanAccessFinances = financeMenu;
                 coordinatorLink.CanViewFinanceDashboard = financeMenu && financeAccess.Dashboard;
                 coordinatorLink.CanCreateFinanceEntries = financeMenu && financeAccess.Entries;
                 coordinatorLink.CanManageCyclePayments = financeMenu && financeAccess.Cycles;
+                coordinatorLink.CanAccessBilling = financeMenu && financeAccess.Billing;
             }
             await dbContext.SaveChangesAsync(cancellationToken);
         }

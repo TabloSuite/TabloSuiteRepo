@@ -62,7 +62,60 @@ public class FinanzUebersicht
     public decimal Saldo => SummeEinnahmen - SummeAusgaben;
 }
 
-public sealed record FinanzBericht(string SchulName, FinanzFilter Filter, FinanzUebersicht Uebersicht);
+public sealed record FinanzBericht(string SchulName, FinanzFilter Filter, FinanzUebersicht Uebersicht, bool MitAbos = false)
+{
+    public FinanzBerichtDarstellung Darstellung => FinanzBerichtDarstellung.Erstellen(Uebersicht, Filter, MitAbos);
+}
+
+public sealed class FinanzBerichtDarstellung
+{
+    public IReadOnlyList<FinanzUebersichtZeile> Zeilen { get; private init; } = [];
+    public decimal Einnahmen { get; private init; }
+    public decimal Ausgaben { get; private init; }
+    public decimal Saldo => Einnahmen - Ausgaben;
+    public int AboZahlungenAnzahl { get; private init; }
+    public decimal AboEinnahmen { get; private init; }
+    public decimal AboAusgaben { get; private init; }
+    public decimal Lehreranteil { get; private init; }
+    public decimal Plattformanteil { get; private init; }
+    public decimal? Direktionsanteil { get; private init; }
+    public bool HatAboBuchungen => AboEinnahmen != 0m || AboAusgaben != 0m;
+
+    public static bool IstAboBuchung(FinanzUebersichtZeile zeile) => zeile.KategorieSystemCode is
+        FinanzSystemCode.SkoulouAppAboZahlung or FinanzSystemCode.SkoulouAppAboAnteil
+        or FinanzSystemCode.SkoulouAppAboSchulleiterAnteil or FinanzSystemCode.SkoulouAppAboLehrerAnteil
+        or FinanzSystemCode.SkoulouAppAboProductOwnerAnteil;
+
+    public static FinanzBerichtDarstellung Erstellen(FinanzUebersicht uebersicht, FinanzFilter filter, bool mitAbos)
+    {
+        var zeilen = uebersicht.Zeilen.Where(x => !IstAboBuchung(x)).ToList();
+        var abo = mitAbos ? uebersicht.Zeilen.Where(IstAboBuchung).ToList() : [];
+        var einnahmen = abo.Where(x => x.Richtung == FinanzRichtung.Einnahme).Sum(x => x.Betrag);
+        var ausgaben = abo.Where(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+            && x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag);
+        decimal? direktor = null;
+        if (mitAbos && filter.Richtung is null && abo.Count > 0)
+        {
+            var direkt = abo.Where(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboSchulleiterAnteil && x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag);
+            direktor = direkt > 0m ? direkt : Math.Max(0m,
+                abo.Where(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung && x.Richtung == FinanzRichtung.Einnahme).Sum(x => x.Betrag)
+                - abo.Where(x => x.Richtung == FinanzRichtung.Ausgabe
+                    && x.KategorieSystemCode is FinanzSystemCode.SkoulouAppAboAnteil or FinanzSystemCode.SkoulouAppAboLehrerAnteil or FinanzSystemCode.SkoulouAppAboProductOwnerAnteil).Sum(x => x.Betrag));
+        }
+        return new FinanzBerichtDarstellung
+        {
+            Zeilen = zeilen,
+            Einnahmen = zeilen.Where(x => x.Richtung == FinanzRichtung.Einnahme).Sum(x => x.Betrag) + einnahmen,
+            Ausgaben = zeilen.Where(x => x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag) + ausgaben,
+            AboZahlungenAnzahl = abo.Count(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung && x.Richtung == FinanzRichtung.Einnahme),
+            AboEinnahmen = einnahmen,
+            AboAusgaben = ausgaben,
+            Lehreranteil = abo.Where(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil && x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag),
+            Plattformanteil = abo.Where(x => x.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboAnteil && x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag),
+            Direktionsanteil = direktor
+        };
+    }
+}
 
 public sealed record FinanzAbgleich(
     decimal SchulgebuehrenZahlungen,
@@ -90,6 +143,7 @@ public class DirektorKontostandUebersicht
     public decimal SonstigeEinnahmen { get; set; }
     public decimal BetrieblicheAusgaben { get; set; }
     public decimal SkoulouAppAboEingenommen { get; set; }
+    public int SchuelerMitBezahltemAboAnzahl { get; set; }
     public decimal SchulleiterAboAnteil { get; set; }
     public decimal LehrerAboAnteil { get; set; }
     public decimal SkoulouAppAboAnteil { get; set; }

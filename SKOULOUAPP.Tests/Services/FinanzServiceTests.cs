@@ -83,6 +83,26 @@ public class FinanzServiceTests
     }
 
     [Fact]
+    public async Task GetSchulenAsync_FacturationErfordertKeineLehrerKlassenZuordnungUndBegrenztKoordinator()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var own = SeedSchule(db, "École attribuée");
+        var foreign = SeedSchule(db, "École étrangère");
+        var directorId = await SeedSchulLeiterAsync(db, own);
+        var coordinatorId = await SeedKoordinatorAsync(db, own);
+        var service = new FinanzService(db);
+
+        Assert.Empty(db.LehrerNiveauZuordnungen);
+        Assert.Equal(own.Id, Assert.Single(await service.GetSchulenAsync(directorId, false)).Id);
+        Assert.Empty(await service.GetSchulenAsync(coordinatorId, false));
+
+        Assert.True((await service.SetCoordinatorFinanceAccessAsync(directorId, coordinatorId, own.Id,
+            menu: true, dashboard: false, entries: false, cycles: true)).Succeeded);
+        Assert.Equal(own.Id, Assert.Single(await service.GetSchulenAsync(coordinatorId, false)).Id);
+        Assert.DoesNotContain(await service.GetSchulenAsync(coordinatorId, false), school => school.Id == foreign.Id);
+    }
+
+    [Fact]
     public async Task BuchungErfassenAsync_SchulLeiterKannKeineFremdeSchuleVerwalten()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -222,7 +242,14 @@ public class FinanzServiceTests
         Assert.Equal("École autorisée", report.SchulName);
         Assert.Equal(200m, report.Uebersicht.SummeEinnahmen);
         Assert.Single(report.Uebersicht.Zeilen);
+        Assert.Equal(200m, report.Darstellung.Einnahmen);
+        Assert.Single(report.Darstellung.Zeilen);
+        var grouped = await service.GetFinanzBerichtAsync(coordinator, false, filter, mitAbos: true);
+        Assert.NotNull(grouped);
+        Assert.Equal(200m, grouped.Darstellung.Einnahmen);
+        Assert.Equal(0m, grouped.Darstellung.AboEinnahmen);
         Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, new FinanzFilter { SchulID = other.Id }));
+        Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, new FinanzFilter { SchulID = other.Id }, mitAbos: true));
         Assert.Null(await service.GetFinanzBerichtAsync(coordinator, false, new FinanzFilter { SchulID = school.Id, Von = date.AddDays(2), Bis = date }));
     }
 
@@ -246,6 +273,34 @@ public class FinanzServiceTests
         Assert.False(access.Entries);
         Assert.False(access.Cycles);
         Assert.Single(await service.GetSchulenAsync(coordinatorId, false));
+    }
+
+    [Fact]
+    public async Task CanAccessBillingAsync_KoordinatorBrauchtSeparateSchulfreigabe()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = SeedSchule(db);
+        var other = SeedSchule(db, "École étrangère");
+        var director = await SeedSchulLeiterAsync(db, school);
+        var coordinator = await SeedKoordinatorAsync(db, school);
+        var service = new FinanzService(db);
+
+        Assert.True(await service.CanAccessBillingAsync(director, school.Id));
+        Assert.False(await service.CanAccessBillingAsync(coordinator, school.Id));
+        Assert.False(await service.CanAccessBillingAsync(coordinator, other.Id));
+
+        var granted = await service.SetCoordinatorFinanceAccessAsync(director, coordinator, school.Id,
+            menu: true, dashboard: false, entries: false, cycles: false, billing: true);
+        Assert.True(granted.Succeeded, granted.Message);
+        Assert.True((await service.GetFinanceAccessAsync(coordinator, school.Id)).Menu);
+        Assert.True(await service.CanAccessBillingAsync(coordinator, school.Id));
+        Assert.False(await service.CanAccessBillingAsync(coordinator, other.Id));
+        Assert.Equal(school.Id, Assert.Single(await service.GetSchulenAsync(coordinator, false)).Id);
+
+        var revoked = await service.SetCoordinatorFinanceAccessAsync(director, coordinator, school.Id,
+            menu: false, dashboard: false, entries: false, cycles: false, billing: false);
+        Assert.True(revoked.Succeeded, revoked.Message);
+        Assert.False(await service.CanAccessBillingAsync(coordinator, school.Id));
     }
 
     [Fact]
@@ -692,6 +747,35 @@ public class FinanzServiceTests
     }
 
     [Fact]
+    public async Task GetDirektorKontostandUebersichtAsync_ZaehltBezahlteSchuelerProSchuleNurEinmal()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schule = SeedSchule(db);
+        var andereSchule = SeedSchule(db, "École B");
+        var (klasse, student) = SeedNiveauMitSchueler(db, schule);
+        var erster = db.LevelEnrollments.Single();
+        erster.IsPaid = true;
+        var wiederholung = new LevelEnrollment { Id = Guid.NewGuid(), StudentId = student.Id, KlasseId = klasse.Id, IsPaid = true, IstAktuell = false };
+        var unbezahlter = new LevelEnrollment { Id = Guid.NewGuid(), StudentId = student.Id, KlasseId = klasse.Id, IsPaid = false, IstAktuell = false };
+        db.LevelEnrollments.AddRange(wiederholung, unbezahlter);
+        var aboKategorie = new FinanzKategorie { Id = Guid.NewGuid(), Bezeichnung = "Abonnement", Richtung = FinanzRichtung.Einnahme, SystemCode = FinanzSystemCode.SkoulouAppAboZahlung };
+        db.FinanzKategorien.Add(aboKategorie);
+        foreach (var (enrollment, schoolId) in new[] { (erster, schule.Id), (wiederholung, schule.Id), (unbezahlter, schule.Id), (erster, andereSchule.Id) })
+        {
+            db.FinanzBuchungen.Add(new FinanzBuchung
+            {
+                Id = Guid.NewGuid(), SchulID = schoolId, KategorieID = aboKategorie.Id,
+                Richtung = FinanzRichtung.Einnahme, Betrag = 12_500m, HerkunftReferenzID = enrollment.Id
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var uebersicht = await new FinanzService(db).GetDirektorKontostandUebersichtAsync(schule.Id);
+
+        Assert.Equal(1, uebersicht.SchuelerMitBezahltemAboAnzahl);
+    }
+
+    [Fact]
     public async Task GetDirektorKontostandUebersichtAsync_TrenntSchulbewegungenUndAboAnteileVomVerfuegbarenSaldo()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -742,6 +826,7 @@ public class FinanzServiceTests
             new FinanzFilter { Richtung = FinanzRichtung.Ausgabe });
 
         Assert.Equal(20_000m, uebersicht.SkoulouAppAboEingenommen);
+        Assert.Equal(1, uebersicht.SchuelerMitBezahltemAboAnzahl);
         Assert.Equal(800m, uebersicht.SchulleiterAboAnteil);
         Assert.Equal(1_600m, uebersicht.LehrerAboAnteil);
         Assert.Equal(17_600m, uebersicht.SkoulouAppAboAnteil);

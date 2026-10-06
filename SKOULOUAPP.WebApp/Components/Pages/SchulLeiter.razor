@@ -1258,10 +1258,11 @@
                 else
                 {
                     <label class="mt-3 flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceMenu" @bind-Value:after="OnCoordinatorFinanceMenuChanged" />Afficher le menu Finances</label>
-                    <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceDashboard" disabled="@(!coordinatorFinanceMenu)" />Finances de l'école</label>
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceEntries" disabled="@(!coordinatorFinanceMenu)" />Nouvelle écriture</label>
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceCycles" disabled="@(!coordinatorFinanceMenu)" />Paiements des cycles</label>
+                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceBilling" disabled="@(!coordinatorFinanceMenu)" />Facturation SKOULOUAPP</label>
                     </div>
                     @if (!coordinatorFinanceMenu || !coordinatorFinanceCycles)
                     {

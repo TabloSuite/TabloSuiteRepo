@@ -53,9 +53,26 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             : default;
     }
 
+    public async Task<bool> CanAccessBillingAsync(Guid userId, Guid schoolId, CancellationToken cancellationToken = default)
+    {
+        var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
+                           join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+                           where userRole.UserId == userId
+                           select role.Name).ToListAsync(cancellationToken);
+
+        if (roles.Contains(Rollen.SuperAdmin)) return true;
+        if (roles.Contains(Rollen.ProduktOwner))
+            return await dbContext.UserSchools.AsNoTracking().AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
+
+        return await dbContext.UserSchools.AsNoTracking().AnyAsync(link => link.AppUserId == userId
+            && link.SchoolId == schoolId && link.CanManageStudents
+            && (roles.Contains(Rollen.SchulLeiter)
+                || roles.Contains(Rollen.Koordinator) && link.CanAccessFinances && link.CanAccessBilling), cancellationToken);
+    }
+
     public async Task<(bool Succeeded, string Message)> SetCoordinatorFinanceAccessAsync(
         Guid directorId, Guid coordinatorId, Guid schoolId, bool menu, bool dashboard, bool entries, bool cycles,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool? billing = null)
     {
         var director = await GetFinanceAccessAsync(directorId, schoolId, cancellationToken: cancellationToken);
         var isDirector = await (from userRole in dbContext.UserRoles.AsNoTracking()
@@ -77,11 +94,12 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             return (false, "Sélectionnez un coordinateur de l'école.");
         }
 
-        menu = menu && (dashboard || entries || cycles);
+        menu = menu && (dashboard || entries || cycles || billing == true || billing is null && link.CanAccessBilling);
         link.CanAccessFinances = menu;
         link.CanViewFinanceDashboard = menu && dashboard;
         link.CanCreateFinanceEntries = menu && entries;
         link.CanManageCyclePayments = menu && cycles;
+        link.CanAccessBilling = menu && (billing ?? link.CanAccessBilling);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (true, menu ? "Accès financier du coordinateur mis à jour." : "Accès financier du coordinateur désactivé.");
     }
@@ -1355,7 +1373,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
     }
 
     public async Task<FinanzBericht?> GetFinanzBerichtAsync(
-        Guid userId, bool istSuperAdmin, FinanzFilter filter, CancellationToken cancellationToken = default)
+        Guid userId, bool istSuperAdmin, FinanzFilter filter, CancellationToken cancellationToken = default, bool mitAbos = false)
     {
         if (filter.SchulID is not Guid schoolId || userId == Guid.Empty || filter.Von > filter.Bis)
         {
@@ -1387,7 +1405,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         };
 
         var uebersicht = await GetUebersichtAsync(berichtFilter, cancellationToken);
-        return new FinanzBericht(name, berichtFilter, uebersicht);
+        return new FinanzBericht(name, berichtFilter, uebersicht, mitAbos);
     }
 
     // -------------------- UI-Lesemethoden --------------------
@@ -1413,7 +1431,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         return await dbContext.Schools
             .Where(x => x.IsActive && (isAdmin || x.UserSchools.Any(link => link.AppUserId == userId
                 && (isOwner || link.CanManageStudents && (isDirector || link.CanAccessFinances
-                    && (link.CanViewFinanceDashboard || link.CanCreateFinanceEntries || link.CanManageCyclePayments))))))
+                    && (link.CanViewFinanceDashboard || link.CanCreateFinanceEntries || link.CanManageCyclePayments || link.CanAccessBilling))))))
             .OrderBy(x => x.Name)
             .Select(x => new FinanzAuswahl { Id = x.Id, Name = x.Name })
             .ToListAsync(cancellationToken);
@@ -1568,6 +1586,15 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboZahlung
                 && zeile.Richtung == FinanzRichtung.Einnahme)
             .Sum(zeile => zeile.Betrag);
+        var schuelerMitBezahltemAboAnzahl = await (
+            from buchung in dbContext.FinanzBuchungen.AsNoTracking()
+            join enrollment in dbContext.LevelEnrollments.AsNoTracking()
+                on buchung.HerkunftReferenzID equals (Guid?)enrollment.Id
+            where buchung.SchulID == schulId
+                && buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung
+                && buchung.Richtung == FinanzRichtung.Einnahme
+                && enrollment.IsPaid
+            select enrollment.StudentId).Distinct().CountAsync(cancellationToken);
         var lehrerAboAnteil = finanzUebersicht.Zeilen
             .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
                 && zeile.Richtung == FinanzRichtung.Ausgabe)
@@ -1598,6 +1625,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             SonstigeEinnahmen = sonstigeEinnahmen,
             BetrieblicheAusgaben = betrieblicheAusgaben,
             SkoulouAppAboEingenommen = skoulouAppAboEingenommen,
+            SchuelerMitBezahltemAboAnzahl = schuelerMitBezahltemAboAnzahl,
             SchulleiterAboAnteil = schulleiterAboAnteil,
             LehrerAboAnteil = lehrerAboAnteil,
             SkoulouAppAboAnteil = skoulouAppAboAnteil

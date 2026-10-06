@@ -1,8 +1,8 @@
 @namespace SkoulouApp.WebApp.Components.Shared
 
-<div class="relative inline-block text-left">
+<div class="relative text-left @(Compact ? "w-full min-w-0" : "inline-block")">
     <button type="button"
-            class="flex min-w-[13rem] items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-indigo-400 focus:border-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            class="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-indigo-400 focus:border-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 @(Compact ? "w-full min-w-0" : "min-w-[13rem]")"
             disabled="@IsDisabled"
             @onclick="Toggle">
         <span class="@(Value is null ? "text-slate-400" : "font-semibold text-slate-800")">

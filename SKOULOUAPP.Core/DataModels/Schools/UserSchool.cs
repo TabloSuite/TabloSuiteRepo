@@ -19,6 +19,7 @@ public class UserSchool
     public bool CanViewFinanceDashboard { get; set; }
     public bool CanCreateFinanceEntries { get; set; }
     public bool CanManageCyclePayments { get; set; }
+    public bool CanAccessBilling { get; set; }
 }
 
 

@@ -291,6 +291,7 @@ app.MapGet("/finanzen/rapport/pdf-file", async (
     DateTime? to,
     FinanzRichtung? direction,
     FinanzSortierung? sort,
+    bool? withSubscriptions,
     ClaimsPrincipal user,
     FinanzService finanzService,
     FinanzBerichtPdfService pdfService,
@@ -306,11 +307,11 @@ app.MapGet("/finanzen/rapport/pdf-file", async (
         Bis = to,
         Richtung = direction,
         Sortierung = sort ?? FinanzSortierung.WirkungsdatumAbsteigend
-    }, cancellationToken);
+    }, cancellationToken, withSubscriptions == true);
     if (bericht is null) return Results.NotFound();
 
     var bytes = pdfService.Generate(bericht);
-    return Results.File(bytes, "application/pdf");
+    return Results.File(bytes, "application/pdf", fileDownloadName: $"rapport-financier-{schoolId:N}-{DateTime.UtcNow:yyyyMMdd}.pdf");
 }).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.ProduktOwner, Rollen.SchulLeiter, Rollen.Koordinator));
 
 app.MapGet("/finanzen/justificatif/{buchungId:guid}", async (

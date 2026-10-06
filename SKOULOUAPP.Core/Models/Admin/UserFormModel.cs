@@ -60,4 +60,5 @@ public class CoordinatorFinanceAccessFormModel
     public bool Dashboard { get; set; }
     public bool Entries { get; set; }
     public bool Cycles { get; set; }
+    public bool Billing { get; set; }
 }

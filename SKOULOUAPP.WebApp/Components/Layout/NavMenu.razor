@@ -184,18 +184,9 @@
                     <div class="nav-item">
                         <NavLink class="nav-link" href="finanzen" data-enhance-nav="false">
                             <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span>
-                            <span>@(financeState.User.IsInRole("ProduktOwner") ? "Finances des écoles (lecture seule)" : "Comptabilité & infos SKOULOUAPPABO")</span>
+                            <span>@(financeState.User.IsInRole("ProduktOwner") ? "Finances des écoles (lecture seule)" : "Comptabilité et paiements")</span>
                         </NavLink>
                     </div>
-                    @if (financeState.User.IsInRole("SchulLeiter") || financeState.User.IsInRole("Koordinator") && coordinatorHasFinanceAccess)
-                    {
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="abrechnung" data-enhance-nav="false">
-                                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span>
-                                <span>Facturations SKOULOUAPP</span>
-                            </NavLink>
-                        </div>
-                    }
                 }
                 }
             </Authorized>

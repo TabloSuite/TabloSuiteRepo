@@ -1812,8 +1812,8 @@ public class DashboardServiceTests
             SchoolIds = [schoolA.Id, schoolB.Id],
             CoordinatorFinanceAccesses =
             [
-                new() { SchoolId = schoolA.Id, Menu = true, Dashboard = true, Entries = true },
-                new() { SchoolId = schoolB.Id, Menu = true, Dashboard = true, Entries = true }
+                new() { SchoolId = schoolA.Id, Menu = true, Dashboard = true, Entries = true, Billing = true },
+                new() { SchoolId = schoolB.Id, Menu = true, Dashboard = true, Entries = true, Billing = true }
             ]
         });
 
@@ -1841,10 +1841,12 @@ public class DashboardServiceTests
         Assert.True(financeA.CanViewFinanceDashboard);
         Assert.True(financeA.CanCreateFinanceEntries);
         Assert.False(financeA.CanManageCyclePayments);
+        Assert.True(financeA.CanAccessBilling);
         Assert.True(financeB.CanAccessFinances);
         Assert.True(financeB.CanViewFinanceDashboard);
         Assert.True(financeB.CanCreateFinanceEntries);
         Assert.False(financeB.CanManageCyclePayments);
+        Assert.True(financeB.CanAccessBilling);
     }
 
     [Fact]
@@ -1879,6 +1881,7 @@ public class DashboardServiceTests
         Assert.False(link.CanViewFinanceDashboard);
         Assert.True(link.CanCreateFinanceEntries);
         Assert.True(link.CanManageCyclePayments);
+        Assert.False(link.CanAccessBilling);
     }
 
     [Fact]

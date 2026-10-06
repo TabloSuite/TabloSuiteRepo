@@ -1,5 +1,11 @@
 # Copilot Instructions
 
+## Technischer Einstieg
+- Die aktuelle Architektur, der Zweck der Anwendung, lokale Startschritte, Datenbank-/Migrationsabläufe und wichtige Einstiegspunkte stehen in [`docs/Projektuebersicht.md`](../docs/Projektuebersicht.md). Vor Änderungen an Geschäftsregeln den dort beschriebenen Schul-, Rollen- und Datenfluss mit dem tatsächlichen Code abgleichen; ältere Dokumente in `docs/` können historische Momentaufnahmen sein.
+- Solution: `SKOULOUAPPMAPPE.slnx` mit `SKOULOUAPP.WebApp` (Blazor Interactive Server, Identity, EF Core/SQL Server, Migrationen), `SKOULOUAPP.Core` (Modelle/Services) und `SKOULOUAPP.Tests` (xUnit). Zielplattform: .NET 10.
+- Pro Datenbankoperation in Blazor einen eigenen Context über `IDbContextFactory` verwenden; Schul- und Koordinatorberechtigungen auch im Service bzw. Endpunkt prüfen, nicht nur in Navigation oder Tabs. Bei Modelländerungen EF-Migration erstellen und den Stand der tatsächlich verwendeten Datenbank prüfen. Niemals vorhandene Entwicklungsdaten zurücksetzen, um Schemafehler zu verdecken.
+- Für Änderungen relevante Tests und den Lösungsbuild ausführen. App-Texte bleiben französisch; Kommunikation und Entwicklerdokumentation dürfen deutsch sein. Bestehende fachliche Regeln unten werden durch diesen Wegweiser nicht ersetzt.
+
 ## General Guidelines
 - Die App soll in Texten und Darstellung als allgemeine Verwaltungsplattform für Schulen, Universitäten, Sprachschulen oder Nachhilfeeinrichtungen formuliert sein, nicht nur für klassische Schulen.
 - Alle sichtbaren Nutzertexte der App müssen ausschließlich auf Französisch sein; keine deutschen Bezeichnungen wie „Klassen“ verwenden.
@@ -114,3 +120,6 @@
 - Der Nutzer erwartet proaktiv, dass ich Verbesserungen prüfe und meine konkrete Empfehlung frühzeitig mitteile, statt nur punktuell umzusetzen.
 - Der Nutzer möchte kreative, umfassende UI-Verschönerungen und überlässt die gestalterischen Entscheidungen weitgehend. 
 - Der Nutzer schätzt proaktives Mitdenken bei Codeänderungen, insbesondere sinnvolle Modellverbesserungen vor einer Migration.
+
+## Facturation
+- Auf der Facturation-Seite soll „Jusqu'à maintenant“ als Schaltfläche direkt neben dem Kalender/DatePicker stehen; die vorherige Änderung der DatePicker-Beschriftung war nicht die gemeinte Änderung.

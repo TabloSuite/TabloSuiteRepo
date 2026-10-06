@@ -10,7 +10,8 @@ public sealed class FinanzBerichtPdfService
 {
     public byte[] Generate(FinanzBericht bericht)
     {
-        var rows = bericht.Uebersicht.Zeilen;
+        var darstellung = bericht.Darstellung;
+        var rows = darstellung.Zeilen;
         return Document.Create(container => container.Page(page =>
         {
             page.Size(PageSizes.A4);
@@ -28,10 +29,23 @@ public sealed class FinanzBerichtPdfService
                 content.Spacing(12);
                 content.Item().Row(summary =>
                 {
-                    summary.RelativeItem().Text($"Recettes : {bericht.Uebersicht.SummeEinnahmen:N0} FCFA").SemiBold().FontColor(Colors.Green.Darken2);
-                    summary.RelativeItem().Text($"Dépenses : {bericht.Uebersicht.SummeAusgaben:N0} FCFA").SemiBold().FontColor(Colors.Red.Darken2);
+                    summary.RelativeItem().Text($"Recettes : {darstellung.Einnahmen:N0} FCFA").SemiBold().FontColor(Colors.Green.Darken2);
+                    summary.RelativeItem().Text($"Dépenses école + part plateforme : {darstellung.Ausgaben:N0} FCFA").SemiBold().FontColor(Colors.Red.Darken2);
                 });
-                content.Item().Text($"Solde : {bericht.Uebersicht.Saldo:N0} FCFA").Bold().FontSize(15);
+                content.Item().Text($"Solde revenant à l'école : {darstellung.Saldo:N0} FCFA").Bold().FontSize(15);
+                if (bericht.MitAbos && darstellung.HatAboBuchungen)
+                {
+                    content.Item().Background(Colors.Blue.Lighten5).Padding(10).Column(abo =>
+                    {
+                        abo.Item().Text($"Abonnements SKOULOUAPP · {darstellung.AboZahlungenAnzahl} paiement(s) regroupé(s)").Bold();
+                        abo.Item().Text($"Recettes : {darstellung.AboEinnahmen:N0} FCFA · Part plateforme déduite : {darstellung.AboAusgaben:N0} FCFA");
+                        abo.Item().Text($"Part enseignants conservée : {darstellung.Lehreranteil:N0} FCFA");
+                        abo.Item().Text(darstellung.Direktionsanteil is decimal part
+                            ? $"Part direction (information, non ajoutée aux recettes) : {part:N0} FCFA"
+                            : "Part direction complète : sélectionner recettes et dépenses.");
+                    });
+                }
+                content.Item().Text("Écritures détaillées").SemiBold();
                 content.Item().Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
@@ -64,7 +78,7 @@ public sealed class FinanzBerichtPdfService
                     }
                 });
                 if (rows.Count == 0)
-                    content.Item().Text("Aucune écriture pour les filtres sélectionnés.").Italic();
+                    content.Item().Text("Aucune écriture détaillée pour les filtres sélectionnés.").Italic();
             });
             page.Footer().AlignRight().Text(text =>
             {

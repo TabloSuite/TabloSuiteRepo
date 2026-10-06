@@ -16,12 +16,13 @@ public partial class FinanzBericht
     [SupplyParameterFromQuery(Name = "to")] public DateTime? To { get; set; }
     [SupplyParameterFromQuery(Name = "direction")] public string? DirectionValue { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? SortValue { get; set; }
+    [SupplyParameterFromQuery(Name = "withSubscriptions")] public bool WithSubscriptions { get; set; }
 
     private SkoulouApp.Core.Services.FinanzBericht? bericht;
     private string? error;
 
     private string PdfUrl => $"/finanzen/rapport/pdf-file?{Query}";
-    private string Query => $"schoolId={SchoolId:D}&sort={ParseSort(SortValue) ?? FinanzSortierung.WirkungsdatumAbsteigend}"
+    private string Query => $"schoolId={SchoolId:D}&sort={ParseSort(SortValue) ?? FinanzSortierung.WirkungsdatumAbsteigend}&withSubscriptions={WithSubscriptions.ToString().ToLowerInvariant()}"
         + (From.HasValue ? $"&from={From:yyyy-MM-dd}" : string.Empty)
         + (To.HasValue ? $"&to={To:yyyy-MM-dd}" : string.Empty)
         + (ParseDirection(DirectionValue) is { } direction ? $"&direction={direction}" : string.Empty);
@@ -59,7 +60,7 @@ public partial class FinanzBericht
                 Bis = To,
                 Richtung = ParseDirection(DirectionValue),
                 Sortierung = ParseSort(SortValue) ?? FinanzSortierung.WirkungsdatumAbsteigend
-            }, ComponentToken);
+            }, ComponentToken, WithSubscriptions);
             error = bericht is null ? "Ce rapport n'est pas disponible pour cette école ou ces filtres." : null;
         }
         catch (Exception ex) when (IstAbbruch(ex)) { }

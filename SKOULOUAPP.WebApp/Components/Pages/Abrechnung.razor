@@ -10,6 +10,8 @@
 <PageTitle>Facturation SKOULOUAPP</PageTitle>
 
 <section class="grid gap-6">
+    @if (!Embedded)
+    {
     <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
         <div class="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-emerald-400/25 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl"></div>
@@ -25,15 +27,20 @@
             </p>
         </div>
     </div>
+    }
 
     <Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
     <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
-    @if (schools.Count == 0)
+    @if (!schoolsLoaded)
+    {
+        <div class="rounded-[2rem] bg-white px-6 py-5 text-sm font-semibold text-slate-700 ring-1 ring-slate-100">Chargement des écoles...</div>
+    }
+    else if (schools.Count == 0)
     {
         <div class="rounded-[2rem] bg-slate-50 px-6 py-5 text-slate-700 ring-1 ring-slate-100">
-            <h2 class="text-lg font-black text-slate-900">Aucune école disponible</h2>
-            <p class="mt-2 text-sm leading-6">Une facturation peut être créée dès qu'une école est disponible.</p>
+            <h2 class="text-lg font-black text-slate-900">Aucune école attribuée pour la facturation</h2>
+            <p class="mt-2 text-sm leading-6">Aucune école avec accès financier n'est liée à votre compte. Contactez l'administration si vous devriez avoir accès à une école.</p>
         </div>
     }
     else
@@ -102,7 +109,7 @@
         </div>
     }
 
-    <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8" style="@(isReadOnly && schools.Count <= 1 ? "display:none" : null)">
+    <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8" style="@(Embedded || isReadOnly && schools.Count <= 1 ? "display:none" : null)">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-xl font-black text-slate-900">Écoles</h2>
             @if (schools.Count > 1)
@@ -219,23 +226,25 @@
 
             <div class="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
                     <div>
-                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Fin de la période de facturation</label>
-                        <TailwindDateTimePicker @bind-Value="filterBisLokal" />
-                        <p class="mt-1 text-xs text-slate-500">Le début est automatique : fin de la dernière facturation.</p>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Afficher jusqu’au (date et heure)</label>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <TailwindDateTimePicker @bind-Value="filterBisLokal" />
+                            @if (filterBisLokal is not null)
+                            {
+                                <button type="button"
+                                        class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                                        @onclick="ResetFilterAsync">
+                                    Jusqu'à maintenant
+                                </button>
+                            }
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Ce filtre ne clôture pas le cycle de la classe. Sans filtre, les abonnements sont affichés jusqu'à maintenant.</p>
                     </div>
                     <button type="button"
                             class="rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
                             @onclick="ApplyFilterAsync">
                         Filtrer
                     </button>
-                    @if (filterBisLokal is not null)
-                    {
-                        <button type="button"
-                                class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                                @onclick="ResetFilterAsync">
-                            Réinitialiser
-                        </button>
-                    }
                 </div>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -248,6 +257,11 @@
                     <div class="mt-1 text-sm text-emerald-50">Chiffre d'affaires ouvert</div>
                 </div>
             </div>
+
+            @if (uebersicht.AnzahlAbonnements == 0 && historie.Count == 0)
+            {
+                <p class="mt-4 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900">Aucun abonnement payé à facturer et aucune facturation enregistrée pour cette école pour le moment.</p>
+            }
 
             <div class="mt-6 flex justify-end">
                 @if (CanManageBilling)

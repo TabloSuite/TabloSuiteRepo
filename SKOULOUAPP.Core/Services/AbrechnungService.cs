@@ -461,7 +461,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         return await dbContext.UserSchools.AnyAsync(link => link.AppUserId == benutzerId
             && link.SchoolId == schulId && link.CanManageStudents
             && (rollen.Contains(Rollen.SchulLeiter)
-                || (rollen.Contains(Rollen.Koordinator) && link.CanAccessFinances && link.CanManageCyclePayments)),
+                || (rollen.Contains(Rollen.Koordinator) && link.CanAccessFinances && link.CanAccessBilling)),
             cancellationToken);
     }
 

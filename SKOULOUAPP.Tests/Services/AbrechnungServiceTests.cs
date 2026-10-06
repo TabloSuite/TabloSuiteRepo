@@ -553,7 +553,7 @@ public class AbrechnungServiceTests
     }
 
     [Fact]
-    public async Task SchulLeiterStatusSetzenAsync_KoordinatorBrauchtCycleRechtDerRechnungsschule()
+    public async Task SchulLeiterStatusSetzenAsync_KoordinatorBrauchtBillingRechtDerRechnungsschule()
     {
         using var db = TestDbContext.CreateInMemory();
         var (schule, _, _) = SeedBasis(db);
@@ -581,7 +581,7 @@ public class AbrechnungServiceTests
         link.CanManageCyclePayments = false;
         await db.SaveChangesAsync();
         Assert.False((await service.SchulLeiterStatusSetzenAsync(periode.Id, true, schulLeiterId: koordinator.Id)).Succeeded);
-        link.CanManageCyclePayments = true;
+        link.CanAccessBilling = true;
         await db.SaveChangesAsync();
         Assert.False((await service.SchulLeiterStatusSetzenAsync(fremdePeriode.Id, true, schulLeiterId: koordinator.Id)).Succeeded);
 

@@ -858,6 +858,7 @@ public partial class SchulLeiter
     private bool coordinatorFinanceDashboard;
     private bool coordinatorFinanceEntries;
     private bool coordinatorFinanceCycles;
+    private bool coordinatorFinanceBilling;
     private bool coordinatorFinanceHadDifferentAccess;
 
     private void OnCoordinatorFinanceMenuChanged()
@@ -867,6 +868,7 @@ public partial class SchulLeiter
         coordinatorFinanceDashboard = false;
         coordinatorFinanceEntries = false;
         coordinatorFinanceCycles = false;
+        coordinatorFinanceBilling = false;
     }
 
     private void ResetCoordinatorFinanceDraft()
@@ -875,6 +877,7 @@ public partial class SchulLeiter
         coordinatorFinanceDashboard = false;
         coordinatorFinanceEntries = false;
         coordinatorFinanceCycles = false;
+        coordinatorFinanceBilling = false;
         coordinatorFinanceHadDifferentAccess = false;
     }
 
@@ -884,6 +887,7 @@ public partial class SchulLeiter
         coordinatorFinanceDashboard = false;
         coordinatorFinanceEntries = true;
         coordinatorFinanceCycles = true;
+        coordinatorFinanceBilling = true;
     }
 
     private void SetCoordinatorSchoolAssignment(Guid schoolId, bool isAssigned)
@@ -1581,12 +1585,13 @@ public partial class SchulLeiter
         if (!isKoordinator && model.RoleName == Rollen.Koordinator)
         {
             var accesses = model.CoordinatorFinanceAccesses;
-            coordinatorFinanceHadDifferentAccess = accesses.Select(access => (access.Menu, access.Dashboard, access.Entries, access.Cycles))
+            coordinatorFinanceHadDifferentAccess = accesses.Select(access => (access.Menu, access.Dashboard, access.Entries, access.Cycles, access.Billing))
                 .Distinct().Count() > 1;
             coordinatorFinanceMenu = accesses.Count == model.SchoolIds.Count && accesses.All(access => access.Menu);
             coordinatorFinanceDashboard = coordinatorFinanceMenu && accesses.All(access => access.Dashboard);
             coordinatorFinanceEntries = coordinatorFinanceMenu && accesses.All(access => access.Entries);
             coordinatorFinanceCycles = coordinatorFinanceMenu && accesses.All(access => access.Cycles);
+            coordinatorFinanceBilling = coordinatorFinanceMenu && accesses.All(access => access.Billing);
         }
         teacherClassReferenceFilter = null;
         await LoadUserFormKlassenAsync();
@@ -1703,7 +1708,7 @@ public partial class SchulLeiter
 
         if (!isKoordinator && userForm.RoleName == Rollen.Koordinator)
         {
-            var menu = coordinatorFinanceMenu && (coordinatorFinanceDashboard || coordinatorFinanceEntries || coordinatorFinanceCycles);
+            var menu = coordinatorFinanceMenu && (coordinatorFinanceDashboard || coordinatorFinanceEntries || coordinatorFinanceCycles || coordinatorFinanceBilling);
             userForm.CoordinatorFinanceAccesses = userForm.SchoolIds.Select(schoolId =>
                 new CoordinatorFinanceAccessFormModel
                 {
@@ -1711,7 +1716,8 @@ public partial class SchulLeiter
                     Menu = menu,
                     Dashboard = menu && coordinatorFinanceDashboard,
                     Entries = menu && coordinatorFinanceEntries,
-                    Cycles = menu && coordinatorFinanceCycles
+                    Cycles = menu && coordinatorFinanceCycles,
+                    Billing = menu && coordinatorFinanceBilling
                 }).ToList();
         }
 
