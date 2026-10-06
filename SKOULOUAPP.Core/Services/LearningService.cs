@@ -511,14 +511,14 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             {
                 foreach (var option in exercise.Options.OrderBy(option => option.Order))
                 {
-                    textParts.Add($"<p>○ {WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
+                    textParts.Add($"<p><span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:50%;vertical-align:middle;margin-right:8px;\"></span>{WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
                 }
             }
             else if (normalizedType is "MultipleChoice" or "AudioMultipleChoice")
             {
                 foreach (var option in exercise.Options.OrderBy(option => option.Order))
                 {
-                    textParts.Add($"<p>□ {WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
+                    textParts.Add($"<p><span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:2px;vertical-align:middle;margin-right:8px;\"></span>{WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text))}</p>");
                 }
             }
             else if (normalizedType == "GapFill")

@@ -5,7 +5,7 @@
 <PageTitle>Administrateur · Finances</PageTitle>
 
 <section class="grid gap-6">
-    <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+    <div class="skoulou-hero relative overflow-hidden rounded-[1.25rem] px-5 py-4 text-white shadow-2xl sm:px-6 sm:py-5">
         <div class="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-emerald-400/25 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl"></div>
         <div class="relative">
@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <div class="school-page-tabs flex flex-wrap gap-2" aria-label="Rubriques financières">
+    <div class="director-sticky-band school-page-tabs flex flex-wrap gap-2" aria-label="Rubriques financières">
         <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(activeTab == "centre" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")" aria-current="@(activeTab == "centre" ? "page" : null)" @onclick='() => activeTab = "centre"'>Vue d'ensemble</button>
         <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(activeTab == "ecoles" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")" aria-current="@(activeTab == "ecoles" ? "page" : null)" @onclick='() => activeTab = "ecoles"'>Finances des écoles</button>
     </div>

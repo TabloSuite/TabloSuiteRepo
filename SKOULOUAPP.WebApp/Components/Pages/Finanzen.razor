@@ -1,4 +1,4 @@
-@page "/finanzen"
+﻿@page "/finanzen"
 @attribute [Authorize(Roles = "SchulLeiter,Koordinator,SuperAdmin,ProduktOwner")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits SkoulouApp.WebApp.Components.CancelableComponentBase
@@ -9,7 +9,7 @@
 <PageTitle>Finances</PageTitle>
 
 <section class="pdf-export-container flex flex-col gap-4">
-    <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl">
+    <div class="skoulou-hero relative overflow-hidden rounded-[1.25rem] px-5 py-4 text-white shadow-2xl">
         <div class="relative">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Gestion financière</p>
             <h1 class="mt-3 text-3xl font-black">Recettes &amp; dépenses de l'école</h1>
@@ -34,27 +34,29 @@
     }
     else
     {
+        <div class="director-sticky-band print:hidden">
         @if (schulen.Count > 1)
         {
-            <div class="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow ring-1 ring-slate-100">
-                <ModernDropdown TValue="Guid?" Label="École" Value="aktiveSchulID" ValueChanged="SchuleWechselnAsync" Options="SchulOptionen" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
+            <div class="mb-2 flex flex-wrap items-center gap-3 pr-14 sm:pr-16">
+                <ModernDropdown TValue="Guid?" Value="aktiveSchulID" ValueChanged="SchuleWechselnAsync" Options="SchulOptionen" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
                 <span class="text-xs font-medium text-slate-500">Toutes les données affichées concernent l'école sélectionnée.</span>
             </div>
         }
         else if (schulen.Count == 1)
         {
-            <div class="rounded-2xl bg-cyan-50 px-5 py-4 text-sm font-semibold text-cyan-800 ring-1 ring-cyan-100">École gérée : @schulen[0].Name</div>
+            <div class="mb-2 pr-14 text-sm font-semibold text-slate-800 sm:pr-16">École gérée : <span class="text-cyan-700">@schulen[0].Name</span></div>
         }
 
         <Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
         <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
         @* Tabs *@
-        <div class="school-page-tabs print:hidden">
+        <div class="school-page-tabs">
             @if (canViewDashboard) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Finances de l'école</button> }
             @if (canCreateEntries) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button> }
             @if (canManageCycles) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button> }
             @if (canAccessBilling) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "facturation" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("facturation")'>Facturation SKOULOUAPP</button> }
+        </div>
         </div>
 
         @if (aktiverTab == "facturation" && canAccessBilling && aktiveSchulID is Guid billingSchoolId)
@@ -450,7 +452,7 @@
                         <label class="group relative mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/50 px-4 py-3 transition hover:border-cyan-500 hover:bg-cyan-50 focus-within:ring-2 focus-within:ring-cyan-400">
                             <span class="flex min-w-0 items-center gap-3">
                                 <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-xl text-cyan-700 shadow-sm" aria-hidden="true">📄</span>
-                                <span class="min-w-0"><span class="block truncate text-sm font-bold text-slate-800">@(buchungBelegDatei?.Name ?? "Ajouter un justificatif")</span><span class="block text-xs text-slate-500">PDF, JPG ou PNG · 5 Mo max.</span></span>
+                                <span class="min-w-0"><span class="block truncate text-sm font-bold text-slate-800">@(buchungBelegDatei?.Name ?? "Ajouter un justificatif")</span><span class="block text-xs text-slate-500">PDF, JPG ou PNG · 25 Mo max.</span></span>
                             </span>
                             <span class="shrink-0 rounded-full bg-cyan-700 px-3 py-2 text-xs font-bold text-white transition group-hover:bg-cyan-800">Parcourir</span>
                             <InputFile @key="buchungBelegInputVersion" OnChange="BelegDateiWaehlen" accept=".pdf,.jpg,.jpeg,.png" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Choisir un justificatif facultatif" />
@@ -485,7 +487,7 @@
                 </div>
                 <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ModernDropdown TValue="string?" Label="Statut" Value="durchlaufStatusFilter" ValueChanged="SetDurchlaufStatusFilterAsync" Options="DurchlaufStatusOptionen" />
-                    <ModernDropdown TValue="Guid?" Label="Classe" Value="durchlaufKlasseFilterId" ValueChanged="SetDurchlaufKlasseFilterAsync" Options="DurchlaufKlasseOptionen" />
+                    <ModernDropdown TValue="Guid?" Label="Classe" Searchable="true" SearchPlaceholder="Rechercher une classe..." Value="durchlaufKlasseFilterId" ValueChanged="SetDurchlaufKlasseFilterAsync" Options="DurchlaufKlasseOptionen" />
                 </div>
                 <div class="mt-3">
                     <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Rechercher un élève</label>
@@ -642,51 +644,64 @@
 
 @* -------------------- Beenden-Bestätigung (Modal) -------------------- *@
 <AbschlussNotenDialog @bind-Open="abschlussNotenOpen" DurchlaufId="abschlussNotenDurchlaufId" BearbeiterId="currentUserId" />
-@if (beendenDurchlauf is not null)
-{
-    <div class="fixed inset-0 z-[2200] flex items-center justify-center bg-black/40 p-6 sm:p-8">
-        <div class="skoulou-modal-surface w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <div class="skoulou-modal-scroll">
-            <h3 class="text-lg font-bold text-slate-800">Clôturer le cycle @beendenDurchlauf.NiveauCode ?</h3>
-            @if (beendenOffeneSchuld > 0)
-            {
-                <div class="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
-                ⚠ Dette ouverte : @beendenOffeneSchuld.ToString("N0") FCFA. Si tu continues, elle sera automatiquement comptabilisée comme perte de l'école.
-                </div>
-            }
-            @if (beendenOffeneSkoulouAppAbos > 0 && istDirektor)
-            {
-                <div class="mt-3 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-100">
-                    <p class="font-semibold">ℹ Abonnements SKOULOUAPP ouverts</p>
-                    <p class="mt-1">
-                        @beendenOffeneSkoulouAppAbos abonnement(s) payé(s) ne sont pas encore facturés
-                        (@beendenOffenerSkoulouAppUmsatz.ToString("N0") FCFA). En confirmant la clôture,
-                        le système générera automatiquement la facturation technique SKOULOUAPP pour cette école.
-                    </p>
-                    <p class="mt-1 text-xs font-semibold text-sky-700">
-                        Cette exception est uniquement liée à la clôture du cycle : elle ne donne pas au directeur le droit de créer librement des facturations SKOULOUAPP.
-                    </p>
-                </div>
-            }
-            @if (beendenOffeneSkoulouAppAbos > 0 && !istDirektor)
-            {
-                <p class="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP.</p>
-            }
-            <p class="mt-3 text-sm text-slate-600">Tu peux annuler pour encaisser d'abord les frais scolaires restants, ou continuer et clôturer le cycle. Après la clôture, aucun paiement échelonné n'est possible jusqu'à la réouverture pour la prochaine cohorte.</p>
-            <p class="mt-2 text-sm font-semibold text-rose-800">Avant la clôture, enregistre la note finale et la décision de chaque élève. Après la clôture, les élèves quitteront la classe et les résultats ne pourront plus être modifiés.</p>
-            <div class="mt-3">
-                <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Clôturer le</label>
-                <TailwindDateTimePicker Value="beendenDatum" ValueChanged="SetBeendenDatumAsync" ShowTime="false" />
-            </div>
-            <div class="mt-5 flex justify-end gap-2">
-                <button type="button" class="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700" @onclick="BeendenAbbrechen">Annuler</button>
-                @if (!istSuperAdmin)
-                {
-                    <button type="button" class="rounded-xl bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-800" @onclick="() => OpenAbschlussNoten(beendenDurchlauf.DurchlaufID)">Définir les notes finales</button>
-                }
-                <AsyncActionButton Class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
-            </div>
-            </div>
-        </div>
-    </div>
-}
+<ModalDialog @bind-Open="BeendenOffen"
+			 Title="Clôturer le cycle"
+			 Eyebrow="Cycle de classe"
+			 CloseOnBackdrop="false"
+			 MaxWidthClass="max-w-lg">
+	@if (beendenDurchlauf is not null)
+	{
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="flex items-start gap-3 rounded-2xl border-2 p-3 shadow-sm @(beendenOffeneSchuld > 0 ? "border-rose-300 bg-rose-50 text-rose-900" : "border-emerald-200 bg-emerald-50 text-emerald-900")">
+				<span class="text-xl" aria-hidden="true">@(beendenOffeneSchuld > 0 ? "💸" : "✅")</span>
+				<div>
+					<p class="text-[11px] font-bold uppercase tracking-wide @(beendenOffeneSchuld > 0 ? "text-rose-700" : "text-emerald-700")">Frais de scolarité impayés</p>
+					@if (beendenOffeneSchuld > 0)
+					{
+						<p class="text-xl font-black text-rose-700">@beendenOffeneSchuld.ToString("N0") FCFA</p>
+						<p class="mt-1 text-xs font-medium">Ce montant sera signalé comme perte dans le rapport financier.</p>
+					}
+					else
+					{
+						<p class="text-base font-black">Tout est payé</p>
+					}
+				</div>
+			</div>
+			<div class="flex items-start gap-3 rounded-2xl border-2 p-3 shadow-sm @(beendenOhneNote > 0 ? "border-amber-300 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900")">
+				<span class="text-xl" aria-hidden="true">@(beendenOhneNote > 0 ? "📝" : "✅")</span>
+				<div>
+					<p class="text-[11px] font-bold uppercase tracking-wide @(beendenOhneNote > 0 ? "text-amber-700" : "text-emerald-700")">Notes finales</p>
+					@if (beendenOhneNote > 0)
+					{
+						<p class="text-xl font-black text-amber-700">@beendenOhneNote / @beendenTeilnehmerGesamt <span class="text-sm font-bold">non définies</span></p>
+						<p class="mt-1 text-xs font-medium">Définis les notes finales avant de clôturer.</p>
+					}
+					else
+					{
+						<p class="text-base font-black">Toutes les notes sont définies</p>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+			<p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true">⚠️</span>Clôture définitive du cycle de classe</p>
+			<p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
+			<p class="mt-2 font-semibold">Toutes les notes finales et décisions doivent être enregistrées avant la clôture. Ensuite, elles ne pourront plus être modifiées et tous les élèves quitteront cette classe.</p>
+			<p class="mt-2">@(!istDirektor
+				? "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP."
+				: "Les abonnements SKOULOUAPP payés et non encore facturés seront facturés automatiquement lors de la clôture. Tu devras ensuite déclarer le virement dans Facturation SKOULOUAPP avant de démarrer un nouveau cycle.")</p>
+			@if (beendenOffeneSkoulouAppAbos > 0 && istDirektor)
+			{
+				<p class="mt-2 text-xs font-semibold text-sky-700">@beendenOffeneSkoulouAppAbos abonnement(s) payé(s) non encore facturé(s) (@beendenOffenerSkoulouAppUmsatz.ToString("N0") FCFA).</p>
+			}
+		</div>
+		<div class="mt-5">
+			<label class="skoulou-label">Date de fin effective</label>
+			<TailwindDateTimePicker Value="beendenDatum" ValueChanged="SetBeendenDatumAsync" ShowTime="false" />
+		</div>
+		<div class="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 md:flex-row md:flex-wrap md:justify-end">
+			<button type="button" class="w-full whitespace-nowrap rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 md:w-auto" @onclick="BeendenAbbrechen">Annuler</button>
+			<AsyncActionButton Class="w-full whitespace-nowrap rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 md:w-auto" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
+		</div>
+	}
+</ModalDialog>

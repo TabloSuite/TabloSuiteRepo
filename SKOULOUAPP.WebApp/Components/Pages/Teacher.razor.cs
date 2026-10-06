@@ -29,14 +29,12 @@ public partial class Teacher
     [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
 
-    private bool statusExpanded;
+    private bool statusExpanded = true;
 
-    private bool AllExpanded => statusExpanded;
-
-    private void ToggleAllSections()
-    {
-        statusExpanded = !statusExpanded;
-    }
+    private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolFilterOptions =>
+    [
+        .. teacherSchools.Select(school => new ModernDropdownOption<Guid?>(school.SchoolId, $"{school.SchoolName} · {school.City}"))
+    ];
 
     private int pendingCount => filteredStudents.Count(s => s.IsBlocked);
 
@@ -119,6 +117,7 @@ public partial class Teacher
             teacherSchools = await DashboardService.GetTeacherSchoolsAsync(userId, token);
             students = await DashboardService.GetTeacherStudentsAsync(userId, token);
             progress = await DashboardService.GetTeacherStudentProgressAsync(userId, token);
+            ApplyDefaultFilterSelection();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -144,9 +143,23 @@ public partial class Teacher
     private DateTime? enrolledFromDate;
     private DateTime? enrolledToDate;
 
+    private Guid? selectedKlasseId;
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseFilterOptions =>
+    [
+        .. students
+            .Where(s => s.CurrentKlasseId.HasValue && selectedSchoolId.HasValue && s.SchoolId == selectedSchoolId.Value)
+            .GroupBy(s => s.CurrentKlasseId!.Value)
+            .Select(g => new ModernDropdownOption<Guid?>(g.Key, g.First().CurrentLevelCode))
+            .OrderBy(o => o.Label)
+    ];
+
     private IReadOnlyList<StudentApprovalItem> filteredStudents =>
-        students
-            .Where(s => !selectedSchoolId.HasValue || s.SchoolId == selectedSchoolId.Value)
+        !selectedSchoolId.HasValue || !selectedKlasseId.HasValue
+            ? []
+            : students
+            .Where(s => s.SchoolId == selectedSchoolId.Value)
+            .Where(s => s.CurrentKlasseId == selectedKlasseId.Value)
             .Where(s => !enrolledFromDate.HasValue || s.EnrolledAtUtc.Date >= enrolledFromDate.Value.Date)
             .Where(s => !enrolledToDate.HasValue || s.EnrolledAtUtc.Date <= enrolledToDate.Value.Date)
             .ToList();
@@ -240,9 +253,37 @@ public partial class Teacher
         levelEnrollments = await DashboardService.GetStudentLevelEnrollmentsAsync(studentId);
     }
 
+    private void ApplyDefaultFilterSelection()
+    {
+        selectedSchoolId = null;
+        selectedKlasseId = null;
+        if (teacherSchools.Count != 1)
+        {
+            return;
+        }
+
+        var schoolId = teacherSchools[0].SchoolId;
+        var klasseIds = students
+            .Where(s => s.SchoolId == schoolId && s.CurrentKlasseId.HasValue)
+            .Select(s => s.CurrentKlasseId!.Value)
+            .Distinct()
+            .ToList();
+        selectedSchoolId = schoolId;
+        if (klasseIds.Count == 1)
+        {
+            selectedKlasseId = klasseIds[0];
+        }
+    }
+
     private void SelectSchool(Guid? schoolId)
     {
         selectedSchoolId = schoolId;
+        selectedKlasseId = null;
+    }
+
+    private void SelectKlasse(Guid? klasseId)
+    {
+        selectedKlasseId = klasseId;
     }
 
     private async Task RunDatabaseActionAsync(Func<Task> action)

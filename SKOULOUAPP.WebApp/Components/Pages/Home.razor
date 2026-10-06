@@ -95,7 +95,7 @@
 
 <section id="apropos" class="skoulou-full-bleed home-intro-section py-8 sm:py-10 lg:py-12">
     <div class="mx-auto grid max-w-7xl gap-6 px-2 sm:px-6 lg:grid-cols-[1.25fr_0.75fr] lg:px-8 2xl:max-w-[96rem]">
-        <div class="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/70 sm:p-7 lg:p-9">
+        <div class="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/70 sm:p-6 lg:p-7">
             <span class="inline-flex max-w-full items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-slate-700 ring-1 ring-slate-200">
                 <span class="h-1.5 w-1.5 rounded-full bg-[var(--skoulou-accent-2)]"></span>
                 Présentation
@@ -187,8 +187,72 @@
     </div>
 </section>
 
+<section id="fonctionnalites" class="skoulou-full-bleed py-8 sm:py-12">
+    <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 2xl:max-w-[96rem]">
+        @if (aktiveSchulenAnzahl is > 0 && aktiveSchuelerAnzahl is not null)
+        {
+            <div class="mb-8 grid grid-cols-2 gap-3 sm:gap-4">
+                <div class="rounded-[1.5rem] border border-slate-100 bg-white p-5 text-center shadow-lg shadow-slate-200/70">
+                    <div class="text-3xl font-black text-[var(--skoulou-accent-1)] sm:text-5xl">@aktiveSchulenAnzahl</div>
+                    <div class="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 sm:text-sm">@(aktiveSchulenAnzahl == 1 ? "établissement" : "établissements")</div>
+                </div>
+                <div class="rounded-[1.5rem] border border-slate-100 bg-white p-5 text-center shadow-lg shadow-slate-200/70">
+                    <div class="text-3xl font-black text-[var(--skoulou-accent-2)] sm:text-5xl">@aktiveSchuelerAnzahl</div>
+                    <div class="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-600 sm:text-sm">@(aktiveSchuelerAnzahl == 1 ? "élève actif" : "élèves actifs")</div>
+                </div>
+            </div>
+        }
+        <div class="max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--skoulou-accent-2)]">Pour chaque profil</p>
+            <h2 class="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-4xl">Un espace pensé pour toute la communauté scolaire</h2>
+            <p class="mt-3 text-base leading-7 text-slate-600">Direction, enseignants et élèves retrouvent chacun les outils utiles, sur mobile comme sur ordinateur.</p>
+        </div>
+
+        <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl">🏫</div>
+                <h3 class="mt-4 text-lg font-black text-slate-900">Direction</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Classes, enseignants, élèves, frais de scolarité et finances de l'école au même endroit.</p>
+            </article>
+            <article class="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-2xl">📚</div>
+                <h3 class="mt-4 text-lg font-black text-slate-900">Enseignants</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Créer des leçons avec exercices, partager des supports et exporter en PDF.</p>
+            </article>
+            <article class="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-2xl">🎓</div>
+                <h3 class="mt-4 text-lg font-black text-slate-900">Élèves</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Leçons, exercices, quiz et épreuves avec suivi de la progression, sur téléphone ou tablette.</p>
+            </article>
+            <article class="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-lg shadow-slate-200/70">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-2xl">📊</div>
+                <h3 class="mt-4 text-lg font-black text-slate-900">Suivi &amp; finances</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Paiements, rapports et notes de fin de cycle clairs et exportables.</p>
+            </article>
+        </div>
+
+        <div class="mt-8 grid gap-4 rounded-[1.5rem] bg-slate-950 p-5 text-white shadow-2xl sm:grid-cols-3 sm:p-7">
+            <div>
+                <div class="text-3xl font-black text-sky-300">1</div>
+                <h3 class="mt-1 font-black">Inscription</h3>
+                <p class="mt-1 text-sm text-white/75">Crée ton compte, la direction valide ta demande.</p>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-sky-300">2</div>
+                <h3 class="mt-1 font-black">Accès à ta classe</h3>
+                <p class="mt-1 text-sm text-white/75">Tu retrouves les leçons et exercices de ton établissement.</p>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-sky-300">3</div>
+                <h3 class="mt-1 font-black">Progression</h3>
+                <p class="mt-1 text-sm text-white/75">Suis tes résultats et avance à ton rythme.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="inscription" class="skoulou-full-bleed skoulou-band-teal py-8 sm:py-10">
-    <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
+    <div class="mx-2 rounded-[1.5rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-5">
         <div class="max-w-3xl">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Accès</p>
             <h3 class="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Comment ça fonctionne ?</h3>
@@ -209,7 +273,7 @@
         <AuthorizeView>
             <Authorized>
                 <div class="mt-6 grid gap-5 lg:grid-cols-2">
-                    <div class="rounded-3xl border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-6">
+                    <div class="rounded-2xl border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-5">
                         <span class="inline-flex items-center gap-2 rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">Organisation</span>
                         <h4 class="mt-3 text-xl font-bold text-slate-900">Ce que tu peux retrouver ici</h4>
                         <ol class="mt-4 grid gap-3 text-sm text-slate-600">
@@ -220,7 +284,7 @@
                         </ol>
                     </div>
 
-                    <div class="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50 p-6">
+                    <div class="rounded-2xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50 p-5">
                         <span class="inline-flex items-center gap-2 rounded-full bg-cyan-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-700">Accès connecté</span>
                         <h4 class="mt-3 text-xl font-bold text-slate-900">Après authentification</h4>
                         <ol class="mt-4 grid gap-3 text-sm text-slate-600">
@@ -234,7 +298,7 @@
             </Authorized>
             <NotAuthorized>
                 <div class="mt-6 grid gap-5 lg:grid-cols-2">
-                    <div class="rounded-3xl border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-6">
+                    <div class="rounded-2xl border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-5">
                         <span class="inline-flex items-center gap-2 rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">Administration</span>
                         <h4 class="mt-3 text-xl font-bold text-slate-900">Pour gérer l'établissement</h4>
                         <ol class="mt-4 grid gap-3 text-sm text-slate-600">
@@ -245,7 +309,7 @@
                         </ol>
                     </div>
 
-                    <div class="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50 p-6">
+                    <div class="rounded-2xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50 p-5">
                         <span class="inline-flex items-center gap-2 rounded-full bg-cyan-600/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-700">Élève</span>
                         <h4 class="mt-3 text-xl font-bold text-slate-900">Pour rejoindre l'espace</h4>
                         <ol class="mt-4 grid gap-3 text-sm text-slate-600">
@@ -267,7 +331,7 @@
 </section>
 
 <section id="abos" class="skoulou-full-bleed skoulou-band-indigo py-8 sm:py-10">
-    <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
+    <div class="mx-2 rounded-[1.5rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-5">
         <div class="max-w-3xl">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Frais</p>
             <h3 class="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Informations générales sur les frais</h3>
@@ -285,6 +349,15 @@
             </AuthorizeView>
         </div>
 
+        <AuthorizeView>
+            <NotAuthorized>
+                <div class="mt-6 rounded-[1.5rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-6 shadow-lg shadow-emerald-100/50">
+                    <h4 class="text-lg font-black text-slate-900">Les frais dépendent de chaque établissement</h4>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Chaque école, université ou structure fixe ses propres frais. Contacte directement ton établissement ; les montants de ta classe apparaissent dans ton espace après connexion.</p>
+                    <a class="mt-4 inline-flex rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white no-underline shadow-md" href="auth/login">Se connecter</a>
+                </div>
+            </NotAuthorized>
+            <Authorized>
         <div class="mt-6 grid gap-5 lg:grid-cols-3">
             <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-6 shadow-lg shadow-emerald-100/50">
                 <h4 class="text-lg font-black text-slate-900">Inscription</h4>
@@ -302,13 +375,15 @@
                 <div class="mt-4 text-3xl font-black text-indigo-700">Inclus</div>
             </article>
         </div>
+            </Authorized>
+        </AuthorizeView>
 
         <p class="mt-4 text-xs text-slate-400">Les frais détaillés et les modalités exactes apparaissent dans l'espace connecté ou sont communiqués par l'établissement, l'université, l'école de langues ou la structure d'accompagnement.</p>
     </div>
 </section>
 
 <section id="kurse" class="skoulou-full-bleed skoulou-band-slate py-8 sm:py-10">
-    <div class="mx-2 rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-6">
+    <div class="mx-2 rounded-[1.5rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mx-0 sm:p-5">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Groupes de référence</p>

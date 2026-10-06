@@ -115,11 +115,11 @@ public static class HandbuchContent
         role == Rollen.Schueler ? "Ouvrir mes leçons" : "Ouvrir le catalogue",
         "L'espace d'apprentissage regroupe les contenus standards, les leçons de professeur, les exercices et les examens. L'élève voit seulement ce qui correspond à sa classe, à son abonnement et aux attributions de son école.",
         [
-            "Ouvrir l'espace élève ou le catalogue selon ton rôle.",
-            "Choisir une leçon ou un parcours; les contenus verrouillés indiquent la condition manquante.",
-            "Traiter les exercices; les réponses libres peuvent attendre une correction manuelle.",
-            "Consulter les examens et résultats dans les cartes dédiées.",
-            "Utiliser les boutons retour dans les pages internes pour revenir à la bonne vue."
+            "Ouvre « Mes leçons » dans le menu : tu y vois les leçons de ta classe.",
+            "Clique sur une leçon. Un cadenas indique ce qui manque (abonnement actif ou autorisation de l'école).",
+            "Lis la leçon, puis fais les exercices. Les réponses libres sont corrigées plus tard par ton enseignant.",
+            "Passe les examens attribués : une question à la fois, ton résultat s'affiche à la fin.",
+            "Utilise le bouton Retour en haut de page pour revenir à la liste."
         ],
         [
             new("Tableau élève", "Vue conçue d'abord pour mobile avec cartes, progression, XP/série et accès rapide aux leçons et examens.", ["En-tête de progression", "Navigation mobile en bas", "Cartes : une action par écran"]),
@@ -141,11 +141,11 @@ public static class HandbuchContent
         "Ouvrir l'espace pédagogique",
         "L'espace pédagogique sert à préparer les leçons, les exercices, les examens et à suivre les élèves attribués. Les droits restent strictement limités aux écoles et classes associées à l'utilisateur.",
         [
-            "Filtrer par école et classe avant d'agir.",
-            "Créer une leçon professeur, avec contenu écrit et éventuellement vidéo de maximum une heure.",
-            "Associer une activité ou un examen selon le besoin pédagogique.",
-            "Partager avec les élèves ou la direction selon les options visibles.",
-            "Corriger les réponses manuelles et suivre les scores."
+            "Choisis d'abord l'école et la classe dans les filtres : sans cela, aucun élève n'est affiché.",
+            "Va dans « Création leçon & examens » : onglet « Leçon + exercices » pour une leçon, onglet « Examens » pour un examen.",
+            "Rédige le contenu, ajoute si besoin une image ou une vidéo (1 heure maximum) depuis la médiathèque, puis ajoute les exercices.",
+            "Attribue la leçon à la classe ; partage-la avec la direction ou autorise l'export PDF si tu le souhaites.",
+            "Dans « Statut et progression des élèves », suis les scores et corrige les réponses manuelles en attente."
         ],
         [
             new("Liste élèves", "Vue de suivi avec classe, statut, progression, résultats et actions pédagogiques.", ["Filtres école/classe", "Score et progression", "Actions limitées au rôle"]),
@@ -167,11 +167,11 @@ public static class HandbuchContent
         role == Rollen.Schueler ? "Voir mon école" : "Ouvrir l'espace école",
         "Cet espace permet d'organiser la vie de l'école: classes, attributions, inscriptions et cycle pédagogique.",
         [
-            "Vérifier l'école active avant chaque action.",
-            "Créer ou mettre à jour les classes selon l'organisation réelle.",
-            "Attribuer correctement les enseignants et les élèves.",
-            "Valider les inscriptions en attente lorsque le dossier est complet.",
-            "Utiliser la réaffectation des élèves après réouverture de classe si nécessaire."
+            "Vérifie l'école active en haut de la page avant chaque action.",
+            "Crée les classes, puis démarre le cycle de la classe (date et prix) : c'est nécessaire avant tout abonnement.",
+            "Affecte les enseignants (avec leurs heures) et les élèves aux classes, ou importe-les depuis un fichier.",
+            "Valide les inscriptions en attente ; un compte non validé ne peut pas se connecter.",
+            "À la fin du cycle, clôture la classe puis promeus les élèves admis vers la classe suivante."
         ],
         [
             new("Classes", "Organisation par classes actives avec options de cycle et préparation d'abonnement SKOULOUAPP.", ["Création", "Attribution", "Suivi"]),
@@ -214,10 +214,10 @@ public static class HandbuchContent
         "Ouvrir les finances",
         "L'espace finance aide à suivre la scolarité, l'abonnement SKOULOUAPP et les périodes autorisées.",
         [
-            "Vérifier le cycle actif.",
-            "Enregistrer les paiements au bon élève et à la bonne classe.",
-            "Contrôler les rapports avant clôture.",
-            "Pour la direction : suivre le solde actuel et le solde théorique."
+            "Vérifie qu'un cycle est actif pour la classe concernée.",
+            "Enregistre chaque paiement (comptant ou par tranches) pour le bon élève ; « Enregistrer comme payé » active l'abonnement.",
+            "Avant la clôture, contrôle les montants ouverts : un solde impayé sera comptabilisé comme perte de l'école.",
+            "Exporte le rapport financier en PDF, séparément pour chaque école."
         ],
         [
             new("Paiements", "Suivi de la scolarité et des abonnements de classe.", ["Montants", "Statuts", "Historique"]),

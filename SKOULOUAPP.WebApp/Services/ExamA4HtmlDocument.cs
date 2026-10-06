@@ -31,7 +31,9 @@ public static class ExamA4HtmlDocument
                 var isChoice = question.QuestionType is "Choice" or "SingleChoice" or "MultipleChoice" or "AudioChoice" or "AudioSingleChoice" or "AudioMultipleChoice";
                 if (isChoice && question.Options.Count > 0)
                 {
-                    var symbol = question.QuestionType is "Choice" or "SingleChoice" or "AudioChoice" or "AudioSingleChoice" ? "◯ " : "☐ ";
+                    var symbol = question.QuestionType is "Choice" or "SingleChoice" or "AudioChoice" or "AudioSingleChoice"
+                        ? "<span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:50%;vertical-align:middle;margin-right:8px;\"></span>"
+                        : "<span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:2px;vertical-align:middle;margin-right:8px;\"></span>";
                     foreach (var option in question.Options)
                     {
                         var correct = includeSolutions && question.CorrectOptions.Contains(option);

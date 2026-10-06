@@ -127,10 +127,10 @@ public partial class TeacherLessonExercises
     private IReadOnlyList<ModernDropdownOption<Guid?>> PendingReviewSchoolFilterOptions =>
     [
         new(null, "Toutes les écoles"),
-        .. pendingManualReviews
-            .Where(review => review.SchoolId.HasValue)
-            .GroupBy(review => new { SchoolId = review.SchoolId!.Value, review.SchoolName })
-            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.SchoolId, group.Key.SchoolName))
+        .. klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .GroupBy(klasse => klasse.SchoolId!.Value)
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().SchoolName))
             .OrderBy(option => option.Label)
     ];
 
@@ -139,16 +139,16 @@ public partial class TeacherLessonExercises
         get
         {
             var filtered = pendingReviewSchoolFilterId.HasValue
-                ? pendingManualReviews.Where(review => review.SchoolId == pendingReviewSchoolFilterId.Value)
-                : pendingManualReviews;
+                ? klasses.Where(klasse => klasse.SchoolId == pendingReviewSchoolFilterId.Value)
+                : klasses;
 
             return
             [
                 new(null, "Toutes les classes"),
                 .. filtered
-                    .GroupBy(review => new { review.KlasseId, review.CourseCode })
-                    .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key.KlasseId, group.Key.CourseCode))
-                    .OrderBy(option => option.Label)
+                    .OrderBy(klasse => klasse.Code)
+                    .ThenBy(klasse => klasse.Title)
+                    .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
             ];
         }
     }
@@ -613,6 +613,22 @@ public partial class TeacherLessonExercises
             .Where(klasse => klasse.SchoolId.HasValue)
             .Select(klasse => klasse.SchoolId)
             .FirstOrDefault();
+
+        var distinctSchoolIds = klasses
+            .Where(klasse => klasse.SchoolId.HasValue)
+            .Select(klasse => klasse.SchoolId!.Value)
+            .Distinct()
+            .ToList();
+        if (distinctSchoolIds.Count == 1)
+        {
+            pendingReviewSchoolFilterId = distinctSchoolIds[0];
+            lessonListSchoolFilterId = distinctSchoolIds[0];
+            if (klasses.Count == 1)
+            {
+                pendingReviewKlasseFilterId = klasses[0].Id;
+                lessonListKlasseFilterId = klasses[0].Id;
+            }
+        }
 
         klasseSchoolById = await DbContext.Klassen
             .AsNoTracking()

@@ -157,6 +157,15 @@ public partial class SchulLeiter
     private int TotalPendingCount => schools.Sum(s => s.PendingApprovalCount);
     private int TotalBlockedCount => schools.Sum(s => s.BlockedStudentCount);
 
+    private int ActiveStudentCount => SelectedSchoolForManagement?.StudentCount ?? TotalStudentCount;
+    private int ActivePendingCount => SelectedSchoolForManagement?.PendingApprovalCount ?? TotalPendingCount;
+
+    private IReadOnlyList<ModernDropdownOption<string?>> SchoolFilterOptions =>
+    [
+        new ModernDropdownOption<string?>(null, "Toutes les écoles"),
+        .. schools.Select(school => new ModernDropdownOption<string?>(school.SchoolName, $"{school.SchoolName} · {school.City}"))
+    ];
+
     private IReadOnlyList<StudentApprovalItem> FilteredStudents =>
         students
             .Where(student => string.IsNullOrWhiteSpace(schoolFilterName) || student.SchoolName == schoolFilterName)
@@ -810,27 +819,13 @@ public partial class SchulLeiter
     private Guid currentUserId;
     private Guid? expandedStudentId;
 
-    private bool usersExpanded;
-    private bool userImportExpanded;
+    private bool usersExpanded = true;
+    private bool userImportExpanded = true;
 
     private Guid? reassignTargetKlasseId;
     private string reassignSearch = string.Empty;
     private HashSet<Guid> reassignSelectedStudentIds = [];
     private HashSet<Guid> archiveSelectedStudentIds = [];
-
-    // Die globale Aktion hat Vorrang und synchronisiert alle Karten dieser
-    // Seite. Einzelne Karten können anschließend wieder separat bedient werden.
-    private bool AllSectionsExpanded =>
-        usersExpanded && userImportExpanded && klassenExpanded && fachVerwaltungExpanded;
-
-    private void ToggleAllSections()
-    {
-        var next = !AllSectionsExpanded;
-        usersExpanded = next;
-        userImportExpanded = next;
-        klassenExpanded = next;
-        fachVerwaltungExpanded = next;
-    }
 
     private string? message;
     private string? errorMessage;
@@ -927,7 +922,7 @@ public partial class SchulLeiter
     private string zuordnungLehrerName = string.Empty;
     private List<LehrerNiveauZuordnungItem> zuordnungItems = [];
     private List<FachOptionItem> schoolFachOptions = [];
-    private bool fachVerwaltungExpanded;
+    private bool fachVerwaltungExpanded = true;
     private string fachSuchbegriff = string.Empty;
     private string neueSchulFachBezeichnung = string.Empty;
     private string? fachVerwaltungStatusMessage;
@@ -942,7 +937,7 @@ public partial class SchulLeiter
                 || option.Name.Contains(fachSuchbegriff.Trim(), StringComparison.OrdinalIgnoreCase))
             .ToList();
     private IReadOnlyList<SharedTeacherContentItem> sharedTeacherContent = [];
-    private bool sharedContentExpanded;
+    private bool sharedContentExpanded = true;
     private bool canViewSharedTeacherContent;
 
     private TeacherSchoolOverview? SelectedSchoolForManagement
@@ -1960,7 +1955,7 @@ public partial class SchulLeiter
     // Klassenverwaltung (schul-eigene Klassen)
     // ---------------------------------------------------------------------
 
-    private bool klassenExpanded;
+    private bool klassenExpanded = true;
     private IReadOnlyList<CourseFormModel> schoolKlassen = [];
     private bool darfCycleZahlungenVerwalten;
 
@@ -1998,6 +1993,8 @@ public partial class SchulLeiter
     private DateTime durchlaufStartDatum = DateTime.Today;
     private bool durchlaufEndeModalOpen;
     private DurchlaufUebersicht? zuBeendenderDurchlauf;
+    private int beendenTeilnehmerGesamt;
+    private int beendenOhneNote;
     private DateTime durchlaufEndDatum = DateTime.Today;
     private bool abschlussNotenOpen;
     private Guid? abschlussNotenDurchlaufId;
@@ -2179,6 +2176,16 @@ public partial class SchulLeiter
         zahlungModalOpen = true;
     }
 
+
+    private void WaehleZahlungSchueler(Guid studentId)
+    {
+        zahlungStudentId = studentId;
+        var offen = zahlungDurchlauf?.Schueler.FirstOrDefault(s => s.StudentId == studentId)?.Offen;
+        if (offen.HasValue && !IstBarzahlung)
+        {
+            zahlungBetrag = offen.Value;
+        }
+    }
 
     private void OnZahlungsArtChanged()
     {
@@ -2462,6 +2469,7 @@ public partial class SchulLeiter
         if (!await PruefeCycleZahlungsrechtAsync()) return;
 
         zuBeendenderDurchlauf = durchlauf;
+        (beendenTeilnehmerGesamt, beendenOhneNote) = await FinanzService.GetAbschlussNotenStatusAsync(durchlauf.DurchlaufID, ComponentToken);
         durchlaufEndDatum = DateTime.Today < durchlauf.StartDatum ? durchlauf.StartDatum : DateTime.Today;
         klasseErrorMessage = null;
         durchlaufEndeModalOpen = true;

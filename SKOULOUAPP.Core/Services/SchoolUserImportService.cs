@@ -391,7 +391,7 @@ public sealed class SchoolUserImportService(
 
     private static string BuildEmailLocalPart(string vorname, string nachname)
     {
-        var source = $"{nachname}.{vorname}".Trim().Normalize(NormalizationForm.FormD);
+        var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(source.Length);
         foreach (var character in source)
         {

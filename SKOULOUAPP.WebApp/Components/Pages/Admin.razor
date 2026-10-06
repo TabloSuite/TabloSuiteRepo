@@ -25,14 +25,6 @@ else
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">@(isProduktOwner ? "Responsable produit" : "Administrateur")</p>
                 <h1 class="mt-3 text-3xl font-black xl:text-4xl">@(isProduktOwner ? "Vue d'ensemble de vos écoles" : "Vue d'ensemble de la plateforme et des écoles")</h1>
                 <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">@(isProduktOwner ? "Consultez les écoles qui vous sont attribuées et leurs utilisateurs. Les données scolaires sont gérées par chaque direction." : "Consultez les écoles, leurs utilisateurs et les données de la plateforme.")</p>
-                <button type="button"
-                        class="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition duration-200 hover:bg-white/20"
-                        @onclick="ToggleAllSections">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="@(AllSectionsExpanded ? "m4.5 15.75 7.5-7.5 7.5 7.5" : "m19.5 8.25-7.5 7.5-7.5-7.5")" />
-                    </svg>
-                    @(AllSectionsExpanded ? "Tout réduire" : "Tout développer")
-                </button>
             </div>
         </div>
 
@@ -41,6 +33,13 @@ else
             <div class="skoulou-hero-badge group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 p-4 text-white shadow-md shadow-indigo-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.TeacherCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-indigo-50">Enseignants</div></div>
             <div class="group rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-4 text-white shadow-md shadow-emerald-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.StudentCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-50">Élèves</div></div>
             <div class="group rounded-2xl bg-gradient-to-br from-rose-500 to-orange-600 p-4 text-white shadow-md shadow-rose-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-300/40"><div class="text-2xl font-black transition-transform duration-300 group-hover:scale-105">@summary.BlockedAccountCount</div><div class="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-rose-50">En attente / bloqués</div><div class="mt-1 text-[11px] text-rose-100">dont @summary.BlockedStudentCount élève(s)</div></div>
+        </div>
+
+        <div class="director-sticky-band">
+            <div class="flex flex-wrap items-center gap-3 pr-14 sm:pr-16">
+                <ModernDropdown TValue="string?" Value="userSchoolFilter" ValueChanged="v => SetUserSchoolFilter(v)" Options="UserSchoolFilterOptions" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
+                <span class="text-xs font-medium text-slate-500">Filtre la liste des utilisateurs par école.</span>
+            </div>
         </div>
 
         <CollapsibleCard Title="Vue d'ensemble des écoles"

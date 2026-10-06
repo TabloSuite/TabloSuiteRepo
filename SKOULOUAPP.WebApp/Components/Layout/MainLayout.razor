@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Components.Authorization
+﻿@using Microsoft.AspNetCore.Components.Authorization
 @using SkoulouApp.WebApp.Components.Layout
 @inherits LayoutComponentBase
 
@@ -33,28 +33,20 @@
                         <img src="skoulou-app-icon.svg" alt="" />
                     </div>
                     <div>
-                        <p class="app-footer-kicker">Apprendre. Progresser. Réussir.</p>
                         <p class="app-footer-title">SKOULOU</p>
                         <p class="app-footer-tagline">Apprendre. Progresser. Réussir.</p>
-                        <br />
-                        <p class="app-footer-tagline">Plateforme d'apprentissage pour les établissements scolaires.</p>
-                        <p class="app-footer-tagline">L'espace d'apprentissage qui rapproche les écoles, les enseignants et les élèves.</p>
-
                     </div>
                 </div>
 
                 <div class="app-footer-contact">
-                    <p class="app-footer-heading">Contact</p>
                     <a href="https://skoulou.etsetech.com" target="_blank" rel="noopener noreferrer">skoulou.etsetech.com</a>
                     <a href="mailto:contact.skoulou@etsetech.com">contact.skoulou@etsetech.com</a>
                     <span>Lomé, Togo</span>
-                    <span>Tel: <a href="tel:+4917661221600">+49 176 61221600</a></span>
-
+                    <a href="tel:+4917661221600">+49 176 61221600</a>
                 </div>
 
                 <div class="app-footer-bottom">
                     <span>© @DateTime.UtcNow.Year SKOULOU. Tous droits réservés.</span>
-                    <span>Conçu avec passion pour mieux apprendre.</span>
                 </div>
             </footer>
         }

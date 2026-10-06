@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Components
 
-<div class="group/card rounded-[2rem] bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition-shadow duration-300 hover:shadow-xl hover:shadow-slate-200/80">
-    <div class="flex w-full flex-wrap items-center justify-between gap-3 rounded-t-[2rem] px-4 py-4 transition duration-200 hover:bg-slate-50/80 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-5 @(IsExpanded ? string.Empty : "rounded-b-[2rem]")">
+<div class="skoulou-card group/card rounded-[1.25rem] bg-white shadow-md shadow-slate-200/60 ring-1 ring-slate-100 transition-shadow duration-300 hover:shadow-lg hover:shadow-slate-200/80">
+    <div class="flex w-full flex-wrap items-center justify-between gap-3 rounded-t-[1.25rem] px-4 py-3 transition duration-200 hover:bg-slate-50/80 sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-3.5 @(IsExpanded ? string.Empty : "rounded-b-[1.25rem]")">
         <button type="button"
                 class="flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4"
                 @onclick="ToggleAsync"
@@ -26,10 +26,10 @@
                 {
                     <p class="text-xs font-semibold uppercase tracking-[0.1em] @EyebrowClass sm:tracking-[0.18em]">@Eyebrow</p>
                 }
-                <h2 class="mt-1 truncate text-lg font-bold text-slate-900 sm:text-xl">@Title</h2>
+                <h2 class="mt-0.5 truncate text-base font-semibold text-slate-900 sm:text-lg">@Title</h2>
                 @if (!string.IsNullOrWhiteSpace(Subtitle))
                 {
-                    <p class="mt-0.5 truncate text-sm text-slate-500">@Subtitle</p>
+                    <p class="truncate text-xs text-slate-500 sm:text-sm">@Subtitle</p>
                 }
             </div>
         </button>
@@ -52,7 +52,7 @@
 
     <div class="grid transition-all duration-300 ease-in-out @(IsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")">
         <div class="@(IsExpanded ? "overflow-visible" : "overflow-hidden")">
-            <div class="border-t border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent px-6 pb-6 pt-5">
+            <div class="border-t border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent px-4 pb-5 pt-4 sm:px-5">
                 @ChildContent
             </div>
         </div>

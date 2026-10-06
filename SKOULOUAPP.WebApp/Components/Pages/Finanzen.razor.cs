@@ -89,6 +89,8 @@ public partial class Finanzen
     }
     private DateTime beendenDatum = DateTime.Today;
     private decimal beendenOffeneSchuld;
+    private int beendenTeilnehmerGesamt;
+    private int beendenOhneNote;
     private int beendenOffeneSkoulouAppAbos;
     private decimal beendenOffenerSkoulouAppUmsatz;
 
@@ -708,6 +710,11 @@ public partial class Finanzen
     private Task SetZahlungStudentAsync(Guid? value)
     {
         zahlungForm.StudentId = value ?? Guid.Empty;
+        if (zahlungForm.StudentId != Guid.Empty)
+        {
+            zahlungForm.Betrag = AusgewaehlterSchuelerOffen;
+        }
+
         CashBetragAktualisieren();
         return Task.CompletedTask;
     }
@@ -748,14 +755,14 @@ public partial class Finanzen
             byte[]? belegInhalt = null;
             if (buchungBelegDatei is not null)
             {
-                if (buchungBelegDatei.Size > 5 * 1024 * 1024)
+                if (buchungBelegDatei.Size > 25 * 1024 * 1024)
                 {
-                    errorMessage = "Le justificatif ne doit pas dépasser 5 Mo.";
+                    errorMessage = "Le justificatif ne doit pas dépasser 25 Mo.";
                     return;
                 }
                 try
                 {
-                    await using var stream = buchungBelegDatei.OpenReadStream(5 * 1024 * 1024, ComponentToken);
+                    await using var stream = buchungBelegDatei.OpenReadStream(25 * 1024 * 1024, ComponentToken);
                     using var memory = new MemoryStream();
                     await stream.CopyToAsync(memory, ComponentToken);
                     belegInhalt = memory.ToArray();
@@ -942,10 +949,17 @@ public partial class Finanzen
         beendenDurchlauf = d;
         beendenDatum = DateTime.Today;
         beendenOffeneSchuld = d.SummeOffen;
+        (beendenTeilnehmerGesamt, beendenOhneNote) = await FinanzService.GetAbschlussNotenStatusAsync(d.DurchlaufID, ComponentToken);
         await LadeOffeneSkoulouAppAbosFuerBeendenAsync();
     }
 
     private void BeendenAbbrechen() => beendenDurchlauf = null;
+
+    private bool BeendenOffen
+    {
+        get => beendenDurchlauf is not null;
+        set { if (!value) beendenDurchlauf = null; }
+    }
 
     private Task SetBeendenDatumAsync(DateTime? value)
     {

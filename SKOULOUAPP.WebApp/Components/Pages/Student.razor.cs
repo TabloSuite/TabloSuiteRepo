@@ -221,7 +221,8 @@ public partial class Student
             {
                 var lessons = await LearningService.GetLessonsForStudentAsync(userId, dashboard.CurrentLevelCode, ComponentToken);
                 var exams = await ExamService.GetExamsForStudentAsync(userId, dashboard.CurrentLevelCode, ComponentToken);
-                openLessonsCount = lessons.Count(lesson => lesson.ExerciseCount > 0 && !lesson.IsCompleted);
+                openLessonsCount = lessons.Count(lesson => lesson.ExerciseCount > 0 && !lesson.IsCompleted
+                    && (!lesson.ExerciseSubmissionDueAtUtc.HasValue || lesson.ExerciseSubmissionDueAtUtc.Value > DateTime.UtcNow));
                 openExamsCount = exams.Count(exam => exam.CanStart && !exam.HasAttempt);
             }
         }

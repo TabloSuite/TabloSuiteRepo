@@ -12,7 +12,7 @@
     <PageTitle>Examens</PageTitle>
 }
 
-<section class="space-y-6 p-4 @(Embedded ? "rounded-3xl bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100" : "mx-auto max-w-5xl")">
+<section class="space-y-5 p-4 @(Embedded ? "rounded-[1.25rem] bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100" : "mx-auto max-w-5xl")">
     @if (!Embedded)
     {
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -40,7 +40,7 @@
     <Toast Message="@formError" MessageChanged="v => formError = v" Kind="Toast.ToastKind.Error" />
 
     <div class="grid gap-3">
-        <div class="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+        <div class="director-sticky-band grid gap-3 sm:grid-cols-2">
             <ModernDropdown TValue="Guid?"
                             Label="École"
                             Value="selectedSchoolFilterId"

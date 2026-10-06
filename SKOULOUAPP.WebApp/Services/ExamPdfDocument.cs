@@ -122,7 +122,7 @@ public sealed class ExamPdfDocument(ExamPdfViewModel exam, bool includeSolutions
                     var isCorrect = _includeSolutions && question.CorrectOptions.Contains(option);
                     column.Item().Text(text =>
                     {
-                        text.Span(isSingleChoice ? "◯ " : "☐ ").FontSize(12);
+                        text.Span(isSingleChoice ? "◯ " : "☐ ").FontSize(18);
                         text.Span(isCorrect ? $"{option} ✓" : option)
                             .FontSize(11)
                             .FontColor(isCorrect ? Colors.Green.Darken2 : Colors.Black);

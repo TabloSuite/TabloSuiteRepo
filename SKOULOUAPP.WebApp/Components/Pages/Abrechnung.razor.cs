@@ -405,6 +405,8 @@ public partial class Abrechnung
         }
     }
 
+    private Task AktualisierenAsync() => RunDatabaseActionAsync(LoadSchoolAsync);
+
     private async Task RunDatabaseActionAsync(Func<Task> action)
     {
         if (isDatabaseActionInProgress)

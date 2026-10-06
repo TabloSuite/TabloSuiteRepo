@@ -173,14 +173,14 @@ public partial class Profile
                     var schoolId = fullProfile?.Schulen.FirstOrDefault()?.SchoolId;
                     try
                     {
-                        await using var imageStream = selectedProfileImage.OpenReadStream(5 * 1024 * 1024);
+                        await using var imageStream = selectedProfileImage.OpenReadStream(25 * 1024 * 1024);
                         var uploaded = await MediaLibrary.UploadProfileImageAsync(userId, schoolId, imageStream, selectedProfileImage.Name, selectedProfileImage.ContentType);
                         ProfileModel.ProfilBildAssetId = uploaded.Id;
                     }
                     catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
                     {
                         profileToastKind = Toast.ToastKind.Error;
-                        profileToastMessage = ex is IOException ? "La photo dépasse la taille maximale de 5 Mo." : ex.Message;
+                        profileToastMessage = ex is IOException ? "La photo dépasse la taille maximale de 25 Mo." : ex.Message;
                         return;
                     }
                 }

@@ -65,7 +65,10 @@ public sealed class LessonExerciseA4PdfService(IConfiguration configuration, IWe
                 html.Append("</p>");
                 foreach (var option in exercise.Options.OrderBy(option => option.Order))
                 {
-                    html.Append("<p>□ ");
+                    var isSingleChoice = exercise.ExerciseType is "SingleChoice" or "Choice" or "AudioChoice" or "AudioSingleChoice";
+                    html.Append(isSingleChoice
+                        ? "<p><span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:50%;vertical-align:middle;margin-right:8px;\"></span>"
+                        : "<p><span style=\"display:inline-block;width:14px;height:14px;border:1.5px solid #1e293b;border-radius:2px;vertical-align:middle;margin-right:8px;\"></span>");
                     html.Append(WebUtility.HtmlEncode(HtmlSanitizer.ToPlainText(option.Text)));
                     html.Append("</p>");
                 }

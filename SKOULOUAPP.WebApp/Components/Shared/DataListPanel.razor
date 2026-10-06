@@ -1,6 +1,8 @@
 ﻿@typeparam TItem
 
 <div class="grid gap-4">
+    <div class="grid gap-4">
+    @HeaderContent
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="relative min-w-0 flex-1">
             <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -48,6 +50,8 @@
             }
         </div>
     }
+
+    </div>
 
     @if (FilteredCount == 0)
     {

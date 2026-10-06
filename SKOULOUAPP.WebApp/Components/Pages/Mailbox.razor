@@ -5,7 +5,7 @@
 
 <PageTitle>Messagerie</PageTitle>
 <section class="mx-auto mt-4 grid w-full max-w-7xl min-w-0 gap-5 px-2 sm:px-4">
-    <div class="rounded-3xl bg-slate-900 p-6 text-white">
+    <div class="skoulou-hero rounded-[1.25rem] px-5 py-4 text-white sm:px-6 sm:py-5">
         <a href="/" class="text-sm text-cyan-200">← Retour à l’accueil</a>
         <h1 class="mt-3 text-2xl font-black">Messagerie</h1>
         <p class="mt-2 text-sm text-slate-200">Courrier reçu et envoyé depuis contact.skoulou@etsetech.com</p>
@@ -23,7 +23,7 @@
             <div><h2 class="text-xl font-black text-slate-900">@(showSent ? "Messages envoyés" : "Boîte de réception")</h2><p class="text-sm text-slate-500">@(showSent ? "Consultez vos envois." : "Consultez les messages reçus et répondez-y.")</p></div>
             <button type="button" class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" @onclick="() => { broadcastMode = isAdmin; composeOpen = true; }">+ Nouvel e-mail</button>
         </div>
-        <div class="mt-5 flex flex-wrap items-center gap-3">
+        <div class="mt-5 director-sticky-band flex flex-wrap items-center gap-3">
             <div class="school-page-tabs" aria-label="Dossiers de messagerie">
                 <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(showSent ? "bg-slate-100 text-slate-700" : "skoulou-btn-accent")" @onclick="() => showSent = false">Réception</button>
                 <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(showSent ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick="() => showSent = true">Envoyés</button>

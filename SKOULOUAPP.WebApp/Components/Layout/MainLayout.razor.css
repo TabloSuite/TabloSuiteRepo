@@ -303,7 +303,8 @@
     }
 
     .app-header {
-        top: 0.45rem;
+        top: 0;
+        height: 3.75rem;
         left: auto;
         right: 5.5rem;
         align-items: center;
@@ -332,6 +333,11 @@
         width: 100%;
     }
 
+    .app-header-actions {
+        align-items: center;
+        height: 100%;
+    }
+
     .app-profile-card {
         align-items: flex-end;
         width: 100%;
@@ -356,7 +362,12 @@
     }
 
     .app-content {
-        padding: 0 1rem 1.5rem;
+        padding: 0 0.25rem 1.5rem;
+    }
+
+    .app-content--student {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
     }
 }
 

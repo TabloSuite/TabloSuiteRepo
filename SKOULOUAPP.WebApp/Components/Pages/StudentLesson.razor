@@ -7,7 +7,7 @@
 
 @if (notFound)
 {
-    <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
+    <div class="rounded-[1.25rem] bg-white px-5 py-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
         <p class="text-sm text-slate-600">Cette leçon est introuvable.</p>
         <a class="skoulou-btn-accent mt-4 inline-block rounded-full px-5 py-2 text-sm font-semibold no-underline transition duration-200 hover:-translate-y-0.5" href="/student/lessons">Retour à la liste</a>
     </div>
@@ -19,7 +19,7 @@ else if (lesson is null)
 else
 {
     <section class="student-exercise-page grid gap-4 sm:gap-5 lg:gap-6">
-        <div class="sticky top-2 z-10 rounded-[1.5rem] bg-white/95 p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 backdrop-blur sm:p-4 lg:top-4 lg:rounded-[2rem] lg:p-6">
+        <div class="sticky top-2 z-10 rounded-[1.5rem] bg-white/95 p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 backdrop-blur sm:p-4 lg:top-4 lg:rounded-[1.25rem] lg:px-5 lg:py-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 sm:text-sm">@lesson.CourseCode</p>
@@ -37,7 +37,7 @@ else
 
         @if (lesson.IsCompleted)
         {
-            <div class="rounded-[2rem] bg-emerald-50 p-5 text-emerald-800 ring-1 ring-emerald-100 sm:p-6">
+            <div class="rounded-[1.25rem] bg-emerald-50 px-4 py-3 text-emerald-800 ring-1 ring-emerald-100 sm:px-5">
                 <p class="text-sm font-semibold">Bravo ! Cette leçon est terminée.</p>
             </div>
         }
@@ -56,7 +56,7 @@ else
             </div>
         }
 
-        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[1.25rem] lg:p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 sm:text-sm">Contenu</p>
             <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">@lesson.Summary</h2>
 
@@ -64,9 +64,9 @@ else
                 <div class="w-full">
                     @if (LessonVideoUrl is { Length: > 0 })
                     {
-                        <div class="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
+                        <div class="-mx-3 rounded-none border-y border-cyan-100 bg-cyan-50/70 p-3 sm:mx-0 sm:rounded-2xl sm:border">
                             <p class="text-sm font-semibold text-cyan-900">Vidéo de la leçon</p>
-                            <video class="mt-3 w-full rounded-xl bg-slate-950" controls preload="metadata" playsinline src="@LessonVideoUrl"></video>
+                            <video class="-mx-3 mt-3 w-[calc(100%+1.5rem)] max-w-none bg-slate-950 sm:mx-0 sm:w-full sm:max-w-full sm:rounded-xl" controls preload="metadata" playsinline src="@LessonVideoUrl"></video>
                         </div>
                     }
 
@@ -101,7 +101,7 @@ else
 
         @if (exerciseStarted)
         {
-        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[2rem] lg:p-6">
+        <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[1.25rem] lg:p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 sm:text-sm">Exercices</p>
             <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">Résous les exercices</h2>
 

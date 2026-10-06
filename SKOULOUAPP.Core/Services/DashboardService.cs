@@ -500,14 +500,69 @@ public class DashboardService(
             };
         }
 
+        {
+            var now = DateTime.UtcNow;
+            var studentKlasseById = await dbContext.StudentProfiles
+                .AsNoTracking()
+                .Where(p => studentIds.Contains(p.AppUserId) && p.CurrentKlasseId.HasValue)
+                .Select(p => new { p.AppUserId, KlasseId = p.CurrentKlasseId!.Value })
+                .ToDictionaryAsync(p => p.AppUserId, p => p.KlasseId, cancellationToken);
+            if (restrictToKlasseId.HasValue)
+            {
+                studentKlasseById = studentIds.Where(studentKlasseById.ContainsKey)
+                    .Where(id => studentKlasseById[id] == restrictToKlasseId.Value)
+                    .ToDictionary(id => id, id => restrictToKlasseId.Value);
+            }
+
+            var klasseIdsForOverdue = studentKlasseById.Values.Distinct().ToList();
+            var overdueExercises = await dbContext.Exercises
+                .AsNoTracking()
+                .Where(e => klasseIdsForOverdue.Contains(e.Lesson.KlasseId)
+                            && e.Lesson.IsPublished
+                            && e.Lesson.ExerciseSubmissionDueAtUtc.HasValue
+                            && e.Lesson.ExerciseSubmissionDueAtUtc.Value <= now)
+                .Select(e => new { e.Id, e.Points, KlasseId = e.Lesson.KlasseId })
+                .ToListAsync(cancellationToken);
+
+            if (overdueExercises.Count > 0)
+            {
+                var attemptedPairs = await dbContext.ExerciseAttempts
+                    .AsNoTracking()
+                    .Where(a => studentIds.Contains(a.StudentId) && klasseIdsForOverdue.Contains(a.Exercise.Lesson.KlasseId))
+                    .Select(a => new { a.StudentId, a.ExerciseId })
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                var attemptedSet = attemptedPairs.Select(p => (p.StudentId, p.ExerciseId)).ToHashSet();
+
+                foreach (var (studentId, studentKlasseId) in studentKlasseById)
+                {
+                    foreach (var exercise in overdueExercises.Where(e => e.KlasseId == studentKlasseId))
+                    {
+                        if (attemptedSet.Contains((studentId, exercise.Id)))
+                        {
+                            continue;
+                        }
+
+                        perStudent.TryGetValue(studentId, out var acc);
+                        perStudent[studentId] = acc with
+                        {
+                            ExerciseCount = acc.ExerciseCount + 1,
+                            ExercisePointsTotal = acc.ExercisePointsTotal + (exercise.Points > 0 ? exercise.Points : 10)
+                        };
+                    }
+                }
+            }
+        }
+
         return perStudent.ToDictionary(
             x => x.Key,
             x =>
             {
                 var totalCount = x.Value.ExerciseCount + x.Value.ExamCount;
-                var totalSum = x.Value.ExerciseSum + x.Value.ExamSum;
+                var pointsEarned = x.Value.ExercisePointsEarned + x.Value.ExamPointsEarned;
+                var pointsTotal = x.Value.ExercisePointsTotal + x.Value.ExamPointsTotal;
                 return new CombinedProgressScore(
-                    totalCount > 0 ? (int)Math.Round((double)totalSum / totalCount) : 0,
+                    pointsTotal > 0 ? (int)Math.Round(pointsEarned * 100d / pointsTotal) : 0,
                     totalCount,
                     x.Value.ExercisePointsEarned,
                     x.Value.ExercisePointsTotal,
@@ -813,6 +868,8 @@ public class DashboardService(
                 attempt.ExerciseId,
                 KlasseId = attempt.Exercise.Lesson.KlasseId,
                 attempt.IsCorrect,
+                attempt.AwardedPoints,
+                MaxPoints = attempt.Exercise.Points,
                 attempt.AnsweredAtUtc,
                 attempt.Id
             })
@@ -823,7 +880,22 @@ public class DashboardService(
                 && attempt.IsCompleted
                 && !attempt.RequiresManualGrading
                 && klasseIds.Contains(attempt.Exam.KlasseId))
-            .Select(attempt => new { KlasseId = attempt.Exam.KlasseId, attempt.ScorePercent, attempt.SubmittedAtUtc })
+            .Select(attempt => new { KlasseId = attempt.Exam.KlasseId, attempt.ScorePercent, attempt.CorrectAnswers, attempt.TotalQuestions, attempt.SubmittedAtUtc })
+            .ToListAsync(cancellationToken);
+        var attemptedExerciseIds = (await dbContext.ExerciseAttempts
+            .AsNoTracking()
+            .Where(attempt => attempt.StudentId == studentId && klasseIds.Contains(attempt.Exercise.Lesson.KlasseId))
+            .Select(attempt => attempt.ExerciseId)
+            .Distinct()
+            .ToListAsync(cancellationToken)).ToHashSet();
+        var nowUtc = DateTime.UtcNow;
+        var overdueExercises = await dbContext.Exercises
+            .AsNoTracking()
+            .Where(e => klasseIds.Contains(e.Lesson.KlasseId)
+                && e.Lesson.IsPublished
+                && e.Lesson.ExerciseSubmissionDueAtUtc.HasValue
+                && e.Lesson.ExerciseSubmissionDueAtUtc.Value <= nowUtc)
+            .Select(e => new { e.Id, e.Points, KlasseId = e.Lesson.KlasseId, DueAtUtc = e.Lesson.ExerciseSubmissionDueAtUtc!.Value })
             .ToListAsync(cancellationToken);
 
         var entscheidungen = await dbContext.KlassenAbschlussEntscheidungen
@@ -846,9 +918,22 @@ public class DashboardService(
                 .Where(attempt => attempt.KlasseId == klasse.Id && attempt.AnsweredAtUtc >= cycle.StartDatum
                     && (cycle.EndDatum == null || attempt.AnsweredAtUtc <= cycle.EndDatum.Value.Date.AddDays(1).AddTicks(-1)))
                 .GroupBy(attempt => attempt.ExerciseId)
-                .Select(group => group.OrderByDescending(attempt => attempt.AnsweredAtUtc).ThenByDescending(attempt => attempt.Id).First().IsCorrect ? 100 : 0)
+                .Select(group =>
+                {
+                    var latest = group.OrderByDescending(attempt => attempt.AnsweredAtUtc).ThenByDescending(attempt => attempt.Id).First();
+                    var max = latest.MaxPoints > 0 ? latest.MaxPoints : 10;
+                    var earned = latest.AwardedPoints > 0 ? Math.Clamp(latest.AwardedPoints, 0, max) : (latest.IsCorrect ? max : 0);
+                    return (Earned: (double)earned, Max: (double)max);
+                })
+                .Concat(overdueExercises
+                    .Where(e => e.KlasseId == klasse.Id && !attemptedExerciseIds.Contains(e.Id) && e.DueAtUtc >= cycle.StartDatum
+                        && (cycle.EndDatum == null || e.DueAtUtc <= cycle.EndDatum.Value.Date.AddDays(1).AddTicks(-1)))
+                    .Select(e => (Earned: 0d, Max: (double)(e.Points > 0 ? e.Points : 10))))
                 .Concat(examAttempts.Where(attempt => attempt.KlasseId == klasse.Id && attempt.SubmittedAtUtc >= cycle.StartDatum
-                    && (cycle.EndDatum == null || attempt.SubmittedAtUtc <= cycle.EndDatum.Value.Date.AddDays(1).AddTicks(-1))).Select(attempt => attempt.ScorePercent))
+                    && (cycle.EndDatum == null || attempt.SubmittedAtUtc <= cycle.EndDatum.Value.Date.AddDays(1).AddTicks(-1)))
+                    .Select(attempt => attempt.TotalQuestions > 0
+                        ? (Earned: (double)attempt.CorrectAnswers, Max: (double)attempt.TotalQuestions)
+                        : (Earned: attempt.ScorePercent >= 50 ? 1d : 0d, Max: 1d)))
                 .ToList();
 
             var abschluss = entscheidungen.FirstOrDefault(e => e.DurchlaufId == cycle.Id);
@@ -862,7 +947,7 @@ public class DashboardService(
                 CourseCode = klasse.Code,
                 CourseTitle = klasse.Title,
                 IsCurrent = cycle.EndDatum == null && klasse.Id == currentKlasseId,
-                ScorePercent = scores.Count > 0 ? (int)Math.Round(scores.Average()) : null,
+                ScorePercent = scores.Sum(s => s.Max) > 0 ? (int)Math.Round(scores.Sum(s => s.Earned) * 100d / scores.Sum(s => s.Max)) : null,
                 ScoreCount = scores.Count,
                 AbschlussNoteText = !string.IsNullOrWhiteSpace(abschluss?.AbschlussNoteText)
                     ? abschluss!.AbschlussNoteText

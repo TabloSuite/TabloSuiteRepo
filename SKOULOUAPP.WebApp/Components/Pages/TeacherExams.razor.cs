@@ -249,6 +249,7 @@ public partial class TeacherExams
         exams = (await ExamService.GetTeacherExamsAsync(currentTeacherId, ComponentToken)).ToList();
 
         List<Guid> zugeordneteKlassenIds;
+        List<(Guid SchoolId, string SchoolName)> direktionSchulen = [];
         if (isSchoolDirectionUser)
         {
             var schoolIds = await DbContext.UserSchools
@@ -257,6 +258,14 @@ public partial class TeacherExams
                 .Select(link => link.SchoolId)
                 .Distinct()
                 .ToListAsync(ComponentToken);
+
+            direktionSchulen = (await DbContext.Schools
+                .AsNoTracking()
+                .Where(s => schoolIds.Contains(s.Id))
+                .Select(s => new { s.Id, s.Name })
+                .ToListAsync(ComponentToken))
+                .Select(s => (s.Id, s.Name))
+                .ToList();
 
             zugeordneteKlassenIds = schoolIds.Count == 0
                 ? []
@@ -297,6 +306,9 @@ public partial class TeacherExams
             .Where(x => x.SchoolId.HasValue)
             .GroupBy(x => new { SchoolId = x.SchoolId!.Value, x.SchoolName })
             .Select(g => (g.Key.SchoolId, g.Key.SchoolName))
+            .Concat(direktionSchulen)
+            .GroupBy(x => x.SchoolId)
+            .Select(g => g.First())
             .OrderBy(x => x.SchoolName)
             .ToList();
     }

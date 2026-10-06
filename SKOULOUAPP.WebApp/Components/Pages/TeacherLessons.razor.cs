@@ -136,13 +136,17 @@ public partial class TeacherLessons
         .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.Id, FormatKlasseLabel(klasse.Code, klasse.Title)))
         .ToList();
 
+    private IReadOnlyList<(Guid Id, string Name)> directionSchulen = [];
+
     private IReadOnlyList<ModernDropdownOption<Guid?>> DirectionSchoolFilterOptions =>
     [
         new(null, "Toutes les écoles"),
         .. klasses
             .Where(klasse => klasse.SchoolId.HasValue)
-            .GroupBy(klasse => klasse.SchoolId!.Value)
-            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.First().SchoolName))
+            .Select(klasse => (Id: klasse.SchoolId!.Value, Name: klasse.SchoolName))
+            .Concat(directionSchulen)
+            .GroupBy(school => school.Id)
+            .Select(group => new ModernDropdownOption<Guid?>((Guid?)group.Key, group.OrderByDescending(s => !string.IsNullOrWhiteSpace(s.Name)).First().Name))
             .OrderBy(option => option.Label)
     ];
 
@@ -636,6 +640,14 @@ public partial class TeacherLessons
                     .Select(link => link.SchoolId)
                     .Distinct()
                     .ToListAsync(ComponentToken);
+
+                directionSchulen = (await DbContext.Schools
+                        .AsNoTracking()
+                        .Where(s => managedSchoolIds.Contains(s.Id))
+                        .Select(s => new { s.Id, s.Name })
+                        .ToListAsync(ComponentToken))
+                    .Select(s => (s.Id, s.Name))
+                    .ToList();
 
                 if (managedSchoolIds.Count == 0)
                 {

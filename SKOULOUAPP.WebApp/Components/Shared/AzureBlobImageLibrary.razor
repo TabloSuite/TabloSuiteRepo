@@ -1,5 +1,6 @@
 @using System.Security.Claims
 @using SkoulouApp.Core.DataModels.Identity
+@using SkoulouApp.Core.DataModels.Lessons
 @using SkoulouApp.Core.Interfaces
 @using SkoulouApp.Core.Models.Media
 @using SkoulouApp.Core.Services.Storage
@@ -26,32 +27,21 @@
             </div>
 
             <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
-            <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="mt-3 flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert">
+                    <span>@errorMessage</span>
+                    <button type="button" class="rounded-full px-2 text-rose-700 hover:bg-rose-100" aria-label="Fermer" @onclick="() => errorMessage = null">✕</button>
+                </div>
+            }
 
             <div class="mt-3 shrink-0 grid gap-3 rounded-2xl bg-slate-50 p-3 @(ProfileImageMode ? string.Empty : "lg:grid-cols-4")">
                 @if (!ProfileImageMode)
                 {
+                    <ModernDropdown TValue="Guid" Label="École" Value="selectedSchoolId" ValueChanged="OnSchoolSelectedAsync" Options="SchoolOptions" ButtonClass="py-2" />
+                    <ModernDropdown TValue="Guid?" Label="Classe / niveau" @bind-Value="selectedKlasseId" Options="KlasseSelectOptions" ButtonClass="py-2" />
                     <label>
-                        <span class="text-xs font-semibold text-slate-600">École</span>
-                        <select class="mt-1 skoulou-input text-sm" @bind="selectedSchoolId" @bind:after="OnSchoolChangedAsync">
-                            @foreach (var school in schools)
-                            {
-                                <option value="@school.Id">@school.Name</option>
-                            }
-                        </select>
-                    </label>
-                    <label>
-                        <span class="text-xs font-semibold text-slate-600">Classe / niveau</span>
-                        <select class="mt-1 skoulou-input text-sm" @bind="selectedKlasseId">
-                            <option value="">Sans classe</option>
-                            @foreach (var klasse in klasseOptions)
-                            {
-                                <option value="@klasse.Id">@klasse.Code</option>
-                            }
-                        </select>
-                    </label>
-                    <label>
-                        <span class="text-xs font-semibold text-slate-600">Nom de l’image</span>
+                        <span class="text-xs font-semibold text-slate-600">@(VideoMode ? "Nom de la vidéo" : "Nom de l’image")</span>
                         <input class="mt-1 skoulou-input text-sm" @bind="displayName" @bind:event="oninput" maxlength="200" placeholder="Ex. triangle rectangle" />
                     </label>
                     @if (!VideoMode)
@@ -67,39 +57,37 @@
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-lg text-cyan-700">@(VideoMode ? "🎬" : "🖼️")</span>
                         <span class="min-w-0">
                             <span class="block text-sm font-bold text-slate-800">@(selectedFile is null ? VideoMode ? "Choisir une vidéo" : "Choisir une image" : selectedFile.Name)</span>
-                            <span class="block text-xs text-slate-500">@(VideoMode ? "MP4 ou MOV · 2 Go maximum · 1 heure maximum" : "PNG, JPG, GIF ou WebP · 5 Mo maximum")</span>
+                            <span class="block text-xs text-slate-500">@(VideoMode ? "MP4 ou MOV · 8 Go maximum · 1 heure maximum" : "PNG, JPG, GIF ou WebP · 25 Mo maximum")</span>
                         </span>
                         <InputFile id="course-library-video-file" OnChange="SelectFile" accept="@(VideoMode ? "video/mp4,video/quicktime,.mp4,.m4v,.mov" : "image/png,image/jpeg,image/gif,image/webp")" class="sr-only" />
                     </label>
                     <AsyncActionButton Class="rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none" Disabled="@(selectedFile is null)" IsBusy="@isUploading" BusyLabel="Enregistrement..." OnClick="@(_ => UploadAsync())">Enregistrer et choisir</AsyncActionButton>
+                    @if (isUploading && uploadBytesTotal > 0)
+                    {
+                        <div class="w-full rounded-2xl bg-white p-3 ring-1 ring-cyan-100">
+                            <div class="flex items-center justify-between gap-3 text-xs font-semibold text-cyan-900">
+                                <span>Enregistrement en cours</span>
+                                <span>@UploadProgressLabel</span>
+                            </div>
+                            <div class="mt-2 h-3 overflow-hidden rounded-full bg-cyan-100" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@uploadPercent">
+                                <div class="h-full rounded-full bg-cyan-700 transition-all duration-300" style="@($"width:{uploadPercent}%")"></div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
 
-            <div class="mt-3 shrink-0 grid gap-2 rounded-2xl border border-slate-100 p-3 md:grid-cols-4">
+            <div class="mt-3 shrink-0 grid gap-2 rounded-2xl border border-slate-100 p-3 md:grid-cols-5">
                 <label>
-                    <span class="text-xs font-semibold text-slate-600">Filtrer par fichier</span>
+                    <span class="mb-2 block text-sm font-semibold text-slate-700">Filtrer par fichier</span>
                     <input class="mt-1 skoulou-input text-sm" @bind="fileNameFilter" @bind:event="oninput" placeholder="Nom affiché ou nom de fichier..." />
                 </label>
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">Filtrer par école</span>
-                    <select class="mt-1 skoulou-input text-sm" @bind="schoolFilter">
-                        <option value="">Toutes</option>
-                        @foreach (var school in AllSchoolFilters)
-                        {
-                            <option value="@school.Id">@school.Name</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    <span class="text-xs font-semibold text-slate-600">Filtrer par classe</span>
-                    <select class="mt-1 skoulou-input text-sm" @bind="klasseFilter">
-                        <option value="">Toutes</option>
-                        @foreach (var klasse in AllKlasseFilters)
-                        {
-                            <option value="@klasse">@klasse</option>
-                        }
-                    </select>
-                </label>
+                <ModernDropdown TValue="string" Label="Filtrer par école" @bind-Value="schoolFilter" Options="SchoolFilterOptions" ButtonClass="py-2" />
+                <ModernDropdown TValue="string" Label="Filtrer par classe" @bind-Value="klasseFilter" Options="KlasseFilterOptions" ButtonClass="py-2" />
+                @if (!ProfileImageMode)
+                {
+                    <ModernDropdown TValue="string" Label="Filtrer par type" @bind-Value="typeFilter" Options="TypeFilterOptions" ButtonClass="py-2" />
+                }
                 <p class="self-end text-xs font-semibold text-slate-500">@FilteredImages.Count @(VideoMode ? "vidéo(s)" : "image(s)") affichée(s)</p>
             </div>
 
@@ -118,7 +106,7 @@
                         @foreach (var image in FilteredImages)
                         {
                             <div class="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
-                                @if (VideoMode)
+                                @if (image.MediaType == BlobMediaType.Video)
                                 {
                                     <div class="flex aspect-square items-center justify-center bg-cyan-50 text-5xl">🎬</div>
                                 }
@@ -131,7 +119,7 @@
                                 <span class="block truncate px-3 text-[11px] text-slate-400">@image.SchoolName · @image.OwnerName</span>
                                 <div class="mx-3 mb-3 mt-2 flex items-center gap-2">
                                     <button type="button" class="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-bold text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white" title="Insérer @image.DisplayName" @onclick="() => ChooseAsync(image)">Insérer</button>
-                                    @if (!VideoMode)
+                                    @if (image.MediaType != BlobMediaType.Video)
                                     {
                                         <button type="button" class="inline-flex rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700 transition hover:bg-rose-600 hover:text-white" title="Supprimer @image.DisplayName" @onclick="() => DeleteImageAsync(image)">Supprimer</button>
                                     }
@@ -163,6 +151,31 @@
     private string fileNameFilter = string.Empty;
     private string klasseFilter = string.Empty;
     private string schoolFilter = string.Empty;
+    private string typeFilter = string.Empty;
+
+    private IReadOnlyList<ModernDropdownOption<Guid>> SchoolOptions => schools.Select(s => new ModernDropdownOption<Guid>(s.Id, s.Name)).ToList();
+
+    private IReadOnlyList<ModernDropdownOption<Guid?>> KlasseSelectOptions => new[] { new ModernDropdownOption<Guid?>(null, "Sans classe") }
+        .Concat(klasseOptions.Select(k => new ModernDropdownOption<Guid?>(k.Id, k.Code))).ToList();
+
+    private IReadOnlyList<ModernDropdownOption<string>> SchoolFilterOptions => new[] { new ModernDropdownOption<string>(string.Empty, "Toutes") }
+        .Concat(AllSchoolFilters.Select(s => new ModernDropdownOption<string>(s.Id.ToString(), s.Name))).ToList();
+
+    private IReadOnlyList<ModernDropdownOption<string>> KlasseFilterOptions => new[] { new ModernDropdownOption<string>(string.Empty, "Toutes") }
+        .Concat(AllKlasseFilters.Select(k => new ModernDropdownOption<string>(k, k))).ToList();
+
+    private readonly List<ModernDropdownOption<string>> TypeFilterOptions = new()
+    {
+        new ModernDropdownOption<string>(string.Empty, "Tous"),
+        new ModernDropdownOption<string>("video", "Vidéos"),
+        new ModernDropdownOption<string>("image", "Images")
+    };
+
+    private async Task OnSchoolSelectedAsync(Guid id)
+    {
+        selectedSchoolId = id;
+        await OnSchoolChangedAsync();
+    }
     private string? errorMessage;
     private string? statusMessage;
     private bool isUploading;
@@ -176,6 +189,7 @@
             || Contains(image.DisplayName, fileNameFilter)
             || Contains(image.OriginalFileName, fileNameFilter))
         .Where(image => string.IsNullOrWhiteSpace(schoolFilter) || string.Equals(image.SchoolId.ToString(), schoolFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(image => string.IsNullOrEmpty(typeFilter) || (typeFilter == "video") == (image.MediaType == BlobMediaType.Video))
         .Where(image => string.IsNullOrWhiteSpace(klasseFilter) || string.Equals(image.KlasseCode, klasseFilter, StringComparison.OrdinalIgnoreCase))
         .ToList();
 
@@ -241,10 +255,55 @@
             .ToListAsync());
     }
 
-    private async Task LoadImagesAsync() => images = VideoMode ? await MediaLibrary.GetVisibleVideosAsync(userId, roles) : await MediaLibrary.GetVisibleImagesAsync(userId, roles);
-    private void SelectFile(InputFileChangeEventArgs args)
+    private async Task LoadImagesAsync()
+    {
+        if (ProfileImageMode)
+        {
+            images = await MediaLibrary.GetVisibleImagesAsync(userId, roles);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(typeFilter))
+        {
+            typeFilter = VideoMode ? "video" : "image";
+        }
+
+        var videos = await MediaLibrary.GetVisibleVideosAsync(userId, roles);
+        var pictures = await MediaLibrary.GetVisibleImagesAsync(userId, roles);
+        images = videos.Concat(pictures).ToList();
+    }
+    private double? selectedVideoSeconds;
+
+    private async Task SelectFile(InputFileChangeEventArgs args)
     {
         selectedFile = args.File;
+        selectedVideoSeconds = null;
+        if (VideoMode)
+        {
+            if (args.File.Size > 8L * 1024 * 1024 * 1024)
+            {
+                errorMessage = "La vidéo ne doit pas dépasser 8 Go.";
+                selectedFile = null;
+                return;
+            }
+            try
+            {
+                var seconds = await JSRuntime.InvokeAsync<double?>("SKOULOUAPPVideoMetadata.getDurationInSeconds", "course-library-video-file");
+                if (seconds is null or <= 0 or > 3600)
+                {
+                    errorMessage = "La durée réelle de la vidéo doit être comprise entre 1 seconde et 1 heure.";
+                    selectedFile = null;
+                    return;
+                }
+                selectedVideoSeconds = seconds;
+            }
+            catch (JSException)
+            {
+                errorMessage = "La durée réelle de la vidéo ne peut pas être lue.";
+                selectedFile = null;
+                return;
+            }
+        }
         if (ProfileImageMode)
         {
             return;
@@ -294,7 +353,10 @@
         {
             statusMessage = null;
             isUploading = true;
-            await using var stream = selectedFile.OpenReadStream(VideoMode ? 2L * 1024 * 1024 * 1024 : 5 * 1024 * 1024);
+            uploadBytesTotal = selectedFile.Size;
+            uploadBytesDone = 0;
+            uploadPercent = 0;
+            await using var stream = new ProgressReadStream(selectedFile.OpenReadStream(VideoMode ? 8L * 1024 * 1024 * 1024 : 25L * 1024 * 1024), ReportUploadProgress);
             var displayNameForUpload = displayName;
             var altTextForUpload = altText;
             if (ProfileImageMode)
@@ -310,7 +372,7 @@
             BlobMediaAssetItem asset;
             if (VideoMode)
             {
-                var seconds = await JSRuntime.InvokeAsync<double?>("SKOULOUAPPVideoMetadata.getDurationInSeconds", "course-library-video-file");
+                var seconds = selectedVideoSeconds;
                 if (seconds is null or <= 0 or > 3600)
                 {
                     throw new InvalidOperationException("La durée réelle de la vidéo doit être comprise entre 1 seconde et 1 heure.");
@@ -343,6 +405,83 @@
         finally
         {
             isUploading = false;
+            uploadBytesTotal = 0;
+        }
+    }
+
+    private long uploadBytesTotal;
+    private long uploadBytesDone;
+    private int uploadPercent;
+
+    private string UploadProgressLabel => $"{FormatFileSize(uploadBytesDone)} / {FormatFileSize(uploadBytesTotal)} ({uploadPercent} %)";
+
+    private void ReportUploadProgress(int bytesRead)
+    {
+        if (bytesRead <= 0 || uploadBytesTotal <= 0)
+        {
+            return;
+        }
+
+        uploadBytesDone = Math.Min(uploadBytesTotal, uploadBytesDone + bytesRead);
+        var newPercent = Math.Clamp((int)Math.Round(uploadBytesDone * 100d / uploadBytesTotal), 0, 100);
+        if (newPercent == uploadPercent && uploadBytesDone < uploadBytesTotal)
+        {
+            return;
+        }
+
+        uploadPercent = newPercent;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        const decimal megabyte = 1024m * 1024m;
+        const decimal gigabyte = megabyte * 1024m;
+        return bytes >= (long)gigabyte ? $"{bytes / gigabyte:N1} Go" : $"{bytes / megabyte:N1} Mo";
+    }
+
+    private sealed class ProgressReadStream(Stream innerStream, Action<int> reportProgress) : Stream
+    {
+        public override bool CanRead => innerStream.CanRead;
+        public override bool CanSeek => innerStream.CanSeek;
+        public override bool CanWrite => false;
+        public override long Length => innerStream.Length;
+        public override long Position { get => innerStream.Position; set => innerStream.Position = value; }
+        public override void Flush() => innerStream.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            var read = await innerStream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
+            reportProgress(read);
+            return read;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await innerStream.ReadAsync(buffer, cancellationToken);
+            reportProgress(read);
+            return read;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => innerStream.Seek(offset, origin);
+        public override void SetLength(long value) => innerStream.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                innerStream.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            await innerStream.DisposeAsync();
+            await base.DisposeAsync();
         }
     }
 

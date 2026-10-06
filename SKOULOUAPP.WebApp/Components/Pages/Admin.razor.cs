@@ -179,6 +179,12 @@ public partial class Admin
     private Guid? courseSchoolFilter;
     private Guid? mediaSchoolFilter;
 
+    private IReadOnlyList<ModernDropdownOption<string?>> UserSchoolFilterOptions =>
+    [
+        new(null, "Toutes les écoles"),
+        .. SchoolFilterNames.Select(name => new ModernDropdownOption<string?>(name, name))
+    ];
+
     private IReadOnlyList<string> SchoolFilterNames =>
         schoolManagementItems.Select(s => s.Name).OrderBy(n => n).ToList();
 

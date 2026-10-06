@@ -50,7 +50,7 @@ else
                                 @if (dashboard.CombinedScorePercent.HasValue)
                                 {
                                     <span class="text-3xl font-black drop-shadow-sm" style="color:@ScoreColorHelper.GetScoreColor(dashboard.CombinedScorePercent.Value)">@dashboard.CombinedScorePercent %</span>
-                                    <span class="text-xs text-indigo-100">score moyen sur @dashboard.CombinedScoreCount résultat@(dashboard.CombinedScoreCount > 1 ? "s" : "")</span>
+                                    <span class="text-xs text-indigo-100">score calculé sur les points des exercices et examens (@dashboard.CombinedScoreCount résultat@(dashboard.CombinedScoreCount > 1 ? "s" : ""))</span>
                                 }
                                 else
                                 {

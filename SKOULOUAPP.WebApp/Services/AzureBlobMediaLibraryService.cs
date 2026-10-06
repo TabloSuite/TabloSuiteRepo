@@ -36,6 +36,8 @@ public sealed class AzureBlobMediaLibraryService(
 
     private static readonly TimeSpan MaxVideoDuration = TimeSpan.FromHours(1);
 
+    public const long MaxVideoBytes = 8L * 1024 * 1024 * 1024;
+
     private static readonly IReadOnlyDictionary<string, string> ImageContentTypeByExtension = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         [".png"] = "image/png",
@@ -255,6 +257,10 @@ public sealed class AzureBlobMediaLibraryService(
         var normalizedContentType = NormalizeVideoContentType(contentType, originalFileName);
         ValidateVideo(normalizedContentType, duration);
 
+        if (content.CanSeek && content.Length > MaxVideoBytes)
+        {
+            throw new InvalidOperationException("La vidéo ne doit pas dépasser 8 Go.");
+        }
         if (!await CanUploadToSchoolAsync(userId, roles, schoolId, cancellationToken))
         {
             throw new UnauthorizedAccessException("Vous n’êtes pas autorisé à ajouter une vidéo pour cette école.");

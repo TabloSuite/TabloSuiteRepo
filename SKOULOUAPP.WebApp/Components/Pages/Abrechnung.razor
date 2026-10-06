@@ -12,7 +12,7 @@
 <section class="grid gap-6">
     @if (!Embedded)
     {
-    <div class="skoulou-hero relative overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8">
+    <div class="skoulou-hero relative overflow-hidden rounded-[1.25rem] px-5 py-4 text-white shadow-2xl sm:px-6 sm:py-5">
         <div class="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-emerald-400/25 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl"></div>
         <div class="relative">
@@ -111,23 +111,27 @@
 
     <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8" style="@(Embedded || isReadOnly && schools.Count <= 1 ? "display:none" : null)">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-black text-slate-900">Écoles</h2>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">Sélection</p>
+                <h2 class="text-xl font-black text-slate-900">Écoles <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">@schools.Count</span></h2>
+            </div>
             @if (schools.Count > 1)
             {
                 <input type="search" class="skoulou-input w-full sm:w-72" placeholder="Rechercher une école..." @bind="schoolSearchTerm" @bind:event="oninput" />
             }
         </div>
-        <div class="mt-4 grid gap-3">
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             @foreach (var school in GefilterteSchulen)
             {
                 <button type="button"
-                        class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3 text-left transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50/50 hover:shadow-md @(selectedSchoolId == school.SchoolId ? "ring-2 ring-emerald-500" : string.Empty)"
+                        class="flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-md @(selectedSchoolId == school.SchoolId ? "border-emerald-500 bg-emerald-50/60" : "border-slate-100 hover:border-emerald-200")"
                         @onclick="() => SelectSchoolAsync(school.SchoolId)">
-                    <div>
-                        <div class="font-bold text-slate-900">@school.Name</div>
-                        <div class="text-sm text-slate-500">@school.City · @school.Country</div>
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-black @(selectedSchoolId == school.SchoolId ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600")">@(selectedSchoolId == school.SchoolId ? "✓" : school.Name.Substring(0, 1).ToUpperInvariant())</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate font-bold text-slate-900">@school.Name</div>
+                        <div class="truncate text-sm text-slate-500">@school.City · @school.Country</div>
                     </div>
-                    <span class="text-sm font-semibold text-slate-600">@school.StudentCount élèves</span>
+                    <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">@school.StudentCount élèves</span>
                 </button>
             }
             @if (GefilterteSchulen.Count == 0)
@@ -141,9 +145,15 @@
     {
         @if (darfZahlungMelden && PendingDirectorApprovals.Count > 0)
         {
-            <div class="rounded-[2rem] border border-amber-100 bg-amber-50 p-5 text-amber-900 shadow-sm">
-                <h2 class="text-lg font-black">Action requise · Direction</h2>
-                <p class="mt-1 text-sm font-semibold">Tu as @PendingDirectorApprovals.Count facturation(s) SKOULOUAPPABO à valider après virement.</p>
+            <div class="overflow-hidden rounded-[2rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-amber-900 shadow-sm sm:p-6">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-xl shadow-inner" aria-hidden="true">⏳</span>
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Action requise · Direction</p>
+                        <h2 class="text-lg font-black">@PendingDirectorApprovals.Count facturation(s) à valider</h2>
+                        <p class="mt-1 text-sm font-medium">Effectue le virement, puis confirme-le dans la liste « Facturations de l'école » ci-dessous.</p>
+                    </div>
+                </div>
                 <div class="mt-3 grid gap-2">
                     @foreach (var periode in PendingDirectorApprovals.Take(3))
                     {
@@ -161,14 +171,15 @@
 
         @if (isSuperAdmin && automatischeOffenePerioden.Count > 0)
         {
-            <div class="rounded-[2rem] border border-sky-100 bg-sky-50 p-5 text-sky-900 shadow-sm">
-                <h2 class="text-lg font-black">Information automatique</h2>
-                <p class="mt-1 text-sm font-semibold">
-                    Une facturation SKOULOUAPP a été générée automatiquement lors d'une clôture de cycle pour cette école.
-                </p>
-                <p class="mt-1 text-sm text-sky-800">
-                    Elle attend maintenant la confirmation de virement par l'école. Après réception du paiement, tu pourras la confirmer définitivement.
-                </p>
+            <div class="rounded-[2rem] border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-5 text-sky-900 shadow-sm sm:p-6">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-xl" aria-hidden="true">ℹ️</span>
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Information automatique</p>
+                        <h2 class="text-lg font-black">Facturation générée à la clôture d'un cycle</h2>
+                        <p class="mt-1 text-sm text-sky-800">Elle attend la confirmation de virement par l'école. Après réception du paiement, tu pourras la confirmer définitivement.</p>
+                    </div>
+                </div>
                 <div class="mt-3 grid gap-2">
                     @foreach (var periode in automatischeOffenePerioden)
                     {
@@ -221,9 +232,19 @@
         }
 
         <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-8">
-            <h2 class="text-xl font-black text-slate-900">Période ouverte · @uebersicht.SchulName</h2>
-            <p class="mt-1 text-sm font-semibold text-slate-600">Du @uebersicht.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") au @uebersicht.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">Période ouverte</p>
+                    <h2 class="mt-1 text-xl font-black text-slate-900">@uebersicht.SchulName</h2>
+                </div>
+                <span class="flex flex-wrap items-center gap-2">
+                    <button type="button" class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-200 disabled:opacity-50" disabled="@isDatabaseActionInProgress" @onclick="AktualisierenAsync">🔄 Actualiser</button>
+                    <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">📅 @uebersicht.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") → @uebersicht.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </span>
+            </div>
 
+            @if (CanManageBilling)
+            {
             <div class="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
                     <div>
                         <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Afficher jusqu’au (date et heure)</label>
@@ -246,19 +267,33 @@
                         Filtrer
                     </button>
                 </div>
+            }
 
+            @if (!CanManageBilling && uebersicht.AnzahlAbonnements == 0)
+            {
+                <p class="mt-4 flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100"><span aria-hidden="true">✅</span>Aucun abonnement en attente de facturation.</p>
+            }
+            else
+            {
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <div class="skoulou-hero-badge rounded-3xl p-5 text-white shadow-lg transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                    <div class="text-3xl font-black">@uebersicht.AnzahlAbonnements</div>
-                    <div class="mt-1 text-sm text-indigo-50">Abonnements SKOULOUAPP</div>
+                <div class="skoulou-hero-badge flex items-center gap-4 rounded-3xl p-5 text-white shadow-lg transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl" aria-hidden="true">🎟️</span>
+                    <div>
+                        <div class="text-3xl font-black">@uebersicht.AnzahlAbonnements</div>
+                        <div class="mt-0.5 text-sm text-indigo-50">Abonnements SKOULOUAPP</div>
+                    </div>
                 </div>
-                <div class="rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 p-5 text-white shadow-lg shadow-emerald-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                    <div class="text-3xl font-black">@uebersicht.OffenerUmsatz.ToString("N0") FCFA</div>
-                    <div class="mt-1 text-sm text-emerald-50">Chiffre d'affaires ouvert</div>
+                <div class="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 p-5 text-white shadow-lg shadow-emerald-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl" aria-hidden="true">💰</span>
+                    <div>
+                        <div class="text-3xl font-black">@uebersicht.OffenerUmsatz.ToString("N0") FCFA</div>
+                        <div class="mt-0.5 text-sm text-emerald-50">Chiffre d'affaires ouvert</div>
+                    </div>
                 </div>
             </div>
+            }
 
-            @if (uebersicht.AnzahlAbonnements == 0 && historie.Count == 0)
+            @if (CanManageBilling && uebersicht.AnzahlAbonnements == 0 && historie.Count == 0)
             {
                 <p class="mt-4 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900">Aucun abonnement payé à facturer et aucune facturation enregistrée pour cette école pour le moment.</p>
             }
@@ -279,7 +314,7 @@
         <CollapsibleCard Title="Facturations de l'école"
                          Subtitle="@(historie.Count > 0 ? $"{HistorieInBearbeitungAnzahl} en cours · {HistorieAbgeschlossenAnzahl} terminée(s)" : "Aucune facturation pour le moment")"
                          Icon="🧾"
-                         InitiallyExpanded="false">
+                         InitiallyExpanded="@(!CanManageBilling)">
             <HeaderRight>
                 @if (historie.Count > 0)
                 {
@@ -312,14 +347,15 @@
                 <div class="grid gap-3">
                     @foreach (var periode in GefilterteHistorie)
                     {
-                        <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+                        <div class="rounded-2xl border border-slate-100 border-l-4 bg-white px-4 py-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md @(periode.Status == AbrechnungStatus.Bestaetigt ? "border-l-emerald-500" : periode.Status == AbrechnungStatus.Abgelehnt ? "border-l-rose-500" : "border-l-amber-500")">
                             <div class="flex flex-wrap items-center justify-between gap-3">
-                                <div class="text-sm text-slate-600">
-                                    @periode.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") – @periode.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                <div>
+                                    <div class="text-xs font-bold uppercase tracking-wide text-slate-400">Période</div>
+                                    <div class="text-sm font-semibold text-slate-700">@periode.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") – @periode.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
                                 </div>
-                                <div class="flex flex-wrap items-center gap-4 text-sm">
-                                    <span class="text-slate-500">@periode.AnzahlAbonnements abo(s) SKOULOUAPP</span>
-                                    <span class="font-semibold text-slate-900">@periode.Umsatz.ToString("N0") FCFA</span>
+                                <div class="flex flex-wrap items-center gap-3 text-sm">
+                                    <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">@periode.AnzahlAbonnements abo(s)</span>
+                                    <span class="text-lg font-black text-slate-900">@periode.Umsatz.ToString("N0") FCFA</span>
                                      <Badge Accent="@StatusAccent(periode.Status)">@StatusLabelFr(periode.Status)</Badge>
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">@SourceLabel(periode)</span>
                                 </div>
@@ -413,7 +449,7 @@
                                             Accepter &amp; virement effectué
                                         </button>
                                     }
-                                    @if (periode.Status != AbrechnungStatus.Abgelehnt)
+                                    @if (periode.Status == AbrechnungStatus.Erstellt)
                                     {
                                         <button type="button"
                                                 class="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-200"

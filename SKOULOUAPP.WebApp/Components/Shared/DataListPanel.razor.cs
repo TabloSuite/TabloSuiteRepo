@@ -11,6 +11,10 @@ public partial class DataListPanel<TItem> : ComponentBase
     [Parameter, EditorRequired]
     public IReadOnlyList<TItem> Items { get; set; } = Array.Empty<TItem>();
 
+    [Parameter] public bool StickyToolbar { get; set; }
+
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+
     [Parameter, EditorRequired]
     public RenderFragment<IReadOnlyList<TItem>> ChildContent { get; set; } = default!;
 

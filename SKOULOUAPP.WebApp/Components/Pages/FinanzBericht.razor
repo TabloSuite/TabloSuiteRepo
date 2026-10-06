@@ -6,7 +6,7 @@
 <PageTitle>Rapport financier · SKOULOU</PageTitle>
 
 <section class="mx-auto grid max-w-5xl gap-5 px-2 py-4 sm:px-5">
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="director-sticky-band print:hidden flex flex-wrap items-center justify-between gap-3">
         <a class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-200" href="/finanzen">← Retour aux finances</a>
         @if (bericht is not null)
         {
@@ -19,12 +19,12 @@
     }
     else if (bericht is null)
     {
-        <div class="rounded-2xl bg-white p-6 text-sm text-slate-700">Chargement du rapport...</div>
+        <div class="rounded-2xl bg-white px-5 py-4 text-sm text-slate-700 shadow-sm ring-1 ring-slate-100">Chargement du rapport...</div>
     }
     else
     {
         var darstellung = bericht.Darstellung;
-        <div class="rounded-3xl bg-white p-5 shadow ring-1 ring-slate-100 sm:p-8">
+        <div class="rounded-[1.25rem] bg-white px-4 py-4 shadow ring-1 ring-slate-100 sm:px-6 sm:py-5">
             <p class="text-xs font-black uppercase tracking-wider text-indigo-700">SKOULOU · Finances de l'école</p>
             <h1 class="mt-2 text-2xl font-black text-slate-950">Rapport financier · @bericht.SchulName</h1>
             <p class="mt-2 text-sm text-slate-600">@SkoulouApp.WebApp.Services.FinanzBerichtPdfService.DescribeFilter(bericht.Filter)</p>

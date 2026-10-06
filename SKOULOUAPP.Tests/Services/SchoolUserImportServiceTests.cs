@@ -29,7 +29,7 @@ public class SchoolUserImportServiceTests
         Assert.True(preview.Succeeded, string.Join(" ", preview.Errors.Concat(preview.Rows.SelectMany(r => r.Errors))));
         var row = Assert.Single(preview.Rows);
         Assert.True(row.EmailGenerated);
-        Assert.Equal("mensah.afi@skoulou.com", row.Email);
+        Assert.Equal("afi.mensah@skoulou.com", row.Email);
         Assert.Equal(SchoolUserImportDefaults.InitialPassword, row.InitialPassword);
     }
 

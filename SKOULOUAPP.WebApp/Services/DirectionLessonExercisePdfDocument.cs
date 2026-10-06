@@ -129,7 +129,7 @@ public sealed class DirectionLessonExercisePdfDocument(LessonDetailViewModel les
                             var optionText = HtmlSanitizer.ToPlainText(option.Text);
                             exerciseColumn.Item().Text(text =>
                             {
-                                text.Span("◯ ").FontSize(12);
+                                text.Span("◯ ").FontSize(18);
                                 text.Span(optionText).FontSize(11);
                             });
                         }
@@ -141,7 +141,7 @@ public sealed class DirectionLessonExercisePdfDocument(LessonDetailViewModel les
                             var optionText = HtmlSanitizer.ToPlainText(option.Text);
                             exerciseColumn.Item().Text(text =>
                             {
-                                text.Span("☐ ").FontSize(12);
+                                text.Span("☐ ").FontSize(18);
                                 text.Span(optionText).FontSize(11);
                             });
                         }

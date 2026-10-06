@@ -19,20 +19,46 @@
         {
             <p class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">@message</p>
         }
-        <div class="grid max-h-[60dvh] gap-3 overflow-y-auto">
-            @foreach (var schueler in bericht.Schueler)
+        <div class="mb-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div class="relative">
+                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                <input class="skoulou-input !pl-9" type="search" placeholder="Rechercher un élève..." @bind="suche" @bind:event="oninput" />
+            </div>
+            <div class="flex gap-2">
+                <button type="button" class="rounded-full px-3 py-1.5 text-xs font-bold @(!nurOffene ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700")" @onclick="() => nurOffene = false">Tous (@bericht.Schueler.Count)</button>
+                <button type="button" class="rounded-full px-3 py-1.5 text-xs font-bold @(nurOffene ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-700")" @onclick="() => nurOffene = true">À compléter (@bericht.Schueler.Count(s => !IstKomplett(s)))</button>
+            </div>
+        </div>
+        <div class="mb-4 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width: @(bericht.Schueler.Count == 0 ? 0 : bericht.Schueler.Count(IstKomplett) * 100 / bericht.Schueler.Count)%"></div>
+        </div>
+        var gefiltert = bericht.Schueler
+            .Where(s => (string.IsNullOrWhiteSpace(suche) || s.Name.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase)) && (!nurOffene || !IstKomplett(s)))
+            .ToList();
+        <div class="grid content-start gap-3 overflow-y-auto pb-28 pr-1" style="height: min(26rem, 55dvh);">
+            @if (gefiltert.Count == 0)
             {
-                <div class="grid gap-3 rounded-2xl border p-4 sm:grid-cols-2 lg:grid-cols-4 @(string.IsNullOrWhiteSpace(schueler.AbschlussNoteText) || schueler.IsBestanden is null ? "border-amber-300 bg-amber-50/40" : "border-slate-200")" @key="schueler.StudentId">
-                    <strong class="self-center text-sm text-slate-900">@schueler.Name</strong>
-                    <div>
-                        <label class="skoulou-label">Note finale</label>
-                        <input class="skoulou-input" maxlength="64" @bind="schueler.AbschlussNoteText" placeholder="Ex. 12/20" />
+                <p class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">Aucun élève trouvé.</p>
+            }
+            @foreach (var (schueler, index) in gefiltert.Select((s, i) => (s, i)))
+            {
+                <div class="rounded-2xl border p-4 shadow-sm transition @(IstKomplett(schueler) ? "border-emerald-200 bg-emerald-50/40" : "border-amber-300 bg-amber-50/40")" @key="schueler.StudentId">
+                    <div class="mb-3 flex items-center gap-3">
+                        <span class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-indigo-100 text-sm font-black text-indigo-700">@Initialen(schueler.Name)</span>
+                        <strong class="min-w-0 flex-1 truncate text-sm text-slate-900">@schueler.Name</strong>
+                        <span class="text-xs font-bold @(IstKomplett(schueler) ? "text-emerald-700" : "text-amber-700")">@(IstKomplett(schueler) ? "✓ Complet" : "À compléter")</span>
                     </div>
-                    <div>
-                        <ModernDropdown TValue="bool?" Label="Décision" Value="schueler.IsBestanden" ValueChanged="value => SetDecision(schueler, value)" Options="DecisionOptions" />
-                    </div>
-                    <div>
-                        <ModernDropdown TValue="Guid?" Label="Mention (facultative)" Value="GetMentionId(schueler)" ValueChanged="value => SetMention(schueler, value)" Options="MentionOptions(schueler)" />
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <div>
+                            <label class="skoulou-label">Note finale</label>
+                            <input class="skoulou-input" maxlength="64" @bind="schueler.AbschlussNoteText" @bind:event="oninput" placeholder="Ex. 12/20" />
+                        </div>
+                        <div>
+                            <ModernDropdown TValue="bool?" Label="Décision" OpenUpward="@(index > 0)" Value="schueler.IsBestanden" ValueChanged="value => SetDecision(schueler, value)" Options="DecisionOptions" />
+                        </div>
+                        <div>
+                            <ModernDropdown TValue="Guid?" Label="Mention (facultative)" OpenUpward="@(index > 0)" Value="GetMentionId(schueler)" ValueChanged="value => SetMention(schueler, value)" Options="MentionOptions(schueler)" />
+                        </div>
                     </div>
                 </div>
             }
@@ -59,6 +85,17 @@
     private string? error;
     private string? message;
     private bool saving;
+    private string suche = string.Empty;
+    private bool nurOffene;
+
+    private static bool IstKomplett(KlassenAbschlussSchueler s)
+        => !string.IsNullOrWhiteSpace(s.AbschlussNoteText) && s.IsBestanden.HasValue;
+
+    private static string Initialen(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length == 0 ? "?" : string.Concat(teile.Take(2).Select(t => char.ToUpperInvariant(t[0])));
+    }
     private IReadOnlyList<AbschlussMention> mentions = [];
     private readonly Dictionary<Guid, Guid?> selectedMentions = [];
     private readonly HashSet<Guid> changedMentions = [];
@@ -116,10 +153,11 @@
     private async Task SaveAsync()
     {
         if (bericht is null || !bericht.IstAktiv || DurchlaufId is not Guid id) return;
-        var missing = bericht.Schueler.Count(s => string.IsNullOrWhiteSpace(s.AbschlussNoteText) || s.IsBestanden is null);
-        if (missing > 0)
+        var komplett = bericht.Schueler.Where(IstKomplett).ToList();
+        var offen = bericht.Schueler.Count - komplett.Count;
+        if (komplett.Count == 0)
         {
-            error = $"Complète la note et la décision pour {missing} élève(s) avant d'enregistrer.";
+            error = "Saisis au moins une note et une décision avant d'enregistrer.";
             return;
         }
 
@@ -127,7 +165,7 @@
         error = null;
         try
         {
-            foreach (var schueler in bericht.Schueler)
+            foreach (var schueler in komplett)
             {
                 var (noteOk, noteMessage) = await ExamService.SetManuelleAbschlussNoteAsync(id, schueler.StudentId, schueler.AbschlussNoteText, BearbeiterId);
                 if (!noteOk) { error = noteMessage; return; }
@@ -141,7 +179,9 @@
                     if (!mentionOk) { error = mentionMessage; return; }
                 }
             }
-            message = "Tous les résultats ont été enregistrés. Tu peux clôturer le cycle.";
+            message = offen == 0
+                ? "Tous les résultats ont été enregistrés. Tu peux clôturer le cycle."
+                : $"{komplett.Count} résultat(s) enregistré(s). Il reste {offen} élève(s) à compléter.";
             await OnSaved.InvokeAsync();
         }
         finally

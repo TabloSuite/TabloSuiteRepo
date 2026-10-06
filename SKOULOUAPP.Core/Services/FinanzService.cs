@@ -368,7 +368,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         if ((dateiname is not null || belegInhalt is not null)
             && !VersucheBelegZuPruefen(dateiname, belegInhalt, out inhaltstyp))
         {
-            return (false, "Le justificatif doit être un fichier PDF, JPG ou PNG valide (5 Mo maximum).", null);
+            return (false, "Le justificatif doit être un fichier PDF, JPG ou PNG valide (25 Mo maximum).", null);
         }
 
         var kategorie = await dbContext.FinanzKategorien
@@ -447,7 +447,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
     {
         inhaltstyp = null;
         if (string.IsNullOrWhiteSpace(dateiname) || Path.GetFileName(dateiname).Length > 255
-            || inhalt is not { Length: > 4 and <= 5 * 1024 * 1024 }) return false;
+            || inhalt is not { Length: > 4 and <= 25 * 1024 * 1024 }) return false;
 
         var endung = Path.GetExtension(dateiname).ToLowerInvariant();
         inhaltstyp = endung switch
@@ -694,6 +694,26 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .FirstOrDefaultAsync(
                 x => x.SchulID == schulId && x.KlasseId == klasseId && x.EndDatum == null,
                 cancellationToken);
+
+    public async Task<(int Gesamt, int OhneNote)> GetAbschlussNotenStatusAsync(Guid durchlaufId, CancellationToken cancellationToken = default)
+    {
+        var durchlauf = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == durchlaufId, cancellationToken);
+        if (durchlauf is null)
+        {
+            return (0, 0);
+        }
+
+        var teilnehmer = await GetDurchlaufTeilnehmerIdsAsync(durchlauf, cancellationToken);
+        var mitNote = await dbContext.KlassenAbschlussEntscheidungen.AsNoTracking()
+            .Where(x => x.DurchlaufId == durchlaufId
+                && (x.AbschlussNote != null || (x.AbschlussNoteText != null && x.AbschlussNoteText != "")))
+            .Select(x => x.StudentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return (teilnehmer.Count, teilnehmer.Count(id => !mitNote.Contains(id)));
+    }
 
     /// <summary>
     /// Startet einen neuen Klassenzyklus. Pro Schule + Klasse darf nur ein
@@ -1439,11 +1459,23 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
     /// <summary>Nur die schuleigenen Klassen einer Schule als Auswahlliste.</summary>
     public async Task<List<FinanzAuswahl>> GetNiveausAsync(Guid schulId, CancellationToken cancellationToken = default)
-        => await dbContext.Klassen
+    {
+        var klassen = await dbContext.Klassen
             .Where(x => x.SchoolId == schulId && !x.IstSystemNiveau)
             .OrderBy(x => x.Code)
-            .Select(x => new FinanzAuswahl { Id = x.Id, Name = x.Code + " – " + x.Title })
+            .Select(x => new { x.Id, x.Code, x.Title })
             .ToListAsync(cancellationToken);
+
+        return klassen
+            .Select(x => new FinanzAuswahl
+            {
+                Id = x.Id,
+                Name = string.IsNullOrWhiteSpace(x.Title) || string.Equals(x.Title.Trim(), x.Code?.Trim(), StringComparison.OrdinalIgnoreCase)
+                    ? x.Code ?? string.Empty
+                    : x.Code + " – " + x.Title
+            })
+            .ToList();
+    }
 
     /// <summary>
     /// Liefert einen Preisvorschlag für einen neuen Durchlauf: bevorzugt der
