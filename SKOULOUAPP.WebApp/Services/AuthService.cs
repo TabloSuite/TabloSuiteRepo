@@ -64,6 +64,50 @@ public class AuthService(
             .ToListAsync(cancellationToken);
 
     /// <summary>
+    /// Prüft fachliche Voraussetzungen der öffentlichen Registrierung, bevor
+    /// die Nutzungsbedingungen angezeigt werden. Es werden keine Daten angelegt.
+    /// </summary>
+    public async Task<(bool Succeeded, string ErrorMessage)> ValidateRegistrationAsync(
+        RegisterInputModel input,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(input.Email)
+            && await userManager.FindByEmailAsync(input.Email.Trim()) is not null)
+        {
+            return (false, "Un compte avec cette adresse e-mail existe déjà.");
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (input.Art == RegistrierungsArt.SchulLeiter)
+        {
+            var schoolName = input.SchulName.Trim();
+            if (string.IsNullOrWhiteSpace(schoolName))
+            {
+                return (false, "Veuillez indiquer le nom de ton école.");
+            }
+
+            if (await db.Schools.AnyAsync(school => school.Name == schoolName, cancellationToken))
+            {
+                return (false, "Une école portant ce nom existe déjà.");
+            }
+
+            return (true, string.Empty);
+        }
+
+        if (input.SelectedSchoolId is null)
+        {
+            return (false, "Veuillez choisir une école.");
+        }
+
+        var schoolExists = await db.Schools.AnyAsync(
+            school => school.Id == input.SelectedSchoolId.Value && school.IsActive,
+            cancellationToken);
+        return schoolExists
+            ? (true, string.Empty)
+            : (false, "L'école sélectionnée est introuvable.");
+    }
+
+    /// <summary>
     /// Registriert einen SchulLeiter zusammen mit seiner neuen Schule.
     /// Der SchulLeiter erhält zusätzlich die Lehrer-Rolle für seine Schule.
     /// Das Konto ist zunächst blockiert und muss vom SuperAdmin freigegeben werden.
@@ -75,20 +119,15 @@ public class AuthService(
             return (false, "Veuillez accepter les conditions d'utilisation avant de t'inscrire.");
         }
 
-        if (string.IsNullOrWhiteSpace(input.SchulName))
+        var validation = await ValidateRegistrationAsync(input, cancellationToken);
+        if (!validation.Succeeded)
         {
-            return (false, "Veuillez indiquer le nom de ton école.");
+            return validation;
         }
 
         // Eigener, kurzlebiger DbContext: verhindert Kollisionen mit dem geteilten
         // Circuit-DbContext (Blazor Server) während paralleler Abfragen.
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var schuleVorhanden = await db.Schools.AnyAsync(x => x.Name == input.SchulName, cancellationToken);
-        if (schuleVorhanden)
-        {
-            return (false, "Une école portant ce nom existe déjà.");
-        }
 
         var schule = new School
         {
@@ -147,9 +186,10 @@ public class AuthService(
             return (false, "Veuillez accepter les conditions d'utilisation avant de t'inscrire.");
         }
 
-        if (input.SelectedSchoolId is null)
+        var validation = await ValidateRegistrationAsync(input, cancellationToken);
+        if (!validation.Succeeded)
         {
-            return (false, "Veuillez choisir une école.");
+            return validation;
         }
 
         // Eigener, kurzlebiger DbContext: verhindert Kollisionen mit dem geteilten
@@ -750,8 +790,29 @@ public class AuthService(
         var adminHinweis = EmailTemplates.InfoBox(
             "Tu peux gérer les écoles, valider les comptes des directeurs, suivre les abonnements "
             + "<strong>SKOULOUAPPABO</strong> ainsi que la facturation de toute la plateforme.");
+        var directionHinweis = EmailTemplates.InfoBox("""
+            <strong>Tout ton établissement, dans un seul espace</strong><br/>
+            Une fois ton compte validé, tu pourras organiser simplement le fonctionnement quotidien de ton école&nbsp;:
+            <ul style="margin:12px 0 4px;padding-left:20px;">
+                <li style="margin:6px 0;"><strong>Organisation scolaire&nbsp;:</strong> gérer les classes, les cycles, les enseignants, les élèves et leurs affectations.</li>
+                <li style="margin:6px 0;"><strong>Frais scolaires&nbsp;:</strong> enregistrer les montants dus, les paiements comptants ou échelonnés et suivre immédiatement les soldes restant à payer.</li>
+                <li style="margin:6px 0;"><strong>Finances de l'école&nbsp;:</strong> centraliser les recettes, les dépenses et les justificatifs, puis consulter des synthèses et rapports filtrés par période.</li>
+                <li style="margin:6px 0;"><strong>SKOULOUAPPABO&nbsp;:</strong> attribuer l'abonnement aux élèves après le démarrage du cycle, enregistrer les paiements et suivre les commissions ainsi que les montants facturés.</li>
+                <li style="margin:6px 0;"><strong>Pilotage clair&nbsp;:</strong> retrouver au même endroit les situations de paiement, les activités pédagogiques et les informations utiles à la direction.</li>
+            </ul>
+            """);
         var aboHinweisTeam = EmailTemplates.InfoBox(BaueAboHinweis(istSchueler: false));
-        var aboHinweisSchueler = EmailTemplates.InfoBox(BaueAboHinweis(istSchueler: true));
+        var schuelerHinweis = EmailTemplates.InfoBox("""
+            <strong>Ton espace scolaire, toujours à portée de main</strong><br/>
+            Dès que ton compte et ton accès de classe seront validés par ton école, tu pourras profiter d'un espace personnel pour apprendre et suivre ton parcours&nbsp;:
+            <ul style="margin:12px 0 4px;padding-left:20px;">
+                <li style="margin:6px 0;"><strong>Cours et supports&nbsp;:</strong> retrouver les leçons et documents publiés pour ta classe par tes enseignants.</li>
+                <li style="margin:6px 0;"><strong>Exercices et examens&nbsp;:</strong> réaliser les activités qui te sont proposées et consulter les résultats disponibles.</li>
+                <li style="margin:6px 0;"><strong>Progression personnelle&nbsp;:</strong> suivre tes leçons terminées, tes scores et tes dernières activités au même endroit.</li>
+                <li style="margin:6px 0;"><strong>SKOULOUAPPABO&nbsp;:</strong> avec l'abonnement actif de ta classe, tu bénéficies des leçons, supports, exercices et examens autorisés. La direction attribue et suit cet abonnement pour chaque classe.</li>
+                <li style="margin:6px 0;"><strong>Un accompagnement clair&nbsp;:</strong> pour toute question sur ton compte, ta classe ou un paiement, adresse-toi directement à la direction de ton école.</li>
+            </ul>
+            """);
 
         return rolle switch
         {
@@ -774,7 +835,8 @@ public class AuthService(
                 <p>Ton compte de <strong>directeur d'école</strong> a bien été créé.</p>
                 {schulZeile}
                 <p>Il sera activé après validation par l'exploitant. Tu recevras une notification dès que tu pourras te connecter.</p>
-                {aboHinweisTeam}
+                 <p>Ton futur espace de direction t'aidera à suivre l'administration, les paiements et les activités de ton établissement avec une vue claire et centralisée.</p>
+                 {directionHinweis}
                 {button}
                 {abschluss}
                 """),
@@ -799,7 +861,8 @@ public class AuthService(
                 <p>Merci pour ton inscription à <strong>SKOULOUAPP</strong> ! Ton compte d'élève a bien été créé.</p>
                 {schulZeile}
                 <p>Il sera activé après validation. Tu pourras te connecter dès que ton compte sera activé.</p>
-                {aboHinweisSchueler}
+                 <p>Une fois ton accès validé, ton espace personnel réunira les contenus et informations utiles à ton apprentissage.</p>
+                 {schuelerHinweis}
                 {button}
                 {abschluss}
                 """),

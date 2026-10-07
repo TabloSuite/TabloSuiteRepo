@@ -127,12 +127,37 @@ public partial class Register
         StateHasChanged();
     }
 
-    private Task OpenTermsAsync()
+    private async Task OpenTermsAsync()
     {
+        if (isSubmitting)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+        message = null;
         errorMessage = null;
-        termsSectionToScroll = Model.Art == RegistrierungsArt.Schueler ? "terms-student" : "terms-school";
-        showTermsModal = true;
-        return Task.CompletedTask;
+        Model.AgbAccepted = false;
+        try
+        {
+            await DatabaseActionGuard.RunAsync(async () =>
+            {
+                var validation = await AuthService.ValidateRegistrationAsync(Model);
+                if (!validation.Succeeded)
+                {
+                    errorMessage = validation.ErrorMessage;
+                    showTermsModal = false;
+                    return;
+                }
+
+                termsSectionToScroll = Model.Art == RegistrierungsArt.Schueler ? "terms-student" : "terms-school";
+                showTermsModal = true;
+            });
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task ScrollToTermsAsync(string sectionId)
@@ -175,6 +200,8 @@ public partial class Register
                 if (!result.Succeeded)
                 {
                     errorMessage = result.ErrorMessage;
+                    showTermsModal = false;
+                    Model.AgbAccepted = false;
                     return;
                 }
 

@@ -8,29 +8,31 @@
 
 <PageTitle>Inscription</PageTitle>
 
-<section class="relative mx-auto w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl shadow-emerald-100/80 ring-1 ring-slate-100 sm:p-8">
+<section class="relative mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-3xl min-w-0 flex-col overflow-hidden rounded-[2rem] bg-white shadow-xl shadow-emerald-100/80 ring-1 ring-slate-100">
     <div class="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl"></div>
-    <div class="relative">
-    <div class="mb-6 flex items-center gap-4">
-        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-xl font-black text-white shadow-lg shadow-emerald-200">H</div>
-        <div>
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Inscription</p>
-            <h1 class="mt-1 text-3xl font-black text-slate-900">Créer un compte</h1>
+    <header class="relative z-10 shrink-0 border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur sm:px-8">
+        <div class="flex items-center gap-4">
+            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-xl font-black text-white shadow-lg shadow-emerald-200">H</div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Inscription</p>
+                <h1 class="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">Créer un compte</h1>
+                <p class="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">Après l'inscription, le compte doit être validé par la direction compétente.</p>
+            </div>
         </div>
-    </div>
-    <p class="mt-4 text-sm leading-7 text-slate-600">Inscris-toi comme directeur avec ton école ou comme élève dans une école existante. Ton compte est d'abord vérifié puis activé par la direction compétente.</p>
 
-    @if (!string.IsNullOrWhiteSpace(message))
-    {
-        <div class="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">@message</div>
-    }
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <div class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status" aria-live="polite">@message</div>
+        }
 
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
-    {
-        <div class="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@errorMessage</div>
-    }
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert">@errorMessage</div>
+        }
+    </header>
 
-    <EditForm Model="Model" OnValidSubmit="OpenTermsAsync" FormName="register-form" class="mt-8 grid gap-5 min-w-0 xl:grid-cols-2">
+    <div class="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 sm:px-8">
+    <EditForm Model="Model" OnValidSubmit="OpenTermsAsync" FormName="register-form" class="grid min-w-0 gap-5 pt-6 xl:grid-cols-2">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
@@ -132,7 +134,7 @@
     </div>
 </section>
 
-<ModalDialog @bind-Open="showTermsModal" Title="Conditions d'utilisation" Eyebrow="Avant de finaliser l'inscription" ErrorMessage="@errorMessage" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
+<ModalDialog @bind-Open="showTermsModal" Title="Conditions d'utilisation" Eyebrow="Avant de finaliser l'inscription" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
     <div class="space-y-6">
         <div class="rounded-2xl bg-sky-50 p-4 text-sm leading-6 text-sky-950">
             <p class="font-bold">Bienvenue sur SKOULOUAPP Campus</p>

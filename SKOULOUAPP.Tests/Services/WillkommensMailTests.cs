@@ -257,6 +257,15 @@ public class WillkommensMailTests
         Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
         Assert.Contains("Institut Goethe", nachricht.HtmlBody);
         Assert.Contains("directeur d'école", nachricht.HtmlBody);
+        Assert.Contains("Tout ton établissement, dans un seul espace", nachricht.HtmlBody);
+        Assert.Contains("Frais scolaires", nachricht.HtmlBody);
+        Assert.Contains("paiements comptants ou échelonnés", nachricht.HtmlBody);
+        Assert.Contains("Finances de l'école", nachricht.HtmlBody);
+        Assert.Contains("recettes", nachricht.HtmlBody);
+        Assert.Contains("dépenses", nachricht.HtmlBody);
+        Assert.Contains("SKOULOUAPPABO", nachricht.HtmlBody);
+        Assert.Contains("commissions", nachricht.HtmlBody);
+        Assert.Contains("montants facturés", nachricht.HtmlBody);
     }
 
     [Fact]
@@ -286,6 +295,11 @@ public class WillkommensMailTests
         Assert.Contains("SKOULOUAPPABO", html);
         Assert.Contains("tu bénéficies des leçons, supports, exercices et examens", html);
         Assert.Contains("La direction attribue et suit cet abonnement pour chaque classe", html);
+        Assert.Contains("Ton espace scolaire, toujours à portée de main", html);
+        Assert.Contains("Cours et supports", html);
+        Assert.Contains("Exercices et examens", html);
+        Assert.Contains("Progression personnelle", html);
+        Assert.Contains("direction de ton école", html);
     }
 
     [Fact]

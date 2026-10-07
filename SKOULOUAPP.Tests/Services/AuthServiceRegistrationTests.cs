@@ -98,6 +98,57 @@ public class AuthServiceRegistrationTests
     }
 
     [Fact]
+    public async Task ValidateRegistrationAsync_DoppelteSchule_WirdVorAgbAbgelehnt()
+    {
+        var factory = new TestApplicationDbContextFactory();
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            db.Schools.Add(new School { Name = "École existante", IsActive = true });
+            await db.SaveChangesAsync();
+        }
+
+        var manager = TestUserManager.Create();
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, new FakeEmailService(),
+            postmarkOptions: Options.Create(new PostmarkOptions { Enabled = false }),
+            configuration: new ConfigurationBuilder().Build(), logger: NullLogger<AuthService>.Instance);
+
+        var result = await service.ValidateRegistrationAsync(new RegisterInputModel
+        {
+            Art = RegistrierungsArt.SchulLeiter,
+            Email = "direction@example.org",
+            SchulName = "École existante"
+        });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Une école portant ce nom existe déjà.", result.ErrorMessage);
+        Assert.Null(await manager.FindByEmailAsync("direction@example.org"));
+        await using var verificationDb = await factory.CreateDbContextAsync();
+        Assert.Single(await verificationDb.Schools.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateRegistrationAsync_NeueSchule_ErlaubtAgbOhneDatenAnzulegen()
+    {
+        var factory = new TestApplicationDbContextFactory();
+        var manager = TestUserManager.Create();
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, new FakeEmailService(),
+            postmarkOptions: Options.Create(new PostmarkOptions { Enabled = false }),
+            configuration: new ConfigurationBuilder().Build(), logger: NullLogger<AuthService>.Instance);
+
+        var result = await service.ValidateRegistrationAsync(new RegisterInputModel
+        {
+            Art = RegistrierungsArt.SchulLeiter,
+            Email = "direction@example.org",
+            SchulName = "Nouvelle école"
+        });
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Null(await manager.FindByEmailAsync("direction@example.org"));
+        await using var verificationDb = await factory.CreateDbContextAsync();
+        Assert.Empty(await verificationDb.Schools.ToListAsync());
+    }
+
+    [Fact]
     public async Task RequiresTermsAcceptanceAsync_WithoutCurrentAcceptance_ReturnsTrue()
     {
         var user = new AppUser { Id = Guid.NewGuid() };
