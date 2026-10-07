@@ -1,6 +1,6 @@
 @if (Open)
 {
-    <div class="fixed inset-0 z-[2200] flex items-center justify-center overflow-hidden bg-slate-950/50 p-6 backdrop-blur-sm sm:p-8"
+    <div class="fixed inset-0 @ZIndexClass flex items-center justify-center overflow-hidden bg-slate-950/50 p-6 backdrop-blur-sm sm:p-8"
          @onclick="OnBackdropClickAsync">
         <div class="skoulou-modal-surface my-auto max-h-[calc(100dvh-4rem)] w-full @MaxWidthClass rounded-[2rem] bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-100 sm:max-h-[calc(100dvh-6rem)]"
              @onclick:stopPropagation="true">
@@ -21,6 +21,17 @@
                     </svg>
                 </button>
             </div>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="mx-6 mt-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium leading-6 text-rose-800 sm:mx-8"
+                     role="alert"
+                     aria-live="assertive">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                    </svg>
+                    <span>@ErrorMessage</span>
+                </div>
+            }
             <div class="@(ScrollBody ? "skoulou-modal-scroll" : "overflow-visible") px-6 py-6 sm:px-8">
                 @ChildContent
             </div>

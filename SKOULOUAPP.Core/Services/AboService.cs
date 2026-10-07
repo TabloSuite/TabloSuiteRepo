@@ -408,4 +408,70 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
         await dbContext.SaveChangesAsync(cancellationToken);
         return (true, "L'abonnement a été annulé par l'Administrateur.");
     }
+
+    /// <summary>
+    /// Storniert ein noch nicht abgerechnetes Abo und trennt den Schüler im selben
+    /// Admin-Vorgang von der zugehörigen Klasse. Die reine Abo-Stornierung bleibt
+    /// davon unabhängig und entfernt keine Klassenzuordnung.
+    /// </summary>
+    public async Task<(bool Succeeded, string ErrorMessage)> AboEntfernenUndAusKlasseEntfernenAsync(
+        Guid studentId,
+        Guid klasseId,
+        bool istSuperAdmin = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (!istSuperAdmin)
+        {
+            return (false, "Seul l'Administrateur peut annuler l'abonnement et retirer l'élève de la classe.");
+        }
+
+        var enrollment = await dbContext.LevelEnrollments
+            .FirstOrDefaultAsync(item => item.StudentId == studentId
+                && item.KlasseId == klasseId
+                && item.IstAktuell, cancellationToken);
+        if (enrollment is null)
+        {
+            return (false, "Aucune attribution active n'a été trouvée pour cette classe.");
+        }
+
+        if (enrollment.AbgerechnetInPeriodeId is not null)
+        {
+            return (false, "Cet abonnement a déjà été facturé et ne peut plus être annulé.");
+        }
+
+        var profile = await dbContext.StudentProfiles
+            .FirstOrDefaultAsync(item => item.AppUserId == studentId
+                && item.CurrentKlasseId == klasseId, cancellationToken);
+        if (profile is null)
+        {
+            return (false, "L'élève n'est plus affecté à cette classe.");
+        }
+
+        if (enrollment.IsPaid)
+        {
+            var buchungen = await dbContext.FinanzBuchungen
+                .Where(buchung => buchung.HerkunftReferenzID == enrollment.Id
+                    && (buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboAnteil
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboLehrerAnteil
+                        || buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboProductOwnerAnteil))
+                .ToListAsync(cancellationToken);
+            if (buchungen.Count > 0)
+            {
+                dbContext.FinanzBuchungen.RemoveRange(buchungen);
+            }
+        }
+
+        enrollment.IsUnlocked = false;
+        enrollment.IsPaid = false;
+        enrollment.PaidAtUtc = null;
+        enrollment.IstAktuell = false;
+        enrollment.GeaendertAmUtc = DateTime.UtcNow;
+        profile.CurrentKlasseId = null;
+        profile.CurrentLevelCode = string.Empty;
+        profile.GeaendertAmUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, "L'abonnement a été annulé et l'élève a été retiré de la classe.");
+    }
 }

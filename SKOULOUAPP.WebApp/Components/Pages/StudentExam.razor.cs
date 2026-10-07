@@ -29,6 +29,7 @@ public partial class StudentExam : CancelableComponentBase
     public Guid ExamId { get; set; }
 
     private ExamSessionViewModel? session;
+    private ExamReviewViewModel? review;
     private ExamResult? result;
     private bool notFound;
     private bool isSubmitting;
@@ -114,6 +115,9 @@ public partial class StudentExam : CancelableComponentBase
         return baseClass + "bg-slate-200 hover:bg-slate-300";
     }
 
+    private static bool AnswerMatches(string? studentAnswer, string correctAnswer)
+        => AnswerMatchingService.Normalize(studentAnswer) == AnswerMatchingService.Normalize(correctAnswer);
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -129,7 +133,8 @@ public partial class StudentExam : CancelableComponentBase
             session = await ExamService.StartExamAsync(ExamId, studentId, ComponentToken);
             if (session is null)
             {
-                notFound = true;
+                review = await ExamService.GetExamReviewForStudentAsync(ExamId, studentId, ComponentToken);
+                notFound = review is null;
                 return;
             }
 
@@ -267,6 +272,55 @@ public partial class StudentExam : CancelableComponentBase
             TextAnswer = textAnswers.TryGetValue(q.QuestionId, out var txt) ? txt : null,
             GapValues = gapAnswers.TryGetValue(q.QuestionId, out var gaps) ? gaps : null
         }).ToList();
+
+    private static bool AreAnswerCollectionsEqual(
+        IReadOnlyCollection<ExamAnswerSubmission> left,
+        IReadOnlyCollection<ExamAnswerSubmission> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        var rightByQuestion = right.ToDictionary(x => x.QuestionId);
+        foreach (var answer in left)
+        {
+            if (!rightByQuestion.TryGetValue(answer.QuestionId, out var other))
+            {
+                return false;
+            }
+
+            if (!AreAnswersEqual(answer, other))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool AreAnswersEqual(ExamAnswerSubmission left, ExamAnswerSubmission right)
+    {
+        if (left.QuestionId != right.QuestionId) return false;
+        if (left.SelectedOptionId != right.SelectedOptionId) return false;
+        if (!StringSequenceEqual(left.GapValues, right.GapValues)) return false;
+        if (!GuidSequenceEqual(left.SelectedOptionIds, right.SelectedOptionIds)) return false;
+        return string.Equals(left.TextAnswer ?? string.Empty, right.TextAnswer ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    private static bool GuidSequenceEqual(IReadOnlyCollection<Guid>? left, IReadOnlyCollection<Guid>? right)
+    {
+        left ??= [];
+        right ??= [];
+        return left.OrderBy(x => x).SequenceEqual(right.OrderBy(x => x));
+    }
+
+    private static bool StringSequenceEqual(IReadOnlyCollection<string>? left, IReadOnlyCollection<string>? right)
+    {
+        left ??= [];
+        right ??= [];
+        return left.SequenceEqual(right, StringComparer.Ordinal);
+    }
 
     private async Task SaveDraftAsync()
     {

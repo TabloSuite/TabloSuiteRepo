@@ -721,6 +721,30 @@
                         <div class="mt-3">
                             <ModernDropdown TValue="Guid?" Label="Classe" Value="reassignTargetKlasseId" ValueChanged="SetReassignTargetKlasseAsync" Options="ReassignKlasseOptions" />
                         </div>
+                        @if (ReassignTargetKlasse is not null)
+                        {
+                            <div class="mt-4 rounded-2xl border border-indigo-100 bg-white p-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-sm font-bold text-slate-800">Élèves actuellement dans la classe</p>
+                                    <Badge Accent="indigo">@ReassignTargetKlasse.CurrentStudentCount</Badge>
+                                </div>
+                                @if (ReassignTargetStudents.Count > 0)
+                                {
+                                    <div class="mt-3 max-h-48 overflow-auto rounded-xl border border-slate-100">
+                                        @foreach (var student in ReassignTargetStudents)
+                                        {
+                                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">
+                                                <div class="min-w-0">
+                                                    <p class="truncate text-sm font-semibold text-slate-900">@student.FullName</p>
+                                                    <p class="truncate text-xs text-slate-500">@student.Email</p>
+                                                </div>
+                                                <button type="button" class="shrink-0 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" @onclick="() => OpenReassignRemoveConfirmation(student)">Retirer</button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
                         <p class="mt-3 text-xs text-slate-500">Astuce: utilise le filtre de référence (CP1, CP2, etc.) au-dessus pour limiter la liste des classes.</p>
                     </article>
 
@@ -729,8 +753,18 @@
                             <h3 class="text-sm font-black uppercase tracking-[0.14em] text-slate-700">Élèves sans classe active</h3>
                             <Badge Accent="slate">@FilteredStudentsWithoutActiveClass.Count</Badge>
                         </div>
-                        <div class="mt-3">
-                        <input class="skoulou-input text-sm" placeholder="Filtrer par nom, email, classe..." value="@reassignSearch" @oninput="SetReassignSearchAsync" />
+                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                            <ModernDropdown TValue="string"
+                                            Label="Situation précédente"
+                                            Value="reassignPreviousKlasseFilter"
+                                            ValueChanged="SetReassignPreviousKlasseFilterAsync"
+                                            Options="ReassignPreviousKlasseOptions"
+                                            Searchable="true"
+                                            SearchPlaceholder="Rechercher une ancienne classe..." />
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold text-slate-600">Recherche</label>
+                                <input class="skoulou-input text-sm" placeholder="Nom, email, ancienne classe..." value="@reassignSearch" @oninput="SetReassignSearchAsync" />
+                            </div>
                         </div>
                         <div class="mt-3 max-h-72 overflow-auto rounded-xl ring-1 ring-slate-100">
                             @if (FilteredStudentsWithoutActiveClass.Count == 0)
@@ -748,7 +782,10 @@
                                                class="mt-1 h-4 w-4 rounded border-slate-300" />
                                         <span>
                                             <span class="block font-semibold text-slate-900">@student.FullName</span>
-                                            <span class="block text-xs text-slate-500">@student.Email · @student.CurrentLevelCode</span>
+                                            <span class="block text-xs text-slate-500">@student.Email</span>
+                                            <span class="block text-xs font-medium @(student.PreviousKlasseId.HasValue ? "text-indigo-700" : "text-emerald-700")">
+                                                @(student.PreviousKlasseId.HasValue ? $"Ancienne classe : {student.PreviousKlasseName}" : "Nouvel élève · aucune classe précédente")
+                                            </span>
                                         </span>
                                     </label>
                                 }
@@ -770,6 +807,31 @@
         </ChildContent>
     </CollapsibleCard>
     }
+
+<ModalDialog @bind-Open="reassignRemoveConfirmOpen"
+             Title="Retirer l'élève de la classe"
+             Eyebrow="Confirmation"
+             ErrorMessage="@reassignRemoveErrorMessage"
+             CloseOnBackdrop="false"
+             MaxWidthClass="max-w-md">
+    @if (reassignStudentToRemove is not null && ReassignTargetKlasse is not null)
+    {
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            <p>Retirer <strong>@reassignStudentToRemove.FullName</strong> de <strong>@GetKlassenAnzeige(ReassignTargetKlasse)</strong> ?</p>
+            <p class="mt-2">L'élève reviendra dans la liste des élèves sans classe active. Son compte ne sera pas supprimé.</p>
+            <p class="mt-2 text-xs">Une affectation avec abonnement actif ou payé ne peut pas être retirée ici.</p>
+        </div>
+        <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="CloseReassignRemoveConfirmation">Annuler</button>
+            <AsyncActionButton Class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                               IsBusy="@isDatabaseActionInProgress"
+                               BusyLabel="Retrait..."
+                               OnClick="@(_ => RemoveReassignedStudentAsync())">
+                Retirer de la classe
+            </AsyncActionButton>
+        </div>
+    }
+</ModalDialog>
 
     @if (IsDirectorTabActive(DirectorTabImport))
     {
@@ -932,15 +994,12 @@
 <ModalDialog @bind-Open="schoolModalOpen"
              Title="@schoolModalTitle"
              Eyebrow="Mes écoles"
+             ErrorMessage="@schoolErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-xl">
     <EditForm Model="schoolForm" OnValidSubmit="SaveOwnSchoolAsync" FormName="schulleiter-school-form" class="grid gap-4">
         <DataAnnotationsValidator />
         <ValidationSummary />
-        @if (!string.IsNullOrWhiteSpace(schoolErrorMessage))
-        {
-            <div class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">@schoolErrorMessage</div>
-        }
         <div>
             <label class="skoulou-label">Nom de l'école</label>
             <InputText @bind-Value="schoolForm.Name" class="skoulou-input" />
@@ -974,6 +1033,7 @@
              OpenChanged="OnFachDeleteConfirmOpenChanged"
              Title="Supprimer la matière"
              Eyebrow="Confirmation"
+             ErrorMessage="@fachVerwaltungErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-md">
     <p class="text-sm text-slate-700">Veux-tu vraiment supprimer la matière <strong>@fachToDeleteName</strong> ?</p>
@@ -998,22 +1058,12 @@
              OpenChanged="OnUserModalOpenChanged"
              Title="@userModalTitle"
              Eyebrow="Gestion des utilisateurs"
+             ErrorMessage="@userErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-3xl">
-    @if (!string.IsNullOrWhiteSpace(userErrorMessage) || !string.IsNullOrWhiteSpace(userStatusMessage))
+    @if (!string.IsNullOrWhiteSpace(userStatusMessage))
     {
         <div class="sticky top-0 z-20 -mx-1 mb-3 space-y-2 rounded-xl bg-white/95 pb-2 pt-1 backdrop-blur">
-            @if (!string.IsNullOrWhiteSpace(userErrorMessage))
-            {
-                <div class="flex items-start justify-between gap-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">
-                    <span>@userErrorMessage</span>
-                    <button type="button" class="shrink-0 rounded-full p-1 text-rose-700 transition hover:bg-rose-100" aria-label="Fermer" @onclick="() => userErrorMessage = null">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            }
             @if (!string.IsNullOrWhiteSpace(userStatusMessage))
             {
                 <div class="flex items-start justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
@@ -1259,6 +1309,7 @@
 <ModalDialog @bind-Open="aboModalOpen"
               Title="Gérer l'abonnement"
               Eyebrow="@($"{pendingAboStudentName} · {pendingLevelCode}")"
+              ErrorMessage="@errorMessage"
               CloseOnBackdrop="false"
               MaxWidthClass="max-w-lg">
     @if (pendingAboTyp is null)
@@ -1301,6 +1352,7 @@
              OpenChanged="OnZuordnungModalOpenChanged"
              Title="@($"Classes de {zuordnungLehrerName}")"
              Eyebrow="Affectation des classes"
+             ErrorMessage="@userErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-2xl">
     <p class="text-sm leading-6 text-slate-600">
@@ -1350,16 +1402,12 @@
              OpenChanged="OnKlasseModalOpenChanged"
                Title="@(klasseForm.CourseId.HasValue ? "Modifier la classe" : "Nouvelle classe")"
                Eyebrow="Gestion des classes"
+             ErrorMessage="@klasseErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-2xl">
     @if (!string.IsNullOrWhiteSpace(klasseErrorMessage) || !string.IsNullOrWhiteSpace(klasseStatusMessage) || !string.IsNullOrWhiteSpace(klasseWarnMessage))
     {
         <div class="sticky top-0 z-20 -mx-1 mb-3 space-y-2 rounded-xl bg-white/95 pb-2 pt-1 backdrop-blur">
-            @if (!string.IsNullOrWhiteSpace(klasseErrorMessage))
-            {
-                <div class="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 ring-1 ring-rose-100">@klasseErrorMessage</div>
-            }
-
             @if (!string.IsNullOrWhiteSpace(klasseStatusMessage))
             {
                 <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">@klasseStatusMessage</div>
@@ -1481,6 +1529,7 @@
 <ModalDialog @bind-Open="durchlaufStartModalOpen"
              Title="Démarrer le cycle"
              Eyebrow="Cycle de classe"
+             ErrorMessage="@klasseErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-lg">
     @if (startKlasse is not null)
@@ -1539,7 +1588,7 @@
                     @if (beendenOhneNote > 0)
                     {
                         <p class="text-xl font-black text-amber-700">@beendenOhneNote / @beendenTeilnehmerGesamt <span class="text-sm font-bold">non définies</span></p>
-                        <p class="mt-1 text-xs font-medium">Définis les notes finales via le bouton « Définir les notes finales » de la carte du cycle avant de clôturer.</p>
+                        <p class="mt-1 text-xs font-medium">Information : tu peux clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
                     }
                     else
                     {
@@ -1551,7 +1600,7 @@
         <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
             <p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true">⚠️</span>Clôture définitive du cycle de classe</p>
             <p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
-            <p class="mt-2 font-semibold">Toutes les notes finales et décisions doivent être enregistrées avant la clôture. Ensuite, elles ne pourront plus être modifiées et tous les élèves quitteront cette classe.</p>
+            <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture et resteront non renseignés. Après la clôture, ils ne pourront plus être modifiés et tous les élèves quitteront cette classe.</p>
             <p class="mt-2">@(!isKoordinator
                 ? "Les abonnements SKOULOUAPP payés et non encore facturés seront facturés automatiquement lors de la clôture. Tu devras ensuite déclarer le virement dans Facturation SKOULOUAPP avant de démarrer un nouveau cycle."
                 : "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP.")</p>
@@ -1565,6 +1614,35 @@
             <AsyncActionButton Class="w-full whitespace-nowrap rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 md:w-auto" IsBusy="@isDatabaseActionInProgress" BusyLabel="Clôture..." OnClick="@(_ => BeendeDurchlaufAsync())">Confirmer la clôture</AsyncActionButton>
         </div>
     }
+</ModalDialog>
+
+<ModalDialog @bind-Open="durchlaufEndeEndgueltigModalOpen"
+             Title="Confirmer la clôture définitive"
+             Eyebrow="Dernière confirmation"
+             CloseOnBackdrop="false"
+             MaxWidthClass="max-w-md"
+             ZIndexClass="z-[2300]">
+    <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-950">
+        <p class="font-black">Cette action est définitive.</p>
+        <p class="mt-2">Le cycle sera clôturé et tous les élèves quitteront la classe active.</p>
+        @if (beendenOhneNote > 0)
+        {
+            <p class="mt-2 font-semibold">@beendenOhneNote élève(s) n'ont pas encore de note finale ou de décision complète. Ces informations resteront non renseignées.</p>
+        }
+        @if (zuBeendenderDurchlauf?.SummeOffen > 0)
+        {
+            <p class="mt-2 font-semibold">La dette restante de @zuBeendenderDurchlauf.SummeOffen.ToString("N0") FCFA sera enregistrée comme perte.</p>
+        }
+    </div>
+    <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="() => durchlaufEndeEndgueltigModalOpen = false">Retour</button>
+        <AsyncActionButton Class="rounded-full bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-800"
+                           IsBusy="@isDatabaseActionInProgress"
+                           BusyLabel="Clôture..."
+                           OnClick="@(_ => BeendeDurchlaufEndgueltigAsync())">
+            Clôturer définitivement
+        </AsyncActionButton>
+    </div>
 </ModalDialog>
 
 <ModalDialog @bind-Open="zahlungModalOpen"

@@ -58,6 +58,7 @@ public partial class TeacherLessons
     private Guid? copyTargetKlasseId;
     private bool copyPublishDirectly;
     private bool isCopying;
+    private string? copyErrorMessage;
     private RichTextEditor? lessonEditor;
     private RichTextEditor? imageLibraryTargetEditor;
     private string editorHtml = string.Empty;
@@ -833,6 +834,7 @@ public partial class TeacherLessons
         copySourceLessonId = lesson.Id;
         copyTargetKlasseId = null;
         copyPublishDirectly = false;
+        copyErrorMessage = null;
         copyModalOpen = true;
         statusMessage = null;
     }
@@ -845,6 +847,7 @@ public partial class TeacherLessons
             copySourceLessonId = Guid.Empty;
             copyTargetKlasseId = null;
             copyPublishDirectly = false;
+            copyErrorMessage = null;
         }
     }
 
@@ -858,7 +861,7 @@ public partial class TeacherLessons
     {
         if (isCopying || copySourceLessonId == Guid.Empty || copyTargetKlasseId is not Guid targetKlasseId)
         {
-            statusMessage = "Sélectionne d'abord la classe cible.";
+            copyErrorMessage = "Sélectionne d'abord la classe cible.";
             return;
         }
 
@@ -883,7 +886,7 @@ public partial class TeacherLessons
         }
         catch (Exception ex) when (!IstAbbruch(ex))
         {
-            statusMessage = ex.Message;
+            copyErrorMessage = ex.Message;
         }
         finally
         {

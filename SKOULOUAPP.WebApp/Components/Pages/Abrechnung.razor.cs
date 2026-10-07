@@ -274,9 +274,9 @@ public partial class Abrechnung
 
     private async Task ConfirmCreateCoreAsync()
     {
-        confirmCreateOpen = false;
         if (!CanManageBilling || selectedSchoolId is null || !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
+            errorMessage = "Sélectionne une école autorisée avant de créer la facturation.";
             return;
         }
 
@@ -288,6 +288,7 @@ public partial class Abrechnung
         SetResult(succeeded, resultMessage);
         if (succeeded && periodeId is Guid id)
         {
+            confirmCreateOpen = false;
             var (gesendet, fehlgeschlagen) = await AbrechnungBenachrichtigungService.ManuelleRechnungSendenAsync(id, ComponentToken);
             if (fehlgeschlagen > 0)
                 errorMessage = $"La facturation a été créée, mais la notification par e-mail n'a pas pu être envoyée à {fehlgeschlagen} destinataire(s). Consultez la facturation dans l'application.";
@@ -341,9 +342,9 @@ public partial class Abrechnung
     private async Task ConfirmBestaetigenCoreAsync()
     {
         var periodId = confirmPeriodId;
-        confirmPeriodId = null;
         if (!isSuperAdmin || periodId is null || currentUserId is not Guid superAdminId)
         {
+            errorMessage = "Cette confirmation est réservée à l'Administrateur.";
             return;
         }
 
@@ -352,6 +353,10 @@ public partial class Abrechnung
             superAdminId,
             ComponentToken);
         SetResult(succeeded, resultMessage);
+        if (succeeded)
+        {
+            confirmPeriodId = null;
+        }
         await LoadSchoolAsync();
     }
 
@@ -378,16 +383,20 @@ public partial class Abrechnung
     {
         var periodId = rejectPeriodId;
         var grund = rejectReason;
-        rejectPeriodId = null;
-        rejectReason = string.Empty;
         if (isSuperAdmin || isProduktOwner || !darfZahlungMelden || periodId is null || currentUserId is null
             || !historie.Any(periode => periode.Id == periodId))
         {
+            errorMessage = "Vous n'êtes pas autorisé à refuser cette facturation.";
             return;
         }
 
         var (succeeded, resultMessage) = await AbrechnungService.SchulLeiterStatusSetzenAsync(periodId.Value, akzeptiert: false, ablehnungsGrund: grund, schulLeiterId: currentUserId);
         SetResult(succeeded, resultMessage);
+        if (succeeded)
+        {
+            rejectPeriodId = null;
+            rejectReason = string.Empty;
+        }
         await LoadSchoolAsync();
     }
 

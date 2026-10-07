@@ -91,6 +91,7 @@ public partial class Finanzen
     private decimal beendenOffeneSchuld;
     private int beendenTeilnehmerGesamt;
     private int beendenOhneNote;
+    private bool beendenEndgueltigOffen;
     private int beendenOffeneSkoulouAppAbos;
     private decimal beendenOffenerSkoulouAppUmsatz;
 
@@ -788,6 +789,7 @@ public partial class Finanzen
 
             if (ok)
             {
+                var fehlendeErgebnisse = beendenOhneNote;
                 message = "L'écriture a été enregistrée.";
                 errorMessage = null;
                 buchungForm = new();
@@ -990,7 +992,13 @@ public partial class Finanzen
         beendenOffenerSkoulouAppUmsatz = uebersicht.OffenerUmsatz;
     }
 
-    private async Task DurchlaufBeendenBestaetigenAsync()
+    private Task DurchlaufBeendenBestaetigenAsync()
+    {
+        beendenEndgueltigOffen = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task DurchlaufEndgueltigBeendenAsync()
     {
         if (!await EnsureFinanceTabAccessAsync("durchlaeufe")) return;
         if (beendenDurchlauf is null || aktiveSchulID is null)
@@ -1011,9 +1019,14 @@ public partial class Finanzen
                 var schliessenMessage = offen > 0
                     ? $"Le cycle est clôturé. Le solde impayé ({offen:N0} FCFA) est enregistré comme perte."
                     : "Le cycle a été clôturé.";
+                if (beendenOhneNote > 0)
+                {
+                    schliessenMessage += $" {beendenOhneNote} élève(s) ont été clôturés sans note finale ou décision complète.";
+                }
                 message = abrechnungsMeldung is null ? schliessenMessage : $"{schliessenMessage} {abrechnungsMeldung}";
                 errorMessage = null;
                 beendenDurchlauf = null;
+                beendenEndgueltigOffen = false;
                 beendenOffeneSkoulouAppAbos = 0;
                 beendenOffenerSkoulouAppUmsatz = 0m;
                 durchlaeufe = await FinanzService.GetDurchlaeufeAsync(aktiveSchulID.Value);

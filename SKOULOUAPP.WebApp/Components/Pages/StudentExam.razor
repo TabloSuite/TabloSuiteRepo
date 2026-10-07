@@ -6,7 +6,77 @@
 
 <PageTitle>@(session?.Title ?? "Épreuve")</PageTitle>
 
-@if (session is null && result is null)
+@if (review is not null)
+{
+    <section class="grid gap-5">
+        <div class="rounded-[2rem] bg-gradient-to-br from-slate-800 to-indigo-900 p-6 text-white shadow-xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-200">Correction de l'épreuve</p>
+            <h1 class="mt-2 text-2xl font-black">@review.CourseCode · @review.Title</h1>
+            <p class="mt-2 text-sm text-white/90">Score : <strong>@review.ScorePercent %</strong> · Seuil : @review.PassingScore %</p>
+            <p class="mt-2 text-xs text-white/80">Lecture seule : tes réponses incorrectes ou absentes sont en rouge et les bonnes réponses en vert.</p>
+        </div>
+
+        @foreach (var question in review.Questions)
+        {
+            <article class="rounded-3xl border p-5 shadow-sm @(question.IsCorrect ? "border-emerald-300 bg-emerald-50/40" : "border-rose-300 bg-rose-50/40")">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Question @question.Order</p>
+                    <Badge Accent="@(question.IsCorrect ? "emerald" : "rose")">@(question.IsCorrect ? "Correct" : question.HasAnswer ? "Incorrect" : "Non répondu")</Badge>
+                </div>
+                <div class="ql-snow mt-3"><div class="ql-editor p-0 text-base font-semibold text-slate-900">@((MarkupString)HtmlSanitizer.SanitizeMitBildern(question.Prompt))</div></div>
+
+                @if (question.Options.Count > 0)
+                {
+                    <div class="mt-4 grid gap-2">
+                        @foreach (var option in question.Options)
+                        {
+                            var selected = question.SelectedOptionId == option.OptionId || question.SelectedOptionIds.Contains(option.OptionId);
+                            var optionClass = option.IsCorrect
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                : selected
+                                    ? "border-rose-300 bg-rose-50 text-rose-900"
+                                    : "border-slate-200 bg-white text-slate-600";
+                            <div class="rounded-2xl border px-4 py-3 text-sm font-medium @optionClass">
+                                <span class="mr-2">@(option.IsCorrect ? "✓" : selected ? "✕" : "○")</span>@HtmlSanitizer.ToPlainText(option.Text)
+                            </div>
+                        }
+                    </div>
+                }
+                else if (question.QuestionType == "GapFill")
+                {
+                    <div class="mt-4 grid gap-3">
+                        @for (var i = 0; i < question.CorrectGapAnswers.Count; i++)
+                        {
+                            var answer = i < question.GapAnswers.Count ? question.GapAnswers[i] : string.Empty;
+                            var correct = question.CorrectGapAnswers[i];
+                            var isGapCorrect = correct.Any(value => AnswerMatches(answer, value));
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <div class="rounded-xl border p-3 text-sm @(isGapCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Ta réponse :</strong> @(string.IsNullOrWhiteSpace(answer) ? "Non répondu" : answer)</div>
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Bonne réponse :</strong> @string.Join(" / ", correct)</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-4 grid gap-2">
+                        <div class="rounded-xl border p-3 text-sm @(question.IsCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Ta réponse :</strong> @(string.IsNullOrWhiteSpace(question.TextAnswer) ? "Non répondu" : question.TextAnswer)</div>
+                        @if (question.AcceptedAnswers.Count > 0)
+                        {
+                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Bonne réponse :</strong> @string.Join(" / ", question.AcceptedAnswers)</div>
+                        }
+                        @if (question.IsManuallyGraded)
+                        {
+                            <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900"><strong>Correction de l'enseignant :</strong> @(question.ManualPoints.HasValue ? $"{question.ManualPoints}/{question.Points} points" : "En attente")</div>
+                        }
+                    </div>
+                }
+            </article>
+        }
+        <a class="w-fit rounded-full bg-indigo-700 px-5 py-2 text-sm font-semibold text-white no-underline" href="/student/exams">Retour aux épreuves</a>
+    </section>
+}
+else if (session is null && result is null)
 {
     <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
         <p class="text-sm text-slate-600">@(notFound ? "Cette épreuve n'est pas disponible." : "Préparation de l'épreuve...")</p>

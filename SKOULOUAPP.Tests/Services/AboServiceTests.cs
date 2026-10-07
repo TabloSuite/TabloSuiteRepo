@@ -458,7 +458,107 @@ public class AboServiceTests
         Assert.False(enrollment.IsUnlocked);
         Assert.False(enrollment.IsPaid);
         Assert.Null(enrollment.PaidAtUtc);
+        Assert.True(enrollment.IstAktuell);
         Assert.Empty(db.FinanzBuchungen.Where(x => x.HerkunftReferenzID == enrollment.Id));
+    }
+
+    [Fact]
+    public async Task AboEntfernenAsync_ReineStornierung_BelaesstSchuelerInKlasse()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (schule, student, level) = SeedBasis(db);
+        var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        profil.CurrentKlasseId = level.Id;
+        profil.CurrentLevelCode = level.Code;
+        await db.SaveChangesAsync();
+        await StarteAktivenDurchlaufAsync(db, schule, level);
+        var service = new AboService(db);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
+
+        var (succeeded, message) = await service.AboEntfernenAsync(student.Id, level.Id, istSuperAdmin: true);
+
+        Assert.True(succeeded, message);
+        profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        Assert.Equal(level.Id, profil.CurrentKlasseId);
+        Assert.Equal(level.Code, profil.CurrentLevelCode);
+        Assert.True(db.LevelEnrollments.Single().IstAktuell);
+    }
+
+    [Fact]
+    public async Task AboEntfernenUndAusKlasseEntfernenAsync_StorniertUndTrenntKlasse()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (schule, student, level) = SeedBasis(db);
+        var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        profil.CurrentKlasseId = level.Id;
+        profil.CurrentLevelCode = level.Code;
+        await db.SaveChangesAsync();
+        await StarteAktivenDurchlaufAsync(db, schule, level);
+        var service = new AboService(db);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
+
+        var (succeeded, message) = await service.AboEntfernenUndAusKlasseEntfernenAsync(
+            student.Id,
+            level.Id,
+            istSuperAdmin: true);
+
+        Assert.True(succeeded, message);
+        var enrollment = Assert.Single(db.LevelEnrollments);
+        Assert.False(enrollment.IsUnlocked);
+        Assert.False(enrollment.IsPaid);
+        Assert.False(enrollment.IstAktuell);
+        Assert.Null(enrollment.PaidAtUtc);
+        Assert.Empty(db.FinanzBuchungen.Where(x => x.HerkunftReferenzID == enrollment.Id));
+        profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        Assert.Null(profil.CurrentKlasseId);
+        Assert.Equal(string.Empty, profil.CurrentLevelCode);
+    }
+
+    [Fact]
+    public async Task AboEntfernenUndAusKlasseEntfernenAsync_OhneSuperAdmin_BleibtUnveraendert()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (schule, student, level) = SeedBasis(db);
+        var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        profil.CurrentKlasseId = level.Id;
+        profil.CurrentLevelCode = level.Code;
+        await db.SaveChangesAsync();
+        await StarteAktivenDurchlaufAsync(db, schule, level);
+        var service = new AboService(db);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
+
+        var (succeeded, _) = await service.AboEntfernenUndAusKlasseEntfernenAsync(student.Id, level.Id);
+
+        Assert.False(succeeded);
+        Assert.True(db.LevelEnrollments.Single().IstAktuell);
+        Assert.Equal(level.Id, db.StudentProfiles.Single().CurrentKlasseId);
+    }
+
+    [Fact]
+    public async Task AboEntfernenUndAusKlasseEntfernenAsync_BereitsAbgerechnet_BleibtUnveraendert()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (schule, student, level) = SeedBasis(db);
+        var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
+        profil.CurrentKlasseId = level.Id;
+        profil.CurrentLevelCode = level.Code;
+        await db.SaveChangesAsync();
+        await StarteAktivenDurchlaufAsync(db, schule, level);
+        var service = new AboService(db);
+        await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
+        var enrollment = db.LevelEnrollments.Single();
+        enrollment.AbgerechnetInPeriodeId = Guid.NewGuid();
+        await db.SaveChangesAsync();
+
+        var (succeeded, message) = await service.AboEntfernenUndAusKlasseEntfernenAsync(
+            student.Id,
+            level.Id,
+            istSuperAdmin: true);
+
+        Assert.False(succeeded);
+        Assert.Contains("déjà été facturé", message);
+        Assert.True(enrollment.IstAktuell);
+        Assert.Equal(level.Id, db.StudentProfiles.Single().CurrentKlasseId);
     }
 
     [Fact]

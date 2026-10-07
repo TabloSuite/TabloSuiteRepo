@@ -17,6 +17,9 @@ public partial class ModalDialog
     public string? Eyebrow { get; set; }
 
     [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
     public string MaxWidthClass { get; set; } = "max-w-3xl";
 
     [Parameter]
@@ -27,6 +30,9 @@ public partial class ModalDialog
 
     [Parameter]
     public bool ScrollBody { get; set; } = true;
+
+    [Parameter]
+    public string ZIndexClass { get; set; } = "z-[2200]";
 
     private async Task CloseAsync()
     {

@@ -1000,20 +1000,6 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                 .Where(profile => profile.SchoolId == durchlauf.SchulID && profile.CurrentKlasseId == durchlauf.KlasseId)
                 .ToListAsync(cancellationToken);
             var teilnehmerIds = teilnehmer.Select(profile => profile.AppUserId).ToList();
-            var abschluesse = await dbContext.KlassenAbschlussEntscheidungen
-                .AsNoTracking()
-                .Where(entscheidung => entscheidung.DurchlaufId == durchlauf.Id && teilnehmerIds.Contains(entscheidung.StudentId))
-                .ToListAsync(cancellationToken);
-            var vollstaendigeIds = abschluesse
-                .Where(entscheidung => !string.IsNullOrWhiteSpace(entscheidung.AbschlussNoteText) && entscheidung.IsBestanden.HasValue)
-                .Select(entscheidung => entscheidung.StudentId)
-                .ToHashSet();
-            var fehlende = teilnehmerIds.Where(id => !vollstaendigeIds.Contains(id)).ToList();
-            if (fehlende.Count > 0)
-            {
-                return (false, $"Renseignez la note finale et la décision de réussite pour les {fehlende.Count} élève(s) avant de clôturer le cycle.", 0m, null);
-            }
-
             var offeneSchuld = await BerechneOffeneSchuldAsync(durchlauf, cancellationToken);
             string? automatischeAbrechnungMessage = null;
 

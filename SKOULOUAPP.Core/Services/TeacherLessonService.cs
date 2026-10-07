@@ -161,11 +161,12 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .Select(x => new { x.SchoolId, x.CurrentKlasseId })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (profile?.CurrentKlasseId is not Guid currentKlasseId)
+        if (profile is null)
         {
             return [];
         }
 
+        var currentKlasseId = profile.CurrentKlasseId;
         var klasseIds = await GetStudentKlasseIdsAsync(studentId, cancellationToken);
         if (klasseIds.Count == 0)
         {
@@ -191,7 +192,58 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         {
             var item = MapToListItem(lesson);
             item.IsPdfExportEnabled = lesson.IsPdfExportEnabled;
-            item.IsCurrentKlasse = lesson.KlasseId == currentKlasseId;
+            item.IsCurrentKlasse = currentKlasseId.HasValue && lesson.KlasseId == currentKlasseId.Value;
+            return item;
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Liefert veröffentlichte Lehrerskripte früherer Klassen eines Schülers, auch wenn er aktuell keine Klasse hat.
+    /// </summary>
+    public async Task<IReadOnlyList<TeacherLessonListItem>> GetHistoryLessonsForStudentAsync(
+        Guid studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = await dbContext.StudentProfiles
+            .AsNoTracking()
+            .Where(x => x.AppUserId == studentId)
+            .Select(x => new { x.SchoolId, x.CurrentKlasseId })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (profile is null)
+        {
+            return [];
+        }
+
+        var klasseIds = await GetStudentHistoryKlasseIdsAsync(studentId, cancellationToken);
+        if (profile.CurrentKlasseId is Guid currentKlasseId)
+        {
+            klasseIds.Remove(currentKlasseId);
+        }
+
+        if (klasseIds.Count == 0)
+        {
+            return [];
+        }
+
+        var lessons = await dbContext.TeacherLessons
+            .AsNoTracking()
+            .Include(x => x.Klasse)
+            .Include(x => x.Author)
+            .Include(x => x.Pages)
+            .Include(x => x.Fach)
+            .Include(x => x.VideoAsset)
+            .Where(x => x.IsPublished
+                        && klasseIds.Contains(x.KlasseId)
+                        && x.Klasse.SchoolId == profile.SchoolId)
+            .OrderBy(x => x.Klasse.Code)
+            .ThenBy(x => x.Order)
+            .ToListAsync(cancellationToken);
+
+        return lessons.Select(lesson =>
+        {
+            var item = MapToListItem(lesson);
+            item.IsPdfExportEnabled = lesson.IsPdfExportEnabled;
+            item.IsCurrentKlasse = false;
             return item;
         }).ToList();
     }
@@ -233,7 +285,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
-        var klasseIds = await GetStudentKlasseIdsAsync(studentId, cancellationToken);
+        var klasseIds = await GetStudentHistoryKlasseIdsAsync(studentId, cancellationToken);
         if (klasseIds.Count == 0)
         {
             return null;
@@ -244,14 +296,32 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .AsNoTracking()
             .AnyAsync(x => x.Id == lessonId
                            && klasseIds.Contains(x.KlasseId)
-                           && x.AuthorId.HasValue
-                           && x.Author!.UserSchools.Any(link => link.SchoolId == profile.SchoolId), cancellationToken);
+                           && x.Klasse.SchoolId == profile.SchoolId, cancellationToken);
         if (detail is null || !belongsToSchool)
         {
             return null;
         }
 
         return detail;
+    }
+
+    private async Task<HashSet<Guid>> GetStudentHistoryKlasseIdsAsync(
+        Guid studentId,
+        CancellationToken cancellationToken)
+    {
+        var enrollmentKlasseIds = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => enrollment.StudentId == studentId
+                && (!enrollment.IstAktuell || enrollment.IsUnlocked))
+            .Select(enrollment => enrollment.KlasseId)
+            .ToListAsync(cancellationToken);
+        var decisionKlasseIds = await dbContext.KlassenAbschlussEntscheidungen
+            .AsNoTracking()
+            .Where(result => result.StudentId == studentId)
+            .Select(result => result.Durchlauf.KlasseId)
+            .ToListAsync(cancellationToken);
+
+        return enrollmentKlasseIds.Concat(decisionKlasseIds).ToHashSet();
     }
 
     private async Task<HashSet<Guid>> GetStudentKlasseIdsAsync(
@@ -278,7 +348,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .Where(profile => profile.AppUserId == studentId)
             .Select(profile => new { profile.SchoolId, profile.CurrentKlasseId })
             .FirstOrDefaultAsync(cancellationToken);
-        if (profile?.CurrentKlasseId is not Guid klasseId)
+        if (profile is null)
         {
             return null;
         }

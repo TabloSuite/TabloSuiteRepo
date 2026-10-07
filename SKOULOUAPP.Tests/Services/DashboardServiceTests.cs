@@ -586,6 +586,120 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task GetSchoolLeaderStudentsAsync_KennzeichnetLetzteFruehereKlasseUndNeueSchueler()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École Lomé" };
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter" };
+        var formerStudent = new AppUser { Id = Guid.NewGuid(), FullName = "Ancien élève", UserName = "ancien" };
+        var newStudent = new AppUser { Id = Guid.NewGuid(), FullName = "Nouvel élève", UserName = "nouveau" };
+        var formerClass = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1A", Title = "CP1 A" };
+        db.Schools.Add(school);
+        db.Klassen.Add(formerClass);
+        db.Users.AddRange(director, formerStudent, newStudent);
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
+        db.StudentProfiles.AddRange(
+            new StudentProfile { AppUserId = formerStudent.Id, SchoolId = school.Id },
+            new StudentProfile { AppUserId = newStudent.Id, SchoolId = school.Id });
+        db.LevelEnrollments.Add(new LevelEnrollment
+        {
+            StudentId = formerStudent.Id,
+            KlasseId = formerClass.Id,
+            IstAktuell = false
+        });
+        await db.SaveChangesAsync();
+        var userManager = TestUserManager.Create([director, formerStudent, newStudent]);
+        userManager.SeedRole(director, "SchulLeiter");
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+
+        var students = await service.GetSchoolLeaderStudentsAsync(director.Id);
+
+        var former = Assert.Single(students, student => student.UserId == formerStudent.Id);
+        Assert.Equal(formerClass.Id, former.PreviousKlasseId);
+        Assert.Equal("CP1A · CP1 A", former.PreviousKlasseName);
+        var newlyRegistered = Assert.Single(students, student => student.UserId == newStudent.Id);
+        Assert.Null(newlyRegistered.PreviousKlasseId);
+        Assert.Empty(newlyRegistered.PreviousKlasseName);
+    }
+
+    [Fact]
+    public async Task GetSchoolLeaderStudentsAsync_WiederholtIdentischenKlassencodeUndTitelNicht()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École Lomé" };
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter" };
+        var student = new AppUser { Id = Guid.NewGuid(), FullName = "Élève", UserName = "eleve" };
+        var formerClass = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1B", Title = "CP1B" };
+        db.Schools.Add(school);
+        db.Klassen.Add(formerClass);
+        db.Users.AddRange(director, student);
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id });
+        db.LevelEnrollments.Add(new LevelEnrollment { StudentId = student.Id, KlasseId = formerClass.Id, IstAktuell = false });
+        await db.SaveChangesAsync();
+        var userManager = TestUserManager.Create([director, student]);
+        userManager.SeedRole(director, "SchulLeiter");
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+
+        var result = Assert.Single(await service.GetSchoolLeaderStudentsAsync(director.Id));
+
+        Assert.Equal("CP1B", result.PreviousKlasseName);
+    }
+
+    [Fact]
+    public async Task RemoveStudentFromKlasseAsync_NimmtUnbezahlteFehlzuordnungZurueck()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École Lomé" };
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter" };
+        var student = new AppUser { Id = Guid.NewGuid(), FullName = "Élève", UserName = "eleve" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1A", Title = "CP1A" };
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Users.AddRange(director, student);
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentKlasseId = klasse.Id, CurrentLevelCode = klasse.Code });
+        db.LevelEnrollments.Add(new LevelEnrollment { StudentId = student.Id, KlasseId = klasse.Id, IstAktuell = true });
+        await db.SaveChangesAsync();
+        var userManager = TestUserManager.Create([director, student]);
+        userManager.SeedRole(director, "SchulLeiter");
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+
+        var result = await service.RemoveStudentFromKlasseAsync(director.Id, student.Id, klasse.Id);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Null(db.StudentProfiles.Single().CurrentKlasseId);
+        Assert.False(db.LevelEnrollments.Single().IstAktuell);
+        Assert.Equal(0, Assert.Single(await service.GetSchoolKlassenAsync(school.Id)).CurrentStudentCount);
+    }
+
+    [Fact]
+    public async Task RemoveStudentFromKlasseAsync_VerweigertAktivesAbo()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École Lomé" };
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter" };
+        var student = new AppUser { Id = Guid.NewGuid(), FullName = "Élève", UserName = "eleve" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1A", Title = "CP1A" };
+        db.Schools.Add(school);
+        db.Klassen.Add(klasse);
+        db.Users.AddRange(director, student);
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentKlasseId = klasse.Id });
+        db.LevelEnrollments.Add(new LevelEnrollment { StudentId = student.Id, KlasseId = klasse.Id, IstAktuell = true, IsUnlocked = true });
+        await db.SaveChangesAsync();
+        var userManager = TestUserManager.Create([director, student]);
+        userManager.SeedRole(director, "SchulLeiter");
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+
+        var result = await service.RemoveStudentFromKlasseAsync(director.Id, student.Id, klasse.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(klasse.Id, db.StudentProfiles.Single().CurrentKlasseId);
+        Assert.True(db.LevelEnrollments.Single().IstAktuell);
+    }
+
+    [Fact]
     public async Task DeletePendingSelfRegisteredStudentAsync_LoeschtNurOffeneSelbstregistrierungDerEigenenSchule()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -951,6 +1065,44 @@ public class DashboardServiceTests
         // Kombiniert: (100 + 0 + 80) / 3 = 60 %, 3 zählende Versuche.
         Assert.Equal(60, eintrag.CombinedScorePercent);
         Assert.Equal(3, eintrag.CombinedScoreCount);
+    }
+
+    [Fact]
+    public async Task GetStudentDashboardAsync_ZaehltNurVeroeffentlichteAufgabenUndLetztenVersuchJeAufgabe()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var school = new School { Id = Guid.NewGuid(), Name = "École Test", IsActive = true };
+        var student = new AppUser { Id = Guid.NewGuid(), FullName = "Élève", UserName = "eleve" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = school.Id, Code = "CP1A", Title = "CP1A" };
+        var publishedLesson = new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, Title = "Visible", IsPublished = true };
+        var hiddenLesson = new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, Title = "Masquée", IsPublished = false };
+        var firstExercise = new Exercise { Id = Guid.NewGuid(), LessonId = publishedLesson.Id, Title = "Exercice 1", Points = 10 };
+        var secondExercise = new Exercise { Id = Guid.NewGuid(), LessonId = publishedLesson.Id, Title = "Exercice 2", Points = 10 };
+        var hiddenExercise = new Exercise { Id = Guid.NewGuid(), LessonId = hiddenLesson.Id, Title = "Ancien exercice", Points = 10 };
+        db.AddRange(school, student, klasse, publishedLesson, hiddenLesson, firstExercise, secondExercise, hiddenExercise);
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = student.Id,
+            SchoolId = school.Id,
+            CurrentKlasseId = klasse.Id,
+            CurrentLevelCode = klasse.Code
+        });
+        db.ExerciseAttempts.AddRange(
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = firstExercise.Id, StudentId = student.Id, IsCorrect = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-3) },
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = firstExercise.Id, StudentId = student.Id, IsCorrect = true, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-2) },
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = secondExercise.Id, StudentId = student.Id, IsCorrect = true, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-1) },
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = hiddenExercise.Id, StudentId = student.Id, IsCorrect = true, AnsweredAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var service = new DashboardService(db, TestUserManager.Create([student]), new FakeMediaStorageService());
+
+        var dashboard = await service.GetStudentDashboardAsync(student.Id);
+
+        Assert.NotNull(dashboard);
+        Assert.Equal(2, dashboard.CombinedScoreCount);
+        Assert.Equal(100, dashboard.CombinedScorePercent);
+        Assert.Equal(20, dashboard.ExercisePointsEarned);
+        Assert.Equal(20, dashboard.ExercisePointsTotal);
     }
 
     [Fact]

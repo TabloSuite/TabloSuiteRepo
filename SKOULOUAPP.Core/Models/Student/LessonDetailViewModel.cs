@@ -10,6 +10,7 @@ public class LessonDetailViewModel
     public string CourseCode { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }
     public DateTime? ExerciseSubmissionDueAtUtc { get; set; }
+    public bool IsExerciseReviewMode { get; set; }
     public List<LessonMediaViewModel> Media { get; set; } = [];
     public List<ExerciseViewModel> Exercises { get; set; } = [];
 }
@@ -62,7 +63,11 @@ public class ExerciseViewModel
 
     public bool IsPendingManualGrading { get; set; }
     public bool IsManuallyReviewed { get; set; }
+    public bool? ManualIsCorrect { get; set; }
     public string? ManualFeedback { get; set; }
+
+    public List<string> AcceptedAnswers { get; set; } = [];
+    public List<List<string>> CorrectGapAnswers { get; set; } = [];
 
     /// <summary>Letzte Freitext-/Satzbau-Antwort des Schülers.</summary>
     public string? SubmittedTextAnswer { get; set; }

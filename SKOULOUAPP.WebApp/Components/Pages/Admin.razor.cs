@@ -122,6 +122,7 @@ public partial class Admin
     private Guid pendingRemoveAboStudentId;
     private Guid pendingRemoveAboLevelId;
     private string pendingRemoveAboLevelCode = string.Empty;
+    private bool confirmRemoveAboAndClassOpen;
 
     // Ausschließlich Development: vollständiges Zurücksetzen einer Testschule
     // über den ihr zugeordneten Schulleiter.
@@ -685,8 +686,12 @@ public partial class Admin
 
     private async Task ConfirmHardDeleteSchoolLeaderCoreAsync()
     {
-        if (isProduktOwner) return;
-        confirmHardDeleteSchoolLeaderOpen = false;
+        if (isProduktOwner)
+        {
+            userErrorMessage = "Cette action est réservée à l'Administrateur.";
+            return;
+        }
+
         userErrorMessage = null;
         userStatusMessage = null;
 
@@ -697,6 +702,7 @@ public partial class Admin
             return;
         }
 
+        confirmHardDeleteSchoolLeaderOpen = false;
         userStatusMessage = result.Message;
         await LoadAsync();
     }
@@ -897,6 +903,7 @@ public partial class Admin
             istSuperAdmin: true);
         if (succeeded)
         {
+            confirmRemovePaymentOpen = false;
             userStatusMessage = resultMessage;
             userErrorMessage = null;
         }
@@ -932,6 +939,47 @@ public partial class Admin
 
         confirmRemoveAboOpen = false;
         var (succeeded, resultMessage) = await AboService.AboEntfernenAsync(pendingRemoveAboStudentId, pendingRemoveAboLevelId, istSuperAdmin: true);
+        if (succeeded)
+        {
+            confirmRemoveAboAndClassOpen = false;
+            userStatusMessage = resultMessage;
+            userErrorMessage = null;
+        }
+        else
+        {
+            userErrorMessage = resultMessage;
+            userStatusMessage = null;
+        }
+
+        await LoadAsync();
+        expandedEnrollmentStudentId = pendingRemoveAboStudentId;
+        levelEnrollments = await DashboardService.GetStudentLevelEnrollmentsAsync(pendingRemoveAboStudentId);
+    }
+
+    private void RequestRemoveAboAndClass(Guid studentId, LevelEnrollmentItem level)
+    {
+        pendingRemoveAboStudentId = studentId;
+        pendingRemoveAboLevelId = level.KlasseId;
+        pendingRemoveAboLevelCode = level.CourseCode;
+        confirmRemoveAboAndClassOpen = true;
+    }
+
+    private Task ConfirmRemoveAboAndClassAsync() => RunDatabaseActionAsync(ConfirmRemoveAboAndClassCoreAsync);
+
+    private async Task ConfirmRemoveAboAndClassCoreAsync()
+    {
+        if (isProduktOwner)
+        {
+            confirmRemoveAboAndClassOpen = false;
+            userErrorMessage = "La gestion des abonnements est réservée à l'Administrateur.";
+            return;
+        }
+
+        confirmRemoveAboAndClassOpen = false;
+        var (succeeded, resultMessage) = await AboService.AboEntfernenUndAusKlasseEntfernenAsync(
+            pendingRemoveAboStudentId,
+            pendingRemoveAboLevelId,
+            istSuperAdmin: true);
         if (succeeded)
         {
             userStatusMessage = resultMessage;

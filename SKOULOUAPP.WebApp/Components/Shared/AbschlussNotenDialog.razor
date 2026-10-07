@@ -3,7 +3,7 @@
 @using SkoulouApp.Core.Services
 @inject ExamService ExamService
 
-<ModalDialog Open="Open" OpenChanged="OpenChanged" Title="Notes finales et décisions" Eyebrow="Clôture du cycle" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
+<ModalDialog Open="Open" OpenChanged="OpenChanged" Title="Notes finales et décisions" Eyebrow="Clôture du cycle" ErrorMessage="@error" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
     @if (bericht is null)
     {
         <p class="text-sm text-slate-600">Chargement des élèves...</p>
@@ -11,10 +11,6 @@
     else
     {
         <p class="mb-4 text-sm text-slate-600">Saisis une note finale et indique si chaque élève a réussi. Les résultats ne pourront plus être modifiés après la clôture.</p>
-        @if (!string.IsNullOrWhiteSpace(error))
-        {
-            <p class="mb-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800">@error</p>
-        }
         @if (!string.IsNullOrWhiteSpace(message))
         {
             <p class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">@message</p>

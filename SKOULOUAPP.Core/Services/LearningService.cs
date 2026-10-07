@@ -280,6 +280,9 @@ public class LearningService(ISkoulouAppDbContext dbContext)
                 && exerciseIds.Contains(x.ExerciseId))
             .ToListAsync(cancellationToken);
 
+        var isExerciseReviewMode = lesson.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc
+            && DateTime.UtcNow > dueAtUtc;
+
         return new LessonDetailViewModel
         {
             LessonId = lesson.Id,
@@ -298,6 +301,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
                     (!latest.RequiresManualGrading && latest.ManuallyGradedAtUtc.HasValue));
             }),
             ExerciseSubmissionDueAtUtc = lesson.ExerciseSubmissionDueAtUtc,
+            IsExerciseReviewMode = isExerciseReviewMode,
             Media = lesson.MediaItems
                 .Select(m => new LessonMediaViewModel
                 {
@@ -350,7 +354,12 @@ public class LearningService(ISkoulouAppDbContext dbContext)
                         HasAutomaticGrading = hasAutomaticGrading,
                         IsPendingManualGrading = hasPendingManual,
                         IsManuallyReviewed = lastManualReview is not null,
+                        ManualIsCorrect = lastManualReview?.ManuallyGradedIsCorrect,
                         ManualFeedback = lastManualReview?.ManualFeedback,
+                        AcceptedAnswers = isExerciseReviewMode ? acceptedAnswers.ToList() : [],
+                        CorrectGapAnswers = isExerciseReviewMode
+                            ? gapDefinition.Select(answers => answers.ToList()).ToList()
+                            : [],
                         IsAnsweredCorrectly = lastCorrect is not null,
                         SelectedOptionId = lastAttempt?.SelectedOptionId,
                         SubmittedSelectedOptionIds = ParseGuidIdList(lastAttempt?.SelectedOptionIdsJson),

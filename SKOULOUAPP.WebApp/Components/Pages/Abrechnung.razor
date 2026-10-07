@@ -484,6 +484,7 @@
 <ModalDialog @bind-Open="confirmCreateOpen"
              Title="Créer la facturation"
              Eyebrow="Confirmation"
+             ErrorMessage="@errorMessage"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
         Créer la facturation de la période ouverte pour
@@ -509,6 +510,7 @@
              OpenChanged="v => { if (!v) confirmPeriodId = null; }"
              Title="Confirmer la facturation"
              Eyebrow="Action définitive"
+             ErrorMessage="@errorMessage"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
         Confirmes-tu que le virement a bien été reçu ? La facturation sera clôturée définitivement
@@ -533,6 +535,7 @@
              OpenChanged="v => { if (!v) { rejectPeriodId = null; rejectReason = string.Empty; } }"
              Title="Refuser la facturation"
              Eyebrow="Motif requis"
+             ErrorMessage="@errorMessage"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
         Indique le motif du refus. Le statut pourra être modifié plus tard une fois la situation clarifiée.

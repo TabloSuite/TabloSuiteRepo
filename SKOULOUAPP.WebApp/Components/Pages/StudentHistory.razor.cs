@@ -64,8 +64,7 @@ public partial class StudentHistory
                 return;
             }
 
-            var lessons = await TeacherLessonService.GetLessonsForStudentAsync(userId, ComponentToken);
-            historyLessons = lessons.Where(item => !item.IsCurrentKlasse).ToList();
+            historyLessons = await TeacherLessonService.GetHistoryLessonsForStudentAsync(userId, ComponentToken);
             classHistory = (await DashboardService.GetStudentDashboardAsync(userId, ComponentToken))?.ClassHistory ?? [];
         }
         catch (Exception ex) when (IstAbbruch(ex))

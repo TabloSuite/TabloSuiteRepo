@@ -26,23 +26,30 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .Select(x => new { x.CurrentKlasseId, x.SchoolId })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (studentProfile?.CurrentKlasseId is not Guid klasseId)
+        if (studentProfile is null)
         {
             return [];
         }
 
-        var hasActiveCycle = await HasActiveClassCycleAsync(studentProfile.SchoolId, klasseId, cancellationToken);
-        if (!hasActiveCycle)
-        {
-            return [];
-        }
+        var completedExamIds = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Where(attempt => attempt.StudentId == studentId && attempt.IsCompleted)
+            .Select(attempt => attempt.ExamId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var hasActiveCycle = studentProfile.CurrentKlasseId is Guid currentKlasseId
+            && await HasActiveClassCycleAsync(studentProfile.SchoolId, currentKlasseId, cancellationToken);
 
         var query = dbContext.Exams
             .AsNoTracking()
             .Include(x => x.Klasse)
             .Include(x => x.Questions)
-            .Where(x => x.KlasseId == klasseId && x.IsPublishedToStudents
-                && (!x.IsSuperseded || x.Attempts.Any(a => a.StudentId == studentId && a.IsCompleted)))
+            .Where(x => x.Klasse.SchoolId == studentProfile.SchoolId
+                && (completedExamIds.Contains(x.Id)
+                    || (hasActiveCycle
+                        && x.KlasseId == studentProfile.CurrentKlasseId
+                        && x.IsPublishedToStudents
+                        && !x.IsSuperseded)))
             .AsQueryable();
 
         var exams = await query
@@ -95,6 +102,88 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 };
             })
             .ToList();
+    }
+
+    public async Task<ExamReviewViewModel?> GetExamReviewForStudentAsync(
+        Guid examId,
+        Guid studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var attempt = await dbContext.ExamAttempts
+            .AsNoTracking()
+            .Include(item => item.Exam)
+                .ThenInclude(exam => exam.Klasse)
+            .Include(item => item.Exam)
+                .ThenInclude(exam => exam.Questions)
+                    .ThenInclude(question => question.Options)
+            .Include(item => item.Answers)
+            .Where(item => item.ExamId == examId && item.StudentId == studentId && item.IsCompleted)
+            .OrderByDescending(item => item.SubmittedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (attempt is null)
+        {
+            return null;
+        }
+
+        return new ExamReviewViewModel
+        {
+            AttemptId = attempt.Id,
+            ExamId = attempt.ExamId,
+            Title = attempt.Exam.Title,
+            CourseCode = attempt.Exam.Klasse.Code,
+            ScorePercent = attempt.ScorePercent,
+            PassingScore = attempt.Exam.PassingScore,
+            IsPassed = attempt.IsPassed,
+            RequiresManualGrading = attempt.RequiresManualGrading,
+            Questions = attempt.Exam.Questions
+                .OrderBy(question => question.Order)
+                .Select(question =>
+                {
+                    var answer = attempt.Answers.FirstOrDefault(item => item.ExamQuestionId == question.Id);
+                    var selectedOptionIds = string.IsNullOrWhiteSpace(answer?.SelectedOptionIdsJson)
+                        ? []
+                        : System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(answer.SelectedOptionIdsJson) ?? [];
+                    var gapAnswers = AnswerMatchingService.ParseStudentGapValues(answer?.GapAnswersJson).ToList();
+                    var hasAnswer = answer is not null && (answer.SelectedOptionId.HasValue
+                        || selectedOptionIds.Count > 0
+                        || !string.IsNullOrWhiteSpace(answer.FreeTextAnswer)
+                        || gapAnswers.Any(value => !string.IsNullOrWhiteSpace(value)));
+
+                    return new ExamQuestionReviewViewModel
+                    {
+                        QuestionId = question.Id,
+                        Prompt = question.Prompt,
+                        Order = question.Order,
+                        QuestionType = question.QuestionType.ToString(),
+                        AudioText = question.AudioText,
+                        TtsLanguage = string.IsNullOrWhiteSpace(question.TtsLanguage) ? "de-DE" : question.TtsLanguage,
+                        Points = question.Points,
+                        HasAnswer = hasAnswer,
+                        IsCorrect = answer?.IsCorrect == true,
+                        IsManuallyGraded = answer?.IsManuallyGraded == true,
+                        ManualPoints = answer?.ManualPoints,
+                        SelectedOptionId = answer?.SelectedOptionId,
+                        SelectedOptionIds = selectedOptionIds,
+                        TextAnswer = answer?.FreeTextAnswer,
+                        GapAnswers = gapAnswers,
+                        AcceptedAnswers = AnswerMatchingService.ParseAcceptedAnswers(question.AcceptedAnswersJson).ToList(),
+                        CorrectGapAnswers = AnswerMatchingService.ParseGapAnswers(question.GapAnswersJson)
+                            .Select(values => values.ToList())
+                            .ToList(),
+                        Options = question.Options
+                            .OrderBy(option => option.Order)
+                            .Select(option => new ExamReviewOptionViewModel
+                            {
+                                OptionId = option.Id,
+                                Text = option.Text,
+                                Order = option.Order,
+                                IsCorrect = option.IsCorrect
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList()
+        };
     }
 
     public async Task<ExamSessionViewModel?> StartExamAsync(

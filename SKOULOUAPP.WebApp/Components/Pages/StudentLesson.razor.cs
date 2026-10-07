@@ -144,7 +144,7 @@ public partial class StudentLesson
             {
                 exerciseStates[exercise.ExerciseId] = new ExerciseState
                 {
-                    IsCorrect = exercise.IsAnsweredCorrectly,
+                    IsCorrect = exercise.IsAnsweredCorrectly || exercise.ManualIsCorrect == true,
                     SelectedOptionId = exercise.SelectedOptionId,
                     SelectedOptionIds = exercise.SubmittedSelectedOptionIds.Count > 0
                         ? [.. exercise.SubmittedSelectedOptionIds]
@@ -180,7 +180,7 @@ public partial class StudentLesson
     private void SelectOption(Guid exerciseId, Guid optionId)
     {
         var state = exerciseStates[exerciseId];
-        if (state.IsCorrect)
+        if (state.IsCorrect || lesson?.IsExerciseReviewMode == true)
         {
             return;
         }
@@ -192,7 +192,7 @@ public partial class StudentLesson
     private void ToggleOption(Guid exerciseId, Guid optionId)
     {
         var state = exerciseStates[exerciseId];
-        if (state.IsCorrect)
+        if (state.IsCorrect || lesson?.IsExerciseReviewMode == true)
         {
             return;
         }
@@ -432,11 +432,11 @@ public partial class StudentLesson
         return baseClass + "bg-slate-200 hover:bg-slate-300";
     }
 
-    private static string GetOptionClass(ExerciseState state, bool isSelected, bool isCorrectOption)
+    private string GetOptionClass(ExerciseState state, bool isSelected, bool isCorrectOption)
     {
         const string baseClass = "w-full rounded-2xl border px-4 py-3 text-left text-base font-medium transition duration-150 ";
 
-        if (state.IsGradedManually)
+        if (lesson?.IsExerciseReviewMode == true || state.IsGradedManually)
         {
             if (isCorrectOption)
             {
@@ -462,6 +462,22 @@ public partial class StudentLesson
         }
 
         return baseClass + "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50";
+    }
+
+    private static bool HasExerciseAnswer(ExerciseViewModel exercise, ExerciseState state)
+    {
+        if (IsMultipleChoiceType(exercise.ExerciseType)) return state.SelectedOptionIds.Count > 0;
+        if (IsChoiceType(exercise.ExerciseType)) return state.SelectedOptionId.HasValue;
+        if (exercise.ExerciseType == "GapFill") return state.GapValues.Any(value => !string.IsNullOrWhiteSpace(value));
+        return !string.IsNullOrWhiteSpace(state.TextAnswer);
+    }
+
+    private string GetReviewCardClass(ExerciseViewModel exercise, ExerciseState state)
+    {
+        if (lesson?.IsExerciseReviewMode != true) return "border-slate-200";
+        return state.IsCorrect
+            ? "border-emerald-300 bg-emerald-50/30"
+            : "border-rose-300 bg-rose-50/30";
     }
 
     private void RebuildExerciseDisplayItems()

@@ -520,6 +520,10 @@
             <div class="skoulou-modal-scroll">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">Cycle de classe</p>
                 <h3 class="mt-2 text-2xl font-black text-slate-900">Démarrer le cycle</h3>
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800" role="alert">@errorMessage</div>
+                }
                 <p class="mt-5 text-sm leading-6 text-slate-600">Démarre un nouveau cycle pour <span class="font-semibold text-slate-900">@AusgewaehlteKlasseName</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
                 @if (durchlaufStartDurchUeberweisungGesperrt)
                 {
@@ -613,6 +617,10 @@
             <div class="skoulou-modal-scroll">
             <p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Gestion des paiements</p>
             <h3 class="mt-1 text-2xl font-black text-slate-900">Paiement — @ausgewaehlterDurchlauf.NiveauCode</h3>
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800" role="alert">@errorMessage</div>
+            }
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <ModernDropdown TValue="Guid?" Label="Élève" Value="zahlungForm.StudentId" ValueChanged="SetZahlungStudentAsync" Options="ZahlungsSchuelerOptionen" Searchable="true" SearchPlaceholder="Rechercher un élève..." />
@@ -647,6 +655,7 @@
 <ModalDialog @bind-Open="BeendenOffen"
 			 Title="Clôturer le cycle"
 			 Eyebrow="Cycle de classe"
+            ErrorMessage="@errorMessage"
 			 CloseOnBackdrop="false"
 			 MaxWidthClass="max-w-lg">
 	@if (beendenDurchlauf is not null)
@@ -674,7 +683,7 @@
 					@if (beendenOhneNote > 0)
 					{
 						<p class="text-xl font-black text-amber-700">@beendenOhneNote / @beendenTeilnehmerGesamt <span class="text-sm font-bold">non définies</span></p>
-						<p class="mt-1 text-xs font-medium">Définis les notes finales avant de clôturer.</p>
+                        <p class="mt-1 text-xs font-medium">Information : tu peux clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
 					}
 					else
 					{
@@ -686,7 +695,7 @@
 		<div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
 			<p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true">⚠️</span>Clôture définitive du cycle de classe</p>
 			<p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
-			<p class="mt-2 font-semibold">Toutes les notes finales et décisions doivent être enregistrées avant la clôture. Ensuite, elles ne pourront plus être modifiées et tous les élèves quitteront cette classe.</p>
+            <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture et resteront non renseignés. Après la clôture, ils ne pourront plus être modifiés et tous les élèves quitteront cette classe.</p>
 			<p class="mt-2">@(!istDirektor
 				? "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP."
 				: "Les abonnements SKOULOUAPP payés et non encore facturés seront facturés automatiquement lors de la clôture. Tu devras ensuite déclarer le virement dans Facturation SKOULOUAPP avant de démarrer un nouveau cycle.")</p>
@@ -704,4 +713,33 @@
 			<AsyncActionButton Class="w-full whitespace-nowrap rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 md:w-auto" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
 		</div>
 	}
+</ModalDialog>
+
+<ModalDialog @bind-Open="beendenEndgueltigOffen"
+             Title="Confirmer la clôture définitive"
+             Eyebrow="Dernière confirmation"
+             CloseOnBackdrop="false"
+             MaxWidthClass="max-w-md"
+             ZIndexClass="z-[2300]">
+    <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-950">
+        <p class="font-black">Cette action est définitive.</p>
+        <p class="mt-2">Le cycle sera clôturé et tous les élèves quitteront la classe active.</p>
+        @if (beendenOhneNote > 0)
+        {
+            <p class="mt-2 font-semibold">@beendenOhneNote élève(s) n'ont pas encore de note finale ou de décision complète. Ces informations resteront non renseignées.</p>
+        }
+        @if (beendenOffeneSchuld > 0)
+        {
+            <p class="mt-2 font-semibold">La dette restante de @beendenOffeneSchuld.ToString("N0") FCFA sera enregistrée comme perte.</p>
+        }
+    </div>
+    <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="() => beendenEndgueltigOffen = false">Retour</button>
+        <AsyncActionButton Class="rounded-full bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-800"
+                           IsBusy="IsBusy"
+                           BusyLabel="Clôture..."
+                           OnClick="DurchlaufEndgueltigBeendenAsync">
+            Clôturer définitivement
+        </AsyncActionButton>
+    </div>
 </ModalDialog>

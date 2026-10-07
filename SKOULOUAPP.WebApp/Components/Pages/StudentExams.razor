@@ -110,9 +110,9 @@ else
 
                         <button type="button"
                                 class="inline-flex w-full items-center justify-center self-start rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                                disabled="@(!exam.CanStart)"
+                                disabled="@(!exam.CanStart && !exam.HasAttempt)"
                                 @onclick="() => StartExam(exam.ExamId)">
-                            @(exam.CanStart ? exam.HasActiveAttempt ? "Reprendre l'épreuve" : "Commencer l'épreuve" : exam.IsSuperseded ? "Session précédente" : "Épreuve terminée")
+                            @(exam.HasAttempt ? "Consulter la correction" : exam.CanStart ? exam.HasActiveAttempt ? "Reprendre l'épreuve" : "Commencer l'épreuve" : exam.IsSuperseded ? "Session précédente" : "Épreuve terminée")
                         </button>
                     </article>
                         }

@@ -543,6 +543,33 @@ public class LearningServiceTests
         return (exercise, richtig1, richtig2, falsch);
     }
 
+    [Fact]
+    public async Task GetLessonDetailAsync_NachFrist_LiefertReviewMitLoesungen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var studentId = Guid.NewGuid();
+        var (exercise, richtig1, richtig2, falsch) = await SeedMultipleChoiceUebungAsync(db, studentId);
+        exercise.Lesson.ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        db.ExerciseAttempts.Add(new ExerciseAttempt
+        {
+            Id = Guid.NewGuid(),
+            ExerciseId = exercise.Id,
+            StudentId = studentId,
+            SelectedOptionIdsJson = System.Text.Json.JsonSerializer.Serialize(new[] { falsch.Id }),
+            IsCorrect = false,
+            AssignmentVersion = exercise.Lesson.AssignmentVersion
+        });
+        await db.SaveChangesAsync();
+
+        var detail = await new LearningService(db).GetLessonDetailAsync(exercise.LessonId, studentId);
+
+        Assert.NotNull(detail);
+        Assert.True(detail!.IsExerciseReviewMode);
+        var review = Assert.Single(detail.Exercises);
+        Assert.Equal(new[] { richtig1.Id, richtig2.Id }.OrderBy(id => id), review.CorrectOptionIds.OrderBy(id => id));
+        Assert.Equal([falsch.Id], review.SubmittedSelectedOptionIds);
+    }
+
     private static async Task<Exercise> SeedSentenceBuildingExerciseAsync(
         TestDbContext db,
         Guid studentId,

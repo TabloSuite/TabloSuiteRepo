@@ -147,6 +147,15 @@ builder.Services.AddScoped<DatabaseActionGuard>();
 
 builder.Services.Configure<MediaStorageOptions>(builder.Configuration.GetSection(MediaStorageOptions.SectionName));
 builder.Services.Configure<AzureBlobStorageOptions>(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));
+builder.Services.PostConfigure<AzureBlobStorageOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.BlobConnectionString))
+    {
+        options.BlobConnectionString = builder.Configuration.GetConnectionString("BlobConnection")
+            ?? builder.Configuration["BlobConnection"]
+            ?? string.Empty;
+    }
+});
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.PostConfigure<AzureBlobStorageOptions>(options => options.Enabled = false);

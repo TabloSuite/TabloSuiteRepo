@@ -104,6 +104,12 @@ else
         <div class="rounded-[1.5rem] bg-white p-3 shadow-md shadow-slate-200/70 ring-1 ring-slate-100 sm:p-4 lg:rounded-[1.25rem] lg:p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 sm:text-sm">Exercices</p>
             <h2 class="mt-1 text-lg font-bold text-slate-900 sm:text-xl">Résous les exercices</h2>
+            @if (lesson.IsExerciseReviewMode)
+            {
+                <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    La date limite est dépassée. La correction est disponible en lecture seule : tes réponses incorrectes ou absentes sont en rouge et les bonnes réponses en vert.
+                </div>
+            }
 
             @if (lesson.Exercises.Count == 0)
             {
@@ -131,7 +137,7 @@ else
                 {
                     var state = exerciseStates[exercise.ExerciseId];
                     <div class="mt-4 mx-auto grid max-w-[840px] gap-4 sm:gap-5">
-                        <article class="card-stack-enter rounded-2xl border border-slate-200 p-3 sm:p-4 lg:rounded-3xl lg:p-5 @(state.IsCorrect ? "bounce-on-correct" : "")" @key="exercise.ExerciseId">
+                        <article class="card-stack-enter rounded-2xl border p-3 sm:p-4 lg:rounded-3xl lg:p-5 @GetReviewCardClass(exercise, state) @(state.IsCorrect ? "bounce-on-correct" : "")" @key="exercise.ExerciseId">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <p class="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-500">Exercice @currentItem.BlockIndex / @TotalExerciseBlocks</p>
@@ -152,6 +158,10 @@ else
                                      {
                                          <Badge Accent="emerald">Correct</Badge>
                                      }
+                                      else if (lesson.IsExerciseReviewMode)
+                                      {
+                                          <Badge Accent="rose">@(HasExerciseAnswer(exercise, state) ? "Incorrect" : "Non répondu")</Badge>
+                                      }
                                  </div>
                             </div>
 
@@ -177,7 +187,7 @@ else
                                         var isSelected = state.SelectedOptionIds.Contains(option.OptionId);
                                         var isCorrectOption = exercise.CorrectOptionIds.Contains(option.OptionId);
                                         <button type="button" class="@GetOptionClass(state, isSelected, isCorrectOption)"
-                                                disabled="@(state.IsCorrect || state.IsGradedManually)"
+                                                disabled="@(lesson.IsExerciseReviewMode || state.IsCorrect || state.IsGradedManually)"
                                                 @onclick="() => ToggleOption(exercise.ExerciseId, option.OptionId)">
                                             @option.Text
                                         </button>
@@ -192,7 +202,7 @@ else
                                         var isSelected = state.SelectedOptionId == option.OptionId;
                                         var isCorrectOption = exercise.CorrectOptionIds.Contains(option.OptionId);
                                         <button type="button" class="@GetOptionClass(state, isSelected, isCorrectOption)"
-                                                disabled="@(state.IsCorrect || state.IsGradedManually)"
+                                                disabled="@(lesson.IsExerciseReviewMode || state.IsCorrect || state.IsGradedManually)"
                                                 @onclick="() => SelectOption(exercise.ExerciseId, option.OptionId)">
                                             @option.Text
                                         </button>
@@ -211,11 +221,21 @@ else
                                                 <RichTextEditor Value="@GetGapValue(state, gapIndex)"
                                                                 ValueChanged="value => SetGapValue(exercise.ExerciseId, exercise.GapCount, gapIndex, value)"
                                                                 Placeholder="Ta réponse..."
-                                                                ReadOnly="@(state.IsCorrect || state.IsGradedManually)"
+                                                                ReadOnly="@(lesson.IsExerciseReviewMode || state.IsCorrect || state.IsGradedManually)"
                                                                 EnableLargeEditor="true"
                                                                 Paged="true"
                                                                 MinEditorHeightRem="3" />
                                             </div>
+                                        </div>
+                                    }
+                                    @if (lesson.IsExerciseReviewMode)
+                                    {
+                                        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                                            <strong>Bonnes réponses :</strong>
+                                            @for (var i = 0; i < exercise.CorrectGapAnswers.Count; i++)
+                                            {
+                                                <div>Blanc @(i + 1) : @string.Join(" / ", exercise.CorrectGapAnswers[i])</div>
+                                            }
                                         </div>
                                     }
                                 </div>
@@ -227,7 +247,15 @@ else
                                                     ValueChanged="value => SetTextAnswer(exercise.ExerciseId, value)"
                                                     Placeholder="Ta réponse..."
                                                     Paged="true"
-                                                    ReadOnly="@(state.IsCorrect || state.IsGradedManually)" />
+                                                    ReadOnly="@(lesson.IsExerciseReviewMode || state.IsCorrect || state.IsGradedManually)" />
+                                    @if (lesson.IsExerciseReviewMode && !string.IsNullOrWhiteSpace(state.TextAnswer) && !state.IsCorrect)
+                                    {
+                                        <div class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900"><strong>Ta réponse :</strong> @state.TextAnswer</div>
+                                    }
+                                    @if (lesson.IsExerciseReviewMode && exercise.AcceptedAnswers.Count > 0)
+                                    {
+                                        <div class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Bonne réponse :</strong> @string.Join(" / ", exercise.AcceptedAnswers)</div>
+                                    }
                                     @if (!exercise.HasAutomaticGrading)
                                     {
                                         <p class="mt-2 text-xs text-slate-500">Cette réponse sera corrigée par ton enseignant.</p>
@@ -256,7 +284,7 @@ else
                                 <p class="mt-3 text-sm font-semibold @(state.IsCorrect ? "text-emerald-700" : (state.RequiresManualGrading ? "text-slate-600" : "text-rose-700"))">@state.Feedback</p>
                             }
 
-                            @if (!state.IsCorrect && !state.IsGradedManually)
+                            @if (!lesson.IsExerciseReviewMode && !state.IsCorrect && !state.IsGradedManually)
                             {
                                  var isManualClosed = IsExerciseSubmissionClosed();
                                 <button type="button"

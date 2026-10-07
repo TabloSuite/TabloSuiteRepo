@@ -412,7 +412,7 @@ public class TeacherLessonServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var schoolId = Guid.NewGuid();
-        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
         var authorId = Guid.NewGuid();
         var studentId = Guid.NewGuid();
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
@@ -651,5 +651,93 @@ public class TeacherLessonServiceTests
         Assert.Equal(2, result.Count);
         Assert.Contains(result, item => item.Title == "Actuel" && item.IsCurrentKlasse && item.KlasseTitle == "CP1 A");
         Assert.Contains(result, item => item.Title == "Historique" && !item.IsCurrentKlasse && item.KlasseTitle == "CP0 A");
+    }
+
+    [Fact]
+    public async Task GetHistoryLessonsForStudentAsync_ZeigtBeendeteKlasseOhneAktuelleKlasse()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1 A" };
+
+        db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
+        db.Users.Add(new AppUser { Id = authorId, FullName = "Professeur A", UserName = "prof-a" });
+        db.Klassen.Add(klasse);
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentKlasseId = null
+        });
+        db.LevelEnrollments.Add(new LevelEnrollment
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            KlasseId = klasse.Id,
+            IstAktuell = false,
+            IsUnlocked = false
+        });
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+        var lessonId = await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = klasse.Id,
+            Title = "Support historique",
+            IsPublished = true,
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>Ancien</p>" }]
+        }, authorId);
+
+        var lessons = await service.GetHistoryLessonsForStudentAsync(studentId);
+        var detail = await service.GetLessonDetailForStudentAsync(lessonId, studentId);
+
+        Assert.Equal("Support historique", Assert.Single(lessons).Title);
+        Assert.NotNull(detail);
+    }
+
+    [Fact]
+    public async Task GetLessonDetailForStudentAsync_VerweigertAktiveGesperrteKlasse()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var schoolId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1 A" };
+
+        db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
+        db.Users.Add(new AppUser { Id = authorId, FullName = "Professeur A", UserName = "prof-a" });
+        db.Klassen.Add(klasse);
+        db.StudentProfiles.Add(new StudentProfile
+        {
+            Id = Guid.NewGuid(),
+            AppUserId = studentId,
+            SchoolId = schoolId,
+            CurrentKlasseId = klasse.Id
+        });
+        db.LevelEnrollments.Add(new LevelEnrollment
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            KlasseId = klasse.Id,
+            IstAktuell = true,
+            IsUnlocked = false
+        });
+        await db.SaveChangesAsync();
+
+        var service = new TeacherLessonService(db);
+        var lessonId = await service.SaveLessonAsync(new TeacherLessonFormModel
+        {
+            KlasseId = klasse.Id,
+            Title = "Support verrouillé",
+            IsPublished = true,
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>Verrouillé</p>" }]
+        }, authorId);
+
+        var detail = await service.GetLessonDetailForStudentAsync(lessonId, studentId);
+
+        Assert.Null(detail);
     }
 }

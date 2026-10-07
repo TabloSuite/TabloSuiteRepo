@@ -326,10 +326,12 @@
             </div>
         </div>
     }
-    @if (copyModalOpen)
-    {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-            <div class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100">
+    <ModalDialog Open="copyModalOpen"
+                 OpenChanged="OnCopyModalOpenChanged"
+                 Title="Copier le support"
+                 Eyebrow="Nouvelle copie"
+                 ErrorMessage="@copyErrorMessage"
+                 MaxWidthClass="max-w-xl">
                 <div class="grid gap-4">
                     <p class="text-sm text-slate-600">Crée une nouvelle copie en brouillon dans une autre classe. Le support original reste inchangé.</p>
                     <ModernDropdown TValue="Guid?"
@@ -346,7 +348,5 @@
                         <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-sm font-semibold text-white" Disabled="@(copyTargetKlasseId is null)" IsBusy="@isCopying" BusyLabel="Copie..." OnClick="CopyLessonAsync">Créer la copie</AsyncActionButton>
                     </div>
                 </div>
-            </div>
-        </div>
-    }
+    </ModalDialog>
 </section>

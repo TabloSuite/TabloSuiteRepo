@@ -874,7 +874,7 @@ public class FinanzServiceTests
     }
 
     [Fact]
-    public async Task DurchlaufBeendenAsync_VerlangtNoteUndEntscheidungUndTrenntAlleSchueler()
+    public async Task DurchlaufBeendenAsync_ErlaubtFehlendeNoteUndEntscheidungUndTrenntAlleSchueler()
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = SeedSchule(db);
@@ -882,24 +882,14 @@ public class FinanzServiceTests
         var service = new FinanzService(db);
         var (_, _, durchlauf) = await service.DurchlaufStartenAsync(schule.Id, klasse.Id, 12500m, DateTime.UtcNow.AddDays(-20), Guid.NewGuid());
         var enrollment = db.LevelEnrollments.Single(x => x.StudentId == student.Id && x.IstAktuell);
-        var (ohneErgebnis, fehler, _) = await service.DurchlaufBeendenAsync(durchlauf!.Id, DateTime.UtcNow);
-        Assert.False(ohneErgebnis);
-        Assert.Contains("note finale", fehler);
-        Assert.Null(db.KursNiveauDurchlaeufe.Single(x => x.Id == durchlauf.Id).EndDatum);
-
-        var examService = new ExamService(db);
-        Assert.True((await examService.SetManuelleAbschlussNoteAsync(durchlauf.Id, student.Id, "11/20", Guid.NewGuid())).Succeeded);
-        var (ohneEntscheidung, _, _) = await service.DurchlaufBeendenAsync(durchlauf.Id, DateTime.UtcNow);
-        Assert.False(ohneEntscheidung);
-        Assert.True((await examService.SetKlassenBestandenEntscheidungAsync(durchlauf.Id, student.Id, false, Guid.NewGuid())).Succeeded);
-
-        var (geschlossen, meldung, _) = await service.DurchlaufBeendenAsync(durchlauf.Id, DateTime.UtcNow);
+        var (geschlossen, meldung, _) = await service.DurchlaufBeendenAsync(durchlauf!.Id, DateTime.UtcNow);
         Assert.True(geschlossen, meldung);
         Assert.Null(db.StudentProfiles.Single(x => x.AppUserId == student.Id).CurrentKlasseId);
         Assert.Equal(string.Empty, db.StudentProfiles.Single(x => x.AppUserId == student.Id).CurrentLevelCode);
         Assert.False(enrollment.IstAktuell);
-        Assert.Equal("11/20", db.KlassenAbschlussEntscheidungen.Single().AbschlussNoteText);
-        Assert.False(db.KlassenAbschlussEntscheidungen.Single().IsBestanden);
+        Assert.Empty(db.KlassenAbschlussEntscheidungen);
+
+        var examService = new ExamService(db);
         Assert.False((await examService.SetManuelleAbschlussNoteAsync(durchlauf.Id, student.Id, "12/20", Guid.NewGuid())).Succeeded);
         Assert.False((await examService.SetKlassenBestandenEntscheidungAsync(durchlauf.Id, student.Id, true, Guid.NewGuid())).Succeeded);
     }

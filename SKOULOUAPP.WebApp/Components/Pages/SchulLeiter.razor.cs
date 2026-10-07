@@ -309,14 +309,42 @@ public partial class SchulLeiter
 
     private IReadOnlyList<StudentApprovalItem> FilteredStudentsWithoutActiveClass =>
         StudentsWithoutActiveClass
+            .Where(student => reassignPreviousKlasseFilter == ReassignAllFilter
+                || reassignPreviousKlasseFilter == ReassignNewFilter && !student.PreviousKlasseId.HasValue
+                || Guid.TryParse(reassignPreviousKlasseFilter, out var previousKlasseId) && student.PreviousKlasseId == previousKlasseId)
             .Where(student => string.IsNullOrWhiteSpace(reassignSearch)
                              || TextMatch(student.FullName, reassignSearch)
                              || TextMatch(student.Email, reassignSearch)
                              || TextMatch(student.CurrentLevelCode, reassignSearch)
-                             || TextMatch(student.CurrentKlasseName, reassignSearch))
+                             || TextMatch(student.CurrentKlasseName, reassignSearch)
+                             || TextMatch(student.PreviousKlasseName, reassignSearch))
             .ToList();
 
+    private const string ReassignAllFilter = "all";
+    private const string ReassignNewFilter = "new";
+
+    private IReadOnlyList<ModernDropdownOption<string>> ReassignPreviousKlasseOptions =>
+    [
+        new(ReassignAllFilter, "Tous les élèves sans classe"),
+        new(ReassignNewFilter, "Nouveaux élèves (aucune classe précédente)"),
+        .. StudentsWithoutActiveClass
+            .Where(student => student.PreviousKlasseId.HasValue)
+            .GroupBy(student => student.PreviousKlasseId!.Value)
+            .OrderBy(group => group.First().PreviousKlasseName)
+            .Select(group => new ModernDropdownOption<string>(group.Key.ToString(), $"Ancienne classe : {group.First().PreviousKlasseName}"))
+    ];
+
     private int ReassignSelectedCount => reassignSelectedStudentIds.Count;
+
+    private CourseFormModel? ReassignTargetKlasse => reassignTargetKlasseId.HasValue
+        ? schoolKlassen.FirstOrDefault(klasse => klasse.CourseId == reassignTargetKlasseId.Value)
+        : null;
+
+    private IReadOnlyList<StudentApprovalItem> ReassignTargetStudents => reassignTargetKlasseId.HasValue
+        ? students.Where(student => student.CurrentKlasseId == reassignTargetKlasseId.Value)
+            .OrderBy(student => student.FullName)
+            .ToList()
+        : [];
 
     private int ArchiveSelectedCount => archiveSelectedStudentIds.Count;
 
@@ -507,6 +535,12 @@ public partial class SchulLeiter
     private Task SetDurchlaufStatusFilterAsync(string? value)
     {
         durchlaufStatusFilter = value ?? "active";
+        return Task.CompletedTask;
+    }
+
+    private Task SetReassignPreviousKlasseFilterAsync(string value)
+    {
+        reassignPreviousKlasseFilter = value;
         return Task.CompletedTask;
     }
 
@@ -824,7 +858,50 @@ public partial class SchulLeiter
 
     private Guid? reassignTargetKlasseId;
     private string reassignSearch = string.Empty;
+    private string reassignPreviousKlasseFilter = ReassignAllFilter;
     private HashSet<Guid> reassignSelectedStudentIds = [];
+    private StudentApprovalItem? reassignStudentToRemove;
+    private bool reassignRemoveConfirmOpen;
+    private string? reassignRemoveErrorMessage;
+
+    private void OpenReassignRemoveConfirmation(StudentApprovalItem student)
+    {
+        reassignStudentToRemove = student;
+        reassignRemoveErrorMessage = null;
+        reassignRemoveConfirmOpen = true;
+    }
+
+    private void CloseReassignRemoveConfirmation()
+    {
+        reassignRemoveConfirmOpen = false;
+        reassignStudentToRemove = null;
+        reassignRemoveErrorMessage = null;
+    }
+
+    private Task RemoveReassignedStudentAsync() => RunDatabaseActionAsync(RemoveReassignedStudentCoreAsync);
+
+    private async Task RemoveReassignedStudentCoreAsync()
+    {
+        if (reassignStudentToRemove is null || !reassignTargetKlasseId.HasValue)
+        {
+            return;
+        }
+
+        var result = await DashboardService.RemoveStudentFromKlasseAsync(
+            currentUserId,
+            reassignStudentToRemove.UserId,
+            reassignTargetKlasseId.Value,
+            ComponentToken);
+        if (result.Succeeded)
+        {
+            SetResult(true, result.Message);
+            CloseReassignRemoveConfirmation();
+            await LoadAsync();
+            return;
+        }
+
+        reassignRemoveErrorMessage = result.Message;
+    }
     private HashSet<Guid> archiveSelectedStudentIds = [];
 
     private string? message;
@@ -1995,6 +2072,7 @@ public partial class SchulLeiter
     private DurchlaufUebersicht? zuBeendenderDurchlauf;
     private int beendenTeilnehmerGesamt;
     private int beendenOhneNote;
+    private bool durchlaufEndeEndgueltigModalOpen;
     private DateTime durchlaufEndDatum = DateTime.Today;
     private bool abschlussNotenOpen;
     private Guid? abschlussNotenDurchlaufId;
@@ -2475,7 +2553,14 @@ public partial class SchulLeiter
         durchlaufEndeModalOpen = true;
     }
 
-    private Task BeendeDurchlaufAsync() => RunDatabaseActionAsync(BeendeDurchlaufCoreAsync);
+    private Task BeendeDurchlaufAsync()
+    {
+        durchlaufEndeEndgueltigModalOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task BeendeDurchlaufEndgueltigAsync()
+        => RunDatabaseActionAsync(BeendeDurchlaufCoreAsync);
 
     private async Task BeendeDurchlaufCoreAsync()
     {
@@ -2500,9 +2585,12 @@ public partial class SchulLeiter
         klasseStatusMessage = offeneSchuld > 0
             ? $"Le cycle est clôturé. La dette restante de {offeneSchuld:N0} FCFA est indiquée comme perte."
             : "Le cycle est clôturé.";
+        if (beendenOhneNote > 0)
+            klasseStatusMessage += $" {beendenOhneNote} élève(s) ont été clôturés sans note finale ou décision complète.";
         if (abrechnungsMeldung is not null)
             klasseStatusMessage += $" {abrechnungsMeldung}";
         durchlaufEndeModalOpen = false;
+        durchlaufEndeEndgueltigModalOpen = false;
         zuBeendenderDurchlauf = null;
         await LoadSchoolKlassenAsync();
     }

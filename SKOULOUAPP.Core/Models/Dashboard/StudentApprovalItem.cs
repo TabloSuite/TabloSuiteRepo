@@ -10,6 +10,8 @@ public class StudentApprovalItem
     public string CurrentLevelCode { get; set; } = string.Empty;
     public Guid? CurrentKlasseId { get; set; }
     public string CurrentKlasseName { get; set; } = string.Empty;
+    public Guid? PreviousKlasseId { get; set; }
+    public string PreviousKlasseName { get; set; } = string.Empty;
 
     public bool IsBlocked { get; set; }
     public bool IsSelfRegistered { get; set; }

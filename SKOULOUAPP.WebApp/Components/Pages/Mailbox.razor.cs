@@ -29,6 +29,7 @@ public partial class Mailbox
     private string subject = string.Empty;
     private string body = string.Empty;
     private string? message;
+    private string? composeErrorMessage;
     private IReadOnlyList<MailNachricht> mails = [];
     private IReadOnlyList<(Guid Id, string Name)> schools = [];
     private IReadOnlyList<(Guid Id, string Name)> owners = [];
@@ -122,6 +123,7 @@ public partial class Mailbox
     private async Task SendAsync()
     {
         if (sending || userId == Guid.Empty) return;
+        composeErrorMessage = null;
         sending = true;
         try
         {
@@ -133,6 +135,10 @@ public partial class Mailbox
                 composeOpen = false;
                 showSent = true;
                 await ReloadAsync();
+            }
+            else
+            {
+                composeErrorMessage = result.Message;
             }
         }
         finally

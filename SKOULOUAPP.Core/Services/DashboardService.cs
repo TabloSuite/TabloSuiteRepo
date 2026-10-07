@@ -382,7 +382,9 @@ public class DashboardService(
         // Übungsversuche (nur bereits automatisch/manuell bewertete, keine offenen manuellen).
         var exerciseAttemptsQuery = dbContext.ExerciseAttempts
             .AsNoTracking()
-            .Where(a => !a.RequiresManualGrading && studentIds.Contains(a.StudentId));
+            .Where(a => !a.RequiresManualGrading
+                && a.Exercise.Lesson.IsPublished
+                && studentIds.Contains(a.StudentId));
 
         if (restrictToKlasseId.HasValue)
         {
@@ -455,9 +457,12 @@ public class DashboardService(
             .Select(a => new
             {
                 a.StudentId,
+                a.ExamId,
                 a.ScorePercent,
                 a.CorrectAnswers,
-                a.TotalQuestions
+                a.TotalQuestions,
+                a.SubmittedAtUtc,
+                a.Id
             })
             .ToListAsync(cancellationToken);
 
@@ -486,7 +491,12 @@ public class DashboardService(
             };
         }
 
-        foreach (var attempt in examAttempts)
+        foreach (var attempt in examAttempts
+            .GroupBy(a => new { a.StudentId, a.ExamId })
+            .Select(group => group
+                .OrderByDescending(a => a.SubmittedAtUtc)
+                .ThenByDescending(a => a.Id)
+                .First()))
         {
             perStudent.TryGetValue(attempt.StudentId, out var acc);
             var examMaxPoints = attempt.TotalQuestions > 0 ? attempt.TotalQuestions : 1;
@@ -559,10 +569,10 @@ public class DashboardService(
             x =>
             {
                 var totalCount = x.Value.ExerciseCount + x.Value.ExamCount;
-                var pointsEarned = x.Value.ExercisePointsEarned + x.Value.ExamPointsEarned;
-                var pointsTotal = x.Value.ExercisePointsTotal + x.Value.ExamPointsTotal;
                 return new CombinedProgressScore(
-                    pointsTotal > 0 ? (int)Math.Round(pointsEarned * 100d / pointsTotal) : 0,
+                    totalCount > 0
+                        ? (int)Math.Round((x.Value.ExerciseSum + x.Value.ExamSum) / (double)totalCount)
+                        : 0,
                     totalCount,
                     x.Value.ExercisePointsEarned,
                     x.Value.ExercisePointsTotal,
@@ -852,8 +862,7 @@ public class DashboardService(
             .Include(lesson => lesson.Pages)
             .Where(lesson => klasseIds.Contains(lesson.KlasseId)
                 && lesson.IsPublished
-                && lesson.AuthorId.HasValue
-                && lesson.Author!.UserSchools.Any(link => link.SchoolId == schoolId))
+                && lesson.Klasse.SchoolId == schoolId)
             .OrderBy(lesson => lesson.Klasse.Code)
             .ThenBy(lesson => lesson.Order)
             .ToListAsync(cancellationToken);
@@ -2966,9 +2975,50 @@ public class DashboardService(
             .ThenBy(profile => profile.FullName)
             .ToListAsync(cancellationToken);
 
+        var studentIds = profiles.Select(profile => profile.UserId).ToList();
+        var previousClasses = await dbContext.LevelEnrollments
+            .AsNoTracking()
+            .Where(enrollment => studentIds.Contains(enrollment.StudentId) && !enrollment.IstAktuell)
+            .OrderByDescending(enrollment => enrollment.Durchlauf != null
+                ? enrollment.Durchlauf.EndDatum ?? enrollment.Durchlauf.StartDatum
+                : enrollment.ErstelltAmUtc)
+            .Select(enrollment => new
+            {
+                enrollment.StudentId,
+                enrollment.KlasseId,
+                enrollment.Klasse.Code,
+                enrollment.Klasse.Title
+            })
+            .ToListAsync(cancellationToken);
+        var previousClassByStudent = previousClasses
+            .GroupBy(item => item.StudentId)
+            .ToDictionary(group => group.Key, group => group.First());
+        foreach (var profile in profiles)
+        {
+            if (previousClassByStudent.TryGetValue(profile.UserId, out var previousClass))
+            {
+                profile.PreviousKlasseId = previousClass.KlasseId;
+                profile.PreviousKlasseName = FormatKlassenName(previousClass.Code, previousClass.Title);
+            }
+        }
+
         await ApplyStudentProgressScoresAsync(profiles, cancellationToken);
         await ApplySchoolFeeInfoAsync(profiles, cancellationToken);
         return profiles;
+    }
+
+    private static string FormatKlassenName(string? code, string? title)
+    {
+        var normalizedCode = code?.Trim() ?? string.Empty;
+        var normalizedTitle = title?.Trim() ?? string.Empty;
+        if (string.Equals(normalizedCode, normalizedTitle, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedCode;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedCode)) return normalizedTitle;
+        if (string.IsNullOrWhiteSpace(normalizedTitle)) return normalizedCode;
+        return $"{normalizedCode} · {normalizedTitle}";
     }
 
     public async Task<(bool Succeeded, string Message)> AssignStudentsToKlasseAsync(
@@ -3053,6 +3103,56 @@ public class DashboardService(
         }
 
         return (true, $"{profiles.Count} élève(s) attribué(s) à {klasse.Title}.");
+    }
+
+    public async Task<(bool Succeeded, string Message)> RemoveStudentFromKlasseAsync(
+        Guid directorId,
+        Guid studentId,
+        Guid klasseId,
+        CancellationToken cancellationToken = default)
+    {
+        var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        var klasse = await dbContext.Klassen
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == klasseId
+                && item.SchoolId.HasValue
+                && schoolIds.Contains(item.SchoolId.Value), cancellationToken);
+        if (klasse is null)
+        {
+            return (false, "Classe introuvable ou non autorisée.");
+        }
+
+        var profile = await dbContext.StudentProfiles
+            .Include(item => item.AppUser)
+            .FirstOrDefaultAsync(item => item.AppUserId == studentId
+                && item.SchoolId == klasse.SchoolId
+                && item.CurrentKlasseId == klasseId, cancellationToken);
+        if (profile is null)
+        {
+            return (false, "L'élève n'est plus affecté à cette classe.");
+        }
+
+        var enrollment = await dbContext.LevelEnrollments
+            .FirstOrDefaultAsync(item => item.StudentId == studentId
+                && item.KlasseId == klasseId
+                && item.IstAktuell, cancellationToken);
+        if (enrollment is not null
+            && (enrollment.IsUnlocked || enrollment.IsPaid || enrollment.AbgerechnetInPeriodeId.HasValue))
+        {
+            return (false, "Cette affectation possède déjà un abonnement actif ou payé. Annule d'abord l'abonnement via le workflow autorisé.");
+        }
+
+        profile.CurrentKlasseId = null;
+        profile.CurrentLevelCode = string.Empty;
+        profile.GeaendertAmUtc = DateTime.UtcNow;
+        if (enrollment is not null)
+        {
+            enrollment.IstAktuell = false;
+            enrollment.GeaendertAmUtc = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, $"{profile.AppUser.FullName} a été retiré(e) de la classe {FormatKlassenName(klasse.Code, klasse.Title)}.");
     }
 
     public async Task<IReadOnlyList<StudentApprovalItem>> GetTeacherStudentsAsync(Guid teacherId, CancellationToken cancellationToken = default)

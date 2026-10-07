@@ -62,7 +62,7 @@
     </div>
 </section>
 
-<ModalDialog @bind-Open="composeOpen" Title="Nouvel e-mail" Eyebrow="Communication" MaxWidthClass="max-w-4xl">
+<ModalDialog @bind-Open="composeOpen" Title="Nouvel e-mail" Eyebrow="Communication" ErrorMessage="@composeErrorMessage" MaxWidthClass="max-w-4xl">
     @if (isAdmin)
     {
         <div class="mb-5 flex flex-wrap gap-2" aria-label="Mode d'envoi">

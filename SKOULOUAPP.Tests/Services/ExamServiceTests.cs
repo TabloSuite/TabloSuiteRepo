@@ -134,6 +134,68 @@ public class ExamServiceTests
     }
 
     [Fact]
+    public async Task GetExamReviewForStudentAsync_LiefertEigeneAntwortUndLoesung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, richtig) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(item => item.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        var session = (await service.StartExamAsync(exam.Id, studentId))!;
+        await service.SubmitExamAsync(session.AttemptId, studentId,
+            [new ExamAnswerSubmission { QuestionId = session.Questions[0].QuestionId, SelectedOptionId = richtig.Id }]);
+
+        var review = await service.GetExamReviewForStudentAsync(exam.Id, studentId);
+
+        Assert.NotNull(review);
+        var question = Assert.Single(review!.Questions);
+        Assert.True(question.IsCorrect);
+        Assert.Equal(richtig.Id, question.SelectedOptionId);
+        Assert.Equal(richtig.Id, Assert.Single(question.Options.Where(option => option.IsCorrect)).OptionId);
+    }
+
+    [Fact]
+    public async Task GetExamReviewForStudentAsync_VerweigertFremdenAttempt()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, richtig) = await SeedExamAsync(db);
+        var ownerId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(item => item.Id == exam.KlasseId).SchoolId!.Value;
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = ownerId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId });
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        var session = (await service.StartExamAsync(exam.Id, ownerId))!;
+        await service.SubmitExamAsync(session.AttemptId, ownerId,
+            [new ExamAnswerSubmission { QuestionId = session.Questions[0].QuestionId, SelectedOptionId = richtig.Id }]);
+
+        Assert.Null(await service.GetExamReviewForStudentAsync(exam.Id, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task GetExamsForStudentAsync_ZeigtAbgeschlossenesExamOhneAktuelleKlasse()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (exam, richtig) = await SeedExamAsync(db);
+        var studentId = Guid.NewGuid();
+        var schoolId = db.Klassen.Single(item => item.Id == exam.KlasseId).SchoolId!.Value;
+        var profile = new StudentProfile { AppUserId = studentId, SchoolId = schoolId, CurrentKlasseId = exam.KlasseId };
+        db.StudentProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        var service = new ExamService(db);
+        var session = (await service.StartExamAsync(exam.Id, studentId))!;
+        await service.SubmitExamAsync(session.AttemptId, studentId,
+            [new ExamAnswerSubmission { QuestionId = session.Questions[0].QuestionId, SelectedOptionId = richtig.Id }]);
+        profile.CurrentKlasseId = null;
+        await db.SaveChangesAsync();
+
+        var result = await service.GetExamsForStudentAsync(studentId);
+
+        Assert.True(Assert.Single(result).HasAttempt);
+    }
+
+    [Fact]
     public async Task GetExamsForStudentAsync_ZeigtRestfristUndAbschlussNachZeitablauf()
     {
         using var db = TestDbContext.CreateInMemory();
