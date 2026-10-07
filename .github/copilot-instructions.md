@@ -130,3 +130,4 @@
 ## Willkommensmail
 - Die Willkommensmail für neu registrierte Schulleiter soll den Nutzen der Schulverwaltung konkreter und hochwertiger erklären, insbesondere Klassen/Personal, Schulfinanzen, Schulgebühren, Ratenzahlungen, SKOULOUAPP-Abonnements und transparente Zahlungs-/Abrechnungsübersichten.
 - Auch die Willkommensmail für Schüler soll statt eines knappen Abo-Hinweises eine hochwertige französische Übersicht zum Schülerbereich enthalten, einschließlich Lernmaterialien, Übungen/Prüfungen, Fortschritt und schulverwaltetem SKOULOUAPP-Abonnement.
+- Alle Links in System-E-Mails müssen auf tatsächlich vorhandene Produktionsrouten unter https://skoulou.etsetech.com zeigen; insbesondere Willkommens-, Login-, Passwortänderungs- und Passwortzurücksetzungslinks sind gemeinsam zu prüfen und durch Tests abzusichern.

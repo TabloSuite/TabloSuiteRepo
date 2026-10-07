@@ -19,6 +19,7 @@ public class TestUserManager : UserManager<AppUser>
     public Action<AppUser>? OnUserDeleted { get; set; }
     public IdentityResult ChangePasswordResult { get; set; } = IdentityResult.Success;
     public IdentityResult ResetPasswordResult { get; set; } = IdentityResult.Success;
+    public string PasswordResetToken { get; set; } = "reset-token";
 
     private TestUserManager(List<AppUser> users, IUserStore<AppUser> store)
         : base(
@@ -83,6 +84,9 @@ public class TestUserManager : UserManager<AppUser>
 
     public override Task<IdentityResult> ResetPasswordAsync(AppUser user, string token, string newPassword)
         => Task.FromResult(ResetPasswordResult);
+
+    public override Task<string> GeneratePasswordResetTokenAsync(AppUser user)
+        => Task.FromResult(PasswordResetToken);
 
     public override Task<IdentityResult> CreateAsync(AppUser user, string password)
     {

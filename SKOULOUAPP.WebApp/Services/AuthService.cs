@@ -312,16 +312,14 @@ public class AuthService(
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         var encoded = Uri.EscapeDataString(token);
-        var resetUrl = $"{BaseUrl}/auth/reset-password?email={Uri.EscapeDataString(user.Email)}&token={encoded}";
+        var resetUrl = BuildAppUrl($"/auth/reset-password?email={Uri.EscapeDataString(user.Email)}&token={encoded}");
 
         var body = EmailTemplates.Wrap(
             "Réinitialisation du mot de passe",
             $"""
             <p>Bonjour {System.Net.WebUtility.HtmlEncode(user.Vorname)},</p>
             <p>Tu as demandé la réinitialisation de ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau :</p>
-            <p style="text-align:center;margin:32px 0;">
-                <a href="{resetUrl}" style="background:#7c3aed;color:#fff;padding:12px 28px;border-radius:9999px;text-decoration:none;font-weight:600;">Réinitialiser le mot de passe</a>
-            </p>
+            {EmailTemplates.Button(resetUrl, "Réinitialiser le mot de passe")}
             <p>Si tu n'es pas à l'origine de cette demande, tu peux ignorer cet e-mail.</p>
             """);
 
@@ -398,12 +396,16 @@ public class AuthService(
         if (!IstPlausibleEmail(user.Email ?? string.Empty)) return;
 
         var subject = wasReset ? "SKOULOUAPP – Mot de passe réinitialisé" : "SKOULOUAPP – Mot de passe modifié";
+        var loginUrl = BuildAppUrl("/auth/login");
+        var forgotPasswordUrl = BuildAppUrl("/auth/forgot-password");
         var body = EmailTemplates.Wrap(
             "Confirmation de sécurité",
             $"""
             <p>Bonjour {System.Net.WebUtility.HtmlEncode(user.Vorname)},</p>
             <p>Le mot de passe de ton compte SKOULOUAPP a été {(wasReset ? "réinitialisé" : "modifié")}.</p>
-            <p>Si tu n'es pas à l'origine de cette action, demande immédiatement la réinitialisation de ton mot de passe et contacte l'assistance.</p>
+            <p>Tu peux maintenant te connecter avec ton nouveau mot de passe.</p>
+            {EmailTemplates.Button(loginUrl, "Se connecter à SKOULOUAPP")}
+            {EmailTemplates.InfoBox($"<strong>Tu n'es pas à l'origine de cette action&nbsp;?</strong><br/>Protège immédiatement ton compte en <a href=\"{forgotPasswordUrl}\" style=\"color:#1d4ed8;font-weight:700;\">demandant un nouveau mot de passe</a>, puis contacte l'assistance.")}
             """);
 
         try
@@ -779,7 +781,7 @@ public class AuthService(
             ? null
             : System.Net.WebUtility.HtmlEncode(schulName);
 
-        var loginUrl = $"{BaseUrl}/login";
+        var loginUrl = BuildAppUrl("/auth/login");
         var gruss = $"<p>Bonjour {name},</p>";
         var schulZeile = schule is null
             ? string.Empty
@@ -979,6 +981,9 @@ public class AuthService(
             ? (true, "Merci ! Ton message a bien été envoyé.")
             : (false, "L'envoi a échoué. Merci de réessayer plus tard.");
     }
+
+    private string BuildAppUrl(string relativePath)
+        => $"{BaseUrl}/{relativePath.TrimStart('/')}";
 
     private string BaseUrl => (configuration["App:BaseUrl"] ?? "https://localhost:7064").TrimEnd('/');
 }

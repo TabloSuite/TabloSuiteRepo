@@ -163,16 +163,21 @@ internal static class EmailTemplates
     /// <summary>
     /// Zentrierter Call-to-Action-Button im Markenstil.
     /// </summary>
-    public static string Button(string url, string label) =>
-        $"""
+    public static string Button(string url, string label)
+    {
+        var safeUrl = System.Net.WebUtility.HtmlEncode(url);
+        var safeLabel = System.Net.WebUtility.HtmlEncode(label);
+
+        return $"""
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px auto;">
             <tr>
                 <td align="center" bgcolor="{ColorBlue}" style="border-radius:9999px;background:{ColorBlue};background-image:linear-gradient(135deg,{ColorBlueLight} 0%,{ColorNavy} 100%);">
-                    <a href="{url}" style="display:inline-block;padding:14px 34px;font-family:{FontStack};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:9999px;">{label}</a>
+                    <a href="{safeUrl}" style="display:inline-block;padding:14px 34px;font-family:{FontStack};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:9999px;">{safeLabel}</a>
                 </td>
             </tr>
         </table>
         """;
+    }
 
     /// <summary>
     /// Hervorgehobener Infokasten für Zugangsdaten oder wichtige Hinweise.

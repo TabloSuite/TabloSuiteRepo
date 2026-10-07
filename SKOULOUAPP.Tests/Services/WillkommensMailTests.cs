@@ -190,6 +190,8 @@ public class WillkommensMailTests
         Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
         Assert.DoesNotContain("Secret123!", sent.Message.HtmlBody);
         Assert.DoesNotContain("secret-token", sent.Message.HtmlBody);
+        Assert.Contains("https://localhost:7064/auth/login", sent.Message.HtmlBody);
+        Assert.Contains("https://localhost:7064/auth/forgot-password", sent.Message.HtmlBody);
     }
 
     [Theory]
@@ -257,6 +259,8 @@ public class WillkommensMailTests
         Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
         Assert.Contains("Institut Goethe", nachricht.HtmlBody);
         Assert.Contains("directeur d'école", nachricht.HtmlBody);
+        Assert.Contains("href=\"https://test.local/auth/login\"", nachricht.HtmlBody);
+        Assert.DoesNotContain("href=\"https://test.local/login\"", nachricht.HtmlBody);
         Assert.Contains("Tout ton établissement, dans un seul espace", nachricht.HtmlBody);
         Assert.Contains("Frais scolaires", nachricht.HtmlBody);
         Assert.Contains("paiements comptants ou échelonnés", nachricht.HtmlBody);
@@ -266,6 +270,34 @@ public class WillkommensMailTests
         Assert.Contains("SKOULOUAPPABO", nachricht.HtmlBody);
         Assert.Contains("commissions", nachricht.HtmlBody);
         Assert.Contains("montants facturés", nachricht.HtmlBody);
+    }
+
+    [Fact]
+    public async Task PasswordResetMail_VerwendetDieVorhandeneResetRoute()
+    {
+        var email = new FakeEmailService();
+        var user = new AppUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "jean@test.local",
+            UserName = "jean@test.local",
+            Vorname = "Jean",
+            FullName = "Jean Dupont"
+        };
+        var manager = TestUserManager.Create([user]);
+        manager.PasswordResetToken = "jeton avec espaces";
+        var factory = new TestApplicationDbContextFactory();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["App:BaseUrl"] = "https://test.local/" })
+            .Build();
+        var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, email,
+            Options.Create(new PostmarkOptions()), configuration, NullLogger<AuthService>.Instance);
+
+        await service.SendPasswordResetAsync(user.Email);
+
+        var html = Assert.Single(email.Gesendet).Message.HtmlBody;
+        Assert.Contains("https://test.local/auth/reset-password?email=jean%40test.local&amp;token=jeton%20avec%20espaces", html);
+        Assert.DoesNotContain("https://test.local/reset-password", html);
     }
 
     [Fact]
