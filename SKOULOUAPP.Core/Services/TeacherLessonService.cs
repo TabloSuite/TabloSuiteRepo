@@ -18,8 +18,9 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         Guid schoolLeaderId,
         CancellationToken cancellationToken = default)
     {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var schoolIds = await dbContext.UserSchools
-            .Where(link => link.AppUserId == schoolLeaderId)
+            .Where(link => link.AppUserId == schoolLeaderId && !link.AppUser.IsBlocked && freieSchulen.Contains(link.SchoolId))
             .Select(link => link.SchoolId)
             .ToListAsync(cancellationToken);
 
@@ -74,6 +75,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         Guid? klasseId = null,
         CancellationToken cancellationToken = default)
     {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var query = dbContext.TeacherLessons
             .AsNoTracking()
             .Include(x => x.Klasse)
@@ -81,7 +83,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .Include(x => x.Pages)
             .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
-            .Where(x => x.AuthorId == teacherId && !x.Klasse.IstSystemNiveau)
+            .Where(x => x.AuthorId == teacherId && !x.Klasse.IstSystemNiveau
+                && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value))
             .AsQueryable();
 
         if (klasseId.HasValue)
@@ -114,9 +117,10 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             return await GetLessonsForTeacherAsync(userId, klasseId, cancellationToken);
         }
 
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var schoolIds = await dbContext.UserSchools
             .AsNoTracking()
-            .Where(link => link.AppUserId == userId)
+            .Where(link => link.AppUserId == userId && !link.AppUser.IsBlocked && freieSchulen.Contains(link.SchoolId))
             .Select(link => link.SchoolId)
             .ToListAsync(cancellationToken);
 
@@ -127,7 +131,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .Include(x => x.Pages)
             .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
-            .Where(x => !x.Klasse.IstSystemNiveau
+            .Where(x => !x.Klasse.IstSystemNiveau && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value)
                 && (x.AuthorId == userId
                     || (x.AuthorId.HasValue
                         && x.Klasse.SchoolId.HasValue
@@ -309,30 +313,14 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         Guid studentId,
         CancellationToken cancellationToken)
     {
-        var enrollmentKlasseIds = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId
-                && (!enrollment.IstAktuell || enrollment.IsUnlocked))
-            .Select(enrollment => enrollment.KlasseId)
-            .ToListAsync(cancellationToken);
-        var decisionKlasseIds = await dbContext.KlassenAbschlussEntscheidungen
-            .AsNoTracking()
-            .Where(result => result.StudentId == studentId)
-            .Select(result => result.Durchlauf.KlasseId)
-            .ToListAsync(cancellationToken);
-
-        return enrollmentKlasseIds.Concat(decisionKlasseIds).ToHashSet();
+        return await new SchuelerZugangService(dbContext).KlassenAsync(studentId, mitHistorie: true, cancellationToken);
     }
 
     private async Task<HashSet<Guid>> GetStudentKlasseIdsAsync(
         Guid studentId,
         CancellationToken cancellationToken)
     {
-        return await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToHashSetAsync(cancellationToken);
+        return await new SchuelerZugangService(dbContext).KlassenAsync(studentId, mitHistorie: true, token: cancellationToken);
     }
 
     /// <summary>
@@ -387,6 +375,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
+        if (lesson.Klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken)) return null;
         var isAuthor = lesson.AuthorId == userId;
         var canViewAsDirection = includeSharedWithDirection
             && lesson.IsSharedWithSchool
@@ -429,7 +418,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         var belongsToDirectionSchool = await dbContext.UserSchools
             .AsNoTracking()
             .AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
-        if (!belongsToDirectionSchool)
+        if (!belongsToDirectionSchool || !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken))
         {
             return null;
         }
@@ -456,12 +445,14 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         Guid authorId,
         CancellationToken cancellationToken = default)
     {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var lesson = await dbContext.TeacherLessons
             .AsNoTracking()
             .Include(x => x.Pages)
             .Include(x => x.Fach)
             .Include(x => x.VideoAsset)
-            .FirstOrDefaultAsync(x => x.Id == lessonId && x.AuthorId == authorId && !x.Klasse.IstSystemNiveau, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == lessonId && x.AuthorId == authorId && !x.Klasse.IstSystemNiveau
+                && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value), cancellationToken);
 
         if (lesson is null)
         {
@@ -510,6 +501,9 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         {
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
         }
+
+        if (klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
 
         TeacherLesson lesson;
 
@@ -691,6 +685,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
         }
 
+        if (lesson.Klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
         lesson.IsPublished = isPublished;
         lesson.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -726,6 +722,11 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         {
             throw new InvalidOperationException("La copie vers un niveau standard n'est pas autorisée.");
         }
+
+        if (source.Klasse.SchoolId is not Guid sourceSchool || targetKlasse.SchoolId is not Guid targetSchool
+            || !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(sourceSchool, cancellationToken)
+            || !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(targetSchool, cancellationToken))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
 
         var nextOrder = await dbContext.TeacherLessons
             .AsNoTracking()
@@ -786,6 +787,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
         }
 
+        if (lesson.Klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
         dbContext.TeacherLessonPages.RemoveRange(lesson.Pages);
         dbContext.TeacherLessons.Remove(lesson);
         await dbContext.SaveChangesAsync(cancellationToken);

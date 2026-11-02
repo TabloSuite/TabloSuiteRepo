@@ -10,7 +10,7 @@ using SkoulouApp.WebApp.Data;
 
 namespace SkoulouApp.WebApp.Services;
 
-public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> factory, BewertungsService bewertungen, IBlobMediaLibraryService? medien = null)
+public sealed partial class BulletinService(IDbContextFactory<ApplicationDbContext> factory, BewertungsService bewertungen, IBlobMediaLibraryService? medien = null)
 {
     public async Task<List<BulletinVorlage>> VorlagenAsync(Guid user, Guid schule, CancellationToken token = default)
     {
@@ -21,18 +21,40 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
 
     public async Task VorlageSpeichernAsync(Guid user, BulletinVorlage eingabe, CancellationToken token = default)
     {
-        await using var db = await factory.CreateDbContextAsync(token);
+        await VorlagenZuweisenAsync(user, eingabe, [eingabe.KlasseID], true, token);
+    }
+
+    public Task<int> VorlagenZuweisenAsync(Guid user, BulletinVorlage eingabe, IReadOnlyCollection<Guid> klassen,
+        bool ueberschreiben, CancellationToken token = default)
+    {
+        var ids = klassen.Distinct().OrderBy(x => x).ToArray();
+        return UnterrichtTransaktion.AusfuehrenAsync(factory, async db =>
+        {
         await DirektionAsync(db, user, eingabe.SchulID, token);
+        if (ids.Length == 0 || ids.Contains(Guid.Empty)
+            || await db.Klassen.CountAsync(x => ids.Contains(x.Id) && x.SchoolId == eingabe.SchulID && !x.IstSystemNiveau, token) != ids.Length)
+            throw new InvalidOperationException("Sélectionnez au moins une classe de cette école.");
+        if (!ueberschreiben && await db.Set<BulletinVorlage>().AnyAsync(x => x.SchulID == eingabe.SchulID
+            && ids.Contains(x.KlasseID) && x.Art == eingabe.Art, token))
+            throw new InvalidOperationException("Certaines classes possèdent déjà un modèle de ce type. Confirmez leur remplacement ou modifiez la sélection. Aucun modèle n'a été modifié.");
+        foreach (var id in ids) await VorlageSpeichernAsync(db, user, eingabe, id, token);
+        await db.SaveChangesAsync(token);
+        return ids.Length;
+        }, token);
+    }
+
+    private static async Task VorlageSpeichernAsync(ApplicationDbContext db, Guid user, BulletinVorlage eingabe, Guid klasseID, CancellationToken token)
+    {
         if (!Enum.IsDefined(eingabe.Art) || string.IsNullOrWhiteSpace(eingabe.Name) || eingabe.Name.Trim().Length > 120
             || !GueltigeBloecke(eingabe.BlockReihenfolge) || eingabe.SchriftGroesse is < 8 or > 12 || eingabe.SeitenRand is < 15 or > 50
             || eingabe.FussText?.Length > 300 || !Regex.IsMatch(eingabe.AkzentFarbe ?? "", "^#[0-9a-fA-F]{6}$")
-            || !await db.Klassen.AnyAsync(x => x.Id == eingabe.KlasseID && x.SchoolId == eingabe.SchulID, token))
+            || !await db.Klassen.AnyAsync(x => x.Id == klasseID && x.SchoolId == eingabe.SchulID, token))
             throw new InvalidOperationException("Vérifiez la classe, le nom, la couleur et le texte du modèle.");
         var vorlage = await db.Set<BulletinVorlage>().SingleOrDefaultAsync(x => x.SchulID == eingabe.SchulID
-            && x.KlasseID == eingabe.KlasseID && x.Art == eingabe.Art, token);
+            && x.KlasseID == klasseID && x.Art == eingabe.Art, token);
         if (vorlage is null)
         {
-            vorlage = new BulletinVorlage { Id = Guid.NewGuid(), SchulID = eingabe.SchulID, KlasseID = eingabe.KlasseID, Art = eingabe.Art };
+            vorlage = new BulletinVorlage { Id = Guid.NewGuid(), SchulID = eingabe.SchulID, KlasseID = klasseID, Art = eingabe.Art };
             db.Add(vorlage);
         }
         vorlage.Name = eingabe.Name.Trim(); vorlage.AkzentFarbe = eingabe.AkzentFarbe!;
@@ -47,7 +69,6 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
                 throw new InvalidOperationException("Le logo doit provenir de la bibliothèque de cette école.");
         vorlage.LogoAssetID = eingabe.LogoAssetID;
         vorlage.SiegelAssetID = null; // Legacy-Spalte bleibt erhalten, neue Dokumente verwenden echte Schulstempel.
-        await db.SaveChangesAsync(token);
     }
 
     public async Task<BulletinSnapshot> VorschauAsync(Guid user, Guid schule, Guid periodeID, Guid zuordnungID,
@@ -58,7 +79,7 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
     }
 
     private async Task<BulletinSnapshot> SnapshotAsync(ApplicationDbContext db, Guid user, Guid schule,
-        Guid periodeID, Guid zuordnungID, string? bemerkung, CancellationToken token)
+        Guid periodeID, Guid zuordnungID, string? bemerkung, CancellationToken token, List<FachNote>? entwurf = null)
     {
         await DirektionAsync(db, user, schule, token);
         if (bemerkung?.Length > 1000) throw new InvalidOperationException("L'observation est limitée à 1 000 caractères.");
@@ -72,6 +93,7 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
             && x.KlasseID == zuordnung.KlasseID && x.Art == periode.Art, token)
             ?? throw new InvalidOperationException("Créez d'abord un modèle pour cette classe et ce type de bulletin.");
         var daten = await BewertungsService.LadenAsync(db, user, schule, periode.SchuljahrID, token);
+        if (entwurf is not null) daten = daten with { Noten = entwurf };
         var faecher = daten.Faecher.Where(x => x.KlasseID == zuordnung.KlasseID).OrderBy(x => x.Fach).ToList();
         decimal? FachMittel(Guid periode, Guid schueler, Guid fach) => NotenBerechnung.FachMittel(daten.Bestandteile
             .Where(x => x.PeriodeID == periode).Select(x => new NotenAnteil(daten.Noten.SingleOrDefault(n => n.BestandteilID == x.Id
@@ -138,6 +160,9 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
         return await UnterrichtTransaktion.AusfuehrenAsync(factory, async db =>
         {
         var snapshot = await SnapshotAsync(db, user, schule, periodeID, zuordnungID, bemerkung, token);
+        var klasse = await db.Set<SchuelerJahresZuordnung>().Where(x => x.Id == zuordnungID).Select(x => x.KlasseID).SingleAsync(token);
+        if (await db.Set<BulletinAbschluss>().AnyAsync(x => x.PeriodeID == periodeID && x.KlasseID == klasse, token))
+            throw new InvalidOperationException("Cette classe est définitivement publiée. Utilisez une rectification.");
         if (snapshot.Faecher.Count == 0 || snapshot.Durchschnitt is null) throw new InvalidOperationException("Complétez toutes les notes avant de publier le bulletin.");
         await DirektionAsync(db, user, schule, token);
         var bisher = await db.Set<BulletinAusgabe>().Where(x => x.SchulID == schule && x.PeriodeID == periodeID && x.JahresZuordnungID == zuordnungID).ToListAsync(token);
@@ -158,6 +183,7 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
         var ausgabe = await db.Set<BulletinAusgabe>().SingleOrDefaultAsync(x => x.Id == ausgabeID, token)
             ?? throw new InvalidOperationException("Ce bulletin est introuvable.");
         await DirektionAsync(db, user, ausgabe.SchulID, token);
+        if (ausgabe.IstEndgueltig) throw new InvalidOperationException("Ce bulletin est définitif. Utilisez une rectification, sans retirer l'original.");
         if (string.IsNullOrWhiteSpace(grund) || grund.Length > 300) throw new InvalidOperationException("Indiquez le motif du retrait.");
         ausgabe.IstVeroeffentlicht = false;
         if (ausgabe.ZurueckgezogenAmUtc is not null) throw new InvalidOperationException("Cette édition a déjà été retirée.");
@@ -176,9 +202,9 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
         var direktion = await IstDirektionAsync(db, user, token);
         var schueler = await db.UserRoles.AnyAsync(x => x.UserId == user && db.Roles.Any(r => r.Id == x.RoleId && r.Name == Rollen.Schueler), token);
         return await db.Set<BulletinAusgabe>().AsNoTracking().Where(x => x.SchulID == schule && (direktion
-            || (schueler && x.IstVeroeffentlicht && x.JahresZuordnung.SchuelerID == user)))
+            || (schueler && (x.IstVeroeffentlicht || x.ErsetztDurchID != null) && x.JahresZuordnung.SchuelerID == user)))
             .OrderByDescending(x => x.ErstelltAmUtc).Select(x => new BulletinListenZeile(x.Id, x.SchulID, x.Periode.Titel,
-                x.JahresZuordnung.Schueler.FullName, x.Version, x.IstVeroeffentlicht)).ToListAsync(token);
+                x.JahresZuordnung.Schueler.FullName, x.Version, x.IstVeroeffentlicht, x.IstEndgueltig, x.ErsetztDurchID)).ToListAsync(token);
     }
 
     public async Task<BulletinSnapshot?> LesenAsync(Guid user, Guid ausgabeID, CancellationToken token = default)
@@ -189,7 +215,7 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
         await MitgliedAsync(db, user, ausgabe.SchulID, token);
         var schueler = await db.UserRoles.AnyAsync(x => x.UserId == user
             && db.Roles.Any(r => r.Id == x.RoleId && r.Name == Rollen.Schueler), token);
-        if (!await IstDirektionAsync(db, user, token) && (!schueler || !ausgabe.IstVeroeffentlicht || ausgabe.JahresZuordnung.SchuelerID != user))
+        if (!await IstDirektionAsync(db, user, token) && (!schueler || (!ausgabe.IstVeroeffentlicht && ausgabe.ErsetztDurchID == null) || ausgabe.JahresZuordnung.SchuelerID != user))
             throw new UnauthorizedAccessException("Ce bulletin n'est pas accessible.");
         return JsonSerializer.Deserialize<BulletinSnapshot>(ausgabe.SnapshotJson);
     }
@@ -239,6 +265,8 @@ public sealed class BulletinService(IDbContextFactory<ApplicationDbContext> fact
         => db.UserRoles.AnyAsync(x => x.UserId == user && db.Roles.Any(r => r.Id == x.RoleId && (r.Name == Rollen.SchulLeiter || r.Name == Rollen.Koordinator)), token);
     private static async Task MitgliedAsync(ApplicationDbContext db, Guid user, Guid schule, CancellationToken token)
     {
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schule, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         if (!await db.UserSchools.AnyAsync(x => x.AppUserId == user && x.SchoolId == schule && x.School.IsActive && !x.AppUser.IsBlocked, token))
             throw new UnauthorizedAccessException("Vous n'êtes pas autorisé pour cette école.");
     }

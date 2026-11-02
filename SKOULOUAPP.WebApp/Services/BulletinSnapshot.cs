@@ -10,5 +10,7 @@ public sealed record BulletinSnapshot(string Schule, string? Slogan, string? Adr
     string Farbe, bool Koeffizienten, bool RangAnzeigen, bool VorperiodenAnzeigen, bool Unterschriften, string? FussText,
     string BlockReihenfolge = "Schueler,Noten,Ergebnisse,Bemerkung,Unterschriften", byte[]? Logo = null, byte[]? Siegel = null,
     int ErfassteTage = 0, int FehlTage = 0, int EntschuldigteFehlTage = 0, int Verspaetungen = 0, int VerspaetungsMinuten = 0,
-    int SchriftGroesse = 10, int SeitenRand = 25, bool ZeigeLehrkraefte = true, bool ZeigeAnwesenheit = true);
-public sealed record BulletinListenZeile(Guid Id, Guid SchulID, string Titel, string Schueler, int Version, bool IstVeroeffentlicht);
+    int SchriftGroesse = 10, int SeitenRand = 25, bool ZeigeLehrkraefte = true, bool ZeigeAnwesenheit = true,
+    string? DokumentNummer = null, DateTime? DokumentDatumUtc = null, string? PruefToken = null, string? ErsetztDokumentNummer = null);
+public sealed record BulletinListenZeile(Guid Id, Guid SchulID, string Titel, string Schueler, int Version, bool IstVeroeffentlicht,
+    bool IstEndgueltig = false, Guid? ErsetztDurchID = null);

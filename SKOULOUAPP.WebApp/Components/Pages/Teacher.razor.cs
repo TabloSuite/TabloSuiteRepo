@@ -178,44 +178,13 @@ public partial class Teacher
 
     private static string GetAboStatusLabel(StudentApprovalItem student)
     {
-        if (!student.CurrentKlasseId.HasValue)
-        {
-            return "Classe non attribuée";
-        }
-
-        if (!student.HasActiveSchoolFeeCycle)
-        {
-            return "Cycle non démarré";
-        }
-
-        if (!student.HasActiveSubscription)
-        {
-            return "Aucun abo actif";
-        }
-
-        return student.HasPaidEnrollment
-            ? "Abo actif (payé)"
-            : "Abo actif";
+        if (student.IsBlocked) return "Compte bloqué ou en attente de validation";
+        return student.CurrentKlasseId.HasValue ? "Accès aux supports publiés de la classe" : "Classe non attribuée";
     }
 
     private static string GetAboStatusAccent(StudentApprovalItem student)
     {
-        if (!student.CurrentKlasseId.HasValue)
-        {
-            return "slate";
-        }
-
-        if (!student.HasActiveSchoolFeeCycle)
-        {
-            return "amber";
-        }
-
-        if (!student.HasActiveSubscription)
-        {
-            return "rose";
-        }
-
-        return student.HasPaidEnrollment ? "emerald" : "cyan";
+        return student.IsBlocked ? "rose" : student.CurrentKlasseId.HasValue ? "emerald" : "slate";
     }
 
     private void ClearDateFilter()
@@ -234,22 +203,6 @@ public partial class Teacher
         }
 
         expandedLevelStudentId = studentId;
-        levelEnrollments = await DashboardService.GetStudentLevelEnrollmentsAsync(studentId);
-    }
-
-    private Task ToggleUnlockedAsync(Guid studentId, Guid klasseId, bool isUnlocked) => RunDatabaseActionAsync(() => ToggleUnlockedCoreAsync(studentId, klasseId, isUnlocked));
-
-    private async Task ToggleUnlockedCoreAsync(Guid studentId, Guid klasseId, bool isUnlocked)
-    {
-        await DashboardService.SetLevelUnlockedAsync(studentId, klasseId, isUnlocked);
-        levelEnrollments = await DashboardService.GetStudentLevelEnrollmentsAsync(studentId);
-    }
-
-    private Task TogglePaidAsync(Guid studentId, Guid klasseId, bool isPaid) => RunDatabaseActionAsync(() => TogglePaidCoreAsync(studentId, klasseId, isPaid));
-
-    private async Task TogglePaidCoreAsync(Guid studentId, Guid klasseId, bool isPaid)
-    {
-        await DashboardService.SetLevelPaidAsync(studentId, klasseId, isPaid);
         levelEnrollments = await DashboardService.GetStudentLevelEnrollmentsAsync(studentId);
     }
 

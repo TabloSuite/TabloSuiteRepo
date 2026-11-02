@@ -9,7 +9,6 @@ public class CourseManagementViewModel
     public bool IsSchoolSpecific => SchoolId.HasValue;
     public string Code { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string CEFRGroup { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int RecommendedLessonCount { get; set; }
     public decimal Price { get; set; }

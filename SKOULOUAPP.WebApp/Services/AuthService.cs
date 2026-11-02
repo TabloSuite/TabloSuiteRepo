@@ -1,4 +1,4 @@
-using SkoulouApp.Core.Options;
+﻿using SkoulouApp.Core.Options;
 using SkoulouApp.Core.Models.Profile;
 using SkoulouApp.Core.Models.TeacherLessons;
 using SkoulouApp.Core.DataModels.Schools;
@@ -196,7 +196,12 @@ public class AuthService(
         // Circuit-DbContext (Blazor Server) während paralleler Abfragen.
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var school = await db.Schools.FirstOrDefaultAsync(x => x.Id == input.SelectedSchoolId.Value && x.IsActive, cancellationToken);
+        if (input.SelectedSchoolId is not Guid schoolId)
+        {
+            return (false, "Veuillez sélectionner une école.");
+        }
+
+        var school = await db.Schools.FirstOrDefaultAsync(x => x.Id == schoolId && x.IsActive, cancellationToken);
         if (school is null)
         {
             return (false, "L'école sélectionnée est introuvable.");
@@ -266,6 +271,10 @@ public class AuthService(
         {
             return (false, BlockedAccountMessage);
         }
+
+        await using var zugangsDb = await dbContextFactory.CreateDbContextAsync();
+        if (!await new SchulZugangService(zugangsDb).DarfAnmeldenAsync(user.Id))
+            return (false, SchulZugangService.GesperrtHinweis);
 
         user.ActiveSessionId = Guid.NewGuid();
         user.UpdatedAtUtc = DateTime.UtcNow;
@@ -367,6 +376,9 @@ public class AuthService(
         if (!result.Succeeded)
             return (false, string.Join(" ", result.Errors.Select(x => x.Description)));
 
+        user.ActiveSessionId = Guid.NewGuid();
+        var sessionResult = await userManager.UpdateAsync(user);
+        if (!sessionResult.Succeeded) return (false, "Le mot de passe a changé. Veuillez vous reconnecter.");
         await SendPasswordChangedEmailAsync(user, true);
         return (true, "Ton mot de passe a été réinitialisé. Tu peux maintenant te connecter.");
     }
@@ -387,6 +399,9 @@ public class AuthService(
         if (!result.Succeeded)
             return (false, string.Join(" ", result.Errors.Select(x => x.Description)));
 
+        user.ActiveSessionId = Guid.NewGuid();
+        var sessionResult = await userManager.UpdateAsync(user);
+        if (!sessionResult.Succeeded) return (false, "Le mot de passe a changé. Veuillez vous reconnecter.");
         await SendPasswordChangedEmailAsync(user, false);
         return (true, "Ton mot de passe a été mis à jour.");
     }

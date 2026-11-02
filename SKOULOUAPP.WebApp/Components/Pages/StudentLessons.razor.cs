@@ -23,7 +23,6 @@ public partial class StudentLessons
 
     private IReadOnlyList<LessonListItem>? lessons;
 
-    private bool HasPaidSkoulouAppAbo { get; set; }
 
     private bool IsPathView { get; set; } = true;
 
@@ -220,7 +219,6 @@ public partial class StudentLessons
             }
 
             var dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
-            HasPaidSkoulouAppAbo = dashboard?.HasPaidSkoulouAppAbo == true;
             lessons = await LearningService.GetLessonsForStudentAsync(userId, dashboard?.CurrentLevelCode, ComponentToken);
         }
         catch (Exception ex) when (IstAbbruch(ex))

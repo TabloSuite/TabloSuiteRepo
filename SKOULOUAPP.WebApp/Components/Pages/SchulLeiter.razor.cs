@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using SkoulouApp.Core.DataModels.Finanzen;
 using SkoulouApp.Core.DataModels.Schools;
 using SkoulouApp.Core.Models.Admin;
@@ -284,17 +284,6 @@ public partial class SchulLeiter
             .Select(stufe => new ModernDropdownOption<Guid?>((Guid?)stufe.Id, stufe.Name))
     ];
 
-    private IReadOnlyList<ModernDropdownOption<string?>> CefrFilterOptions =>
-    [
-        new(null, "Toutes les références pédagogiques"),
-        .. schoolKlassen
-            .Select(klasse => klasse.CEFRGroup)
-            .Where(cefr => !string.IsNullOrWhiteSpace(cefr))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(cefr => cefr)
-            .Select(cefr => new ModernDropdownOption<string?>(cefr, cefr))
-    ];
-
     private IReadOnlyList<ModernDropdownOption<Guid?>> StudentKlasseFilterOptionsModern =>
     [
         new(null, "Toutes les classes"),
@@ -481,19 +470,6 @@ public partial class SchulLeiter
         .. klassenStufen.Select(stufe => new ModernDropdownOption<Guid?>((Guid?)stufe.Id, stufe.Name))
     ];
 
-    private IReadOnlyList<ModernDropdownOption<string?>> CefrOptions =>
-    [
-        new(string.Empty, "-- Choisir une référence pédagogique --"),
-        new("Pré-A1", "Pré-A1 — Découverte"),
-        new("A1", "A1 — Introduction"),
-        new("A2", "A2 — Intermédiaire"),
-        new("B1", "B1 — Seuil"),
-        new("B2", "B2 — Avancé"),
-        new("C1", "C1 — Autonome"),
-        new("C2", "C2 — Maîtrise"),
-        new("Hors CECR", "Hors CECR — cours spécifique")
-    ];
-
     private IReadOnlyList<ModernDropdownOption<ZahlungsArt?>> ZahlungsArtOptions =>
     [
         new(ZahlungsArt.Rate, "Échelonné"),
@@ -567,12 +543,6 @@ public partial class SchulLeiter
             await LoadUserFormKlassenAsync();
             userForm.CurrentKlasseId = klasse.CourseId;
         }
-    }
-
-    private Task SetCefrFilterAsync(string? value)
-    {
-        cefrFilter = value;
-        return Task.CompletedTask;
     }
 
     private Task SetStudentKlasseFilterAsync(Guid? value)
@@ -798,12 +768,6 @@ public partial class SchulLeiter
     private Task SetKlassenStufeAsync(Guid? klassenStufeId)
     {
         klasseForm.KlassenStufeId = klassenStufeId;
-        return Task.CompletedTask;
-    }
-
-    private Task SetKlasseCefrAsync(string? cefrGroup)
-    {
-        klasseForm.CEFRGroup = cefrGroup ?? string.Empty;
         return Task.CompletedTask;
     }
 
@@ -1766,6 +1730,7 @@ public partial class SchulLeiter
     }
 
     private Task SaveUserAsync() => RunDatabaseActionAsync(SaveUserCoreAsync);
+    private List<SchoolUserImportZugang> neueZugangsdaten = [];
 
     private async Task SaveUserCoreAsync()
     {
@@ -1812,9 +1777,9 @@ public partial class SchulLeiter
             modelToSave = new UserFormModel
             {
                 UserId = existing.UserId,
-                Vorname = userForm.Vorname,
+                Vorname = vorname,
                 Nachname = userForm.Nachname,
-                Email = userForm.Email,
+                Email = email,
                 TelefonNummer = userForm.TelefonNummer,
                 ElternTelefonNummer = userForm.ElternTelefonNummer,
                 ElternEmail = userForm.ElternEmail,
@@ -1846,6 +1811,9 @@ public partial class SchulLeiter
         }
 
         await KontoBenachrichtigungService.AdresseModifieeAsync(vorher, ComponentToken);
+
+        if (istNeuanlage && !string.IsNullOrWhiteSpace(modelToSave.Password))
+            neueZugangsdaten = [new SchoolUserImportZugang(modelToSave.Email, modelToSave.Password)];
 
         if (istNeuanlage)
         {
@@ -2053,7 +2021,6 @@ public partial class SchulLeiter
     private string durchlaufStatusFilter = "active";
     private Guid? durchlaufKlasseFilterId;
     private Guid? klassenStufeFilterId;
-    private string? cefrFilter;
     private KlassenFinanzbericht? klassenFinanzbericht;
     private Guid? klassenFinanzberichtDurchlaufId;
     private bool klasseModalOpen;
@@ -2351,7 +2318,6 @@ public partial class SchulLeiter
         {
             SchoolId = SelectedKlasseSchoolId,
             IstSystemNiveau = false,
-            CEFRGroup = "Classe",
             RecommendedLessonCount = 1,
             MaxPlaetze = null,
             AutoAssignSkoulouAppAboOnCycleStart = false
@@ -2367,7 +2333,6 @@ public partial class SchulLeiter
     {
         klasseForm.KlassenStufeId = null;
         klasseForm.NeueKlassenStufe = null;
-        klasseForm.CEFRGroup = "Classe";
         klassenStufen = klasseForm.SchoolId is Guid schoolId
             ? await DashboardService.GetKlassenStufenAsync(schoolId, ComponentToken)
             : [];
@@ -2386,7 +2351,6 @@ public partial class SchulLeiter
             CourseId = klasse.CourseId,
             Code = klasse.Code,
             Title = klasse.Title,
-            CEFRGroup = klasse.CEFRGroup,
             KlassenStufeId = klasse.KlassenStufeId,
             Description = klasse.Description,
             Price = klasse.Price,

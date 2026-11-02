@@ -1,5 +1,20 @@
 # Stundenplan und Bulletin scolaire
 
+## Stammdatenberichtigung nach endgültiger Veröffentlichung
+- Unter „Bulletins“ → „Rectification après publication“ einen begründeten Entwurf öffnen und unter „Rectifier l'identité d'un élève“ den Schüler auswählen. Vorhandene Entwurfswerte oder Angaben der neuesten veröffentlichten Ausgabe werden vorausgefüllt.
+- Name, Matrikelnummer, Geburtsort und Geburtsdatum lassen sich über „Enregistrer l'identité dans le brouillon“ berichtigen. Die Korrektur betrifft Dokumente der ausgewählten jährlichen Klassenzuordnung, nicht automatisch globale Konto-/Profildaten. Diese müssen bei Bedarf separat in der Schülerverwaltung gepflegt werden.
+- „Calculer tous les bulletins concernés“ ermittelt sämtliche tatsächlich abweichenden veröffentlichten Ausgaben dieses Schülers im gewählten Schuljahr. Eine reine Identitätskorrektur berechnet keine Noten neu und verändert keine Mitschüler. Vorschau und Bestätigung sind vor der Ersatzveröffentlichung verpflichtend; Entwurfsänderungen machen eine frühere Prüfung ungültig.
+- Original-JSON bleibt unverändert archiviert. Ersatzdokumente erhalten neue Nummern und QR-Codes; alte QR-Codes melden den Ersatzstatus. Noten- und Stammdatenkorrekturen können gemeinsam im selben Entwurf geprüft werden.
+- Serverseitig sind Direktion/Koordinatorrolle, aktive Schulmitgliedschaft und exakte Schule/Jahr/Klasse/Schüler-Zuordnung erforderlich. Leere Namen, überlange Angaben, Steuerzeichen und zukünftige Geburtsdaten werden abgewiesen. Unveränderte Dokumente werden nicht ersetzt.
+- Additive lokale Migration: `20261102142603_BulletinStammdatenBerichtigung`, neue JSON-Spalte mit Standard `[]` für vorhandene Entwürfe. Keine Bestandsdaten zurückgesetzt, keine Azure-Migration oder Veröffentlichung und keine Browserprüfung durchgeführt.
+- Automatisierte Validierung: 479 Tests erfolgreich; separater SQL-Test mit `SKOULOU_SQL_TESTS=1` erfolgreich, einschließlich tatsächlicher Migration und Stammdaten-Ersatzveröffentlichung. Bestehende projektweite Build-/Paketwarnungen sind nicht Teil dieser Fachkorrektur und wurden nicht unterdrückt.
+
+## Mehrfachzuweisung von Bulletin-Vorlagen
+- Unter „Modèles par classe“ können die aktuellen Vorlageneinstellungen über „Appliquer ce modèle à plusieurs classes“ mehreren Klassen derselben Schule zugewiesen werden. Klassenliste ist durchsuchbar; „Sélectionner les résultats“ ergänzt die sichtbaren Treffer, „Tout désélectionner“ leert die gesamte Auswahl.
+- Pro Klasse und Bewertungstyp entsteht eine eigenständige Kopie. Bestehende Vorlagen sind gekennzeichnet und erfordern ausdrückliche Überschreibbestätigung. Ohne diese Bestätigung wird bei Konflikten keine Klasse verändert.
+- Serverseitig werden persistierte Rollen, aktive Schulmitgliedschaft und sämtliche Zielklassen geprüft. Alle Änderungen erfolgen in einer gemeinsamen Transaktion. Veröffentlichte Bulletin-Snapshots werden nicht geändert. Keine Schemaänderung erforderlich.
+- Validierung: 475/475 Tests erfolgreich, einschließlich Rollen-/Schulgrenzen, ungültiger Auswahl, getrennter Kopien und Überschreibschutz.
+
 ## Bestätigtes Ziel
 Die App ist derzeit eine Testinstallation. Neue Fachmodelle dürfen umfassend eingeführt werden; bestehende Daten werden trotzdem nicht zurückgesetzt. Alle Schularten nutzen dieselben konfigurierbaren Funktionen.
 

@@ -32,6 +32,13 @@ public class KursNiveauDurchlauf : AuditableModel
     /// </summary>
     public decimal NiveauPreis { get; set; }
 
+    /// <summary>
+    /// Eingefrorener Plattformpreis je Schüler für diesen Zyklus. Null kennzeichnet
+    /// einen historischen Zyklus vor Einführung der automatischen Abrechnung.
+    /// Unabhängig vom Schulgebührenpreis NiveauPreis und vom tatsächlichen Zahlungseingang.
+    /// </summary>
+    public decimal? PlattformPreisProSchueler { get; set; }
+
     /// <summary>Auswählbares Startdatum, ab dem Ratenzahlungen erlaubt sind.</summary>
     public DateTime StartDatum { get; set; }
 

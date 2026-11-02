@@ -42,6 +42,31 @@
                 <label>Texte de bas de page<input class="w-full rounded-lg border p-2" maxlength="300" @bind="vorlage.FussText" /></label>
             </div>
             <button type="button" class="mt-3 rounded-lg bg-blue-700 p-3 text-white" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
+            <fieldset class="mt-4 min-w-0 space-y-3 rounded-xl border p-4" disabled="@occupe">
+                <legend class="px-2 font-semibold">Appliquer ce modèle à plusieurs classes</legend>
+                <p class="text-sm">Les réglages actuels sont copiés pour le type de bulletin choisi. Chaque classe pourra ensuite être adaptée séparément. Les bulletins déjà publiés ne changent pas.</p>
+                <label class="block">Rechercher une classe<input class="mt-1 w-full rounded-lg border p-2" @bind="klassenSuche" @bind:event="oninput" /></label>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="rounded-lg border p-2" @onclick="() => VorlagenAuswahl(true)">Sélectionner les résultats</button>
+                    <button type="button" class="rounded-lg border p-2" @onclick="() => VorlagenAuswahl(false)">Tout désélectionner</button>
+                    <span class="self-center text-sm">@vorlagenKlassen.Count classe(s) sélectionnée(s)</span>
+                </div>
+                <div class="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+                    @foreach (var klasse in GefilterteVorlagenKlassen)
+                    {
+                        <label class="flex min-w-0 items-start gap-2 rounded-lg border p-2">
+                            <input type="checkbox" checked="@vorlagenKlassen.Contains(klasse.Id)" @onchange="e => VorlageKlasseWaehlen(klasse.Id, e.Value is true)" />
+                            <span class="break-words">@klasse.Bezeichnung @(modeles.Any(m => m.KlasseID == klasse.Id && (int)m.Art == art) ? "· Modèle existant" : "")</span>
+                        </label>
+                    }
+                </div>
+                @if (VorhandeneVorlagen > 0)
+                {
+                    <p class="text-sm text-amber-800">@VorhandeneVorlagen modèle(s) existant(s) seront remplacés dans les classes sélectionnées.</p>
+                    <label class="flex items-start gap-2"><input type="checkbox" @bind="vorlagenErsetzen" /><span>Je confirme le remplacement des modèles existants pour ce type de bulletin.</span></label>
+                }
+                <button type="button" class="rounded-lg bg-blue-700 p-3 text-white disabled:opacity-50" disabled="@(occupe || vorlagenKlassen.Count == 0 || (VorhandeneVorlagen > 0 && !vorlagenErsetzen))" @onclick="MehrfachModeleAsync">Appliquer aux classes sélectionnées</button>
+            </fieldset>
             <h3 class="mt-4 font-semibold">Ordre des blocs</h3>
             @for (var index = 0; index < vorlage.BlockReihenfolge.Split(',').Length; index++)
             {
@@ -68,13 +93,23 @@
                 <label>Motif de l'édition / du retrait<input class="w-full rounded-lg border p-2" maxlength="300" @bind="grund" /></label>
             </div>
             <button type="button" class="mt-3 rounded-lg border p-3" disabled="@occupe" @onclick="VorschauAsync">Prévisualiser</button>
-            <button type="button" class="m-2 rounded-lg bg-blue-700 p-3 text-white" disabled="@(occupe || schuelerID == Guid.Empty || periodeID == Guid.Empty)" @onclick="PublierAsync">Publier une nouvelle édition</button>
-            <p class="mt-2 text-sm text-slate-600">La publication conserve une copie des notes, coordonnées et réglages. Pour corriger, retirez l'édition publiée puis créez une nouvelle édition.</p>
+            <p class="mt-2 text-sm text-slate-600">Enregistrez progressivement les notes dans « Notes et évaluations ». Vérifiez ensuite toute la classe ci-dessous avant la publication définitive. Une correction après publication nécessite une rectification.</p>
         </section>
         <section class="space-y-3 rounded-xl border bg-white p-5">
             <h2 class="text-lg font-semibold">Téléchargement groupé des bulletins</h2>
             <p class="text-sm text-slate-600">Utilisez l'école, l'année scolaire et la période sélectionnées ci-dessus, puis choisissez une classe. Seules les éditions actuellement publiées sont incluses, par ordre alphabétique des élèves. Les bulletins manquants ou retirés ne sont pas inclus ; aucune publication n'est effectuée.</p>
-            <ModernDropdown TValue="Guid" @bind-Value="sammelKlasseID" Options="Options(unterricht.Klassen)" Label="Classe à exporter" Searchable="true" Disabled="occupe" />
+            <ModernDropdown TValue="Guid" Value="sammelKlasseID" ValueChanged="AbschlussKlasse" Options="Options(unterricht.Klassen)" Label="Classe à vérifier / exporter" Searchable="true" Disabled="occupe" />
+            <button type="button" class="rounded-lg border p-3" disabled="@(!SammelDownloadMoeglich)" @onclick="KlassePruefenAsync">Vérifier toute la classe avant publication</button>
+            @if (klassenPruefung is not null)
+            {
+                <p>@klassenPruefung.Bulletins.Count bulletin(s) complet(s). Ouvrez les aperçus et vérifiez les données avant de confirmer.</p>
+                @foreach (var b in klassenPruefung.Bulletins)
+                {
+                    <button type="button" class="m-1 rounded border p-2" @onclick="() => ZeigeAbschlussVorschau(b)">@b.Schueler · @b.Durchschnitt?.ToString("0.00") / 20 · Aperçu</button>
+                }
+                <label class="flex items-start gap-2"><input type="checkbox" @bind="endgueltigBestaetigt" /><span>Je confirme avoir vérifié tous les bulletins. Après publication, aucune modification directe ni retrait n'est possible. Toute erreur exige un bulletin rectificatif.</span></label>
+                <button type="button" class="rounded-lg bg-red-700 p-3 text-white disabled:opacity-50" disabled="@(occupe || !endgueltigBestaetigt)" @onclick="KlassePublizierenAsync">Publier définitivement les bulletins de la classe</button>
+            }
             @if (SammelDownloadMoeglich)
             {
                 <a class="inline-block rounded-lg bg-blue-700 p-3 text-white" href="@SammelDownloadUrl" target="_blank" rel="noopener">Télécharger les bulletins publiés (PDF)</a>
@@ -86,6 +121,46 @@
             }
             <p class="text-sm text-slate-600">Un seul PDF par classe et période, jusqu'à 200 bulletins. Chaque bulletin commence sur une nouvelle page et conserve sa propre numérotation.</p>
         </section>
+        <details class="space-y-3 rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Rectification après publication</summary>
+            <p>Choisissez la classe et la période ci-dessus. Indiquez le motif dans « Motif de l'édition / du retrait », puis ouvrez un brouillon. Les originaux restent inchangés jusqu'à la confirmation.</p>
+            <button type="button" class="rounded border p-3" disabled="@(!SammelDownloadMoeglich)" @onclick="BerichtigungStartenAsync">Ouvrir une rectification motivée</button>
+            <ModernDropdown TValue="Guid" Value="berichtigungID" ValueChanged="BerichtigungWaehlen" Options="Options(berichtigungen.Where(x => x.SchuljahrID == jahrID).Select(x => new AuswahlEintrag(x.Id, x.Grund)))" Label="Brouillons enregistrés" Disabled="occupe" />
+            @if (berichtigungID != Guid.Empty)
+            {
+                <section class="space-y-3 rounded-lg border p-4">
+                    <h3 class="font-semibold">Rectifier l'identité d'un élève</h3>
+                    <p class="text-sm">Seuls les bulletins publiés de cet élève pour cette classe et cette année scolaire seront rectifiés si leurs informations diffèrent. Les notes et les rangs restent inchangés. Le profil de l'élève n'est pas modifié ; mettez-le aussi à jour dans la gestion des élèves si nécessaire.</p>
+                    <ModernDropdown TValue="Guid" Value="stammdatenSchuelerID" ValueChanged="StammdatenWaehlenAsync" Options="BerichtigungsSchueler" Label="Élève dont l'identité est à rectifier" Searchable="true" Disabled="occupe" />
+                    @if (stammdatenGeladen)
+                    {
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <label>Nom complet<input maxlength="200" class="w-full rounded border p-2" @bind="stammdatenName" /></label>
+                            <label>Matricule<input maxlength="50" class="w-full rounded border p-2" @bind="stammdatenMatrikel" /></label>
+                            <label>Lieu de naissance<input maxlength="150" class="w-full rounded border p-2" @bind="stammdatenGeburtsort" /></label>
+                            <label>Date de naissance<input type="date" class="w-full rounded border p-2" @bind="stammdatenGeburtsdatum" /></label>
+                        </div>
+                        <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="StammdatenSpeichernAsync">Enregistrer l'identité dans le brouillon</button>
+                        <p class="text-sm">Enregistrez vos modifications dans le brouillon avant de calculer les bulletins concernés. Les originaux ne sont pas modifiés.</p>
+                    }
+                </section>
+                <ModernDropdown TValue="Guid" @bind-Value="korrekturNoteID" Options="BerichtigungsNoten" Label="Note à rectifier" Searchable="true" Disabled="occupe" />
+                <label class="block">Nouvelle note<input type="number" min="0" step="0.01" class="w-full rounded border p-2" @bind="korrekturPunkte" /></label>
+                <label class="block">Nouvelle appréciation<input maxlength="300" class="w-full rounded border p-2" @bind="korrekturBemerkung" /></label>
+                <button type="button" class="rounded border p-3" disabled="@(occupe || korrekturNoteID == Guid.Empty)" @onclick="KorrekturSpeichernAsync">Enregistrer dans le brouillon</button>
+                <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="WirkungPruefenAsync">Calculer tous les bulletins concernés</button>
+                <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="KorrekturAbbrechenAsync">Abandonner le brouillon</button>
+                @if (berichtigungsPruefung is not null)
+                {
+                    <p class="font-semibold">@berichtigungsPruefung.Auswirkungen.Count bulletin(s) à remplacer, y compris les rangs et résultats des périodes suivantes concernés.</p>
+                    @foreach (var w in berichtigungsPruefung.Auswirkungen)
+                    {
+                        <article class="rounded border p-3"><p>@w.Schueler · @w.Periode · Moyenne @w.Alt → @w.Neu · Rang @w.AlterRang → @w.NeuerRang</p><p class="break-words text-sm">Identité proposée : @w.Vorschau.Schueler · Matricule : @w.Vorschau.Matrikelnummer · Naissance : @w.Vorschau.Geburtsdatum · @w.Vorschau.Geburtsort</p><button type="button" class="rounded border p-2" @onclick="() => ZeigeAbschlussVorschau(w.Vorschau)">Aperçu</button></article>
+                    }
+                    <label class="flex items-start gap-2"><input type="checkbox" @bind="berichtigungBestaetigt" /><span>Je confirme tous les remplacements affichés. Les originaux restent archivés. J'informerai les familles et organiserai l'échange des exemplaires signés.</span></label>
+                    <button type="button" class="rounded bg-red-700 p-3 text-white" disabled="@(occupe || !berichtigungBestaetigt)" @onclick="KorrekturFreigebenAsync">Publier définitivement les rectifications</button>
+                }
+            }
+        </details>
         <details class="rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Présences et retards</summary>
             <p class="my-3">Sélectionnez la période et l'élève ci-dessus. Une seule situation est enregistrée par jour et par période ; une nouvelle saisie remplace la précédente.</p>
             <div class="grid gap-4 md:grid-cols-2">
@@ -122,11 +197,25 @@
         @foreach (var bulletin in liste)
         {
             <article class="flex flex-wrap justify-between gap-3 rounded-xl border bg-white p-4">
-                <div><strong>@bulletin.Schueler · @bulletin.Titel</strong><p>Version @bulletin.Version · @(bulletin.IstVeroeffentlicht ? "Publié" : "Retiré")</p></div>
+                <div><strong>@bulletin.Schueler · @bulletin.Titel</strong><p>Version @bulletin.Version · @(bulletin.ErsetztDurchID != null ? "Remplacé — original archivé" : bulletin.IstVeroeffentlicht ? "Publié" : "Retiré") @(bulletin.IstEndgueltig ? "· Définitif" : "")</p></div>
                 <a class="rounded-lg border p-2" href="@($"/bulletins/{bulletin.Id}/pdf")" target="_blank" rel="noopener">PDF</a>
-                @if (verwalter && bulletin.IstVeroeffentlicht)
+                @if (verwalter && bulletin.IstVeroeffentlicht && !bulletin.IstEndgueltig)
                 {
                     <button type="button" class="rounded-lg border p-2 text-red-700" disabled="@occupe" @onclick="() => RetirerAsync(bulletin.Id)">Retirer la publication</button>
+                }
+                @if (verwalter)
+                {
+                    <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabenLadenAsync(bulletin.Id)">Contacts et remise</button>
+                    @if (uebergabeAusgabeID == bulletin.Id)
+                    {
+                        <div class="w-full space-y-2">
+                            <label>Destinataire et mode de contact / remise<input class="w-full rounded border p-2" maxlength="300" @bind="uebergabeVermerk" /></label>
+                            <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, false)">Consigner une notification effectuée</button>
+                            <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, true)">Consigner la remise du document signé</button>
+                            <p class="text-sm">Ces actions enregistrent un suivi ; aucun message n'est envoyé automatiquement.</p>
+                            @foreach (var u in uebergaben) { <p>@u.ErstelltAmUtc.ToString("dd/MM/yyyy HH:mm") UTC · @(u.IstAbholung ? "Remise" : "Notification") · @u.Vermerk</p> }
+                        </div>
+                    }
                 }
             </article>
         }

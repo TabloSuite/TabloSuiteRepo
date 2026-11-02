@@ -31,6 +31,8 @@ public class StudentProfile : AuditableModel
     /// Archivierte Schüler bleiben historisch erhalten, werden aber aus aktiven Listen ausgeblendet.
     /// </summary>
     public bool IsArchived { get; set; }
+    /// <summary>Annahme einer Selbstregistrierung; bleibt bei späterer Kontosperre erhalten.</summary>
+    public DateTime? AufnahmeBestaetigtAmUtc { get; set; }
 
     /// <summary>Optionale Telefonnummer eines Elternteils bzw. Erziehungsberechtigten.</summary>
     public string? ElternTelefonNummer { get; set; }

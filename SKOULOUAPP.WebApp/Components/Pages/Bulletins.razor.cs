@@ -22,6 +22,34 @@ public partial class Bulletins
     [Inject] private AnwesenheitsService Anwesenheit { get; set; } = default!;
     [Inject] private SchulLogoService Logos { get; set; } = default!;
     private string? logoVorschau;
+    private HashSet<Guid> vorlagenKlassen = [];
+    private string klassenSuche = "";
+    private bool vorlagenErsetzen;
+    private IEnumerable<AuswahlEintrag> GefilterteVorlagenKlassen => (unterricht?.Klassen ?? [])
+        .Where(x => x.Bezeichnung.Contains(klassenSuche, StringComparison.CurrentCultureIgnoreCase));
+    private int VorhandeneVorlagen => modeles.Count(x => vorlagenKlassen.Contains(x.KlasseID) && (int)x.Art == art);
+    private void VorlageKlasseWaehlen(Guid id, bool gewaehlt)
+    {
+        if (occupe) return;
+        if (gewaehlt) vorlagenKlassen.Add(id); else vorlagenKlassen.Remove(id);
+        vorlagenErsetzen = false;
+    }
+    private void VorlagenAuswahl(bool alle)
+    {
+        if (occupe) return;
+        if (alle) foreach (var klasse in GefilterteVorlagenKlassen) vorlagenKlassen.Add(klasse.Id);
+        else vorlagenKlassen.Clear();
+        vorlagenErsetzen = false;
+    }
+    private Task MehrfachModeleAsync() => AktionAsync(async () =>
+    {
+        vorlage.SchulID = schulID; vorlage.Art = (BewertungsArt)art;
+        var anzahl = await Service.VorlagenZuweisenAsync(userID, vorlage, vorlagenKlassen.ToArray(), vorlagenErsetzen, ComponentToken);
+        modeles = await Service.VorlagenAsync(userID, schulID, ComponentToken);
+        vorlagenErsetzen = false;
+        VorschauVerwerfen();
+        message = $"Le modèle a été appliqué à {anzahl} classe(s). Chaque classe conserve sa propre copie. Les bulletins publiés restent inchangés.";
+    });
     private Task LogoHochladenAsync(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs args) => AktionAsync(async () =>
     {
         if (args.File.Size > SchulLogoPruefung.MaxBytes) throw new InvalidOperationException("Le logo ne doit pas dépasser 2 Mo.");
@@ -55,7 +83,7 @@ public partial class Bulletins
     private BulletinSnapshot? vorschau;
     private string? vorschauPdf;
     private void VorschauVerwerfen() { vorschau = null; vorschauPdf = null; }
-    private void PeriodeWaehlen(Guid id) { periodeID = id; praesenz = []; VorschauVerwerfen(); }
+    private void PeriodeWaehlen(Guid id) { AbschlussVerwerfen(); periodeID = id; praesenz = []; VorschauVerwerfen(); }
     private void SchuelerWaehlen(Guid id) { schuelerID = id; bemerkung = ""; grund = ""; VorschauVerwerfen(); }
     private static string BlockTitel(string block) => block switch { "Schueler" => "Identité de l'élève", "Noten" => "Tableau des notes",
         "Ergebnisse" => "Résultats et rang", "Bemerkung" => "Observation", _ => "Signatures" };
@@ -91,12 +119,15 @@ public partial class Bulletins
         schulID = schulen.FirstOrDefault()?.Id ?? Guid.Empty;
         if (schulID != Guid.Empty) await LadenAsync();
     });
-    private Task EcoleAsync(Guid id) => AktionAsync(async () => { schulID = id; jahrID = periodeID = schuelerID = sammelKlasseID = Guid.Empty; vorlage = new(); logoVorschau = null; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await LadenAsync(); });
+    private Task EcoleAsync(Guid id) => AktionAsync(async () => { vorlagenKlassen.Clear(); vorlagenErsetzen = false; klassenSuche = ""; schulID = id; jahrID = periodeID = schuelerID = sammelKlasseID = Guid.Empty; vorlage = new(); logoVorschau = null; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await LadenAsync(); });
     private Task JahrAsync(Guid id) => AktionAsync(async () => { jahrID = id; periodeID = schuelerID = Guid.Empty; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await BewertungenLadenAsync(); });
     private async Task LadenAsync()
     {
+        AbschlussVerwerfen(); uebergaben = []; uebergabeAusgabeID = Guid.Empty; uebergabeVermerk = "";
         liste = await Service.ListeAsync(userID, schulID, ComponentToken);
         if (!verwalter) return;
+        berichtigungen = await Service.BerichtigungenAsync(userID, schulID, ComponentToken);
+        if (!berichtigungen.Any(x => x.Id == berichtigungID)) berichtigungID = Guid.Empty;
         unterricht = await Verwaltung.LadenAsync(userID, schulID, ComponentToken);
         modeles = await Service.VorlagenAsync(userID, schulID, ComponentToken);
         await using (var db = await Factory.CreateDbContextAsync(ComponentToken))
@@ -109,11 +140,13 @@ public partial class Bulletins
     }
     private async Task BewertungenLadenAsync()
     {
+        AbschlussVerwerfen(); StammdatenVerwerfen(); berichtigungID = Guid.Empty; korrekturNoteID = Guid.Empty;
         bewertungen = jahrID == Guid.Empty ? null : await Bewertungen.LadenAsync(userID, schulID, jahrID, ComponentToken);
     }
     private void ChargerModele(BulletinVorlage m)
     {
         if (occupe) return;
+        vorlagenKlassen.Clear(); vorlagenErsetzen = false;
         art = (int)m.Art;
         vorlage = new BulletinVorlage { SchulID = schulID, KlasseID = m.KlasseID, Art = m.Art, Name = m.Name,
             AkzentFarbe = m.AkzentFarbe, ZeigeKoeffizienten = m.ZeigeKoeffizienten, ZeigeRang = m.ZeigeRang,

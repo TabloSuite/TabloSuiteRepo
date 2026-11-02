@@ -32,7 +32,7 @@ public class ProvisionsAnteil
     /// <summary>Schüler, dessen bezahltes Abo die Provision erzeugt hat.</summary>
     public Guid SchuelerID { get; set; }
 
-    /// <summary>Niveau-Code (z. B. "A1.1") der Freischaltung.</summary>
+    /// <summary>Klassen-Code der historischen Freischaltung.</summary>
     public string NiveauCode { get; set; } = string.Empty;
 
     /// <summary>Abo-Typ der Freischaltung.</summary>
@@ -42,8 +42,8 @@ public class ProvisionsAnteil
     public ProvisionsEmpfaenger Empfaenger { get; set; }
 
     /// <summary>
-    /// Optionaler Benutzerbezug für ältere Detailauswertungen. Die aktive Provisionslogik
-    /// aggregiert Lehreranteile pro Schule und nutzt keine individuellen Lehrer-Auszahlungen mehr.
+    /// Optionaler Benutzerbezug für historische Detailauswertungen.
+    /// Neue Zyklen erzeugen keine Lehreranteile.
     /// </summary>
     public Guid? LehrerID { get; set; }
 

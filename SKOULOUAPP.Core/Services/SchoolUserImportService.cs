@@ -10,7 +10,8 @@ namespace SkoulouApp.Core.Services;
 
 public sealed class SchoolUserImportService(
     ISkoulouAppDbContext dbContext,
-    DashboardService dashboardService)
+    DashboardService dashboardService,
+    IBenutzerArbeitsvorgang? benutzerArbeitsvorgang = null)
 {
     private static readonly IReadOnlyDictionary<string, string> HeaderAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -141,6 +142,18 @@ public sealed class SchoolUserImportService(
         SchoolUserImportCommitRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (benutzerArbeitsvorgang is not null)
+        {
+            var result = await benutzerArbeitsvorgang.AusfuehrenAsync((_, import) => import.CommitAsync(request, cancellationToken),
+                value => value.Succeeded, cancellationToken);
+            if (!result.Succeeded)
+            {
+                result.CreatedCount = 0;
+                result.Zugangsdaten.Clear();
+                result.Message = "L'import a été annulé intégralement. Corrigez les erreurs puis réessayez.";
+            }
+            return result;
+        }
         var preview = await PreviewAsync(new SchoolUserImportPreviewRequest
         {
             DirectorId = request.DirectorId,
@@ -159,6 +172,7 @@ public sealed class SchoolUserImportService(
         }
 
         var created = 0;
+        var zugangsdaten = new List<SchoolUserImportZugang>();
         var errors = new List<string>();
         foreach (var row in preview.Rows)
         {
@@ -176,8 +190,7 @@ public sealed class SchoolUserImportService(
                 TelefonNummer = row.Telefon,
                 RoleName = request.Kind == SchoolUserImportKind.Teacher ? Rollen.Lehrer : Rollen.Schueler,
                 SchoolIds = [request.SchoolId],
-                Password = SchoolUserImportDefaults.InitialPassword,
-                PasswordConfirmation = SchoolUserImportDefaults.InitialPassword,
+                Password = ErstzugangService.PasswortErzeugen(),
                 IsBlocked = false,
                 IsSelfRegistered = false
             };
@@ -202,6 +215,7 @@ public sealed class SchoolUserImportService(
                     .ToList();
             }
 
+            model.PasswordConfirmation = model.Password;
             var (succeeded, message) = await dashboardService.SaveUserAsync(model, cancellationToken);
             if (succeeded)
             {
@@ -246,6 +260,7 @@ public sealed class SchoolUserImportService(
                     await dbContext.SaveChangesAsync(cancellationToken);
                 }
 
+                zugangsdaten.Add(new SchoolUserImportZugang(model.Email, model.Password!));
                 created++;
             }
             else
@@ -258,6 +273,7 @@ public sealed class SchoolUserImportService(
         {
             Succeeded = errors.Count == 0,
             CreatedCount = created,
+            Zugangsdaten = zugangsdaten,
             Errors = errors,
             Message = errors.Count == 0
                 ? $"Import terminé: {created} utilisateur(s) créé(s)."
@@ -266,9 +282,12 @@ public sealed class SchoolUserImportService(
     }
 
     private async Task<bool> CanDirectorManageSchoolAsync(Guid directorId, Guid schoolId, CancellationToken cancellationToken)
-        => await dbContext.UserSchools
+        => await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken)
+            && await dbContext.UserRoles.AnyAsync(ur => ur.UserId == directorId
+                && dbContext.Roles.Any(r => r.Id == ur.RoleId && (r.Name == Rollen.SchulLeiter || r.Name == Rollen.Koordinator)), cancellationToken)
+            && await dbContext.UserSchools
             .AsNoTracking()
-            .AnyAsync(link => link.AppUserId == directorId && link.SchoolId == schoolId && link.CanManageStudents, cancellationToken);
+            .AnyAsync(link => link.AppUserId == directorId && !link.AppUser.IsBlocked && link.SchoolId == schoolId && link.CanManageStudents, cancellationToken);
 
     private static List<ParsedCsvRow> ParseCsv(string content)
     {

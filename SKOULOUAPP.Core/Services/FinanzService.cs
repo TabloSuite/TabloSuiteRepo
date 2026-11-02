@@ -1,4 +1,4 @@
-using SkoulouApp.Core.DataModels.Finanzen;
+﻿using SkoulouApp.Core.DataModels.Finanzen;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.DataModels.Schools;
 using SkoulouApp.Core.Interfaces;
@@ -24,6 +24,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
     public async Task<(bool Menu, bool Dashboard, bool Entries, bool Cycles)> GetFinanceAccessAsync(
         Guid userId, Guid schoolId, bool isSuperAdmin = false, CancellationToken cancellationToken = default)
     {
+        if (!await dbContext.Users.AsNoTracking().AnyAsync(u => u.Id == userId && !u.IsBlocked, cancellationToken)) return default;
         var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
                            join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
                            where userRole.UserId == userId
@@ -36,6 +37,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             return assigned ? (true, true, false, false) : default;
         }
 
+        if (!await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken)) return default;
         var link = await dbContext.UserSchools.AsNoTracking()
             .FirstOrDefaultAsync(x => x.AppUserId == userId && x.SchoolId == schoolId && x.CanManageStudents, cancellationToken);
         if (link is null)
@@ -55,6 +57,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
     public async Task<bool> CanAccessBillingAsync(Guid userId, Guid schoolId, CancellationToken cancellationToken = default)
     {
+        if (!await dbContext.Users.AsNoTracking().AnyAsync(u => u.Id == userId && !u.IsBlocked, cancellationToken)) return false;
         var roles = await (from userRole in dbContext.UserRoles.AsNoTracking()
                            join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
                            where userRole.UserId == userId
@@ -64,6 +67,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         if (roles.Contains(Rollen.ProduktOwner))
             return await dbContext.UserSchools.AsNoTracking().AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
 
+        if (!await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken)) return false;
         return await dbContext.UserSchools.AsNoTracking().AnyAsync(link => link.AppUserId == userId
             && link.SchoolId == schoolId && link.CanManageStudents
             && (roles.Contains(Rollen.SchulLeiter)
@@ -576,6 +580,8 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         {
             return (false, "L'activation de l'abonnement est introuvable.");
         }
+        if (enrollment.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "La participation ne constitue pas un paiement élève. La charge SKOULOUAPP est enregistrée à la clôture du cycle.");
 
         if (!enrollment.IsPaid || enrollment.PaidAtUtc is null)
         {
@@ -727,6 +733,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .Select(x => (Guid?)x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
+        if (letzterDurchlaufId.HasValue && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == letzterDurchlaufId.Value && x.PlattformPreisProSchueler != null, cancellationToken)) return false;
         return letzterDurchlaufId.HasValue && await dbContext.Abrechnungsperioden.AsNoTracking()
             .AnyAsync(x => x.SchulID == schulId && x.AutomatischDurchKlassenabschlussErstellt
                 && x.AusgeloestDurchDurchlaufId == letzterDurchlaufId.Value
@@ -744,6 +751,15 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         bool autorisierungErzwingen = false,
         CancellationToken cancellationToken = default)
     {
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
+        return await strategy.ExecuteAsync<(bool Succeeded, string ErrorMessage, KursNiveauDurchlauf? Durchlauf)>(async () =>
+        {
+        ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+        await using var transaction = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
+        await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken);
         if (autorisierungErzwingen
             && !await DarfSchuleVerwaltenAsync(erstelltVonUserId, istSuperAdmin, schulId, cancellationToken, cycles: true))
         {
@@ -776,6 +792,9 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             return (false, "Avant de démarrer un nouveau cycle, déclarez le virement de la facturation du cycle précédent dans Facturation SKOULOUAPP.", null);
         }
 
+        var teilnahmeService = new ZyklusTeilnahmeService(dbContext);
+        var plattformPreis = await teilnahmeService.PreisErmittelnAsync(schulId, cancellationToken);
+
         var durchlauf = new KursNiveauDurchlauf
         {
             SchulID = schulId,
@@ -783,122 +802,15 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             NiveauPreis = niveauPreis,
             StartDatum = startDatum,
             EndDatum = null,
-            ErstelltVonUserID = erstelltVonUserId
+            ErstelltVonUserID = erstelltVonUserId,
+            PlattformPreisProSchueler = plattformPreis,
         };
 
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
-        {
-        await using var transaction = dbContext.Database.IsRelational()
-            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
-            : null;
         dbContext.KursNiveauDurchlaeufe.Add(durchlauf);
 
-        var klasse = await dbContext.Klassen
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == klasseId && x.SchoolId == schulId, cancellationToken);
-
-        var autoBezahltEnrollments = new List<LevelEnrollment>();
-        if (klasse is not null)
-        {
-            var studentIds = await dbContext.StudentProfiles
-                .Where(profile => profile.SchoolId == schulId && profile.CurrentKlasseId == klasseId)
-                .Select(profile => profile.AppUserId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-
-            if (studentIds.Count > 0)
-            {
-                var globalSubscriptionPrice = await dbContext.CommissionSettings
-                    .AsNoTracking()
-                    .OrderBy(x => x.ErstelltAmUtc)
-                    .Select(x => (decimal?)x.GlobalSubscriptionPrice)
-                    .FirstOrDefaultAsync(cancellationToken)
-                    ?? SkoulouAppKonstanten.StandardPreisAbo;
-                var schule = await dbContext.Schools
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == schulId, cancellationToken);
-                var effektiverAboPreis = schule?.EffektiverPreis(globalSubscriptionPrice) ?? globalSubscriptionPrice;
-
-                var commissionSettings = await dbContext.CommissionSettings
-                    .AsNoTracking()
-                    .OrderBy(x => x.ErstelltAmUtc)
-                    .FirstOrDefaultAsync(cancellationToken);
-                var schoolLeaderPercent = schule?.SchoolLeaderCommissionPercentOverride
-                    ?? commissionSettings?.SchoolLeaderPercent
-                    ?? SkoulouAppKonstanten.StandardProvisionSchulleiterProzent;
-                var teacherPercent = schule?.TeacherCommissionPercentOverride
-                    ?? commissionSettings?.TeacherPercent
-                    ?? SkoulouAppKonstanten.StandardProvisionLehrerProzent;
-                var productOwnerPercent = schule?.ProductOwnerCommissionPercentOverride
-                    ?? commissionSettings?.ProductOwnerPercent
-                    ?? SkoulouAppKonstanten.StandardProvisionProductOwnerProzent;
-                var schoolLeaderCommission = SkoulouAppKonstanten.BerechneProvision(
-                    effektiverAboPreis,
-                    schoolLeaderPercent);
-                var teacherCommission = SkoulouAppKonstanten.BerechneProvision(
-                    effektiverAboPreis,
-                    teacherPercent);
-                var productOwnerCommission = SkoulouAppKonstanten.BerechneProvision(
-                    effektiverAboPreis,
-                    productOwnerPercent);
-
-                if (schoolLeaderCommission + teacherCommission + productOwnerCommission > effektiverAboPreis)
-                {
-                    return (false, "Les commissions configurées dépassent le prix de l'abonnement.", null);
-                }
-
-                var existingEnrollments = await dbContext.LevelEnrollments
-                    .Where(enrollment => enrollment.KlasseId == klasseId && enrollment.IstAktuell)
-                    .ToListAsync(cancellationToken);
-                var existingEnrollmentsByStudent = existingEnrollments.ToDictionary(enrollment => enrollment.StudentId);
-
-                foreach (var enrollment in existingEnrollmentsByStudent.Values)
-                {
-                    enrollment.IstAktuell = false;
-                }
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                var nowUtc = DateTime.UtcNow;
-                foreach (var studentId in studentIds)
-                {
-                    var autoBezahlt = klasse.AutoAssignSkoulouAppAboOnCycleStart;
-                    var neuePosition = new LevelEnrollment
-                    {
-                        StudentId = studentId,
-                        KlasseId = klasseId,
-                        DurchlaufId = durchlauf.Id,
-                        AboTyp = AboTyp.SkoulouApp,
-                        IsUnlocked = autoBezahlt,
-                        IsPaid = autoBezahlt,
-                        PriceAtEnrollment = autoBezahlt ? effektiverAboPreis : 0,
-                        SchoolLeaderCommissionAtEnrollment = autoBezahlt ? schoolLeaderCommission : 0,
-                        TeacherCommissionAtEnrollment = autoBezahlt ? teacherCommission : 0,
-                        ProductOwnerCommissionAtEnrollment = autoBezahlt ? productOwnerCommission : 0,
-                        UnlockedAtUtc = autoBezahlt ? nowUtc : null,
-                        PaidAtUtc = autoBezahlt ? nowUtc : null,
-                        GeaendertAmUtc = nowUtc,
-                        ErstelltAmUtc = nowUtc
-                    };
-                    dbContext.LevelEnrollments.Add(neuePosition);
-                    if (autoBezahlt) autoBezahltEnrollments.Add(neuePosition);
-                }
-            }
-        }
-
         await dbContext.SaveChangesAsync(cancellationToken);
-
-        if (autoBezahltEnrollments.Count > 0)
-        {
-            foreach (var enrollment in autoBezahltEnrollments)
-            {
-                var (ok, error) = await SkoulouAppAboBuchungenErstellenAsync(enrollment.Id, erstelltVonUserId, cancellationToken);
-                if (!ok)
-                {
-                    return (false, error, null);
-                }
-            }
-        }
+        await teilnahmeService.TeilnehmerErgaenzenAsync(durchlauf, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, durchlauf);
@@ -959,12 +871,15 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         CancellationToken cancellationToken)
     {
         var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
 
         return await strategy.ExecuteAsync(async () =>
         {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
             await using var transaction = dbContext.Database.IsRelational()
-                ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
                 : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken);
 
             var durchlauf = await dbContext.KursNiveauDurchlaeufe
                 .Include(x => x.RatenZahlungen)
@@ -979,7 +894,8 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                 return (false, "Vous n'êtes pas autorisé à gérer cette école.", 0m, null);
             }
 
-            if (automatischeSkoulouAppAbrechnungErstellen
+            var neuerZyklus = durchlauf.PlattformPreisProSchueler != null;
+            if (!neuerZyklus && automatischeSkoulouAppAbrechnungErstellen
                 && autorisierungErzwingen
                 && !await DarfSchulleiterFinanzenVerwaltenAsync(beendetVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken))
             {
@@ -1003,7 +919,12 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             var offeneSchuld = await BerechneOffeneSchuldAsync(durchlauf, cancellationToken);
             string? automatischeAbrechnungMessage = null;
 
-            if (automatischeSkoulouAppAbrechnungErstellen)
+            if (neuerZyklus)
+            {
+                await new ZyklusTeilnahmeService(dbContext).TeilnehmerErgaenzenAsync(durchlauf, cancellationToken);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            if (automatischeSkoulouAppAbrechnungErstellen || neuerZyklus)
             {
                 var schule = await dbContext.Schools.FirstOrDefaultAsync(x => x.Id == durchlauf.SchulID, cancellationToken);
                 if (schule is null)
@@ -1013,7 +934,9 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
                 var vonUtc = durchlauf.StartDatum;
                 var bisUtc = ToInclusiveUtcDayEnd(endDatum);
-                var positionen = await LadeOffeneSkoulouAppAboPositionenAsync(durchlauf.SchulID, durchlauf.KlasseId, durchlauf.Id, vonUtc, bisUtc, cancellationToken);
+                var positionen = neuerZyklus
+                    ? await dbContext.LevelEnrollments.Where(x => x.DurchlaufId == durchlauf.Id && x.StorniertAmUtc == null && x.AbgerechnetInPeriodeId == null).ToListAsync(cancellationToken)
+                    : await LadeOffeneSkoulouAppAboPositionenAsync(durchlauf.SchulID, durchlauf.KlasseId, durchlauf.Id, vonUtc, bisUtc, cancellationToken);
                 if (positionen.Count > 0)
                 {
                     var jetztUtc = DateTime.UtcNow;
@@ -1023,7 +946,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                         VonUtc = vonUtc,
                         BisUtc = bisUtc,
                         AnzahlAbonnements = positionen.Count,
-                        Umsatz = positionen.Sum(position => Math.Max(0m,
+                        Umsatz = neuerZyklus ? positionen.Sum(x => x.PriceAtEnrollment) : positionen.Sum(position => Math.Max(0m,
                             position.PriceAtEnrollment
                             - position.SchoolLeaderCommissionAtEnrollment
                             - position.TeacherCommissionAtEnrollment)),
@@ -1043,15 +966,26 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                     {
                         position.AbgerechnetInPeriodeId = periode.Id;
                         position.GeaendertAmUtc = jetztUtc;
+                        if (neuerZyklus)
+                        {
+                            var kategorie = await GetOderErstelleSystemKategorieAsync(FinanzSystemCode.SkoulouAppAboAnteil,
+                                "SKOULOUAPP · Frais de plateforme par cycle", FinanzRichtung.Ausgabe, cancellationToken);
+                            dbContext.FinanzBuchungen.Add(new FinanzBuchung
+                            {
+                                SchulID = durchlauf.SchulID, KategorieID = kategorie.Id, Richtung = FinanzRichtung.Ausgabe,
+                                Betrag = position.PriceAtEnrollment, Wirkungsdatum = endDatum.Date, ErfasstVonUserID = beendetVonUserId,
+                                HerkunftReferenzID = position.Id, BeschreibungHtml = "Frais SKOULOUAPP du cycle clôturé. Charge de l'école ; le règlement reste suivi séparément dans la facturation."
+                            });
+                        }
                     }
 
-                    automatischeAbrechnungMessage = $"Facturation SKOULOUAPP automatique créée pour {positionen.Count} abonnement(s), montant {periode.Umsatz:N0} FCFA. Elle attend la suite du workflow normal.";
+                    automatischeAbrechnungMessage = $"Facturation SKOULOUAPP automatique créée pour {positionen.Count} participant(s) du cycle, montant {periode.Umsatz:N0} FCFA. Le paiement de l'école reste à confirmer.";
                 }
             }
 
             durchlauf.EndDatum = endDatum;
 
-            foreach (var profil in teilnehmer)
+            foreach (var profil in teilnehmer.Where(_ => !neuerZyklus))
             {
                 profil.CurrentKlasseId = null;
                 profil.CurrentLevelCode = string.Empty;
@@ -1070,7 +1004,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             var lessonsInKlasse = await dbContext.Lessons
                 .Where(lesson => lesson.KlasseId == durchlauf.KlasseId)
                 .ToListAsync(cancellationToken);
-            foreach (var lesson in lessonsInKlasse)
+            foreach (var lesson in lessonsInKlasse.Where(_ => !neuerZyklus))
             {
                 lesson.IsPublished = false;
                 lesson.GeaendertAmUtc = DateTime.UtcNow;
@@ -1079,7 +1013,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             var examsInKlasse = await dbContext.Exams
                 .Where(exam => exam.KlasseId == durchlauf.KlasseId)
                 .ToListAsync(cancellationToken);
-            foreach (var exam in examsInKlasse)
+            foreach (var exam in examsInKlasse.Where(_ => !neuerZyklus))
             {
                 exam.IsPublishedToStudents = false;
                 exam.GeaendertAmUtc = DateTime.UtcNow;

@@ -36,20 +36,8 @@ public partial class Admin
     private decimal SchoolSubscriptionPriceDisplay
         => schoolForm.SubscriptionPriceOverride ?? commissionSettings.GlobalSubscriptionPrice;
 
-    private decimal EffectiveSchoolLeaderCommissionPercent
-        => schoolForm.SchoolLeaderCommissionPercentOverride ?? commissionSettings.SchoolLeaderPercent;
-
-    private decimal EffectiveTeacherCommissionPercent
-        => schoolForm.TeacherCommissionPercentOverride ?? commissionSettings.TeacherPercent;
-
     private decimal EffectiveProductOwnerCommissionPercent
         => schoolForm.ProductOwnerCommissionPercentOverride ?? commissionSettings.ProductOwnerPercent;
-
-    private decimal EffectiveSchoolLeaderCommissionAmount
-        => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveSchoolLeaderCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
-
-    private decimal EffectiveTeacherCommissionAmount
-        => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveTeacherCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
 
     private decimal EffectiveProductOwnerCommissionAmount
         => Math.Round(SchoolSubscriptionPriceDisplay * EffectiveProductOwnerCommissionPercent / 100m, 2, MidpointRounding.AwayFromZero);
@@ -308,19 +296,6 @@ public partial class Admin
             .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, $"{klasse.Code} · {klasse.Title}"))
     ];
 
-    private IReadOnlyList<ModernDropdownOption<string?>> CefrOptions =>
-    [
-        new(string.Empty, "-- Choisir le niveau CECR --"),
-        new("Pré-A1", "Pré-A1 — Découverte"),
-        new("A1", "A1 — Niveau introductif"),
-        new("A2", "A2 — Niveau intermédiaire"),
-        new("B1", "B1 — Niveau seuil"),
-        new("B2", "B2 — Niveau avancé"),
-        new("C1", "C1 — Niveau autonome"),
-        new("C2", "C2 — Maîtrise"),
-        new("Hors CECR", "Hors CECR — classe spécifique")
-    ];
-
     private IReadOnlyList<ModernDropdownOption<Guid?>> CourseOptions =>
     [
         new((Guid?)Guid.Empty, "Veuillez choisir"),
@@ -379,12 +354,6 @@ public partial class Admin
     private Task SetUserClassAsync(Guid? classId)
     {
         userForm.CurrentKlasseId = classId;
-        return Task.CompletedTask;
-    }
-
-    private Task SetCourseCefrAsync(string? cefrGroup)
-    {
-        courseForm.CEFRGroup = cefrGroup ?? string.Empty;
         return Task.CompletedTask;
     }
 
@@ -657,7 +626,7 @@ public partial class Admin
             return;
         }
 
-        var result = await DashboardService.SaveSchoolAsync(schoolForm, selectedTeacherIds.ToList());
+        var result = await DashboardService.SaveSchoolAsync(schoolForm, selectedTeacherIds.ToList(), currentUserId, ComponentToken);
         if (!result.Succeeded)
         {
             errorMessage = result.Message;
@@ -758,7 +727,7 @@ public partial class Admin
         {
             try
             {
-                await CommissionService.SaveCommissionSettingsAsync(commissionSettings);
+                await CommissionService.SaveCommissionSettingsAsync(commissionSettings, currentUserId, ComponentToken);
                 commissionStatusMessage = "Les commissions seront appliquées aux nouveaux abonnements.";
             }
             catch (InvalidOperationException exception)
@@ -766,26 +735,6 @@ public partial class Admin
                 commissionErrorMessage = exception.Message;
             }
         });
-    }
-
-    private Task SetSchoolLeaderCommissionAmountAsync(decimal amount)
-    {
-        if (commissionSettings.GlobalSubscriptionPrice > 0m)
-        {
-            commissionSettings.SchoolLeaderPercent = Math.Round(amount / commissionSettings.GlobalSubscriptionPrice * 100m, 2, MidpointRounding.AwayFromZero);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private Task SetTeacherCommissionAmountAsync(decimal amount)
-    {
-        if (commissionSettings.GlobalSubscriptionPrice > 0m)
-        {
-            commissionSettings.TeacherPercent = Math.Round(amount / commissionSettings.GlobalSubscriptionPrice * 100m, 2, MidpointRounding.AwayFromZero);
-        }
-
-        return Task.CompletedTask;
     }
 
     private Task SetProductOwnerCommissionAmountAsync(decimal amount)
@@ -806,6 +755,7 @@ public partial class Admin
     }
 
     private Task SaveUserAsync() => RunDatabaseActionAsync(SaveUserCoreAsync);
+    private List<SkoulouApp.Core.Models.Import.SchoolUserImportZugang> neueZugangsdaten = [];
 
     private async Task SaveUserCoreAsync()
     {
@@ -828,6 +778,8 @@ public partial class Admin
 
         if (istNeuanlage)
         {
+            if (!string.IsNullOrWhiteSpace(userForm.Password))
+                neueZugangsdaten = [new(userForm.Email, userForm.Password)];
             // Best-Effort: Ein fehlgeschlagener Versand (z. B. nicht existierende
             // Adresse) darf die Benutzeranlage nicht beeinträchtigen.
             await AuthService.SendWelcomeEmailAsync(email, vorname);

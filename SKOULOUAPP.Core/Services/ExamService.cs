@@ -31,14 +31,15 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return [];
         }
 
+        if (!await HatAktivenSchulzugangAsync(studentId, studentProfile.SchoolId, cancellationToken)) return [];
+
         var completedExamIds = await dbContext.ExamAttempts
             .AsNoTracking()
             .Where(attempt => attempt.StudentId == studentId && attempt.IsCompleted)
             .Select(attempt => attempt.ExamId)
             .Distinct()
             .ToListAsync(cancellationToken);
-        var hasActiveCycle = studentProfile.CurrentKlasseId is Guid currentKlasseId
-            && await HasActiveClassCycleAsync(studentProfile.SchoolId, currentKlasseId, cancellationToken);
+        var aktuelleKlassen = await new SchuelerZugangService(dbContext).KlassenAsync(studentId, token: cancellationToken);
 
         var query = dbContext.Exams
             .AsNoTracking()
@@ -46,7 +47,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .Include(x => x.Questions)
             .Where(x => x.Klasse.SchoolId == studentProfile.SchoolId
                 && (completedExamIds.Contains(x.Id)
-                    || (hasActiveCycle
+                    || (aktuelleKlassen.Contains(x.KlasseId)
                         && x.KlasseId == studentProfile.CurrentKlasseId
                         && x.IsPublishedToStudents
                         && !x.IsSuperseded)))
@@ -125,6 +126,9 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
+        if (attempt.Exam.Klasse.SchoolId is not Guid schulID
+            || !await HatAktivenSchulzugangAsync(studentId, schulID, cancellationToken)) return null;
+
         return new ExamReviewViewModel
         {
             AttemptId = attempt.Id,
@@ -191,6 +195,24 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         Guid studentId,
         CancellationToken cancellationToken = default)
     {
+        if (dbContext.Database.CurrentTransaction is not null)
+            return await StartExamCoreAsync(examId, studentId, cancellationToken);
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
+        return await strategy.ExecuteAsync(async () =>
+        {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken, $"SKOULOUAPP:Exam:{examId:N}:{studentId:N}");
+            var result = await StartExamCoreAsync(examId, studentId, cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
+
+    private async Task<ExamSessionViewModel?> StartExamCoreAsync(Guid examId, Guid studentId, CancellationToken cancellationToken)
+    {
         var exam = await dbContext.Exams
             .Include(x => x.Klasse)
             .Include(x => x.Questions)
@@ -209,10 +231,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken);
 
         var isAssignedToCurrentClass = studentProfile?.CurrentKlasseId == exam.KlasseId;
-        var hasActiveCycle = isAssignedToCurrentClass
-            && studentProfile is not null
-            && await HasActiveClassCycleAsync(studentProfile.SchoolId, exam.KlasseId, cancellationToken);
-        if (!exam.IsPublishedToStudents || exam.IsSuperseded || exam.SubmissionDueAtUtc <= DateTime.UtcNow || !isAssignedToCurrentClass || !hasActiveCycle)
+        var hatZugang = (await new SchuelerZugangService(dbContext).KlassenAsync(studentId, token: cancellationToken)).Contains(exam.KlasseId);
+        if (!exam.IsPublishedToStudents || exam.IsSuperseded || exam.SubmissionDueAtUtc <= DateTime.UtcNow || !isAssignedToCurrentClass || !hatZugang)
         {
             return null;
         }
@@ -316,15 +336,20 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         };
     }
 
-    private Task<bool> HasActiveClassCycleAsync(Guid schoolId, Guid klasseId, CancellationToken cancellationToken)
-        => dbContext.KursNiveauDurchlaeufe
-            .AsNoTracking()
-            .AnyAsync(
-                durchlauf => durchlauf.SchulID == schoolId
-                    && durchlauf.KlasseId == klasseId
-                    && durchlauf.EndDatum == null
-                    && durchlauf.StartDatum <= DateTime.UtcNow,
-                cancellationToken);
+    private Task<bool> HatAktivenSchulzugangAsync(Guid studentId, Guid schulID, CancellationToken token)
+    {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
+        return dbContext.StudentProfiles.AsNoTracking().AnyAsync(x => x.AppUserId == studentId
+            && x.SchoolId == schulID && !x.IsArchived && !x.AppUser.IsBlocked
+            && freieSchulen.Contains(x.SchoolId), token);
+    }
+
+    private async Task<bool> DarfPruefungBearbeitenAsync(Guid studentId, Guid examId, CancellationToken token)
+    {
+        var klassen = await new SchuelerZugangService(dbContext).KlassenAsync(studentId, token: token);
+        return await dbContext.Exams.AsNoTracking().AnyAsync(x => x.Id == examId
+            && klassen.Contains(x.KlasseId) && x.IsPublishedToStudents && !x.IsSuperseded, token);
+    }
 
     public async Task<bool> SaveDraftAsync(Guid attemptId, Guid studentId, IReadOnlyList<ExamAnswerSubmission> submissions, CancellationToken cancellationToken = default)
     {
@@ -335,6 +360,9 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         {
             return false;
         }
+
+        if (!await DarfPruefungBearbeitenAsync(studentId, attempt.ExamId, cancellationToken)
+            || await dbContext.Exams.AnyAsync(x => x.Id == attempt.ExamId && x.SubmissionDueAtUtc <= DateTime.UtcNow, cancellationToken)) return false;
 
         var questions = await dbContext.ExamQuestions
             .AsNoTracking()
@@ -381,6 +409,14 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         Guid studentId,
         IReadOnlyList<ExamAnswerSubmission> submissions,
         CancellationToken cancellationToken = default)
+        => await SubmitExamCoreAsync(attemptId, studentId, submissions, false, cancellationToken);
+
+    private async Task<ExamResult> SubmitExamCoreAsync(
+        Guid attemptId,
+        Guid studentId,
+        IReadOnlyList<ExamAnswerSubmission> submissions,
+        bool automatischerFristabschluss,
+        CancellationToken cancellationToken)
     {
         var attempt = await dbContext.ExamAttempts
             .Include(x => x.Answers)
@@ -390,6 +426,14 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         {
             return new ExamResult { Succeeded = false, Message = "La session d'examen est introuvable." };
         }
+
+        var schulID = await dbContext.Exams.Where(x => x.Id == attempt.ExamId).Select(x => x.Klasse.SchoolId).FirstOrDefaultAsync(cancellationToken);
+        if (!automatischerFristabschluss && (schulID is null || !await HatAktivenSchulzugangAsync(studentId, schulID.Value, cancellationToken)
+            || !attempt.IsCompleted && !await DarfPruefungBearbeitenAsync(studentId, attempt.ExamId, cancellationToken)))
+            return new ExamResult { Succeeded = false, Message = "L'accès à cette épreuve est indisponible. Contactez la direction de votre école." };
+
+        if (automatischerFristabschluss && (attempt.DeadlineUtc > DateTime.UtcNow || submissions.Count != 0))
+            return new ExamResult { Succeeded = false, Message = "La date limite n'est pas encore atteinte." };
 
         if (attempt.IsCompleted)
         {
@@ -416,7 +460,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         }
 
         var now = DateTime.UtcNow;
-        var timedOut = now >= attempt.DeadlineUtc;
+        var timedOut = now >= attempt.DeadlineUtc || exam.SubmissionDueAtUtc <= now;
 
         var submissionByQuestion = (timedOut ? Array.Empty<ExamAnswerSubmission>() : submissions)
             .GroupBy(s => s.QuestionId)
@@ -594,6 +638,9 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
         }
 
+        if (klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
+
         var isAssignedTeacher = await dbContext.LehrerNiveauZuordnungen.AsNoTracking()
             .AnyAsync(link => link.LehrerID == authorId && link.KlasseId == klasse.Id && link.SchulID == klasse.SchoolId, cancellationToken);
         var isSchoolDirection = klasse.SchoolId.HasValue
@@ -715,6 +762,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     {
         var exam = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == examId && e.AuthorId == authorId, cancellationToken)
             ?? throw new InvalidOperationException("L'examen est introuvable.");
+        await PruefeKlassenSchulzugangAsync(exam.KlasseId, cancellationToken);
         if (exam.IsSuperseded || !exam.IsPublishedToStudents || dueAtUtc <= DateTime.UtcNow)
         {
             throw new InvalidOperationException("Choisissez une date limite future pour une épreuve active.");
@@ -742,6 +790,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     {
         var source = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == sourceExamId && e.AuthorId == authorId, cancellationToken)
             ?? throw new InvalidOperationException("L'examen est introuvable.");
+        await PruefeKlassenSchulzugangAsync(source.KlasseId, cancellationToken);
         if (source.IsSuperseded || !source.IsPublishedToStudents)
         {
             throw new InvalidOperationException("Seule une épreuve attribuée et encore active peut être réattribuée.");
@@ -766,7 +815,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .ToListAsync(cancellationToken);
         foreach (var expired in expiredIds)
         {
-            await SubmitExamAsync(expired.Id, expired.StudentId, [], cancellationToken);
+            await SubmitExamCoreAsync(expired.Id, expired.StudentId, [], true, cancellationToken);
         }
 
         model.ExamId = null;
@@ -782,6 +831,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     /// <summary>Prüfungen für die Lehrer-/Schulleiterverwaltung.</summary>
     public async Task<IReadOnlyList<ExamManagementItem>> GetTeacherExamsAsync(Guid authorId, CancellationToken cancellationToken = default)
     {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var exams = await dbContext.Exams
             .AsNoTracking()
             .Include(x => x.Klasse)
@@ -789,7 +839,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 .ThenInclude(x => x.Questions)
             .Include(x => x.Questions)
             .Include(x => x.Attempts)
-            .Where(x => x.AuthorId == authorId && !x.Klasse.IstSystemNiveau)
+            .Where(x => x.AuthorId == authorId && !x.Klasse.IstSystemNiveau
+                && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value))
             .OrderByDescending(x => x.ErstelltAmUtc)
             .ToListAsync(cancellationToken);
 
@@ -823,6 +874,19 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     }
 
     /// <summary>Lädt eine Prüfung als bearbeitbares Formmodell.</summary>
+    private async Task PruefeKlassenSchulzugangAsync(Guid klasseID, CancellationToken token)
+    {
+        if (!await IstKlassenSchulzugangErlaubtAsync(klasseID, token))
+            throw new UnauthorizedAccessException(SchulZugangService.GesperrtHinweis);
+    }
+
+    private async Task<bool> IstKlassenSchulzugangErlaubtAsync(Guid klasseID, CancellationToken token)
+    {
+        var schulID = await dbContext.Klassen.AsNoTracking().Where(x => x.Id == klasseID)
+            .Select(x => x.SchoolId).SingleOrDefaultAsync(token);
+        return schulID is null || await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID.Value, token);
+    }
+
     public async Task<ExamFormModel?> GetExamForEditAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default)
     {
         var exam = await dbContext.Exams
@@ -840,6 +904,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
+        if (!await IstKlassenSchulzugangErlaubtAsync(exam.KlasseId, cancellationToken)) return null;
         return new ExamFormModel
         {
             ExamId = exam.Id,
@@ -882,6 +947,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return (false, "Cet examen standard fait partie du matériel pédagogique et ne peut pas être supprimé.");
         }
 
+        if (!await IstKlassenSchulzugangErlaubtAsync(exam.KlasseId, cancellationToken))
+            return (false, SchulZugangService.GesperrtHinweis);
         if (exam.Attempts.Count > 0)
         {
             return (false, "Cette épreuve possède des résultats d'élèves et ne peut pas être supprimée.");
@@ -916,6 +983,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
+        if (!await IstKlassenSchulzugangErlaubtAsync(exam.KlasseId, cancellationToken)) return null;
         var isAuthor = exam.AuthorId == userId;
         var canViewAsDirection = includeSharedWithDirection
             && exam.IsSharedWithSchool
@@ -996,6 +1064,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .FirstOrDefaultAsync(e => e.Id == examId, cancellationToken);
         if (profile is null || exam is null || !exam.IsPublishedToStudents || !exam.IsPdfExportEnabled
             || profile.CurrentKlasseId != exam.KlasseId || exam.Klasse.SchoolId != profile.SchoolId
+            || !await HatAktivenSchulzugangAsync(studentId, profile.SchoolId, cancellationToken)
             || !await dbContext.ExamAttempts.AsNoTracking().AnyAsync(a => a.ExamId == examId && a.StudentId == studentId && a.IsCompleted, cancellationToken))
         {
             return null;
@@ -1191,6 +1260,23 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         Guid zielKlasseId,
         CancellationToken cancellationToken = default)
     {
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
+        return await strategy.ExecuteAsync(async () =>
+        {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+            await using var transaction = dbContext.Database.IsRelational() && dbContext.Database.CurrentTransaction is null
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken);
+            var result = await VersetzeSchuelerCoreAsync(durchlaufId, studentIds, zielKlasseId, cancellationToken);
+            if (result.Succeeded && transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
+
+    private async Task<(bool Succeeded, string Message)> VersetzeSchuelerCoreAsync(
+        Guid durchlaufId, IReadOnlyCollection<Guid> studentIds, Guid zielKlasseId, CancellationToken cancellationToken)
+    {
         if (studentIds.Count == 0)
         {
             return (false, "Sélectionnez au moins un élève.");
@@ -1232,12 +1318,16 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .Where(x => studentIds.Contains(x.StudentId) && x.KlasseId == zielKlasseId && x.IstAktuell)
             .Select(x => x.StudentId)
             .ToListAsync(cancellationToken);
+        if (!await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(durchlauf.SchulID, cancellationToken))
+            return (false, SchulZugangService.GesperrtHinweis);
+        var neuerZielZyklus = await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.SchulID == durchlauf.SchulID
+            && x.KlasseId == zielKlasseId && x.EndDatum == null && x.PlattformPreisProSchueler != null, cancellationToken);
         foreach (var student in profile)
         {
             student.CurrentKlasseId = zielKlasse.Id;
             student.CurrentLevelCode = zielKlasse.Code;
             student.GeaendertAmUtc = DateTime.UtcNow;
-            if (!vorhandeneEinschreibungen.Contains(student.AppUserId))
+            if (!neuerZielZyklus && !vorhandeneEinschreibungen.Contains(student.AppUserId))
             {
                 await dbContext.LevelEnrollments.AddAsync(new LevelEnrollment
                 {
@@ -1248,6 +1338,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await new ZyklusTeilnahmeService(dbContext).AktiveKlasseErfassenAsync(
+            durchlauf.SchulID, zielKlasse.Id, cancellationToken);
         return (true, "Les élèves sélectionnés ont été promus.");
     }
 

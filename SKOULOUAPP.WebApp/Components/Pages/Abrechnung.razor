@@ -243,6 +243,23 @@
                 </span>
             </div>
 
+            @if (zyklusVerpflichtungen is not null)
+            {
+                <section class="mt-4 space-y-3 rounded-2xl bg-indigo-50 p-4 text-slate-900">
+                    <h3 class="font-bold">Engagements de l'école par cycle</h3>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl bg-white p-3"><strong>@zyklusVerpflichtungen.VorlaeufigerBetrag.ToString("N0") FCFA</strong><p>Engagement provisoire · @zyklusVerpflichtungen.TeilnehmerAnzahl participation(s) dans les cycles en cours</p></div>
+                        <div class="rounded-xl bg-white p-3"><strong>@zyklusVerpflichtungen.OffeneRechnungenBetrag.ToString("N0") FCFA</strong><p>@zyklusVerpflichtungen.OffeneRechnungenAnzahl facture(s) en attente de confirmation du paiement</p></div>
+                    </div>
+                    <p class="text-sm">Le montant provisoire n'est ni une facture ni un paiement. La clôture crée automatiquement la facture au prix fixé au démarrage. Les départs et comptes bloqués restent comptabilisés ; seules les affectations annulées avec justification sont exclues.</p>
+                    <p class="text-sm">Virements déclarés, en attente de vérification bancaire : <strong>@zyklusVerpflichtungen.ZahlungGemeldetBetrag.ToString("N0") FCFA</strong>. L'accès des élèves ne dépend pas du paiement de l'école.</p>
+                    @foreach (var cycle in zyklusVerpflichtungen.LaufendeZyklen)
+                    {
+                        <div class="break-words rounded-xl border border-indigo-100 bg-white p-3">@cycle.Klasse · @cycle.StartDatum.ToString("dd/MM/yyyy") · @cycle.TeilnehmerAnzahl participant(s) × @cycle.PreisProTeilnehmer.ToString("N0") FCFA · <strong>@cycle.Betrag.ToString("N0") FCFA</strong></div>
+                    }
+                </section>
+            }
+
             @if (CanManageBilling)
             {
             <div class="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
@@ -299,13 +316,13 @@
             }
 
             <div class="mt-6 flex justify-end">
-                @if (CanManageBilling)
+                @if (CanManageBilling && uebersicht.AnzahlPositionen > 0)
                 {
                     <button type="button"
                             class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
                             disabled="@(uebersicht.AnzahlPositionen == 0)"
                             @onclick="() => confirmCreateOpen = true">
-                        Créer et envoyer la facturation
+                        Facturer les anciennes inscriptions uniquement
                     </button>
                 }
             </div>

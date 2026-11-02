@@ -400,12 +400,19 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             return null;
         }
 
+        if (lesson.Klasse.SchoolId is not Guid schulID
+            || !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken)
+            || !await dbContext.Users.AnyAsync(u => u.Id == userId && !u.IsBlocked, cancellationToken)) return null;
+        var rollen = await (from ur in dbContext.UserRoles
+                            join r in dbContext.Roles on ur.RoleId equals r.Id
+                            where ur.UserId == userId select r.Name).ToListAsync(cancellationToken);
         var isDirectionOfSchool = lesson.Klasse.SchoolId.HasValue
+            && (rollen.Contains(Rollen.SchulLeiter) || rollen.Contains(Rollen.Koordinator))
             && await dbContext.UserSchools
                 .AsNoTracking()
                 .AnyAsync(link => link.AppUserId == userId && link.SchoolId == lesson.Klasse.SchoolId.Value, cancellationToken);
 
-        var isAssignedTeacher = await dbContext.LehrerNiveauZuordnungen
+        var isAssignedTeacher = rollen.Contains(Rollen.Lehrer) && await dbContext.LehrerNiveauZuordnungen
             .AsNoTracking()
             .AnyAsync(link => link.LehrerID == userId && link.KlasseId == lesson.KlasseId, cancellationToken);
 
@@ -964,11 +971,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
     }
 
     private async Task<HashSet<Guid>> GetAccessibleKlasseIdsAsync(Guid studentId, CancellationToken cancellationToken)
-        => await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToHashSetAsync(cancellationToken);
+        => await new SchuelerZugangService(dbContext).KlassenAsync(studentId, mitHistorie: true, cancellationToken);
 
     /// <summary>
     /// Normalisiert den (frei eingegebenen) ExerciseType-String auf einen bekannten Aufgabentyp.

@@ -5,6 +5,8 @@ namespace SkoulouApp.WebApp.Services;
 
 public sealed class BulletinPdfService
 {
+    private readonly string? basisUrl;
+    public BulletinPdfService(IConfiguration? configuration = null) { basisUrl = configuration?["App:BaseUrl"]?.TrimEnd('/'); }
     public byte[] Erzeugen(BulletinSnapshot bulletin) => Dokument(bulletin).GeneratePdf();
 
     public byte[] SammelausgabeErzeugen(IReadOnlyCollection<BulletinSnapshot> bulletins)
@@ -14,7 +16,7 @@ public sealed class BulletinPdfService
         return Document.Merge(bulletins.Select(Dokument)).UseOriginalPageNumbers().GeneratePdf();
     }
 
-    private static Document Dokument(BulletinSnapshot bulletin) => Document.Create(document => document.Page(page =>
+    private Document Dokument(BulletinSnapshot bulletin) => Document.Create(document => document.Page(page =>
     {
         page.Size(PageSizes.A4); page.Margin(Math.Clamp(bulletin.SeitenRand, 15, 50)); page.DefaultTextStyle(x => x.FontSize(Math.Clamp(bulletin.SchriftGroesse, 8, 12)));
         page.Header().Column(header =>
@@ -27,6 +29,11 @@ public sealed class BulletinPdfService
             header.Item().AlignCenter().Text(bulletin.Slogan ?? "").Italic();
             header.Item().AlignCenter().Text($"{bulletin.Adresse}\n{bulletin.Kontakt}\n{bulletin.Zulassung}").FontSize(9);
             header.Item().PaddingVertical(8).AlignCenter().Text($"BULLETIN DE NOTES · {bulletin.Titel}").Bold().FontSize(14);
+            if (bulletin.DokumentNummer is not null)
+            {
+                header.Item().Text($"N° {bulletin.DokumentNummer} · {bulletin.DokumentDatumUtc:dd/MM/yyyy}").FontSize(8);
+                if (bulletin.ErsetztDokumentNummer is not null) header.Item().Text($"BULLETIN RECTIFICATIF — remplace le bulletin n° {bulletin.ErsetztDokumentNummer}").Bold().FontSize(9);
+            }
         });
         page.Content().Column(content =>
         {
@@ -85,6 +92,18 @@ public sealed class BulletinPdfService
         page.Footer().Column(footer =>
         {
             footer.Item().Text(bulletin.FussText ?? "").FontSize(8);
+            if (bulletin.PruefToken is not null)
+            {
+                if (!Uri.TryCreate(basisUrl, UriKind.Absolute, out var url) || url.Scheme is not ("https" or "http"))
+                    throw new InvalidOperationException("Configurez App:BaseUrl pour générer la vérification des bulletins.");
+                var lien = $"{basisUrl}/verification-bulletin/{bulletin.PruefToken}";
+                using var code = QRCoder.QRCodeGenerator.GenerateQrCode(lien, QRCoder.QRCodeGenerator.ECCLevel.M);
+                using var png = new QRCoder.PngByteQRCode(code);
+                footer.Item().Row(row => {
+                    row.ConstantItem(65).Image(png.GetGraphic(4));
+                    row.RelativeItem().PaddingLeft(8).AlignMiddle().Text("Vérifiez le statut actuel de ce document en scannant ce code. La vérification ne révèle ni identité ni notes. Un document authentique ne garantit pas l'absence de falsification du papier présenté.").FontSize(7);
+                });
+            }
             footer.Item().AlignRight().Text(t => { t.Span("Page "); t.CurrentPageNumber(); });
         });
     }));

@@ -1,8 +1,9 @@
-using SkoulouApp.Core.DataModels.Schools;
+﻿using SkoulouApp.Core.DataModels.Schools;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.Interfaces;
 using SkoulouApp.Core.Models.Billing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace SkoulouApp.Core.Services;
 
@@ -20,6 +21,34 @@ namespace SkoulouApp.Core.Services;
 /// </summary>
 public class AbrechnungService(ISkoulouAppDbContext dbContext)
 {
+    /// <summary>Schulbezogene Übersicht ohne Zahlungsfiktion und ohne provisionabhängige Teilnehmerfilter.</summary>
+    public async Task<ZyklusVerpflichtungsUebersicht> GetZyklusVerpflichtungenAsync(
+        Guid schulID, Guid benutzerID, CancellationToken token = default)
+    {
+        if (!await new FinanzService(dbContext).CanAccessBillingAsync(benutzerID, schulID, token))
+            throw new UnauthorizedAccessException("Vous n'êtes pas autorisé à consulter la facturation de cette école.");
+
+        var laufend = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
+            .Where(x => x.SchulID == schulID && x.EndDatum == null && x.PlattformPreisProSchueler != null)
+            .OrderBy(x => x.Klasse.Code).ThenBy(x => x.StartDatum)
+            .Select(x => new LaufendeZyklusVerpflichtung(x.Id, x.Klasse.Code, x.StartDatum,
+                x.PlattformPreisProSchueler!.Value,
+                dbContext.LevelEnrollments.Count(e => e.DurchlaufId == x.Id && e.StorniertAmUtc == null),
+                dbContext.LevelEnrollments.Where(e => e.DurchlaufId == x.Id && e.StorniertAmUtc == null)
+                    .Sum(e => (decimal?)e.PriceAtEnrollment) ?? 0m))
+            .ToListAsync(token);
+        var rechnungen = await dbContext.Abrechnungsperioden.AsNoTracking()
+            .Where(x => x.SchulID == schulID && x.Status != AbrechnungStatus.Bestaetigt)
+            .Select(x => new { x.Umsatz, x.Status }).ToListAsync(token);
+        return new ZyklusVerpflichtungsUebersicht
+        {
+            LaufendeZyklen = laufend,
+            OffeneRechnungenAnzahl = rechnungen.Count,
+            OffeneRechnungenBetrag = rechnungen.Sum(x => x.Umsatz),
+            ZahlungGemeldetBetrag = rechnungen.Where(x => x.Status == AbrechnungStatus.Akzeptiert).Sum(x => x.Umsatz)
+        };
+    }
+
     private static decimal BerechnePlattformforderung(DataModels.Courses.LevelEnrollment position)
         => Math.Max(0m, position.PriceAtEnrollment
             - position.SchoolLeaderCommissionAtEnrollment
@@ -131,6 +160,29 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
             .ThenBy(forderung => forderung.SchulName)
             .ThenBy(forderung => forderung.KlasseCode)
             .ToList();
+    }
+
+    private async Task<(bool Succeeded, string ErrorMessage)> StatusTransaktionAsync(Guid periodeID,
+        Func<Task<(bool Succeeded, string ErrorMessage)>> aktion, CancellationToken token)
+    {
+        if (dbContext.Database.CurrentTransaction is not null) return await aktion();
+        var versuch = 0;
+        return await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+            await using var transaction = dbContext.Database.IsRelational()
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, token, $"SKOULOUAPP:Facturation:{periodeID:N}");
+            if (dbContext.Database.IsRelational())
+            {
+                var context = dbContext.Database.GetService<Microsoft.EntityFrameworkCore.Infrastructure.ICurrentDbContext>().Context;
+                foreach (var entry in context.ChangeTracker.Entries<Abrechnungsperiode>().Where(x => x.Entity.Id == periodeID).ToList())
+                    entry.State = EntityState.Detached;
+            }
+            var result = await aktion();
+            if (result.Succeeded && transaction is not null) await transaction.CommitAsync(token);
+            return result;
+        });
     }
 
     /// <summary>
@@ -263,7 +315,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
                 && durchlauf.EndDatum != null
                 && (enrollment.DurchlaufId == durchlauf.Id
                     || enrollment.DurchlaufId == null && enrollment.PaidAtUtc >= durchlauf.StartDatum && enrollment.PaidAtUtc <= durchlauf.EndDatum)
-            select new { profil.SchoolId, Enrollment = enrollment, ZyklusEnde = durchlauf.EndDatum.Value })
+            select new { profil.SchoolId, Enrollment = enrollment, ZyklusEnde = durchlauf.EndDatum.GetValueOrDefault() })
             .ToListAsync(cancellationToken);
 
         return zuordnungen
@@ -289,6 +341,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         return await dbContext.LevelEnrollments
             .Where(x => studentIds.Contains(x.StudentId)
                 && x.IsPaid
+                && (x.DurchlaufId == null || x.Durchlauf!.PlattformPreisProSchueler == null)
                 && x.PriceAtEnrollment > 0m
                 && (x.SchoolLeaderCommissionAtEnrollment > 0m || x.TeacherCommissionAtEnrollment > 0m)
                 && x.AbgerechnetInPeriodeId == null
@@ -398,6 +451,13 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         Guid? schulLeiterId = null,
         CancellationToken cancellationToken = default)
     {
+        return await StatusTransaktionAsync(periodeId, () => SchulLeiterStatusSetzenCoreAsync(
+            periodeId, akzeptiert, ablehnungsGrund, schulLeiterId, cancellationToken), cancellationToken);
+    }
+
+    private async Task<(bool Succeeded, string ErrorMessage)> SchulLeiterStatusSetzenCoreAsync(
+        Guid periodeId, bool akzeptiert, string? ablehnungsGrund, Guid? schulLeiterId, CancellationToken cancellationToken)
+    {
         var periode = await dbContext.Abrechnungsperioden.FirstOrDefaultAsync(x => x.Id == periodeId, cancellationToken);
         if (periode is null)
         {
@@ -434,6 +494,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
 
     private async Task<bool> DarfAbrechnungErstellenAsync(Guid benutzerId, Guid schulId, CancellationToken cancellationToken)
     {
+        if (!await dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == benutzerId && !x.IsBlocked, cancellationToken)) return false;
         var rollen = await (from userRole in dbContext.UserRoles.AsNoTracking()
                             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
                             where userRole.UserId == benutzerId
@@ -452,6 +513,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
 
     private async Task<bool> DarfZahlungMeldenAsync(Guid benutzerId, Guid schulId, CancellationToken cancellationToken)
     {
+        if (!await new FinanzService(dbContext).CanAccessBillingAsync(benutzerId, schulId, cancellationToken)) return false;
         var rollen = await (from userRole in dbContext.UserRoles.AsNoTracking()
                             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
                             where userRole.UserId == benutzerId
@@ -473,6 +535,13 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         Guid periodeId,
         Guid superAdminId,
         CancellationToken cancellationToken = default)
+    {
+        return await StatusTransaktionAsync(periodeId, () => AdminBestaetigenCoreAsync(
+            periodeId, superAdminId, cancellationToken), cancellationToken);
+    }
+
+    private async Task<(bool Succeeded, string ErrorMessage)> AdminBestaetigenCoreAsync(
+        Guid periodeId, Guid superAdminId, CancellationToken cancellationToken)
     {
         if (!await IstSuperAdminAsync(superAdminId, cancellationToken))
         {
@@ -506,6 +575,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         => (from userRole in dbContext.UserRoles.AsNoTracking()
             join role in dbContext.Roles.AsNoTracking() on userRole.RoleId equals role.Id
             where userRole.UserId == benutzerId && role.Name == Rollen.SuperAdmin
+                && dbContext.Users.Any(u => u.Id == benutzerId && !u.IsBlocked)
             select userRole)
             .AnyAsync(cancellationToken);
 

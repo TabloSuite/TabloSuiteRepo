@@ -119,10 +119,6 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<bool>("AutoAssignSkoulouAppAboOnCycleStart")
                         .HasColumnType("bit");
 
-                    b.Property<string>("CEFRGroup")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -247,6 +243,16 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<decimal>("SchoolLeaderCommissionAtEnrollment")
                         .HasPrecision(12, 2)
                         .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime?>("StorniertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("StorniertVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StornoGrund")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -1028,6 +1034,10 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<decimal>("NiveauPreis")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("PlattformPreisProSchueler")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
 
                     b.Property<Guid>("SchulID")
                         .HasColumnType("uniqueidentifier");
@@ -2107,6 +2117,9 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<Guid>("AppUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("AufnahmeBestaetigtAmUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("CompletedLessonsCount")
                         .HasColumnType("int");
 
@@ -2321,6 +2334,38 @@ namespace SkoulouApp.WebApp.Migrations
                     b.ToTable("BewertungsPeriode");
                 });
 
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinAbschluss", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ErstelltVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("KlasseID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PeriodeID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PeriodeID", "KlasseID")
+                        .IsUnique();
+
+                    b.ToTable("BulletinAbschluss");
+                });
+
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinAusgabe", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2332,6 +2377,12 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<Guid?>("ErsetztAusgabeID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ErsetztDurchID")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -2341,6 +2392,9 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<DateTime?>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IstEndgueltig")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IstVeroeffentlicht")
                         .HasColumnType("bit");
 
@@ -2349,6 +2403,10 @@ namespace SkoulouApp.WebApp.Migrations
 
                     b.Property<Guid>("PeriodeID")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PruefToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("RuecknahmeGrund")
                         .HasMaxLength(300)
@@ -2374,6 +2432,10 @@ namespace SkoulouApp.WebApp.Migrations
 
                     b.HasIndex("JahresZuordnungID");
 
+                    b.HasIndex("PruefToken")
+                        .IsUnique()
+                        .HasFilter("[PruefToken] IS NOT NULL");
+
                     b.HasIndex("SchulID");
 
                     b.HasIndex("PeriodeID", "JahresZuordnungID")
@@ -2384,6 +2446,97 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsUnique();
 
                     b.ToTable("BulletinAusgabe");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinBerichtigung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AbgebrochenAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntwurfJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ErstelltVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("FreigegebenAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FreigegebenVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Grund")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("KlasseID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchuljahrID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StammdatenEntwurfJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<string>("VorschauHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchulID", "SchuljahrID", "KlasseID");
+
+                    b.ToTable("BulletinBerichtigung");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinUebergabe", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AusgabeID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BearbeitetVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstAbholung")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Vermerk")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AusgabeID");
+
+                    b.ToTable("BulletinUebergabe");
                 });
 
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinVorlage", b =>
@@ -2807,6 +2960,20 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsUnique();
 
                     b.ToTable("UnterrichtsZuordnung");
+                });
+
+            modelBuilder.Entity("SkoulouApp.WebApp.Data.BenutzerVorgangsBestaetigung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BenutzerVorgangsBestaetigungen");
                 });
 
             modelBuilder.Entity("SkoulouApp.WebApp.Data.ExceptionLog", b =>
@@ -3627,6 +3794,17 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Navigation("Schuljahr");
                 });
 
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinAbschluss", b =>
+                {
+                    b.HasOne("SkoulouApp.Core.DataModels.Unterricht.BewertungsPeriode", "Periode")
+                        .WithMany()
+                        .HasForeignKey("PeriodeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Periode");
+                });
+
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinAusgabe", b =>
                 {
                     b.HasOne("SkoulouApp.Core.DataModels.Unterricht.SchuelerJahresZuordnung", "JahresZuordnung")
@@ -3652,6 +3830,17 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Navigation("Periode");
 
                     b.Navigation("Schule");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinUebergabe", b =>
+                {
+                    b.HasOne("SkoulouApp.Core.DataModels.Unterricht.BulletinAusgabe", "Ausgabe")
+                        .WithMany()
+                        .HasForeignKey("AusgabeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ausgabe");
                 });
 
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.BulletinVorlage", b =>

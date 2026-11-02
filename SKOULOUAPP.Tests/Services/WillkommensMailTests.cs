@@ -335,7 +335,7 @@ public class WillkommensMailTests
     }
 
     [Fact]
-    public async Task SchuelerSprachschule_ErhaeltEbenfallsDenEinheitlichenKlassenaboHinweis()
+    public async Task SchuelerWeitererSchule_ErhaeltDenEinheitlichenKlassenaboHinweis()
     {
         var email = new FakeEmailService();
         var service = ErstelleService(email, out _, out var factory);

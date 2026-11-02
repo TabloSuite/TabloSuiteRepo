@@ -19,8 +19,8 @@ public class HomePageServiceTests
         // Arrange
         var catalog = new List<Klasse>
         {
-            new() { Id = Guid.NewGuid(), Code = "A1.1", Title = "Anfänger" },
-            new() { Id = Guid.NewGuid(), Code = "A2.1", Title = "Grundstufe" }
+            new() { Id = Guid.NewGuid(), Code = "CM1A", Title = "Anfänger" },
+            new() { Id = Guid.NewGuid(), Code = "CM2A", Title = "Grundstufe" }
         };
 
         var unitOfWork = new FakeUnitOfWork(catalog, new List<School>());
@@ -31,7 +31,7 @@ public class HomePageServiceTests
 
         // Assert
         Assert.Equal(2, result.Count);
-        Assert.Contains(result, x => x.Code == "A1.1");
+        Assert.Contains(result, x => x.Code == "CM1A");
     }
 
     [Fact]

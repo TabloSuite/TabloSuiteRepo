@@ -9,8 +9,8 @@ using Xunit;
 namespace SkoulouApp.Tests.Services;
 
 /// <summary>
-/// Tests für <see cref="AboService"/>: Abo-Zuweisung, Preis-Einfrieren
-/// und die (un)widerruflichen Bezahlregeln.
+/// Kompatibilität historischer Zyklen ohne Plattformpreis-Snapshot.
+/// Neue automatische Zyklen werden in ZyklusTeilnahmeServiceTests geprüft.
 /// </summary>
 public class AboServiceTests
 {
@@ -29,7 +29,7 @@ public class AboServiceTests
 
         var studentUser = new AppUser { Id = Guid.NewGuid(), FullName = "Schüler", UserName = "schueler" };
 
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Anfänger" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM1A", Title = "CM1 A" };
 
         var profil = new StudentProfile
         {
@@ -382,7 +382,7 @@ public class AboServiceTests
         // Arrange
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, level) = SeedBasis(db);
-        var hoeheresLevel = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "Grundstufe" };
+        var hoeheresLevel = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM2A", Title = "CM2 A" };
         db.Klassen.Add(hoeheresLevel);
         await db.SaveChangesAsync();
         await StarteAktivenDurchlaufAsync(db, schule, hoeheresLevel);
@@ -394,7 +394,7 @@ public class AboServiceTests
 
         // Assert
         var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
-        Assert.Equal("A2.1", profil.CurrentLevelCode);
+        Assert.Equal("CM2A", profil.CurrentLevelCode);
     }
 
     [Fact]
@@ -403,7 +403,7 @@ public class AboServiceTests
         // Arrange
         using var db = TestDbContext.CreateInMemory();
         var (schule, student, level) = SeedBasis(db);
-        var hoeheresLevel = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "Grundstufe" };
+        var hoeheresLevel = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM2A", Title = "CM2 A" };
         db.Klassen.Add(hoeheresLevel);
         await db.SaveChangesAsync();
         await StarteAktivenDurchlaufAsync(db, schule, hoeheresLevel);
@@ -417,7 +417,7 @@ public class AboServiceTests
 
         // Assert – aktuelles Niveau bleibt beim höheren
         var profil = db.StudentProfiles.Single(x => x.AppUserId == student.Id);
-        Assert.Equal("A2.1", profil.CurrentLevelCode);
+        Assert.Equal("CM2A", profil.CurrentLevelCode);
     }
 
     [Fact]

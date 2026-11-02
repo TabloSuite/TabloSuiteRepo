@@ -33,17 +33,21 @@ public class ProvisionsService(ISkoulouAppDbContext dbContext)
         {
             ReferencePrice = settings?.GlobalSubscriptionPrice ?? SkoulouAppKonstanten.KommissionsBasisPreis,
             GlobalSubscriptionPrice = settings?.GlobalSubscriptionPrice ?? SkoulouAppKonstanten.StandardPreisAbo,
-            SchoolLeaderPercent = settings?.SchoolLeaderPercent ?? SkoulouAppKonstanten.StandardProvisionSchulleiterProzent,
-            TeacherPercent = settings?.TeacherPercent ?? SkoulouAppKonstanten.StandardProvisionLehrerProzent,
+            SchoolLeaderPercent = 0m,
+            TeacherPercent = 0m,
             ProductOwnerPercent = settings?.ProductOwnerPercent ?? SkoulouAppKonstanten.StandardProvisionProductOwnerProzent
         };
     }
 
     /// <summary>Speichert die zentrale Kommissionskonfiguration.</summary>
-    public async Task SaveCommissionSettingsAsync(CommissionSettingsModel model, CancellationToken cancellationToken = default)
+    public async Task SaveCommissionSettingsAsync(CommissionSettingsModel model, Guid benutzerID, CancellationToken cancellationToken = default)
     {
+        if (!await dbContext.Users.AnyAsync(u => u.Id == benutzerID && !u.IsBlocked
+            && dbContext.UserRoles.Any(ur => ur.UserId == u.Id && dbContext.Roles.Any(r => r.Id == ur.RoleId && r.Name == Rollen.SuperAdmin)), cancellationToken))
+            throw new UnauthorizedAccessException("Seul l'administrateur peut modifier le tarif général.");
         if (model.SchoolLeaderPercent < 0m
-            || model.GlobalSubscriptionPrice < 0m
+            || model.GlobalSubscriptionPrice <= 0m
+            || decimal.Round(model.GlobalSubscriptionPrice, 2) != model.GlobalSubscriptionPrice
             || model.TeacherPercent < 0m
             || model.ProductOwnerPercent < 0m
             || model.SchoolLeaderPercent + model.TeacherPercent + model.ProductOwnerPercent > 100m)
@@ -59,8 +63,8 @@ public class ProvisionsService(ISkoulouAppDbContext dbContext)
         }
 
         settings.GlobalSubscriptionPrice = model.GlobalSubscriptionPrice;
-        settings.SchoolLeaderPercent = model.SchoolLeaderPercent;
-        settings.TeacherPercent = model.TeacherPercent;
+        // Historische Konfiguration bleibt erhalten; neue Zyklen verwenden keine
+        // Schul-/Lehreranteile. Das Preisformular darf alte Belege nicht umdeuten.
         settings.ProductOwnerPercent = model.ProductOwnerPercent;
         settings.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -281,10 +285,23 @@ public class ProvisionsService(ISkoulouAppDbContext dbContext)
         var levelCodes = await dbContext.Klassen
             .Where(x => levelIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, x => x.Code, cancellationToken);
+        var zyklusIds = positionen.Where(x => x.DurchlaufId.HasValue).Select(x => x.DurchlaufId!.Value).Distinct().ToList();
+        var automatischeZyklen = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
+            .Where(x => zyklusIds.Contains(x.Id) && x.PlattformPreisProSchueler != null)
+            .Select(x => x.Id).ToHashSetAsync(cancellationToken);
 
         foreach (var position in positionen)
         {
             var niveauCode = levelCodes.TryGetValue(position.KlasseId, out var code) ? code : string.Empty;
+            if (position.DurchlaufId is Guid zyklusID && automatischeZyklen.Contains(zyklusID))
+            {
+                anteile.Add(new ProvisionsAnteil
+                {
+                    FreischaltungID = position.Id, SchuelerID = position.StudentId, NiveauCode = niveauCode,
+                    AboTyp = position.AboTyp, Empfaenger = ProvisionsEmpfaenger.Admin, Betrag = position.PriceAtEnrollment
+                });
+                continue;
+            }
             var schoolShare = position.SchoolLeaderCommissionAtEnrollment > 0m
                 ? position.SchoolLeaderCommissionAtEnrollment
                 : SkoulouAppKonstanten.BerechneProvision(position.PriceAtEnrollment, SkoulouAppKonstanten.StandardProvisionSchulleiterProzent);

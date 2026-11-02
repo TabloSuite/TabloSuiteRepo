@@ -8,6 +8,7 @@ namespace SkoulouApp.WebApp.Data;
 
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<AppUser, Role, Guid, IdentityUserClaim<Guid>, AppUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>(options), ISkoulouAppDbContext
 {
+    public DbSet<BenutzerVorgangsBestaetigung> BenutzerVorgangsBestaetigungen => Set<BenutzerVorgangsBestaetigung>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<School> Schools => Set<School>();
     public DbSet<AbschlussMention> AbschlussMentions => Set<AbschlussMention>();
@@ -394,6 +395,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Klasse>().Property(x => x.Price).HasPrecision(12, 2);
+        modelBuilder.Entity<KursNiveauDurchlauf>().Property(x => x.PlattformPreisProSchueler).HasPrecision(12, 2);
 
         modelBuilder.Entity<LevelEnrollment>().Property(x => x.PriceAtEnrollment).HasPrecision(12, 2);
         modelBuilder.Entity<LevelEnrollment>().Property(x => x.SchoolLeaderCommissionAtEnrollment).HasPrecision(12, 2);

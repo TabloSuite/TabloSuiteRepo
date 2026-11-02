@@ -117,8 +117,9 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
     {
         await using var db = await factory.CreateDbContextAsync(token);
         if (!await IstVerwalterAsync(db, benutzerID, token)) return [];
+        var freigegeben = new SkoulouApp.Core.Services.SchulZugangService(db).FreigegebeneSchulen();
         return await db.UserSchools.AsNoTracking()
-            .Where(x => x.AppUserId == benutzerID && x.School.IsActive)
+            .Where(x => x.AppUserId == benutzerID && !x.AppUser.IsBlocked && freigegeben.Contains(x.SchoolId))
             .OrderBy(x => x.School.Name).Select(x => new AuswahlEintrag(x.SchoolId, x.School.Name)).ToListAsync(token);
     }
 
@@ -198,9 +199,12 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
     public async Task SchuelerZuordnenAsync(Guid benutzerID, Guid schulID, Guid schuljahrID, Guid klasseID, Guid schuelerID,
         bool istWiederholer, CancellationToken token = default)
     {
-        await using var db = await factory.CreateDbContextAsync(token);
+        await UnterrichtTransaktion.AusfuehrenAsync(factory, async db =>
+        {
         await PruefeSchuleAsync(db, benutzerID, schulID, token);
         await PruefeJahrAsync(db, schulID, schuljahrID, token);
+        if (await db.Set<BulletinAbschluss>().AnyAsync(x => x.KlasseID == klasseID && x.Periode.SchuljahrID == schuljahrID, token))
+            throw new InvalidOperationException("Les inscriptions annuelles de cette classe sont verrouillées après publication définitive.");
         if (!await db.StudentProfiles.AnyAsync(x => x.AppUserId == schuelerID && x.SchoolId == schulID && !x.IsArchived
                 && x.CurrentKlasseId == klasseID, token)
             || !await db.Klassen.AnyAsync(x => x.Id == klasseID && x.SchoolId == schulID, token))
@@ -217,6 +221,8 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
         }
         zuordnung.IstWiederholer = istWiederholer;
         await db.SaveChangesAsync(token);
+        return true;
+        }, token);
     }
 
     private static Task<bool> IstVerwalterAsync(ApplicationDbContext db, Guid benutzerID, CancellationToken token)
@@ -225,6 +231,8 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
 
     private static async Task PruefeSchuleAsync(ApplicationDbContext db, Guid benutzerID, Guid schulID, CancellationToken token)
     {
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schulID, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         if (!await IstVerwalterAsync(db, benutzerID, token)
             || !await db.UserSchools.AnyAsync(x => x.AppUserId == benutzerID && x.SchoolId == schulID && x.School.IsActive, token))
             throw new UnauthorizedAccessException("Vous n'êtes pas autorisé à gérer cette école.");

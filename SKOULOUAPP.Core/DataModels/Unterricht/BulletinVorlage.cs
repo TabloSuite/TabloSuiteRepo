@@ -30,6 +30,10 @@ public class BulletinVorlage : AuditableModel
 /// <summary>Unveränderlicher fachlicher und gestalterischer Stand; nur Veröffentlichung darf zurückgenommen werden.</summary>
 public class BulletinAusgabe : AuditableModel
 {
+    public bool IstEndgueltig { get; set; }
+    [MaxLength(64)] public string? PruefToken { get; set; }
+    public Guid? ErsetztAusgabeID { get; set; }
+    public Guid? ErsetztDurchID { get; set; }
     public Guid SchulID { get; set; }
     public Schools.School Schule { get; set; } = null!;
     public Guid PeriodeID { get; set; }

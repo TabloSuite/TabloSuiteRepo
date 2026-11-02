@@ -20,7 +20,7 @@ public class TeacherLessonServiceTests
     public async Task SaveLessonAsync_ErstelltLektionMitSeiten()
     {
         using var db = TestDbContext.CreateInMemory();
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1" };
         db.Klassen.Add(level);
         await db.SaveChangesAsync();
 
@@ -54,7 +54,7 @@ public class TeacherLessonServiceTests
     public async Task SaveLessonAsync_Systemniveau_WirdAbgewiesen()
     {
         using var db = TestDbContext.CreateInMemory();
-        var systemLevel = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", IstSystemNiveau = true };
+        var systemLevel = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", IstSystemNiveau = true };
         db.Klassen.Add(systemLevel);
         await db.SaveChangesAsync();
 
@@ -74,7 +74,7 @@ public class TeacherLessonServiceTests
     public async Task SaveLessonAsync_SpeichertEingebettetesBild()
     {
         using var db = TestDbContext.CreateInMemory();
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1" };
         db.Klassen.Add(level);
         await db.SaveChangesAsync();
 
@@ -100,23 +100,24 @@ public class TeacherLessonServiceTests
         using var db = TestDbContext.CreateInMemory();
         var schoolId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
-        var levelA1 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
-        var levelA2 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "A2" };
+        var levelCM1 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = schoolId };
+        var levelCM2 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "CM2", SchoolId = schoolId };
         db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Yaoundé" });
         db.Users.Add(new AppUser { Id = authorId, FullName = "Enseignant", UserName = "enseignant" });
-        db.Klassen.AddRange(levelA1, levelA2);
+        db.Klassen.AddRange(levelCM1, levelCM2);
         db.UserSchools.Add(new UserSchool { AppUserId = authorId, SchoolId = schoolId, CanManageStudents = true });
 
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
             AppUserId = studentId,
             SchoolId = schoolId,
-            CurrentLevelCode = "A1.1",
-            CurrentKlasseId = levelA1.Id
+            CurrentLevelCode = "CM1A",
+            CurrentKlasseId = levelCM1.Id
         });
-        db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelA1.Id, IsUnlocked = true });
+        db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelCM1.Id, IsUnlocked = true });
         await db.SaveChangesAsync();
 
         var service = new TeacherLessonService(db);
@@ -124,8 +125,8 @@ public class TeacherLessonServiceTests
         // Veröffentlicht, richtiges Niveau -> sichtbar
         await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelA1.Id,
-            Title = "A1 veröffentlicht",
+            KlasseId = levelCM1.Id,
+            Title = "CM1 publié",
             IsPublished = true,
             IsSharedWithSchool = true,
             Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
@@ -134,8 +135,8 @@ public class TeacherLessonServiceTests
         // Entwurf, richtiges Niveau -> nicht sichtbar
         await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelA1.Id,
-            Title = "A1 Entwurf",
+            KlasseId = levelCM1.Id,
+            Title = "CM1 brouillon",
             IsPublished = false,
             Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
         }, authorId);
@@ -143,8 +144,8 @@ public class TeacherLessonServiceTests
         // Veröffentlicht, anderes Niveau -> nicht sichtbar
         await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelA2.Id,
-            Title = "A2 veröffentlicht",
+            KlasseId = levelCM2.Id,
+            Title = "CM2 publié",
             IsPublished = true,
             IsSharedWithSchool = true,
             Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
@@ -153,7 +154,7 @@ public class TeacherLessonServiceTests
         var lessons = await service.GetLessonsForStudentAsync(studentId);
 
         Assert.Single(lessons);
-        Assert.Equal("A1 veröffentlicht", lessons[0].Title);
+        Assert.Equal("CM1 publié", lessons[0].Title);
     }
 
     [Fact]
@@ -163,46 +164,47 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
         var studentId = Guid.NewGuid();
-        var levelA1 = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
-        var levelB2 = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "B2.1", Title = "B2" };
+        db.Users.Add(new AppUser { Id = studentId });
+        var levelCM1 = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
+        var klasse5e = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "5eA", Title = "Cinquième" };
         db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Yaoundé" });
         db.Users.Add(new AppUser { Id = authorId, FullName = "Enseignant", UserName = "enseignant" });
-        db.Klassen.AddRange(levelA1, levelB2);
+        db.Klassen.AddRange(levelCM1, klasse5e);
         db.UserSchools.Add(new UserSchool { AppUserId = authorId, SchoolId = schoolId, CanManageStudents = true });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
             AppUserId = studentId,
             SchoolId = schoolId,
-            CurrentKlasseId = levelB2.Id,
-            CurrentLevelCode = "B2.1"
+            CurrentKlasseId = klasse5e.Id,
+            CurrentLevelCode = "5eA"
         });
         db.LevelEnrollments.AddRange(
-            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelA1.Id, IsUnlocked = true },
-            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelB2.Id, IsUnlocked = true });
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelCM1.Id, IsUnlocked = true },
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = klasse5e.Id, IsUnlocked = true });
         await db.SaveChangesAsync();
 
         var service = new TeacherLessonService(db);
         await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelA1.Id,
-            Title = "Support A1",
+            KlasseId = levelCM1.Id,
+            Title = "Support CM1",
             IsPublished = true,
             IsSharedWithSchool = true,
-            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>A1</p>" }]
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>CM1</p>" }]
         }, authorId);
         await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelB2.Id,
-            Title = "Support B2",
+            KlasseId = klasse5e.Id,
+            Title = "Support 5e",
             IsPublished = true,
             IsSharedWithSchool = true,
-            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>B2</p>" }]
+            Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>5e</p>" }]
         }, authorId);
 
         var lessons = await service.GetLessonsForStudentAsync(studentId);
 
-        Assert.Equal(["Support A1", "Support B2"], lessons.Select(lesson => lesson.Title));
+        Assert.Equal(["Support 5e", "Support CM1"], lessons.Select(lesson => lesson.Title));
     }
 
     [Fact]
@@ -212,7 +214,8 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
         var studentId = Guid.NewGuid();
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
+        db.Users.Add(new AppUser { Id = studentId });
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = schoolId };
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Users.Add(new AppUser { Id = authorId, FullName = "Enseignant", UserName = "enseignant" });
         db.Klassen.Add(level);
@@ -244,7 +247,7 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
         var directionId = Guid.NewGuid();
-        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Users.AddRange(
             new AppUser { Id = teacherId, FullName = "Enseignant", UserName = "enseignant" },
@@ -280,7 +283,7 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
         var productOwnerId = Guid.NewGuid();
-        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Users.AddRange(
             new AppUser { Id = teacherId, FullName = "Enseignant", UserName = "enseignant" },
@@ -313,7 +316,7 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
         var directionId = Guid.NewGuid();
-        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Users.AddRange(
             new AppUser { Id = teacherId, FullName = "Enseignant", UserName = "enseignant" },
@@ -348,7 +351,7 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
         var directionId = Guid.NewGuid();
-        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Users.AddRange(
             new AppUser { Id = teacherId, FullName = "Enseignant", UserName = "enseignant" },
@@ -380,24 +383,25 @@ public class TeacherLessonServiceTests
     public async Task GetLessonDetailForStudentAsync_VerweigertAnderesNiveau()
     {
         using var db = TestDbContext.CreateInMemory();
-        var levelA2 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "A2" };
-        db.Klassen.Add(levelA2);
+        var levelCM2 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "CM2" };
+        db.Klassen.Add(levelCM2);
 
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
             AppUserId = studentId,
             SchoolId = Guid.NewGuid(),
-            CurrentLevelCode = "A1.1"
+            CurrentLevelCode = "CM1A"
         });
         await db.SaveChangesAsync();
 
         var service = new TeacherLessonService(db);
         var id = await service.SaveLessonAsync(new TeacherLessonFormModel
         {
-            KlasseId = levelA2.Id,
-            Title = "A2",
+            KlasseId = levelCM2.Id,
+            Title = "CM2",
             IsPublished = true,
             Pages = [new TeacherLessonPageFormModel { ContentHtml = "<p>x</p>" }]
         }, Guid.NewGuid());
@@ -412,9 +416,10 @@ public class TeacherLessonServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var schoolId = Guid.NewGuid();
-        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "A1.1", Title = "A1" };
+        var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CM1A", Title = "CM1" };
         var authorId = Guid.NewGuid();
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
         db.Schools.Add(new School { Id = schoolId, Name = "École" });
         db.Klassen.Add(klasse);
         db.Users.Add(new AppUser { Id = authorId, FullName = "Enseignant", UserName = "enseignant" });
@@ -452,7 +457,9 @@ public class TeacherLessonServiceTests
     public async Task SaveLessonAsync_AktualisiertUndEntferntSeiten()
     {
         using var db = TestDbContext.CreateInMemory();
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1" };
+        var school = new School { Id = Guid.NewGuid(), Name = "École" };
+        db.Schools.Add(school);
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
         db.Klassen.Add(level);
         await db.SaveChangesAsync();
 
@@ -610,6 +617,7 @@ public class TeacherLessonServiceTests
         var currentKlasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1 A" };
         var oldKlasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP0", Title = "CP0 A" };
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
 
         db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });
         db.Users.Add(new AppUser { Id = authorId, FullName = "Professeur A", UserName = "prof-a" });
@@ -660,6 +668,7 @@ public class TeacherLessonServiceTests
         var schoolId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
         var klasse = new Klasse { Id = Guid.NewGuid(), SchoolId = schoolId, Code = "CP1", Title = "CP1 A" };
 
         db.Schools.Add(new School { Id = schoolId, Name = "École", City = "Lomé" });

@@ -63,11 +63,33 @@ public class UnterrichtSqlTests
                 catch (InvalidOperationException) { return false; }
             }
             Assert.Single(await Task.WhenAll(Publizieren(), Publizieren()), x => x);
+            var klassePruefung = await bulletins.KlassePruefenAsync(direktor, schule, periode, klasse);
+            await bulletins.KlasseEndgueltigVeroeffentlichenAsync(direktor, schule, periode, klasse, klassePruefung.Hash, true);
+            var berichtigung = await bulletins.BerichtigungStartenAsync(direktor, schule, periode, klasse, "SQL-Berichtigung");
+            Guid noteID;
+            await using (var db = factory.CreateDbContext()) noteID = (await db.Set<FachNote>().SingleAsync()).Id;
+            await bulletins.BerichtigungsNoteAsync(direktor, berichtigung, noteID, 18, "Corrigé");
+            var wirkung = await bulletins.BerichtigungPruefenAsync(direktor, berichtigung);
+            Assert.Equal(1, await bulletins.BerichtigungFreigebenAsync(direktor, berichtigung, wirkung.Hash, true));
             await using (var db = factory.CreateDbContext())
             {
-                Assert.Single(await db.Set<BulletinAusgabe>().ToListAsync());
+                Assert.Single(await db.Set<BulletinAusgabe>().Where(x => x.IstVeroeffentlicht).ToListAsync());
+                Assert.Equal(3, await db.Set<BulletinAusgabe>().CountAsync());
+                Assert.Equal(18, (await db.Set<FachNote>().SingleAsync()).Punkte);
                 db.Users.Remove(await db.Users.SingleAsync(x => x.Id == schueler));
                 await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+            }
+            var identitaetsEntwurf = await bulletins.BerichtigungStartenAsync(direktor, schule, periode, klasse, "Identité erronée");
+            var identitaet = await bulletins.BerichtigungsStammdatenLadenAsync(direktor, identitaetsEntwurf, zuordnung);
+            await bulletins.BerichtigungsStammdatenAsync(direktor, identitaetsEntwurf, identitaet with { Name = "Identité SQL corrigée", Geburtsort = "Lomé" });
+            var identitaetsPruefung = await bulletins.BerichtigungPruefenAsync(direktor, identitaetsEntwurf);
+            Assert.Equal(1, await bulletins.BerichtigungFreigebenAsync(direktor, identitaetsEntwurf, identitaetsPruefung.Hash, true));
+            await using (var db = factory.CreateDbContext())
+            {
+                Assert.Equal(4, await db.Set<BulletinAusgabe>().CountAsync());
+                var aktuelle = await db.Set<BulletinAusgabe>().SingleAsync(x => x.IstVeroeffentlicht);
+                Assert.Equal("Identité SQL corrigée", (await bulletins.LesenAsync(direktor, aktuelle.Id))!.Schueler);
+                Assert.Equal(18, (await db.Set<FachNote>().SingleAsync()).Punkte);
             }
             await using (var db = factory.CreateDbContext())
             {

@@ -7,6 +7,7 @@ using SkoulouApp.Core.Interfaces;
 using SkoulouApp.Core.Models.Media;
 using SkoulouApp.Core.Options;
 using SkoulouApp.Core.Services.Storage;
+using SkoulouApp.Core.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -358,10 +359,9 @@ public sealed class AzureBlobMediaLibraryService(
             && await CanStudentOpenPublishedTeacherLessonVideoAsync(assetId, userId, lessonId, cancellationToken);
         var canOpenPublishedLessonVideo = !canOpenPublishedTeacherLessonVideo
             && roles.Contains(Rollen.Schueler)
-            && hasActiveSubscription
             && await CanStudentOpenPublishedLessonVideoAsync(assetId, userId, lessonId, cancellationToken);
 
-        if (!hasActiveSubscription && !isPrivilegedUser && !canOpenPublishedTeacherLessonVideo)
+        if (!isPrivilegedUser && !canOpenPublishedTeacherLessonVideo && !canOpenPublishedLessonVideo)
         {
             return null;
         }
@@ -510,15 +510,7 @@ public sealed class AzureBlobMediaLibraryService(
             return false;
         }
 
-        var unlockedKlasseIds = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToListAsync(cancellationToken);
-
-        var klasseIds = unlockedKlasseIds.Count > 0
-            ? unlockedKlasseIds.ToHashSet()
-            : profile.CurrentKlasseId is Guid currentKlasseId ? [currentKlasseId] : [];
+        var klasseIds = await new SchuelerZugangService(dbContext).KlassenAsync(studentId, mitHistorie: true, cancellationToken);
 
         return klasseIds.Count > 0
             && await dbContext.TeacherLessons
@@ -527,6 +519,7 @@ public sealed class AzureBlobMediaLibraryService(
                     && (!lessonId.HasValue || lesson.Id == lessonId.Value)
                     && lesson.VideoAssetId == assetId
                     && klasseIds.Contains(lesson.KlasseId)
+                    && lesson.Klasse.SchoolId == profile.SchoolId
                     && lesson.AuthorId.HasValue
                     && lesson.Author!.UserSchools.Any(link => link.SchoolId == profile.SchoolId),
                     cancellationToken);
@@ -549,15 +542,7 @@ public sealed class AzureBlobMediaLibraryService(
             return false;
         }
 
-        var unlockedKlasseIds = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToListAsync(cancellationToken);
-
-        var klasseIds = unlockedKlasseIds.Count > 0
-            ? unlockedKlasseIds.ToHashSet()
-            : profile.CurrentKlasseId is Guid currentKlasseId ? [currentKlasseId] : [];
+        var klasseIds = await new SchuelerZugangService(dbContext).KlassenAsync(studentId, mitHistorie: true, cancellationToken);
 
         if (klasseIds.Count == 0)
         {
@@ -599,8 +584,9 @@ public sealed class AzureBlobMediaLibraryService(
             return query.Where(asset => asset.SchoolId != null);
         }
 
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var schoolIds = await dbContext.UserSchools
-            .Where(link => link.AppUserId == userId)
+            .Where(link => link.AppUserId == userId && !link.AppUser.IsBlocked && freieSchulen.Contains(link.SchoolId))
             .Select(link => link.SchoolId)
             .ToListAsync(cancellationToken);
 
@@ -611,7 +597,7 @@ public sealed class AzureBlobMediaLibraryService(
 
         if (roles.Contains(Rollen.Lehrer))
         {
-            return query.Where(asset => asset.SchoolId.HasValue && (asset.OwnerId == userId || schoolIds.Contains(asset.SchoolId.Value)));
+            return query.Where(asset => asset.SchoolId.HasValue && schoolIds.Contains(asset.SchoolId.Value));
         }
 
         return query.Where(_ => false);
@@ -624,7 +610,8 @@ public sealed class AzureBlobMediaLibraryService(
             return await dbContext.Schools.AnyAsync(school => school.Id == schoolId, cancellationToken);
         }
 
-        return roles.Any(role => role is Rollen.SchulLeiter or Rollen.Koordinator or Rollen.Lehrer)
+        return await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken)
+            && roles.Any(role => role is Rollen.SchulLeiter or Rollen.Koordinator or Rollen.Lehrer)
             && await dbContext.UserSchools.AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
     }
 

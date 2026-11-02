@@ -82,17 +82,8 @@ else
         @if (lessons.Count == 0)
         {
             <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                @if (!HasPaidSkoulouAppAbo)
-                {
-                    <h2 class="text-lg font-black text-slate-900">Abo SKOULOUAPP requis</h2>
-                    <p class="mt-2 text-sm text-slate-600">Les leçons et exercices de ta classe sont disponibles après activation de ton abonnement scolaire.</p>
-                    <p class="mt-2 text-xs font-semibold text-amber-700">Demande à ton école d'activer ton accès pour consulter les contenus publiés.</p>
-                }
-                else
-                {
                     <h2 class="text-lg font-black text-slate-900">Aucune leçon disponible</h2>
-                    <p class="mt-2 text-sm text-slate-600">Aucune leçon n'est encore disponible pour ta classe actuelle.</p>
-                }
+                    <p class="mt-2 text-sm text-slate-600">Aucun contenu publié n'est disponible pour tes classes. Si nécessaire, contacte la direction pour vérifier ton affectation.</p>
             </div>
         }
         else

@@ -16,10 +16,10 @@ namespace SkoulouApp.Core.Services;
 /// - Bezahlt = true setzen: SchulLeiter der Schule (oder SuperAdmin). NICHT rückgängig machbar durch SchulLeiter.
 /// - Bezahlt = false (rückgängig): nur SuperAdmin.
 /// </summary>
-public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? niveauGruppenService = null, FinanzService? finanzService = null)
+public class AboService(ISkoulouAppDbContext dbContext, KlassenZuordnungsService? niveauGruppenService = null, FinanzService? finanzService = null)
 {
     // Optionaler Parameter, damit bestehende Aufrufe (u. a. Tests) unveraendert bleiben.
-    private readonly NiveauGruppenService _niveauGruppen = niveauGruppenService ?? new NiveauGruppenService(dbContext);
+    private readonly KlassenZuordnungsService _niveauGruppen = niveauGruppenService ?? new KlassenZuordnungsService(dbContext);
     private readonly FinanzService _finanzService = finanzService ?? new FinanzService(dbContext);
     private async Task<decimal> GetGlobalSubscriptionPriceAsync(CancellationToken cancellationToken)
         => await dbContext.CommissionSettings
@@ -96,12 +96,13 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
         {
             return (false, "Démarre d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOUAPP.");
         }
+        if (await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == activeClassCycleId && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "Les participants de ce cycle sont enregistrés automatiquement. Aucune attribution manuelle n'est nécessaire.");
 
-        // Ein Schüler darf ausschließlich Niveaus seiner eigenen Niveaugruppe belegen
-        // (z. B. nur A1.1 und A1.2, wenn seine Gruppe "A1" ist).
+        // Zuordnungen sind auf reguläre Klassen der eigenen Schule beschränkt.
         if (!await _niveauGruppen.IstKlasseErlaubtAsync(profil, klasseId, cancellationToken))
         {
-            return (false, NiveauGruppenService.NichtErlaubtMeldung);
+            return (false, KlassenZuordnungsService.NichtErlaubtMeldung);
         }
 
         var globalSubscriptionPrice = await GetGlobalSubscriptionPriceAsync(cancellationToken);
@@ -242,6 +243,8 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
         var enrollment = await dbContext.LevelEnrollments
             .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 
+        if (enrollment?.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "Cette participation est facturée par cycle. Utilisez le suivi des paiements de l'école.");
         if (enrollment is null)
         {
             return (false, "Aucune activation n'a été trouvée pour ce niveau.");
@@ -308,6 +311,9 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
         {
             return (false, "Ce niveau n'est pas marqué comme payé.");
         }
+
+        if (enrollment.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "Le règlement de ce cycle se gère dans la facturation de l'école, pas sur le compte de l'élève.");
 
         if (enrollment.AbgerechnetInPeriodeId is not null)
         {
@@ -384,6 +390,9 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
             return (false, "Cet abonnement a déjà été facturé et ne peut plus être annulé.");
         }
 
+        if (enrollment.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "Utilisez l'annulation motivée d'une affectation erronée dans les participants du cycle.");
+
         if (enrollment.IsPaid)
         {
             var buchungen = await dbContext.FinanzBuchungen
@@ -446,6 +455,9 @@ public class AboService(ISkoulouAppDbContext dbContext, NiveauGruppenService? ni
         {
             return (false, "L'élève n'est plus affecté à cette classe.");
         }
+
+        if (enrollment.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
+            return (false, "La sortie de classe ne supprime pas la participation facturable. Utilisez le suivi des participants du cycle.");
 
         if (enrollment.IsPaid)
         {

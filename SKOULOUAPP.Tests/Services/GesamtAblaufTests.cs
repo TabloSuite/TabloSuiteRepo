@@ -161,7 +161,6 @@ public class GesamtAblaufTests
         var klasseCp1 = await dashboard.SaveSchoolKlasseAsync(school.Id, new CourseFormModel
         {
             Title = "CP1A",
-            CEFRGroup = "Classe",
             Description = "Classe d'initiation",
             NeueKlassenStufe = "CP1",
             RecommendedLessonCount = 6,
@@ -171,7 +170,6 @@ public class GesamtAblaufTests
         var klasseCp2 = await dashboard.SaveSchoolKlasseAsync(school.Id, new CourseFormModel
         {
             Title = "CP2A",
-            CEFRGroup = "Classe",
             Description = "Classe de consolidation",
             NeueKlassenStufe = "CP2",
             RecommendedLessonCount = 8,
@@ -253,7 +251,7 @@ public class GesamtAblaufTests
         Assert.False(studentA.IsBlocked);
         Assert.False(studentB.IsBlocked);
 
-        var lessonA1 = new Lesson
+        var lektionCp1 = new Lesson
         {
             Id = Guid.NewGuid(),
             KlasseId = klasseCp1.CourseId!.Value,
@@ -263,7 +261,7 @@ public class GesamtAblaufTests
             Order = 1
         };
 
-        var lessonA2 = new Lesson
+        var lektionCp2 = new Lesson
         {
             Id = Guid.NewGuid(),
             KlasseId = klasseCp2.CourseId!.Value,
@@ -273,35 +271,35 @@ public class GesamtAblaufTests
             Order = 1
         };
 
-        var correctA1 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Bonjour", IsCorrect = true, Order = 1 };
-        var wrongA1 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Au revoir", IsCorrect = false, Order = 2 };
-        var exerciseA1 = new Exercise
+        var richtigCp1 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Bonjour", IsCorrect = true, Order = 1 };
+        var falschCp1 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Au revoir", IsCorrect = false, Order = 2 };
+        var aufgabeCp1 = new Exercise
         {
             Id = Guid.NewGuid(),
-            LessonId = lessonA1.Id,
+            LessonId = lektionCp1.Id,
             Title = "Salutation correcte",
             Instructions = "Choisis la bonne réponse.",
             ExerciseType = "MultipleChoice",
             Question = "Que dit-on le matin ?",
             Order = 1,
-            Options = { correctA1, wrongA1 }
+            Options = { richtigCp1, falschCp1 }
         };
 
-        var correctA2 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Je lis.", IsCorrect = true, Order = 1 };
-        var wrongA2 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Je dors.", IsCorrect = false, Order = 2 };
-        var exerciseA2 = new Exercise
+        var richtigCp2 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Je lis.", IsCorrect = true, Order = 1 };
+        var falschCp2 = new ExerciseOption { Id = Guid.NewGuid(), Text = "Je dors.", IsCorrect = false, Order = 2 };
+        var aufgabeCp2 = new Exercise
         {
             Id = Guid.NewGuid(),
-            LessonId = lessonA2.Id,
+            LessonId = lektionCp2.Id,
             Title = "Action correcte",
             Instructions = "Lis et réponds.",
             ExerciseType = "MultipleChoice",
             Question = "Que fais-tu avec un livre ?",
             Order = 1,
-            Options = { correctA2, wrongA2 }
+            Options = { richtigCp2, falschCp2 }
         };
 
-        var examA1 = new Exam
+        var pruefungCp1 = new Exam
         {
             Id = Guid.NewGuid(),
             KlasseId = klasseCp1.CourseId.Value,
@@ -326,9 +324,9 @@ public class GesamtAblaufTests
             }
         };
 
-        db.Lessons.AddRange(lessonA1, lessonA2);
-        db.Exercises.AddRange(exerciseA1, exerciseA2);
-        db.Exams.Add(examA1);
+        db.Lessons.AddRange(lektionCp1, lektionCp2);
+        db.Exercises.AddRange(aufgabeCp1, aufgabeCp2);
+        db.Exams.Add(pruefungCp1);
 
         var enrollmentA = await db.LevelEnrollments.SingleAsync(
             enrollment => enrollment.StudentId == studentA.Id && enrollment.KlasseId == klasseCp1.CourseId.Value);
@@ -347,19 +345,19 @@ public class GesamtAblaufTests
         db.LessonProgresses.Add(new LessonProgress
         {
             Id = Guid.NewGuid(),
-            LessonId = lessonA1.Id,
+            LessonId = lektionCp1.Id,
             StudentId = studentA.Id,
             IsCompleted = true,
             LastActivityUtc = DateTime.UtcNow
         });
         db.ExerciseAttempts.AddRange(
-            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = exerciseA1.Id, StudentId = studentA.Id, IsCorrect = true, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-20) },
-            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = exerciseA1.Id, StudentId = studentA.Id, IsCorrect = false, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-10) },
-            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = exerciseA2.Id, StudentId = studentB.Id, IsCorrect = true, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-5) });
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = aufgabeCp1.Id, StudentId = studentA.Id, IsCorrect = true, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-20) },
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = aufgabeCp1.Id, StudentId = studentA.Id, IsCorrect = false, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-10) },
+            new ExerciseAttempt { Id = Guid.NewGuid(), ExerciseId = aufgabeCp2.Id, StudentId = studentB.Id, IsCorrect = true, RequiresManualGrading = false, AnsweredAtUtc = DateTime.UtcNow.AddMinutes(-5) });
         db.ExamAttempts.Add(new ExamAttempt
         {
             Id = Guid.NewGuid(),
-            ExamId = examA1.Id,
+            ExamId = pruefungCp1.Id,
             StudentId = studentA.Id,
             IsCompleted = true,
             RequiresManualGrading = false,
@@ -388,9 +386,9 @@ public class GesamtAblaufTests
         var visibleLesson = Assert.Single(studentLessons);
         Assert.Equal("Alphabet et salutations", visibleLesson.Title);
 
-        var exerciseResult = await learning.SubmitExerciseAsync(exerciseA1.Id, studentA.Id, new ExerciseSubmission
+        var exerciseResult = await learning.SubmitExerciseAsync(aufgabeCp1.Id, studentA.Id, new ExerciseSubmission
         {
-            SelectedOptionIds = [correctA1.Id]
+            SelectedOptionIds = [richtigCp1.Id]
         });
         Assert.True(exerciseResult.Succeeded);
         Assert.True(exerciseResult.IsCorrect);
@@ -457,7 +455,8 @@ public class GesamtAblaufTests
             studentB.Id,
             klasseCp2.CourseId.Value,
             director.Id);
-        Assert.True(studentBAboPaidOk, studentBAboPaidError);
+        Assert.False(studentBAboPaidOk);
+        Assert.Contains("cycle", studentBAboPaidError);
 
         var cp1ReportBeforeClose = await finanzService.GetKlassenFinanzberichtAsync(cp1Run.Id);
         Assert.NotNull(cp1ReportBeforeClose);
@@ -606,9 +605,9 @@ public class GesamtAblaufTests
         };
 
         // --- Kursniveau, das später freigeschaltet wird --------------
-        var niveau = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Débutant", SchoolId = schule.Id, IstSystemNiveau = true };
+        var niveau = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Débutant", SchoolId = schule.Id, IstSystemNiveau = false };
 
-        // --- Lektion mit einer Übung im Niveau A1.1 -----------------
+        // --- Lektion mit einer Übung im Niveau CM1A -----------------
         var lektion = new Lesson { Id = Guid.NewGuid(), KlasseId = niveau.Id, Title = "Salutations", Order = 1 };
         var uebungRichtig = new ExerciseOption { Id = Guid.NewGuid(), Text = "Guten Tag", IsCorrect = true, Order = 1 };
         var uebungFalsch = new ExerciseOption { Id = Guid.NewGuid(), Text = "Gute Nacht", IsCorrect = false, Order = 2 };
@@ -622,7 +621,7 @@ public class GesamtAblaufTests
             Options = { uebungRichtig, uebungFalsch }
         };
 
-        // --- Prüfung im Niveau A1.1 ---------------------------------
+        // --- Prüfung im Niveau CM1A ---------------------------------
         var pruefungRichtig = new ExamQuestionOption { Id = Guid.NewGuid(), Text = "Guten Tag", IsCorrect = true, Order = 1 };
         var pruefungFalsch = new ExamQuestionOption { Id = Guid.NewGuid(), Text = "Gute Nacht", IsCorrect = false, Order = 2 };
         var pruefungsFrage = new ExamQuestion
@@ -636,7 +635,7 @@ public class GesamtAblaufTests
         {
             Id = Guid.NewGuid(),
             KlasseId = niveau.Id,
-            Title = "Examen A1.1",
+            Title = "Examen CM1A",
             Description = "Vocabulaire de base",
             DurationInMinutes = 30,
             PassingScore = 50,
@@ -661,7 +660,7 @@ public class GesamtAblaufTests
             Id = Guid.NewGuid(),
             AppUserId = schuelerUser.Id,
             SchoolId = schule.Id,
-            CurrentLevelCode = "A1.1",
+            CurrentLevelCode = "CM1A",
             CurrentKlasseId = niveau.Id
         };
 
@@ -811,7 +810,7 @@ public class GesamtAblaufTests
         // --- Schritt L: Schüler startet und besteht die Prüfung ------
         var pruefungsSession = await exam.StartExamAsync(pruefung.Id, schuelerUser.Id);
         Assert.NotNull(pruefungsSession);
-        Assert.Equal("Examen A1.1", pruefungsSession!.Title);
+        Assert.Equal("Examen CM1A", pruefungsSession!.Title);
         var frageId = pruefungsSession.Questions[0].QuestionId;
         var antworten = new Dictionary<Guid, Guid> { [frageId] = pruefungRichtig.Id };
 
@@ -862,15 +861,15 @@ public class GesamtAblaufTests
         var direktorSchule = new UserSchool { AppUserId = direktor.Id, SchoolId = schule.Id, CanManageStudents = true };
         var lehrerSchule = new UserSchool { AppUserId = lehrer.Id, SchoolId = schule.Id, CanManageStudents = true };
 
-        var niveauA = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "A1.1", Title = "Débutant" };
-        var niveauB = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "A2.1", Title = "Élémentaire" };
+        var niveauA = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM1A", Title = "Débutant" };
+        var niveauB = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM2A", Title = "Élémentaire" };
 
         // Zwei Schüler in unterschiedlichen Niveaus derselben Schule.
         var schuelerA = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Nkolo", UserName = "eleveA", Email = "eleveA@skoulou.cm" };
         var schuelerB = new AppUser { Id = Guid.NewGuid(), FullName = "Élève Bello", UserName = "eleveB", Email = "eleveB@skoulou.cm" };
 
-        var profilA = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schule.Id, CurrentLevelCode = "A1.1", CurrentKlasseId = niveauA.Id };
-        var profilB = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schule.Id, CurrentLevelCode = "A2.1", CurrentKlasseId = niveauB.Id };
+        var profilA = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schule.Id, CurrentLevelCode = "CM1A", CurrentKlasseId = niveauA.Id };
+        var profilB = new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schule.Id, CurrentLevelCode = "CM2A", CurrentKlasseId = niveauB.Id };
 
         db.Schools.Add(schule);
         db.Users.AddRange(direktor, lehrer, schuelerA, schuelerB);
@@ -897,10 +896,10 @@ public class GesamtAblaufTests
 
         // --- Schritt B: Verfügbare Zuordnungen des Direktors abrufen ----
         var moeglicheZuordnungen = await dashboard.GetLehrerNiveauZuordnungenAsync(direktor.Id, lehrer.Id);
-        Assert.Equal(2, moeglicheZuordnungen.Count); // A1.1 und A2.1 in der Schule
+        Assert.Equal(2, moeglicheZuordnungen.Count); // CM1A und CM2A in der Schule
         Assert.All(moeglicheZuordnungen, z => Assert.False(z.IstZugeordnet));
 
-        // --- Schritt C: Direktor ordnet den Lehrer nur Niveau A1.1 zu ---
+        // --- Schritt C: Direktor ordnet den Lehrer nur Niveau CM1A zu ---
         await dashboard.SetLehrerNiveauZuordnungenAsync(
             direktor.Id,
             lehrer.Id,
@@ -908,13 +907,13 @@ public class GesamtAblaufTests
 
         var nachZuordnung = await dashboard.GetTeacherStudentsAsync(lehrer.Id);
         var sichtbarerSchueler = Assert.Single(nachZuordnung);
-        Assert.Equal("A1.1", sichtbarerSchueler.CurrentLevelCode);
+        Assert.Equal("CM1A", sichtbarerSchueler.CurrentLevelCode);
         Assert.Equal("Élève Nkolo", sichtbarerSchueler.FullName);
 
         // Die aktive Zuordnung wird korrekt als gesetzt gemeldet.
         var aktualisierteZuordnungen = await dashboard.GetLehrerNiveauZuordnungenAsync(direktor.Id, lehrer.Id);
-        Assert.Contains(aktualisierteZuordnungen, z => z.NiveauCode == "A1.1" && z.IstZugeordnet);
-        Assert.Contains(aktualisierteZuordnungen, z => z.NiveauCode == "A2.1" && !z.IstZugeordnet);
+        Assert.Contains(aktualisierteZuordnungen, z => z.NiveauCode == "CM1A" && z.IstZugeordnet);
+        Assert.Contains(aktualisierteZuordnungen, z => z.NiveauCode == "CM2A" && !z.IstZugeordnet);
 
         // --- Schritt D: Zuordnung entfernen -> keine Schüler ------------
         await dashboard.SetLehrerNiveauZuordnungenAsync(

@@ -52,6 +52,8 @@ public sealed class BewertungsService(IDbContextFactory<ApplicationDbContext> fa
             throw new InvalidOperationException("Cette composante existe déjà.");
         if (await db.Set<FachNote>().AnyAsync(x => x.Bestandteil.PeriodeID == periodeID, token))
             throw new InvalidOperationException("La structure de la période ne peut plus changer après la saisie des notes.");
+        if (await db.Set<BulletinAbschluss>().AnyAsync(x => x.PeriodeID == periodeID, token))
+            throw new InvalidOperationException("La période contient une publication définitive.");
         var element = new BewertungsBestandteil { Id = Guid.NewGuid(), PeriodeID = periodeID, Bezeichnung = bezeichnung.Trim(),
             Gewicht = gewicht, MaximalPunkte = maximalPunkte };
         db.Add(element);
@@ -102,6 +104,8 @@ public sealed class BewertungsService(IDbContextFactory<ApplicationDbContext> fa
             || schueler.SchuljahrID != fach.SchuljahrID || schueler.KlasseID != fach.KlasseID || schueler.SchulID != element.Periode.SchulID)
             throw new InvalidOperationException("La note doit concerner la même école, année et classe.");
         await PruefeNotenRechtAsync(db, benutzerID, element.Periode.SchulID, fach, token);
+        if (await db.Set<BulletinAbschluss>().AnyAsync(x => x.KlasseID == fach.KlasseID && x.PeriodeID == element.PeriodeID, token))
+            throw new InvalidOperationException("Cette classe est publiée définitivement. Préparez une rectification dans les bulletins.");
         if (await db.Set<BulletinAusgabe>().AnyAsync(x => x.PeriodeID == element.PeriodeID
             && x.JahresZuordnungID == jahresZuordnungID && x.IstVeroeffentlicht, token))
             throw new InvalidOperationException("Retirez le bulletin publié avant de corriger les notes de l'élève.");
@@ -187,6 +191,8 @@ public sealed class BewertungsService(IDbContextFactory<ApplicationDbContext> fa
         => db.UserRoles.AnyAsync(x => x.UserId == user && db.Roles.Any(r => r.Id == x.RoleId && (r.Name == Rollen.SchulLeiter || r.Name == Rollen.Koordinator)), token);
     private static async Task PruefeMitgliedAsync(ApplicationDbContext db, Guid user, Guid schule, CancellationToken token)
     {
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schule, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         if (!await db.UserSchools.AnyAsync(x => x.AppUserId == user && x.SchoolId == schule && x.School.IsActive && !x.AppUser.IsBlocked, token))
             throw new UnauthorizedAccessException("Vous n'êtes pas autorisé pour cette école.");
     }

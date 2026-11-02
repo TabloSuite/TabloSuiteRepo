@@ -3,10 +3,9 @@ namespace SkoulouApp.Core.DataModels.Courses;
 
 public class Klasse : AuditableModel
 {
-    public string Code { get; set; } = string.Empty; // Kurs Level Code (z.B. A1.1, A2.1, B1.1, B2.1, C1.1, C2.1)
-    public string Title { get; set; } = string.Empty; // Kurs Level Titel
-    public string CEFRGroup { get; set; } = string.Empty; // Kurs Level CEFR Group (A1, A2, B1, B2, C1, C2)
-    public string Description { get; set; } = string.Empty; // Kurs Level Beschreibung
+    public string Code { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public int RecommendedLessonCount { get; set; } // Empfohlene Anzahl an Lektionen
     /// <summary>
     /// Preis für die Freischaltung dieses Niveaus (in FCFA), vom SuperAdmin festgelegt.
@@ -19,24 +18,21 @@ public class Klasse : AuditableModel
     public int? MaxPlaetze { get; set; }
 
     /// <summary>
-    /// Schule, der diese Klasse gehört. Ist der Wert null, handelt es sich um ein
-    /// globales, festes Sprachschul-Niveau (A1–C), das allen Sprachschulen gemeinsam ist.
-    /// Schul-eigene Klassen (Zusatzkurs einer Sprachschule bzw. alle Klassen einer
-    /// normalen Schule) tragen hier die jeweilige SchulID.
+    /// Schule, der diese Klasse gehört. Ohne Schule bleiben historische Datensätze
+    /// außerhalb der schulbezogenen Klassenverwaltung.
     /// </summary>
     public Guid? SchoolId { get; set; }
     public School? School { get; set; }
 
     /// <summary>
-    /// Optionale schulgebundene Klassenstufe einer normalen Schule, z. B. CEP1
+    /// Optionale schulgebundene Klassenstufe, z. B. CEP1
     /// für konkrete Klassen CEP1A und CEP1B.
     /// </summary>
     public Guid? KlassenStufeId { get; set; }
     public KlassenStufe? KlassenStufe { get; set; }
 
     /// <summary>
-    /// Kennzeichnet ein festes System-Niveau (A1, A2, B1, B2, C) einer Sprachschule.
-    /// System-Niveaus dürfen weder bearbeitet noch gelöscht werden.
+    /// Kennzeichnet geschützte Altdaten, die nicht als reguläre Schulklassen dienen.
     /// </summary>
     public bool IstSystemNiveau { get; set; }
 

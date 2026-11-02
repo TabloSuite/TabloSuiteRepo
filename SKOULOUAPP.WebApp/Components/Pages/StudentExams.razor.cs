@@ -21,7 +21,6 @@ public partial class StudentExams : IDisposable
     private NavigationManager Navigation { get; set; } = default!;
 
     private IReadOnlyList<ExamListItem>? exams;
-    private bool hasPaidSkoulouAppAbo;
     private Timer? countdownTimer;
     private DateTime nowUtc = DateTime.UtcNow;
 
@@ -46,7 +45,6 @@ public partial class StudentExams : IDisposable
             }
 
             var dashboard = await DashboardService.GetStudentDashboardAsync(userId, ComponentToken);
-            hasPaidSkoulouAppAbo = dashboard?.HasPaidSkoulouAppAbo == true;
             exams = await ExamService.GetExamsForStudentAsync(userId, dashboard?.CurrentLevelCode, ComponentToken);
             if (exams.Any(exam => exam.HasActiveAttempt && exam.CanStart))
             {

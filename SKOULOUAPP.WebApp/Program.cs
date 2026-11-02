@@ -1,4 +1,4 @@
-using SkoulouApp.WebApp.Components;
+﻿using SkoulouApp.WebApp.Components;
 using SkoulouApp.WebApp.Data;
 using SkoulouApp.Core.DataModels;
 using SkoulouApp.WebApp.Services;
@@ -19,7 +19,6 @@ using System.Security.Claims;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.DataModels.Finanzen;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using SkoulouApp.WebApp.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 
@@ -46,6 +45,7 @@ builder.Services.Configure<HubOptions>(options =>
     options.MaximumReceiveMessageSize = 8 * 1024 * 1024);
 
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, SchulAuthenticationStateProvider>();
 builder.Services.AddAuthorizationCore();
 
 // Datenbankverbindung:
@@ -118,8 +118,11 @@ builder.Services.ConfigureApplicationCookie(options =>
         var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<AppUser>>();
         var user = await userManager.FindByIdAsync(userId);
         var sessionValue = context.Principal?.FindFirstValue("skoulouapp_session");
+        await using var zugangsDb = await context.HttpContext.RequestServices.GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+            .CreateDbContextAsync(context.HttpContext.RequestAborted);
         if (user is null
             || user.IsBlocked
+            || !await new SchulZugangService(zugangsDb).DarfAnmeldenAsync(user.Id, context.HttpContext.RequestAborted)
             || !Guid.TryParse(sessionValue, out var sessionId)
             || user.ActiveSessionId != sessionId)
         {
@@ -190,13 +193,14 @@ builder.Services.AddTransient<IFinanzBelegStorage, AzureFinanzBelegStorage>();
 builder.Services.AddTransient<HomePageService>();
 builder.Services.AddTransient<AnkuendigungService>();
 builder.Services.AddTransient<DashboardService>();
+builder.Services.AddTransient<IBenutzerArbeitsvorgang, BenutzerArbeitsvorgang>();
 builder.Services.AddTransient<LearningService>();
 builder.Services.AddTransient<LessonExerciseA4PdfService>();
 builder.Services.AddTransient<TeacherLessonService>();
 builder.Services.AddTransient<ExamService>();
 builder.Services.AddTransient<FormelFavoritService>();
 builder.Services.AddTransient<AboService>();
-builder.Services.AddTransient<NiveauGruppenService>();
+builder.Services.AddTransient<KlassenZuordnungsService>();
 builder.Services.AddTransient<AbrechnungService>();
 builder.Services.AddTransient<ProvisionsService>();
 builder.Services.AddTransient<FinanzService>();
@@ -209,6 +213,11 @@ builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.SchulLogoService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPruefungService>();
+builder.Services.AddRateLimiter(options => options.AddPolicy("bulletin-verification", context =>
+    System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+        { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.StundenplanPdfService>();
 builder.Services.AddScoped<ITextToSpeechProvider, BrowserSpeechProvider>();
 var app = builder.Build();
@@ -257,6 +266,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseAntiforgery();
 
@@ -301,6 +311,20 @@ app.MapGet("/media-library/{assetId:guid}", async (
         ? Results.NotFound()
         : Results.File(image.Content, image.ContentType, enableRangeProcessing: true);
 }).RequireAuthorization();
+
+app.MapGet("/verification-bulletin/{token}", async (string token, HttpContext http,
+    SkoulouApp.WebApp.Services.BulletinPruefungService service, CancellationToken cancellationToken) =>
+{
+    http.Response.Headers.CacheControl = "no-store";
+    http.Response.Headers["Referrer-Policy"] = "no-referrer";
+    http.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+    http.Response.Headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
+    var resultat = await service.PruefenAsync(token, cancellationToken);
+    static string E(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "—");
+    var contenu = resultat is null ? "<h1>Document non trouvé</h1><p>Vérifiez le code ou contactez l'école. Aucun bulletin ne peut être téléchargé depuis cette page.</p>"
+        : $"<h1>Vérification d'un bulletin</h1><p>École : {E(resultat.Schule)}</p><p>N° {E(resultat.DokumentNummer)}</p><p>Date : {resultat.DatumUtc:dd/MM/yyyy} UTC</p><p>Statut : {E(resultat.Status)}</p><p>Remplace : {E(resultat.ErsetztNummer)}</p><p>Remplacé par : {E(resultat.NachfolgerNummer)}</p><p>Cette page confirme uniquement l'existence et le statut du document. Elle ne confirme pas l'identité ni les notes figurant sur un papier présenté. Contactez l'école pour une vérification complète.</p>";
+    return Results.Content($"<!doctype html><html lang='fr'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Vérification de bulletin</title></head><body>{contenu}</body></html>", "text/html; charset=utf-8", statusCode: resultat is null ? 404 : 200);
+}).AllowAnonymous().RequireRateLimiting("bulletin-verification");
 
 app.MapGet("/bulletins/{ausgabeID:guid}/pdf", async (Guid ausgabeID, ClaimsPrincipal user,
     SkoulouApp.WebApp.Services.BulletinService service, SkoulouApp.WebApp.Services.BulletinPdfService pdf, CancellationToken token) =>
@@ -598,9 +622,7 @@ app.MapGet("/media-library/videos/{assetId:guid}", async (
 
     var roles = user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray();
     var hasActiveSubscription = roles.Any(role => role is SkoulouApp.Core.DataModels.Identity.Rollen.SuperAdmin or SkoulouApp.Core.DataModels.Identity.Rollen.ProduktOwner or SkoulouApp.Core.DataModels.Identity.Rollen.SchulLeiter or SkoulouApp.Core.DataModels.Identity.Rollen.Koordinator or SkoulouApp.Core.DataModels.Identity.Rollen.Lehrer)
-        || await dbContext.LevelEnrollments.AnyAsync(enrollment => enrollment.StudentId == userId
-            && enrollment.IstAktuell && enrollment.IsUnlocked,
-            cancellationToken);
+        || (await new SchuelerZugangService(dbContext).KlassenAsync(userId, mitHistorie: true, cancellationToken)).Count > 0;
     var video = await mediaLibrary.OpenVideoAsync(assetId, userId, roles, hasActiveSubscription, lessonId, cancellationToken);
     return video is null
         ? Results.NotFound()

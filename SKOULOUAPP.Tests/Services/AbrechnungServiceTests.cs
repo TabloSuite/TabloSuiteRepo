@@ -9,8 +9,8 @@ using Xunit;
 namespace SkoulouApp.Tests.Services;
 
 /// <summary>
-/// Tests für <see cref="AbrechnungService"/>: offene Übersicht, Periodenabschluss
-/// und Historie.
+/// Nachabrechnung und Zahlungsworkflow historischer Zyklen ohne Plattformpreis-Snapshot.
+/// Automatische Rechnungen neuer Zyklen werden in ZyklusTeilnahmeServiceTests geprüft.
 /// </summary>
 public class AbrechnungServiceTests
 {
@@ -25,7 +25,7 @@ public class AbrechnungServiceTests
         };
 
         var studentUser = new AppUser { Id = Guid.NewGuid(), FullName = "Schüler", UserName = "schueler" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Anfänger" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM1A", Title = "CM1 A" };
         var profil = new StudentProfile
         {
             Id = Guid.NewGuid(),

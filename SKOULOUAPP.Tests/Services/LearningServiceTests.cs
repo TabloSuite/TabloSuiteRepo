@@ -35,6 +35,7 @@ public class LearningServiceTests
             new LehrerNiveauZuordnung { Id = Guid.NewGuid(), SchulID = school.Id, KlasseId = klasse.Id, LehrerID = otherTeacher.Id });
         db.LehrerFachZuordnungen.Add(new LehrerFachZuordnung { Id = Guid.NewGuid(), FachId = fach.Id, LehrerId = teacher.Id });
         db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = klasse.Id, FachId = fach.Id, Title = "Histoire", IsPublished = true });
+        db.Users.Add(new AppUser { Id = studentId });
         db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = studentId, SchoolId = school.Id, CurrentKlasseId = klasse.Id });
         db.LevelEnrollments.Add(new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = klasse.Id, IsUnlocked = true });
         await db.SaveChangesAsync();
@@ -54,28 +55,29 @@ public class LearningServiceTests
         using var db = TestDbContext.CreateInMemory();
 
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var levelA1 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id, IstSystemNiveau = true };
-        var levelA2 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "A2", SchoolId = school.Id, IstSystemNiveau = true };
+        var levelCM1 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id, IstSystemNiveau = true };
+        var levelCM2 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "CM2", SchoolId = school.Id, IstSystemNiveau = true };
         db.Schools.Add(school);
-        db.Klassen.AddRange(levelA1, levelA2);
+        db.Klassen.AddRange(levelCM1, levelCM2);
 
-        db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = levelA1.Id, Title = "Lektion A1", Order = 1 });
-        db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = levelA2.Id, Title = "Lektion A2", Order = 1 });
+        db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = levelCM1.Id, Title = "Leçon CM1", Order = 1 });
+        db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = levelCM2.Id, Title = "Leçon CM2", Order = 1 });
 
         var studentId = Guid.NewGuid();
+        db.Users.Add(new AppUser { Id = studentId });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
             AppUserId = studentId,
             SchoolId = school.Id,
-            CurrentLevelCode = "A1.1",
-            CurrentKlasseId = levelA1.Id
+            CurrentLevelCode = "CM1A",
+            CurrentKlasseId = levelCM1.Id
         });
         db.LevelEnrollments.Add(new LevelEnrollment
         {
             Id = Guid.NewGuid(),
             StudentId = studentId,
-            KlasseId = levelA1.Id,
+            KlasseId = levelCM1.Id,
             IsUnlocked = true
         });
 
@@ -88,26 +90,27 @@ public class LearningServiceTests
 
         // Assert
         Assert.Single(lessons);
-        Assert.Equal("Lektion A1", lessons[0].Title);
+        Assert.Equal("Leçon CM1", lessons[0].Title);
     }
 
     [Fact]
-    public async Task GetLessonsForStudentAsync_AboInCefrGruppeSchaltetAlleStandardniveausDerGruppeFrei()
+    public async Task GetLessonsForStudentAsync_SchaltetKeineParallelklassenFrei()
     {
         using var db = TestDbContext.CreateInMemory();
 
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var a11 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1.1", SchoolId = school.Id, CEFRGroup = "A1", IstSystemNiveau = true };
-        var a12 = new Klasse { Id = Guid.NewGuid(), Code = "A1.2", Title = "A1.2", SchoolId = school.Id, CEFRGroup = "A1", IstSystemNiveau = true };
-        var a21 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "A2.1", SchoolId = school.Id, CEFRGroup = "A2", IstSystemNiveau = true };
+        var a11 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1A", SchoolId = school.Id };
+        var a12 = new Klasse { Id = Guid.NewGuid(), Code = "CM1B", Title = "CM1B", SchoolId = school.Id };
+        var a21 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "CM2A", SchoolId = school.Id };
         var studentId = Guid.NewGuid();
 
+        db.Users.Add(new AppUser { Id = studentId });
         db.Schools.Add(school);
         db.Klassen.AddRange(a11, a12, a21);
         db.Lessons.AddRange(
-            new Lesson { Id = Guid.NewGuid(), KlasseId = a11.Id, Title = "Leçon A1.1", Order = 1 },
-            new Lesson { Id = Guid.NewGuid(), KlasseId = a12.Id, Title = "Leçon A1.2", Order = 1 },
-            new Lesson { Id = Guid.NewGuid(), KlasseId = a21.Id, Title = "Leçon A2.1", Order = 1 });
+            new Lesson { Id = Guid.NewGuid(), KlasseId = a11.Id, Title = "Leçon CM1A", Order = 1 },
+            new Lesson { Id = Guid.NewGuid(), KlasseId = a12.Id, Title = "Leçon CM1B", Order = 1 },
+            new Lesson { Id = Guid.NewGuid(), KlasseId = a21.Id, Title = "Leçon CM2A", Order = 1 });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
@@ -127,7 +130,7 @@ public class LearningServiceTests
 
         var lessons = await new LearningService(db).GetLessonsForStudentAsync(studentId);
 
-        Assert.Equal(["Leçon A1.1"], lessons.Select(item => item.Title));
+        Assert.Equal(["Leçon CM1A"], lessons.Select(item => item.Title));
     }
 
     [Fact]
@@ -136,31 +139,32 @@ public class LearningServiceTests
         using var db = TestDbContext.CreateInMemory();
 
         var school = new School { Id = Guid.NewGuid(), Name = "École" };
-        var levelA1 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id, CEFRGroup = "A1", IstSystemNiveau = true };
-        var levelA2 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "A2", SchoolId = school.Id, CEFRGroup = "A2", IstSystemNiveau = true };
+        var levelCM1 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
+        var levelCM2 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "CM2", SchoolId = school.Id };
         var studentId = Guid.NewGuid();
 
+        db.Users.Add(new AppUser { Id = studentId });
         db.Schools.Add(school);
-        db.Klassen.AddRange(levelA1, levelA2);
+        db.Klassen.AddRange(levelCM1, levelCM2);
         db.Lessons.AddRange(
-            new Lesson { Id = Guid.NewGuid(), KlasseId = levelA1.Id, Title = "Lektion A1", Order = 1 },
-            new Lesson { Id = Guid.NewGuid(), KlasseId = levelA2.Id, Title = "Lektion A2", Order = 1 });
+            new Lesson { Id = Guid.NewGuid(), KlasseId = levelCM1.Id, Title = "Leçon CM1", Order = 1 },
+            new Lesson { Id = Guid.NewGuid(), KlasseId = levelCM2.Id, Title = "Leçon CM2", Order = 1 });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),
             AppUserId = studentId,
             SchoolId = school.Id,
-            CurrentLevelCode = levelA2.Code,
-            CurrentKlasseId = levelA2.Id
+            CurrentLevelCode = levelCM2.Code,
+            CurrentKlasseId = levelCM2.Id
         });
         db.LevelEnrollments.AddRange(
-            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelA1.Id, IsUnlocked = true },
-            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelA2.Id, IsUnlocked = true });
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelCM1.Id, IsUnlocked = true },
+            new LevelEnrollment { Id = Guid.NewGuid(), StudentId = studentId, KlasseId = levelCM2.Id, IsUnlocked = true });
         await db.SaveChangesAsync();
 
         var lessons = await new LearningService(db).GetLessonsForStudentAsync(studentId);
 
-        Assert.Equal(["Lektion A1", "Lektion A2"], lessons.Select(x => x.Title));
+        Assert.Equal(["Leçon CM1", "Leçon CM2"], lessons.Select(x => x.Title));
     }
 
     [Fact]
@@ -170,7 +174,7 @@ public class LearningServiceTests
         using var db = TestDbContext.CreateInMemory();
 
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
         db.Schools.Add(school);
         db.Klassen.Add(level);
         db.Lessons.Add(new Lesson { Id = Guid.NewGuid(), KlasseId = level.Id, Title = "Lektion", Order = 1 });
@@ -371,6 +375,7 @@ public class LearningServiceTests
         exercise.Lesson.CreatedByTeacherId = Guid.NewGuid();
         exercise.Lesson.ExerciseSubmissionDueAtUtc = DateTime.UtcNow.AddMinutes(5);
         var schoolId = exercise.Lesson.Klasse.SchoolId!.Value;
+        db.Users.Add(new AppUser { Id = waitingStudentId });
         db.StudentProfiles.Add(new StudentProfile
         {
             AppUserId = waitingStudentId, SchoolId = schoolId, CurrentKlasseId = exercise.Lesson.KlasseId
@@ -499,8 +504,9 @@ public class LearningServiceTests
         Guid studentId)
     {
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
         db.Schools.Add(school);
+        db.Users.Add(new AppUser { Id = studentId });
         db.Klassen.Add(level);
 
         var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = level.Id, Title = "Lektion", Order = 1 };
@@ -576,8 +582,9 @@ public class LearningServiceTests
         string acceptedAnswer)
     {
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
         db.Schools.Add(school);
+        db.Users.Add(new AppUser { Id = studentId });
         db.Klassen.Add(level);
 
         var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = level.Id, Title = "Lektion", Order = 1 };
@@ -621,7 +628,7 @@ public class LearningServiceTests
         bool freigeschaltet)
     {
         var school = new School { Id = Guid.NewGuid(), Name = "École", City = "Yaoundé" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id };
+        var level = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id };
         db.Schools.Add(school);
         db.Klassen.Add(level);
 
@@ -653,6 +660,7 @@ public class LearningServiceTests
             });
         }
 
+        db.Users.Add(new AppUser { Id = studentId, IsBlocked = !freigeschaltet, IsSelfRegistered = !freigeschaltet });
         db.StudentProfiles.Add(new StudentProfile
         {
             Id = Guid.NewGuid(),

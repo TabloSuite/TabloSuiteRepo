@@ -1,4 +1,4 @@
-using SkoulouApp.Core.DataModels.Schools;
+﻿using SkoulouApp.Core.DataModels.Schools;
 using SkoulouApp.Core.Models.Billing;
 using SkoulouApp.Core.Models.Dashboard;
 using SkoulouApp.Core.Services;
@@ -32,6 +32,7 @@ public partial class Abrechnung
     private IReadOnlyList<AdminSchoolOverview> schools = [];
     private bool schoolsLoaded;
     private AbrechnungsUebersicht? uebersicht;
+    private ZyklusVerpflichtungsUebersicht? zyklusVerpflichtungen;
     private IReadOnlyList<Abrechnungsperiode> historie = [];
     private DateTime? historieVonDatum;
     private DateTime? historieBisDatum;
@@ -218,6 +219,7 @@ public partial class Abrechnung
 
     private async Task LoadSchoolAsync()
     {
+        zyklusVerpflichtungen = null;
         if (selectedSchoolId is null)
         {
             uebersicht = null;
@@ -244,6 +246,7 @@ public partial class Abrechnung
             return;
         }
         darfZahlungMelden = !isSuperAdmin && !isProduktOwner;
+        zyklusVerpflichtungen = await AbrechnungService.GetZyklusVerpflichtungenAsync(selectedSchoolId.Value, userId, ComponentToken);
         uebersicht = await AbrechnungService.GetOffeneUebersichtAsync(selectedSchoolId.Value, bisUtcFilter);
         historie = await AbrechnungService.GetHistorieAsync(selectedSchoolId.Value);
         automatischeOffenePerioden = isSuperAdmin
@@ -274,6 +277,7 @@ public partial class Abrechnung
 
     private async Task ConfirmCreateCoreAsync()
     {
+        if (uebersicht is null || uebersicht.AnzahlPositionen == 0) return;
         if (!CanManageBilling || selectedSchoolId is null || !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
             errorMessage = "Sélectionne une école autorisée avant de créer la facturation.";

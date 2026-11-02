@@ -10,11 +10,60 @@ using Xunit;
 namespace SkoulouApp.Tests.Services;
 
 /// <summary>
-/// Tests für <see cref="ProvisionsService"/>: Provisionsverteilung (Schulleiter/Lehrer/Admin)
-/// aus bezahlten Abos, offene Übersicht, periodenbasierte Übersicht und Lehrer-Sicht.
+/// Historische Provisionssnapshots bleiben für Bestandsabrechnungen nachvollziehbar.
+/// Neue Zyklusrechnungen dürfen daraus keine Schul- oder Lehreranteile erfinden.
 /// </summary>
 public class ProvisionsServiceTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(3000.001)]
+    public async Task UngueltigePreiseWerdenNichtGespeichert(decimal preis)
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var adminID = await TestIdentityFactory.AddSuperAdminAsync(db);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new ProvisionsService(db)
+            .SaveCommissionSettingsAsync(new() { GlobalSubscriptionPrice = preis }, adminID));
+        var service = new DashboardService(db, TestUserManager.Create(), new FakeMediaStorageService());
+        Assert.False((await service.SaveSchoolAsync(new() { Name = "Prix", SubscriptionPriceOverride = preis }, [], adminID)).Succeeded);
+        Assert.Empty(db.Schools); Assert.Empty(db.CommissionSettings);
+    }
+
+    [Fact]
+    public async Task PreisverwaltungLehntUnbekannteUndGesperrteAdministratorenAb()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var service = new ProvisionsService(db);
+        var model = new CommissionSettingsModel { GlobalSubscriptionPrice = 3000m };
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.SaveCommissionSettingsAsync(model, Guid.NewGuid()));
+        var adminID = await TestIdentityFactory.AddSuperAdminAsync(db);
+        db.Users.Single(x => x.Id == adminID).IsBlocked = true;
+        await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.SaveCommissionSettingsAsync(model, adminID));
+        Assert.Empty(db.CommissionSettings);
+        var dashboard = new DashboardService(db, TestUserManager.Create(), new FakeMediaStorageService());
+        Assert.False((await dashboard.SaveSchoolAsync(new() { Name = "Interdite" }, [], adminID)).Succeeded);
+        Assert.Empty(db.Schools);
+    }
+
+    [Fact]
+    public async Task NeueZyklusrechnungErfindetKeineHistorischenStandardprovisionen()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (school, student, _, level) = SeedBasis(db);
+        var cycle = new KursNiveauDurchlauf { Id = Guid.NewGuid(), SchulID = school.Id, KlasseId = level.Id, PlattformPreisProSchueler = 3000m };
+        var period = new Abrechnungsperiode { Id = Guid.NewGuid(), SchulID = school.Id, Umsatz = 3000m, AnzahlAbonnements = 1 };
+        db.KursNiveauDurchlaeufe.Add(cycle); db.Abrechnungsperioden.Add(period);
+        db.LevelEnrollments.Add(new LevelEnrollment { StudentId = student.Id, KlasseId = level.Id,
+            DurchlaufId = cycle.Id, AbgerechnetInPeriodeId = period.Id, PriceAtEnrollment = 3000m, IsPaid = false });
+        await db.SaveChangesAsync();
+        var result = await new ProvisionsService(db).GetPeriodeUebersichtAsync(period.Id);
+        Assert.Equal(0m, result.ProvisionLehrer);
+        Assert.Equal(3000m, result.Anteile.Where(x => x.Empfaenger == ProvisionsEmpfaenger.Admin).Sum(x => x.Betrag));
+        Assert.DoesNotContain(result.Anteile, x => x.Empfaenger is ProvisionsEmpfaenger.Schulleiter or ProvisionsEmpfaenger.Lehrer or ProvisionsEmpfaenger.ProductOwner);
+    }
+
     [Fact]
     public async Task AbrechnungErstellenAsync_BerechnetLehrerpoolOhneIndividuelleAuszahlungen()
     {
@@ -67,7 +116,7 @@ public class ProvisionsServiceTests
 
         var studentUser = new AppUser { Id = Guid.NewGuid(), FullName = "Schüler", UserName = "schueler" };
         var lehrerUser = new AppUser { Id = Guid.NewGuid(), FullName = "Lehrer", UserName = "lehrer" };
-        var level = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Anfänger" };
+        var level = new Klasse { Id = Guid.NewGuid(), SchoolId = schule.Id, Code = "CM1A", Title = "CM1 A" };
         var profil = new StudentProfile
         {
             Id = Guid.NewGuid(),
@@ -190,12 +239,13 @@ public class ProvisionsServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var service = new ProvisionsService(db);
+        var adminID = await TestIdentityFactory.AddSuperAdminAsync(db);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveCommissionSettingsAsync(new CommissionSettingsModel
         {
             SchoolLeaderPercent = 60m,
             TeacherPercent = 50m
-        }));
+        }, adminID));
     }
 
     [Fact]

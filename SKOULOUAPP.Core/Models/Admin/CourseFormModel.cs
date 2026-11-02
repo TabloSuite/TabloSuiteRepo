@@ -17,10 +17,6 @@ public class CourseFormModel
     [StringLength(200)]
     public string Title { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Veuillez saisir un niveau CECR.")]
-    [StringLength(10)]
-    public string CEFRGroup { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "Veuillez saisir une description.")]
     public string Description { get; set; } = string.Empty;
 
@@ -36,13 +32,11 @@ public class CourseFormModel
     public int CurrentStudentCount { get; set; }
 
     /// <summary>
-    /// Schule, der diese Klasse gehört. Null = globales, festes Sprachschul-System-Niveau.
-    /// Für schul-eigene Klassen (Sprachschul-Zusatzkurs bzw. Klassen einer normalen Schule)
-    /// wird hier die jeweilige SchulID gesetzt.
+    /// Schule, der diese Klasse gehört.
     /// </summary>
     public Guid? SchoolId { get; set; }
 
-    /// <summary>Optionale Klassenstufe der konkreten Klasse einer normalen Schule.</summary>
+    /// <summary>Optionale schulbezogene Klassenstufe der konkreten Klasse.</summary>
     public Guid? KlassenStufeId { get; set; }
 
     /// <summary>
@@ -56,8 +50,7 @@ public class CourseFormModel
     public string? NeueKlassenStufe { get; set; }
 
     /// <summary>
-    /// Kennzeichnet ein festes System-Niveau (A1–C). System-Niveaus dürfen nicht
-    /// bearbeitet oder gelöscht werden.
+    /// Kennzeichnet geschützte Altdaten ohne schulbezogene Klassenverwaltung.
     /// </summary>
     public bool IstSystemNiveau { get; set; }
 

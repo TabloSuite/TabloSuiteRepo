@@ -91,8 +91,8 @@ public static class ApplicationDbInitializer
         // Lehrer und Schueler werden ausschliesslich ueber die Anwendung erfasst.
         await EnsureUserAsync(
             userManager,
-            email: "admin@skoulou.com",
-            fullName: "Ich",
+            email: "dodji_etse@web.de",
+            fullName: "Dodji Etse",
             password: "Admin123!",
             isSelfRegistered: false,
             isBlocked: false,
@@ -219,7 +219,7 @@ public static class ApplicationDbInitializer
         {
             Name = Rollen.Schueler,
             NormalizedName = "SCHÜLER",
-            Description = "Apprend l'allemand dans l'école sélectionnée"
+            Description = "Accède aux cours, supports et activités de son établissement"
         };
 
         // SuperAdmin erhält alle Berechtigungen.

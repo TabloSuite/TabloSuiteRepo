@@ -1,4 +1,4 @@
-using SkoulouApp.Core.DataModels.Courses;
+﻿using SkoulouApp.Core.DataModels.Courses;
 using SkoulouApp.Core.DataModels.Exams;
 using SkoulouApp.Core.DataModels.Exercises;
 using SkoulouApp.Core.DataModels.Finanzen;
@@ -488,9 +488,9 @@ public class DashboardServiceTests
 
         var result = await service.GetSchoolFachOptionsForDirectionAsync(director.Id, school.Id);
 
-        var assigned = Assert.Single(result.Where(item => item.FachId == fachAssigned.Id));
+        var assigned = Assert.Single(result, item => item.FachId == fachAssigned.Id);
         Assert.True(assigned.IstLehrerZugewiesen);
-        var free = Assert.Single(result.Where(item => item.FachId == fachFree.Id));
+        var free = Assert.Single(result, item => item.FachId == fachFree.Id);
         Assert.False(free.IstLehrerZugewiesen);
     }
 
@@ -566,9 +566,9 @@ public class DashboardServiceTests
             new UserSchool { AppUserId = director.Id, SchoolId = secondSchool.Id, CanManageStudents = true });
         db.Users.AddRange(firstStudent, secondStudent, foreignStudent);
         db.StudentProfiles.AddRange(
-            new StudentProfile { AppUserId = firstStudent.Id, SchoolId = firstSchool.Id, CurrentLevelCode = "A1.1" },
-            new StudentProfile { AppUserId = secondStudent.Id, SchoolId = secondSchool.Id, CurrentLevelCode = "A2.1" },
-            new StudentProfile { AppUserId = foreignStudent.Id, SchoolId = foreignSchool.Id, CurrentLevelCode = "B1.1" });
+            new StudentProfile { AppUserId = firstStudent.Id, SchoolId = firstSchool.Id, CurrentLevelCode = "CM1A" },
+            new StudentProfile { AppUserId = secondStudent.Id, SchoolId = secondSchool.Id, CurrentLevelCode = "CM2A" },
+            new StudentProfile { AppUserId = foreignStudent.Id, SchoolId = foreignSchool.Id, CurrentLevelCode = "6eA" });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, firstStudent, secondStudent, foreignStudent]);
@@ -719,7 +719,7 @@ public class DashboardServiceTests
         db.UserSchools.AddRange(
             new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true },
             new UserSchool { AppUserId = student.Id, SchoolId = school.Id });
-        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentLevelCode = "A1.1" });
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentLevelCode = "CM1A" });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, student]);
@@ -752,7 +752,7 @@ public class DashboardServiceTests
 
         db.Schools.Add(school);
         db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
-        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentLevelCode = "A1.1" });
+        db.StudentProfiles.Add(new StudentProfile { AppUserId = student.Id, SchoolId = school.Id, CurrentLevelCode = "CM1A" });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, student]);
@@ -860,7 +860,7 @@ public class DashboardServiceTests
 
         db.Schools.Add(new School { Id = Guid.NewGuid(), Name = "Schule A", IsActive = true });
         db.Schools.Add(new School { Id = Guid.NewGuid(), Name = "Schule B", IsActive = false });
-        db.Klassen.Add(new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Anfänger" });
+        db.Klassen.Add(new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Anfänger" });
         await db.SaveChangesAsync();
 
         var teacher = new AppUser { Id = Guid.NewGuid(), FullName = "Lehrerin", UserName = "lehrer" };
@@ -917,17 +917,17 @@ public class DashboardServiceTests
 
         db.Schools.Add(new School { Id = schuleId, Name = "École Test", IsActive = true });
         db.UserSchools.Add(new UserSchool { AppUserId = teacherId, SchoolId = schuleId, CanManageStudents = true });
-        var klasseA1 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Débutant" };
-        var klasseA2 = new Klasse { Id = Guid.NewGuid(), Code = "A2.1", Title = "Élémentaire" };
-        db.Klassen.AddRange(klasseA1, klasseA2);
+        var klasseCM1 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Débutant" };
+        var klasseCM2 = new Klasse { Id = Guid.NewGuid(), Code = "CM2A", Title = "Élémentaire" };
+        db.Klassen.AddRange(klasseCM1, klasseCM2);
 
         var schuelerA = new AppUser { Id = Guid.NewGuid(), FullName = "Élève A", UserName = "eleveA" };
         var schuelerB = new AppUser { Id = Guid.NewGuid(), FullName = "Élève B", UserName = "eleveB" };
         db.Users.AddRange(schuelerA, schuelerB);
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schuleId, CurrentLevelCode = "A1.1", CurrentKlasseId = klasseA1.Id });
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schuleId, CurrentLevelCode = "A2.1", CurrentKlasseId = klasseA2.Id });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schuleId, CurrentLevelCode = "CM1A", CurrentKlasseId = klasseCM1.Id });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schuleId, CurrentLevelCode = "CM2A", CurrentKlasseId = klasseCM2.Id });
 
-        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { Id = Guid.NewGuid(), LehrerID = teacherId, SchulID = schuleId, KlasseId = klasseA1.Id });
+        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { Id = Guid.NewGuid(), LehrerID = teacherId, SchulID = schuleId, KlasseId = klasseCM1.Id });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create(new[] { schuelerA, schuelerB });
@@ -939,7 +939,7 @@ public class DashboardServiceTests
         // Assert
         var eintrag = Assert.Single(progress);
         Assert.Equal("Élève A", eintrag.FullName);
-        Assert.Equal("A1.1", eintrag.CurrentLevelCode);
+        Assert.Equal("CM1A", eintrag.CurrentLevelCode);
     }
 
     [Fact]
@@ -956,8 +956,8 @@ public class DashboardServiceTests
         var schuelerA = new AppUser { Id = Guid.NewGuid(), FullName = "Élève A", UserName = "eleveA" };
         var schuelerB = new AppUser { Id = Guid.NewGuid(), FullName = "Élève B", UserName = "eleveB" };
         db.Users.AddRange(schuelerA, schuelerB);
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schuleId, CurrentLevelCode = "A1.1" });
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schuleId, CurrentLevelCode = "A2.1" });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerA.Id, SchoolId = schuleId, CurrentLevelCode = "CM1A" });
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schuelerB.Id, SchoolId = schuleId, CurrentLevelCode = "CM2A" });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create(new[] { schuelerA, schuelerB });
@@ -1033,13 +1033,13 @@ public class DashboardServiceTests
 
         var schueler = new AppUser { Id = Guid.NewGuid(), FullName = "Élève A", UserName = "eleveA" };
         db.Users.Add(schueler);
-        var levelA1 = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Débutant" };
-        db.Klassen.Add(levelA1);
-        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schueler.Id, SchoolId = schuleId, CurrentLevelCode = "A1.1", CurrentKlasseId = levelA1.Id });
-        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { Id = Guid.NewGuid(), LehrerID = teacherId, SchulID = schuleId, KlasseId = levelA1.Id });
+        var levelCM1 = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Débutant" };
+        db.Klassen.Add(levelCM1);
+        db.StudentProfiles.Add(new StudentProfile { Id = Guid.NewGuid(), AppUserId = schueler.Id, SchoolId = schuleId, CurrentLevelCode = "CM1A", CurrentKlasseId = levelCM1.Id });
+        db.LehrerNiveauZuordnungen.Add(new LehrerNiveauZuordnung { Id = Guid.NewGuid(), LehrerID = teacherId, SchulID = schuleId, KlasseId = levelCM1.Id });
 
         // Übungsversuche: eine richtig (100), eine falsch (0). Ein offener manueller Versuch zählt nicht.
-        var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = levelA1.Id, Title = "Leçon", Order = 1 };
+        var lesson = new Lesson { Id = Guid.NewGuid(), KlasseId = levelCM1.Id, Title = "Leçon", Order = 1 };
         db.Lessons.Add(lesson);
         var exercises = Enumerable.Range(0, 3).Select(i => new Exercise { Id = Guid.NewGuid(), LessonId = lesson.Id, Title = $"Exercice {i}", Order = i }).ToArray();
         db.Exercises.AddRange(exercises);
@@ -1055,7 +1055,7 @@ public class DashboardServiceTests
             new Exam
             {
                 Id = veroeffentlichtesExamId,
-                KlasseId = levelA1.Id,
+                KlasseId = levelCM1.Id,
                 Title = "Examen publié",
                 DurationInMinutes = 30,
                 PassingScore = 50,
@@ -1064,7 +1064,7 @@ public class DashboardServiceTests
             new Exam
             {
                 Id = nichtVeroeffentlichtesExamId,
-                KlasseId = levelA1.Id,
+                KlasseId = levelCM1.Id,
                 Title = "Examen non publié",
                 DurationInMinutes = 30,
                 PassingScore = 50,
@@ -1145,7 +1145,7 @@ public class DashboardServiceTests
         };
 
         // Act
-        var result = await service.SaveSchoolAsync(form, new List<Guid>());
+        var result = await service.SaveSchoolAsync(form, new List<Guid>(), await TestIdentityFactory.AddSuperAdminAsync(db));
 
         // Assert
         Assert.True(result.Succeeded);
@@ -1184,7 +1184,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolAsync_PersistiertSchulSpezifischeCommissionOverrides()
+    public async Task SaveSchoolAsync_UebernimmtKeineNeuenSchulprovisionen()
     {
         using var db = TestDbContext.CreateInMemory();
         var userManager = TestUserManager.Create();
@@ -1201,17 +1201,17 @@ public class DashboardServiceTests
             ProductOwnerCommissionPercentOverride = 2m
         };
 
-        var result = await service.SaveSchoolAsync(form, []);
+        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
 
         Assert.True(result.Succeeded, result.Message);
         var school = Assert.Single(db.Schools);
-        Assert.Equal(6m, school.SchoolLeaderCommissionPercentOverride);
-        Assert.Equal(8m, school.TeacherCommissionPercentOverride);
-        Assert.Equal(2m, school.ProductOwnerCommissionPercentOverride);
+        Assert.Null(school.SchoolLeaderCommissionPercentOverride);
+        Assert.Null(school.TeacherCommissionPercentOverride);
+        Assert.Null(school.ProductOwnerCommissionPercentOverride);
     }
 
     [Fact]
-    public async Task SaveSchoolAsync_LehntCommissionOverridesUeberHundertProzentAb()
+    public async Task SaveSchoolAsync_IgnoriertNichtMehrBearbeitbareProvisionsfelder()
     {
         using var db = TestDbContext.CreateInMemory();
         var userManager = TestUserManager.Create();
@@ -1228,11 +1228,12 @@ public class DashboardServiceTests
             ProductOwnerCommissionPercentOverride = 20m
         };
 
-        var result = await service.SaveSchoolAsync(form, []);
+        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
 
-        Assert.False(result.Succeeded);
-        Assert.Contains("100", result.Message);
-        Assert.Empty(db.Schools);
+        Assert.True(result.Succeeded, result.Message);
+        var school = Assert.Single(db.Schools);
+        Assert.Null(school.SchoolLeaderCommissionPercentOverride);
+        Assert.Null(school.TeacherCommissionPercentOverride);
     }
 
     [Fact]
@@ -1280,7 +1281,7 @@ public class DashboardServiceTests
             IsActive = true
         };
 
-        var result = await service.SaveSchoolAsync(form, []);
+        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
 
         Assert.True(result.Succeeded, result.Message);
 
@@ -1402,8 +1403,8 @@ public class DashboardServiceTests
 
         var result = await service.SetSchoolUserBlockedStateAsync(director.Id, student.Id, true);
 
-        Assert.False(result.Succeeded);
-        Assert.False(student.IsBlocked);
+        Assert.True(result.Succeeded);
+        Assert.True(student.IsBlocked);
     }
 
     [Fact]
@@ -1427,7 +1428,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SetStudentBlockedStateAsync_BezahltesNiveau_SchulLeiterKannNichtBlockieren()
+    public async Task SetStudentBlockedStateAsync_BezahltesNiveau_SchulLeiterKannUnabhaengigVonZahlungBlockieren()
     {
         // Arrange (Punkt 7c: Schüler mit bezahltem Niveau darf vom Direktor nicht blockiert werden)
         using var db = TestDbContext.CreateInMemory();
@@ -1448,9 +1449,9 @@ public class DashboardServiceTests
         // Act (Standard = Direktor)
         await service.SetStudentBlockedStateAsync(schueler.Id, true);
 
-        // Assert – bleibt unblockiert
+        // Persönliche Kontosperren sind unabhängig von Finanzpositionen.
         var aktualisiert = Assert.Single(db.Users);
-        Assert.False(aktualisiert.IsBlocked);
+        Assert.True(aktualisiert.IsBlocked);
     }
 
     [Fact]
@@ -1527,8 +1528,8 @@ public class DashboardServiceTests
         var systemNiveau = new Klasse
         {
             Id = Guid.NewGuid(),
-            Code = "A1.1",
-            Title = "Découvrir l'allemand",
+            Code = "CM1A",
+            Title = "Classe archivée",
             IstSystemNiveau = true,
             SchoolId = null
         };
@@ -1541,9 +1542,8 @@ public class DashboardServiceTests
         var (succeeded, _, _) = await service.SaveCourseAsync(new CourseFormModel
         {
             CourseId = systemNiveau.Id,
-            Code = "A1.1",
+            Code = "CM1A",
             Title = "Geändert",
-            CEFRGroup = "A",
             Description = "x"
         });
 
@@ -1556,7 +1556,7 @@ public class DashboardServiceTests
     {
         using var db = TestDbContext.CreateInMemory();
         var schule = new School { Id = Guid.NewGuid(), Name = "Schule", IsActive = true };
-        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Découvrir l’Allemand", SchoolId = schule.Id };
+        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Cours élémentaire", SchoolId = schule.Id };
         db.Schools.Add(schule);
         db.Klassen.Add(klasse);
         await db.SaveChangesAsync();
@@ -1590,14 +1590,14 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolKlasseAsync_Sprachschule_LehntDoppelteKlassenNamenAb()
+    public async Task SaveSchoolKlasseAsync_LehntDoppelteKlassenNamenAb()
     {
         // Arrange
         using var db = TestDbContext.CreateInMemory();
-        var schule = new School { Id = Guid.NewGuid(), Name = "Sprachschule", IsActive = true };
+        var schule = new School { Id = Guid.NewGuid(), Name = "École", IsActive = true };
         db.Schools.Add(schule);
         // Ein globales System-Niveau darf nicht mitzählen.
-        db.Klassen.Add(new Klasse { Id = Guid.NewGuid(), Code = "A1.1", IstSystemNiveau = true, SchoolId = null });
+        db.Klassen.Add(new Klasse { Id = Guid.NewGuid(), Code = "CM1A", IstSystemNiveau = true, SchoolId = null });
         await db.SaveChangesAsync();
 
         var service = new DashboardService(db, TestUserManager.Create(Array.Empty<AppUser>()), new FakeMediaStorageService());
@@ -1605,11 +1605,11 @@ public class DashboardServiceTests
         // Act
         var ersteKlasse = await service.SaveSchoolKlasseAsync(schule.Id, new CourseFormModel
         {
-            Code = "EXAM", Title = "Préparation examen", ReferenceName = "Préparation examen", NeueKlassenStufe = "Préparation examen", CEFRGroup = "B", Description = "x"
+            Code = "EXAM", Title = "Préparation examen", ReferenceName = "Préparation examen", NeueKlassenStufe = "Préparation examen", Description = "x"
         });
         var zweiteKlasse = await service.SaveSchoolKlasseAsync(schule.Id, new CourseFormModel
         {
-            Code = "EXAM2", Title = "Préparation examen", ReferenceName = "Préparation examen", NeueKlassenStufe = "Préparation examen", CEFRGroup = "B", Description = "x"
+            Code = "EXAM2", Title = "Préparation examen", ReferenceName = "Préparation examen", NeueKlassenStufe = "Préparation examen", Description = "x"
         });
 
         // Assert
@@ -1634,7 +1634,7 @@ public class DashboardServiceTests
 
         var result = await service.SaveSchoolKlasseForSchoolLeaderAsync(director.Id, fremdeSchule.Id, new CourseFormModel
         {
-            Code = "6A", Title = "Sixième A", Description = "Classe", CEFRGroup = "Hors CECR", NeueKlassenStufe = "6e"
+            Code = "6A", Title = "Sixième A", Description = "Classe", NeueKlassenStufe = "6e"
         });
 
         Assert.False(result.Succeeded);
@@ -1646,10 +1646,10 @@ public class DashboardServiceTests
     {
         // Arrange
         using var db = TestDbContext.CreateInMemory();
-        var schule = new School { Id = Guid.NewGuid(), Name = "Sprachschule", IsActive = true };
+        var schule = new School { Id = Guid.NewGuid(), Name = "École", IsActive = true };
         db.Schools.Add(schule);
         db.Klassen.AddRange(
-            new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "Standard", IstSystemNiveau = true, SchoolId = null },
+            new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "Standard", IstSystemNiveau = true, SchoolId = null },
             new Klasse { Id = Guid.NewGuid(), Code = "EXAM", Title = "Préparation", IstSystemNiveau = false, SchoolId = schule.Id });
         await db.SaveChangesAsync();
 
@@ -1678,11 +1678,11 @@ public class DashboardServiceTests
         // Act
         var klasse1 = await service.SaveSchoolKlasseAsync(schule.Id, new CourseFormModel
         {
-            Title = "CEP1A", CEFRGroup = "-", NeueKlassenStufe = "CEP1", Description = "x"
+            Title = "CEP1A", NeueKlassenStufe = "CEP1", Description = "x"
         });
         var klasse2 = await service.SaveSchoolKlasseAsync(schule.Id, new CourseFormModel
         {
-            Title = "CEP1B", CEFRGroup = "-", NeueKlassenStufe = "CEP1", Description = "x"
+            Title = "CEP1B", NeueKlassenStufe = "CEP1", Description = "x"
         });
 
         // Assert
@@ -1702,7 +1702,7 @@ public class DashboardServiceTests
         using var db = TestDbContext.CreateInMemory();
         var schule = new School { Id = Guid.NewGuid(), Name = "Schule", IsActive = true };
         db.Schools.Add(schule);
-        var systemNiveau = new Klasse { Id = Guid.NewGuid(), Code = "B1.1", IstSystemNiveau = true, SchoolId = null };
+        var systemNiveau = new Klasse { Id = Guid.NewGuid(), Code = "6eA", IstSystemNiveau = true, SchoolId = null };
         db.Klassen.Add(systemNiveau);
         await db.SaveChangesAsync();
 
@@ -1803,7 +1803,7 @@ public class DashboardServiceTests
         using var db = TestDbContext.CreateInMemory();
         var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter", Email = "leiter@test.local" };
         var school = new School { Id = Guid.NewGuid(), Name = "École" };
-        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "A1.1", Title = "A1", SchoolId = school.Id, IstSystemNiveau = false };
+        var klasse = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1", SchoolId = school.Id, IstSystemNiveau = false };
         db.Users.Add(director);
         db.Schools.Add(school);
         db.Klassen.Add(klasse);

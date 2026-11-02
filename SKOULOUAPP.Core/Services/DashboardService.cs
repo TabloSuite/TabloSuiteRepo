@@ -1,4 +1,4 @@
-using SkoulouApp.Core.DataModels.Courses;
+﻿using SkoulouApp.Core.DataModels.Courses;
 using SkoulouApp.Core.DataModels.Exams;
 using SkoulouApp.Core.DataModels.Exercises;
 using SkoulouApp.Core.DataModels.Finanzen;
@@ -23,7 +23,8 @@ public class DashboardService(
     ISkoulouAppDbContext dbContext,
     UserManager<AppUser> userManager,
     IMediaStorageService mediaStorageService,
-    IHostEnvironment? hostEnvironment = null)
+    IHostEnvironment? hostEnvironment = null,
+    IBenutzerArbeitsvorgang? benutzerArbeitsvorgang = null)
 {
     public async Task<IReadOnlyList<Guid>> GetPlatformSchoolIdsAsync(Guid actorId, CancellationToken cancellationToken = default)
     {
@@ -148,7 +149,7 @@ public class DashboardService(
 
     // Zentrale Regel fuer die erlaubten Niveaus eines Schuelers. Optional, damit
     // bestehende Konstruktoraufrufe (u. a. Tests) unveraendert funktionieren.
-    private readonly NiveauGruppenService _niveauGruppen = new(dbContext);
+    private readonly KlassenZuordnungsService _niveauGruppen = new(dbContext);
     private async Task<decimal> GetGlobalSubscriptionPriceAsync(CancellationToken cancellationToken)
         => await dbContext.CommissionSettings
             .AsNoTracking()
@@ -447,7 +448,6 @@ public class DashboardService(
             .Where(exam => exam.IsPublishedToStudents && (!restrictToKlasseId.HasValue || exam.KlasseId == restrictToKlasseId.Value))
             .Select(exam => exam.Id)
             .ToHashSetAsync(cancellationToken);
-
         var examAttempts = await dbContext.ExamAttempts
             .AsNoTracking()
             .Where(a => a.IsCompleted
@@ -617,7 +617,6 @@ public class DashboardService(
                 IstSystemNiveau = course.IstSystemNiveau,
                 Code = course.Code,
                 Title = course.Title,
-                CEFRGroup = course.CEFRGroup,
                 Description = course.Description,
                 RecommendedLessonCount = course.RecommendedLessonCount,
                 ExamCount = course.Exams.Count,
@@ -646,14 +645,14 @@ public class DashboardService(
             .AsNoTracking()
             .Include(x => x.School)
             .Include(x => x.Klasse)
-            .OrderBy(x => x.School.Name)
+            .OrderBy(x => x.School != null ? x.School.Name : string.Empty)
             .ThenBy(x => x.DisplayName)
             .ThenBy(x => x.OriginalFileName)
             .Select(asset => new MediaLibraryItem
             {
                 MediaId = asset.Id,
                 SchoolId = asset.SchoolId,
-                SchoolName = asset.School.Name,
+                SchoolName = asset.School != null ? asset.School.Name : string.Empty,
                 MediaType = asset.ContentType,
                 RelativePath = asset.BlobName,
                 DisplayName = asset.DisplayName,
@@ -728,11 +727,7 @@ public class DashboardService(
             })
             .ToListAsync(cancellationToken);
 
-        var unlockedKlasseIds = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == userId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToHashSetAsync(cancellationToken);
+        var unlockedKlasseIds = await new SchuelerZugangService(dbContext).KlassenAsync(userId, mitHistorie: true, cancellationToken);
         var klasseIdsByCode = await dbContext.Klassen
             .AsNoTracking()
             .Where(klasse => klasse.SchoolId == profile.SchoolId)
@@ -788,7 +783,7 @@ public class DashboardService(
         var combinedScores = await GetCombinedProgressScoresAsync([userId], cancellationToken, profile.CurrentKlasseId);
         combinedScores.TryGetValue(userId, out var combined);
         var hasActiveSubscription = unlockedKlasseIds.Count > 0;
-        var isCurrentClassUnlocked = currentClassEnrollment?.IsUnlocked == true;
+        var isCurrentClassUnlocked = profile.CurrentKlasseId is Guid aktuelleKlasse && unlockedKlasseIds.Contains(aktuelleKlasse);
         var isCurrentClassPaid = currentClassEnrollment?.IsPaid == true;
         var hasPaidSkoulouAppAbo = await dbContext.LevelEnrollments
             .AsNoTracking()
@@ -991,40 +986,6 @@ public class DashboardService(
         }).OrderByDescending(item => item.IsCurrent).ThenByDescending(item => item.StartDatum).ToList();
     }
 
-    private async Task<HashSet<Guid>> GetUnlockedStandardKlasseIdsAsync(Guid studentId, CancellationToken cancellationToken)
-    {
-        var explicitlyUnlockedIds = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.KlasseId)
-            .ToListAsync(cancellationToken);
-
-        var subscribedCefrGroups = await dbContext.LevelEnrollments
-            .AsNoTracking()
-            .Where(enrollment => enrollment.StudentId == studentId && enrollment.IstAktuell && enrollment.IsUnlocked)
-            .Select(enrollment => enrollment.Klasse.CEFRGroup)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        if (subscribedCefrGroups.Count == 0)
-        {
-            return explicitlyUnlockedIds.ToHashSet();
-        }
-
-        var groupedIds = await dbContext.Klassen
-            .AsNoTracking()
-            .Where(klasse => klasse.SchoolId == null
-                && klasse.IstSystemNiveau
-                && subscribedCefrGroups.Contains(klasse.CEFRGroup))
-            .Select(klasse => klasse.Id)
-            .ToListAsync(cancellationToken);
-
-        var result = explicitlyUnlockedIds.ToHashSet();
-        result.UnionWith(groupedIds);
-        return result;
-    }
-
     /// <summary>
     /// Ermittelt die aktuelle Tages-Streak und die gesammelten XP-Punkte eines Schülers.
     /// XP: 10 pro richtig beantworteter Übung, 20 pro abgeschlossener Lektion, je 1 Punkt pro
@@ -1113,15 +1074,8 @@ public class DashboardService(
                 IsActive = school.IsActive,
                 TeacherCount = school.UserSchools.Count(link => link.CanManageStudents && teacherIds.Contains(link.AppUserId)),
                 StudentCount = school.Students.Count,
-                OutstandingDebt = school.Students
-                    .SelectMany(student => student.AppUser.LevelEnrollments)
-                    .Where(enrollment => enrollment.IsPaid
-                        && enrollment.AbgerechnetInPeriodeId == null
-                        && enrollment.PriceAtEnrollment > 0m
-                        && (enrollment.SchoolLeaderCommissionAtEnrollment > 0m
-                            || enrollment.TeacherCommissionAtEnrollment > 0m
-                            || enrollment.ProductOwnerCommissionAtEnrollment > 0m))
-                    .Sum(enrollment => enrollment.PriceAtEnrollment),
+                OutstandingDebt = dbContext.Abrechnungsperioden.Where(p => p.SchulID == school.Id && p.Status != AbrechnungStatus.Bestaetigt)
+                    .Sum(p => (decimal?)p.Umsatz) ?? 0m,
                 EffectiveSubscriptionPrice = school.SubscriptionPriceOverride ?? globalSubscriptionPrice,
                 SubscriptionPriceOverride = school.SubscriptionPriceOverride,
                 DirectorAssignments = school.UserSchools
@@ -1196,8 +1150,13 @@ public class DashboardService(
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<(bool Succeeded, string Message)> SaveSchoolAsync(SchoolFormModel model, IReadOnlyCollection<Guid> teacherIds, CancellationToken cancellationToken = default)
+    public async Task<(bool Succeeded, string Message)> SaveSchoolAsync(SchoolFormModel model, IReadOnlyCollection<Guid> teacherIds, Guid benutzerID, CancellationToken cancellationToken = default)
     {
+        if (!await dbContext.Users.AnyAsync(u => u.Id == benutzerID && !u.IsBlocked
+            && dbContext.UserRoles.Any(ur => ur.UserId == u.Id && dbContext.Roles.Any(r => r.Id == ur.RoleId && r.Name == Rollen.SuperAdmin)), cancellationToken))
+            return (false, "Seul l'administrateur peut modifier l'école et son tarif.");
+        if (model.SubscriptionPriceOverride is decimal preis && (preis <= 0m || decimal.Round(preis, 2) != preis))
+            return (false, "Le tarif doit être positif et comporter au maximum deux décimales.");
         var normalizedName = model.Name.Trim();
         var duplicateExists = await dbContext.Schools.AnyAsync(
             x => x.Name == normalizedName && (!model.Id.HasValue || x.Id != model.Id.Value),
@@ -1231,9 +1190,8 @@ public class DashboardService(
         school.DescriptionHtml = HtmlSanitizer.Sanitize(model.DescriptionHtml);
         school.IsActive = model.IsActive;
         school.SubscriptionPriceOverride = model.SubscriptionPriceOverride;
-        school.SchoolLeaderCommissionPercentOverride = model.SchoolLeaderCommissionPercentOverride;
-        school.TeacherCommissionPercentOverride = model.TeacherCommissionPercentOverride;
-        school.ProductOwnerCommissionPercentOverride = model.ProductOwnerCommissionPercentOverride;
+        // Historische Kommissionswerte sind keine bearbeitbaren Schulpreise.
+        // Neue Zykluspositionen haben unabhängig davon ausschließlich Plattformkosten.
 
         var commissionOverrideSum = (school.SchoolLeaderCommissionPercentOverride ?? 0m)
             + (school.TeacherCommissionPercentOverride ?? 0m)
@@ -1427,6 +1385,9 @@ public class DashboardService(
 
     public async Task<(bool Succeeded, string Message)> SaveUserAsync(UserFormModel model, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? managedSchoolIds = null)
     {
+        if (benutzerArbeitsvorgang is not null)
+            return await benutzerArbeitsvorgang.AusfuehrenAsync((dashboard, _) => dashboard.SaveUserAsync(model, cancellationToken, managedSchoolIds),
+                result => result.Succeeded, cancellationToken);
         model.SchoolIds = model.SchoolIds.Where(schoolId => schoolId != Guid.Empty).Distinct().ToList();
         if (model.RoleName == Rollen.Schueler && model.SchoolIds.Count > 1)
         {
@@ -1435,11 +1396,19 @@ public class DashboardService(
 
         if (model.RoleName == Rollen.Schueler && model.CurrentKlasseId is Guid klasseId)
         {
-            var belongsToStudentSchool = await dbContext.Klassen.AnyAsync(klasse => klasse.Id == klasseId && klasse.SchoolId == model.SchoolIds.FirstOrDefault(), cancellationToken);
+            var belongsToStudentSchool = await dbContext.Klassen.AnyAsync(klasse => klasse.Id == klasseId && !klasse.IstSystemNiveau && klasse.SchoolId == model.SchoolIds.FirstOrDefault(), cancellationToken);
             if (!belongsToStudentSchool)
             {
                 return (false, "Veuillez choisir une classe de l'école sélectionnée.");
             }
+        }
+
+        if (model.RoleName == Rollen.Schueler && !model.IsBlocked && model.UserId is Guid existingStudentID)
+        {
+            var pendingSelfRegistration = await dbContext.Users.AsNoTracking()
+                .AnyAsync(x => x.Id == existingStudentID && x.IsSelfRegistered && x.IsBlocked, cancellationToken);
+            if (pendingSelfRegistration && (model.CurrentKlasseId is null || model.SchoolIds.Count != 1))
+                return (false, "Attribuez une classe de votre école avant de valider cette inscription.");
         }
 
         var normalizedEmail = model.Email.Trim();
@@ -1470,7 +1439,9 @@ public class DashboardService(
                 EmailConfirmed = true
             };
 
-            var password = string.IsNullOrWhiteSpace(model.Password) ? "MotDePasse1" : model.Password;
+            var password = string.IsNullOrWhiteSpace(model.Password) ? ErstzugangService.PasswortErzeugen() : model.Password;
+            model.Password = password;
+            model.PasswordConfirmation = password;
             var createResult = await userManager.CreateAsync(user, password);
             if (!createResult.Succeeded)
             {
@@ -1497,10 +1468,12 @@ public class DashboardService(
         var currentRoles = await userManager.GetRolesAsync(user);
         if (currentRoles.Count > 0)
         {
-            await userManager.RemoveFromRolesAsync(user, currentRoles);
+            var removal = await userManager.RemoveFromRolesAsync(user, currentRoles);
+            if (!removal.Succeeded) return (false, string.Join(" ", removal.Errors.Select(x => x.Description)));
         }
 
-        await userManager.AddToRoleAsync(user, model.RoleName);
+        var roleResult = await userManager.AddToRoleAsync(user, model.RoleName);
+        if (!roleResult.Succeeded) return (false, string.Join(" ", roleResult.Errors.Select(x => x.Description)));
 
         await SyncUserSchoolsAsync(user.Id, model.SchoolIds, model.RoleName is Rollen.Lehrer or Rollen.SchulLeiter or Rollen.Koordinator, cancellationToken, managedSchoolIds);
         await EnsureStudentProfileStateAsync(user, model.RoleName, model.SchoolIds, model.CurrentKlasseId, model.ElternTelefonNummer, model.ElternEmail, cancellationToken);
@@ -1643,6 +1616,12 @@ public class DashboardService(
                 : null;
 
             // Historische Unterrichtsdaten explizit in FK-Reihenfolge entfernen.
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinUebergabe>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinUebergabe>()
+                .Where(x => schoolIds.Contains(x.Ausgabe.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinAbschluss>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinAbschluss>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinBerichtigung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinBerichtigung>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
             dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.NotenAenderung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.NotenAenderung>()
                 .Where(x => schoolIds.Contains(x.FachNote.JahresZuordnung.SchulID)).ToListAsync(cancellationToken));
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -1784,7 +1763,6 @@ public class DashboardService(
                 CourseId = x.Id,
                 Code = x.Code,
                 Title = x.Title,
-                CEFRGroup = x.CEFRGroup,
                 Description = x.Description,
                 RecommendedLessonCount = x.RecommendedLessonCount,
                 Price = x.Price,
@@ -1822,7 +1800,7 @@ public class DashboardService(
                 return (false, "Le cours est introuvable.", null);
             }
 
-            // Feste Sprachschul-Niveaus (A1–C) dürfen nicht bearbeitet werden.
+            // Geschützte Altdaten dürfen nicht als reguläre Schulklassen bearbeitet werden.
             if (course.IstSystemNiveau)
             {
                 return (false, "Ce niveau standard ne peut pas être modifié.", null);
@@ -1841,7 +1819,6 @@ public class DashboardService(
 
         course.Code = normalizedCode;
         course.Title = model.Title.Trim();
-        course.CEFRGroup = model.CEFRGroup.Trim();
         course.Description = model.Description.Trim();
         course.RecommendedLessonCount = model.RecommendedLessonCount;
         course.Price = model.Price;
@@ -1893,7 +1870,6 @@ public class DashboardService(
                 CourseId = x.Id,
                 Code = x.Code,
                 Title = x.Title,
-                CEFRGroup = x.CEFRGroup,
                 Description = x.Description,
                 RecommendedLessonCount = x.RecommendedLessonCount,
                 Price = x.Price,
@@ -2061,7 +2037,6 @@ public class DashboardService(
 
         klasse.Code = normalizedCode;
         klasse.Title = normalizedClassName;
-        klasse.CEFRGroup = string.IsNullOrWhiteSpace(model.CEFRGroup) ? "Classe" : model.CEFRGroup.Trim();
         klasse.KlassenStufeId = klassenStufe?.Id;
         klasse.Description = string.IsNullOrWhiteSpace(model.Description) ? string.Empty : model.Description.Trim();
         klasse.RecommendedLessonCount = model.RecommendedLessonCount;
@@ -2816,6 +2791,8 @@ public class DashboardService(
 
         if (selectedKlasse is not null)
         {
+            if (user.IsSelfRegistered && !user.IsBlocked)
+                profile.AufnahmeBestaetigtAmUtc ??= DateTime.UtcNow;
             profile.CurrentKlasseId = selectedKlasse.Id;
             profile.CurrentLevelCode = selectedKlasse.Code;
 
@@ -2827,7 +2804,8 @@ public class DashboardService(
                 .Select(durchlauf => (Guid?)durchlauf.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            var autoAssignAlsBezahlt = selectedKlasse.AutoAssignSkoulouAppAboOnCycleStart && activeCycleId.HasValue;
+            var neuerZyklus = activeCycleId.HasValue && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == activeCycleId && x.PlattformPreisProSchueler != null, cancellationToken);
+            var autoAssignAlsBezahlt = neuerZyklus || selectedKlasse.AutoAssignSkoulouAppAboOnCycleStart && activeCycleId.HasValue;
             if (!autoAssignAlsBezahlt)
             {
                 var hasEnrollment = await dbContext.LevelEnrollments.AnyAsync(
@@ -2858,12 +2836,14 @@ public class DashboardService(
 
         if (selectedKlasse is not null)
         {
+            await new ZyklusTeilnahmeService(dbContext).AktiveKlasseErfassenAsync(firstSchoolId, selectedKlasse.Id, cancellationToken);
             var hasActiveCycle = await dbContext.KursNiveauDurchlaeufe
                 .AsNoTracking()
                 .AnyAsync(durchlauf => durchlauf.SchulID == firstSchoolId
                     && durchlauf.KlasseId == selectedKlasse.Id
                     && durchlauf.EndDatum == null, cancellationToken);
-            var autoAssignAlsBezahlt = selectedKlasse.AutoAssignSkoulouAppAboOnCycleStart && hasActiveCycle;
+            var neuerZyklus = await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.SchulID == firstSchoolId && x.KlasseId == selectedKlasse.Id && x.EndDatum == null && x.PlattformPreisProSchueler != null, cancellationToken);
+            var autoAssignAlsBezahlt = !neuerZyklus && selectedKlasse.AutoAssignSkoulouAppAboOnCycleStart && hasActiveCycle;
             if (autoAssignAlsBezahlt)
             {
                 var aboService = new AboService(dbContext);
@@ -3064,6 +3044,23 @@ public class DashboardService(
         IReadOnlyCollection<Guid> studentIds,
         CancellationToken cancellationToken = default)
     {
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
+        return await strategy.ExecuteAsync(async () =>
+        {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+            await using var transaction = dbContext.Database.IsRelational() && dbContext.Database.CurrentTransaction is null
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken);
+            var result = await AssignStudentsToKlasseCoreAsync(directorId, klasseId, studentIds, cancellationToken);
+            if (result.Succeeded && transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
+
+    private async Task<(bool Succeeded, string Message)> AssignStudentsToKlasseCoreAsync(
+        Guid directorId, Guid klasseId, IReadOnlyCollection<Guid> studentIds, CancellationToken cancellationToken)
+    {
         if (studentIds.Count == 0)
         {
             return (false, "Sélectionne au moins un élève.");
@@ -3077,7 +3074,7 @@ public class DashboardService(
 
         var klasse = await dbContext.Klassen
             .FirstOrDefaultAsync(x => x.Id == klasseId && x.SchoolId != null && schoolIds.Contains(x.SchoolId.Value), cancellationToken);
-        if (klasse is null)
+        if (klasse is null || klasse.IstSystemNiveau)
         {
             return (false, "Classe introuvable ou non autorisée.");
         }
@@ -3106,7 +3103,8 @@ public class DashboardService(
             var hasEnrollment = await dbContext.LevelEnrollments.AnyAsync(
                 enrollment => enrollment.StudentId == profile.AppUserId && enrollment.KlasseId == klasse.Id && enrollment.IstAktuell,
                 cancellationToken);
-            if (!hasEnrollment)
+            var neuerZyklus = await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.SchulID == klasse.SchoolId && x.KlasseId == klasse.Id && x.EndDatum == null && x.PlattformPreisProSchueler != null, cancellationToken);
+            if (!hasEnrollment && !neuerZyklus)
             {
                 var activeCycleId = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
                     .Where(cycle => cycle.KlasseId == klasse.Id && cycle.SchulID == klasse.SchoolId && cycle.EndDatum == null)
@@ -3130,7 +3128,9 @@ public class DashboardService(
                 && durchlauf.KlasseId == klasse.Id
                 && durchlauf.EndDatum == null, cancellationToken);
 
-        if (klasse.AutoAssignSkoulouAppAboOnCycleStart && hasActiveCycle)
+        await new ZyklusTeilnahmeService(dbContext).AktiveKlasseErfassenAsync(klasse.SchoolId!.Value, klasse.Id, cancellationToken);
+        var hatNeuenZyklus = await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.SchulID == klasse.SchoolId && x.KlasseId == klasse.Id && x.EndDatum == null && x.PlattformPreisProSchueler != null, cancellationToken);
+        if (!hatNeuenZyklus && klasse.AutoAssignSkoulouAppAboOnCycleStart && hasActiveCycle)
         {
             var aboService = new AboService(dbContext);
             foreach (var profile in profiles)
@@ -3174,6 +3174,7 @@ public class DashboardService(
                 && item.KlasseId == klasseId
                 && item.IstAktuell, cancellationToken);
         if (enrollment is not null
+            && !await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == enrollment.DurchlaufId && x.PlattformPreisProSchueler != null, cancellationToken)
             && (enrollment.IsUnlocked || enrollment.IsPaid || enrollment.AbgerechnetInPeriodeId.HasValue))
         {
             return (false, "Cette affectation possède déjà un abonnement actif ou payé. Annule d'abord l'abonnement via le workflow autorisé.");
@@ -3566,28 +3567,51 @@ public class DashboardService(
 
     public async Task<bool> SetStudentBlockedStateAsync(Guid studentId, bool isBlocked, bool allowBlockingPaidStudent = false, CancellationToken cancellationToken = default)
     {
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var versuch = 0;
+        return await strategy.ExecuteAsync(async () =>
+        {
+            ZyklusTransaktionsSchutz.WiederholungVorbereiten(dbContext, versuch++);
+            await using var transaction = dbContext.Database.IsRelational() && dbContext.Database.CurrentTransaction is null
+                ? await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken) : null;
+            await ZyklusTransaktionsSchutz.SperrenAsync(dbContext, cancellationToken);
+            var result = await SetStudentBlockedStateCoreAsync(studentId, isBlocked, cancellationToken);
+            if (result && transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
+
+    private async Task<bool> SetStudentBlockedStateCoreAsync(Guid studentId, bool isBlocked, CancellationToken cancellationToken)
+    {
         var student = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == studentId, cancellationToken);
         if (student is null)
         {
             return false;
         }
 
-        // Ein Schüler mit mindestens einem bezahlten Niveau darf nur vom SuperAdmin
-        // (allowBlockingPaidStudent = true) blockiert werden. Der Schulleiter kann dies nicht.
-        if (isBlocked && !allowBlockingPaidStudent)
+        if (!isBlocked && student.IsSelfRegistered)
         {
-            var hatBezahltesNiveau = await dbContext.LevelEnrollments
-                .AsNoTracking()
-                .AnyAsync(e => e.StudentId == studentId && e.IsPaid, cancellationToken);
-            if (hatBezahltesNiveau)
+            var profiles = await dbContext.StudentProfiles.Where(x => x.AppUserId == studentId && !x.IsArchived).ToListAsync(cancellationToken);
+            if (profiles.Count == 0) return false;
+            foreach (var profile in profiles)
+                if (profile.CurrentKlasseId is not { } klasseID || !await dbContext.Klassen.AnyAsync(x => x.Id == klasseID && x.SchoolId == profile.SchoolId && !x.IstSystemNiveau, cancellationToken)) return false;
+            if (profiles.Count > 0)
             {
-                return false;
+                foreach (var profile in profiles)
+                {
+                    profile.AufnahmeBestaetigtAmUtc ??= DateTime.UtcNow;
+                }
             }
         }
-
         student.IsBlocked = isBlocked;
         student.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (!isBlocked)
+        {
+            var profiles = await dbContext.StudentProfiles.Where(x => x.AppUserId == studentId && !x.IsArchived && x.CurrentKlasseId != null).ToListAsync(cancellationToken);
+            foreach (var profile in profiles)
+                await new ZyklusTeilnahmeService(dbContext).AktiveKlasseErfassenAsync(profile.SchoolId, profile.CurrentKlasseId!.Value, cancellationToken);
+        }
         return true;
     }
 
@@ -3596,9 +3620,10 @@ public class DashboardService(
         var director = await userManager.FindByIdAsync(directorId.ToString());
         if (director is null || !await userManager.IsInRoleAsync(director, Rollen.SchulLeiter)
             && !await userManager.IsInRoleAsync(director, Rollen.Koordinator)) return [];
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         return await dbContext.UserSchools
             .AsNoTracking()
-            .Where(link => link.AppUserId == directorId && link.CanManageStudents)
+            .Where(link => link.AppUserId == directorId && link.CanManageStudents && freieSchulen.Contains(link.SchoolId))
             .Select(link => link.SchoolId)
             .ToListAsync(cancellationToken);
     }
@@ -3608,10 +3633,13 @@ public class DashboardService(
     /// Eine leere Liste bedeutet, dass der Lehrer keine Schüler sehen darf.
     /// </summary>
     private async Task<List<LehrerNiveauZuordnung>> GetAktiveLehrerZuordnungenAsync(Guid teacherId, CancellationToken cancellationToken)
-        => await dbContext.LehrerNiveauZuordnungen
+    {
+        var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
+        return await dbContext.LehrerNiveauZuordnungen
             .AsNoTracking()
-            .Where(z => z.LehrerID == teacherId)
+            .Where(z => z.LehrerID == teacherId && freieSchulen.Contains(z.SchulID))
             .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<SchoolUserItem>> GetSchoolUsersAsync(Guid directorId, CancellationToken cancellationToken = default)
     {
@@ -3760,6 +3788,9 @@ public class DashboardService(
 
     public async Task<(bool Succeeded, string Message)> SaveSchoolUserAsync(Guid directorId, UserFormModel model, CancellationToken cancellationToken = default)
     {
+        if (benutzerArbeitsvorgang is not null)
+            return await benutzerArbeitsvorgang.AusfuehrenAsync((dashboard, _) => dashboard.SaveSchoolUserAsync(directorId, model, cancellationToken),
+                result => result.Succeeded, cancellationToken);
         var allowedRoles = await GetManageableSchoolUserRolesAsync(directorId, cancellationToken);
         if (allowedRoles.Count == 0)
         {
@@ -4202,6 +4233,9 @@ public class DashboardService(
             .Where(durchlauf => durchlauf.SchulID == profile.SchoolId && durchlauf.EndDatum == null)
             .Select(durchlauf => durchlauf.KlasseId)
             .ToHashSetAsync(cancellationToken);
+        var automatischeKlassen = await dbContext.KursNiveauDurchlaeufe.AsNoTracking()
+            .Where(x => x.SchulID == profile.SchoolId && x.PlattformPreisProSchueler != null)
+            .Select(x => x.KlasseId).ToHashSetAsync(cancellationToken);
         var globalSubscriptionPrice = await GetGlobalSubscriptionPriceAsync(cancellationToken);
         var subscriptionPrice = profile.SubscriptionPriceOverride ?? globalSubscriptionPrice;
 
@@ -4245,6 +4279,7 @@ public class DashboardService(
                     UnlockedAtUtc = enrollment?.UnlockedAtUtc,
                     PaidAtUtc = enrollment?.PaidAtUtc,
                     HasActiveClassCycle = hasActiveClassCycle,
+                    AutomatischeZyklusabrechnung = automatischeKlassen.Contains(course.Id),
                     IsClassCycleClosed = isClassCycleClosed,
                     IsCurrentKlasse = course.Id == profile.CurrentKlasseId
                         || (profile.CurrentKlasseId is null
@@ -4256,6 +4291,8 @@ public class DashboardService(
 
     public async Task SetLevelUnlockedAsync(Guid studentId, Guid klasseId, bool isUnlocked, CancellationToken cancellationToken = default)
     {
+        if (await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.KlasseId == klasseId && x.PlattformPreisProSchueler != null, cancellationToken))
+            throw new InvalidOperationException("L'accès aux supports est automatique et ne dépend pas d'un abonnement individuel.");
         var enrollment = await dbContext.LevelEnrollments
             .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 
@@ -4270,7 +4307,7 @@ public class DashboardService(
             // Neue Freischaltungen nur innerhalb der Niveaugruppe des Schuelers zulassen.
             if (isUnlocked && !await _niveauGruppen.IstKlasseErlaubtAsync(studentId, klasseId, cancellationToken))
             {
-                throw new InvalidOperationException(NiveauGruppenService.NichtErlaubtMeldung);
+                throw new InvalidOperationException(KlassenZuordnungsService.NichtErlaubtMeldung);
             }
 
             enrollment = new LevelEnrollment
@@ -4290,6 +4327,8 @@ public class DashboardService(
 
     public async Task SetLevelPaidAsync(Guid studentId, Guid klasseId, bool isPaid, CancellationToken cancellationToken = default)
     {
+        if (await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.KlasseId == klasseId && x.PlattformPreisProSchueler != null, cancellationToken))
+            throw new InvalidOperationException("La facturation est gérée automatiquement par cycle. Aucun paiement individuel SKOULOUAPP ne doit être enregistré ici.");
         var enrollment = await dbContext.LevelEnrollments
             .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 

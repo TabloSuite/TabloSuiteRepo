@@ -9,12 +9,15 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
+using Microsoft.EntityFrameworkCore;
+using SkoulouApp.WebApp.Data;
 
 namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Finanzen
 {
     [Inject] private FinanzService FinanzService { get; set; } = default!;
+    [Inject] private IDbContextFactory<ApplicationDbContext> DbFactory { get; set; } = default!;
     [Inject] private KontoBenachrichtigungService KontoBenachrichtigungService { get; set; } = default!;
     [Inject] private AbrechnungService AbrechnungService { get; set; } = default!;
     [Inject] private DatabaseActionGuard ActionGuard { get; set; } = default!;
@@ -80,6 +83,8 @@ public partial class Finanzen
 
     // ---- Durchlauf beenden (Bestätigung) ----
     private DurchlaufUebersicht? beendenDurchlauf;
+    private List<ZyklusTeilnehmerZeile> beendenZyklusTeilnehmer = [];
+    private bool beendenNeuerZyklus;
     private bool abschlussNotenOpen;
     private Guid? abschlussNotenDurchlaufId;
     private void OpenAbschlussNoten(Guid durchlaufId)
@@ -951,6 +956,11 @@ public partial class Finanzen
         beendenDurchlauf = d;
         beendenDatum = DateTime.Today;
         beendenOffeneSchuld = d.SummeOffen;
+        var zyklus = await FinanzService.GetAktivenDurchlaufAsync(aktiveSchulID!.Value, d.KlasseId, ComponentToken);
+        beendenNeuerZyklus = zyklus?.PlattformPreisProSchueler != null;
+        await using var db = await DbFactory.CreateDbContextAsync(ComponentToken);
+        beendenZyklusTeilnehmer = beendenNeuerZyklus
+            ? await new ZyklusTeilnahmeService(db).ListeAsync(currentUserId, d.DurchlaufID, ComponentToken) : [];
         (beendenTeilnehmerGesamt, beendenOhneNote) = await FinanzService.GetAbschlussNotenStatusAsync(d.DurchlaufID, ComponentToken);
         await LadeOffeneSkoulouAppAbosFuerBeendenAsync();
     }
@@ -981,6 +991,15 @@ public partial class Finanzen
         {
             beendenOffeneSkoulouAppAbos = 0;
             beendenOffenerSkoulouAppUmsatz = 0m;
+            return;
+        }
+
+        if (beendenNeuerZyklus)
+        {
+            await using var db = await DbFactory.CreateDbContextAsync(ComponentToken);
+            beendenZyklusTeilnehmer = await new ZyklusTeilnahmeService(db).ListeAsync(currentUserId, beendenDurchlauf.DurchlaufID, ComponentToken);
+            beendenOffeneSkoulouAppAbos = beendenZyklusTeilnehmer.Count(x => x.StorniertAmUtc == null);
+            beendenOffenerSkoulouAppUmsatz = beendenZyklusTeilnehmer.Where(x => x.StorniertAmUtc == null).Sum(x => x.Preis);
             return;
         }
 

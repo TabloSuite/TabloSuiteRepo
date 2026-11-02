@@ -66,14 +66,9 @@ public partial class Student
                 return "Cycle clôturé";
             }
 
-            if (!dashboard.IsCurrentClassPaid)
-            {
-                return "Cycle démarré · abonnement non payé";
-            }
-
             return dashboard.IsCurrentClassUnlocked
-                ? "Cycle démarré · abonnement actif"
-                : "Classe verrouillée";
+                ? "Cycle en cours · accès actif"
+                : "Accès indisponible";
         }
     }
 
@@ -93,22 +88,17 @@ public partial class Student
 
             if (!dashboard.HasCurrentClassCycle)
             {
-                return "Le cycle de ta classe n'a pas encore commencé. Les contenus seront disponibles après démarrage.";
+                return "Le cycle n'a pas encore commencé. Les contenus publiés de ta classe restent accessibles.";
             }
 
             if (dashboard.IsCurrentClassCycleClosed)
             {
-                return "Le cycle de ta classe est clôturé. Les nouvelles leçons dépendront de la prochaine affectation.";
-            }
-
-            if (!dashboard.IsCurrentClassPaid)
-            {
-                return "Le cycle de ta classe a démarré, mais ton abonnement n'est pas encore payé. Demande la validation auprès de la direction.";
+                return "Le cycle est clôturé. Tu peux toujours consulter les contenus publiés de ta classe.";
             }
 
             if (!dashboard.IsCurrentClassUnlocked)
             {
-                return "Demande à la direction d'activer ton abonnement de classe pour accéder aux contenus de tes enseignants.";
+                return "Ton accès est indisponible. Contacte la direction de ton école.";
             }
 
             return "Ton accès à la classe est actif. Tu peux continuer tes leçons et exercices.";
@@ -118,9 +108,9 @@ public partial class Student
     private string ClassCycleHintAccentClass
         => dashboard is null
             ? "bg-white/10 text-white/90 ring-white/20"
-            : (!dashboard.HasCurrentKlasseAssignment || dashboard.IsCurrentClassCycleClosed)
+            : !dashboard.HasCurrentKlasseAssignment
                 ? "bg-rose-500/20 text-white ring-rose-200/40"
-                : (!dashboard.HasCurrentClassCycle || !dashboard.IsCurrentClassPaid || !dashboard.IsCurrentClassUnlocked)
+                : !dashboard.IsCurrentClassUnlocked
                     ? "bg-amber-500/20 text-white ring-amber-200/40"
                     : "bg-emerald-500/20 text-white ring-emerald-200/40";
 

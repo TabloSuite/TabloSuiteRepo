@@ -13,6 +13,8 @@ public sealed class SchulLogoService(IDbContextFactory<ApplicationDbContext> fac
     public async Task<BlobMediaAssetItem> HochladenAsync(Guid user, Guid schule, Stream inhalt, CancellationToken token = default)
     {
         await using var db = await factory.CreateDbContextAsync(token);
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schule, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         var rollen = await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id
             where ur.UserId == user select r.Name!).ToListAsync(token);
         if ((!rollen.Contains(Rollen.SchulLeiter) && !rollen.Contains(Rollen.Koordinator))

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SkoulouApp.Core.DataModels.Courses;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.DataModels.Schools;
@@ -11,6 +12,213 @@ namespace SkoulouApp.Tests.Services;
 
 public class BewertungsServiceTests
 {
+    [Fact]
+    public async Task StammdatenBerichtigung_ErsetztNurEigeneDokumenteUndBewahrtOriginale()
+    {
+        var d = await VorbereitenAsync(); var noten = new BewertungsService(d.Factory); var service = new BulletinService(d.Factory, noten);
+        var zweiter = Guid.NewGuid(); var zweiteZuordnung = Guid.NewGuid(); Guid periode, klasse;
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            var ersterID = (await db.Set<SchuelerJahresZuordnung>().SingleAsync()).SchuelerID;
+            (await db.Users.SingleAsync(x => x.Id == ersterID)).FullName = "Nom initial";
+            periode = (await db.Set<BewertungsPeriode>().SingleAsync()).Id; klasse = (await db.Klassen.SingleAsync()).Id;
+            db.Users.Add(new AppUser { Id = zweiter, FullName = "Autre élève" });
+            db.Add(new SchuelerJahresZuordnung { Id = zweiteZuordnung, SchulID = d.Schule, SchuljahrID = d.Jahr, KlasseID = klasse, SchuelerID = zweiter });
+            await db.SaveChangesAsync();
+        }
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 10, null);
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, zweiteZuordnung, 15, null);
+        await service.VorlageSpeichernAsync(d.Direktor, new() { SchulID = d.Schule, KlasseID = klasse, Art = BewertungsArt.Trimester, Name = "Officiel" });
+        var p2 = await noten.PeriodeAnlegenAsync(d.Direktor, d.Schule, d.Jahr, "2e trimestre", BewertungsArt.Trimester, 2, 1);
+        var c2 = await noten.BestandteilAnlegenAsync(d.Direktor, p2, "Composition", 1, 20);
+        await noten.NoteSpeichernAsync(d.Direktor, c2, d.FachBewertung, d.JahresZuordnung, 12, null);
+        await noten.NoteSpeichernAsync(d.Direktor, c2, d.FachBewertung, zweiteZuordnung, 14, null);
+        foreach (var p in new[] { periode, p2 })
+        {
+            var v = await service.KlassePruefenAsync(d.Direktor, d.Schule, p, klasse);
+            await service.KlasseEndgueltigVeroeffentlichenAsync(d.Direktor, d.Schule, p, klasse, v.Hash, true);
+        }
+        Dictionary<Guid, string> originale;
+        await using (var db = d.Factory.CreateDbContext()) originale = await db.Set<BulletinAusgabe>().ToDictionaryAsync(x => x.Id, x => x.SnapshotJson);
+        var id = await service.BerichtigungStartenAsync(d.Direktor, d.Schule, periode, klasse, "Erreur d'identité");
+        var eingabe = await service.BerichtigungsStammdatenLadenAsync(d.Direktor, id, d.JahresZuordnung);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.BerichtigungsStammdatenAsync(d.Lehrer, id, eingabe));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungsStammdatenAsync(d.Direktor, id, eingabe with { JahresZuordnungID = Guid.NewGuid() }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungsStammdatenAsync(d.Direktor, id, eingabe with { Name = " " }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungsStammdatenAsync(d.Direktor, id, eingabe with { Geburtsdatum = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) }));
+        await service.BerichtigungsStammdatenAsync(d.Koordinator, id, eingabe);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungPruefenAsync(d.Direktor, id)); // Keine wirkliche Änderung.
+        eingabe = eingabe with { Name = "Nom corrigé", Matrikelnummer = "EL-CORRIGE", Geburtsort = "Lomé", Geburtsdatum = new DateOnly(2012, 2, 29) };
+        await service.BerichtigungsStammdatenAsync(d.Koordinator, id, eingabe);
+        Assert.Equal(eingabe, await service.BerichtigungsStammdatenLadenAsync(d.Direktor, id, d.JahresZuordnung));
+        await using (var db = d.Factory.CreateDbContext())
+            Assert.All(await db.Set<BulletinAusgabe>().ToListAsync(), x => Assert.Equal(originale[x.Id], x.SnapshotJson));
+        var pruefung = await service.BerichtigungPruefenAsync(d.Direktor, id);
+        Assert.Equal(2, pruefung.Auswirkungen.Count);
+        Assert.All(pruefung.Auswirkungen, x => { Assert.Equal("Nom corrigé", x.Vorschau.Schueler); Assert.Equal(x.Alt, x.Neu); Assert.Equal(x.AlterRang, x.NeuerRang); });
+        await service.BerichtigungsStammdatenAsync(d.Direktor, id, eingabe with { Geburtsort = "Kara" });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungFreigebenAsync(d.Direktor, id, pruefung.Hash, true));
+        pruefung = await service.BerichtigungPruefenAsync(d.Direktor, id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungFreigebenAsync(d.Direktor, id, pruefung.Hash, false));
+        Assert.Equal(2, await service.BerichtigungFreigebenAsync(d.Koordinator, id, pruefung.Hash, true));
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            Assert.Equal(6, await db.Set<BulletinAusgabe>().CountAsync());
+            Assert.All(await db.Set<BulletinAusgabe>().Where(x => x.JahresZuordnungID == zweiteZuordnung).ToListAsync(), x =>
+            { Assert.True(x.IstVeroeffentlicht); Assert.Null(x.ErsetztDurchID); Assert.Equal(originale[x.Id], x.SnapshotJson); });
+            Assert.All(await db.Set<BulletinAusgabe>().Where(x => x.JahresZuordnungID == d.JahresZuordnung && !x.IstVeroeffentlicht).ToListAsync(), x => Assert.Equal(originale[x.Id], x.SnapshotJson));
+            var userID = (await db.Set<SchuelerJahresZuordnung>().SingleAsync(x => x.Id == d.JahresZuordnung)).SchuelerID;
+            Assert.NotEqual("Nom corrigé", (await db.Users.SingleAsync(x => x.Id == userID)).FullName);
+            Assert.Equal(4, await db.Set<NotenAenderung>().CountAsync()); // Nur ursprüngliche Notenerfassung.
+            foreach (var neu in await db.Set<BulletinAusgabe>().Where(x => x.JahresZuordnungID == d.JahresZuordnung && x.IstVeroeffentlicht).ToListAsync())
+            {
+                var s = await service.LesenAsync(d.Direktor, neu.Id);
+                Assert.Equal("Nom corrigé", s!.Schueler); Assert.Equal("Kara", s.Geburtsort); Assert.Equal("29/02/2012", s.Geburtsdatum);
+                Assert.Equal("EL-CORRIGE", s.Matrikelnummer); Assert.NotNull(s.ErsetztDokumentNummer);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task EndgueltigerAbschluss_BerichtigungUndQrBewahrenOriginal()
+    {
+        var d = await VorbereitenAsync(); var noten = new BewertungsService(d.Factory); var service = new BulletinService(d.Factory, noten);
+        Guid periode, klasse, noteID, schueler;
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 10, "Initial");
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            periode = (await db.Set<BewertungsPeriode>().SingleAsync()).Id;
+            var zuordnung = await db.Set<SchuelerJahresZuordnung>().SingleAsync(); klasse = zuordnung.KlasseID; schueler = zuordnung.SchuelerID;
+            noteID = (await db.Set<FachNote>().SingleAsync()).Id;
+        }
+        await service.VorlageSpeichernAsync(d.Direktor, new() { SchulID = d.Schule, KlasseID = klasse, Art = BewertungsArt.Trimester, Name = "Officiel" });
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.KlassePruefenAsync(d.Lehrer, d.Schule, periode, klasse));
+        var pruefung = await service.KlassePruefenAsync(d.Direktor, d.Schule, periode, klasse);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.KlasseEndgueltigVeroeffentlichenAsync(d.Direktor, d.Schule, periode, klasse, pruefung.Hash, false));
+        Assert.Equal(1, await service.KlasseEndgueltigVeroeffentlichenAsync(d.Direktor, d.Schule, periode, klasse, pruefung.Hash, true));
+        var originalID = Assert.Single(await service.ListeAsync(schueler, d.Schule)).Id;
+        var original = (await service.LesenAsync(d.Direktor, originalID))!;
+        Assert.NotNull(original.PruefToken);
+        var verifier = new BulletinPruefungService(d.Factory);
+        Assert.Equal("Valide", (await verifier.PruefenAsync(original.PruefToken))!.Status);
+        Assert.Null(await verifier.PruefenAsync("invalide"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ZurueckziehenAsync(d.Direktor, originalID, "Non"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 15, null));
+        var correction = await service.BerichtigungStartenAsync(d.Koordinator, d.Schule, periode, klasse, "Erreur de transcription");
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.BerichtigungsNoteAsync(d.Lehrer, correction, noteID, 15, null));
+        await service.BerichtigungsNoteAsync(d.Koordinator, correction, noteID, 15, "Corrigé");
+        await using (var db = d.Factory.CreateDbContext()) Assert.Equal(10, (await db.Set<FachNote>().SingleAsync()).Punkte);
+        var wirkung = await service.BerichtigungPruefenAsync(d.Direktor, correction);
+        Assert.Equal(15, Assert.Single(wirkung.Auswirkungen).Neu);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungFreigebenAsync(d.Direktor, correction, wirkung.Hash, false));
+        Assert.Equal(1, await service.BerichtigungFreigebenAsync(d.Direktor, correction, wirkung.Hash, true));
+        Assert.Equal(10, (await service.LesenAsync(d.Direktor, originalID))!.Durchschnitt);
+        var neuID = Assert.Single(await service.ListeAsync(schueler, d.Schule), x => x.IstVeroeffentlicht).Id;
+        Assert.Contains(await service.ListeAsync(schueler, d.Schule), x => x.Id == originalID && x.ErsetztDurchID == neuID);
+        var neu = (await service.LesenAsync(schueler, neuID))!;
+        Assert.Equal(15, neu.Durchschnitt); Assert.Equal(original.DokumentNummer, neu.ErsetztDokumentNummer);
+        Assert.Equal("Remplacé par un bulletin rectificatif", (await verifier.PruefenAsync(original.PruefToken))!.Status);
+        Assert.Equal("Valide", (await verifier.PruefenAsync(neu.PruefToken!))!.Status);
+        await service.UebergabeSpeichernAsync(d.Direktor, neuID, false, "Parent informé par téléphone");
+        await service.UebergabeSpeichernAsync(d.Koordinator, neuID, true, "Remis au parent");
+        Assert.Equal(2, (await service.UebergabenAsync(d.Direktor, neuID)).Count);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.UebergabenAsync(schueler, neuID));
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["App:BaseUrl"] = "https://skoulou.etsetech.com" }).Build();
+        Assert.NotEmpty(new BulletinPdfService(config).Erzeugen(neu));
+    }
+
+    [Fact]
+    public async Task Klassenpruefung_VerlangtVollstaendigkeitUndAktuellenStand()
+    {
+        var d = await VorbereitenAsync(); var noten = new BewertungsService(d.Factory); var service = new BulletinService(d.Factory, noten);
+        await using var db = d.Factory.CreateDbContext();
+        var periode = (await db.Set<BewertungsPeriode>().SingleAsync()).Id;
+        var klasse = (await db.Set<SchuelerJahresZuordnung>().SingleAsync()).KlasseID;
+        await service.VorlageSpeichernAsync(d.Direktor, new() { SchulID = d.Schule, KlasseID = klasse, Art = BewertungsArt.Trimester, Name = "Officiel" });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.KlassePruefenAsync(d.Direktor, d.Schule, periode, klasse));
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 10, null);
+        var alt = await service.KlassePruefenAsync(d.Direktor, d.Schule, periode, klasse);
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 11, null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.KlasseEndgueltigVeroeffentlichenAsync(d.Direktor, d.Schule, periode, klasse, alt.Hash, true));
+        Assert.Empty(await service.ListeAsync(d.Direktor, d.Schule));
+    }
+
+    [Fact]
+    public async Task Berichtigung_PrueftRangAndererSchuelerUndSpaeterePerioden()
+    {
+        var d = await VorbereitenAsync(); var noten = new BewertungsService(d.Factory); var service = new BulletinService(d.Factory, noten);
+        Guid periode, klasse, noteID; var zweiter = Guid.NewGuid(); var zuordnung = Guid.NewGuid();
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 10, null);
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            periode = (await db.Set<BewertungsPeriode>().SingleAsync()).Id; klasse = (await db.Klassen.SingleAsync()).Id;
+            noteID = (await db.Set<FachNote>().SingleAsync()).Id;
+            db.Users.Add(new AppUser { Id = zweiter, FullName = "Deuxième élève" });
+            db.Add(new SchuelerJahresZuordnung { Id = zuordnung, SchulID = d.Schule, SchuljahrID = d.Jahr, KlasseID = klasse, SchuelerID = zweiter });
+            await db.SaveChangesAsync();
+        }
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, zuordnung, 15, null);
+        await service.VorlageSpeichernAsync(d.Direktor, new() { SchulID = d.Schule, KlasseID = klasse, Art = BewertungsArt.Trimester, Name = "Officiel" });
+        var p2 = await noten.PeriodeAnlegenAsync(d.Direktor, d.Schule, d.Jahr, "2e trimestre", BewertungsArt.Trimester, 2, 1);
+        var c2 = await noten.BestandteilAnlegenAsync(d.Direktor, p2, "Composition", 1, 20);
+        await noten.NoteSpeichernAsync(d.Direktor, c2, d.FachBewertung, d.JahresZuordnung, 12, null);
+        await noten.NoteSpeichernAsync(d.Direktor, c2, d.FachBewertung, zuordnung, 14, null);
+        foreach (var p in new[] { periode, p2 })
+        {
+            var v = await service.KlassePruefenAsync(d.Direktor, d.Schule, p, klasse);
+            await service.KlasseEndgueltigVeroeffentlichenAsync(d.Direktor, d.Schule, p, klasse, v.Hash, true);
+        }
+        var id = await service.BerichtigungStartenAsync(d.Direktor, d.Schule, periode, klasse, "Erreur de note");
+        await service.BerichtigungsNoteAsync(d.Direktor, id, noteID, 18, null);
+        var wirkung = await service.BerichtigungPruefenAsync(d.Direktor, id);
+        Assert.Contains(wirkung.Auswirkungen, x => x.AlterRang == 1 && x.NeuerRang == 2);
+        Assert.Contains(wirkung.Auswirkungen, x => x.Periode == "2e trimestre" && x.Vorschau.Vorperioden.Any(p => p.Note == 18));
+        await service.BerichtigungsNoteAsync(d.Direktor, id, noteID, 19, null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.BerichtigungFreigebenAsync(d.Direktor, id, wirkung.Hash, true));
+        await service.BerichtigungAbbrechenAsync(d.Direktor, id);
+        await using var kontrolle = d.Factory.CreateDbContext();
+        Assert.Equal(10, (await kontrolle.Set<FachNote>().SingleAsync(x => x.Id == noteID)).Punkte);
+    }
+
+    [Fact]
+    public async Task VorlagenMehrfachzuweisung_PrueftSchuleRechteUndExplizitesErsetzen()
+    {
+        var d = await VorbereitenAsync();
+        var service = new BulletinService(d.Factory, new(d.Factory));
+        Guid erste;
+        var zweite = Guid.NewGuid(); var fremde = Guid.NewGuid(); var andereSchule = Guid.NewGuid();
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            erste = (await db.Klassen.SingleAsync()).Id;
+            db.Schools.Add(new School { Id = andereSchule, Name = "Autre école" });
+            db.Klassen.AddRange(new Klasse { Id = zweite, SchoolId = d.Schule, Code = "5e" },
+                new Klasse { Id = fremde, SchoolId = andereSchule, Code = "4e" });
+            await db.SaveChangesAsync();
+        }
+        var entwurf = new BulletinVorlage { SchulID = d.Schule, Art = BewertungsArt.Trimester, Name = "Commun",
+            SchriftGroesse = 11, SeitenRand = 30, ZeigeLehrkraefte = false, FussText = "Merci" };
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.VorlagenZuweisenAsync(d.Lehrer, entwurf, [erste, zweite], false));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.VorlagenZuweisenAsync(d.Direktor, entwurf, [], false));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.VorlagenZuweisenAsync(d.Direktor, entwurf, [erste, fremde], true));
+        Assert.Empty(await service.VorlagenAsync(d.Direktor, d.Schule));
+        Assert.Equal(2, await service.VorlagenZuweisenAsync(d.Koordinator, entwurf, [erste, zweite, erste], false));
+        var vorlagen = await service.VorlagenAsync(d.Direktor, d.Schule);
+        Assert.Equal(2, vorlagen.Count);
+        Assert.Equal(2, vorlagen.Select(x => x.Id).Distinct().Count());
+        Assert.All(vorlagen, x => { Assert.Equal(11, x.SchriftGroesse); Assert.Equal(30, x.SeitenRand); Assert.False(x.ZeigeLehrkraefte); Assert.Equal("Merci", x.FussText); });
+        entwurf.Name = "Remplacement";
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.VorlagenZuweisenAsync(d.Direktor, entwurf, [erste, zweite], false));
+        Assert.All(await service.VorlagenAsync(d.Direktor, d.Schule), x => Assert.Equal("Commun", x.Name));
+        Assert.Equal(1, await service.VorlagenZuweisenAsync(d.Direktor, entwurf, [erste], true));
+        vorlagen = await service.VorlagenAsync(d.Direktor, d.Schule);
+        Assert.Equal("Remplacement", vorlagen.Single(x => x.KlasseID == erste).Name);
+        Assert.Equal("Commun", vorlagen.Single(x => x.KlasseID == zweite).Name);
+        entwurf.SchriftGroesse = 99;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.VorlagenZuweisenAsync(d.Direktor, entwurf, [erste, zweite], true));
+        Assert.All(await service.VorlagenAsync(d.Direktor, d.Schule), x => Assert.Equal(11, x.SchriftGroesse));
+    }
+
     [Fact]
     public async Task Notenhistorie_ErfasstNurEchteAenderungenUndPrueftFachrechte()
     {

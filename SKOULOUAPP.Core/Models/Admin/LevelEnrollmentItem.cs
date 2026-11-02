@@ -19,7 +19,8 @@ public class LevelEnrollmentItem
     public bool HasActiveClassCycle { get; set; }
     public bool IsClassCycleClosed { get; set; }
     public bool IsCurrentKlasse { get; set; }
-    public bool CanAssignOrUpgradeAbo => IsCurrentKlasse && HasActiveClassCycle && !IsClassCycleClosed && !IsUnlocked;
+    public bool AutomatischeZyklusabrechnung { get; set; }
+    public bool CanAssignOrUpgradeAbo => !AutomatischeZyklusabrechnung && IsCurrentKlasse && HasActiveClassCycle && !IsClassCycleClosed && !IsUnlocked;
     public string? AboActionHint => !IsCurrentKlasse
         ? "L'abonnement SKOULOUAPP se gère uniquement pour la classe actuelle de l'élève."
         : !HasActiveClassCycle

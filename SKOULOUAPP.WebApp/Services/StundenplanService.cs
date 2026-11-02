@@ -132,6 +132,8 @@ public sealed class StundenplanService(IDbContextFactory<ApplicationDbContext> f
     public async Task<List<StundenplanZeile>> LesenAsync(Guid benutzerID, Guid schulID, CancellationToken token = default)
     {
         await using var db = await factory.CreateDbContextAsync(token);
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schulID, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         if (!await db.Users.AnyAsync(x => x.Id == benutzerID && !x.IsBlocked, token)
             || !await db.UserSchools.AnyAsync(x => x.AppUserId == benutzerID && x.SchoolId == schulID && x.School.IsActive, token))
             throw new UnauthorizedAccessException("Ce planning n'est pas accessible.");
@@ -175,6 +177,8 @@ public sealed class StundenplanService(IDbContextFactory<ApplicationDbContext> f
 
     private static async Task VerwalterPruefenAsync(ApplicationDbContext db, Guid benutzerID, Guid schulID, CancellationToken token)
     {
+        if (!await new SkoulouApp.Core.Services.SchulZugangService(db).IstSchuleFreigegebenAsync(schulID, token))
+            throw new UnauthorizedAccessException(SkoulouApp.Core.Services.SchulZugangService.GesperrtHinweis);
         if (!await db.UserSchools.AnyAsync(x => x.AppUserId == benutzerID && x.SchoolId == schulID && x.School.IsActive && !x.AppUser.IsBlocked, token)
             || !await db.UserRoles.AnyAsync(x => x.UserId == benutzerID && db.Roles.Any(r => r.Id == x.RoleId
                 && (r.Name == Rollen.SchulLeiter || r.Name == Rollen.Koordinator)), token))

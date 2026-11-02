@@ -25,6 +25,11 @@ public class LevelEnrollment : AuditableModel
     public Guid? DurchlaufId { get; set; }
     public KursNiveauDurchlauf? Durchlauf { get; set; }
     public bool IstAktuell { get; set; } = true;
+    /// <summary>Nachvollziehbare Ausnahme für eine fehlerhafte Zykluszuordnung, keine Löschung.</summary>
+    public DateTime? StorniertAmUtc { get; set; }
+    public Guid? StorniertVonID { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(300)]
+    public string? StornoGrund { get; set; }
 
     /// <summary>
     /// Gewähltes SKOULOUAPP-Abo für diese Klasse.

@@ -83,6 +83,15 @@ internal static class UnterrichtModellKonfiguration
         vorlage.HasOne(x => x.Schule).WithMany().HasForeignKey(x => x.SchulID).OnDelete(DeleteBehavior.Restrict);
         vorlage.HasOne(x => x.Klasse).WithMany().HasForeignKey(x => x.KlasseID).OnDelete(DeleteBehavior.Restrict);
         var ausgabe = modelBuilder.Entity<BulletinAusgabe>();
+        ausgabe.HasIndex(x => x.PruefToken).IsUnique().HasFilter("[PruefToken] IS NOT NULL");
+        var abschluss = modelBuilder.Entity<BulletinAbschluss>();
+        abschluss.HasIndex(x => new { x.PeriodeID, x.KlasseID }).IsUnique();
+        abschluss.HasOne(x => x.Periode).WithMany().HasForeignKey(x => x.PeriodeID).OnDelete(DeleteBehavior.Restrict);
+        var berichtigung = modelBuilder.Entity<BulletinBerichtigung>();
+        berichtigung.Property(x => x.StammdatenEntwurfJson).HasDefaultValue("[]");
+        berichtigung.HasIndex(x => new { x.SchulID, x.SchuljahrID, x.KlasseID });
+        var uebergabe = modelBuilder.Entity<BulletinUebergabe>();
+        uebergabe.HasOne(x => x.Ausgabe).WithMany().HasForeignKey(x => x.AusgabeID).OnDelete(DeleteBehavior.Restrict);
         ausgabe.HasIndex(x => new { x.PeriodeID, x.JahresZuordnungID, x.Version }).IsUnique();
         ausgabe.HasIndex(x => new { x.PeriodeID, x.JahresZuordnungID }).IsUnique().HasFilter("[IstVeroeffentlicht] = 1");
         ausgabe.HasOne(x => x.Schule).WithMany().HasForeignKey(x => x.SchulID).OnDelete(DeleteBehavior.Restrict);

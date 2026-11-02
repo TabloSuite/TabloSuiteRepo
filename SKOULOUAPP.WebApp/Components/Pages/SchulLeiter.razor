@@ -542,7 +542,7 @@
                                     <div class="font-bold text-slate-900">@student.FullName</div>
                                     @if (!student.IsBlocked)
                                     {
-                                        <Badge Accent="@(student.HasPaidEnrollment ? "emerald" : "amber")">@GetStudentAboHeaderLabel(student.HasPaidEnrollment, student.IsSkoulouPlus)</Badge>
+                                        <Badge Accent="cyan">@(student.CurrentKlasseId.HasValue ? "Accès scolaire validé" : "Classe à attribuer")</Badge>
                                     }
                                     @if (student.HasSchoolFeeInfo)
                                     {
@@ -592,32 +592,12 @@
                                 else
                                 {
                                     <Badge Accent="emerald">Enregistrement validé</Badge>
-                                    @if (student.HasPaidEnrollment)
-                                    {
-                                        <Badge Accent="emerald">Payé</Badge>
-                                    }
-                                    else if (student.HasActiveSubscription)
-                                    {
-                                        <Badge Accent="amber">Abo non payé</Badge>
-                                    }
-                                    else
-                                    {
-                                        <Badge Accent="slate">Aucun abonnement</Badge>
-                                    }
-                                    @if (student.HasPaidEnrollment)
-                                    {
-                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400" title="Un élève avec une classe payée ne peut plus être bloqué par le directeur.">
-                                            🔒 Blocage impossible (payé)
-                                        </span>
-                                    }
-                                    else
-                                    {
+                                    <Badge Accent="cyan">@(student.CurrentKlasseId.HasValue ? "Supports publiés de la classe accessibles" : "Classe à attribuer")</Badge>
                                         <button type="button"
                                                 class="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-300"
                                                 @onclick="() => SetBlockedAsync(student.UserId, true)">
                                             Bloquer
                                         </button>
-                                    }
                                 }
                                 <button type="button"
                                         class="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -627,7 +607,7 @@
                                  <button type="button"
                                         class="inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
                                         @onclick="() => ToggleLevelPanelAsync(student.UserId)">
-                                    Gérer l'abonnement
+                                    Classes et participation
                                     <svg class="h-4 w-4 transition-transform duration-200 @(expandedStudentId == student.UserId ? "rotate-180" : "")" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                                 </button>
                             </div>
@@ -648,13 +628,18 @@
                                             }
                                         </div>
                                         <div class="flex flex-wrap items-center gap-2">
-                                            @if (level.IsUnlocked)
+                                            @if (level.AutomatischeZyklusabrechnung)
+                                            {
+                                                <Badge Accent="cyan">Facturation automatique par cycle</Badge>
+                                                <span class="text-xs text-slate-600">Aucun paiement individuel requis pour l'accès.</span>
+                                            }
+                                            else if (level.IsUnlocked)
                                             {
                                                 <Badge Accent="cyan">Abonnement SKOULOUAPP</Badge>
                                                 <Badge Accent="slate">@level.AboPreis.ToString("N0") FCFA</Badge>
                                             }
 
-                                            @if (level.IsPaid)
+                                            @if (!level.AutomatischeZyklusabrechnung && level.IsPaid)
                                             {
                                                 <Badge Accent="emerald">Paiement effectué</Badge>
                                             }
@@ -681,7 +666,7 @@
                                                 </button>
                                             }
 
-                                            @if (!level.IsCurrentKlasse && !level.IsUnlocked)
+                                            @if (!level.AutomatischeZyklusabrechnung && !level.IsCurrentKlasse && !level.IsUnlocked)
                                             {
                                                 <span class="text-xs font-medium text-slate-400">Aucun abonnement</span>
                                             }
@@ -808,6 +793,18 @@
     </CollapsibleCard>
     }
 
+@if (neueZugangsdaten.Count > 0)
+{
+    <ModalDialog Open="true" Title="Identifiants initiaux" CloseOnBackdrop="false">
+        <p>Transmettez ces identifiants individuellement et confidentiellement. Ils ne seront plus affichés après fermeture. Chaque personne peut modifier son mot de passe dans son profil.</p>
+        @foreach (var zugang in neueZugangsdaten)
+        {
+            <div class="my-3 break-all rounded-xl bg-slate-100 p-3"><strong>@zugang.Email</strong><br /><code>@zugang.Passwort</code></div>
+        }
+        <button type="button" class="skoulou-button-primary" @onclick="() => neueZugangsdaten.Clear()">J'ai transmis les identifiants — fermer</button>
+    </ModalDialog>
+}
+
 <ModalDialog @bind-Open="reassignRemoveConfirmOpen"
              Title="Retirer l'élève de la classe"
              Eyebrow="Confirmation"
@@ -859,7 +856,7 @@
                             <ol class="mt-3 grid gap-3 text-sm leading-6 text-slate-700 sm:grid-cols-2">
                                 <li><strong>1. Ouvre Excel</strong> et crée un nouveau tableau.</li>
                                 <li><strong>2. Copie les titres de colonnes</strong> indiqués dans l'exemple correspondant.</li>
-                                <li><strong>3. Ajoute une personne par ligne.</strong> Les champs optionnels peuvent rester vides. Si l'e-mail est vide, il est créé automatiquement (prénom.nom@skoulou.com). Si le mot de passe est vide, le mot de passe initial <strong>MotDePasse1</strong> est attribué.</li>
+                                <li><strong>3. Ajoute une personne par ligne.</strong> Les champs optionnels peuvent rester vides. Si l'e-mail est vide, il est créé automatiquement. Chaque personne reçoit un mot de passe initial individuel, affiché après l'import pour transmission confidentielle.</li>
 
                                 <li><strong>4. Enregistre le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong> ou <strong>Excel (*.xlsx)</strong>, puis charge-le ci-dessous.</li>
                             </ol>
@@ -1280,7 +1277,7 @@
                 <div>
                     <label class="skoulou-label">Mot de passe (optionnel)</label>
                     <PasswordInput @bind-Value="userForm.Password" Autocomplete="new-password" />
-                    <p class="mt-1 text-xs text-slate-500">Si vide, le mot de passe par défaut « MotDePasse1 » sera utilisé.</p>
+                    <p class="mt-1 text-xs text-slate-500">Si vide, un mot de passe individuel sécurisé sera affiché après la création pour transmission confidentielle.</p>
                     <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
                 </div>
                 <div>
@@ -1475,19 +1472,11 @@
             }
         </div>
 
-        <label class="inline-flex items-start gap-2 rounded-2xl bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-900 ring-1 ring-cyan-100">
-            <InputCheckbox @bind-Value="klasseForm.AutoAssignSkoulouAppAboOnCycleStart" class="mt-0.5 h-4 w-4 rounded border-cyan-300" />
-            <span>
-                Préparer automatiquement SKOULOUAPP (AboTyp.SkoulouApp) au démarrage du cycle
-                <span class="mt-1 block text-xs font-normal text-cyan-800">Quand le cycle démarre, les élèves actifs de cette classe reçoivent automatiquement l'abonnement SKOULOUAPP activé et marqué payé.</span>
-            </span>
-        </label>
-        @if (IsAutoAssignActivationPendingConfirmation)
-        {
-            <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
-                Attention : ce cycle est déjà actif. En enregistrant, tous les élèves déjà attribués à cette classe recevront immédiatement l'abonnement. Cette action n'est plus annulable pendant ce cycle.
-            </p>
-        }
+        <p class="rounded-2xl bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+            Les élèves admis accèdent à l'application sans activation individuelle ni paiement préalable.
+            Chaque nouveau cycle enregistre automatiquement ses participants et génère la facture de l'école à sa clôture.
+            Cette inscription ne constitue pas un paiement.
+        </p>
 
         <div class="mt-2 flex justify-end gap-3">
             <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="() => OnKlasseModalOpenChanged(false)">Annuler</button>
@@ -1600,10 +1589,8 @@
         <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
             <p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true">⚠️</span>Clôture définitive du cycle de classe</p>
             <p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
-            <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture et resteront non renseignés. Après la clôture, ils ne pourront plus être modifiés et tous les élèves quitteront cette classe.</p>
-            <p class="mt-2">@(!isKoordinator
-                ? "Les abonnements SKOULOUAPP payés et non encore facturés seront facturés automatiquement lors de la clôture. Tu devras ensuite déclarer le virement dans Facturation SKOULOUAPP avant de démarrer un nouveau cycle."
-                : "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP.")</p>
+            <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture. Pour les nouveaux cycles, les élèves restent dans leur classe et conservent l'accès aux supports publiés ; la promotion est une opération distincte. Les anciens cycles conservent leur traitement historique.</p>
+            <p class="mt-2">Pour les nouveaux cycles, la clôture par la direction ou un coordinateur autorisé crée automatiquement la facture de toutes les participations enregistrées, au tarif fixé au démarrage. Aucun paiement individuel SKOULOUAPP n'est demandé. Déclare ensuite le virement dans Facturation SKOULOUAPP ; le paiement de l'école ne conditionne pas l'accès des élèves ni le démarrage du cycle suivant.</p>
         </div>
         <div class="mt-5">
             <label class="skoulou-label">Date de fin effective</label>

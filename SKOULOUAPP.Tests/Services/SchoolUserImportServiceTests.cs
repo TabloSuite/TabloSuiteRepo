@@ -12,6 +12,25 @@ namespace SkoulouApp.Tests.Services;
 public class SchoolUserImportServiceTests
 {
     [Fact]
+    public async Task LehrerMitHistorischemVerwaltungsflagDarfNichtImportieren()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var (user, school, klasse) = await SeedDirectorSchoolAndClassAsync(db);
+        db.Roles.Single().Name = Rollen.Lehrer;
+        await db.SaveChangesAsync();
+        var service = CreateService(db, user);
+        var result = await service.CommitAsync(new()
+        {
+            DirectorId = user.Id, SchoolId = school.Id, Kind = SchoolUserImportKind.Student,
+            CsvContent = $"Vorname;Nachname;Klasse\nAfi;Mensah;{klasse.Code}"
+        });
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, result.CreatedCount);
+        Assert.Empty(result.Zugangsdaten);
+        Assert.Single(db.Users);
+    }
+
+    [Fact]
     public async Task PreviewAsync_GeneriertEmailWennOptionalesEmailFeldLeerIst()
     {
         using var db = TestDbContext.CreateInMemory();
@@ -160,6 +179,9 @@ public class SchoolUserImportServiceTests
 
         Assert.True(result.Succeeded, string.Join(" ", result.Errors));
         Assert.Equal(1, result.CreatedCount);
+        var zugang = Assert.Single(result.Zugangsdaten);
+        Assert.NotEqual("MotDePasse1", zugang.Passwort);
+        Assert.True(zugang.Passwort.Length >= 20);
         var teacherId = await db.UserSchools
             .Where(link => link.SchoolId == school.Id && link.AppUserId != director.Id)
             .Select(link => link.AppUserId)
@@ -195,6 +217,9 @@ public class SchoolUserImportServiceTests
         var school = new School { Id = Guid.NewGuid(), Name = "École Test", City = "Lomé", IsActive = true };
         var klasse = new Klasse { Id = Guid.NewGuid(), Code = "CM1A", Title = "CM1 A", SchoolId = school.Id };
         db.Users.Add(director);
+        var rolle = new Role { Id = Guid.NewGuid(), Name = Rollen.SchulLeiter };
+        db.Roles.Add(rolle);
+        db.UserRoles.Add(new AppUserRole { UserId = director.Id, RoleId = rolle.Id });
         db.Schools.Add(school);
         db.Klassen.Add(klasse);
         db.UserSchools.Add(new UserSchool

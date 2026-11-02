@@ -33,6 +33,7 @@ public sealed class SchoolUserImportPreviewResult
 
 public sealed class SchoolUserImportCommitResult
 {
+    public List<SchoolUserImportZugang> Zugangsdaten { get; set; } = [];
     public bool Succeeded { get; set; }
     public string Message { get; set; } = string.Empty;
     public int CreatedCount { get; set; }
@@ -59,9 +60,11 @@ public sealed class SchoolUserImportRowPreview
 
 public static class SchoolUserImportDefaults
 {
-    public const string InitialPassword = "MotDePasse1";
+    public const string InitialPassword = "Attribué individuellement lors de l'import";
 
     public const string TeacherTemplate = "Prénom;Nom;Classe;E-mail;Téléphone\nJean;Koffi;CM1A;jean.koffi@example.com;90000000\nAmah;Mensah;CM1A,CM2B;;";
 
     public const string StudentTemplate = "Prénom;Nom;Classe;E-mail;Téléphone;E-mail parent;Téléphone parent\nAfi;Mensah;CM1A;afi.mensah@example.com;91111111;parent@example.com;92222222\nKomi;Adjovi;CM1A;;;;";
 }
+
+public sealed record SchoolUserImportZugang(string Email, string Passwort);
