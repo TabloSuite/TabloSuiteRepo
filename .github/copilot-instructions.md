@@ -130,4 +130,7 @@
 ## Willkommensmail
 - Die Willkommensmail für neu registrierte Schulleiter soll den Nutzen der Schulverwaltung konkreter und hochwertiger erklären, insbesondere Klassen/Personal, Schulfinanzen, Schulgebühren, Ratenzahlungen, SKOULOUAPP-Abonnements und transparente Zahlungs-/Abrechnungsübersichten.
 - Auch die Willkommensmail für Schüler soll statt eines knappen Abo-Hinweises eine hochwertige französische Übersicht zum Schülerbereich enthalten, einschließlich Lernmaterialien, Übungen/Prüfungen, Fortschritt und schulverwaltetem SKOULOUAPP-Abonnement.
-- Alle Links in System-E-Mails müssen auf tatsächlich vorhandene Produktionsrouten unter https://skoulou.etsetech.com zeigen; insbesondere Willkommens-, Login-, Passwortänderungs- und Passwortzurücksetzungslinks sind gemeinsam zu prüfen und durch Tests abzusichern.
+
+## Stundenplan und Bulletin scolaire
+- Die veröffentlichte App dient aktuell nur dem realistischen Testen. Stundenplan und Bulletin scolaire dürfen umfassend und ohne Rücksicht auf produktive Echtdaten korrekt modelliert werden. Stundenpläne werden von Direktor oder Koordinator verwaltet. Bulletins müssen frei gestaltbare schul- und klassenbezogene Vorlagen sowie Grundschule/Sprachschule, drei benotete Trimester und frei betitelbare, nicht finalnotenrelevante Test-/Examen-blanc-Bulletins unterstützen.
+- Im Bulletin-/Bewertungsmodul dürfen Lehrer, Direktoren und Koordinatoren Noten erfassen und korrigieren. Lehrer sind auf ihre zugeordneten Fächer und Klassen beschränkt; Direktoren und Koordinatoren dürfen alle Fächer und Klassen ihrer berechtigten Schulen bearbeiten.
