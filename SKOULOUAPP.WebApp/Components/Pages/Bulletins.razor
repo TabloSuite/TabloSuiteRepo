@@ -1,0 +1,135 @@
+@page "/bulletins"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SchulLeiter,Koordinator,Schüler")]
+@inherits CancelableComponentBase
+@using SkoulouApp.WebApp.Services
+
+<PageTitle>Bulletins scolaires</PageTitle>
+<div class="mx-auto max-w-6xl space-y-5 p-4">
+    <header class="rounded-2xl bg-slate-900 p-6 text-white"><a href="/" class="text-sky-300">← Accueil</a><h1 class="mt-3 text-2xl font-bold">Bulletins scolaires</h1></header>
+    @if (message.Length > 0) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
+    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" Disabled="occupe" />
+    @if (verwalter && unterricht is not null)
+    {
+        <details class="rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Modèles par classe</summary>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <ModernDropdown TValue="Guid" @bind-Value="vorlage.KlasseID" Options="Options(unterricht.Klassen)" Label="Classe" />
+                <ModernDropdown TValue="int" @bind-Value="art" Options="Arten" Label="Type de bulletin" />
+                <label>Nom du modèle<input class="w-full rounded-lg border p-2" maxlength="120" @bind="vorlage.Name" /></label>
+                <label>Couleur<input type="color" class="w-full" @bind="vorlage.AkzentFarbe" /></label>
+                <ModernDropdown TValue="Guid?" Value="vorlage.LogoAssetID" ValueChanged="LogoWaehlen" Options="BildOptionen" Label="Logo de l'école (facultatif)" Disabled="occupe" />
+                <div class="rounded-xl border bg-slate-50 p-3">
+                    <label class="block font-semibold">Importer le logo de l'école
+                        <Microsoft.AspNetCore.Components.Forms.InputFile OnChange="LogoHochladenAsync" accept="image/png,image/jpeg" disabled="@occupe" class="mt-2 block w-full min-w-0 text-sm" />
+                    </label>
+                    <p class="mt-2 text-sm">PNG ou JPEG, 2 Mo maximum. Aucun cachet numérisé : la direction signe et appose le cachet sur le document imprimé.</p>
+                    @if (logoVorschau is not null)
+                    {
+                        <img src="@logoVorschau" alt="Aperçu du logo de l'école" class="mt-3 h-20 max-w-full object-contain" />
+                    }
+                    @if (vorlage.LogoAssetID.HasValue)
+                    {
+                        <button type="button" class="mt-2 rounded border p-2" disabled="@occupe" @onclick="() => LogoWaehlen(null)">Retirer du modèle</button>
+                    }
+                </div>
+                <label><input type="checkbox" @bind="vorlage.ZeigeKoeffizienten" /> Afficher les coefficients</label>
+                <label><input type="checkbox" @bind="vorlage.ZeigeRang" /> Afficher le rang</label>
+                <label><input type="checkbox" @bind="vorlage.ZeigeVorperioden" /> Afficher les périodes précédentes</label>
+                <label><input type="checkbox" @bind="vorlage.ZeigeUnterschriften" /> Afficher les signatures</label>
+                <label>Taille du texte (8 à 12 points)<input type="number" min="8" max="12" class="w-full rounded-lg border p-2" @bind="vorlage.SchriftGroesse" /></label>
+                <label>Marges A4 (15 à 50 points)<input type="number" min="15" max="50" class="w-full rounded-lg border p-2" @bind="vorlage.SeitenRand" /></label>
+                <label><input type="checkbox" @bind="vorlage.ZeigeLehrkraefte" /> Afficher la colonne des enseignants</label>
+                <label><input type="checkbox" @bind="vorlage.ZeigeAnwesenheit" /> Afficher les présences et retards</label>
+                <label>Texte de bas de page<input class="w-full rounded-lg border p-2" maxlength="300" @bind="vorlage.FussText" /></label>
+            </div>
+            <button type="button" class="mt-3 rounded-lg bg-blue-700 p-3 text-white" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
+            <h3 class="mt-4 font-semibold">Ordre des blocs</h3>
+            @for (var index = 0; index < vorlage.BlockReihenfolge.Split(',').Length; index++)
+            {
+                var position = index;
+                <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2">
+                    <span>@BlockTitel(vorlage.BlockReihenfolge.Split(',')[position])</span>
+                    <div><button type="button" class="rounded border p-2" disabled="@(occupe || position == 0)" @onclick="() => VerschiebeBlock(position, -1)" aria-label="Monter le bloc">↑</button>
+                    <button type="button" class="rounded border p-2" disabled="@(occupe || position == 4)" @onclick="() => VerschiebeBlock(position, 1)" aria-label="Descendre le bloc">↓</button></div>
+                </div>
+            }
+            <p class="mt-2 text-sm">Enregistrez le modèle, puis prévisualisez un élève pour vérifier le document A4 exact.</p>
+            @foreach (var modele in modeles)
+            {
+                <button type="button" class="m-2 rounded-lg border p-2" disabled="@occupe" @onclick="() => ChargerModele(modele)">@modele.Name · Modifier / copier</button>
+            }
+        </details>
+        <section class="rounded-xl border bg-white p-5">
+            <h2 class="text-lg font-semibold">Préparer et publier un bulletin</h2>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <ModernDropdown TValue="Guid" Value="jahrID" ValueChanged="JahrAsync" Options="JahresOptionen" Label="Année scolaire" Disabled="occupe" />
+                <ModernDropdown TValue="Guid" Value="periodeID" ValueChanged="PeriodeWaehlen" Options="PeriodenOptionen" Label="Période" Disabled="occupe" />
+                <ModernDropdown TValue="Guid" Value="schuelerID" ValueChanged="SchuelerWaehlen" Options="SchuelerOptionen" Label="Élève" Searchable="true" Disabled="occupe" />
+                <label>Observation<textarea class="w-full rounded-lg border p-2" maxlength="1000" @bind="bemerkung"></textarea></label>
+                <label>Motif de l'édition / du retrait<input class="w-full rounded-lg border p-2" maxlength="300" @bind="grund" /></label>
+            </div>
+            <button type="button" class="mt-3 rounded-lg border p-3" disabled="@occupe" @onclick="VorschauAsync">Prévisualiser</button>
+            <button type="button" class="m-2 rounded-lg bg-blue-700 p-3 text-white" disabled="@(occupe || schuelerID == Guid.Empty || periodeID == Guid.Empty)" @onclick="PublierAsync">Publier une nouvelle édition</button>
+            <p class="mt-2 text-sm text-slate-600">La publication conserve une copie des notes, coordonnées et réglages. Pour corriger, retirez l'édition publiée puis créez une nouvelle édition.</p>
+        </section>
+        <section class="space-y-3 rounded-xl border bg-white p-5">
+            <h2 class="text-lg font-semibold">Téléchargement groupé des bulletins</h2>
+            <p class="text-sm text-slate-600">Utilisez l'école, l'année scolaire et la période sélectionnées ci-dessus, puis choisissez une classe. Seules les éditions actuellement publiées sont incluses, par ordre alphabétique des élèves. Les bulletins manquants ou retirés ne sont pas inclus ; aucune publication n'est effectuée.</p>
+            <ModernDropdown TValue="Guid" @bind-Value="sammelKlasseID" Options="Options(unterricht.Klassen)" Label="Classe à exporter" Searchable="true" Disabled="occupe" />
+            @if (SammelDownloadMoeglich)
+            {
+                <a class="inline-block rounded-lg bg-blue-700 p-3 text-white" href="@SammelDownloadUrl" target="_blank" rel="noopener">Télécharger les bulletins publiés (PDF)</a>
+            }
+            else
+            {
+                <button type="button" class="rounded-lg bg-slate-200 p-3 text-slate-500" disabled>Télécharger les bulletins publiés (PDF)</button>
+                <p class="text-sm">Sélectionnez une période et une classe pour activer le téléchargement.</p>
+            }
+            <p class="text-sm text-slate-600">Un seul PDF par classe et période, jusqu'à 200 bulletins. Chaque bulletin commence sur une nouvelle page et conserve sa propre numérotation.</p>
+        </section>
+        <details class="rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Présences et retards</summary>
+            <p class="my-3">Sélectionnez la période et l'élève ci-dessus. Une seule situation est enregistrée par jour et par période ; une nouvelle saisie remplace la précédente.</p>
+            <div class="grid gap-4 md:grid-cols-2">
+                <label>Date<input type="date" class="w-full rounded border p-2" @bind="praesenzDatum" /></label>
+                <ModernDropdown TValue="int" @bind-Value="praesenzStatus" Options="PraesenzOptionen" Label="Situation" />
+                <label><input type="checkbox" @bind="entschuldigt" /> Absence / retard justifié</label>
+                <label>Minutes de retard<input type="number" min="0" max="1440" class="w-full rounded border p-2" @bind="praesenzMinuten" /></label>
+            </div>
+            <button type="button" class="mt-3 rounded-lg bg-blue-700 p-3 text-white" disabled="@(occupe || schuelerID == Guid.Empty || periodeID == Guid.Empty)" @onclick="PraesenzSpeichernAsync">Enregistrer</button>
+            <button type="button" class="m-2 rounded-lg border p-3" disabled="@(occupe || periodeID == Guid.Empty)" @onclick="PraesenzLadenAsync">Actualiser les présences de la période</button>
+            @foreach (var presence in praesenz.Where(x => x.PeriodeID == periodeID && x.JahresZuordnungID == schuelerID))
+            {
+                <p class="mt-2 border-b p-2">@presence.Datum.ToString("dd/MM/yyyy") · @PraesenzOptionen[(int)presence.Status].Label · @presence.VerspaetungsMinuten min</p>
+            }
+        </details>
+        @if (vorschau is not null)
+        {
+            <iframe title="Aperçu A4 du bulletin" src="@vorschauPdf" style="width:100%;height:800px;border:0" referrerpolicy="no-referrer"></iframe>
+            <section class="rounded-xl border bg-white p-6">
+                <h2 class="text-center text-xl font-bold" style="color:@vorschau.Farbe">@vorschau.Schule</h2>
+                <p class="text-center">@vorschau.Titel · @vorschau.Schuljahr</p>
+                <p class="mt-4 font-semibold">@vorschau.Schueler · @vorschau.Klasse</p>
+                @foreach (var fach in vorschau.Faecher)
+                {
+                    <p class="border-b py-2">@fach.Fach · @(fach.Note?.ToString("0.00") ?? "Notes incomplètes") / 20</p>
+                }
+                <p class="mt-3 font-semibold">Moyenne : @(vorschau.Durchschnitt?.ToString("0.00") ?? "Notes incomplètes") / 20</p>
+                <p>@vorschau.Bemerkung</p>
+            </section>
+        }
+    }
+    <section class="space-y-3">
+        <h2 class="text-xl font-semibold">Éditions enregistrées</h2>
+        @foreach (var bulletin in liste)
+        {
+            <article class="flex flex-wrap justify-between gap-3 rounded-xl border bg-white p-4">
+                <div><strong>@bulletin.Schueler · @bulletin.Titel</strong><p>Version @bulletin.Version · @(bulletin.IstVeroeffentlicht ? "Publié" : "Retiré")</p></div>
+                <a class="rounded-lg border p-2" href="@($"/bulletins/{bulletin.Id}/pdf")" target="_blank" rel="noopener">PDF</a>
+                @if (verwalter && bulletin.IstVeroeffentlicht)
+                {
+                    <button type="button" class="rounded-lg border p-2 text-red-700" disabled="@occupe" @onclick="() => RetirerAsync(bulletin.Id)">Retirer la publication</button>
+                }
+            </article>
+        }
+        @if (liste.Count == 0) { <p>Aucun bulletin publié disponible.</p> }
+    </section>
+</div>

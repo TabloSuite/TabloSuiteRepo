@@ -63,6 +63,7 @@ public class TestDbContext(DbContextOptions<TestDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        SkoulouApp.WebApp.Data.UnterrichtModellKonfiguration.Konfigurieren(modelBuilder);
 
         modelBuilder.Entity<AppUserRole>().HasKey(x => new { x.UserId, x.RoleId });
         modelBuilder.Entity<UserSchool>().HasKey(x => new { x.AppUserId, x.SchoolId });

@@ -14,6 +14,15 @@ public class School : AuditableModel
     public string City { get; set; } = string.Empty;
     public string Country { get; set; } = string.Empty;
     public string DescriptionHtml { get; set; } = string.Empty;
+    public string? Slogan { get; set; }
+    public string? OffizielleBezeichnung { get; set; }
+    public string? DokumentAdresse { get; set; }
+    public string? DokumentTelefon { get; set; }
+    public string? DokumentEmail { get; set; }
+    public string? Zulassungsnummer { get; set; }
+    public string? Ministerium { get; set; }
+    public string? RepublikZeile { get; set; }
+    public string? StaatsMotto { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Optionaler schulspezifischer Abo-Preis.</summary>

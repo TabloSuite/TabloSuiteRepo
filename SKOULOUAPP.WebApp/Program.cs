@@ -202,6 +202,14 @@ builder.Services.AddTransient<ProvisionsService>();
 builder.Services.AddTransient<FinanzService>();
 builder.Services.AddTransient<FinanzBerichtPdfService>();
 builder.Services.AddTransient<SchoolUserImportService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.UnterrichtsVerwaltungService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.StundenplanService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.BewertungsService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.SchulLogoService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
+builder.Services.AddTransient<SkoulouApp.WebApp.Services.StundenplanPdfService>();
 builder.Services.AddScoped<ITextToSpeechProvider, BrowserSpeechProvider>();
 var app = builder.Build();
 
@@ -293,6 +301,48 @@ app.MapGet("/media-library/{assetId:guid}", async (
         ? Results.NotFound()
         : Results.File(image.Content, image.ContentType, enableRangeProcessing: true);
 }).RequireAuthorization();
+
+app.MapGet("/bulletins/{ausgabeID:guid}/pdf", async (Guid ausgabeID, ClaimsPrincipal user,
+    SkoulouApp.WebApp.Services.BulletinService service, SkoulouApp.WebApp.Services.BulletinPdfService pdf, CancellationToken token) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userID)) return Results.Unauthorized();
+    try
+    {
+        var bulletin = await service.LesenAsync(userID, ausgabeID, token);
+        return bulletin is null ? Results.NotFound() : Results.File(pdf.Erzeugen(bulletin), "application/pdf", "bulletin-scolaire.pdf");
+    }
+    catch (UnauthorizedAccessException) { return Results.Forbid(); }
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Schueler));
+
+app.MapGet("/bulletins/sammelausgabe/{schulID:guid}/{periodeID:guid}/{klasseID:guid}/pdf", async (
+    Guid schulID, Guid periodeID, Guid klasseID, ClaimsPrincipal user, HttpContext http,
+    SkoulouApp.WebApp.Services.BulletinService service, SkoulouApp.WebApp.Services.BulletinPdfService pdf, CancellationToken token) =>
+{
+    http.Response.Headers.CacheControl = "no-store, private";
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userID)) return Results.Unauthorized();
+    try
+    {
+        var bulletins = await service.SammelausgabeAsync(userID, schulID, periodeID, klasseID, token);
+        token.ThrowIfCancellationRequested();
+        var datei = pdf.SammelausgabeErzeugen(bulletins);
+        return Results.File(datei, "application/pdf", $"bulletins-{periodeID:N}-{klasseID:N}.pdf");
+    }
+    catch (UnauthorizedAccessException) { return Results.Forbid(); }
+    catch (InvalidOperationException ex) { return Results.Text(ex.Message, "text/plain; charset=utf-8", statusCode: StatusCodes.Status400BadRequest); }
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator));
+
+app.MapGet("/emplois-du-temps/{schulID:guid}/pdf", async (Guid schulID, ClaimsPrincipal user,
+    SkoulouApp.WebApp.Services.StundenplanService service, SkoulouApp.WebApp.Services.StundenplanPdfService pdf,
+    CancellationToken token) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var benutzerID)) return Results.Unauthorized();
+    try
+    {
+        var zeilen = await service.LesenAsync(benutzerID, schulID, token);
+        return Results.File(pdf.Erzeugen(zeilen), "application/pdf", "emploi-du-temps.pdf");
+    }
+    catch (UnauthorizedAccessException) { return Results.Forbid(); }
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler));
 
 app.MapGet("/finanzen/rapport/pdf-file", async (
     Guid schoolId,

@@ -37,6 +37,10 @@ public class StudentProfile : AuditableModel
 
     /// <summary>Optionale E-Mail-Adresse eines Elternteils bzw. Erziehungsberechtigten.</summary>
     public string? ElternEmail { get; set; }
+
+    /// <summary>Schulbezogene, normalisierte Matrikelnummer; leer bedeutet noch nicht vergeben.</summary>
+    public string? Matrikelnummer { get; set; }
+    public string? Geburtsort { get; set; }
 }
 
 

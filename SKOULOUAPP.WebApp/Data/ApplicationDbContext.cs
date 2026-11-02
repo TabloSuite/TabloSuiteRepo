@@ -51,9 +51,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RatenZahlung> RatenZahlungen => Set<RatenZahlung>();
     public DbSet<KlassenAbschlussEntscheidung> KlassenAbschlussEntscheidungen => Set<KlassenAbschlussEntscheidung>();
 
+    private void NeueMatrikelnummern()
+    {
+        foreach (var eintrag in ChangeTracker.Entries<StudentProfile>().Where(x => x.State == EntityState.Added))
+            if (string.IsNullOrWhiteSpace(eintrag.Entity.Matrikelnummer))
+                eintrag.Entity.Matrikelnummer = $"EL-{eintrag.Entity.AppUserId:N}";
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        NeueMatrikelnummern();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        NeueMatrikelnummern();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        UnterrichtModellKonfiguration.Konfigurieren(modelBuilder);
 
         modelBuilder.Entity<School>().Property(x => x.Name).HasMaxLength(200);
         modelBuilder.Entity<AbschlussMention>().Property(x => x.Text).HasMaxLength(80);

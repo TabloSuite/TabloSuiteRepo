@@ -67,6 +67,36 @@
                     </div>
                 }
 
+                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator"))
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="direction/enseignement" data-enhance-nav="false">
+                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
+                            <span>Organisation des enseignements</span>
+                        </NavLink>
+                    </div>
+                }
+
+                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator") || espaceState.User.IsInRole("Lehrer") || espaceState.User.IsInRole("Schüler"))
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="emplois-du-temps" data-enhance-nav="false">
+                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
+                            <span>Emplois du temps</span>
+                        </NavLink>
+                    </div>
+                }
+
+                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator") || espaceState.User.IsInRole("Schüler"))
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="bulletins" data-enhance-nav="false">
+                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
+                            <span>Bulletins scolaires</span>
+                        </NavLink>
+                    </div>
+                }
+
                 @if (espaceState.User.IsInRole("SuperAdmin") || espaceState.User.IsInRole("ProduktOwner"))
                 {
                     <div class="nav-item">
@@ -126,6 +156,12 @@
         <AuthorizeView Roles="Lehrer,SchulLeiter,Koordinator" Context="pedagogicState">
             <Authorized>
                 <div class="nav-section-label nav-section-spacing">Espace pédagogique</div>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="notes" data-enhance-nav="false">
+                        <span class="bi bi-checklist-nav-menu" aria-hidden="true"></span>
+                        <span>Notes et évaluations</span>
+                    </NavLink>
+                </div>
                 @if (pedagogicState.User.IsInRole("Lehrer") && !pedagogicState.User.IsInRole("SchulLeiter") && !pedagogicState.User.IsInRole("Koordinator"))
                 {
                     <div class="nav-item">

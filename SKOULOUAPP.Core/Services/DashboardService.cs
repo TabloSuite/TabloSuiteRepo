@@ -1642,6 +1642,39 @@ public class DashboardService(
                 ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
                 : null;
 
+            // Historische Unterrichtsdaten explizit in FK-Reihenfolge entfernen.
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.NotenAenderung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.NotenAenderung>()
+                .Where(x => schoolIds.Contains(x.FachNote.JahresZuordnung.SchulID)).ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.AnwesenheitsEintrag>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.AnwesenheitsEintrag>()
+                .Where(x => schoolIds.Contains(x.Periode.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinAusgabe>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinAusgabe>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinVorlage>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BulletinVorlage>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.FachNote>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.FachNote>()
+                .Where(x => schoolIds.Contains(x.JahresZuordnung.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.StundenplanEintrag>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.StundenplanEintrag>()
+                .Where(x => schoolIds.Contains(x.Stundenplan.SchulID)).ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BewertungsBestandteil>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BewertungsBestandteil>()
+                .Where(x => schoolIds.Contains(x.Periode.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.FachBewertung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.FachBewertung>()
+                .Where(x => schoolIds.Contains(x.Schuljahr.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.Stundenplan>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.Stundenplan>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.UnterrichtsZuordnung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.UnterrichtsZuordnung>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.SchuelerJahresZuordnung>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.SchuelerJahresZuordnung>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BewertungsPeriode>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.BewertungsPeriode>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.Schuljahr>().RemoveRange(await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.Schuljahr>()
+                .Where(x => schoolIds.Contains(x.SchulID)).ToListAsync(cancellationToken));
+            await dbContext.SaveChangesAsync(cancellationToken);
+
             var studentIds = await dbContext.StudentProfiles
                 .Where(profile => schoolIds.Contains(profile.SchoolId))
                 .Select(profile => profile.AppUserId)
@@ -2718,6 +2751,10 @@ public class DashboardService(
         {
             return (false, "Seules les auto-inscriptions encore en attente peuvent être supprimées.");
         }
+
+        if (await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.SchuelerJahresZuordnung>().AnyAsync(x => x.SchuelerID == studentId, cancellationToken)
+            || await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.UnterrichtsZuordnung>().AnyAsync(x => x.LehrerID == studentId, cancellationToken))
+            return (false, "Ce compte possède des données scolaires. Archivez-le ou bloquez-le au lieu de le supprimer.");
 
         dbContext.StudentProfiles.Remove(profile);
         dbContext.UserSchools.RemoveRange(await dbContext.UserSchools
@@ -3939,7 +3976,8 @@ public class DashboardService(
         var isAssigned = await dbContext.LehrerFachZuordnungen
             .AsNoTracking()
             .AnyAsync(assignment => assignment.FachId == fachId, cancellationToken);
-        if (isAssigned)
+        if (isAssigned || await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.UnterrichtsZuordnung>().AnyAsync(x => x.FachID == fachId, cancellationToken)
+            || await dbContext.Set<SkoulouApp.Core.DataModels.Unterricht.FachBewertung>().AnyAsync(x => x.FachID == fachId, cancellationToken))
         {
             return (false, "Cette matière est déjà attribuée à un enseignant et ne peut pas être supprimée.");
         }

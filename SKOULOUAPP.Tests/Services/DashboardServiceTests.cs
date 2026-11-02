@@ -5,6 +5,7 @@ using SkoulouApp.Core.DataModels.Finanzen;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.DataModels.Lessons;
 using SkoulouApp.Core.DataModels.Schools;
+using SkoulouApp.Core.DataModels.Unterricht;
 using SkoulouApp.Core.Models.Admin;
 using SkoulouApp.Core.Services;
 using SkoulouApp.Tests.Infrastructure;
@@ -787,6 +788,22 @@ public class DashboardServiceTests
             SchoolId = deletedSchool.Id,
             CurrentLevelCode = klasse.Code
         });
+        var jahr = new Schuljahr { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, Bezeichnung = "2026–2027" };
+        var fach = new Fach { Id = Guid.NewGuid(), SchoolId = deletedSchool.Id, Name = "Mathématiques" };
+        var zuordnung = new SchuelerJahresZuordnung { Id = Guid.NewGuid(), SchulID = deletedSchool.Id,
+            SchuljahrID = jahr.Id, KlasseID = klasse.Id, SchuelerID = exclusiveStudent.Id };
+        var periode = new BewertungsPeriode { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, SchuljahrID = jahr.Id, Titel = "Trimestre" };
+        var komponente = new BewertungsBestandteil { Id = Guid.NewGuid(), PeriodeID = periode.Id, Bezeichnung = "Composition" };
+        var bewertung = new FachBewertung { Id = Guid.NewGuid(), SchuljahrID = jahr.Id, KlasseID = klasse.Id, FachID = fach.Id };
+        var unterricht = new UnterrichtsZuordnung { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, SchuljahrID = jahr.Id,
+            KlasseID = klasse.Id, FachID = fach.Id, LehrerID = sharedTeacher.Id };
+        var plan = new Stundenplan { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, SchuljahrID = jahr.Id, KlasseID = klasse.Id };
+        db.AddRange(jahr, fach, zuordnung, periode, komponente, bewertung, unterricht, plan);
+        db.Add(new StundenplanEintrag { Id = Guid.NewGuid(), StundenplanID = plan.Id, UnterrichtsZuordnungID = unterricht.Id });
+        db.Add(new FachNote { Id = Guid.NewGuid(), BestandteilID = komponente.Id, FachBewertungID = bewertung.Id, JahresZuordnungID = zuordnung.Id });
+        db.Add(new BulletinAusgabe { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, PeriodeID = periode.Id, JahresZuordnungID = zuordnung.Id });
+        db.Add(new BulletinVorlage { Id = Guid.NewGuid(), SchulID = deletedSchool.Id, KlasseID = klasse.Id });
+        db.Add(new AnwesenheitsEintrag { Id = Guid.NewGuid(), PeriodeID = periode.Id, JahresZuordnungID = zuordnung.Id });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([schoolLeader, exclusiveStudent, sharedTeacher]);
@@ -807,6 +824,11 @@ public class DashboardServiceTests
         Assert.Null(await userManager.FindByIdAsync(schoolLeader.Id.ToString()));
         Assert.Null(await userManager.FindByIdAsync(exclusiveStudent.Id.ToString()));
         Assert.True(await db.UserSchools.AnyAsync(link => link.AppUserId == sharedTeacher.Id && link.SchoolId == retainedSchool.Id));
+        Assert.Empty(await db.Set<Schuljahr>().ToListAsync());
+        Assert.Empty(await db.Set<BulletinAusgabe>().ToListAsync());
+        Assert.Empty(await db.Set<FachNote>().ToListAsync());
+        Assert.Empty(await db.Set<AnwesenheitsEintrag>().ToListAsync());
+        Assert.Empty(await db.Set<StundenplanEintrag>().ToListAsync());
     }
 
     [Fact]
