@@ -261,6 +261,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseSerilogRequestLogging();
+// Innerhalb der Request-Protokollierung: Clientabbrüche als 499 statt Exception/500.
+app.UseMiddleware<RequestAbbruchMiddleware>();
 
 app.UseHttpsRedirection();
 

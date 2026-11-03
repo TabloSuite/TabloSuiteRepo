@@ -7,6 +7,7 @@
 - Bei Arbeiten an SKOULOUAPP bestehende uncommittete Änderungen erhalten; technische Dokumentation am tatsächlichen Code ausrichten und historische Test-/Datenbankstände nicht als aktuelle Validierung ausgeben.
 - Für Änderungen relevante Tests und den Lösungsbuild ausführen. App-Texte bleiben französisch; Kommunikation und Entwicklerdokumentation dürfen deutsch sein. Bestehende fachliche Regeln unten werden durch diesen Wegweiser nicht ersetzt.
 - Vor Abschluss der Kernumstellung Sprachschul-/CEFR-Reste auch in Tests, C# und Anweisungsdateien entfernen, veraltete Tests auf neue Fachregeln umstellen und nachweislich ungenutzte Implementierungen/Dateien bereinigen. Änderbare Schüler-E-Mail/Passwort auf stabile Identitätsverknüpfungen und Matrikelnummern prüfen; komplette Testsuite und Lösungsbuild ausführen.
+- Verbindungsinformationen für Azure SQL aus den vorhandenen User Secrets ermitteln, statt erneut nach Server und Datenbank zu fragen. Nutzer hat vollständiges Leeren und Neuaufbauen der Azure-Datenbank ausdrücklich bestätigt; genaue Zielprüfung bleibt erforderlich.
 
 ## General Guidelines
 - Bereinigung bestätigt: veraltete Sprachlevel-Fixtures, widersprüchliche Anweisungen und nachweislich ungenutzten Code entfernen. Fachbeziehungen bleiben an unveränderlichen Benutzer-GUIDs; E-Mail/Passwort sind änderbar, Matrikelnummer ist schulbezogene Kennung, nicht Fremdschlüssel. Keine vierstellige Nummer ohne eigene fachliche Entscheidung erzwingen.
