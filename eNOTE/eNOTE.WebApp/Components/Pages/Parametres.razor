@@ -1,0 +1,82 @@
+﻿@page "/parametres"
+@attribute [Authorize(Roles = "Besitzer")]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Paramètres de l'établissement</PageTitle>
+
+<div class="enote-page enote-page-narrow">
+    <div class="enote-page-header">
+        <div>
+            <h1>Paramètres de l'établissement</h1>
+            <p>Personnalisez votre reçu : logo et slogan.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        <div class="enote-card enote-settings-card">
+            <h2>Identité sur le reçu</h2>
+
+            <div class="enote-form">
+                <label>Slogan (ex. « In God we trust »)</label>
+                <input @bind="slogan" placeholder="Votre devise…" maxlength="120" />
+
+                <label>Téléphone</label>
+                <input @bind="telefon" placeholder="ex. +228 90 00 00 00" />
+
+                <label>Adresse</label>
+                <input @bind="adresse" placeholder="ex. Rue de la Paix, Lomé" />
+
+                <label>Lien du QR-code sur le reéu (facultatif)</label>
+                <input @bind="bonQrLink" placeholder="ex. lien WhatsApp ou avis Google" />
+                <small class="enote-muted">Vide : le QR-code ouvre la copie numérique du reéu.</small>
+
+                <label>Logo (facultatif, max. 8 Mo)</label>
+                <div class="enote-logo-row">
+                    @if (!string.IsNullOrWhiteSpace(logoVorschau))
+                    {
+                        <img src="@logoVorschau" alt="Logo" class="enote-logo-vorschau" />
+                    }
+                    <InputFile OnChange="HandleLogoAuswahl" accept="image/*" class="enote-file" />
+                </div>
+                @if (!string.IsNullOrWhiteSpace(logoFehler))
+                {
+                    <div class="alert alert-error">@logoFehler</div>
+                }
+
+                <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+            </div>
+        </div>
+
+        <div class="enote-card enote-settings-card">
+            <h2>Aperçu du reçu</h2>
+            <div class="enote-bon-preview">
+                @if (!string.IsNullOrWhiteSpace(logoVorschau))
+                {
+                    <img src="@logoVorschau" alt="Logo" class="enote-bon-logo" />
+                }
+                <div class="enote-bon-name">@salonName</div>
+                @if (!string.IsNullOrWhiteSpace(slogan))
+                {
+                    <div class="enote-bon-slogan">« @slogan »</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(adresse))
+                {
+                    <div class="enote-bon-muted" style="text-align:center">@adresse</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(telefon))
+                {
+                    <div class="enote-bon-muted" style="text-align:center">Tél : @telefon</div>
+                }
+                <div class="enote-bon-line"></div>
+                <div class="enote-bon-muted">1× Coupe …… 3 000 F</div>
+                <div class="enote-bon-total">TOTAL 3 000 F</div>
+            </div>
+        </div>
+    }
+</div>

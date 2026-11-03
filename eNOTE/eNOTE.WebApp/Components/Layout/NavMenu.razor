@@ -1,0 +1,44 @@
+﻿<nav class="enote-nav">
+    <AuthorizeView>
+        <Authorized>
+            <NavLink href="/" Match="NavLinkMatch.All" class="enote-nav-link">Accueil</NavLink>
+
+            <AuthorizeView Roles="Kassierer, Besitzer">
+                <Authorized Context="kasseCtx">
+                    <NavLink href="/caisse" class="enote-nav-link">Caisse</NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Besitzer">
+                <Authorized Context="bCtx">
+                    <NavLink href="/services" class="enote-nav-link">Prestations</NavLink>
+                    <NavLink href="/remises" class="enote-nav-link">Remises</NavLink>
+                    <NavLink href="/finances" class="enote-nav-link">Finances</NavLink>
+                    <NavLink href="/ausgaben" class="enote-nav-link">Dépenses</NavLink>
+                    <NavLink href="/equipe" class="enote-nav-link">Équipe</NavLink>
+                    <NavLink href="/abonnement" class="enote-nav-link">Abonnement</NavLink>
+                    <NavLink href="/parametres" class="enote-nav-link">Paramètres</NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="ProduktOwner">
+                <Authorized Context="poCtx">
+                    <NavLink href="/mes-etablissements" class="enote-nav-link">Mes établissements</NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="SuperAdmin, ProduktOwner">
+                <Authorized Context="aCtx">
+                    <NavLink href="/admin" class="enote-nav-link">Administration</NavLink>
+                    <NavLink href="/admin/facturation" class="enote-nav-link">Facturation</NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="SuperAdmin">
+                <Authorized Context="saCtx">
+                    <NavLink href="/admin/journaux" class="enote-nav-link">Journaux</NavLink>
+                </Authorized>
+            </AuthorizeView>
+        </Authorized>
+    </AuthorizeView>
+</nav>

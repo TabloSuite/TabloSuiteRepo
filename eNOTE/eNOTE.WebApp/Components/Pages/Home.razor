@@ -1,0 +1,70 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>eNOTE</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="enote-home">
+            <h1>Bonjour @context.User.Identity?.Name</h1>
+
+            @if (wartetAufFreigabe)
+            {
+                <div class="alert alert-error enote-home-warn">
+                    Votre établissement « @salonNameWartend » est en cours de validation par l'administrateur.
+                    Vous pourrez utiliser la caisse et la gestion dès qu'il sera validé.
+                </div>
+            }
+            else
+            {
+                <p class="enote-muted">Bienvenue sur eNOTE, la caisse simple pour votre établissement.</p>
+                <div class="enote-home-actions">
+                    <a class="enote-btn enote-btn-primary" href="/caisse">Ouvrir la caisse</a>
+                    <a class="enote-btn enote-btn-ghost" href="/services">Prestations</a>
+                </div>
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="enote-landing">
+            <section class="enote-landing-hero">
+                <span class="enote-landing-badge">Caisse &amp; gestion pour tout établissement</span>
+                <h1>La caisse simple et moderne pour votre établissement.</h1>
+                <p class="enote-lead">Salon de coiffure, institut, barbershop, boutique ou atelier : eNOTE vous aide à encaisser, suivre vos ventes et gérer votre équipe – pensé pour la tablette.</p>
+                <div class="enote-home-actions">
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/auth/register">Inscrire mon établissement</a>
+                    <a class="enote-btn enote-btn-ghost enote-btn-lg" href="/auth/login">Connexion</a>
+                </div>
+            </section>
+
+            <section class="enote-landing-features">
+                <div class="enote-feature">
+                    <div class="enote-feature-icon">🧾</div>
+                    <h3>Encaissement rapide</h3>
+                    <p>Espèces avec rendu monnaie ou carte, reçu imprimé avec votre logo, votre slogan et un QR-code.</p>
+                </div>
+                <div class="enote-feature">
+                    <div class="enote-feature-icon">📦</div>
+                    <h3>Prestations &amp; stock</h3>
+                    <p>Services et articles en vente avec suivi de stock, alertes et scan de code-barres en caisse.</p>
+                </div>
+                <div class="enote-feature">
+                    <div class="enote-feature-icon">👥</div>
+                    <h3>Équipe &amp; caisse</h3>
+                    <p>Caissiers avec code PIN, droits délégués, clôture de caisse avec écart et suivi en direct.</p>
+                </div>
+                <div class="enote-feature">
+                    <div class="enote-feature-icon">📊</div>
+                    <h3>Finances claires</h3>
+                    <p>Chiffre d'affaires en direct, dépenses avec justificatifs et rapports PDF exportables.</p>
+                </div>
+            </section>
+
+            <section class="enote-landing-cta">
+                <h2>Prêt à simplifier votre caisse ?</h2>
+                <p>Créez votre compte en quelques minutes. L'administrateur valide ensuite votre établissement.</p>
+                <a class="enote-btn enote-btn-primary enote-btn-lg" href="/auth/register">Commencer gratuitement</a>
+            </section>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>

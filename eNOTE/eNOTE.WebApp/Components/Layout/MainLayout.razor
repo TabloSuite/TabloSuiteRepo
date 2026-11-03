@@ -1,0 +1,58 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject ENote.WebApp.Services.KassenAnzeigeState KassenState
+@inject NavigationManager Nav
+
+<div class="enote-layout">
+    <header class="enote-topbar">
+        <a class="enote-brand" href="/">
+            <span class="enote-brand-icon">eN</span>
+            <span class="enote-brand-name">eNOTE</span>
+        </a>
+        <div class="enote-topbar-actions">
+            <AuthorizeView>
+                <Authorized>
+                    <a class="enote-btn enote-btn-ghost" href="/profil">@context.User.Identity?.Name</a>
+                    <form method="post" action="/auth/logout">
+                        <AntiforgeryToken />
+                        <button type="submit" class="enote-btn enote-btn-ghost">Déconnexion</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
+                    <a class="enote-btn enote-btn-primary" href="/auth/register">Inscription</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </header>
+
+    <div class="enote-body">
+        <NavMenu />
+        <main class="enote-main">
+            @Body
+        </main>
+    </div>
+
+    @* Schwebende Mini-Kassenanzeige, wenn die Kasse minimiert ist *@
+    @if (KassenState.IstMinimiert && KassenState.AktiveSitzungId is not null)
+    {
+        <button class="enote-mini-caisse" @onclick="OeffneKasse">
+            <span>Caisse · @KassenState.KassiererName</span>
+            <span class="betrag">@KassenState.LaufenderUmsatz.ToString("N0") F</span>
+        </button>
+    }
+
+    <Toast />
+</div>
+
+@code {
+    protected override void OnInitialized() => KassenState.OnChange += StateHasChanged;
+
+    private void OeffneKasse()
+    {
+        KassenState.Wiederherstellen();
+        Nav.NavigateTo("/caisse");
+    }
+
+    public void Dispose() => KassenState.OnChange -= StateHasChanged;
+}

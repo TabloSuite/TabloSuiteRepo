@@ -1,0 +1,107 @@
+﻿@page "/ausgaben"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Dépenses</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Dépenses – @salonName</h1>
+            <p>Enregistrez les dépenses de l'établissement avec un justificatif facultatif.</p>
+        </div>
+        <div class="enote-item-actions">
+            <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienOffen = !kategorienOffen">Catégories</button>
+            <button class="enote-btn enote-btn-primary" @onclick="NeueAusgabe">+ Nouvelle dépense</button>
+        </div>
+    </div>
+
+    @if (kategorienOffen)
+    {
+        <div class="enote-card enote-settings-card">
+            <h2>Catégories de dépenses</h2>
+            <div class="enote-kategorie-row">
+                <input @bind="neueKategorieName" placeholder="ex. Loyer, Électricité, Stock…" class="enote-input-inline" />
+                <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+            </div>
+            <div class="enote-kategorie-liste">
+                @foreach (var k in kategorien)
+                {
+                    <span class="enote-tag">@k.Name</span>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="enote-filter-row">
+        <label>Du <input type="date" @bind="filterVon" /></label>
+        <label>Au <input type="date" @bind="filterBis" /></label>
+        <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
+        <span class="enote-ausgaben-summe">Total : <strong>@ausgaben.Sum(a => a.Betrag).ToString("N0") F</strong></span>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (ausgaben.Count == 0)
+    {
+        <p class="enote-empty">Aucune dépense sur la période.</p>
+    }
+    else
+    {
+        <div class="enote-feed">
+            @foreach (var a in ausgaben)
+            {
+                <div class="enote-feed-item enote-ausgabe-item">
+                    <div class="enote-feed-head">
+                        <strong>@a.Betrag.ToString("N0") F</strong>
+                        <span class="enote-tag enote-tag-off">@a.Kategorie.Name</span>
+                    </div>
+                    <div class="enote-feed-meta">@a.DatumUtc.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    @if (!string.IsNullOrWhiteSpace(a.Notiz))
+                    {
+                        <div class="enote-feed-meta">@a.Notiz</div>
+                    }
+                    <div class="enote-item-actions">
+                        @if (a.BelegAssetId is not null && belegUrls.TryGetValue(a.Id, out var url))
+                        {
+                            <a class="enote-btn enote-btn-ghost enote-btn-sm" href="@url" target="_blank">📎 Justificatif</a>
+                        }
+                        <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="() => LoescheAusgabeAsync(a.Id)">Supprimer</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* Neue Ausgabe *@
+<ModalDialog Open="ausgabeDialogOffen" Title="Nouvelle dépense" ErrorMessage="@ausgabeFehler" OnClose="() => ausgabeDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Montant (F) <input type="number" min="0" step="50" @bind="neuBetrag" /></label>
+            <label>Date <input type="date" @bind="neuDatum" /></label>
+            <label>Catégorie</label>
+            <select class="enote-select" @bind="neuKategorieId">
+                <option value="">— Choisir —</option>
+                @foreach (var k in kategorien.Where(x => x.IstAktiv))
+                {
+                    <option value="@k.Id">@k.Name</option>
+                }
+            </select>
+            <label>Note (facultatif) <input @bind="neuNotiz" /></label>
+            <label>Justificatif (PDF/image, facultatif)</label>
+            <InputFile OnChange="HandleBelegAuswahl" accept="image/*,application/pdf" class="enote-file" />
+            @if (!string.IsNullOrWhiteSpace(belegName))
+            {
+                <small class="enote-muted">📎 @belegName</small>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => ausgabeDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichereAusgabeAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

@@ -1,0 +1,22 @@
+﻿@if (Open)
+{
+    <div class="enote-modal-backdrop" @onclick="OnBackdropClickAsync">
+        <div class="enote-modal @MaxWidthClass" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div class="enote-modal-header">
+                <h2>@Title</h2>
+                <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="CloseAsync">&times;</button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="alert alert-error enote-modal-error" role="alert">@ErrorMessage</div>
+            }
+            <div class="enote-modal-body">
+                @ChildContent
+            </div>
+            @if (Footer is not null)
+            {
+                <div class="enote-modal-footer">@Footer</div>
+            }
+        </div>
+    </div>
+}

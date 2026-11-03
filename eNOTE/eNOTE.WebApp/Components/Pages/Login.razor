@@ -1,0 +1,58 @@
+﻿@page "/auth/login"
+@attribute [AllowAnonymous]
+
+<PageTitle>Connexion</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-hero">
+        <div class="auth-hero-logo">eN</div>
+        <h1>La caisse de votre établissement, simple et rapide.</h1>
+        <p>Encaissez en espèces ou par carte, suivez vos ventes en direct et gérez votre équipe – pensé pour la tablette.</p>
+        <ul class="auth-hero-points">
+            <li><span class="check">✓</span> Caisse tactile intuitive</li>
+            <li><span class="check">✓</span> Reçus imprimés avec votre logo</li>
+            <li><span class="check">✓</span> Ventes en temps réel</li>
+        </ul>
+    </div>
+
+    <div class="auth-panel">
+        <div class="auth-card">
+            <h1>Connexion</h1>
+            <p class="auth-subtitle">Ravi de vous revoir. Connectez-vous à votre compte.</p>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="alert alert-error">@errorMessage</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(infoMessage))
+            {
+                <div class="alert alert-success">@infoMessage</div>
+            }
+
+            <form method="post" action="/auth/login/submit" class="auth-form">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+                <label>
+                    Adresse e-mail
+                    <input name="email" type="email" required autocomplete="username" />
+                </label>
+
+                <label>
+                    Mot de passe
+                    <PasswordInput Name="password" Required="true" Autocomplete="current-password" />
+                </label>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="rememberMe" value="true" />
+                    <span>Rester connecté</span>
+                </label>
+
+                <button type="submit" class="btn-primary">Se connecter</button>
+            </form>
+
+            <p class="auth-footer">Pas encore de compte ? <a href="/auth/register">Inscrire mon établissement</a></p>
+        </div>
+    </div>
+</div>
+

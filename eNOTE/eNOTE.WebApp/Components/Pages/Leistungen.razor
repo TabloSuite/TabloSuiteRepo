@@ -1,0 +1,124 @@
+﻿@page "/services"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Prestations</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Prestations &amp; articles</h1>
+            <p>Définissez les prestations et les articles en vente dans votre établissement.</p>
+        </div>
+        @if (darfVerwalten)
+        {
+            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle prestation</button>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (leistungen.Count == 0)
+    {
+        <p class="enote-empty">Aucune prestation pour le moment. Créez votre première prestation.</p>
+    }
+    else
+    {
+        <div class="enote-grid">
+            @foreach (var l in leistungen)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@l.Name</strong>
+                        <span class="enote-price">@l.Preis.ToString("N0") F</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(l.Beschreibung))
+                    {
+                        <p class="enote-item-desc">@l.Beschreibung</p>
+                    }
+                    <div class="enote-item-meta">
+                        @if (l.HatStueckzahl)
+                        {
+                            <span class="enote-tag">Article</span>
+                            <span class="@BestandKlasse(l)">Stock : @l.Stueckzahl</span>
+                            @if (BestandWarnung(l))
+                            {
+                                <span class="enote-tag enote-tag-warn">Bientôt épuisé</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="enote-tag">Prestation</span>
+                        }
+                        @if (!l.IstAktiv)
+                        {
+                            <span class="enote-tag enote-tag-off">Désactivée</span>
+                        }
+                    </div>
+                    @if (darfVerwalten)
+                    {
+                        <div class="enote-item-actions">
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeiten(l)">Modifier</button>
+                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoeschenFragen(l)">Supprimer</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<ModalDialog Open="editorOffen" Title="@(bearbeitungsLeistung.Id == Guid.Empty ? "Nouvelle prestation" : "Modifier la prestation")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nom <input @bind="bearbeitungsLeistung.Name" /></label>
+            <label>Description <input @bind="bearbeitungsLeistung.Beschreibung" /></label>
+            <label>Prix (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+
+            <label>Code-barres (facultatif, pour le scan en caisse)</label>
+            <input @bind="bearbeitungsLeistung.StrichCode" placeholder="ex. 6191101100021" />
+
+            <label>Image (facultatif, max. 8 Mo)</label>
+            <InputFile OnChange="HandleBildAuswahl" accept="image/*" class="enote-file" />
+            @if (!string.IsNullOrWhiteSpace(bildVorschau))
+            {
+                <img src="@bildVorschau" alt="Aperçu" class="enote-bild-vorschau" />
+            }
+            @if (!string.IsNullOrWhiteSpace(bildFehler))
+            {
+                <div class="alert alert-error">@bildFehler</div>
+            }
+
+            <label class="checkbox">
+                <input type="checkbox" @bind="bearbeitungsLeistung.HatStueckzahl" />
+                <span>Article avec stock</span>
+            </label>
+            @if (bearbeitungsLeistung.HatStueckzahl)
+            {
+                <label>Stock actuel <input type="number" min="0" @bind="bearbeitungsLeistung.Stueckzahl" /></label>
+                <label>Alerte si stock ≤ <input type="number" min="0" @bind="bearbeitungsLeistung.MindestbestandWarnung" /></label>
+            }
+            <label class="checkbox">
+                <input type="checkbox" @bind="bearbeitungsLeistung.IstAktiv" />
+                <span>Active</span>
+            </label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseEditor">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+<ModalDialog Open="loeschDialogOffen" Title="Supprimer la prestation" OnClose="SchliesseLoeschen">
+    <ChildContent>
+        <p>Voulez-vous vraiment supprimer « @zuLoeschendeLeistung?.Name » ?</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseLoeschen">Annuler</button>
+        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+    </Footer>
+</ModalDialog>

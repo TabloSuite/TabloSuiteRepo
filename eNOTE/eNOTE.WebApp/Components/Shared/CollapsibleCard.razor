@@ -1,0 +1,19 @@
+﻿<div class="enote-card">
+    <button type="button"
+            class="enote-card-header"
+            @onclick="Toggle"
+            aria-expanded="@IsExpanded">
+        <div class="enote-card-titles">
+            <h2>@Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p>@Subtitle</p>
+            }
+        </div>
+        <span class="enote-card-chevron @(IsExpanded ? "open" : "")" aria-hidden="true">&#9662;</span>
+    </button>
+
+    <div class="enote-card-body @(IsExpanded ? "open" : "")">
+        @ChildContent
+    </div>
+</div>

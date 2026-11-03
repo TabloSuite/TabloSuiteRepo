@@ -1,0 +1,65 @@
+﻿@page "/admin/journaux"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@rendermode InteractiveServer
+
+<PageTitle>Journaux d'erreurs</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Journaux d'erreurs</h1>
+            <p>Exceptions centralisées de l'application.</p>
+        </div>
+        @if (logs.Any(l => l.IstBehandelt))
+        {
+            <AsyncActionButton Text="Supprimer les traités" OnClick="LoescheBehandelteAsync" CssClass="enote-btn-ghost enote-danger" />
+        }
+    </div>
+
+    <div class="enote-filter-row">
+        <label>Du <input type="date" @bind="vonDatum" /></label>
+        <label>Au <input type="date" @bind="bisDatum" /></label>
+        <label class="checkbox"><input type="checkbox" @bind="nurUnbehandelt" /> <span>Non traités seulement</span></label>
+        <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (logs.Count == 0)
+    {
+        <p class="enote-empty">Aucune erreur journalisée. 🎉</p>
+    }
+    else
+    {
+        <div class="enote-log-list">
+            @foreach (var log in logs)
+            {
+                <div class="enote-log-item @(log.IstBehandelt ? "behandelt" : "")">
+                    <div class="enote-log-head">
+                        <span class="enote-log-zeit">@log.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</span>
+                        @if (log.IstBehandelt)
+                        {
+                            <span class="enote-tag">Traité</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(log.Pfad))
+                        {
+                            <span class="enote-tag enote-tag-off">@log.Pfad</span>
+                        }
+                    </div>
+                    <div class="enote-log-msg">@log.Nachricht</div>
+                    @if (zeigeDetails.GetValueOrDefault(log.Id))
+                    {
+                        <pre class="enote-log-trace">@log.Ausnahme</pre>
+                    }
+                    <div class="enote-item-actions">
+                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleDetails(log.Id)">@(zeigeDetails.GetValueOrDefault(log.Id) ? "Masquer" : "Détails")</button>
+                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleBehandeltAsync(log)">@(log.IstBehandelt ? "Rouvrir" : "Marquer traité")</button>
+                        <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoescheAsync(log.Id)">Supprimer</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

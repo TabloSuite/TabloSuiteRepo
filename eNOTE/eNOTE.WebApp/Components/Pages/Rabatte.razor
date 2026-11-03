@@ -1,0 +1,118 @@
+﻿@page "/remises"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Katalog
+
+<PageTitle>Remises</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Remises</h1>
+            <p>Créez des remises que le caissier pourra appliquer si la condition est remplie (ex. client fidèle).</p>
+        </div>
+        @if (darfVerwalten)
+        {
+            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle remise</button>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (rabatte.Count == 0)
+    {
+        <p class="enote-empty">Aucune remise pour le moment.</p>
+    }
+    else
+    {
+        <div class="enote-grid">
+            @foreach (var r in rabatte)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@r.Name</strong>
+                        <span class="enote-price">@RabattText(r)</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(r.Bedingung))
+                    {
+                        <p class="enote-item-desc">Condition : @r.Bedingung</p>
+                    }
+                    <div class="enote-item-meta">
+                        @if (r.Leistung is not null)
+                        {
+                            <span class="enote-tag">@r.Leistung.Name</span>
+                        }
+                        else
+                        {
+                            <span class="enote-tag">Tout le ticket</span>
+                        }
+                        @if (!r.IstAktiv)
+                        {
+                            <span class="enote-tag enote-tag-off">Désactivée</span>
+                        }
+                        @if (!IstGueltig(r))
+                        {
+                            <span class="enote-tag enote-tag-warn">Hors période</span>
+                        }
+                    </div>
+                    @if (darfVerwalten)
+                    {
+                        <div class="enote-item-actions">
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeiten(r)">Modifier</button>
+                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoeschenFragen(r)">Supprimer</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<ModalDialog Open="editorOffen" Title="@(bearbeitungsRabatt.Id == Guid.Empty ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nom <input @bind="bearbeitungsRabatt.Name" /></label>
+            <label>Condition (ex. Client fidèle) <input @bind="bearbeitungsRabatt.Bedingung" /></label>
+
+            <label>Type de remise</label>
+            <div class="enote-radio-row">
+                <label class="checkbox"><input type="radio" name="rabattArt" checked="@(bearbeitungsRabatt.Art == RabattArt.Prozent)" @onchange="() => bearbeitungsRabatt.Art = RabattArt.Prozent" /> <span>Pourcentage</span></label>
+                <label class="checkbox"><input type="radio" name="rabattArt" checked="@(bearbeitungsRabatt.Art == RabattArt.Festbetrag)" @onchange="() => bearbeitungsRabatt.Art = RabattArt.Festbetrag" /> <span>Montant fixe</span></label>
+            </div>
+
+            <label>@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "Pourcentage (%)" : "Montant (F)")
+                <input type="number" min="0" step="@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "1" : "50")" @bind="bearbeitungsRabatt.Wert" />
+            </label>
+
+            <label>Prestation concernée</label>
+            <select class="enote-select" @bind="ausgewaehlteLeistungId">
+                <option value="">Tout le ticket</option>
+                @foreach (var l in leistungen)
+                {
+                    <option value="@l.Id">@l.Name</option>
+                }
+            </select>
+
+            <label class="checkbox">
+                <input type="checkbox" @bind="bearbeitungsRabatt.IstAktiv" />
+                <span>Active</span>
+            </label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseEditor">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+<ModalDialog Open="loeschDialogOffen" Title="Supprimer la remise" OnClose="SchliesseLoeschen">
+    <ChildContent>
+        <p>Voulez-vous vraiment supprimer « @zuLoeschenderRabatt?.Name » ?</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseLoeschen">Annuler</button>
+        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+    </Footer>
+</ModalDialog>

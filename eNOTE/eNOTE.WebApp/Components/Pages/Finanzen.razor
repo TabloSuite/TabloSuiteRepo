@@ -1,0 +1,117 @@
+﻿@page "/finances"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Kasse
+
+<PageTitle>Finances</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Finances – @salonName</h1>
+            <p>Chiffre d'affaires, dernières ventes et clôtures de caisse.</p>
+        </div>
+    </div>
+
+    @if (!darfFinanzenSehen)
+    {
+        <p class="enote-empty">Vous n'avez pas le droit de consulter les finances de cet établissement.</p>
+    }
+    else if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        <div class="enote-live-banner @(liveVerbunden ? "verbunden" : "")">
+            <span class="enote-live-dot"></span>
+            <div>
+                <div class="enote-live-label">Aujourd'hui @(liveVerbunden ? "(en direct)" : "")</div>
+                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">· @liveAnzahlHeute vente(s)</span></div>
+            </div>
+        </div>
+
+        <div class="enote-filter-row">
+            <label>Du <input type="date" @bind="filterVon" /></label>
+            <label>Au <input type="date" @bind="filterBis" /></label>
+            <button class="enote-btn enote-btn-ghost" @onclick="WendeFilterAsync">Filtrer</button>
+            <button class="enote-btn enote-btn-primary" @onclick="ExportierePdf">Exporter en PDF</button>
+        </div>
+
+        <CollapsibleCard Title="@ZeitraumTitel" Subtitle="@($"{tagesUmsaetze.Sum(t => t.Gesamt):N0} F au total")" IsExpanded="true">
+            @if (tagesUmsaetze.Count == 0)
+            {
+                <p class="enote-muted">Aucune vente sur la période.</p>
+            }
+            else
+            {
+                <table class="enote-table">
+                    <thead><tr><th>Date</th><th>Ventes</th><th>Espèces</th><th>Carte</th><th>Total</th></tr></thead>
+                    <tbody>
+                        @foreach (var t in tagesUmsaetze)
+                        {
+                            <tr>
+                                <td>@t.Datum.ToString("dd.MM.yyyy")</td>
+                                <td>@t.AnzahlVerkaeufe</td>
+                                <td>@t.Bar.ToString("N0") F</td>
+                                <td>@t.Karte.ToString("N0") F</td>
+                                <td><strong>@t.Gesamt.ToString("N0") F</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </CollapsibleCard>
+
+        <CollapsibleCard Title="Dernières ventes" Subtitle="Aperçu en direct" IsExpanded="true">
+            @if (letzteVerkaeufe.Count == 0)
+            {
+                <p class="enote-muted">Aucune vente pour le moment.</p>
+            }
+            else
+            {
+                <div class="enote-feed">
+                    @foreach (var v in letzteVerkaeufe)
+                    {
+                        <div class="enote-feed-item">
+                            <div class="enote-feed-head">
+                                <strong>@v.GesamtSumme.ToString("N0") F</strong>
+                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "Espèces" : "Carte")</span>
+                            </div>
+                            <div class="enote-feed-meta">@v.PositionenText</div>
+                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") · @v.KassiererName</div>
+                            <div class="enote-item-actions">
+                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">🧾 Reçu</a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </CollapsibleCard>
+
+        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")">
+            @if (abschluesse.Count == 0)
+            {
+                <p class="enote-muted">Aucune clôture pour le moment.</p>
+            }
+            else
+            {
+                <table class="enote-table">
+                    <thead><tr><th>Clôturée le</th><th>Caissier</th><th>Attendu</th><th>Compté</th><th>Écart</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in abschluesse)
+                        {
+                            <tr>
+                                <td>@a.AbgeschlossenUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@a.Kassierer.FullName</td>
+                                <td>@a.BareinnahmenSoll?.ToString("N0") F</td>
+                                <td>@a.EndbestandGezaehlt?.ToString("N0") F</td>
+                                <td class="@(a.Differenz < 0 ? "enote-danger" : "")">@((a.Differenz ?? 0).ToString("+N0;-N0;0")) F</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </CollapsibleCard>
+    }
+</div>

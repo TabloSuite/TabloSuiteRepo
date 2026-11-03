@@ -1,0 +1,14 @@
+﻿<button type="@Type"
+        class="enote-btn @CssClass"
+        disabled="@(IsBusy || Disabled)"
+        @onclick="HandleClickAsync">
+    @if (IsBusy)
+    {
+        <span class="enote-spinner" aria-hidden="true"></span>
+        <span>@(string.IsNullOrWhiteSpace(BusyText) ? Text : BusyText)</span>
+    }
+    else
+    {
+        @Text
+    }
+</button>

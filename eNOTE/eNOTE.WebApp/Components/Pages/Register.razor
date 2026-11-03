@@ -1,0 +1,74 @@
+﻿@page "/auth/register"
+@attribute [AllowAnonymous]
+
+<PageTitle>Inscription</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-hero">
+        <div class="auth-hero-logo">eN</div>
+        <h1>Lancez la caisse de votre établissement en quelques minutes.</h1>
+        <p>Créez votre compte propriétaire et votre établissement. L'administrateur valide ensuite votre inscription.</p>
+        <ul class="auth-hero-points">
+            <li><span class="check">✓</span> Prestations &amp; articles avec stock</li>
+            <li><span class="check">✓</span> Remises et codes PIN pour l'équipe</li>
+            <li><span class="check">✓</span> Reçus personnalisés (logo, slogan)</li>
+        </ul>
+    </div>
+
+    <div class="auth-panel">
+        <div class="auth-card">
+            <h1>Inscrire mon établissement</h1>
+            <p class="auth-subtitle">Créez votre compte propriétaire et votre établissement.</p>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="alert alert-error">@errorMessage</div>
+            }
+
+            <EditForm Model="FormModel" OnValidSubmit="HandleSubmit" FormName="register-form" class="auth-form">
+                <DataAnnotationsValidator />
+
+                <div class="enote-form-grid">
+                    <label>
+                        Prénom
+                        <InputText @bind-Value="FormModel.Vorname" />
+                    </label>
+                    <label>
+                        Nom
+                        <InputText @bind-Value="FormModel.Nachname" />
+                    </label>
+                </div>
+
+                <label>
+                    Adresse e-mail
+                    <InputText @bind-Value="FormModel.Email" type="email" />
+                </label>
+
+                <label>
+                    Mot de passe
+                    <PasswordInput @bind-Value="FormModel.Passwort" Required="true" Autocomplete="new-password" />
+                    <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+                </label>
+
+                <label>
+                    Nom de l\u0027établissement
+                    <InputText @bind-Value="FormModel.SalonName" />
+                </label>
+
+                <label>
+                    Ville / quartier (facultatif)
+                    <InputText @bind-Value="FormModel.SalonStandort" />
+                </label>
+
+                <label>
+                    Slogan (facultatif)
+                    <InputText @bind-Value="FormModel.Slogan" placeholder="ex. In God we trust" />
+                </label>
+
+                <button type="submit" class="btn-primary" disabled="@isSubmitting">S'inscrire</button>
+            </EditForm>
+
+            <p class="auth-footer">Déjà un compte ? <a href="/auth/login">Se connecter</a></p>
+        </div>
+    </div>
+</div>

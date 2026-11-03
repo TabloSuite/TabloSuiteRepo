@@ -1,0 +1,64 @@
+﻿@page "/mes-etablissements"
+@attribute [Authorize(Roles = "ProduktOwner")]
+@rendermode InteractiveServer
+
+<PageTitle>Mes établissements</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Mes établissements</h1>
+            <p>Vue d'ensemble de vos établissements gérés.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (laeden.Count == 0)
+    {
+        <p class="enote-empty">Aucun établissement ne vous est encore assigné. Contactez l'administrateur.</p>
+    }
+    else
+    {
+        <div class="enote-grid">
+            @foreach (var l in laeden)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@l.SalonName</strong>
+                        @if (l.IstFreigegeben)
+                        {
+                            <span class="enote-tag">Validé</span>
+                        }
+                        else
+                        {
+                            <span class="enote-tag enote-tag-warn">En attente</span>
+                        }
+                    </div>
+
+                    @if (l.KannLadenUmsatzSehen)
+                    {
+                        <div class="enote-po-umsatz">
+                            <div><span>Aujourd'hui</span><strong>@l.UmsatzHeute.ToString("N0") F</strong></div>
+                            <div><span>Ce mois</span><strong>@l.UmsatzMonat.ToString("N0") F</strong></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="enote-muted">Chiffre d'affaires masqué par l'administrateur.</p>
+                    }
+
+                    @if (l.ProzentProvision is not null || l.FestbetragProvision is not null)
+                    {
+                        <div class="enote-po-provision">
+                            <span>Commission :</span>
+                            <strong>@ProvisionText(l)</strong>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

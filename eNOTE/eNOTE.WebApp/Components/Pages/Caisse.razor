@@ -1,0 +1,215 @@
+﻿@page "/caisse"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Kasse
+@using ENote.Core.DataModels.Katalog
+
+<PageTitle>Caisse</PageTitle>
+
+@if (anzeigeState.IstMinimiert && anzeigeState.AktiveSitzungId is not null)
+{
+    @* Minimiert: nur der schwebende Button (in MainLayout gerendert). *@
+    <div class="enote-caisse-hinweis">
+        <p>La caisse est ouverte en arrière-plan. Utilisez le bouton flottant pour la rouvrir.</p>
+        <button class="enote-btn enote-btn-primary" @onclick="anzeigeState.Wiederherstellen">Rouvrir la caisse</button>
+    </div>
+}
+else if (aktiveSitzung is null)
+{
+    @* --- Zustand 1: Kassenstart (Name + PIN + Wechselgeld) --- *@
+    <div class="enote-caisse-start">
+        <h1>Ouvrir la caisse</h1>
+        <p class="enote-muted">Choisissez votre nom, saisissez votre code PIN et confirmez la monnaie de départ.</p>
+
+        @if (!string.IsNullOrWhiteSpace(startFehler))
+        {
+            <div class="alert alert-error">@startFehler</div>
+        }
+
+        @if (kassiererListe.Count == 0)
+        {
+            <p class="enote-empty">Aucun caissier configuré. Le propriétaire doit d'abord créer des caissiers avec un code PIN.</p>
+        }
+        else
+        {
+            <div class="enote-form">
+                <label>Caissier</label>
+                <div class="enote-kassierer-grid">
+                    @foreach (var k in kassiererListe)
+                    {
+                        <button type="button"
+                                class="enote-kassierer-btn @(ausgewaehlterKassiererId == k.UserId ? "gewaehlt" : "")"
+                                @onclick="() => ausgewaehlterKassiererId = k.UserId">
+                            @k.Name
+                        </button>
+                    }
+                </div>
+
+                <label>Code PIN</label>
+                <input type="password"
+                       inputmode="numeric"
+                       maxlength="6"
+                       class="enote-pin-input"
+                       @bind="pin"
+                       placeholder="••••" />
+
+                <label>Monnaie de départ (F) <span class="enote-muted">– comptez et confirmez</span></label>
+                <input type="number" min="0" step="100" @bind="startbestand" />
+
+                <AsyncActionButton Text="Ouvrir la caisse" OnClick="StarteSitzungAsync" CssClass="enote-btn-primary enote-btn-lg" Disabled="@(ausgewaehlterKassiererId == Guid.Empty)" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    @* --- Zustand 2: Aktive Kasse --- *@
+    <div class="enote-caisse">
+        <div class="enote-caisse-header">
+            <div>
+                <h1>Caisse – @anzeigeState.KassiererName</h1>
+                <p class="enote-muted">@aktiverSalonName</p>
+            </div>
+            <div class="enote-caisse-header-actions">
+                <button class="enote-btn enote-btn-ghost" @onclick="anzeigeState.Minimieren">Réduire</button>
+                <button class="enote-btn enote-btn-ghost" @onclick="OeffneAbschluss">Clôturer</button>
+            </div>
+        </div>
+
+        <div class="enote-caisse-body">
+            <div>
+                @* Barcode-Scan *@
+                <div class="enote-scan-box">
+                    <input class="enote-scan-input"
+                           placeholder="🔍 Scanner le code-barres…"
+                           @bind="scanCode"
+                           @bind:event="oninput"
+                           @onkeydown="HandleScanTaste" />
+                </div>
+
+                @* Schnellauswahl *@
+                <div class="enote-tiles">
+                    @foreach (var l in leistungen)
+                    {
+                        <button type="button" class="enote-tile" @onclick="() => FuegeHinzu(l)">
+                            <span class="enote-tile-name">@l.Name</span>
+                            <span class="enote-tile-price">@l.Preis.ToString("N0") F</span>
+                            @if (l.HatStueckzahl && l.MindestbestandWarnung is int min && l.Stueckzahl <= min)
+                            {
+                                <span class="enote-tile-warn">Stock: @l.Stueckzahl</span>
+                            }
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @* Ticket *@
+            <div class="enote-ticket">
+                <h2>Ticket</h2>
+                @if (ticket.Count == 0)
+                {
+                    <p class="enote-muted">Touchez une prestation pour l'ajouter.</p>
+                }
+                else
+                {
+                    @foreach (var pos in ticket)
+                    {
+                        <div class="enote-ticket-pos">
+                            <div class="enote-ticket-pos-info">
+                                <strong>@pos.Leistung.Name</strong>
+                                <span>@pos.Leistung.Preis.ToString("N0") F × @pos.Menge</span>
+                                @if (pos.Rabatt is not null)
+                                {
+                                    <span class="enote-tag">@pos.Rabatt.Name</span>
+                                }
+                            </div>
+                            <div class="enote-ticket-pos-actions">
+                                <button @onclick="() => AendereMenge(pos, -1)">−</button>
+                                <span>@pos.Menge</span>
+                                <button @onclick="() => AendereMenge(pos, 1)">+</button>
+                                <button class="enote-danger" @onclick="() => EntfernePos(pos)">✕</button>
+                            </div>
+                            <div class="enote-ticket-pos-sum">@ZeilenSumme(pos).ToString("N0") F</div>
+                        </div>
+                    }
+                }
+
+                @if (ticket.Count > 0)
+                {
+                    <div class="enote-ticket-rabatt">
+                        <label>Remise</label>
+                        <select class="enote-select" @bind="ausgewaehlteRabattId">
+                            <option value="">Aucune</option>
+                            @foreach (var r in rabatte)
+                            {
+                                <option value="@r.Id">@r.Name (@RabattText(r))</option>
+                            }
+                        </select>
+                        @if (ausgewaehlterRabatt?.Bedingung is string bedingung && !string.IsNullOrWhiteSpace(bedingung))
+                        {
+                            <label class="checkbox">
+                                <input type="checkbox" @bind="bedingungBestaetigt" />
+                                <span>Condition remplie : @bedingung</span>
+                            </label>
+                        }
+                    </div>
+
+                    <div class="enote-ticket-total">
+                        <div><span>Sous-total</span><span>@zwischensumme.ToString("N0") F</span></div>
+                        <div><span>Remise</span><span>-@rabattSumme.ToString("N0") F</span></div>
+                        <div class="enote-total"><span>Total</span><span>@gesamtSumme.ToString("N0") F</span></div>
+                    </div>
+
+                    <div class="enote-zahlart">
+                        <button class="@(zahlungsArt == ZahlungsArt.Bar ? "aktiv" : "")" @onclick="() => zahlungsArt = ZahlungsArt.Bar">Espèces</button>
+                        <button class="@(zahlungsArt == ZahlungsArt.Karte ? "aktiv" : "")" @onclick="() => zahlungsArt = ZahlungsArt.Karte">Carte</button>
+                    </div>
+
+                    @if (zahlungsArt == ZahlungsArt.Bar)
+                    {
+                        <label>Montant reçu (F)</label>
+                        <input type="number" min="0" step="100" @bind="gegeben" @bind:event="oninput" />
+                        <div class="enote-rueckgeld">
+                            <span>Monnaie à rendre</span>
+                            <strong>@rueckgeld.ToString("N0") F</strong>
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="checkbox">
+                            <input type="checkbox" @bind="karteBestaetigt" />
+                            <span>Paiement par carte effectué</span>
+                        </label>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(verkaufFehler))
+                    {
+                        <div class="alert alert-error">@verkaufFehler</div>
+                    }
+
+                    <AsyncActionButton Text="Encaisser" OnClick="BucheVerkaufAsync" CssClass="enote-btn-primary enote-btn-lg" />
+
+                    @if (letzterVerkaufId is Guid bonId)
+                    {
+                        <a class="enote-btn enote-btn-ghost enote-btn-lg" href="/bon/@bonId" target="_blank">🧾 Imprimer le reçu</a>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* --- Kassenabschluss --- *@
+<ModalDialog Open="abschlussOffen" Title="Clôturer la caisse" ErrorMessage="@abschlussFehler" OnClose="() => abschlussOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p>Comptez l'argent en caisse et saisissez le montant.</p>
+            <label>Montant compté (F) <input type="number" min="0" step="100" @bind="endbestandGezaehlt" /></label>
+            <label>Note (facultatif) <input @bind="abschlussNotiz" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => abschlussOffen = false">Annuler</button>
+        <AsyncActionButton Text="Clôturer" OnClick="SchliesseSitzungAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

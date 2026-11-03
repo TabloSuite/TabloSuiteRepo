@@ -1,0 +1,63 @@
+﻿@page "/profil"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Mon profil</PageTitle>
+
+<div class="enote-page enote-page-narrow">
+    <div class="enote-page-header">
+        <div>
+            <h1>Mon profil</h1>
+            <p>Vos informations et votre mot de passe.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        <div class="enote-card enote-settings-card">
+            <div class="enote-profil-kopf">
+                <div class="enote-profil-avatar">@Initialen</div>
+                <div>
+                    <div class="enote-profil-name">@fullName</div>
+                    <div class="enote-muted">@email</div>
+                    <div class="enote-profil-rollen">
+                        @foreach (var rolle in rollen)
+                        {
+                            <span class="enote-tag">@RolleText(rolle)</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="enote-card enote-settings-card">
+            <h2>Changer le mot de passe</h2>
+
+            @if (!string.IsNullOrWhiteSpace(pwFehler))
+            {
+                <div class="alert alert-error">@pwFehler</div>
+            }
+            @if (pwGeaendert)
+            {
+                <div class="alert alert-success">Mot de passe modifié. Reconnectez-vous.</div>
+            }
+
+            <EditForm Model="this" OnValidSubmit="AenderePasswortAsync" FormName="pw-form" class="enote-form">
+                <label>
+                    Mot de passe actuel
+                    <PasswordInput @bind-Value="aktuellesPasswort" Required="true" Autocomplete="current-password" />
+                </label>
+                <label>
+                    Nouveau mot de passe
+                    <PasswordInput @bind-Value="neuesPasswort" Required="true" Autocomplete="new-password" />
+                    <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+                </label>
+                <AsyncActionButton Text="Modifier" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" />
+            </EditForm>
+        </div>
+    }
+</div>

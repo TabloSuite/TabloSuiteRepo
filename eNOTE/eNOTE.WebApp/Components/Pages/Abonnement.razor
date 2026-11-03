@@ -1,0 +1,62 @@
+﻿@page "/abonnement"
+@attribute [Authorize(Roles = "Besitzer")]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Abo
+
+<PageTitle>Abonnement</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Abonnement – @salonName</h1>
+            <p>Choisissez une formule et signalez votre paiement. L'administrateur confirme la réception.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        @if (aktuellesAbo is not null)
+        {
+            <div class="enote-abo-status">
+                <div>
+                    <strong>@IntervallText(aktuellesAbo.Intervall)</strong> · @aktuellesAbo.PreisSnapshot.ToString("N0") F
+                    <div class="enote-muted">Du @aktuellesAbo.ZeitraumVonUtc.ToLocalTime().ToString("dd.MM.yyyy") au @aktuellesAbo.ZeitraumBisUtc.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                </div>
+                <span class="enote-tag @StatusKlasse(aktuellesAbo.ZahlungStatus)">@StatusText(aktuellesAbo.ZahlungStatus)</span>
+            </div>
+        }
+
+        <h2 class="enote-section-title">Nouvelle formule</h2>
+        <div class="enote-grid">
+            @foreach (var formel in formeln)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@IntervallText(formel)</strong>
+                        <span class="enote-price">@preise.GetValueOrDefault(formel).ToString("N0") F</span>
+                    </div>
+                    <div class="enote-item-actions">
+                        <button class="enote-btn enote-btn-primary" @onclick="() => OeffneZahlung(formel)">Choisir</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<ModalDialog Open="zahlungOffen" Title="@ZahlungDialogTitel" ErrorMessage="@zahlungFehler" OnClose="() => zahlungOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p>Montant : <strong>@(preise.GetValueOrDefault(ausgewaehltesIntervall).ToString("N0")) F</strong></p>
+            <label>Référence / note (facultatif) <input @bind="zahlungsNotiz" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => zahlungOffen = false">Annuler</button>
+        <AsyncActionButton Text="Signaler le paiement" OnClick="MeldeZahlungAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

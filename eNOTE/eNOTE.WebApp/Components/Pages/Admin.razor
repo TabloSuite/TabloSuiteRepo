@@ -1,0 +1,296 @@
+﻿@page "/admin"
+@attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Abo
+
+<PageTitle>Administration</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Administration</h1>
+            <p>Validez les établissements, gérez les prix de la plateforme et consultez l'activité.</p>
+        </div>
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized Context="addCtx">
+                <button class="enote-btn enote-btn-primary" @onclick="OeffneBesitzerDialog">+ Ajouter un propriétaire</button>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        @if (ausstehende.Count > 0)
+        {
+            <h2 class="enote-section-title">En attente de validation (@ausstehende.Count)</h2>
+            <div class="enote-grid">
+                @foreach (var s in ausstehende)
+                {
+                    <div class="enote-item enote-item-pending">
+                        <div class="enote-item-head">
+                            <strong>@s.Name</strong>
+                            <span class="enote-tag enote-tag-warn">En attente</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(s.Standort))
+                        {
+                            <p class="enote-item-desc">@s.Standort</p>
+                        }
+                        <p class="enote-item-desc">Inscrit le @s.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                        <div class="enote-item-actions">
+                            <AsyncActionButton Text="Valider" OnClick="() => SetzeFreigabeAsync(s.SalonId, true)" CssClass="enote-btn-primary" />
+                            <AsyncActionButton Text="Refuser" OnClick="() => SetzeAktivAsync(s.SalonId, false)" CssClass="enote-btn-ghost enote-danger" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <h2 class="enote-section-title">Tous les établissements (@salons.Count)</h2>
+        <div class="enote-grid">
+            @foreach (var s in salons)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@s.Name</strong>
+                        <span class="enote-price">@s.GesamtUmsatz.ToString("N0") F</span>
+                    </div>
+                    <div class="enote-item-meta">
+                        @if (s.IstFreigegeben)
+                        {
+                            <span class="enote-tag">Validé</span>
+                        }
+                        else
+                        {
+                            <span class="enote-tag enote-tag-warn">En attente</span>
+                        }
+                        @if (!s.IstAktiv)
+                        {
+                            <span class="enote-tag enote-tag-off">Désactivé</span>
+                        }
+                        <span class="enote-muted">@s.AnzahlMitglieder membre(s)</span>
+                    </div>
+                    <div class="enote-item-actions">
+                        @if (!s.IstFreigegeben)
+                        {
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => SetzeFreigabeAsync(s.SalonId, true)">Valider</button>
+                        }
+                        @if (s.IstAktiv)
+                        {
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => SetzeAktivAsync(s.SalonId, false)">Désactiver</button>
+                        }
+                        else
+                        {
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => SetzeAktivAsync(s.SalonId, true)">Réactiver</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                @if (gemeldeteZahlungen.Count > 0)
+                {
+                    <h2 class="enote-section-title">Paiements signalés (@gemeldeteZahlungen.Count)</h2>
+                    <div class="enote-grid">
+                        @foreach (var a in gemeldeteZahlungen)
+                        {
+                            <div class="enote-item enote-item-pending">
+                                <div class="enote-item-head">
+                                    <strong>@a.Salon.Name</strong>
+                                    <span class="enote-price">@a.PreisSnapshot.ToString("N0") F</span>
+                                </div>
+                                <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                                @if (!string.IsNullOrWhiteSpace(a.ZahlungsNotiz))
+                                {
+                                    <p class="enote-item-desc">« @a.ZahlungsNotiz »</p>
+                                }
+                                <div class="enote-item-actions">
+                                    <AsyncActionButton Text="Confirmer" OnClick="() => SetzeZahlungsStatusAsync(a.Id, AboZahlungStatus.Bestaetigt)" CssClass="enote-btn-primary" />
+                                    <AsyncActionButton Text="Refuser" OnClick="() => SetzeZahlungsStatusAsync(a.Id, AboZahlungStatus.Abgelehnt)" CssClass="enote-btn-ghost enote-danger" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <h2 class="enote-section-title">Prix de la plateforme</h2>
+                <div class="enote-grid">
+                    @foreach (var p in plattformPreise)
+                    {
+                        <div class="enote-item">
+                            <div class="enote-item-head">
+                                <strong>@IntervallText(p.Intervall)</strong>
+                                <span class="enote-price">@p.Preis.ToString("N0") F</span>
+                            </div>
+                            <div class="enote-item-actions">
+                                <button class="enote-btn enote-btn-ghost" @onclick="() => OeffnePreisDialog(p)">Modifier</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @* --- ProduktOwner-Verwaltung --- *@
+                <h2 class="enote-section-title">Propriétaires plateforme</h2>
+                <div class="enote-card enote-settings-card">
+                    <div class="enote-item-head">
+                        <strong>Propriétaires plateforme (@produktOwners.Count)</strong>
+                        <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="OeffnePoAnlegeDialog">+ Ajouter</button>
+                    </div>
+                    <div class="enote-item-actions" style="flex-wrap:wrap">
+                        @foreach (var po in produktOwners)
+                        {
+                            <button class="enote-btn enote-btn-ghost enote-btn-sm @(ausgewaehlterPoId == po.Id ? "enote-btn-primary" : "")"
+                                    @onclick="() => WaehleProduktOwnerAsync(po.Id, po.FullName)">
+                                @po.FullName
+                            </button>
+                        }
+                    </div>
+
+                    @if (ausgewaehlterPoId is not null)
+                    {
+                        <div class="enote-zuweisung">
+                            <h3>établissements de @ausgewaehlterPoName</h3>
+                            <p class="enote-muted">Cochez les établissements qu'il gére. Par défaut il voit le chiffre d'affaires de l'établissement.</p>
+                            @foreach (var s in salons)
+                            {
+                                var z = zuweisungen.FirstOrDefault(x => x.SalonId == s.SalonId);
+                                var zugewiesen = z is not null;
+                                <div class="enote-zuweisung-row">
+                                    <label class="checkbox">
+                                        <input type="checkbox" checked="@zugewiesen" @onchange="e => ToggleZuweisungAsync(s.SalonId, (bool)(e.Value ?? false))" />
+                                        <span>@s.Name</span>
+                                    </label>
+                                    @if (zugewiesen && z is not null)
+                                    {
+                                        <div class="enote-zuweisung-rechte">
+                                            <label class="checkbox"><input type="checkbox" checked="@z.KannLadenUmsatzSehen" @onchange="() => SetzeUmsatzRechtAsync(z, plattform: false)" /> <span>CA établissement</span></label>
+                                            <label class="checkbox"><input type="checkbox" checked="@z.KannPlattformUmsatzSehen" @onchange="() => SetzeUmsatzRechtAsync(z, plattform: true)" /> <span>Revenus plateforme</span></label>
+                                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneProvisionDialog(z)">Commission</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @* --- Provisions-Auszahlung --- *@
+                <h2 class="enote-section-title">Commissions des propriétaires plateforme</h2>
+                <div class="enote-card enote-settings-card">
+                    <div class="enote-kategorie-row">
+                        <label style="margin:0">Mois <input type="month" @bind="auszahlungMonat" class="enote-input-inline" style="max-width:11rem" /></label>
+                        <AsyncActionButton Text="Calculer les commissions" OnClick="BerechneAuszahlungenAsync" CssClass="enote-btn-ghost" />
+                    </div>
+
+                    @if (auszahlungen.Count == 0)
+                    {
+                        <p class="enote-muted">Aucune commission calculée pour ce mois. Cliquez sur é Calculer é.</p>
+                    }
+                    else
+                    {
+                        <table class="enote-table">
+                            <thead><tr><th>Propriétaire</th><th>Détail</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var a in auszahlungen)
+                                {
+                                    <tr>
+                                        <td>@a.ProduktOwner.FullName</td>
+                                        <td><small class="enote-muted">@a.Aufschluesselung</small></td>
+                                        <td><strong>@a.Betrag.ToString("N0") F</strong></td>
+                                        <td>
+                                            @if (a.Status == AuszahlungStatus.Bestaetigt)
+                                            {
+                                                <span class="enote-tag">Versée</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="enote-tag enote-tag-warn">À verser</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (a.Status != AuszahlungStatus.Bestaetigt)
+                                            {
+                                                <AsyncActionButton Text="Confirmer le versement" OnClick="() => BestaetigeAuszahlungAsync(a.Id)" CssClass="enote-btn-primary enote-btn-sm" />
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    }
+</div>
+
+<ModalDialog Open="preisDialogOffen" Title="@PreisDialogTitel" ErrorMessage="@preisFehler" OnClose="() => preisDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nouveau prix (F) <input type="number" min="0" step="100" @bind="neuerPreis" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => preisDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SetzePreisAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Besitzer + Geschäft durch Admin anlegen *@
+<ModalDialog Open="besitzerDialogOffen" Title="Ajouter un propriétaire" ErrorMessage="@besitzerFehler" OnClose="() => besitzerDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <div class="enote-form-grid">
+                <label>Prénom <input @bind="neuVorname" /></label>
+                <label>Nom <input @bind="neuNachname" /></label>
+            </div>
+            <label>Adresse e-mail <input type="email" @bind="neuEmail" /></label>
+            <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
+            <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
+            <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
+            <small class="enote-muted">L'établissement est validé et actif immédiatement. Communiquez au propriétaire son mot de passe initial.</small>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => besitzerDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Créer" OnClick="LegeBesitzerAnAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* ProduktOwner anlegen *@
+<ModalDialog Open="poAnlegeDialogOffen" Title="Ajouter un propriétaire plateforme" ErrorMessage="@poFehler" OnClose="() => poAnlegeDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <div class="enote-form-grid">
+                <label>Prénom <input @bind="poVorname" /></label>
+                <label>Nom <input @bind="poNachname" /></label>
+            </div>
+            <label>Adresse e-mail <input type="email" @bind="poEmail" /></label>
+            <label>Mot de passe initial <input type="text" @bind="poPasswort" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => poAnlegeDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Créer" OnClick="LegeProduktOwnerAnAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Provision für einen PO-Laden festlegen *@
+<ModalDialog Open="provisionDialogOffen" Title="@ProvisionDialogTitel" ErrorMessage="@provisionFehler" OnClose="() => provisionDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Commission en pourcentage (%) <input type="number" min="0" max="100" step="0.5" @bind="provisionProzent" /></label>
+            <label>ou montant fixe par abonnement (F) <input type="number" min="0" step="100" @bind="provisionFestbetrag" /></label>
+            <small class="enote-muted">Laissez vide pour aucune commission. Si les deux sont définis, ils s'additionnent.</small>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => provisionDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProvisionAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

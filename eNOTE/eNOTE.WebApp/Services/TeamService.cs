@@ -1,0 +1,170 @@
+using ENote.Core.DataModels.Identity;
+using ENote.Core.DataModels.Salons;
+using ENote.Core.Services.Kasse;
+using ENote.WebApp.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace ENote.WebApp.Services;
+
+/// <summary>
+/// Verwaltet das Team eines Salons: Kassierer anlegen, Kassen-PIN vergeben,
+/// delegierbare Rechte setzen und Salon-Zuordnungen entfernen.
+/// </summary>
+public class TeamService(
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    UserManager<AppUser> userManager,
+    ILogger<TeamService> logger)
+{
+    public record TeamMitglied(
+        Guid UserSalonId,
+        Guid UserId,
+        string Name,
+        string Email,
+        bool HatPin,
+        bool KannFinanzenSehen,
+        bool KannLeistungenVerwalten,
+        bool KannRabatteVerwalten,
+        bool IstBesitzer);
+
+    /// <summary>Alle Mitglieder eines Salons inklusive ihrer Rechte.</summary>
+    public async Task<List<TeamMitglied>> GetTeamAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var zuordnungen = await db.UserSalons
+            .Include(us => us.AppUser)
+            .AsNoTracking()
+            .Where(us => us.SalonId == salonId)
+            .OrderBy(us => us.AppUser.FullName)
+            .ToListAsync(cancellationToken);
+
+        var ergebnis = new List<TeamMitglied>();
+        foreach (var us in zuordnungen)
+        {
+            var istBesitzer = await userManager.IsInRoleAsync(us.AppUser, AppRollen.Besitzer);
+            ergebnis.Add(new TeamMitglied(
+                us.Id, us.AppUserId, us.AppUser.FullName, us.AppUser.Email ?? string.Empty,
+                us.KassenPinHash is not null,
+                us.KannFinanzenSehen, us.KannLeistungenVerwalten, us.KannRabatteVerwalten,
+                istBesitzer));
+        }
+
+        return ergebnis;
+    }
+
+    /// <summary>
+    /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon
+    /// mit einer Kassen-PIN zu. Das Passwort ist ein Initialpasswort.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler, AppUser? Kassierer)> LegeKassiererAnAsync(
+        Guid salonId,
+        string vorname,
+        string nachname,
+        string email,
+        string initialPasswort,
+        string kassenPin,
+        CancellationToken cancellationToken = default)
+    {
+        if (!KassenPinService.IstGueltigesPinFormat(kassenPin))
+        {
+            return (false, "Le code PIN doit contenir 4 à 6 chiffres.", null);
+        }
+
+        var bereinigtEmail = email.Trim();
+        if (await userManager.FindByEmailAsync(bereinigtEmail) is not null)
+        {
+            return (false, "Un compte avec cette adresse e-mail existe déjà.", null);
+        }
+
+        var kassierer = new AppUser
+        {
+            UserName = bereinigtEmail,
+            Email = bereinigtEmail,
+            Vorname = vorname.Trim(),
+            Nachname = nachname.Trim(),
+            FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            EmailConfirmed = true
+        };
+
+        var erstellen = await userManager.CreateAsync(kassierer, initialPasswort);
+        if (!erstellen.Succeeded)
+        {
+            var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
+            logger.LogWarning("Kassierer-Anlage fehlgeschlagen für {Email}: {Fehler}", bereinigtEmail, fehler);
+            return (false, string.IsNullOrWhiteSpace(fehler) ? "La création a échoué." : fehler, null);
+        }
+
+        await userManager.AddToRoleAsync(kassierer, AppRollen.Kassierer);
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        db.UserSalons.Add(new UserSalon
+        {
+            AppUserId = kassierer.Id,
+            SalonId = salonId,
+            KassenPinHash = KassenPinService.HashPin(kassenPin)
+        });
+        await db.SaveChangesAsync(cancellationToken);
+
+        return (true, null, kassierer);
+    }
+
+    /// <summary>Setzt/ändert die Kassen-PIN einer Salon-Zuordnung.</summary>
+    public async Task<(bool Erfolg, string? Fehler)> SetzeKassenPinAsync(
+        Guid userSalonId, string neuePin, CancellationToken cancellationToken = default)
+    {
+        if (!KassenPinService.IstGueltigesPinFormat(neuePin))
+        {
+            return (false, "Le code PIN doit contenir 4 à 6 chiffres.");
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var zuordnung = await db.UserSalons.FirstOrDefaultAsync(us => us.Id == userSalonId, cancellationToken);
+        if (zuordnung is null)
+        {
+            return (false, "Membre introuvable.");
+        }
+
+        zuordnung.KassenPinHash = KassenPinService.HashPin(neuePin);
+        zuordnung.PinFehlversuche = 0;
+        zuordnung.PinGesperrtBisUtc = null;
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    /// <summary>Setzt die delegierbaren Rechte eines Mitglieds.</summary>
+    public async Task<bool> SetzeRechteAsync(
+        Guid userSalonId,
+        bool kannFinanzenSehen,
+        bool kannLeistungenVerwalten,
+        bool kannRabatteVerwalten,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var zuordnung = await db.UserSalons.FirstOrDefaultAsync(us => us.Id == userSalonId, cancellationToken);
+        if (zuordnung is null)
+        {
+            return false;
+        }
+
+        zuordnung.KannFinanzenSehen = kannFinanzenSehen;
+        zuordnung.KannLeistungenVerwalten = kannLeistungenVerwalten;
+        zuordnung.KannRabatteVerwalten = kannRabatteVerwalten;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Entfernt ein Mitglied aus dem Salon (das Identity-Konto bleibt bestehen).</summary>
+    public async Task<bool> EntferneMitgliedAsync(Guid userSalonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var zuordnung = await db.UserSalons.FirstOrDefaultAsync(us => us.Id == userSalonId, cancellationToken);
+        if (zuordnung is null)
+        {
+            return false;
+        }
+
+        db.UserSalons.Remove(zuordnung);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+}

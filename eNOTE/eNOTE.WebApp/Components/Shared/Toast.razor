@@ -1,0 +1,10 @@
+﻿@implements IDisposable
+@inject ENote.WebApp.Services.ToastService ToastService
+
+@if (ToastService.Sichtbar && !string.IsNullOrWhiteSpace(ToastService.Nachricht))
+{
+    <div class="enote-toast enote-toast-@ArtKlasse" role="status">
+        <span>@ToastService.Nachricht</span>
+        <button type="button" class="enote-toast-close" aria-label="Fermer" @onclick="Verbergen">&times;</button>
+    </div>
+}

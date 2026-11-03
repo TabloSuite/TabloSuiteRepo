@@ -1,0 +1,128 @@
+﻿@page "/equipe"
+@attribute [Authorize(Roles = "Besitzer")]
+@rendermode InteractiveServer
+
+<PageTitle>Équipe</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Équipe – @salonName</h1>
+            <p>Créez des caissiers, définissez leur code PIN et déléguez des droits.</p>
+        </div>
+        <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouveau caissier</button>
+    </div>
+
+    @if (salons.Count > 1)
+    {
+        <div class="enote-favorit-box">
+            <label>établissement favori sur cet appareil</label>
+            <div class="enote-favorit-row">
+                <select class="enote-select" @bind="favoritSalonId">
+                    @foreach (var s in salons)
+                    {
+                        <option value="@s.SalonId">@s.Salon.Name</option>
+                    }
+                </select>
+                <button class="enote-btn enote-btn-ghost" @onclick="SetzeFavoritAsync">Définir ici</button>
+                <button class="enote-btn enote-btn-ghost" @onclick="EntferneFavoritAsync">Retirer</button>
+            </div>
+            <small class="enote-muted">Le établissement favori est proposé en premier au démarrage de la caisse sur cette tablette.</small>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else if (team.Count == 0)
+    {
+        <p class="enote-empty">Aucun membre pour le moment.</p>
+    }
+    else
+    {
+        <div class="enote-grid">
+            @foreach (var m in team)
+            {
+                <div class="enote-item">
+                    <div class="enote-item-head">
+                        <strong>@m.Name</strong>
+                        @if (m.IstBesitzer)
+                        {
+                            <span class="enote-tag">Propriétaire</span>
+                        }
+                        else if (m.HatPin)
+                        {
+                            <span class="enote-tag">PIN défini</span>
+                        }
+                    </div>
+                    <p class="enote-item-desc">@m.Email</p>
+                    <div class="enote-item-actions">
+                        @if (!m.IstBesitzer)
+                        {
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => OeffnePinDialog(m)">Code PIN</button>
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => OeffneRechteDialog(m)">Droits</button>
+                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => OeffneEntfernenDialog(m)">Retirer</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* Kassierer anlegen *@
+<ModalDialog Open="anlegedialogOffen" Title="Nouveau caissier" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Prénom <input @bind="neuVorname" /></label>
+            <label>Nom <input @bind="neuNachname" /></label>
+            <label>Adresse e-mail <input type="email" @bind="neuEmail" /></label>
+            <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
+            <label>Code PIN caisse (4–6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
+        <AsyncActionButton Text="Créer" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* PIN ändern *@
+<ModalDialog Open="pinDialogOffen" Title="@("Code PIN – " + aktivesMitglied?.Name)" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nouveau code PIN (4–6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SetzePinAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Rechte *@
+<ModalDialog Open="rechteDialogOffen" Title="@("Droits – " + aktivesMitglied?.Name)" OnClose="SchliesseDialoge">
+    <ChildContent>
+        <div class="enote-form">
+            <label class="checkbox"><input type="checkbox" @bind="rechteFinanzen" /> <span>Voir les finances</span></label>
+            <label class="checkbox"><input type="checkbox" @bind="rechteLeistungen" /> <span>Gérer les prestations</span></label>
+            <label class="checkbox"><input type="checkbox" @bind="rechteRabatte" /> <span>Gérer les remises</span></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SetzeRechteAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Entfernen *@
+<ModalDialog Open="entfernenDialogOffen" Title="Retirer le membre" OnClose="SchliesseDialoge">
+    <ChildContent>
+        <p>Retirer « @aktivesMitglied?.Name » de cet établissement ? Le compte reste actif.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
+        <AsyncActionButton Text="Retirer" OnClick="EntferneMitgliedAsync" CssClass="enote-btn-primary enote-danger-bg" />
+    </Footer>
+</ModalDialog>
