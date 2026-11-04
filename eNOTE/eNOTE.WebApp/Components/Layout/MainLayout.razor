@@ -4,43 +4,55 @@
 @inject ENote.WebApp.Services.BesitzerPinState BesitzerPinState
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@using ENote.WebApp.Components.Shared
 
-<div class="enote-layout">
+<div class="enote-layout @((KassenState.KassenModusAktiv && !KassenState.IstMinimiert) ? "enote-kassen-modus" : "")">
     <header class="enote-topbar">
         <a class="enote-brand" href="/">
             <span class="enote-brand-icon">eN</span>
             <span class="enote-brand-name">eNOTE</span>
         </a>
         <div class="enote-topbar-actions">
-            <AuthorizeView>
-                <Authorized>
-                    <div class="enote-usermenu">
-                        <button class="enote-avatar-btn" @onclick="() => userMenuOffen = !userMenuOffen" aria-label="Compte">
-                            <span class="enote-avatar">@Initialen(context.User.Identity?.Name)</span>
-                        </button>
-                        @if (userMenuOffen)
-                        {
-                            <div class="enote-usermenu-popup">
-                                <div class="enote-usermenu-name">@context.User.Identity?.Name</div>
-                                <a class="enote-usermenu-link" href="/profil" @onclick="() => userMenuOffen = false">👤 Mon profil</a>
-                                <form method="post" action="/auth/logout">
-                                    <AntiforgeryToken />
-                                    <button type="submit" class="enote-usermenu-link enote-usermenu-danger">⎋ Déconnexion</button>
-                                </form>
-                            </div>
-                        }
-                    </div>
-                </Authorized>
-                <NotAuthorized>
-                    <a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
-                    <a class="enote-btn enote-btn-primary" href="/auth/register">Inscription</a>
-                </NotAuthorized>
-            </AuthorizeView>
+            @if (!KassenState.KassenModusAktiv || KassenState.IstMinimiert)
+            {
+                <AuthorizeView Roles="Besitzer, Kassierer">
+                    <Authorized Context="switcherCtx">
+                        <SalonSwitcher />
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="enote-usermenu">
+                            <button class="enote-avatar-btn" @onclick="() => userMenuOffen = !userMenuOffen" aria-label="Compte">
+                                <span class="enote-avatar">@Initialen(context.User.Identity?.Name)</span>
+                            </button>
+                            @if (userMenuOffen)
+                            {
+                                <div class="enote-usermenu-popup">
+                                    <div class="enote-usermenu-name">@context.User.Identity?.Name</div>
+                                    <a class="enote-usermenu-link" href="/profil" @onclick="() => userMenuOffen = false">👤 Mon profil</a>
+                                    <form method="post" action="/auth/logout">
+                                        <AntiforgeryToken />
+                                        <button type="submit" class="enote-usermenu-link enote-usermenu-danger">⎋ Déconnexion</button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
+                        <a class="enote-btn enote-btn-primary" href="/auth/register">Inscription</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            }
         </div>
     </header>
 
     <div class="enote-body">
-        <NavMenu />
+        @if (!KassenState.KassenModusAktiv || KassenState.IstMinimiert)
+        {
+            <NavMenu />
+        }
         <main class="enote-main">
             @Body
         </main>
@@ -51,7 +63,7 @@
     {
         <button class="enote-mini-caisse" @onclick="OeffneKasse">
             <span>Caisse · @KassenState.KassiererName</span>
-            <span class="betrag">@KassenState.LaufenderUmsatz.ToString("N0") F</span>
+            <span class="betrag">@KassenState.ErwarteterBarBetrag.ToString("N0") F</span>
         </button>
     }
 

@@ -1,5 +1,5 @@
 ﻿@page "/caisse"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Kasse
 @using ENote.Core.DataModels.Katalog
@@ -67,23 +67,23 @@ else
     @* --- Zustand 2: Aktive Kasse --- *@
     <div class="enote-caisse">
         <div class="enote-caisse-header">
-            <div>
-                <h1>Caisse – @anzeigeState.KassiererName</h1>
-                <p class="enote-muted">@aktiverSalonName</p>
-            </div>
+            @if (aktiveSitzung is not null)
+            {
+                <div class="enote-caisse-sitzung-info">
+                    <span class="enote-caisse-sitzung-titel">🟢 Caisse ouverte</span>
+                    <span class="enote-muted">@anzeigeState.KassiererName · démarrée à @aktiveSitzung.GestartetUtc.ToLocalTime().ToString("HH:mm")</span>
+                </div>
+            }
             <div class="enote-caisse-header-actions">
-                <button class="enote-btn enote-btn-ghost" @onclick="anzeigeState.Minimieren">Réduire</button>
+                <button class="enote-btn enote-btn-ghost" @onclick="OeffneHistorieAsync">🧾 Ventes</button>
+                <button class="enote-btn enote-btn-ghost" @onclick="anzeigeState.Minimieren">Réduire la caisse</button>
                 <button class="enote-btn enote-btn-ghost" @onclick="OeffneDisplayDialog">📺 Affichage client</button>
-                @if (istBesitzerOderAdmin)
-                {
-                    <button class="enote-btn enote-btn-ghost" @onclick="BeendeKassenModus">Quitter le mode caisse</button>
-                }
                 <button class="enote-btn enote-btn-ghost" @onclick="OeffneAbschluss">Clôturer</button>
             </div>
         </div>
 
         <div class="enote-caisse-body">
-            <div>
+            <div class="enote-caisse-katalog">
                 @* Barcode-Scan *@
                 <div class="enote-scan-box">
                     <input class="enote-scan-input"
@@ -139,33 +139,44 @@ else
 
             @* Ticket *@
             <div class="enote-ticket">
-                <h2>Ticket</h2>
+                <div class="enote-ticket-kopf">
+                    <h2>Ticket</h2>
+                    @if (ticket.Count > 0)
+                    {
+                        <button type="button" class="enote-btn enote-btn-abbrechen enote-btn-sm" @onclick="OeffneAbbrechenBestaetigung">✕ Annuler</button>
+                    }
+                </div>
                 @if (ticket.Count == 0)
                 {
                     <p class="enote-muted">Touchez une prestation pour l'ajouter.</p>
                 }
                 else
                 {
-                    @foreach (var pos in ticket)
-                    {
-                        <div class="enote-ticket-pos">
-                            <div class="enote-ticket-pos-info">
-                                <strong>@pos.Leistung.Name</strong>
-                                <span>@pos.Leistung.Preis.ToString("N0") F × @pos.Menge</span>
+                    @* Nur die Positionsliste scrollt – Remise/Total/Buttons bleiben unten fix *@
+                    <div class="enote-ticket-scroll">
+                        @foreach (var pos in ticket)
+                        {
+                            <div class="enote-ticket-pos">
+                                <div class="enote-ticket-pos-top">
+                                    <strong class="enote-ticket-pos-name">@pos.Leistung.Name</strong>
+                                    <button type="button" class="enote-danger enote-ticket-pos-del" title="Supprimer" @onclick="() => EntfernePos(pos)">✕</button>
+                                </div>
+                                <div class="enote-ticket-pos-bottom">
+                                    <div class="enote-ticket-pos-actions">
+                                        <button @onclick="() => AendereMenge(pos, -1)">−</button>
+                                        <span>@pos.Menge</span>
+                                        <button @onclick="() => AendereMenge(pos, 1)">+</button>
+                                    </div>
+                                    <span class="enote-ticket-pos-preis">@pos.EffektivPreis.ToString("N0") F × @pos.Menge</span>
+                                    <div class="enote-ticket-pos-sum">@ZeilenSumme(pos).ToString("N0") F</div>
+                                </div>
                                 @if (pos.Rabatt is not null)
                                 {
                                     <span class="enote-tag">@pos.Rabatt.Name</span>
                                 }
                             </div>
-                            <div class="enote-ticket-pos-actions">
-                                <button @onclick="() => AendereMenge(pos, -1)">−</button>
-                                <span>@pos.Menge</span>
-                                <button @onclick="() => AendereMenge(pos, 1)">+</button>
-                                <button class="enote-danger" @onclick="() => EntfernePos(pos)">✕</button>
-                            </div>
-                            <div class="enote-ticket-pos-sum">@ZeilenSumme(pos).ToString("N0") F</div>
-                        </div>
-                    }
+                        }
+                    </div>
                 }
 
                 @if (ticket.Count > 0)
@@ -195,34 +206,15 @@ else
                         <div class="enote-total"><span>Total</span><span>@gesamtSumme.ToString("N0") F</span></div>
                     </div>
 
-                    <div class="enote-zahlart">
-                        <EnoteRadioGroup TValue="ZahlungsArt" @bind-Value="zahlungsArt" Options="zahlungsArtOptionen" />
+                    @* Zahlung: zwei große Touch-Buttons, öffnen je ein Modal *@
+                    <div class="enote-zahl-buttons">
+                        <button type="button" class="enote-zahl-btn enote-zahl-bar" @onclick="OeffneBarModal">💵 Espèces</button>
+                        <button type="button" class="enote-zahl-btn enote-zahl-karte" @onclick="OeffneKarteModal">💳 Carte</button>
                     </div>
-
-                    @if (zahlungsArt == ZahlungsArt.Bar)
-                    {
-                        <label>Montant reçu (F)</label>
-                        <input type="number" min="0" step="100" @bind="gegeben" @bind:event="oninput" />
-                        <div class="enote-rueckgeld">
-                            <span>Monnaie à rendre</span>
-                            <strong>@rueckgeld.ToString("N0") F</strong>
-                        </div>
-                    }
-                    else
-                    {
-                        <label class="enote-check-row"><EnoteCheckbox @bind-Value="karteBestaetigt" Label="Paiement par carte effectué" /></label>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(verkaufFehler))
-                    {
-                        <div class="alert alert-error">@verkaufFehler</div>
-                    }
-
-                    <AsyncActionButton Text="Encaisser" OnClick="BucheVerkaufAsync" CssClass="enote-btn-primary enote-btn-lg" />
 
                     @if (letzterVerkaufId is Guid bonId)
                     {
-                        <a class="enote-btn enote-btn-ghost enote-btn-lg" href="/bon/@bonId" target="_blank">🧾 Imprimer le reçu</a>
+                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-lg" @onclick="() => DruckeBonAsync(bonId)">🖨️ Imprimer le reçu</button>
                     }
                 }
             </div>
@@ -230,18 +222,139 @@ else
     </div>
 }
 
+@* --- Zahlung Espèces (Bar) --- *@
+<ModalDialog Open="barModalOffen" Title="Paiement en espèces" ErrorMessage="@verkaufFehler" OnClose="() => barModalOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-zahl-modal">
+            <div class="enote-zahl-total">
+                <span>Total à payer</span>
+                <strong>@gesamtSumme.ToString("N0") F</strong>
+            </div>
+            <label>Montant reçu (F)</label>
+            <input type="number" min="0" step="50" inputmode="numeric" class="enote-zahl-input" @bind="gegeben" @bind:event="oninput" />
+            @if (barBetragZuWenig)
+            {
+                <small class="enote-danger">Montant insuffisant – il manque @((gesamtSumme - gegeben).ToString("N0")) F.</small>
+            }
+            <div class="enote-rueckgeld">
+                <span>Monnaie à rendre</span>
+                <strong>@rueckgeldModal.ToString("N0") F</strong>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => barModalOffen = false">Annuler</button>
+        <AsyncActionButton Text="Confirmer" OnClick="BestaetigeBarAsync" CssClass="enote-btn-primary" Disabled="@barBetragZuWenig" />
+    </Footer>
+</ModalDialog>
+
+@* --- Zahlung Carte --- *@
+<ModalDialog Open="karteModalOffen" Title="Paiement par carte" ErrorMessage="@verkaufFehler" OnClose="() => karteModalOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-zahl-modal">
+            <div class="enote-zahl-total">
+                <span>Total à payer</span>
+                <strong>@gesamtSumme.ToString("N0") F</strong>
+            </div>
+            <p class="enote-muted">Effectuez le paiement par carte, puis confirmez.</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => karteModalOffen = false">Annuler</button>
+        <AsyncActionButton Text="Confirmer le paiement" OnClick="BestaetigeKarteAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* --- Bestätigung: Verkauf abbrechen --- *@
+<ModalDialog Open="abbrechenBestaetigungOffen" Title="Annuler la vente" OnClose="() => abbrechenBestaetigungOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <p>Voulez-vous vraiment annuler la vente ? Toutes les prestations sélectionnées seront supprimées.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => abbrechenBestaetigungOffen = false">Non, garder</button>
+        <button class="enote-btn enote-btn-abbrechen" @onclick="BrecheTicketAb">Oui, annuler</button>
+    </Footer>
+</ModalDialog>
+
+@* --- Verkaufshistorie (vorherige Verkäufe + Bon nachdrucken) --- *@
+<ModalDialog Open="historieOffen" Title="Ventes récentes" OnClose="() => historieOffen = false" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (historieLaedt)
+        {
+            <p>Chargement…</p>
+        }
+        else if (historieVerkaeufe.Count == 0)
+        {
+            <p class="enote-muted">Aucune vente pour le moment.</p>
+        }
+        else
+        {
+            <div class="enote-historie-liste">
+                @foreach (var v in historieVerkaeufe)
+                {
+                    <div class="enote-historie-item">
+                        <div class="enote-historie-info">
+                            <div class="enote-historie-top">
+                                <strong class="enote-historie-betrag">@v.GesamtSumme.ToString("N0") F</strong>
+                                <span class="enote-tag enote-tag-zahlart">@(v.ZahlungsArt == ZahlungsArt.Bar ? "💵 Espèces" : "💳 Carte")</span>
+                            </div>
+                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm") – @v.KassiererName</small>
+                            <small class="enote-historie-pos">@v.PositionenText</small>
+                        </div>
+                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm enote-historie-reçu" @onclick="() => DruckeBonAsync(v.VerkaufId)">🖨️ Reçu</button>
+                    </div>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-primary" @onclick="() => historieOffen = false">Fermer</button>
+    </Footer>
+</ModalDialog>
+
 @* --- Kassenabschluss --- *@
 <ModalDialog Open="abschlussOffen" Title="Clôturer la caisse" ErrorMessage="@abschlussFehler" OnClose="() => abschlussOffen = false">
     <ChildContent>
         <div class="enote-form">
             <p>Comptez l'argent en caisse et saisissez le montant.</p>
+            @if (barSollInfo is var info && info is not null)
+            {
+                <div class="enote-abschluss-soll">
+                    <div class="enote-abschluss-soll-zeilen">
+                        <div><span>Fonds de départ</span><span>@info.Value.Startbestand.ToString("N0") F</span></div>
+                        <div><span>Ventes en espèces</span><span>+ @info.Value.BarEinnahmen.ToString("N0") F</span></div>
+                    </div>
+                    <div class="enote-abschluss-soll-total">
+                        <span>Montant attendu en espèces</span>
+                        <strong>@info.Value.Soll.ToString("N0") F</strong>
+                    </div>
+                </div>
+            }
             <label>Montant compté (F) <input type="number" min="0" step="100" @bind="endbestandGezaehlt" /></label>
-            <label>Note (facultatif) <input @bind="abschlussNotiz" /></label>
+            <label>Note (facultatif) <textarea rows="3" @bind="abschlussNotiz"></textarea></label>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => abschlussOffen = false">Annuler</button>
         <AsyncActionButton Text="Clôturer" OnClick="SchliesseSitzungAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* --- Hinweis: offene Kasse wiederhergestellt --- *@
+<ModalDialog Open="wiederhergestelltModalOffen" Title="Caisse encore ouverte" OnClose="() => wiederhergestelltModalOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-wiederhergestellt">
+            <p class="enote-wiederhergestellt-text">Une caisse de la session précédente n'a pas été clôturée.</p>
+            <div class="enote-wiederhergestellt-zeile"><span>Caissier</span><strong>@wiederhergestelltKassierer</strong></div>
+            <div class="enote-wiederhergestellt-zeile"><span>Démarrée le</span><strong>@wiederhergestelltGestartet.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
+            @if (wiederhergestelltSoll is decimal soll)
+            {
+                <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Montant attendu en espèces</span><strong>@soll.ToString("N0") F</strong></div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-primary" @onclick="() => wiederhergestelltModalOffen = false">OK</button>
     </Footer>
 </ModalDialog>
 

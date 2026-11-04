@@ -53,8 +53,13 @@
     }
     else
     {
+        var gefiltert = GefilterteLeistungen().ToList();
+        <div class="enote-filter-leiste">
+            <input class="enote-filter-suche" placeholder="Rechercher une prestation…" @bind="leistungsSuche" @bind:event="oninput" />
+            <EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" />
+        </div>
         <div class="enote-grid">
-            @foreach (var l in leistungen)
+            @foreach (var l in gefiltert)
             {
                 <div class="enote-item">
                     <div class="enote-item-head">

@@ -8,6 +8,10 @@ public class Salon
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public string? Standort { get; set; }
+
+    /// <summary>Land des Geschäfts (z. B. Togo, Frankreich), für Filter und regionale Auswertung.</summary>
+    public string? Land { get; set; }
+
     public string? Beschreibung { get; set; }
     public bool IstAktiv { get; set; } = true;
 

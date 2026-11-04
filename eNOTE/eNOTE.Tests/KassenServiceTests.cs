@@ -88,6 +88,43 @@ public class KassenServiceTests
     }
 
     [Fact]
+    public async Task Besitzer_Kann_Mit_BesitzerPin_Kassieren()
+    {
+        var factory = TestDbContextFactory.Create();
+        var db = await factory.CreateDbContextAsync();
+
+        var salon = new Salon { Name = "Salon Solo", IstFreigegeben = true, IstAktiv = true };
+        var besitzer = new AppUser { UserName = "b@x.de", Email = "b@x.de", FullName = "Bes Itzer" };
+        db.Salons.Add(salon);
+        db.Users.Add(besitzer);
+        await db.SaveChangesAsync();
+
+        // Besitzer hat NUR eine Besitzer-PIN (Verwaltung), keine separate Kassen-PIN.
+        db.UserSalons.Add(new UserSalon
+        {
+            AppUserId = besitzer.Id,
+            SalonId = salon.Id,
+            BesitzerPinHash = KassenPinService.HashPin("4711")
+        });
+        await db.SaveChangesAsync();
+
+        var service = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+
+        // Er taucht in der Kassierer-Liste auf …
+        var kassiererListe = await service.GetKassiererAsync(salon.Id);
+        Assert.Contains(kassiererListe, k => k.UserId == besitzer.Id);
+
+        // … kann per Besitzer-PIN die Zuordnung auflösen …
+        var (gefunden, _, zuordnung, _) = await service.FindeZuordnungPerPinAsync(besitzer.Id, "4711");
+        Assert.True(gefunden);
+        Assert.Equal(salon.Id, zuordnung!.SalonId);
+
+        // … und eine Sitzung starten.
+        var sitzung = await service.StarteSitzungAsync(salon.Id, besitzer.Id, 2000);
+        Assert.True(sitzung.Erfolg);
+    }
+
+    [Fact]
     public async Task FindeZuordnungPerPin_Falsche_Pin_Schlaegt_Fehl_Und_Sperrt_Nach_Max()
     {
         var factory = TestDbContextFactory.Create();

@@ -1,0 +1,14 @@
+@inject ENote.WebApp.Services.AktiverSalonState AktiverSalon
+@inject ENote.WebApp.Services.KatalogService KatalogService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+@using ENote.WebApp.Components.Shared
+@using System.Security.Claims
+
+@if (optionen.Count > 1)
+{
+    <div class="enote-salon-switcher" title="Choisir l'établissement">
+        <span class="enote-salon-switcher-ico">🏪</span>
+        <EnoteSelect TValue="string" Value="@aktiveId" ValueChanged="WaehleAsync" Options="optionen" />
+    </div>
+}

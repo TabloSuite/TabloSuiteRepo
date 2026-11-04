@@ -4,8 +4,7 @@
     <button type="button"
             class="enote-select2-trigger"
             disabled="@Disabled"
-            @onclick="ToggleAsync"
-            @onblur="HandleBlurAsync">
+            @onclick="ToggleAsync">
         <span class="enote-select2-text">@AktuellerText</span>
         <span class="enote-select2-chevron">▾</span>
     </button>
@@ -18,7 +17,8 @@
                 <input class="enote-select2-suche"
                        placeholder="Rechercher…"
                        @bind="suchText"
-                       @bind:event="oninput" />
+                       @bind:event="oninput"
+                       @onclick:stopPropagation />
             }
             <div class="enote-select2-liste">
                 @foreach (var option in GefilterteOptionen)

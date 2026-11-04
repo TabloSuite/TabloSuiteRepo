@@ -15,19 +15,6 @@
         <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouveau caissier</button>
     </div>
 
-    @if (salons.Count > 1)
-    {
-        <div class="enote-favorit-box">
-            <label>établissement favori sur cet appareil</label>
-            <div class="enote-favorit-row">
-                <EnoteSelect TValue="string" @bind-Value="favoritSalonId" Options="salonOptionen" Placeholder="Choisir…" />
-                <button class="enote-btn enote-btn-ghost" @onclick="SetzeFavoritAsync">Définir ici</button>
-                <button class="enote-btn enote-btn-ghost" @onclick="EntferneFavoritAsync">Retirer</button>
-            </div>
-            <small class="enote-muted">Le établissement favori est proposé en premier au démarrage de la caisse sur cette tablette.</small>
-        </div>
-    }
-
     @if (isLoading)
     {
         <p>Chargement…</p>
@@ -38,8 +25,11 @@
     }
     else
     {
+        <div class="enote-filter-leiste">
+            <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)…" @bind="teamSuche" @bind:event="oninput" />
+        </div>
         <div class="enote-grid">
-            @foreach (var m in team)
+            @foreach (var m in GefiltertesTeam())
             {
                 <div class="enote-item">
                     <div class="enote-item-head">

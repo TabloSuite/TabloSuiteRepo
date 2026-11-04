@@ -8,7 +8,7 @@ public partial class ModalDialog
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string? ErrorMessage { get; set; }
     [Parameter] public string MaxWidthClass { get; set; } = "enote-modal-md";
-    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = false;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }

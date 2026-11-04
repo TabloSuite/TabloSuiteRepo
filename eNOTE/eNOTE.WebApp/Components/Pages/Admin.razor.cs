@@ -40,6 +40,22 @@ public partial class Admin(
     private DateTime? auszahlungMonat = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<ProduktOwnerAuszahlung> auszahlungen = [];
 
+    // Suche für Propriétaires plateforme
+    private string poSuche = string.Empty;
+
+    private IEnumerable<ENote.Core.DataModels.Identity.AppUser> GefilterteProduktOwners()
+    {
+        if (string.IsNullOrWhiteSpace(poSuche))
+        {
+            return produktOwners;
+        }
+
+        var s = poSuche.Trim();
+        return produktOwners.Where(p =>
+            (p.FullName?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (p.Email?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
     private bool probeDialogOffen;
     private Guid probeSalonId;
     private string probeSalonName = string.Empty;
@@ -48,6 +64,57 @@ public partial class Admin(
 
     private List<AdminService.SalonUebersicht> ausstehende =>
         salons.Where(s => !s.IstFreigegeben && s.IstAktiv).ToList();
+
+    // Tabs
+    private string aktiverTab = "etablissements";
+
+    // Suche/Filter für Établissements
+    private string salonSuche = string.Empty;
+    private string salonStatusFilter = "alle"; // alle | validé | attente
+    private string? salonLandFilter;
+    private string? salonBesitzerFilter;
+
+    private IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> besitzerFilterOptionen =>
+        salons.Where(s => !string.IsNullOrWhiteSpace(s.BesitzerName))
+            .Select(s => s.BesitzerName!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n)
+            .Select(n => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = n, Label = n })
+            .ToList();
+
+    private IEnumerable<AdminService.SalonUebersicht> GefilterteSalons()
+    {
+        IEnumerable<AdminService.SalonUebersicht> q = salons;
+
+        if (!string.IsNullOrWhiteSpace(salonSuche))
+        {
+            var s = salonSuche.Trim();
+            q = q.Where(x =>
+                x.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+                || (x.Standort?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        q = salonStatusFilter switch
+        {
+            "validé" => q.Where(x => x.IstFreigegeben),
+            "attente" => q.Where(x => !x.IstFreigegeben && x.IstAktiv),
+            _ => q
+        };
+
+        if (!string.IsNullOrWhiteSpace(salonLandFilter))
+        {
+            q = q.Where(x => string.Equals(x.Land, salonLandFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(salonBesitzerFilter))
+        {
+            q = q.Where(x => string.Equals(x.BesitzerName, salonBesitzerFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return q;
+    }
+
+    private void WechsleTab(string tab) => aktiverTab = tab;
 
     private bool preisDialogOffen;
     private string? preisFehler;
@@ -62,6 +129,24 @@ public partial class Admin(
     private string neuPasswort = string.Empty;
     private string neuSalonName = string.Empty;
     private string? neuStandort;
+    private string? neuLand;
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> landOptionen =
+        ENote.Core.DataModels.Salons.Laender.Alle
+            .Select(l => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = l, Label = l })
+            .ToList();
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> statusFilterOptionen =
+    [
+        new() { Value = "alle", Label = "Tous les statuts" },
+        new() { Value = "validé", Label = "Validé" },
+        new() { Value = "attente", Label = "En attente" }
+    ];
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> landFilterOptionen =
+        ENote.Core.DataModels.Salons.Laender.Alle
+            .Select(l => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = l, Label = l })
+            .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,6 +195,7 @@ public partial class Admin(
     {
         neuVorname = neuNachname = neuEmail = neuSalonName = string.Empty;
         neuStandort = null;
+        neuLand = "Togo";
         neuPasswort = ErzeugeInitialPasswort();
         besitzerFehler = null;
         besitzerDialogOffen = true;
@@ -126,7 +212,7 @@ public partial class Admin(
         }
 
         var (erfolg, fehler, _) = await adminService.LegeBesitzerMitSalonAnAsync(
-            neuVorname, neuNachname, neuEmail, neuPasswort, neuSalonName, neuStandort);
+            neuVorname, neuNachname, neuEmail, neuPasswort, neuSalonName, neuStandort, neuLand);
         if (!erfolg)
         {
             besitzerFehler = fehler;

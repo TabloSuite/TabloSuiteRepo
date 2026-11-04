@@ -10,6 +10,37 @@ public partial class Facturation(AboService aboService, ToastService toast)
     private List<NutzungsAbo> alle = [];
     private bool isLoading = true;
 
+    // Suche/Filter
+    private string aboSuche = string.Empty;
+    private string aboStatusFilter = "alle";
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> aboStatusOptionen =
+    [
+        new() { Value = "alle", Label = "Tous les statuts" },
+        new() { Value = "Offen", Label = "Ouvert" },
+        new() { Value = "Gemeldet", Label = "Signalé" },
+        new() { Value = "Bestaetigt", Label = "Confirmé" },
+        new() { Value = "Abgelehnt", Label = "Refusé" }
+    ];
+
+    private IEnumerable<NutzungsAbo> GefilterteAbos()
+    {
+        IEnumerable<NutzungsAbo> q = alle;
+
+        if (!string.IsNullOrWhiteSpace(aboSuche))
+        {
+            var s = aboSuche.Trim();
+            q = q.Where(a => a.Salon.Name.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (aboStatusFilter != "alle" && Enum.TryParse<AboZahlungStatus>(aboStatusFilter, out var status))
+        {
+            q = q.Where(a => a.ZahlungStatus == status);
+        }
+
+        return q;
+    }
+
     protected override async Task OnInitializedAsync() => await LadeAsync();
 
     private async Task LadeAsync()

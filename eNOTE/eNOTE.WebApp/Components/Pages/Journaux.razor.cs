@@ -13,6 +13,22 @@ public partial class Journaux(ExceptionLogService logService, ToastService toast
     private bool nurUnbehandelt;
     private readonly Dictionary<Guid, bool> zeigeDetails = [];
 
+    // Suche
+    private string logSuche = string.Empty;
+
+    private IEnumerable<ExceptionLog> GefilterteLogs()
+    {
+        if (string.IsNullOrWhiteSpace(logSuche))
+        {
+            return logs;
+        }
+
+        var s = logSuche.Trim();
+        return logs.Where(l =>
+            l.Nachricht.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || (l.Pfad?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
     protected override async Task OnInitializedAsync() => await LadeAsync();
 
     private async Task LadeAsync()

@@ -29,8 +29,11 @@
     }
     else
     {
+        <div class="enote-filter-leiste">
+            <input class="enote-filter-suche" placeholder="Rechercher une remise…" @bind="rabattSuche" @bind:event="oninput" />
+        </div>
         <div class="enote-grid">
-            @foreach (var r in rabatte)
+            @foreach (var r in GefilterteRabatte())
             {
                 <div class="enote-item">
                     <div class="enote-item-head">

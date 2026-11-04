@@ -39,6 +39,14 @@
             <button class="enote-btn enote-btn-primary" @onclick="ExportierePdf">Exporter en PDF</button>
         </div>
 
+        <div class="enote-tabs">
+            <button class="enote-tab @(aktiverTab == "umsatz" ? "aktiv" : "")" @onclick='() => WechsleTab("umsatz")'>Chiffre d'affaires</button>
+            <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>Dernières ventes</button>
+            <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>Clôtures de caisse</button>
+        </div>
+
+        @if (aktiverTab == "umsatz")
+        {
         <CollapsibleCard Title="@ZeitraumTitel" Subtitle="@($"{tagesUmsaetze.Sum(t => t.Gesamt):N0} F au total")" IsExpanded="true">
             @if (tagesUmsaetze.Count == 0)
             {
@@ -63,7 +71,9 @@
                 </table>
             }
         </CollapsibleCard>
-
+        }
+        else if (aktiverTab == "ventes")
+        {
         <CollapsibleCard Title="Dernières ventes" Subtitle="Aperçu en direct" IsExpanded="true">
             @if (letzteVerkaeufe.Count == 0)
             {
@@ -71,8 +81,12 @@
             }
             else
             {
+                <div class="enote-filter-leiste">
+                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
+                    <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
+                </div>
                 <div class="enote-feed">
-                    @foreach (var v in letzteVerkaeufe)
+                    @foreach (var v in GefilterteVerkaeufe())
                     {
                         <div class="enote-feed-item">
                             <div class="enote-feed-head">
@@ -89,8 +103,10 @@
                 </div>
             }
         </CollapsibleCard>
-
-        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")">
+        }
+        else if (aktiverTab == "clotures")
+        {
+        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")" IsExpanded="true">
             @if (abschluesse.Count == 0)
             {
                 <p class="enote-muted">Aucune clôture pour le moment.</p>
@@ -107,13 +123,23 @@
                                 <td>@a.Kassierer.FullName</td>
                                 <td>@a.BareinnahmenSoll?.ToString("N0") F</td>
                                 <td>@a.EndbestandGezaehlt?.ToString("N0") F</td>
-                                <td class="@(a.Differenz < 0 ? "enote-danger" : "")">@((a.Differenz ?? 0).ToString("+N0;-N0;0")) F</td>
+                                <td class="@(a.Differenz < 0 ? "enote-danger" : "")">@FormatEcart(a.Differenz) F</td>
                             </tr>
                         }
                     </tbody>
                 </table>
             }
         </CollapsibleCard>
+        }
     }
 </div>
 </BesitzerPinGuard>
+
+@code {
+    private static string FormatEcart(decimal? differenz)
+    {
+        var wert = differenz ?? 0m;
+        var formatiert = Math.Abs(wert).ToString("N0");
+        return wert < 0 ? $"-{formatiert}" : wert > 0 ? $"+{formatiert}" : "0";
+    }
+}

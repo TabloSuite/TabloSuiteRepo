@@ -29,6 +29,12 @@ public partial class EnoteDatePicker : IAsyncDisposable
     private async Task SetzeOffenAsync(bool wert)
     {
         offen = wert;
+        if (offen && Value is not null)
+        {
+            // Beim Öffnen immer auf den gesetzten Monat springen.
+            angezeigterMonat = new DateTime(Value.Value.Year, Value.Value.Month, 1);
+        }
+
         if (offen && !closerRegistriert)
         {
             selfRef ??= DotNetObjectReference.Create(this);

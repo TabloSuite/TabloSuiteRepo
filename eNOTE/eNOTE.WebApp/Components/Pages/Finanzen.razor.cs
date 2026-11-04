@@ -9,12 +9,14 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Finanzen(
     FinanzService finanzService,
     KatalogService katalogService,
+    AktiverSalonState aktiverSalon,
     AuthenticationStateProvider authStateProvider,
     NavigationManager navigationManager) : IAsyncDisposable
 {
     private bool isLoading = true;
     private bool darfFinanzenSehen;
     private Guid salonId;
+    private Guid benutzerId;
     private string salonName = string.Empty;
 
     private List<FinanzService.TagesUmsatz> tagesUmsaetze = [];
@@ -30,12 +32,51 @@ public partial class Finanzen(
     private DateTime? filterBis = DateTime.Today;
     private bool filterAktiv;
 
+    // Tabs
+    private string aktiverTab = "umsatz";
+    private void WechsleTab(string tab) => aktiverTab = tab;
+
+    // Suche/Filter für die Verkaufsliste
+    private string verkaufsSuche = string.Empty;
+    private string zahlungsArtFilter = "alle"; // alle | bar | karte
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> zahlungsArtOptionen =
+    [
+        new() { Value = "alle", Label = "Tous les paiements" },
+        new() { Value = "bar", Label = "Espèces" },
+        new() { Value = "karte", Label = "Carte" }
+    ];
+
+    private IEnumerable<FinanzService.VerkaufEintrag> GefilterteVerkaeufe()
+    {
+        IEnumerable<FinanzService.VerkaufEintrag> q = letzteVerkaeufe;
+
+        if (!string.IsNullOrWhiteSpace(verkaufsSuche))
+        {
+            var s = verkaufsSuche.Trim();
+            q = q.Where(v =>
+                v.PositionenText.Contains(s, StringComparison.OrdinalIgnoreCase)
+                || v.KassiererName.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+
+        q = zahlungsArtFilter switch
+        {
+            "bar" => q.Where(v => v.ZahlungsArt == Core.DataModels.Kasse.ZahlungsArt.Bar),
+            "karte" => q.Where(v => v.ZahlungsArt != Core.DataModels.Kasse.ZahlungsArt.Bar),
+            _ => q
+        };
+
+        return q;
+    }
+
     private string ZeitraumTitel => filterAktiv
         ? $"Chiffre d'affaires du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
         : "Chiffre d'affaires (14 jours)";
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -44,19 +85,25 @@ public partial class Finanzen(
             return;
         }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(userId);
-        if (zuordnung is null)
+        benutzerId = userId;
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(userId);
+        }
+
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
-        salonName = zuordnung.Salon.Name;
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
 
         // Besitzer oder delegierter Kassierer mit Finanzrecht (serverseitig geprüft).
         var istBesitzer = authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer);
-        darfFinanzenSehen = istBesitzer || zuordnung.KannFinanzenSehen;
+        darfFinanzenSehen = istBesitzer || aktive.KannFinanzenSehen;
 
         if (!darfFinanzenSehen)
         {
@@ -66,6 +113,19 @@ public partial class Finanzen(
 
         await LadeAsync();
         await StarteLiveVerbindungAsync();
+    }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId || !darfFinanzenSehen)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
     }
 
     private async Task LadeAsync()

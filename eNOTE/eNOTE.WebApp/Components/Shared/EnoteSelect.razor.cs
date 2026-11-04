@@ -87,14 +87,6 @@ public partial class EnoteSelect<TValue> : IAsyncDisposable
         await ValueChanged.InvokeAsync(wert);
     }
 
-    private async Task HandleBlurAsync()
-    {
-        // Kurze Verzögerung, damit ein Klick auf eine Option (onmousedown) zuerst greift.
-        await Task.Delay(120);
-        offen = false;
-        suchText = string.Empty;
-    }
-
     public ValueTask DisposeAsync()
     {
         selfRef?.Dispose();

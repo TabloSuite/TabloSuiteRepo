@@ -902,6 +902,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("IstFreigegeben")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Land")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid?>("LogoAssetId")
                         .HasColumnType("uniqueidentifier");
 

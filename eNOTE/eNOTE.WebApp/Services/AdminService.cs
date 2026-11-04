@@ -21,35 +21,91 @@ public class AdminService(
         Guid SalonId,
         string Name,
         string? Standort,
+        string? Land,
         bool IstFreigegeben,
         bool IstAktiv,
+        bool HatProbezeit,
         int AnzahlMitglieder,
         decimal GesamtUmsatz,
-        DateTime CreatedAtUtc);
+        DateTime CreatedAtUtc,
+        string? BesitzerName);
 
     public async Task<List<SalonUebersicht>> GetSalonUebersichtAsync(CancellationToken cancellationToken = default)
+        => await GetSalonUebersichtGefiltertAsync(null, null, null, null, cancellationToken);
+
+    /// <summary>
+    /// Gefilterte Salon-Übersicht für große Datenmengen. Alle Parameter optional.
+    /// suchBegriff filtert Name/Standort (case-insensitiv), nurFreigegebene/nurWartende
+    /// schränken den Status ein, land filtert exakt, limit begrenzt die Trefferzahl.
+    /// </summary>
+    public async Task<List<SalonUebersicht>> GetSalonUebersichtGefiltertAsync(
+        string? suchBegriff,
+        bool? nurFreigegebene,
+        bool? nurWartende,
+        string? land,
+        CancellationToken cancellationToken = default,
+        int limit = 200)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var salons = await db.Salons.AsNoTracking().OrderByDescending(s => s.CreatedAtUtc).ToListAsync(cancellationToken);
+        var abfrage = db.Salons.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(suchBegriff))
+        {
+            var s = suchBegriff.Trim();
+            abfrage = abfrage.Where(x => x.Name.Contains(s) || (x.Standort != null && x.Standort.Contains(s)));
+        }
+
+        if (nurFreigegebene == true)
+        {
+            abfrage = abfrage.Where(x => x.IstFreigegeben);
+        }
+
+        if (nurWartende == true)
+        {
+            abfrage = abfrage.Where(x => !x.IstFreigegeben && x.IstAktiv);
+        }
+
+        if (!string.IsNullOrWhiteSpace(land))
+        {
+            abfrage = abfrage.Where(x => x.Land == land);
+        }
+
+        var salons = await abfrage
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        var ids = salons.Select(s => s.Id).ToList();
         var mitglieder = await db.UserSalons.AsNoTracking()
+            .Where(us => ids.Contains(us.SalonId))
             .GroupBy(us => us.SalonId)
             .Select(g => new { g.Key, Anzahl = g.Count() })
             .ToListAsync(cancellationToken);
         var umsatz = await db.Verkaeufe.AsNoTracking()
+            .Where(v => ids.Contains(v.SalonId))
             .GroupBy(v => v.SalonId)
             .Select(g => new { g.Key, Summe = g.Sum(v => v.GesamtSumme) })
+            .ToListAsync(cancellationToken);
+
+        var besitzerNamen = await db.UserSalons.AsNoTracking()
+            .Where(us => ids.Contains(us.SalonId) && us.BesitzerPinHash != null)
+            .GroupBy(us => us.SalonId)
+            .Select(g => new { g.Key, Name = g.Select(us => us.AppUser.FullName).FirstOrDefault() })
             .ToListAsync(cancellationToken);
 
         return salons.Select(s => new SalonUebersicht(
             s.Id,
             s.Name,
             s.Standort,
+            s.Land,
             s.IstFreigegeben,
             s.IstAktiv,
+            s.ProbeBisUtc is not null && s.ProbeBisUtc > DateTime.UtcNow,
             mitglieder.FirstOrDefault(m => m.Key == s.Id)?.Anzahl ?? 0,
             umsatz.FirstOrDefault(u => u.Key == s.Id)?.Summe ?? 0m,
-            s.CreatedAtUtc)).ToList();
+            s.CreatedAtUtc,
+            besitzerNamen.FirstOrDefault(x => x.Key == s.Id)?.Name)).ToList();
     }
 
     public async Task<bool> SetzeFreigabeAsync(Guid salonId, bool freigegeben, CancellationToken cancellationToken = default)
@@ -164,7 +220,7 @@ public class AdminService(
     /// </summary>
     public async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
         string vorname, string nachname, string email, string initialPasswort,
-        string salonName, string? standort, CancellationToken cancellationToken = default)
+        string salonName, string? standort, string? land = null, CancellationToken cancellationToken = default)
     {
         var bereinigtEmail = email.Trim();
         var bereinigtSalon = salonName.Trim();
@@ -204,8 +260,10 @@ public class AdminService(
         {
             Name = bereinigtSalon,
             Standort = string.IsNullOrWhiteSpace(standort) ? null : standort.Trim(),
+            Land = string.IsNullOrWhiteSpace(land) ? null : land.Trim(),
             IstAktiv = true,
-            IstFreigegeben = true // vom Admin angelegt → sofort freigegeben
+            IstFreigegeben = true, // vom Admin angelegt → sofort freigegeben
+            ProbeBisUtc = AuthService.BerechneProbeEnde(DateTime.UtcNow) // Probezeit wie bei Selbstregistrierung
         };
 
         db.Salons.Add(salon);

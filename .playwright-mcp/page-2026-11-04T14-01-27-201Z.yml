@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - link "eN eNOTE" [ref=e4] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e5]: eN
+      - generic [ref=e6]: eNOTE
+    - generic [ref=e7]:
+      - link "Connexion" [ref=e8] [cursor=pointer]:
+        - /url: /auth/login
+      - link "Inscription" [ref=e9] [cursor=pointer]:
+        - /url: /auth/register
+  - generic [ref=e10]:
+    - navigation [ref=e11]
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: eN
+          - heading "La caisse de votre établissement, simple et rapide." [level=1] [ref=e16]
+          - paragraph [ref=e17]: Encaissez en espèces ou par carte, suivez vos ventes en direct et gérez votre équipe – pensé pour la tablette.
+          - list [ref=e18]:
+            - listitem [ref=e19]:
+              - generic [ref=e20]: ✓
+              - text: Caisse tactile intuitive
+            - listitem [ref=e21]:
+              - generic [ref=e22]: ✓
+              - text: Reçus imprimés avec votre logo
+            - listitem [ref=e23]:
+              - generic [ref=e24]: ✓
+              - text: Ventes en temps réel
+        - generic [ref=e26]:
+          - heading "Connexion" [level=1] [ref=e27]
+          - paragraph [ref=e28]: Ravi de vous revoir. Connectez-vous à votre compte.
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - text: Adresse e-mail
+              - textbox "Adresse e-mail" [ref=e31]
+            - generic [ref=e32]:
+              - text: Mot de passe
+              - generic [ref=e33]:
+                - textbox "Mot de passe Afficher" [ref=e34]
+                - button "Afficher" [ref=e35] [cursor=pointer]: 👁
+            - generic [ref=e36]:
+              - checkbox "Rester connecté" [ref=e37]
+              - generic [ref=e38]: Rester connecté
+            - button "Se connecter" [ref=e39] [cursor=pointer]
+          - paragraph [ref=e40]:
+            - text: Pas encore de compte ?
+            - link "Inscrire mon établissement" [ref=e41] [cursor=pointer]:
+              - /url: /auth/register

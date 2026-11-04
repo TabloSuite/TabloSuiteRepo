@@ -11,8 +11,9 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Ausgaben(
     AusgabenService ausgabenService,
     KatalogService katalogService,
+    AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider)
+    AuthenticationStateProvider authStateProvider) : IDisposable
 {
     private bool isLoading = true;
     private Guid salonId;
@@ -27,7 +28,31 @@ public partial class Ausgaben(
     private DateTime? filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime? filterBis = DateTime.Today;
 
-    private bool kategorienOffen;
+    // Suche/Filter
+    private string ausgabenSuche = string.Empty;
+    private string kategorieFilter = string.Empty;
+    private IReadOnlyList<EnoteSelectOption<string>> kategorieFilterOptionen = [];
+
+    private IEnumerable<Ausgabe> GefilterteAusgaben()
+    {
+        IEnumerable<Ausgabe> q = ausgaben;
+
+        if (!string.IsNullOrWhiteSpace(ausgabenSuche))
+        {
+            var s = ausgabenSuche.Trim();
+            q = q.Where(a =>
+                (a.Notiz?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                || a.Kategorie.Name.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(kategorieFilter))
+        {
+            q = q.Where(a => a.Kategorie.Id.ToString() == kategorieFilter);
+        }
+
+        return q;
+    }
+
     private string neueKategorieName = string.Empty;
 
     private bool ausgabeDialogOffen;
@@ -41,6 +66,8 @@ public partial class Ausgaben(
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out benutzerId))
@@ -49,17 +76,37 @@ public partial class Ausgaben(
             return;
         }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(benutzerId);
-        if (zuordnung is null)
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(benutzerId);
+        }
+
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
-        salonName = zuordnung.Salon.Name;
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
         await LadeAsync();
     }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
 
     private async Task LadeAsync()
     {
@@ -67,6 +114,9 @@ public partial class Ausgaben(
         kategorien = await ausgabenService.GetKategorienAsync(salonId);
         kategorienOptionen = kategorien.Where(k => k.IstAktiv)
             .Select(k => new EnoteSelectOption<string> { Value = k.Id.ToString(), Label = k.Name })
+            .ToList();
+        kategorieFilterOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Toutes les catégories" } }
+            .Concat(kategorienOptionen)
             .ToList();
         var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
         ausgaben = await ausgabenService.GetAusgabenAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);

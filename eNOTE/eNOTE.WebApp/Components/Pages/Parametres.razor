@@ -13,6 +13,10 @@
             <h1>Paramètres de l'établissement</h1>
             <p>Personnalisez votre reçu : logo et slogan.</p>
         </div>
+        @if (darfWeiterenLaden)
+        {
+            <button class="enote-btn enote-btn-primary" @onclick="OeffneNeuerLadenDialog">+ Nouvel établissement</button>
+        }
     </div>
 
     @if (isLoading)
@@ -70,7 +74,12 @@
 
             <div class="enote-form">
                 <label>Code PIN propriétaire (4–6 chiffres)</label>
-                <input type="password" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin" placeholder="••••" />
+                <div class="enote-pin-feld">
+                    <input type="@(pinSichtbar ? "text" : "password")" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin" placeholder="••••" />
+                    <button type="button" class="enote-pin-eye" title="@(pinSichtbar ? "Masquer" : "Afficher")" @onclick="() => pinSichtbar = !pinSichtbar">
+                        @(pinSichtbar ? "🙈" : "👁")
+                    </button>
+                </div>
                 <small class="enote-muted">@(hatBesitzerPin ? "Un code est déjà défini. Saisissez-en un nouveau pour le changer." : "Aucun code défini pour le moment.")</small>
                 <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" />
             </div>
@@ -103,4 +112,19 @@
         </div>
     }
 </div>
+
+@* --- Neuen Laden hinzufügen --- *@
+<ModalDialog Open="neuerLadenDialogOffen" Title="Nouvel établissement" ErrorMessage="@neuerLadenFehler" OnClose="() => neuerLadenDialogOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-form">
+            <p class="enote-muted">Le nouvel établissement sera activé après validation par l'administrateur.</p>
+            <label>Nom de l'établissement <input @bind="neuerLadenName" placeholder="ex. Salon B" /></label>
+            <label>Ville / quartier (facultatif) <input @bind="neuerLadenStandort" placeholder="ex. Lomé" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => neuerLadenDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Créer" OnClick="FuegeNeuenLadenHinzuAsync" CssClass="enote-btn-primary" Disabled="@(string.IsNullOrWhiteSpace(neuerLadenName))" />
+    </Footer>
+</ModalDialog>
 </BesitzerPinGuard>

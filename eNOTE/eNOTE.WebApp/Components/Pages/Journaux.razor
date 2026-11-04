@@ -23,6 +23,10 @@
         <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
     </div>
 
+    <div class="enote-filter-leiste">
+        <input class="enote-filter-suche" placeholder="Rechercher (message, chemin)…" @bind="logSuche" @bind:event="oninput" />
+    </div>
+
     @if (isLoading)
     {
         <p>Chargement…</p>
@@ -34,7 +38,7 @@
     else
     {
         <div class="enote-log-list">
-            @foreach (var log in logs)
+            @foreach (var log in GefilterteLogs())
             {
                 <div class="enote-log-item @(log.IstBehandelt ? "behandelt" : "")">
                     <div class="enote-log-head">

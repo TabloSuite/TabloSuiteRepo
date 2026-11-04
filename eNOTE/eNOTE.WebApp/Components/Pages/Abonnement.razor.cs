@@ -9,13 +9,15 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Abonnement(
     AboService aboService,
     KatalogService katalogService,
+    AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider)
+    AuthenticationStateProvider authStateProvider) : IDisposable
 {
     private readonly AboIntervall[] formeln = [AboIntervall.Monatlich, AboIntervall.DreiMonate, AboIntervall.Jaehrlich];
 
     private bool isLoading = true;
     private Guid salonId;
+    private Guid benutzerId;
     private string salonName = string.Empty;
     private NutzungsAbo? aktuellesAbo;
     private Dictionary<AboIntervall, decimal> preise = [];
@@ -29,6 +31,8 @@ public partial class Abonnement(
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -37,17 +41,38 @@ public partial class Abonnement(
             return;
         }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(userId);
-        if (zuordnung is null)
+        benutzerId = userId;
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(userId);
+        }
+
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
-        salonName = zuordnung.Salon.Name;
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
         await LadeAsync();
     }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
 
     private async Task LadeAsync()
     {

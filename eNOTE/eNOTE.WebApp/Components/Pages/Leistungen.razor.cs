@@ -10,9 +10,10 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Leistungen(
     KatalogService katalogService,
+    AktiverSalonState aktiverSalon,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
-    NavigationManager navigationManager)
+    NavigationManager navigationManager) : IDisposable
 {
     private List<Leistung> leistungen = [];
     private bool isLoading = true;
@@ -35,6 +36,11 @@ public partial class Leistungen(
     private IReadOnlyList<EnoteSelectOption<string>> basisOptionen = [];
     private IReadOnlyList<EnoteSelectOption<string>> kategorieOptionen = [];
     private string kategorieIdText = string.Empty;
+
+    // Suche/Filter
+    private string leistungsSuche = string.Empty;
+    private string kategorieFilter = string.Empty;
+    private IReadOnlyList<EnoteSelectOption<string>> kategorieFilterOptionen = [];
 
     private bool kategorienOffen;
     private string neueKategorieName = string.Empty;
@@ -60,6 +66,8 @@ public partial class Leistungen(
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -69,18 +77,36 @@ public partial class Leistungen(
         }
 
         aktuellerBenutzerId = userId;
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(userId);
+        }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(userId);
-        if (zuordnung is null)
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
+        salonId = aktive.SalonId;
         darfVerwalten = await katalogService.DarfLeistungenVerwaltenAsync(userId);
         await LadeAsync();
     }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
 
     private async Task LadeAsync()
     {
@@ -95,7 +121,28 @@ public partial class Leistungen(
         kategorieOptionen = kategorienListe
             .Select(k => new EnoteSelectOption<string> { Value = k.Id.ToString(), Label = k.Name })
             .ToList();
+        kategorieFilterOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Toutes les catégories" } }
+            .Concat(kategorieOptionen)
+            .ToList();
         isLoading = false;
+    }
+
+    private IEnumerable<Leistung> GefilterteLeistungen()
+    {
+        IEnumerable<Leistung> q = leistungen;
+
+        if (!string.IsNullOrWhiteSpace(leistungsSuche))
+        {
+            var s = leistungsSuche.Trim();
+            q = q.Where(l => l.Name.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(kategorieFilter))
+        {
+            q = q.Where(l => l.KategorieId?.ToString() == kategorieFilter);
+        }
+
+        return q;
     }
 
     private void NeuAnlegen()

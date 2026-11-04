@@ -18,26 +18,31 @@ public class KassenAnzeigeState
     public Guid? SalonId { get; private set; }
     public string? KassiererName { get; private set; }
     public bool IstMinimiert { get; private set; }
-    public decimal LaufenderUmsatz { get; private set; }
+    public decimal Startbestand { get; private set; }
+    public decimal BarUmsatz { get; private set; }
     public int AnzahlVerkaeufe { get; private set; }
 
     /// <summary>true, solange eine Kassensitzung läuft (Kassen-Modus aktiv).</summary>
     public bool KassenModusAktiv => AktiveSitzungId is not null;
 
-    public void SitzungGestartet(Guid sitzungId, Guid salonId, string kassiererName)
+    /// <summary>Erwarteter Bargeldbestand: Startbestand + nur Bar-Einnahmen (Karte erhöht die Kasse nicht).</summary>
+    public decimal ErwarteterBarBetrag => Startbestand + BarUmsatz;
+
+    public void SitzungGestartet(Guid sitzungId, Guid salonId, string kassiererName, decimal startbestand = 0m, decimal barUmsatzBisher = 0m, int anzahlVerkaeufeBisher = 0)
     {
         AktiveSitzungId = sitzungId;
         SalonId = salonId;
         KassiererName = kassiererName;
         IstMinimiert = false;
-        LaufenderUmsatz = 0m;
-        AnzahlVerkaeufe = 0;
+        BarUmsatz = barUmsatzBisher;
+        AnzahlVerkaeufe = anzahlVerkaeufeBisher;
+        Startbestand = startbestand;
         OnChange?.Invoke();
     }
 
-    public void VerkaufGebucht(decimal gesamtSumme)
+    public void VerkaufGebucht(decimal barBetrag)
     {
-        LaufenderUmsatz += gesamtSumme;
+        BarUmsatz += barBetrag;
         AnzahlVerkaeufe++;
         OnChange?.Invoke();
     }
@@ -60,8 +65,9 @@ public class KassenAnzeigeState
         SalonId = null;
         KassiererName = null;
         IstMinimiert = false;
-        LaufenderUmsatz = 0m;
+        BarUmsatz = 0m;
         AnzahlVerkaeufe = 0;
+        Startbestand = 0m;
         OnChange?.Invoke();
     }
 }

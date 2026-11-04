@@ -127,4 +127,60 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
         return await db.UserSalons
             .AnyAsync(us => us.SalonId == salonId && us.AppUserId == benutzerId && us.BesitzerPinHash != null, cancellationToken);
     }
+
+    /// <summary>true, wenn der Besitzer einen weiteren Laden anlegen darf: mindestens ein
+    /// freigegebener Laden, dessen Probezeit abgelaufen ist (oder der keine Probezeit hatte).</summary>
+    public async Task<bool> DarfWeiterenLadenAnlegenAsync(Guid besitzerId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var jetzt = DateTime.UtcNow;
+        return await db.UserSalons
+            .AnyAsync(us => us.AppUserId == besitzerId
+                && us.Salon.IstFreigegeben
+                && (us.Salon.ProbeBisUtc == null || us.Salon.ProbeBisUtc <= jetzt), cancellationToken);
+    }
+
+    /// <summary>Besitzer legt einen weiteren Laden an (erfordert abgelaufene Probezeit eines
+    /// freigegebenen Ladens). Der neue Laden ist sofort aktiv, muss aber vom Admin freigegeben
+    /// werden und hat keine erneute Probezeit.</summary>
+    public async Task<(bool Erfolg, string? Fehler, Salon? Salon)> FuegeSalonHinzuAsync(
+        Guid besitzerId, string name, string? standort, string? land, CancellationToken cancellationToken = default)
+    {
+        var bereinigtName = (name ?? string.Empty).Trim();
+        if (bereinigtName.Length < 2)
+        {
+            return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null);
+        }
+
+        if (!await DarfWeiterenLadenAnlegenAsync(besitzerId, cancellationToken))
+        {
+            return (false, "Vous pourrez ajouter un autre établissement une fois la période d'essai de votre établissement validé terminée.", null);
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var salon = new Salon
+        {
+            Name = bereinigtName,
+            Standort = string.IsNullOrWhiteSpace(standort) ? null : standort.Trim(),
+            Land = string.IsNullOrWhiteSpace(land) ? null : land.Trim(),
+            IstAktiv = true,
+            IstFreigegeben = false, // muss vom Admin freigegeben werden
+            ProbeBisUtc = null      // keine erneute Probezeit für weitere Läden
+        };
+
+        db.Salons.Add(salon);
+        await db.SaveChangesAsync(cancellationToken);
+
+        db.UserSalons.Add(new UserSalon
+        {
+            AppUserId = besitzerId,
+            SalonId = salon.Id,
+            KannFinanzenSehen = true,
+            KannLeistungenVerwalten = true,
+            KannRabatteVerwalten = true
+        });
+        await db.SaveChangesAsync(cancellationToken);
+
+        return (true, null, salon);
+    }
 }

@@ -11,16 +11,32 @@ public partial class Equipe(
     TeamService teamService,
     KatalogService katalogService,
     GeraetFavoritService geraetFavoritService,
+    AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider)
+    AuthenticationStateProvider authStateProvider) : IDisposable
 {
     private List<TeamService.TeamMitglied> team = [];
     private List<UserSalon> salons = [];
-    private IReadOnlyList<EnoteSelectOption<string>> salonOptionen = [];
     private bool isLoading = true;
     private Guid salonId;
+    private Guid benutzerId;
     private string salonName = string.Empty;
-    private string favoritSalonId = string.Empty;
+
+    // Suche
+    private string teamSuche = string.Empty;
+
+    private IEnumerable<TeamService.TeamMitglied> GefiltertesTeam()
+    {
+        if (string.IsNullOrWhiteSpace(teamSuche))
+        {
+            return team;
+        }
+
+        var s = teamSuche.Trim();
+        return team.Where(m =>
+            m.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || m.Email.Contains(s, StringComparison.OrdinalIgnoreCase));
+    }
 
     private bool anlegedialogOffen;
     private bool pinDialogOffen;
@@ -41,6 +57,8 @@ public partial class Equipe(
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -49,9 +67,14 @@ public partial class Equipe(
             return;
         }
 
-        salons = await katalogService.GetUserSalonsAsync(userId);
-        salonOptionen = salons.Select(s => new EnoteSelectOption<string> { Value = s.SalonId.ToString(), Label = s.Salon.Name }).ToList();
-        var aktive = salons.FirstOrDefault(s => s.Salon.IstFreigegeben) ?? salons.FirstOrDefault();
+        benutzerId = userId;
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(userId);
+        }
+
+        salons = aktiverSalon.Laeden;
+        var aktive = aktiverSalon.Aktiv;
         if (aktive is null)
         {
             isLoading = false;
@@ -60,23 +83,23 @@ public partial class Equipe(
 
         salonId = aktive.SalonId;
         salonName = aktive.Salon.Name;
-        favoritSalonId = salonId.ToString();
-
-        try
-        {
-            var favorit = await geraetFavoritService.GetFavoritSalonIdAsync();
-            if (favorit is Guid f)
-            {
-                favoritSalonId = f.ToString();
-            }
-        }
-        catch (InvalidOperationException)
-        {
-            // JS noch nicht verfügbar (Prerendering).
-        }
-
         await LadeAsync();
     }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        salonName = aktive.Salon.Name;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
 
     private async Task LadeAsync()
     {
@@ -183,21 +206,6 @@ public partial class Equipe(
         entfernenDialogOffen = false;
         toast.ZeigeErfolg("Membre retiré du salon.");
         await LadeAsync();
-    }
-
-    private async Task SetzeFavoritAsync()
-    {
-        if (Guid.TryParse(favoritSalonId, out var id))
-        {
-            await geraetFavoritService.SetzeFavoritAsync(id, null);
-            toast.ZeigeErfolg("Salon favori défini sur cet appareil.");
-        }
-    }
-
-    private async Task EntferneFavoritAsync()
-    {
-        await geraetFavoritService.EntferneFavoritAsync();
-        toast.ZeigeInfo("Salon favori retiré de cet appareil.");
     }
 
     private void SchliesseDialoge()

@@ -11,7 +11,8 @@ public partial class Parametres(
     KatalogService katalogService,
     TeamService teamService,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider)
+    AktiverSalonState aktiverSalon,
+    AuthenticationStateProvider authStateProvider) : IDisposable
 {
     private bool isLoading = true;
     private Guid salonId;
@@ -28,9 +29,19 @@ public partial class Parametres(
     private string? pinFehler;
     private bool pinGespeichert;
     private bool hatBesitzerPin;
+    private bool pinSichtbar;
+
+    // Weiteren Laden hinzufügen
+    private bool darfWeiterenLaden;
+    private bool neuerLadenDialogOffen;
+    private string neuerLadenName = string.Empty;
+    private string? neuerLadenStandort;
+    private string? neuerLadenFehler;
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out benutzerId))
@@ -39,14 +50,39 @@ public partial class Parametres(
             return;
         }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(benutzerId);
-        if (zuordnung is null)
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(benutzerId);
+        }
+
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
+        salonId = aktive.SalonId;
+        await LadeSalonAsync();
+        isLoading = false;
+    }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        _ = InvokeAsync(async () => { await LadeSalonAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
+
+    private async Task LadeSalonAsync()
+    {
         var salon = await salonService.GetSalonAsync(salonId);
         if (salon is not null)
         {
@@ -59,7 +95,29 @@ public partial class Parametres(
         }
 
         hatBesitzerPin = await salonService.HatBesitzerPinAsync(salonId, benutzerId);
-        isLoading = false;
+        darfWeiterenLaden = await salonService.DarfWeiterenLadenAnlegenAsync(benutzerId);
+    }
+
+    private void OeffneNeuerLadenDialog()
+    {
+        neuerLadenName = string.Empty;
+        neuerLadenStandort = null;
+        neuerLadenFehler = null;
+        neuerLadenDialogOffen = true;
+    }
+
+    private async Task FuegeNeuenLadenHinzuAsync()
+    {
+        var (erfolg, fehler, salon) = await salonService.FuegeSalonHinzuAsync(benutzerId, neuerLadenName, neuerLadenStandort, null);
+        if (!erfolg)
+        {
+            neuerLadenFehler = fehler;
+            return;
+        }
+
+        neuerLadenDialogOffen = false;
+        await aktiverSalon.AktualisiereLaedenAsync(benutzerId);
+        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé. Il sera activé après validation par l'administrateur.");
     }
 
     private byte[]? ausgewaehltesLogoBytes;

@@ -123,3 +123,6 @@
 - Für Bulletins wurde bestätigt: kein Siegel-/Cachet-Upload, sondern freier PDF-Bereich für manuelle Unterschrift und echten Schulstempel; optionales Schullogo bleibt möglich.
 - Alle übrigen Stundenplan-/Bulletin-Restarbeiten umsetzen; Exam-Ergebnisse bleiben bewusst von der manuellen Bulletin-Notenerfassung getrennt. Keine automatische Exam-Verknüpfung. Den manuellen Browser-Praxistest übernimmt weiterhin der Nutzer.
 - Nutzer bestätigt endgültige Veröffentlichung mit geregeltem Berichtigungsprozess statt stiller Änderung: Original archivieren, verpflichtende Begründung, separat bestätigte Ersatzdokumente, Auswirkungen auf andere Ränge/Jahresnoten prüfen, Benachrichtigung/Abholung dokumentieren. QR-Code zur Statusprüfung gewünscht; öffentliche Anzeige muss datensparsam sein.
+
+## Drucklösungen
+- Für eNOTE-Bondruck möchte der Nutzer keine QZ-Tray-Integration und QZ Tray nicht installieren. Keine lokale Zusatzsoftware als vorausgesetzte Drucklösung einführen.

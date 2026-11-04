@@ -33,9 +33,11 @@ public class KassenService(
     public async Task<List<(Guid UserId, string Name)>> GetKassiererAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        // Kassierer mit Kassen-PIN plus Besitzer mit Besitzer-PIN (damit der Besitzer
+        // auch kassieren kann, wenn er alleiniger Nutzer des Ladens ist).
         return await db.UserSalons
             .AsNoTracking()
-            .Where(us => us.SalonId == salonId && us.KassenPinHash != null)
+            .Where(us => us.SalonId == salonId && (us.KassenPinHash != null || us.BesitzerPinHash != null))
             .Select(us => new ValueTuple<Guid, string>(us.AppUserId, us.AppUser.FullName))
             .ToListAsync(cancellationToken);
     }
@@ -52,11 +54,11 @@ public class KassenService(
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Alle Salon-Zuordnungen dieses Kassierers mit PIN (kann mehrere Läden sein).
+        // Alle Salon-Zuordnungen dieses Nutzers mit irgendeiner PIN (Kassen- oder Besitzer-PIN).
         var zuordnungen = await db.UserSalons
             .Include(us => us.AppUser)
             .Include(us => us.Salon)
-            .Where(us => us.AppUserId == kassiererId && us.KassenPinHash != null)
+            .Where(us => us.AppUserId == kassiererId && (us.KassenPinHash != null || us.BesitzerPinHash != null))
             .ToListAsync(cancellationToken);
 
         if (zuordnungen.Count == 0)
@@ -74,7 +76,12 @@ public class KassenService(
                 continue;
             }
 
-            if (KassenPinService.PruefePin(pin, zuordnung.KassenPinHash!))
+            // PIN gegen Kassen-PIN oder (für den Besitzer) Besitzer-PIN prüfen.
+            var pinOk =
+                (zuordnung.KassenPinHash is not null && KassenPinService.PruefePin(pin, zuordnung.KassenPinHash))
+                || (zuordnung.BesitzerPinHash is not null && KassenPinService.PruefePin(pin, zuordnung.BesitzerPinHash));
+
+            if (pinOk)
             {
                 treffer = zuordnung;
                 break;
@@ -227,7 +234,7 @@ public class KassenService(
             .Include(us => us.AppUser)
             .FirstOrDefaultAsync(us => us.SalonId == salonId && us.AppUserId == kassiererId, cancellationToken);
 
-        if (zuordnung?.KassenPinHash is null)
+        if (zuordnung is null || (zuordnung.KassenPinHash is null && zuordnung.BesitzerPinHash is null))
         {
             return new(false, "Caissier introuvable ou sans code PIN.", null, 0);
         }
@@ -466,6 +473,34 @@ public class KassenService(
         }
 
         return (true, null, verkauf, warnungen);
+    }
+
+    /// <summary>Liefert den aktuell erwarteten Bargeldbestand (Soll) einer offenen Sitzung, ohne sie abzuschließen.</summary>
+    public async Task<decimal?> GetBarSollAsync(Guid kassenSitzungId, CancellationToken cancellationToken = default)
+    {
+        var aufstellung = await GetBarSollAufstellungAsync(kassenSitzungId, cancellationToken);
+        return aufstellung?.Soll;
+    }
+
+    /// <summary>Liefert Startbestand, Bar-Einnahmen und daraus resultierenden Soll-Bestand einer offenen Sitzung.</summary>
+    public async Task<(decimal Startbestand, decimal BarEinnahmen, decimal Soll)?> GetBarSollAufstellungAsync(
+        Guid kassenSitzungId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var sitzung = await db.KassenSitzungen
+            .Include(k => k.Verkaeufe)
+            .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
+        if (sitzung is null)
+        {
+            return null;
+        }
+
+        var barEinnahmen = sitzung.Verkaeufe
+            .Where(v => v.ZahlungsArt == ZahlungsArt.Bar)
+            .Sum(v => v.GesamtSumme);
+        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe);
+        return (sitzung.Startbestand, Math.Round(barEinnahmen, 2), soll);
     }
 
     /// <summary>

@@ -16,7 +16,8 @@ public partial class BesitzerPinGuard : IDisposable
     private string pin = string.Empty;
     private string? fehler;
     private Guid salonId;
-    private bool istGesperrt = true;
+    private bool istGesperrt;
+    private bool laedt = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -27,6 +28,22 @@ public partial class BesitzerPinGuard : IDisposable
         if (!Guid.TryParse(userIdValue, out var userId))
         {
             istGesperrt = true;
+            laedt = false;
+            return;
+        }
+
+        // Der angemeldete Besitzer (und Admin/ProduktOwner) wird nie per PIN gesperrt –
+        // er hat sich bereits vollständig angemeldet. Die PIN-Sperre gilt nur für
+        // angemeldete Kassierer, die einen Verwaltungsbereich öffnen.
+        var istBesitzerOderAdmin =
+            authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer)
+            || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.SuperAdmin)
+            || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.ProduktOwner);
+
+        if (istBesitzerOderAdmin)
+        {
+            istGesperrt = false;
+            laedt = false;
             return;
         }
 
@@ -38,6 +55,7 @@ public partial class BesitzerPinGuard : IDisposable
         // PIN schaltet frei; beim Kassenabschluss wird automatisch wieder gesperrt.
         var hatBesitzerPin = salonId != Guid.Empty && await KassenService.HatBesitzerPinAsync(salonId);
         istGesperrt = hatBesitzerPin && !PinState.VerwaltungFreigeschaltet;
+        laedt = false;
     }
 
     private async Task PruefeAsync()

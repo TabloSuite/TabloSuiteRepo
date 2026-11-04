@@ -35,11 +35,21 @@
                     </div>
                 }
 
-                <p class="enote-muted">Bienvenue sur eNOTE, la caisse simple pour votre établissement.</p>
-                <div class="enote-home-actions">
-                    <a class="enote-btn enote-btn-primary" href="/caisse">Ouvrir la caisse</a>
-                    <a class="enote-btn enote-btn-ghost" href="/services">Prestations</a>
-                </div>
+                <AuthorizeView Roles="SuperAdmin, ProduktOwner" Context="adminCtx">
+                    <Authorized>
+                        <p class="enote-muted">Bienvenue sur eNOTE, la plateforme d'administration.</p>
+                        <div class="enote-home-actions">
+                            <a class="enote-btn enote-btn-primary" href="/admin">Administration</a>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <p class="enote-muted">Bienvenue sur eNOTE, la caisse simple pour votre établissement.</p>
+                        <div class="enote-home-actions">
+                            <a class="enote-btn enote-btn-primary" href="/caisse">Ouvrir la caisse</a>
+                            <a class="enote-btn enote-btn-ghost" href="/services">Prestations</a>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
             }
         </div>
     </Authorized>

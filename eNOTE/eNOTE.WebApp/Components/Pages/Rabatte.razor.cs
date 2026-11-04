@@ -7,13 +7,31 @@ using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Rabatte(KatalogService katalogService, ToastService toast, AuthenticationStateProvider authStateProvider)
+public partial class Rabatte(KatalogService katalogService, AktiverSalonState aktiverSalon, ToastService toast, AuthenticationStateProvider authStateProvider) : IDisposable
 {
     private List<Rabatt> rabatte = [];
     private List<Leistung> leistungen = [];
     private bool isLoading = true;
     private bool darfVerwalten;
     private Guid salonId;
+    private Guid benutzerId;
+
+    // Suche
+    private string rabattSuche = string.Empty;
+
+    private IEnumerable<Rabatt> GefilterteRabatte()
+    {
+        if (string.IsNullOrWhiteSpace(rabattSuche))
+        {
+            return rabatte;
+        }
+
+        var s = rabattSuche.Trim();
+        return rabatte.Where(r =>
+            r.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || (r.Bedingung?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (r.Leistung?.Name.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
 
     private bool editorOffen;
     private bool loeschDialogOffen;
@@ -35,6 +53,8 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
 
     protected override async Task OnInitializedAsync()
     {
+        aktiverSalon.OnChange += HandleSalonWechsel;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -43,17 +63,37 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
             return;
         }
 
-        var zuordnung = await katalogService.GetUserSalonAsync(userId);
-        if (zuordnung is null)
+        benutzerId = userId;
+        if (!aktiverSalon.IstGeladen)
+        {
+            await aktiverSalon.InitialisiereAsync(userId);
+        }
+
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null)
         {
             isLoading = false;
             return;
         }
 
-        salonId = zuordnung.SalonId;
+        salonId = aktive.SalonId;
         darfVerwalten = await katalogService.DarfRabatteVerwaltenAsync(userId);
         await LadeAsync();
     }
+
+    private void HandleSalonWechsel()
+    {
+        var aktive = aktiverSalon.Aktiv;
+        if (aktive is null || aktive.SalonId == salonId)
+        {
+            return;
+        }
+
+        salonId = aktive.SalonId;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= HandleSalonWechsel;
 
     private async Task LadeAsync()
     {

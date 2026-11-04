@@ -15,9 +15,9 @@
     --enote-radius: 1.1rem;
     --enote-radius-lg: 1.75rem;
     --enote-radius-pill: 999px;
-    /* Neumorphismus-Doppelschatten (hell + dunkel) */
-    --enote-neu-out: 9px 9px 18px #c9d3e2, -9px -9px 18px #ffffff;
-    --enote-neu-out-sm: 5px 5px 12px #cdd6e4, -5px -5px 12px #ffffff;
+    /* Neumorphismus-Doppelschatten (hell + dunkel) – Highlight dezent, kein weißer Fleck */
+    --enote-neu-out: 9px 9px 18px #c9d3e2, -6px -6px 14px #f1f5fa;
+    --enote-neu-out-sm: 4px 4px 10px #cdd6e4, -3px -3px 8px #f1f5fa;
     --enote-neu-in: inset 4px 4px 10px #cdd6e4, inset -4px -4px 10px #ffffff;
     --enote-shadow-lg: 0 24px 60px rgba(23, 37, 84, .22);
     --enote-gradient: linear-gradient(135deg, #172554 0%, #1e3a8a 55%, #0d9488 130%);
@@ -155,6 +155,14 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .alert { padding: .8rem 1rem; border-radius: .8rem; font-size: .9rem; font-weight: 500; }
 .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .alert-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+
+/* Hinweis-Dialog: offene Kasse wiederhergestellt */
+.enote-wiederhergestellt { display: grid; gap: .7rem; }
+.enote-wiederhergestellt-text { margin: 0; color: var(--enote-text); font-weight: 600; }
+.enote-wiederhergestellt-zeile { display: flex; justify-content: space-between; align-items: center; gap: .8rem; background: var(--enote-surface); padding: .7rem 1rem; border-radius: var(--enote-radius); box-shadow: var(--enote-neu-in); }
+.enote-wiederhergestellt-zeile span { color: var(--enote-text-muted); font-weight: 600; }
+.enote-wiederhergestellt-soll strong { color: var(--enote-primary); font-size: 1.15rem; }
 
 .auth-footer { margin-top: 1.4rem; font-size: .9rem; color: var(--enote-text-muted); text-align: center; }
 .auth-footer a { color: var(--enote-primary-dark); font-weight: 700; text-decoration: none; }
@@ -170,7 +178,13 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 
 /* --- Layout --- */
-.enote-layout { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.enote-layout {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden; /* Seite scrollt nicht; einzelne Bereiche scrollen intern */
+    display: flex;
+    flex-direction: column;
+}
 
 .enote-topbar {
     position: sticky;
@@ -194,6 +208,11 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 }
 .enote-brand-name { font-weight: 800; font-size: 1.15rem; color: var(--enote-text); letter-spacing: .02em; }
 .enote-topbar-actions { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+
+/* Laden-Umschalter in der Topbar */
+.enote-salon-switcher { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+.enote-salon-switcher-ico { font-size: 1.05rem; }
+.enote-salon-switcher .enote-select2 { min-width: 10rem; max-width: 16rem; }
 .enote-user { font-size: .9rem; color: var(--enote-text-muted); }
 .enote-topbar-actions form { margin: 0; }
 
@@ -244,6 +263,8 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-btn-primary { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 20px rgba(23, 37, 84, .35); }
 .enote-btn-primary:hover { box-shadow: 0 12px 26px rgba(23, 37, 84, .45); }
 .enote-btn-ghost { background: var(--enote-surface); color: var(--enote-text); }
+.enote-btn-abbrechen { background: var(--enote-surface); color: #b91c1c; box-shadow: var(--enote-neu-out-sm); }
+.enote-btn-abbrechen:hover { color: #991b1b; box-shadow: var(--enote-neu-out); }
 .enote-btn:disabled { opacity: .65; cursor: wait; transform: none; }
 .enote-btn-sm { padding: .4rem .85rem; font-size: .8rem; }
 
@@ -253,6 +274,9 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     display: flex; flex-direction: column; gap: .35rem;
     width: 14rem; padding: 1.1rem .85rem;
     background: var(--enote-bg);
+    /* sichtbare Trennung zum Hauptinhalt rechts */
+    border-right: 1px solid var(--enote-border);
+    box-shadow: 6px 0 18px rgba(205, 214, 228, .45);
 }
 .enote-nav-link {
     padding: .7rem 1rem; border-radius: var(--enote-radius-pill);
@@ -274,9 +298,26 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-nav-group-label {
     margin: .9rem 0 .15rem .3rem; font-size: .7rem; font-weight: 800;
     text-transform: uppercase; letter-spacing: .06em; color: var(--enote-text-muted);
+    /* sichtbare Trennung zur vorherigen Gruppe */
+    padding-top: .8rem; border-top: 1px solid var(--enote-border);
 }
 
-.enote-main { flex: 1; min-width: 0; padding: 1.5rem; overflow-x: hidden; }
+.enote-main { flex: 1; min-width: 0; min-height: 0; padding: 1.5rem; overflow-x: hidden; display: flex; flex-direction: column; }
+
+/* Auf der Caisse-Seite: keine Seiten-Scrollbar, nur Listen scrollen intern */
+.enote-caisse {
+    display: flex; flex-direction: column; gap: 1rem;
+    flex: 1; min-height: 0; /* volle Höhe des Main-Bereichs nutzen */
+}
+.enote-caisse-body {
+    display: grid; grid-template-columns: 1fr 22rem; grid-template-rows: minmax(0, 1fr);
+    gap: 1rem; flex: 1; min-height: 0; /* Zeile füllt die verfügbare Höhe, wächst nicht über den Inhalt hinaus */
+}
+@media (max-width: 900px) { .enote-caisse-body { grid-template-columns: 1fr; grid-template-rows: none; } }
+
+/* Katalog-Spalte: volle Höhe, Tiles füllen den Rest unterhalb von Scan + Filter */
+.enote-caisse-katalog { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.enote-caisse-katalog .enote-tiles { flex: 1; min-height: 0; }
 
 /* Handy-Bottom-Nav standardmäßig ausblenden (Desktop/Tablet zeigen Sidebar) */
 .enote-nav-mobile { display: none; }
@@ -368,14 +409,15 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 .enote-form { display: grid; gap: .9rem; }
 .enote-form label { display: grid; gap: .35rem; font-weight: 600; font-size: .9rem; color: var(--enote-text); }
-.enote-form input, .enote-select {
+.enote-form input, .enote-select, .enote-form textarea {
     width: 100%; padding: .75rem 1rem; border: none;
     border-radius: var(--enote-radius-pill); font-size: 1rem;
     background: var(--enote-surface); color: var(--enote-text);
     box-shadow: var(--enote-neu-in);
     transition: box-shadow .18s ease;
 }
-.enote-form input:focus, .enote-select:focus { outline: none; box-shadow: var(--enote-neu-in), 0 0 0 3px rgba(30, 58, 138, .18); }
+.enote-form textarea { border-radius: var(--enote-radius); resize: vertical; min-height: 4.5rem; font-family: inherit; line-height: 1.4; }
+.enote-form input:focus, .enote-select:focus, .enote-form textarea:focus { outline: none; box-shadow: var(--enote-neu-in), 0 0 0 3px rgba(30, 58, 138, .18); }
 .enote-form .checkbox { display: flex; align-items: center; gap: .55rem; font-weight: 500; }
 .enote-form .checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--enote-primary); }
 
@@ -406,37 +448,69 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* In der Kasse darf der Encaisser-Button bewusst breit sein */
 .enote-ticket .enote-btn-lg, .enote-caisse-start .enote-btn-lg { width: 100%; }
 
-.enote-caisse { display: flex; flex-direction: column; gap: 1rem; height: 100%; }
-.enote-caisse-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .75rem; }
+.enote-caisse-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
 .enote-caisse-header h1 { margin: 0; font-size: 1.4rem; }
-.enote-caisse-header-actions { display: flex; gap: .5rem; }
+.enote-caisse-sitzung-info { display: grid; gap: .1rem; }
+.enote-caisse-sitzung-titel { font-weight: 800; font-size: 1.05rem; color: var(--enote-text); }
+.enote-caisse-header-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
-.enote-caisse-body { display: grid; grid-template-columns: 1fr 22rem; gap: 1rem; align-items: start; }
-@media (max-width: 900px) { .enote-caisse-body { grid-template-columns: 1fr; } }
-
-.enote-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .75rem; }
-.enote-tile {
-    display: flex; flex-direction: column; gap: .3rem; align-items: flex-start;
-    padding: 1.05rem; border: none; border-radius: var(--enote-radius-lg); background: var(--enote-surface);
-    cursor: pointer; text-align: left; min-height: 5.5rem;
-    box-shadow: var(--enote-neu-out-sm);
-    transition: transform .15s, box-shadow .2s;
+/* Katalog-Spalte: Tiles scrollen intern, Seite selbst scrollt nicht mit */
+.enote-tiles-wrap { min-height: 0; }
+.enote-tiles {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .85rem;
+    align-content: start;
+    height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    padding: .15rem; /* Platz für Schatten */
+    /* Scrollbar ausblenden (Browser-Scrollbar vermeiden) */
+    scrollbar-width: none; -ms-overflow-style: none;
 }
+.enote-tiles::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* Ticket: volle Höhe der Spalte; NUR die Positionsliste scrollt, Rest bleibt fix */
+.enote-ticket {
+    background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg);
+    padding: 1.2rem 1.35rem; display: flex; flex-direction: column; gap: .9rem;
+    box-shadow: var(--enote-neu-out);
+    min-height: 0; overflow: hidden; /* kein Scrollen des ganzen Tickets; Grid-Item darf schrumpfen */
+}
+
+/* ScrollBox für die Leistungs-Positionen im Ticket */
+.enote-ticket-scroll {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: #b9c6d6 transparent;
+    margin: 0 -.35rem; padding: 0 .35rem; /* Schatten der Buttons nicht abschneiden */
+}
+.enote-ticket-scroll::-webkit-scrollbar { width: 8px; }
+.enote-ticket-scroll::-webkit-scrollbar-track { background: transparent; }
+.enote-ticket-scroll::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 4px; }
+.enote-ticket-scroll::-webkit-scrollbar-thumb:hover { background: #93a4ba; }
+.enote-tile {
+    display: flex; flex-direction: column; gap: .2rem; align-items: stretch;
+    padding: .8rem .9rem .75rem; border: none; border-radius: var(--enote-radius-lg); background: var(--enote-surface);
+    text-align: left; min-height: 5.4rem;
+    box-shadow: var(--enote-neu-out-sm);
+    user-select: none; -webkit-user-select: none;
+}
+.enote-tile-main { display: flex; flex-direction: column; gap: .15rem; align-items: flex-start; cursor: pointer; touch-action: manipulation; flex: 1; transition: transform .15s, box-shadow .2s; }
+.enote-tile-main:active { transform: scale(.97); }
 .enote-tile:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-tile:active { transform: scale(.97); box-shadow: var(--enote-neu-in); }
 .enote-tile-name { font-weight: 700; font-size: .98rem; }
 .enote-tile-price { color: var(--enote-primary); font-weight: 800; }
 .enote-tile-warn { font-size: .72rem; color: #c2410c; font-weight: 700; }
 
-.enote-ticket { background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg); padding: 1.2rem 1.35rem; display: grid; gap: .9rem; position: sticky; top: 5rem; box-shadow: var(--enote-neu-out); }
 .enote-ticket h2 { margin: 0; font-size: 1.15rem; }
-.enote-ticket-pos { display: flex; align-items: center; gap: .6rem; justify-content: space-between; padding: .55rem 0; border-bottom: 1px solid var(--enote-border); }
-.enote-ticket-pos-info { display: grid; gap: .1rem; flex: 1; min-width: 0; }
-.enote-ticket-pos-info span { font-size: .82rem; color: var(--enote-text-muted); }
-.enote-ticket-pos-actions { display: flex; align-items: center; gap: .35rem; }
-.enote-ticket-pos-actions button { width: 2rem; height: 2rem; border-radius: 999px; border: none; background: var(--enote-surface); cursor: pointer; font-weight: 800; box-shadow: var(--enote-neu-out-sm); }
+.enote-ticket-kopf { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.enote-ticket-pos { display: grid; gap: .35rem; padding: .55rem 0; border-bottom: 1px solid var(--enote-border); }
+.enote-ticket-pos-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.enote-ticket-pos-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.enote-ticket-pos-del { width: 2rem; height: 2rem; border-radius: 999px; border: none; background: var(--enote-surface); cursor: pointer; font-weight: 800; box-shadow: var(--enote-neu-out-sm); touch-action: manipulation; }
+.enote-ticket-pos-del:active { box-shadow: var(--enote-neu-in); }
+.enote-ticket-pos-bottom { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.enote-ticket-pos-preis { font-size: .82rem; color: var(--enote-text-muted); }
+.enote-ticket-pos-actions { display: flex; align-items: center; gap: .45rem; }
+.enote-ticket-pos-actions button { width: 2.5rem; height: 2.5rem; border-radius: 999px; border: none; background: var(--enote-surface); cursor: pointer; font-weight: 800; font-size: 1.1rem; box-shadow: var(--enote-neu-out-sm); touch-action: manipulation; }
 .enote-ticket-pos-actions button:active { box-shadow: var(--enote-neu-in); }
-.enote-ticket-pos-sum { font-weight: 800; min-width: 4.5rem; text-align: right; }
+.enote-ticket-pos-sum { font-weight: 800; margin-left: auto; text-align: right; }
 
 .enote-ticket-rabatt { display: grid; gap: .5rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
 .enote-ticket-total { display: grid; gap: .25rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
@@ -444,16 +518,71 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-ticket-total .enote-total { font-size: 1.3rem; font-weight: 800; color: var(--enote-text); }
 
 .enote-zahlart { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-.enote-zahlart button { padding: .85rem; border: none; border-radius: var(--enote-radius-pill); background: var(--enote-surface); font-weight: 700; cursor: pointer; box-shadow: var(--enote-neu-out-sm); transition: all .15s; }
+.enote-zahlart button { padding: 1.05rem; border: none; border-radius: var(--enote-radius-pill); background: var(--enote-surface); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: var(--enote-neu-out-sm); transition: all .15s; touch-action: manipulation; }
 .enote-zahlart button.aktiv { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
 
 .enote-rueckgeld { display: flex; justify-content: space-between; align-items: center; background: #d7f5e8; padding: 1rem 1.15rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-in); }
 .enote-rueckgeld strong { font-size: 1.5rem; color: #047857; }
 
+.enote-abschluss-soll { display: grid; gap: .55rem; background: var(--enote-surface); padding: .9rem 1.1rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-in); }
+.enote-abschluss-soll-zeilen { display: grid; gap: .3rem; }
+.enote-abschluss-soll-zeilen > div { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; color: var(--enote-text-muted); }
+.enote-abschluss-soll-total { display: flex; justify-content: space-between; align-items: center; padding-top: .55rem; border-top: 1px solid var(--enote-border); }
+.enote-abschluss-soll-total span { color: var(--enote-text-muted); font-weight: 600; }
+.enote-abschluss-soll-total strong { font-size: 1.4rem; color: var(--enote-primary); }
+
+/* --- Zahlungs-Buttons unten im Ticket (platzsparend, Modal-basiert) --- */
+.enote-zahl-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
+.enote-zahl-btn {
+    padding: 1.15rem .5rem; border: none; border-radius: var(--enote-radius-lg); cursor: pointer;
+    font-weight: 800; font-size: 1.1rem; background: var(--enote-surface); color: var(--enote-text);
+    box-shadow: var(--enote-neu-out-sm); transition: transform .15s, box-shadow .2s; touch-action: manipulation;
+}
+.enote-zahl-btn:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
+.enote-zahl-btn:active { transform: scale(.97); box-shadow: var(--enote-neu-in); }
+.enote-zahl-bar { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
+.enote-zahl-karte { background: var(--enote-surface); }
+
+/* --- Zahlungs-Modal-Inhalt --- */
+.enote-zahl-modal { display: grid; gap: 1rem; }
+.enote-zahl-total {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--enote-surface); padding: 1.1rem 1.25rem; border-radius: var(--enote-radius-lg);
+    box-shadow: var(--enote-neu-in);
+}
+.enote-zahl-total span { color: var(--enote-text-muted); font-weight: 600; }
+.enote-zahl-total strong { font-size: 1.7rem; color: var(--enote-text); }
+.enote-zahl-input {
+    text-align: center; font-size: 1.4rem; font-weight: 700; padding: .9rem;
+    border: 1.5px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    background: #f4f7fb; width: 100%; box-shadow: none;
+}
+.enote-zahl-input:focus { outline: none; border-color: var(--enote-primary); background: #fff; box-shadow: 0 0 0 3px rgba(30, 58, 138, .15); }
+.enote-zahl-input::-webkit-outer-spin-button,
+.enote-zahl-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.enote-zahl-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.enote-modal-sm { max-width: 24rem; }
+
+/* --- Verkaufshistorie in der Kasse --- */
+.enote-historie-liste { display: grid; gap: .7rem; max-height: 26rem; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.enote-historie-liste::-webkit-scrollbar { width: 0; display: none; }
+.enote-historie-item {
+    display: flex; align-items: center; justify-content: space-between; gap: .9rem;
+    padding: 1rem 1.15rem; background: var(--enote-surface); border-radius: var(--enote-radius-lg);
+    box-shadow: var(--enote-neu-out-sm); transition: transform .15s, box-shadow .2s;
+}
+.enote-historie-item:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
+.enote-historie-info { display: grid; gap: .3rem; min-width: 0; flex: 1; }
+.enote-historie-top { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.enote-historie-betrag { font-size: 1.2rem; font-weight: 800; color: var(--enote-text); }
+.enote-tag-zahlart { box-shadow: none; }
+.enote-historie-pos { color: var(--enote-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.enote-historie-reçu { flex: 0 0 auto; }
+
 /* --- Barcode-Scan --- */
 .enote-scan-box { margin-bottom: .9rem; }
 .enote-scan-input {
-    width: 100%; padding: .85rem 1.1rem; font-size: 1rem;
+    width: 100%; padding: 1.05rem 1.25rem; font-size: 1.05rem;
     border: none; border-radius: var(--enote-radius-pill); background: var(--enote-surface);
     box-shadow: var(--enote-neu-in);
 }
@@ -476,18 +605,17 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* Favoriten-Stern auf Tiles */
 .enote-tile-wrap { position: relative; }
 .enote-tile { width: 100%; }
-.enote-tile-main { display: flex; flex-direction: column; gap: .3rem; align-items: flex-start; cursor: pointer; flex: 1; }
 .enote-tile-menge {
-    display: flex; align-items: center; gap: .45rem; margin-top: .5rem;
-    padding-top: .5rem; border-top: 1px solid var(--enote-border); width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: .4rem; margin-top: .35rem;
+    padding-top: .4rem; border-top: 1px solid var(--enote-border); width: 100%;
 }
 .enote-tile-menge button {
-    width: 1.8rem; height: 1.8rem; border: none; border-radius: 50%; cursor: pointer;
-    background: var(--enote-surface); box-shadow: var(--enote-neu-out-sm); font-weight: 800; font-size: .95rem;
-    display: grid; place-items: center;
+    width: 2.75rem; height: 2.75rem; border: none; border-radius: 50%; cursor: pointer;
+    background: var(--enote-surface); box-shadow: var(--enote-neu-out-sm); font-weight: 800; font-size: 1.3rem;
+    display: grid; place-items: center; touch-action: manipulation;
 }
 .enote-tile-menge button:active { box-shadow: var(--enote-neu-in); }
-.enote-tile-menge span { font-weight: 800; min-width: 1.4rem; text-align: center; }
+.enote-tile-menge span { font-weight: 800; min-width: 1.4rem; text-align: center; font-size: 1.05rem; }
 .enote-fav-btn {
     position: absolute; top: .4rem; right: .4rem; z-index: 2;
     width: 2rem; height: 2rem; border: none; border-radius: 50%; cursor: pointer;
@@ -508,6 +636,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     box-shadow: 0 12px 28px rgba(30,58,138,.4);
 }
 .enote-mini-caisse .betrag { font-size: 1.05rem; }
+
+/* Kassen-Modus: Navigation (Desktop + Mobile) ausblenden, volle Breite für die Kasse */
+.enote-kassen-modus .enote-nav-desktop,
+.enote-kassen-modus .enote-nav-mobile { display: none !important; }
 
 /* Sperr-Button (Verwaltung wieder sperren) */
 .enote-sperr-btn {
@@ -613,6 +745,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- Ausgaben --- */
 .enote-kategorie-row { display: flex; gap: .6rem; margin-bottom: .75rem; }
 .enote-input-inline { flex: 1; padding: .55rem .8rem; border: 1.5px solid var(--enote-border); border-radius: .6rem; }
+.enote-input-inline:focus { outline: none; border-color: var(--enote-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
 .enote-kategorie-liste { display: flex; flex-wrap: wrap; gap: .4rem; }
 .enote-ausgaben-summe { margin-left: auto; font-size: .95rem; align-self: center; }
 .enote-ausgabe-item { border-left: 3px solid #fca5a5; }
@@ -649,6 +782,9 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-bild-auswahl { display: grid; gap: .75rem; }
 .enote-bild-auswahl-aktionen { display: flex; gap: .6rem; flex-wrap: wrap; }
 .enote-hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+
+/* Upload-Button (label um verstecktes InputFile) */
+.enote-btn-upload { position: relative; cursor: pointer; overflow: hidden; max-width: 100%; white-space: nowrap; text-overflow: ellipsis; }
 .enote-bild-vorschau-wrap { display: grid; gap: .4rem; justify-items: start; }
 
 
@@ -738,6 +874,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* --- Handy (≤640px): Sidebar aus, flache Bottom-Nav an --- */
 @media (max-width: 640px) {
+    .enote-layout { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; } /* Handy: Seite darf normal scrollen */
     .enote-body { flex-direction: column; }
     .enote-nav-desktop { display: none; }
 
@@ -764,9 +901,11 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     /* Genug Platz, damit Inhalt nicht hinter der Bottom-Nav verschwindet */
     .enote-main { padding: 1rem; padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
     .enote-btn { min-height: 44px; }
-    .enote-tile { min-height: 5rem; }
+    .enote-tile { min-height: 6rem; }
     .enote-caisse-body { grid-template-columns: 1fr; }
-    .enote-ticket { position: static; }
+    .enote-ticket { position: static; height: auto; max-height: none; }
+    .enote-tiles { height: auto; max-height: none; } /* auf dem Handy normal mit der Seite scrollen */
+    .enote-caisse { flex: none; } /* Handy: Seite darf normal scrollen */
     .enote-grid { grid-template-columns: 1fr; }
     .enote-form-grid { grid-template-columns: 1fr; }
     .enote-card .enote-table { display: block; overflow-x: auto; white-space: nowrap; }
@@ -811,9 +950,9 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- Pill-Radio --- */
 .enote-radio-group { display: flex; gap: .5rem; flex-wrap: wrap; }
 .enote-radio-pill {
-    padding: .6rem 1.2rem; border: none; border-radius: 999px; cursor: pointer;
-    background: var(--enote-surface); color: var(--enote-text); font-weight: 600; font-size: .9rem;
-    box-shadow: var(--enote-neu-out-sm); transition: all .18s;
+    padding: .7rem 1.35rem; border: none; border-radius: 999px; cursor: pointer;
+    background: var(--enote-surface); color: var(--enote-text); font-weight: 600; font-size: .95rem;
+    box-shadow: var(--enote-neu-out-sm); transition: all .18s; touch-action: manipulation;
 }
 .enote-radio-pill:hover { transform: translateY(-1px); box-shadow: var(--enote-neu-out); }
 .enote-radio-pill.aktiv { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
@@ -888,8 +1027,38 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-filter-label { font-size: .8rem; font-weight: 700; color: var(--enote-text-muted); }
 .enote-check-row { display: flex; align-items: center; gap: .55rem; }
 
+/* --- Tabs (Admin u. a.) --- */
+.enote-tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; border-bottom: 2px solid #e5e7eb; }
+.enote-tab {
+    background: none; border: none; padding: .7rem 1.2rem; font-size: .95rem; font-weight: 600;
+    color: var(--enote-text-muted); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: color .15s ease, border-color .15s ease;
+}
+.enote-tab:hover { color: var(--enote-primary); }
+.enote-tab.aktiv { color: var(--enote-primary); border-bottom-color: var(--enote-primary); }
+
+/* --- Filter-Leiste (Suche + Filter über Listen) --- */
+.enote-filter-leiste { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+.enote-filter-suche {
+    flex: 1 1 14rem; min-width: 12rem; padding: .55rem .9rem; border: 1px solid #d1d5db;
+    border-radius: .6rem; font-size: .9rem; background: #fff;
+}
+.enote-filter-suche:focus { outline: none; border-color: var(--enote-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+/* Dropdowns in der Filter-Leiste kompakt halten (nicht volle Breite) */
+.enote-filter-leiste .enote-select2 { flex: 0 0 auto; width: auto; min-width: 10rem; max-width: 14rem; }
+.enote-filter-leiste .enote-select2-trigger { width: 100%; }
+
 /* --- Monats-Picker --- */
 .enote-month-row { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+
+/* --- PIN-Feld mit Auge-Button --- */
+.enote-pin-feld { position: relative; display: flex; align-items: center; }
+.enote-pin-feld input { width: 100%; padding-right: 2.6rem; }
+.enote-pin-eye {
+    position: absolute; right: .45rem; background: none; border: none; cursor: pointer;
+    font-size: 1.05rem; padding: .3rem; line-height: 1; opacity: .7; transition: opacity .15s ease;
+}
+.enote-pin-eye:hover { opacity: 1; }
 .enote-monthpicker { display: grid; gap: .6rem; }
 .enote-monthpicker-jahr { display: flex; align-items: center; gap: .7rem; }
 .enote-monthpicker-jahr strong { font-size: 1.05rem; min-width: 3.5rem; text-align: center; }

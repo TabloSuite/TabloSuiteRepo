@@ -51,11 +51,15 @@
         }
         else
         {
+            <div class="enote-filter-leiste">
+                <input class="enote-filter-suche" placeholder="Rechercher un établissement…" @bind="aboSuche" @bind:event="oninput" />
+                <EnoteSelect TValue="string" @bind-Value="aboStatusFilter" Options="aboStatusOptionen" />
+            </div>
             <div class="enote-card enote-settings-card">
                 <table class="enote-table">
                     <thead><tr><th>Établissement</th><th>Formule</th><th>Montant</th><th>Période</th><th>Statut</th></tr></thead>
                     <tbody>
-                        @foreach (var a in alle)
+                        @foreach (var a in GefilterteAbos())
                         {
                             <tr>
                                 <td>@a.Salon.Name</td>

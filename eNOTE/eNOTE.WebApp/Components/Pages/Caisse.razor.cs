@@ -5,6 +5,7 @@ using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
@@ -17,7 +18,9 @@ public partial class Caisse(
     IDisplayBenachrichtigungService displayService,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
-    NavigationManager navigationManager)
+    NavigationManager navigationManager,
+    FinanzService finanzService,
+    IJSRuntime js) : IDisposable
 {
     // Start
     private List<(Guid UserId, string Name)> kassiererListe = [];
@@ -29,6 +32,11 @@ public partial class Caisse(
     // Aktive Kasse
     private KassenSitzung? aktiveSitzung;
     private string aktiverSalonName = string.Empty;
+    private bool sitzungWiederhergestellt;
+    private bool wiederhergestelltModalOffen;
+    private string? wiederhergestelltKassierer;
+    private decimal? wiederhergestelltSoll;
+    private DateTime wiederhergestelltGestartet;
     private List<Leistung> leistungen = [];
     private List<Rabatt> rabatte = [];
     private IReadOnlyList<EnoteSelectOption<string>> rabattOptionen = [];
@@ -68,6 +76,60 @@ public partial class Caisse(
     private bool rabattAktiviert;
     private bool bedingungBestaetigt;
     private string? verkaufFehler;
+
+    // Zahlungs-Modale (platzsparend statt Inline-Zahlungsblock)
+    private bool barModalOffen;
+    private bool karteModalOffen;
+    private bool abbrechenBestaetigungOffen;
+
+    // Rückgeld im Bar-Modal live (unabhängig von zahlungsArt).
+    private decimal rueckgeldModal => gegeben >= gesamtSumme ? Math.Round(gegeben - gesamtSumme, 2) : 0m;
+    private bool barBetragZuWenig => gegeben < gesamtSumme;
+
+    private void OeffneBarModal()
+    {
+        if (ticket.Count == 0)
+        {
+            return;
+        }
+
+        verkaufFehler = null;
+        gegeben = gesamtSumme; // komfortabel: exakter Betrag vorbefüllt
+        barModalOffen = true;
+    }
+
+    private void OeffneKarteModal()
+    {
+        if (ticket.Count == 0)
+        {
+            return;
+        }
+
+        verkaufFehler = null;
+        karteBestaetigt = false;
+        karteModalOffen = true;
+    }
+
+    private async Task BestaetigeBarAsync()
+    {
+        zahlungsArt = ZahlungsArt.Bar;
+        await BucheVerkaufAsync();
+        if (string.IsNullOrWhiteSpace(verkaufFehler))
+        {
+            barModalOffen = false;
+        }
+    }
+
+    private async Task BestaetigeKarteAsync()
+    {
+        zahlungsArt = ZahlungsArt.Karte;
+        karteBestaetigt = true;
+        await BucheVerkaufAsync();
+        if (string.IsNullOrWhiteSpace(verkaufFehler))
+        {
+            karteModalOffen = false;
+        }
+    }
     private Guid? letzterVerkaufId;
     private string scanCode = string.Empty;
 
@@ -81,6 +143,25 @@ public partial class Caisse(
     private decimal endbestandGezaehlt;
     private string? abschlussNotiz;
     private string? abschlussFehler;
+    private (decimal Startbestand, decimal BarEinnahmen, decimal Soll)? barSollInfo;
+
+    // Verkaufshistorie (Kassierer darf vorherige Verkäufe sehen + Bon nachdrucken)
+    private bool historieOffen;
+    private bool historieLaedt;
+    private List<FinanzService.VerkaufEintrag> historieVerkaeufe = [];
+
+    private async Task OeffneHistorieAsync()
+    {
+        historieOffen = true;
+        if (aktiveSitzung is null)
+        {
+            return;
+        }
+
+        historieLaedt = true;
+        historieVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(aktiveSitzung.SalonId, 50);
+        historieLaedt = false;
+    }
 
     private Rabatt? ausgewaehlterRabatt =>
         Guid.TryParse(ausgewaehlteRabattId, out var id) ? rabatte.FirstOrDefault(r => r.Id == id) : null;
@@ -88,12 +169,11 @@ public partial class Caisse(
     private decimal zwischensumme => ticket.Sum(p => p.EffektivPreis * p.Menge);
     private decimal rabattSumme => BerechneRabattSumme();
     private decimal gesamtSumme => Math.Max(zwischensumme - rabattSumme, 0m);
-    private decimal rueckgeld => zahlungsArt == ZahlungsArt.Bar && gegeben >= gesamtSumme
-        ? Math.Round(gegeben - gesamtSumme, 2)
-        : 0m;
 
     protected override async Task OnInitializedAsync()
     {
+        anzeigeState.OnChange += HandleAnzeigeStateChanged;
+
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
@@ -115,8 +195,14 @@ public partial class Caisse(
             {
                 aktiveSitzung = offene;
                 aktiverSalonName = z.Salon.Name;
-                anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName);
+                sitzungWiederhergestellt = true;
+                var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
+                anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand, aufstellung?.BarEinnahmen ?? 0m);
                 await LadeKatalogAsync(offene.SalonId);
+                wiederhergestelltKassierer = offene.Kassierer.FullName;
+                wiederhergestelltSoll = aufstellung?.Soll;
+                wiederhergestelltGestartet = offene.GestartetUtc;
+                wiederhergestelltModalOffen = true;
                 return;
             }
         }
@@ -190,7 +276,7 @@ public partial class Caisse(
 
         aktiveSitzung = sitzung;
         aktiverSalonName = zuordnung.Salon.Name;
-        anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName);
+        anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName, sitzung.Startbestand);
         await LadeKatalogAsync(sitzung.SalonId);
 
         pin = string.Empty;
@@ -268,7 +354,6 @@ public partial class Caisse(
 
         ticket.Add(new TicketPosition { Leistung = standardArtikel, Menge = freierBetragMenge, FreierBetrag = freierBetrag });
         freierBetragOffen = false;
-        toast.ZeigeInfo($"« Divers » ajouté : {freierBetrag * freierBetragMenge:N0} F");
         _ = SendeTicketAnDisplayAsync();
     }
 
@@ -302,6 +387,33 @@ public partial class Caisse(
         _ = SendeTicketAnDisplayAsync();
     }
 
+    /// <summary>Öffnet die Bestätigung zum Abbrechen des aktuellen Verkaufs.</summary>
+    private void OeffneAbbrechenBestaetigung()
+    {
+        if (ticket.Count == 0)
+        {
+            return;
+        }
+
+        abbrechenBestaetigungOffen = true;
+    }
+
+    /// <summary>Bricht den aktuellen Verkauf ab: entfernt alle Positionen und setzt Rabatt/Eingaben zurück.</summary>
+    private void BrecheTicketAb()
+    {
+        ticket.Clear();
+        tileMengen.Clear();
+        ausgewaehlteRabattId = string.Empty;
+        rabattAktiviert = false;
+        bedingungBestaetigt = false;
+        gegeben = 0m;
+        karteBestaetigt = false;
+        freierBetragOffen = false;
+        freierBetragFehler = null;
+        abbrechenBestaetigungOffen = false;
+        _ = SendeTicketAnDisplayAsync();
+    }
+
     /// <summary>Sendet den aktuellen Ticket-Stand an das Kunden-Display (falls verbunden).</summary>
     private async Task SendeTicketAnDisplayAsync()
     {
@@ -326,12 +438,6 @@ public partial class Caisse(
     /// Beendet den Kassen-Modus (nur für Besitzer/Admin sichtbar), ohne die
     /// Sitzung zu schließen. Der Kassierer kann später per PIN weitermachen.
     /// </summary>
-    private void BeendeKassenModus()
-    {
-        // Sitzung bleibt in der DB offen, aber der Circuit-Modus wird beendet.
-        anzeigeState.SitzungBeendet();
-    }
-
     private async Task ToggleFavoritAsync(Guid leistungId)
     {
         if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty)
@@ -357,7 +463,6 @@ public partial class Caisse(
         if (treffer is not null)
         {
             FuegeHinzu(treffer);
-            toast.ZeigeInfo($"{treffer.Name} ajouté.");
         }
         else
         {
@@ -436,7 +541,7 @@ public partial class Caisse(
             return;
         }
 
-        anzeigeState.VerkaufGebucht(verkauf.GesamtSumme);
+        anzeigeState.VerkaufGebucht(verkauf.ZahlungsArt == ZahlungsArt.Bar ? verkauf.GesamtSumme : 0m);
         letzterVerkaufId = verkauf.Id;
         foreach (var warnung in warnungen)
         {
@@ -501,11 +606,12 @@ public partial class Caisse(
         }
     }
 
-    private void OeffneAbschluss()
+    private async Task OeffneAbschluss()
     {
         abschlussFehler = null;
         endbestandGezaehlt = 0m;
         abschlussNotiz = null;
+        barSollInfo = aktiveSitzung is not null ? await kassenService.GetBarSollAufstellungAsync(aktiveSitzung.Id) : null;
         abschlussOffen = true;
     }
 
@@ -541,6 +647,16 @@ public partial class Caisse(
             await LadeKassiererListeAsync(zuordnungen);
         }
     }
+
+    /// <summary>Öffnet den Browserdruck; im eingerichteten Windows-Kioskprofil ohne Druckdialog.</summary>
+    private async Task DruckeBonAsync(Guid verkaufId)
+    {
+        await js.InvokeVoidAsync("enoteOeffneTab", $"/bon/{verkaufId}/druck");
+    }
+
+    private void HandleAnzeigeStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => anzeigeState.OnChange -= HandleAnzeigeStateChanged;
 
     private sealed class TicketPosition
     {

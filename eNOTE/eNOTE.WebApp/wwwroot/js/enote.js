@@ -13,6 +13,10 @@ window.enoteTogglePassword = function (button) {
 };
 
 // User-Menü (Avatar-Dropdown) schließt bei Klick außerhalb.
+window.enoteOeffneTab = function (url) {
+    window.open(url, '_blank');
+};
+
 window.enoteRegisterUserMenu = function (dotNetRef) {
     if (window.__enoteUserMenuHandler) return; // nur einmal registrieren
     window.__enoteUserMenuHandler = function (e) {

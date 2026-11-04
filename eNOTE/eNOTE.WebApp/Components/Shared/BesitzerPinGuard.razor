@@ -5,7 +5,11 @@
 @inject ENote.WebApp.Services.ToastService Toast
 @implements IDisposable
 
-@if (PinState.VerwaltungFreigeschaltet || !istGesperrt)
+@if (laedt)
+{
+    @* Noch am Prüfen – nichts zeigen, damit die PIN-Karte nicht aufblitzt. *@
+}
+else if (PinState.VerwaltungFreigeschaltet || !istGesperrt)
 {
     @ChildContent
 }

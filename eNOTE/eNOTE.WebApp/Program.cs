@@ -115,6 +115,7 @@ builder.Services.AddScoped<UmsatzBenachrichtigungService>();
 builder.Services.AddScoped<IUmsatzBenachrichtigungService>(sp => sp.GetRequiredService<UmsatzBenachrichtigungService>());
 builder.Services.AddScoped<IDisplayBenachrichtigungService, DisplayBenachrichtigungService>();
 builder.Services.AddScoped<KassenAnzeigeState>();
+builder.Services.AddScoped<AktiverSalonState>();
 builder.Services.AddScoped<BesitzerPinState>();
 builder.Services.AddScoped<GeraetFavoritService>();
 builder.Services.AddScoped<ToastService>();
@@ -248,6 +249,31 @@ app.MapGet("/bon/{verkaufId:guid}", async (
 
     var pdf = BonPdfService.ErzeugeBon(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, logoBytes, qrZiel);
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"recu-{verkauf.Id.ToString()[..8]}.pdf");
+}).RequireAuthorization();
+
+// Kassenbon als HTML-Druckansicht: öffnet sofort den Druck-Dialog (window.print()).
+app.MapGet("/bon/{verkaufId:guid}/druck", async (
+    Guid verkaufId,
+    HttpContext httpContext,
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    CancellationToken cancellationToken) =>
+{
+    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var verkauf = await db.Verkaeufe
+        .Include(v => v.Positionen)
+        .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
+        .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
+    if (verkauf is null)
+    {
+        return Results.NotFound();
+    }
+
+    var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);
+    var qrZiel = !string.IsNullOrWhiteSpace(salon.BonQrLink)
+        ? salon.BonQrLink
+        : $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/bon/{verkauf.Id}";
+    var html = BonDruckHtml.Erzeuge(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, qrZiel);
+    return Results.Content(html, "text/html; charset=utf-8");
 }).RequireAuthorization();
 
 // Finanzbericht als PDF (Zeitraum gefiltert). Nur Besitzer/delegierte Finanzberechtigte.

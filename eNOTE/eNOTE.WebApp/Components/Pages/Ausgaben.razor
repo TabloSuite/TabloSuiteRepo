@@ -14,33 +14,34 @@
             <p>Enregistrez les dépenses de l'établissement avec un justificatif facultatif.</p>
         </div>
         <div class="enote-item-actions">
-            <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienOffen = !kategorienOffen">Catégories</button>
             <button class="enote-btn enote-btn-primary" @onclick="NeueAusgabe">+ Nouvelle dépense</button>
         </div>
     </div>
 
-    @if (kategorienOffen)
-    {
-        <div class="enote-card enote-settings-card">
-            <h2>Catégories de dépenses</h2>
-            <div class="enote-kategorie-row">
-                <input @bind="neueKategorieName" placeholder="ex. Loyer, Électricité, Stock…" class="enote-input-inline" />
-                <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
-            </div>
-            <div class="enote-kategorie-liste">
-                @foreach (var k in kategorien)
-                {
-                    <span class="enote-tag">@k.Name</span>
-                }
-            </div>
+    <div class="enote-card enote-settings-card">
+        <h2>Catégories de dépenses</h2>
+        <div class="enote-kategorie-row">
+            <input @bind="neueKategorieName" placeholder="ex. Loyer, Électricité, Stock…" class="enote-input-inline" />
+            <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
         </div>
-    }
+        <div class="enote-kategorie-liste">
+            @foreach (var k in kategorien)
+            {
+                <span class="enote-tag">@k.Name</span>
+            }
+        </div>
+    </div>
 
     <div class="enote-filter-row">
         <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
         <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
         <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
-        <span class="enote-ausgaben-summe">Total : <strong>@ausgaben.Sum(a => a.Betrag).ToString("N0") F</strong></span>
+    </div>
+
+    <div class="enote-filter-leiste">
+        <input class="enote-filter-suche" placeholder="Rechercher (note, catégorie)…" @bind="ausgabenSuche" @bind:event="oninput" />
+        <EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" />
+        <span class="enote-ausgaben-summe">Total : <strong>@GefilterteAusgaben().Sum(a => a.Betrag).ToString("N0") F</strong></span>
     </div>
 
     @if (isLoading)
@@ -54,7 +55,7 @@
     else
     {
         <div class="enote-feed">
-            @foreach (var a in ausgaben)
+            @foreach (var a in GefilterteAusgaben())
             {
                 <div class="enote-feed-item enote-ausgabe-item">
                     <div class="enote-feed-head">
@@ -90,10 +91,13 @@
             <EnoteSelect TValue="string" @bind-Value="neuKategorieId" Options="kategorienOptionen" Placeholder="— Choisir —" MitSuche="true" />
             <label>Note (facultatif) <input @bind="neuNotiz" /></label>
             <label>Justificatif (PDF/image, facultatif)</label>
-            <InputFile OnChange="HandleBelegAuswahl" accept="image/*,application/pdf" class="enote-file" />
+            <label class="enote-btn enote-btn-ghost enote-btn-upload">
+                📎 @(string.IsNullOrWhiteSpace(belegName) ? "Choisir un fichier" : belegName)
+                <InputFile OnChange="HandleBelegAuswahl" accept="image/*,application/pdf" class="enote-hidden-input" />
+            </label>
             @if (!string.IsNullOrWhiteSpace(belegName))
             {
-                <small class="enote-muted">📎 @belegName</small>
+                <small class="enote-muted">✅ Fichier sélectionné</small>
             }
         </div>
     </ChildContent>
