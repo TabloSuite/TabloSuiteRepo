@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Kasse
 @using ENote.Core.DataModels.Katalog
+@using ENote.WebApp.Components.Shared
 
 <PageTitle>Caisse</PageTitle>
 
@@ -72,6 +73,11 @@ else
             </div>
             <div class="enote-caisse-header-actions">
                 <button class="enote-btn enote-btn-ghost" @onclick="anzeigeState.Minimieren">Réduire</button>
+                <button class="enote-btn enote-btn-ghost" @onclick="OeffneDisplayDialog">📺 Affichage client</button>
+                @if (istBesitzerOderAdmin)
+                {
+                    <button class="enote-btn enote-btn-ghost" @onclick="BeendeKassenModus">Quitter le mode caisse</button>
+                }
                 <button class="enote-btn enote-btn-ghost" @onclick="OeffneAbschluss">Clôturer</button>
             </div>
         </div>
@@ -87,18 +93,46 @@ else
                            @onkeydown="HandleScanTaste" />
                 </div>
 
+                @* Kategorie-Filter *@
+                @if (kategorien.Count > 1)
+                {
+                    <div class="enote-kat-filter">
+                        <button type="button" class="enote-radio-pill @(aktiveKategorie is null ? "aktiv" : "")" @onclick="() => aktiveKategorie = null">Tout</button>
+                        @foreach (var kat in kategorien)
+                        {
+                            <button type="button" class="enote-radio-pill @(aktiveKategorie == kat ? "aktiv" : "")" @onclick="() => aktiveKategorie = kat">@kat</button>
+                        }
+                    </div>
+                }
+
                 @* Schnellauswahl *@
                 <div class="enote-tiles">
-                    @foreach (var l in leistungen)
+                    @foreach (var l in GefilterteLeistungen)
                     {
-                        <button type="button" class="enote-tile" @onclick="() => FuegeHinzu(l)">
-                            <span class="enote-tile-name">@l.Name</span>
-                            <span class="enote-tile-price">@l.Preis.ToString("N0") F</span>
-                            @if (l.HatStueckzahl && l.MindestbestandWarnung is int min && l.Stueckzahl <= min)
-                            {
-                                <span class="enote-tile-warn">Stock: @l.Stueckzahl</span>
-                            }
-                        </button>
+                        <div class="enote-tile-wrap">
+                            <div class="enote-tile">
+                                <div class="enote-tile-main" @onclick="() => WaehleLeistung(l)">
+                                    <span class="enote-tile-name">@l.Name</span>
+                                    <span class="enote-tile-price">@(l.IstStandardArtikel ? "Montant libre" : l.Preis.ToString("N0") + " F")</span>
+                                    @if (l.HatStueckzahl && l.MindestbestandWarnung is decimal min && l.Stueckzahl <= min)
+                                    {
+                                        <span class="enote-tile-warn">Stock: @l.Stueckzahl</span>
+                                    }
+                                </div>
+                                <div class="enote-tile-menge">
+                                    <button type="button" @onclick="() => AendereTileMenge(l.Id, -1)" @onclick:stopPropagation="true">−</button>
+                                    <span>@(tileMengen.GetValueOrDefault(l.Id, 1))</span>
+                                    <button type="button" @onclick="() => AendereTileMenge(l.Id, 1)" @onclick:stopPropagation="true">+</button>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    class="enote-fav-btn @(favoritenIds.Contains(l.Id) ? "aktiv" : "")"
+                                    title="Favorit"
+                                    @onclick="() => ToggleFavoritAsync(l.Id)"
+                                    @onclick:stopPropagation="true">
+                                @(favoritenIds.Contains(l.Id) ? "★" : "☆")
+                            </button>
+                        </div>
                     }
                 </div>
             </div>
@@ -137,20 +171,21 @@ else
                 @if (ticket.Count > 0)
                 {
                     <div class="enote-ticket-rabatt">
-                        <label>Remise</label>
-                        <select class="enote-select" @bind="ausgewaehlteRabattId">
-                            <option value="">Aucune</option>
-                            @foreach (var r in rabatte)
+                        <div class="enote-rabatt-kopf">
+                            <label>Remise</label>
+                            @if (!string.IsNullOrEmpty(ausgewaehlteRabattId))
                             {
-                                <option value="@r.Id">@r.Name (@RabattText(r))</option>
+                                <EnoteCheckbox @bind-Value="rabattAktiviert" Label="Activer" />
                             }
-                        </select>
-                        @if (ausgewaehlterRabatt?.Bedingung is string bedingung && !string.IsNullOrWhiteSpace(bedingung))
+                        </div>
+                        <EnoteSelect TValue="string" @bind-Value="ausgewaehlteRabattId" Options="rabattOptionen" Placeholder="Aucune" MitSuche="true" />
+                        @if (!string.IsNullOrEmpty(ausgewaehlteRabattId) && !rabattAktiviert)
                         {
-                            <label class="checkbox">
-                                <input type="checkbox" @bind="bedingungBestaetigt" />
-                                <span>Condition remplie : @bedingung</span>
-                            </label>
+                            <small class="enote-muted">Activez la remise pour l'appliquer.</small>
+                        }
+                        @if (rabattAktiviert && ausgewaehlterRabatt?.Bedingung is string bedingung && !string.IsNullOrWhiteSpace(bedingung))
+                        {
+                            <label class="enote-check-row"><EnoteCheckbox @bind-Value="bedingungBestaetigt" Label="@bedingungLabel" /></label>
                         }
                     </div>
 
@@ -161,8 +196,7 @@ else
                     </div>
 
                     <div class="enote-zahlart">
-                        <button class="@(zahlungsArt == ZahlungsArt.Bar ? "aktiv" : "")" @onclick="() => zahlungsArt = ZahlungsArt.Bar">Espèces</button>
-                        <button class="@(zahlungsArt == ZahlungsArt.Karte ? "aktiv" : "")" @onclick="() => zahlungsArt = ZahlungsArt.Karte">Carte</button>
+                        <EnoteRadioGroup TValue="ZahlungsArt" @bind-Value="zahlungsArt" Options="zahlungsArtOptionen" />
                     </div>
 
                     @if (zahlungsArt == ZahlungsArt.Bar)
@@ -176,10 +210,7 @@ else
                     }
                     else
                     {
-                        <label class="checkbox">
-                            <input type="checkbox" @bind="karteBestaetigt" />
-                            <span>Paiement par carte effectué</span>
-                        </label>
+                        <label class="enote-check-row"><EnoteCheckbox @bind-Value="karteBestaetigt" Label="Paiement par carte effectué" /></label>
                     }
 
                     @if (!string.IsNullOrWhiteSpace(verkaufFehler))
@@ -211,5 +242,37 @@ else
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => abschlussOffen = false">Annuler</button>
         <AsyncActionButton Text="Clôturer" OnClick="SchliesseSitzungAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* --- Freier Betrag für Standard-Artikel „Divers“ --- *@
+<ModalDialog Open="freierBetragOffen" Title="Montant – Divers" ErrorMessage="@freierBetragFehler" OnClose="() => freierBetragOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p>Saisissez le montant de cette vente (prestation non créée).</p>
+            <label>Montant (F) <input type="number" min="0" step="50" @bind="freierBetrag" /></label>
+            <label>Quantité <input type="number" min="1" @bind="freierBetragMenge" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => freierBetragOffen = false">Annuler</button>
+        <AsyncActionButton Text="Ajouter" OnClick="FuegeStandardArtikelHinzu" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* --- Kunden-Display verbinden (QR-Code + Link) --- *@
+<ModalDialog Open="displayDialogOffen" Title="Affichage client" OnClose="() => displayDialogOffen = false">
+    <ChildContent>
+        <div class="enote-display-dialog">
+            <p class="enote-muted">Le client scanne ce code (ou ouvre ce lien) sur une tablette pour suivre sa commande en direct.</p>
+            @if (!string.IsNullOrWhiteSpace(displayQrDataUrl))
+            {
+                <img src="@displayQrDataUrl" alt="QR-code" class="enote-display-qr" />
+            }
+            <div class="enote-display-link">@displayLink</div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => displayDialogOffen = false">Fermer</button>
     </Footer>
 </ModalDialog>

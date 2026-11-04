@@ -30,8 +30,16 @@ public class Rabatt
     public Guid? LeistungId { get; set; }
     public Leistung? Leistung { get; set; }
 
-    public bool IstAktiv { get; set; } = true;
+    /// <summary>
+    /// Standardmäßig INAKTIV: Der Kassierer muss den Rabatt beim Kassieren explizit
+    /// aktivieren. Er gilt, bis der Besitzer ihn löscht (oder die optionale Frist endet).
+    /// </summary>
+    public bool IstAktiv { get; set; }
+
+    /// <summary>Optionaler Beginn der Gültigkeit (null = unbegrenzt ab sofort).</summary>
     public DateTime? GueltigVonUtc { get; set; }
+
+    /// <summary>Optionales Ende der Gültigkeit (null = unbegrenzt, bis gelöscht).</summary>
     public DateTime? GueltigBisUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

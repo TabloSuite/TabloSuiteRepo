@@ -1,4 +1,5 @@
-﻿<nav class="enote-nav">
+﻿@* Desktop/Tablet: Sidebar *@
+<nav class="enote-nav enote-nav-desktop">
     <AuthorizeView>
         <Authorized>
             <NavLink href="/" Match="NavLinkMatch.All" class="enote-nav-link">Accueil</NavLink>
@@ -11,11 +12,16 @@
 
             <AuthorizeView Roles="Besitzer">
                 <Authorized Context="bCtx">
+                    <div class="enote-nav-group-label">Vente</div>
                     <NavLink href="/services" class="enote-nav-link">Prestations</NavLink>
                     <NavLink href="/remises" class="enote-nav-link">Remises</NavLink>
+
+                    <div class="enote-nav-group-label">Gestion</div>
                     <NavLink href="/finances" class="enote-nav-link">Finances</NavLink>
                     <NavLink href="/ausgaben" class="enote-nav-link">Dépenses</NavLink>
                     <NavLink href="/equipe" class="enote-nav-link">Équipe</NavLink>
+
+                    <div class="enote-nav-group-label">Compte</div>
                     <NavLink href="/abonnement" class="enote-nav-link">Abonnement</NavLink>
                     <NavLink href="/parametres" class="enote-nav-link">Paramètres</NavLink>
                 </Authorized>
@@ -29,14 +35,57 @@
 
             <AuthorizeView Roles="SuperAdmin, ProduktOwner">
                 <Authorized Context="aCtx">
-                    <NavLink href="/admin" class="enote-nav-link">Administration</NavLink>
-                    <NavLink href="/admin/facturation" class="enote-nav-link">Facturation</NavLink>
+                    <NavLink href="/admin" Match="NavLinkMatch.All" class="enote-nav-link">Administration</NavLink>
+                    <div class="enote-nav-subgroup">
+                        <NavLink href="/admin/facturation" class="enote-nav-link enote-nav-sub">Facturation</NavLink>
+                        <AuthorizeView Roles="SuperAdmin">
+                            <Authorized Context="saCtx">
+                                <NavLink href="/admin/journaux" class="enote-nav-link enote-nav-sub">Journaux</NavLink>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </Authorized>
+    </AuthorizeView>
+</nav>
+
+@* Handy: flache Bottom-Nav (ohne Untergruppen) *@
+<nav class="enote-nav-mobile">
+    <AuthorizeView>
+        <Authorized>
+            <NavLink href="/" Match="NavLinkMatch.All" class="enote-mnav-link"><span class="enote-mnav-ico">🏠</span><span>Accueil</span></NavLink>
+
+            <AuthorizeView Roles="Kassierer, Besitzer">
+                <Authorized Context="kasseCtx">
+                    <NavLink href="/caisse" class="enote-mnav-link"><span class="enote-mnav-ico">🧾</span><span>Caisse</span></NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Besitzer">
+                <Authorized Context="bCtx">
+                    <NavLink href="/services" class="enote-mnav-link"><span class="enote-mnav-ico">📦</span><span>Prestations</span></NavLink>
+                    <NavLink href="/finances" class="enote-mnav-link"><span class="enote-mnav-ico">📊</span><span>Finances</span></NavLink>
+                    <NavLink href="/equipe" class="enote-mnav-link"><span class="enote-mnav-ico">👥</span><span>Équipe</span></NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="ProduktOwner">
+                <Authorized Context="poCtx">
+                    <NavLink href="/mes-etablissements" class="enote-mnav-link"><span class="enote-mnav-ico">🏪</span><span>Mes étab.</span></NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="SuperAdmin, ProduktOwner">
+                <Authorized Context="aCtx">
+                    <NavLink href="/admin" Match="NavLinkMatch.All" class="enote-mnav-link"><span class="enote-mnav-ico">⚙️</span><span>Admin</span></NavLink>
+                    <NavLink href="/admin/facturation" class="enote-mnav-link"><span class="enote-mnav-ico">💳</span><span>Facturation</span></NavLink>
                 </Authorized>
             </AuthorizeView>
 
             <AuthorizeView Roles="SuperAdmin">
                 <Authorized Context="saCtx">
-                    <NavLink href="/admin/journaux" class="enote-nav-link">Journaux</NavLink>
+                    <NavLink href="/admin/journaux" class="enote-mnav-link"><span class="enote-mnav-ico">🪵</span><span>Journaux</span></NavLink>
                 </Authorized>
             </AuthorizeView>
         </Authorized>

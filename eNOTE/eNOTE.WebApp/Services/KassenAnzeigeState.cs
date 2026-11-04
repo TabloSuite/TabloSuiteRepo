@@ -3,9 +3,15 @@ namespace ENote.WebApp.Services;
 /// <summary>
 /// Circuit-weiter Zustand der Kassenanzeige: merkt sich die aktive Sitzung und
 /// ob die Kassenansicht minimiert ist (schwebender Button am Tablet).
+/// Steuert zugleich den Kassen-Modus (nur Kasse erlaubt, solange eine Sitzung läuft).
 /// </summary>
 public class KassenAnzeigeState
 {
+    private readonly BesitzerPinState besitzerPinState;
+
+    public KassenAnzeigeState(BesitzerPinState besitzerPinState)
+        => this.besitzerPinState = besitzerPinState;
+
     public event Action? OnChange;
 
     public Guid? AktiveSitzungId { get; private set; }
@@ -14,6 +20,9 @@ public class KassenAnzeigeState
     public bool IstMinimiert { get; private set; }
     public decimal LaufenderUmsatz { get; private set; }
     public int AnzahlVerkaeufe { get; private set; }
+
+    /// <summary>true, solange eine Kassensitzung läuft (Kassen-Modus aktiv).</summary>
+    public bool KassenModusAktiv => AktiveSitzungId is not null;
 
     public void SitzungGestartet(Guid sitzungId, Guid salonId, string kassiererName)
     {

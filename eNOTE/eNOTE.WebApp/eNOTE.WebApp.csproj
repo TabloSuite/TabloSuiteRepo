@@ -32,6 +32,8 @@
 	<PackageReference Include="QuestPDF" />
 	<PackageReference Include="Serilog.AspNetCore" />
 	<PackageReference Include="Serilog.Sinks.Console" />
+	<PackageReference Include="ZXing.Net" />
+	<PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" />
   </ItemGroup>
 
   <ItemGroup>

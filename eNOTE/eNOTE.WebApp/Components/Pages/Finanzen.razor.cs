@@ -26,8 +26,8 @@ public partial class Finanzen(
     private int liveAnzahlHeute;
     private bool liveVerbunden;
 
-    private DateTime filterVon = DateTime.Today.AddDays(-13);
-    private DateTime filterBis = DateTime.Today;
+    private DateTime? filterVon = DateTime.Today.AddDays(-13);
+    private DateTime? filterBis = DateTime.Today;
     private bool filterAktiv;
 
     private string ZeitraumTitel => filterAktiv
@@ -118,15 +118,15 @@ public partial class Finanzen(
     {
         filterAktiv = true;
         isLoading = true;
-        var bisEnde = filterBis.Date.AddDays(1).AddTicks(-1);
-        tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, filterVon.Date, bisEnde);
+        var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
+        tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
         isLoading = false;
     }
 
     private void ExportierePdf()
     {
-        var von = filterVon.ToString("yyyy-MM-dd");
-        var bis = filterBis.ToString("yyyy-MM-dd");
+        var von = (filterVon ?? DateTime.Today).ToString("yyyy-MM-dd");
+        var bis = (filterBis ?? DateTime.Today).ToString("yyyy-MM-dd");
         navigationManager.NavigateTo($"/finances/rapport?salonId={salonId}&von={von}&bis={bis}", forceLoad: true);
     }
 

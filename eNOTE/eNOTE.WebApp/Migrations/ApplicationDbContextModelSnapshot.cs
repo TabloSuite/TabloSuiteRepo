@@ -447,6 +447,42 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("MailNachrichten");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.BesitzerHinweis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AusgeloestVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AusgeloestVonName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GelesenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstUngelesen")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalonId", "IstUngelesen");
+
+                    b.ToTable("BesitzerHinweise");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.KassenSitzung", b =>
                 {
                     b.Property<Guid>("Id")
@@ -494,6 +530,34 @@ namespace ENote.WebApp.Migrations
                     b.HasIndex("SalonId");
 
                     b.ToTable("KassenSitzungen");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GesetztVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LeistungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeistungId");
+
+                    b.HasIndex("SalonId", "LeistungId")
+                        .IsUnique();
+
+                    b.ToTable("LeistungFavoriten");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.Verkauf", b =>
@@ -595,6 +659,13 @@ namespace ENote.WebApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("BasisAbzugMenge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("BasisLeistungId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Beschreibung")
                         .HasColumnType("nvarchar(max)");
 
@@ -610,8 +681,19 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("IstAktiv")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("MindestbestandWarnung")
-                        .HasColumnType("int");
+                    b.Property<bool>("IstStandardArtikel")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("KategorieId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("Kaufpreis")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MindestbestandWarnung")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -627,19 +709,51 @@ namespace ENote.WebApp.Migrations
                     b.Property<string>("StrichCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Stueckzahl")
-                        .HasColumnType("int");
+                    b.Property<decimal>("Stueckzahl")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BasisLeistungId");
+
                     b.HasIndex("BildAssetId");
+
+                    b.HasIndex("KategorieId");
 
                     b.HasIndex("SalonId");
 
                     b.ToTable("Leistungen");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Katalog.LeistungKategorie", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstAktiv")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalonId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("LeistungKategorien");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Katalog.Rabatt", b =>
@@ -795,6 +909,9 @@ namespace ENote.WebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<DateTime?>("ProbeBisUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Slogan")
                         .HasColumnType("nvarchar(max)");
 
@@ -825,6 +942,9 @@ namespace ENote.WebApp.Migrations
 
                     b.Property<Guid>("AppUserId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BesitzerPinHash")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -1026,6 +1146,17 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.BesitzerHinweis", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Salons.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Salon");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.KassenSitzung", b =>
                 {
                     b.HasOne("ENote.Core.DataModels.Identity.AppUser", "Kassierer")
@@ -1043,6 +1174,17 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("Kassierer");
 
                     b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Katalog.Leistung", "Leistung")
+                        .WithMany()
+                        .HasForeignKey("LeistungId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Leistung");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.Verkauf", b =>
@@ -1084,9 +1226,19 @@ namespace ENote.WebApp.Migrations
 
             modelBuilder.Entity("ENote.Core.DataModels.Katalog.Leistung", b =>
                 {
+                    b.HasOne("ENote.Core.DataModels.Katalog.Leistung", "BasisLeistung")
+                        .WithMany()
+                        .HasForeignKey("BasisLeistungId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ENote.Core.DataModels.Infrastruktur.BlobMediaAsset", "BildAsset")
                         .WithMany()
                         .HasForeignKey("BildAssetId");
+
+                    b.HasOne("ENote.Core.DataModels.Katalog.LeistungKategorie", "Kategorie")
+                        .WithMany()
+                        .HasForeignKey("KategorieId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("ENote.Core.DataModels.Salons.Salon", "Salon")
                         .WithMany()
@@ -1094,7 +1246,22 @@ namespace ENote.WebApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("BasisLeistung");
+
                     b.Navigation("BildAsset");
+
+                    b.Navigation("Kategorie");
+
+                    b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Katalog.LeistungKategorie", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Salons.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Salon");
                 });

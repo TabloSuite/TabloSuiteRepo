@@ -5,6 +5,8 @@
 
 <PageTitle>Prestations</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -13,9 +15,33 @@
         </div>
         @if (darfVerwalten)
         {
-            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle prestation</button>
+            <div class="enote-item-actions">
+                <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienOffen = !kategorienOffen">Catégories</button>
+                <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle prestation</button>
+            </div>
         }
     </div>
+
+    @if (kategorienOffen)
+    {
+        <div class="enote-card enote-settings-card">
+            <h2>Catégories</h2>
+            <div class="enote-kategorie-row">
+                <input @bind="neueKategorieName" placeholder="ex. Tissus, Boissons…" class="enote-input-inline" />
+                <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+            </div>
+            <div class="enote-kategorie-liste">
+                @foreach (var k in kategorien)
+                {
+                    <span class="enote-tag enote-tag-editierbar">
+                        @k.Name
+                        <button type="button" class="enote-tag-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(k)">✎</button>
+                        <button type="button" class="enote-tag-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(k)">✕</button>
+                    </span>
+                }
+            </div>
+        </div>
+    }
 
     @if (isLoading)
     {
@@ -53,15 +79,34 @@
                         {
                             <span class="enote-tag">Prestation</span>
                         }
+                        @if (l.BasisLeistungId is not null)
+                        {
+                            <span class="enote-tag">Lié au stock</span>
+                        }
                         @if (!l.IstAktiv)
                         {
                             <span class="enote-tag enote-tag-off">Désactivée</span>
                         }
                     </div>
+                    @if (l.Kaufpreis is not null && l.Preis > 0)
+                    {
+                        <div class="enote-item-desc">
+                            Marge : <strong class="enote-marge">@((l.Preis - l.Kaufpreis.Value).ToString("N0")) F</strong>
+                            (@(Math.Round((l.Preis - l.Kaufpreis.Value) / l.Preis * 100m, 0).ToString("N0")) %)
+                            @if (l.HatStueckzahl && l.Kaufpreis is not null)
+                            {
+                                <span class="enote-muted"> · Stock : @((l.Stueckzahl * l.Kaufpreis.Value).ToString("N0")) F</span>
+                            }
+                        </div>
+                    }
                     @if (darfVerwalten)
                     {
                         <div class="enote-item-actions">
                             <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeiten(l)">Modifier</button>
+                            @if (l.HatStueckzahl && !string.IsNullOrWhiteSpace(l.StrichCode))
+                            {
+                                <button class="enote-btn enote-btn-ghost" @onclick="() => OeffneEtikettDialog(l)">🏷 Étiquettes</button>
+                            }
                             <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoeschenFragen(l)">Supprimer</button>
                         </div>
                     }
@@ -76,35 +121,50 @@
         <div class="enote-form">
             <label>Nom <input @bind="bearbeitungsLeistung.Name" /></label>
             <label>Description <input @bind="bearbeitungsLeistung.Beschreibung" /></label>
-            <label>Prix (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+
+            <label>Catégorie (facultatif)</label>
+            <EnoteSelect TValue="string" @bind-Value="kategorieIdText" Options="kategorieOptionen" Placeholder="— Aucune —" MitSuche="true" />
+
+            <div class="enote-form-grid">
+                <label>Prix de vente (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+                <label>Prix d'achat (F, facultatif) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Kaufpreis" /></label>
+            </div>
+            @if (bearbeitungsLeistung.Kaufpreis is not null && bearbeitungsLeistung.Preis > 0)
+            {
+                <small class="enote-marge">Marge : <strong>@MargeText()</strong></small>
+            }
 
             <label>Code-barres (facultatif, pour le scan en caisse)</label>
             <input @bind="bearbeitungsLeistung.StrichCode" placeholder="ex. 6191101100021" />
 
-            <label>Image (facultatif, max. 8 Mo)</label>
-            <InputFile OnChange="HandleBildAuswahl" accept="image/*" class="enote-file" />
-            @if (!string.IsNullOrWhiteSpace(bildVorschau))
-            {
-                <img src="@bildVorschau" alt="Aperçu" class="enote-bild-vorschau" />
-            }
+            <label>Image (facultatif)</label>
+            <BildAuswahl VorschauUrl="@bildVorschau"
+                         OnBildBereit="HandleBildBereit"
+                         OnEntfernt="HandleBildEntfernt" />
             @if (!string.IsNullOrWhiteSpace(bildFehler))
             {
                 <div class="alert alert-error">@bildFehler</div>
             }
 
-            <label class="checkbox">
-                <input type="checkbox" @bind="bearbeitungsLeistung.HatStueckzahl" />
-                <span>Article avec stock</span>
-            </label>
+            <EnoteCheckbox @bind-Value="bearbeitungsLeistung.HatStueckzahl" Label="Article avec stock" />
             @if (bearbeitungsLeistung.HatStueckzahl)
             {
-                <label>Stock actuel <input type="number" min="0" @bind="bearbeitungsLeistung.Stueckzahl" /></label>
-                <label>Alerte si stock ≤ <input type="number" min="0" @bind="bearbeitungsLeistung.MindestbestandWarnung" /></label>
+                <div class="enote-form-grid">
+                    <label>Stock actuel (unités : pièces, mètres…) <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.Stueckzahl" /></label>
+                    <label>Alerte si stock ≤ <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.MindestbestandWarnung" /></label>
+                </div>
             }
-            <label class="checkbox">
-                <input type="checkbox" @bind="bearbeitungsLeistung.IstAktiv" />
-                <span>Active</span>
-            </label>
+
+            @* Sammel-Artikel: zieht vom Bestand einer Basis-Leistung ab *@
+            <EnoteCheckbox @bind-Value="istSammelArtikel" Label="Article lié à un stock de base (ex. « Tissu A (3 m) »)" />
+            @if (istSammelArtikel)
+            {
+                <label>Stock de base</label>
+                <EnoteSelect TValue="string" @bind-Value="basisLeistungIdText" Options="basisOptionen" Placeholder="— Choisir —" MitSuche="true" />
+                <label>Quantité retirée par vente (ex. 3 pour 3 m) <input type="number" min="0" step="0.5" @bind="basisAbzugMenge" /></label>
+            }
+
+            <EnoteCheckbox @bind-Value="bearbeitungsLeistung.IstAktiv" Label="Active" />
         </div>
     </ChildContent>
     <Footer>
@@ -122,3 +182,44 @@
         <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
     </Footer>
 </ModalDialog>
+
+@* Kategorie umbenennen *@
+<ModalDialog Open="kategorieUmbenennenOffen" Title="Renommer la catégorie" ErrorMessage="@kategorieFehler" OnClose="() => kategorieUmbenennenOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nom <input @bind="kategorieNeuerName" /></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => kategorieUmbenennenOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="KategorieUmbenennenAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Kategorie löschen *@
+<ModalDialog Open="kategorieLoeschenOffen" Title="Supprimer la catégorie" OnClose="() => kategorieLoeschenOffen = false">
+    <ChildContent>
+        <p>Supprimer « @zuLoeschendeKategorie?.Name » ? Les prestations liées perdront cette catégorie (elles restent conservées).</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => kategorieLoeschenOffen = false">Annuler</button>
+        <AsyncActionButton Text="Supprimer" OnClick="KategorieLoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+    </Footer>
+</ModalDialog>
+
+@* Barcode-Etiketten drucken *@
+<ModalDialog Open="etikettDialogOffen" Title="@EtikettDialogTitel" OnClose="() => etikettDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p class="enote-muted">Code-barres : <strong>@etikettLeistung?.StrichCode</strong></p>
+            <label>Nombre d'étiquettes (1–48) <input type="number" min="1" max="48" @bind="etikettAnzahl" /></label>
+            <label>Format</label>
+            <EnoteRadioGroup TValue="string" @bind-Value="etikettFormat" Options="etikettFormatOptionen" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => etikettDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Imprimer" OnClick="DruckeEtiketten" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+</BesitzerPinGuard>

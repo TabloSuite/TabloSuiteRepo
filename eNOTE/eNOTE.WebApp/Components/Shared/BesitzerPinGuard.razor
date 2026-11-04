@@ -1,0 +1,37 @@
+@inject ENote.WebApp.Services.BesitzerPinState PinState
+@inject ENote.WebApp.Services.KassenService KassenService
+@inject ENote.WebApp.Services.KatalogService KatalogService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject ENote.WebApp.Services.ToastService Toast
+@implements IDisposable
+
+@if (PinState.VerwaltungFreigeschaltet || !istGesperrt)
+{
+    @ChildContent
+}
+else
+{
+    <div class="enote-pin-sperre">
+        <div class="enote-pin-sperre-card">
+            <div class="enote-pin-sperre-icon">🔒</div>
+            <h2>Zone réservée au propriétaire</h2>
+            <p class="enote-muted">Saisissez le code PIN du propriétaire pour accéder à cette page.</p>
+
+            @if (!string.IsNullOrWhiteSpace(fehler))
+            {
+                <div class="alert alert-error">@fehler</div>
+            }
+
+            <input type="password"
+                   inputmode="numeric"
+                   maxlength="6"
+                   class="enote-pin-input"
+                   placeholder="••••"
+                   @bind="pin"
+                   @bind:event="oninput"
+                   @onkeydown="HandleTaste" />
+
+            <AsyncActionButton Text="Déverrouiller" OnClick="PruefeAsync" CssClass="enote-btn-primary" />
+        </div>
+    </div>
+}

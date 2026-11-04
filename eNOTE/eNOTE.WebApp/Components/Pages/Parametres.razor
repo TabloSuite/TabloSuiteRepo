@@ -5,6 +5,8 @@
 
 <PageTitle>Paramètres de l'établissement</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page enote-page-narrow">
     <div class="enote-page-header">
         <div>
@@ -36,20 +38,41 @@
                 <input @bind="bonQrLink" placeholder="ex. lien WhatsApp ou avis Google" />
                 <small class="enote-muted">Vide : le QR-code ouvre la copie numérique du reéu.</small>
 
-                <label>Logo (facultatif, max. 8 Mo)</label>
-                <div class="enote-logo-row">
-                    @if (!string.IsNullOrWhiteSpace(logoVorschau))
-                    {
-                        <img src="@logoVorschau" alt="Logo" class="enote-logo-vorschau" />
-                    }
-                    <InputFile OnChange="HandleLogoAuswahl" accept="image/*" class="enote-file" />
-                </div>
+                <label>Logo (facultatif)</label>
+                <BildAuswahl VorschauUrl="@logoVorschau"
+                             OnBildBereit="HandleLogoBereit"
+                             OnEntfernt="HandleLogoEntfernt" />
+                @if (!string.IsNullOrWhiteSpace(logoFehler))
+                {
+                    <div class="alert alert-error">@logoFehler</div>
+                }
                 @if (!string.IsNullOrWhiteSpace(logoFehler))
                 {
                     <div class="alert alert-error">@logoFehler</div>
                 }
 
                 <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+            </div>
+        </div>
+
+        <div class="enote-card enote-settings-card">
+            <h2>Sécurité</h2>
+            <p class="enote-muted">Ce code PIN déverrouille les pages de gestion (finances, équipe…) sur la tablette partagée, sans fermer la caisse.</p>
+
+            @if (!string.IsNullOrWhiteSpace(pinFehler))
+            {
+                <div class="alert alert-error">@pinFehler</div>
+            }
+            @if (pinGespeichert)
+            {
+                <div class="alert alert-success">Code PIN enregistré.</div>
+            }
+
+            <div class="enote-form">
+                <label>Code PIN propriétaire (4–6 chiffres)</label>
+                <input type="password" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin" placeholder="••••" />
+                <small class="enote-muted">@(hatBesitzerPin ? "Un code est déjà défini. Saisissez-en un nouveau pour le changer." : "Aucun code défini pour le moment.")</small>
+                <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" />
             </div>
         </div>
 
@@ -80,3 +103,4 @@
         </div>
     }
 </div>
+</BesitzerPinGuard>

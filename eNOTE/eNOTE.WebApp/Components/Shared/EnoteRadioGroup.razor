@@ -1,0 +1,16 @@
+@typeparam TValue
+@* Moderne Pill-/Karten-Radio-Gruppe (Soft-UI) *@
+<div class="enote-radio-group" role="radiogroup">
+    @foreach (var option in Options)
+    {
+        var istAktiv = EqualityComparer<TValue>.Default.Equals(option.Value, Value);
+        <button type="button"
+                class="enote-radio-pill @(istAktiv ? "aktiv" : "")"
+                role="radio"
+                aria-checked="@istAktiv"
+                disabled="@Disabled"
+                @onclick="() => WaehleAsync(option.Value)">
+            @option.Label
+        </button>
+    }
+</div>

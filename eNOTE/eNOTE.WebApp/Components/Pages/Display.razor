@@ -1,0 +1,65 @@
+@page "/display/{SitzungId:guid}"
+@attribute [AllowAnonymous]
+@layout Layout.DisplayLayout
+@rendermode InteractiveServer
+
+<PageTitle>Votre commande</PageTitle>
+
+<div class="enote-display">
+    <div class="enote-display-kopf">
+        <div class="enote-display-logo">eN</div>
+        <h1>Votre commande</h1>
+        <p class="enote-display-sub">Suivez votre achat en direct</p>
+    </div>
+
+    @if (!verbunden)
+    {
+        <div class="enote-display-status">Connexion…</div>
+    }
+    else if (ticket is null || ticket.Positionen.Count == 0)
+    {
+        <div class="enote-display-leer">
+            <div class="enote-display-leer-ico">🛍️</div>
+            <p>Bienvenue ! Votre commande s'affichera ici.</p>
+        </div>
+    }
+    else
+    {
+        <div class="enote-display-ticket">
+            @foreach (var p in ticket.Positionen)
+            {
+                <div class="enote-display-pos">
+                    <span class="enote-display-pos-name">@p.Menge× @p.Name</span>
+                    <span class="enote-display-pos-sum">@p.ZeilenSumme.ToString("N0") F</span>
+                </div>
+            }
+
+            <div class="enote-display-trennlinie"></div>
+
+            @if (ticket.RabattSumme > 0)
+            {
+                <div class="enote-display-pos enote-display-rabatt">
+                    <span>Remise</span>
+                    <span>-@ticket.RabattSumme.ToString("N0") F</span>
+                </div>
+            }
+
+            <div class="enote-display-total">
+                <span>Total</span>
+                <strong>@ticket.GesamtSumme.ToString("N0") F</strong>
+            </div>
+
+            @if (ticket.Abgeschlossen)
+            {
+                <div class="enote-display-merci">
+                    <div class="enote-display-merci-ico">✅</div>
+                    <p>Merci de votre visite !</p>
+                    @if (ticket.Rueckgeld is not null)
+                    {
+                        <p class="enote-display-rueckgeld">Monnaie : @ticket.Rueckgeld.Value.ToString("N0") F</p>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

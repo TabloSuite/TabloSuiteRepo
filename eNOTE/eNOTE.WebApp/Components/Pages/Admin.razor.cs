@@ -8,14 +8,12 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Admin(
     AdminService adminService,
-    AboService aboService,
     ProduktOwnerService produktOwnerService,
     Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider,
     ToastService toast)
 {
     private List<AdminService.SalonUebersicht> salons = [];
     private List<PlattformPreis> plattformPreise = [];
-    private List<NutzungsAbo> gemeldeteZahlungen = [];
     private bool isLoading = true;
     private bool istSuperAdmin;
     private Guid aktuellerBenutzerId;
@@ -39,8 +37,14 @@ public partial class Admin(
     private decimal? provisionFestbetrag;
     private string ProvisionDialogTitel => "Commission – " + (provisionZuweisung?.SalonName ?? "");
 
-    private DateTime auszahlungMonat = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? auszahlungMonat = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<ProduktOwnerAuszahlung> auszahlungen = [];
+
+    private bool probeDialogOffen;
+    private Guid probeSalonId;
+    private string probeSalonName = string.Empty;
+    private DateTime? probeBisDatum;
+    private string ProbeDialogTitel => "Essai gratuit – " + probeSalonName;
 
     private List<AdminService.SalonUebersicht> ausstehende =>
         salons.Where(s => !s.IstFreigegeben && s.IstAktiv).ToList();
@@ -73,19 +77,11 @@ public partial class Admin(
         isLoading = true;
         salons = await adminService.GetSalonUebersichtFuerAsync(aktuellerBenutzerId, istSuperAdmin);
         plattformPreise = await adminService.GetPlattformPreiseAsync();
-        gemeldeteZahlungen = await aboService.GetGemeldeteZahlungenAsync();
         if (istSuperAdmin)
         {
             produktOwners = await adminService.GetProduktOwnersAsync();
         }
         isLoading = false;
-    }
-
-    private async Task SetzeZahlungsStatusAsync(Guid aboId, AboZahlungStatus status)
-    {
-        await aboService.SetzeZahlungsStatusAsync(aboId, status);
-        toast.ZeigeErfolg(status == AboZahlungStatus.Bestaetigt ? "Paiement confirmé." : "Paiement refusé.");
-        await LadeAsync();
     }
 
     private async Task SetzeFreigabeAsync(Guid salonId, bool freigegeben)
@@ -233,12 +229,13 @@ public partial class Admin(
 
     private async Task BerechneAuszahlungenAsync()
     {
+        var monat = auszahlungMonat ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         foreach (var po in produktOwners)
         {
-            await produktOwnerService.BerechneAuszahlungAsync(po.Id, auszahlungMonat.Year, auszahlungMonat.Month);
+            await produktOwnerService.BerechneAuszahlungAsync(po.Id, monat.Year, monat.Month);
         }
 
-        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(auszahlungMonat.Year, auszahlungMonat.Month);
+        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(monat.Year, monat.Month);
         toast.ZeigeErfolg("Commissions calculées.");
     }
 
@@ -246,8 +243,30 @@ public partial class Admin(
     {
         await produktOwnerService.BestaetigeAuszahlungAsync(auszahlungId);
         toast.ZeigeErfolg("Versement confirmé.");
-        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(auszahlungMonat.Year, auszahlungMonat.Month);
+        var monat = auszahlungMonat ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(monat.Year, monat.Month);
     }
+
+    private async Task OeffneProbeDialogAsync(Guid salonId, string salonName)
+    {
+        probeSalonId = salonId;
+        probeSalonName = salonName;
+        probeBisDatum = await adminService.GetProbezeitAsync(salonId);
+        probeDialogOffen = true;
+    }
+
+    private async Task SpeichereProbeAsync()
+    {
+        await adminService.SetzeProbezeitAsync(probeSalonId, probeBisDatum);
+        probeDialogOffen = false;
+        toast.ZeigeErfolg("Essai mis à jour.");
+        await LadeAsync();
+    }
+
+    private void SetzeProbeStandard()
+        => probeBisDatum = AuthService.BerechneProbeEnde(DateTime.UtcNow);
+
+    private void EntferneProbe() => probeBisDatum = null;
 
     private async Task SpeichereProvisionAsync()
     {

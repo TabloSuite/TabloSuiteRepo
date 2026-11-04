@@ -18,6 +18,30 @@ public class AuthService(
     SignInManager<AppUser> signInManager,
     ILogger<AuthService> logger)
 {
+    /// <summary>
+    /// Ende der kostenlosen Probezeit: 3 Kalendermonate, wobei das aktuelle
+    /// Monat als erstes zählt. Start am 3. November → Probe bis 31. Januar
+    /// (November, Dezember, Januar).
+    /// </summary>
+    public static DateTime BerechneProbeEnde(DateTime startUtc)
+    {
+        var monatsAnfang = new DateTime(startUtc.Year, startUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return monatsAnfang.AddMonths(3).AddTicks(-1); // Ende des 3. Monats
+    }
+
+    /// <summary>
+    /// Probezeit nur für den ersten Laden eines Besitzers. Hat er bereits einen
+    /// anderen Laden, gibt es für weitere Läden keine Probezeit mehr.
+    /// </summary>
+    public async Task<DateTime?> BerechneProbeEndeFuerBesitzerAsync(Guid besitzerId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var hatBereitsLaden = await db.UserSalons
+            .AnyAsync(us => us.AppUserId == besitzerId, cancellationToken);
+
+        return hatBereitsLaden ? null : BerechneProbeEnde(DateTime.UtcNow);
+    }
+
     public async Task<(bool Succeeded, string? Error)> LoginAsync(
         string email,
         string passwort,
@@ -143,7 +167,8 @@ public class AuthService(
             Standort = string.IsNullOrWhiteSpace(salonStandort) ? null : salonStandort.Trim(),
             Slogan = string.IsNullOrWhiteSpace(salonSlogan) ? null : salonSlogan.Trim(),
             IstAktiv = true,
-            IstFreigegeben = false
+            IstFreigegeben = false,
+            ProbeBisUtc = BerechneProbeEnde(DateTime.UtcNow)
         };
 
         db.Salons.Add(salon);

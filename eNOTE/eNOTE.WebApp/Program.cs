@@ -108,11 +108,14 @@ builder.Services.AddScoped<ProduktOwnerService>();
 builder.Services.AddScoped<SalonService>();
 builder.Services.AddScoped<FinanzService>();
 builder.Services.AddScoped<AusgabenService>();
+builder.Services.AddScoped<HinweisService>();
 builder.Services.AddScoped<AboService>();
 builder.Services.AddScoped<ExceptionLogService>();
 builder.Services.AddScoped<UmsatzBenachrichtigungService>();
 builder.Services.AddScoped<IUmsatzBenachrichtigungService>(sp => sp.GetRequiredService<UmsatzBenachrichtigungService>());
+builder.Services.AddScoped<IDisplayBenachrichtigungService, DisplayBenachrichtigungService>();
 builder.Services.AddScoped<KassenAnzeigeState>();
+builder.Services.AddScoped<BesitzerPinState>();
 builder.Services.AddScoped<GeraetFavoritService>();
 builder.Services.AddScoped<ToastService>();
 
@@ -268,6 +271,47 @@ app.MapGet("/finances/rapport", async (
     var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, von.Date, bisEnde, cancellationToken);
     var pdf = FinanzBerichtPdfService.ErzeugeBericht(salon, von, bis, tage);
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"rapport-{salon.Name}-{von:yyyyMMdd}-{bis:yyyyMMdd}.pdf");
+}).RequireAuthorization();
+
+// Barcode-Etiketten als PDF (A4-Bogen oder Einzel-Etikett).
+app.MapGet("/etiketten", async (
+    Guid salonId,
+    Guid leistungId,
+    int anzahl,
+    string format,
+    HttpContext httpContext,
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    CancellationToken cancellationToken) =>
+{
+    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var leistung = await db.Leistungen
+        .FirstOrDefaultAsync(l => l.Id == leistungId && l.SalonId == salonId, cancellationToken);
+    if (leistung is null || string.IsNullOrWhiteSpace(leistung.StrichCode))
+    {
+        return Results.NotFound();
+    }
+
+    var etikett = new EtikettPdfService.Etikett(
+        leistung.StrichCode,
+        leistung.Name,
+        leistung.Preis > 0 ? $"{leistung.Preis:N0} F" : null);
+
+    byte[] pdf;
+    string dateiName;
+    if (string.Equals(format, "einzel", StringComparison.OrdinalIgnoreCase))
+    {
+        pdf = EtikettPdfService.ErzeugeEinzelEtikett(etikett);
+        dateiName = $"etiquette-{leistung.Name}.pdf";
+    }
+    else
+    {
+        var anzahlSicher = Math.Clamp(anzahl, 1, 48);
+        var etiketten = Enumerable.Range(0, anzahlSicher).Select(_ => etikett).ToList();
+        pdf = EtikettPdfService.ErzeugeA4Bogen(etiketten);
+        dateiName = $"etiquettes-{leistung.Name}-{anzahlSicher}.pdf";
+    }
+
+    return InlinePdfResponse.Create(httpContext.Response, pdf, dateiName);
 }).RequireAuthorization();
 
 app.Run();

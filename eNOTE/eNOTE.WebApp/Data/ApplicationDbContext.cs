@@ -19,10 +19,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<GeraetSalonFavorit> GeraetSalonFavoriten => Set<GeraetSalonFavorit>();
     public DbSet<ProduktOwnerSalon> ProduktOwnerSalons => Set<ProduktOwnerSalon>();
     public DbSet<Leistung> Leistungen => Set<Leistung>();
+    public DbSet<LeistungKategorie> LeistungKategorien => Set<LeistungKategorie>();
+    public DbSet<LeistungFavorit> LeistungFavoriten => Set<LeistungFavorit>();
     public DbSet<Rabatt> Rabatte => Set<Rabatt>();
     public DbSet<KassenSitzung> KassenSitzungen => Set<KassenSitzung>();
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
+    public DbSet<BesitzerHinweis> BesitzerHinweise => Set<BesitzerHinweis>();
     public DbSet<PlattformPreis> PlattformPreise => Set<PlattformPreis>();
     public DbSet<NutzungsAbo> NutzungsAbos => Set<NutzungsAbo>();
     public DbSet<ProduktOwnerAuszahlung> ProduktOwnerAuszahlungen => Set<ProduktOwnerAuszahlung>();
@@ -75,10 +78,40 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<Leistung>(entity =>
         {
             entity.Property(l => l.Preis).HasPrecision(18, 2);
+            entity.Property(l => l.Kaufpreis).HasPrecision(18, 2);
+            entity.Property(l => l.Stueckzahl).HasPrecision(18, 2);
+            entity.Property(l => l.MindestbestandWarnung).HasPrecision(18, 2);
+            entity.Property(l => l.BasisAbzugMenge).HasPrecision(18, 2);
             entity.HasOne(l => l.Salon)
                 .WithMany()
                 .HasForeignKey(l => l.SalonId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(l => l.BasisLeistung)
+                .WithMany()
+                .HasForeignKey(l => l.BasisLeistungId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(l => l.Kategorie)
+                .WithMany()
+                .HasForeignKey(l => l.KategorieId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<LeistungKategorie>(entity =>
+        {
+            entity.HasIndex(k => new { k.SalonId, k.Name }).IsUnique();
+            entity.HasOne(k => k.Salon)
+                .WithMany()
+                .HasForeignKey(k => k.SalonId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<LeistungFavorit>(entity =>
+        {
+            entity.HasIndex(f => new { f.SalonId, f.LeistungId }).IsUnique();
+            entity.HasOne(f => f.Leistung)
+                .WithMany()
+                .HasForeignKey(f => f.LeistungId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Rabatt>(entity =>
@@ -140,6 +173,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(p => p.RabattId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<BesitzerHinweis>(entity =>
+        {
+            entity.HasIndex(h => new { h.SalonId, h.IstUngelesen });
+            entity.HasOne(h => h.Salon)
+                .WithMany()
+                .HasForeignKey(h => h.SalonId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PlattformPreis>(entity =>

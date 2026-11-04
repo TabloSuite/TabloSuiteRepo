@@ -1,0 +1,16 @@
+{
+  "name": "eNOTE – Caisse",
+  "short_name": "eNOTE",
+  "description": "La caisse simple et moderne pour votre établissement.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#e8eef5",
+  "theme_color": "#1e3a8a",
+  "orientation": "any",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

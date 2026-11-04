@@ -239,4 +239,95 @@ public class KassenServiceTests
         Assert.Equal(salon.Id, benachrichtigung.LetzterSalonId);
         Assert.Equal(6000, benachrichtigung.LetzterTagesUmsatz); // 2 × 3000
     }
+
+    [Fact]
+    public async Task BucheVerkauf_SammelArtikel_Zieht_Vom_BasisBestand_Ab()
+    {
+        // Schneider-Beispiel: „Stoff A“ = 10 m Lager. „Stoff A (3 m)“ verkauft → 10 - 3 = 7.
+        var factory = TestDbContextFactory.Create();
+        var (db, salon, kassierer, _) = await BasisAsync(factory);
+        var service = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+
+        var stoffA = new Leistung { SalonId = salon.Id, Name = "Stoff A", Preis = 1000, HatStueckzahl = true, Stueckzahl = 10m, IstAktiv = true };
+        var stoffA3m = new Leistung { SalonId = salon.Id, Name = "Stoff A (3 m)", Preis = 3000, IstAktiv = true, BasisLeistung = stoffA, BasisAbzugMenge = 3m };
+        db.Leistungen.AddRange(stoffA, stoffA3m);
+        await db.SaveChangesAsync();
+
+        var sitzung = (await service.StarteSitzungAsync(salon.Id, kassierer.Id, 0)).Sitzung!;
+        var positionen = new List<KassenService.VerkaufsPositionInput> { new(stoffA3m.Id, 1, null, false) };
+        var (erfolg, fehler, _, _) = await service.BucheVerkaufAsync(sitzung.Id, positionen, ZahlungsArt.Bar, 3000, false);
+
+        Assert.True(erfolg, fehler);
+
+        await using var pruefDb = await factory.CreateDbContextAsync();
+        var stoffAktualisiert = await pruefDb.Leistungen.AsNoTracking().FirstAsync(l => l.Id == stoffA.Id);
+        Assert.Equal(7m, stoffAktualisiert.Stueckzahl); // 10 - 3
+    }
+
+    [Fact]
+    public async Task BucheVerkauf_SammelArtikel_Mehrere_Mengen()
+    {
+        // 2× „Stoff A (3 m)“ → 10 - (3×2) = 4.
+        var factory = TestDbContextFactory.Create();
+        var (db, salon, kassierer, _) = await BasisAsync(factory);
+        var service = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+
+        var stoffA = new Leistung { SalonId = salon.Id, Name = "Stoff A", Preis = 1000, HatStueckzahl = true, Stueckzahl = 10m, IstAktiv = true };
+        var stoffA3m = new Leistung { SalonId = salon.Id, Name = "Stoff A (3 m)", Preis = 3000, IstAktiv = true, BasisLeistung = stoffA, BasisAbzugMenge = 3m };
+        db.Leistungen.AddRange(stoffA, stoffA3m);
+        await db.SaveChangesAsync();
+
+        var sitzung = (await service.StarteSitzungAsync(salon.Id, kassierer.Id, 0)).Sitzung!;
+        var positionen = new List<KassenService.VerkaufsPositionInput> { new(stoffA3m.Id, 2, null, false) };
+        var (erfolg, fehler, _, _) = await service.BucheVerkaufAsync(sitzung.Id, positionen, ZahlungsArt.Bar, 6000, false);
+
+        Assert.True(erfolg, fehler);
+
+        await using var pruefDb = await factory.CreateDbContextAsync();
+        var stoffAktualisiert = await pruefDb.Leistungen.AsNoTracking().FirstAsync(l => l.Id == stoffA.Id);
+        Assert.Equal(4m, stoffAktualisiert.Stueckzahl); // 10 - 6
+    }
+
+    [Fact]
+    public async Task StarteSitzung_Legt_StandardArtikel_Divers_An()
+    {
+        var factory = TestDbContextFactory.Create();
+        var (_, salon, kassierer, _) = await BasisAsync(factory);
+        var service = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+
+        await service.StarteSitzungAsync(salon.Id, kassierer.Id, 0);
+
+        await using var pruefDb = await factory.CreateDbContextAsync();
+        var divers = await pruefDb.Leistungen.FirstOrDefaultAsync(l => l.SalonId == salon.Id && l.IstStandardArtikel);
+        Assert.NotNull(divers);
+        Assert.Equal("Divers", divers!.Name);
+    }
+
+    [Fact]
+    public async Task BucheVerkauf_StandardArtikel_Erfordert_FreienBetrag_Und_Benachrichtigt_Besitzer()
+    {
+        var factory = TestDbContextFactory.Create();
+        var (db, salon, kassierer, _) = await BasisAsync(factory);
+        var service = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+
+        var divers = new Leistung { SalonId = salon.Id, Name = "Divers", Preis = 0, IstStandardArtikel = true, IstAktiv = true };
+        db.Leistungen.Add(divers);
+        await db.SaveChangesAsync();
+
+        var sitzung = (await service.StarteSitzungAsync(salon.Id, kassierer.Id, 0)).Sitzung!;
+
+        // Ohne freien Betrag → Fehler.
+        var ohneBetrag = await service.BucheVerkaufAsync(sitzung.Id, new List<KassenService.VerkaufsPositionInput> { new(divers.Id, 1, null, false) }, ZahlungsArt.Bar, 1000, false);
+        Assert.False(ohneBetrag.Erfolg);
+
+        // Mit freiem Betrag → Erfolg + Besitzer-Hinweis.
+        var mit = await service.BucheVerkaufAsync(sitzung.Id, new List<KassenService.VerkaufsPositionInput> { new(divers.Id, 2, null, false, FreierBetrag: 1500m) }, ZahlungsArt.Bar, 5000, false);
+        Assert.True(mit.Erfolg, mit.Fehler);
+        Assert.Equal(3000, mit.Verkauf!.GesamtSumme); // 1500 × 2
+
+        await using var pruefDb = await factory.CreateDbContextAsync();
+        var hinweis = await pruefDb.BesitzerHinweise.FirstOrDefaultAsync(h => h.SalonId == salon.Id && h.IstUngelesen);
+        Assert.NotNull(hinweis);
+        Assert.Contains("Divers", hinweis!.Text);
+    }
 }

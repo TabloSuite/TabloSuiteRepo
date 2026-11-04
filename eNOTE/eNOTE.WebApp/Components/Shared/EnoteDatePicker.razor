@@ -1,0 +1,51 @@
+@* Moderner Kalender-DatePicker (Soft-UI) *@
+<div class="enote-datepicker @(offen ? "offen" : "")">
+    <button type="button" class="enote-datepicker-trigger" @onclick="() => SetzeOffenAsync(!offen)" disabled="@Disabled">
+        <span>@(Value?.ToString("dd.MM.yyyy") ?? Placeholder)</span>
+        <span class="enote-datepicker-ico">📅</span>
+    </button>
+
+    @if (offen)
+    {
+        <div class="enote-datepicker-popup" @onclick:stopPropagation="true">
+            <div class="enote-datepicker-kopf">
+                <button type="button" @onclick="() => WechsleMonat(-1)">‹</button>
+                <strong>@angezeigterMonat.ToString("MMMM yyyy", new System.Globalization.CultureInfo("fr-FR"))</strong>
+                <button type="button" @onclick="() => WechsleMonat(1)">›</button>
+            </div>
+
+            <div class="enote-datepicker-wochentage">
+                @foreach (var tag in new[] { "Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di" })
+                {
+                    <span>@tag</span>
+                }
+            </div>
+
+            <div class="enote-datepicker-tage">
+                @foreach (var zelle in KalenderZellen())
+                {
+                    if (zelle is null)
+                    {
+                        <span class="enote-datepicker-leer"></span>
+                    }
+                    else
+                    {
+                        var tag = zelle.Value;
+                        var istHeute = tag.Date == DateTime.Today;
+                        var istGewaehlt = Value?.Date == tag.Date;
+                        <button type="button"
+                                class="enote-datepicker-tag @(istHeute ? "heute" : "") @(istGewaehlt ? "gewaehlt" : "")"
+                                @onclick="() => WaehleAsync(tag)">
+                            @tag.Day
+                        </button>
+                    }
+                }
+            </div>
+
+            <div class="enote-datepicker-aktionen">
+                <button type="button" @onclick="LoeschenAsync">Effacer</button>
+                <button type="button" @onclick="HeuteAsync">Aujourd'hui</button>
+            </div>
+        </div>
+    }
+</div>

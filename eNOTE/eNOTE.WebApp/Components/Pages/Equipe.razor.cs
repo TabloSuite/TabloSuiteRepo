@@ -1,4 +1,5 @@
 ﻿using ENote.Core.DataModels.Salons;
+using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -15,6 +16,7 @@ public partial class Equipe(
 {
     private List<TeamService.TeamMitglied> team = [];
     private List<UserSalon> salons = [];
+    private IReadOnlyList<EnoteSelectOption<string>> salonOptionen = [];
     private bool isLoading = true;
     private Guid salonId;
     private string salonName = string.Empty;
@@ -48,6 +50,7 @@ public partial class Equipe(
         }
 
         salons = await katalogService.GetUserSalonsAsync(userId);
+        salonOptionen = salons.Select(s => new EnoteSelectOption<string> { Value = s.SalonId.ToString(), Label = s.Salon.Name }).ToList();
         var aktive = salons.FirstOrDefault(s => s.Salon.IstFreigegeben) ?? salons.FirstOrDefault();
         if (aktive is null)
         {

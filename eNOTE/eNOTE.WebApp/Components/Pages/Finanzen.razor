@@ -5,6 +5,7 @@
 
 <PageTitle>Finances</PageTitle>
 
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -32,8 +33,8 @@
         </div>
 
         <div class="enote-filter-row">
-            <label>Du <input type="date" @bind="filterVon" /></label>
-            <label>Au <input type="date" @bind="filterBis" /></label>
+            <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
+            <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
             <button class="enote-btn enote-btn-ghost" @onclick="WendeFilterAsync">Filtrer</button>
             <button class="enote-btn enote-btn-primary" @onclick="ExportierePdf">Exporter en PDF</button>
         </div>
@@ -115,3 +116,4 @@
         </CollapsibleCard>
     }
 </div>
+</BesitzerPinGuard>

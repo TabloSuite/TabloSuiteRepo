@@ -5,6 +5,8 @@
 
 <PageTitle>Dépenses</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -35,8 +37,8 @@
     }
 
     <div class="enote-filter-row">
-        <label>Du <input type="date" @bind="filterVon" /></label>
-        <label>Au <input type="date" @bind="filterBis" /></label>
+        <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
+        <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
         <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
         <span class="enote-ausgaben-summe">Total : <strong>@ausgaben.Sum(a => a.Betrag).ToString("N0") F</strong></span>
     </div>
@@ -82,15 +84,10 @@
     <ChildContent>
         <div class="enote-form">
             <label>Montant (F) <input type="number" min="0" step="50" @bind="neuBetrag" /></label>
-            <label>Date <input type="date" @bind="neuDatum" /></label>
+            <label>Date</label>
+            <EnoteDatePicker @bind-Value="neuDatum" />
             <label>Catégorie</label>
-            <select class="enote-select" @bind="neuKategorieId">
-                <option value="">— Choisir —</option>
-                @foreach (var k in kategorien.Where(x => x.IstAktiv))
-                {
-                    <option value="@k.Id">@k.Name</option>
-                }
-            </select>
+            <EnoteSelect TValue="string" @bind-Value="neuKategorieId" Options="kategorienOptionen" Placeholder="— Choisir —" MitSuche="true" />
             <label>Note (facultatif) <input @bind="neuNotiz" /></label>
             <label>Justificatif (PDF/image, facultatif)</label>
             <InputFile OnChange="HandleBelegAuswahl" accept="image/*,application/pdf" class="enote-file" />
@@ -105,3 +102,4 @@
         <AsyncActionButton Text="Enregistrer" OnClick="SpeichereAusgabeAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
+</BesitzerPinGuard>

@@ -17,6 +17,24 @@
             }
             else
             {
+                @if (ungeleseneHinweise.Count > 0)
+                {
+                    <div class="enote-hinweis-box">
+                        <div class="enote-hinweis-head">
+                            <strong>⚠️ @ungeleseneHinweise.Count notification(s) à lire</strong>
+                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="MarkiereAlleGelesenAsync">Tout marquer lu</button>
+                        </div>
+                        @foreach (var h in ungeleseneHinweise)
+                        {
+                            <div class="enote-hinweis-item">
+                                <span>@h.Text</span>
+                                <small class="enote-muted">@h.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm") · @h.AusgeloestVonName</small>
+                                <button class="enote-tag-btn" @onclick="() => MarkiereGelesenAsync(h.Id)">Marquer lu</button>
+                            </div>
+                        }
+                    </div>
+                }
+
                 <p class="enote-muted">Bienvenue sur eNOTE, la caisse simple pour votre établissement.</p>
                 <div class="enote-home-actions">
                     <a class="enote-btn enote-btn-primary" href="/caisse">Ouvrir la caisse</a>

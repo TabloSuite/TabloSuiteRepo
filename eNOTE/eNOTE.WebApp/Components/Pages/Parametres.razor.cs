@@ -1,4 +1,4 @@
-﻿using ENote.WebApp.Services;
+using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
@@ -9,6 +9,7 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Parametres(
     SalonService salonService,
     KatalogService katalogService,
+    TeamService teamService,
     ToastService toast,
     AuthenticationStateProvider authStateProvider)
 {
@@ -22,7 +23,11 @@ public partial class Parametres(
     private string? bonQrLink;
     private string? logoVorschau;
     private string? logoFehler;
-    private IBrowserFile? ausgewaehltesLogo;
+
+    private string neueBesitzerPin = string.Empty;
+    private string? pinFehler;
+    private bool pinGespeichert;
+    private bool hatBesitzerPin;
 
     protected override async Task OnInitializedAsync()
     {
@@ -53,43 +58,38 @@ public partial class Parametres(
             logoVorschau = salonService.GetLogoUrl(salon);
         }
 
+        hatBesitzerPin = await salonService.HatBesitzerPinAsync(salonId, benutzerId);
         isLoading = false;
     }
 
-    private async Task HandleLogoAuswahl(InputFileChangeEventArgs e)
+    private byte[]? ausgewaehltesLogoBytes;
+    private string ausgewaehltesLogoContentType = "image/jpeg";
+    private string ausgewaehltesLogoName = "logo.jpg";
+
+    private void HandleLogoBereit((byte[] Bytes, string ContentType, string DateiName) bild)
     {
         logoFehler = null;
-        ausgewaehltesLogo = null;
-        var datei = e.File;
+        ausgewaehltesLogoBytes = bild.Bytes;
+        ausgewaehltesLogoContentType = bild.ContentType;
+        ausgewaehltesLogoName = bild.DateiName;
+        logoVorschau = $"data:{bild.ContentType};base64,{Convert.ToBase64String(bild.Bytes)}";
+    }
 
-        if (!datei.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-        {
-            logoFehler = "Veuillez choisir une image.";
-            return;
-        }
-
-        if (datei.Size > 8 * 1024 * 1024)
-        {
-            logoFehler = "L'image dépasse la limite de 8 Mo.";
-            return;
-        }
-
-        ausgewaehltesLogo = datei;
-        await using var stream = datei.OpenReadStream(8 * 1024 * 1024);
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        logoVorschau = $"data:{datei.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+    private void HandleLogoEntfernt()
+    {
+        logoVorschau = null;
+        ausgewaehltesLogoBytes = null;
     }
 
     private async Task SpeichernAsync()
     {
         await salonService.SetzeKontaktdatenAsync(salonId, slogan, telefon, adresse, bonQrLink);
 
-        if (ausgewaehltesLogo is not null)
+        if (ausgewaehltesLogoBytes is not null)
         {
-            await using var stream = ausgewaehltesLogo.OpenReadStream(8 * 1024 * 1024);
+            using var ms = new MemoryStream(ausgewaehltesLogoBytes);
             var (erfolg, fehler, url) = await salonService.SetzeLogoAsync(
-                salonId, ausgewaehltesLogo.Name, ausgewaehltesLogo.ContentType, stream, benutzerId);
+                salonId, ausgewaehltesLogoName, ausgewaehltesLogoContentType, ms, benutzerId);
             if (!erfolg)
             {
                 toast.ZeigeFehler(fehler ?? "L'enregistrement du logo a échoué.");
@@ -97,9 +97,39 @@ public partial class Parametres(
             }
 
             logoVorschau = url;
-            ausgewaehltesLogo = null;
         }
 
         toast.ZeigeErfolg("Paramètres enregistrés.");
+    }
+
+    private async Task SpeichereBesitzerPinAsync()
+    {
+        pinFehler = null;
+        pinGespeichert = false;
+
+        if (string.IsNullOrWhiteSpace(neueBesitzerPin))
+        {
+            pinFehler = "Veuillez saisir un code PIN.";
+            return;
+        }
+
+        var zuordnung = await katalogService.GetUserSalonAsync(benutzerId);
+        if (zuordnung is null)
+        {
+            pinFehler = "Membre introuvable.";
+            return;
+        }
+
+        var (erfolg, fehler) = await teamService.SetzeBesitzerPinAsync(zuordnung.Id, neueBesitzerPin);
+        if (!erfolg)
+        {
+            pinFehler = fehler;
+            return;
+        }
+
+        neueBesitzerPin = string.Empty;
+        hatBesitzerPin = true;
+        pinGespeichert = true;
+        toast.ZeigeErfolg("Code PIN propriétaire enregistré.");
     }
 }

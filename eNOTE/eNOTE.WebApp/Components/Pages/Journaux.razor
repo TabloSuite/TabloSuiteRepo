@@ -17,9 +17,9 @@
     </div>
 
     <div class="enote-filter-row">
-        <label>Du <input type="date" @bind="vonDatum" /></label>
-        <label>Au <input type="date" @bind="bisDatum" /></label>
-        <label class="checkbox"><input type="checkbox" @bind="nurUnbehandelt" /> <span>Non traités seulement</span></label>
+        <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="vonDatum" /></div>
+        <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="bisDatum" /></div>
+        <label class="enote-check-row"><EnoteCheckbox @bind-Value="nurUnbehandelt" Label="Non traités seulement" /></label>
         <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
     </div>
 

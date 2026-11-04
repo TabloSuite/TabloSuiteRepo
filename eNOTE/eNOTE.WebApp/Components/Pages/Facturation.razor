@@ -1,0 +1,73 @@
+@page "/admin/facturation"
+@attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
+@rendermode InteractiveServer
+@using ENote.Core.DataModels.Abo
+
+<PageTitle>Facturation</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Facturation eNOTE</h1>
+            <p>Abonnements des établissements et paiements à confirmer.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Chargement…</p>
+    }
+    else
+    {
+        @if (gemeldete.Count > 0)
+        {
+            <h2 class="enote-section-title">Paiements signalés (@gemeldete.Count)</h2>
+            <div class="enote-grid">
+                @foreach (var a in gemeldete)
+                {
+                    <div class="enote-item enote-item-pending">
+                        <div class="enote-item-head">
+                            <strong>@a.Salon.Name</strong>
+                            <span class="enote-price">@a.PreisSnapshot.ToString("N0") F</span>
+                        </div>
+                        <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                        @if (!string.IsNullOrWhiteSpace(a.ZahlungsNotiz))
+                        {
+                            <p class="enote-item-desc">« @a.ZahlungsNotiz »</p>
+                        }
+                        <div class="enote-item-actions">
+                            <AsyncActionButton Text="Confirmer" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Bestaetigt)" CssClass="enote-btn-primary enote-btn-sm" />
+                            <AsyncActionButton Text="Refuser" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Abgelehnt)" CssClass="enote-btn-ghost enote-btn-sm enote-danger" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <h2 class="enote-section-title">Abonnements récents</h2>
+        @if (alle.Count == 0)
+        {
+            <p class="enote-empty">Aucun abonnement pour le moment.</p>
+        }
+        else
+        {
+            <div class="enote-card enote-settings-card">
+                <table class="enote-table">
+                    <thead><tr><th>Établissement</th><th>Formule</th><th>Montant</th><th>Période</th><th>Statut</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in alle)
+                        {
+                            <tr>
+                                <td>@a.Salon.Name</td>
+                                <td>@IntervallText(a.Intervall)</td>
+                                <td>@a.PreisSnapshot.ToString("N0") F</td>
+                                <td>@a.ZeitraumVonUtc.ToLocalTime().ToString("dd.MM.yy") – @a.ZeitraumBisUtc.ToLocalTime().ToString("dd.MM.yy")</td>
+                                <td><span class="enote-tag @StatusKlasse(a.ZahlungStatus)">@StatusText(a.ZahlungStatus)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

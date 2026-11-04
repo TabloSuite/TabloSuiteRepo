@@ -5,6 +5,8 @@
 
 <PageTitle>Administration</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -78,6 +80,7 @@
                         {
                             <button class="enote-btn enote-btn-ghost" @onclick="() => SetzeFreigabeAsync(s.SalonId, true)">Valider</button>
                         }
+                        <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneProbeDialogAsync(s.SalonId, s.Name)">Essai</button>
                         @if (s.IstAktiv)
                         {
                             <button class="enote-btn enote-btn-ghost" @onclick="() => SetzeAktivAsync(s.SalonId, false)">Désactiver</button>
@@ -93,31 +96,6 @@
 
         <AuthorizeView Roles="SuperAdmin">
             <Authorized>
-                @if (gemeldeteZahlungen.Count > 0)
-                {
-                    <h2 class="enote-section-title">Paiements signalés (@gemeldeteZahlungen.Count)</h2>
-                    <div class="enote-grid">
-                        @foreach (var a in gemeldeteZahlungen)
-                        {
-                            <div class="enote-item enote-item-pending">
-                                <div class="enote-item-head">
-                                    <strong>@a.Salon.Name</strong>
-                                    <span class="enote-price">@a.PreisSnapshot.ToString("N0") F</span>
-                                </div>
-                                <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd.MM.yyyy")</p>
-                                @if (!string.IsNullOrWhiteSpace(a.ZahlungsNotiz))
-                                {
-                                    <p class="enote-item-desc">« @a.ZahlungsNotiz »</p>
-                                }
-                                <div class="enote-item-actions">
-                                    <AsyncActionButton Text="Confirmer" OnClick="() => SetzeZahlungsStatusAsync(a.Id, AboZahlungStatus.Bestaetigt)" CssClass="enote-btn-primary" />
-                                    <AsyncActionButton Text="Refuser" OnClick="() => SetzeZahlungsStatusAsync(a.Id, AboZahlungStatus.Abgelehnt)" CssClass="enote-btn-ghost enote-danger" />
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-
                 <h2 class="enote-section-title">Prix de la plateforme</h2>
                 <div class="enote-grid">
                     @foreach (var p in plattformPreise)
@@ -161,15 +139,12 @@
                                 var z = zuweisungen.FirstOrDefault(x => x.SalonId == s.SalonId);
                                 var zugewiesen = z is not null;
                                 <div class="enote-zuweisung-row">
-                                    <label class="checkbox">
-                                        <input type="checkbox" checked="@zugewiesen" @onchange="e => ToggleZuweisungAsync(s.SalonId, (bool)(e.Value ?? false))" />
-                                        <span>@s.Name</span>
-                                    </label>
+                                    <EnoteCheckbox Value="@zugewiesen" ValueChanged="v => ToggleZuweisungAsync(s.SalonId, v)" Label="@s.Name" />
                                     @if (zugewiesen && z is not null)
                                     {
                                         <div class="enote-zuweisung-rechte">
-                                            <label class="checkbox"><input type="checkbox" checked="@z.KannLadenUmsatzSehen" @onchange="() => SetzeUmsatzRechtAsync(z, plattform: false)" /> <span>CA établissement</span></label>
-                                            <label class="checkbox"><input type="checkbox" checked="@z.KannPlattformUmsatzSehen" @onchange="() => SetzeUmsatzRechtAsync(z, plattform: true)" /> <span>Revenus plateforme</span></label>
+                                            <EnoteCheckbox Value="@z.KannLadenUmsatzSehen" ValueChanged="_ => SetzeUmsatzRechtAsync(z, plattform: false)" Label="CA établissement" />
+                                            <EnoteCheckbox Value="@z.KannPlattformUmsatzSehen" ValueChanged="_ => SetzeUmsatzRechtAsync(z, plattform: true)" Label="Revenus plateforme" />
                                             <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneProvisionDialog(z)">Commission</button>
                                         </div>
                                     }
@@ -182,8 +157,9 @@
                 @* --- Provisions-Auszahlung --- *@
                 <h2 class="enote-section-title">Commissions des propriétaires plateforme</h2>
                 <div class="enote-card enote-settings-card">
-                    <div class="enote-kategorie-row">
-                        <label style="margin:0">Mois <input type="month" @bind="auszahlungMonat" class="enote-input-inline" style="max-width:11rem" /></label>
+                    <div class="enote-month-row">
+                        <span class="enote-filter-label">Mois</span>
+                        <EnoteMonthPicker @bind-Value="auszahlungMonat" />
                         <AsyncActionButton Text="Calculer les commissions" OnClick="BerechneAuszahlungenAsync" CssClass="enote-btn-ghost" />
                     </div>
 
@@ -294,3 +270,23 @@
         <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProvisionAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
+
+@* Probezeit eines Ladens ändern (Admin/PO) *@
+<ModalDialog Open="probeDialogOffen" Title="@ProbeDialogTitel" OnClose="() => probeDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p class="enote-muted">Fin de l'essai gratuit pour « @probeSalonName ». Laissez vide pour supprimer l'essai (facturation immédiate).</p>
+            <label>Date de fin d'essai</label>
+            <EnoteDatePicker @bind-Value="probeBisDatum" />
+            <div class="enote-item-actions">
+                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeStandard">Par défaut (3 mois, ce mois inclus)</button>
+                <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="EntferneProbe">Supprimer l'essai</button>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => probeDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProbeAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+</BesitzerPinGuard>

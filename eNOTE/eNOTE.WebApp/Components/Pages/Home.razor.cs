@@ -5,10 +5,14 @@ using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Home(KatalogService katalogService, AuthenticationStateProvider authStateProvider)
+public partial class Home(
+    KatalogService katalogService,
+    HinweisService hinweisService,
+    AuthenticationStateProvider authStateProvider)
 {
     private bool wartetAufFreigabe;
     private string? salonNameWartend;
+    private List<ENote.Core.DataModels.Kasse.BesitzerHinweis> ungeleseneHinweise = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -31,6 +35,33 @@ public partial class Home(KatalogService katalogService, AuthenticationStateProv
         {
             wartetAufFreigabe = true;
             salonNameWartend = zuordnungen.First().Salon.Name;
+            return;
         }
+
+        // Ungelesene Hinweise für den Besitzer laden (roter Hinweis).
+        var istBesitzer = authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer);
+        if (istBesitzer)
+        {
+            var freigegeben = zuordnungen.First(z => z.Salon.IstFreigegeben);
+            ungeleseneHinweise = await hinweisService.GetUngeleseneAsync(freigegeben.SalonId);
+        }
+    }
+
+    private async Task MarkiereGelesenAsync(Guid id)
+    {
+        await hinweisService.MarkiereGelesenAsync(id);
+        ungeleseneHinweise.RemoveAll(h => h.Id == id);
+    }
+
+    private async Task MarkiereAlleGelesenAsync()
+    {
+        if (ungeleseneHinweise.Count == 0)
+        {
+            return;
+        }
+
+        var salonId = ungeleseneHinweise.First().SalonId;
+        await hinweisService.MarkiereAlleGelesenAsync(salonId);
+        ungeleseneHinweise.Clear();
     }
 }

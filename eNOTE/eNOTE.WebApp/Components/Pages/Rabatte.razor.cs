@@ -1,4 +1,5 @@
 ﻿using ENote.Core.DataModels.Katalog;
+using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -20,6 +21,17 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
     private Rabatt bearbeitungsRabatt = new();
     private Rabatt? zuLoeschenderRabatt;
     private string ausgewaehlteLeistungId = string.Empty;
+
+    private bool hatGueltigkeit;
+    private DateTime? gueltigVon;
+    private DateTime? gueltigBis;
+
+    private readonly IReadOnlyList<EnoteRadioOption<RabattArt>> rabattArtOptionen =
+    [
+        new() { Value = RabattArt.Prozent, Label = "Pourcentage" },
+        new() { Value = RabattArt.Festbetrag, Label = "Montant fixe" }
+    ];
+    private IReadOnlyList<EnoteSelectOption<string>> leistungsOptionen = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -48,13 +60,19 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
         isLoading = true;
         rabatte = await katalogService.GetRabatteAsync(salonId);
         leistungen = await katalogService.GetLeistungenAsync(salonId);
+        leistungsOptionen = leistungen
+            .Select(l => new EnoteSelectOption<string> { Value = l.Id.ToString(), Label = l.Name })
+            .ToList();
         isLoading = false;
     }
 
     private void NeuAnlegen()
     {
-        bearbeitungsRabatt = new Rabatt { SalonId = salonId, IstAktiv = true, Art = RabattArt.Prozent };
+        bearbeitungsRabatt = new Rabatt { SalonId = salonId, IstAktiv = false, Art = RabattArt.Prozent };
         ausgewaehlteLeistungId = string.Empty;
+        hatGueltigkeit = false;
+        gueltigVon = null;
+        gueltigBis = null;
         editorFehler = null;
         editorOffen = true;
     }
@@ -75,6 +93,9 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
             GueltigBisUtc = rabatt.GueltigBisUtc
         };
         ausgewaehlteLeistungId = rabatt.LeistungId?.ToString() ?? string.Empty;
+        hatGueltigkeit = rabatt.GueltigVonUtc is not null || rabatt.GueltigBisUtc is not null;
+        gueltigVon = rabatt.GueltigVonUtc;
+        gueltigBis = rabatt.GueltigBisUtc;
         editorFehler = null;
         editorOffen = true;
     }
@@ -101,6 +122,8 @@ public partial class Rabatte(KatalogService katalogService, ToastService toast, 
 
         bearbeitungsRabatt.SalonId = salonId;
         bearbeitungsRabatt.LeistungId = Guid.TryParse(ausgewaehlteLeistungId, out var leistungId) ? leistungId : null;
+        bearbeitungsRabatt.GueltigVonUtc = hatGueltigkeit ? gueltigVon : null;
+        bearbeitungsRabatt.GueltigBisUtc = hatGueltigkeit ? gueltigBis : null;
 
         await katalogService.SpeichereRabattAsync(bearbeitungsRabatt);
         editorOffen = false;

@@ -5,6 +5,8 @@
 
 <PageTitle>Remises</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -77,28 +79,26 @@
             <label>Condition (ex. Client fidèle) <input @bind="bearbeitungsRabatt.Bedingung" /></label>
 
             <label>Type de remise</label>
-            <div class="enote-radio-row">
-                <label class="checkbox"><input type="radio" name="rabattArt" checked="@(bearbeitungsRabatt.Art == RabattArt.Prozent)" @onchange="() => bearbeitungsRabatt.Art = RabattArt.Prozent" /> <span>Pourcentage</span></label>
-                <label class="checkbox"><input type="radio" name="rabattArt" checked="@(bearbeitungsRabatt.Art == RabattArt.Festbetrag)" @onchange="() => bearbeitungsRabatt.Art = RabattArt.Festbetrag" /> <span>Montant fixe</span></label>
-            </div>
+            <EnoteRadioGroup TValue="RabattArt" @bind-Value="bearbeitungsRabatt.Art" Options="rabattArtOptionen" />
 
             <label>@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "Pourcentage (%)" : "Montant (F)")
                 <input type="number" min="0" step="@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "1" : "50")" @bind="bearbeitungsRabatt.Wert" />
             </label>
 
             <label>Prestation concernée</label>
-            <select class="enote-select" @bind="ausgewaehlteLeistungId">
-                <option value="">Tout le ticket</option>
-                @foreach (var l in leistungen)
-                {
-                    <option value="@l.Id">@l.Name</option>
-                }
-            </select>
+            <EnoteSelect TValue="string" @bind-Value="ausgewaehlteLeistungId" Options="leistungsOptionen" Placeholder="Tout le ticket" MitSuche="true" />
 
-            <label class="checkbox">
-                <input type="checkbox" @bind="bearbeitungsRabatt.IstAktiv" />
-                <span>Active</span>
-            </label>
+            <EnoteCheckbox @bind-Value="hatGueltigkeit" Label="Période de validité (facultatif)" />
+            @if (hatGueltigkeit)
+            {
+                <div class="enote-form-grid">
+                    <div><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="gueltigVon" /></div>
+                    <div><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="gueltigBis" /></div>
+                </div>
+                <small class="enote-muted">Vide = valable jusqu'à suppression.</small>
+            }
+
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="bearbeitungsRabatt.IstAktiv" Label="Active (le caissier l'active en caisse)" /></label>
         </div>
     </ChildContent>
     <Footer>
@@ -116,3 +116,4 @@
         <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
     </Footer>
 </ModalDialog>
+</BesitzerPinGuard>

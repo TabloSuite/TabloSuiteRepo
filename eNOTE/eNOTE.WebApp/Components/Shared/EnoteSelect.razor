@@ -1,0 +1,41 @@
+@typeparam TValue
+@* Modernes Custom-Dropdown (Soft-UI) mit Suchfeld *@
+<div class="enote-select2 @(offen ? "offen" : "")">
+    <button type="button"
+            class="enote-select2-trigger"
+            disabled="@Disabled"
+            @onclick="ToggleAsync"
+            @onblur="HandleBlurAsync">
+        <span class="enote-select2-text">@AktuellerText</span>
+        <span class="enote-select2-chevron">▾</span>
+    </button>
+
+    @if (offen)
+    {
+        <div class="enote-select2-popup">
+            @if (MitSuche)
+            {
+                <input class="enote-select2-suche"
+                       placeholder="Rechercher…"
+                       @bind="suchText"
+                       @bind:event="oninput" />
+            }
+            <div class="enote-select2-liste">
+                @foreach (var option in GefilterteOptionen)
+                {
+                    var istAktiv = EqualityComparer<TValue>.Default.Equals(option.Value, Value);
+                    <button type="button"
+                            class="enote-select2-option @(istAktiv ? "aktiv" : "")"
+                            @onmousedown:preventDefault
+                            @onclick="() => WaehleAsync(option.Value)">
+                        @option.Label
+                    </button>
+                }
+                @if (!GefilterteOptionen.Any())
+                {
+                    <div class="enote-select2-leer">Aucun résultat</div>
+                }
+            </div>
+        </div>
+    }
+</div>

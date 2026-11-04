@@ -17,6 +17,9 @@ public class UserSalon
     /// <summary>Gehashte kurze Kassen-PIN (nur Kassierer).</summary>
     public string? KassenPinHash { get; set; }
 
+    /// <summary>Gehashte Besitzer-PIN zum Freischalten der Verwaltung am gemeinsamen Tablet.</summary>
+    public string? BesitzerPinHash { get; set; }
+
     /// <summary>Anzahl aufeinanderfolgender falscher PIN-Eingaben (Sperrlogik).</summary>
     public int PinFehlversuche { get; set; }
     public DateTime? PinGesperrtBisUtc { get; set; }

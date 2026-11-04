@@ -1,0 +1,20 @@
+@* Moderner Monats-Picker (Jahr + Monat als Pills, Soft-UI) *@
+<div class="enote-monthpicker">
+    <div class="enote-monthpicker-jahr">
+        <button type="button" @onclick="() => WechsleJahr(-1)">‹</button>
+        <strong>@angezeigtesJahr</strong>
+        <button type="button" @onclick="() => WechsleJahr(1)">›</button>
+    </div>
+    <div class="enote-monthpicker-monate">
+        @for (var monat = 1; monat <= 12; monat++)
+        {
+            var m = monat;
+            var istGewaehlt = Value is not null && Value.Value.Year == angezeigtesJahr && Value.Value.Month == m;
+            <button type="button"
+                    class="enote-radio-pill @(istGewaehlt ? "aktiv" : "")"
+                    @onclick="() => WaehleAsync(m)">
+                @Monatsname(m)
+            </button>
+        }
+    </div>
+</div>

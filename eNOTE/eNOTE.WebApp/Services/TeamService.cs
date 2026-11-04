@@ -111,6 +111,15 @@ public class TeamService(
     /// <summary>Setzt/ändert die Kassen-PIN einer Salon-Zuordnung.</summary>
     public async Task<(bool Erfolg, string? Fehler)> SetzeKassenPinAsync(
         Guid userSalonId, string neuePin, CancellationToken cancellationToken = default)
+        => await SetzePinAsync(userSalonId, neuePin, istBesitzerPin: false, cancellationToken);
+
+    /// <summary>Setzt/ändert die Besitzer-PIN einer Salon-Zuordnung (zum Freischalten der Verwaltung).</summary>
+    public async Task<(bool Erfolg, string? Fehler)> SetzeBesitzerPinAsync(
+        Guid userSalonId, string neuePin, CancellationToken cancellationToken = default)
+        => await SetzePinAsync(userSalonId, neuePin, istBesitzerPin: true, cancellationToken);
+
+    private async Task<(bool Erfolg, string? Fehler)> SetzePinAsync(
+        Guid userSalonId, string neuePin, bool istBesitzerPin, CancellationToken cancellationToken)
     {
         if (!KassenPinService.IstGueltigesPinFormat(neuePin))
         {
@@ -124,7 +133,15 @@ public class TeamService(
             return (false, "Membre introuvable.");
         }
 
-        zuordnung.KassenPinHash = KassenPinService.HashPin(neuePin);
+        if (istBesitzerPin)
+        {
+            zuordnung.BesitzerPinHash = KassenPinService.HashPin(neuePin);
+        }
+        else
+        {
+            zuordnung.KassenPinHash = KassenPinService.HashPin(neuePin);
+        }
+
         zuordnung.PinFehlversuche = 0;
         zuordnung.PinGesperrtBisUtc = null;
         await db.SaveChangesAsync(cancellationToken);

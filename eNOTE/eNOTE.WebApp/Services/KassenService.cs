@@ -115,6 +115,96 @@ public class KassenService(
     }
 
     /// <summary>
+    /// Prüft die Besitzer-PIN für einen Salon (zum Freischalten der Verwaltung am
+    /// gemeinsamen Tablet). Sucht die Besitzer-Zuordnung mit gesetzter Besitzer-PIN.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler)> PruefeBesitzerPinAsync(
+        Guid salonId, string pin, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var besitzerZuordnungen = await db.UserSalons
+            .Include(us => us.AppUser)
+            .Where(us => us.SalonId == salonId && us.BesitzerPinHash != null)
+            .ToListAsync(cancellationToken);
+
+        if (besitzerZuordnungen.Count == 0)
+        {
+            return (false, "Aucun code PIN propriétaire configuré.");
+        }
+
+        var jetzt = DateTime.UtcNow;
+        foreach (var zuordnung in besitzerZuordnungen)
+        {
+            if (zuordnung.PinGesperrtBisUtc is DateTime gesperrtBis && gesperrtBis > jetzt)
+            {
+                continue;
+            }
+
+            if (KassenPinService.PruefePin(pin, zuordnung.BesitzerPinHash!))
+            {
+                zuordnung.PinFehlversuche = 0;
+                zuordnung.PinGesperrtBisUtc = null;
+                await db.SaveChangesAsync(cancellationToken);
+                return (true, null);
+            }
+        }
+
+        // Fehlversuch anrechnen (Sperrlogik geteilt mit Kassen-PIN).
+        foreach (var zuordnung in besitzerZuordnungen)
+        {
+            if (zuordnung.PinGesperrtBisUtc is DateTime g && g > jetzt)
+            {
+                continue;
+            }
+
+            zuordnung.PinFehlversuche++;
+            if (zuordnung.PinFehlversuche >= KassenPinService.MaxFehlversuche)
+            {
+                zuordnung.PinGesperrtBisUtc = jetzt.Add(KassenPinService.SperrDauer);
+                zuordnung.PinFehlversuche = 0;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return (false, "Code PIN incorrect.");
+    }
+
+    /// <summary>Prüft, ob ein Salon eine konfigurierte Besitzer-PIN hat.</summary>
+    public async Task<bool> HatBesitzerPinAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.UserSalons
+            .AnyAsync(us => us.SalonId == salonId && us.BesitzerPinHash != null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Stellt sicher, dass ein Laden den Standard-Artikel „Divers“ hat (freier Betrag
+    /// in der Kasse, für vergessene Leistungen). Wird beim Kassenstart geprüft.
+    /// </summary>
+    public async Task StelleStandardArtikelSicherAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var vorhanden = await db.Leistungen
+            .AnyAsync(l => l.SalonId == salonId && l.IstStandardArtikel, cancellationToken);
+        if (vorhanden)
+        {
+            return;
+        }
+
+        db.Leistungen.Add(new Core.DataModels.Katalog.Leistung
+        {
+            SalonId = salonId,
+            Name = "Divers",
+            Beschreibung = "Montant libre (prestation non créée)",
+            Preis = 0m,
+            IstStandardArtikel = true,
+            IstAktiv = true
+        });
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Startet eine Kassensitzung: PIN prüfen (mit Sperrlogik) und den gezählten
     /// Wechselgeld-Startbestand bestätigen. Der Salon ergibt sich aus der Zuordnung.
     /// </summary>
@@ -143,6 +233,10 @@ public class KassenService(
         }
 
         var jetzt = DateTime.UtcNow;
+
+        // Standard-Artikel „Divers“ sicherstellen (freier Betrag für vergessene Leistungen).
+        await StelleStandardArtikelSicherAsync(salonId, cancellationToken);
+
         var sitzung = new KassenSitzung
         {
             SalonId = salonId,
@@ -157,7 +251,7 @@ public class KassenService(
         return new(true, null, sitzung, 0);
     }
 
-    public record VerkaufsPositionInput(Guid LeistungId, int Menge, Guid? RabattId, bool BedingungBestaetigt);
+    public record VerkaufsPositionInput(Guid LeistungId, int Menge, Guid? RabattId, bool BedingungBestaetigt, decimal? FreierBetrag = null);
 
     /// <summary>
     /// Bucht einen Verkauf. Bei Barzahlung wird das Rückgeld berechnet und geprüft;
@@ -193,6 +287,16 @@ public class KassenService(
             .Where(l => leistungIds.Contains(l.Id) && l.SalonId == sitzung.SalonId && l.IstAktiv)
             .ToListAsync(cancellationToken);
 
+        // Basis-Lager-Leistungen der Sammel-Artikel ebenfalls laden (zum Bestandsabzug).
+        var basisIds = leistungen.Where(l => l.BasisLeistungId is not null).Select(l => l.BasisLeistungId!.Value).Distinct().ToList();
+        if (basisIds.Count > 0)
+        {
+            var basisLeistungen = await db.Leistungen
+                .Where(l => basisIds.Contains(l.Id) && l.SalonId == sitzung.SalonId)
+                .ToListAsync(cancellationToken);
+            leistungen.AddRange(basisLeistungen.Where(b => leistungen.All(l => l.Id != b.Id)));
+        }
+
         var rabattIds = positionen.Where(p => p.RabattId is not null).Select(p => p.RabattId!.Value).Distinct().ToList();
         var rabatte = await db.Rabatte
             .Where(r => rabattIds.Contains(r.Id) && r.SalonId == sitzung.SalonId)
@@ -223,7 +327,29 @@ public class KassenService(
                 return (false, "La quantité doit être positive.", null, warnungen);
             }
 
-            var zeilenBetrag = leistung.Preis * pos.Menge;
+            // Standard-Artikel „Divers“: freier Betrag vom Kassierer.
+            decimal einzelPreis = leistung.Preis;
+            if (leistung.IstStandardArtikel)
+            {
+                if (pos.FreierBetrag is null or <= 0)
+                {
+                    return (false, $"Veuillez saisir le montant pour « {leistung.Name} ».", null, warnungen);
+                }
+
+                einzelPreis = pos.FreierBetrag.Value;
+
+                // Besitzer benachrichtigen: Standard-Artikel wurde verwendet.
+                var kassierer = await db.Users.FirstOrDefaultAsync(u => u.Id == sitzung.KassiererId, cancellationToken);
+                db.BesitzerHinweise.Add(new BesitzerHinweis
+                {
+                    SalonId = sitzung.SalonId,
+                    Text = $"{pos.Menge}× « {leistung.Name} » utilisé(s) en caisse ({einzelPreis * pos.Menge:N0} F). Pensez à créer la prestation.",
+                    AusgeloestVonId = sitzung.KassiererId,
+                    AusgeloestVonName = kassierer?.FullName ?? "Caissier"
+                });
+            }
+
+            var zeilenBetrag = einzelPreis * pos.Menge;
             decimal rabattBetrag = 0m;
             Rabatt? rabatt = null;
 
@@ -257,7 +383,7 @@ public class KassenService(
             {
                 LeistungId = leistung.Id,
                 LeistungName = leistung.Name,
-                EinzelPreis = leistung.Preis,
+                EinzelPreis = einzelPreis,
                 Menge = pos.Menge,
                 RabattId = rabatt?.Id,
                 RabattBetrag = rabattBetrag,
@@ -265,16 +391,24 @@ public class KassenService(
             });
 
             // Bestand mindern (auch unter 0 erlaubt, mit Hinweis).
-            if (leistung.HatStueckzahl)
+            // Sammel-Artikel (z. B. „Stoff A (3 m)“) ziehen vom Bestand ihrer Basis-Leistung ab.
+            var lagerZiel = leistung.BasisLeistungId is Guid basisId
+                ? leistungen.FirstOrDefault(l => l.Id == basisId) ?? leistung
+                : leistung;
+            var abzug = leistung.BasisLeistungId is not null && leistung.BasisAbzugMenge is decimal menge
+                ? menge * pos.Menge
+                : pos.Menge;
+
+            if (lagerZiel.HatStueckzahl)
             {
-                leistung.Stueckzahl -= pos.Menge;
-                if (leistung.Stueckzahl < 0)
+                lagerZiel.Stueckzahl -= abzug;
+                if (lagerZiel.Stueckzahl < 0)
                 {
-                    warnungen.Add($"« {leistung.Name} » : stock épuisé (vendu au-delà du stock).");
+                    warnungen.Add($"« {lagerZiel.Name} » : stock épuisé (vendu au-delà du stock).");
                 }
-                else if (leistung.MindestbestandWarnung is int min && leistung.Stueckzahl <= min)
+                else if (lagerZiel.MindestbestandWarnung is decimal min && lagerZiel.Stueckzahl <= min)
                 {
-                    warnungen.Add($"« {leistung.Name} » : stock bientôt épuisé ({leistung.Stueckzahl} restant).");
+                    warnungen.Add($"« {lagerZiel.Name} » : stock bientôt épuisé ({lagerZiel.Stueckzahl} restant).");
                 }
             }
         }

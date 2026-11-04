@@ -1,5 +1,6 @@
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Infrastruktur;
+using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
 using ENote.Core.Services.Storage;
@@ -73,6 +74,127 @@ public class KatalogService(
         return user is not null && await userManager.IsInRoleAsync(user, AppRollen.Besitzer);
     }
 
+    // --- Kategorien ---
+
+    public async Task<List<LeistungKategorie>> GetKategorienAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.LeistungKategorien
+            .AsNoTracking()
+            .Where(k => k.SalonId == salonId && k.IstAktiv)
+            .OrderBy(k => k.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<LeistungKategorie> SpeichereKategorieAsync(Guid salonId, string name, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var bereinigt = name.Trim();
+
+        var vorhanden = await db.LeistungKategorien
+            .FirstOrDefaultAsync(k => k.SalonId == salonId && k.Name == bereinigt, cancellationToken);
+        if (vorhanden is not null)
+        {
+            return vorhanden;
+        }
+
+        var kategorie = new LeistungKategorie { SalonId = salonId, Name = bereinigt };
+        db.LeistungKategorien.Add(kategorie);
+        await db.SaveChangesAsync(cancellationToken);
+        return kategorie;
+    }
+
+    /// <summary>Benennt eine Kategorie um (Leistungen behalten die Verknüpfung über die Id).</summary>
+    public async Task<(bool Erfolg, string? Fehler)> BenenneKategorieUmAsync(Guid kategorieId, Guid salonId, string neuerName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(neuerName))
+        {
+            return (false, "Veuillez saisir un nom.");
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var kategorie = await db.LeistungKategorien
+            .FirstOrDefaultAsync(k => k.Id == kategorieId && k.SalonId == salonId, cancellationToken);
+        if (kategorie is null)
+        {
+            return (false, "Catégorie introuvable.");
+        }
+
+        var bereinigt = neuerName.Trim();
+        var duplikat = await db.LeistungKategorien
+            .AnyAsync(k => k.SalonId == salonId && k.Name == bereinigt && k.Id != kategorieId, cancellationToken);
+        if (duplikat)
+        {
+            return (false, "Une catégorie portant ce nom existe déjà.");
+        }
+
+        kategorie.Name = bereinigt;
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Löscht eine Kategorie. Verknüpfte Leistungen verlieren dadurch ihre Kategorie
+    /// (KategorieId wird null), bleiben aber bestehen.
+    /// </summary>
+    public async Task<bool> LoescheKategorieAsync(Guid kategorieId, Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var kategorie = await db.LeistungKategorien
+            .FirstOrDefaultAsync(k => k.Id == kategorieId && k.SalonId == salonId, cancellationToken);
+        if (kategorie is null)
+        {
+            return false;
+        }
+
+        // Leistungen mit dieser Kategorie zurücksetzen (Kategorie entfernen, Leistung bleibt).
+        var betroffene = await db.Leistungen.Where(l => l.KategorieId == kategorieId).ToListAsync(cancellationToken);
+        foreach (var l in betroffene)
+        {
+            l.KategorieId = null;
+        }
+
+        db.LeistungKategorien.Remove(kategorie);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    // --- Favoriten (app-weit pro Salon) ---
+
+    public async Task<HashSet<Guid>> GetFavoritenIdsAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var ids = await db.LeistungFavoriten
+            .AsNoTracking()
+            .Where(f => f.SalonId == salonId)
+            .Select(f => f.LeistungId)
+            .ToListAsync(cancellationToken);
+        return ids.ToHashSet();
+    }
+
+    public async Task ToggleFavoritAsync(Guid salonId, Guid leistungId, Guid gesetztVonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var vorhanden = await db.LeistungFavoriten
+            .FirstOrDefaultAsync(f => f.SalonId == salonId && f.LeistungId == leistungId, cancellationToken);
+
+        if (vorhanden is not null)
+        {
+            db.LeistungFavoriten.Remove(vorhanden);
+        }
+        else
+        {
+            db.LeistungFavoriten.Add(new LeistungFavorit
+            {
+                SalonId = salonId,
+                LeistungId = leistungId,
+                GesetztVonId = gesetztVonId
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     // --- Leistungen ---
 
     public async Task<List<Leistung>> GetLeistungenAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -80,6 +202,7 @@ public class KatalogService(
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await db.Leistungen
             .AsNoTracking()
+            .Include(l => l.Kategorie)
             .Where(l => l.SalonId == salonId)
             .OrderBy(l => l.HatStueckzahl)
             .ThenBy(l => l.Name)
@@ -110,10 +233,14 @@ public class KatalogService(
             vorhanden.Name = leistung.Name;
             vorhanden.Beschreibung = leistung.Beschreibung;
             vorhanden.Preis = leistung.Preis;
+            vorhanden.Kaufpreis = leistung.Kaufpreis;
             vorhanden.StrichCode = string.IsNullOrWhiteSpace(leistung.StrichCode) ? null : leistung.StrichCode.Trim();
+            vorhanden.KategorieId = leistung.KategorieId;
             vorhanden.HatStueckzahl = leistung.HatStueckzahl;
             vorhanden.Stueckzahl = leistung.HatStueckzahl ? leistung.Stueckzahl : 0;
             vorhanden.MindestbestandWarnung = leistung.HatStueckzahl ? leistung.MindestbestandWarnung : null;
+            vorhanden.BasisLeistungId = leistung.BasisLeistungId;
+            vorhanden.BasisAbzugMenge = leistung.BasisAbzugMenge;
             vorhanden.IstAktiv = leistung.IstAktiv;
             vorhanden.BildAssetId = leistung.BildAssetId;
             vorhanden.UpdatedAtUtc = DateTime.UtcNow;

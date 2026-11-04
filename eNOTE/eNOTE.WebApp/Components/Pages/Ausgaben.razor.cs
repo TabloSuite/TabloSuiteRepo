@@ -1,4 +1,5 @@
 ﻿using ENote.Core.DataModels.Finanzen;
+using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -19,11 +20,12 @@ public partial class Ausgaben(
     private string salonName = string.Empty;
 
     private List<AusgabenKategorie> kategorien = [];
+    private IReadOnlyList<EnoteSelectOption<string>> kategorienOptionen = [];
     private List<Ausgabe> ausgaben = [];
     private Dictionary<Guid, string> belegUrls = [];
 
-    private DateTime filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private DateTime filterBis = DateTime.Today;
+    private DateTime? filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? filterBis = DateTime.Today;
 
     private bool kategorienOffen;
     private string neueKategorieName = string.Empty;
@@ -31,7 +33,7 @@ public partial class Ausgaben(
     private bool ausgabeDialogOffen;
     private string? ausgabeFehler;
     private decimal neuBetrag;
-    private DateTime neuDatum = DateTime.Today;
+    private DateTime? neuDatum = DateTime.Today;
     private string neuKategorieId = string.Empty;
     private string? neuNotiz;
     private IBrowserFile? belegDatei;
@@ -63,8 +65,11 @@ public partial class Ausgaben(
     {
         isLoading = true;
         kategorien = await ausgabenService.GetKategorienAsync(salonId);
-        var bisEnde = filterBis.Date.AddDays(1).AddTicks(-1);
-        ausgaben = await ausgabenService.GetAusgabenAsync(salonId, filterVon.Date, bisEnde);
+        kategorienOptionen = kategorien.Where(k => k.IstAktiv)
+            .Select(k => new EnoteSelectOption<string> { Value = k.Id.ToString(), Label = k.Name })
+            .ToList();
+        var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
+        ausgaben = await ausgabenService.GetAusgabenAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
 
         belegUrls = new Dictionary<Guid, string>();
         foreach (var a in ausgaben.Where(x => x.BelegAssetId is not null))
@@ -139,7 +144,7 @@ public partial class Ausgaben(
         }
 
         var (erfolg, fehler, _) = await ausgabenService.ErfasseAusgabeAsync(
-            salonId, kategorieId, neuBetrag, neuDatum.Date, neuNotiz, benutzerId, beleg);
+            salonId, kategorieId, neuBetrag, (neuDatum ?? DateTime.Today).Date, neuNotiz, benutzerId, beleg);
 
         beleg?.Inhalt.Dispose();
 

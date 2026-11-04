@@ -26,6 +26,12 @@ public class Salon
     /// <summary>Registrierung wurde vom SuperAdmin noch nicht angenommen.</summary>
     public bool IstFreigegeben { get; set; }
 
+    /// <summary>
+    /// Ende der kostenlosen Probezeit (3 Kalendermonate, das Startmonat zählt mit).
+    /// Null = keine Probezeit / bereits zahlend.
+    /// </summary>
+    public DateTime? ProbeBisUtc { get; set; }
+
     /// <summary>Individueller monatlicher Nutzungspreis; null = globaler Standard gilt.</summary>
     public decimal? IndividuellerMonatsPreis { get; set; }
 

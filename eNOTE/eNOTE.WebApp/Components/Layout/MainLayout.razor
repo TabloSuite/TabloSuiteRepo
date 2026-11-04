@@ -1,7 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject ENote.WebApp.Services.KassenAnzeigeState KassenState
+@inject ENote.WebApp.Services.BesitzerPinState BesitzerPinState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="enote-layout">
     <header class="enote-topbar">
@@ -12,11 +14,22 @@
         <div class="enote-topbar-actions">
             <AuthorizeView>
                 <Authorized>
-                    <a class="enote-btn enote-btn-ghost" href="/profil">@context.User.Identity?.Name</a>
-                    <form method="post" action="/auth/logout">
-                        <AntiforgeryToken />
-                        <button type="submit" class="enote-btn enote-btn-ghost">Déconnexion</button>
-                    </form>
+                    <div class="enote-usermenu">
+                        <button class="enote-avatar-btn" @onclick="() => userMenuOffen = !userMenuOffen" aria-label="Compte">
+                            <span class="enote-avatar">@Initialen(context.User.Identity?.Name)</span>
+                        </button>
+                        @if (userMenuOffen)
+                        {
+                            <div class="enote-usermenu-popup">
+                                <div class="enote-usermenu-name">@context.User.Identity?.Name</div>
+                                <a class="enote-usermenu-link" href="/profil" @onclick="() => userMenuOffen = false">👤 Mon profil</a>
+                                <form method="post" action="/auth/logout">
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="enote-usermenu-link enote-usermenu-danger">⎋ Déconnexion</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
                 </Authorized>
                 <NotAuthorized>
                     <a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
@@ -42,11 +55,61 @@
         </button>
     }
 
+    @* Sperr-Button, wenn die Verwaltung freigeschaltet ist (Besitzer kann wieder sperren) *@
+    @if (BesitzerPinState.VerwaltungFreigeschaltet && KassenState.AktiveSitzungId is not null)
+    {
+        <button class="enote-sperr-btn" @onclick="() => BesitzerPinState.Sperren()" title="Verrouiller la zone propriétaire">
+            🔒 Verrouiller
+        </button>
+    }
+
     <Toast />
 </div>
 
 @code {
-    protected override void OnInitialized() => KassenState.OnChange += StateHasChanged;
+    private bool userMenuOffen;
+    private DotNetObjectReference<MainLayout>? selfRef;
+
+    protected override void OnInitialized()
+    {
+        KassenState.OnChange += StateHasChanged;
+        BesitzerPinState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            selfRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("enoteRegisterUserMenu", selfRef);
+            }
+            catch (InvalidOperationException)
+            {
+                // JS noch nicht verfügbar (Prerendering) – wird beim nächsten Render erneut versucht.
+            }
+        }
+    }
+
+    [Microsoft.JSInterop.JSInvokable]
+    public void SchliesseUserMenu()
+    {
+        if (userMenuOffen)
+        {
+            userMenuOffen = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string Initialen(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length == 1
+            ? teile[0][..Math.Min(2, teile[0].Length)].ToUpperInvariant()
+            : string.Concat(teile[0][0], teile[^1][0]).ToUpperInvariant();
+    }
 
     private void OeffneKasse()
     {
@@ -54,5 +117,10 @@
         Nav.NavigateTo("/caisse");
     }
 
-    public void Dispose() => KassenState.OnChange -= StateHasChanged;
+    public void Dispose()
+    {
+        KassenState.OnChange -= StateHasChanged;
+        BesitzerPinState.OnChange -= StateHasChanged;
+        selfRef?.Dispose();
+    }
 }

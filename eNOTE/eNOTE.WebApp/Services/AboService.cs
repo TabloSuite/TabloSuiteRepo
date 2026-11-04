@@ -21,6 +21,22 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Probe-Status eines Salons: läuft die kostenlose Probezeit noch, und bis wann?
+    /// </summary>
+    public async Task<(bool Laeuft, DateTime? BisUtc)> GetProbeStatusAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var probeBis = await db.Salons
+            .AsNoTracking()
+            .Where(s => s.Id == salonId)
+            .Select(s => s.ProbeBisUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var laeuft = probeBis is not null && probeBis.Value > DateTime.UtcNow;
+        return (laeuft, probeBis);
+    }
+
     /// <summary>Effektiver Preis: individueller Salonpreis hat Vorrang vor dem globalen Standard.</summary>
     public async Task<decimal> GetPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
     {
@@ -126,6 +142,18 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
             .Include(a => a.Salon)
             .Where(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet)
             .OrderBy(a => a.ZahlungGemeldetUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Alle Abos aller Salons (neueste zuerst) für die Facturation-Übersicht.</summary>
+    public async Task<List<NutzungsAbo>> GetAlleAbosAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.NutzungsAbos
+            .AsNoTracking()
+            .Include(a => a.Salon)
+            .OrderByDescending(a => a.CreatedAtUtc)
+            .Take(100)
             .ToListAsync(cancellationToken);
     }
 }

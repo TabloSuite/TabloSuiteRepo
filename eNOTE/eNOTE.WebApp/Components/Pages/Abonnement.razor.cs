@@ -19,6 +19,8 @@ public partial class Abonnement(
     private string salonName = string.Empty;
     private NutzungsAbo? aktuellesAbo;
     private Dictionary<AboIntervall, decimal> preise = [];
+    private bool probeLaeuft;
+    private DateTime? probeBis;
 
     private bool zahlungOffen;
     private AboIntervall ausgewaehltesIntervall;
@@ -51,6 +53,7 @@ public partial class Abonnement(
     {
         isLoading = true;
         aktuellesAbo = await aboService.GetAktuellesAboAsync(salonId);
+        (probeLaeuft, probeBis) = await aboService.GetProbeStatusAsync(salonId);
         preise = new Dictionary<AboIntervall, decimal>();
         foreach (var formel in formeln)
         {

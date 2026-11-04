@@ -119,4 +119,12 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
 
         return await mediaStorage.LadeBytesAsync(blobName, cancellationToken);
     }
+
+    /// <summary>Prüft, ob der Nutzer für den Salon eine Besitzer-PIN gesetzt hat.</summary>
+    public async Task<bool> HatBesitzerPinAsync(Guid salonId, Guid benutzerId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.UserSalons
+            .AnyAsync(us => us.SalonId == salonId && us.AppUserId == benutzerId && us.BesitzerPinHash != null, cancellationToken);
+    }
 }

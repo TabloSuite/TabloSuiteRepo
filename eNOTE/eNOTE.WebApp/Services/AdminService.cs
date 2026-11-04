@@ -80,7 +80,34 @@ public class AdminService(
         salon.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
-    }    // --- Plattformpreise ---
+    }
+
+    /// <summary>Admin/PO ändert die Probezeit eines Ladens (verlängern/anpassen/entfernen).</summary>
+    public async Task<bool> SetzeProbezeitAsync(Guid salonId, DateTime? probeBisUtc, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
+        if (salon is null)
+        {
+            return false;
+        }
+
+        salon.ProbeBisUtc = probeBisUtc;
+        salon.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Aktuelle Probezeit eines Ladens lesen.</summary>
+    public async Task<DateTime?> GetProbezeitAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Salons
+            .AsNoTracking()
+            .Where(s => s.Id == salonId)
+            .Select(s => s.ProbeBisUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     public async Task<List<PlattformPreis>> GetPlattformPreiseAsync(CancellationToken cancellationToken = default)
     {

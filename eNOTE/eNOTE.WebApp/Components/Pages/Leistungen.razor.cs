@@ -1,4 +1,5 @@
-﻿using ENote.Core.DataModels.Katalog;
+using ENote.Core.DataModels.Katalog;
+using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -7,7 +8,11 @@ using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Leistungen(KatalogService katalogService, ToastService toast, AuthenticationStateProvider authStateProvider)
+public partial class Leistungen(
+    KatalogService katalogService,
+    ToastService toast,
+    AuthenticationStateProvider authStateProvider,
+    NavigationManager navigationManager)
 {
     private List<Leistung> leistungen = [];
     private bool isLoading = true;
@@ -19,10 +24,39 @@ public partial class Leistungen(KatalogService katalogService, ToastService toas
     private string? editorFehler;
     private Leistung bearbeitungsLeistung = new();
     private Leistung? zuLoeschendeLeistung;
-    private IBrowserFile? ausgewaehltesBild;
     private string? bildVorschau;
     private string? bildFehler;
     private Guid aktuellerBenutzerId;
+
+    // Sammel-Artikel
+    private bool istSammelArtikel;
+    private string basisLeistungIdText = string.Empty;
+    private decimal? basisAbzugMenge;
+    private IReadOnlyList<EnoteSelectOption<string>> basisOptionen = [];
+    private IReadOnlyList<EnoteSelectOption<string>> kategorieOptionen = [];
+    private string kategorieIdText = string.Empty;
+
+    private bool kategorienOffen;
+    private string neueKategorieName = string.Empty;
+    private List<LeistungKategorie> kategorien = [];
+
+    private bool kategorieUmbenennenOffen;
+    private bool kategorieLoeschenOffen;
+    private string? kategorieFehler;
+    private LeistungKategorie? aktiveKategorie;
+    private LeistungKategorie? zuLoeschendeKategorie;
+    private string kategorieNeuerName = string.Empty;
+
+    private bool etikettDialogOffen;
+    private Leistung? etikettLeistung;
+    private string EtikettDialogTitel => $"Étiquettes – {etikettLeistung?.Name}";
+    private int etikettAnzahl = 24;
+    private string etikettFormat = "a4";
+    private readonly IReadOnlyList<EnoteRadioOption<string>> etikettFormatOptionen =
+    [
+        new() { Value = "a4", Label = "Feuille A4 (plusieurs)" },
+        new() { Value = "einzel", Label = "Étiquette 62×29 mm" }
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,15 +86,27 @@ public partial class Leistungen(KatalogService katalogService, ToastService toas
     {
         isLoading = true;
         leistungen = await katalogService.GetLeistungenAsync(salonId);
+        basisOptionen = leistungen
+            .Where(l => l.HatStueckzahl && l.BasisLeistungId is null)
+            .Select(l => new EnoteSelectOption<string> { Value = l.Id.ToString(), Label = $"{l.Name} ({l.Stueckzahl} en stock)" })
+            .ToList();
+        var kategorienListe = await katalogService.GetKategorienAsync(salonId);
+        kategorien = kategorienListe;
+        kategorieOptionen = kategorienListe
+            .Select(k => new EnoteSelectOption<string> { Value = k.Id.ToString(), Label = k.Name })
+            .ToList();
         isLoading = false;
     }
 
     private void NeuAnlegen()
     {
         bearbeitungsLeistung = new Leistung { SalonId = salonId, IstAktiv = true };
+        istSammelArtikel = false;
+        basisLeistungIdText = string.Empty;
+        basisAbzugMenge = null;
+        kategorieIdText = string.Empty;
         editorFehler = null;
         bildFehler = null;
-        ausgewaehltesBild = null;
         bildVorschau = null;
         editorOffen = true;
     }
@@ -74,45 +120,122 @@ public partial class Leistungen(KatalogService katalogService, ToastService toas
             Name = leistung.Name,
             Beschreibung = leistung.Beschreibung,
             Preis = leistung.Preis,
+            Kaufpreis = leistung.Kaufpreis,
+            KategorieId = leistung.KategorieId,
             HatStueckzahl = leistung.HatStueckzahl,
             Stueckzahl = leistung.Stueckzahl,
             MindestbestandWarnung = leistung.MindestbestandWarnung,
             IstAktiv = leistung.IstAktiv,
-            BildAssetId = leistung.BildAssetId
+            BildAssetId = leistung.BildAssetId,
+            BasisLeistungId = leistung.BasisLeistungId,
+            BasisAbzugMenge = leistung.BasisAbzugMenge
         };
+        istSammelArtikel = leistung.BasisLeistungId is not null;
+        basisLeistungIdText = leistung.BasisLeistungId?.ToString() ?? string.Empty;
+        basisAbzugMenge = leistung.BasisAbzugMenge;
+        kategorieIdText = leistung.KategorieId?.ToString() ?? string.Empty;
         editorFehler = null;
         bildFehler = null;
-        ausgewaehltesBild = null;
         bildVorschau = await katalogService.GetLeistungsBildUrlAsync(leistung.BildAssetId);
         editorOffen = true;
         StateHasChanged();
     }
 
-    private async Task HandleBildAuswahl(InputFileChangeEventArgs e)
+    private byte[]? ausgewaehltesBildBytes;
+    private string ausgewaehltesBildContentType = "image/jpeg";
+    private string ausgewaehltesBildName = "image.jpg";
+
+    private void HandleBildBereit((byte[] Bytes, string ContentType, string DateiName) bild)
     {
         bildFehler = null;
-        ausgewaehltesBild = null;
-        var datei = e.File;
+        ausgewaehltesBildBytes = bild.Bytes;
+        ausgewaehltesBildContentType = bild.ContentType;
+        ausgewaehltesBildName = bild.DateiName; // nicht mehr als IBrowserFile nötig
+    }
 
-        if (!datei.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+    private void HandleBildEntfernt()
+    {
+        bildVorschau = null;
+        ausgewaehltesBildBytes = null;
+    }
+
+    private void OeffneKategorieUmbenennen(LeistungKategorie kategorie)
+    {
+        aktiveKategorie = kategorie;
+        kategorieNeuerName = kategorie.Name;
+        kategorieFehler = null;
+        kategorieUmbenennenOffen = true;
+    }
+
+    private async Task KategorieUmbenennenAsync()
+    {
+        if (aktiveKategorie is null)
         {
-            bildFehler = "Veuillez choisir une image.";
             return;
         }
 
-        if (datei.Size > 8 * 1024 * 1024)
+        var (erfolg, fehler) = await katalogService.BenenneKategorieUmAsync(aktiveKategorie.Id, salonId, kategorieNeuerName);
+        if (!erfolg)
         {
-            bildFehler = "L'image dépasse la limite de 8 Mo.";
+            kategorieFehler = fehler;
             return;
         }
 
-        ausgewaehltesBild = datei;
+        kategorieUmbenennenOffen = false;
+        toast.ZeigeErfolg("Catégorie renommée.");
+        await LadeAsync();
+    }
 
-        // Vorschau als Data-URL (nur für die Anzeige im Dialog, nicht zum Speichern).
-        await using var stream = datei.OpenReadStream(8 * 1024 * 1024);
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        bildVorschau = $"data:{datei.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+    private void LoescheKategorieFragen(LeistungKategorie kategorie)
+    {
+        zuLoeschendeKategorie = kategorie;
+        kategorieLoeschenOffen = true;
+    }
+
+    private async Task KategorieLoeschenAsync()
+    {
+        if (zuLoeschendeKategorie is null)
+        {
+            return;
+        }
+
+        await katalogService.LoescheKategorieAsync(zuLoeschendeKategorie.Id, salonId);
+        kategorieLoeschenOffen = false;
+        toast.ZeigeInfo("Catégorie supprimée.");
+        await LadeAsync();
+    }
+
+    private async Task FuegeKategorieHinzuAsync()
+    {
+        if (string.IsNullOrWhiteSpace(neueKategorieName))
+        {
+            return;
+        }
+
+        await katalogService.SpeichereKategorieAsync(salonId, neueKategorieName);
+        neueKategorieName = string.Empty;
+        toast.ZeigeErfolg("Catégorie ajoutée.");
+        await LadeAsync();
+    }
+
+    private void OeffneEtikettDialog(Leistung leistung)
+    {
+        etikettLeistung = leistung;
+        etikettAnzahl = 24;
+        etikettFormat = "a4";
+        etikettDialogOffen = true;
+    }
+
+    private void DruckeEtiketten()
+    {
+        if (etikettLeistung is null)
+        {
+            return;
+        }
+
+        var url = $"/etiketten?salonId={salonId}&leistungId={etikettLeistung.Id}&anzahl={etikettAnzahl}&format={etikettFormat}";
+        navigationManager.NavigateTo(url, forceLoad: true);
+        etikettDialogOffen = false;
     }
 
     private async Task SpeichernAsync()
@@ -129,14 +252,40 @@ public partial class Leistungen(KatalogService katalogService, ToastService toas
             return;
         }
 
+        // Sammel-Artikel auflösen/validieren.
+        if (istSammelArtikel)
+        {
+            if (!Guid.TryParse(basisLeistungIdText, out var basisId))
+            {
+                editorFehler = "Veuillez choisir un stock de base.";
+                return;
+            }
+
+            if (basisAbzugMenge is null or <= 0)
+            {
+                editorFehler = "Veuillez saisir la quantité retirée par vente.";
+                return;
+            }
+
+            bearbeitungsLeistung.BasisLeistungId = basisId;
+            bearbeitungsLeistung.BasisAbzugMenge = basisAbzugMenge;
+        }
+        else
+        {
+            bearbeitungsLeistung.BasisLeistungId = null;
+            bearbeitungsLeistung.BasisAbzugMenge = null;
+        }
+
+        bearbeitungsLeistung.KategorieId = Guid.TryParse(kategorieIdText, out var katId) ? katId : null;
+
         bearbeitungsLeistung.SalonId = salonId;
         var gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung);
 
-        if (ausgewaehltesBild is not null)
+        if (ausgewaehltesBildBytes is not null)
         {
-            await using var stream = ausgewaehltesBild.OpenReadStream(8 * 1024 * 1024);
+            using var ms = new MemoryStream(ausgewaehltesBildBytes);
             var (bildErfolg, bildFehlerText, _) = await katalogService.SpeichereLeistungsBildAsync(
-                gespeichert.Id, ausgewaehltesBild.Name, ausgewaehltesBild.ContentType, stream, aktuellerBenutzerId);
+                gespeichert.Id, ausgewaehltesBildName, ausgewaehltesBildContentType, ms, aktuellerBenutzerId);
             if (!bildErfolg)
             {
                 toast.ZeigeFehler(bildFehlerText ?? "L'enregistrement de l'image a échoué.");
@@ -170,7 +319,19 @@ public partial class Leistungen(KatalogService katalogService, ToastService toas
     private void SchliesseLoeschen() => loeschDialogOffen = false;
 
     private static bool BestandWarnung(Leistung l)
-        => l.HatStueckzahl && l.MindestbestandWarnung is int min && l.Stueckzahl <= min;
+        => l.HatStueckzahl && l.MindestbestandWarnung is decimal min && l.Stueckzahl <= min;
+
+    private string MargeText()
+    {
+        if (bearbeitungsLeistung.Kaufpreis is not decimal kauf || bearbeitungsLeistung.Preis <= 0)
+        {
+            return string.Empty;
+        }
+
+        var marge = bearbeitungsLeistung.Preis - kauf;
+        var prozent = Math.Round(marge / bearbeitungsLeistung.Preis * 100m, 0);
+        return $"{marge:N0} F ({prozent:N0} %)";
+    }
 
     private static string BestandKlasse(Leistung l)
         => BestandWarnung(l) ? "enote-bestand enote-bestand-warn" : "enote-bestand";

@@ -4,6 +4,8 @@
 
 <PageTitle>Équipe</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -18,12 +20,7 @@
         <div class="enote-favorit-box">
             <label>établissement favori sur cet appareil</label>
             <div class="enote-favorit-row">
-                <select class="enote-select" @bind="favoritSalonId">
-                    @foreach (var s in salons)
-                    {
-                        <option value="@s.SalonId">@s.Salon.Name</option>
-                    }
-                </select>
+                <EnoteSelect TValue="string" @bind-Value="favoritSalonId" Options="salonOptionen" Placeholder="Choisir…" />
                 <button class="enote-btn enote-btn-ghost" @onclick="SetzeFavoritAsync">Définir ici</button>
                 <button class="enote-btn enote-btn-ghost" @onclick="EntferneFavoritAsync">Retirer</button>
             </div>
@@ -105,9 +102,9 @@
 <ModalDialog Open="rechteDialogOffen" Title="@("Droits – " + aktivesMitglied?.Name)" OnClose="SchliesseDialoge">
     <ChildContent>
         <div class="enote-form">
-            <label class="checkbox"><input type="checkbox" @bind="rechteFinanzen" /> <span>Voir les finances</span></label>
-            <label class="checkbox"><input type="checkbox" @bind="rechteLeistungen" /> <span>Gérer les prestations</span></label>
-            <label class="checkbox"><input type="checkbox" @bind="rechteRabatte" /> <span>Gérer les remises</span></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteFinanzen" Label="Voir les finances" /></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteLeistungen" Label="Gérer les prestations" /></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteRabatte" Label="Gérer les remises" /></label>
         </div>
     </ChildContent>
     <Footer>
@@ -126,3 +123,4 @@
         <AsyncActionButton Text="Retirer" OnClick="EntferneMitgliedAsync" CssClass="enote-btn-primary enote-danger-bg" />
     </Footer>
 </ModalDialog>
+</BesitzerPinGuard>

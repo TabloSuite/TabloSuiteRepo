@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// SignalR-Hub für Live-Umsatz-Updates. Clients abonnieren eine Salon-Gruppe;
-/// bei jedem gebuchten Verkauf wird der aktuelle Tagesumsatz an die Gruppe gepusht.
+/// SignalR-Hub für Live-Umsatz-Updates und das Kunden-Display.
+/// Salon-Gruppen für Umsatz; Display-Gruppen pro Kassensitzung für das Live-Ticket.
 /// </summary>
 public class UmsatzHub : Hub
 {
@@ -14,7 +14,15 @@ public class UmsatzHub : Hub
     public async Task VerlasseSalon(string salonId)
         => await Groups.RemoveFromGroupAsync(Context.ConnectionId, GruppenName(salonId));
 
+    /// <summary>Kunden-Display abonniert die laufende Kassensitzung.</summary>
+    public async Task AbonniereDisplay(string sitzungId)
+        => await Groups.AddToGroupAsync(Context.ConnectionId, DisplayGruppenName(sitzungId));
+
+    public async Task VerlasseDisplay(string sitzungId)
+        => await Groups.RemoveFromGroupAsync(Context.ConnectionId, DisplayGruppenName(sitzungId));
+
     public static string GruppenName(string salonId) => $"salon-{salonId}";
+    public static string DisplayGruppenName(string sitzungId) => $"display-{sitzungId}";
 }
 
 /// <summary>Benachrichtigt abonnierte Clients über neue Verkäufe eines Salons.</summary>
@@ -35,5 +43,33 @@ public class UmsatzBenachrichtigungService(IHubContext<UmsatzHub> hubContext) : 
         await hubContext.Clients
             .Group(UmsatzHub.GruppenName(salonId.ToString()))
             .SendAsync("UmsatzAktualisiert", tagesUmsatzGesamt, anzahlVerkaeufeHeute, cancellationToken);
+    }
+}
+
+/// <summary>Eine Zeile des Live-Tickets für das Kunden-Display.</summary>
+public record DisplayPosition(string Name, int Menge, decimal ZeilenSumme);
+
+/// <summary>Aktueller Ticket-Stand für das Kunden-Display.</summary>
+public record DisplayTicket(
+    IReadOnlyList<DisplayPosition> Positionen,
+    decimal Zwischensumme,
+    decimal RabattSumme,
+    decimal GesamtSumme,
+    bool Abgeschlossen,
+    decimal? Rueckgeld);
+
+/// <summary>Sendet den laufenden Ticket-Stand an das Kunden-Display einer Sitzung.</summary>
+public interface IDisplayBenachrichtigungService
+{
+    Task TicketAktualisiertAsync(Guid sitzungId, DisplayTicket ticket, CancellationToken cancellationToken = default);
+}
+
+public class DisplayBenachrichtigungService(IHubContext<UmsatzHub> hubContext) : IDisplayBenachrichtigungService
+{
+    public async Task TicketAktualisiertAsync(Guid sitzungId, DisplayTicket ticket, CancellationToken cancellationToken = default)
+    {
+        await hubContext.Clients
+            .Group(UmsatzHub.DisplayGruppenName(sitzungId.ToString()))
+            .SendAsync("DisplayAktualisiert", ticket, cancellationToken);
     }
 }

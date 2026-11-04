@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="app.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#1e3a8a" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <HeadOutlet />
 </head>
 
@@ -13,6 +17,11 @@
     <Routes />
     <script src="_framework/blazor.web.js"></script>
     <script src="js/enote.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/js/service-worker.js');
+        }
+    </script>
 </body>
 
 </html>

@@ -5,6 +5,8 @@
 
 <PageTitle>Abonnement</PageTitle>
 
+
+<BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -19,6 +21,17 @@
     }
     else
     {
+        @if (probeLaeuft)
+        {
+            <div class="enote-abo-status enote-probe-banner">
+                <div>
+                    <strong>Essai gratuit</strong>
+                    <div class="enote-muted">Gratuit jusqu'au @probeBis?.ToLocalTime().ToString("dd.MM.yyyy") (ce mois-ci inclus). Choisissez ensuite une formule.</div>
+                </div>
+                <span class="enote-tag">Essai</span>
+            </div>
+        }
+
         @if (aktuellesAbo is not null)
         {
             <div class="enote-abo-status">
@@ -60,3 +73,4 @@
         <AsyncActionButton Text="Signaler le paiement" OnClick="MeldeZahlungAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
+</BesitzerPinGuard>
