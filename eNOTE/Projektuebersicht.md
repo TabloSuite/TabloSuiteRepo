@@ -1,0 +1,100 @@
+# eNOTE – Projektübersicht & Entwicklungsbeschreibung
+
+> Kassen- und Verwaltungs-App für kleine Geschäfte (Salon, Boutique, Atelier …), optimiert für Tablet und PC. Französische Endnutzertexte, deutsche Entwicklerdoku.
+
+## 1. Zweck
+
+eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden" als Mandant):
+- **Kasse (Caisse):** Verkauf per Touch-Kacheln, Barcode-Scan, freie Beträge („Divers"), Rabatte, Bar-/Kartenzahlung, Kassenbon (PDF/Druck), Kunden-Display.
+- **Verwaltung:** Leistungen, Kategorien, Rabatte, Team (Kassierer mit PIN), Ausgaben, Finanzen (Umsatz, Kassenabschlüsse), Abonnement, Einstellungen (Bon-Branding).
+- **Plattform:** SuperAdmin/ProduktOwner verwalten Läden, Freigaben, Probezeit, Preise/Provisionen.
+
+## 2. Technologie-Stack
+
+- **.NET 10**, **Blazor Interactive Server** (Echtzeit-UI, serverseitig).
+- **EF Core + SQL Server** (Code-First, Migrationen in `eNOTE.WebApp/Migrations`).
+- **ASP.NET Core Identity** (AppUser + Rollen).
+- **SignalR** für Live-Umsatz (`/hubs/umsatz`) und Kunden-Display (`DisplayBenachrichtigungService`).
+- **QuestPDF** (Bon-/Berichts-/Etikett-PDFs), **QRCoder** (Bon-QR), **ZXing** (Barcode-Etiketten).
+- **Azure Blob Storage** für Medien (Logos, Produktbilder, Belege) außerhalb Development; lokal `wwwroot/media-library` in Development.
+- **PWA** (`manifest.webmanifest`, `service-worker.js`) – installierbar auf dem Tablet.
+
+## 3. Projektstruktur
+
+| Projekt | Zweck |
+|---|---|
+| `eNOTE.Core` | Datenmodelle (`DataModels`), domänenreine Services (`Services/Kasse/KassenRechner`), Storage-Abstraktion, Options. Keine EF-/Web-Abhängigkeiten. |
+| `eNOTE.WebApp` | Blazor-App: `Components/Pages` (Seiten + Code-Behind), `Components/Shared`, `Components/Layout`, `Services` (Anwendungs-Services), `Data` (DbContext, Seed), `Program.cs`, `wwwroot`. |
+| `eNOTE.Tests` | xUnit-Tests (InMemory/SQLite) für Rechner und Services. |
+
+### Wichtige Orte in `eNOTE.WebApp`
+- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, Endpunkte (`/bon/{id}`, `/bon/{id}/druck`, `/finances/rapport`, `/etiketten`, `/media/{blobName}`), SignalR-Hub.
+- `Data/ApplicationDbContext.cs` – EF-Modell (Salons, UserSalons, Leistungen, Rabatte, KassenSitzungen, Verkaeufe, Ausgaben, Abos, BlobMediaAssets, GeraetSalonFavoriten …).
+- `Data/Seed/ApplicationDbInitializer.cs` – Rollen + SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`/`Seed:SuperAdminPasswort`), Plattform-Standardpreise.
+- `wwwroot/app.css` – komplettes Soft-UI/Neumorphismus-Design-System.
+- `wwwroot/js/enote.js` – JS-Interop (Passwort-Toggle, Popup-Closer, Bildzuschnitt, Tab-Öffnen).
+
+## 4. Kern-Domänen & Fachregeln
+
+### Mandant = Salon (Laden)
+- Jeder Laden ist ein `Salon` mit `IstAktiv`, `IstFreigegeben`, `ProbeBisUtc`, Branding (Slogan, Telefon, Adresse, Logo, Bon-QR-Link), Land, optionalem Monatspreis.
+- `UserSalon` verknüpft Benutzer ↔ Salon mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN und Besitzer-PIN-Hash + PIN-Sperrlogik.
+
+### Rollen (`AppRollen`)
+`Besitzer`, `Kassierer`, `ProduktOwner`, `SuperAdmin`. Seiten sind per `[Authorize(Roles=…)]` abgesichert; sensible Verwaltungsseiten zusätzlich über `BesitzerPinGuard` (PIN-Sperre am gemeinsamen Tablet).
+
+### Registrierung & Laden-Anlage
+- Erste Registrierung legt Besitzer + ersten Laden an (`IstFreigegeben=false`, 3-Monats-Probezeit) → Admin muss freigeben.
+- Weitere Läden: Besitzer kann nach **abgelaufener Probezeit** eines freigegebenen Ladens weitere anlegen (`SalonService.FuegeSalonHinzuAsync`). Neue Läden: aktiv, aber **nicht freigegeben**, **keine** erneute Probezeit → Admin-Freigabe nötig.
+
+### Kasse (Caisse) – `Caisse.razor`
+- Drei Zustände: minimiert (schwebender Button), kein aktiver Sitzung (Start: Kassierer + PIN + Wechselgeld), aktive Kasse.
+- Kassenstart: PIN löst `UserSalon` (und damit den Laden) auf; `KassenService.StarteSitzungAsync` verhindert eine zweite offene Sitzung.
+- Ticket: Positionen mit Menge, freie Beträge, Rabatt (aktivierbar, ggf. Bedingung), Barzahlung (Rückgeld) / Karte (Bestätigung). Abbrechen mit Bestätigungsdialog leert das Ticket.
+- `KassenAnzeigeState` (scoped) steuert Minimieren/Kassen-Modus; `AktiverSalonState` (scoped) den gewählten Laden (Topbar-Umschalter, LocalStorage).
+- Wiederherstellung: offene Sitzung wird beim Öffnen von `/caisse` geladen; ein modaler Hinweis (Kassierer, Start, Soll-Kassenstand) informiert über die nicht abgeschlossene Kasse.
+- Kassenabschluss: Soll-Barbestand = Startbestand + nur Bar-Einnahmen (`KassenRechner.BerechneBarSoll`); Ist wird gezählt, Differenz + Notiz dokumentiert.
+
+### Bon & Druck
+- `/bon/{id}` → PDF (QuestPDF, 80mm, Logo, QR). `/bon/{id}/druck` → HTML-Druckansicht (80mm, QR, ruft `window.print()`).
+- **Kein QZ Tray / keine lokale Zusatzsoftware** (festgelegte Regel). Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe `eNOTE/Bon-Drucken.md` und `eNOTE/Start-Kasse.ps1`.
+
+### Katalog (Leistungen, Kategorien, Rabatte)
+- Leistungen pro Laden: Preis, optional Lager (`HatStueckzahl`, Mindestbestand-Warnung), Barcode, Kategorie, Bild, Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät.
+- Standard-Artikel „Divers" (freier Betrag) wird pro Sitzung sichergestellt.
+- Rabatte: Prozent/Festbetrag, optional auf eine Leistung begrenzt, optional mit Bedingung (Checkbox).
+
+### Finanzen & Ausgaben
+- Finanzen (`/finances`, Tabs): Tages-Umsätze (Zeitraum-Filter + PDF-Export `/finances/rapport`), letzte Verkäufe (Suche/Zahlart-Filter), Kassenabschlüsse (Soll/Ist/Écart).
+- Live-Umsatz via SignalR (`/hubs/umsatz`).
+- Ausgaben (`/ausgaben`): Kategorien (immer sichtbar), Ausgaben mit optionalem Beleg (Bild/PDF aus Blob).
+
+### Abo & Plattform
+- `NutzungsAbo` pro Laden + Plattform-Standardpreis (`PlattformPreis`). SuperAdmin legt globalen/individuellen Monatspreis fest; ProduktOwner-Provision (Prozent/Festbetrag) pro Salon-Zuweisung.
+- Admin (`/admin`): Läden-Übersicht (Suche, Status-, Land-, **Besitzer**-Filter), Freigabe/Deaktivieren, Probezeit setzen, Besitzer/ProduktOwner anlegen, Facturation.
+
+## 5. Lokal starten
+
+1. **Voraussetzungen:** .NET 10 SDK, SQL Server (lokal), ggf. User Secrets.
+2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Migrationen anwenden: `dotnet ef database update --project eNOTE/eNOTE.WebApp`.
+3. **Seed:** SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`, `Seed:SuperAdminPasswort`) – ohne Secrets wird kein Admin angelegt.
+4. **Start:** `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148 (http://localhost:62149), Environment Development.
+5. **Tests:** `dotnet test eNOTE/eNOTE.Tests`.
+
+## 6. Architektur-Regeln & Konventionen
+
+- **IDbContextFactory** für jede DB-Operation (keine geteilten DbContext über parallele Zugriffe).
+- **Deutsch** für Code/Core-Modelle, **Französisch** für alle sichtbaren Nutzertexte.
+- ID-Benennung: `Id` für Basis-ID, zusammengesetzte deutsche Namen mit `…ID` (z. B. `SalonId`, `VerkaufId`).
+- Rechte serverseitig im Service prüfen (nicht nur in der UI).
+- Bei Modelländerungen EF-Migration erstellen (`dotnet ef migrations add …`).
+- Relevante Tests + Lösungsbuild nach jeder Änderung.
+- Design: Soft-UI/Neumorphismus in `app.css`; horizontale Scrollbars vermeiden; mobilfreundlich (Touch-Targets ≥ 44px); native Browser-Selects durch `EnoteSelect`/`EnoteDatePicker` ersetzen; Modals über `ModalDialog`.
+- Eigene Scoped-States für circuit-weite Zustände: `KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`; Komponenten abonnieren `OnChange` und implementieren `IDisposable`.
+
+## 7. Wichtige Flows (Kurzüberblick)
+
+- **Verkauf:** Kasse starten → Kachel/Scan → Ticket → Espèces/Carte (Modal) → bestätigen → Bon, Bestand mindern, Live-Umsatz pushen.
+- **Kassenabschluss:** „Clôturer" → Soll/Ist vergleichen → Écart + Notiz → Sitzung abgeschlossen, zurück zum Start.
+- **Laden wechseln:** Topbar-Umschalter → alle Verwaltungsseiten laden pro Laden neu.
+- **Zweiter Laden:** Paramètres → „+ Nouvel établissement" → Admin gibt frei → im Umschalter wählbar.
