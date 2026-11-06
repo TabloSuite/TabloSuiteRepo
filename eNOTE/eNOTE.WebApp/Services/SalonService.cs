@@ -58,6 +58,10 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
         Guid salonId, string dateiName, string contentType, Stream inhalt, Guid hochgeladenVonId,
         CancellationToken cancellationToken = default)
     {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!await LadenZugriff.IstBesitzerAsync(db, hochgeladenVonId, salonId, cancellationToken))
+            return (false, "Accès non autorisé.", null);
+
         var ergebnis = await mediaStorage.SaveAsync(new MediaSaveRequest
         {
             DateiName = dateiName,
@@ -71,7 +75,6 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
             return (false, ergebnis.Fehler, null);
         }
 
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)
         {

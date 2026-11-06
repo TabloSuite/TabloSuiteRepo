@@ -106,6 +106,10 @@ else
                 }
 
                 @* Schnellauswahl *@
+                @if (!GefilterteLeistungen.Any())
+                {
+                    <p class="enote-empty" role="status">Aucune prestation disponible pour cette sélection.</p>
+                }
                 <div class="enote-tiles">
                     @foreach (var l in GefilterteLeistungen)
                     {

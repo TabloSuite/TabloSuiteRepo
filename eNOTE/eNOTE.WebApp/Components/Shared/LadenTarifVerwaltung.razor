@@ -1,0 +1,60 @@
+@using ENote.Core.DataModels.Abo
+@using ENote.Core.Services
+@inject ENote.WebApp.Services.AdminService Admin
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+<button class="enote-btn enote-btn-ghost" @onclick="OeffneAsync">Tarif personnalisé</button>
+<ModalDialog Open="offen" Title="@(tarif is null ? "Tarif mensuel de l'établissement" : "Tarif mensuel · " + tarif.Name)" OnClose="() => offen = false" ErrorMessage="@fehler">
+    <ChildContent>
+        @if (tarif is not null)
+        {
+        <p>Tarif général : <strong>@tarif.Global.ToString("N0") F CFA / mois</strong></p>
+        <p>Tarif actuellement appliqué : <strong>@((tarif.Individuell ?? tarif.Global).ToString("N0")) F CFA / mois</strong> · @(tarif.Individuell is null ? "tarif général" : "tarif personnalisé")</p>
+        <p>Un tarif personnalisé remplace le tarif général pour cet établissement. Les remises sont calculées automatiquement. Les périodes déjà facturées ne changent pas.</p>
+        <div class="enote-form"><label>Montant mensuel (F CFA)</label><input type="number" min="1" step="1" @bind="preis" /></div>
+        @if (preis is > 0)
+        {
+            @foreach (var i in VertragsRegeln.Intervalle) { <p>@VertragsRegeln.Bezeichnung(i) : @VertragsRegeln.Preis(preis.Value, i).ToString("N0") F · @VertragsRegeln.Rabatt(i) %</p> }
+        }
+        <p>« Revenir au tarif général » appliquera @tarif.Global.ToString("N0") F CFA / mois aux prochaines périodes.</p>
+        }
+    </ChildContent>
+    <Footer>
+        <AsyncActionButton Text="Appliquer le tarif personnalisé" OnClick="() => SpeichereAsync(false)" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Revenir au tarif général" OnClick="() => SpeichereAsync(true)" CssClass="enote-btn-ghost" />
+    </Footer>
+</ModalDialog>
+@code {
+    [Parameter] public Guid SalonId { get; set; }
+    private decimal? preis;
+    private bool offen;
+    private string? fehler;
+    private ENote.WebApp.Services.AdminService.LadenTarif? tarif;
+    private async Task<Guid> BenutzerAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        return Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    }
+    private async Task OeffneAsync()
+    {
+        offen = true; fehler = null; tarif = null;
+        try
+        {
+            tarif = await Admin.GetLadenTarifAsync(await BenutzerAsync(), SalonId);
+            preis = tarif.Individuell ?? tarif.Global;
+        }
+        catch (Exception) { fehler = "Le chargement du tarif a échoué. Fermez puis réessayez."; }
+    }
+    private async Task SpeichereAsync(bool standard)
+    {
+        try
+        {
+            if (!standard && preis is not > 0) { fehler = "Veuillez saisir un montant positif."; return; }
+            if (tarif is null) return;
+            var id = await BenutzerAsync();
+            if (!await Admin.SetzeIndividuellenPreisAsync(id, SalonId, standard ? null : preis)) { fehler = "Établissement introuvable."; return; }
+            offen = false; fehler = null;
+        }
+        catch (Exception) { fehler = "L'enregistrement du tarif a échoué."; }
+    }
+}

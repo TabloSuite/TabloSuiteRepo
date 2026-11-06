@@ -25,6 +25,10 @@
                     <div class="enote-profil-name">@fullName</div>
                     <div class="enote-muted">@email</div>
                     <div class="enote-profil-rollen">
+                        @if (rollen.Count == 0)
+                        {
+                            <span class="enote-muted" role="status">Aucun rôle attribué à ce compte.</span>
+                        }
                         @foreach (var rolle in rollen)
                         {
                             <span class="enote-tag">@RolleText(rolle)</span>

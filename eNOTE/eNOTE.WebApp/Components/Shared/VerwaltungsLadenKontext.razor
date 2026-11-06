@@ -1,0 +1,20 @@
+@inject ENote.WebApp.Services.AktiverSalonState Laeden
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+@implements IDisposable
+
+@if (Laeden.Aktiv is { } actif)
+{
+    <div class="enote-item" role="status"><strong>Mon établissement : @actif.Salon.Name</strong></div>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Laeden.OnChange += Actualise;
+        var auth = await Auth.GetAuthenticationStateAsync();
+        if (Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var id))
+            await Laeden.InitialisiereAsync(id);
+    }
+    private void Actualise() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Laeden.OnChange -= Actualise;
+}

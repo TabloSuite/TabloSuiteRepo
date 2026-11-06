@@ -1,4 +1,4 @@
-namespace ENote.Core.DataModels.Salons;
+﻿namespace ENote.Core.DataModels.Salons;
 
 /// <summary>
 /// Ein Mandant der Plattform: ein Friseursalon (oder vergleichbares Geschäft).
@@ -38,6 +38,11 @@ public class Salon
 
     /// <summary>Individueller monatlicher Nutzungspreis; null = globaler Standard gilt.</summary>
     public decimal? IndividuellerMonatsPreis { get; set; }
+
+    public Abo.AboIntervall VertragsIntervall { get; set; } = Abo.AboIntervall.Monatlich;
+    public Abo.AboIntervall? NaechstesVertragsIntervall { get; set; }
+    public DateTime? VertragsBeginnUtc { get; set; }
+    public DateTime? VertragsWechselAbUtc { get; set; }
 
     /// <summary>Freier Slogan des Salons (z. B. „In God we trust“), erscheint auf dem Bon.</summary>
     public string? Slogan { get; set; }

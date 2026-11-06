@@ -12,14 +12,8 @@ public static class ApplicationDbInitializer
         ApplicationDbContext dbContext,
         RoleManager<Role> roleManager,
         UserManager<AppUser> userManager,
-        IConfiguration configuration,
-        bool applyMigrations = false)
+        IConfiguration configuration)
     {
-        if (applyMigrations)
-        {
-            await dbContext.Database.MigrateAsync();
-        }
-
         await SeedRollenAsync(roleManager);
         await SeedSuperAdminAsync(userManager, configuration);
         await SeedPlattformPreiseAsync(dbContext);
@@ -42,18 +36,18 @@ public static class ApplicationDbInitializer
 
             if (vorhanden is null)
             {
-                await roleManager.CreateAsync(new Role
+                PruefeErgebnis(await roleManager.CreateAsync(new Role
                 {
                     Name = rollenName,
                     NormalizedName = rollenName.ToUpperInvariant(),
                     Description = beschreibung
-                });
+                }));
             }
             else if (vorhanden.Description != beschreibung)
             {
                 vorhanden.Description = beschreibung;
                 vorhanden.UpdatedAtUtc = DateTime.UtcNow;
-                await roleManager.UpdateAsync(vorhanden);
+                PruefeErgebnis(await roleManager.UpdateAsync(vorhanden));
             }
         }
     }
@@ -69,15 +63,18 @@ public static class ApplicationDbInitializer
             return;
         }
 
-        var vorhanden = await userManager.FindByEmailAsync(email);
+        var benutzername = configuration["Seed:SuperAdminBenutzername"] ?? email;
+        var vorhanden = await userManager.FindByNameAsync(benutzername);
         if (vorhanden is not null)
         {
+            if (!await userManager.IsInRoleAsync(vorhanden, AppRollen.SuperAdmin))
+                throw new InvalidOperationException("Das konfigurierte Seed-Konto existiert ohne SuperAdmin-Rolle. Keine automatische Rechteerweiterung.");
             return;
         }
 
         var admin = new AppUser
         {
-            UserName = email,
+            UserName = benutzername,
             Email = email,
             Vorname = "Super",
             Nachname = "Admin",
@@ -86,10 +83,14 @@ public static class ApplicationDbInitializer
         };
 
         var ergebnis = await userManager.CreateAsync(admin, passwort);
-        if (ergebnis.Succeeded)
-        {
-            await userManager.AddToRoleAsync(admin, AppRollen.SuperAdmin);
-        }
+        PruefeErgebnis(ergebnis);
+        PruefeErgebnis(await userManager.AddToRoleAsync(admin, AppRollen.SuperAdmin));
+    }
+
+    private static void PruefeErgebnis(IdentityResult ergebnis)
+    {
+        if (!ergebnis.Succeeded)
+            throw new InvalidOperationException("Seed fehlgeschlagen: " + string.Join(", ", ergebnis.Errors.Select(e => e.Code)));
     }
 
     private static async Task SeedPlattformPreiseAsync(ApplicationDbContext dbContext)

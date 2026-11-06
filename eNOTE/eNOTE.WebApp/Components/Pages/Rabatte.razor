@@ -32,6 +32,10 @@
         <div class="enote-filter-leiste">
             <input class="enote-filter-suche" placeholder="Rechercher une remise…" @bind="rabattSuche" @bind:event="oninput" />
         </div>
+        @if (!GefilterteRabatte().Any())
+        {
+            <p class="enote-empty" role="status">Aucune remise ne correspond à votre recherche.</p>
+        }
         <div class="enote-grid">
             @foreach (var r in GefilterteRabatte())
             {

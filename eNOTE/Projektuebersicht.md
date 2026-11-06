@@ -2,6 +2,12 @@
 
 > Kassen- und Verwaltungs-App für kleine Geschäfte (Salon, Boutique, Atelier …), optimiert für Tablet und PC. Französische Endnutzertexte, deutsche Entwicklerdoku.
 
+## Aktueller Infrastrukturstand
+
+Deployment-Konfiguration, private Medienrechte und der getrennte Administrationspfad stehen in [Deployment-Azure.md](Deployment-Azure.md). Development speichert Medien lokal außerhalb von `wwwroot`; Production ausschließlich per Managed Identity in privaten Blobs, ohne lokalen Fallback. Der normale App-Start migriert und seedet nicht.
+
+Der übernommene fachliche Arbeitsstand ist noch inkonsistent (u. a. fehlendes `AboIntervall.SechsMonate`, veralteter Registrierungsaufruf und konkurrierende Migrationsdateien). Die fachlichen Bestandsbeschreibungen unten sind daher kein Nachweis einer abgeschlossenen Ein-Geschäft-/Pseudonym-/PIN-Umstellung und keine Deployment-Freigabe. Datenbankstände wurden in diesem Infrastrukturauftrag nicht geprüft oder geändert.
+
 ## 1. Zweck
 
 eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden" als Mandant):
@@ -16,7 +22,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 - **ASP.NET Core Identity** (AppUser + Rollen).
 - **SignalR** für Live-Umsatz (`/hubs/umsatz`) und Kunden-Display (`DisplayBenachrichtigungService`).
 - **QuestPDF** (Bon-/Berichts-/Etikett-PDFs), **QRCoder** (Bon-QR), **ZXing** (Barcode-Etiketten).
-- **Azure Blob Storage** für Medien (Logos, Produktbilder, Belege) außerhalb Development; lokal `wwwroot/media-library` in Development.
+- **Azure Blob Storage** für private Medien (Logos, Produktbilder, Belege) außerhalb Development per systemseitiger Managed Identity; Development lokal `C:\DevBlob\ENoteDataLibrary`, außerhalb von `wwwroot`.
 - **PWA** (`manifest.webmanifest`, `service-worker.js`) – installierbar auf dem Tablet.
 
 ## 3. Projektstruktur
@@ -28,7 +34,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 | `eNOTE.Tests` | xUnit-Tests (InMemory/SQLite) für Rechner und Services. |
 
 ### Wichtige Orte in `eNOTE.WebApp`
-- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, Endpunkte (`/bon/{id}`, `/bon/{id}/druck`, `/finances/rapport`, `/etiketten`, `/media/{blobName}`), SignalR-Hub.
+- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, vorhandene Endpunkte und SignalR-Hub. `Services/Storage/MedienEndpunkte.cs` registriert `/media/{**blobName}` mit DB-basierter Mandantenprüfung; `EnoteInfrastruktur.cs` prüft Production-Konfiguration und persistenten Schlüsselpfad.
 - `Data/ApplicationDbContext.cs` – EF-Modell (Salons, UserSalons, Leistungen, Rabatte, KassenSitzungen, Verkaeufe, Ausgaben, Abos, BlobMediaAssets, GeraetSalonFavoriten …).
 - `Data/Seed/ApplicationDbInitializer.cs` – Rollen + SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`/`Seed:SuperAdminPasswort`), Plattform-Standardpreise.
 - `wwwroot/app.css` – komplettes Soft-UI/Neumorphismus-Design-System.
@@ -76,8 +82,8 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 ## 5. Lokal starten
 
 1. **Voraussetzungen:** .NET 10 SDK, SQL Server (lokal), ggf. User Secrets.
-2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Migrationen anwenden: `dotnet ef database update --project eNOTE/eNOTE.WebApp`.
-3. **Seed:** SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`, `Seed:SuperAdminPasswort`) – ohne Secrets wird kein Admin angelegt.
+2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Vor administrativen Änderungen die derzeit konkurrierenden Migrationen fachlich abgleichen; kein Reset und keine automatische Startup-DDL.
+3. **Seed:** separater Einmalmodus `--database-admin=seed --database-target=localhost/ENOTEDB`, mit ausdrücklich geprüftem Verbindungsziel. SuperAdmin aus sicherer Konfiguration (`Seed:SuperAdminEmail`, `Seed:SuperAdminPasswort`, optional `Seed:SuperAdminBenutzername`); ohne Zugangsdaten kein Admin. Details und Migrationsmodus in [Deployment-Azure.md](Deployment-Azure.md).
 4. **Start:** `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148 (http://localhost:62149), Environment Development.
 5. **Tests:** `dotnet test eNOTE/eNOTE.Tests`.
 

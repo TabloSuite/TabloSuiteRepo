@@ -1,91 +1,59 @@
 using ENote.Core.Options;
 using ENote.Core.Services.Storage;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ENote.WebApp.Services.Storage;
 
-/// <summary>Lokaler Medienspeicher für Development (konfigurierbarer Ordner, auch außerhalb der App).</summary>
-public class LocalMediaStorageService(
-    IOptions<AzureBlobStorageOptions> options,
-    IWebHostEnvironment environment,
-    ILogger<LocalMediaStorageService> logger) : IMediaStorageService
+/// <summary>Private lokale Dateien, ausschließlich in Development.</summary>
+public class LocalMediaStorageService : IMediaStorageService
 {
-    private const long MaxGroesseBytes = 8 * 1024 * 1024; // 8 MB
+    private readonly string wurzelPfad;
+    private readonly ILogger<LocalMediaStorageService> logger;
 
-    /// <summary>Absoluter Wurzelpfad (unterstützt absolute und ContentRoot-relative Pfade).</summary>
-    private string WurzelPfad
+    public LocalMediaStorageService(IOptions<AzureBlobStorageOptions> options, IWebHostEnvironment environment,
+        ILogger<LocalMediaStorageService> logger)
     {
-        get
-        {
-            var konfiguriert = options.Value.LocalDataRootPath;
-            return Path.IsPathRooted(konfiguriert)
-                ? konfiguriert
-                : Path.Combine(environment.ContentRootPath, konfiguriert);
-        }
+        wurzelPfad = EnoteInfrastruktur.LokalerMedienPfad(options.Value, environment);
+        this.logger = logger;
     }
 
-    private string AbsoluterPfad(string blobName)
-        => Path.Combine(WurzelPfad, blobName.Replace('/', Path.DirectorySeparatorChar));
+    private string? AbsoluterPfad(string blobName)
+        => MedienDateien.IstGueltigerName(blobName)
+            ? Path.Combine(wurzelPfad, blobName.Replace('/', Path.DirectorySeparatorChar)) : null;
 
     public async Task<MediaSaveResult> SaveAsync(MediaSaveRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Inhalt.Length > MaxGroesseBytes)
-        {
-            return MediaSaveResult.Fehlgeschlagen("L'image dépasse la limite de 8 Mo.");
-        }
-
-        var erweiterung = Path.GetExtension(request.DateiName);
-        var blobName = $"{(request.SalonId.HasValue ? request.SalonId.ToString() : "global")}/{Guid.NewGuid():N}{erweiterung}";
-        var zielPfad = AbsoluterPfad(blobName);
-
+        var bytes = await MedienDateien.LeseUploadAsync(request.Inhalt, cancellationToken);
+        if (bytes is null) return MediaSaveResult.Fehlgeschlagen("Le fichier dépasse la limite de 8 Mo.");
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(zielPfad)!);
-            await using var datei = File.Create(zielPfad);
-            await request.Inhalt.CopyToAsync(datei, cancellationToken);
+            var name = MedienDateien.NeuerName(request.SalonId, request.DateiName);
+            var path = AbsoluterPfad(name)!;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+            return MediaSaveResult.Ok(name, GetPublicUrl(name), bytes.Length);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Lokales Speichern des Mediums {Datei} fehlgeschlagen", request.DateiName);
-            return MediaSaveResult.Fehlgeschlagen("L'enregistrement de l'image a échoué.");
+            logger.LogError(ex, "Lokales Speichern des Mediums fehlgeschlagen");
+            return MediaSaveResult.Fehlgeschlagen("L'enregistrement du fichier a échoué.");
         }
-
-        return MediaSaveResult.Ok(blobName, GetPublicUrl(blobName), request.Inhalt.Length);
     }
 
     public Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
-        var pfad = AbsoluterPfad(blobName);
-        if (File.Exists(pfad))
-        {
-            File.Delete(pfad);
-            return Task.FromResult(true);
-        }
-
-        return Task.FromResult(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = AbsoluterPfad(blobName);
+        if (path is null || !File.Exists(path)) return Task.FromResult(false);
+        File.Delete(path);
+        return Task.FromResult(true);
     }
 
-    /// <summary>Lokale Dateien werden über den geschützten Endpunkt /media ausgeliefert.</summary>
-    public string GetPublicUrl(string blobName)
-        => "/media/" + Uri.EscapeDataString(blobName);
-
-    /// <summary>Liefert den absoluten Dateipfad (für den /media-Endpunkt) oder null, wenn ungültig.</summary>
-    public string? ResolveAbsoluterPfad(string blobName)
-    {
-        if (string.IsNullOrWhiteSpace(blobName) || blobName.Contains(".."))
-        {
-            return null;
-        }
-
-        var pfad = AbsoluterPfad(blobName);
-        return File.Exists(pfad) ? pfad : null;
-    }
+    public string GetPublicUrl(string blobName) => MedienDateien.Url(blobName);
 
     public async Task<byte[]?> LadeBytesAsync(string blobName, CancellationToken cancellationToken = default)
     {
-        var pfad = ResolveAbsoluterPfad(blobName);
-        return pfad is null ? null : await File.ReadAllBytesAsync(pfad, cancellationToken);
+        var path = AbsoluterPfad(blobName);
+        return path is null || !File.Exists(path) ? null : await File.ReadAllBytesAsync(path, cancellationToken);
     }
 }
-

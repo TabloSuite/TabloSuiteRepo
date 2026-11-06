@@ -1,6 +1,10 @@
 @typeparam TValue
 @* Moderne Pill-/Karten-Radio-Gruppe (Soft-UI) *@
 <div class="enote-radio-group" role="radiogroup">
+    @if (Options.Count == 0)
+    {
+        <p class="enote-empty" role="status">Aucune option disponible.</p>
+    }
     @foreach (var option in Options)
     {
         var istAktiv = EqualityComparer<TValue>.Default.Equals(option.Value, Value);

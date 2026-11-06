@@ -28,6 +28,10 @@
         <div class="enote-filter-leiste">
             <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)…" @bind="teamSuche" @bind:event="oninput" />
         </div>
+        @if (!GefiltertesTeam().Any())
+        {
+            <p class="enote-empty" role="status">Aucun membre ne correspond à votre recherche.</p>
+        }
         <div class="enote-grid">
             @foreach (var m in GefiltertesTeam())
             {

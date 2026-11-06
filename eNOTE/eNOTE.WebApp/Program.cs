@@ -1,9 +1,10 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ENote.Core.DataModels.Identity;
 using ENote.WebApp.Components;
 using ENote.WebApp.Data;
 using ENote.WebApp.Data.Seed;
 using ENote.WebApp.Services;
+using ENote.WebApp.Services.Storage;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
-var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
 
 builder.Host.UseSerilog((_, services, loggerConfiguration) => loggerConfiguration
     .MinimumLevel.Information()
@@ -26,7 +26,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSignalR();
 
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthorization();
 
 var configuredConnectionStringName = builder.Configuration.GetValue<string>("Database:ConnectionStringName") ?? "DefaultConnection";
 var connectionString = builder.Configuration.GetConnectionString(configuredConnectionStringName);
@@ -35,6 +35,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException($"No database connection string is configured for '{configuredConnectionStringName}'. Set ConnectionStrings:{configuredConnectionStringName} or choose another Database:ConnectionStringName.");
 }
+
+var administration = DatenbankAdministration.Pruefe(args, builder.Configuration, builder.Environment, connectionString);
 
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions =>
@@ -99,53 +101,51 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<KatalogService>();
-builder.Services.AddScoped<KassenService>();
-builder.Services.AddScoped<TeamService>();
-builder.Services.AddScoped<AdminService>();
-builder.Services.AddScoped<ProduktOwnerService>();
-builder.Services.AddScoped<SalonService>();
-builder.Services.AddScoped<FinanzService>();
-builder.Services.AddScoped<AusgabenService>();
-builder.Services.AddScoped<HinweisService>();
-builder.Services.AddScoped<AboService>();
-builder.Services.AddScoped<ExceptionLogService>();
-builder.Services.AddScoped<UmsatzBenachrichtigungService>();
-builder.Services.AddScoped<IUmsatzBenachrichtigungService>(sp => sp.GetRequiredService<UmsatzBenachrichtigungService>());
-builder.Services.AddScoped<IDisplayBenachrichtigungService, DisplayBenachrichtigungService>();
-builder.Services.AddScoped<KassenAnzeigeState>();
-builder.Services.AddScoped<AktiverSalonState>();
-builder.Services.AddScoped<BesitzerPinState>();
-builder.Services.AddScoped<GeraetFavoritService>();
-builder.Services.AddScoped<ToastService>();
-
-// Medienspeicher: Azure Blob (Container „enote-blobuploads“) außerhalb Development,
-// lokal unter wwwroot/media-library in Development.
-builder.Services.Configure<ENote.Core.Options.AzureBlobStorageOptions>(
-    builder.Configuration.GetSection(ENote.Core.Options.AzureBlobStorageOptions.SectionName));
-builder.Services.AddScoped<ENote.Core.Services.Storage.IMediaStorageService>(sp =>
+if (administration is null)
 {
-    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ENote.Core.Options.AzureBlobStorageOptions>>().Value;
-    var env = sp.GetRequiredService<IWebHostEnvironment>();
-    // Development: immer lokal unter wwwroot/media-library.
-    // Außerhalb Development: Azure Blob (Container „enote-blobuploads“), wenn aktiviert.
-    var useBlob = !env.IsDevelopment() && opts.Enabled && !string.IsNullOrWhiteSpace(opts.BlobConnectionString);
-    return useBlob
-        ? ActivatorUtilities.CreateInstance<ENote.WebApp.Services.Storage.AzureBlobMediaStorageService>(sp)
-        : ActivatorUtilities.CreateInstance<ENote.WebApp.Services.Storage.LocalMediaStorageService>(sp);
-});
+    builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<KatalogService>();
+    builder.Services.AddScoped<KassenService>();
+    builder.Services.AddScoped<TeamService>();
+    builder.Services.AddScoped<AdminService>();
+    builder.Services.AddScoped<ProduktOwnerService>();
+    builder.Services.AddScoped<SalonService>();
+    builder.Services.AddScoped<FinanzService>();
+    builder.Services.AddScoped<AusgabenService>();
+    builder.Services.AddScoped<HinweisService>();
+    builder.Services.AddScoped<AboService>();
+    builder.Services.AddScoped<ExceptionLogService>();
+    builder.Services.AddScoped<UmsatzBenachrichtigungService>();
+    builder.Services.AddScoped<IUmsatzBenachrichtigungService>(sp => sp.GetRequiredService<UmsatzBenachrichtigungService>());
+    builder.Services.AddScoped<IDisplayBenachrichtigungService, DisplayBenachrichtigungService>();
+    builder.Services.AddScoped<KassenAnzeigeState>();
+    builder.Services.AddScoped<AktiverSalonState>();
+    builder.Services.AddScoped<BesitzerPinState>();
+    builder.Services.AddScoped<GeraetFavoritService>();
+    builder.Services.AddScoped<ToastService>();
+    builder.Services.AddScoped<MedienZugriff>();
+    builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
+}
+else
+    builder.Services.AddDataProtection(); // Einmalprozess benötigt weder Storage noch persistente Runtime-Schlüssel.
 
-var app = builder.Build();
+await using var app = builder.Build();
 
-if (applyMigrationsOnStartup)
+if (administration is not null)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
     await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-    await ApplicationDbInitializer.SeedAsync(dbContext, roleManager, userManager, app.Configuration, applyMigrations: true);
+    if (administration.Migrieren)
+        await dbContext.Database.MigrateAsync();
+    if (administration.Seed)
+    {
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await ApplicationDbInitializer.SeedAsync(dbContext, roleManager, userManager, app.Configuration);
+    }
+    Console.WriteLine("Datenbankadministration abgeschlossen; kein Webserver gestartet.");
+    return;
 }
 
 if (!app.Environment.IsDevelopment())
@@ -163,31 +163,8 @@ app.MapRazorComponents<App>()
 
 app.MapHub<UmsatzHub>("/hubs/umsatz");
 
-// Geschützte Auslieferung lokaler Mediendateien (Development).
-app.MapGet("/media/{blobName}", async (
-    string blobName,
-    ENote.Core.Services.Storage.IMediaStorageService mediaStorage,
-    CancellationToken cancellationToken) =>
-{
-    var bytes = await mediaStorage.LadeBytesAsync(blobName, cancellationToken);
-    if (bytes is null)
-    {
-        return Results.NotFound();
-    }
-
-    var contentType = Path.GetExtension(blobName).ToLowerInvariant() switch
-    {
-        ".png" => "image/png",
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".gif" => "image/gif",
-        ".webp" => "image/webp",
-        ".svg" => "image/svg+xml",
-        ".pdf" => "application/pdf",
-        _ => "application/octet-stream"
-    };
-
-    return Results.File(bytes, contentType);
-}).RequireAuthorization();
+// Geschützte Auslieferung von Mediendateien.
+app.MapEnoteMedien();
 
 app.MapPost("/auth/login/submit", async (
     HttpContext httpContext,
@@ -227,6 +204,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
     HttpContext httpContext,
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     SalonService salonService,
+    MedienZugriff zugriff,
     CancellationToken cancellationToken) =>
 {
     await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -234,7 +212,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
         .Include(v => v.Positionen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
-    if (verkauf is null)
+    if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
     {
         return Results.NotFound();
     }
@@ -248,6 +226,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
         : $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/bon/{verkauf.Id}";
 
     var pdf = BonPdfService.ErzeugeBon(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, logoBytes, qrZiel);
+    httpContext.Response.Headers.CacheControl = "private, no-store";
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"recu-{verkauf.Id.ToString()[..8]}.pdf");
 }).RequireAuthorization();
 
@@ -256,6 +235,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
     Guid verkaufId,
     HttpContext httpContext,
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    MedienZugriff zugriff,
     CancellationToken cancellationToken) =>
 {
     await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -263,7 +243,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
         .Include(v => v.Positionen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
-    if (verkauf is null)
+    if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
     {
         return Results.NotFound();
     }
@@ -273,71 +253,8 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
         ? salon.BonQrLink
         : $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/bon/{verkauf.Id}";
     var html = BonDruckHtml.Erzeuge(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, qrZiel);
+    httpContext.Response.Headers.CacheControl = "private, no-store";
     return Results.Content(html, "text/html; charset=utf-8");
 }).RequireAuthorization();
 
-// Finanzbericht als PDF (Zeitraum gefiltert). Nur Besitzer/delegierte Finanzberechtigte.
-app.MapGet("/finances/rapport", async (
-    Guid salonId,
-    DateTime von,
-    DateTime bis,
-    HttpContext httpContext,
-    IDbContextFactory<ApplicationDbContext> dbContextFactory,
-    FinanzService finanzService,
-    CancellationToken cancellationToken) =>
-{
-    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-    var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
-    if (salon is null)
-    {
-        return Results.NotFound();
-    }
-
-    var bisEnde = bis.Date.AddDays(1).AddTicks(-1);
-    var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, von.Date, bisEnde, cancellationToken);
-    var pdf = FinanzBerichtPdfService.ErzeugeBericht(salon, von, bis, tage);
-    return InlinePdfResponse.Create(httpContext.Response, pdf, $"rapport-{salon.Name}-{von:yyyyMMdd}-{bis:yyyyMMdd}.pdf");
-}).RequireAuthorization();
-
-// Barcode-Etiketten als PDF (A4-Bogen oder Einzel-Etikett).
-app.MapGet("/etiketten", async (
-    Guid salonId,
-    Guid leistungId,
-    int anzahl,
-    string format,
-    HttpContext httpContext,
-    IDbContextFactory<ApplicationDbContext> dbContextFactory,
-    CancellationToken cancellationToken) =>
-{
-    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-    var leistung = await db.Leistungen
-        .FirstOrDefaultAsync(l => l.Id == leistungId && l.SalonId == salonId, cancellationToken);
-    if (leistung is null || string.IsNullOrWhiteSpace(leistung.StrichCode))
-    {
-        return Results.NotFound();
-    }
-
-    var etikett = new EtikettPdfService.Etikett(
-        leistung.StrichCode,
-        leistung.Name,
-        leistung.Preis > 0 ? $"{leistung.Preis:N0} F" : null);
-
-    byte[] pdf;
-    string dateiName;
-    if (string.Equals(format, "einzel", StringComparison.OrdinalIgnoreCase))
-    {
-        pdf = EtikettPdfService.ErzeugeEinzelEtikett(etikett);
-        dateiName = $"etiquette-{leistung.Name}.pdf";
-    }
-    else
-    {
-        var anzahlSicher = Math.Clamp(anzahl, 1, 48);
-        var etiketten = Enumerable.Range(0, anzahlSicher).Select(_ => etikett).ToList();
-        pdf = EtikettPdfService.ErzeugeA4Bogen(etiketten);
-        dateiName = $"etiquettes-{leistung.Name}-{anzahlSicher}.pdf";
-    }
-
-    return InlinePdfResponse.Create(httpContext.Response, pdf, dateiName);
-}).RequireAuthorization();
-
-app.Run();
+await app.RunAsync();

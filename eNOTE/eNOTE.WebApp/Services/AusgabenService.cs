@@ -86,6 +86,12 @@ public class AusgabenService(IDbContextFactory<ApplicationDbContext> dbContextFa
         Guid? belegAssetId = null;
         if (beleg is not null)
         {
+            if (!await LadenZugriff.HatZugangAsync(db, erfasstVonId, salonId, cancellationToken)
+                || !await db.UserSalons.AnyAsync(us => us.AppUserId == erfasstVonId && us.SalonId == salonId
+                    && us.KannFinanzenSehen, cancellationToken)
+                    && !await LadenZugriff.IstBesitzerAsync(db, erfasstVonId, salonId, cancellationToken))
+                return (false, "Accès non autorisé.", null);
+
             var ergebnis = await mediaStorage.SaveAsync(new MediaSaveRequest
             {
                 DateiName = beleg.Value.DateiName,

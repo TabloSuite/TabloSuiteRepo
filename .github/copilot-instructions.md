@@ -8,6 +8,8 @@
 - Für Änderungen relevante Tests und den Lösungsbuild ausführen. App-Texte bleiben französisch; Kommunikation und Entwicklerdokumentation dürfen deutsch sein. Bestehende fachliche Regeln unten werden durch diesen Wegweiser nicht ersetzt.
 - Vor Abschluss der Kernumstellung Sprachschul-/CEFR-Reste auch in Tests, C# und Anweisungsdateien entfernen, veraltete Tests auf neue Fachregeln umstellen und nachweislich ungenutzte Implementierungen/Dateien bereinigen. Änderbare Schüler-E-Mail/Passwort auf stabile Identitätsverknüpfungen und Matrikelnummern prüfen; komplette Testsuite und Lösungsbuild ausführen.
 - Verbindungsinformationen für Azure SQL aus den vorhandenen User Secrets ermitteln, statt erneut nach Server und Datenbank zu fragen. Nutzer hat vollständiges Leeren und Neuaufbauen der Azure-Datenbank ausdrücklich bestätigt; genaue Zielprüfung bleibt erforderlich.
+- Medien in Development lokal speichern; in Production ausschließlich privater Azure Blob Storage per Managed Identity ohne stillen lokalen Fallback. Nur Deployment vorbereiten, nicht veröffentlichen; keine Secrets lesen, keine DB-/Cloudänderungen oder Browserprüfung.
+- Für die App-/E-Mail-Einrichtung bestehende Domain tablosuite.com verwenden; keine erneute Domainregistrierung oder unnötigen Domaintransfer empfehlen.
 
 ## General Guidelines
 - Bereinigung bestätigt: veraltete Sprachlevel-Fixtures, widersprüchliche Anweisungen und nachweislich ungenutzten Code entfernen. Fachbeziehungen bleiben an unveränderlichen Benutzer-GUIDs; E-Mail/Passwort sind änderbar, Matrikelnummer ist schulbezogene Kennung, nicht Fremdschlüssel. Keine vierstellige Nummer ohne eigene fachliche Entscheidung erzwingen.
@@ -120,9 +122,12 @@
 - Bestätigter Zielablauf: endgültige Klassenveröffentlichung mit ausdrücklicher Bestätigung; danach keine stille Änderung/Rücknahme, sondern begründete Berichtigung mit archiviertem Original, Wirkungsprüfung auf Ränge/Folgeperioden und dokumentierter Benachrichtigung/Abholung. QR-Statusprüfung gewünscht, öffentlich ohne Schülernamen, Geburtsdaten oder Noten.
 - Die bestätigten Funktionen vollständig nacheinander umsetzen, ohne Freigabepause nach jeder Phase. Bei tatsächlich offenen fachlichen Entscheidungen darf und soll nachgefragt werden.
 - Bei Umsetzungsvorschlägen immer proaktiv eine konkrete Empfehlung für die bessere Lösung nennen und wichtige Vorteile, Risiken oder einfachere Alternativen kurz erklären.
-- Für Bulletins wurde bestätigt: kein Siegel-/Cachet-Upload, sondern freier PDF-Bereich für manuelle Unterschrift und echten Schulstempel; optionales Schullogo bleibt möglich.
+- Für Bulletins wurde bestätigt: kein Siegel-/Cachet-Upload, sondern freier PDF-Bereich für manuelle Unterschrift و echten Schulstempel; optionales Schullogo bleibt möglich.
 - Alle übrigen Stundenplan-/Bulletin-Restarbeiten umsetzen; Exam-Ergebnisse bleiben bewusst von der manuellen Bulletin-Notenerfassung getrennt. Keine automatische Exam-Verknüpfung. Den manuellen Browser-Praxistest übernimmt weiterhin der Nutzer.
 - Nutzer bestätigt endgültige Veröffentlichung mit geregeltem Berichtigungsprozess statt stiller Änderung: Original archivieren, verpflichtende Begründung, separat bestätigte Ersatzdokumente, Auswirkungen auf andere Ränge/Jahresnoten prüfen, Benachrichtigung/Abholung dokumentieren. QR-Code zur Statusprüfung gewünscht; öffentliche Anzeige muss datensparsam sein.
 
 ## Drucklösungen
 - Für eNOTE-Bondruck möchte der Nutzer keine QZ-Tray-Integration und QZ Tray nicht installieren. Keine lokale Zusatzsoftware als vorausgesetzte Drucklösung einführen.
+
+## Build-Anweisungen
+- Bei diesem Build-Auftrag keinen Agentenwechsel durchführen; den aktuellen Lösungsbuild direkt ausführen und Fehler minimal und sicher im bestehenden Workspace beheben.

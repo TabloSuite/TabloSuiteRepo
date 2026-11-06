@@ -16,6 +16,7 @@
 - **Schulden/Abrechnung:** Plattform-Abopreis global als Standard oder individuell pro Salon; ProduktOwner-Provision (Prozent/Festbetrag) ist plattformintern und darf die Laden-Finanzen nicht verfälschen. Finanzberichte strikt pro Laden.
 
 ## Technische Regeln
+- Medien: Development lokal außerhalb von wwwroot; Production ausschließlich privater Azure Blob Storage per Managed Identity, ohne lokalen/Shared-Key-Fallback. Deployment-Einstellungen und getrennte, zielbestätigte DB-Administration: [Deployment-Azure.md](Deployment-Azure.md). Keine Veröffentlichung, DB-/Cloudänderungen, Secret-Lesezugriffe oder Browserprüfung für den laufenden Vorbereitungsauftrag; vorhandene Änderungen erhalten.
 - Pro DB-Operation `IDbContextFactory` verwenden; Rechte serverseitig im Service prüfen (nicht nur in der UI).
 - Code/Core-Modelle **deutsch**, alle sichtbaren Nutzertexte **französisch**. Kommunikation/Entwicklerdoku deutsch.
 - IDs: `Id` für Basis, zusammengesetzt mit `…ID`/`…Id` (z. B. `SalonId`, `VerkaufId`).

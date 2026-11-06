@@ -66,7 +66,15 @@
             }
 
             var gefiltert = GefilterteSalons().ToList();
+            @if (ausstehende.Count == 0)
+            {
+                <p class="enote-empty" role="status">Aucun établissement en attente de validation.</p>
+            }
             <h2 class="enote-section-title">Tous les établissements (@gefiltert.Count / @salons.Count)</h2>
+            @if (gefiltert.Count == 0)
+            {
+                <p class="enote-empty" role="status">@(salons.Count == 0 ? "Aucun établissement pour le moment." : "Aucun établissement ne correspond à votre recherche ou aux filtres sélectionnés.")</p>
+            }
             <div class="enote-grid">
                 @foreach (var s in gefiltert)
                 {
@@ -124,6 +132,10 @@
             <AuthorizeView Roles="SuperAdmin">
                 <Authorized>
                     <h2 class="enote-section-title">Prix de la plateforme</h2>
+                    @if (plattformPreise.Count == 0)
+                    {
+                        <p class="enote-empty" role="status">Aucun tarif de plateforme pour le moment.</p>
+                    }
                     <div class="enote-grid">
                         @foreach (var p in plattformPreise)
                         {
@@ -153,6 +165,10 @@
                             <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="OeffnePoAnlegeDialog">+ Ajouter</button>
                         </div>
                         <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)…" @bind="poSuche" @bind:event="oninput" />
+                        @if (!GefilterteProduktOwners().Any())
+                        {
+                            <p class="enote-empty" role="status">@(produktOwners.Count == 0 ? "Aucun propriétaire plateforme pour le moment. Cliquez sur « Ajouter » pour créer un compte." : "Aucun propriétaire plateforme ne correspond à votre recherche.")</p>
+                        }
                         <div class="enote-item-actions" style="flex-wrap:wrap">
                             @foreach (var po in GefilterteProduktOwners())
                             {
@@ -168,6 +184,10 @@
                             <div class="enote-zuweisung">
                                 <h3>établissements de @ausgewaehlterPoName</h3>
                                 <p class="enote-muted">Cochez les établissements qu'il gére. Par défaut il voit le chiffre d'affaires de l'établissement.</p>
+                                @if (salons.Count == 0)
+                                {
+                                    <p class="enote-empty" role="status">Aucun établissement disponible pour une affectation.</p>
+                                }
                                 @foreach (var s in salons)
                                 {
                                     var z = zuweisungen.FirstOrDefault(x => x.SalonId == s.SalonId);

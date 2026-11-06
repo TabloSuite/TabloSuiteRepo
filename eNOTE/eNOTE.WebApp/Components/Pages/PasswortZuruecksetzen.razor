@@ -1,0 +1,31 @@
+@page "/auth/reinitialiser"
+@rendermode InteractiveServer
+@inject ENote.WebApp.Services.KontoWiederherstellung Service
+
+<PageTitle>Nouveau mot de passe</PageTitle>
+<div class="enote-page enote-page-narrow"><section class="enote-card">
+<h1>Choisir un nouveau mot de passe</h1>
+<p>Ce lien concerne uniquement le compte pour lequel la récupération a été demandée.</p>
+@if (message is not null) { <p role="status">@message</p> }
+<div class="enote-form"><label>Nouveau mot de passe</label><PasswordInput @bind-Value="passwort" Autocomplete="new-password" />
+<label>Confirmer le mot de passe</label><PasswordInput @bind-Value="confirmation" Autocomplete="new-password" /></div>
+<AsyncActionButton Text="Enregistrer" OnClick="EnregistrerAsync" CssClass="enote-btn-primary" />
+<a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
+</section></div>
+@code {
+    [SupplyParameterFromQuery(Name = "compte")] public Guid Compte { get; set; }
+    [SupplyParameterFromQuery(Name = "code")] public string? Code { get; set; }
+    private string passwort = "", confirmation = "";
+    private string? message;
+    private async Task EnregistrerAsync()
+    {
+        if (passwort.Length < 6 || passwort != confirmation) { message = "Les mots de passe doivent correspondre et respecter les règles : au moins 6 caractères, un chiffre et une minuscule."; return; }
+        try
+        {
+            var ok = !string.IsNullOrWhiteSpace(Code) && await Service.ReinitialiseAsync(Compte, Code, passwort);
+            message = ok ? "Mot de passe modifié. Connectez-vous avec votre pseudonyme." : "Lien invalide ou expiré, ou mot de passe non conforme. Demandez un nouveau lien.";
+            if (ok) { passwort = confirmation = ""; }
+        }
+        catch { message = "La réinitialisation a échoué. Veuillez réessayer."; }
+    }
+}

@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="obj\FusszeilePruefung\FusszeilePruefung.csproj" />
+    <None Include="obj\LeerzustandPruefung\LeerzustandPruefung.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
 	<ProjectReference Include="..\eNOTE.Core\eNOTE.Core.csproj" />
 	<ProjectReference Include="..\eNOTE.WebApp\eNOTE.WebApp.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 
 namespace ENote.Core.DataModels.Salons;
 
@@ -30,4 +30,5 @@ public class ProduktOwnerSalon
     public decimal? FestbetragProvision { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? GueltigBisUtc { get; set; }
 }

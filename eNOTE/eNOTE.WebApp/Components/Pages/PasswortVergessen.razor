@@ -1,0 +1,23 @@
+@page "/auth/mot-de-passe-oublie"
+@rendermode InteractiveServer
+@inject ENote.WebApp.Services.KontoWiederherstellung Service
+
+<PageTitle>Mot de passe oublié</PageTitle>
+<div class="enote-page enote-page-narrow"><section class="enote-card">
+<h1>Mot de passe oublié</h1>
+<p>Indiquez le pseudonyme du compte. Plusieurs comptes peuvent utiliser la même adresse e-mail ; chaque lien ne concerne qu'un seul compte.</p>
+@if (message is not null) { <p role="status">@message</p> }
+<div class="enote-form"><label>Pseudonyme</label><input @bind="pseudonym" autocomplete="username" maxlength="256" /></div>
+<AsyncActionButton Text="Envoyer le lien" OnClick="EnvoyerAsync" CssClass="enote-btn-primary" />
+<a class="enote-btn enote-btn-ghost" href="/auth/login">Retour à la connexion</a>
+</section></div>
+@code {
+    private string pseudonym = "";
+    private string? message;
+    private async Task EnvoyerAsync()
+    {
+        if (string.IsNullOrWhiteSpace(pseudonym)) { message = "Veuillez indiquer le pseudonyme."; return; }
+        try { await Service.AnfordernAsync(pseudonym); message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables."; }
+        catch { message = "La récupération n'est pas disponible pour le moment. Contactez l'administrateur."; }
+    }
+}

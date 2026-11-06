@@ -85,6 +85,10 @@
                     <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
                     <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
                 </div>
+                @if (!GefilterteVerkaeufe().Any())
+                {
+                    <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche ou au mode de paiement sélectionné.</p>
+                }
                 <div class="enote-feed">
                     @foreach (var v in GefilterteVerkaeufe())
                     {

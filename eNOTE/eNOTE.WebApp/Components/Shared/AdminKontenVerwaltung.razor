@@ -1,0 +1,109 @@
+@inject ENote.WebApp.Services.AdminKontenService Service
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+<section class="enote-card">
+    <h2>Administrateurs</h2>
+    <p>Chaque administrateur peut créer un autre administrateur. Seul l'administrateur initial peut modifier ou supprimer les autres comptes administrateurs.</p>
+    @if (fehler is not null) { <p role="alert">@fehler</p> }
+    <button class="enote-btn enote-btn-primary" @onclick="Neu">+ Ajouter un administrateur</button>
+    @if (laedt) { <p role="status">Chargement des administrateurs…</p> }
+    else if (fehler is null && konten.Count == 0)
+    {
+        <p class="enote-empty" role="status">Aucun administrateur pour le moment.</p>
+    }
+    <div class="enote-grid">
+        @foreach (var k in konten)
+        {
+            <div class="enote-item">
+                <strong>@k.Vorname @k.Nachname</strong><p>@k.Pseudonym · @k.Email</p>
+                @if (k.ErsterAdmin) { <span class="enote-tag">Administrateur initial · compte protégé</span> }
+                else
+                {
+                    <span class="enote-tag">@(k.Gesperrt ? "Compte bloqué" : "Compte actif")</span>
+                    @if (hauptadmin)
+                    {
+                        <div class="enote-item-actions">
+                            <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeite(k)">Modifier</button>
+                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => Loeschen(k)">Supprimer</button>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</section>
+<ModalDialog Open="offen" Title="@(ziel is null ? "Ajouter un administrateur" : "Modifier l'administrateur")" OnClose="() => offen = false" ErrorMessage="@dialogFehler">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Prénom</label><input @bind="vorname" maxlength="100" />
+            <label>Nom</label><input @bind="nachname" maxlength="100" />
+            <label>Adresse e-mail</label><input type="email" @bind="email" maxlength="256" />
+            @if (ziel is null)
+            {
+                <label>Pseudonyme unique</label><input @bind="pseudonym" autocomplete="username" />
+                <label>Mot de passe initial</label><PasswordInput @bind-Value="passwort" />
+                <p>Communiquez ce mot de passe à l'administrateur avant de fermer cette fenêtre.</p>
+            }
+            else { <EnoteCheckbox @bind-Value="gesperrt" Label="Bloquer ce compte" /><p>L'administrateur devra se reconnecter après la modification.</p> }
+        </div>
+    </ChildContent>
+    <Footer><AsyncActionButton Text="Enregistrer" OnClick="SpeichereAsync" CssClass="enote-btn-primary" /></Footer>
+</ModalDialog>
+<ModalDialog Open="loeschenOffen" Title="Supprimer l'administrateur" OnClose="() => loeschenOffen = false" ErrorMessage="@dialogFehler">
+    <ChildContent><p>Supprimer définitivement le compte de @vorname @nachname (@email) ? Cette opération est irréversible.</p></ChildContent>
+    <Footer><AsyncActionButton Text="Confirmer la suppression" OnClick="LoescheAsync" CssClass="enote-danger" /></Footer>
+</ModalDialog>
+
+@code {
+    private List<ENote.WebApp.Services.AdminKontenService.AdminKonto> konten = [];
+    private Guid user;
+    private Guid? ziel;
+    private bool laedt = true;
+    private bool hauptadmin, offen, loeschenOffen, gesperrt;
+    private string vorname = "", nachname = "", email = "", passwort = "";
+    private string pseudonym = "";
+    private string? fehler, dialogFehler;
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out user);
+        await LadeAsync();
+    }
+    private async Task LadeAsync()
+    {
+        laedt = true;
+        fehler = null;
+        try { konten = await Service.GetAsync(user); hauptadmin = konten.Any(k => k.Id == user && k.ErsterAdmin); }
+        catch { fehler = "Le chargement des administrateurs a échoué."; }
+        finally { laedt = false; }
+    }
+    private void Neu()
+    {
+        ziel = null; vorname = nachname = email = pseudonym = ""; gesperrt = false; dialogFehler = null;
+        passwort = "Aa1!" + Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)); offen = true;
+    }
+    private void Bearbeite(ENote.WebApp.Services.AdminKontenService.AdminKonto k)
+    {
+        ziel = k.Id; vorname = k.Vorname; nachname = k.Nachname; email = k.Email; gesperrt = k.Gesperrt; dialogFehler = null; offen = true;
+    }
+    private void Loeschen(ENote.WebApp.Services.AdminKontenService.AdminKonto k)
+    {
+        Bearbeite(k); offen = false; loeschenOffen = true;
+    }
+    private static string Nachricht(Exception ex) => ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException ? ex.Message : "L'opération a échoué.";
+    private async Task SpeichereAsync()
+    {
+        try
+        {
+            if (ziel is Guid id) await Service.SpeichereAsync(user, id, vorname, nachname, email, gesperrt);
+            else await Service.LegeAnAsync(user, vorname, nachname, email, passwort, benutzername: pseudonym);
+            offen = false; passwort = ""; await LadeAsync();
+        }
+        catch (Exception ex) { dialogFehler = Nachricht(ex); }
+    }
+    private async Task LoescheAsync()
+    {
+        try { if (ziel is Guid id) await Service.LoescheAsync(user, id); loeschenOffen = false; await LadeAsync(); }
+        catch (Exception ex) { dialogFehler = Nachricht(ex); }
+    }
+}

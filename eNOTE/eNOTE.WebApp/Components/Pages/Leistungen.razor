@@ -30,6 +30,10 @@
                 <input @bind="neueKategorieName" placeholder="ex. Tissus, Boissons…" class="enote-input-inline" />
                 <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
             </div>
+            @if (!isLoading && kategorien.Count == 0)
+            {
+                <p class="enote-empty" role="status">Aucune catégorie pour le moment.</p>
+            }
             <div class="enote-kategorie-liste">
                 @foreach (var k in kategorien)
                 {
@@ -58,6 +62,10 @@
             <input class="enote-filter-suche" placeholder="Rechercher une prestation…" @bind="leistungsSuche" @bind:event="oninput" />
             <EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" />
         </div>
+        @if (gefiltert.Count == 0)
+        {
+            <p class="enote-empty" role="status">Aucune prestation ne correspond à votre recherche ou à la catégorie sélectionnée.</p>
+        }
         <div class="enote-grid">
             @foreach (var l in gefiltert)
             {

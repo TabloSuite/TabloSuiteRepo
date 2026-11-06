@@ -1,10 +1,11 @@
-namespace ENote.Core.DataModels.Abo;
+﻿namespace ENote.Core.DataModels.Abo;
 
 public enum AboIntervall
 {
     Monatlich = 0,
     DreiMonate = 1,
-    Jaehrlich = 2
+    Jaehrlich = 2,
+    SechsMonate = 3
 }
 
 public enum AboZahlungStatus
@@ -37,6 +38,13 @@ public class NutzungsAbo
 
     public AboIntervall Intervall { get; set; }
     public decimal PreisSnapshot { get; set; }
+    public decimal? MonatsBasisSnapshot { get; set; }
+    public decimal RabattProzentSnapshot { get; set; }
+    public bool IndividuellerPreisSnapshot { get; set; }
+    public bool IstTeilperiode { get; set; }
+    public DateTime? FaelligUtc { get; set; }
+    public DateTime? KassenSperreAbUtc { get; set; }
+    public bool AutomatischErstellt { get; set; }
 
     public DateTime ZeitraumVonUtc { get; set; }
     public DateTime ZeitraumBisUtc { get; set; }

@@ -34,6 +34,10 @@
                         }
                     </div>
                 }
+                else if (hinweiseGeladen)
+                {
+                    <p class="enote-empty" role="status">Aucune notification à lire.</p>
+                }
 
                 <AuthorizeView Roles="SuperAdmin, ProduktOwner" Context="adminCtx">
                     <Authorized>

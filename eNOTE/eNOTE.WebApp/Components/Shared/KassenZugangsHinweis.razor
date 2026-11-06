@@ -1,0 +1,60 @@
+@using ENote.WebApp.Services
+@inject AktiverSalonState AktiverSalon
+@inject KassenZugangService Zugang
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+@implements IDisposable
+
+@if (hinweis is not null)
+{
+    <div class="@(gesperrt ? "alert alert-error" : "enote-card enote-settings-card")" role="status">
+        @hinweis
+        @if (besitzer)
+        {
+            <a class="enote-btn enote-btn-ghost" href="/abonnement">Abonnement et paiement</a>
+        }
+        @if (gesperrt)
+        {
+            <a class="enote-btn enote-btn-ghost" href="/caisse">Consulter ou clôturer la caisse existante</a>
+        }
+    </div>
+}
+@code {
+    [Parameter] public Guid? SalonId { get; set; }
+    private Guid? geladenerSalon;
+    private bool berechtigt;
+    private string? hinweis;
+    private bool gesperrt, besitzer, entsorgt;
+    private int version;
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        besitzer = auth.User.IsInRole("Besitzer");
+        berechtigt = besitzer || auth.User.IsInRole("Kassierer");
+        if (!berechtigt) return;
+        if (!AktiverSalon.IstGeladen && Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var id))
+            await AktiverSalon.InitialisiereAsync(id);
+        AktiverSalon.OnChange += Change;
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        if (berechtigt && geladenerSalon != (SalonId ?? AktiverSalon.Aktiv?.SalonId)) await LadeAsync();
+    }
+    private void Change() => _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    private async Task LadeAsync()
+    {
+        var aktuell = ++version;
+        hinweis = null;
+        gesperrt = false;
+        geladenerSalon = SalonId ?? AktiverSalon.Aktiv?.SalonId;
+        if (geladenerSalon is not Guid salon) return;
+        try
+        {
+            var status = await Zugang.PruefeAsync(salon);
+            if (entsorgt || aktuell != version) return;
+            hinweis = status.Hinweis;
+            gesperrt = status.Gesperrt;
+        }
+        catch (Exception) { if (!entsorgt && aktuell == version) hinweis = "Le statut de la caisse ne peut pas être vérifié. Réessayez avant de commencer les ventes."; }
+    }
+    public void Dispose() { entsorgt = true; version++; AktiverSalon.OnChange -= Change; }
+}

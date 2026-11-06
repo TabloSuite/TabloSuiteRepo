@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Salons;
@@ -199,8 +199,44 @@ public class AdminService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<bool> SetzeIndividuellenPreisAsync(Guid salonId, decimal? preis, CancellationToken cancellationToken = default)
+    public record LadenTarif(string Name, decimal Global, decimal? Individuell);
+
+    public async Task<LadenTarif> GetLadenTarifAsync(
+        Guid bearbeiter, Guid salonId, CancellationToken cancellationToken = default)
     {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
+        var salon = await db.Salons.AsNoTracking()
+            .SingleAsync(s => s.Id == salonId, cancellationToken);
+        var jetzt = DateTime.UtcNow;
+        var historischerStandard = await db.MonatsPreisStaende.AsNoTracking()
+            .Where(p => p.SalonId == null && p.GueltigAbUtc <= jetzt)
+            .OrderByDescending(p => p.GueltigAbUtc)
+            .Select(p => p.MonatsPreis)
+            .FirstOrDefaultAsync(cancellationToken);
+        var global = historischerStandard ?? await db.PlattformPreise.AsNoTracking()
+            .Where(p => p.Intervall == AboIntervall.Monatlich && p.IstAktuell)
+            .OrderByDescending(p => p.GueltigAbUtc)
+            .Select(p => (decimal?)p.Preis)
+            .FirstOrDefaultAsync(cancellationToken) ?? 0m;
+        return new LadenTarif(salon.Name, global, salon.IndividuellerMonatsPreis);
+    }
+
+    public async Task<bool> SetzeIndividuellenPreisAsync(
+        Guid bearbeiter, Guid salonId, decimal? preis,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
+        return await SetzeIndividuellenPreisAsync(salonId, preis, cancellationToken);
+    }
+
+    public async Task<bool> SetzeIndividuellenPreisAsync(
+        Guid salonId, decimal? preis, CancellationToken cancellationToken = default)
+    {
+        if (preis is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(preis),
+                "Veuillez saisir un montant positif.");
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)
@@ -208,8 +244,15 @@ public class AdminService(
             return false;
         }
 
+        var jetzt = DateTime.UtcNow;
         salon.IndividuellerMonatsPreis = preis;
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = jetzt;
+        db.MonatsPreisStaende.Add(new MonatsPreisStand
+        {
+            SalonId = salonId,
+            MonatsPreis = preis,
+            GueltigAbUtc = jetzt
+        });
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -218,16 +261,46 @@ public class AdminService(
     /// SuperAdmin legt einen Besitzer samt Geschäft an (freigegeben & aktiv).
     /// Der Besitzer erhält ein Initialpasswort und kann sich sofort anmelden.
     /// </summary>
-    public async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
+    public Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
         string vorname, string nachname, string email, string initialPasswort,
-        string salonName, string? standort, string? land = null, CancellationToken cancellationToken = default)
+        string salonName, string? standort, string? land = null,
+        CancellationToken cancellationToken = default)
+        => LegeBesitzerMitSalonAnInternAsync(
+            vorname, nachname, email, initialPasswort, salonName, standort,
+            land, cancellationToken, email);
+
+    public async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
+        Guid bearbeiter, string vorname, string nachname, string email,
+        string initialPasswort, string salonName, string? standort,
+        string? land = null, CancellationToken cancellationToken = default,
+        string? benutzername = null)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
+        return await LegeBesitzerMitSalonAnInternAsync(
+            vorname, nachname, email, initialPasswort, salonName, standort,
+            land, cancellationToken, benutzername ?? email);
+    }
+
+    private async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnInternAsync(
+        string vorname, string nachname, string email, string initialPasswort,
+        string salonName, string? standort, string? land,
+        CancellationToken cancellationToken, string benutzername)
     {
         var bereinigtEmail = email.Trim();
         var bereinigtSalon = salonName.Trim();
+        var pseudonym = benutzername.Trim();
 
-        if (await userManager.FindByEmailAsync(bereinigtEmail) is not null)
+        if (string.IsNullOrWhiteSpace(vorname) || string.IsNullOrWhiteSpace(nachname)
+            || string.IsNullOrWhiteSpace(bereinigtSalon) || string.IsNullOrWhiteSpace(pseudonym)
+            || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(bereinigtEmail))
         {
-            return (false, "Un compte avec cette adresse e-mail existe déjà.", null);
+            return (false, "Veuillez saisir les coordonnées et un pseudonyme valide.", null);
+        }
+
+        if (await userManager.FindByNameAsync(pseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.", null);
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -238,7 +311,7 @@ public class AdminService(
 
         var besitzer = new AppUser
         {
-            UserName = bereinigtEmail,
+            UserName = pseudonym,
             Email = bereinigtEmail,
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),

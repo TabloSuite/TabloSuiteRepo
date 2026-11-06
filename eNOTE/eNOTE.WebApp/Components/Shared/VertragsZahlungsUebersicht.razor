@@ -1,0 +1,104 @@
+@using ENote.WebApp.Services
+@using ENote.Core.Services
+@using ENote.Core.DataModels.Abo
+@inject VertragsService Service
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+<div class="enote-filter-leiste">
+    <div class="enote-form"><label>Du</label><EnoteDatePicker @bind-Value="von" /></div>
+    <div class="enote-form"><label>Au (inclus)</label><EnoteDatePicker @bind-Value="bis" /></div>
+    <AsyncActionButton Text="Afficher" OnClick="LadeAsync" CssClass="enote-btn-primary" Disabled="laedt" />
+</div>
+<div class="enote-filter-leiste">
+    <input class="enote-filter-suche" placeholder="Rechercher un propriétaire ou un établissement…" @bind="suche" @bind:event="oninput" />
+    <EnoteSelect TValue="string" @bind-Value="status" Options="StatusOptionen" />
+</div>
+@if (fehler is not null) { <div class="alert alert-error" role="alert">@fehler</div> }
+@if (laedt) { <p role="status">Chargement des contrats…</p> }
+else if (fehler is null)
+{
+    var resultate = Gefiltert.ToList();
+    <p class="enote-muted">Période appliquée : @appliqueVon.ToString("dd/MM/yyyy") – @appliqueBis.ToString("dd/MM/yyyy"). Contrats dont la période recoupe ces dates ; montants complets, sans prorata. Un paiement signalé n'est pas encore payé.</p>
+    <div class="enote-grid">
+        <div class="enote-item"><strong>Payé</strong><span>@Geld(resultate.Where(a => a.Status == AboZahlungStatus.Bestaetigt).Sum(a => a.Betrag))</span></div>
+        <div class="enote-item"><strong>Non payé</strong><span>@Geld(resultate.Where(a => a.Status != AboZahlungStatus.Bestaetigt).Sum(a => a.Betrag))</span></div>
+    </div>
+    <h3>Contrats (@resultate.Count)</h3>
+    @if (resultate.Count == 0) { <p class="enote-empty">Aucun contrat pour cette sélection. Les établissements en période d'essai ne sont pas facturés.</p> }
+    <div class="enote-grid">
+        @foreach (var a in resultate)
+        {
+            <div class="enote-item" @key="a.Id">
+                <strong>@a.Besitzer</strong><span>@a.Laden</span>
+                <span>@VertragsRegeln.Bezeichnung(a.Intervall) · @Geld(a.Betrag)</span>
+                <small>@(a.Individuell ? "Tarif personnalisé" : "Tarif général") · remise @a.Rabatt %</small>
+                <small>Échéance : @a.Faellig.ToString("dd/MM/yyyy") · suspension sans signalement : @a.SperreAb.ToString("dd/MM/yyyy")</small>
+                @if (a.GemeldetAm is DateTime signalement) { <small>Virement signalé le @signalement.ToString("dd/MM/yyyy") · réception à vérifier</small> }
+                <span class="enote-tag @(a.Status == AboZahlungStatus.Bestaetigt ? "" : "enote-tag-warn")">@VertragsRegeln.ZahlungsText(a.Status)</span>
+                <small>@a.Von.ToString("dd/MM/yyyy") – @a.Bis.ToString("dd/MM/yyyy") (fin exclusive)</small>
+                @if (IstBesitzer && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt)
+                {
+                    <button class="enote-btn enote-btn-primary" @onclick="() => { meldungId = a.Id; reference = null; }">J’ai effectué le virement</button>
+                }
+            </div>
+        }
+    </div>
+}
+
+<ModalDialog Open="@(meldungId is not null)" Title="Confirmer le virement effectué" OnClose="() => meldungId = null">
+    <ChildContent>
+        <p>Confirmez uniquement si vous avez réellement effectué le virement. Le signalement n'est pas une confirmation bancaire.</p>
+        <div class="enote-form"><label>Référence du virement (facultatif)</label><input @bind="reference" maxlength="500" /></div>
+    </ChildContent>
+    <Footer><AsyncActionButton Text="Oui, j’ai effectué le virement" OnClick="ConfirmeMeldungAsync" CssClass="enote-btn-primary" /></Footer>
+</ModalDialog>
+
+@code {
+    private Guid? meldungId;
+    private string? reference;
+    private async Task ConfirmeMeldungAsync() { if (meldungId is Guid id) await MeldeAsync(id); }
+    [Parameter] public Guid? SalonId { get; set; }
+    private bool IstBesitzer;
+    private Guid userId;
+    private DateTime? von = new DateTime(DateTime.UtcNow.Year, 1, 1), bis = DateTime.UtcNow.Date;
+    private DateTime appliqueVon, appliqueBis;
+    private string status = "alle", suche = "";
+    private string? fehler;
+    private bool laedt = true;
+    private List<VertragsService.ZahlungEintrag> daten = [];
+    private static readonly IReadOnlyList<EnoteSelectOption<string>> StatusOptionen =
+        [new() { Value = "alle", Label = "Tous les paiements" }, new() { Value = "bezahlt", Label = "Payé" },
+         new() { Value = "offen", Label = "Non payé" }, new() { Value = "gemeldet", Label = "Paiement signalé" },
+         new() { Value = "gesperrt", Label = "Caisse suspendue" }];
+    private IEnumerable<VertragsService.ZahlungEintrag> Gefiltert => daten.Where(a => (SalonId is null || a.SalonId == SalonId)
+        && (string.IsNullOrWhiteSpace(suche) || (a.Besitzer + " " + a.Laden).Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase))
+        && (status == "alle" || status == "bezahlt" && a.Status == AboZahlungStatus.Bestaetigt
+            || status == "offen" && a.Status != AboZahlungStatus.Bestaetigt || status == "gemeldet" && a.Status == AboZahlungStatus.Gemeldet
+            || status == "gesperrt" && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt && a.SperreAb <= DateTime.UtcNow));
+    private static string Geld(decimal p) => p.ToString("N0", new System.Globalization.CultureInfo("fr-FR")) + " F";
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out userId);
+        IstBesitzer = auth.User.IsInRole("Besitzer");
+        await LadeAsync();
+    }
+    private async Task LadeAsync()
+    {
+        laedt = true; fehler = null; daten = [];
+        try
+        {
+            if (von is null || bis is null) throw new ArgumentException("Veuillez choisir les deux dates.");
+            daten = await Service.GetZahlungenAsync(userId, von.Value, bis.Value);
+            appliqueVon = von.Value; appliqueBis = bis.Value;
+        }
+        catch (ArgumentException ex) { fehler = ex.Message; }
+        catch (Exception) { fehler = "Le chargement des contrats a échoué. Veuillez réessayer."; }
+        finally { laedt = false; }
+    }
+    private async Task MeldeAsync(Guid id)
+    {
+        try { await Service.MeldeAsync(userId, id, reference); meldungId = null; await LadeAsync(); }
+        catch (Exception) { fehler = "Le paiement n'a pas pu être signalé. Actualisez la liste et réessayez."; }
+    }
+}

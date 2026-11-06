@@ -24,6 +24,10 @@
             <input @bind="neueKategorieName" placeholder="ex. Loyer, Électricité, Stock…" class="enote-input-inline" />
             <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
         </div>
+        @if (!isLoading && kategorien.Count == 0)
+        {
+            <p class="enote-empty" role="status">Aucune catégorie de dépenses pour le moment.</p>
+        }
         <div class="enote-kategorie-liste">
             @foreach (var k in kategorien)
             {
@@ -51,6 +55,10 @@
     else if (ausgaben.Count == 0)
     {
         <p class="enote-empty">Aucune dépense sur la période.</p>
+    }
+    else if (!GefilterteAusgaben().Any())
+    {
+        <p class="enote-empty" role="status">Aucune dépense ne correspond à votre recherche ou à la catégorie sélectionnée.</p>
     }
     else
     {

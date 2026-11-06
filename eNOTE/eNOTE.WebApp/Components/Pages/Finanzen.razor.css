@@ -1,0 +1,36 @@
+.enote-finances .enote-filter-feld {
+    min-width: min(11rem, 100%);
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    .enote-finances ::deep .enote-table,
+    .enote-finances ::deep .enote-table tbody,
+    .enote-finances ::deep .enote-table tr {
+        display: block;
+        width: 100%;
+        white-space: normal;
+        overflow-x: visible;
+    }
+
+    .enote-finances ::deep .enote-table thead {
+        display: none;
+    }
+
+    .enote-finances ::deep .enote-table tr {
+        margin-bottom: 1rem;
+    }
+
+    .enote-finances ::deep .enote-table td {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: .75rem;
+        overflow-wrap: anywhere;
+    }
+
+    .enote-finances ::deep .enote-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--enote-text-muted);
+    }
+}

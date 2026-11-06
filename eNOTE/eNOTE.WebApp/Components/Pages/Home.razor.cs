@@ -11,6 +11,7 @@ public partial class Home(
     AuthenticationStateProvider authStateProvider)
 {
     private bool wartetAufFreigabe;
+    private bool hinweiseGeladen;
     private string? salonNameWartend;
     private List<ENote.Core.DataModels.Kasse.BesitzerHinweis> ungeleseneHinweise = [];
 
@@ -44,6 +45,7 @@ public partial class Home(
         {
             var freigegeben = zuordnungen.First(z => z.Salon.IstFreigegeben);
             ungeleseneHinweise = await hinweisService.GetUngeleseneAsync(freigegeben.SalonId);
+            hinweiseGeladen = true;
         }
     }
 

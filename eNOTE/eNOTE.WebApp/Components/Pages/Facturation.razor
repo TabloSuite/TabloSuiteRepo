@@ -44,6 +44,11 @@
             </div>
         }
 
+        @if (gemeldete.Count == 0)
+        {
+            <p class="enote-empty" role="status">Aucun paiement signalé en attente de confirmation.</p>
+        }
+
         <h2 class="enote-section-title">Abonnements récents</h2>
         @if (alle.Count == 0)
         {
@@ -55,6 +60,10 @@
                 <input class="enote-filter-suche" placeholder="Rechercher un établissement…" @bind="aboSuche" @bind:event="oninput" />
                 <EnoteSelect TValue="string" @bind-Value="aboStatusFilter" Options="aboStatusOptionen" />
             </div>
+            @if (!GefilterteAbos().Any())
+            {
+                <p class="enote-empty" role="status">Aucun abonnement ne correspond à votre recherche ou au statut sélectionné.</p>
+            }
             <div class="enote-card enote-settings-card">
                 <table class="enote-table">
                     <thead><tr><th>Établissement</th><th>Formule</th><th>Montant</th><th>Période</th><th>Statut</th></tr></thead>

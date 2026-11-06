@@ -1,0 +1,203 @@
+@using ENote.WebApp.Services
+@using ENote.Core.DataModels.Abo
+@inject BesitzerFinanzService Service
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+@implements IDisposable
+
+<div class="enote-form-grid">
+    <div class="enote-form">
+        <label>Propriétaire de l'établissement</label>
+        <EnoteSelect TValue="Guid?" Value="besitzerId" ValueChanged="WaehleBesitzerAsync" Options="BesitzerOptionen" MitSuche="true" Placeholder="Rechercher un propriétaire…" />
+    </div>
+    <div class="enote-form">
+        <label>Établissement</label>
+        <EnoteSelect TValue="Guid?" Value="salonId" ValueChanged="WaehleSalonAsync" Options="SalonOptionen" MitSuche="true" Disabled="@(besitzerId is null || laedtLaeden)" Placeholder="Choisir un établissement…" />
+    </div>
+</div>
+@if (laedtBesitzer) { <p role="status">Chargement des propriétaires…</p> }
+else if (fehler is null && besitzer.Count == 0)
+{
+    <p class="enote-empty" role="status">Aucun propriétaire d'établissement disponible.</p>
+}
+@if (laedtLaeden)
+{
+    <p role="status">Chargement des établissements…</p>
+}
+else if (besitzerId is not null)
+{
+    <h2 class="enote-section-title">Établissements du propriétaire (@laeden.Count)</h2>
+    <div class="enote-grid">
+        @foreach (var laden in laeden)
+        {
+            <div class="enote-item">
+                <strong>@laden.Name</strong><span>@laden.Vertragsart</span>
+                <button type="button" class="enote-btn @(salonId == laden.Id ? "enote-btn-primary" : "enote-btn-ghost")"
+                        aria-pressed="@(salonId == laden.Id)" @onclick="() => WaehleSalonAsync(laden.Id)">@(salonId == laden.Id ? "Sélectionné" : "Consulter")</button>
+            </div>
+        }
+    </div>
+    @if (laeden.Count == 0)
+    {
+        <p class="enote-empty">Aucun établissement pour ce propriétaire.</p>
+    }
+}
+@if (salonId is not null)
+{
+    <h2 class="enote-section-title">Période financière</h2>
+    <div class="enote-filter-leiste">
+        <EnoteSelect TValue="string" Value="modus" ValueChanged="WechsleModus" Options="ModusOptionen" />
+        @if (modus == "monat")
+        {
+            <EnoteMonthPicker @bind-Value="monat" />
+        }
+        else if (modus == "jahr")
+        {
+            <EnoteSelect TValue="int" @bind-Value="jahr" Options="Jahre" MitSuche="true" />
+        }
+        else
+        {
+            <div class="enote-form"><label>Du</label><EnoteDatePicker @bind-Value="von" /></div>
+            <div class="enote-form"><label>Au (inclus)</label><EnoteDatePicker @bind-Value="bis" /></div>
+        }
+        <AsyncActionButton Text="Afficher" OnClick="LadeBerichtAsync" CssClass="enote-btn-primary" Disabled="laedtBericht" />
+    </div>
+}
+@if (fehler is not null)
+{
+    <div class="alert alert-error" role="alert">@fehler</div>
+}
+@if (laedtBericht)
+{
+    <p role="status">Chargement du rapport…</p>
+}
+else if (bericht is not null)
+{
+    <h2 class="enote-section-title">@bericht.LadenName · @bericht.Vertragsart</h2>
+    <p class="enote-muted">Période appliquée : @bericht.Von.ToString("dd/MM/yyyy") – @bericht.Bis.ToString("dd/MM/yyyy") (jours inclus).</p>
+    <h3>Activité de l'établissement</h3>
+    <div class="enote-grid">
+        <div class="enote-item"><strong>Chiffre d'affaires</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Umsatz))</span><small>@bericht.Monate.Sum(m => m.Verkaeufe) vente(s)</small></div>
+        <div class="enote-item"><strong>Dépenses enregistrées</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Ausgaben))</span></div>
+        <div class="enote-item"><strong>Résultat d'exploitation</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Ergebnis))</span></div>
+    </div>
+    <p class="enote-muted">Résultat = ventes en espèces et par carte − dépenses enregistrées. Ce n'est pas le solde de caisse ni un solde bancaire. Les abonnements ci-dessous sont présentés séparément et ne sont pas déduits une seconde fois.</p>
+    @if (bericht.Monate.Count == 0)
+    {
+        <p class="enote-empty">Aucune vente ni dépense dans cette période.</p>
+    }
+    <div class="enote-grid">
+        @foreach (var m in bericht.Monate)
+        {
+            <div class="enote-item">
+                <strong>@m.Monat.ToString("MMMM yyyy", francais)</strong>
+                <span>Espèces : @Geld(m.Bar)</span><span>Carte : @Geld(m.Karte)</span>
+                <span>Dépenses : @Geld(m.Ausgaben)</span><strong>Résultat : @Geld(m.Ergebnis)</strong>
+            </div>
+        }
+    </div>
+    <h3>Abonnements de l'établissement</h3>
+    <p class="enote-muted">Paiements confirmés : date de confirmation. Paiements signalés, à payer ou refusés : date du signalement, sinon date de création. Les montants ne sont pas répartis au prorata sur la durée du contrat.</p>
+    <div class="enote-grid">
+        <div class="enote-item"><strong>Confirmés dans la période</strong><span>@Geld(bericht.Bestaetigt)</span></div>
+        <div class="enote-item"><strong>Signalés dans la période</strong><span>@Geld(bericht.Gemeldet)</span></div>
+        <div class="enote-item"><strong>À payer, créés dans la période</strong><span>@Geld(bericht.Offen)</span></div>
+    </div>
+    @if (bericht.Abos.Count == 0)
+    {
+        <p class="enote-empty">Aucune opération d'abonnement dans cette période.</p>
+    }
+    <div class="enote-grid">
+        @foreach (var abo in bericht.Abos)
+        {
+            <div class="enote-item">
+                <strong>@BesitzerFinanzService.IntervallText(abo.Intervall) · @Geld(abo.PreisSnapshot)</strong>
+                <span>@Status(abo.ZahlungStatus)</span>
+                <span>Contrat : @abo.ZeitraumVonUtc.ToString("dd/MM/yyyy") – @abo.ZeitraumBisUtc.ToString("dd/MM/yyyy")</span>
+                <small>Opération : @((abo.ZahlungBestaetigtUtc ?? abo.ZahlungGemeldetUtc ?? abo.CreatedAtUtc).ToString("dd/MM/yyyy"))</small>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo francais = new("fr-FR");
+    private Guid adminId;
+    private Guid? besitzerId, salonId;
+    private List<BesitzerFinanzService.BesitzerEintrag> besitzer = [];
+    private List<BesitzerFinanzService.LadenEintrag> laeden = [];
+    private BesitzerFinanzService.Bericht? bericht;
+    private string? fehler;
+    private bool laedtBesitzer = true;
+    private bool laedtLaeden, laedtBericht, entsorgt;
+    private int version;
+    private string modus = "monat";
+    private DateTime? monat = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+    private int jahr = DateTime.UtcNow.Year;
+    private DateTime? von = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1), bis = DateTime.UtcNow.Date;
+    private static readonly IReadOnlyList<EnoteSelectOption<string>> ModusOptionen =
+        [new() { Value = "monat", Label = "Mois" }, new() { Value = "jahr", Label = "Année" }, new() { Value = "frei", Label = "Période personnalisée" }];
+    private IReadOnlyList<EnoteSelectOption<int>> Jahre => Enumerable.Range(2000, DateTime.UtcNow.Year - 2000 + 2).Reverse()
+        .Select(j => new EnoteSelectOption<int> { Value = j, Label = j.ToString() }).ToList();
+    private IReadOnlyList<EnoteSelectOption<Guid?>> BesitzerOptionen => besitzer.Select(b => new EnoteSelectOption<Guid?> { Value = b.Id, Label = $"{b.Name} · {b.Email}" }).ToList();
+    private IReadOnlyList<EnoteSelectOption<Guid?>> SalonOptionen => laeden.Select(s => new EnoteSelectOption<Guid?> { Value = s.Id, Label = $"{s.Name} · {s.Vertragsart}" }).ToList();
+    private static string Geld(decimal betrag) => betrag.ToString("N0", francais) + " F";
+    private static string Status(AboZahlungStatus status) => status switch
+    {
+        AboZahlungStatus.Bestaetigt => "Confirmé", AboZahlungStatus.Gemeldet => "Paiement signalé",
+        AboZahlungStatus.Abgelehnt => "Refusé", _ => "À payer"
+    };
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        if (!Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out adminId))
+        {
+            laedtBesitzer = false;
+            fehler = "Veuillez vous connecter pour consulter les propriétaires.";
+            return;
+        }
+        try { besitzer = await Service.GetBesitzerAsync(adminId); }
+        catch (Exception) { fehler = "Le chargement des propriétaires a échoué."; }
+        finally { laedtBesitzer = false; }
+    }
+    private async Task WaehleBesitzerAsync(Guid? id)
+    {
+        var aktuell = ++version;
+        besitzerId = id; salonId = null; laeden = []; bericht = null; fehler = null;
+        laedtBericht = false;
+        laedtLaeden = id is not null;
+        if (id is null) return;
+        try
+        {
+            var daten = await Service.GetLaedenAsync(adminId, id.Value);
+            if (entsorgt || aktuell != version) return;
+            laeden = daten;
+        }
+        catch (Exception) { if (!entsorgt && aktuell == version) fehler = "Le chargement des établissements a échoué."; }
+        finally { if (!entsorgt && aktuell == version) laedtLaeden = false; }
+    }
+    private async Task WaehleSalonAsync(Guid? id)
+    {
+        ++version; salonId = id; bericht = null; fehler = null;
+        await LadeBerichtAsync();
+    }
+    private void WechsleModus(string? wert) { modus = wert ?? "monat"; }
+    private async Task LadeBerichtAsync()
+    {
+        if (salonId is not Guid salon || besitzerId is not Guid eigentuemer) return;
+        var aktuell = ++version;
+        bericht = null; fehler = null; laedtBericht = true;
+        try
+        {
+            DateTime? start = von, ende = bis;
+            if (modus == "monat" && monat is DateTime m) { start = new DateTime(m.Year, m.Month, 1); ende = start.Value.AddMonths(1).AddDays(-1); }
+            else if (modus == "jahr") { start = new DateTime(jahr, 1, 1); ende = new DateTime(jahr, 12, 31); }
+            if (start is null || ende is null) { fehler = "Veuillez choisir les dates de début et de fin."; return; }
+            var daten = await Service.GetBerichtAsync(adminId, eigentuemer, salon, start.Value, ende.Value);
+            if (!entsorgt && aktuell == version) bericht = daten;
+        }
+        catch (ArgumentException ex) { if (!entsorgt && aktuell == version) fehler = ex.Message; }
+        catch (Exception) { if (!entsorgt && aktuell == version) fehler = "Le chargement du rapport a échoué. Vérifiez la sélection et réessayez."; }
+        finally { if (!entsorgt && aktuell == version) laedtBericht = false; }
+    }
+    public void Dispose() { entsorgt = true; version++; bericht = null; }
+}

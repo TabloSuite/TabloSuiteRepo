@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Finanzen;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Infrastruktur;
@@ -33,6 +33,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Ausgabe> Ausgaben => Set<Ausgabe>();
     public DbSet<BlobMediaAsset> BlobMediaAssets => Set<BlobMediaAsset>();
     public DbSet<ExceptionLog> ExceptionLogs => Set<ExceptionLog>();
+    public DbSet<BesitzerBetreuung> BesitzerBetreuungen => Set<BesitzerBetreuung>();
+    public DbSet<MonatsPreisStand> MonatsPreisStaende => Set<MonatsPreisStand>();
+    public DbSet<VertragsHistorie> VertragsHistorien => Set<VertragsHistorie>();
+    public DbSet<PoZahlungseingang> PoZahlungseingaenge => Set<PoZahlungseingang>();
+    public DbSet<PoZahlungsanforderung> PoZahlungsanforderungen => Set<PoZahlungsanforderung>();
+    public DbSet<PoGeldbewegung> PoGeldbewegungen => Set<PoGeldbewegung>();
+    public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -41,7 +48,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<AppUser>(entity =>
         {
-            entity.HasIndex(u => u.NormalizedEmail).IsUnique();
+            entity.HasIndex(u => u.NormalizedEmail);
             entity.HasMany(u => u.UserRoles)
                 .WithOne(ur => ur.User)
                 .HasForeignKey(ur => ur.UserId)
@@ -69,6 +76,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<UserSalon>(entity =>
         {
             entity.HasIndex(us => new { us.AppUserId, us.SalonId }).IsUnique();
+            entity.HasIndex(us => us.AppUserId).IsUnique();
             entity.HasOne(us => us.Salon)
                 .WithMany(s => s.UserSalons)
                 .HasForeignKey(us => us.SalonId)

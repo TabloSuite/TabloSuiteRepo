@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 
 namespace ENote.Core.DataModels.Identity;
 
@@ -10,6 +10,8 @@ public class AppUser : IdentityUser<Guid>
     public string? TelefonNummer { get; set; }
     public bool IsBlocked { get; set; }
     public bool IsSelfRegistered { get; set; }
+    public bool IstErsterAdmin { get; set; }
+    public bool IstInternerKassierer { get; set; }
 
     /// <summary>
     /// Kennung der aktuell erlaubten Browser-Sitzung. Jede neue Anmeldung ersetzt

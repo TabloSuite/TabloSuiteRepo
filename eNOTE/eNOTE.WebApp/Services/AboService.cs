@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -114,6 +114,15 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     }
 
     /// <summary>SuperAdmin bestätigt oder lehnt eine gemeldete Zahlung.</summary>
+    public async Task<bool> SetzeZahlungsStatusAsync(
+        Guid bearbeiter, Guid aboId, AboZahlungStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
+        return await SetzeZahlungsStatusAsync(aboId, status, cancellationToken);
+    }
+
     public async Task<bool> SetzeZahlungsStatusAsync(Guid aboId, AboZahlungStatus status, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);

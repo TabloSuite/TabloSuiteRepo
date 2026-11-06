@@ -281,6 +281,12 @@ public class KatalogService(
             return (false, "Prestation introuvable.", null);
         }
 
+        if (!await LadenZugriff.HatZugangAsync(db, hochgeladenVonId, leistung.SalonId, cancellationToken)
+            || !await db.UserSalons.AnyAsync(us => us.AppUserId == hochgeladenVonId && us.SalonId == leistung.SalonId
+                && us.KannLeistungenVerwalten, cancellationToken)
+                && !await LadenZugriff.IstBesitzerAsync(db, hochgeladenVonId, leistung.SalonId, cancellationToken))
+            return (false, "Accès non autorisé.", null);
+
         var ergebnis = await mediaStorage.SaveAsync(new MediaSaveRequest
         {
             DateiName = dateiName,

@@ -1,0 +1,90 @@
+@inject ENote.WebApp.Services.BesitzerFinanzService Finanzen
+@inject ENote.WebApp.Services.AdminService Admin
+@inject ENote.WebApp.Services.BesitzerBetreuungsService Betreuung
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+<div class="enote-card enote-settings-card">
+    <h2>Responsable de l'établissement</h2>
+    <p>Choisissez le compte propriétaire et affectez un responsable à son établissement. Une réaffectation conserve l'historique et retire les anciens accès. Les nouveaux droits financiers sont désactivés par défaut.</p>
+    <div class="enote-filter-leiste">
+        <EnoteSelect TValue="Guid?" Value="besitzer" ValueChanged="WaehleBesitzerAsync" Options="besitzerOptionen" MitSuche="true" Placeholder="Propriétaire de l'établissement…" />
+        <EnoteSelect TValue="Guid?" @bind-Value="po" Options="poOptionen" Disabled="@(uebersicht is null)" MitSuche="true" Placeholder="Responsable plateforme…" />
+        <button class="enote-btn enote-btn-primary" disabled="@(uebersicht is null || po is null || po == uebersicht.ProduktOwnerId)" @onclick="() => bestaetigung = true">Vérifier l'affectation</button>
+    </div>
+    @if (laedt) { <p role="status">Chargement des propriétaires et responsables…</p> }
+    else if (meldung is null)
+    {
+        @if (besitzerOptionen.Count == 0) { <p class="enote-empty" role="status">Aucun propriétaire d'établissement disponible.</p> }
+        @if (poOptionen.Count == 0) { <p class="enote-empty" role="status">Aucun responsable plateforme disponible.</p> }
+    }
+    @if (uebersicht is not null)
+    {
+        <p>Responsable actuel : <strong>@(uebersicht.Verantwortlicher ?? "Aucun responsable affecté")</strong></p>
+        <p>@uebersicht.Laeden.Count établissement(s) concerné(s) :</p>
+        @if (uebersicht.Laeden.Count == 0) { <p class="enote-empty" role="status">Aucun établissement pour ce propriétaire.</p> }
+        <ul>@foreach (var laden in uebersicht.Laeden) { <li>@laden</li> }</ul>
+    }
+    @if (meldung is not null) { <p role="status">@meldung</p> }
+</div>
+<ModalDialog Open="bestaetigung" Title="Confirmer le responsable" OnClose="() => bestaetigung = false" ErrorMessage="@fehler">
+    <ChildContent>
+        <p>Propriétaire : <strong>@besitzerOptionen.FirstOrDefault(b => b.Value == besitzer)?.Label</strong></p>
+        <p>Responsable actuel : @(uebersicht?.Verantwortlicher ?? "Aucun responsable affecté")</p>
+        <p>Nouveau responsable : <strong>@poOptionen.FirstOrDefault(p => p.Value == po)?.Label</strong></p>
+        @if (uebersicht is not null && uebersicht.Laeden.Count == 0) { <p class="enote-empty" role="status">Aucun établissement pour ce propriétaire.</p> }
+        <ul>@foreach (var laden in uebersicht?.Laeden ?? []) { <li>@laden</li> }</ul>
+        <p>Cette affectation prend effet immédiatement pour l'établissement de ce compte. Les anciens accès sont retirés ; les droits financiers du nouveau responsable ne sont pas accordés automatiquement. L'historique des commissions est conservé.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => bestaetigung = false">Annuler</button>
+        <AsyncActionButton Text="Confirmer l'affectation" OnClick="SpeichereAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+@code {
+    private Guid user;
+    private Guid? besitzer, po;
+    private string? meldung;
+    private string? fehler;
+    private bool laedt = true;
+    private bool bestaetigung;
+    private int ladeVersion;
+    private ENote.WebApp.Services.BesitzerBetreuungsService.BetreuungsUebersicht? uebersicht;
+    private IReadOnlyList<EnoteSelectOption<Guid?>> besitzerOptionen = [], poOptionen = [];
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var auth = await Auth.GetAuthenticationStateAsync();
+            user = Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            besitzerOptionen = (await Finanzen.GetBesitzerAsync(user)).Select(b => new EnoteSelectOption<Guid?> { Value = b.Id, Label = b.Name + " · " + b.Email }).ToList();
+            poOptionen = (await Admin.GetProduktOwnersAsync()).Select(p => new EnoteSelectOption<Guid?> { Value = p.Id, Label = p.FullName }).ToList();
+        }
+        catch (Exception) { meldung = "Le chargement des responsables a échoué."; }
+        finally { laedt = false; }
+    }
+    private async Task WaehleBesitzerAsync(Guid? id)
+    {
+        var version = ++ladeVersion;
+        besitzer = id; po = null; uebersicht = null; meldung = null; fehler = null; bestaetigung = false;
+        if (id is not Guid b) return;
+        try
+        {
+            var daten = await Betreuung.GetUebersichtAsync(user, b);
+            if (version != ladeVersion) return;
+            uebersicht = daten; po = daten.ProduktOwnerId;
+        }
+        catch (Exception) { if (version == ladeVersion) meldung = "Le chargement de l'affectation a échoué."; }
+    }
+    private async Task SpeichereAsync()
+    {
+        if (besitzer is not Guid b || po is not Guid p) { meldung = "Choisissez un propriétaire et un responsable."; return; }
+        try
+        {
+            await Betreuung.WeiseAsync(user, b, p);
+            await WaehleBesitzerAsync(b);
+            meldung = "Responsable affecté à l'établissement du propriétaire.";
+        }
+        catch (InvalidOperationException ex) { fehler = ex.Message; }
+        catch (Exception) { fehler = "L'affectation a échoué."; }
+    }
+}
