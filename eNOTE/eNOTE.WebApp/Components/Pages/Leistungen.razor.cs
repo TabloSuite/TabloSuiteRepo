@@ -36,6 +36,7 @@ public partial class Leistungen(
     private decimal? basisAbzugMenge;
     private IReadOnlyList<EnoteSelectOption<string>> basisOptionen = [];
     private IReadOnlyList<EnoteSelectOption<string>> kategorieOptionen = [];
+    private IReadOnlyList<EnoteSelectOption<string>> kategorieZuordnungOptionen = [];
     private string kategorieIdText = string.Empty;
 
     // Suche/Filter
@@ -54,6 +55,11 @@ public partial class Leistungen(
     private Guid? unterkategorieParentId; // für das Anlegen einer Unterkategorie
     private string neueUnterkategorieName = string.Empty;
     private string? unterkategorieFehler;
+
+    // Kategorie-Zuordnungs-Modal (schöner als Dropdown auf der Karte)
+    private bool zuordnungModalOffen;
+    private Leistung? zuordnungLeistung;
+    private string zuordnungEntwurf = string.Empty; // Entwurfs-Auswahl (wird erst mit Bestätigen übernommen)
 
     private bool kategorieUmbenennenOffen;
     private bool kategorieLoeschenOffen;
@@ -134,8 +140,15 @@ public partial class Leistungen(
             .Select(k => new EnoteSelectOption<string>
             {
                 Value = k.Id.ToString(),
-                Label = k.ParentId is null ? k.Name : $"&nbsp;&nbsp;&nbsp;&nbsp;{k.Name}"
+                Label = k.ParentId is null ? k.Name : $"↳ {k.Name}"
             })
+            .ToList();
+        kategorieZuordnungOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Sans catégorie" } }
+            .Concat(kategorienListe.Select(k => new EnoteSelectOption<string>
+            {
+                Value = k.Id.ToString(),
+                Label = k.ParentId is null ? k.Name : $"   ↳ {k.Name}"
+            }))
             .ToList();
         kategorieFilterOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Toutes les catégories" } }
             .Concat(kategorieOptionen)
@@ -163,7 +176,7 @@ public partial class Leistungen(
 
     private async void NeuAnlegen()
     {
-        bearbeitungsLeistung = new Leistung { SalonId = salonId, IstAktiv = true };
+        bearbeitungsLeistung = new Leistung { Id = Guid.Empty, SalonId = salonId, IstAktiv = true, Typ = LeistungsTyp.Prestation };
         istSammelArtikel = false;
         basisLeistungIdText = string.Empty;
         basisAbzugMenge = null;
@@ -444,6 +457,8 @@ public partial class Leistungen(
         unterkategorieParentId = parentId;
         neueUnterkategorieName = string.Empty;
         unterkategorieFehler = null;
+        // Kategorie automatisch aufklappen, damit das Eingabefeld sichtbar wird.
+        aufgeklappteKategorieId = parentId;
     }
 
     private void SchliesseUnterkategorieDialog() => unterkategorieParentId = null;
@@ -472,16 +487,35 @@ public partial class Leistungen(
     private int AnzahlInKategorie(Guid kategorieId)
         => leistungen.Count(l => l.KategorieId == kategorieId);
 
-    // --- Zuordnung Leistung → Kategorie (nur Besitzer, hier zentral) ---
-    private async Task SetzeLeistungKategorieAsync(Leistung leistung, string kategorieIdText)
+    // Name der Kategorie einer Leistung (für den Zuordnungs-Button auf der Karte).
+    private string KategorieNameVon(Leistung leistung)
+        => leistung.KategorieId is Guid id
+            ? kategorien.FirstOrDefault(k => k.Id == id)?.Name ?? "Sans catégorie"
+            : "Sans catégorie";
+
+    // --- Zuordnung Leistung → Kategorie (nur Besitzer, hier zentral, über schönes Modal) ---
+    private void OeffneZuordnungModal(Leistung leistung)
     {
-        Guid? katId = Guid.TryParse(kategorieIdText, out var g) ? g : null;
-        var erfolg = await katalogService.SetzeLeistungKategorieAsync(leistung.Id, salonId, katId);
+        zuordnungLeistung = leistung;
+        zuordnungEntwurf = leistung.KategorieId?.ToString() ?? string.Empty; // aktuelle Auswahl als Entwurf
+        zuordnungModalOffen = true;
+    }
+
+    private void SchliesseZuordnungModal() => zuordnungModalOffen = false;
+
+    private void WaehleZuordnungEntwurf(string kategorieIdText) => zuordnungEntwurf = kategorieIdText;
+
+    private async Task BestaetigeZuordnungAsync()
+    {
+        if (zuordnungLeistung is null) return;
+        Guid? katId = Guid.TryParse(zuordnungEntwurf, out var g) && g != Guid.Empty ? g : null;
+        var erfolg = await katalogService.SetzeLeistungKategorieAsync(zuordnungLeistung.Id, salonId, katId);
         if (erfolg)
         {
-            leistung.KategorieId = katId;
+            zuordnungLeistung.KategorieId = katId;
             toast.ZeigeErfolg("Catégorie mise à jour.");
         }
+        zuordnungModalOffen = false;
     }
 
     private static bool BestandWarnung(Leistung l)

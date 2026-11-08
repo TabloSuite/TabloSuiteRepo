@@ -319,6 +319,8 @@ public class KatalogService(
             leistung.StrichCode = await GeneriereEindeutigenBarcodeAsync(db, leistung.SalonId, cancellationToken);
         }
 
+        // Anlegen nur mit Id == Guid.Empty; jede andere (nicht vorhandene) Id ist ein Fehler.
+        // So wird versehentliches Anlegen über den Bearbeiten-Pfad verhindert (Ladenwechsel-Schutz).
         if (leistung.Id == Guid.Empty)
         {
             leistung.Id = Guid.NewGuid();
@@ -330,10 +332,12 @@ public class KatalogService(
             var vorhanden = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == leistung.Id, cancellationToken)
                 ?? throw new InvalidOperationException("Leistung nicht gefunden.");
 
+
             vorhanden.Name = leistung.Name;
             vorhanden.Beschreibung = leistung.Beschreibung;
+            vorhanden.Typ = leistung.Typ;
             vorhanden.Preis = leistung.Preis;
-            vorhanden.Kaufpreis = leistung.Kaufpreis;
+            vorhanden.Kaufpreis = leistung.Typ == LeistungsTyp.Prestation ? null : leistung.Kaufpreis;
             vorhanden.StrichCode = string.IsNullOrWhiteSpace(leistung.StrichCode) ? null : leistung.StrichCode.Trim();
             vorhanden.KategorieId = leistung.KategorieId;
             vorhanden.HatStueckzahl = leistung.HatStueckzahl;

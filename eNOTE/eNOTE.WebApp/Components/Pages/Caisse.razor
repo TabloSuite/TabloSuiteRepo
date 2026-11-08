@@ -123,11 +123,15 @@ else
                                         <span class="enote-tile-warn">Stock: @l.Stueckzahl</span>
                                     }
                                 </div>
-                                <div class="enote-tile-menge">
-                                    <button type="button" @onclick="() => AendereTileMenge(l.Id, -1)" @onclick:stopPropagation="true">−</button>
-                                    <span>@(tileMengen.GetValueOrDefault(l.Id, 1))</span>
-                                    <button type="button" @onclick="() => AendereTileMenge(l.Id, 1)" @onclick:stopPropagation="true">+</button>
-                                </div>
+                                @* Plus/Minus nur bei „Divers" (Standard-Artikel mit freiem Betrag) *@
+                                @if (l.IstStandardArtikel)
+                                {
+                                    <div class="enote-tile-menge">
+                                        <button type="button" @onclick="() => AendereTileMenge(l.Id, -1)" @onclick:stopPropagation="true">−</button>
+                                        <span>@(tileMengen.GetValueOrDefault(l.Id, 1))</span>
+                                        <button type="button" @onclick="() => AendereTileMenge(l.Id, 1)" @onclick:stopPropagation="true">+</button>
+                                    </div>
+                                }
                             </div>
                             <button type="button"
                                     class="enote-fav-btn @(favoritenIds.Contains(l.Id) ? "aktiv" : "")"

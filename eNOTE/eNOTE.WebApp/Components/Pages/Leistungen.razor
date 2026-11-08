@@ -8,7 +8,7 @@
 
 
 <BesitzerPinGuard>
-<div class="enote-page">
+<div class="enote-page enote-page-full">
     <div class="enote-page-header">
         <div>
             <h1>Prestations &amp; articles</h1>
@@ -17,7 +17,6 @@
         @if (darfVerwalten)
         {
             <div class="enote-item-actions">
-                <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienOffen = !kategorienOffen">Catégories</button>
                 <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle prestation</button>
             </div>
         }
@@ -197,14 +196,10 @@
             @if (darfVerwalten)
             {
                 <div class="enote-vorschau-item-aktionen">
-                    <select class="enote-select-inline" value="@(l.KategorieId?.ToString() ?? "")"
-                            @onchange="e => SetzeLeistungKategorieAsync(l, e.Value?.ToString() ?? string.Empty)">
-                        <option value="">Sans catégorie</option>
-                        @foreach (var k in kategorien)
-                        {
-                            <option value="@k.Id">@k.Name</option>
-                        }
-                    </select>
+                    <button type="button" class="enote-kategorie-btn" @onclick="() => OeffneZuordnungModal(l)">
+                        <span class="enote-kategorie-btn-label">@(KategorieNameVon(l))</span>
+                        <span class="enote-kategorie-btn-chevron">▾</span>
+                    </button>
                     <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => Bearbeiten(l)">Modifier</button>
                 </div>
             }
@@ -305,6 +300,49 @@
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseLoeschen">Annuler</button>
         <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+    </Footer>
+</ModalDialog>
+
+@* Kategorie-Zuordnung: breites Modal mit Entwurfs-Auswahl + Bestätigen/Abbrechen *@
+<ModalDialog Open="zuordnungModalOffen" Title="@(zuordnungLeistung is null ? "Catégorie" : "Catégorie · " + zuordnungLeistung.Name)" OnClose="SchliesseZuordnungModal" MaxWidthClass="enote-modal-lg">
+    <ChildContent>
+        <p class="enote-muted" style="margin-top:0;">Choisissez la catégorie de « @(zuordnungLeistung?.Name) », puis confirmez.</p>
+        <div class="enote-zuordnung-liste">
+            <button type="button" class="enote-zuordnung-option @(string.IsNullOrEmpty(zuordnungEntwurf) ? "aktiv" : "")"
+                    @onclick='() => WaehleZuordnungEntwurf("")'>
+                <span class="enote-zuordnung-name">Sans catégorie</span>
+                @if (string.IsNullOrEmpty(zuordnungEntwurf))
+                {
+                    <span class="enote-zuordnung-check">✓</span>
+                }
+            </button>
+            @foreach (var knoten in kategorieBaum)
+            {
+                <button type="button" class="enote-zuordnung-option @(zuordnungEntwurf == knoten.Kategorie.Id.ToString() ? "aktiv" : "")"
+                        @onclick="() => WaehleZuordnungEntwurf(knoten.Kategorie.Id.ToString())">
+                    <span class="enote-zuordnung-name"><strong>@knoten.Kategorie.Name</strong></span>
+                    @if (zuordnungEntwurf == knoten.Kategorie.Id.ToString())
+                    {
+                        <span class="enote-zuordnung-check">✓</span>
+                    }
+                </button>
+                @foreach (var unter in knoten.Unterkategorien)
+                {
+                    <button type="button" class="enote-zuordnung-option enote-zuordnung-unter @(zuordnungEntwurf == unter.Id.ToString() ? "aktiv" : "")"
+                            @onclick="() => WaehleZuordnungEntwurf(unter.Id.ToString())">
+                        <span class="enote-zuordnung-name">└ @unter.Name</span>
+                        @if (zuordnungEntwurf == unter.Id.ToString())
+                        {
+                            <span class="enote-zuordnung-check">✓</span>
+                        }
+                    </button>
+                }
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseZuordnungModal">Annuler</button>
+        <AsyncActionButton Text="Confirmer" OnClick="BestaetigeZuordnungAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 

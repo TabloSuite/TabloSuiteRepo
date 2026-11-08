@@ -75,7 +75,9 @@
             <div class="enote-form">
                 <label>Code PIN propriétaire (4–6 chiffres)</label>
                 <div class="enote-pin-feld">
-                    <input type="@(pinSichtbar ? "text" : "password")" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin" placeholder="••••" />
+                    <input type="text" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin"
+                           autocomplete="off" name="enote-pin" data-lpignore="true" data-form-type="other"
+                           class="@(pinSichtbar ? "" : "enote-pin-masked")" />
                     <button type="button" class="enote-pin-eye" title="@(pinSichtbar ? "Masquer" : "Afficher")" @onclick="() => pinSichtbar = !pinSichtbar">
                         @(pinSichtbar ? "🙈" : "👁")
                     </button>
