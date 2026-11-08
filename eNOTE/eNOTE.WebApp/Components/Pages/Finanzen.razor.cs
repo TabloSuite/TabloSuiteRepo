@@ -23,6 +23,7 @@ public partial class Finanzen(
     private List<FinanzService.TagesUmsatz> tagesUmsaetze = [];
     private List<FinanzService.VerkaufEintrag> letzteVerkaeufe = [];
     private List<Core.DataModels.Kasse.KassenSitzung> abschluesse = [];
+    private FinanzService.FinanzUebersicht? uebersicht;
 
     private HubConnection? hubVerbindung;
     private decimal liveTagesUmsatz;
@@ -73,6 +74,10 @@ public partial class Finanzen(
     private string ZeitraumTitel => filterAktiv
         ? $"Chiffre d'affaires du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
         : "Chiffre d'affaires (14 jours)";
+
+    private string ZeitraumLabel => filterAktiv
+        ? $"du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
+        : "14 derniers jours";
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,6 +141,7 @@ public partial class Finanzen(
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeAsync(salonId);
         letzteVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(salonId);
         abschluesse = await finanzService.GetAbschluesseAsync(salonId);
+        uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
 
         var heute = tagesUmsaetze.FirstOrDefault(t => t.Datum == DateTime.UtcNow.Date);
         liveTagesUmsatz = heute?.Gesamt ?? 0m;
@@ -182,8 +188,12 @@ public partial class Finanzen(
         isLoading = true;
         var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
+        uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
         isLoading = false;
     }
+
+    // Ohne aktiven Filter gilt der Standard-Zeitraum der Umsatzliste (14 Tage).
+    private DateTime StandardZeitraumVon() => DateTime.UtcNow.Date.AddDays(-14);
 
     private void ExportierePdf()
     {

@@ -34,9 +34,10 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 | `eNOTE.Tests` | xUnit-Tests (InMemory/SQLite) für Rechner und Services. |
 
 ### Wichtige Orte in `eNOTE.WebApp`
-- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, vorhandene Endpunkte und SignalR-Hub. `Services/Storage/MedienEndpunkte.cs` registriert `/media/{**blobName}` mit DB-basierter Mandantenprüfung; `EnoteInfrastruktur.cs` prüft Production-Konfiguration und persistenten Schlüsselpfad.
+- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, vorhandene Endpunkte (`/bon/{id}`, `/bon/{id}/druck`, `/finances/rapport`) und SignalR-Hub. `Services/Storage/MedienEndpunkte.cs` registriert `/media/{**blobName}` mit DB-basierter Mandantenprüfung; `EnoteInfrastruktur.cs` prüft Production-Konfiguration und persistenten Schlüsselpfad.
 - `Data/ApplicationDbContext.cs` – EF-Modell (Salons, UserSalons, Leistungen, Rabatte, KassenSitzungen, Verkaeufe, Ausgaben, Abos, BlobMediaAssets, GeraetSalonFavoriten …).
 - `Data/Seed/ApplicationDbInitializer.cs` – Rollen + SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`/`Seed:SuperAdminPasswort`), Plattform-Standardpreise.
+- `Components/App.razor` – bindet `app.css` **und** das Scoped-CSS-Bundle `eNOTE.WebApp.styles.css` ein (ohne Letzteres greifen `*.razor.css`-Stile nicht).
 - `wwwroot/app.css` – komplettes Soft-UI/Neumorphismus-Design-System.
 - `wwwroot/js/enote.js` – JS-Interop (Passwort-Toggle, Popup-Closer, Bildzuschnitt, Tab-Öffnen).
 
@@ -48,6 +49,12 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 
 ### Rollen (`AppRollen`)
 `Besitzer`, `Kassierer`, `ProduktOwner`, `SuperAdmin`. Seiten sind per `[Authorize(Roles=…)]` abgesichert; sensible Verwaltungsseiten zusätzlich über `BesitzerPinGuard` (PIN-Sperre am gemeinsamen Tablet).
+
+### Besitzer-Zone (PIN-Sperre der Verwaltungsbereiche)
+- Die Besitzer-Bereiche **Vente** (Prestations, Remises), **Gestion** (Finances, Dépenses, Équipe) und **Compte** (Abonnement, Paramètres) sind hinter der Besitzer-PIN zusammengefasst: In Sidebar und mobiler Bottom-Nav erscheinen sie standardmäßig eingeklappt hinter einem Schloss-Eintrag („🔒 Zone propriétaire" oberhalb der Gruppen bzw. „🔒 Propriétaire" mobil).
+- **Entsperren:** Klick auf das Schloss öffnet einen PIN-Dialog (`KassenService.PruefeBesitzerPinAsync` mit Fehlversuchs-Sperre). **Sperren:** 🔓 „Verrouiller" in der Sidebar. Der Zustand lebt circuit-weit in `BesitzerPinState` und startet pro Session gesperrt.
+- Die Sperre gilt **auch für den angemeldeten Besitzer** (Tablet-Schutz: kein Kassierer soll in der offenen Session Verwaltungsseiten öffnen); SuperAdmin/ProduktOwner sind ausgenommen. Ohne konfigurierte Besitzer-PIN gibt es kein Schloss und keine Sperre.
+- Die UI-Ebene (Navigation) ist dabei nur Sichtbarkeit; die eigentliche Absicherung bleibt `BesitzerPinGuard` auf den Seiten (greift jetzt ebenfalls für den Besitzer).
 
 ### Registrierung & Laden-Anlage
 - Erste Registrierung legt Besitzer + ersten Laden an (`IstFreigegeben=false`, 3-Monats-Probezeit) → Admin muss freigeben.
@@ -72,6 +79,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 
 ### Finanzen & Ausgaben
 - Finanzen (`/finances`, Tabs): Tages-Umsätze (Zeitraum-Filter + PDF-Export `/finances/rapport`), letzte Verkäufe (Suche/Zahlart-Filter), Kassenabschlüsse (Soll/Ist/Écart).
+- **Solde de caisse (Besitzer-Übersicht)**: Prominent auf `/finances` unter dem Filter: Entrées (Verkäufe, Bar/Karte), Dépenses (mit Link nach `/ausgaben`) und Saldo = Entrées − Dépenses (grün/rot), dazu Ausgaben-Chips pro Kategorie. Zeitraum folgt dem Filter (Standard: letzte 14 Tage); im PDF enthalten (inkl. Dépenses par catégorie).
 - Live-Umsatz via SignalR (`/hubs/umsatz`).
 - Ausgaben (`/ausgaben`): Kategorien (immer sichtbar), Ausgaben mit optionalem Beleg (Bild/PDF aus Blob).
 

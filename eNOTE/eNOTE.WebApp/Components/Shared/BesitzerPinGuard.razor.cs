@@ -32,15 +32,16 @@ public partial class BesitzerPinGuard : IDisposable
             return;
         }
 
-        // Der angemeldete Besitzer (und Admin/ProduktOwner) wird nie per PIN gesperrt –
-        // er hat sich bereits vollständig angemeldet. Die PIN-Sperre gilt nur für
-        // angemeldete Kassierer, die einen Verwaltungsbereich öffnen.
-        var istBesitzerOderAdmin =
-            authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer)
-            || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.SuperAdmin)
+        // SuperAdmin und ProduktOwner verwalten fremde Läden und werden nicht per
+        // Besitzer-PIN gesperrt. Für den Laden selbst (Besitzer/Kassierer am gemeinsamen
+        // Tablet) gilt die Sperre dagegen immer, sobald eine Besitzer-PIN konfiguriert ist:
+        // Auch der angemeldete Besitzer sperrt seine Zone, damit kein Kassierer in der
+        // offenen Sitzung Verwaltungsseiten öffnet.
+        var istPlattformVerwalter =
+            authState.User.IsInRole(Core.DataModels.Identity.AppRollen.SuperAdmin)
             || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.ProduktOwner);
 
-        if (istBesitzerOderAdmin)
+        if (istPlattformVerwalter)
         {
             istGesperrt = false;
             laedt = false;

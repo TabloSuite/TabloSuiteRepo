@@ -261,4 +261,40 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
     return Results.Content(html, "text/html; charset=utf-8");
 }).RequireAuthorization();
 
+// Finanzbericht als PDF (Zeitraum gefiltert, inkl. Ausgaben und Solde de caisse).
+app.MapGet("/finances/rapport", async (
+    Guid salonId,
+    DateTime von,
+    DateTime bis,
+    HttpContext httpContext,
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    FinanzService finanzService,
+    MedienZugriff zugriff,
+    CancellationToken cancellationToken) =>
+{
+    if (!await zugriff.HatSalonZugangAsync(httpContext.User, salonId, finanzen: true, cancellationToken))
+    {
+        return Results.Forbid();
+    }
+
+    if (!FinanzZeitraum.TryErstellen(von, bis, out var zeitraum, out var fehler))
+    {
+        return Results.BadRequest(fehler);
+    }
+
+    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
+    if (salon is null)
+    {
+        return Results.NotFound();
+    }
+
+    var bisEnde = zeitraum!.BisExklusivUtc.AddTicks(-1);
+    var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, zeitraum.VonUtc, bisEnde, cancellationToken);
+    var uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, zeitraum.VonUtc, bisEnde, cancellationToken);
+    var pdf = FinanzBerichtPdfService.ErzeugeBericht(salon, zeitraum.VonUtc, zeitraum.Bis, tage, uebersicht);
+    httpContext.Response.Headers.CacheControl = "private, no-store";
+    return InlinePdfResponse.Create(httpContext.Response, pdf, $"rapport-{salon.Name}-{zeitraum.VonUtc:yyyyMMdd}-{zeitraum.Bis:yyyyMMdd}.pdf");
+}).RequireAuthorization();
+
 await app.RunAsync();

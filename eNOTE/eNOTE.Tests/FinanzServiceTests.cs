@@ -114,4 +114,79 @@ public class FinanzServiceTests
         Assert.Empty(await service.GetTagesUmsaetzeImZeitraumAsync(salon.Id, Stichtag, Stichtag.AddDays(1)));
         Assert.Empty(await service.GetAbschluesseAsync(salon.Id));
     }
+
+    [Fact]
+    public async Task Uebersicht_Rechnet_Einnahmen_Minus_Ausgaben_Gleich_Saldo()
+    {
+        var (factory, salon, benutzer) = await BasisAsync();
+        await using var db = await factory.CreateDbContextAsync();
+        var sitzung = Sitzung(salon, benutzer);
+        db.KassenSitzungen.Add(sitzung);
+        db.Verkaeufe.AddRange(
+            new Verkauf { SalonId = salon.Id, KassenSitzungId = sitzung.Id, ZeitUtc = Stichtag, GesamtSumme = 20400, ZahlungsArt = ZahlungsArt.Bar },
+            new Verkauf { SalonId = salon.Id, KassenSitzungId = sitzung.Id, ZeitUtc = Stichtag.AddHours(1), GesamtSumme = 5000, ZahlungsArt = ZahlungsArt.Karte });
+
+        var loyer = new Core.DataModels.Finanzen.AusgabenKategorie { SalonId = salon.Id, Name = "Loyer" };
+        var stock = new Core.DataModels.Finanzen.AusgabenKategorie { SalonId = salon.Id, Name = "Stock" };
+        db.AusgabenKategorien.AddRange(loyer, stock);
+        db.Ausgaben.AddRange(
+            new Core.DataModels.Finanzen.Ausgabe { SalonId = salon.Id, Kategorie = loyer, Betrag = 1000, DatumUtc = Stichtag, ErfasstVonId = benutzer.Id },
+            new Core.DataModels.Finanzen.Ausgabe { SalonId = salon.Id, Kategorie = stock, Betrag = 2500, DatumUtc = Stichtag, ErfasstVonId = benutzer.Id });
+        await db.SaveChangesAsync();
+
+        var uebersicht = await new FinanzService(factory)
+            .GetFinanzUebersichtAsync(salon.Id, Stichtag.Date, Stichtag.Date.AddDays(1).AddTicks(-1));
+
+        Assert.Equal(20400m, uebersicht.EinnahmenBar);
+        Assert.Equal(5000m, uebersicht.EinnahmenKarte);
+        Assert.Equal(25400m, uebersicht.EinnahmenGesamt);
+        Assert.Equal(2, uebersicht.AnzahlVerkaeufe);
+        Assert.Equal(3500m, uebersicht.AusgabenGesamt);
+        Assert.Equal(21900m, uebersicht.Saldo);
+        Assert.Equal(2, uebersicht.AusgabenNachKategorie.Count);
+        Assert.Equal("Stock", uebersicht.AusgabenNachKategorie[0].Name); // absteigend nach Betrag
+    }
+
+    [Fact]
+    public async Task Uebersicht_Trennt_Laeden_Und_Zeitraeume()
+    {
+        var (factory, salon, benutzer) = await BasisAsync();
+        await using var db = await factory.CreateDbContextAsync();
+        var sitzung = Sitzung(salon, benutzer);
+        db.KassenSitzungen.Add(sitzung);
+        // Verkauf außerhalb des Zeitraums.
+        db.Verkaeufe.Add(new Verkauf { SalonId = salon.Id, KassenSitzungId = sitzung.Id, ZeitUtc = Stichtag.AddDays(-30), GesamtSumme = 777 });
+
+        var kategorie = new Core.DataModels.Finanzen.AusgabenKategorie { SalonId = salon.Id, Name = "Loyer" };
+        db.AusgabenKategorien.Add(kategorie);
+        db.Ausgaben.Add(new Core.DataModels.Finanzen.Ausgabe { SalonId = salon.Id, Kategorie = kategorie, Betrag = 1000, DatumUtc = Stichtag, ErfasstVonId = benutzer.Id });
+
+        var fremd = new Salon { Name = "Salon B", IstFreigegeben = true };
+        db.Salons.Add(fremd);
+        var fremdeSitzung = Sitzung(fremd, benutzer);
+        db.KassenSitzungen.Add(fremdeSitzung);
+        db.Verkaeufe.Add(new Verkauf { SalonId = fremd.Id, KassenSitzungId = fremdeSitzung.Id, ZeitUtc = Stichtag, GesamtSumme = 9999 });
+        db.Ausgaben.Add(new Core.DataModels.Finanzen.Ausgabe { SalonId = fremd.Id, Kategorie = kategorie, Betrag = 8888, DatumUtc = Stichtag, ErfasstVonId = benutzer.Id });
+        await db.SaveChangesAsync();
+
+        var uebersicht = await new FinanzService(factory)
+            .GetFinanzUebersichtAsync(salon.Id, Stichtag.Date, Stichtag.Date.AddDays(1).AddTicks(-1));
+
+        Assert.Equal(0m, uebersicht.EinnahmenGesamt); // eigener Verkauf liegt außerhalb, fremder gehört nicht dazu
+        Assert.Equal(1000m, uebersicht.AusgabenGesamt); // nur eigene Ausgabe im Zeitraum
+        Assert.Equal(-1000m, uebersicht.Saldo);
+    }
+
+    [Fact]
+    public async Task Uebersicht_Liefern_Nullwerte_Ohne_Daten()
+    {
+        var (factory, salon, _) = await BasisAsync();
+        var uebersicht = await new FinanzService(factory)
+            .GetFinanzUebersichtAsync(salon.Id, Stichtag, Stichtag.AddDays(1));
+
+        Assert.Equal(0m, uebersicht.EinnahmenGesamt);
+        Assert.Equal(0m, uebersicht.AusgabenGesamt);
+        Assert.Equal(0m, uebersicht.Saldo);
+        Assert.Empty(uebersicht.AusgabenNachKategorie);
+    }
 }

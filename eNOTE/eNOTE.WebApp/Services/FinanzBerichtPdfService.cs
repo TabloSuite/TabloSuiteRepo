@@ -12,7 +12,8 @@ public static class FinanzBerichtPdfService
         Salon salon,
         DateTime von,
         DateTime bis,
-        IReadOnlyList<FinanzService.TagesUmsatz> tage)
+        IReadOnlyList<FinanzService.TagesUmsatz> tage,
+        FinanzService.FinanzUebersicht? uebersicht = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
@@ -20,6 +21,8 @@ public static class FinanzBerichtPdfService
         var gesamtKarte = tage.Sum(t => t.Karte);
         var gesamt = tage.Sum(t => t.Gesamt);
         var anzahl = tage.Sum(t => t.AnzahlVerkaeufe);
+        var ausgaben = uebersicht?.AusgabenGesamt ?? 0m;
+        var saldo = gesamt - ausgaben;
 
         var dokument = Document.Create(container =>
         {
@@ -48,6 +51,33 @@ public static class FinanzBerichtPdfService
                         ZusammenfassungKarte(row.RelativeItem(), "Carte", $"{gesamtKarte:N0} F", false);
                         ZusammenfassungKarte(row.RelativeItem(), "Ventes", anzahl.ToString(), false);
                     });
+
+                    // Solde de caisse: Entrées - Dépenses = Solde
+                    col.Item().Row(row =>
+                    {
+                        ZusammenfassungKarte(row.RelativeItem(), "Entrées (ventes)", $"{gesamt:N0} F", false);
+                        ZusammenfassungKarte(row.RelativeItem(), "Dépenses", $"{ausgaben:N0} F", false);
+                        ZusammenfassungKarte(row.RelativeItem(), "Solde de caisse", $"{(saldo < 0 ? "-" : "")}{Math.Abs(saldo):N0} F", true);
+                    });
+
+                    if (uebersicht is not null && uebersicht.AusgabenNachKategorie.Count > 0)
+                    {
+                        col.Item().PaddingTop(4).Text("Dépenses par catégorie").SemiBold().FontSize(11);
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(cols =>
+                            {
+                                cols.RelativeColumn(3);
+                                cols.RelativeColumn();
+                            });
+
+                            foreach (var k in uebersicht.AusgabenNachKategorie)
+                            {
+                                table.Cell().Element(DatenZelle).Text(k.Name);
+                                table.Cell().Element(DatenZelle).AlignRight().Text($"{k.Betrag:N0} F");
+                            }
+                        });
+                    }
 
                     // Tabelle
                     col.Item().Table(table =>

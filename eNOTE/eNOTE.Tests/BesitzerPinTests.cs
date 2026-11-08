@@ -213,4 +213,31 @@ public class BesitzerPinTests
         Assert.True(KassenPinService.PruefePin("4444", zuordnung.KassenPinHash!));
         Assert.True(KassenPinService.PruefePin("2222", zuordnung.BesitzerPinHash!));
     }
+
+    [Fact]
+    public void PinState_Startet_Gesperrt_Und_Schaltet_Um()
+    {
+        // Standard nach Anmeldung: Verwaltungszone gesperrt, erst die PIN schaltet frei.
+        var state = new ENote.WebApp.Services.BesitzerPinState();
+        Assert.False(state.VerwaltungFreigeschaltet);
+
+        state.Freischalten();
+        Assert.True(state.VerwaltungFreigeschaltet);
+
+        state.Sperren();
+        Assert.False(state.VerwaltungFreigeschaltet);
+    }
+
+    [Fact]
+    public void PinState_Loest_OnChange_Bei_Freischalten_Und_Sperren_Aus()
+    {
+        var state = new ENote.WebApp.Services.BesitzerPinState();
+        var aufrufe = 0;
+        state.OnChange += () => aufrufe++;
+
+        state.Freischalten();
+        state.Sperren();
+
+        Assert.Equal(2, aufrufe);
+    }
 }

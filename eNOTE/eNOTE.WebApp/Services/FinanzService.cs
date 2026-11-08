@@ -12,6 +12,20 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
 {
     public record TagesUmsatz(DateTime Datum, int AnzahlVerkaeufe, decimal Bar, decimal Karte, decimal Gesamt);
 
+    /// <summary>Einnahmen, Ausgaben und Saldo (Solde de caisse) eines Zeitraums.</summary>
+    public record FinanzUebersicht(
+        decimal EinnahmenBar,
+        decimal EinnahmenKarte,
+        decimal EinnahmenGesamt,
+        int AnzahlVerkaeufe,
+        decimal AusgabenGesamt,
+        IReadOnlyList<KategorieAusgabe> AusgabenNachKategorie)
+    {
+        public decimal Saldo => EinnahmenGesamt - AusgabenGesamt;
+    }
+
+    public record KategorieAusgabe(string Name, decimal Betrag);
+
     public record VerkaufEintrag(
         Guid VerkaufId,
         DateTime ZeitUtc,
@@ -61,6 +75,48 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
                 g.Sum(v => v.Summe)))
             .OrderByDescending(t => t.Datum)
             .ToList();
+
+    /// <summary>
+    /// Finanzübersicht eines Zeitraums: Einnahmen aus Verkäufen, Ausgaben aus der
+    /// Ausgabenverwaltung und der daraus resultierende Kassenstand (Saldo).
+    /// </summary>
+    public async Task<FinanzUebersicht> GetFinanzUebersichtAsync(
+        Guid salonId, DateTime vonUtc, DateTime bisUtc, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var verkaeufe = await db.Verkaeufe
+            .AsNoTracking()
+            .Where(v => v.SalonId == salonId && v.ZeitUtc >= vonUtc && v.ZeitUtc <= bisUtc)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Bar = g.Where(v => v.ZahlungsArt == ZahlungsArt.Bar).Sum(v => v.GesamtSumme),
+                Karte = g.Where(v => v.ZahlungsArt != ZahlungsArt.Bar).Sum(v => v.GesamtSumme),
+                Anzahl = g.Count()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var ausgabenRoh = await db.Ausgaben
+            .AsNoTracking()
+            .Where(a => a.SalonId == salonId && a.DatumUtc >= vonUtc && a.DatumUtc <= bisUtc)
+            .Select(a => new { a.Kategorie.Name, a.Betrag })
+            .ToListAsync(cancellationToken);
+
+        var ausgaben = ausgabenRoh
+            .GroupBy(x => x.Name)
+            .Select(g => new KategorieAusgabe(g.Key, g.Sum(x => x.Betrag)))
+            .OrderByDescending(x => x.Betrag)
+            .ToList();
+
+        return new FinanzUebersicht(
+            verkaeufe?.Bar ?? 0m,
+            verkaeufe?.Karte ?? 0m,
+            (verkaeufe?.Bar ?? 0m) + (verkaeufe?.Karte ?? 0m),
+            verkaeufe?.Anzahl ?? 0,
+            ausgaben.Sum(k => k.Betrag),
+            ausgaben);
+    }
 
     /// <summary>Die letzten Verkäufe eines Salons (für die Live-Ansicht des Besitzers).</summary>
     public async Task<List<VerkaufEintrag>> GetLetzteVerkaeufeAsync(Guid salonId, int anzahl = 25, CancellationToken cancellationToken = default)

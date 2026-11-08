@@ -1,4 +1,4 @@
-@page "/finances"
+ï»¿@page "/finances"
 @attribute [Authorize(Roles = "Besitzer, Kassierer")]
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Kasse
@@ -6,21 +6,21 @@
 <PageTitle>Finances</PageTitle>
 
 <BesitzerPinGuard>
-<div class="enote-page">
+<div class="enote-page enote-finances">
     <div class="enote-page-header">
         <div>
-            <h1>Finances – @salonName</h1>
-            <p>Chiffre d'affaires, dernières ventes et clôtures de caisse.</p>
+            <h1>Finances â€“ @salonName</h1>
+            <p>Solde de caisse, chiffre d'affaires, derniÃ¨res ventes et clÃ´tures de caisse.</p>
         </div>
     </div>
 
     @if (!darfFinanzenSehen)
     {
-        <p class="enote-empty">Vous n'avez pas le droit de consulter les finances de cet établissement.</p>
+        <p class="enote-empty">Vous n'avez pas le droit de consulter les finances de cet Ã©tablissement.</p>
     }
     else if (isLoading)
     {
-        <p>Chargement…</p>
+        <p>Chargementâ€¦</p>
     }
     else
     {
@@ -28,7 +28,7 @@
             <span class="enote-live-dot"></span>
             <div>
                 <div class="enote-live-label">Aujourd'hui @(liveVerbunden ? "(en direct)" : "")</div>
-                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">· @liveAnzahlHeute vente(s)</span></div>
+                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">Â· @liveAnzahlHeute vente(s)</span></div>
             </div>
         </div>
 
@@ -39,10 +39,52 @@
             <button class="enote-btn enote-btn-primary" @onclick="ExportierePdf">Exporter en PDF</button>
         </div>
 
+        @if (uebersicht is not null)
+        {
+            <section class="enote-solde">
+                <div class="enote-solde-grid">
+                    <div class="enote-solde-hero @(uebersicht.Saldo < 0 ? "negativ" : "positiv")">
+                        <span class="enote-solde-hero-label">Solde de caisse</span>
+                        <strong class="enote-solde-hero-wert">@FormatEcart(uebersicht.Saldo) F</strong>
+                        <span class="enote-solde-hero-meta">EntrÃ©es âˆ’ DÃ©penses Â· @ZeitraumLabel</span>
+                    </div>
+                    <div class="enote-solde-karte enote-solde-ein">
+                        <div class="enote-solde-karte-kopf">
+                            <span class="enote-solde-ico" aria-hidden="true">â†‘</span>
+                            <span class="enote-solde-label">EntrÃ©es</span>
+                        </div>
+                        <strong class="enote-solde-wert">@uebersicht.EinnahmenGesamt.ToString("N0") F</strong>
+                        <div class="enote-solde-zeilen">
+                            <div><span>EspÃ¨ces</span><span>@uebersicht.EinnahmenBar.ToString("N0") F</span></div>
+                            <div><span>Carte</span><span>@uebersicht.EinnahmenKarte.ToString("N0") F</span></div>
+                            <div><span>Ventes</span><span>@uebersicht.AnzahlVerkaeufe</span></div>
+                        </div>
+                    </div>
+                    <div class="enote-solde-karte enote-solde-aus">
+                        <div class="enote-solde-karte-kopf">
+                            <span class="enote-solde-ico" aria-hidden="true">â†“</span>
+                            <span class="enote-solde-label">DÃ©penses</span>
+                        </div>
+                        <strong class="enote-solde-wert">@uebersicht.AusgabenGesamt.ToString("N0") F</strong>
+                        @if (uebersicht.AusgabenNachKategorie.Count > 0)
+                        {
+                            <div class="enote-solde-kategorien">
+                                @foreach (var k in uebersicht.AusgabenNachKategorie)
+                                {
+                                    <span class="enote-tag">@k.Name Â· @k.Betrag.ToString("N0") F</span>
+                                }
+                            </div>
+                        }
+                        <a class="enote-solde-link" href="/ausgaben">Voir les dÃ©penses â†’</a>
+                    </div>
+                </div>
+            </section>
+        }
+
         <div class="enote-tabs">
             <button class="enote-tab @(aktiverTab == "umsatz" ? "aktiv" : "")" @onclick='() => WechsleTab("umsatz")'>Chiffre d'affaires</button>
-            <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>Dernières ventes</button>
-            <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>Clôtures de caisse</button>
+            <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>DerniÃ¨res ventes</button>
+            <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>ClÃ´tures de caisse</button>
         </div>
 
         @if (aktiverTab == "umsatz")
@@ -50,12 +92,12 @@
         <CollapsibleCard Title="@ZeitraumTitel" Subtitle="@($"{tagesUmsaetze.Sum(t => t.Gesamt):N0} F au total")" IsExpanded="true">
             @if (tagesUmsaetze.Count == 0)
             {
-                <p class="enote-muted">Aucune vente sur la période.</p>
+                <p class="enote-muted">Aucune vente sur la pÃ©riode.</p>
             }
             else
             {
                 <div class="enote-table-scroll"><table class="enote-table">
-                    <thead><tr><th>Date</th><th>Ventes</th><th>Espèces</th><th>Carte</th><th>Total</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Ventes</th><th>EspÃ¨ces</th><th>Carte</th><th>Total</th></tr></thead>
                     <tbody>
                         @foreach (var t in tagesUmsaetze)
                         {
@@ -74,7 +116,7 @@
         }
         else if (aktiverTab == "ventes")
         {
-        <CollapsibleCard Title="Dernières ventes" Subtitle="Aperçu en direct" IsExpanded="true">
+        <CollapsibleCard Title="DerniÃ¨res ventes" Subtitle="AperÃ§u en direct" IsExpanded="true">
             @if (letzteVerkaeufe.Count == 0)
             {
                 <p class="enote-muted">Aucune vente pour le moment.</p>
@@ -82,12 +124,12 @@
             else
             {
                 <div class="enote-filter-leiste">
-                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
+                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)â€¦" @bind="verkaufsSuche" @bind:event="oninput" />
                     <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
                 </div>
                 @if (!GefilterteVerkaeufe().Any())
                 {
-                    <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche ou au mode de paiement sélectionné.</p>
+                    <p class="enote-empty" role="status">Aucune vente ne correspond Ã  votre recherche ou au mode de paiement sÃ©lectionnÃ©.</p>
                 }
                 <div class="enote-feed">
                     @foreach (var v in GefilterteVerkaeufe())
@@ -95,12 +137,12 @@
                         <div class="enote-feed-item">
                             <div class="enote-feed-head">
                                 <strong>@v.GesamtSumme.ToString("N0") F</strong>
-                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "Espèces" : "Carte")</span>
+                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "EspÃ¨ces" : "Carte")</span>
                             </div>
                             <div class="enote-feed-meta">@v.PositionenText</div>
-                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") · @v.KassiererName</div>
+                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") Â· @v.KassiererName</div>
                             <div class="enote-item-actions">
-                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">?? Reçu</a>
+                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">ðŸ“„ ReÃ§u</a>
                             </div>
                         </div>
                     }
@@ -110,15 +152,15 @@
         }
         else if (aktiverTab == "clotures")
         {
-        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")" IsExpanded="true">
+        <CollapsibleCard Title="ClÃ´tures de caisse" Subtitle="@($"{abschluesse.Count} clÃ´ture(s)")" IsExpanded="true">
             @if (abschluesse.Count == 0)
             {
-                <p class="enote-muted">Aucune clôture pour le moment.</p>
+                <p class="enote-muted">Aucune clÃ´ture pour le moment.</p>
             }
             else
             {
                 <div class="enote-table-scroll"><table class="enote-table">
-                    <thead><tr><th>Clôturée le</th><th>Caissier</th><th>Attendu</th><th>Compté</th><th>Écart</th></tr></thead>
+                    <thead><tr><th>ClÃ´turÃ©e le</th><th>Caissier</th><th>Attendu</th><th>ComptÃ©</th><th>Ã‰cart</th></tr></thead>
                     <tbody>
                         @foreach (var a in abschluesse)
                         {

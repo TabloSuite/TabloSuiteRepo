@@ -1,4 +1,12 @@
-﻿@* Desktop/Tablet: Sidebar *@
+﻿@inject ENote.WebApp.Services.BesitzerPinState PinState
+@inject ENote.WebApp.Services.KassenService KassenService
+@inject ENote.WebApp.Services.AktiverSalonState AktiverSalon
+@inject ENote.WebApp.Services.ToastService Toast
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims
+@implements IDisposable
+
+@* Desktop/Tablet: Sidebar *@
 <nav class="enote-nav enote-nav-desktop">
     <AuthorizeView>
         <Authorized>
@@ -12,18 +20,32 @@
 
             <AuthorizeView Roles="Besitzer">
                 <Authorized Context="bCtx">
-                    <div class="enote-nav-group-label">Vente</div>
-                    <NavLink href="/services" class="enote-nav-link">Prestations</NavLink>
-                    <NavLink href="/remises" class="enote-nav-link">Remises</NavLink>
+                    @if (hatBesitzerPin)
+                    {
+                        <button type="button"
+                                class="enote-nav-lock-row"
+                                title="@(BesitzerZoneFreigeschaltet ? "Verrouiller la zone propriétaire" : "Déverrouiller avec le code PIN")"
+                                @onclick="@(BesitzerZoneFreigeschaltet ? SperreBesitzerZone : OeffnePinDialog)">
+                            <span class="enote-nav-lock-ico">@(BesitzerZoneFreigeschaltet ? "🔓" : "🔒")</span>
+                            <span>@(BesitzerZoneFreigeschaltet ? "Verrouiller" : "Zone propriétaire")</span>
+                        </button>
+                    }
 
-                    <div class="enote-nav-group-label">Gestion</div>
-                    <NavLink href="/finances" class="enote-nav-link">Finances</NavLink>
-                    <NavLink href="/ausgaben" class="enote-nav-link">Dépenses</NavLink>
-                    <NavLink href="/equipe" class="enote-nav-link">Équipe</NavLink>
+                    @if (BesitzerZoneFreigeschaltet)
+                    {
+                        <div class="enote-nav-group-label">Vente</div>
+                        <NavLink href="/services" class="enote-nav-link">Prestations</NavLink>
+                        <NavLink href="/remises" class="enote-nav-link">Remises</NavLink>
 
-                    <div class="enote-nav-group-label">Compte</div>
-                    <NavLink href="/abonnement" class="enote-nav-link">Abonnement</NavLink>
-                    <NavLink href="/parametres" class="enote-nav-link">Paramètres</NavLink>
+                        <div class="enote-nav-group-label">Gestion</div>
+                        <NavLink href="/finances" class="enote-nav-link">Finances</NavLink>
+                        <NavLink href="/ausgaben" class="enote-nav-link">Dépenses</NavLink>
+                        <NavLink href="/equipe" class="enote-nav-link">Équipe</NavLink>
+
+                        <div class="enote-nav-group-label">Compte</div>
+                        <NavLink href="/abonnement" class="enote-nav-link">Abonnement</NavLink>
+                        <NavLink href="/parametres" class="enote-nav-link">Paramètres</NavLink>
+                    }
                 </Authorized>
             </AuthorizeView>
 
@@ -64,9 +86,16 @@
 
             <AuthorizeView Roles="Besitzer">
                 <Authorized Context="bCtx">
-                    <NavLink href="/services" class="enote-mnav-link"><span class="enote-mnav-ico">📦</span><span>Prestations</span></NavLink>
-                    <NavLink href="/finances" class="enote-mnav-link"><span class="enote-mnav-ico">📊</span><span>Finances</span></NavLink>
-                    <NavLink href="/equipe" class="enote-mnav-link"><span class="enote-mnav-ico">👥</span><span>Équipe</span></NavLink>
+                    @if (BesitzerZoneFreigeschaltet)
+                    {
+                        <NavLink href="/services" class="enote-mnav-link"><span class="enote-mnav-ico">📦</span><span>Prestations</span></NavLink>
+                        <NavLink href="/finances" class="enote-mnav-link"><span class="enote-mnav-ico">📊</span><span>Finances</span></NavLink>
+                        <NavLink href="/equipe" class="enote-mnav-link"><span class="enote-mnav-ico">👥</span><span>Équipe</span></NavLink>
+                    }
+                    else if (hatBesitzerPin)
+                    {
+                        <button type="button" class="enote-mnav-link enote-mnav-lock" @onclick="OeffnePinDialog"><span class="enote-mnav-ico">🔒</span><span>Propriétaire</span></button>
+                    }
                 </Authorized>
             </AuthorizeView>
 
@@ -91,3 +120,121 @@
         </Authorized>
     </AuthorizeView>
 </nav>
+
+@* PIN-Dialog zum Entsperren der Besitzer-Zone (Sidebar) *@
+<ModalDialog Open="pinDialogOffen" Title="Zone propriétaire" ErrorMessage="@pinFehler" OnClose="SchliessePinDialog">
+    <ChildContent>
+        <p class="enote-muted">Saisissez le code PIN du propriétaire pour afficher Prestations, Remises, Finances, Dépenses, Équipe, Abonnement et Paramètres.</p>
+        <input type="password"
+               inputmode="numeric"
+               maxlength="6"
+               class="enote-pin-input"
+               placeholder="••••"
+               @bind="pin"
+               @bind:event="oninput"
+               @onkeydown="HandlePinTaste" />
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliessePinDialog">Annuler</button>
+        <AsyncActionButton Text="Déverrouiller" OnClick="PruefePinAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private bool pinDialogOffen;
+    private string pin = string.Empty;
+    private string? pinFehler;
+    private bool hatBesitzerPin;
+    private bool pinGeprueft;
+
+    private bool BesitzerZoneFreigeschaltet =>
+        pinGeprueft && (!hatBesitzerPin || PinState.VerwaltungFreigeschaltet);
+
+    protected override async Task OnInitializedAsync()
+    {
+        PinState.OnChange += HandlePinStateChanged;
+        AktiverSalon.OnChange += HandleSalonChanged;
+
+        // Der aktive Salon kann beim ersten Render der NavMenu noch nicht geladen sein
+        // (wird von der jeweiligen Seite initialisiert). Dann selbst nachladen.
+        if (!AktiverSalon.IstGeladen)
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                await AktiverSalon.InitialisiereAsync(userId);
+            }
+        }
+
+        // Ohne konfigurierte Besitzer-PIN gibt es nichts zu sperren.
+        var aktive = AktiverSalon.Aktiv;
+        hatBesitzerPin = aktive is not null && await KassenService.HatBesitzerPinAsync(aktive.SalonId);
+        pinGeprueft = true;
+    }
+
+    private void HandleSalonChanged()
+        => _ = InvokeAsync(async () =>
+        {
+            var aktive = AktiverSalon.Aktiv;
+            hatBesitzerPin = aktive is not null && await KassenService.HatBesitzerPinAsync(aktive.SalonId);
+            StateHasChanged();
+        });
+
+    private void HandlePinStateChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    private void OeffnePinDialog()
+    {
+        pin = string.Empty;
+        pinFehler = null;
+        pinDialogOffen = true;
+    }
+
+    private void SchliessePinDialog() => pinDialogOffen = false;
+
+    private async Task PruefePinAsync()
+    {
+        pinFehler = null;
+
+        if (string.IsNullOrWhiteSpace(pin))
+        {
+            pinFehler = "Veuillez saisir le code PIN.";
+            return;
+        }
+
+        var salonId = AktiverSalon.Aktiv?.SalonId ?? Guid.Empty;
+        var (erfolg, fehlerText) = await KassenService.PruefeBesitzerPinAsync(salonId, pin);
+        if (erfolg)
+        {
+            pin = string.Empty;
+            pinDialogOffen = false;
+            PinState.Freischalten();
+            Toast.ZeigeErfolg("Zone déverrouillée.");
+        }
+        else
+        {
+            pinFehler = fehlerText;
+            pin = string.Empty;
+        }
+    }
+
+    private async Task HandlePinTaste(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await PruefePinAsync();
+        }
+    }
+
+    private void SperreBesitzerZone()
+    {
+        PinState.Sperren();
+        Toast.ZeigeInfo("Zone propriétaire verrouillée.");
+    }
+
+    public void Dispose()
+    {
+        PinState.OnChange -= HandlePinStateChanged;
+        AktiverSalon.OnChange -= HandleSalonChanged;
+    }
+}

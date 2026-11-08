@@ -302,6 +302,18 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     padding-top: .8rem; border-top: 1px solid var(--enote-border);
 }
 
+/* Besitzer-Zone: Schloss-Eintrag oben in der Sidebar (ent-/sperrt die Verwaltungsgruppen) */
+.enote-nav-lock-row {
+    display: flex; align-items: center; gap: .6rem;
+    margin-top: .4rem; padding: .6rem 1rem;
+    border: none; border-radius: var(--enote-radius-pill);
+    background: transparent; cursor: pointer; font-family: inherit;
+    color: var(--enote-text); font-weight: 600; font-size: .9rem;
+    transition: box-shadow .18s ease;
+}
+.enote-nav-lock-row:hover { box-shadow: var(--enote-neu-in); }
+.enote-nav-lock-ico { font-size: 1rem; line-height: 1; }
+
 .enote-main { flex: 1; min-width: 0; min-height: 0; padding: 1.5rem; overflow-x: hidden; display: flex; flex-direction: column; }
 
 .enote-footer {
@@ -1081,6 +1093,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     }
     .enote-mnav-ico { font-size: 1.25rem; line-height: 1; }
     .enote-mnav-link.active { background: var(--enote-gradient); color: #fff; box-shadow: 0 6px 16px rgba(23, 37, 84, .3); }
+    .enote-mnav-lock { border: none; background: transparent; cursor: pointer; font-family: inherit; }
 
     /* Genug Platz, damit Inhalt nicht hinter der Bottom-Nav verschwindet */
     .enote-main { padding: 1rem; padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
