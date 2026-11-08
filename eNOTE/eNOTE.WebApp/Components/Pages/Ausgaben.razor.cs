@@ -13,7 +13,8 @@ public partial class Ausgaben(
     KatalogService katalogService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider) : IDisposable
+    AuthenticationStateProvider authStateProvider,
+    LadeZustand ladeZustand) : IDisposable
 {
     private bool isLoading = true;
     private Guid salonId;
@@ -66,6 +67,7 @@ public partial class Ausgaben(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();

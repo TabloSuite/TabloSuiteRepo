@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ENote.WebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialNeustart : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -62,6 +62,21 @@ namespace ENote.WebApp.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BesitzerBetreuungen",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BesitzerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ProduktOwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    GueltigAbUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GueltigBisUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BesitzerBetreuungen", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -124,7 +139,7 @@ namespace ENote.WebApp.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     SalonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     GueltigAbUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    MonatsPreis = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true)
+                    MonatsPreis = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -157,8 +172,8 @@ namespace ENote.WebApp.Migrations
                     VorgangId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ZeitpunktUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Aktion = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Betrag = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Notiz = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false)
+                    Betrag = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Notiz = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -175,8 +190,8 @@ namespace ENote.WebApp.Migrations
                     StichtagUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     FaelligUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ErstelltUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Betrag = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    VerrechneteProvision = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
+                    Betrag = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    VerrechneteProvision = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -290,33 +305,6 @@ namespace ENote.WebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "BesitzerBetreuungen",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BesitzerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ProduktOwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    GueltigAbUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    GueltigBisUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BesitzerBetreuungen", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_BesitzerBetreuungen_AspNetUsers_BesitzerId",
-                        column: x => x.BesitzerId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_BesitzerBetreuungen_AspNetUsers_ProduktOwnerId",
-                        column: x => x.ProduktOwnerId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ProduktOwnerAuszahlungen",
                 columns: table => new
                 {
@@ -385,10 +373,10 @@ namespace ENote.WebApp.Migrations
                     ProduktOwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     AnforderungId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     IstProvision = table.Column<bool>(type: "bit", nullable: false),
-                    Betrag = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Betrag = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     ZahlungsdatumUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ErfasstUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Referenz = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Referenz = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -398,8 +386,7 @@ namespace ENote.WebApp.Migrations
                         name: "FK_PoGeldbewegungen_PoZahlungsanforderungen_AnforderungId",
                         column: x => x.AnforderungId,
                         principalTable: "PoZahlungsanforderungen",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -530,19 +517,19 @@ namespace ENote.WebApp.Migrations
                     SalonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Intervall = table.Column<int>(type: "int", nullable: false),
                     PreisSnapshot = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    MonatsBasisSnapshot = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
-                    RabattProzentSnapshot = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
+                    MonatsBasisSnapshot = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    RabattProzentSnapshot = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     IndividuellerPreisSnapshot = table.Column<bool>(type: "bit", nullable: false),
                     IstTeilperiode = table.Column<bool>(type: "bit", nullable: false),
                     FaelligUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     KassenSperreAbUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AutomatischErstellt = table.Column<bool>(type: "bit", nullable: false),
                     ZeitraumVonUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ZeitraumBisUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ZahlungStatus = table.Column<int>(type: "int", nullable: false),
                     ZahlungGemeldetUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ZahlungBestaetigtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ZahlungsNotiz = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AutomatischErstellt = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -597,7 +584,6 @@ namespace ENote.WebApp.Migrations
                     SalonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     KassenPinHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     BesitzerPinHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    BesitzerPinGeschuetzt = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PinFehlversuche = table.Column<int>(type: "int", nullable: false),
                     PinGesperrtBisUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     KannFinanzenSehen = table.Column<bool>(type: "bit", nullable: false),
@@ -750,11 +736,11 @@ namespace ENote.WebApp.Migrations
                     BisUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EingangUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ErfasstUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Betrag = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    ProzentProvision = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
-                    FestProvision = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Provision = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Referenz = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    Betrag = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ProzentProvision = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    FestProvision = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Provision = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Referenz = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AnforderungId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
@@ -765,13 +751,12 @@ namespace ENote.WebApp.Migrations
                         column: x => x.NutzungsAboId,
                         principalTable: "NutzungsAbos",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_PoZahlungseingaenge_PoZahlungsanforderungen_AnforderungId",
                         column: x => x.AnforderungId,
                         principalTable: "PoZahlungsanforderungen",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -783,7 +768,7 @@ namespace ENote.WebApp.Migrations
                     BenutzerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ZeitpunktUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Aktion = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Begruendung = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true)
+                    Begruendung = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -920,13 +905,6 @@ namespace ENote.WebApp.Migrations
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AspNetUsers_IstErsterAdmin",
-                table: "AspNetUsers",
-                column: "IstErsterAdmin",
-                unique: true,
-                filter: "[IstErsterAdmin] = 1");
-
-            migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
@@ -952,18 +930,6 @@ namespace ENote.WebApp.Migrations
                 name: "IX_AusgabenKategorien_SalonId",
                 table: "AusgabenKategorien",
                 column: "SalonId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BesitzerBetreuungen_BesitzerId",
-                table: "BesitzerBetreuungen",
-                column: "BesitzerId",
-                unique: true,
-                filter: "[GueltigBisUtc] IS NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BesitzerBetreuungen_ProduktOwnerId",
-                table: "BesitzerBetreuungen",
-                column: "ProduktOwnerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BesitzerHinweise_SalonId_IstUngelesen",
@@ -1029,38 +995,14 @@ namespace ENote.WebApp.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_MonatsPreisStaende_SalonId_GueltigAbUtc",
-                table: "MonatsPreisStaende",
-                columns: new[] { "SalonId", "GueltigAbUtc" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_NutzungsAbos_SalonId_ZeitraumVonUtc",
+                name: "IX_NutzungsAbos_SalonId",
                 table: "NutzungsAbos",
-                columns: new[] { "SalonId", "ZeitraumVonUtc" },
-                unique: true,
-                filter: "[AutomatischErstellt] = 1");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PoAbrechnungsEreignisse_ProduktOwnerId_ZeitpunktUtc",
-                table: "PoAbrechnungsEreignisse",
-                columns: new[] { "ProduktOwnerId", "ZeitpunktUtc" });
+                column: "SalonId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PoGeldbewegungen_AnforderungId",
                 table: "PoGeldbewegungen",
                 column: "AnforderungId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PoGeldbewegungen_ProduktOwnerId_IstProvision_Referenz",
-                table: "PoGeldbewegungen",
-                columns: new[] { "ProduktOwnerId", "IstProvision", "Referenz" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PoZahlungsanforderungen_SammellaufId_ProduktOwnerId",
-                table: "PoZahlungsanforderungen",
-                columns: new[] { "SammellaufId", "ProduktOwnerId" },
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_PoZahlungseingaenge_AnforderungId",
@@ -1070,8 +1012,7 @@ namespace ENote.WebApp.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PoZahlungseingaenge_NutzungsAboId",
                 table: "PoZahlungseingaenge",
-                column: "NutzungsAboId",
-                unique: true);
+                column: "NutzungsAboId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProduktOwnerAuszahlungen_ProduktOwnerId_Jahr_Monat",
@@ -1083,13 +1024,14 @@ namespace ENote.WebApp.Migrations
                 name: "IX_ProduktOwnerSalons_ProduktOwnerId_SalonId",
                 table: "ProduktOwnerSalons",
                 columns: new[] { "ProduktOwnerId", "SalonId" },
-                unique: true,
-                filter: "[GueltigBisUtc] IS NULL");
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProduktOwnerSalons_SalonId",
                 table: "ProduktOwnerSalons",
-                column: "SalonId");
+                column: "SalonId",
+                unique: true,
+                filter: "[GueltigBisUtc] IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Rabatte_LeistungId",

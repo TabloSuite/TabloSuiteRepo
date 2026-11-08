@@ -1,0 +1,13 @@
+@implements IDisposable
+@inject ENote.WebApp.Services.LadeZustand LadeZustand
+
+@if (LadeZustand.Laedt)
+{
+    <div class="enote-global-loading" role="progressbar" aria-label="Chargement"></div>
+}
+
+@code {
+    protected override void OnInitialized() => LadeZustand.OnChange += Aktualisieren;
+    private async void Aktualisieren() => await InvokeAsync(StateHasChanged);
+    public void Dispose() => LadeZustand.OnChange -= Aktualisieren;
+}

@@ -1,13 +1,18 @@
+using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Salons;
 using ENote.Core.Services.Storage;
 using ENote.WebApp.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Services;
 
 /// <summary>Salon-Einstellungen des Besitzers: Slogan und Logo (Branding für den Bon).</summary>
-public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFactory, IMediaStorageService mediaStorage)
+public class SalonService(
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    IMediaStorageService mediaStorage,
+    UserManager<AppUser> userManager)
 {
     public async Task<Salon?> GetSalonAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
@@ -143,24 +148,67 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
                 && (us.Salon.ProbeBisUtc == null || us.Salon.ProbeBisUtc <= jetzt), cancellationToken);
     }
 
-    /// <summary>Besitzer legt einen weiteren Laden an (erfordert abgelaufene Probezeit eines
-    /// freigegebenen Ladens). Der neue Laden ist sofort aktiv, muss aber vom Admin freigegeben
-    /// werden und hat keine erneute Probezeit.</summary>
-    public async Task<(bool Erfolg, string? Fehler, Salon? Salon)> FuegeSalonHinzuAsync(
-        Guid besitzerId, string name, string? standort, string? land, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Besitzer legt einen weiteren Laden an (erfordert abgelaufene Probezeit eines
+    /// freigegebenen Ladens). Nach der Regel „ein Konto pro Laden" wird dabei ein
+    /// <b>neues Besitzer-Konto</b> (eigenes Pseudonym + Passwort) angelegt; die E-Mail
+    /// darf dieselbe wie beim ersten Laden sein (gleiche Person). Der neue Laden ist
+    /// sofort aktiv, muss aber vom Admin freigegeben werden und hat keine erneute Probezeit.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler, Salon? Salon, AppUser? Konto)> FuegeSalonHinzuAsync(
+        Guid bestehenderBesitzerId,
+        string name, string? standort, string? land,
+        string vorname, string nachname, string pseudonym, string email, string initialPasswort,
+        CancellationToken cancellationToken = default)
     {
         var bereinigtName = (name ?? string.Empty).Trim();
         if (bereinigtName.Length < 2)
         {
-            return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null);
+            return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null, null);
         }
 
-        if (!await DarfWeiterenLadenAnlegenAsync(besitzerId, cancellationToken))
+        if (!await DarfWeiterenLadenAnlegenAsync(bestehenderBesitzerId, cancellationToken))
         {
-            return (false, "Vous pourrez ajouter un autre établissement une fois la période d'essai de votre établissement validé terminée.", null);
+            return (false, "Vous pourrez ajouter un autre établissement une fois la période d'essai de votre établissement validé terminée.", null, null);
+        }
+
+        var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
+        {
+            return (false, "Veuillez saisir un pseudonyme pour le nouveau compte.", null, null);
+        }
+
+        // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
+        if (await userManager.FindByNameAsync(bereinigtPseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.", null, null);
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (await db.Salons.AnyAsync(s => s.Name == bereinigtName, cancellationToken))
+        {
+            return (false, "Un établissement portant ce nom existe déjà.", null, null);
+        }
+
+        var konto = new AppUser
+        {
+            UserName = bereinigtPseudonym,
+            Email = (email ?? string.Empty).Trim(),
+            Vorname = vorname.Trim(),
+            Nachname = nachname.Trim(),
+            FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            EmailConfirmed = true
+        };
+
+        var erstellen = await userManager.CreateAsync(konto, initialPasswort);
+        if (!erstellen.Succeeded)
+        {
+            var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
+            return (false, string.IsNullOrWhiteSpace(fehler) ? "La création a échoué." : fehler, null, null);
+        }
+
+        await userManager.AddToRoleAsync(konto, AppRollen.Besitzer);
+
         var salon = new Salon
         {
             Name = bereinigtName,
@@ -176,7 +224,7 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
 
         db.UserSalons.Add(new UserSalon
         {
-            AppUserId = besitzerId,
+            AppUserId = konto.Id,
             SalonId = salon.Id,
             KannFinanzenSehen = true,
             KannLeistungenVerwalten = true,
@@ -184,6 +232,6 @@ public class SalonService(IDbContextFactory<ApplicationDbContext> dbContextFacto
         });
         await db.SaveChangesAsync(cancellationToken);
 
-        return (true, null, salon);
+        return (true, null, salon, konto);
     }
 }

@@ -13,7 +13,8 @@ public partial class Equipe(
     GeraetFavoritService geraetFavoritService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider) : IDisposable
+    AuthenticationStateProvider authStateProvider,
+    LadeZustand ladeZustand) : IDisposable
 {
     private List<TeamService.TeamMitglied> team = [];
     private List<UserSalon> salons = [];
@@ -47,6 +48,7 @@ public partial class Equipe(
 
     private string neuVorname = string.Empty;
     private string neuNachname = string.Empty;
+    private string neuPseudonym = string.Empty;
     private string neuEmail = string.Empty;
     private string neuPasswort = string.Empty;
     private string neuPin = string.Empty;
@@ -57,6 +59,7 @@ public partial class Equipe(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
@@ -110,7 +113,7 @@ public partial class Equipe(
 
     private void NeuAnlegen()
     {
-        neuVorname = neuNachname = neuEmail = neuPin = string.Empty;
+        neuVorname = neuNachname = neuPseudonym = neuEmail = neuPin = string.Empty;
         neuPasswort = ErzeugeInitialPasswort();
         dialogFehler = null;
         anlegedialogOffen = true;
@@ -119,14 +122,15 @@ public partial class Equipe(
     private async Task LegeKassiererAnAsync()
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
-            || string.IsNullOrWhiteSpace(neuEmail) || string.IsNullOrWhiteSpace(neuPasswort))
+            || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail)
+            || string.IsNullOrWhiteSpace(neuPasswort))
         {
             dialogFehler = "Veuillez remplir tous les champs.";
             return;
         }
 
         var (erfolg, fehler, _) = await teamService.LegeKassiererAnAsync(
-            salonId, neuVorname, neuNachname, neuEmail, neuPasswort, neuPin);
+            salonId, neuVorname, neuNachname, neuPseudonym, neuEmail, neuPasswort, neuPin);
 
         if (!erfolg)
         {

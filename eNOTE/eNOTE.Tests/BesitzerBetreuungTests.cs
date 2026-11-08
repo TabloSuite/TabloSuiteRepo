@@ -41,8 +41,11 @@ public class BesitzerBetreuungTests
         Assert.Equal(neu.Id, (await service.GetUebersichtAsync(admin.Id, owner.Id)).ProduktOwnerId);
         await using (var db = await factory.CreateDbContextAsync())
         {
-            Assert.Empty(await db.ProduktOwnerSalons.Where(p => p.ProduktOwnerId == alt.Id).ToListAsync());
-            var aktuell = await db.ProduktOwnerSalons.ToListAsync();
+            // Alte Zuordnungen des bisherigen PO sind archiviert (GueltigBisUtc gesetzt), nicht gelöscht.
+            var altZuordnungen = await db.ProduktOwnerSalons.Where(p => p.ProduktOwnerId == alt.Id).ToListAsync();
+            Assert.All(altZuordnungen, p => Assert.NotNull(p.GueltigBisUtc));
+            // Aktuell aktiv sind nur die Zuordnungen des neuen PO (ohne Umsatzrechte).
+            var aktuell = await db.ProduktOwnerSalons.Where(p => p.GueltigBisUtc == null).ToListAsync();
             Assert.Equal(2, aktuell.Count);
             Assert.All(aktuell, p => { Assert.Equal(neu.Id, p.ProduktOwnerId); Assert.False(p.KannLadenUmsatzSehen); Assert.False(p.KannPlattformUmsatzSehen); });
             Assert.Equal(3, await db.ProduktOwnerSalons.IgnoreQueryFilters().CountAsync());

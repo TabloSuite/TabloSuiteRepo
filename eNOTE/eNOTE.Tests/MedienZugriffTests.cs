@@ -95,7 +95,7 @@ public class MedienZugriffTests
         db.UserSalons.Add(zuordnung); db.Leistungen.Add(leistung); db.AusgabenKategorien.Add(kategorie); await db.SaveChangesAsync();
         var storage = new UploadZaehler();
         var katalog = new KatalogService(factory, null!, storage);
-        var salone = new SalonService(factory, storage); var ausgaben = new AusgabenService(factory, storage);
+        var salone = new SalonService(factory, storage, null!); var ausgaben = new AusgabenService(factory, storage);
         using var inhalt = new MemoryStream([1]);
         Assert.False((await salone.SetzeLogoAsync(salon.Id, "logo.png", "image/png", inhalt, user.Id)).Erfolg);
         Assert.False((await katalog.SpeichereLeistungsBildAsync(leistung.Id, "photo.png", "image/png", inhalt, user.Id)).Erfolg);

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Journaux(ExceptionLogService logService, ToastService toast)
+public partial class Journaux(ExceptionLogService logService, ToastService toast, LadeZustand ladeZustand)
 {
     private List<ExceptionLog> logs = [];
     private bool isLoading = true;
@@ -29,7 +29,11 @@ public partial class Journaux(ExceptionLogService logService, ToastService toast
             || (l.Pfad?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
     }
 
-    protected override async Task OnInitializedAsync() => await LadeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        using var _ = ladeZustand.Beginnen();
+        await LadeAsync();
+    }
 
     private async Task LadeAsync()
     {

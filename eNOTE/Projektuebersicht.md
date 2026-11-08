@@ -6,7 +6,7 @@
 
 Deployment-Konfiguration, private Medienrechte und der getrennte Administrationspfad stehen in [Deployment-Azure.md](Deployment-Azure.md). Development speichert Medien lokal außerhalb von `wwwroot`; Production ausschließlich per Managed Identity in privaten Blobs, ohne lokalen Fallback. Der normale App-Start migriert und seedet nicht.
 
-Der übernommene fachliche Arbeitsstand ist noch inkonsistent (u. a. fehlendes `AboIntervall.SechsMonate`, veralteter Registrierungsaufruf und konkurrierende Migrationsdateien). Die fachlichen Bestandsbeschreibungen unten sind daher kein Nachweis einer abgeschlossenen Ein-Geschäft-/Pseudonym-/PIN-Umstellung und keine Deployment-Freigabe. Datenbankstände wurden in diesem Infrastrukturauftrag nicht geprüft oder geändert.
+Aktuelle Hosting-Prüfung: `eNOTE.WebApp` baut erfolgreich; der Lösungsbuild scheitert an 73 Compilerfehlern in bestehenden Tests mit veralteten Service-Aufrufen. Der Testlauf wurde deshalb abgebrochen (0 Tests ausgeführt). Konkurrierende Migrationsdateien bleiben vor Datenbankaktionen zu klären. Die fachlichen Bestandsbeschreibungen unten sind kein Nachweis einer abgeschlossenen Ein-Geschäft-/Pseudonym-/PIN-Umstellung und keine Deployment-Freigabe. Datenbankstände wurden nicht geprüft oder geändert. Ein rein lokales Linux-Publish-Profil und SVG-basierte Etiketten-Barcodes sind vorbereitet; Linux-Laufzeit und Veröffentlichung wurden nicht getestet. Ziel ist `enote.tablosuite.com`, E-Mail bleibt bis zur späteren IONOS-/Postmark-Einrichtung unverändert.
 
 ## 1. Zweck
 

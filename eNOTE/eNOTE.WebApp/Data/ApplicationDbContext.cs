@@ -218,6 +218,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<ProduktOwnerSalon>(entity =>
         {
             entity.HasIndex(p => new { p.ProduktOwnerId, p.SalonId }).IsUnique();
+            // Ein Laden hat genau einen aktiven verantwortlichen PO (eindeutige Provision/Abrechnung).
+            // Archivierte Zuordnungen (GueltigBisUtc gesetzt) bleiben für die Historie erhalten.
+            entity.HasIndex(p => p.SalonId).IsUnique().HasFilter("[GueltigBisUtc] IS NULL");
             entity.Property(p => p.ProzentProvision).HasPrecision(5, 2);
             entity.Property(p => p.FestbetragProvision).HasPrecision(18, 2);
             entity.HasOne(p => p.Salon)

@@ -11,7 +11,8 @@ public partial class Abonnement(
     KatalogService katalogService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
-    AuthenticationStateProvider authStateProvider) : IDisposable
+    AuthenticationStateProvider authStateProvider,
+    LadeZustand ladeZustand) : IDisposable
 {
     private readonly AboIntervall[] formeln = [AboIntervall.Monatlich, AboIntervall.DreiMonate, AboIntervall.Jaehrlich];
 
@@ -31,6 +32,7 @@ public partial class Abonnement(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();

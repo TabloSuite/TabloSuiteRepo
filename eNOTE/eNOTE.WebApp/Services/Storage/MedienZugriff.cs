@@ -9,6 +9,10 @@ namespace ENote.WebApp.Services.Storage;
 /// <summary>Autorisiert anhand aktueller DB-Zuordnungen, nicht anhand eines Blob-Prefix oder E-Mail.</summary>
 public class MedienZugriff(IDbContextFactory<ApplicationDbContext> factory)
 {
+    /// <summary>Erstellt einen DbContext für direkte Abfragen (z. B. in MedienEndpunkte).</summary>
+    public async Task<ApplicationDbContext> CreateDbContextAsync(CancellationToken ct = default)
+        => await factory.CreateDbContextAsync(ct);
+
     public async Task<BlobMediaAsset?> LadeAssetAsync(ClaimsPrincipal principal, string blobName, CancellationToken ct = default)
     {
         if (!MedienDateien.IstGueltigerName(blobName)) return null;

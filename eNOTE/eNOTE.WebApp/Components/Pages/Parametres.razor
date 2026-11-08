@@ -117,14 +117,21 @@
 <ModalDialog Open="neuerLadenDialogOffen" Title="Nouvel établissement" ErrorMessage="@neuerLadenFehler" OnClose="() => neuerLadenDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">Le nouvel établissement sera activé après validation par l'administrateur.</p>
+            <p class="enote-muted">Le nouvel établissement sera activé après validation par l'administrateur. Un nouveau compte (pseudonyme + mot de passe) est créé pour cet établissement ; l'adresse e-mail peut être la même que celle du premier établissement.</p>
             <label>Nom de l'établissement <input @bind="neuerLadenName" placeholder="ex. Salon B" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuerLadenStandort" placeholder="ex. Lomé" /></label>
+            <hr />
+            <label>Prénom <input @bind="neuerLadenVorname" placeholder="ex. Jean" /></label>
+            <label>Nom <input @bind="neuerLadenNachname" placeholder="ex. Dupont" /></label>
+            <label>Pseudonyme (identifiant de connexion) <input @bind="neuerLadenPseudonym" placeholder="ex. jean.salonb" autocomplete="username" /></label>
+            <label>Adresse e-mail de contact <input type="email" @bind="neuerLadenEmail" placeholder="ex. contact@exemple.com" autocomplete="email" /></label>
+            <label>Mot de passe initial <PasswordInput @bind-Value="neuerLadenPasswort" Autocomplete="new-password" /></label>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => neuerLadenDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="FuegeNeuenLadenHinzuAsync" CssClass="enote-btn-primary" Disabled="@(string.IsNullOrWhiteSpace(neuerLadenName))" />
+        <AsyncActionButton Text="Créer" OnClick="FuegeNeuenLadenHinzuAsync" CssClass="enote-btn-primary"
+            Disabled="@(string.IsNullOrWhiteSpace(neuerLadenName) || string.IsNullOrWhiteSpace(neuerLadenVorname) || string.IsNullOrWhiteSpace(neuerLadenNachname) || string.IsNullOrWhiteSpace(neuerLadenPseudonym) || string.IsNullOrWhiteSpace(neuerLadenEmail) || string.IsNullOrWhiteSpace(neuerLadenPasswort))" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

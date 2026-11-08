@@ -2,9 +2,27 @@
 
 ## Status und Grenzen
 
-Die Infrastruktur ist im Quellcode umgesetzt. Dies ist **keine Freigabe zur Veröffentlichung**: Der aktuelle Arbeitsstand enthält unabhängige Compiler- und Geschäftsmodellinkonsistenzen. Insbesondere fehlen `AboIntervall.SechsMonate` für die vorhandenen Vertragsregeln sowie passende Registrierungs-/Benutzermodellteile. Alte Migrationen und die unversionierte `20261105144750_InitialNeustart` koexistieren; keine davon ungeprüft gegen Azure ausführen. Die Infrastrukturänderung benötigt selbst keine neue EF-Migration.
+Die aktive Solution `SKOULOUAPPMAPPE.slnx` enthält **eNOTE.Core, eNOTE.WebApp und eNOTE.Tests**. Veröffentlicht werden soll die Kassen-/Geschäftsverwaltungs-App eNOTE, nicht die daneben im Repository vorhandene Schul-App SKOULOUAPP. Zieladresse ist `https://enote.tablosuite.com`.
+
+Die Infrastruktur ist im Quellcode umgesetzt. Dies ist **keine Freigabe zur Veröffentlichung**. Aktuelle lokale Prüfung im Hosting-Vorbereitungsauftrag:
+
+- Dateidiagnostik der geänderten Dateien: keine Probleme gemeldet.
+- Projektbuild `eNOTE.WebApp`: erfolgreich, einschließlich plattformunabhängiger SVG-Barcodes.
+- Lösungsbuild: fehlgeschlagen mit **73 Compilerfehlern** in bestehenden Tests, unter anderem veraltete Finanzservice-, Nutzeranlage- und Mehrladen-Aufrufe (`CS1061`, `CS1503`, `CS7036`).
+- Testausführung für `eNOTE.Tests`: wegen Buildfehlern abgebrochen, **0 Tests ausgeführt**. Neue SVG-Regressionstests sind vorhanden, aber nicht als bestanden validiert.
+- Linux-Publish-Profil vorbereitet, noch kein Publish-Paket erzeugt und kein Linux-Laufzeittest durchgeführt. Ein Windows-Projektbuild ist kein Linux-Betriebsnachweis.
+
+Alte Migrationen und `20261105144750_InitialNeustart` koexistieren; keine davon ungeprüft gegen Azure ausführen. Die Hosting-Vorbereitung benötigt selbst keine neue EF-Migration. Testinkonsistenzen vor Veröffentlichung fachlich beheben, nicht durch Ausschluss von Tests oder Wiederherstellen veralteter APIs verdecken.
 
 Es wurden keine Azure-Ressourcen verändert, keine Datenbank migriert/befüllt und keine Secrets gelesen. Angaben zu Ressourcen und Berechtigungen unten stammen vom Nutzer, nicht aus einer aktuellen Cloudprüfung.
+
+## Hostingentscheidung und unveränderte Dienste
+
+Empfohlen ist der bereits dokumentierte **Linux Azure App Service mit .NET 10 und einer Instanz**. Das passt zu Blazor Interactive Server und den vorhandenen SignalR-Hubs; Static Web Apps ist kein alleiniger Host für diese serverseitige Anwendung. Keine Containerplattform, kein zusätzlicher SignalR-Dienst und keine neuen kostenpflichtigen Ressourcen für den ersten Betrieb einführen. Den genannten B1-Plan nur nach Bestätigung des tatsächlichen Bestands und der laufenden Kosten verwenden; Tarif, Runtime-Verfügbarkeit und Region wurden nicht online geprüft.
+
+Die vorhandene ASP.NET-Core-Identity-Anmeldung bleibt bestehen. Managed Identity ist im Produktionscode bereits für Blob und SQL vorgesehen und bedeutet **keine Umstellung der Benutzeranmeldung auf Entra ID**. Serilog bleibt unverändert; keine pauschale OpenTelemetry-, Key-Vault- oder Authentifizierungsmigration. Der historische Plan unter `.appmod/.migration/` wird nicht wiederaufgenommen: seine Forderung nach Entfernen des lokalen Development-Speichers widerspricht den aktuellen Vorgaben. Kein Modernize, Branchwechsel oder automatischer Commit.
+
+**E-Mail bleibt unverändert.** IONOS/Postmark erst später nach Aktivierung von `contact@tablosuite.com` einrichten. Kein Azure Communication Email, kein Domaintransfer und keine neue Domainregistrierung. Ohne funktionierenden vorhandenen SMTP-Versand ist die E-Mail-Passwortwiederherstellung nicht betriebsbereit; das ist vor öffentlicher Nutzung bewusst zu klären, nicht durch einen ungefragten Dienstwechsel zu umgehen.
 
 ## 1. Speicher und Authentifizierung
 
@@ -52,6 +70,9 @@ Folgende Einstellungen erst nach Behebung der Build-/Modellblockaden setzen bzw.
 | `DataProtection__ApplicationName` | `eNOTE` – bei Folgeversionen unverändert lassen |
 | `DataProtection__KeysPath` | `/home/data/enote/keys` |
 | `WEBSITES_ENABLE_APP_SERVICE_STORAGE` | `true`; Persistenz von `/home` sicherstellen |
+| `App__PublicBaseUrl` | `https://enote.tablosuite.com`; vorhandene feste Basisadresse für spätere Wiederherstellungslinks, keine Aktivierung von E-Mail |
+
+Zusätzlich vor Freigabe am bestehenden App Service prüfen: .NET-10-Linux-Runtime, **Always On**, funktionsfähige WebSocket-Verbindungen für Blazor/SignalR, eine Instanz und HTTPS Only. Bei späterer Skalierung sind Circuits, Sitzungsaﬃnität und gemeinsamer Schlüsselring neu zu planen. `AllowedHosts` auf die eigene Domain und den **tatsächlich bestätigten** Azure-Standardhostname begrenzen; keinen unbestätigten Standardhostname raten. Keine dieser Einstellungen wird durch das lokale Publish-Profil in Azure gesetzt.
 
 Keine `Seed__SuperAdminPasswort`-Konfiguration für den dauerhaften Webbetrieb hinterlegen. Administrative Seed-Zugangsdaten nur im getrennten Einmalprozess bereitstellen.
 
@@ -119,15 +140,26 @@ Development unterstützt weiterhin `Database:SeedOnly=true`; dabei ist ebenfalls
 
 ## 6. Lokale Vorbereitung, keine Veröffentlichung
 
-Nach Wiederherstellung des vollständigen fachlichen Arbeitsstands:
+Das Visual-Studio-Folder-Profil `eNOTE/eNOTE.WebApp/Properties/PublishProfiles/AzureLinuxLokal.pubxml` bereitet ausschließlich lokale Dateien vor:
 
-```powershell
-dotnet restore eNOTE/eNOTE.Tests/eNOTE.Tests.csproj
-dotnet test eNOTE/eNOTE.Tests/eNOTE.Tests.csproj --no-restore
-dotnet build SKOULOUAPPMAPPE.slnx --no-restore
-dotnet publish eNOTE/eNOTE.WebApp/eNOTE.WebApp.csproj -c Release --no-restore -o <lokaler-Ausgabeordner>
-```
+- Release, `net10.0`, `linux-x64`, frameworkabhängig; der Host benötigt .NET 10.
+- Ausgabe in `artifacts/enote-linux/` (bereits durch `.gitignore` ausgeschlossen).
+- Kein Azure-Publish-Provider, keine Zugangsdaten, kein Upload und kein Browserstart.
+- `appsettings.Development.json` wird nicht veröffentlicht. Produktionsverbindungen gehören weiterhin ausschließlich in sichere Host-Konfiguration; keine Secrets in andere versionierte Settings schreiben.
+- Kein Trimming oder Single-File-Publish; native QuestPDF-Abhängigkeiten bleiben im normalen Publish-Layout.
 
-Kein `az webapp deploy`, kein automatischer DB-Startschritt und keine Veröffentlichung durch diese Anleitung. Linux-Deployment vor Freigabe außerdem hinsichtlich nativer PDF-/Grafikabhängigkeiten und realem App-Service-Start prüfen; ein erfolgreicher Windows-Build allein belegt das nicht. Die Domain `enote.tablosuite.com` ist noch nicht eingerichtet. Auch die mögliche Standard-Hostname-Angabe aus dem bisherigen Gespräch ist unbestätigt.
+Nach Behebung der Test-Compilerfehler zuerst Lösungsbuild und automatisierte Tests erneut erfolgreich ausführen. Danach kann in Visual Studio das **Folder-Profil** zur lokalen Paketvorbereitung verwendet werden. Es ist kein Azure-Veröffentlichungsprofil. Der aktuelle Auftrag hat dieses Profil nicht ausgeführt. Etiketten-Barcodes nutzen jetzt SVG aus dem vorhandenen ZXing statt Windows-only `System.Drawing`; PDF-Erzeugung und native Bibliotheken müssen trotzdem auf Linux validiert werden.
 
-Vor späterem Deployment offen: vollständiger aktueller Build/Tests, konsistente Fachmodelle und Migrationskette, tatsächlicher SQL-Schemastand, privater Container, Runtime-MI-Zugang und Firewall, persistenter privater Schlüsselpfad, HTTPS/Forwarded-Headers, PDF-Betrieb unter Linux und Domainbindung. Kein Browser-Praxistest wird hier eigenständig gestartet.
+Kein `az webapp deploy`, kein automatischer DB-Startschritt und keine Veröffentlichung durch diese Anleitung. Die tatsächliche Domainbindung wurde nicht geprüft. Auch die mögliche Standard-Hostname-Angabe aus dem bisherigen Gespräch ist unbestätigt.
+
+## 7. Domain und spätere Freigabe
+
+`tablosuite.com` besteht bereits. Nur die Subdomain `enote` beim bestehenden DNS-Verwalter einrichten, **erst nach Zustimmung**:
+
+1. Vorhandenen App Service, Subscription, Resource Group, Region, Tarif/Kosten und dessen echten Standardhostname bestätigen. Keine zweite App oder neuen Plan vorsorglich anlegen.
+2. Privaten Container, Runtime-MI-Zugriff, SQL-Firewall und tatsächliches Schema separat bestätigen; keine DB-Resets. Eine Datenbankänderung benötigt eine eigene Freigabe für das genaue Ziel.
+3. Bei Freigabe DNS-CNAME `enote` auf den bestätigten App-Service-Standardhostname und TXT `asuid.enote` auf dessen tatsächliche Domain-Verifizierungs-ID setzen. Keine MX-, SPF-, DKIM- oder anderen E-Mail-Einträge ändern. Bei IONOS nur dann konfigurieren, wenn IONOS tatsächlich der autoritative DNS-Verwalter ist.
+4. Eigene Domain am bestehenden App Service binden und ein unterstütztes App-Service-Managed-Certificate mit SNI/TLS aktivieren; Voraussetzungen und mögliche Kosten vorher prüfen. HTTPS Only und Weiterleitung kontrollieren.
+5. Erst nach erfolgreichem Build/Tests, Linux-PDF-/Runtimevalidierung, bestätigter Konfiguration und ausdrücklicher Veröffentlichungsfreigabe das lokale Paket hochladen. Externe Prüfung nur mit gesondertem Auftrag; keinen Browser-Praxistest eigenständig starten.
+
+Für den nächsten externen Schritt fehlen die Bestätigung, dass der unter Abschnitt 2 genannte App Service `enote` wirklich das gewünschte Ziel ist, dessen tatsächlicher Standardhostname, der DNS-Verwalter und eine ausdrückliche Kosten-/Änderungsfreigabe. Keine Secrets, Passwörter oder Publish-Credentials im Chat anfordern. Lokale Vorbereitungsarbeiten sind keine Zustimmung zur Veröffentlichung.

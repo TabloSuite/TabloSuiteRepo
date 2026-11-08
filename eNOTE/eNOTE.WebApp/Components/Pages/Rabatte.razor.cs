@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Rabatte(KatalogService katalogService, AktiverSalonState aktiverSalon, ToastService toast, AuthenticationStateProvider authStateProvider) : IDisposable
+public partial class Rabatte(KatalogService katalogService, AktiverSalonState aktiverSalon, ToastService toast, AuthenticationStateProvider authStateProvider, LadeZustand ladeZustand) : IDisposable
 {
     private List<Rabatt> rabatte = [];
     private List<Leistung> leistungen = [];
@@ -53,6 +53,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();

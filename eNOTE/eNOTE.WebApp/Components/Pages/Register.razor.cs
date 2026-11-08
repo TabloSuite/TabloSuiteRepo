@@ -13,15 +13,24 @@ public partial class Register(AuthService authService, NavigationManager navigat
 
     private string? errorMessage;
     private bool isSubmitting;
+    private bool cguOffen;
 
     private async Task HandleSubmit()
     {
         isSubmitting = true;
         errorMessage = null;
 
+        if (!FormModel.CguAcceptees)
+        {
+            isSubmitting = false;
+            errorMessage = "Veuillez accepter les Conditions Générales d'Utilisation.";
+            return;
+        }
+
         var (succeeded, error) = await authService.RegisterBesitzerAsync(
             FormModel.Vorname,
             FormModel.Nachname,
+            FormModel.Pseudonym,
             FormModel.Email,
             FormModel.Passwort,
             FormModel.SalonName,
@@ -47,6 +56,9 @@ public partial class Register(AuthService authService, NavigationManager navigat
         [Required(ErrorMessage = "Veuillez saisir votre nom.")]
         public string Nachname { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Veuillez choisir un pseudonyme.")]
+        public string Pseudonym { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "Veuillez saisir une adresse e-mail.")]
         [EmailAddress(ErrorMessage = "Adresse e-mail invalide.")]
         public string Email { get; set; } = string.Empty;
@@ -61,5 +73,8 @@ public partial class Register(AuthService authService, NavigationManager navigat
         public string? SalonStandort { get; set; }
 
         public string? Slogan { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(bool), "true", "true", ErrorMessage = "Veuillez accepter les CGU.")]
+        public bool CguAcceptees { get; set; }
     }
 }

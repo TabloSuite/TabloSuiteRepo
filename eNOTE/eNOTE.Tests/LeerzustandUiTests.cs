@@ -11,8 +11,11 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using ENote.WebApp.Services.Mails;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.JSInterop;
 using Xunit;
 
@@ -71,6 +74,8 @@ public class LeerzustandUiTests
         services.AddSingleton<BesitzerPinState>();
         services.AddSingleton(new KatalogService(factory, null!, null!));
         services.AddSingleton(new KassenService(factory, new FakeUmsatzBenachrichtigungService()));
+        services.AddSingleton(_ => new EmailService(new ConfigurationBuilder().Build(), factory, NullLogger<EmailService>.Instance));
+        services.AddSingleton<LadeZustand>();
         services.AddScoped<AdminService>();
         services.AddSingleton<ProduktOwnerService>();
         services.AddSingleton<PoAbrechnungService>();

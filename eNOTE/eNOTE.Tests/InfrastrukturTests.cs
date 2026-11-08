@@ -27,7 +27,7 @@ public class InfrastrukturTests
         var env = new TestUmgebung(umgebung);
         var config = Konfiguration(new()
         {
-            ["AzureBlobStorage:ServiceUri"] = "https://example.blob.core.windows.net",
+            ["Storage:ServiceUri"] = "https://example.blob.core.windows.net",
             ["DataProtection:KeysPath"] = Path.Combine(env.ContentRootPath, "keys")
         });
         var services = new ServiceCollection();
@@ -44,7 +44,7 @@ public class InfrastrukturTests
     {
         var services = new ServiceCollection();
         Assert.Throws<InvalidOperationException>(() => services.AddEnoteInfrastruktur(
-            Konfiguration(new() { ["AzureBlobStorage:LocalDataRootPath"] = "private" }), new TestUmgebung("Production"), SqlMi));
+            Konfiguration(new() { ["Storage:LocalDataRootPath"] = "private" }), new TestUmgebung("Production"), SqlMi));
     }
 
     [Theory]
@@ -77,7 +77,7 @@ public class InfrastrukturTests
     public void Production_Benoetigt_Persistente_Private_Schluessel()
     {
         var env = new TestUmgebung("Production");
-        var config = Konfiguration(new() { ["AzureBlobStorage:ServiceUri"] = "https://example.blob.core.windows.net" });
+        var config = Konfiguration(new() { ["Storage:ServiceUri"] = "https://example.blob.core.windows.net" });
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddEnoteInfrastruktur(config, env, SqlMi));
         config["DataProtection:KeysPath"] = Path.Combine(env.WebRootPath, "keys");
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddEnoteInfrastruktur(config, env, SqlMi));
@@ -89,7 +89,7 @@ public class InfrastrukturTests
         var env = new TestUmgebung("Production");
         var config = Konfiguration(new()
         {
-            ["AzureBlobStorage:ServiceUri"] = "https://example.blob.core.windows.net",
+            ["Storage:ServiceUri"] = "https://example.blob.core.windows.net",
             ["DataProtection:KeysPath"] = Path.Combine(env.ContentRootPath, "keys")
         });
         ServiceProvider Provider()

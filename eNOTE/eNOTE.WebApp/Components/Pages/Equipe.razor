@@ -68,6 +68,7 @@
         <div class="enote-form">
             <label>Prénom <input @bind="neuVorname" /></label>
             <label>Nom <input @bind="neuNachname" /></label>
+            <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
             <label>Adresse e-mail <input type="email" @bind="neuEmail" /></label>
             <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
             <label>Code PIN caisse (4–6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Facturation(AboService aboService, ToastService toast)
+public partial class Facturation(AboService aboService, ToastService toast, LadeZustand ladeZustand)
 {
     private List<NutzungsAbo> gemeldete = [];
     private List<NutzungsAbo> alle = [];
@@ -41,7 +41,11 @@ public partial class Facturation(AboService aboService, ToastService toast)
         return q;
     }
 
-    protected override async Task OnInitializedAsync() => await LadeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        using var _ = ladeZustand.Beginnen();
+        await LadeAsync();
+    }
 
     private async Task LadeAsync()
     {

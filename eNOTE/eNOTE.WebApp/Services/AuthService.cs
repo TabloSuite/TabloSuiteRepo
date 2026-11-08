@@ -16,8 +16,11 @@ public class AuthService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
-    ILogger<AuthService> logger)
+    ILogger<AuthService> logger,
+    Mails.EmailService emailService)
 {
+    private const string AppName = "eNOTE";
+    private const string AppUrl = "https://enote.tablosuite.com";
     /// <summary>
     /// Ende der kostenlosen Probezeit: 3 Kalendermonate, wobei das aktuelle
     /// Monat als erstes zählt. Start am 3. November → Probe bis 31. Januar
@@ -43,12 +46,14 @@ public class AuthService(
     }
 
     public async Task<(bool Succeeded, string? Error)> LoginAsync(
-        string email,
+        string pseudonym,
         string passwort,
         bool dauerhaft,
         CancellationToken cancellationToken = default)
     {
-        var user = await userManager.FindByEmailAsync(email.Trim());
+        // Login erfolgt über das eindeutige Pseudonym (UserName), nicht über die
+        // mehrfach verwendbare Kontakt-E-Mail.
+        var user = await userManager.FindByNameAsync(pseudonym.Trim());
         if (user is null || user.IsBlocked)
         {
             return (false, "invalid-credentials");
@@ -112,6 +117,7 @@ public class AuthService(
     public async Task<(bool Succeeded, string ErrorMessage)> RegisterBesitzerAsync(
         string vorname,
         string nachname,
+        string pseudonym,
         string email,
         string passwort,
         string salonName,
@@ -119,12 +125,19 @@ public class AuthService(
         string? salonSlogan = null,
         CancellationToken cancellationToken = default)
     {
+        var bereinigtPseudonym = pseudonym.Trim();
         var bereinigtEmail = email.Trim();
         var bereinigtSalon = salonName.Trim();
 
-        if (await userManager.FindByEmailAsync(bereinigtEmail) is not null)
+        if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
-            return (false, "Un compte avec cette adresse e-mail existe déjà.");
+            return (false, "Veuillez choisir un pseudonyme.");
+        }
+
+        // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
+        if (await userManager.FindByNameAsync(bereinigtPseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.");
         }
 
         if (string.IsNullOrWhiteSpace(bereinigtSalon))
@@ -140,7 +153,7 @@ public class AuthService(
 
         var besitzer = new AppUser
         {
-            UserName = bereinigtEmail,
+            UserName = bereinigtPseudonym,
             Email = bereinigtEmail,
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),
@@ -186,6 +199,21 @@ public class AuthService(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Neuer Salon registriert (freizugeben): {Salon} durch {Email}", bereinigtSalon, bereinigtEmail);
+
+        // Willkommensmail (TabloSuite-Branding); Fehler blockieren die Registrierung nicht.
+        try
+        {
+            await emailService.SendeAsync(
+                bereinigtEmail,
+                "Bienvenue sur TabloSuite",
+                Mails.TabloSuiteMails.Bienvenue(besitzer.Vorname, AppName, AppUrl),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Willkommensmail an {Email} fehlgeschlagen.", bereinigtEmail);
+        }
+
         return (true, string.Empty);
     }
 }

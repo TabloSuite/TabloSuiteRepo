@@ -58,8 +58,12 @@ public class BesitzerPinTests
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
 
+        Guid zuordnungB;
+        await using (var dbIds = await factory.CreateDbContextAsync())
+            zuordnungB = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).Id;
+
         var ergebnis = await scope.ServiceProvider.GetRequiredService<TeamService>()
-            .SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, "0707");
+            .SetzeBesitzerPinAsync(zuordnungB, "0707");
 
         Assert.True(ergebnis.Erfolg);
         await using var db = await factory.CreateDbContextAsync();
@@ -70,8 +74,6 @@ public class BesitzerPinTests
         Assert.False(KassenPinService.PruefePin("707", b.BesitzerPinHash!));
         Assert.False(KassenPinService.PruefePin("Passwo", b.BesitzerPinHash!));
         Assert.NotEqual("0707", b.BesitzerPinHash);
-        Assert.NotNull(b.BesitzerPinGeschuetzt);
-        Assert.DoesNotContain("0707", b.BesitzerPinGeschuetzt!);
         Assert.True(KassenPinService.PruefePin("3333", b.KassenPinHash!));
         Assert.Equal(0, b.PinFehlversuche);
         Assert.Null(b.PinGesperrtBisUtc);
@@ -91,9 +93,12 @@ public class BesitzerPinTests
         var (_, zweiter, besitzer, _) = await BasisAsync(factory);
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
+        Guid zuordnungId;
+        await using (var dbIds = await factory.CreateDbContextAsync())
+            zuordnungId = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).Id;
 
         var ergebnis = await scope.ServiceProvider.GetRequiredService<TeamService>()
-            .SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, pin);
+            .SetzeBesitzerPinAsync(zuordnungId, pin);
 
         Assert.False(ergebnis.Erfolg);
         Assert.Equal("Le code PIN doit contenir 4 à 6 chiffres.", ergebnis.Fehler);
@@ -105,88 +110,67 @@ public class BesitzerPinTests
         Assert.Equal("unveraenderter-passworthash", (await db.Users.SingleAsync()).PasswordHash);
     }
 
-    [Theory]
-    [InlineData(false, false, true, true)]
-    [InlineData(true, true, true, true)]
-    [InlineData(true, false, false, true)]
-    [InlineData(true, false, true, false)]
-    public async Task SetzeBesitzerPin_Prueft_Besitzerrolle_Kontosperre_Zuordnung_Und_Ladenstatus(
-        bool besitzerrolle, bool gesperrt, bool zugeordnet, bool aktiv)
+    [Fact]
+    public async Task SetzeBesitzerPin_Mit_Unbekannter_Zuordnung_Schlaegt_Fehl()
     {
         var factory = TestDbContextFactory.Create();
-        var (_, zweiter, besitzer, _) = await BasisAsync(factory);
-        await using (var db = await factory.CreateDbContextAsync())
-        {
-            if (!besitzerrolle) db.UserRoles.RemoveRange(db.UserRoles);
-            (await db.Users.SingleAsync()).IsBlocked = gesperrt;
-            (await db.Salons.SingleAsync(s => s.Id == zweiter.Id)).IstAktiv = aktiv;
-            await db.SaveChangesAsync();
-        }
+        await BasisAsync(factory);
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
-        var benutzerId = zugeordnet ? besitzer.Id : Guid.NewGuid();
 
         var ergebnis = await scope.ServiceProvider.GetRequiredService<TeamService>()
-            .SetzeBesitzerPinAsync(zweiter.Id, benutzerId, "0707");
+            .SetzeBesitzerPinAsync(Guid.NewGuid(), "0707");
 
         Assert.False(ergebnis.Erfolg);
-        await using var kontrolle = await factory.CreateDbContextAsync();
-        var zuordnung = await kontrolle.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id);
-        Assert.True(KassenPinService.PruefePin("2222", zuordnung.BesitzerPinHash!));
-        var abruf = await scope.ServiceProvider.GetRequiredService<TeamService>()
-            .GetBesitzerPinAsync(zweiter.Id, benutzerId);
-        Assert.Null(abruf.Pin);
-        Assert.NotNull(abruf.Fehler);
+        Assert.Equal("Membre introuvable.", ergebnis.Fehler);
     }
 
     [Fact]
-    public async Task Gespeicherte_Pin_Ist_In_Neuem_Scope_Abrufbar_Und_Mandantengebunden()
+    public async Task Gespeicherte_Pin_Ist_In_Neuem_Scope_Wirksam_Und_Mandantengebunden()
     {
         var factory = TestDbContextFactory.Create();
         var (erster, zweiter, besitzer, _) = await BasisAsync(factory);
+        Guid idErster, idZweiter;
+        await using (var dbIds = await factory.CreateDbContextAsync())
+        {
+            idErster = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == erster.Id)).Id;
+            idZweiter = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).Id;
+        }
         await using var provider = Dienste(factory);
         await using (var scope = provider.CreateAsyncScope())
             Assert.True((await scope.ServiceProvider.GetRequiredService<TeamService>()
-                .SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, "0707")).Erfolg);
+                .SetzeBesitzerPinAsync(idZweiter, "0707")).Erfolg);
         await using var neu = provider.CreateAsyncScope();
         var service = neu.ServiceProvider.GetRequiredService<TeamService>();
-        var abruf = await service.GetBesitzerPinAsync(zweiter.Id, besitzer.Id);
-        Assert.Equal("0707", abruf.Pin);
-        Assert.Null(abruf.Fehler);
-        Assert.True((await service.SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, "0808")).Erfolg);
-        Assert.Equal("0808", (await service.GetBesitzerPinAsync(zweiter.Id, besitzer.Id)).Pin);
 
-        await using (var db = await factory.CreateDbContextAsync())
-        {
-            var quelle = await db.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id);
-            var ziel = await db.UserSalons.SingleAsync(us => us.SalonId == erster.Id);
-            ziel.BesitzerPinGeschuetzt = quelle.BesitzerPinGeschuetzt;
-            ziel.BesitzerPinHash = quelle.BesitzerPinHash;
-            await db.SaveChangesAsync();
-        }
-        Assert.Null((await service.GetBesitzerPinAsync(erster.Id, besitzer.Id)).Pin);
+        await using (var pruef = await factory.CreateDbContextAsync())
+            Assert.True(KassenPinService.PruefePin("0707",
+                (await pruef.UserSalons.SingleAsync(us => us.Id == idZweiter)).BesitzerPinHash!));
+
+        Assert.True((await service.SetzeBesitzerPinAsync(idZweiter, "0808")).Erfolg);
+        await using var kontrolle = await factory.CreateDbContextAsync();
+        Assert.True(KassenPinService.PruefePin("0808",
+            (await kontrolle.UserSalons.SingleAsync(us => us.Id == idZweiter)).BesitzerPinHash!));
+        // Die Zuordnung des anderen Ladens bleibt unverändert (Mandantentrennung).
+        Assert.True(KassenPinService.PruefePin("1111",
+            (await kontrolle.UserSalons.SingleAsync(us => us.Id == idErster)).BesitzerPinHash!));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("beschaedigter-wert")]
-    public async Task Alte_Oder_Beschaedigte_Werte_Geben_Keine_Pin_Preis(string? geschuetzt)
+    [Fact]
+    public async Task Gespeicherter_Hash_Bleibt_Nach_Setzen_Konsistent_Prüfbar()
     {
         var factory = TestDbContextFactory.Create();
         var (_, zweiter, besitzer, _) = await BasisAsync(factory);
-        await using (var db = await factory.CreateDbContextAsync())
-        {
-            (await db.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).BesitzerPinGeschuetzt = geschuetzt;
-            await db.SaveChangesAsync();
-        }
+        Guid idZweiter;
+        await using (var dbIds = await factory.CreateDbContextAsync())
+            idZweiter = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).Id;
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
-        var abruf = await scope.ServiceProvider.GetRequiredService<TeamService>()
-            .GetBesitzerPinAsync(zweiter.Id, besitzer.Id);
-        Assert.Null(abruf.Pin);
-        Assert.NotNull(abruf.Fehler);
+        Assert.True((await scope.ServiceProvider.GetRequiredService<TeamService>()
+            .SetzeBesitzerPinAsync(idZweiter, "0707")).Erfolg);
         await using var kontrolle = await factory.CreateDbContextAsync();
-        Assert.True(KassenPinService.PruefePin("2222", (await kontrolle.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).BesitzerPinHash!));
+        var zuordnung = await kontrolle.UserSalons.SingleAsync(us => us.Id == idZweiter);
+        Assert.True(KassenPinService.PruefePin("0707", zuordnung.BesitzerPinHash!));
     }
 
     [Fact]
@@ -194,12 +178,15 @@ public class BesitzerPinTests
     {
         var factory = TestDbContextFactory.Create();
         var (_, zweiter, besitzer, _) = await BasisAsync(factory);
+        Guid idZweiter;
+        await using (var dbIds = await factory.CreateDbContextAsync())
+            idZweiter = (await dbIds.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id)).Id;
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<TeamService>();
 
-        Assert.True((await service.SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, "0707")).Erfolg);
-        Assert.True((await service.SetzeBesitzerPinAsync(zweiter.Id, besitzer.Id, "0808")).Erfolg);
+        Assert.True((await service.SetzeBesitzerPinAsync(idZweiter, "0707")).Erfolg);
+        Assert.True((await service.SetzeBesitzerPinAsync(idZweiter, "0808")).Erfolg);
 
         await using var db = await factory.CreateDbContextAsync();
         var zuordnung = await db.UserSalons.SingleAsync(us => us.SalonId == zweiter.Id);
@@ -219,7 +206,7 @@ public class BesitzerPinTests
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
 
-        Assert.True((await scope.ServiceProvider.GetRequiredService<TeamService>().SetzeKassenPinAsync(besitzer.Id, zweiter.Id, zuordnungId, "4444")).Erfolg);
+        Assert.True((await scope.ServiceProvider.GetRequiredService<TeamService>().SetzeKassenPinAsync(zuordnungId, "4444")).Erfolg);
 
         await using var kontrolle = await factory.CreateDbContextAsync();
         var zuordnung = await kontrolle.UserSalons.SingleAsync(us => us.Id == zuordnungId);

@@ -13,6 +13,9 @@ public class AppUser : IdentityUser<Guid>
     public bool IstErsterAdmin { get; set; }
     public bool IstInternerKassierer { get; set; }
 
+    /// <summary>Blob-Name des Profilbilds (aus Blob Storage), null = kein Bild.</summary>
+    public string? ProfilBildBlobName { get; set; }
+
     /// <summary>
     /// Kennung der aktuell erlaubten Browser-Sitzung. Jede neue Anmeldung ersetzt
     /// sie und meldet damit eine vorherige Sitzung auf einem anderen Gerät ab.

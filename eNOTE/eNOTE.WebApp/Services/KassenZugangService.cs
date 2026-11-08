@@ -18,15 +18,25 @@ public class KassenZugangService(IDbContextFactory<ApplicationDbContext> factory
             return new(true, "Cet établissement n'est pas autorisé à utiliser la caisse.", null);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
         if (salon.ProbeBisUtc > jetzt) return new(false, null, null);
+
+        // Unbezahlt = alles außer "Bestaetigt". Auch "Gemeldet" (vom Besitzer als
+        // überwiesen markiert) sperrt weiter, bis der Admin den Eingang bestätigt hat.
         var offen = await db.NutzungsAbos.AsNoTracking().Where(a => a.SalonId == salonId
-            && (a.ZahlungStatus == AboZahlungStatus.Offen || a.ZahlungStatus == AboZahlungStatus.Abgelehnt)
+            && a.ZahlungStatus != AboZahlungStatus.Bestaetigt
             && (a.FaelligUtc ?? a.ZeitraumVonUtc) <= jetzt).ToListAsync(ct);
         var frist = offen.Select(a => a.KassenSperreAbUtc ?? VertragsRegeln.SperreAb(a.FaelligUtc ?? a.ZeitraumVonUtc))
             .OrderBy(d => d).Select(d => (DateTime?)d).FirstOrDefault();
         if (frist is null) return new(false, null, null);
+
         var gesperrt = jetzt >= frist;
-        return new(gesperrt, gesperrt
-            ? "Caisse suspendue : un paiement arrivé à échéance n'a pas été signalé. Veuillez contacter le propriétaire. La clôture de la caisse reste possible."
-            : $"Abonnement arrivé à échéance. Sans signalement du virement, les ventes seront suspendues le {frist:dd/MM/yyyy}. Veuillez contacter le propriétaire.", frist);
+        var nurGemeldet = offen.All(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet);
+        var hinweis = gesperrt
+            ? (nurGemeldet
+                ? "Caisse suspendue : le paiement signalé n'a pas encore été confirmé par l'administrateur. La clôture de la caisse reste possible."
+                : "Caisse suspendue : un paiement arrivé à échéance n'a pas été signalé. Veuillez contacter le propriétaire. La clôture de la caisse reste possible.")
+            : (nurGemeldet
+                ? $"Paiement signalé, en attente de confirmation par l'administrateur. Sans confirmation, les ventes seront suspendues le {frist:dd/MM/yyyy}."
+                : $"Abonnement arrivé à échéance. Sans signalement du virement, les ventes seront suspendues le {frist:dd/MM/yyyy}. Veuillez contacter le propriétaire.");
+        return new(gesperrt, hinweis, frist);
     }
 }

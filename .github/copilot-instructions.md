@@ -10,6 +10,7 @@
 - Verbindungsinformationen für Azure SQL aus den vorhandenen User Secrets ermitteln, statt erneut nach Server und Datenbank zu fragen. Nutzer hat vollständiges Leeren und Neuaufbauen der Azure-Datenbank ausdrücklich bestätigt; genaue Zielprüfung bleibt erforderlich.
 - Medien in Development lokal speichern; in Production ausschließlich privater Azure Blob Storage per Managed Identity ohne stillen lokalen Fallback. Nur Deployment vorbereiten, nicht veröffentlichen; keine Secrets lesen, keine DB-/Cloudänderungen oder Browserprüfung.
 - Für die App-/E-Mail-Einrichtung bestehende Domain tablosuite.com verwenden; keine erneute Domainregistrierung oder unnötigen Domaintransfer empfehlen.
+- Niemals den Modernize-Modus aktivieren oder eine Modernisierungs-/Azure-Migrationssitzung starten. Deployment-Vorbereitung ohne Modernize durchführen.
 
 ## General Guidelines
 - Bereinigung bestätigt: veraltete Sprachlevel-Fixtures, widersprüchliche Anweisungen und nachweislich ungenutzten Code entfernen. Fachbeziehungen bleiben an unveränderlichen Benutzer-GUIDs; E-Mail/Passwort sind änderbar, Matrikelnummer ist schulbezogene Kennung, nicht Fremdschlüssel. Keine vierstellige Nummer ohne eigene fachliche Entscheidung erzwingen.

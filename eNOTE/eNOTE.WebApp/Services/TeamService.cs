@@ -54,12 +54,14 @@ public class TeamService(
 
     /// <summary>
     /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon
-    /// mit einer Kassen-PIN zu. Das Passwort ist ein Initialpasswort.
+    /// mit einer Kassen-PIN zu. Login ist das eindeutige Pseudonym; die E-Mail ist
+    /// nur Kontaktadresse und darf mehrfach verwendet werden. Das Passwort ist ein Initialpasswort.
     /// </summary>
     public async Task<(bool Erfolg, string? Fehler, AppUser? Kassierer)> LegeKassiererAnAsync(
         Guid salonId,
         string vorname,
         string nachname,
+        string pseudonym,
         string email,
         string initialPasswort,
         string kassenPin,
@@ -70,15 +72,22 @@ public class TeamService(
             return (false, "Le code PIN doit contenir 4 à 6 chiffres.", null);
         }
 
-        var bereinigtEmail = email.Trim();
-        if (await userManager.FindByEmailAsync(bereinigtEmail) is not null)
+        var bereinigtPseudonym = pseudonym.Trim();
+        if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
-            return (false, "Un compte avec cette adresse e-mail existe déjà.", null);
+            return (false, "Veuillez saisir un pseudonyme.", null);
         }
 
+        // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
+        if (await userManager.FindByNameAsync(bereinigtPseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.", null);
+        }
+
+        var bereinigtEmail = email.Trim();
         var kassierer = new AppUser
         {
-            UserName = bereinigtEmail,
+            UserName = bereinigtPseudonym,
             Email = bereinigtEmail,
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),

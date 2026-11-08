@@ -1,9 +1,9 @@
 // eNOTE Service Worker (PWA): Offline-Grundgerüst + Cache.
-const CACHE = 'enote-cache-v2-private-media';
+const CACHE = 'enote-cache-v3-fingerprinted-styles';
 const OFFLINE_URLS = ['/app.css', '/js/enote.js', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
-    e.waitUntil(caches.open(CACHE).then((c) => c.addAll(OFFLINE_URLS)).then(() => self.skipWaiting()));
+    e.waitUntil(caches.open(CACHE).then((c) => c.addAll(OFFLINE_URLS.map((url) => new Request(url, { cache: 'no-cache' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -18,7 +18,7 @@ self.addEventListener('fetch', (e) => {
     // Niemals angemeldete Dokumente, Belege oder Medien im gemeinsamen Tablet-Cache ablegen.
     if (e.request.method !== 'GET' || url.origin !== self.location.origin || !OFFLINE_URLS.includes(url.pathname) || url.search) return;
     e.respondWith(
-        fetch(e.request)
+        fetch(e.request, { cache: 'no-cache' })
             .then((resp) => {
                 if (resp.ok) {
                     const clone = resp.clone();

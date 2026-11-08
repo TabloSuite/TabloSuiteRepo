@@ -63,7 +63,11 @@ public static class ApplicationDbInitializer
             return;
         }
 
-        var benutzername = configuration["Seed:SuperAdminBenutzername"] ?? email;
+        // Login erfolgt über das Pseudonym. Standard ist "DodjiEtse", sofern kein
+        // Benutzername konfiguriert ist; die Kontakt-E-Mail kommt aus der Konfiguration.
+        var benutzername = configuration["Seed:SuperAdminBenutzername"] ?? "DodjiEtse";
+
+        // 1) Konto mit Ziel-Pseudonym bereits vorhanden?
         var vorhanden = await userManager.FindByNameAsync(benutzername);
         if (vorhanden is not null)
         {
@@ -72,6 +76,29 @@ public static class ApplicationDbInitializer
             return;
         }
 
+        // 2) Bestehenden SuperAdmin (z. B. alter Stand mit E-Mail als Benutzername) auf
+        //    das Ziel-Pseudonym umstellen, damit der Login per Pseudonym funktioniert.
+        var bestehend = await userManager.FindByEmailAsync(email);
+        if (bestehend is null)
+        {
+            bestehend = (await userManager.GetUsersInRoleAsync(AppRollen.SuperAdmin)).FirstOrDefault();
+        }
+
+        if (bestehend is not null)
+        {
+            if (!await userManager.IsInRoleAsync(bestehend, AppRollen.SuperAdmin))
+                throw new InvalidOperationException("Das gefundene Seed-Konto hat keine SuperAdmin-Rolle. Keine automatische Rechteerweiterung.");
+
+            var namensAenderung = await userManager.SetUserNameAsync(bestehend, benutzername);
+            PruefeErgebnis(namensAenderung);
+            if (bestehend.Email != email)
+            {
+                PruefeErgebnis(await userManager.SetEmailAsync(bestehend, email));
+            }
+            return;
+        }
+
+        // 3) Kein Konto vorhanden → neu anlegen.
         var admin = new AppUser
         {
             UserName = benutzername,

@@ -13,7 +13,8 @@ public partial class Leistungen(
     AktiverSalonState aktiverSalon,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
-    NavigationManager navigationManager) : IDisposable
+    NavigationManager navigationManager,
+    LadeZustand ladeZustand) : IDisposable
 {
     private List<Leistung> leistungen = [];
     private bool isLoading = true;
@@ -66,6 +67,7 @@ public partial class Leistungen(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();

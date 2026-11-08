@@ -12,7 +12,8 @@ public partial class Parametres(
     TeamService teamService,
     ToastService toast,
     AktiverSalonState aktiverSalon,
-    AuthenticationStateProvider authStateProvider) : IDisposable
+    AuthenticationStateProvider authStateProvider,
+    LadeZustand ladeZustand) : IDisposable
 {
     private bool isLoading = true;
     private Guid salonId;
@@ -37,9 +38,16 @@ public partial class Parametres(
     private string neuerLadenName = string.Empty;
     private string? neuerLadenStandort;
     private string? neuerLadenFehler;
+    // Neues Besitzer-Konto für den zweiten Laden (Regel: ein Konto pro Laden, E-Mail wiederverwendbar)
+    private string neuerLadenVorname = string.Empty;
+    private string neuerLadenNachname = string.Empty;
+    private string neuerLadenPseudonym = string.Empty;
+    private string neuerLadenEmail = string.Empty;
+    private string neuerLadenPasswort = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
@@ -103,12 +111,19 @@ public partial class Parametres(
         neuerLadenName = string.Empty;
         neuerLadenStandort = null;
         neuerLadenFehler = null;
+        neuerLadenVorname = string.Empty;
+        neuerLadenNachname = string.Empty;
+        neuerLadenPseudonym = string.Empty;
+        neuerLadenEmail = string.Empty;
+        neuerLadenPasswort = string.Empty;
         neuerLadenDialogOffen = true;
     }
 
     private async Task FuegeNeuenLadenHinzuAsync()
     {
-        var (erfolg, fehler, salon) = await salonService.FuegeSalonHinzuAsync(benutzerId, neuerLadenName, neuerLadenStandort, null);
+        var (erfolg, fehler, salon, _) = await salonService.FuegeSalonHinzuAsync(
+            benutzerId, neuerLadenName, neuerLadenStandort, null,
+            neuerLadenVorname, neuerLadenNachname, neuerLadenPseudonym, neuerLadenEmail, neuerLadenPasswort);
         if (!erfolg)
         {
             neuerLadenFehler = fehler;
@@ -117,7 +132,7 @@ public partial class Parametres(
 
         neuerLadenDialogOffen = false;
         await aktiverSalon.AktualisiereLaedenAsync(benutzerId);
-        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé. Il sera activé après validation par l'administrateur.");
+        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé avec un nouveau compte. Il sera activé après validation par l'administrateur.");
     }
 
     private byte[]? ausgewaehltesLogoBytes;

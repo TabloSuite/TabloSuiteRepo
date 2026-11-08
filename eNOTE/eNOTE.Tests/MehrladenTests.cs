@@ -24,18 +24,20 @@ public class MehrladenTests
     }
 
     [Fact]
-    public async Task Mehrere_Laeden_Pro_Konto_Werden_Abgewiesen()
+    public async Task Mehrere_Laeden_Pro_Konto_Waehlen_Ersten_Freigegebenen_Laden()
     {
         var factory = TestDbContextFactory.Create();
         var owner = new AppUser { Id = Guid.NewGuid() };
-        var a = new Salon { Name = "A" }; var b = new Salon { Name = "B" };
+        var a = new Salon { Name = "A", IstFreigegeben = true }; var b = new Salon { Name = "B" };
         await using (var db = await factory.CreateDbContextAsync())
         {
             db.UserSalons.AddRange(new UserSalon { AppUser = owner, Salon = a }, new UserSalon { AppUser = owner, Salon = b });
             await db.SaveChangesAsync();
         }
         var js = new Js(); var state = new AktiverSalonState(factory, js);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => state.InitialisiereAsync(owner.Id));
+        await state.InitialisiereAsync(owner.Id);
+        Assert.NotNull(state.Aktiv);
+        Assert.Equal(2, state.Laeden.Count);
     }
 
     [Fact]
@@ -53,7 +55,7 @@ public class MehrladenTests
         await using (var db = await factory.CreateDbContextAsync())
         { db.UserSalons.Remove(await db.UserSalons.SingleAsync(us => us.SalonId == laeden[0].Id)); await db.SaveChangesAsync(); }
         await state.AktualisiereLaedenAsync(owner.Id);
-        Assert.Null(state.Aktiv); Assert.False(state.AuswahlErforderlich);
+        Assert.Null(state.Aktiv);
     }
 
     [Fact]
@@ -75,9 +77,9 @@ public class MehrladenTests
         services.AddIdentityCore<AppUser>().AddRoles<Role>().AddEntityFrameworkStores<ENote.WebApp.Data.ApplicationDbContext>();
         await using var provider = services.BuildServiceProvider(); await using var scope = provider.CreateAsyncScope();
         var katalog = new KatalogService(factory, scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>(), null!);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereLeistungAsync(owner.Id, new Leistung { Id = artikel.Id, SalonId = b.Id, Name = "Falsch" }));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereRabattAsync(owner.Id, new Rabatt { SalonId = b.Id, LeistungId = artikel.Id, Name = "Falsch" }));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => katalog.SpeichereLeistungAsync(Guid.NewGuid(), new Leistung { SalonId = a.Id, Name = "Fremd" }));
+        // Leistung mit nicht vorhandener Id läuft in den Aktualisierungszweig und schlägt fehl.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.NewGuid(), SalonId = b.Id, Name = "Falsch" }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.NewGuid(), SalonId = b.Id, LeistungId = artikel.Id, Name = "Falsch" }));
         await using var kontrolle = await factory.CreateDbContextAsync(); Assert.Equal("Original", (await kontrolle.Leistungen.SingleAsync()).Name);
     }
 

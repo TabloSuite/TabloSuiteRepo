@@ -37,7 +37,7 @@ public class VertragsKulanzTests
     [InlineData(AboIntervall.DreiMonate)]
     [InlineData(AboIntervall.SechsMonate)]
     [InlineData(AboIntervall.Jaehrlich)]
-    public async Task Kulanz_Fuer_Alle_Intervalle_Bis_Tag_15_Meldung_Entsperrt(AboIntervall intervall)
+    public async Task Kulanz_Bis_Tag_15_Nur_Bestaetigung_Entsperrt_Nicht_Blosses_Melden(AboIntervall intervall)
     {
         var factory = TestDbContextFactory.Create();
         var faellig = new DateTime(2026, 11, 1);
@@ -48,18 +48,31 @@ public class VertragsKulanzTests
         Assert.False((await service.PruefeAsync(salon.Id)).Gesperrt);
         uhr.Jetzt = faellig.AddDays(15);
         Assert.True((await service.PruefeAsync(salon.Id)).Gesperrt);
+
+        // Bloßes "als überwiesen markieren" (Gemeldet) entsperrt NICHT.
         await using (var db = await factory.CreateDbContextAsync())
         {
             var abo = Assert.Single(await db.NutzungsAbos.ToListAsync());
             Assert.Equal(faellig.AddDays(15), abo.KassenSperreAbUtc);
             abo.ZahlungStatus = AboZahlungStatus.Gemeldet;
+            abo.ZahlungGemeldetUtc = uhr.Jetzt;
+            await db.SaveChangesAsync();
+        }
+        Assert.True((await service.PruefeAsync(salon.Id)).Gesperrt);
+
+        // Erst die Admin-Bestätigung entsperrt.
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var abo = Assert.Single(await db.NutzungsAbos.ToListAsync());
+            abo.ZahlungStatus = AboZahlungStatus.Bestaetigt;
+            abo.ZahlungBestaetigtUtc = uhr.Jetzt;
             await db.SaveChangesAsync();
         }
         Assert.False((await service.PruefeAsync(salon.Id)).Gesperrt);
     }
 
     [Fact]
-    public async Task Andere_Meldung_Und_Anderer_Laden_Verdecken_Keine_Alte_Forderung()
+    public async Task Gemeldete_Aber_Unbestaetigte_Zahlung_Sperrt_Nach_Frist_Weiter()
     {
         var factory = TestDbContextFactory.Create();
         var tag = new DateTime(2026, 11, 16);

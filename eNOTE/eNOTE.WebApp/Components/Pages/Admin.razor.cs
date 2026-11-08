@@ -10,7 +10,8 @@ public partial class Admin(
     AdminService adminService,
     ProduktOwnerService produktOwnerService,
     Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider,
-    ToastService toast)
+    ToastService toast,
+    LadeZustand ladeZustand)
 {
     private List<AdminService.SalonUebersicht> salons = [];
     private List<PlattformPreis> plattformPreise = [];
@@ -27,6 +28,7 @@ public partial class Admin(
     private string? poFehler;
     private string poVorname = string.Empty;
     private string poNachname = string.Empty;
+    private string poPseudonym = string.Empty;
     private string poEmail = string.Empty;
     private string poPasswort = string.Empty;
 
@@ -125,6 +127,7 @@ public partial class Admin(
     private string? besitzerFehler;
     private string neuVorname = string.Empty;
     private string neuNachname = string.Empty;
+    private string neuPseudonym = string.Empty;
     private string neuEmail = string.Empty;
     private string neuPasswort = string.Empty;
     private string neuSalonName = string.Empty;
@@ -150,6 +153,7 @@ public partial class Admin(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         istSuperAdmin = authState.User.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -193,7 +197,7 @@ public partial class Admin(
 
     private void OeffneBesitzerDialog()
     {
-        neuVorname = neuNachname = neuEmail = neuSalonName = string.Empty;
+        neuVorname = neuNachname = neuPseudonym = neuEmail = neuSalonName = string.Empty;
         neuStandort = null;
         neuLand = "Togo";
         neuPasswort = ErzeugeInitialPasswort();
@@ -204,15 +208,17 @@ public partial class Admin(
     private async Task LegeBesitzerAnAsync()
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
-            || string.IsNullOrWhiteSpace(neuEmail) || string.IsNullOrWhiteSpace(neuSalonName)
-            || string.IsNullOrWhiteSpace(neuPasswort))
+            || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail)
+            || string.IsNullOrWhiteSpace(neuSalonName) || string.IsNullOrWhiteSpace(neuPasswort))
         {
             besitzerFehler = "Veuillez remplir tous les champs obligatoires.";
             return;
         }
 
+        // SuperAdmin-Anlage: Login = eindeutiges Pseudonym, Kontakt-E-Mail darf mehrfach sein.
         var (erfolg, fehler, _) = await adminService.LegeBesitzerMitSalonAnAsync(
-            neuVorname, neuNachname, neuEmail, neuPasswort, neuSalonName, neuStandort, neuLand);
+            aktuellerBenutzerId, neuVorname, neuNachname, neuEmail, neuPasswort, neuSalonName,
+            neuStandort, neuLand, benutzername: neuPseudonym);
         if (!erfolg)
         {
             besitzerFehler = fehler;
@@ -233,7 +239,7 @@ public partial class Admin(
 
     private void OeffnePoAnlegeDialog()
     {
-        poVorname = poNachname = poEmail = string.Empty;
+        poVorname = poNachname = poPseudonym = poEmail = string.Empty;
         poPasswort = ErzeugeInitialPasswort();
         poFehler = null;
         poAnlegeDialogOffen = true;
@@ -242,13 +248,14 @@ public partial class Admin(
     private async Task LegeProduktOwnerAnAsync()
     {
         if (string.IsNullOrWhiteSpace(poVorname) || string.IsNullOrWhiteSpace(poNachname)
-            || string.IsNullOrWhiteSpace(poEmail) || string.IsNullOrWhiteSpace(poPasswort))
+            || string.IsNullOrWhiteSpace(poPseudonym) || string.IsNullOrWhiteSpace(poEmail)
+            || string.IsNullOrWhiteSpace(poPasswort))
         {
             poFehler = "Veuillez remplir tous les champs.";
             return;
         }
 
-        var (erfolg, fehler, _) = await adminService.LegeProduktOwnerAnAsync(poVorname, poNachname, poEmail, poPasswort);
+        var (erfolg, fehler, _) = await adminService.LegeProduktOwnerAnAsync(poVorname, poNachname, poPseudonym, poEmail, poPasswort);
         if (!erfolg)
         {
             poFehler = fehler;

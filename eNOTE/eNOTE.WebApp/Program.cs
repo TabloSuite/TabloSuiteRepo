@@ -119,11 +119,13 @@ if (administration is null)
     builder.Services.AddScoped<IUmsatzBenachrichtigungService>(sp => sp.GetRequiredService<UmsatzBenachrichtigungService>());
     builder.Services.AddScoped<IDisplayBenachrichtigungService, DisplayBenachrichtigungService>();
     builder.Services.AddScoped<KassenAnzeigeState>();
+    builder.Services.AddScoped<LadeZustand>();
     builder.Services.AddScoped<AktiverSalonState>();
     builder.Services.AddScoped<BesitzerPinState>();
     builder.Services.AddScoped<GeraetFavoritService>();
     builder.Services.AddScoped<ToastService>();
     builder.Services.AddScoped<MedienZugriff>();
+    builder.Services.AddScoped<ENote.WebApp.Services.Mails.EmailService>();
     builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
 }
 else
@@ -158,6 +160,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+app.MapStaticAssets();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
@@ -173,12 +177,12 @@ app.MapPost("/auth/login/submit", async (
 {
     await antiforgery.ValidateRequestAsync(httpContext);
     var form = await httpContext.Request.ReadFormAsync();
-    var email = form["email"].ToString();
+    var pseudonym = form["pseudonym"].ToString();
     var passwort = form["password"].ToString();
     var rememberMe = string.Equals(form["rememberMe"], "true", StringComparison.OrdinalIgnoreCase);
     var returnUrl = form["returnUrl"].ToString();
 
-    var (succeeded, _) = await authService.LoginAsync(email, passwort, rememberMe, httpContext.RequestAborted);
+    var (succeeded, _) = await authService.LoginAsync(pseudonym, passwort, rememberMe, httpContext.RequestAborted);
     if (!succeeded)
     {
         return Results.LocalRedirect("/auth/login?error=invalid-credentials");

@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using ENote.WebApp.Services;
 using Xunit;
 
@@ -5,6 +6,24 @@ namespace ENote.Tests;
 
 public class EtikettPdfServiceTests
 {
+    [Theory]
+    [InlineData("123456789012")]
+    [InlineData("ARTICLE-001")]
+    public void Barcode_Wird_Als_Svg_Mit_Balken_Erzeugt(string code)
+    {
+        var svg = EtikettPdfService.ErzeugeCode128(code);
+        Assert.NotNull(svg);
+        var dokument = XDocument.Parse(svg);
+        Assert.Equal("svg", dokument.Root!.Name.LocalName);
+        Assert.True(dokument.Descendants().Count(element => element.Name.LocalName == "rect") > 1);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Leerer_Code_Erzeugt_Keinen_Barcode(string code)
+        => Assert.Null(EtikettPdfService.ErzeugeCode128(code));
+
     [Fact]
     public void ErzeugeA4Bogen_LiefertPdf()
     {

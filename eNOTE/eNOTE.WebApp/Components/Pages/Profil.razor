@@ -20,7 +20,14 @@
     {
         <div class="enote-card enote-settings-card">
             <div class="enote-profil-kopf">
-                <div class="enote-profil-avatar">@Initialen</div>
+                @if (!string.IsNullOrWhiteSpace(profilBildUrl))
+                {
+                    <img src="@profilBildUrl" alt="Photo de profil" class="enote-profil-bild" />
+                }
+                else
+                {
+                    <div class="enote-profil-avatar">@Initialen</div>
+                }
                 <div>
                     <div class="enote-profil-name">@fullName</div>
                     <div class="enote-muted">@email</div>
@@ -35,6 +42,30 @@
                         }
                     </div>
                 </div>
+            </div>
+
+            @* Profilbild-Upload *@
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+                <h3 style="margin-top: 0;">Photo de profil</h3>
+                @if (!string.IsNullOrWhiteSpace(bildFehler))
+                {
+                    <div class="alert alert-error">@bildFehler</div>
+                }
+                @if (bildErfolg)
+                {
+                    <div class="alert alert-success">Photo mise à jour avec succès.</div>
+                }
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label class="enote-btn enote-btn-secondary" style="cursor: pointer; margin: 0;">
+                        <InputFile OnChange="LadeProfilBildHochAsync" accept="image/*" style="display: none;" />
+                        Choisir une photo
+                    </label>
+                    @if (!string.IsNullOrWhiteSpace(profilBildUrl))
+                    {
+                        <button type="button" class="enote-btn enote-btn-ghost" @onclick="EntferneProfilBildAsync">Supprimer</button>
+                    }
+                </div>
+                <small class="enote-muted">Max. 8 Mo. JPG, PNG ou GIF.</small>
             </div>
         </div>
 

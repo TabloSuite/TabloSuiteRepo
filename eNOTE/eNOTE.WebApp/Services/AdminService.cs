@@ -15,7 +15,8 @@ namespace ENote.WebApp.Services;
 public class AdminService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     UserManager<AppUser> userManager,
-    ILogger<AdminService> logger)
+    ILogger<AdminService> logger,
+    Mails.EmailService emailService)
 {
     public record SalonUebersicht(
         Guid SalonId,
@@ -120,6 +121,32 @@ public class AdminService(
         salon.IstFreigegeben = freigegeben;
         salon.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+
+        // Validierungs-Mail an den Besitzer (nur bei Freigabe, nicht beim Entzug).
+        if (freigegeben)
+        {
+            try
+            {
+                var besitzer = await db.UserSalons.AsNoTracking()
+                    .Where(us => us.SalonId == salonId)
+                    .Select(us => us.AppUser)
+                    .FirstOrDefaultAsync(u => u.IsSelfRegistered, cancellationToken)
+                    ?? await db.UserSalons.AsNoTracking().Where(us => us.SalonId == salonId).Select(us => us.AppUser).FirstOrDefaultAsync(cancellationToken);
+
+                if (besitzer is not null && !string.IsNullOrWhiteSpace(besitzer.Email))
+                {
+                    await emailService.SendeAsync(
+                        besitzer.Email,
+                        "Ton inscription a été validée",
+                        Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", "https://enote.tablosuite.com"),
+                        cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Validierungs-Mail für Salon {SalonId} fehlgeschlagen.", salonId);
+            }
+        }
         return true;
     }
 
@@ -355,19 +382,27 @@ public class AdminService(
         return (true, null, besitzer);
     }
 
-    /// <summary>SuperAdmin legt einen ProduktOwner an (Initialpasswort, Rolle).</summary>
+    /// <summary>SuperAdmin legt einen ProduktOwner an (Initialpasswort, Rolle).
+    /// Login ist das eindeutige Pseudonym; die E-Mail ist nur Kontaktadresse und darf mehrfach verwendet werden.</summary>
     public async Task<(bool Erfolg, string? Fehler, AppUser? ProduktOwner)> LegeProduktOwnerAnAsync(
-        string vorname, string nachname, string email, string initialPasswort, CancellationToken cancellationToken = default)
+        string vorname, string nachname, string pseudonym, string email, string initialPasswort, CancellationToken cancellationToken = default)
     {
-        var bereinigtEmail = email.Trim();
-        if (await userManager.FindByEmailAsync(bereinigtEmail) is not null)
+        var bereinigtPseudonym = pseudonym.Trim();
+        if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
-            return (false, "Un compte avec cette adresse e-mail existe déjà.", null);
+            return (false, "Veuillez saisir un pseudonyme.", null);
         }
 
+        // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
+        if (await userManager.FindByNameAsync(bereinigtPseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.", null);
+        }
+
+        var bereinigtEmail = email.Trim();
         var po = new AppUser
         {
-            UserName = bereinigtEmail,
+            UserName = bereinigtPseudonym,
             Email = bereinigtEmail,
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),

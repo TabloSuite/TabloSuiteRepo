@@ -12,6 +12,10 @@ public partial class PasswordInput
     [Parameter] public string? Autocomplete { get; set; }
     [Parameter] public string? CssClass { get; set; }
 
+    /// <summary>Zusätzliche HTML-Attribute (id, inputmode, maxlength, pattern, data-*, aria-*).</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
     private async Task OnInput(ChangeEventArgs e)
     {
         Value = e.Value?.ToString();

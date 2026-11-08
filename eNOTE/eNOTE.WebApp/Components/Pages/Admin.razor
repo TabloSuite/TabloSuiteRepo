@@ -280,7 +280,8 @@
                 <label>Prénom <input @bind="neuVorname" /></label>
                 <label>Nom <input @bind="neuNachname" /></label>
             </div>
-            <label>Adresse e-mail <input type="email" @bind="neuEmail" /></label>
+            <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
+            <label>Adresse e-mail de contact <input type="email" @bind="neuEmail" /></label>
             <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
             <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
@@ -303,6 +304,7 @@
                 <label>Prénom <input @bind="poVorname" /></label>
                 <label>Nom <input @bind="poNachname" /></label>
             </div>
+            <label>Pseudonyme (identifiant de connexion) <input @bind="poPseudonym" autocomplete="username" /></label>
             <label>Adresse e-mail <input type="email" @bind="poEmail" /></label>
             <label>Mot de passe initial <input type="text" @bind="poPasswort" /></label>
         </div>

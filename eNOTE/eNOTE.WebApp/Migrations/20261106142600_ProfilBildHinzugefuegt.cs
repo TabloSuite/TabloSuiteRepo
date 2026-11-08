@@ -5,20 +5,14 @@
 namespace ENote.WebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class SalonKontaktdaten : Migration
+    public partial class ProfilBildHinzugefuegt : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "Adresse",
-                table: "Salons",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "TelefonNummer",
-                table: "Salons",
+                name: "ProfilBildBlobName",
+                table: "AspNetUsers",
                 type: "nvarchar(max)",
                 nullable: true);
         }
@@ -27,12 +21,8 @@ namespace ENote.WebApp.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Adresse",
-                table: "Salons");
-
-            migrationBuilder.DropColumn(
-                name: "TelefonNummer",
-                table: "Salons");
+                name: "ProfilBildBlobName",
+                table: "AspNetUsers");
         }
     }
 }

@@ -128,14 +128,14 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .auth-form label { display: grid; gap: .4rem; font-weight: 600; font-size: .88rem; color: var(--enote-text); }
 .auth-form input {
     width: 100%; padding: .85rem 1.1rem; font-size: 1rem;
-    border: none; border-radius: var(--enote-radius-pill);
-    background: var(--enote-surface); color: var(--enote-text);
-    box-shadow: var(--enote-neu-in);
-    transition: box-shadow .2s;
+    border: 1px solid var(--enote-border); border-radius: var(--enote-radius-pill);
+    background: #ffffff; color: var(--enote-text);
+    box-shadow: 0 1px 3px rgba(23, 37, 84, .06);
+    transition: box-shadow .2s, border-color .2s;
 }
 .auth-form input:focus {
-    outline: none;
-    box-shadow: var(--enote-neu-in), 0 0 0 3px rgba(30, 58, 138, .18);
+    outline: none; border-color: var(--enote-primary-light);
+    box-shadow: 0 1px 3px rgba(23, 37, 84, .06), 0 0 0 3px rgba(30, 58, 138, .18);
 }
 .auth-form small { font-weight: 400; color: var(--enote-text-muted); }
 .auth-form .checkbox { display: flex; align-items: center; gap: .55rem; font-weight: 500; }
@@ -453,16 +453,48 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-form { display: grid; gap: .9rem; }
 .enote-form label { display: grid; gap: .35rem; font-weight: 600; font-size: .9rem; color: var(--enote-text); }
 .enote-form input, .enote-select, .enote-form textarea {
-    width: 100%; padding: .75rem 1rem; border: none;
+    width: 100%; padding: .75rem 1rem; border: 1px solid var(--enote-border);
     border-radius: var(--enote-radius-pill); font-size: 1rem;
-    background: var(--enote-surface); color: var(--enote-text);
-    box-shadow: var(--enote-neu-in);
-    transition: box-shadow .18s ease;
+    background: #ffffff; color: var(--enote-text);
+    box-shadow: 0 1px 3px rgba(23, 37, 84, .06);
+    transition: box-shadow .18s ease, border-color .18s ease;
 }
 .enote-form textarea { border-radius: var(--enote-radius); resize: vertical; min-height: 4.5rem; font-family: inherit; line-height: 1.4; }
-.enote-form input:focus, .enote-select:focus, .enote-form textarea:focus { outline: none; box-shadow: var(--enote-neu-in), 0 0 0 3px rgba(30, 58, 138, .18); }
+.enote-form input:focus, .enote-select:focus, .enote-form textarea:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: 0 1px 3px rgba(23, 37, 84, .06), 0 0 0 3px rgba(30, 58, 138, .18); }
 .enote-form .checkbox { display: flex; align-items: center; gap: .55rem; font-weight: 500; }
 .enote-form .checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--enote-primary); }
+
+/* CGU / AGB */
+.cgu-accept { padding: .6rem .9rem; background: #ffffff; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.cgu-accept .checkbox { display: flex; align-items: flex-start; gap: .55rem; font-weight: 500; }
+.cgu-accept .checkbox input { width: 1.1rem; height: 1.1rem; margin-top: .15rem; accent-color: var(--enote-primary); flex-shrink: 0; }
+.cgu-link { background: none; border: none; padding: 0; color: var(--enote-primary-light); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.cgu-text { font-size: .9rem; color: var(--enote-text); line-height: 1.65; }
+.cgu-text h3 { margin: 0 0 .25rem; font-size: 1.15rem; color: var(--enote-primary-dark); }
+.cgu-text h4 { margin: 1.1rem 0 .3rem; font-size: .95rem; color: var(--enote-primary); }
+.cgu-text p { margin: 0 0 .6rem; }
+.cgu-meta { color: var(--enote-text-muted); font-size: .82rem; }
+.enote-modal-wide { max-width: 720px; }
+.enote-modal-wide .enote-modal-body { max-height: 70vh; overflow-y: auto; }
+
+/* Globaler Lade-Indikator (Hauptseiten + Navigation) */
+.enote-global-loading {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999;
+    background: linear-gradient(90deg, var(--enote-primary) 0%, var(--enote-accent) 50%, var(--enote-primary) 100%);
+    background-size: 200% 100%; animation: enote-loading-slide 1.1s linear infinite;
+    box-shadow: 0 1px 6px rgba(30, 58, 138, .35);
+}
+@keyframes enote-loading-slide { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.enote-loading-overlay {
+    position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center;
+    background: rgba(232, 238, 245, .55); backdrop-filter: blur(2px);
+}
+.enote-loading-ring {
+    width: 52px; height: 52px; border-radius: 50%;
+    border: 5px solid #cdd6e4; border-top-color: var(--enote-primary);
+    animation: enote-spin .8s linear infinite;
+}
+@keyframes enote-spin { to { transform: rotate(360deg); } }
 
 .enote-danger { color: #b91c1c; }
 .enote-danger-bg { background: #dc2626; }
@@ -906,6 +938,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 .enote-profil-kopf { display: flex; align-items: center; gap: 1rem; }
 .enote-profil-avatar { width: 4rem; height: 4rem; border-radius: 50%; flex-shrink: 0; background: var(--enote-gradient); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1.4rem; }
+.enote-profil-bild { width: 4rem; height: 4rem; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
 .enote-profil-name { font-size: 1.25rem; font-weight: 800; }
 .enote-profil-rollen { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .4rem; }
 

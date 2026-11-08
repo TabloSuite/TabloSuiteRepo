@@ -3,7 +3,6 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using ZXing;
 using ZXing.Common;
-using ZXing.Windows.Compatibility;
 
 namespace ENote.WebApp.Services;
 
@@ -101,15 +100,15 @@ public static class EtikettPdfService
 
                 if (barcode is not null)
                 {
-                    col.Item().AlignCenter().MaxHeight(12, Unit.Millimetre).Image(barcode).FitArea();
+                    col.Item().AlignCenter().MaxHeight(12, Unit.Millimetre).Svg(barcode).FitArea();
                 }
 
                 col.Item().AlignCenter().Text(etikett.Code).FontSize(5.5f).FontColor(Colors.Grey.Darken1);
             });
     }
 
-    /// <summary>Erzeugt einen Code-128-Barcode als PNG-Bytes.</summary>
-    private static byte[]? ErzeugeCode128(string inhalt)
+    /// <summary>Erzeugt einen Code-128-Barcode als plattformunabhängige SVG-Grafik.</summary>
+    internal static string? ErzeugeCode128(string inhalt)
     {
         if (string.IsNullOrWhiteSpace(inhalt))
         {
@@ -118,16 +117,12 @@ public static class EtikettPdfService
 
         try
         {
-            var writer = new ZXing.Windows.Compatibility.BarcodeWriter
+            var writer = new BarcodeWriterSvg
             {
                 Format = BarcodeFormat.CODE_128,
                 Options = new EncodingOptions { Height = 60, Width = 300, Margin = 2, PureBarcode = true }
             };
-
-            using var bitmap = writer.Write(inhalt);
-            using var ms = new MemoryStream();
-            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            return ms.ToArray();
+            return writer.Write(inhalt).Content;
         }
         catch
         {

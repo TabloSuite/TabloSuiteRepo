@@ -2,6 +2,8 @@ using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Services;
+using ENote.WebApp.Services.Mails;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -26,7 +28,9 @@ public class LadenTarifAnzeigeTests
                 new PlattformPreis { Intervall = AboIntervall.Monatlich, Preis = 5000, IstAktuell = true });
             await db.SaveChangesAsync();
         }
-        var service = new AdminService(factory, null!, NullLogger<AdminService>.Instance);
+        var emailConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var emailService = new EmailService(emailConfig, factory, NullLogger<EmailService>.Instance);
+        var service = new AdminService(factory, null!, NullLogger<AdminService>.Instance, emailService);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GetLadenTarifAsync(Guid.NewGuid(), salon.Id));
         var vorher = await service.GetLadenTarifAsync(admin.Id, salon.Id);
         Assert.Equal("Boutique A", vorher.Name);

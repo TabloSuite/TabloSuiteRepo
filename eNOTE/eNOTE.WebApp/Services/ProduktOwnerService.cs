@@ -41,7 +41,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         return await db.ProduktOwnerSalons
             .AsNoTracking()
             .Include(p => p.Salon)
-            .Where(p => p.ProduktOwnerId == produktOwnerId)
+            .Where(p => p.ProduktOwnerId == produktOwnerId && p.GueltigBisUtc == null)
             .OrderBy(p => p.Salon.Name)
             .Select(p => new Zuweisung(p.Id, p.SalonId, p.Salon.Name, p.KannLadenUmsatzSehen, p.KannPlattformUmsatzSehen, p.SelbstAngelegt, p.ProzentProvision, p.FestbetragProvision))
             .ToListAsync(cancellationToken);
@@ -53,20 +53,37 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var ids = await db.ProduktOwnerSalons
             .AsNoTracking()
-            .Where(p => p.ProduktOwnerId == produktOwnerId)
+            .Where(p => p.ProduktOwnerId == produktOwnerId && p.GueltigBisUtc == null)
             .Select(p => p.SalonId)
             .ToListAsync(cancellationToken);
         return ids.ToHashSet();
     }
 
-    /// <summary>Weist einen Laden einem PO zu (oder aktualisiert die Rechte).</summary>
+    /// <summary>
+    /// Weist einen Laden einem PO zu (oder aktualisiert die Rechte).
+    /// Ein PO kann mehrere Läden verwalten, aber ein Laden hat immer genau einen
+    /// verantwortlichen PO. Der Admin kann den PO wechseln: eine Zuweisung an einen
+    /// anderen PO ersetzt die bisherige Zuordnung dieses Ladens (eindeutige Provision/Abrechnung).
+    /// </summary>
     public async Task<bool> WeiseSalonZuAsync(
         Guid produktOwnerId, Guid salonId, bool kannLadenUmsatz, bool kannPlattformUmsatz,
         bool selbstAngelegt = false, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Ein Laden = genau ein aktiver PO: bisherige aktive Zuordnungen anderer POs
+        // für diesen Laden archivieren (GueltigBisUtc setzen), statt sie zu löschen.
+        var jetzt = DateTime.UtcNow;
+        var fremdeZuweisungen = await db.ProduktOwnerSalons
+            .Where(p => p.SalonId == salonId && p.ProduktOwnerId != produktOwnerId && p.GueltigBisUtc == null)
+            .ToListAsync(cancellationToken);
+        foreach (var alt in fremdeZuweisungen)
+        {
+            alt.GueltigBisUtc = jetzt;
+        }
+
         var vorhanden = await db.ProduktOwnerSalons
-            .FirstOrDefaultAsync(p => p.ProduktOwnerId == produktOwnerId && p.SalonId == salonId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.ProduktOwnerId == produktOwnerId && p.SalonId == salonId && p.GueltigBisUtc == null, cancellationToken);
 
         if (vorhanden is null)
         {
@@ -87,6 +104,91 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
 
         await db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// PO legt selbst einen Laden an (mit neuem Besitzer-Konto) und verwaltet ihn
+    /// anschließend direkt. Der Laden ist aktiv, muss aber vom Admin freigegeben werden.
+    /// Login des Besitzers = eindeutiges Pseudonym; Kontakt-E-Mail darf mehrfach sein.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler, Salon? Salon)> LegeSalonSelbstAnAsync(
+        Guid produktOwnerId,
+        string vorname, string nachname, string pseudonym, string email, string initialPasswort,
+        string salonName, string? standort, string? land,
+        UserManager<AppUser> userManager,
+        CancellationToken cancellationToken = default)
+    {
+        var bereinigtSalon = (salonName ?? string.Empty).Trim();
+        var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
+        if (bereinigtSalon.Length < 2)
+        {
+            return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null);
+        }
+        if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
+        {
+            return (false, "Veuillez saisir un pseudonyme pour le propriétaire.", null);
+        }
+        if (await userManager.FindByNameAsync(bereinigtPseudonym) is not null)
+        {
+            return (false, "Ce pseudonyme est déjà utilisé.", null);
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (await db.Salons.AnyAsync(s => s.Name == bereinigtSalon, cancellationToken))
+        {
+            return (false, "Un établissement portant ce nom existe déjà.", null);
+        }
+
+        var besitzer = new AppUser
+        {
+            UserName = bereinigtPseudonym,
+            Email = (email ?? string.Empty).Trim(),
+            Vorname = vorname.Trim(),
+            Nachname = nachname.Trim(),
+            FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            EmailConfirmed = true
+        };
+        var erstellen = await userManager.CreateAsync(besitzer, initialPasswort);
+        if (!erstellen.Succeeded)
+        {
+            var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
+            return (false, string.IsNullOrWhiteSpace(fehler) ? "La création a échoué." : fehler, null);
+        }
+        await userManager.AddToRoleAsync(besitzer, AppRollen.Besitzer);
+
+        var salon = new Salon
+        {
+            Name = bereinigtSalon,
+            Standort = string.IsNullOrWhiteSpace(standort) ? null : standort.Trim(),
+            Land = string.IsNullOrWhiteSpace(land) ? null : land.Trim(),
+            IstAktiv = true,
+            IstFreigegeben = false, // Admin gibt frei
+            ProbeBisUtc = AuthService.BerechneProbeEnde(DateTime.UtcNow)
+        };
+        db.Salons.Add(salon);
+        await db.SaveChangesAsync(cancellationToken);
+
+        db.UserSalons.Add(new UserSalon
+        {
+            AppUserId = besitzer.Id,
+            SalonId = salon.Id,
+            KannFinanzenSehen = true,
+            KannLeistungenVerwalten = true,
+            KannRabatteVerwalten = true
+        });
+
+        // Direkte Verwaltung durch den anlegenden PO (SelbstAngelegt = true).
+        db.ProduktOwnerSalons.Add(new ProduktOwnerSalon
+        {
+            ProduktOwnerId = produktOwnerId,
+            SalonId = salon.Id,
+            KannLadenUmsatzSehen = true,
+            KannPlattformUmsatzSehen = false,
+            SelbstAngelegt = true
+        });
+        await db.SaveChangesAsync(cancellationToken);
+
+        return (true, null, salon);
     }
 
     public async Task<bool> EntferneZuweisungAsync(Guid zuweisungId, CancellationToken cancellationToken = default)
@@ -141,7 +243,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         var zuweisungen = await db.ProduktOwnerSalons
             .AsNoTracking()
             .Include(p => p.Salon)
-            .Where(p => p.ProduktOwnerId == produktOwnerId)
+            .Where(p => p.ProduktOwnerId == produktOwnerId && p.GueltigBisUtc == null)
             .ToListAsync(cancellationToken);
 
         var salonIds = zuweisungen.Select(z => z.SalonId).ToList();
@@ -205,18 +307,25 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         var monatStart = new DateTime(jahr, monat, 1, 0, 0, 0, DateTimeKind.Utc);
         var monatEnde = monatStart.AddMonths(1);
 
+        // Für die Abrechnung zählen Zuordnungen, die im Abrechnungsmonat aktiv waren
+        // (GueltigAbUtc < Monatsende und noch nicht vor Monatsbeginn archiviert).
         var zuweisungen = await db.ProduktOwnerSalons
             .AsNoTracking()
             .Include(p => p.Salon)
-            .Where(p => p.ProduktOwnerId == produktOwnerId)
+            .Where(p => p.ProduktOwnerId == produktOwnerId
+                && p.CreatedAtUtc < monatEnde
+                && (p.GueltigBisUtc == null || p.GueltigBisUtc >= monatStart))
             .ToListAsync(cancellationToken);
 
         var salonIds = zuweisungen.Select(z => z.SalonId).ToList();
+        // Bereits über das neue PO-Abrechnungssystem (PoZahlungseingang) erfasste
+        // Abo-Einnahmen nicht erneut provisionieren, sonst würde doppelt gezahlt.
         var aboEinnahmen = await db.NutzungsAbos
             .AsNoTracking()
             .Where(a => salonIds.Contains(a.SalonId)
                 && a.ZahlungStatus == Core.DataModels.Abo.AboZahlungStatus.Bestaetigt
-                && a.ZahlungBestaetigtUtc >= monatStart && a.ZahlungBestaetigtUtc < monatEnde)
+                && a.ZahlungBestaetigtUtc >= monatStart && a.ZahlungBestaetigtUtc < monatEnde
+                && !db.PoZahlungseingaenge.Any(e => e.NutzungsAboId == a.Id))
             .GroupBy(a => a.SalonId)
             .Select(g => new { g.Key, Summe = g.Sum(a => a.PreisSnapshot) })
             .ToListAsync(cancellationToken);

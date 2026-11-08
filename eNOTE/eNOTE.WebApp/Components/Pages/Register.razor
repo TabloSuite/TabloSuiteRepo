@@ -40,7 +40,12 @@
                 </div>
 
                 <label>
-                    Adresse e-mail
+                    Pseudonyme (identifiant de connexion)
+                    <InputText @bind-Value="FormModel.Pseudonym" autocomplete="username" />
+                </label>
+
+                <label>
+                    Adresse e-mail de contact
                     <InputText @bind-Value="FormModel.Email" type="email" />
                 </label>
 
@@ -65,6 +70,14 @@
                     <InputText @bind-Value="FormModel.Slogan" placeholder="ex. In God we trust" />
                 </label>
 
+                <div class="cgu-accept">
+                    <label class="checkbox">
+                        <InputCheckbox @bind-Value="FormModel.CguAcceptees" />
+                        <span>J'ai lu et j'accepte les <button type="button" class="cgu-link" @onclick="() => cguOffen = true" @onclick:preventDefault>Conditions Générales d'Utilisation</button></span>
+                    </label>
+                    <ValidationMessage For="() => FormModel.CguAcceptees" />
+                </div>
+
                 <button type="submit" class="btn-primary" disabled="@isSubmitting">S'inscrire</button>
             </EditForm>
 
@@ -72,3 +85,12 @@
         </div>
     </div>
 </div>
+
+<ModalDialog Open="cguOffen" Title="Conditions Générales d'Utilisation" OnClose="() => cguOffen = false" MaxWidthClass="enote-modal-wide">
+    <ChildContent>
+        <ConditionsGenerales />
+    </ChildContent>
+    <Footer>
+        <button type="button" class="enote-btn enote-btn-primary" @onclick="() => { FormModel.CguAcceptees = true; cguOffen = false; }">J'accepte</button>
+    </Footer>
+</ModalDialog>

@@ -64,10 +64,10 @@ public static class EnoteInfrastruktur
             || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment)
             || uri.AbsolutePath != "/" || !uri.IsDefaultPort
             || !uri.Host.EndsWith(".blob.core.windows.net", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("AzureBlobStorage:ServiceUri muss eine HTTPS-Account-URI ohne SAS sein.");
+            throw new InvalidOperationException("Storage:ServiceUri muss eine HTTPS-Account-URI ohne SAS sein.");
         if (options.ContainerName.Length is < 3 or > 63
             || !Regex.IsMatch(options.ContainerName, "^[a-z0-9]+(-[a-z0-9]+)*$"))
-            throw new InvalidOperationException("AzureBlobStorage:ContainerName ist ungültig.");
+            throw new InvalidOperationException("Storage:ContainerName ist ungültig.");
         return uri;
     }
 
@@ -76,7 +76,7 @@ public static class EnoteInfrastruktur
         if (!environment.IsDevelopment())
             throw new InvalidOperationException("Lokaler Medienspeicher ist nur in Development erlaubt.");
         if (string.IsNullOrWhiteSpace(options.LocalDataRootPath))
-            throw new InvalidOperationException("AzureBlobStorage:LocalDataRootPath fehlt.");
+            throw new InvalidOperationException("Storage:LocalDataRootPath fehlt.");
         var path = Path.GetFullPath(options.LocalDataRootPath, environment.ContentRootPath);
         PruefeAusserhalbWebRoot(path, environment);
         return path;

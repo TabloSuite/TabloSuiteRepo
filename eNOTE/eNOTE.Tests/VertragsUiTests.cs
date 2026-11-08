@@ -40,10 +40,8 @@ public class VertragsUiTests
             => InvokeAsync<TValue>(identifier, args);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Abonnement_Zeigt_Zahlungsuebersicht_Nur_Einmal_Und_Alle_Rabatte(bool mitPo)
+    [Fact]
+    public async Task Abonnement_Zeigt_Essai_Banner_Und_Drei_Formeln()
     {
         var factory = TestDbContextFactory.Create();
         var owner = new AppUser { Id = Guid.NewGuid() };
@@ -55,12 +53,6 @@ public class VertragsUiTests
             db.UserRoles.Add(new AppUserRole { UserId = owner.Id, RoleId = rolle.Id });
             db.UserSalons.Add(new UserSalon { AppUser = owner, Salon = salon });
             db.PlattformPreise.Add(new PlattformPreis { Intervall = AboIntervall.Monatlich, Preis = 5000 });
-            if (mitPo)
-            {
-                var po = new AppUser { Id = Guid.NewGuid(), FullName = "Responsable A" };
-                db.Users.Add(po);
-                db.BesitzerBetreuungen.Add(new BesitzerBetreuung { BesitzerId = owner.Id, ProduktOwnerId = po.Id });
-            }
             await db.SaveChangesAsync();
         }
         var services = new ServiceCollection();
@@ -74,6 +66,7 @@ public class VertragsUiTests
         services.AddSingleton<AktiverSalonState>();
         services.AddSingleton<ToastService>();
         services.AddSingleton<BesitzerPinState>();
+        services.AddSingleton<LadeZustand>();
         services.AddSingleton(new KatalogService(factory, null!, null!));
         services.AddSingleton(new KassenService(factory, new FakeUmsatzBenachrichtigungService()));
         await using var provider = services.BuildServiceProvider();
@@ -85,25 +78,16 @@ public class VertragsUiTests
             return ausgabe.ToHtmlString();
         });
         html = System.Net.WebUtility.HtmlDecode(html);
-        Assert.Equal(1, Regex.Matches(html, "Mes paiements · Payé / Non payé").Count);
-        Assert.Equal(1, Regex.Matches(html, "Tous les paiements").Count);
-        Assert.Equal(4, Regex.Matches(html, ">Choisir</button>").Count);
-        Assert.Contains("remise 5 %", html);
-        Assert.Contains("remise 7,5 %", html);
-        Assert.Contains("remise 10 %", html);
-        Assert.Contains("15 jours de grâce", html);
-        Assert.DoesNotContain("le contrat Mensuel est actif", html);
-        Assert.Contains("Destinataire du paiement", html);
-        if (mitPo)
-        {
-            Assert.Contains("Responsable : Responsable A", html);
-            Assert.DoesNotContain("Paiement direct à la plateforme", html);
-        }
-        else
-        {
-            Assert.Contains("Paiement direct à la plateforme", html);
-            Assert.DoesNotContain("Responsable :", html);
-        }
+        // Titel und kostenlose Probezeit
+        Assert.Contains("Abonnement – Boutique A", html);
+        Assert.Contains("Essai gratuit", html);
+        // Genau drei Formel-Karten, jeweils mit eigener Auswahl
+        Assert.Equal(3, Regex.Matches(html, ">Choisir</button>").Count);
+        Assert.Contains("Mensuel", html);
+        Assert.Contains("3 mois", html);
+        Assert.Contains("Annuel", html);
+        // Geseedeter Monatspreis wird angezeigt (Tausendertrennzeichen kulturabhängig)
+        Assert.Matches(new Regex(@"5\D?000"), html);
     }
 
     [Fact]

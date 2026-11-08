@@ -11,7 +11,8 @@ public partial class Finanzen(
     KatalogService katalogService,
     AktiverSalonState aktiverSalon,
     AuthenticationStateProvider authStateProvider,
-    NavigationManager navigationManager) : IAsyncDisposable
+    NavigationManager navigationManager,
+    LadeZustand ladeZustand) : IAsyncDisposable
 {
     private bool isLoading = true;
     private bool darfFinanzenSehen;
@@ -75,6 +76,7 @@ public partial class Finanzen(
 
     protected override async Task OnInitializedAsync()
     {
+        using var _ = ladeZustand.Beginnen();
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();

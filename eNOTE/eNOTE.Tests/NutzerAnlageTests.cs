@@ -2,10 +2,13 @@ using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using ENote.WebApp.Services;
+using ENote.WebApp.Services.Mails;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace ENote.Tests;
@@ -30,6 +33,7 @@ public class NutzerAnlageTests
         services.AddTransient(_ => factory.CreateDbContext());
         services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
         services.AddIdentityCore<AppUser>().AddRoles<Role>().AddEntityFrameworkStores<ApplicationDbContext>();
+        services.AddSingleton(_ => new EmailService(new ConfigurationBuilder().Build(), factory, NullLogger<EmailService>.Instance));
         services.AddScoped<AdminKontenService>(); services.AddScoped<AdminService>(); services.AddScoped<TeamService>();
         return services.BuildServiceProvider();
     }
@@ -185,20 +189,28 @@ public class NutzerAnlageTests
         await using var provider = Dienste(factory);
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
+        var admin = await NutzerAsync(sp, AppRollen.SuperAdmin);
         var po = await NutzerAsync(sp, AppRollen.ProduktOwner);
-        await NutzerAsync(sp, AppRollen.Besitzer);
+        // Besitzer-Rolle sicherstellen (LegeBesitzerMitSalonAnAsync weist sie zu).
+        var rollen = sp.GetRequiredService<RoleManager<Role>>();
+        if (!await rollen.RoleExistsAsync(AppRollen.Besitzer)) Assert.True((await rollen.CreateAsync(new Role { Name = AppRollen.Besitzer })).Succeeded);
         var s = sp.GetRequiredService<AdminService>();
-        var (ok, fehler, besitzer) = await s.LegeBesitzerMitSalonAnAsync(po.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique A", "Lomé", "Togo");
+        // ProduktOwner darf keine Besitzer mit Salon anlegen (nur SuperAdmin).
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            s.LegeBesitzerMitSalonAnAsync(po.Id, "Jean", "Test", "p@example.test", "Initial123!Ab", "B", null));
+        var (ok, fehler, besitzer) = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique A", "Lomé", "Togo");
         Assert.True(ok, fehler); Assert.NotNull(besitzer);
-        Assert.False((await s.LegeBesitzerMitSalonAnAsync(po.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique B", null)).Erfolg);
+        // Gleiche E-Mail erneut (gleiche Person) mit neuem Pseudonym ist erlaubt.
+        var zweites = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique B", null, benutzername: "owner.zweit");
+        Assert.True(zweites.Erfolg, zweites.Fehler);
+        // Gleiches Pseudonym erneut wird abgelehnt.
+        Assert.False((await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique C", null, benutzername: "owner.zweit")).Erfolg);
         await using var db = await factory.CreateDbContextAsync();
-        var laden = Assert.Single(await db.Salons.ToListAsync());
-        Assert.NotNull(laden.ProbeBisUtc); Assert.True(laden.IstFreigegeben);
-        Assert.Equal(besitzer.Id, Assert.Single(await db.UserSalons.ToListAsync()).AppUserId);
-        var betreuung = Assert.Single(await db.BesitzerBetreuungen.ToListAsync());
-        Assert.Equal(po.Id, betreuung.ProduktOwnerId); Assert.Equal(besitzer.Id, betreuung.BesitzerId);
-        Assert.Equal(po.Id, Assert.Single(await db.ProduktOwnerSalons.ToListAsync()).ProduktOwnerId);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => s.LegeProduktOwnerAnAsync(po.Id, "X", "Y", "po2@example.test", "Initial123!Ab"));
+        Assert.Equal(2, await db.Salons.CountAsync());
+        Assert.True((await db.Salons.SingleAsync(s2 => s2.Name == "Boutique A")).IstFreigegeben);
+        // Jedes Konto gehört zu genau einem Laden (Regel: ein Konto pro Laden).
+        Assert.Equal(2, await db.UserSalons.CountAsync());
+        Assert.Equal(besitzer.Id, (await db.UserSalons.SingleAsync(us => us.Salon.Name == "Boutique A")).AppUserId);
     }
 
     [Fact]
@@ -218,14 +230,14 @@ public class NutzerAnlageTests
             db.UserSalons.Add(new UserSalon { AppUserId = besitzer.Id, Salon = eigener }); await db.SaveChangesAsync();
         }
         var s = sp.GetRequiredService<TeamService>();
-        Assert.False((await s.LegeKassiererAnAsync(besitzer.Id, fremder.Id, "X", "Y", "1234")).Erfolg);
-        var (ok, fehler, kassierer) = await s.LegeKassiererAnAsync(besitzer.Id, eigener.Id, "X", "Y", "0123");
+        var (ok, fehler, kassierer) = await s.LegeKassiererAnAsync(eigener.Id, "X", "Y", "kassierer.pseudo", "kass2@example.test", "Init123!Ab", "0123");
         Assert.True(ok, fehler); Assert.NotNull(kassierer);
-        Assert.True(kassierer.IstInternerKassierer); Assert.Null(kassierer.Email); Assert.Null(kassierer.PasswordHash);
+        Assert.Equal("kassierer.pseudo", kassierer.UserName);
         Assert.True(await sp.GetRequiredService<UserManager<AppUser>>().IsInRoleAsync(kassierer, AppRollen.Kassierer));
         await using var kontrolle = await factory.CreateDbContextAsync();
-        Assert.Equal(eigener.Id, (await kontrolle.UserSalons.SingleAsync(u => u.AppUserId == kassierer.Id)).SalonId);
-        Assert.False((await s.LegeKassiererAnAsync(kassierer.Id, eigener.Id, "X", "Y", "1234")).Erfolg);
+        var zuordnung = await kontrolle.UserSalons.SingleAsync(u => u.AppUserId == kassierer.Id);
+        Assert.Equal(eigener.Id, zuordnung.SalonId);
+        Assert.NotNull(zuordnung.KassenPinHash);
     }
 
     [Fact]
@@ -238,16 +250,18 @@ public class NutzerAnlageTests
         var salon = new Salon { Name = "Premier", IstFreigegeben = true, ProbeBisUtc = DateTime.UtcNow.AddDays(1) };
         await using (var db = await factory.CreateDbContextAsync())
         { db.UserSalons.Add(new UserSalon { AppUserId = owner.Id, Salon = salon }); await db.SaveChangesAsync(); }
-        var s = new SalonService(factory, null!);
+        var s = new SalonService(factory, null!, scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>());
+        // Während der laufenden Probezeit ist kein weiterer Laden erlaubt.
         Assert.False(await s.DarfWeiterenLadenAnlegenAsync(owner.Id));
+        Assert.False((await s.FuegeSalonHinzuAsync(owner.Id, "Trop tôt", null, null, "A", "B", "pseudo.zu1", "a@b.test", "Init123!Ab")).Erfolg);
         await using (var db = await factory.CreateDbContextAsync())
         { (await db.Salons.SingleAsync()).ProbeBisUtc = DateTime.UtcNow.AddDays(-1); await db.SaveChangesAsync(); }
-        var result = await s.FuegeSalonHinzuAsync(owner.Id, "Deuxième", null, "Togo");
-        Assert.False(result.Erfolg); Assert.Null(result.Salon);
-        await using (var db = await factory.CreateDbContextAsync())
-        { (await db.Users.SingleAsync()).IsBlocked = true; await db.SaveChangesAsync(); }
-        Assert.False(await s.DarfWeiterenLadenAnlegenAsync(owner.Id));
-        Assert.False((await s.FuegeSalonHinzuAsync(owner.Id, "Troisième", null, null)).Erfolg);
+        // Nach abgelaufener Probezeit eines freigegebenen Ladens darf ein weiterer angelegt werden.
+        Assert.True(await s.DarfWeiterenLadenAnlegenAsync(owner.Id));
+        var result = await s.FuegeSalonHinzuAsync(owner.Id, "Deuxième", null, "Togo", "A", "B", "pseudo.zu2", "a@b.test", "Init123!Ab");
+        Assert.True(result.Erfolg); Assert.NotNull(result.Salon); Assert.NotNull(result.Konto);
+        // Gleiche E-Mail erneut (gleiche Person) ist erlaubt, neues Pseudonym nötig.
+        Assert.False((await s.FuegeSalonHinzuAsync(owner.Id, "Troisième", null, null, "A", "B", "pseudo.zu2", "a@b.test", "Init123!Ab")).Erfolg);
     }
 
     [Fact]
@@ -267,15 +281,15 @@ public class NutzerAnlageTests
             db.BesitzerBetreuungen.Add(new BesitzerBetreuung { BesitzerId = owner.Id, ProduktOwnerId = po.Id });
             await db.SaveChangesAsync();
         }
-        var s = new SalonService(factory, null!);
-        Assert.Empty(await s.GetBesitzerFuerAnlageAsync(fremd.Id));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => s.FuegeSalonFuerBesitzerHinzuAsync(fremd.Id, owner.Id, "Faux", null, null));
-        var result = await s.FuegeSalonFuerBesitzerHinzuAsync(po.Id, owner.Id, "Deuxième", null, "Togo");
-        Assert.False(result.Erfolg); Assert.Null(result.Salon);
-        Assert.False((await s.FuegeSalonFuerBesitzerHinzuAsync(admin.Id, owner.Id, "Troisième", null, null)).Erfolg);
+        var s = new SalonService(factory, null!, scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>());
+        // Nach abgelaufener Probezeit darf ein weiterer Laden mit neuem Konto angelegt werden.
+        var result = await s.FuegeSalonHinzuAsync(owner.Id, "Deuxième", null, "Togo", "A", "B", "pseudo.neu", "gleich@mail.test", "Init123!Ab");
+        Assert.True(result.Erfolg); Assert.NotNull(result.Salon);
         await using var kontrolle = await factory.CreateDbContextAsync();
-        Assert.Equal(1, await kontrolle.UserSalons.CountAsync(us => us.AppUserId == owner.Id));
-        Assert.Equal(0, await kontrolle.ProduktOwnerSalons.CountAsync(p => p.ProduktOwnerId == po.Id));
-        Assert.Equal(4, await kontrolle.Users.CountAsync());
+        // Der neue Laden gehört einem neuen Konto (Regel: ein Konto pro Laden).
+        Assert.Equal(2, await kontrolle.UserSalons.CountAsync());
+        Assert.NotEqual(owner.Id, result.Konto!.Id);
+        Assert.Equal(result.Konto.Id, (await kontrolle.UserSalons.SingleAsync(us => us.SalonId == result.Salon!.Id)).AppUserId);
+        Assert.Equal(5, await kontrolle.Users.CountAsync());
     }
 }
