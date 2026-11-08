@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Besitzer, Kassierer")]
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Forms
+@using ENote.Core.DataModels.Katalog
 
 <PageTitle>Prestations</PageTitle>
 
@@ -22,112 +23,194 @@
         }
     </div>
 
-    @if (kategorienOffen)
-    {
-        <div class="enote-card enote-settings-card">
-            <h2>Catégories</h2>
-            <div class="enote-kategorie-row">
-                <input @bind="neueKategorieName" placeholder="ex. Tissus, Boissons…" class="enote-input-inline" />
-                <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
-            </div>
-            @if (!isLoading && kategorien.Count == 0)
-            {
-                <p class="enote-empty" role="status">Aucune catégorie pour le moment.</p>
-            }
-            <div class="enote-kategorie-liste">
-                @foreach (var k in kategorien)
-                {
-                    <span class="enote-tag enote-tag-editierbar">
-                        @k.Name
-                        <button type="button" class="enote-tag-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(k)">✎</button>
-                        <button type="button" class="enote-tag-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(k)">✕</button>
-                    </span>
-                }
-            </div>
-        </div>
-    }
-
     @if (isLoading)
     {
         <p>Chargement…</p>
     }
-    else if (leistungen.Count == 0)
-    {
-        <p class="enote-empty">Aucune prestation pour le moment. Créez votre première prestation.</p>
-    }
     else
     {
-        var gefiltert = GefilterteLeistungen().ToList();
-        <div class="enote-filter-leiste">
-            <input class="enote-filter-suche" placeholder="Rechercher une prestation…" @bind="leistungsSuche" @bind:event="oninput" />
-            <EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" />
-        </div>
-        @if (gefiltert.Count == 0)
-        {
-            <p class="enote-empty" role="status">Aucune prestation ne correspond à votre recherche ou à la catégorie sélectionnée.</p>
-        }
-        <div class="enote-grid">
-            @foreach (var l in gefiltert)
-            {
-                <div class="enote-item">
-                    <div class="enote-item-head">
-                        <strong>@l.Name</strong>
-                        <span class="enote-price">@l.Preis.ToString("N0") F</span>
-                    </div>
-                    @if (!string.IsNullOrWhiteSpace(l.Beschreibung))
-                    {
-                        <p class="enote-item-desc">@l.Beschreibung</p>
-                    }
-                    <div class="enote-item-meta">
-                        @if (l.HatStueckzahl)
-                        {
-                            <span class="enote-tag">Article</span>
-                            <span class="@BestandKlasse(l)">Stock : @l.Stueckzahl</span>
-                            @if (BestandWarnung(l))
-                            {
-                                <span class="enote-tag enote-tag-warn">Bientôt épuisé</span>
-                            }
-                        }
-                        else
-                        {
-                            <span class="enote-tag">Prestation</span>
-                        }
-                        @if (l.BasisLeistungId is not null)
-                        {
-                            <span class="enote-tag">Lié au stock</span>
-                        }
-                        @if (!l.IstAktiv)
-                        {
-                            <span class="enote-tag enote-tag-off">Désactivée</span>
-                        }
-                    </div>
-                    @if (l.Kaufpreis is not null && l.Preis > 0)
-                    {
-                        <div class="enote-item-desc">
-                            Marge : <strong class="enote-marge">@((l.Preis - l.Kaufpreis.Value).ToString("N0")) F</strong>
-                            (@(Math.Round((l.Preis - l.Kaufpreis.Value) / l.Preis * 100m, 0).ToString("N0")) %)
-                            @if (l.HatStueckzahl && l.Kaufpreis is not null)
-                            {
-                                <span class="enote-muted"> · Stock : @((l.Stueckzahl * l.Kaufpreis.Value).ToString("N0")) F</span>
-                            }
-                        </div>
-                    }
-                    @if (darfVerwalten)
-                    {
-                        <div class="enote-item-actions">
-                            <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeiten(l)">Modifier</button>
-                            @if (l.HatStueckzahl && !string.IsNullOrWhiteSpace(l.StrichCode))
-                            {
-                                <button class="enote-btn enote-btn-ghost" @onclick="() => OeffneEtikettDialog(l)">🏷 Étiquettes</button>
-                            }
-                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoeschenFragen(l)">Supprimer</button>
-                        </div>
-                    }
+        <div class="enote-katalog-layout">
+            @* LINKS: Kategorie-Baum verwalten *@
+            <div class="enote-katalog-baum enote-card">
+                <div class="enote-katalog-baum-header">
+                    <h2>Catégories</h2>
                 </div>
-            }
+                <div class="enote-kategorie-row">
+                    <input @bind="neueKategorieName" placeholder="ex. Boissons, Tissus…" class="enote-input-inline" />
+                    <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+                </div>
+
+                @if (kategorieBaum.Count == 0)
+                {
+                    <p class="enote-empty" role="status">Aucune catégorie pour le moment.</p>
+                }
+                else
+                {
+                    <div class="enote-baum-liste">
+                        @foreach (var knoten in kategorieBaum)
+                        {
+                            var hatUnter = knoten.Unterkategorien.Count > 0;
+                            var istAuf = aufgeklappteKategorieId == knoten.Kategorie.Id;
+                            <div class="enote-baum-knoten">
+                                <div class="enote-baum-zeile">
+                                    <button type="button" class="enote-baum-toggle" @onclick="() => ToggleAufklappen(knoten.Kategorie.Id)">
+                                        @(hatUnter ? (istAuf ? "▾" : "▸") : "•")
+                                    </button>
+                                    <span class="enote-baum-name">@knoten.Kategorie.Name</span>
+                                    <span class="enote-baum-anzahl">@AnzahlInKategorie(knoten.Kategorie.Id)</span>
+                                    <div class="enote-baum-aktionen">
+                                        <button type="button" class="enote-icon-btn" title="Sous-catégorie" @onclick="() => OeffneUnterkategorieDialog(knoten.Kategorie.Id)">+</button>
+                                        <button type="button" class="enote-icon-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)">✎</button>
+                                        <button type="button" class="enote-icon-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(knoten.Kategorie)">✕</button>
+                                    </div>
+                                </div>
+                                @if (istAuf)
+                                {
+                                    @foreach (var unter in knoten.Unterkategorien)
+                                    {
+                                        <div class="enote-baum-zeile enote-baum-unter">
+                                            <span class="enote-baum-toggle"></span>
+                                            <span class="enote-baum-name">@unter.Name</span>
+                                            <span class="enote-baum-anzahl">@AnzahlInKategorie(unter.Id)</span>
+                                            <div class="enote-baum-aktionen">
+                                                <button type="button" class="enote-icon-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(unter)">✎</button>
+                                                <button type="button" class="enote-icon-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(unter)">✕</button>
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (unterkategorieParentId == knoten.Kategorie.Id)
+                                    {
+                                        <div class="enote-baum-zeile enote-baum-unter enote-baum-neu">
+                                            <input @bind="neueUnterkategorieName" placeholder="Nom de la sous-catégorie…" class="enote-input-inline" />
+                                            <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+                                            <button type="button" class="enote-icon-btn" @onclick="SchliesseUnterkategorieDialog">✕</button>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(unterkategorieFehler))
+                                        {
+                                            <div class="alert alert-error">@unterkategorieFehler</div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @* RECHTS: Kasse-Vorschau gruppiert *@
+            <div class="enote-katalog-vorschau">
+                <div class="enote-filter-leiste">
+                    <input class="enote-filter-suche" placeholder="Rechercher une prestation…" @bind="leistungsSuche" @bind:event="oninput" />
+                </div>
+
+                @if (leistungen.Count == 0)
+                {
+                    <p class="enote-empty">Aucune prestation pour le moment. Créez votre première prestation.</p>
+                }
+                else
+                {
+                    var gefiltert = GefilterteLeistungen().ToList();
+
+                    @* Favoriten zuerst *@
+                    var favoriten = gefiltert.Where(l => favoritenIds.Contains(l.Id)).ToList();
+                    @if (favoriten.Count > 0)
+                    {
+                        <div class="enote-vorschau-gruppe">
+                            <div class="enote-vorschau-gruppe-titel">★ Favoris</div>
+                            <div class="enote-vorschau-items">
+                                @foreach (var l in favoriten)
+                                {
+                                    @PrestationKarte(l)
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* Je Kategorie (Haupt + Unter) *@
+                    @foreach (var knoten in kategorieBaum)
+                    {
+                        var hauptItems = gefiltert.Where(l => l.KategorieId == knoten.Kategorie.Id).ToList();
+                        var unterItems = knoten.Unterkategorien
+                            .Select(u => (Kategorie: u, Items: gefiltert.Where(l => l.KategorieId == u.Id).ToList()))
+                            .Where(x => x.Items.Count > 0)
+                            .ToList();
+                        @if (hauptItems.Count > 0 || unterItems.Count > 0)
+                        {
+                            <div class="enote-vorschau-gruppe">
+                                <div class="enote-vorschau-gruppe-titel">@knoten.Kategorie.Name</div>
+                                @if (hauptItems.Count > 0)
+                                {
+                                    <div class="enote-vorschau-items">
+                                        @foreach (var l in hauptItems)
+                                        {
+                                            @PrestationKarte(l)
+                                        }
+                                    </div>
+                                }
+                                @foreach (var unter in unterItems)
+                                {
+                                    <div class="enote-vorschau-untertitel">└ @unter.Kategorie.Name</div>
+                                    <div class="enote-vorschau-items">
+                                        @foreach (var l in unter.Items)
+                                        {
+                                            @PrestationKarte(l)
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @* Ohne Kategorie *@
+                    var ohneKategorie = gefiltert.Where(l => l.KategorieId is null && !favoritenIds.Contains(l.Id)).ToList();
+                    @if (ohneKategorie.Count > 0)
+                    {
+                        <div class="enote-vorschau-gruppe">
+                            <div class="enote-vorschau-gruppe-titel">Sans catégorie</div>
+                            <div class="enote-vorschau-items">
+                                @foreach (var l in ohneKategorie)
+                                {
+                                    @PrestationKarte(l)
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
         </div>
     }
 </div>
+
+@* Lokale Render-Funktion für eine Prestation-Karte mit Kategorie-Dropdown *@
+@code {
+    private RenderFragment<Leistung> PrestationKarte => l => __builder =>
+    {
+        <div class="enote-vorschau-item">
+            <div class="enote-vorschau-item-info">
+                <strong>@l.Name</strong>
+                <span class="enote-price">@l.Preis.ToString("N0") F</span>
+                @if (l.HatStueckzahl)
+                {
+                    <span class="@BestandKlasse(l)">Stock : @l.Stueckzahl</span>
+                }
+            </div>
+            @if (darfVerwalten)
+            {
+                <div class="enote-vorschau-item-aktionen">
+                    <select class="enote-select-inline" value="@(l.KategorieId?.ToString() ?? "")"
+                            @onchange="e => SetzeLeistungKategorieAsync(l, e.Value?.ToString() ?? string.Empty)">
+                        <option value="">Sans catégorie</option>
+                        @foreach (var k in kategorien)
+                        {
+                            <option value="@k.Id">@k.Name</option>
+                        }
+                    </select>
+                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => Bearbeiten(l)">Modifier</button>
+                </div>
+            }
+        </div>;
+    };
+}
 
 <ModalDialog Open="editorOffen" Title="@(bearbeitungsLeistung.Id == Guid.Empty ? "Nouvelle prestation" : "Modifier la prestation")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor">
     <ChildContent>
@@ -135,23 +218,49 @@
             <label>Nom <input @bind="bearbeitungsLeistung.Name" /></label>
             <label>Description <input @bind="bearbeitungsLeistung.Beschreibung" /></label>
 
+            @* Typ zuerst: Prestation (Dienstleistung) oder Produit (Artikel) *@
+            <label>Type de prestation</label>
+            <div class="enote-typ-auswahl">
+                <button type="button" class="enote-typ-btn @(bearbeitungsLeistung.Typ == LeistungsTyp.Prestation ? "enote-typ-btn-aktiv" : "")"
+                        @onclick="() => SetzeTyp(LeistungsTyp.Prestation)">
+                    <span class="enote-typ-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="8.5" y1="8.5" x2="20" y2="20"/><line x1="8.5" y1="15.5" x2="20" y2="4"/></svg></span>
+                    <span class="enote-typ-text">
+                        <strong>Prestation</strong>
+                        <small>Service (ex. Coiffure Enfant) – uniquement le prix de vente.</small>
+                    </span>
+                </button>
+                <button type="button" class="enote-typ-btn @(bearbeitungsLeistung.Typ == LeistungsTyp.Produit ? "enote-typ-btn-aktiv" : "")"
+                        @onclick="() => SetzeTyp(LeistungsTyp.Produit)">
+                    <span class="enote-typ-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+                    <span class="enote-typ-text">
+                        <strong>Produit</strong>
+                        <small>Article (ex. Cola) – prix d'achat + prix de vente (marge), stock optionnel.</small>
+                    </span>
+                </button>
+            </div>
+
             <label>Catégorie (facultatif)</label>
             <EnoteSelect TValue="string" @bind-Value="kategorieIdText" Options="kategorieOptionen" Placeholder="— Aucune —" MitSuche="true" />
 
-            <div class="enote-form-grid">
-                <label>Prix de vente (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
-                <label>Prix d'achat (F, facultatif) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Kaufpreis" /></label>
-            </div>
-            @if (bearbeitungsLeistung.Kaufpreis is not null && bearbeitungsLeistung.Preis > 0)
+            @* Preis-Felder je nach Typ *@
+            @if (bearbeitungsLeistung.Typ == LeistungsTyp.Prestation)
             {
-                <small class="enote-marge">Marge : <strong>@MargeText()</strong></small>
+                <label>Prix de la prestation (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+            }
+            else
+            {
+                <div class="enote-form-grid">
+                    <label>Prix de vente (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+                    <label>Prix d'achat (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Kaufpreis" /></label>
+                </div>
+                @if (bearbeitungsLeistung.Kaufpreis is not null && bearbeitungsLeistung.Preis > 0)
+                {
+                    <small class="enote-marge">Marge : <strong>@MargeText()</strong></small>
+                }
             }
 
-            <label>Code-barres (facultatif, pour le scan en caisse)</label>
-            <input @bind="bearbeitungsLeistung.StrichCode" placeholder="ex. 6191101100021" />
-
             <label>Image (facultatif)</label>
-            <BildAuswahl VorschauUrl="@bildVorschau"
+            <BildAuswahl @bind-VorschauUrl="bildVorschau"
                          OnBildBereit="HandleBildBereit"
                          OnEntfernt="HandleBildEntfernt" />
             @if (!string.IsNullOrWhiteSpace(bildFehler))
@@ -159,22 +268,25 @@
                 <div class="alert alert-error">@bildFehler</div>
             }
 
-            <EnoteCheckbox @bind-Value="bearbeitungsLeistung.HatStueckzahl" Label="Article avec stock" />
-            @if (bearbeitungsLeistung.HatStueckzahl)
+            @* Stock nur bei Produit sinnvoll. Schließt Sammel-Artikel aus. *@
+            @if (bearbeitungsLeistung.Typ == LeistungsTyp.Produit)
             {
-                <div class="enote-form-grid">
-                    <label>Stock actuel (unités : pièces, mètres…) <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.Stueckzahl" /></label>
-                    <label>Alerte si stock ≤ <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.MindestbestandWarnung" /></label>
-                </div>
-            }
+                <EnoteCheckbox Value="bearbeitungsLeistung.HatStueckzahl" ValueChanged="SetzeHatStueckzahl" Label="Article avec stock" Disabled="@(istSammelArtikel)" />
+                @if (bearbeitungsLeistung.HatStueckzahl)
+                {
+                    <div class="enote-form-grid">
+                        <label>Stock actuel (unités : pièces, mètres…) <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.Stueckzahl" /></label>
+                        <label>Alerte si stock ≤ <input type="number" min="0" step="0.5" @bind="bearbeitungsLeistung.MindestbestandWarnung" /></label>
+                    </div>
+                }
 
-            @* Sammel-Artikel: zieht vom Bestand einer Basis-Leistung ab *@
-            <EnoteCheckbox @bind-Value="istSammelArtikel" Label="Article lié à un stock de base (ex. « Tissu A (3 m) »)" />
-            @if (istSammelArtikel)
-            {
-                <label>Stock de base</label>
-                <EnoteSelect TValue="string" @bind-Value="basisLeistungIdText" Options="basisOptionen" Placeholder="— Choisir —" MitSuche="true" />
-                <label>Quantité retirée par vente (ex. 3 pour 3 m) <input type="number" min="0" step="0.5" @bind="basisAbzugMenge" /></label>
+                <EnoteCheckbox Value="istSammelArtikel" ValueChanged="SetzeSammelArtikel" Label="Article lié à un stock de base (ex. « Tissu A (3 m) »)" Disabled="@(bearbeitungsLeistung.HatStueckzahl)" />
+                @if (istSammelArtikel && !bearbeitungsLeistung.HatStueckzahl)
+                {
+                    <label>Stock de base</label>
+                    <EnoteSelect TValue="string" @bind-Value="basisLeistungIdText" Options="basisOptionen" Placeholder="— Choisir —" MitSuche="true" />
+                    <label>Quantité retirée par vente (ex. 3 pour 3 m) <input type="number" min="0" step="0.5" @bind="basisAbzugMenge" /></label>
+                }
             }
 
             <EnoteCheckbox @bind-Value="bearbeitungsLeistung.IstAktiv" Label="Active" />

@@ -958,6 +958,9 @@ namespace ENote.WebApp.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("Typ")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -990,10 +993,15 @@ namespace ENote.WebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("SalonId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
 
                     b.HasIndex("SalonId", "Name")
                         .IsUnique();
@@ -1585,11 +1593,18 @@ namespace ENote.WebApp.Migrations
 
             modelBuilder.Entity("ENote.Core.DataModels.Katalog.LeistungKategorie", b =>
                 {
+                    b.HasOne("ENote.Core.DataModels.Katalog.LeistungKategorie", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ENote.Core.DataModels.Salons.Salon", "Salon")
                         .WithMany()
                         .HasForeignKey("SalonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Parent");
 
                     b.Navigation("Salon");
                 });

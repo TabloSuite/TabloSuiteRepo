@@ -43,7 +43,7 @@
                 <small class="enote-muted">Vide : le QR-code ouvre la copie numérique du reéu.</small>
 
                 <label>Logo (facultatif)</label>
-                <BildAuswahl VorschauUrl="@logoVorschau"
+                <BildAuswahl @bind-VorschauUrl="logoVorschau"
                              OnBildBereit="HandleLogoBereit"
                              OnEntfernt="HandleLogoEntfernt" />
                 @if (!string.IsNullOrWhiteSpace(logoFehler))
@@ -126,6 +126,7 @@
             <label>Pseudonyme (identifiant de connexion) <input @bind="neuerLadenPseudonym" placeholder="ex. jean.salonb" autocomplete="username" /></label>
             <label>Adresse e-mail de contact <input type="email" @bind="neuerLadenEmail" placeholder="ex. contact@exemple.com" autocomplete="email" /></label>
             <label>Mot de passe initial <PasswordInput @bind-Value="neuerLadenPasswort" Autocomplete="new-password" /></label>
+            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
         </div>
     </ChildContent>
     <Footer>

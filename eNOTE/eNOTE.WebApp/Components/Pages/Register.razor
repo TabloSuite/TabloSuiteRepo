@@ -78,7 +78,17 @@
                     <ValidationMessage For="() => FormModel.CguAcceptees" />
                 </div>
 
-                <button type="submit" class="btn-primary" disabled="@isSubmitting">S'inscrire</button>
+                <button type="submit" class="btn-primary" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="btn-spinner"></span>
+                        <span>Inscription en cours…</span>
+                    }
+                    else
+                    {
+                        <span>S'inscrire</span>
+                    }
+                </button>
             </EditForm>
 
             <p class="auth-footer">Déjà un compte ? <a href="/auth/login">Se connecter</a></p>

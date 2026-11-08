@@ -22,7 +22,7 @@
         @if (gemeldete.Count > 0)
         {
             <h2 class="enote-section-title">Paiements signalés (@gemeldete.Count)</h2>
-            <div class="enote-grid">
+            <div class="enote-grid-scroll">
                 @foreach (var a in gemeldete)
                 {
                     <div class="enote-item enote-item-pending">
@@ -65,7 +65,7 @@
                 <p class="enote-empty" role="status">Aucun abonnement ne correspond à votre recherche ou au statut sélectionné.</p>
             }
             <div class="enote-card enote-settings-card">
-                <table class="enote-table">
+                <div class="enote-table-scroll"><table class="enote-table">
                     <thead><tr><th>Établissement</th><th>Formule</th><th>Montant</th><th>Période</th><th>Statut</th></tr></thead>
                     <tbody>
                         @foreach (var a in GefilterteAbos())
@@ -79,7 +79,7 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                </table></div>
             </div>
         }
     }

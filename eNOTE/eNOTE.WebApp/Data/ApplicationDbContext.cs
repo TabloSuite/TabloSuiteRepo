@@ -111,6 +111,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(k => k.SalonId)
                 .OnDelete(DeleteBehavior.Cascade);
+            // Selbstreferenz für Unterkategorien: kein Cascade (vermeidet Zyklen), Parent optional.
+            entity.HasOne(k => k.Parent)
+                .WithMany()
+                .HasForeignKey(k => k.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<LeistungFavorit>(entity =>

@@ -10,5 +10,9 @@ public class LeistungKategorie
     public string Name { get; set; } = string.Empty;
     public bool IstAktiv { get; set; } = true;
 
+    /// <summary>Optionale übergeordnete Kategorie (null = Hauptkategorie). Max. 1 Unterebene.</summary>
+    public Guid? ParentId { get; set; }
+    public LeistungKategorie? Parent { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

@@ -45,6 +45,42 @@ public partial class Admin(
     // Suche für Propriétaires plateforme
     private string poSuche = string.Empty;
 
+    // Suche/Filter für die verwalteten Läden des ausgewählten PO
+    private string verwalteteLaedenSuche = string.Empty;
+
+    // Suche/Filter für die verfügbaren Läden (Checkbox-Liste)
+    private string verfuegbareLaedenSuche = string.Empty;
+    private string verfuegbareLaedenFilter = "alle"; // alle | gérés | non gérés
+
+    private IEnumerable<ProduktOwnerService.Zuweisung> GefilterteVerwalteteLaeden()
+    {
+        if (zuweisungen is null) return Enumerable.Empty<ProduktOwnerService.Zuweisung>();
+        if (string.IsNullOrWhiteSpace(verwalteteLaedenSuche)) return zuweisungen;
+        var s = verwalteteLaedenSuche.Trim();
+        return zuweisungen.Where(z => z.SalonName.Contains(s, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private IEnumerable<AdminService.SalonUebersicht> GefilterteVerfuegbareLaeden()
+    {
+        IEnumerable<AdminService.SalonUebersicht> q = salons;
+
+        if (!string.IsNullOrWhiteSpace(verfuegbareLaedenSuche))
+        {
+            var s = verfuegbareLaedenSuche.Trim();
+            q = q.Where(x => x.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+                || (x.Standort?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        q = verfuegbareLaedenFilter switch
+        {
+            "gérés" => q.Where(x => zuweisungen.Any(z => z.SalonId == x.SalonId)),
+            "non gérés" => q.Where(x => !zuweisungen.Any(z => z.SalonId == x.SalonId)),
+            _ => q
+        };
+
+        return q;
+    }
+
     private IEnumerable<ENote.Core.DataModels.Identity.AppUser> GefilterteProduktOwners()
     {
         if (string.IsNullOrWhiteSpace(poSuche))
@@ -122,6 +158,14 @@ public partial class Admin(
     private string? preisFehler;
     private AboIntervall aktuellesIntervall;
     private decimal neuerPreis;
+
+    // Tarif-Dialog (zentral, nicht innerhalb der scrollbaren Salon-Liste)
+    private bool tarifDialogOffen;
+    private string? tarifFehler;
+    private Guid tarifSalonId;
+    private decimal? tarifPreis;
+    private AdminService.LadenTarif? tarif;
+    private string TarifDialogTitel => tarif is null ? "Tarif mensuel de l'établissement" : "Tarif mensuel · " + tarif.Name;
 
     private bool besitzerDialogOffen;
     private string? besitzerFehler;
@@ -297,7 +341,7 @@ public partial class Admin(
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);
     }
 
-    private async Task SetzeUmsatzRechtAsync(ProduktOwnerService.Zuweisung z, bool plattform)
+    private async Task SetzeUmsatzRechtAsync(ProduktOwnerService.Zuweisung z)
     {
         if (ausgewaehlterPoId is not Guid poId)
         {
@@ -306,8 +350,8 @@ public partial class Admin(
 
         await produktOwnerService.WeiseSalonZuAsync(
             poId, z.SalonId,
-            plattform ? z.KannLadenUmsatzSehen : !z.KannLadenUmsatzSehen,
-            plattform ? !z.KannPlattformUmsatzSehen : z.KannPlattformUmsatzSehen);
+            !z.KannLadenUmsatzSehen,
+            z.KannPlattformUmsatzSehen); // Plattform-Umsatz bleibt unverändert (nicht mehr in UI)
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);
     }
 
@@ -360,6 +404,45 @@ public partial class Admin(
         => probeBisDatum = AuthService.BerechneProbeEnde(DateTime.UtcNow);
 
     private void EntferneProbe() => probeBisDatum = null;
+
+    // Tarif-Dialog: öffnen/schließen/speichern (zentral am Seitenende gerendert)
+    private async Task OeffneTarifDialogAsync(Guid salonId)
+    {
+        tarifDialogOffen = true;
+        tarifFehler = null;
+        tarif = null;
+        tarifSalonId = salonId;
+        try
+        {
+            tarif = await adminService.GetLadenTarifAsync(aktuellerBenutzerId, salonId);
+            tarifPreis = tarif.Individuell ?? tarif.Global;
+        }
+        catch (Exception)
+        {
+            tarifFehler = "Le chargement du tarif a échoué. Fermez puis réessayez.";
+        }
+    }
+
+    private async Task SpeichereTarifAsync(bool standard)
+    {
+        try
+        {
+            if (!standard && tarifPreis is not > 0) { tarifFehler = "Veuillez saisir un montant positif."; return; }
+            if (tarif is null) return;
+            if (!await adminService.SetzeIndividuellenPreisAsync(aktuellerBenutzerId, tarifSalonId, standard ? null : tarifPreis))
+            {
+                tarifFehler = "Établissement introuvable.";
+                return;
+            }
+            tarifDialogOffen = false;
+            tarifFehler = null;
+            toast.ZeigeErfolg(standard ? "Tarif général appliqué." : "Tarif personnalisé enregistré.");
+        }
+        catch (Exception)
+        {
+            tarifFehler = "L'enregistrement du tarif a échoué.";
+        }
+    }
 
     private async Task SpeichereProvisionAsync()
     {

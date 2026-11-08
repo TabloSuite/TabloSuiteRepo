@@ -47,6 +47,14 @@ public partial class Leistungen(
     private string neueKategorieName = string.Empty;
     private List<LeistungKategorie> kategorien = [];
 
+    // Kategorie-Baum (Haupt + Unter) und Vorschau
+    private List<KatalogService.KategorieBaum> kategorieBaum = [];
+    private HashSet<Guid> favoritenIds = [];
+    private Guid? aufgeklappteKategorieId;
+    private Guid? unterkategorieParentId; // für das Anlegen einer Unterkategorie
+    private string neueUnterkategorieName = string.Empty;
+    private string? unterkategorieFehler;
+
     private bool kategorieUmbenennenOffen;
     private bool kategorieLoeschenOffen;
     private string? kategorieFehler;
@@ -120,8 +128,14 @@ public partial class Leistungen(
             .ToList();
         var kategorienListe = await katalogService.GetKategorienAsync(salonId);
         kategorien = kategorienListe;
+        kategorieBaum = await katalogService.GetKategorieBaumAsync(salonId);
+        favoritenIds = await katalogService.GetFavoritenIdsAsync(salonId);
         kategorieOptionen = kategorienListe
-            .Select(k => new EnoteSelectOption<string> { Value = k.Id.ToString(), Label = k.Name })
+            .Select(k => new EnoteSelectOption<string>
+            {
+                Value = k.Id.ToString(),
+                Label = k.ParentId is null ? k.Name : $"&nbsp;&nbsp;&nbsp;&nbsp;{k.Name}"
+            })
             .ToList();
         kategorieFilterOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Toutes les catégories" } }
             .Concat(kategorieOptionen)
@@ -147,7 +161,7 @@ public partial class Leistungen(
         return q;
     }
 
-    private void NeuAnlegen()
+    private async void NeuAnlegen()
     {
         bearbeitungsLeistung = new Leistung { SalonId = salonId, IstAktiv = true };
         istSammelArtikel = false;
@@ -158,6 +172,10 @@ public partial class Leistungen(
         bildFehler = null;
         bildVorschau = null;
         editorOffen = true;
+
+        // Barcode sofort generieren (vorausgefüllt, eindeutig pro Salon).
+        bearbeitungsLeistung.StrichCode = await katalogService.GeneriereNeuenBarcodeAsync(salonId);
+        StateHasChanged();
     }
 
     private async void Bearbeiten(Leistung leistung)
@@ -168,6 +186,7 @@ public partial class Leistungen(
             SalonId = leistung.SalonId,
             Name = leistung.Name,
             Beschreibung = leistung.Beschreibung,
+            Typ = leistung.Typ,
             Preis = leistung.Preis,
             Kaufpreis = leistung.Kaufpreis,
             KategorieId = leistung.KategorieId,
@@ -188,6 +207,49 @@ public partial class Leistungen(
         bildVorschau = await katalogService.GetLeistungsBildUrlAsync(leistung.BildAssetId);
         editorOffen = true;
         StateHasChanged();
+    }
+
+    // Typ-Wechsel: Prestation <-> Produit. Setzt ungültige Felder zurück.
+    private void SetzeTyp(LeistungsTyp typ)
+    {
+        if (bearbeitungsLeistung.Typ == typ) return;
+        bearbeitungsLeistung.Typ = typ;
+
+        if (typ == LeistungsTyp.Prestation)
+        {
+            // Prestation: kein Kaufpreis, kein Stock, kein Sammel-Artikel.
+            bearbeitungsLeistung.Kaufpreis = null;
+            bearbeitungsLeistung.HatStueckzahl = false;
+            istSammelArtikel = false;
+            basisLeistungIdText = string.Empty;
+            basisAbzugMenge = null;
+        }
+    }
+
+    // Eigener Stock: schließt Sammel-Artikel aus (gegenseitiger Ausschluss).
+    private async Task SetzeHatStueckzahl(bool wert)
+    {
+        bearbeitungsLeistung.HatStueckzahl = wert;
+        if (wert)
+        {
+            // Eigener Stock: kein Sammel-Artikel.
+            istSammelArtikel = false;
+            basisLeistungIdText = string.Empty;
+            basisAbzugMenge = null;
+        }
+        await Task.CompletedTask;
+    }
+
+    // Sammel-Artikel: schließt eigenen Stock aus (gegenseitiger Ausschluss).
+    private async Task SetzeSammelArtikel(bool wert)
+    {
+        istSammelArtikel = wert;
+        if (wert)
+        {
+            // Sammel-Artikel: kein eigener Stock.
+            bearbeitungsLeistung.HatStueckzahl = false;
+        }
+        await Task.CompletedTask;
     }
 
     private byte[]? ausgewaehltesBildBytes;
@@ -248,7 +310,13 @@ public partial class Leistungen(
             return;
         }
 
-        await katalogService.LoescheKategorieAsync(zuLoeschendeKategorie.Id, salonId);
+        var (erfolg, fehler) = await katalogService.LoescheKategorieAsync(zuLoeschendeKategorie.Id, salonId);
+        if (!erfolg)
+        {
+            kategorieLoeschenOffen = false;
+            toast.ZeigeFehler(fehler ?? "La suppression a échoué.");
+            return;
+        }
         kategorieLoeschenOffen = false;
         toast.ZeigeInfo("Catégorie supprimée.");
         await LadeAsync();
@@ -366,6 +434,55 @@ public partial class Leistungen(
 
     private void SchliesseEditor() => editorOffen = false;
     private void SchliesseLoeschen() => loeschDialogOffen = false;
+
+    // --- Kategorie-Baum: Auf-/Zuklappen, Unterkategorie anlegen ---
+    private void ToggleAufklappen(Guid kategorieId)
+        => aufgeklappteKategorieId = aufgeklappteKategorieId == kategorieId ? null : kategorieId;
+
+    private void OeffneUnterkategorieDialog(Guid parentId)
+    {
+        unterkategorieParentId = parentId;
+        neueUnterkategorieName = string.Empty;
+        unterkategorieFehler = null;
+    }
+
+    private void SchliesseUnterkategorieDialog() => unterkategorieParentId = null;
+
+    private async Task FuegeUnterkategorieHinzuAsync()
+    {
+        if (unterkategorieParentId is not Guid parentId || string.IsNullOrWhiteSpace(neueUnterkategorieName))
+        {
+            return;
+        }
+
+        var (erfolg, fehler, _) = await katalogService.SpeichereUnterkategorieAsync(salonId, parentId, neueUnterkategorieName);
+        if (!erfolg)
+        {
+            unterkategorieFehler = fehler;
+            return;
+        }
+
+        unterkategorieParentId = null;
+        neueUnterkategorieName = string.Empty;
+        toast.ZeigeErfolg("Sous-catégorie ajoutée.");
+        await LadeAsync();
+    }
+
+    // Anzahl der Leistungen in einer Kategorie (für die Baum-Anzeige).
+    private int AnzahlInKategorie(Guid kategorieId)
+        => leistungen.Count(l => l.KategorieId == kategorieId);
+
+    // --- Zuordnung Leistung → Kategorie (nur Besitzer, hier zentral) ---
+    private async Task SetzeLeistungKategorieAsync(Leistung leistung, string kategorieIdText)
+    {
+        Guid? katId = Guid.TryParse(kategorieIdText, out var g) ? g : null;
+        var erfolg = await katalogService.SetzeLeistungKategorieAsync(leistung.Id, salonId, katId);
+        if (erfolg)
+        {
+            leistung.KategorieId = katId;
+            toast.ZeigeErfolg("Catégorie mise à jour.");
+        }
+    }
 
     private static bool BestandWarnung(Leistung l)
         => l.HatStueckzahl && l.MindestbestandWarnung is decimal min && l.Stueckzahl <= min;

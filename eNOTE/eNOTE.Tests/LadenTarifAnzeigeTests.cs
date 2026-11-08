@@ -1,9 +1,12 @@
 using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Salons;
+using ENote.WebApp.Data;
 using ENote.WebApp.Services;
 using ENote.WebApp.Services.Mails;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -30,7 +33,12 @@ public class LadenTarifAnzeigeTests
         }
         var emailConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
         var emailService = new EmailService(emailConfig, factory, NullLogger<EmailService>.Instance);
-        var service = new AdminService(factory, null!, NullLogger<AdminService>.Instance, emailService);
+        var services = new ServiceCollection();
+        services.AddSingleton(factory);
+        services.AddLogging();
+        services.AddIdentityCore<AppUser>().AddRoles<Role>().AddEntityFrameworkStores<ApplicationDbContext>();
+        var serviceProvider = services.BuildServiceProvider();
+        var service = new AdminService(factory, serviceProvider, NullLogger<AdminService>.Instance, emailService);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GetLadenTarifAsync(Guid.NewGuid(), salon.Id));
         var vorher = await service.GetLadenTarifAsync(admin.Id, salon.Id);
         Assert.Equal("Boutique A", vorher.Name);

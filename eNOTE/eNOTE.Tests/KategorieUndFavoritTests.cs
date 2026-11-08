@@ -125,7 +125,8 @@ public class KategorieUndFavoritTests
         db.Leistungen.Add(leistung);
         await db.SaveChangesAsync();
 
-        await service.LoescheKategorieAsync(kategorie.Id, salon.Id);
+        var (erfolg, _) = await service.LoescheKategorieAsync(kategorie.Id, salon.Id);
+        Assert.True(erfolg);
 
         await using var pruefDb = await factory.CreateDbContextAsync();
         var leistungNeu = await pruefDb.Leistungen.FirstAsync(l => l.Id == leistung.Id);

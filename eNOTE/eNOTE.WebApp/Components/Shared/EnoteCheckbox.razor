@@ -1,13 +1,15 @@
-@* Moderne Toggle-Checkbox (Soft-UI) *@
-<button type="button"
-        class="enote-toggle @(Value ? "an" : "")"
-        role="switch"
-        aria-checked="@Value"
-        disabled="@Disabled"
-        @onclick="ToggleAsync">
-    <span class="enote-toggle-knob"></span>
-</button>
-@if (!string.IsNullOrWhiteSpace(Label))
-{
-    <span class="enote-toggle-label" @onclick="ToggleAsync">@Label</span>
-}
+@* Moderne Toggle-Checkbox (Soft-UI) – Toggle + Label horizontal *@
+<div class="enote-toggle-row">
+    <button type="button"
+            class="enote-toggle @(Value ? "an" : "")"
+            role="switch"
+            aria-checked="@Value"
+            disabled="@Disabled"
+            @onclick="ToggleAsync">
+        <span class="enote-toggle-knob"></span>
+    </button>
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <span class="enote-toggle-label" @onclick="ToggleAsync">@Label</span>
+    }
+</div>

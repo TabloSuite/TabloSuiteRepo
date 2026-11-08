@@ -48,8 +48,21 @@
                     <span>Rester connecté</span>
                 </label>
 
-                <button type="submit" class="btn-primary">Se connecter</button>
+                <button type="submit" class="btn-primary" id="login-submit-btn">
+                    <span class="btn-text">Se connecter</span>
+                    <span class="btn-spinner" style="display:none;"></span>
+                </button>
             </form>
+
+            <script>
+                // Zeige Spinner während des Submits (kein Blazor, da Form-POST)
+                document.querySelector('form.auth-form').addEventListener('submit', function() {
+                    var btn = document.getElementById('login-submit-btn');
+                    btn.disabled = true;
+                    btn.querySelector('.btn-text').style.opacity = '0.7';
+                    btn.querySelector('.btn-spinner').style.display = 'inline-block';
+                });
+            </script>
 
             <p class="auth-footer">Pas encore de compte ? <a href="/auth/register">Inscrire mon établissement</a></p>
         </div>

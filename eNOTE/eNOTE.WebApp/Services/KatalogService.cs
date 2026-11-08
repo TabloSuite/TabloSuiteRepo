@@ -86,6 +86,88 @@ public class KatalogService(
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Kategorie-Baum: Hauptkategorien mit ihren Unterkategorien (1 Ebene).</summary>
+    public async Task<List<KategorieBaum>> GetKategorieBaumAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var alle = await db.LeistungKategorien
+            .AsNoTracking()
+            .Where(k => k.SalonId == salonId && k.IstAktiv)
+            .OrderBy(k => k.Name)
+            .ToListAsync(cancellationToken);
+
+        return alle
+            .Where(k => k.ParentId is null)
+            .Select(h => new KategorieBaum(h, alle.Where(u => u.ParentId == h.Id).OrderBy(u => u.Name).ToList()))
+            .OrderBy(h => h.Kategorie.Name)
+            .ToList();
+    }
+
+    public record KategorieBaum(LeistungKategorie Kategorie, List<LeistungKategorie> Unterkategorien);
+
+    /// <summary>Legt eine Unterkategorie an (validiert: Parent existiert, ist Hauptkategorie, kein Duplikat).</summary>
+    public async Task<(bool Erfolg, string? Fehler, LeistungKategorie? Kategorie)> SpeichereUnterkategorieAsync(
+        Guid salonId, Guid parentId, string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return (false, "Veuillez saisir un nom.", null);
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var parent = await db.LeistungKategorien
+            .FirstOrDefaultAsync(k => k.Id == parentId && k.SalonId == salonId, cancellationToken);
+        if (parent is null)
+        {
+            return (false, "Catégorie parente introuvable.", null);
+        }
+        if (parent.ParentId is not null)
+        {
+            return (false, "Une sous-catégorie ne peut pas avoir de sous-catégorie.", null);
+        }
+
+        var bereinigt = name.Trim();
+        var duplikat = await db.LeistungKategorien
+            .AnyAsync(k => k.SalonId == salonId && k.Name == bereinigt, cancellationToken);
+        if (duplikat)
+        {
+            return (false, "Une catégorie portant ce nom existe déjà.", null);
+        }
+
+        var kategorie = new LeistungKategorie { SalonId = salonId, Name = bereinigt, ParentId = parentId };
+        db.LeistungKategorien.Add(kategorie);
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null, kategorie);
+    }
+
+    /// <summary>Ordnet eine Leistung einer Kategorie/Unterkategorie zu (null = ohne Kategorie).</summary>
+    public async Task<bool> SetzeLeistungKategorieAsync(Guid leistungId, Guid salonId, Guid? kategorieId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var leistung = await db.Leistungen
+            .FirstOrDefaultAsync(l => l.Id == leistungId && l.SalonId == salonId, cancellationToken);
+        if (leistung is null)
+        {
+            return false;
+        }
+
+        if (kategorieId is not null)
+        {
+            var existiert = await db.LeistungKategorien
+                .AnyAsync(k => k.Id == kategorieId && k.SalonId == salonId && k.IstAktiv, cancellationToken);
+            if (!existiert)
+            {
+                return false;
+            }
+        }
+
+        leistung.KategorieId = kategorieId;
+        leistung.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<LeistungKategorie> SpeichereKategorieAsync(Guid salonId, string name, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -137,14 +219,26 @@ public class KatalogService(
     /// Löscht eine Kategorie. Verknüpfte Leistungen verlieren dadurch ihre Kategorie
     /// (KategorieId wird null), bleiben aber bestehen.
     /// </summary>
-    public async Task<bool> LoescheKategorieAsync(Guid kategorieId, Guid salonId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Löscht eine Kategorie. Verknüpfte Leistungen verlieren dadurch ihre Kategorie
+    /// (KategorieId wird null), bleiben aber bestehen. Eine Hauptkategorie mit
+    /// Unterkategorien kann nicht gelöscht werden (zuerst Unterkategorien löschen).
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler)> LoescheKategorieAsync(Guid kategorieId, Guid salonId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var kategorie = await db.LeistungKategorien
             .FirstOrDefaultAsync(k => k.Id == kategorieId && k.SalonId == salonId, cancellationToken);
         if (kategorie is null)
         {
-            return false;
+            return (false, "Catégorie introuvable.");
+        }
+
+        // Hauptkategorie mit Unterkategorien nicht löschbar.
+        var hatUnter = await db.LeistungKategorien.AnyAsync(k => k.ParentId == kategorieId, cancellationToken);
+        if (hatUnter)
+        {
+            return (false, "Supprimez d'abord les sous-catégories de cette catégorie.");
         }
 
         // Leistungen mit dieser Kategorie zurücksetzen (Kategorie entfernen, Leistung bleibt).
@@ -156,7 +250,7 @@ public class KatalogService(
 
         db.LeistungKategorien.Remove(kategorie);
         await db.SaveChangesAsync(cancellationToken);
-        return true;
+        return (true, null);
     }
 
     // --- Favoriten (app-weit pro Salon) ---
@@ -219,6 +313,12 @@ public class KatalogService(
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Barcode automatisch generieren, wenn leer (eindeutig pro Salon).
+        if (string.IsNullOrWhiteSpace(leistung.StrichCode))
+        {
+            leistung.StrichCode = await GeneriereEindeutigenBarcodeAsync(db, leistung.SalonId, cancellationToken);
+        }
+
         if (leistung.Id == Guid.Empty)
         {
             leistung.Id = Guid.NewGuid();
@@ -249,6 +349,33 @@ public class KatalogService(
 
         await db.SaveChangesAsync(cancellationToken);
         return leistung;
+    }
+
+    /// <summary>Generiert einen neuen eindeutigen Barcode für einen Salon (öffentlich, für UI-Vorausfüllung).</summary>
+    public async Task<string> GeneriereNeuenBarcodeAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await GeneriereEindeutigenBarcodeAsync(db, salonId, cancellationToken);
+    }
+
+    /// <summary>Generiert einen eindeutigen Barcode pro Salon (Format: 9 + Salon-Kurz-ID + Zufall).</summary>
+    private static async Task<string> GeneriereEindeutigenBarcodeAsync(ApplicationDbContext db, Guid salonId, CancellationToken cancellationToken)
+    {
+        // Format: 9 (Präfix für interne Codes) + 4 Ziffern aus Salon-ID + 7 Zufallsziffern = 12 Stellen (EAN-12-ähnlich).
+        var salonKurz = Math.Abs(salonId.GetHashCode()) % 10000;
+        var random = new Random();
+        string barcode;
+        int versuche = 0;
+        do
+        {
+            var zufall = random.Next(0, 10000000); // 7 Ziffern
+            barcode = $"9{salonKurz:D4}{zufall:D7}";
+            versuche++;
+            if (versuche > 100) throw new InvalidOperationException("Konnte keinen eindeutigen Barcode generieren.");
+        }
+        while (await db.Leistungen.AnyAsync(l => l.SalonId == salonId && l.StrichCode == barcode, cancellationToken));
+
+        return barcode;
     }
 
     public async Task LoescheLeistungAsync(Guid id, CancellationToken cancellationToken = default)

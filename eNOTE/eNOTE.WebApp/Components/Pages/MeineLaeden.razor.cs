@@ -17,6 +17,14 @@ public partial class MeineLaeden(
     private List<ProduktOwnerService.DashboardLaden> laeden = [];
     private bool isLoading = true;
     private Guid benutzerId;
+    private string laedenSuche = string.Empty;
+
+    private IEnumerable<ProduktOwnerService.DashboardLaden> GefilterteLaeden()
+    {
+        if (string.IsNullOrWhiteSpace(laedenSuche)) return laeden;
+        var s = laedenSuche.Trim();
+        return laeden.Where(l => l.SalonName.Contains(s, StringComparison.OrdinalIgnoreCase));
+    }
 
     // PO legt selbst einen Laden an (mit neuem Besitzer-Konto)
     private bool anlegedialogOffen;

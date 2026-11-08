@@ -1,4 +1,4 @@
-ï»¿@page "/finances"
+@page "/finances"
 @attribute [Authorize(Roles = "Besitzer, Kassierer")]
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Kasse
@@ -9,18 +9,18 @@
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
-            <h1>Finances â€“ @salonName</h1>
-            <p>Chiffre d'affaires, derniÃ¨res ventes et clÃ´tures de caisse.</p>
+            <h1>Finances – @salonName</h1>
+            <p>Chiffre d'affaires, dernières ventes et clôtures de caisse.</p>
         </div>
     </div>
 
     @if (!darfFinanzenSehen)
     {
-        <p class="enote-empty">Vous n'avez pas le droit de consulter les finances de cet Ã©tablissement.</p>
+        <p class="enote-empty">Vous n'avez pas le droit de consulter les finances de cet établissement.</p>
     }
     else if (isLoading)
     {
-        <p>Chargementâ€¦</p>
+        <p>Chargement…</p>
     }
     else
     {
@@ -28,7 +28,7 @@
             <span class="enote-live-dot"></span>
             <div>
                 <div class="enote-live-label">Aujourd'hui @(liveVerbunden ? "(en direct)" : "")</div>
-                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">Â· @liveAnzahlHeute vente(s)</span></div>
+                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">· @liveAnzahlHeute vente(s)</span></div>
             </div>
         </div>
 
@@ -41,8 +41,8 @@
 
         <div class="enote-tabs">
             <button class="enote-tab @(aktiverTab == "umsatz" ? "aktiv" : "")" @onclick='() => WechsleTab("umsatz")'>Chiffre d'affaires</button>
-            <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>DerniÃ¨res ventes</button>
-            <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>ClÃ´tures de caisse</button>
+            <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>Dernières ventes</button>
+            <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>Clôtures de caisse</button>
         </div>
 
         @if (aktiverTab == "umsatz")
@@ -50,12 +50,12 @@
         <CollapsibleCard Title="@ZeitraumTitel" Subtitle="@($"{tagesUmsaetze.Sum(t => t.Gesamt):N0} F au total")" IsExpanded="true">
             @if (tagesUmsaetze.Count == 0)
             {
-                <p class="enote-muted">Aucune vente sur la pÃ©riode.</p>
+                <p class="enote-muted">Aucune vente sur la période.</p>
             }
             else
             {
-                <table class="enote-table">
-                    <thead><tr><th>Date</th><th>Ventes</th><th>EspÃ¨ces</th><th>Carte</th><th>Total</th></tr></thead>
+                <div class="enote-table-scroll"><table class="enote-table">
+                    <thead><tr><th>Date</th><th>Ventes</th><th>Espèces</th><th>Carte</th><th>Total</th></tr></thead>
                     <tbody>
                         @foreach (var t in tagesUmsaetze)
                         {
@@ -68,13 +68,13 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                </table></div>
             }
         </CollapsibleCard>
         }
         else if (aktiverTab == "ventes")
         {
-        <CollapsibleCard Title="DerniÃ¨res ventes" Subtitle="AperÃ§u en direct" IsExpanded="true">
+        <CollapsibleCard Title="Dernières ventes" Subtitle="Aperçu en direct" IsExpanded="true">
             @if (letzteVerkaeufe.Count == 0)
             {
                 <p class="enote-muted">Aucune vente pour le moment.</p>
@@ -82,12 +82,12 @@
             else
             {
                 <div class="enote-filter-leiste">
-                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)â€¦" @bind="verkaufsSuche" @bind:event="oninput" />
+                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
                     <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
                 </div>
                 @if (!GefilterteVerkaeufe().Any())
                 {
-                    <p class="enote-empty" role="status">Aucune vente ne correspond Ã  votre recherche ou au mode de paiement sÃ©lectionnÃ©.</p>
+                    <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche ou au mode de paiement sélectionné.</p>
                 }
                 <div class="enote-feed">
                     @foreach (var v in GefilterteVerkaeufe())
@@ -95,12 +95,12 @@
                         <div class="enote-feed-item">
                             <div class="enote-feed-head">
                                 <strong>@v.GesamtSumme.ToString("N0") F</strong>
-                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "EspÃ¨ces" : "Carte")</span>
+                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "Espèces" : "Carte")</span>
                             </div>
                             <div class="enote-feed-meta">@v.PositionenText</div>
-                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") Â· @v.KassiererName</div>
+                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") · @v.KassiererName</div>
                             <div class="enote-item-actions">
-                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">ðŸ§¾ ReÃ§u</a>
+                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">?? Reçu</a>
                             </div>
                         </div>
                     }
@@ -110,15 +110,15 @@
         }
         else if (aktiverTab == "clotures")
         {
-        <CollapsibleCard Title="ClÃ´tures de caisse" Subtitle="@($"{abschluesse.Count} clÃ´ture(s)")" IsExpanded="true">
+        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")" IsExpanded="true">
             @if (abschluesse.Count == 0)
             {
-                <p class="enote-muted">Aucune clÃ´ture pour le moment.</p>
+                <p class="enote-muted">Aucune clôture pour le moment.</p>
             }
             else
             {
-                <table class="enote-table">
-                    <thead><tr><th>ClÃ´turÃ©e le</th><th>Caissier</th><th>Attendu</th><th>ComptÃ©</th><th>Ã‰cart</th></tr></thead>
+                <div class="enote-table-scroll"><table class="enote-table">
+                    <thead><tr><th>Clôturée le</th><th>Caissier</th><th>Attendu</th><th>Compté</th><th>Écart</th></tr></thead>
                     <tbody>
                         @foreach (var a in abschluesse)
                         {
@@ -131,7 +131,7 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                </table></div>
             }
         </CollapsibleCard>
         }

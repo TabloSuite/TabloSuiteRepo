@@ -13,10 +13,13 @@ public class Leistung
     public string Name { get; set; } = string.Empty;
     public string? Beschreibung { get; set; }
 
+    /// <summary>Art der Leistung: Prestation (Dienstleistung) oder Produit (Verkaufsartikel).</summary>
+    public LeistungsTyp Typ { get; set; } = LeistungsTyp.Prestation;
+
     /// <summary>Verkaufspreis für die Kasse.</summary>
     public decimal Preis { get; set; }
 
-    /// <summary>Optionaler Einkaufs-/Kaufpreis pro Einheit (für Warenwert und Marge).</summary>
+    /// <summary>Optionaler Einkaufs-/Kaufpreis pro Einheit (nur für Produit; für Warenwert und Marge).</summary>
     public decimal? Kaufpreis { get; set; }
 
     /// <summary>Optionaler Strichcode (EAN/Code), den der Kassierer einscannen kann.</summary>

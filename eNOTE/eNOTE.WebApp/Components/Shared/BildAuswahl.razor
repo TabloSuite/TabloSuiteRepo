@@ -11,10 +11,10 @@
         </label>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(VorschauUrl))
+    @if (!string.IsNullOrWhiteSpace(AnzeigeVorschau))
     {
         <div class="enote-bild-vorschau-wrap">
-            <img src="@VorschauUrl" alt="Aperçu" class="enote-bild-vorschau" />
+            <img src="@AnzeigeVorschau" alt="Aperçu" class="enote-bild-vorschau" />
             <button type="button" class="enote-tag-btn enote-danger" @onclick="Entfernen" title="Retirer">✕ Retirer</button>
         </div>
     }
