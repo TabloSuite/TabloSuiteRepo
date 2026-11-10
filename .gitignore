@@ -363,3 +363,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Lokale Geheimnisse (z. B. Azure-Speech-Schlüssel für die Videos) – nie committen
+.env
+.env.*
+!.env.example
