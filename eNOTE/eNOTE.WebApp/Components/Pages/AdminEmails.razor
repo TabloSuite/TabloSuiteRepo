@@ -1,4 +1,4 @@
-@page "/admin/emails"
+﻿@page "/admin/emails"
 @attribute [Authorize(Roles = "SuperAdmin")]
 @rendermode InteractiveServer
 @using ENote.WebApp.Services
@@ -10,141 +10,453 @@
     <div class="enote-page-header">
         <div>
             <h1>E-mails</h1>
-            <p>Configuration de l'envoi, aperçu des modèles et historique des messages.</p>
+            <p>Messages aux utilisateurs, envois automatiques, modèles et historique.</p>
         </div>
     </div>
 
-    <div class="em-grid">
-        <section class="enote-card em-karte">
-            <h2><Icon Name="settings" Groesse="18" /> Configuration</h2>
-            <div class="em-status @(email.IstKonfiguriert ? "ok" : "aus")">
-                <Icon Name="@(email.IstKonfiguriert ? "check" : "alert")" Groesse="18" />
-                <span>@(email.IstKonfiguriert ? $"Envoi actif via {email.Anbieter}" : "Envoi inactif : les e-mails restent en file d'attente")</span>
-            </div>
-            <dl class="em-werte">
-                <dt>Service</dt><dd>@email.Anbieter</dd>
-                <dt>Expéditeur</dt><dd>@email.AbsenderName &lt;@email.Absender&gt;</dd>
-                <dt>Réponses à</dt><dd>@(Konfig("Mail:AntwortAn") ?? "—")</dd>
-                <dt>Alertes admin à</dt><dd>@(Konfig("Mail:AdminEmpfaenger") ?? "contact@tablosuite.com")</dd>
-                <dt>Jeton Postmark</dt><dd>@(string.IsNullOrWhiteSpace(Konfig("Mail:PostmarkServerToken")) ? "non défini" : "défini ✓")</dd>
-                <dt>Adresse de l'app</dt><dd>@mails.AppUrl</dd>
-            </dl>
-        </section>
-
-        <section class="enote-card em-karte">
-            <h2><Icon Name="mail" Groesse="18" /> Envoyer un e-mail de test</h2>
-            <p class="enote-muted">Vérifie la configuration de bout en bout (Postmark, DNS, boîte de réception).</p>
-            <div class="em-test">
-                <input class="enote-input" type="email" @bind="testEmpfaenger" @bind:event="oninput" placeholder="votre.adresse@exemple.com" aria-label="Adresse de test" />
-                <AsyncActionButton Text="Envoyer" OnClick="SendeTestAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(testEmpfaenger)" />
-            </div>
-            @if (testErgebnis is not null)
-            {
-                <p class="em-ergebnis @(testOk ? "ok" : "fehler")">@testErgebnis</p>
-            }
-        </section>
+    @* --- Status-Leiste: Versand + Kontingent --- *@
+    <div class="em-statusleiste">
+        <div class="em-status @(email.IstKonfiguriert ? "ok" : "aus")">
+            <Icon Name="@(email.IstKonfiguriert ? "check" : "alert")" Groesse="18" />
+            <span>@(email.IstKonfiguriert ? $"Envoi actif via {email.Anbieter}" : "Envoi inactif : les e-mails restent en file d'attente")</span>
+        </div>
+        <div class="em-kontingent" title="Plan Postmark : @email.MonatsLimit e-mails / mois">
+            <div class="em-kontingent-kopf"><span>Ce mois</span><strong>@gesendetImMonat / @email.MonatsLimit</strong></div>
+            <div class="em-kontingent-spur"><span class="@(KontingentProzent >= 90 ? "voll" : KontingentProzent >= 70 ? "warn" : "")" style="width:@KontingentProzent.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span></div>
+        </div>
+        <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => konfigOffen = !konfigOffen"><Icon Name="settings" Groesse="16" /> Configuration</button>
     </div>
 
-    <section class="enote-card em-karte">
-        <h2><Icon Name="eye" Groesse="18" /> Modèles</h2>
-        <div class="em-vorlagen">
-            <div class="em-liste" role="tablist">
-                @foreach (var v in Vorlagen)
-                {
-                    <button type="button" role="tab" class="em-vorlage @(gewaehlt == v.Schluessel ? "aktiv" : "")" @onclick="() => gewaehlt = v.Schluessel">
-                        <strong>@v.Name</strong>
-                        <small>@v.Wann</small>
-                    </button>
-                }
+    @if (konfigOffen)
+    {
+        <section class="enote-card em-karte">
+            <div class="em-grid">
+                <dl class="em-werte">
+                    <dt>Service</dt><dd>@email.Anbieter</dd>
+                    <dt>Expéditeur</dt><dd>@email.AbsenderName &lt;@email.Absender&gt;</dd>
+                    <dt>Réponses à</dt><dd>@(Konfig("Mail:AntwortAn") ?? "—")</dd>
+                    <dt>Alertes admin à</dt><dd>@(Konfig("Mail:AdminEmpfaenger") ?? "contact@tablosuite.com")</dd>
+                    <dt>Jeton Postmark</dt><dd>@(string.IsNullOrWhiteSpace(Konfig("Mail:PostmarkServerToken")) ? "non défini" : "défini ✓")</dd>
+                    <dt>Adresse de l'app</dt><dd>@mails.AppUrl</dd>
+                </dl>
+                <div>
+                    <p class="enote-muted em-klein">E-mail de test (vérifie Postmark, DNS et boîte de réception) :</p>
+                    <div class="em-test">
+                        <input class="enote-input" type="email" @bind="testEmpfaenger" @bind:event="oninput" placeholder="votre.adresse@exemple.com" aria-label="Adresse de test" />
+                        <AsyncActionButton Text="Envoyer" OnClick="SendeTestAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(testEmpfaenger)" />
+                    </div>
+                    @if (testErgebnis is not null)
+                    {
+                        <p class="em-ergebnis @(testOk ? "ok" : "fehler")">@testErgebnis</p>
+                    }
+                </div>
             </div>
-            <iframe class="em-vorschau" title="Aperçu de l'e-mail" srcdoc="@AktuelleVorschau" sandbox=""></iframe>
-        </div>
-    </section>
+        </section>
+    }
 
-    <section class="enote-card em-karte">
-        <div class="em-kopf">
-            <h2><Icon Name="history" Groesse="18" /> Historique</h2>
-            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="LadeAsync"><Icon Name="refresh" Groesse="16" /> Actualiser</button>
-        </div>
-        @if (verlauf.Count == 0)
-        {
-            <p class="enote-empty">Aucun e-mail pour le moment.</p>
-        }
-        else
-        {
-            <div class="em-verlauf">
-                @foreach (var m in verlauf)
+    <div class="enote-tabs em-tabs">
+        <button class="enote-tab @(tab == "message" ? "aktiv" : "")" @onclick='() => tab = "message"'><Icon Name="mail" Groesse="16" /> Envoyer un message</button>
+        <button class="enote-tab @(tab == "auto" ? "aktiv" : "")" @onclick='() => tab = "auto"'><Icon Name="refresh" Groesse="16" /> Envois automatiques</button>
+        <button class="enote-tab @(tab == "modeles" ? "aktiv" : "")" @onclick='() => tab = "modeles"'><Icon Name="eye" Groesse="16" /> Modèles</button>
+        <button class="enote-tab @(tab == "historique" ? "aktiv" : "")" @onclick="ZeigeHistorieAsync"><Icon Name="history" Groesse="16" /> Historique</button>
+    </div>
+
+    @if (tab == "message")
+    {
+        <div class="em-schreiben">
+            <section class="enote-card em-karte">
+                <h2>1. Destinataires</h2>
+                <div class="em-gruppen" role="radiogroup">
+                    @foreach (var (g, text, icon) in Gruppen)
+                    {
+                        <button type="button" role="radio" aria-checked="@(gruppe == g)" class="em-gruppe @(gruppe == g ? "aktiv" : "")" @onclick="() => WaehleGruppeAsync(g)">
+                            <Icon Name="@icon" Groesse="18" /><span>@text</span>
+                        </button>
+                    }
+                </div>
+
+                @if (gruppe == NachrichtenService.Gruppe.Einzeln)
                 {
-                    <div class="em-zeile">
-                        <span class="em-punkt @(m.IstGesendet ? "ok" : m.Versuche >= EmailService.MaxVersuche ? "fehler" : "warte")" title="@(m.IstGesendet ? "Envoyé" : m.Versuche >= EmailService.MaxVersuche ? "Échec" : "En attente")"></span>
-                        <div class="em-zeile-info">
-                            <strong>@m.Betreff</strong>
-                            <small>@m.Empfaenger · @m.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm")@(m.Kategorie is null ? "" : " · " + m.Kategorie)@(m.Versuche > 1 ? $" · {m.Versuche} essais" : "")</small>
-                            @if (!m.IstGesendet && !string.IsNullOrWhiteSpace(m.LetzterFehler))
+                    <div class="kx-suche em-suche">
+                        <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
+                        <input class="kx-suche-feld" placeholder="Nom, identifiant, e-mail ou établissement…" @bind="suche" @bind:event="oninput" @bind:after="SucheAsync" aria-label="Rechercher un utilisateur" />
+                    </div>
+                    @if (treffer.Count > 0)
+                    {
+                        <div class="em-treffer">
+                            @foreach (var t in treffer)
                             {
-                                <small class="em-fehler">@m.LetzterFehler</small>
+                                var gewaehlt = ausgewaehlt.Any(a => a.UserId == t.UserId);
+                                <button type="button" class="em-treffer-zeile @(gewaehlt ? "gewaehlt" : "")" @onclick="() => UmschaltenAsync(t)">
+                                    <span class="em-avatar">@Initialen(t.Name)</span>
+                                    <span class="em-person"><strong>@t.Name</strong><small>@t.Rolle@(t.Laden is null ? "" : " · " + t.Laden) · @t.Email</small></span>
+                                    <Icon Name="@(gewaehlt ? "check" : "plus")" Groesse="18" />
+                                </button>
                             }
                         </div>
-                        <span class="em-tag @(m.IstGesendet ? "ok" : "warte")">@(m.IstGesendet ? "Envoyé" : "En attente")</span>
-                        @if (!m.IstGesendet && email.IstKonfiguriert)
+                    }
+                    else if (suche.Trim().Length >= 2)
+                    {
+                        <p class="enote-muted em-klein">Aucun utilisateur trouvé.</p>
+                    }
+                }
+                else if (gruppe is NachrichtenService.Gruppe.BesitzerVonLaeden or NachrichtenService.Gruppe.TeamVonLaeden)
+                {
+                    <p class="enote-muted em-klein">Choisissez un ou plusieurs établissements :</p>
+                    <div class="em-laeden">
+                        @foreach (var l in laeden)
                         {
-                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => ErneutAsync(m.Id)"><Icon Name="refresh" Groesse="15" /> Renvoyer</button>
+                            <button type="button" class="enote-chip @(ladenAuswahl.Contains(l.Id) ? "enote-chip-aktiv" : "")" @onclick="() => LadenUmschaltenAsync(l.Id)">@l.Name@(l.Aktiv ? "" : " (désactivé)")</button>
+                        }
+                        @if (laeden.Count == 0)
+                        {
+                            <p class="enote-muted em-klein">Aucun établissement.</p>
                         }
                     </div>
                 }
+
+                <div class="em-empfaenger">
+                    <div class="em-empfaenger-kopf">
+                        <strong>@empfaenger.Count destinataire@(empfaenger.Count > 1 ? "s" : "")</strong>
+                        @if (empfaenger.Count > 0 && gruppe == NachrichtenService.Gruppe.Einzeln)
+                        {
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="LeereAuswahl">Tout retirer</button>
+                        }
+                    </div>
+                    @if (empfaenger.Count > 0)
+                    {
+                        <div class="em-chips">
+                            @foreach (var e in empfaenger.Take(empfaengerAlle ? NachrichtenService.MaxEmpfaenger : 12))
+                            {
+                                <span class="em-chip" title="@e.Email">
+                                    @e.Name <small>@e.Rolle</small>
+                                    @if (gruppe == NachrichtenService.Gruppe.Einzeln)
+                                    {
+                                        <button type="button" aria-label="Retirer @e.Name" @onclick="() => EntferneAsync(e)"><Icon Name="x" Groesse="13" /></button>
+                                    }
+                                </span>
+                            }
+                            @if (!empfaengerAlle && empfaenger.Count > 12)
+                            {
+                                <button type="button" class="enote-chip" @onclick="() => empfaengerAlle = true">+ @(empfaenger.Count - 12) autres</button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="enote-muted em-klein">Les comptes bloqués ou sans adresse e-mail sont exclus automatiquement.</p>
+                    }
+                </div>
+            </section>
+
+            <section class="enote-card em-karte">
+                <h2>2. Message</h2>
+                <div class="enote-form">
+                    <label>Objet <input @bind="betreff" @bind:event="oninput" maxlength="150" placeholder="ex. Nouveauté : les remboursements en caisse" /></label>
+                    <label>Message
+                        <textarea rows="8" @bind="nachricht" @bind:event="oninput" maxlength="5000" placeholder="« Bonjour Prénom, » est ajouté automatiquement. Laissez une ligne vide pour un nouveau paragraphe."></textarea>
+                    </label>
+                    <EnoteCheckbox @bind-Value="mitKnopf" Label="Ajouter un bouton (lien)" />
+                    @if (mitKnopf)
+                    {
+                        <div class="enote-form-grid">
+                            <label>Texte du bouton <input @bind="knopfText" @bind:event="oninput" maxlength="60" placeholder="ex. Ouvrir eNOTE" /></label>
+                            <label>Lien (https://…) <input @bind="knopfUrl" @bind:event="oninput" maxlength="300" placeholder="@mails.AppUrl" /></label>
+                        </div>
+                    }
+                </div>
+                @if (nachrichtFehler is not null)
+                {
+                    <div class="alert alert-error" role="alert">@nachrichtFehler</div>
+                }
+                <div class="em-senden">
+                    @if (KontingentUeberschritten)
+                    {
+                        <p class="em-warnung"><Icon Name="alert" Groesse="16" /> @empfaenger.Count e-mails dépasseraient le quota du mois (@gesendetImMonat / @email.MonatsLimit).</p>
+                    }
+                    <button class="enote-btn enote-btn-primary" disabled="@(!KannSenden)" @onclick="() => bestaetigungOffen = true">
+                        <Icon Name="mail" Groesse="18" /> Envoyer à @empfaenger.Count destinataire@(empfaenger.Count > 1 ? "s" : "")
+                    </button>
+                </div>
+            </section>
+
+            <section class="enote-card em-karte em-vorschau-karte">
+                <h2>Aperçu</h2>
+                <iframe class="em-vorschau" title="Aperçu du message" srcdoc="@NachrichtVorschau" sandbox=""></iframe>
+            </section>
+        </div>
+    }
+    else if (tab == "auto")
+    {
+        <section class="enote-card em-karte">
+            <p class="enote-muted">Les e-mails indispensables partent toujours. Les autres peuvent être activés quand votre plan Postmark le permet (ex. 10 000 e-mails / mois).</p>
+            <h3 class="em-abschnitt"><Icon Name="lock" Groesse="16" /> Toujours envoyés</h3>
+            <div class="em-regeln">
+                @foreach (var a in MailArten.Alle.Where(a => a.Pflicht))
+                {
+                    <div class="em-regel pflicht">
+                        <div class="em-regel-info"><strong>@a.Name</strong><small>@a.Empfaenger · @a.Wann</small></div>
+                        <span class="em-tag ok">Toujours</span>
+                    </div>
+                }
             </div>
-        }
-    </section>
+            <h3 class="em-abschnitt"><Icon Name="settings" Groesse="16" /> Optionnels</h3>
+            <div class="em-regeln">
+                @foreach (var a in MailArten.Alle.Where(a => !a.Pflicht))
+                {
+                    var an = schalter.GetValueOrDefault(a.Kategorie, a.StandardAktiv);
+                    <div class="em-regel @(an ? "" : "aus")">
+                        <div class="em-regel-info"><strong>@a.Name</strong><small>@a.Empfaenger · @a.Wann</small></div>
+                        <EnoteCheckbox Value="an" ValueChanged="v => SetzeSchalterAsync(a.Kategorie, v)" Label="@(an ? "Activé" : "Désactivé")" />
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    else if (tab == "modeles")
+    {
+        <section class="enote-card em-karte">
+            <div class="em-vorlagen">
+                <div class="em-liste" role="tablist">
+                    @foreach (var v in Vorlagen)
+                    {
+                        var art = MailArten.Finde(v.Schluessel);
+                        <button type="button" role="tab" class="em-vorlage @(gewaehlt == v.Schluessel ? "aktiv" : "")" @onclick="() => gewaehlt = v.Schluessel">
+                            <strong>@v.Name</strong>
+                            <small>@(art is null ? "" : art.Pflicht ? "Toujours · " : schalter.GetValueOrDefault(art.Kategorie, art.StandardAktiv) ? "Activé · " : "Désactivé · ")@(art?.Wann)</small>
+                        </button>
+                    }
+                </div>
+                <iframe class="em-vorschau" title="Aperçu de l'e-mail" srcdoc="@AktuelleVorschau" sandbox=""></iframe>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="enote-card em-karte">
+            <div class="em-kopf">
+                <h2>Derniers envois</h2>
+                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="LadeAsync"><Icon Name="refresh" Groesse="16" /> Actualiser</button>
+            </div>
+            @if (verlauf.Count == 0)
+            {
+                <p class="enote-empty">Aucun e-mail pour le moment.</p>
+            }
+            else
+            {
+                <div class="em-verlauf">
+                    @foreach (var m in verlauf)
+                    {
+                        <div class="em-zeile">
+                            <span class="em-punkt @(m.IstGesendet ? "ok" : m.Versuche >= EmailService.MaxVersuche ? "fehler" : "warte")"></span>
+                            <div class="em-zeile-info">
+                                <strong>@m.Betreff</strong>
+                                <small>@m.Empfaenger · @m.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm")@(m.Kategorie is null ? "" : " · " + (MailArten.Finde(m.Kategorie)?.Name ?? m.Kategorie))@(m.Versuche > 1 ? $" · {m.Versuche} essais" : "")</small>
+                                @if (!m.IstGesendet && !string.IsNullOrWhiteSpace(m.LetzterFehler))
+                                {
+                                    <small class="em-fehler">@m.LetzterFehler</small>
+                                }
+                            </div>
+                            <span class="em-tag @(m.IstGesendet ? "ok" : "warte")">@(m.IstGesendet ? "Envoyé" : "En attente")</span>
+                            @if (!m.IstGesendet && email.IstKonfiguriert)
+                            {
+                                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => ErneutAsync(m.Id)"><Icon Name="refresh" Groesse="15" /> Renvoyer</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
 </div>
+
+<ModalDialog Open="bestaetigungOffen" Title="Envoyer le message ?" OnClose="() => bestaetigungOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <p>« <strong>@betreff</strong> » sera envoyé individuellement à <strong>@empfaenger.Count destinataire@(empfaenger.Count > 1 ? "s" : "")</strong>. Personne ne voit les autres adresses.</p>
+        @if (KontingentUeberschritten)
+        {
+            <p class="em-warnung"><Icon Name="alert" Groesse="16" /> Le quota mensuel (@email.MonatsLimit) sera dépassé : Postmark peut refuser une partie des envois.</p>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => bestaetigungOffen = false">Annuler</button>
+        <AsyncActionButton Text="Envoyer maintenant" OnClick="SendeNachrichtAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
 
 @code {
     [Inject] private EmailService email { get; set; } = default!;
     [Inject] private MailBenachrichtigungen mails { get; set; } = default!;
+    [Inject] private NachrichtenService nachrichten { get; set; } = default!;
     [Inject] private IConfiguration configuration { get; set; } = default!;
     [Inject] private ToastService toast { get; set; } = default!;
+    [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider auth { get; set; } = default!;
 
+    private Guid benutzerId;
+    private string tab = "message";
+    private bool konfigOffen;
+    private int gesendetImMonat;
+    private Dictionary<string, bool> schalter = [];
     private List<ENote.Core.DataModels.Infrastruktur.MailNachricht> verlauf = [];
     private string? testEmpfaenger;
     private string? testErgebnis;
     private bool testOk;
     private string gewaehlt = "facture";
 
-    private string? Konfig(string schluessel) => configuration[schluessel] is { Length: > 0 } w ? w : null;
+    // Nachricht
+    private NachrichtenService.Gruppe gruppe = NachrichtenService.Gruppe.Einzeln;
+    private string suche = string.Empty;
+    private List<NachrichtenService.Empfaenger> treffer = [];
+    private List<NachrichtenService.Empfaenger> ausgewaehlt = [];
+    private List<NachrichtenService.Empfaenger> empfaenger = [];
+    private List<NachrichtenService.LadenOption> laeden = [];
+    private HashSet<Guid> ladenAuswahl = [];
+    private bool empfaengerAlle;
+    private string betreff = string.Empty;
+    private string nachricht = string.Empty;
+    private bool mitKnopf;
+    private string? knopfText;
+    private string? knopfUrl;
+    private string? nachrichtFehler;
+    private bool bestaetigungOffen;
 
-    private sealed record Vorlage(string Schluessel, string Name, string Wann, Func<string> Html);
-
-    private IReadOnlyList<Vorlage> Vorlagen => [
-        new("bienvenue", "Bienvenue", "Après l'inscription d'un établissement", () => TabloSuiteMails.Bienvenue("Ama", "eNOTE", mails.AppUrl)),
-        new("inscription-admin", "Nouvel établissement (admin)", "À l'équipe TabloSuite, à chaque inscription", () => TabloSuiteMails.NeueRegistrierungAdmin("Salon Élégance", "Ama Mensah", "ama@exemple.com", null, "Lomé", mails.AppUrl + "/admin")),
-        new("validee", "Établissement validé", "Quand l'admin valide l'inscription", () => TabloSuiteMails.InscriptionValidee("Ama", "eNOTE", mails.AppUrl)),
-        new("compte", "Compte créé par l'admin", "Propriétaire ajouté dans l'administration", () => TabloSuiteMails.KontoErstellt("Ama", "ama.mensah", "Salon Élégance", mails.AppUrl, mails.AppUrl + "/auth/reinitialiser?exemple")),
-        new("caissier", "Nouveau caissier", "Quand le propriétaire crée un caissier", () => TabloSuiteMails.KassiererWillkommen("Awa", "awa.koffi", "Salon Élégance", "Ama Mensah", mails.AppUrl)),
-        new("facture", "Nouvelle facture", "Dès qu'une période d'abonnement est facturée", () => TabloSuiteMails.NouvelleFacture("Ama", "Salon Élégance", "Mensuel", DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(15), mails.AppUrl + "/abonnement")),
-        new("rappel", "Rappel de paiement", $"{MailBenachrichtigungen.ErinnerungTageVorSperre} jours avant la suspension", () => TabloSuiteMails.RappelPaiement("Ama", "Salon Élégance", 5000, DateTime.UtcNow.Date.AddDays(3), mails.AppUrl + "/abonnement")),
-        new("suspendue", "Caisse suspendue", "Le jour de la suspension", () => TabloSuiteMails.CaisseSuspendue("Ama", "Salon Élégance", 5000, mails.AppUrl + "/abonnement")),
-        new("signale", "Paiement signalé (admin)", "À l'équipe TabloSuite quand un paiement est signalé", () => TabloSuiteMails.ZahlungGemeldetAdmin("Salon Élégance", "Mensuel", 5000, "Flooz réf. 123456", mails.AppUrl + "/admin/facturation")),
-        new("confirme", "Paiement confirmé", "Quand l'admin confirme le paiement", () => TabloSuiteMails.PaiementConfirme("Ama", "Salon Élégance", 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), mails.AppUrl + "/abonnement")),
-        new("refuse", "Paiement non retrouvé", "Quand l'admin refuse le paiement", () => TabloSuiteMails.PaiementRefuse("Ama", "Salon Élégance", 5000, mails.AppUrl + "/abonnement")),
-        new("essai", "Fin de l'essai", $"{MailBenachrichtigungen.ProbeHinweisTage} jours avant la fin de l'essai", () => TabloSuiteMails.FinEssai("Ama", "Salon Élégance", DateTime.UtcNow.Date.AddDays(7), "Mensuel", 5000, mails.AppUrl + "/abonnement")),
-        new("mdp-reset", "Mot de passe oublié", "Demande de réinitialisation", () => TabloSuiteMails.Reinitialisation("ama.mensah", mails.AppUrl + "/auth/reinitialiser?exemple")),
-        new("mdp", "Mot de passe modifié", "Après chaque changement de mot de passe", () => TabloSuiteMails.PasswortGeaendert("Ama", "ama.mensah", DateTime.UtcNow, mails.AppUrl)),
-        new("statut", "Établissement désactivé", "Quand l'admin désactive / réactive", () => TabloSuiteMails.EtablissementStatut("Ama", "Salon Élégance", false, mails.AppUrl))
+    private static readonly (NachrichtenService.Gruppe Gruppe, string Text, string Icon)[] Gruppen =
+    [
+        (NachrichtenService.Gruppe.Einzeln, "Personnes choisies", "user"),
+        (NachrichtenService.Gruppe.AlleBesitzer, "Tous les propriétaires", "store"),
+        (NachrichtenService.Gruppe.BesitzerVonLaeden, "Propriétaires de…", "shield"),
+        (NachrichtenService.Gruppe.TeamVonLaeden, "Équipe de…", "users"),
+        (NachrichtenService.Gruppe.AlleProduktOwner, "Responsables (PO)", "badge")
     ];
 
-    private string AktuelleVorschau => (Vorlagen.FirstOrDefault(v => v.Schluessel == gewaehlt) ?? Vorlagen[0]).Html();
+    private double KontingentProzent => email.MonatsLimit <= 0 ? 0 : Math.Min(100, gesendetImMonat * 100.0 / email.MonatsLimit);
+    private bool KontingentUeberschritten => gesendetImMonat + empfaenger.Count > email.MonatsLimit;
+    private bool KannSenden => empfaenger.Count > 0 && empfaenger.Count <= NachrichtenService.MaxEmpfaenger
+        && !string.IsNullOrWhiteSpace(betreff) && !string.IsNullOrWhiteSpace(nachricht);
 
-    protected override Task OnInitializedAsync() => LadeAsync();
+    private string NachrichtVorschau => TabloSuiteMails.Nachricht(
+        empfaenger.FirstOrDefault()?.Vorname ?? "Prénom",
+        string.IsNullOrWhiteSpace(betreff) ? "Objet du message" : betreff,
+        string.IsNullOrWhiteSpace(nachricht) ? "Votre message apparaîtra ici." : nachricht,
+        mitKnopf ? knopfText : null, mitKnopf ? (string.IsNullOrWhiteSpace(knopfUrl) ? mails.AppUrl : knopfUrl) : null);
 
-    private async Task LadeAsync() => verlauf = await email.GetVerlaufAsync(50);
+    private string? Konfig(string schluessel) => configuration[schluessel] is { Length: > 0 } w ? w : null;
 
+    private static string Initialen(string name)
+    {
+        var t = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return t.Length switch { 0 => "?", 1 => t[0][..Math.Min(2, t[0].Length)].ToUpperInvariant(), _ => string.Concat(t[0][0], t[^1][0]).ToUpperInvariant() };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await auth.GetAuthenticationStateAsync();
+        Guid.TryParse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out benutzerId);
+        schalter = await email.GetSchalterAsync();
+        gesendetImMonat = await email.GesendetImMonatAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        verlauf = await email.GetVerlaufAsync(50);
+        gesendetImMonat = await email.GesendetImMonatAsync();
+    }
+
+    private async Task ZeigeHistorieAsync()
+    {
+        tab = "historique";
+        await LadeAsync();
+    }
+
+    // --- Empfänger ---
+    private async Task WaehleGruppeAsync(NachrichtenService.Gruppe g)
+    {
+        gruppe = g;
+        empfaengerAlle = false;
+        if ((g is NachrichtenService.Gruppe.BesitzerVonLaeden or NachrichtenService.Gruppe.TeamVonLaeden) && laeden.Count == 0)
+            laeden = await nachrichten.GetLaedenAsync(benutzerId);
+        await AktualisiereEmpfaengerAsync();
+    }
+
+    private async Task SucheAsync()
+        => treffer = suche.Trim().Length >= 2 ? await nachrichten.SucheAsync(benutzerId, suche) : [];
+
+    private async Task UmschaltenAsync(NachrichtenService.Empfaenger e)
+    {
+        if (ausgewaehlt.RemoveAll(a => a.UserId == e.UserId) == 0) ausgewaehlt.Add(e);
+        await AktualisiereEmpfaengerAsync();
+    }
+
+    private async Task EntferneAsync(NachrichtenService.Empfaenger e)
+    {
+        ausgewaehlt.RemoveAll(a => a.UserId == e.UserId);
+        await AktualisiereEmpfaengerAsync();
+    }
+
+    private void LeereAuswahl()
+    {
+        ausgewaehlt.Clear();
+        empfaenger = [];
+    }
+
+    private async Task LadenUmschaltenAsync(Guid id)
+    {
+        if (!ladenAuswahl.Remove(id)) ladenAuswahl.Add(id);
+        await AktualisiereEmpfaengerAsync();
+    }
+
+    private async Task AktualisiereEmpfaengerAsync()
+    {
+        nachrichtFehler = null;
+        empfaenger = gruppe switch
+        {
+            NachrichtenService.Gruppe.Einzeln => await nachrichten.ErmittleAsync(benutzerId, gruppe, ausgewaehlt.Select(a => a.UserId).ToList(), []),
+            NachrichtenService.Gruppe.BesitzerVonLaeden or NachrichtenService.Gruppe.TeamVonLaeden when ladenAuswahl.Count == 0 => [],
+            _ => await nachrichten.ErmittleAsync(benutzerId, gruppe, [], ladenAuswahl.ToList())
+        };
+    }
+
+    private async Task SendeNachrichtAsync()
+    {
+        nachrichtFehler = null;
+        try
+        {
+            var (ok, fehler) = await nachrichten.SendeAsync(benutzerId, empfaenger, betreff, nachricht,
+                mitKnopf ? knopfText : null, mitKnopf ? knopfUrl : null);
+            bestaetigungOffen = false;
+            if (!email.IstKonfiguriert)
+                toast.ZeigeInfo($"{empfaenger.Count} message(s) en file d'attente (envoi inactif).");
+            else if (fehler == 0)
+                toast.ZeigeErfolg($"Message envoyé à {ok} destinataire{(ok > 1 ? "s" : "")}.");
+            else
+                toast.ZeigeFehler($"{ok} envoyé(s), {fehler} échec(s) : voir l'historique.");
+            betreff = nachricht = string.Empty;
+            gesendetImMonat = await email.GesendetImMonatAsync();
+        }
+        catch (ArgumentException ex)
+        {
+            bestaetigungOffen = false;
+            nachrichtFehler = ex.Message;
+        }
+    }
+
+    // --- Schalter ---
+    private async Task SetzeSchalterAsync(string kategorie, bool aktiv)
+    {
+        await email.SetzeSchalterAsync(benutzerId, kategorie, aktiv);
+        schalter[kategorie] = aktiv;
+        toast.ZeigeInfo($"« {MailArten.Finde(kategorie)?.Name} » {(aktiv ? "activé" : "désactivé")}.");
+    }
+
+    // --- Test & Historique ---
     private async Task SendeTestAsync()
     {
         if (string.IsNullOrWhiteSpace(testEmpfaenger)) return;
-        testOk = await email.SendeAsync(testEmpfaenger.Trim(), "E-mail de test eNOTE", TabloSuiteMails.Test(email.Anbieter, email.Absender), "test");
+        testOk = await email.SendeAsync(testEmpfaenger.Trim(), "Vérification de l'envoi eNOTE", TabloSuiteMails.Test(email.Anbieter, email.Absender), "test");
         testErgebnis = testOk
-            ? $"E-mail envoyé à {testEmpfaenger.Trim()} via {email.Anbieter}. Vérifiez la boîte de réception (et les spams)."
-            : email.IstKonfiguriert ? "L'envoi a échoué : voir le détail dans l'historique ci-dessous." : "Envoi inactif : configurez Mail:Provider et Mail:PostmarkServerToken. Le message reste en file d'attente.";
-        await LadeAsync();
+            ? $"E-mail envoyé à {testEmpfaenger.Trim()} via {email.Anbieter}."
+            : email.IstKonfiguriert ? "L'envoi a échoué : voir le détail dans l'historique." : "Envoi inactif : le message reste en file d'attente.";
+        gesendetImMonat = await email.GesendetImMonatAsync();
     }
 
     private async Task ErneutAsync(Guid id)
@@ -153,4 +465,27 @@
         if (ok) toast.ZeigeErfolg("E-mail renvoyé."); else toast.ZeigeFehler("Nouvel échec : voir le détail.");
         await LadeAsync();
     }
+
+    // --- Vorlagen ---
+    private sealed record Vorlage(string Schluessel, string Name, Func<string> Html);
+
+    private IReadOnlyList<Vorlage> Vorlagen => [
+        new("reinitialisation", "Mot de passe oublié", () => TabloSuiteMails.Reinitialisation("ama.mensah", mails.AppUrl + "/auth/reinitialiser?exemple")),
+        new("compte-cree", "Compte créé par l'admin", () => TabloSuiteMails.KontoErstellt("Ama", "ama.mensah", "Salon Élégance", mails.AppUrl, mails.AppUrl + "/auth/reinitialiser?exemple")),
+        new("inscription-validee", "Établissement validé", () => TabloSuiteMails.InscriptionValidee("Ama", "eNOTE", mails.AppUrl)),
+        new("facture", "Nouvelle facture", () => TabloSuiteMails.NouvelleFacture("Ama", "Salon Élégance", "Mensuel", DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(15), mails.AppUrl + "/abonnement")),
+        new("caisse-suspendue", "Caisse suspendue", () => TabloSuiteMails.CaisseSuspendue("Ama", "Salon Élégance", 5000, mails.AppUrl + "/abonnement")),
+        new("paiement-refuse", "Paiement non retrouvé", () => TabloSuiteMails.PaiementRefuse("Ama", "Salon Élégance", 5000, mails.AppUrl + "/abonnement")),
+        new("rappel-paiement", "Rappel de paiement", () => TabloSuiteMails.RappelPaiement("Ama", "Salon Élégance", 5000, DateTime.UtcNow.Date.AddDays(3), mails.AppUrl + "/abonnement")),
+        new("inscription-admin", "Nouvel établissement (admin)", () => TabloSuiteMails.NeueRegistrierungAdmin("Salon Élégance", "Ama Mensah", "ama@exemple.com", null, "Lomé", mails.AppUrl + "/admin")),
+        new("paiement-signale", "Paiement signalé (admin)", () => TabloSuiteMails.ZahlungGemeldetAdmin("Salon Élégance", "Mensuel", 5000, "Flooz réf. 123456", mails.AppUrl + "/admin/facturation")),
+        new("etablissement-statut", "Établissement désactivé", () => TabloSuiteMails.EtablissementStatut("Ama", "Salon Élégance", false, mails.AppUrl)),
+        new("bienvenue", "Bienvenue", () => TabloSuiteMails.Bienvenue("Ama", "eNOTE", mails.AppUrl)),
+        new("paiement-confirme", "Paiement confirmé", () => TabloSuiteMails.PaiementConfirme("Ama", "Salon Élégance", 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), mails.AppUrl + "/abonnement")),
+        new("caissier-bienvenue", "Nouveau caissier", () => TabloSuiteMails.KassiererWillkommen("Awa", "awa.koffi", "Salon Élégance", "Ama Mensah", mails.AppUrl)),
+        new("mot-de-passe", "Mot de passe modifié", () => TabloSuiteMails.PasswortGeaendert("Ama", "ama.mensah", DateTime.UtcNow, mails.AppUrl)),
+        new("fin-essai", "Fin de l'essai", () => TabloSuiteMails.FinEssai("Ama", "Salon Élégance", DateTime.UtcNow.Date.AddDays(7), "Mensuel", 5000, mails.AppUrl + "/abonnement"))
+    ];
+
+    private string AktuelleVorschau => (Vorlagen.FirstOrDefault(v => v.Schluessel == gewaehlt) ?? Vorlagen[0]).Html();
 }

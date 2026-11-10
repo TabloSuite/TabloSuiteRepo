@@ -142,7 +142,7 @@ public class MailBenachrichtigungen(
 
             if (abo.RechnungMailUtc is null)
             {
-                if (abo.CreatedAtUtc >= jetzt.AddDays(-3))
+                if (abo.CreatedAtUtc >= jetzt.AddDays(-3) && await email.IstAktivAsync("facture", ct))
                 {
                     await email.SendeAsync(b.Email, $"Votre facture eNOTE – {TabloSuiteMails.Betrag(abo.PreisSnapshot)}",
                         TabloSuiteMails.NouvelleFacture(b.Vorname, b.SalonName, formel, abo.ZeitraumVonUtc, abo.ZeitraumBisUtc,
@@ -164,10 +164,14 @@ public class MailBenachrichtigungen(
                 }
                 else if (abo.ErinnerungMailUtc is null && jetzt < sperre && jetzt >= sperre.AddDays(-ErinnerungTageVorSperre))
                 {
-                    await email.SendeAsync(b.Email, "Rappel : paiement en attente",
-                        TabloSuiteMails.RappelPaiement(b.Vorname, b.SalonName, abo.PreisSnapshot, sperre, AboUrl), "rappel-paiement", ct);
+                    // Abgeschaltet: als „erledigt“ markieren, damit beim späteren Einschalten keine alten Erinnerungen nachkommen.
+                    if (await email.IstAktivAsync("rappel-paiement", ct))
+                    {
+                        await email.SendeAsync(b.Email, "Rappel : paiement en attente",
+                            TabloSuiteMails.RappelPaiement(b.Vorname, b.SalonName, abo.PreisSnapshot, sperre, AboUrl), "rappel-paiement", ct);
+                        anzahl++;
+                    }
                     abo.ErinnerungMailUtc = jetzt;
-                    anzahl++;
                 }
             }
         }
@@ -180,7 +184,7 @@ public class MailBenachrichtigungen(
             .ToListAsync(ct);
         foreach (var salon in probe)
         {
-            if (await BesitzerAsync(db, salon.Id, ct) is { } b)
+            if (await email.IstAktivAsync("fin-essai", ct) && await BesitzerAsync(db, salon.Id, ct) is { } b)
             {
                 var intervall = salon.NaechstesVertragsIntervall ?? salon.VertragsIntervall;
                 var preis = (await new AboService(factory).GetFormelPreisAsync(salon.Id, intervall, ct))?.Preis ?? 0m;

@@ -45,6 +45,13 @@ public class EmailBenachrichtigungTests
         return new Basis(factory, salon, uhr, new MailBenachrichtigungen(factory, email, config, NullLogger<MailBenachrichtigungen>.Instance, uhr));
     }
 
+    private static async Task SchalteEinAsync(Basis b, string kategorie, bool aktiv = true)
+    {
+        await using var db = await b.F.CreateDbContextAsync();
+        db.MailRegeln.Add(new ENote.Core.DataModels.Infrastruktur.MailRegel { Kategorie = kategorie, Aktiv = aktiv });
+        await db.SaveChangesAsync();
+    }
+
     private static async Task<List<string?>> KategorienAsync(Basis b)
     {
         await using var db = await b.F.CreateDbContextAsync();
@@ -110,13 +117,15 @@ public class EmailBenachrichtigungTests
         b.Uhr.Jetzt = Start.Date.AddDays(16);
         Assert.Equal(0, await b.Mails.PruefeAboMailsAsync());
 
-        Assert.Equal(["facture", "paiement-confirme"], await KategorienAsync(b));
+        // « Paiement confirmé » ist standardmäßig abgeschaltet (Kontingent sparen)
+        Assert.Equal(["facture"], await KategorienAsync(b));
     }
 
     [Fact]
     public async Task Probe_Ende_Wird_Sieben_Tage_Vorher_Einmal_Angekuendigt()
     {
         var b = await BasisAsync(probeBis: Start.AddDays(10));
+        await SchalteEinAsync(b, "fin-essai");                         // standardmäßig aus
         Assert.Equal(0, await b.Mails.PruefeAboMailsAsync());           // noch 10 Tage
 
         b.Uhr.Jetzt = Start.AddDays(4);                                 // noch 6 Tage
@@ -166,5 +175,86 @@ public class EmailBenachrichtigungTests
         Assert.Contains("Montant : ", text);                       // Label und Wert getrennt
         Assert.DoesNotContain(text.Split('\n'), zeile => zeile.Trim() == "T");   // keine Logo-Kachel
         Assert.False(text.StartsWith("La caisse sera suspendue"));  // keine versteckte Vorschauzeile
+    }
+
+    [Fact]
+    public async Task Abgeschaltete_Mails_Werden_Nicht_Versendet_Pflichtmails_Immer()
+    {
+        var b = await BasisAsync(probeBis: Start.AddDays(5));
+        await RechnungAsync(b, Start);
+        await SchalteEinAsync(b, "facture", aktiv: false);            // Pflicht: Schalter wird ignoriert
+
+        Assert.Equal(1, await b.Mails.PruefeAboMailsAsync());           // Rechnung ja, Probe-Ende (aus) nein
+        Assert.Equal(["facture"], await KategorienAsync(b));
+
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new EmailService(config, b.F, NullLogger<EmailService>.Instance);
+        Assert.True(await email.IstAktivAsync("reinitialisation"));
+        Assert.True(await email.IstAktivAsync("message"));
+        Assert.False(await email.IstAktivAsync("bienvenue"));
+        Assert.True(await email.IstAktivAsync("rappel-paiement"));
+        Assert.False(await email.SendeAsync("ama@exemple.com", "Bienvenue", "<p>x</p>", "bienvenue"));
+        await using var db = await b.F.CreateDbContextAsync();
+        Assert.DoesNotContain(await db.MailNachrichten.ToListAsync(), m => m.Kategorie == "bienvenue");
+    }
+
+    [Fact]
+    public async Task Pflichtmail_Laesst_Sich_Nicht_Abschalten_Und_Nur_Admin_Darf_Schalten()
+    {
+        var b = await BasisAsync();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new EmailService(config, b.F, NullLogger<EmailService>.Instance);
+        var admin = new AppUser { Id = Guid.NewGuid(), UserName = "admin", Email = "admin@exemple.com" };
+        await using (var db = await b.F.CreateDbContextAsync())
+        {
+            var rolle = new Role { Name = AppRollen.SuperAdmin, NormalizedName = "SUPERADMIN" };
+            db.Roles.Add(rolle);
+            db.Users.Add(admin);
+            db.UserRoles.Add(new AppUserRole { UserId = admin.Id, RoleId = rolle.Id });
+            await db.SaveChangesAsync();
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => email.SetzeSchalterAsync(admin.Id, "facture", false));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => email.SetzeSchalterAsync(Guid.NewGuid(), "bienvenue", true));
+        await email.SetzeSchalterAsync(admin.Id, "bienvenue", true);
+        Assert.True((await email.GetSchalterAsync())["bienvenue"]);
+        Assert.True(await email.IstAktivAsync("bienvenue"));
+    }
+
+    [Fact]
+    public async Task Nachricht_Ermittelt_Empfaenger_Ohne_Gesperrte_Und_Maskiert_Html()
+    {
+        var b = await BasisAsync();
+        var admin = new AppUser { Id = Guid.NewGuid(), UserName = "admin", Email = "admin@exemple.com", FullName = "Admin" };
+        var kassierer = new AppUser { Id = Guid.NewGuid(), UserName = "awa", Email = "awa@exemple.com", FullName = "Awa Koffi", Vorname = "Awa" };
+        var gesperrt = new AppUser { Id = Guid.NewGuid(), UserName = "kofi", Email = "kofi@exemple.com", FullName = "Kofi", IsBlocked = true };
+        await using (var db = await b.F.CreateDbContextAsync())
+        {
+            var rolle = new Role { Name = AppRollen.SuperAdmin, NormalizedName = "SUPERADMIN" };
+            db.Roles.Add(rolle);
+            db.Users.AddRange(admin, kassierer, gesperrt);
+            db.UserRoles.Add(new AppUserRole { UserId = admin.Id, RoleId = rolle.Id });
+            db.UserSalons.AddRange(new UserSalon { AppUserId = kassierer.Id, SalonId = b.Salon.Id }, new UserSalon { AppUserId = gesperrt.Id, SalonId = b.Salon.Id });
+            await db.SaveChangesAsync();
+        }
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var service = new NachrichtenService(b.F, new EmailService(config, b.F, NullLogger<EmailService>.Instance));
+
+        var besitzer = await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.AlleBesitzer, [], []);
+        Assert.Equal(["ama@exemple.com"], besitzer.Select(e => e.Email));
+
+        var team = await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.TeamVonLaeden, [], [b.Salon.Id]);
+        Assert.Equal(["Ama Mensah", "Awa Koffi"], team.Select(e => e.Name).Order());   // Gesperrter fehlt
+
+        Assert.Equal(2, (await service.SucheAsync(admin.Id, "Salon Test")).Count);    // Suche auch über den Laden
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.ErmittleAsync(kassierer.Id, NachrichtenService.Gruppe.AlleBesitzer, [], []));
+
+        var (ok, fehler) = await service.SendeAsync(admin.Id, team, "Info", "Ligne 1\n<b>gras</b>\n\nParagraphe 2", null, null);
+        Assert.Equal((0, 2), (ok, fehler));                            // ohne Konfiguration: in der Queue
+        await using var db2 = await b.F.CreateDbContextAsync();
+        var mails = await db2.MailNachrichten.Where(m => m.Kategorie == "message").ToListAsync();
+        Assert.Equal(2, mails.Count);
+        Assert.All(mails, m => Assert.Contains("&lt;b&gt;gras&lt;/b&gt;", m.HtmlInhalt));
+        Assert.Contains(mails, m => m.HtmlInhalt.Contains("Bonjour Awa,"));
     }
 }

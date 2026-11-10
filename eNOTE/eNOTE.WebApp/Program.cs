@@ -136,6 +136,7 @@ if (administration is null)
     builder.Services.AddHttpClient("postmark", c => c.Timeout = TimeSpan.FromSeconds(20));
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.EmailService>();
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.MailBenachrichtigungen>();
+    builder.Services.AddScoped<ENote.WebApp.Services.Mails.NachrichtenService>();
     builder.Services.AddHostedService<ENote.WebApp.Services.Mails.MailVersandDienst>();
     builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
 }

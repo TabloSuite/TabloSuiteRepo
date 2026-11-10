@@ -47,6 +47,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoGeldbewegung> PoGeldbewegungen => Set<PoGeldbewegung>();
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
+    public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -180,6 +181,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasForeignKey(v => v.StornoVonVerkaufId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.Ignore(v => v.IstStorno);
+        });
+
+        builder.Entity<MailRegel>(entity =>
+        {
+            entity.HasKey(r => r.Kategorie);
+            entity.Property(r => r.Kategorie).HasMaxLength(50);
         });
 
         builder.Entity<MailNachricht>(entity =>

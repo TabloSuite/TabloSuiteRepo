@@ -176,6 +176,22 @@ public static class TabloSuiteMails
                 Anrede(vorname) + P($"L'établissement <strong>{H(salonName)}</strong> a été désactivé par l'équipe TabloSuite.")
                 + Box("info", "Une question ?", $"Répondez à cet e-mail ou écrivez-nous à {Kontakt}. Vos données sont conservées.") + Gruss());
 
+    // ------------------------------------------------------------------ Manuelle Nachricht
+
+    /// <summary>
+    /// Freie Nachricht aus der Administration. Leerzeile = neuer Absatz, Zeilenumbruch bleibt erhalten;
+    /// der Text wird vollständig HTML-maskiert (kein eingeschleustes HTML).
+    /// </summary>
+    public static string Nachricht(string? vorname, string titel, string text, string? knopfText, string? knopfUrl)
+    {
+        var absaetze = text.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(a => P(H(a).Replace("\n", "<br/>")));
+        var vorschau = text.Replace("\r", " ").Replace("\n", " ").Trim();
+        var knopf = !string.IsNullOrWhiteSpace(knopfText) && !string.IsNullOrWhiteSpace(knopfUrl) ? Knopf(knopfText.Trim(), knopfUrl) : "";
+        return Wrap(titel, vorschau.Length > 110 ? vorschau[..110] + "…" : vorschau,
+            Anrede(vorname) + string.Concat(absaetze) + knopf + Gruss());
+    }
+
     // ------------------------------------------------------------------ Bausteine
 
     private static string Anrede(string? vorname)

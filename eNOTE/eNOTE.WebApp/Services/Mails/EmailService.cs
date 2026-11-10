@@ -51,6 +51,64 @@ public class EmailService(
 
     public bool IstKonfiguriert => Anbieter != "Aucun";
 
+    /// <summary>Monatliches Kontingent des Postmark-Plans (nur Anzeige/Warnung, Standard 100).</summary>
+    public int MonatsLimit => configuration.GetValue("Mail:MonatsLimit", 100);
+
+    /// <summary>
+    /// Darf eine Mail dieser Kategorie versendet werden? Pflicht- und manuelle Mails immer; abschaltbare
+    /// nach Schalter (ohne Eintrag: Standard der Mail-Art); unbekannte Kategorien sind erlaubt.
+    /// </summary>
+    public async Task<bool> IstAktivAsync(string? kategorie, CancellationToken ct = default)
+    {
+        if (kategorie is null || MailArten.Manuell.Contains(kategorie)) return true;
+        var art = MailArten.Finde(kategorie);
+        if (art is null || art.Pflicht) return true;
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+            var regel = await db.MailRegeln.AsNoTracking().FirstOrDefaultAsync(r => r.Kategorie == kategorie, ct);
+            return regel?.Aktiv ?? art.StandardAktiv;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Mail-Schalter für {Kategorie} nicht lesbar – Standard wird verwendet.", kategorie);
+            return art.StandardAktiv;
+        }
+    }
+
+    /// <summary>Aktueller Zustand aller abschaltbaren Mail-Arten.</summary>
+    public async Task<Dictionary<string, bool>> GetSchalterAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var regeln = await db.MailRegeln.AsNoTracking().ToDictionaryAsync(r => r.Kategorie, r => r.Aktiv, ct);
+        return MailArten.Alle.Where(a => !a.Pflicht)
+            .ToDictionary(a => a.Kategorie, a => regeln.TryGetValue(a.Kategorie, out var an) ? an : a.StandardAktiv);
+    }
+
+    /// <summary>Schaltet eine abschaltbare Mail-Art ein oder aus (nur SuperAdmin).</summary>
+    public async Task SetzeSchalterAsync(Guid bearbeiter, string kategorie, bool aktiv, CancellationToken ct = default)
+    {
+        var art = MailArten.Finde(kategorie) ?? throw new ArgumentException("Type d'e-mail inconnu.");
+        if (art.Pflicht) throw new InvalidOperationException("Cet e-mail est indispensable et ne peut pas être désactivé.");
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
+        var regel = await db.MailRegeln.FirstOrDefaultAsync(r => r.Kategorie == kategorie, ct);
+        if (regel is null) db.MailRegeln.Add(regel = new MailRegel { Kategorie = kategorie });
+        regel.Aktiv = aktiv;
+        regel.GeaendertUtc = DateTime.UtcNow;
+        regel.GeaendertVonId = bearbeiter;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Im laufenden Kalendermonat erfolgreich versendete Mails (für das Kontingent).</summary>
+    public async Task<int> GesendetImMonatAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var jetzt = DateTime.UtcNow;
+        var anfang = new DateTime(jetzt.Year, jetzt.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return await db.MailNachrichten.CountAsync(m => m.IstGesendet && m.GesendetUtc >= anfang, ct);
+    }
+
     /// <summary>Stellt eine E-Mail in die Queue und versucht den sofortigen Versand.</summary>
     public async Task SendeAsync(string empfaenger, string betreff, string htmlInhalt, CancellationToken cancellationToken = default)
         => await SendeAsync(empfaenger, betreff, htmlInhalt, kategorie: null, cancellationToken);
@@ -61,6 +119,12 @@ public class EmailService(
         if (string.IsNullOrWhiteSpace(empfaenger) || !MailAddress.TryCreate(empfaenger.Trim(), out _))
         {
             logger.LogWarning("E-Mail ohne gültigen Empfänger verworfen: {Betreff}", betreff);
+            return false;
+        }
+
+        if (!await IstAktivAsync(kategorie, cancellationToken))
+        {
+            logger.LogInformation("E-Mail « {Kategorie} » ist abgeschaltet – nicht versendet: {Betreff}", kategorie, betreff);
             return false;
         }
 

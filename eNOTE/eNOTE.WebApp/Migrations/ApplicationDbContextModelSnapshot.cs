@@ -770,6 +770,26 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("MailNachrichten");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.MailRegel", b =>
+                {
+                    b.Property<string>("Kategorie")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("Aktiv")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("GeaendertUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GeaendertVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Kategorie");
+
+                    b.ToTable("MailRegeln");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.BesitzerHinweis", b =>
                 {
                     b.Property<Guid>("Id")

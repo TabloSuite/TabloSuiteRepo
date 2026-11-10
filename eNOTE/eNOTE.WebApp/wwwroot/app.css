@@ -2535,3 +2535,53 @@ html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe)
 .em-tag.ok { background: var(--enote-success-soft); color: var(--enote-success); }
 .em-tag.warte { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
 @media (max-width: 860px) { .em-vorlagen { grid-template-columns: minmax(0, 1fr); } .em-liste { max-height: 14rem; } }
+
+/* ---------- E-mails : Statusleiste, Nachricht, Schalter ---------- */
+.em-statusleiste { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.em-statusleiste .em-status { margin: 0; flex: 1 1 18rem; }
+.em-kontingent { display: grid; gap: .3rem; min-width: 12rem; flex: 0 1 16rem; }
+.em-kontingent-kopf { display: flex; justify-content: space-between; font-size: .82rem; color: var(--enote-text-muted); }
+.em-kontingent-kopf strong { color: var(--enote-text); font-variant-numeric: tabular-nums; }
+.em-kontingent-spur { height: .45rem; border-radius: 999px; background: var(--enote-surface-3); overflow: hidden; }
+.em-kontingent-spur > span { display: block; height: 100%; border-radius: 999px; background: #0d9488; }
+.em-kontingent-spur > span.warn { background: #f59e0b; }
+.em-kontingent-spur > span.voll { background: #dc2626; }
+.em-tabs { margin-bottom: 1rem; }
+.em-tabs .enote-tab { display: inline-flex; align-items: center; gap: .4rem; }
+.em-klein { font-size: .88rem; margin: .4rem 0; }
+.em-schreiben { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.em-schreiben .em-karte { margin-bottom: 0; }
+.em-vorschau-karte { grid-column: 1 / -1; }
+.em-gruppen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(9.5rem, 100%), 1fr)); gap: .45rem; margin-bottom: .9rem; }
+.em-gruppe { display: flex; align-items: center; gap: .45rem; padding: .6rem .7rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: var(--enote-surface); color: var(--enote-text); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; text-align: left; }
+.em-gruppe.aktiv { border-color: var(--enote-primary); background: var(--enote-primary-soft); color: var(--enote-primary-text); }
+.em-suche { margin-bottom: .5rem; }
+.em-suche .kx-suche-feld { width: 100%; }
+.em-treffer { display: grid; gap: .25rem; max-height: 16rem; overflow-y: auto; margin-bottom: .6rem; }
+.em-treffer-zeile { display: flex; align-items: center; gap: .65rem; padding: .45rem .55rem; border: 1px solid transparent; border-radius: var(--enote-radius); background: none; color: var(--enote-text); font: inherit; text-align: left; cursor: pointer; }
+.em-treffer-zeile:hover { background: var(--enote-surface-2); }
+.em-treffer-zeile.gewaehlt { border-color: var(--enote-primary); background: var(--enote-primary-soft); }
+.em-avatar { flex-shrink: 0; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; font-size: .78rem; font-weight: 800; color: #fff; background: var(--enote-gradient); }
+.em-person { display: grid; min-width: 0; flex: 1; }
+.em-person strong, .em-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-person small { color: var(--enote-text-muted); font-size: .8rem; }
+.em-laeden { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .6rem; }
+.em-empfaenger { padding-top: .8rem; border-top: 1px solid var(--enote-border); }
+.em-empfaenger-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
+.em-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.em-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .35rem .22rem .6rem; border-radius: 999px; background: var(--enote-surface-2); border: 1px solid var(--enote-border); font-size: .82rem; font-weight: 600; }
+.em-chip small { color: var(--enote-text-muted); font-weight: 500; }
+.em-chip button { display: grid; place-items: center; width: 1.2rem; height: 1.2rem; border: none; border-radius: 50%; background: none; color: var(--enote-text-muted); cursor: pointer; }
+.em-chip button:hover { background: var(--enote-danger-soft); color: var(--enote-danger-text); }
+.em-schreiben textarea { min-height: 10rem; }
+.em-senden { display: grid; justify-items: end; gap: .5rem; margin-top: 1rem; }
+.em-warnung { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--enote-warning-text); font-size: .88rem; font-weight: 600; }
+.em-vorschau-karte .em-vorschau { height: 32rem; }
+.em-abschnitt { display: flex; align-items: center; gap: .4rem; margin: 1.1rem 0 .5rem; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--enote-text-muted); }
+.em-regeln { display: grid; gap: .4rem; }
+.em-regel { display: flex; align-items: center; gap: .8rem; padding: .65rem .85rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.em-regel.pflicht { background: var(--enote-surface-2); }
+.em-regel.aus { opacity: .72; }
+.em-regel-info { display: grid; min-width: 0; flex: 1; }
+.em-regel-info small { color: var(--enote-text-muted); }
+@media (max-width: 960px) { .em-schreiben { grid-template-columns: minmax(0, 1fr); } }

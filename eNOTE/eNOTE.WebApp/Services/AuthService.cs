@@ -211,6 +211,7 @@ public class AuthService(
                 bereinigtEmail,
                 "Bienvenue sur TabloSuite",
                 Mails.TabloSuiteMails.Bienvenue(besitzer.Vorname, AppName, AppUrl),
+                "bienvenue",
                 cancellationToken);
         }
         catch (Exception ex)
