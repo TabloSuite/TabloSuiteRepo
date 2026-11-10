@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using ENote.WebApp.Services;
@@ -145,7 +145,9 @@ public class NutzerAnlageTests
         var zweiter = await NutzerAsync(sp, AppRollen.SuperAdmin);
         var po = await NutzerAsync(sp, AppRollen.ProduktOwner);
         var s = sp.GetRequiredService<AdminKontenService>();
-        await s.LegeAnAsync(zweiter.Id, "Autre", "Admin", "admin@example.test", "Initial123!Ab");
+        // Nur der Hauptadministrator legt weitere Admins an.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => s.LegeAnAsync(zweiter.Id, "X", "Y", "zweiter@example.test", "Initial123!Ab"));
+        await s.LegeAnAsync(erster.Id, "Autre", "Admin", "admin@example.test", "Initial123!Ab");
         var neu = (await s.GetAsync(erster.Id)).Single(u => u.Email == "admin@example.test");
         Assert.False(neu.ErsterAdmin);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => s.SpeichereAsync(zweiter.Id, neu.Id, "X", "Y", neu.Email, true));
@@ -165,6 +167,29 @@ public class NutzerAnlageTests
         }
         await s.LoescheAsync(erster.Id, neu.Id);
         Assert.DoesNotContain(await s.GetAsync(erster.Id), u => u.Id == neu.Id);
+    }
+
+    [Fact]
+    public async Task Ohne_Kennzeichnung_Wird_Das_Aelteste_Echte_Adminkonto_Hauptadmin_Und_Kann_Sperren()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var echt = await NutzerAsync(sp, AppRollen.SuperAdmin);
+        var demo = await NutzerAsync(sp, AppRollen.SuperAdmin);
+        var users = sp.GetRequiredService<UserManager<AppUser>>();
+        // Demo-Konto ist älter, darf aber nie Hauptadmin werden
+        demo.UserName = "demo.admin"; demo.CreatedAtUtc = echt.CreatedAtUtc.AddDays(-1); await users.UpdateAsync(demo);
+        var s = sp.GetRequiredService<AdminKontenService>();
+        Assert.True(await s.IstErsterAdminAsync(echt.Id));
+        Assert.False(await s.IstErsterAdminAsync(demo.Id));
+
+        await s.SetzeGesperrtAsync(echt.Id, demo.Id, true);
+        await using (var db = await factory.CreateDbContextAsync())
+            Assert.True((await db.Users.SingleAsync(u => u.Id == demo.Id)).IsBlocked);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => s.SetzeGesperrtAsync(echt.Id, echt.Id, true));
+        await s.SetzeGesperrtAsync(echt.Id, demo.Id, false);
     }
 
     [Fact]

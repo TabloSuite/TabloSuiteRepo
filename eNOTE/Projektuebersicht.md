@@ -116,6 +116,11 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 - **Zahlung**: Besitzer meldet („J'ai payé“, `MeldeAsync`), nur der **SuperAdmin** bestätigt (`AboService.SetzeZahlungsStatusAsync` mit Bearbeiter-Prüfung); ProduktOwner sehen in Facturation nur ihre zugewiesenen Läden.
 - **Kassensperre** (`KassenZugangService`, serverseitig in `KassenService.StarteSitzungAsync`/`BucheVerkaufAsync`): ab dem 15. Tag nach Fälligkeit ohne Bestätigung keine neuen Sitzungen/Verkäufe; der Abschluss einer laufenden Sitzung bleibt möglich. Wäre die Frist beim (verspäteten) Erzeugen schon abgelaufen, gibt es 15 Tage ab Erzeugung. Ohne konfigurierten Tarif wird nicht gesperrt.
 
+### Vidéos d'aide (`/aide/videos`, `VideoKatalog`)
+- Erklärvideos je Rolle: Caissier, Propriétaire, Responsable, Administrateur. Sichtbar: Admin/Responsable alle, Propriétaire seins + Caissier, Caissier nur seins (Menü « Aide » + Benutzermenü).
+- Dateien in `Medien/videos/` (nicht wwwroot), ausgeliefert über `/medien/videos/{datei}` mit Range-Unterstützung und Rollenprüfung; Werbevideo `enote-presentation.mp4` öffentlich. Vorschaubilder in `wwwroot/videos/*.jpg`.
+- Herstellung (Aufnahmen, Texte, Stimme Azure Vivienne, HyperFrames): `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\erklaer\README.md`.
+
 ### Abo & Plattform (Allgemein)
 - `NutzungsAbo` pro Laden + Plattform-Standardpreis (`PlattformPreis`). SuperAdmin legt globalen/individuellen Monatspreis fest; ProduktOwner-Provision (Prozent/Festbetrag) pro Salon-Zuweisung.
 - **Tarifs** (Reiter in `/admin`, `PreisAnpassungService`): Standard-Monatspreis = Mindestpreis. Änderung sofort (nur Senkung) oder ab dem 1. eines kommenden Monats; Erhöhung um X F erhöht auch alle individuellen Preise um X F, Senkung lässt sie stehen (nie unter Standard). Datierte `MonatsPreisStaende` (mit `PreisAnpassungId`) → neue Perioden ab dem Datum nutzen den neuen Preis, bereits erzeugte nicht. Textvorlagen mit Platzhaltern für Banner + optionale Mail (`changement-tarif`). Startpreis neuer Datenbanken: 3.600 F.

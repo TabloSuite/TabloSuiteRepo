@@ -121,6 +121,7 @@ if (administration is null)
     builder.Services.AddScoped<FinanzService>();
     builder.Services.AddScoped<AusgabenService>();
     builder.Services.AddScoped<HinweisService>();
+    builder.Services.AddScoped<AdminKontenService>();
     builder.Services.AddScoped<AnkuendigungService>();
     builder.Services.AddScoped<PreisAnpassungService>();
     builder.Services.AddScoped<AboService>();
@@ -181,18 +182,19 @@ app.MapStaticAssets();
 // Videos: eigener Endpunkt statt wwwroot, damit Teilanfragen (Range) korrekt beantwortet werden –
 // der Browser lädt Videos stückweise; MapStaticAssets lieferte dabei die ganze Datei und das Video brach ab.
 var videoOrdner = Path.Combine(app.Environment.ContentRootPath, "Medien", "videos");
-var oeffentlicheVideos = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "enote-presentation.mp4" };
 app.MapGet("/medien/videos/{datei}", (string datei, HttpContext http) =>
 {
     if (!System.Text.RegularExpressions.Regex.IsMatch(datei, @"^[a-z0-9-]+\.mp4$"))
         return Results.NotFound();
-    if (!oeffentlicheVideos.Contains(datei) && http.User.Identity?.IsAuthenticated != true)
-        return Results.Unauthorized();
+    // Werbevideo öffentlich, Erklärvideos nur für die passenden Rollen (VideoKatalog).
+    if (!VideoKatalog.DarfAbrufen(datei, http.User))
+        return http.User.Identity?.IsAuthenticated == true ? Results.StatusCode(StatusCodes.Status403Forbidden) : Results.Unauthorized();
     var info = new FileInfo(Path.Combine(videoOrdner, datei));
     if (!info.Exists)
         return Results.NotFound();
     var etag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"");
-    http.Response.Headers.CacheControl = "public, max-age=3600";
+    http.Response.Headers.CacheControl = string.Equals(datei, VideoKatalog.Werbung, StringComparison.OrdinalIgnoreCase)
+        ? "public, max-age=3600" : "private, max-age=3600";
     return Results.File(info.FullName, "video/mp4", lastModified: info.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
 });
 

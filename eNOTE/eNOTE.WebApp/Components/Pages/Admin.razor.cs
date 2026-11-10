@@ -8,6 +8,7 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Admin(
     AdminService adminService,
+    AdminKontenService adminKontenService,
     ProduktOwnerService produktOwnerService,
     Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider,
     ToastService toast,
@@ -17,6 +18,7 @@ public partial class Admin(
     private List<PlattformPreis> plattformPreise = [];
     private bool isLoading = true;
     private bool istSuperAdmin;
+    private bool istErsterAdmin;
     private Guid aktuellerBenutzerId;
 
     // ProduktOwner-Verwaltung
@@ -198,6 +200,8 @@ public partial class Admin(
         istSuperAdmin = authState.User.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         Guid.TryParse(userIdValue, out aktuellerBenutzerId);
+        // Nur der Hauptadministrator verwaltet andere Administratoren (Reiter „Administrateurs“).
+        istErsterAdmin = istSuperAdmin && await adminKontenService.IstErsterAdminAsync(aktuellerBenutzerId);
         await LadeAsync();
     }
 

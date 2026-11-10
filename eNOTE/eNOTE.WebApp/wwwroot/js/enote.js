@@ -112,3 +112,44 @@ window.enoteLeseDateiAlsDataUrl = function (inputElement) {
     setTimeout(function () { document.querySelectorAll('.lp-reveal:not(.sichtbar)').forEach(function (el) {
         var r = el.getBoundingClientRect(); if (r.top < window.innerHeight) zeige(el); }); }, 4000);
 })();
+
+
+// Barcode-Scanner (USB/Bluetooth im Tastatur-Modus): tippt den Code in wenigen Millisekunden und drückt Enter.
+// In der Kasse wird diese Folge überall erkannt – auch wenn gerade eine Kachel den Fokus hat. Das Enter des
+// Scanners wird abgefangen, damit es keine zuletzt angetippte Kachel erneut auslöst. Normales Tippen in
+// Eingabefeldern (PIN, Beträge, Suche) bleibt unberührt.
+window.enoteScanner = (function () {
+    var ref = null, puffer = '', letzte = 0, abstaende = [];
+    var MAX_ABSTAND = 60, MIN_LAENGE = 4;
+    function istEingabe(el) {
+        if (!el) return false;
+        var t = (el.tagName || '').toUpperCase();
+        return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || el.isContentEditable;
+    }
+    function zuruecksetzen() { puffer = ''; abstaende = []; }
+    function handler(e) {
+        if (!ref) return;
+        if (istEingabe(document.activeElement)) { zuruecksetzen(); return; }
+        var jetzt = performance.now();
+        if (e.key === 'Enter') {
+            var schnell = abstaende.length >= MIN_LAENGE - 1 && abstaende.every(function (a) { return a < MAX_ABSTAND; });
+            if (puffer.length >= MIN_LAENGE && schnell) {
+                e.preventDefault(); e.stopPropagation();
+                // In einem offenen Dialog (Zahlung, Abschluss …) nichts buchen
+                if (!document.querySelector('.enote-modal-backdrop')) ref.invokeMethodAsync('ScanErkannt', puffer);
+            }
+            zuruecksetzen();
+            return;
+        }
+        if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            if (puffer && jetzt - letzte > MAX_ABSTAND) zuruecksetzen();
+            if (puffer) abstaende.push(jetzt - letzte);
+            puffer += e.key; letzte = jetzt;
+            if (puffer.length >= 2) e.preventDefault(); // z. B. Leertaste löst keine Kachel aus
+        }
+    }
+    return {
+        start: function (dotNetRef) { ref = dotNetRef; zuruecksetzen(); document.addEventListener('keydown', handler, true); },
+        stop: function () { ref = null; document.removeEventListener('keydown', handler, true); }
+    };
+})();

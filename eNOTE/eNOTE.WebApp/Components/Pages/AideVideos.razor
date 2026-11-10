@@ -1,0 +1,86 @@
+@page "/aide/videos"
+@attribute [Authorize]
+@using ENote.WebApp.Services
+@inject AuthenticationStateProvider authStateProvider
+@inject IWebHostEnvironment umgebung
+
+<PageTitle>Vidéos d'aide</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Vidéos d'aide</h1>
+            <p>Quelques minutes pour découvrir eNOTE pas à pas, selon votre rôle.</p>
+        </div>
+    </div>
+
+    @if (videos.Count == 0)
+    {
+        <div class="enote-card vh-leer"><Icon Name="monitor" Groesse="28" /><p>Aucune vidéo pour votre rôle pour le moment.</p></div>
+    }
+    else
+    {
+        <div class="vh-raster">
+            @foreach (var v in videos)
+            {
+                var vorhanden = Vorhanden(v);
+                <article class="enote-card vh-karte @(vorhanden ? "" : "bald")">
+                    <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => offen = v">
+                        @if (PosterVorhanden(v))
+                        {
+                            <img src="@v.Poster" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span class="vh-bild-leer"><Icon Name="monitor" Groesse="34" /></span>
+                        }
+                        @if (vorhanden)
+                        {
+                            <span class="vh-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg></span>
+                        }
+                    </button>
+                    <div class="vh-text">
+                        <span class="vh-fuer">@v.Fuer</span>
+                        <h2>@v.Titel</h2>
+                        <p>@v.Beschreibung</p>
+                        @if (!vorhanden)
+                        {
+                            <span class="vh-bald">Bientôt disponible</span>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@if (offen is { } aktiv)
+{
+    <div class="lp-video-overlay" @onclick="() => offen = null">
+        <div class="lp-video-box" @onclick:stopPropagation="true">
+            <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => offen = null"><Icon Name="x" Groesse="20" /></button>
+            <video src="@aktiv.Url" poster="@(PosterVorhanden(aktiv) ? aktiv.Poster : null)" controls autoplay playsinline></video>
+        </div>
+    </div>
+}
+
+@code {
+    private List<VideoKatalog.LernVideo> videos = [];
+    private VideoKatalog.LernVideo? offen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
+        // Besitzer: eigenes Video zuerst, dann das des Kassierers. Admin/Responsable: alle in Lernreihenfolge.
+        var plattform = user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin)
+                        || user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.ProduktOwner);
+        var sichtbar = VideoKatalog.Videos.Where(v => v.DarfSehen(user));
+        videos = (plattform ? sichtbar : sichtbar.Reverse()).ToList();
+    }
+
+    private bool Vorhanden(VideoKatalog.LernVideo v)
+        => File.Exists(Path.Combine(umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private bool PosterVorhanden(VideoKatalog.LernVideo v)
+        => umgebung.WebRootFileProvider.GetFileInfo(v.Poster).Exists;
+}

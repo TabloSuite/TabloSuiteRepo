@@ -22,7 +22,7 @@ public partial class Caisse(
     AuthenticationStateProvider authStateProvider,
     NavigationManager navigationManager,
     FinanzService finanzService,
-    IJSRuntime js) : IDisposable
+    IJSRuntime js) : IAsyncDisposable
 {
     private enum ZahlModus { Bar, Karte, MobileMoney, Mixte }
 
@@ -550,6 +550,27 @@ public partial class Caisse(
         _ = SendeTicketAnDisplayAsync();
     }
 
+    private DotNetObjectReference<Caisse>? scannerRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        scannerRef = DotNetObjectReference.Create(this);
+        try { await js.InvokeVoidAsync("enoteScanner.start", scannerRef); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { /* ohne JS: Suchfeld genügt */ }
+    }
+
+    /// <summary>Scanner hat einen Code geliefert, während kein Eingabefeld den Fokus hatte.</summary>
+    [JSInvokable]
+    public Task ScanErkannt(string code) => InvokeAsync(() =>
+    {
+        if (aktiveSitzung is null || string.IsNullOrWhiteSpace(code)) return;
+        var treffer = leistungen.FirstOrDefault(l => string.Equals(l.StrichCode, code.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (treffer is null) toast.ZeigeFehler($"Code-barres inconnu : « {code.Trim()} ».");
+        else FuegeHinzu(treffer);
+        StateHasChanged();
+    });
+
     private void HandleSuchTaste(KeyboardEventArgs e)
     {
         if (e.Key != "Enter" || string.IsNullOrWhiteSpace(suchtext))
@@ -890,7 +911,16 @@ public partial class Caisse(
 
     private void HandleAnzeigeStateChanged() => _ = InvokeAsync(StateHasChanged);
 
-    public void Dispose() => anzeigeState.OnChange -= HandleAnzeigeStateChanged;
+    public async ValueTask DisposeAsync()
+    {
+        anzeigeState.OnChange -= HandleAnzeigeStateChanged;
+        if (scannerRef is not null)
+        {
+            try { await js.InvokeVoidAsync("enoteScanner.stop"); }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
+            scannerRef.Dispose();
+        }
+    }
 
     // ================= Hilfen =================
 

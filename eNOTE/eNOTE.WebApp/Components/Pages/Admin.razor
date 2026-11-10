@@ -34,6 +34,10 @@
                 <Authorized>
                     <button class="enote-tab @(aktiverTab == "tarifs" ? "aktiv" : "")" @onclick='() => WechsleTab("tarifs")'>Tarifs</button>
                     <button class="enote-tab @(aktiverTab == "mobilemoney" ? "aktiv" : "")" @onclick='() => WechsleTab("mobilemoney")'>Mobile Money</button>
+                    @if (istErsterAdmin)
+                    {
+                        <button class="enote-tab @(aktiverTab == "administrateurs" ? "aktiv" : "")" @onclick='() => WechsleTab("administrateurs")'>Administrateurs</button>
+                    }
                 </Authorized>
             </AuthorizeView>
         </div>
@@ -289,6 +293,10 @@
                     </div>
                 </Authorized>
             </AuthorizeView>
+        }
+        else if (aktiverTab == "administrateurs" && istErsterAdmin)
+        {
+            <AdminKontenVerwaltung />
         }
         else if (aktiverTab == "tarifs")
         {

@@ -77,6 +77,7 @@ public class LeerzustandUiTests
         services.AddSingleton(_ => new EmailService(new ConfigurationBuilder().Build(), factory, NullLogger<EmailService>.Instance));
         services.AddSingleton<LadeZustand>();
         services.AddScoped<AdminService>();
+        services.AddScoped(_ => new AdminKontenService(factory, null!));
         services.AddSingleton<ProduktOwnerService>();
         services.AddSingleton<PoAbrechnungService>();
         services.AddSingleton(sp => new PreisAnpassungService(factory, TimeProvider.System));
