@@ -1,4 +1,4 @@
-@page "/aide/videos"
+﻿@page "/aide/videos"
 @attribute [Authorize]
 @using ENote.WebApp.Services
 @inject AuthenticationStateProvider authStateProvider
@@ -28,7 +28,7 @@
                     <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => offen = v">
                         @if (PosterVorhanden(v))
                         {
-                            <img src="@v.Poster" alt="" loading="lazy" />
+                            <img src="@PosterUrl(v)" alt="" loading="lazy" />
                         }
                         else
                         {
@@ -59,7 +59,7 @@
     <div class="lp-video-overlay" @onclick="() => offen = null">
         <div class="lp-video-box" @onclick:stopPropagation="true">
             <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => offen = null"><Icon Name="x" Groesse="20" /></button>
-            <video src="@aktiv.Url" poster="@(PosterVorhanden(aktiv) ? aktiv.Poster : null)" controls autoplay playsinline></video>
+            <video src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline></video>
         </div>
     </div>
 }
@@ -80,6 +80,12 @@
 
     private bool Vorhanden(VideoKatalog.LernVideo v)
         => File.Exists(Path.Combine(umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private string VideoUrl(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion(v.Url, Path.Combine(umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private string PosterUrl(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion(v.Poster, Path.Combine(umgebung.WebRootPath, v.Poster.Replace('/', Path.DirectorySeparatorChar)));
 
     private bool PosterVorhanden(VideoKatalog.LernVideo v)
         => umgebung.WebRootFileProvider.GetFileInfo(v.Poster).Exists;

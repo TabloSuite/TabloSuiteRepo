@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ENote.Core.DataModels.Identity;
 
 namespace ENote.WebApp.Services;
@@ -34,6 +34,13 @@ public static class VideoKatalog
         new("enote-admin.mp4", "Piloter la plateforme",
             "Valider les inscriptions, tarifs, facturation, annonces et e-mails.", "Administrateur", Plattform),
     ];
+
+    /// <summary>
+    /// Adresse mit Versionsnummer aus dem Dateidatum („?v=…“): nach einem Deploy lädt der Browser
+    /// sofort die neue Fassung statt der zwischengespeicherten.
+    /// </summary>
+    public static string MitVersion(string url, string? pfad)
+        => pfad is not null && File.Exists(pfad) ? $"{url}?v={File.GetLastWriteTimeUtc(pfad).Ticks:x}" : url;
 
     public static LernVideo? Finde(string datei) => Videos.FirstOrDefault(v => string.Equals(v.Datei, datei, StringComparison.OrdinalIgnoreCase));
 
