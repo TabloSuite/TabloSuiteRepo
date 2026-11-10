@@ -30,7 +30,7 @@
                                 </Authorized>
                             </AuthorizeView>
                             <div class="enote-usermenu">
-                                <button class="enote-avatar-btn" @onclick="() => userMenuOffen = !userMenuOffen" aria-label="Mon compte" aria-expanded="@userMenuOffen">
+                                <button class="enote-avatar-btn" @onclick="ToggleUserMenuAsync" aria-label="Mon compte" aria-expanded="@userMenuOffen">
                                     <span class="enote-avatar">@Initialen(context.User.Identity?.Name)</span>
                                     <Icon Name="chevron-down" Groesse="16" CssClass="enote-avatar-chevron" />
                                 </button>
@@ -42,6 +42,14 @@
                                             <span>@context.User.Identity?.Name</span>
                                         </div>
                                         <a class="enote-usermenu-link" href="/profil" @onclick="() => userMenuOffen = false"><Icon Name="user" Groesse="18" /> Mon profil</a>
+                                        <div class="enote-theme-wahl" role="radiogroup" aria-label="Apparence">
+                                            <span class="enote-theme-titel">Apparence</span>
+                                            <div class="enote-theme-optionen">
+                                                <button type="button" role="radio" aria-checked="@(themeModus == "light")" class="@(themeModus == "light" ? "aktiv" : "")" @onclick='() => SetzeThemeAsync("light")'><Icon Name="sun" Groesse="16" /> Clair</button>
+                                                <button type="button" role="radio" aria-checked="@(themeModus == "dark")" class="@(themeModus == "dark" ? "aktiv" : "")" @onclick='() => SetzeThemeAsync("dark")'><Icon Name="moon" Groesse="16" /> Sombre</button>
+                                                <button type="button" role="radio" aria-checked="@(themeModus == "auto")" class="@(themeModus == "auto" ? "aktiv" : "")" @onclick='() => SetzeThemeAsync("auto")'><Icon Name="monitor" Groesse="16" /> Auto</button>
+                                            </div>
+                                        </div>
                                         <a class="enote-usermenu-link" href="https://tablosuite.com" target="_blank" rel="noopener noreferrer"><Icon Name="help" Groesse="18" /> Aide &amp; contact</a>
                                         <form method="post" action="/auth/logout">
                                             <AntiforgeryToken />
@@ -94,6 +102,25 @@
 <Toast />
 
 @code {
+    private string themeModus = "auto";
+
+    private async Task ToggleUserMenuAsync()
+    {
+        userMenuOffen = !userMenuOffen;
+        if (userMenuOffen)
+        {
+            try { themeModus = await JS.InvokeAsync<string>("enoteLeseTheme"); }
+            catch (JSException) { themeModus = "auto"; }
+        }
+    }
+
+    private async Task SetzeThemeAsync(string modus)
+    {
+        themeModus = modus;
+        try { await JS.InvokeVoidAsync("enoteSetzeTheme", modus); }
+        catch (JSException) { }
+    }
+
     private bool userMenuOffen;
     private DotNetObjectReference<MainLayout>? selfRef;
 

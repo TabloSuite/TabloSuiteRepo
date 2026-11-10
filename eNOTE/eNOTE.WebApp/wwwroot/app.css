@@ -35,6 +35,18 @@
     --enote-warning-soft: #fdf3e3;
 
     /* Zahlarten */
+    --enote-primary-text: var(--enote-primary);
+    --enote-heading-accent: var(--enote-primary-dark);
+    --enote-accent-text: #0f766e;
+    --enote-danger-text: #a1281c;
+    --enote-danger-border: #fecaca;
+    --enote-warning-text: #92400e;
+    --enote-warning-border: #fde68a;
+    color-scheme: light;
+    --enote-glass: rgba(255, 255, 255, .85);
+    --enote-glass-strong: rgba(255, 255, 255, .94);
+    --enote-inverse-bg: var(--enote-text);
+    --enote-inverse-text: #fff;
     --enote-pay-bar: #0d9488;
     --enote-pay-karte: #2547b8;
     --enote-pay-momo: #d97706;
@@ -175,7 +187,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .auth-form input {
     width: 100%; padding: .85rem 1.1rem; font-size: 1rem;
     border: 1px solid var(--enote-border); border-radius: var(--enote-radius-pill);
-    background: #ffffff; color: var(--enote-text);
+    background: var(--enote-surface); color: var(--enote-text);
     box-shadow: 0 1px 3px rgba(23, 37, 84, .06);
     transition: box-shadow .2s, border-color .2s;
 }
@@ -201,17 +213,17 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .alert { padding: .8rem 1rem; border-radius: var(--enote-radius); font-size: .9rem; font-weight: 600; }
 .alert-error { background: var(--enote-danger-soft); color: var(--enote-danger); border: 1px solid #f6caca; }
 .alert-success { background: var(--enote-success-soft); color: var(--enote-success); border: 1px solid #b7e4cd; }
-.alert-info { background: var(--enote-primary-soft); color: var(--enote-primary); border: 1px solid #cdd8fb; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.alert-info { background: var(--enote-primary-soft); color: var(--enote-primary-text); border: 1px solid #cdd8fb; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 
 /* Hinweis-Dialog: offene Kasse wiederhergestellt */
 .enote-wiederhergestellt { display: grid; gap: .7rem; }
 .enote-wiederhergestellt-text { margin: 0; color: var(--enote-text); font-weight: 600; }
 .enote-wiederhergestellt-zeile { display: flex; justify-content: space-between; align-items: center; gap: .8rem; background: var(--enote-surface); padding: .7rem 1rem; border-radius: var(--enote-radius); box-shadow: var(--enote-neu-in); }
 .enote-wiederhergestellt-zeile span { color: var(--enote-text-muted); font-weight: 600; }
-.enote-wiederhergestellt-soll strong { color: var(--enote-primary); font-size: 1.15rem; }
+.enote-wiederhergestellt-soll strong { color: var(--enote-primary-text); font-size: 1.15rem; }
 
 .auth-footer { margin-top: 1.4rem; font-size: .9rem; color: var(--enote-text-muted); text-align: center; }
-.auth-footer a { color: var(--enote-primary-dark); font-weight: 700; text-decoration: none; }
+.auth-footer a { color: var(--enote-heading-accent); font-weight: 700; text-decoration: none; }
 .auth-footer a:hover { text-decoration: underline; }
 
 /* Handy: Hero ausblenden, Formular zentrieren */
@@ -264,7 +276,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     transition: background .15s ease, color .15s ease;
 }
 .enote-nav-link:hover { background: var(--enote-surface-2); color: var(--enote-text); }
-.enote-nav-link.active { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.enote-nav-link.active { background: var(--enote-primary-soft); color: var(--enote-primary-text); }
 .enote-nav-link.active .enote-icon { color: var(--enote-primary-light); }
 .enote-nav-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -299,7 +311,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     height: var(--enote-topbar-h);
     display: flex; align-items: center; gap: 1rem;
     padding: 0 1.5rem;
-    background: rgba(255, 255, 255, .85); backdrop-filter: saturate(160%) blur(10px);
+    background: var(--enote-glass); backdrop-filter: saturate(160%) blur(10px);
     border-bottom: 1px solid var(--enote-border);
 }
 .enote-topbar-brand { display: none; align-items: center; gap: .6rem; text-decoration: none; }
@@ -364,7 +376,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     height: 4rem; padding: 0 clamp(1rem, 4vw, 2.5rem);
-    background: rgba(255, 255, 255, .85); backdrop-filter: saturate(160%) blur(10px);
+    background: var(--enote-glass); backdrop-filter: saturate(160%) blur(10px);
     border-bottom: 1px solid var(--enote-border);
 }
 .enote-public-topbar .enote-topbar-brand { display: flex; }
@@ -417,7 +429,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     color: var(--enote-text); text-decoration: none; font-size: .78rem; font-weight: 600; text-align: center;
 }
 .enote-sheet-link-ico { color: var(--enote-primary-light); }
-.enote-sheet-link.active { background: var(--enote-primary-soft); border-color: #c9d4fb; color: var(--enote-primary); }
+.enote-sheet-link.active { background: var(--enote-primary-soft); border-color: #c9d4fb; color: var(--enote-primary-text); }
 
 /* --- Kassen-Vollbild: Navigation und Topbar ausblenden --- */
 .enote-kassen-modus .enote-main { padding: 1rem 1.25rem; overflow: hidden; }
@@ -468,7 +480,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 1310;
         display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
         padding: .35rem .5rem calc(.35rem + env(safe-area-inset-bottom));
-        background: rgba(255, 255, 255, .94); backdrop-filter: saturate(160%) blur(12px);
+        background: var(--enote-glass-strong); backdrop-filter: saturate(160%) blur(12px);
         border-top: 1px solid var(--enote-border);
     }
     .enote-mnav-link {
@@ -478,7 +490,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
         text-decoration: none; font: inherit; font-size: .7rem; font-weight: 700; white-space: nowrap;
     }
     .enote-mnav-link .enote-icon { padding: .2rem .85rem; border-radius: 999px; box-sizing: content-box; transition: background .15s; }
-    .enote-mnav-link.active { color: var(--enote-primary); }
+    .enote-mnav-link.active { color: var(--enote-primary-text); }
     .enote-mnav-link.active .enote-icon { background: var(--enote-primary-soft); }
 
     .enote-btn { min-height: 44px; }
@@ -505,7 +517,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     box-shadow: var(--enote-neu-out-sm);
 }
 .enote-footer-monogram span { color: #5eead4; }
-.enote-footer-name { color: var(--enote-primary-dark); font-size: 1.05rem; font-weight: 800; text-decoration: none; }
+.enote-footer-name { color: var(--enote-heading-accent); font-size: 1.05rem; font-weight: 800; text-decoration: none; }
 .enote-footer-brand p { margin: .2rem 0 0; color: var(--enote-text-muted); font-size: .8rem; }
 .enote-footer-contacts { display: flex; flex-wrap: wrap; gap: .55rem; margin: 0; font-style: normal; min-width: 0; }
 .enote-footer-contacts a {
@@ -517,7 +529,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-footer-contacts a:hover { box-shadow: var(--enote-neu-out-sm); border-color: var(--enote-accent); }
 .enote-footer-contacts a > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .enote-footer-contacts small { display: block; margin-bottom: .15rem; color: var(--enote-text-muted); font-size: .68rem; }
-.enote-footer-icon { flex-shrink: 0; color: var(--enote-primary); font-size: 1.2rem; font-weight: 700; }
+.enote-footer-icon { flex-shrink: 0; color: var(--enote-primary-text); font-size: 1.2rem; font-weight: 700; }
 .enote-footer a:focus-visible { outline: 2px solid var(--enote-accent); outline-offset: 4px; border-radius: .5rem; }
 .enote-footer-bottom { flex-wrap: wrap; margin-top: .8rem; color: var(--enote-text-muted); font-size: .7rem; }
 @media (max-width: 1024px) {
@@ -637,7 +649,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-item { background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); padding: 1.1rem 1.2rem; display: grid; gap: .6rem; box-shadow: var(--enote-neu-out-sm); }
 .enote-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
 .enote-item-head strong { font-size: 1.02rem; }
-.enote-price { font-weight: 800; color: var(--enote-primary); }
+.enote-price { font-weight: 800; color: var(--enote-primary-text); }
 .enote-item-desc { margin: 0; color: var(--enote-text-muted); font-size: .9rem; }
 .enote-item-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .enote-item-actions { display: flex; gap: .5rem; margin-top: .25rem; }
@@ -645,14 +657,14 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-tag {
     display: inline-flex; align-items: center; gap: .3rem;
     font-size: .74rem; font-weight: 700; padding: .22rem .65rem; border-radius: 999px;
-    background: var(--enote-primary-soft); color: var(--enote-primary); white-space: nowrap;
+    background: var(--enote-primary-soft); color: var(--enote-primary-text); white-space: nowrap;
 }
 .enote-tag-warn { background: var(--enote-warning-soft); color: var(--enote-warning); }
 .enote-tag-off { background: var(--enote-surface-3); color: var(--enote-text-muted); }
 .enote-tag-ok { background: var(--enote-success-soft); color: var(--enote-success); }
 .enote-tag-bar { background: var(--enote-success-soft); color: var(--enote-pay-bar); }
 .enote-tag-karte { background: var(--enote-primary-soft); color: var(--enote-pay-karte); }
-.enote-tag-momo { background: #fef3e2; color: #b45309; }
+.enote-tag-momo { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
 .enote-tag-mixte { background: var(--enote-surface-3); color: var(--enote-text); }
 .enote-bestand { font-size: .85rem; color: var(--enote-text); }
 .enote-bestand-warn { color: var(--enote-warning); font-weight: 700; }
@@ -674,13 +686,13 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-form .checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--enote-primary); }
 
 /* CGU / AGB */
-.cgu-accept { padding: .6rem .9rem; background: #ffffff; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.cgu-accept { padding: .6rem .9rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
 .cgu-accept .checkbox { display: flex; align-items: flex-start; gap: .55rem; font-weight: 500; }
 .cgu-accept .checkbox input { width: 1.1rem; height: 1.1rem; margin-top: .15rem; accent-color: var(--enote-primary); flex-shrink: 0; }
 .cgu-link { background: none; border: none; padding: 0; color: var(--enote-primary-light); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .cgu-text { font-size: .9rem; color: var(--enote-text); line-height: 1.65; }
-.cgu-text h3 { margin: 0 0 .25rem; font-size: 1.15rem; color: var(--enote-primary-dark); }
-.cgu-text h4 { margin: 1.1rem 0 .3rem; font-size: .95rem; color: var(--enote-primary); }
+.cgu-text h3 { margin: 0 0 .25rem; font-size: 1.15rem; color: var(--enote-heading-accent); }
+.cgu-text h4 { margin: 1.1rem 0 .3rem; font-size: .95rem; color: var(--enote-primary-text); }
 .cgu-text p { margin: 0 0 .6rem; }
 .cgu-meta { color: var(--enote-text-muted); font-size: .82rem; }
 .enote-modal-wide { max-width: 720px; }
@@ -734,10 +746,10 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 /* Verwaltete Läden als separate Liste (unter PO-Auswahl) */
 .enote-po-salons-liste {
     margin-top: 1.25rem; padding: 1rem; border-radius: var(--enote-radius);
-    background: #f8fafc; border: 1px solid var(--enote-border);
+    background: var(--enote-surface-2); border: 1px solid var(--enote-border);
 }
 .enote-po-salons-items { display: grid; gap: .5rem; max-height: 18rem; overflow-y: auto; padding-right: .4rem; }
-.enote-po-salons-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; padding-bottom: .6rem; border-bottom: 1px solid var(--enote-border); font-size: .92rem; color: var(--enote-primary-dark); }
+.enote-po-salons-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; padding-bottom: .6rem; border-bottom: 1px solid var(--enote-border); font-size: .92rem; color: var(--enote-heading-accent); }
 .enote-filter-suche-sm { max-width: 200px; padding: .45rem .8rem; font-size: .85rem; }
 
 /* Filter-Chips (für Listen) */
@@ -752,7 +764,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-po-salon-item {
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: .6rem .85rem; border-radius: var(--enote-radius);
-    background: #ffffff; border: 1px solid #e2e8f0;
+    background: var(--enote-surface); border: 1px solid var(--enote-border);
     transition: all .15s ease;
 }
 .enote-po-salon-item:hover { border-color: var(--enote-primary-light); box-shadow: 0 2px 6px rgba(30, 58, 138, .08); }
@@ -760,11 +772,11 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-po-salon-name { font-weight: 600; font-size: .92rem; color: var(--enote-text); }
 .enote-po-salon-details { font-size: .78rem; color: var(--enote-text-muted); }
 .enote-tag-probe { background: #dbeafe; color: #1e40af; }
-.enote-tag-paid { background: #ecfdf5; color: #047857; }
+.enote-tag-paid { background: var(--enote-success-soft); color: var(--enote-success); }
 
 /* Salon-Karte (Admin): Schöne Karte mit Kopf, Body, Infos */
 .enote-salon-karte {
-    background: #ffffff; border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
     padding: 1.1rem 1.25rem; display: grid; gap: .85rem;
     box-shadow: 0 2px 8px rgba(23, 37, 84, .06);
     transition: box-shadow .18s ease, transform .18s ease;
@@ -772,10 +784,10 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-salon-karte:hover { box-shadow: 0 6px 20px rgba(30, 58, 138, .12); transform: translateY(-1px); }
 .enote-salon-karte-kopf { display: grid; gap: .55rem; }
 .enote-salon-karte-titel { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-.enote-salon-karte-titel strong { font-size: 1.1rem; color: var(--enote-primary-dark); }
-.enote-salon-karte-umsatz { font-weight: 800; font-size: 1.05rem; color: var(--enote-primary); }
+.enote-salon-karte-titel strong { font-size: 1.1rem; color: var(--enote-heading-accent); }
+.enote-salon-karte-umsatz { font-weight: 800; font-size: 1.05rem; color: var(--enote-primary-text); }
 .enote-salon-karte-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
-.enote-salon-karte-body { display: grid; gap: .5rem; padding: .75rem 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+.enote-salon-karte-body { display: grid; gap: .5rem; padding: .75rem 0; border-top: 1px solid var(--enote-surface-3); border-bottom: 1px solid var(--enote-surface-3); }
 .enote-salon-karte-info { display: flex; gap: .6rem; align-items: baseline; font-size: .9rem; }
 .enote-salon-karte-label { color: var(--enote-text-muted); font-weight: 600; min-width: 110px; flex-shrink: 0; }
 .enote-salon-karte-wert { color: var(--enote-text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
@@ -789,7 +801,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     border-left: 3px solid var(--enote-primary);
 }
 .enote-commissions-po { font-size: .92rem; color: var(--enote-text); }
-.enote-commissions-po strong { color: var(--enote-primary); font-weight: 700; }
+.enote-commissions-po strong { color: var(--enote-primary-text); font-weight: 700; }
 
 .enote-danger { color: var(--enote-danger); }
 .enote-danger-bg { background: var(--enote-danger); }
@@ -821,17 +833,17 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-display-pos { display: flex; justify-content: space-between; align-items: baseline; font-size: 1.15rem; padding: .4rem 0; }
 .enote-display-pos-name { font-weight: 600; }
 .enote-display-pos-sum { font-weight: 800; }
-.enote-display-rabatt { color: #047857; }
+.enote-display-rabatt { color: var(--enote-success); }
 .enote-display-trennlinie { border-top: 2px dashed var(--enote-border); margin: .5rem 0; }
 .enote-display-total {
     display: flex; justify-content: space-between; align-items: center;
     padding-top: .75rem; border-top: 2px solid var(--enote-border);
     font-size: 1.3rem;
 }
-.enote-display-total strong { font-size: 2.25rem; color: var(--enote-primary); }
+.enote-display-total strong { font-size: 2.25rem; color: var(--enote-primary-text); }
 .enote-display-merci { text-align: center; padding-top: 1.25rem; }
 .enote-display-merci-ico { font-size: 2.5rem; }
-.enote-display-merci p { margin: .25rem 0 0; font-size: 1.2rem; font-weight: 700; color: #047857; }
+.enote-display-merci p { margin: .25rem 0 0; font-size: 1.2rem; font-weight: 700; color: var(--enote-success); }
 .enote-display-rueckgeld { font-size: 1rem; color: var(--enote-text-muted); }
 
 /* Display-Dialog (QR-Code in der Kasse) */
@@ -844,21 +856,21 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 
 /* Roter Hinweis für Besitzer (ungelesene Meldungen) */
 .enote-hinweis-box {
-    background: #fef2f2; border: 1.5px solid #fecaca; border-radius: var(--enote-radius-lg);
+    background: var(--enote-danger-soft); border: 1.5px solid var(--enote-danger-border); border-radius: var(--enote-radius-lg);
     padding: 1rem 1.25rem; margin-bottom: 1.25rem; text-align: left;
     box-shadow: var(--enote-neu-out-sm);
 }
 .enote-hinweis-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: .6rem; color: #b91c1c; }
 .enote-hinweis-item {
     display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
-    padding: .55rem .75rem; background: #fff; border-radius: .7rem; margin-bottom: .4rem;
+    padding: .55rem .75rem; background: var(--enote-surface); border-radius: .7rem; margin-bottom: .4rem;
 }
 .enote-hinweis-item span { flex: 1; min-width: 12rem; font-size: .9rem; color: var(--enote-text); }
-.enote-hinweis-item .enote-tag-btn { border: 1px solid #fecaca; border-radius: 999px; padding: .25rem .7rem; color: #b91c1c; opacity: 1; }
+.enote-hinweis-item .enote-tag-btn { border: 1px solid var(--enote-danger-border); border-radius: 999px; padding: .25rem .7rem; color: #b91c1c; opacity: 1; }
 
 /* --- Favorit --- */
 .enote-favorit-box {
-    background: #fff; border: 1px solid #eef2f7; border-radius: 1rem;
+    background: var(--enote-surface); border: 1px solid var(--enote-surface-3); border-radius: 1rem;
     padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: grid; gap: .5rem;
 }
 .enote-favorit-box > label { font-weight: 600; font-size: .9rem; }
@@ -867,7 +879,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 
 /* --- Admin --- */
 .enote-section-title { font-size: 1.15rem; margin: 1.75rem 0 .85rem; }
-.enote-item-pending { border-color: #fde68a; background: #fffbeb; }
+.enote-item-pending { border-color: var(--enote-warning-border); background: var(--enote-warning-soft); }
 
 /* --- ProduktOwner-Zuweisung --- */
 .enote-zuweisung { margin-top: 1rem; border-top: 1px solid var(--enote-border); padding-top: 1rem; display: grid; gap: .5rem; max-height: 22rem; overflow-y: auto; padding-right: .4rem; }
@@ -879,22 +891,22 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-zuweisung h3 { margin: 0; font-size: 1rem; }
 .enote-zuweisung-row {
     display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-    padding: .5rem .75rem; border-radius: .6rem; background: #fafbff; border: 1px solid var(--enote-border);
+    padding: .5rem .75rem; border-radius: .6rem; background: var(--enote-surface-2); border: 1px solid var(--enote-border);
 }
 .enote-zuweisung-rechte { display: flex; gap: 1rem; }
 .enote-zuweisung-rechte .checkbox { font-size: .82rem; font-weight: 500; color: var(--enote-text-muted); }
 
 /* --- PO-Dashboard --- */
-.enote-po-umsatz { display: grid; gap: .3rem; padding: .6rem .75rem; background: #f8faff; border-radius: .6rem; }
+.enote-po-umsatz { display: grid; gap: .3rem; padding: .6rem .75rem; background: var(--enote-surface-2); border-radius: .6rem; }
 .enote-po-umsatz > div { display: flex; justify-content: space-between; font-size: .88rem; }
 .enote-po-umsatz span { color: var(--enote-text-muted); }
 .enote-po-provision { display: flex; justify-content: space-between; align-items: center; padding-top: .5rem; border-top: 1px dashed var(--enote-border); font-size: .85rem; }
 .enote-po-provision span { color: var(--enote-text-muted); }
-.enote-po-provision strong { color: #047857; }
+.enote-po-provision strong { color: var(--enote-success); }
 
 /* --- Ausgaben --- */
 .enote-kategorie-row { display: flex; gap: .6rem; margin-bottom: .75rem; }
-.enote-input-inline { flex: 1; min-width: 0; min-height: 2.6rem; padding: .55rem .85rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius); font-size: .95rem; }
+.enote-input-inline { flex: 1; min-width: 0; min-height: 2.6rem; padding: .55rem .85rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius); font-size: .95rem; background: var(--enote-surface); color: var(--enote-text); }
 .enote-input-inline:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
 .enote-kategorie-liste { display: flex; flex-wrap: wrap; gap: .4rem; }
 .enote-ausgaben-summe { margin-left: auto; font-size: .95rem; align-self: center; }
@@ -915,7 +927,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 /* --- Home --- */
 .enote-home { max-width: 40rem; margin: 3rem auto; text-align: center; }
 .enote-home h1 { font-size: 2.25rem; margin: 0 0 .5rem; }
-.enote-home-public h1 { font-size: 3rem; color: var(--enote-primary-dark); }
+.enote-home-public h1 { font-size: 3rem; color: var(--enote-heading-accent); }
 .enote-lead { font-size: 1.15rem; color: var(--enote-text-muted); margin: 0 0 .5rem; }
 .enote-home-actions { display: flex; gap: .75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
 .enote-home-actions .enote-btn { flex: 0 0 auto; }
@@ -972,13 +984,13 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-filter-row .checkbox { display: flex; align-items: center; gap: .4rem; }
 
 .enote-log-list { display: grid; gap: .75rem; }
-.enote-log-item { background: var(--enote-surface); border: 1px solid #fee2e2; border-left: 4px solid #dc2626; border-radius: .8rem; padding: .9rem 1.1rem; }
+.enote-log-item { background: var(--enote-surface); border: 1px solid var(--enote-danger-soft); border-left: 4px solid #dc2626; border-radius: .8rem; padding: .9rem 1.1rem; }
 .enote-log-item.behandelt { border-left-color: #9ca3af; opacity: .75; }
 .enote-log-head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .enote-log-zeit { font-size: .8rem; color: #6b7280; font-weight: 600; }
 .enote-log-msg { font-weight: 600; margin: .4rem 0; }
 .enote-log-trace {
-    background: #1f2937; color: #f9fafb; padding: .8rem; border-radius: .6rem;
+    background: #1f2937; color: var(--enote-surface-2); padding: .8rem; border-radius: .6rem;
     font-size: .75rem; overflow-x: auto; max-height: 16rem;
 }
 
@@ -1085,13 +1097,13 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 /* Kasse-Vorschau (rechts): Gruppen wie in der Kasse */
 .enote-vorschau-gruppe { margin-bottom: 1.25rem; }
 .enote-vorschau-gruppe-titel {
-    font-weight: 700; font-size: .95rem; color: var(--enote-primary-dark);
+    font-weight: 700; font-size: .95rem; color: var(--enote-heading-accent);
     padding-bottom: .45rem; border-bottom: 2px solid var(--enote-border); margin-bottom: .7rem;
 }
 .enote-vorschau-untertitel { font-weight: 600; font-size: .85rem; color: var(--enote-text-muted); margin: .6rem 0 .45rem; }
 .enote-vorschau-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .6rem; }
 .enote-vorschau-item {
-    background: #ffffff; border: 1px solid var(--enote-border); border-radius: var(--enote-radius);
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius);
     padding: .85rem 1rem; display: grid; gap: .55rem;
     box-shadow: 0 1px 4px rgba(23, 37, 84, .06);
     transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
@@ -1101,8 +1113,8 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     box-shadow: 0 4px 14px rgba(30, 58, 138, .12);
     transform: translateY(-1px);
 }
-.enote-vorschau-item-info strong { font-size: .95rem; color: var(--enote-primary-dark); }
-.enote-vorschau-item-info .enote-price { font-weight: 800; color: var(--enote-primary); }
+.enote-vorschau-item-info strong { font-size: .95rem; color: var(--enote-heading-accent); }
+.enote-vorschau-item-info .enote-price { font-weight: 800; color: var(--enote-primary-text); }
 .enote-vorschau-item-info { display: grid; gap: .15rem; }
 .enote-vorschau-item-aktionen { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem; align-items: center; }
 
@@ -1110,11 +1122,11 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-kategorie-btn {
     display: flex; align-items: center; justify-content: space-between; gap: .4rem;
     width: 100%; max-width: 100%; padding: .5rem .85rem; border: 1px solid var(--enote-border);
-    border-radius: var(--enote-radius-pill); background: #f8fafc; color: var(--enote-text);
+    border-radius: var(--enote-radius-pill); background: var(--enote-surface-2); color: var(--enote-text);
     font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s ease; text-align: left;
     min-width: 0; /* wichtig: verhindert Überlaufen bei langem Text */
 }
-.enote-kategorie-btn:hover { border-color: var(--enote-primary-light); background: #eef2f7; }
+.enote-kategorie-btn:hover { border-color: var(--enote-primary-light); background: var(--enote-surface-3); }
 .enote-kategorie-btn-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .enote-kategorie-btn-chevron { color: var(--enote-text-muted); font-size: .7rem; flex-shrink: 0; }
 
@@ -1125,7 +1137,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-zuordnung-option {
     display: flex; align-items: center; justify-content: space-between; gap: .6rem;
     width: 100%; padding: .7rem 1rem; border: 1px solid var(--enote-border);
-    border-radius: var(--enote-radius); background: #ffffff; color: var(--enote-text);
+    border-radius: var(--enote-radius); background: var(--enote-surface); color: var(--enote-text);
     font-size: .92rem; cursor: pointer; transition: all .15s ease; text-align: left;
 }
 .enote-zuordnung-option:hover { border-color: var(--enote-primary-light); box-shadow: 0 2px 8px rgba(30, 58, 138, .1); }
@@ -1139,7 +1151,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-typ-btn {
     display: flex; align-items: center; gap: .8rem; padding: .9rem 1rem;
     border: 2px solid var(--enote-border); border-radius: var(--enote-radius);
-    background: #ffffff; cursor: pointer; transition: all .18s ease; text-align: left;
+    background: var(--enote-surface); cursor: pointer; transition: all .18s ease; text-align: left;
 }
 .enote-typ-btn:hover { border-color: var(--enote-primary-light); box-shadow: 0 3px 10px rgba(30, 58, 138, .1); }
 .enote-typ-btn-aktiv {
@@ -1193,7 +1205,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     border-radius: .6rem; cursor: pointer; font-size: .92rem; color: var(--enote-text); transition: background .15s;
 }
 .enote-select2-option:hover { background: rgba(30, 58, 138, .08); }
-.enote-select2-option.aktiv { background: rgba(30, 58, 138, .12); font-weight: 700; color: var(--enote-primary); }
+.enote-select2-option.aktiv { background: rgba(30, 58, 138, .12); font-weight: 700; color: var(--enote-primary-text); }
 .enote-select2-leer { padding: .8rem; color: var(--enote-text-muted); font-size: .88rem; text-align: center; }
 
 /* --- DatePicker --- */
@@ -1226,7 +1238,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-datepicker-tag.heute { box-shadow: var(--enote-neu-in); font-weight: 700; }
 .enote-datepicker-tag.gewaehlt { background: var(--enote-gradient); color: #fff; font-weight: 800; }
 .enote-datepicker-aktionen { display: flex; justify-content: space-between; margin-top: .6rem; }
-.enote-datepicker-aktionen button { border: none; background: transparent; color: var(--enote-primary); font-weight: 700; font-size: .82rem; cursor: pointer; padding: .3rem .4rem; }
+.enote-datepicker-aktionen button { border: none; background: transparent; color: var(--enote-primary-text); font-weight: 700; font-size: .82rem; cursor: pointer; padding: .3rem .4rem; }
 
 /* Filter-Felder mit modernem DatePicker */
 .enote-filter-feld { display: grid; gap: .3rem; min-width: 11rem; }
@@ -1247,7 +1259,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     transition: color .15s ease, background .15s ease, box-shadow .15s ease;
 }
 .enote-tab:hover { color: var(--enote-text); }
-.enote-tab.aktiv { color: var(--enote-primary); background: var(--enote-surface); box-shadow: 0 1px 3px rgba(16, 26, 51, .1); }
+.enote-tab.aktiv { color: var(--enote-primary-text); background: var(--enote-surface); box-shadow: 0 1px 3px rgba(16, 26, 51, .1); }
 
 /* --- Filter-Leiste (Suche + Filter über Listen) --- */
 .enote-filter-leiste { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
@@ -1296,7 +1308,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 }
 .enote-landing-badge {
     display: inline-block; padding: .4rem 1rem; border-radius: 999px;
-    background: #e8eefc; color: var(--enote-primary-dark);
+    background: var(--enote-primary-soft); color: var(--enote-heading-accent);
     font-size: .8rem; font-weight: 700; margin-bottom: 1.25rem;
 }
 .enote-landing-hero h1 {
@@ -1333,7 +1345,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 }
 .enote-landing-cta h2 { margin: 0 0 .5rem; font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; }
 .enote-landing-cta p { margin: 0 0 1.5rem; opacity: .92; }
-.enote-landing-cta .enote-btn-primary { background: #fff; color: var(--enote-primary-dark); box-shadow: 0 10px 25px rgba(0,0,0,.2); }
+.enote-landing-cta .enote-btn-primary { background: #fff; color: var(--enote-heading-accent); box-shadow: 0 10px 25px rgba(0,0,0,.2); }
 
 @media (max-width: 640px) {
     .enote-landing-hero { padding: 2.25rem 1rem 2rem; }
@@ -1453,8 +1465,8 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     font: inherit; font-size: .7rem; font-weight: 700; cursor: pointer; transition: background .15s, color .15s;
 }
 .kx-aktion:hover { background: var(--enote-surface-2); color: var(--enote-text); }
-.kx-aktion-haupt { color: var(--enote-primary); background: var(--enote-primary-soft); }
-.kx-aktion-haupt:hover { background: #e0e7ff; color: var(--enote-primary-dark); }
+.kx-aktion-haupt { color: var(--enote-primary-text); background: var(--enote-primary-soft); }
+.kx-aktion-haupt:hover { background: var(--enote-primary-soft); color: var(--enote-heading-accent); }
 
 .kx-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 23.5rem; gap: .85rem; }
 
@@ -1485,7 +1497,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 }
 .kx-kat:hover { background: var(--enote-surface-2); }
 .kx-kat-punkt { width: .6rem; height: .6rem; border-radius: 50%; background: var(--kat); }
-.kx-kat.aktiv { background: var(--enote-text); border-color: var(--enote-text); color: #fff; }
+.kx-kat.aktiv { background: var(--enote-inverse-bg); border-color: var(--enote-inverse-bg); color: var(--enote-inverse-text); }
 .kx-kat.aktiv .kx-kat-punkt { box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
 .kx-unterkat {
     flex-shrink: 0; min-height: 2.3rem; padding: .3rem .85rem; border-radius: 999px; border: none;
@@ -1519,7 +1531,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .kx-kachel-fuss { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; }
-.kx-kachel-preis { font-weight: 800; color: var(--enote-primary); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: .25rem; }
+.kx-kachel-preis { font-weight: 800; color: var(--enote-primary-text); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: .25rem; }
 .kx-kachel-lager { order: -1; font-size: .7rem; font-weight: 800; color: var(--enote-warning); background: var(--enote-warning-soft); padding: .1rem .45rem; border-radius: 999px; }
 .kx-kachel.frei { border-style: dashed; border-color: var(--enote-border-strong); background: var(--enote-surface-2); }
 .kx-kachel.frei .kx-kachel-preis { color: var(--enote-text-muted); font-size: .86rem; }
@@ -1546,7 +1558,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .kx-ticket-griff { display: none; }
 .kx-ticket-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .9rem 1rem .6rem 1.15rem; }
 .kx-ticket-kopf h2 { margin: 0; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: .45rem; }
-.kx-ticket-anzahl { min-width: 1.5rem; height: 1.5rem; padding: 0 .4rem; border-radius: 999px; background: var(--enote-primary-soft); color: var(--enote-primary); font-size: .78rem; display: grid; place-items: center; }
+.kx-ticket-anzahl { min-width: 1.5rem; height: 1.5rem; padding: 0 .4rem; border-radius: 999px; background: var(--enote-primary-soft); color: var(--enote-primary-text); font-size: .78rem; display: grid; place-items: center; }
 .kx-ticket-leeren {
     display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .3rem .7rem; border: none; border-radius: var(--enote-radius-sm);
     background: transparent; color: var(--enote-danger); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
@@ -1581,7 +1593,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     border: 1px dashed var(--enote-border-strong); border-radius: 999px; background: var(--enote-surface);
     color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
 }
-.kx-rabatt-btn:hover { color: var(--enote-primary); border-color: var(--enote-primary-light); }
+.kx-rabatt-btn:hover { color: var(--enote-primary-text); border-color: var(--enote-primary-light); }
 .kx-rabatt-aktiv {
     display: flex; align-items: center; gap: .5rem; padding: .4rem .45rem .4rem .75rem;
     border-radius: var(--enote-radius); background: var(--enote-success-soft); color: var(--enote-success); font-size: .88rem; font-weight: 700;
@@ -1610,7 +1622,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     justify-self: center; display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .2rem .6rem;
     border: none; background: transparent; color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
 }
-.kx-mixte:hover { color: var(--enote-primary); }
+.kx-mixte:hover { color: var(--enote-primary-text); }
 
 /* Abgeschlossener Verkauf: Rückgeld bleibt groß sichtbar */
 .kx-fertig { min-height: 100%; display: grid; place-content: center; justify-items: center; gap: .45rem; text-align: center; padding: 1.5rem 1rem; animation: enote-modal-in .25s ease; }
@@ -1681,7 +1693,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .kx-ecart { display: flex; justify-content: space-between; align-items: center; padding: .7rem 1rem; border-radius: var(--enote-radius); font-weight: 700; }
 .kx-ecart strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .kx-ecart.null { background: var(--enote-success-soft); color: var(--enote-success); }
-.kx-ecart.plus { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.kx-ecart.plus { background: var(--enote-primary-soft); color: var(--enote-primary-text); }
 .kx-ecart.minus { background: var(--enote-danger-soft); color: var(--enote-danger); }
 
 .kx-frei-text { margin: 0 0 .75rem; font-size: .88rem; }
@@ -1741,7 +1753,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     .kx-ticket.offen { max-height: calc(100dvh - 5rem); }
     .kx-ticket-griff {
         display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 4.4rem; padding: .6rem 1rem;
-        border: none; background: var(--enote-text); color: #fff; font: inherit; font-weight: 700; cursor: pointer; flex-shrink: 0;
+        border: none; background: var(--enote-inverse-bg); color: var(--enote-inverse-text); font: inherit; font-weight: 700; cursor: pointer; flex-shrink: 0;
     }
     .kx-ticket-griff > span { display: inline-flex; align-items: center; gap: .45rem; flex: 1; text-align: left; }
     .kx-ticket-griff strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
@@ -1846,14 +1858,14 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .enote-saeule:hover .enote-saeule-balken, .enote-saeule:focus-visible .enote-saeule-balken { background: var(--enote-primary); }
 .enote-saeule-wert { position: absolute; bottom: calc(100% + .25rem); left: 50%; transform: translateX(-50%); font-size: .7rem; font-weight: 800; color: var(--enote-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .enote-saeule-tag { position: absolute; top: calc(100% + .35rem); font-size: .68rem; font-weight: 700; color: var(--enote-text-subtle); font-variant-numeric: tabular-nums; }
-.enote-saeule.heute .enote-saeule-tag { color: var(--enote-primary); }
+.enote-saeule.heute .enote-saeule-tag { color: var(--enote-primary-text); }
 .enote-saeule.sonntag .enote-saeule-tag { opacity: .6; }
 .enote-saeule-tipp {
     position: absolute; bottom: calc(100% - .5rem); left: 50%; transform: translateX(-50%); z-index: 5;
     display: none; gap: .1rem; padding: .45rem .65rem; border-radius: .6rem; white-space: nowrap; pointer-events: none;
-    background: var(--enote-text); color: #fff; box-shadow: var(--enote-shadow-lg); text-align: center;
+    background: var(--enote-inverse-bg); color: var(--enote-inverse-text); box-shadow: var(--enote-shadow-lg); text-align: center;
 }
-.enote-saeule-tipp small { color: rgba(255, 255, 255, .75); font-size: .72rem; }
+.enote-saeule-tipp small { color: inherit; opacity: .75; font-size: .72rem; }
 .enote-saeule:hover .enote-saeule-tipp, .enote-saeule:focus-visible .enote-saeule-tipp { display: grid; }
 .enote-saeule:first-child .enote-saeule-tipp { left: 0; transform: none; }
 .enote-saeule:last-child .enote-saeule-tipp { left: auto; right: 0; transform: none; }
@@ -1891,7 +1903,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     .enote-saeule-tag { font-size: .6rem; }
     .enote-saeule:nth-child(odd):not(:last-child) .enote-saeule-tag { visibility: hidden; }
 }
-.enote-landing-cta-btn { background: #fff; color: var(--enote-primary-dark); border-color: #fff; box-shadow: 0 10px 25px rgba(0, 0, 0, .2); }
+.enote-landing-cta-btn { background: #fff; color: var(--enote-heading-accent); border-color: #fff; box-shadow: 0 10px 25px rgba(0, 0, 0, .2); }
 .enote-landing-cta-btn:hover { background: var(--enote-primary-soft); }
 .enote-feature { border: 1px solid var(--enote-border); }
 
@@ -1905,7 +1917,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 .st-karte-kopf h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
 .st-karte-kopf p { margin: .2rem 0 0; color: var(--enote-text-muted); font-size: .88rem; }
 .st-ico { width: 2.6rem; height: 2.6rem; border-radius: .8rem; flex-shrink: 0; display: grid; place-items: center; background: var(--enote-primary-soft); color: var(--enote-primary-light); }
-.st-ico-momo { background: #fef3e2; color: var(--enote-pay-momo); }
+.st-ico-momo { background: var(--enote-warning-soft); color: var(--enote-pay-momo); }
 .st-ico-lock { background: var(--enote-warning-soft); color: var(--enote-warning); }
 .st-karte .enote-form input { max-width: none; }
 .st-karte .enote-form > .enote-btn { justify-self: start; }
@@ -2002,7 +2014,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
     border: none; border-radius: var(--enote-radius-sm); background: transparent; color: var(--enote-text); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; text-align: left;
 }
 .pr-kat:hover { background: var(--enote-surface-2); }
-.pr-kat.aktiv { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.pr-kat.aktiv { background: var(--enote-primary-soft); color: var(--enote-primary-text); }
 .pr-kat .enote-icon { color: var(--enote-text-subtle); }
 .pr-kat-auf { display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: .35rem; }
 .pr-kat-auf:hover { background: var(--enote-surface-3); }
@@ -2026,7 +2038,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 }
 .pr-karte:hover { border-color: var(--enote-border-strong); box-shadow: var(--enote-neu-out-sm); }
 .pr-karte.inaktiv { opacity: .6; }
-.pr-bild { --kat: var(--enote-border-strong); grid-area: bild; width: 3.5rem; height: 3.5rem; border-radius: .8rem; overflow: hidden; display: grid; place-items: center; background: color-mix(in srgb, var(--kat) 14%, white); color: var(--kat); font-weight: 900; font-size: .95rem; }
+.pr-bild { --kat: var(--enote-border-strong); grid-area: bild; width: 3.5rem; height: 3.5rem; border-radius: .8rem; overflow: hidden; display: grid; place-items: center; background: color-mix(in srgb, var(--kat) 14%, var(--enote-surface)); color: var(--kat); font-weight: 900; font-size: .95rem; }
 .pr-bild img { width: 100%; height: 100%; object-fit: cover; }
 .pr-info { grid-area: info; display: grid; gap: .3rem; min-width: 0; }
 .pr-titel { display: flex; align-items: center; gap: .35rem; min-width: 0; }
@@ -2039,7 +2051,7 @@ body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1re
 }
 button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(--enote-text); }
 .pr-preis { grid-area: preis; display: grid; justify-items: end; align-content: start; font-variant-numeric: tabular-nums; }
-.pr-preis strong { color: var(--enote-primary); font-size: 1.02rem; }
+.pr-preis strong { color: var(--enote-primary-text); font-size: 1.02rem; }
 .pr-preis small { font-size: .74rem; }
 .pr-aktionen { grid-area: aktionen; display: flex; justify-content: flex-end; gap: .35rem; }
 .pr-leer { display: grid; justify-items: center; gap: .6rem; padding: 2rem 1rem; }
@@ -2062,7 +2074,7 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 /* ============================================================
    Abonnement (ab-*) · Plattformtarif im Admin
    ============================================================ */
-.ab-hinweis { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; padding: .6rem .9rem; border-radius: var(--enote-radius); background: var(--enote-primary-soft); color: var(--enote-primary); font-weight: 700; font-size: .9rem; }
+.ab-hinweis { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; padding: .6rem .9rem; border-radius: var(--enote-radius); background: var(--enote-primary-soft); color: var(--enote-primary-text); font-weight: 700; font-size: .9rem; }
 .ab-formeln { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .8rem; align-items: stretch; }
 .ab-formel { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.15rem 1.1rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); }
 .ab-formel.empfohlen { border: 2px solid var(--enote-primary-light); box-shadow: 0 12px 28px rgba(37, 71, 184, .14); }
@@ -2089,11 +2101,11 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .ab-faellig strong { color: var(--enote-text); }
 .ab-faellig span { font-size: .86rem; }
 .ab-faellig.gesperrt { background: var(--enote-danger-soft); border-color: #f2c4c4; color: var(--enote-danger); }
-.ab-faellig-ico { width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .7); flex-shrink: 0; }
+.ab-faellig-ico { width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: var(--enote-glass); flex-shrink: 0; }
 .ab-abschnitt { display: grid; gap: .8rem; }
 .ab-abschnitt-kopf h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
 .ab-abschnitt-kopf p { margin: .2rem 0 0; font-size: .88rem; }
-.ab-formel .enote-btn[disabled] { opacity: 1; background: var(--enote-primary-soft); border-color: #cdd8fb; color: var(--enote-primary); cursor: default; }
+.ab-formel .enote-btn[disabled] { opacity: 1; background: var(--enote-primary-soft); border-color: #cdd8fb; color: var(--enote-primary-text); cursor: default; }
 .ab-rechnungen { display: grid; gap: .4rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); padding: .4rem; }
 .ab-rechnung { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 7.5rem; align-items: center; gap: .8rem; padding: .6rem .7rem; border-radius: var(--enote-radius); }
 .ab-rechnung:hover { background: var(--enote-surface-2); }
@@ -2111,7 +2123,7 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 /* --- Hinweis Kassensperre (Abo) --- */
 .enote-sperre { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .75rem .9rem; border-radius: var(--enote-radius-lg); background: var(--enote-warning-soft); border: 1px solid #f3d29b; color: var(--enote-warning); }
 .enote-sperre.gesperrt { background: var(--enote-danger-soft); border-color: #f2c4c4; color: var(--enote-danger); }
-.enote-sperre-ico { width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .7); flex-shrink: 0; }
+.enote-sperre-ico { width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; background: var(--enote-glass); flex-shrink: 0; }
 .enote-sperre-text { flex: 1 1 18rem; min-width: 0; font-size: .9rem; font-weight: 600; color: var(--enote-text); }
 .kx > .enote-sperre { flex-shrink: 0; }
 
@@ -2163,9 +2175,9 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 
 /* ---------- Rückerstattung ---------- */
 .kx-historie-zeile.storno { background: var(--enote-surface-2); border-style: dashed; }
-.kx-historie-zeile.storno strong { color: #a1281c; }
+.kx-historie-zeile.storno strong { color: var(--enote-danger-text); }
 .kx-historie-aktionen { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
-.kx-storno-tag { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; background: #fdecea; color: #a1281c; }
+.kx-storno-tag { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; background: var(--enote-danger-soft); color: var(--enote-danger-text); }
 .kx-storno-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .kx-storno-liste { display: grid; gap: .45rem; max-height: 34vh; overflow-y: auto; }
 .kx-storno-zeile { display: flex; align-items: center; gap: .75rem; padding: .55rem .75rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
@@ -2178,11 +2190,11 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .kx-storno-weg small { color: var(--enote-text-muted); font-weight: 500; }
 .kx-storno-weg.aktiv { border-color: var(--enote-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--enote-primary) 25%, transparent); }
 .kx-storno-weg:disabled { opacity: .45; cursor: not-allowed; }
-.kx-storno-summe { background: #fdecea; color: #a1281c; }
-.kx-storno-summe span { color: #a1281c; }
-.kx-storno-summe strong { color: #a1281c; font-size: 1.25rem; }
+.kx-storno-summe { background: var(--enote-danger-soft); color: var(--enote-danger-text); }
+.kx-storno-summe span { color: var(--enote-danger-text); }
+.kx-storno-summe strong { color: var(--enote-danger-text); font-size: 1.25rem; }
 .kx-abschluss-notiz { color: var(--enote-text-muted); font-size: .88rem; }
-.fi-verkauf.storno strong { color: #a1281c; }
+.fi-verkauf.storno strong { color: var(--enote-danger-text); }
 
 /* ---------- Remises ---------- */
 .rm-leiste { display: grid; gap: .75rem; margin-bottom: 1rem; }
@@ -2200,21 +2212,21 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .rm-karte.aus { background: var(--enote-surface-2); }
 .rm-karte.aus .rm-wert { background: var(--enote-surface-3); color: var(--enote-text-muted); }
 .rm-kopf { display: flex; align-items: center; gap: .85rem; min-width: 0; }
-.rm-wert { flex-shrink: 0; min-width: 4.6rem; padding: .55rem .7rem; border-radius: 14px; text-align: center; font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary); }
-.rm-wert.betrag { background: color-mix(in srgb, #0d9488 12%, transparent); color: #0f766e; }
+.rm-wert { flex-shrink: 0; min-width: 4.6rem; padding: .55rem .7rem; border-radius: 14px; text-align: center; font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary-text); }
+.rm-wert.betrag { background: color-mix(in srgb, #0d9488 12%, transparent); color: var(--enote-accent-text); }
 .rm-titel { display: grid; min-width: 0; }
 .rm-titel strong { font-size: 1.02rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rm-titel small { color: var(--enote-text-muted); }
 .rm-details { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; font-size: .88rem; color: var(--enote-text-muted); }
 .rm-details li { display: flex; align-items: center; gap: .45rem; min-width: 0; }
-.rm-details li.warn { color: #b45309; font-weight: 600; }
+.rm-details li.warn { color: var(--enote-warning-text); font-weight: 600; }
 .rm-fuss { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--enote-border); }
 .rm-aktionen { display: flex; gap: .3rem; }
 .rm-loeschen:hover { color: var(--enote-danger); background: color-mix(in srgb, var(--enote-danger) 10%, transparent); }
-.rm-vorschau { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border-radius: var(--enote-radius); background: color-mix(in srgb, var(--enote-primary) 6%, transparent); color: var(--enote-primary); font-size: .9rem; font-weight: 600; }
+.rm-vorschau { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border-radius: var(--enote-radius); background: color-mix(in srgb, var(--enote-primary) 6%, transparent); color: var(--enote-primary-text); font-size: .9rem; font-weight: 600; }
 .rm-leer { display: grid; justify-items: center; gap: .6rem; text-align: center; padding: 3rem 1.5rem; background: var(--enote-surface); border: 1px dashed var(--enote-border-strong); border-radius: var(--enote-radius-lg, 16px); }
 .rm-leer p { max-width: 28rem; margin: 0; }
-.rm-leer-icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary); }
+.rm-leer-icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary-text); }
 
 /* ---------- Dépenses ---------- */
 .dp-kopf-aktionen { display: flex; gap: .5rem; flex-wrap: wrap; }
@@ -2251,11 +2263,11 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .dp-zeile-info { display: grid; min-width: 0; flex: 1; }
 .dp-zeile-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-zeile-info small { color: var(--enote-text-muted); }
-.dp-betrag { font-variant-numeric: tabular-nums; white-space: nowrap; color: #a1281c; }
+.dp-betrag { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--enote-danger-text); }
 .dp-zeile-aktionen { display: flex; gap: .2rem; }
 .dp-upload { position: relative; display: flex; align-items: center; gap: .6rem; padding: .85rem 1rem; border: 1px dashed var(--enote-border-strong); border-radius: var(--enote-radius); color: var(--enote-text-muted); cursor: pointer; font-weight: 600; }
-.dp-upload:hover { border-color: var(--enote-primary); color: var(--enote-primary); }
-.dp-upload.gewaehlt { border-style: solid; border-color: #0d9488; color: #0f766e; background: color-mix(in srgb, #0d9488 8%, transparent); }
+.dp-upload:hover { border-color: var(--enote-primary); color: var(--enote-primary-text); }
+.dp-upload.gewaehlt { border-style: solid; border-color: #0d9488; color: var(--enote-accent-text); background: color-mix(in srgb, #0d9488 8%, transparent); }
 .dp-upload span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-chip-neu { border-style: dashed; }
 .dp-kat-neu { display: flex; gap: .5rem; margin-bottom: 1rem; }
@@ -2297,10 +2309,10 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .eq-name strong, .eq-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .eq-name small { color: var(--enote-text-muted); }
 .eq-status { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
-.eq-status.ok { background: color-mix(in srgb, #0d9488 12%, transparent); color: #0f766e; }
-.eq-status.warn { background: #fef3c7; color: #92400e; }
+.eq-status.ok { background: color-mix(in srgb, #0d9488 12%, transparent); color: var(--enote-accent-text); }
+.eq-status.warn { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
 .eq-rechte { display: flex; gap: .35rem; flex-wrap: wrap; }
-.eq-recht { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary); }
+.eq-recht { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary-text); }
 .eq-recht.neutral { background: var(--enote-surface-2); color: var(--enote-text-muted); }
 .eq-aktivitaet { display: grid; gap: .25rem; font-size: .85rem; color: var(--enote-text-muted); }
 .eq-aktivitaet span { display: flex; align-items: center; gap: .4rem; }
@@ -2316,7 +2328,7 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .eq-recht-zeile { display: flex; align-items: center; gap: .8rem; padding: .75rem .85rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
 .eq-recht-text { display: grid; flex: 1; min-width: 0; }
 .eq-recht-zeile small { color: var(--enote-text-muted); }
-.eq-recht-icon { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary); flex-shrink: 0; }
+.eq-recht-icon { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary-text); flex-shrink: 0; }
 
 /* ---------- Mon profil ---------- */
 .pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
@@ -2343,7 +2355,7 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .ad-kpi { display: grid; gap: .2rem; padding: .85rem 1rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); }
 .ad-kpi span { font-size: .76rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--enote-text-muted); }
 .ad-kpi strong { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.ad-kpi strong.warn { color: #b45309; }
+.ad-kpi strong.warn { color: var(--enote-warning-text); }
 .ad-liste { display: grid; gap: .45rem; margin-bottom: 1.5rem; }
 .ad-kopfzeile, .ad-zeile { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(0, .8fr) minmax(0, .8fr) 18.5rem; gap: 1rem; align-items: center; }
 .ad-kopfzeile { padding: 0 1rem; font-size: .74rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--enote-text-muted); }
@@ -2353,13 +2365,13 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .ad-laden { display: flex; align-items: center; gap: .7rem; min-width: 0; }
 .ad-laden > div { min-width: 0; }
 .ad-laden strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ad-avatar { flex-shrink: 0; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary); }
+.ad-avatar { flex-shrink: 0; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: color-mix(in srgb, var(--enote-primary) 9%, transparent); color: var(--enote-primary-text); }
 .ad-tags { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .15rem; }
 .ad-tag { font-size: .7rem; font-weight: 700; padding: .08rem .45rem; border-radius: 999px; background: var(--enote-surface-2); color: var(--enote-text-muted); }
-.ad-tag.warn { background: #fef3c7; color: #92400e; }
-.ad-tag.probe { background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary); }
-.ad-tag.paid { background: color-mix(in srgb, #0d9488 12%, transparent); color: #0f766e; }
-.ad-tag.off { background: #fdecea; color: #a1281c; }
+.ad-tag.warn { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+.ad-tag.probe { background: color-mix(in srgb, var(--enote-primary) 10%, transparent); color: var(--enote-primary-text); }
+.ad-tag.paid { background: color-mix(in srgb, #0d9488 12%, transparent); color: var(--enote-accent-text); }
+.ad-tag.off { background: var(--enote-danger-soft); color: var(--enote-danger-text); }
 .ad-person, .ad-meta { display: grid; min-width: 0; }
 .ad-person span, .ad-person small, .ad-meta small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ad-person small, .ad-meta small { color: var(--enote-text-muted); font-size: .82rem; }
@@ -2384,31 +2396,31 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .ds-laden span { color: var(--enote-text-muted); font-style: italic; }
 .ds-live { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .75rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: var(--enote-surface-2); color: var(--enote-text-muted); }
 .ds-live > span { width: .55rem; height: .55rem; border-radius: 50%; background: var(--enote-border-strong); }
-.ds-live.an { color: #0f766e; background: color-mix(in srgb, #0d9488 12%, transparent); }
+.ds-live.an { color: var(--enote-accent-text); background: color-mix(in srgb, #0d9488 12%, transparent); }
 .ds-live.an > span { background: #0d9488; animation: ds-puls 1.6s ease-in-out infinite; }
 @keyframes ds-puls { 50% { opacity: .35; } }
 .ds-willkommen, .ds-merci { grid-row: 2 / 4; display: grid; place-content: center; justify-items: center; gap: .8rem; text-align: center; }
 .ds-willkommen h1, .ds-merci h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; }
 .ds-willkommen p, .ds-merci p { margin: 0; font-size: 1.15rem; color: var(--enote-text-muted); }
-.ds-willkommen-icon, .ds-merci-icon { display: grid; place-items: center; width: 6rem; height: 6rem; border-radius: 50%; color: var(--enote-primary); background: color-mix(in srgb, var(--enote-primary) 10%, transparent); }
+.ds-willkommen-icon, .ds-merci-icon { display: grid; place-items: center; width: 6rem; height: 6rem; border-radius: 50%; color: var(--enote-primary-text); background: color-mix(in srgb, var(--enote-primary) 10%, transparent); }
 .ds-merci-icon { color: #fff; background: #0d9488; box-shadow: 0 12px 30px rgba(13, 148, 136, .35); }
 .ds-merci-total, .ds-merci-rueck { display: grid; gap: .1rem; }
 .ds-merci-total span, .ds-merci-rueck span { font-size: .85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--enote-text-muted); }
 .ds-merci-total strong { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ds-merci-rueck { padding: .8rem 1.6rem; border-radius: 18px; background: color-mix(in srgb, #0d9488 12%, transparent); }
-.ds-merci-rueck strong { font-size: 2rem; font-weight: 800; color: #0f766e; font-variant-numeric: tabular-nums; }
+.ds-merci-rueck strong { font-size: 2rem; font-weight: 800; color: var(--enote-accent-text); font-variant-numeric: tabular-nums; }
 .ds-ticket { display: grid; align-content: start; gap: .6rem; min-height: 0; }
 .ds-ticket h2 { display: flex; align-items: baseline; justify-content: space-between; margin: 0; font-size: 1.05rem; color: var(--enote-text-muted); }
 .ds-ticket h2 small { font-size: .9rem; font-weight: 600; }
 .ds-positionen { display: grid; gap: .35rem; max-height: 46vh; overflow-y: auto; }
 .ds-pos { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .8rem; align-items: center; padding: .7rem .9rem; border-radius: 14px; background: var(--enote-surface-2); font-size: clamp(1.05rem, 2vw, 1.3rem); animation: ds-rein .25s ease-out; }
 @keyframes ds-rein { from { opacity: 0; transform: translateY(6px); } }
-.ds-menge { font-weight: 800; color: var(--enote-primary); font-variant-numeric: tabular-nums; }
+.ds-menge { font-weight: 800; color: var(--enote-primary-text); font-variant-numeric: tabular-nums; }
 .ds-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-summe { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ds-summen { display: grid; gap: .4rem; }
 .ds-zeile { display: flex; justify-content: space-between; padding: 0 .4rem; font-size: 1.1rem; color: var(--enote-text-muted); }
-.ds-rabatt { color: #0f766e; font-weight: 700; }
+.ds-rabatt { color: var(--enote-accent-text); font-weight: 700; }
 .ds-total { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.4rem; border-radius: 20px; color: #fff; background: var(--enote-gradient); box-shadow: 0 14px 34px rgba(37, 71, 184, .3); }
 .ds-total span { font-size: 1.1rem; font-weight: 700; opacity: .9; }
 .ds-total strong { font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
@@ -2419,3 +2431,70 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
     .ad-kpi span { font-size: .64rem; }
     .ad-kpi strong { font-size: 1.2rem; }
 }
+
+/* ============================================================
+   Dunkelmodus – eigener, validierter Token-Satz (kein Invertieren).
+   Aktiv über <html data-theme="dark"> (Benutzerwahl oder Systemeinstellung).
+   ============================================================ */
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --enote-glass: rgba(18, 26, 44, .85);
+    --enote-glass-strong: rgba(18, 26, 44, .95);
+    --enote-inverse-bg: #e7ecf6;
+    --enote-inverse-text: #0b1220;
+    --enote-primary: #3b5bdb;
+    --enote-primary-dark: #2f4bc0;
+    --enote-primary-light: #5a7cf0;
+    --enote-primary-soft: #1a2550;
+    --enote-primary-text: #8ea8ff;
+    --enote-heading-accent: #c7d4ff;
+    --enote-accent: #14b8a6;
+    --enote-accent-soft: #0f2f2c;
+    --enote-accent-text: #5eead4;
+    --enote-gradient: linear-gradient(135deg, #1b3384 0%, #2a4fc4 62%, #0f8f86 135%);
+    --enote-pay-karte: #5b80f0; /* validiert gegen #121a2c (Kontrast ≥ 3:1, CVD-Abstand ok) */
+
+    --enote-bg: #0b1220;
+    --enote-surface: #121a2c;
+    --enote-surface-2: #182238;
+    --enote-surface-3: #1f2b45;
+    --enote-text: #e7ecf6;
+    --enote-text-muted: #9ba7bf;
+    --enote-text-subtle: #7a87a1;
+    --enote-border: #26324d;
+    --enote-border-strong: #34446a;
+
+    --enote-success: #34d399;
+    --enote-success-soft: #0f2e26;
+    --enote-danger: #dc2626;
+    --enote-danger-soft: #3b1d22;
+    --enote-danger-text: #fca5a5;
+    --enote-danger-border: #6b2a31;
+    --enote-warning: #f59e0b;
+    --enote-warning-soft: #3a2c12;
+    --enote-warning-text: #fcd34d;
+    --enote-warning-border: #6b5220;
+
+    --enote-neu-out: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 22px rgba(0, 0, 0, .35);
+    --enote-neu-out-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 8px rgba(0, 0, 0, .28);
+    --enote-shadow-lg: 0 24px 60px rgba(0, 0, 0, .55);
+    --enote-ring: 0 0 0 3px rgba(142, 168, 255, .35);
+}
+html[data-theme="dark"] img:not([src$=".svg"]) { filter: brightness(.92); }
+html[data-theme="dark"] .enote-bon-preview { background: #fff; color: #111; }
+html[data-theme="dark"] .enote-toggle-knob { background: #e7ecf6; }
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.85); }
+html[data-theme="dark"] .enote-pw-eye { filter: grayscale(1) brightness(1.6); }
+
+/* ---------- Thema-Auswahl im Benutzermenü ---------- */
+.enote-theme-wahl { display: grid; gap: .4rem; padding: .55rem .6rem .65rem; margin: .2rem 0; border-top: 1px solid var(--enote-border); border-bottom: 1px solid var(--enote-border); }
+.enote-theme-titel { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--enote-text-muted); }
+.enote-theme-optionen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem; padding: .2rem; border-radius: var(--enote-radius); background: var(--enote-surface-3); }
+.enote-theme-optionen button { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; padding: .45rem .3rem; border: none; border-radius: .6rem; background: none; color: var(--enote-text-muted); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.enote-theme-optionen button.aktiv { background: var(--enote-surface); color: var(--enote-text); box-shadow: var(--enote-neu-out-sm); }
+html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background-color: var(--enote-surface); color: var(--enote-text); border-color: var(--enote-border-strong); }
+html[data-theme="dark"] input::placeholder, html[data-theme="dark"] textarea::placeholder { color: var(--enote-text-subtle); }
+html[data-theme="dark"] .pr-bild { color: color-mix(in srgb, var(--kat) 50%, #fff); }
+html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe) 50%, #fff); }
+.pr-kat-neu .enote-input-inline { width: 0; }
+.pr-kat-neu .enote-btn, .pr-kat-neu button { flex-shrink: 0; }

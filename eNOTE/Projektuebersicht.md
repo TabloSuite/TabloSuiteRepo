@@ -75,6 +75,10 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 - Anbieter sind **Stammdaten, kein Enum** (`MobileMoneyAnbieter`: Name, Land, Markenfarbe, aktiv), gepflegt vom SuperAdmin unter Administration → „Mobile Money“; Startdaten für Togo, Bénin, Sénégal, Côte d'Ivoire, Burkina Faso, Mali per Migration. Ein Laden akzeptiert standardmäßig alle aktiven Anbieter seines Landes; der Besitzer kann in den Paramètres eine eigene Auswahl treffen (`Salon.MobileMoneyIndividuell` + `SalonMobileMoneyAnbieter`, leere Auswahl = kein Mobile Money). Validierung serverseitig beim Buchen.
 - Keine API-Anbindung an Aggregatoren (CinetPay, FedaPay …): der Kassierer bestätigt nach Eingang der SMS. Kundentelefonnummern werden bewusst nicht gespeichert.
 
+### Dunkelmodus
+- Benutzermenü → „Apparence“: Clair / Sombre / Auto (folgt dem System). Gespeichert in `localStorage` (`enote-theme`), gesetzt per Inline-Skript in `App.razor` vor dem ersten Zeichnen (`<html data-theme>`), damit nichts aufblitzt.
+- Farben nur über Tokens in `app.css` (`:root` hell, `html[data-theme="dark"]` dunkel; u. a. `--enote-primary-text`, `--enote-danger-text`, `--enote-warning-text`, `--enote-accent-text`, `--enote-glass`, `--enote-inverse-bg`). Neue Styles bitte ohne fest codierte Hellfarben. Zahlungsfarben im Dunkelmodus validiert (Karte `#5b80f0`). Der Bon bleibt immer weiß (Papier).
+
 ### Bon & Druck
 - `/bon/{id}` → PDF (QuestPDF, 80mm, Logo, QR). `/bon/{id}/druck` → HTML-Druckansicht (80mm, QR, ruft `window.print()`).
 - **Kein QZ Tray / keine lokale Zusatzsoftware** (festgelegte Regel). Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe `eNOTE/Bon-Drucken.md` und `eNOTE/Start-Kasse.ps1`.
