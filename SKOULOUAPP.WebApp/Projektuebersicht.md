@@ -67,6 +67,7 @@ In Development meldet der Start offene Modelländerungen ohne Migration. Ein erf
 | Rolle | Hauptbereich |
 |---|---|
 | `Schüler` | Freigeschaltete Lektionen, Übungen, Lehrerunterlagen, Prüfungen, Quizze und eigene Fortschritte. |
+| `Eltern` | Espace parents (`/parents`): veröffentlichte Bulletins, Anwesenheit, Schulgebühren und Reçus der von der Direktion verknüpften Kinder (nur lesend). |
 | `Lehrer` | Pädagogischer Bereich: Schülerfortschritt, Lektionen, Unterrichtsmaterial, Prüfungen und Quizze. |
 | `SchulLeiter` | Lehrerrechte plus Schulverwaltung, Klassen-Governance, Finanzen und Abrechnung der eigenen Schule. |
 | `Koordinator` | Schulbezogene Verwaltung; Finanz-Tabs werden von der Schulleitung pro Schulzuordnung freigegeben. |
@@ -95,7 +96,7 @@ In Development meldet der Start offene Modelländerungen ohne Migration. Ein erf
 
 ## Fachmodell und Persistenz
 
-`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den Anwendungsdaten. Migrationen liegen unter `SKOULOUAPP.WebApp/Migrations`; maßgeblich für die jeweilige Datenbank ist `__EFMigrationsHistory`. Im aktuellen Quellstand liegen 18 Migrationen von `20261002111952_InitialMigration` bis `20261110213013_AllgemeinesBulletin` (lokal auf `localhost / SKOULOUAPPDB` angewendet, Azure unverändert). Die letzte Migration schlägt bewusst fehl, wenn ein Schulkonto noch mehrere Schulen hat – vor einer Azure-Anwendung mit `SELECT AppUserId FROM UserSchools WHERE IstPlattformZuordnung = 0 GROUP BY AppUserId HAVING COUNT(*) > 1` prüfen. Modelländerungen erfordern eine neue EF-Migration; ein erfolgreicher Build allein ändert das SQL-Schema nicht.
+`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den Anwendungsdaten. Migrationen liegen unter `SKOULOUAPP.WebApp/Migrations`; maßgeblich für die jeweilige Datenbank ist `__EFMigrationsHistory`. Im aktuellen Quellstand liegen 19 Migrationen von `20261002111952_InitialMigration` bis `20261110223341_ElternZugang` (lokal auf `localhost / SKOULOUAPPDB` angewendet, Azure unverändert). Die letzte Migration schlägt bewusst fehl, wenn ein Schulkonto noch mehrere Schulen hat – vor einer Azure-Anwendung mit `SELECT AppUserId FROM UserSchools WHERE IstPlattformZuordnung = 0 GROUP BY AppUserId HAVING COUNT(*) > 1` prüfen. Modelländerungen erfordern eine neue EF-Migration; ein erfolgreicher Build allein ändert das SQL-Schema nicht.
 
 Die Kette umfasst neben dem Koordinatorrecht `CanAccessBilling` die Unterrichtsgrundlagen, Schul-Dokumentstammdaten, Stundenpläne, Bewertungen, Bulletin-Ausgaben und -Gestaltung, Notenhistorie, endgültige Bulletins und Berichtigungen sowie die automatische Zyklusteilnahme und Commit-Belege der Benutzeranlage. Die letzten Migrationen sind:
 
@@ -105,6 +106,7 @@ Die Kette umfasst neben dem Koordinatorrecht `CanAccessBilling` die Unterrichtsg
 | `20261102162907_BenutzerVorgangsBestaetigung` | Ergänzt die Tabelle für Commit-Belege atomarer Benutzervorgänge. |
 | `20261102170932_SchulbezogeneKlassenOhneSprachgruppen` | Entfernt die historische Spalte `Klassen.CEFRGroup`. |
 | `20261110202806_EineSchuleProKonto` | `UserSchools.IstPlattformZuordnung`, eindeutige Indizes „eine Schule pro Konto“ und „ein Schülerprofil pro Konto“. |
+| `20261110223341_ElternZugang` | Tabelle `ElternKind` (Elternkonto ↔ Schüler derselben Schule). Die Rolle `Eltern` legt das Seed beim Start an. |
 | `20261110213013_AllgemeinesBulletin` | Layout-Schalter der Bulletin-Vorlage (bestehende Vorlagen: übliche Blöcke an), `Fach.Gruppe/Reihenfolge`, `School.DokumentDirection/DokumentStatut`, `StudentProfile.Nationalitaet/IstInterne/IstAffecte`, Tabelle `KlassenratEntscheidung`. |
 
 **Wichtig bei bestehenden Datenbanken:** Vor einer Aktualisierung Zielumgebung, angewandte Historie und ausstehendes SQL prüfen, Wiederherstellbarkeit und App-Kompatibilität sicherstellen. Vor dem Entfernen von `Klassen.CEFRGroup` noch benötigte historische Werte separat mit Klassen-ID sichern; die `Down`-Migration erstellt nur eine leere Spalte und rekonstruiert keine Werte. Keine Migrationskette ersetzen und kein Drop/Reset zur Fehlerbehebung. Diese Übersicht bestätigt keinen tatsächlich angewandten lokalen oder Azure-Migrationsstand.

@@ -88,6 +88,7 @@ public partial class TermsAcceptanceGuard
         if (user.IsInRole(Rollen.Koordinator)) return Rollen.Koordinator;
         if (user.IsInRole(Rollen.SchulLeiter)) return Rollen.SchulLeiter;
         if (user.IsInRole(Rollen.Lehrer)) return Rollen.Lehrer;
+        if (user.IsInRole(Rollen.Eltern)) return Rollen.Eltern;
         return Rollen.Schueler;
     }
 
@@ -96,6 +97,7 @@ public partial class TermsAcceptanceGuard
         Rollen.SchulLeiter or Rollen.Koordinator => "terms-school",
         Rollen.Lehrer => "terms-teacher",
         Rollen.ProduktOwner => "terms-owner",
+        Rollen.Eltern => "terms-parent",
         _ => "terms-student"
     };
 
@@ -105,6 +107,7 @@ public partial class TermsAcceptanceGuard
         Rollen.Koordinator => "Coordinateur",
         Rollen.Lehrer => "Enseignant",
         Rollen.ProduktOwner => "Responsable produit",
+        Rollen.Eltern => "Parent / tuteur",
         _ => "Élève"
     };
 
@@ -114,6 +117,7 @@ public partial class TermsAcceptanceGuard
         Rollen.Koordinator => "Vous assistez la direction sur les opérations pédagogiques et organisationnelles.",
         Rollen.Lehrer => "Vous publiez des leçons, exercices et évaluations pour les classes attribuées.",
         Rollen.ProduktOwner => "Vous suivez les écoles attribuées avec un accès de pilotage limité à votre périmètre.",
+        Rollen.Eltern => "Vous consultez les bulletins, absences et frais de scolarité des enfants liés à votre compte.",
         _ => "Vous consultez les contenus de votre classe selon les autorisations de votre école."
     };
 }

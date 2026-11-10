@@ -27,6 +27,13 @@
             </Authorized>
         </AuthorizeView>
 
+        <AuthorizeView Roles="Eltern" Context="elternState">
+            <Authorized>
+                <p class="sk-nav-section">Espace parents</p>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="parents" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="users" /><span>Mes enfants</span></NavLink>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Roles="SchulLeiter,Koordinator,SuperAdmin,ProduktOwner,Lehrer,Schüler" Context="espaceState">
             <Authorized>
                 @{
@@ -45,6 +52,7 @@
                     <NavLink class="sk-nav-link" ActiveClass="is-active" href="direction" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="grid" /><span>Tableau de bord</span></NavLink>
                     <NavLink class="sk-nav-link" ActiveClass="is-active" href="schulleiter" data-enhance-nav="false"><Icon Name="school" /><span>@(nurKoordinator ? "Espace coordination" : "Direction")</span></NavLink>
                     <NavLink class="sk-nav-link" ActiveClass="is-active" href="direction/enseignement" data-enhance-nav="false"><Icon Name="layers" /><span>Organisation des enseignements</span></NavLink>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="direction/parents" data-enhance-nav="false"><Icon Name="users" /><span>Accès parents</span></NavLink>
                 }
                 @if (direktion || user.IsInRole("Lehrer") || user.IsInRole("Schüler"))
                 {

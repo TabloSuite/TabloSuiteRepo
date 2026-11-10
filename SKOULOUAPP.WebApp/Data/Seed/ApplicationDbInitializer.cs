@@ -223,6 +223,13 @@ public static class ApplicationDbInitializer
             Description = "Accède aux cours, supports et activités de son établissement"
         };
 
+        var eltern = new Role
+        {
+            Name = Rollen.Eltern,
+            NormalizedName = "ELTERN",
+            Description = "Parent ou tuteur : consulte les bulletins, présences et frais de ses enfants"
+        };
+
         // SuperAdmin erhält alle Berechtigungen.
         foreach (var permission in permissions)
         {
@@ -260,7 +267,7 @@ public static class ApplicationDbInitializer
         var reportPermission = permissions.Single(x => x.Name == Berechtigungen.ReportsView);
         student.RolePermissions.Add(new RolePermission { Role = student, Permission = reportPermission, PermissionId = reportPermission.Id });
 
-        return [superAdmin, schulLeiter, koordinator, produktOwner, teacher, student];
+        return [superAdmin, schulLeiter, koordinator, produktOwner, teacher, student, eltern];
     }
 }
 

@@ -216,6 +216,7 @@ builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.DirektionsCockpitService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.QuittungService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.SchuelerkartenService>();
+builder.Services.AddScoped<SkoulouApp.WebApp.Services.ElternService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPruefungService>();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bulletin-verification", context =>
@@ -342,7 +343,7 @@ app.MapGet("/bulletins/{ausgabeID:guid}/pdf", async (Guid ausgabeID, ClaimsPrinc
         return bulletin is null ? Results.NotFound() : Results.File(pdf.Erzeugen(bulletin), "application/pdf", "bulletin-scolaire.pdf");
     }
     catch (UnauthorizedAccessException) { return Results.Forbid(); }
-}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Schueler));
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator, Rollen.Schueler, Rollen.Eltern));
 
 app.MapGet("/bulletins/sammelausgabe/{schulID:guid}/{periodeID:guid}/{klasseID:guid}/pdf", async (
     Guid schulID, Guid periodeID, Guid klasseID, ClaimsPrincipal user, HttpContext http,
@@ -684,6 +685,11 @@ app.MapPost("/auth/login/submit", async (
             && (string.IsNullOrWhiteSpace(returnUrl) || returnUrl == "/"))
         {
             return Results.LocalRedirect("/student");
+        }
+
+        if (roles.Contains(Rollen.Eltern) && (string.IsNullOrWhiteSpace(returnUrl) || returnUrl == "/"))
+        {
+            return Results.LocalRedirect("/parents");
         }
     }
 

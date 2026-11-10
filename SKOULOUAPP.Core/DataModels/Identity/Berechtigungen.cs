@@ -60,4 +60,6 @@ public static class Rollen
     public const string ProduktOwner = "ProduktOwner";
     public const string Lehrer = "Lehrer";
     public const string Schueler = "Schüler";
+    /// <summary>Elternteil/Erziehungsberechtigte: sieht nur die verknüpften Kinder seiner Schule.</summary>
+    public const string Eltern = "Eltern";
 }

@@ -26,7 +26,7 @@ public partial class DirektionsCockpit
         ("users", "Élèves et enseignants", "schulleiter"),
         ("clipboard-check", "Notes et évaluations", "notes"),
         ("timetable", "Emplois du temps", "emplois-du-temps"),
-        ("layers", "Organisation des enseignements", "direction/enseignement")
+        ("users", "Accès parents", "direction/parents")
     ];
 
     private string Heute => DateTime.Now.ToString("dddd d MMMM yyyy", Fr);

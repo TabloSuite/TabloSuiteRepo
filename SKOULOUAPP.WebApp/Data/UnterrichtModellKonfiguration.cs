@@ -82,6 +82,14 @@ internal static class UnterrichtModellKonfiguration
         profil.Property(x => x.Nationalitaet).HasMaxLength(80);
         modelBuilder.Entity<SkoulouApp.Core.DataModels.Schools.Fach>().Property(x => x.Gruppe).HasMaxLength(60);
 
+        // Eltern ↔ Kind (gleiche Schule); eine Verknüpfung je Paar.
+        var elternKind = modelBuilder.Entity<SkoulouApp.Core.DataModels.Schools.ElternKind>();
+        elternKind.HasIndex(x => new { x.ElternID, x.SchuelerID }).IsUnique();
+        elternKind.HasIndex(x => x.SchuelerID);
+        elternKind.HasIndex(x => x.SchulID);
+        elternKind.HasOne(x => x.Eltern).WithMany().HasForeignKey(x => x.ElternID).OnDelete(DeleteBehavior.Restrict);
+        elternKind.HasOne(x => x.Schueler).WithMany().HasForeignKey(x => x.SchuelerID).OnDelete(DeleteBehavior.Restrict);
+
         // Conseil de classe: eine Entscheidung je Schüler und Periode.
         var klassenrat = modelBuilder.Entity<KlassenratEntscheidung>();
         klassenrat.HasIndex(x => new { x.PeriodeID, x.JahresZuordnungID }).IsUnique();

@@ -18,7 +18,7 @@ public sealed record SchulgeldQuittung(string Nummer, string Schule, string? Adr
 
 /// <summary>
 /// Reçu de paiement für Schulgebühren (Raten oder Gesamtzahlung). Abrufen dürfen die Direktion,
-/// Koordinatoren mit Finanzrecht der Schule, SuperAdmin/ProduktOwner (lesend) und der Schüler selbst.
+/// Koordinatoren mit Finanzrecht der Schule, SuperAdmin/ProduktOwner (lesend), der Schüler selbst und seine verknüpften Eltern.
 /// </summary>
 public sealed class QuittungService(IDbContextFactory<ApplicationDbContext> factory)
 {
@@ -35,7 +35,7 @@ public sealed class QuittungService(IDbContextFactory<ApplicationDbContext> fact
         if (zahlung is null) return null;
 
         var schulID = zahlung.Durchlauf.SchulID;
-        if (zahlung.StudentId != benutzerID)
+        if (zahlung.StudentId != benutzerID && !await ElternService.IstElternteilVonAsync(db, benutzerID, zahlung.StudentId, token))
         {
             var zugriff = await new FinanzService(db).GetFinanceAccessAsync(benutzerID, schulID, cancellationToken: token);
             if (!zugriff.Menu || !(zugriff.Cycles || zugriff.Dashboard)) return null;

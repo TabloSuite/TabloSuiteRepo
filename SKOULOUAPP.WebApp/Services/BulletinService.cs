@@ -223,7 +223,10 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
         await MitgliedAsync(db, user, ausgabe.SchulID, token);
         var schueler = await db.UserRoles.AnyAsync(x => x.UserId == user
             && db.Roles.Any(r => r.Id == x.RoleId && r.Name == Rollen.Schueler), token);
-        if (!await IstDirektionAsync(db, user, token) && (!schueler || (!ausgabe.IstVeroeffentlicht && ausgabe.ErsetztDurchID == null) || ausgabe.JahresZuordnung.SchuelerID != user))
+        // Eigenes Bulletin (Schüler) oder Bulletin eines verknüpften Kindes (Eltern-Zugang).
+        var eigenesKind = schueler && ausgabe.JahresZuordnung.SchuelerID == user
+            || await ElternService.IstElternteilVonAsync(db, user, ausgabe.JahresZuordnung.SchuelerID, token);
+        if (!await IstDirektionAsync(db, user, token) && (!eigenesKind || (!ausgabe.IstVeroeffentlicht && ausgabe.ErsetztDurchID == null)))
             throw new UnauthorizedAccessException("Ce bulletin n'est pas accessible.");
         return JsonSerializer.Deserialize<BulletinSnapshot>(ausgabe.SnapshotJson);
     }

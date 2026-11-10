@@ -1835,6 +1835,46 @@ namespace SkoulouApp.WebApp.Migrations
                     b.ToTable("CommissionSettings");
                 });
 
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Schools.ElternKind", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Beziehung")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ElternID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ErstelltVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SchuelerID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchuelerID");
+
+                    b.HasIndex("SchulID");
+
+                    b.HasIndex("ElternID", "SchuelerID")
+                        .IsUnique();
+
+                    b.ToTable("ElternKind");
+                });
+
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Schools.Fach", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3711,6 +3751,25 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Schule");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Schools.ElternKind", b =>
+                {
+                    b.HasOne("SkoulouApp.Core.DataModels.Identity.AppUser", "Eltern")
+                        .WithMany()
+                        .HasForeignKey("ElternID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SkoulouApp.Core.DataModels.Identity.AppUser", "Schueler")
+                        .WithMany()
+                        .HasForeignKey("SchuelerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Eltern");
+
+                    b.Navigation("Schueler");
                 });
 
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Schools.Fach", b =>

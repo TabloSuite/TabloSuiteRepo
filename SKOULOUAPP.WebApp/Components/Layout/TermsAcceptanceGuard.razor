@@ -32,6 +32,19 @@
             </div>
 
             <div class="max-h-[40vh] space-y-5 overflow-y-auto pr-2 text-sm leading-6 text-slate-700 sm:max-h-[50vh]">
+                @if (currentRole == Rollen.Eltern)
+                {
+                    <section id="terms-parent" class="scroll-mt-4 rounded-2xl border border-sky-400 bg-sky-50 p-5">
+                        <h3 class="text-xl font-black text-sky-900">Parents et tuteurs</h3>
+                        <p class="mt-2">Votre compte a été créé par l'établissement de votre enfant. Il vous donne accès, en lecture seule, aux bulletins publiés, aux absences et retards, aux frais de scolarité et aux reçus des enfants que l'établissement a liés à votre compte.</p>
+                        <p class="mt-2">Gardez vos identifiants confidentiels : ne les partagez pas avec l'enfant ni avec d'autres personnes. Pour toute question sur les notes, les absences ou les paiements, adressez-vous à l'établissement.</p>
+                        <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-sky-900">
+                            <li>Accès limité aux enfants liés par l'établissement.</li>
+                            <li>Les données affichées sont celles enregistrées par l'établissement.</li>
+                            <li>En cas d'erreur, contactez la direction de l'établissement.</li>
+                        </ul>
+                    </section>
+                }
                 <section id="terms-student" class="scroll-mt-4 rounded-2xl border p-5 @(currentRole == Rollen.Schueler ? "border-emerald-400 bg-emerald-50" : "border-emerald-100 bg-emerald-50/60")">
                     <h3 class="text-xl font-black text-emerald-900">Élèves</h3>
                     <p class="mt-2">SKOULOU ne conclut pas de contrat directement avec vous. L'accès à la plateforme est organisé par votre école, avec laquelle vous ou votre représentant légal êtes liés.</p>
