@@ -72,7 +72,13 @@ public partial class UnterrichtsVerwaltung
         var daten = schuelerDaten.SingleOrDefault(x => x.SchuelerID == id);
         matrikelnummer = daten?.Matrikelnummer;
         geburtsort = daten?.Geburtsort;
+        nationalitaet = daten?.Nationalitaet;
+        istInterne = daten?.IstInterne ?? false;
+        istAffecte = daten?.IstAffecte ?? false;
     }
+
+    private string? nationalitaet;
+    private bool istInterne, istAffecte;
 
     private Task SpeichereDokumentAsync() => AktionAsync(async () =>
     {
@@ -82,7 +88,8 @@ public partial class UnterrichtsVerwaltung
 
     private Task SpeichereSchuelerAsync() => AktionAsync(async () =>
     {
-        await Verwaltung.SchuelerStammdatenSpeichernAsync(benutzerID, schulID, schuelerID, matrikelnummer, geburtsort, ComponentToken);
+        await Verwaltung.SchuelerStammdatenSpeichernAsync(benutzerID, schulID, schuelerID, matrikelnummer, geburtsort, ComponentToken,
+            nationalitaet ?? "", istInterne, istAffecte);
         schuelerDaten = await Verwaltung.SchuelerStammdatenAsync(benutzerID, schulID, ComponentToken);
         var daten = schuelerDaten.Single(x => x.SchuelerID == schuelerID);
         matrikelnummer = daten.Matrikelnummer;

@@ -23,6 +23,10 @@ public class School : AuditableModel
     public string? Ministerium { get; set; }
     public string? RepublikZeile { get; set; }
     public string? StaatsMotto { get; set; }
+    /// <summary>Zweite Kopfzeile links im Bulletin, z. B. « Direction régionale de Lomé-Golfe ».</summary>
+    public string? DokumentDirection { get; set; }
+    /// <summary>Statut im Bulletin-Kopf, z. B. « Privé laïc », « Public », « Confessionnel ».</summary>
+    public string? DokumentStatut { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Optionaler schulspezifischer Abo-Preis.</summary>

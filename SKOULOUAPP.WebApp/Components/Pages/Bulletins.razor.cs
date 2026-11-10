@@ -80,6 +80,15 @@ public partial class Bulletins
     private List<ModernDropdownOption<Guid?>> BildOptionen = [];
     private List<BulletinListenZeile> liste = [];
     private BulletinVorlage vorlage = new();
+    private string? beispielPdf;
+
+    /// <summary>Vorschau der aktuellen (auch ungespeicherten) Einstellungen mit einem fiktiven Schüler.</summary>
+    private Task BeispielAsync() => AktionAsync(async () =>
+    {
+        vorlage.SchulID = schulID; vorlage.Art = (BewertungsArt)art;
+        var beispiel = await Service.VorlagenBeispielAsync(userID, vorlage, vorlage.ZeigeJahresBilanz, ComponentToken);
+        beispielPdf = "data:application/pdf;base64," + Convert.ToBase64String(Pdf.Erzeugen(beispiel));
+    });
     private BulletinSnapshot? vorschau;
     private string? vorschauPdf;
     private void VorschauVerwerfen() { vorschau = null; vorschauPdf = null; }
@@ -152,7 +161,11 @@ public partial class Bulletins
             AkzentFarbe = m.AkzentFarbe, ZeigeKoeffizienten = m.ZeigeKoeffizienten, ZeigeRang = m.ZeigeRang,
             ZeigeVorperioden = m.ZeigeVorperioden, ZeigeUnterschriften = m.ZeigeUnterschriften, FussText = m.FussText, BlockReihenfolge = m.BlockReihenfolge,
             LogoAssetID = m.LogoAssetID, SchriftGroesse = m.SchriftGroesse, SeitenRand = m.SeitenRand,
-            ZeigeLehrkraefte = m.ZeigeLehrkraefte, ZeigeAnwesenheit = m.ZeigeAnwesenheit };
+            ZeigeLehrkraefte = m.ZeigeLehrkraefte, ZeigeAnwesenheit = m.ZeigeAnwesenheit,
+            ZeigeTeilnoten = m.ZeigeTeilnoten, ZeigePunkte = m.ZeigePunkte, ZeigeFachRang = m.ZeigeFachRang, ZeigeAppreciation = m.ZeigeAppreciation,
+            ZeigeSignaturSpalte = m.ZeigeSignaturSpalte, ZeigeFachGruppen = m.ZeigeFachGruppen, ZeigeKlassenStatistik = m.ZeigeKlassenStatistik,
+            ZeigeMentionen = m.ZeigeMentionen, ZeigeJahresBilanz = m.ZeigeJahresBilanz, ZeigeFoto = m.ZeigeFoto, ZeigeNoteInWorten = m.ZeigeNoteInWorten };
+        beispielPdf = null;
         LogoWaehlen(m.LogoAssetID);
     }
     private Task ModeleAsync() => AktionAsync(async () => { vorlage.SchulID = schulID; vorlage.Art = (BewertungsArt)art;

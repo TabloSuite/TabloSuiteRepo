@@ -43,6 +43,12 @@ public class StudentProfile : AuditableModel
     /// <summary>Schulbezogene, normalisierte Matrikelnummer; leer bedeutet noch nicht vergeben.</summary>
     public string? Matrikelnummer { get; set; }
     public string? Geburtsort { get; set; }
+    /// <summary>Nationalité für den Bulletin-Kopf (optional).</summary>
+    public string? Nationalitaet { get; set; }
+    /// <summary>Interne (internat) – im Bulletin « Interne : Oui/Non ».</summary>
+    public bool IstInterne { get; set; }
+    /// <summary>Affecté(e) par l'État – im Bulletin « Affecté(e) : Oui/Non ».</summary>
+    public bool IstAffecte { get; set; }
 }
 
 

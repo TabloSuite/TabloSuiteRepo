@@ -77,6 +77,18 @@ internal static class UnterrichtModellKonfiguration
         note.HasOne(x => x.JahresZuordnung).WithMany().HasForeignKey(x => x.JahresZuordnungID).OnDelete(DeleteBehavior.Restrict);
 
         var vorlage = modelBuilder.Entity<BulletinVorlage>();
+        schule.Property(x => x.DokumentDirection).HasMaxLength(200);
+        schule.Property(x => x.DokumentStatut).HasMaxLength(60);
+        profil.Property(x => x.Nationalitaet).HasMaxLength(80);
+        modelBuilder.Entity<SkoulouApp.Core.DataModels.Schools.Fach>().Property(x => x.Gruppe).HasMaxLength(60);
+
+        // Conseil de classe: eine Entscheidung je Schüler und Periode.
+        var klassenrat = modelBuilder.Entity<KlassenratEntscheidung>();
+        klassenrat.HasIndex(x => new { x.PeriodeID, x.JahresZuordnungID }).IsUnique();
+        klassenrat.HasIndex(x => x.SchulID);
+        klassenrat.HasOne(x => x.Periode).WithMany().HasForeignKey(x => x.PeriodeID).OnDelete(DeleteBehavior.Restrict);
+        klassenrat.HasOne(x => x.JahresZuordnung).WithMany().HasForeignKey(x => x.JahresZuordnungID).OnDelete(DeleteBehavior.Restrict);
+
         var anwesenheit = modelBuilder.Entity<AnwesenheitsEintrag>();
         anwesenheit.HasIndex(x => new { x.PeriodeID, x.JahresZuordnungID, x.Datum }).IsUnique();
         anwesenheit.HasOne(x => x.Periode).WithMany().HasForeignKey(x => x.PeriodeID).OnDelete(DeleteBehavior.Restrict);

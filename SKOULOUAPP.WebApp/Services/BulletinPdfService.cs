@@ -16,7 +16,12 @@ public sealed class BulletinPdfService
         return Document.Merge(bulletins.Select(Dokument)).UseOriginalPageNumbers().GeneratePdf();
     }
 
-    private Document Dokument(BulletinSnapshot bulletin) => Document.Create(document => document.Page(page =>
+    private Document Dokument(BulletinSnapshot bulletin) => bulletin.Layout is not null
+        // Allgemeines Layout (seit 11.11.2026); ältere Snapshots behalten unverändert das bisherige Layout.
+        ? Document.Create(document => document.Page(page => BulletinStandardLayout.Seite(page, bulletin, footer => Pruefcode(footer, bulletin))))
+        : BisherigesDokument(bulletin);
+
+    private Document BisherigesDokument(BulletinSnapshot bulletin) => Document.Create(document => document.Page(page =>
     {
         page.Size(PageSizes.A4); page.Margin(Math.Clamp(bulletin.SeitenRand, 15, 50)); page.DefaultTextStyle(x => x.FontSize(Math.Clamp(bulletin.SchriftGroesse, 8, 12)));
         page.Header().Column(header =>
@@ -92,21 +97,26 @@ public sealed class BulletinPdfService
         page.Footer().Column(footer =>
         {
             footer.Item().Text(bulletin.FussText ?? "").FontSize(8);
-            if (bulletin.PruefToken is not null)
-            {
-                if (!Uri.TryCreate(basisUrl, UriKind.Absolute, out var url) || url.Scheme is not ("https" or "http"))
-                    throw new InvalidOperationException("Configurez App:BaseUrl pour générer la vérification des bulletins.");
-                var lien = $"{basisUrl}/verification-bulletin/{bulletin.PruefToken}";
-                using var code = QRCoder.QRCodeGenerator.GenerateQrCode(lien, QRCoder.QRCodeGenerator.ECCLevel.M);
-                using var png = new QRCoder.PngByteQRCode(code);
-                footer.Item().Row(row => {
-                    row.ConstantItem(65).Image(png.GetGraphic(4));
-                    row.RelativeItem().PaddingLeft(8).AlignMiddle().Text("Vérifiez le statut actuel de ce document en scannant ce code. La vérification ne révèle ni identité ni notes. Un document authentique ne garantit pas l'absence de falsification du papier présenté.").FontSize(7);
-                });
-            }
+            Pruefcode(footer, bulletin);
             footer.Item().AlignRight().Text(t => { t.Span("Page "); t.CurrentPageNumber(); });
         });
     }));
+
+    /// <summary>QR-Code zur öffentlichen Statusprüfung (ohne Personendaten) für endgültige Ausgaben.</summary>
+    private void Pruefcode(QuestPDF.Fluent.ColumnDescriptor footer, BulletinSnapshot bulletin)
+    {
+        if (bulletin.PruefToken is null) return;
+        if (!Uri.TryCreate(basisUrl, UriKind.Absolute, out var url) || url.Scheme is not ("https" or "http"))
+            throw new InvalidOperationException("Configurez App:BaseUrl pour générer la vérification des bulletins.");
+        var lien = $"{basisUrl}/verification-bulletin/{bulletin.PruefToken}";
+        using var code = QRCoder.QRCodeGenerator.GenerateQrCode(lien, QRCoder.QRCodeGenerator.ECCLevel.M);
+        using var png = new QRCoder.PngByteQRCode(code);
+        var bild = png.GetGraphic(4);
+        footer.Item().Row(row => {
+            row.ConstantItem(bulletin.Layout is null ? 65 : 46).Image(bild);
+            row.RelativeItem().PaddingLeft(8).AlignMiddle().Text("Vérifiez le statut actuel de ce document en scannant ce code. La vérification ne révèle ni identité ni notes. Un document authentique ne garantit pas l'absence de falsification du papier présenté.").FontSize(7);
+        });
+    }
 
     private static string Note(decimal? valeur) => valeur is null ? "—" : Core.Services.NotenBerechnung.Anzeige(valeur.Value).ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
 }

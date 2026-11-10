@@ -7,4 +7,6 @@ public class FachOptionItem
     public string SchoolName { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IstLehrerZugewiesen { get; set; }
+    /// <summary>Fächergruppe im Bulletin (« Lettres », « Sciences », « Autres »).</summary>
+    public string? Gruppe { get; set; }
 }

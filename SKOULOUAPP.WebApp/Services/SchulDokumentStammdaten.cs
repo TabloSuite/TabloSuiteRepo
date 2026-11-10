@@ -14,6 +14,9 @@ public sealed class SchulDokumentStammdaten
     [MaxLength(300)] public string? Ministerium { get; set; }
     [MaxLength(300)] public string? RepublikZeile { get; set; }
     [MaxLength(300)] public string? StaatsMotto { get; set; }
+    [MaxLength(200)] public string? DokumentDirection { get; set; }
+    [MaxLength(60)] public string? DokumentStatut { get; set; }
 }
 
-public sealed record SchuelerStammdatenZeile(Guid SchuelerID, string Name, string Klasse, string? Matrikelnummer, string? Geburtsort);
+public sealed record SchuelerStammdatenZeile(Guid SchuelerID, string Name, string Klasse, string? Matrikelnummer, string? Geburtsort,
+    string? Nationalitaet = null, bool IstInterne = false, bool IstAffecte = false);

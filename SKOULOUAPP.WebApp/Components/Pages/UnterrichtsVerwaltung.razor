@@ -1,5 +1,6 @@
 @page "/direction/enseignement"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SchulLeiter,Koordinator")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits CancelableComponentBase
 @using SkoulouApp.WebApp.Services
 
@@ -30,6 +31,8 @@
                 <label>Ministère / autorité de tutelle<input class="mt-1 w-full rounded-lg border p-2" maxlength="300" @bind="dokumentDaten.Ministerium" /></label>
                 <label>République / pays<input class="mt-1 w-full rounded-lg border p-2" maxlength="300" @bind="dokumentDaten.RepublikZeile" /></label>
                 <label>Devise nationale<input class="mt-1 w-full rounded-lg border p-2" maxlength="300" @bind="dokumentDaten.StaatsMotto" /></label>
+                <label>Direction régionale / départementale<input class="mt-1 w-full rounded-lg border p-2" maxlength="200" placeholder="ex. Direction régionale de l'éducation Lomé-Golfe" @bind="dokumentDaten.DokumentDirection" /></label>
+                <label>Statut de l'établissement<input class="mt-1 w-full rounded-lg border p-2" maxlength="60" placeholder="ex. Privé laïc, Public, Confessionnel" @bind="dokumentDaten.DokumentStatut" /></label>
             </div>
             <button type="button" class="mt-4 rounded-lg bg-blue-700 px-4 py-2 text-white disabled:opacity-50" disabled="@occupe" @onclick="SpeichereDokumentAsync">Enregistrer les coordonnées</button>
         </details>
@@ -40,6 +43,8 @@
                 <label>Matricule<input class="mt-1 w-full rounded-lg border p-2" maxlength="60" @bind="matrikelnummer" /><span class="text-sm">Si vide, un matricule stable est attribué automatiquement. Un matricule existant n'est pas effacé.</span></label>
                 <button type="button" class="rounded-lg border p-2" @onclick="MatriculesAsync">Attribuer les matricules manquants de l'école</button>
                 <label>Lieu de naissance<input class="mt-1 w-full rounded-lg border p-2" maxlength="150" @bind="geburtsort" /></label>
+                <label>Nationalité<input class="mt-1 w-full rounded-lg border p-2" maxlength="80" placeholder="ex. Togolaise" @bind="nationalitaet" /></label>
+                <div class="flex flex-wrap items-center gap-5"><label class="inline-flex items-center gap-2"><input type="checkbox" @bind="istInterne" /> Interne</label><label class="inline-flex items-center gap-2"><input type="checkbox" @bind="istAffecte" /> Affecté(e) par l'État</label></div>
             </div>
             <p class="mt-2 text-sm text-slate-600">Le matricule est unique dans cette école. Laissez le champ vide s'il n'est pas encore attribué.</p>
             <button type="button" class="mt-4 rounded-lg bg-blue-700 px-4 py-2 text-white disabled:opacity-50" disabled="@(occupe || schuelerID == Guid.Empty)" @onclick="SpeichereSchuelerAsync">Enregistrer la fiche élève</button>

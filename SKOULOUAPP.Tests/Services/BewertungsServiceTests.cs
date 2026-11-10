@@ -366,6 +366,55 @@ public class BewertungsServiceTests
     }
 
     [Fact]
+    public async Task AllgemeinesBulletin_UebernimmtTeilnotenGruppeKlassenratUndLaesstSichDrucken()
+    {
+        var d = await VorbereitenAsync();
+        var noten = new BewertungsService(d.Factory);
+        var service = new BulletinService(d.Factory, noten);
+        Guid klasse, periode;
+        await using (var db = d.Factory.CreateDbContext())
+        {
+            klasse = (await db.Set<SchuelerJahresZuordnung>().SingleAsync()).KlasseID;
+            periode = (await db.Set<BewertungsPeriode>().SingleAsync()).Id;
+            (await db.Faecher.SingleAsync()).Gruppe = "Sciences";
+            await db.SaveChangesAsync();
+        }
+        var classe = await noten.BestandteilAnlegenAsync(d.Direktor, periode, "Classe", 1, 20);
+        await service.VorlageSpeichernAsync(d.Direktor, new() { SchulID = d.Schule, KlasseID = klasse, Art = BewertungsArt.Trimester, Name = "Standard" });
+        await noten.NoteSpeichernAsync(d.Direktor, d.Bestandteil, d.FachBewertung, d.JahresZuordnung, 15, null);
+        await noten.NoteSpeichernAsync(d.Direktor, classe, d.FachBewertung, d.JahresZuordnung, 17, null);
+
+        // Ohne Eintrag: Vorschlag aus der Moyenne (16 → Félicitations).
+        var rat = Assert.Single(await service.KlassenratAsync(d.Direktor, d.Schule, periode, klasse));
+        Assert.Equal(16m, rat.Moyenne);
+        Assert.Equal(KlassenratDistinktion.Felicitations, rat.Vorschlag);
+        Assert.Null(rat.Distinktion);
+
+        await service.KlassenratSpeichernAsync(d.Direktor, d.Schule, periode,
+            [new KlassenratEingabe(d.JahresZuordnung, KlassenratDistinktion.Encouragements, KlassenratSanktion.AvertissementConduite, "Bon trimestre.", Jahresentscheidung.Offen)]);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.KlassenratSpeichernAsync(d.Lehrer, d.Schule, periode,
+            [new KlassenratEingabe(d.JahresZuordnung, null, KlassenratSanktion.Keine, null, Jahresentscheidung.Offen)]));
+
+        var bulletin = await service.VorschauAsync(d.Direktor, d.Schule, periode, d.JahresZuordnung, null);
+        Assert.NotNull(bulletin.Layout);
+        var fach = Assert.Single(bulletin.Faecher);
+        Assert.Equal("Sciences", fach.Gruppe);
+        Assert.Equal(2, fach.Teilnoten!.Count);
+        Assert.Equal(1, fach.Rang);
+        Assert.Equal("Très bien", fach.Appreciation);
+        Assert.Equal(["Composition", "Classe"], bulletin.TeilnotenSpalten!.OrderByDescending(x => x).ToList());
+        Assert.Equal("Tableau d'honneur + Encouragements", bulletin.Distinktion);
+        Assert.Equal(["Avertissement conduite"], bulletin.Sanktionen);
+        Assert.Equal("Bon trimestre.", bulletin.RatsBemerkung);
+        Assert.Equal(16m, bulletin.KlassenMittel);
+        Assert.False(bulletin.IstJahresabschluss);
+
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+        var pdf = new BulletinPdfService().Erzeugen(bulletin);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+    }
+
+    [Fact]
     public async Task Periodensperre_PrueftRollenWiederoeffnungUndGeschlossenesJahr()
     {
         var d = await VorbereitenAsync();

@@ -3973,11 +3973,31 @@ public class DashboardService(
                 Name = fach.Name,
                 SchoolId = fach.SchoolId,
                 SchoolName = fach.School.Name,
+                Gruppe = fach.Gruppe,
                 IstLehrerZugewiesen = dbContext.LehrerFachZuordnungen.Any(zuordnung => zuordnung.FachId == fach.Id)
             })
             .OrderBy(item => item.SchoolName)
             .ThenBy(item => item.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>Fächergruppen für den Bilan im Bulletin.</summary>
+    public static readonly IReadOnlyList<string> BulletinFachGruppen = ["Lettres", "Sciences", "Autres"];
+
+    /// <summary>Setzt die Bulletin-Gruppe eines Fachs der eigenen Schule (leer = ohne Gruppe).</summary>
+    public async Task<(bool Succeeded, string Message)> SetFachGruppeForDirectionAsync(Guid directorId, Guid fachId, string? gruppe, CancellationToken cancellationToken = default)
+    {
+        gruppe = string.IsNullOrWhiteSpace(gruppe) ? null : gruppe.Trim();
+        if (gruppe is not null && !BulletinFachGruppen.Contains(gruppe))
+            return (false, "Choisissez le groupe Lettres, Sciences ou Autres.");
+        var directorSchoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
+        var fach = await dbContext.Faecher.FirstOrDefaultAsync(x => x.Id == fachId && directorSchoolIds.Contains(x.SchoolId), cancellationToken);
+        if (fach is null)
+            return (false, "Cette matière est introuvable.");
+        fach.Gruppe = gruppe;
+        fach.GeaendertAmUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (true, gruppe is null ? $"{fach.Name} : sans groupe." : $"{fach.Name} : groupe {gruppe}.");
     }
 
     public async Task<(bool Succeeded, string Message)> DeleteSchoolFachForDirectionAsync(Guid directorId, Guid fachId, CancellationToken cancellationToken = default)

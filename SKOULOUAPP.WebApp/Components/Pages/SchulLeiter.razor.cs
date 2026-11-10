@@ -1175,6 +1175,24 @@ public partial class SchulLeiter
         await LoadSchoolFachOptionsAsync();
     }
 
+    private static readonly IReadOnlyList<ModernDropdownOption<string?>> FachGruppenOptionen =
+        [new("", "Sans groupe"), .. DashboardService.BulletinFachGruppen.Select(g => new ModernDropdownOption<string?>(g, g))];
+
+    /// <summary>Bulletin-Gruppe eines Fachs ändern (Bilan lettres / sciences / autres).</summary>
+    private async Task FachGruppeAsync(FachOptionItem fach, string? gruppe)
+    {
+        var result = await DashboardService.SetFachGruppeForDirectionAsync(currentUserId, fach.FachId, gruppe, ComponentToken);
+        if (result.Succeeded)
+        {
+            fach.Gruppe = string.IsNullOrWhiteSpace(gruppe) ? null : gruppe;
+            message = result.Message;
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+    }
+
     private void AskDeleteSchoolFach(FachOptionItem fach)
     {
         fachVerwaltungErrorMessage = null;

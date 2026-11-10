@@ -25,6 +25,26 @@ public class BulletinVorlage : AuditableModel
     public Guid? SiegelAssetID { get; set; }
     [MaxLength(300)] public string? FussText { get; set; }
     [MaxLength(100)] public string BlockReihenfolge { get; set; } = "Schueler,Noten,Ergebnisse,Bemerkung,Unterschriften";
+    // --- Allgemeines Bulletin-Layout (Côte d'Ivoire / Togo u. a.), seit 11.11.2026 ---
+    /// <summary>Spalten je Bewertungsbestandteil (z. B. « Classe », « Compo »).</summary>
+    public bool ZeigeTeilnoten { get; set; } = true;
+    /// <summary>Spalte « Moy × Coef » und Totaux.</summary>
+    public bool ZeigePunkte { get; set; } = true;
+    public bool ZeigeFachRang { get; set; } = true;
+    public bool ZeigeAppreciation { get; set; } = true;
+    /// <summary>Leere Spalte für die Unterschrift der Lehrkraft.</summary>
+    public bool ZeigeSignaturSpalte { get; set; }
+    /// <summary>Zwischenzeilen « Bilan … » je Fächergruppe.</summary>
+    public bool ZeigeFachGruppen { get; set; } = true;
+    /// <summary>Résultats de la classe: Durchschnitt, Minimum, Maximum.</summary>
+    public bool ZeigeKlassenStatistik { get; set; } = true;
+    /// <summary>Distinctions und Sanctions des Klassenrats.</summary>
+    public bool ZeigeMentionen { get; set; } = true;
+    /// <summary>Jahresbilanz und Décision de fin d'année auf dem letzten Bulletin des Jahres.</summary>
+    public bool ZeigeJahresBilanz { get; set; } = true;
+    public bool ZeigeFoto { get; set; }
+    /// <summary>Moyenne zusätzlich in Worten (« onze virgule deux »).</summary>
+    public bool ZeigeNoteInWorten { get; set; }
 }
 
 /// <summary>Unveränderlicher fachlicher und gestalterischer Stand; nur Veröffentlichung darf zurückgenommen werden.</summary>

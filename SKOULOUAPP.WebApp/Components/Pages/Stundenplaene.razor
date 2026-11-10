@@ -1,5 +1,6 @@
 @page "/emplois-du-temps"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SchulLeiter,Koordinator,Lehrer,Schüler")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits CancelableComponentBase
 @using SkoulouApp.WebApp.Services
 

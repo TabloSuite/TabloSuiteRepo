@@ -1,5 +1,6 @@
 @page "/notes"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SchulLeiter,Koordinator,Lehrer")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits CancelableComponentBase
 @using SkoulouApp.WebApp.Services
 

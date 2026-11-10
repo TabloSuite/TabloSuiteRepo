@@ -64,6 +64,12 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
         vorlage.BlockReihenfolge = eingabe.BlockReihenfolge;
         vorlage.SchriftGroesse = eingabe.SchriftGroesse; vorlage.SeitenRand = eingabe.SeitenRand;
         vorlage.ZeigeLehrkraefte = eingabe.ZeigeLehrkraefte; vorlage.ZeigeAnwesenheit = eingabe.ZeigeAnwesenheit;
+        vorlage.ZeigeTeilnoten = eingabe.ZeigeTeilnoten; vorlage.ZeigePunkte = eingabe.ZeigePunkte;
+        vorlage.ZeigeFachRang = eingabe.ZeigeFachRang; vorlage.ZeigeAppreciation = eingabe.ZeigeAppreciation;
+        vorlage.ZeigeSignaturSpalte = eingabe.ZeigeSignaturSpalte; vorlage.ZeigeFachGruppen = eingabe.ZeigeFachGruppen;
+        vorlage.ZeigeKlassenStatistik = eingabe.ZeigeKlassenStatistik; vorlage.ZeigeMentionen = eingabe.ZeigeMentionen;
+        vorlage.ZeigeJahresBilanz = eingabe.ZeigeJahresBilanz; vorlage.ZeigeFoto = eingabe.ZeigeFoto;
+        vorlage.ZeigeNoteInWorten = eingabe.ZeigeNoteInWorten;
         foreach (var assetID in new[] { eingabe.LogoAssetID }.Where(x => x.HasValue))
             if (!await db.BlobMediaAssets.AnyAsync(x => x.Id == assetID && x.SchoolId == eingabe.SchulID && x.MediaType == BlobMediaType.Image, token))
                 throw new InvalidOperationException("Le logo doit provenir de la bibliothèque de cette école.");
@@ -119,7 +125,7 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
         var school = await db.Schools.AsNoTracking().SingleAsync(x => x.Id == schule, token);
         var profil = await db.StudentProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.AppUserId == zuordnung.SchuelerID && x.SchoolId == schule, token);
         var praesenz = await db.Set<AnwesenheitsEintrag>().AsNoTracking().Where(x => x.PeriodeID == periodeID && x.JahresZuordnungID == zuordnungID).ToListAsync(token);
-        return new(school.OffizielleBezeichnung ?? school.Name, school.Slogan, school.DokumentAdresse, school.RepublikZeile, school.Ministerium,
+        var basis = new BulletinSnapshot(school.OffizielleBezeichnung ?? school.Name, school.Slogan, school.DokumentAdresse, school.RepublikZeile, school.Ministerium,
             school.StaatsMotto, school.Zulassungsnummer, string.Join(" · ", new[] { school.DokumentTelefon, school.DokumentEmail }.Where(x => !string.IsNullOrWhiteSpace(x))),
             periode.Schuljahr.Bezeichnung, periode.Titel, zuordnung.Klasse.Code, zuordnung.Schueler.FullName, profil?.Matrikelnummer,
             profil?.Geburtsort, zuordnung.Schueler.GeburtsdatumUtc?.ToString("dd/MM/yyyy"), zuordnung.IstWiederholer,
@@ -130,6 +136,8 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
             praesenz.Count(x => x.Status == AnwesenheitsStatus.Abwesend && x.IstEntschuldigt),
             praesenz.Count(x => x.Status == AnwesenheitsStatus.Verspaetet), praesenz.Sum(x => x.VerspaetungsMinuten),
             vorlage.SchriftGroesse, vorlage.SeitenRand, vorlage.ZeigeLehrkraefte, vorlage.ZeigeAnwesenheit);
+        // Allgemeines Layout (Teilnoten, Ränge, Gruppen, Klassenstatistik, Conseil de classe).
+        return await ErweiternAsync(db, basis, vorlage, periode, zuordnung, daten, user, schule, token);
     }
 
     private async Task<byte[]?> BildAsync(ApplicationDbContext db, Guid user, Guid schule, Guid? id, CancellationToken token)

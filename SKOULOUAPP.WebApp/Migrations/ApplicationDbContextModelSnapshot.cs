@@ -1847,10 +1847,17 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<DateTime?>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Gruppe")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Reihenfolge")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uniqueidentifier");
@@ -2038,9 +2045,17 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("DokumentDirection")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("DokumentEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("DokumentStatut")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
 
                     b.Property<string>("DokumentTelefon")
                         .HasMaxLength(60)
@@ -2153,9 +2168,19 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IstAffecte")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IstInterne")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Matrikelnummer")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Nationalitaet")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
 
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uniqueidentifier");
@@ -2604,13 +2629,46 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<bool>("ZeigeAnwesenheit")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("ZeigeAppreciation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeFachGruppen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeFachRang")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeFoto")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeJahresBilanz")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeKlassenStatistik")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("ZeigeKoeffizienten")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ZeigeLehrkraefte")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("ZeigeMentionen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeNoteInWorten")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigePunkte")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("ZeigeRang")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeSignaturSpalte")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ZeigeTeilnoten")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ZeigeUnterschriften")
@@ -2706,6 +2764,55 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsUnique();
 
                     b.ToTable("FachNote");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.KlassenratEntscheidung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BearbeitetVonID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Bemerkung")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int?>("Distinktion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Entscheidung")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("JahresZuordnungID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PeriodeID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Sanktionen")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SchulID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JahresZuordnungID");
+
+                    b.HasIndex("SchulID");
+
+                    b.HasIndex("PeriodeID", "JahresZuordnungID")
+                        .IsUnique();
+
+                    b.ToTable("KlassenratEntscheidung");
                 });
 
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.NotenAenderung", b =>
@@ -3924,6 +4031,25 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Navigation("FachBewertung");
 
                     b.Navigation("JahresZuordnung");
+                });
+
+            modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.KlassenratEntscheidung", b =>
+                {
+                    b.HasOne("SkoulouApp.Core.DataModels.Unterricht.SchuelerJahresZuordnung", "JahresZuordnung")
+                        .WithMany()
+                        .HasForeignKey("JahresZuordnungID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SkoulouApp.Core.DataModels.Unterricht.BewertungsPeriode", "Periode")
+                        .WithMany()
+                        .HasForeignKey("PeriodeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("JahresZuordnung");
+
+                    b.Navigation("Periode");
                 });
 
             modelBuilder.Entity("SkoulouApp.Core.DataModels.Unterricht.NotenAenderung", b =>

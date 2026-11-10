@@ -1,5 +1,6 @@
 @page "/bulletins"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SchulLeiter,Koordinator,Schüler")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inherits CancelableComponentBase
 @using SkoulouApp.WebApp.Services
 
@@ -31,17 +32,45 @@
                         <button type="button" class="mt-2 rounded border p-2" disabled="@occupe" @onclick="() => LogoWaehlen(null)">Retirer du modèle</button>
                     }
                 </div>
-                <label><input type="checkbox" @bind="vorlage.ZeigeKoeffizienten" /> Afficher les coefficients</label>
-                <label><input type="checkbox" @bind="vorlage.ZeigeRang" /> Afficher le rang</label>
-                <label><input type="checkbox" @bind="vorlage.ZeigeVorperioden" /> Afficher les périodes précédentes</label>
-                <label><input type="checkbox" @bind="vorlage.ZeigeUnterschriften" /> Afficher les signatures</label>
-                <label>Taille du texte (8 à 12 points)<input type="number" min="8" max="12" class="w-full rounded-lg border p-2" @bind="vorlage.SchriftGroesse" /></label>
-                <label>Marges A4 (15 à 50 points)<input type="number" min="15" max="50" class="w-full rounded-lg border p-2" @bind="vorlage.SeitenRand" /></label>
-                <label><input type="checkbox" @bind="vorlage.ZeigeLehrkraefte" /> Afficher la colonne des enseignants</label>
-                <label><input type="checkbox" @bind="vorlage.ZeigeAnwesenheit" /> Afficher les présences et retards</label>
-                <label>Texte de bas de page<input class="w-full rounded-lg border p-2" maxlength="300" @bind="vorlage.FussText" /></label>
+                <div class="md:col-span-2 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <p class="mb-0 font-semibold text-slate-800 sm:col-span-2 lg:col-span-3">Tableau des notes</p>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeTeilnoten" /> Notes de classe et de composition</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeKoeffizienten" /> Coefficients</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigePunkte" /> Moyenne × coefficient et totaux</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeFachRang" /> Rang par matière</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeFachGruppen" /> Bilans par groupe (lettres, sciences…)</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeAppreciation" /> Appréciation par matière</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeLehrkraefte" /> Nom des professeurs</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeSignaturSpalte" /> Colonne signature des professeurs</label>
+                    <p class="mb-0 mt-2 font-semibold text-slate-800 sm:col-span-2 lg:col-span-3">Résultats et décisions</p>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeRang" /> Rang de l'élève</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeNoteInWorten" /> Moyenne en toutes lettres</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeKlassenStatistik" /> Résultats de la classe (moyenne, mini, maxi)</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeVorperioden" /> Moyennes des périodes précédentes</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeMentionen" /> Distinctions et sanctions du conseil</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeJahresBilanz" /> Bilan et décision de fin d'année</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeAnwesenheit" /> Assiduité (absences et retards)</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeUnterschriften" /> Visa du chef d'établissement</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" @bind="vorlage.ZeigeFoto" /> Photo de l'élève</label>
+                </div>
+                <label>Taille du texte (8 à 12 points)<input type="number" min="8" max="12" class="skoulou-input" @bind="vorlage.SchriftGroesse" /></label>
+                <label>Marges A4 (15 à 50 points)<input type="number" min="15" max="50" class="skoulou-input" @bind="vorlage.SeitenRand" /></label>
+                <label class="md:col-span-2">Texte de bas de page<input class="skoulou-input" maxlength="300" @bind="vorlage.FussText" placeholder="ex. Aucun duplicata ne sera délivré." /></label>
             </div>
-            <button type="button" class="mt-3 rounded-lg bg-blue-700 p-3 text-white" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" class="rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white disabled:opacity-60" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
+                <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-semibold text-slate-800 disabled:opacity-60" disabled="@occupe" @onclick="BeispielAsync"><Icon Name="eye" Groesse="16" />Aperçu avec des données d'exemple</button>
+            </div>
+            @if (beispielPdf is not null)
+            {
+                <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2 text-sm">
+                        <span class="font-semibold text-slate-700">Aperçu (élève fictif)</span>
+                        <button type="button" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100" @onclick="() => beispielPdf = null">Fermer</button>
+                    </div>
+                    <iframe title="Aperçu du bulletin" src="@beispielPdf" class="h-[80vh] w-full"></iframe>
+                </div>
+            }
             <fieldset class="mt-4 min-w-0 space-y-3 rounded-xl border p-4" disabled="@occupe">
                 <legend class="px-2 font-semibold">Appliquer ce modèle à plusieurs classes</legend>
                 <p class="text-sm">Les réglages actuels sont copiés pour le type de bulletin choisi. Chaque classe pourra ensuite être adaptée séparément. Les bulletins déjà publiés ne changent pas.</p>
@@ -67,21 +96,21 @@
                 }
                 <button type="button" class="rounded-lg bg-blue-700 p-3 text-white disabled:opacity-50" disabled="@(occupe || vorlagenKlassen.Count == 0 || (VorhandeneVorlagen > 0 && !vorlagenErsetzen))" @onclick="MehrfachModeleAsync">Appliquer aux classes sélectionnées</button>
             </fieldset>
-            <h3 class="mt-4 font-semibold">Ordre des blocs</h3>
-            @for (var index = 0; index < vorlage.BlockReihenfolge.Split(',').Length; index++)
+            @* Die Blockreihenfolge gilt nur für Bulletins im bisherigen Layout; das allgemeine Layout hat eine feste, übliche Anordnung. *@
+            @if (modeles.Count > 0)
             {
-                var position = index;
-                <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2">
-                    <span>@BlockTitel(vorlage.BlockReihenfolge.Split(',')[position])</span>
-                    <div><button type="button" class="rounded border p-2" disabled="@(occupe || position == 0)" @onclick="() => VerschiebeBlock(position, -1)" aria-label="Monter le bloc">↑</button>
-                    <button type="button" class="rounded border p-2" disabled="@(occupe || position == 4)" @onclick="() => VerschiebeBlock(position, 1)" aria-label="Descendre le bloc">↓</button></div>
-                </div>
+                <h3 class="mb-0 mt-5 text-sm font-semibold text-slate-700">Modèles enregistrés</h3>
             }
-            <p class="mt-2 text-sm">Enregistrez le modèle, puis prévisualisez un élève pour vérifier le document A4 exact.</p>
             @foreach (var modele in modeles)
             {
                 <button type="button" class="m-2 rounded-lg border p-2" disabled="@occupe" @onclick="() => ChargerModele(modele)">@modele.Name · Modifier / copier</button>
             }
+        </details>
+        <details class="rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Conseil de classe</summary>
+            <p class="mb-0 mt-2 text-sm text-slate-500">Distinctions, sanctions, appréciation du conseil et décision de fin d'année, avant la publication des bulletins.</p>
+            <div class="mt-4">
+                <KlassenratErfassung BenutzerID="userID" SchulID="schulID" Klassen="unterricht.Klassen" Perioden="@(bewertungen?.Perioden.Select(x => new AuswahlEintrag(x.Id, x.Titel)).ToList() ?? [])" />
+            </div>
         </details>
         <section class="rounded-xl border bg-white p-5">
             <h2 class="text-lg font-semibold">Préparer et publier un bulletin</h2>

@@ -16,7 +16,8 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
         {
             Slogan = x.Slogan, OffizielleBezeichnung = x.OffizielleBezeichnung, DokumentAdresse = x.DokumentAdresse,
             DokumentTelefon = x.DokumentTelefon, DokumentEmail = x.DokumentEmail, Zulassungsnummer = x.Zulassungsnummer,
-            Ministerium = x.Ministerium, RepublikZeile = x.RepublikZeile, StaatsMotto = x.StaatsMotto
+            Ministerium = x.Ministerium, RepublikZeile = x.RepublikZeile, StaatsMotto = x.StaatsMotto,
+            DokumentDirection = x.DokumentDirection, DokumentStatut = x.DokumentStatut
         }).SingleAsync(token);
     }
 
@@ -38,6 +39,8 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
         schule.Ministerium = LeerZuNull(daten.Ministerium);
         schule.RepublikZeile = LeerZuNull(daten.RepublikZeile);
         schule.StaatsMotto = LeerZuNull(daten.StaatsMotto);
+        schule.DokumentDirection = LeerZuNull(daten.DokumentDirection);
+        schule.DokumentStatut = LeerZuNull(daten.DokumentStatut);
         await db.SaveChangesAsync(token);
     }
 
@@ -66,11 +69,11 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
         await PruefeSchuleAsync(db, benutzerID, schulID, token);
         return await db.StudentProfiles.AsNoTracking().Where(x => x.SchoolId == schulID && !x.IsArchived)
             .OrderBy(x => x.AppUser.FullName).Select(x => new SchuelerStammdatenZeile(x.AppUserId, x.AppUser.FullName,
-                x.CurrentKlasse != null ? x.CurrentKlasse.Code : "—", x.Matrikelnummer, x.Geburtsort)).ToListAsync(token);
+                x.CurrentKlasse != null ? x.CurrentKlasse.Code : "—", x.Matrikelnummer, x.Geburtsort, x.Nationalitaet, x.IstInterne, x.IstAffecte)).ToListAsync(token);
     }
 
     public async Task SchuelerStammdatenSpeichernAsync(Guid benutzerID, Guid schulID, Guid schuelerID, string? matrikelnummer,
-        string? geburtsort, CancellationToken token = default)
+        string? geburtsort, CancellationToken token = default, string? nationalitaet = null, bool? istInterne = null, bool? istAffecte = null)
     {
         await UnterrichtTransaktion.AusfuehrenAsync(factory, async db =>
         {
@@ -86,6 +89,10 @@ public sealed class UnterrichtsVerwaltungService(IDbContextFactory<ApplicationDb
             throw new InvalidOperationException("Ce matricule est déjà utilisé dans cette école.");
         profil.Matrikelnummer = matrikelnummer ?? profil.Matrikelnummer ?? $"EL-{profil.AppUserId:N}";
         profil.Geburtsort = geburtsort;
+        if (nationalitaet is not null) profil.Nationalitaet = LeerZuNull(nationalitaet) is { Length: <= 80 } n ? n : string.IsNullOrWhiteSpace(nationalitaet) ? null
+            : throw new InvalidOperationException("La nationalité est limitée à 80 caractères.");
+        if (istInterne is bool interne) profil.IstInterne = interne;
+        if (istAffecte is bool affecte) profil.IstAffecte = affecte;
         try { await db.SaveChangesAsync(token); }
         catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
         {
