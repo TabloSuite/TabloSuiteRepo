@@ -4,95 +4,114 @@
 
 <PageTitle>Mon profil</PageTitle>
 
-<div class="enote-page enote-page-narrow">
+<div class="enote-page">
     <div class="enote-page-header">
         <div>
             <h1>Mon profil</h1>
-            <p>Vos informations et votre mot de passe.</p>
+            <p>Vos informations, votre photo et votre mot de passe.</p>
         </div>
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else
     {
-        <div class="enote-card enote-settings-card">
-            <div class="enote-profil-kopf">
-                @if (!string.IsNullOrWhiteSpace(profilBildUrl))
-                {
-                    <img src="@profilBildUrl" alt="Photo de profil" class="enote-profil-bild" />
-                }
-                else
-                {
-                    <div class="enote-profil-avatar">@Initialen</div>
-                }
-                <div>
-                    <div class="enote-profil-name">@fullName</div>
-                    <div class="enote-muted">@email</div>
-                    <div class="enote-profil-rollen">
-                        @if (rollen.Count == 0)
-                        {
-                            <span class="enote-muted" role="status">Aucun rôle attribué à ce compte.</span>
-                        }
-                        @foreach (var rolle in rollen)
-                        {
-                            <span class="enote-tag">@RolleText(rolle)</span>
-                        }
-                    </div>
+        <div class="pf-grid">
+            <section class="enote-card pf-identitaet">
+                <div class="pf-foto">
+                    @if (!string.IsNullOrWhiteSpace(profilBildUrl))
+                    {
+                        <img src="@profilBildUrl" alt="Photo de profil" />
+                    }
+                    else
+                    {
+                        <div class="pf-initialen">@Initialen</div>
+                    }
+                    <label class="pf-foto-btn" title="Changer la photo" aria-label="Changer la photo">
+                        <InputFile OnChange="LadeProfilBildHochAsync" accept="image/*" class="enote-hidden-input" />
+                        <Icon Name="camera" Groesse="18" />
+                    </label>
                 </div>
-            </div>
 
-            @* Profilbild-Upload *@
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
-                <h3 style="margin-top: 0;">Photo de profil</h3>
+                <h2 class="pf-name">@fullName</h2>
+                <div class="pf-meta">
+                    @if (!string.IsNullOrWhiteSpace(pseudonym))
+                    {
+                        <span>Identifiant : <strong>@pseudonym</strong></span>
+                    }
+                    <span>@email</span>
+                </div>
+                <div class="pf-rollen">
+                    @if (rollen.Count == 0)
+                    {
+                        <span class="enote-muted" role="status">Aucun rôle attribué à ce compte.</span>
+                    }
+                    @foreach (var rolle in rollen)
+                    {
+                        <span class="enote-tag">@RolleText(rolle)</span>
+                    }
+                </div>
+
                 @if (!string.IsNullOrWhiteSpace(bildFehler))
                 {
-                    <div class="alert alert-error">@bildFehler</div>
+                    <div class="alert alert-error" role="alert">@bildFehler</div>
                 }
                 @if (bildErfolg)
                 {
-                    <div class="alert alert-success">Photo mise à jour avec succès.</div>
+                    <div class="alert alert-success" role="status">Photo mise à jour.</div>
                 }
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <label class="enote-btn enote-btn-secondary" style="cursor: pointer; margin: 0;">
-                        <InputFile OnChange="LadeProfilBildHochAsync" accept="image/*" style="display: none;" />
-                        Choisir une photo
+                <div class="pf-foto-aktionen">
+                    <label class="enote-btn enote-btn-ghost enote-btn-sm">
+                        <InputFile OnChange="LadeProfilBildHochAsync" accept="image/*" class="enote-hidden-input" />
+                        <Icon Name="image" Groesse="16" /> @(string.IsNullOrWhiteSpace(profilBildUrl) ? "Ajouter une photo" : "Changer la photo")
                     </label>
                     @if (!string.IsNullOrWhiteSpace(profilBildUrl))
                     {
-                        <button type="button" class="enote-btn enote-btn-ghost" @onclick="EntferneProfilBildAsync">Supprimer</button>
+                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="EntferneProfilBildAsync"><Icon Name="trash" Groesse="16" /> Retirer</button>
                     }
                 </div>
-                <small class="enote-muted">Max. 8 Mo. JPG, PNG ou GIF.</small>
-            </div>
-        </div>
+                <small class="enote-muted">JPG, PNG ou GIF · 8 Mo max.</small>
 
-        <div class="enote-card enote-settings-card">
-            <h2>Changer le mot de passe</h2>
+                @if (laeden.Count > 0)
+                {
+                    <div class="pf-laeden">
+                        <h3>Établissement@(laeden.Count > 1 ? "s" : "")</h3>
+                        @foreach (var l in laeden)
+                        {
+                            <div class="pf-laden"><Icon Name="store" Groesse="16" /> @l</div>
+                        }
+                    </div>
+                }
+            </section>
 
-            @if (!string.IsNullOrWhiteSpace(pwFehler))
-            {
-                <div class="alert alert-error">@pwFehler</div>
-            }
-            @if (pwGeaendert)
-            {
-                <div class="alert alert-success">Mot de passe modifié. Reconnectez-vous.</div>
-            }
+            <section class="enote-card pf-karte">
+                <h2><Icon Name="lock" Groesse="20" /> Mot de passe</h2>
+                <p class="enote-muted">Après la modification, vous serez déconnecté et devrez vous reconnecter.</p>
 
-            <EditForm Model="this" OnValidSubmit="AenderePasswortAsync" FormName="pw-form" class="enote-form">
-                <label>
-                    Mot de passe actuel
-                    <PasswordInput @bind-Value="aktuellesPasswort" Required="true" Autocomplete="current-password" />
-                </label>
-                <label>
-                    Nouveau mot de passe
-                    <PasswordInput @bind-Value="neuesPasswort" Required="true" Autocomplete="new-password" />
-                    <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
-                </label>
-                <AsyncActionButton Text="Modifier" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" />
-            </EditForm>
+                @if (!string.IsNullOrWhiteSpace(pwFehler))
+                {
+                    <div class="alert alert-error" role="alert">@pwFehler</div>
+                }
+                @if (pwGeaendert)
+                {
+                    <div class="alert alert-success" role="status">Mot de passe modifié. Reconnectez-vous.</div>
+                }
+
+                <EditForm Model="this" OnValidSubmit="AenderePasswortAsync" FormName="pw-form" class="enote-form">
+                    <label>
+                        Mot de passe actuel
+                        <PasswordInput @bind-Value="aktuellesPasswort" Required="true" Autocomplete="current-password" />
+                    </label>
+                    <label>
+                        Nouveau mot de passe
+                        <PasswordInput @bind-Value="neuesPasswort" Required="true" Autocomplete="new-password" />
+                        <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+                    </label>
+                    <div><AsyncActionButton Text="Changer le mot de passe" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" /></div>
+                </EditForm>
+            </section>
         </div>
     }
 </div>

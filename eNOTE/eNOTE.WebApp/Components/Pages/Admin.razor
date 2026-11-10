@@ -39,6 +39,13 @@
 
         @if (aktiverTab == "etablissements")
         {
+            <div class="ad-kpis">
+                <div class="ad-kpi"><span>Établissements</span><strong>@salons.Count</strong></div>
+                <div class="ad-kpi"><span>En attente</span><strong class="@(ausstehende.Count > 0 ? "warn" : "")">@ausstehende.Count</strong></div>
+                <div class="ad-kpi"><span>En essai</span><strong>@salons.Count(x => x.IstAktiv && x.HatProbezeit)</strong></div>
+                <div class="ad-kpi"><span>Payants</span><strong>@salons.Count(x => x.IstAktiv && !x.HatProbezeit)</strong></div>
+                <div class="ad-kpi"><span>Désactivés</span><strong>@salons.Count(x => !x.IstAktiv)</strong></div>
+            </div>
             <div class="enote-filter-leiste">
                 <input class="enote-filter-suche" placeholder="Rechercher (nom, ville)…" @bind="salonSuche" @bind:event="oninput" />
                 <EnoteSelect TValue="string" @bind-Value="salonStatusFilter" Options="statusFilterOptionen" />
@@ -72,92 +79,61 @@
             }
 
             var gefiltert = GefilterteSalons().ToList();
-            @if (ausstehende.Count == 0)
-            {
-                <p class="enote-empty" role="status">Aucun établissement en attente de validation.</p>
-            }
-            <h2 class="enote-section-title">Tous les établissements (@gefiltert.Count / @salons.Count)</h2>
+            <h2 class="enote-section-title">Tous les établissements <small class="enote-muted">(@gefiltert.Count / @salons.Count)</small></h2>
             @if (gefiltert.Count == 0)
             {
                 <p class="enote-empty" role="status">@(salons.Count == 0 ? "Aucun établissement pour le moment." : "Aucun établissement ne correspond à votre recherche ou aux filtres sélectionnés.")</p>
             }
-            <div class="enote-grid-scroll">
-                @foreach (var s in gefiltert)
-                {
-                    <div class="enote-salon-karte">
-                        <div class="enote-salon-karte-kopf">
-                            <div class="enote-salon-karte-titel">
-                                <strong>@s.Name</strong>
-                                <span class="enote-salon-karte-umsatz">@s.GesamtUmsatz.ToString("N0") F</span>
-                            </div>
-                            <div class="enote-salon-karte-tags">
-                                @if (s.IstFreigegeben)
-                                {
-                                    <span class="enote-tag">Validé</span>
-                                }
-                                else
-                                {
-                                    <span class="enote-tag enote-tag-warn">En attente</span>
-                                }
-                                @if (s.HatProbezeit)
-                                {
-                                    <span class="enote-tag enote-tag-probe">Essai gratuit</span>
-                                }
-                                else
-                                {
-                                    <span class="enote-tag enote-tag-paid">Payant</span>
-                                }
-                                @if (!s.IstAktiv)
-                                {
-                                    <span class="enote-tag enote-tag-off">Désactivé</span>
-                                }
-                            </div>
-                        </div>
-
-                        <div class="enote-salon-karte-body">
-                            <div class="enote-salon-karte-info">
-                                <span class="enote-salon-karte-label">Propriétaire</span>
-                                <span class="enote-salon-karte-wert">
-                                    @(s.BesitzerName ?? "—")
-                                    @if (!string.IsNullOrWhiteSpace(s.BesitzerEmail))
-                                    {
-                                        <span class="enote-muted"> · @s.BesitzerEmail</span>
-                                    }
-                                </span>
-                            </div>
-                            <div class="enote-salon-karte-info">
-                                <span class="enote-salon-karte-label">Géré par (PO)</span>
-                                <span class="enote-salon-karte-wert">@(s.ProduktOwnerName ?? "Aucun")</span>
-                            </div>
-                            <div class="enote-salon-karte-info enote-salon-karte-meta">
-                                @if (!string.IsNullOrWhiteSpace(s.Land))
-                                {
-                                    <span>@s.Land</span>
-                                }
-                                <span>·</span>
-                                <span>@s.AnzahlMitglieder membre(s)</span>
-                            </div>
-                        </div>
-
-                        <div class="enote-item-actions">
-                            @if (!s.IstFreigegeben)
-                            {
-                                <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => SetzeFreigabeAsync(s.SalonId, true)">Valider</button>
-                            }
-                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneProbeDialogAsync(s.SalonId, s.Name)">Essai</button>
-                            <LadenTarifVerwaltung SalonId="@s.SalonId" OnOeffnen="OeffneTarifDialogAsync" />
-                            @if (s.IstAktiv)
-                            {
-                                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => SetzeAktivAsync(s.SalonId, false)">Désactiver</button>
-                            }
-                            else
-                            {
-                                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => SetzeAktivAsync(s.SalonId, true)">Réactiver</button>
-                            }
-                        </div>
+            else
+            {
+                <div class="ad-liste">
+                    <div class="ad-kopfzeile" aria-hidden="true">
+                        <span>Établissement</span><span>Propriétaire</span><span>Pays · équipe</span><span class="r">Ventes totales</span><span></span>
                     </div>
-                }
-            </div>
+                    @foreach (var s in gefiltert)
+                    {
+                        <div class="ad-zeile @(s.IstAktiv ? "" : "aus")">
+                            <div class="ad-laden">
+                                <span class="ad-avatar"><Icon Name="store" Groesse="18" /></span>
+                                <div>
+                                    <strong>@s.Name</strong>
+                                    <div class="ad-tags">
+                                        @if (!s.IstFreigegeben) { <span class="ad-tag warn">En attente</span> }
+                                        @if (!s.IstAktiv) { <span class="ad-tag off">Désactivé</span> }
+                                        else if (s.HatProbezeit) { <span class="ad-tag probe">Essai</span> }
+                                        else { <span class="ad-tag paid">Payant</span> }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ad-person">
+                                <span>@(s.BesitzerName ?? "—")</span>
+                                <small>@(s.BesitzerEmail)@(string.IsNullOrWhiteSpace(s.ProduktOwnerName) ? "" : " · PO " + s.ProduktOwnerName)</small>
+                            </div>
+                            <div class="ad-meta">
+                                <span>@(string.IsNullOrWhiteSpace(s.Land) ? "—" : s.Land)</span>
+                                <small>@s.AnzahlMitglieder membre@(s.AnzahlMitglieder > 1 ? "s" : "")</small>
+                            </div>
+                            <strong class="ad-umsatz">@s.GesamtUmsatz.ToString("N0") F</strong>
+                            <div class="ad-aktionen">
+                                @if (!s.IstFreigegeben)
+                                {
+                                    <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => SetzeFreigabeAsync(s.SalonId, true)">Valider</button>
+                                }
+                                <button class="enote-btn enote-btn-ghost enote-btn-sm" title="Période d'essai" @onclick="() => OeffneProbeDialogAsync(s.SalonId, s.Name)"><Icon Name="clock" Groesse="15" /> Essai</button>
+                                <LadenTarifVerwaltung SalonId="@s.SalonId" OnOeffnen="OeffneTarifDialogAsync" />
+                                @if (s.IstAktiv)
+                                {
+                                    <button class="enote-icon-btn rm-loeschen" title="Désactiver l'établissement" aria-label="Désactiver @s.Name" @onclick="() => SetzeAktivAsync(s.SalonId, false)"><Icon Name="lock" Groesse="17" /></button>
+                                }
+                                else
+                                {
+                                    <button class="enote-icon-btn" title="Réactiver l'établissement" aria-label="Réactiver @s.Name" @onclick="() => SetzeAktivAsync(s.SalonId, true)"><Icon Name="unlock" Groesse="17" /></button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
 
             <AuthorizeView Roles="SuperAdmin">
                 <Authorized>

@@ -22,6 +22,8 @@ public partial class Profil(
     private string fullName = string.Empty;
     private string email = string.Empty;
     private List<string> rollen = [];
+    private string? pseudonym;
+    private List<string> laeden = [];
 
     private string aktuellesPasswort = string.Empty;
     private string neuesPasswort = string.Empty;
@@ -49,6 +51,22 @@ public partial class Profil(
         fullName = user.FindFirstValue(ClaimTypes.GivenName) ?? user.Identity?.Name ?? "";
         email = user.FindFirstValue(ClaimTypes.Email) ?? user.Identity?.Name ?? "";
         rollen = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        // Anzeigename, Pseudonym und Läden aus der Datenbank (Claims enthalten nur das Pseudonym).
+        await using (var db = await dbContextFactory.CreateDbContextAsync())
+        {
+            var konto = await db.Users.AsNoTracking().Where(u => u.Id == userId)
+                .Select(u => new { u.FullName, u.UserName, u.Email }).FirstOrDefaultAsync();
+            if (konto is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(konto.FullName)) fullName = konto.FullName;
+                pseudonym = konto.UserName;
+                if (!string.IsNullOrWhiteSpace(konto.Email)) email = konto.Email;
+            }
+
+            laeden = await db.UserSalons.AsNoTracking().Where(us => us.AppUserId == userId && us.Salon.IstAktiv)
+                .Select(us => us.Salon.Name).OrderBy(n => n).ToListAsync();
+        }
 
         if (string.IsNullOrWhiteSpace(fullName))
         {

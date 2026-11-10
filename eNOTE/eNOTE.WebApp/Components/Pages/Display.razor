@@ -1,65 +1,80 @@
-@page "/display/{SitzungId:guid}"
+﻿@page "/display/{SitzungId:guid}"
 @attribute [AllowAnonymous]
 @layout Layout.DisplayLayout
 @rendermode InteractiveServer
 
-<PageTitle>Votre commande</PageTitle>
+<PageTitle>@(string.IsNullOrWhiteSpace(ladenName) ? "Votre commande" : ladenName)</PageTitle>
 
-<div class="enote-display">
-    <div class="enote-display-kopf">
-        <div class="enote-display-logo">eN</div>
-        <h1>Votre commande</h1>
-        <p class="enote-display-sub">Suivez votre achat en direct</p>
-    </div>
-
-    @if (!verbunden)
-    {
-        <div class="enote-display-status">Connexion…</div>
-    }
-    else if (ticket is null || ticket.Positionen.Count == 0)
-    {
-        <div class="enote-display-leer">
-            <div class="enote-display-leer-ico">🛍️</div>
-            <p>Bienvenue ! Votre commande s'affichera ici.</p>
+<div class="ds">
+    <header class="ds-kopf">
+        @if (!string.IsNullOrWhiteSpace(logoUrl))
+        {
+            <img class="ds-logo" src="@logoUrl" alt="" />
+        }
+        else
+        {
+            <span class="ds-logo ds-logo-text">@LadenInitialen</span>
+        }
+        <div class="ds-laden">
+            <strong>@(string.IsNullOrWhiteSpace(ladenName) ? "Votre commande" : ladenName)</strong>
+            @if (!string.IsNullOrWhiteSpace(slogan))
+            {
+                <span>« @slogan »</span>
+            }
         </div>
+        <span class="ds-live @(verbunden ? "an" : "")"><span></span>@(verbunden ? "En direct" : "Connexion…")</span>
+    </header>
+
+    @if (!verbunden || ticket is null || ticket.Positionen.Count == 0)
+    {
+        <section class="ds-willkommen">
+            <span class="ds-willkommen-icon"><Icon Name="sparkles" Groesse="44" /></span>
+            <h1>Bienvenue !</h1>
+            <p>Votre commande s'affichera ici au fur et à mesure.</p>
+        </section>
+    }
+    else if (ticket.Abgeschlossen)
+    {
+        <section class="ds-merci">
+            <span class="ds-merci-icon"><Icon Name="check" Groesse="52" /></span>
+            <h1>Merci de votre visite !</h1>
+            <div class="ds-merci-total">
+                <span>Payé</span>
+                <strong>@ticket.GesamtSumme.ToString("N0") F</strong>
+            </div>
+            @if (ticket.Rueckgeld is > 0)
+            {
+                <div class="ds-merci-rueck">
+                    <span>Votre monnaie</span>
+                    <strong>@ticket.Rueckgeld.Value.ToString("N0") F</strong>
+                </div>
+            }
+            <p>À bientôt@(string.IsNullOrWhiteSpace(ladenName) ? "" : " chez " + ladenName) !</p>
+        </section>
     }
     else
     {
-        <div class="enote-display-ticket">
-            @foreach (var p in ticket.Positionen)
-            {
-                <div class="enote-display-pos">
-                    <span class="enote-display-pos-name">@p.Menge× @p.Name</span>
-                    <span class="enote-display-pos-sum">@p.ZeilenSumme.ToString("N0") F</span>
-                </div>
-            }
-
-            <div class="enote-display-trennlinie"></div>
-
+        <section class="ds-ticket">
+            <h2>Votre commande <small>@ticket.Positionen.Sum(p => p.Menge) article@(ticket.Positionen.Sum(p => p.Menge) > 1 ? "s" : "")</small></h2>
+            <div class="ds-positionen">
+                @foreach (var p in ticket.Positionen)
+                {
+                    <div class="ds-pos">
+                        <span class="ds-menge">@p.Menge×</span>
+                        <span class="ds-name">@p.Name</span>
+                        <span class="ds-summe">@p.ZeilenSumme.ToString("N0") F</span>
+                    </div>
+                }
+            </div>
+        </section>
+        <section class="ds-summen">
             @if (ticket.RabattSumme > 0)
             {
-                <div class="enote-display-pos enote-display-rabatt">
-                    <span>Remise</span>
-                    <span>-@ticket.RabattSumme.ToString("N0") F</span>
-                </div>
+                <div class="ds-zeile"><span>Sous-total</span><span>@ticket.Zwischensumme.ToString("N0") F</span></div>
+                <div class="ds-zeile ds-rabatt"><span>Remise</span><span>− @ticket.RabattSumme.ToString("N0") F</span></div>
             }
-
-            <div class="enote-display-total">
-                <span>Total</span>
-                <strong>@ticket.GesamtSumme.ToString("N0") F</strong>
-            </div>
-
-            @if (ticket.Abgeschlossen)
-            {
-                <div class="enote-display-merci">
-                    <div class="enote-display-merci-ico">✅</div>
-                    <p>Merci de votre visite !</p>
-                    @if (ticket.Rueckgeld is not null)
-                    {
-                        <p class="enote-display-rueckgeld">Monnaie : @ticket.Rueckgeld.Value.ToString("N0") F</p>
-                    }
-                </div>
-            }
-        </div>
+            <div class="ds-total"><span>Total à payer</span><strong>@ticket.GesamtSumme.ToString("N0") F</strong></div>
+        </section>
     }
+    <footer class="ds-fuss">Caisse eNOTE</footer>
 </div>

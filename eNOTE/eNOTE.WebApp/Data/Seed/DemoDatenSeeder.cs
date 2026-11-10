@@ -26,6 +26,9 @@ public static class DemoDatenSeeder
 
     private static readonly string[] KassiererPseudonyme = ["demo.awa", "demo.kofi"];
 
+    /// <summary>Lokaler Test-Admin (nur Development, wie der ganze Demo-Seed), um Administrationsseiten zu prüfen.</summary>
+    public const string AdminPseudonym = "demo.admin";
+
     public static async Task SeedAsync(ApplicationDbContext db, UserManager<AppUser> userManager)
     {
         await EntferneVorhandeneDemoAsync(db, userManager);
@@ -37,6 +40,7 @@ public static class DemoDatenSeeder
         var besitzer = await LegeKontoAnAsync(userManager, BesitzerPseudonym, "Ama", "Mensah", AppRollen.Besitzer);
         var awa = await LegeKontoAnAsync(userManager, KassiererPseudonyme[0], "Awa", "Koffi", AppRollen.Kassierer);
         var kofi = await LegeKontoAnAsync(userManager, KassiererPseudonyme[1], "Kofi", "Agbeko", AppRollen.Kassierer);
+        await LegeKontoAnAsync(userManager, AdminPseudonym, "Admin", "Démo", AppRollen.SuperAdmin);
 
         // --- Laden ---
         var salon = new Salon
@@ -244,6 +248,7 @@ public static class DemoDatenSeeder
         Console.WriteLine($"Demo-Laden « {LadenName} » angelegt.");
         Console.WriteLine($"  Besitzer:   {BesitzerPseudonym} / {Passwort}  (Besitzer-PIN {BesitzerPin}, Kassen-PIN 1000)");
         Console.WriteLine($"  Kassierer:  {KassiererPseudonyme[0]} / {Passwort} (PIN 2222), {KassiererPseudonyme[1]} / {Passwort} (PIN 3333)");
+        Console.WriteLine($"  Admin:      {AdminPseudonym} / {Passwort} (SuperAdmin, nur lokal)");
     }
 
     private static async Task<AppUser> LegeKontoAnAsync(UserManager<AppUser> userManager, string pseudonym, string vorname, string nachname, string rolle)
@@ -288,7 +293,7 @@ public static class DemoDatenSeeder
             await db.Salons.Where(s => s.Id == id).ExecuteDeleteAsync();
         }
 
-        foreach (var pseudonym in KassiererPseudonyme.Append(BesitzerPseudonym))
+        foreach (var pseudonym in KassiererPseudonyme.Append(BesitzerPseudonym).Append(AdminPseudonym))
         {
             var konto = await userManager.FindByNameAsync(pseudonym);
             if (konto is null) continue;

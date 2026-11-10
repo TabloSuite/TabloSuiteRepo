@@ -10,108 +10,202 @@
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
-            <h1>Dépenses – @salonName</h1>
-            <p>Enregistrez les dépenses de l'établissement avec un justificatif facultatif.</p>
+            <h1>Dépenses</h1>
+            <p>@salonName · loyer, salaires, achats… avec justificatif facultatif.</p>
         </div>
-        <div class="enote-item-actions">
-            <button class="enote-btn enote-btn-primary" @onclick="NeueAusgabe">+ Nouvelle dépense</button>
+        <div class="dp-kopf-aktionen">
+            <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienOffen = true"><Icon Name="tag" Groesse="18" /> Catégories</button>
+            <button class="enote-btn enote-btn-primary" @onclick="NeueAusgabe"><Icon Name="plus" Groesse="18" /> Nouvelle dépense</button>
         </div>
     </div>
 
-    <div class="enote-card enote-settings-card">
-        <h2>Catégories de dépenses</h2>
-        <div class="enote-kategorie-row">
-            <input @bind="neueKategorieName" placeholder="ex. Loyer, Électricité, Stock…" class="enote-input-inline" />
-            <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
-        </div>
-        @if (!isLoading && kategorien.Count == 0)
-        {
-            <p class="enote-empty" role="status">Aucune catégorie de dépenses pour le moment.</p>
-        }
-        <div class="enote-kategorie-liste">
-            @foreach (var k in kategorien)
+    <section class="enote-card dp-zeitraum">
+        <div class="dp-presets" role="tablist" aria-label="Période">
+            @foreach (var (schluessel, text) in Zeitraeume)
             {
-                <span class="enote-tag">@k.Name</span>
+                <button type="button" role="tab" class="enote-chip @(zeitraum == schluessel ? "enote-chip-aktiv" : "")" @onclick="() => WaehleZeitraumAsync(schluessel)">@text</button>
             }
         </div>
-    </div>
-
-    <div class="enote-filter-row">
-        <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
-        <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
-        <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
-    </div>
-
-    <div class="enote-filter-leiste">
-        <input class="enote-filter-suche" placeholder="Rechercher (note, catégorie)…" @bind="ausgabenSuche" @bind:event="oninput" />
-        <EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" />
-        <span class="enote-ausgaben-summe">Total : <strong>@GefilterteAusgaben().Sum(a => a.Betrag).ToString("N0") F</strong></span>
-    </div>
+        <div class="dp-daten">
+            <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
+            <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
+            <button class="enote-btn enote-btn-ghost" @onclick="WendeDatumAnAsync"><Icon Name="filter" Groesse="18" /> Appliquer</button>
+        </div>
+    </section>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
-    }
-    else if (ausgaben.Count == 0)
-    {
-        <p class="enote-empty">Aucune dépense sur la période.</p>
-    }
-    else if (!GefilterteAusgaben().Any())
-    {
-        <p class="enote-empty" role="status">Aucune dépense ne correspond à votre recherche ou à la catégorie sélectionnée.</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else
     {
-        <div class="enote-feed">
-            @foreach (var a in GefilterteAusgaben())
-            {
-                <div class="enote-feed-item enote-ausgabe-item">
-                    <div class="enote-feed-head">
-                        <strong>@a.Betrag.ToString("N0") F</strong>
-                        <span class="enote-tag enote-tag-off">@a.Kategorie.Name</span>
-                    </div>
-                    <div class="enote-feed-meta">@a.DatumUtc.ToLocalTime().ToString("dd.MM.yyyy")</div>
-                    @if (!string.IsNullOrWhiteSpace(a.Notiz))
-                    {
-                        <div class="enote-feed-meta">@a.Notiz</div>
-                    }
-                    <div class="enote-item-actions">
-                        @if (a.BelegAssetId is not null && belegUrls.TryGetValue(a.Id, out var url))
+        var gefiltert = GefilterteAusgaben().ToList();
+        var nachKategorie = ausgaben.GroupBy(a => a.KategorieId).Select(g => (Kategorie: g.First().Kategorie, Summe: g.Sum(a => a.Betrag), Anzahl: g.Count()))
+            .OrderByDescending(x => x.Summe).ToList();
+        var gesamt = ausgaben.Sum(a => a.Betrag);
+
+        <div class="dp-uebersicht">
+            <section class="dp-total">
+                <span class="dp-total-label"><Icon Name="wallet" Groesse="16" /> Total de la période</span>
+                <strong>@gesamt.ToString("N0") F</strong>
+                <small>@ausgaben.Count dépense@(ausgaben.Count > 1 ? "s" : "") · @((filterVon ?? DateTime.Today).ToString("dd.MM")) – @((filterBis ?? DateTime.Today).ToString("dd.MM.yyyy"))</small>
+            </section>
+            <section class="enote-card dp-kategorien">
+                <h2>Par catégorie</h2>
+                @if (nachKategorie.Count == 0)
+                {
+                    <p class="enote-muted">Aucune dépense sur la période.</p>
+                }
+                else
+                {
+                    <div class="dp-balken-liste">
+                        @foreach (var k in nachKategorie)
                         {
-                            <a class="enote-btn enote-btn-ghost enote-btn-sm" href="@url" target="_blank">?? Justificatif</a>
+                            var anteil = gesamt == 0 ? 0 : (double)(k.Summe / gesamt * 100);
+                            <button type="button" class="dp-balken @(kategorieFilter == k.Kategorie.Id.ToString() ? "aktiv" : "")" @onclick="() => FilterKategorie(k.Kategorie.Id)"
+                                    title="Filtrer « @k.Kategorie.Name »">
+                                <span class="dp-balken-kopf"><span>@k.Kategorie.Name <small>(@k.Anzahl)</small></span><strong>@k.Summe.ToString("N0") F</strong></span>
+                                <span class="dp-balken-spur"><span style="width:@anteil.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></span></span>
+                            </button>
                         }
-                        <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="() => LoescheAusgabeAsync(a.Id)">Supprimer</button>
                     </div>
-                </div>
+                }
+            </section>
+        </div>
+
+        <div class="dp-filter">
+            <div class="kx-suche dp-suche">
+                <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
+                <input class="kx-suche-feld" placeholder="Rechercher (note, catégorie)…" @bind="ausgabenSuche" @bind:event="oninput" aria-label="Rechercher une dépense" />
+            </div>
+            <div class="dp-kat-select"><EnoteSelect TValue="string" @bind-Value="kategorieFilter" Options="kategorieFilterOptionen" MitSuche="true" /></div>
+            @if (gefiltert.Count != ausgaben.Count)
+            {
+                <span class="dp-teilsumme">Sélection : <strong>@gefiltert.Sum(a => a.Betrag).ToString("N0") F</strong></span>
             }
         </div>
+
+        @if (ausgaben.Count == 0)
+        {
+            <div class="rm-leer">
+                <span class="rm-leer-icon"><Icon Name="wallet" Groesse="28" /></span>
+                <strong>Aucune dépense sur la période</strong>
+                <p class="enote-muted">Notez chaque sortie d'argent (loyer, produits, électricité…) pour connaître votre vrai bénéfice.</p>
+                <button class="enote-btn enote-btn-primary" @onclick="NeueAusgabe"><Icon Name="plus" Groesse="18" /> Nouvelle dépense</button>
+            </div>
+        }
+        else if (gefiltert.Count == 0)
+        {
+            <p class="enote-empty" role="status">Aucune dépense ne correspond à votre recherche ou à la catégorie sélectionnée.</p>
+        }
+        else
+        {
+            <div class="dp-liste">
+                @foreach (var tag in gefiltert.GroupBy(a => a.DatumUtc.ToLocalTime().Date).OrderByDescending(g => g.Key))
+                {
+                    <div class="dp-tag">
+                        <span>@tag.Key.ToString("dddd d MMMM", new System.Globalization.CultureInfo("fr-FR"))</span>
+                        <span>@tag.Sum(a => a.Betrag).ToString("N0") F</span>
+                    </div>
+                    @foreach (var a in tag)
+                    {
+                        <div class="dp-zeile">
+                            <span class="dp-kat-icon" style="--dp-farbe:@KategorieFarbe(a.KategorieId)"><Icon Name="receipt" Groesse="18" /></span>
+                            <div class="dp-zeile-info">
+                                <strong>@(string.IsNullOrWhiteSpace(a.Notiz) ? a.Kategorie.Name : a.Notiz)</strong>
+                                <small>@a.Kategorie.Name</small>
+                            </div>
+                            <strong class="dp-betrag">− @a.Betrag.ToString("N0") F</strong>
+                            <div class="dp-zeile-aktionen">
+                                @if (a.BelegAssetId is not null && belegUrls.TryGetValue(a.Id, out var url))
+                                {
+                                    <a class="enote-icon-btn" href="@url" target="_blank" title="Voir le justificatif" aria-label="Voir le justificatif"><Icon Name="image" Groesse="18" /></a>
+                                }
+                                <button class="enote-icon-btn rm-loeschen" title="Supprimer" aria-label="Supprimer la dépense" @onclick="() => zuLoeschen = a"><Icon Name="trash" Groesse="18" /></button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
     }
 </div>
 
 @* Neue Ausgabe *@
-<ModalDialog Open="ausgabeDialogOffen" Title="Nouvelle dépense" ErrorMessage="@ausgabeFehler" OnClose="() => ausgabeDialogOffen = false">
+<ModalDialog Open="ausgabeDialogOffen" Title="Nouvelle dépense" ErrorMessage="@ausgabeFehler" OnClose="() => ausgabeDialogOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
-        <div class="enote-form">
-            <label>Montant (F) <input type="number" min="0" step="50" @bind="neuBetrag" /></label>
-            <label>Date</label>
-            <EnoteDatePicker @bind-Value="neuDatum" />
-            <label>Catégorie</label>
-            <EnoteSelect TValue="string" @bind-Value="neuKategorieId" Options="kategorienOptionen" Placeholder="— Choisir —" MitSuche="true" />
-            <label>Note (facultatif) <input @bind="neuNotiz" /></label>
-            <label>Justificatif (PDF/image, facultatif)</label>
-            <label class="enote-btn enote-btn-ghost enote-btn-upload">
-                ?? @(string.IsNullOrWhiteSpace(belegName) ? "Choisir un fichier" : belegName)
+        <div class="kx-pay">
+            <BetragEingabe @bind-Wert="neuBetrag" Label="Montant" Kompakt="true" MitZiffernblock="false" />
+            <span class="enote-betrag-label">Catégorie</span>
+            @if (kategorienOptionen.Count <= 10)
+            {
+                <div class="enote-betrag-schnell">
+                    @foreach (var k in kategorienOptionen)
+                    {
+                        <button type="button" class="enote-chip @(neuKategorieId == k.Value ? "enote-chip-aktiv" : "")" @onclick="() => neuKategorieId = k.Value">@k.Label</button>
+                    }
+                    <button type="button" class="enote-chip dp-chip-neu" @onclick="() => kategorienOffen = true"><Icon Name="plus" Groesse="14" /> Autre</button>
+                </div>
+            }
+            else
+            {
+                <EnoteSelect TValue="string" @bind-Value="neuKategorieId" Options="kategorienOptionen" Placeholder="— Choisir —" MitSuche="true" />
+            }
+            <div class="enote-filter-feld"><span class="enote-filter-label">Date</span><EnoteDatePicker @bind-Value="neuDatum" /></div>
+            <label class="kx-pay-ref">
+                <span>Note <small class="enote-muted">(facultatif)</small></span>
+                <input class="enote-input" @bind="neuNotiz" maxlength="500" placeholder="ex. Facture CEET octobre" />
+            </label>
+            <label class="dp-upload @(string.IsNullOrWhiteSpace(belegName) ? "" : "gewaehlt")">
+                <Icon Name="@(string.IsNullOrWhiteSpace(belegName) ? "camera" : "check")" Groesse="20" />
+                <span>@(string.IsNullOrWhiteSpace(belegName) ? "Ajouter un justificatif (photo ou PDF)" : belegName)</span>
                 <InputFile OnChange="HandleBelegAuswahl" accept="image/*,application/pdf" class="enote-hidden-input" />
             </label>
-            @if (!string.IsNullOrWhiteSpace(belegName))
-            {
-                <small class="enote-muted">? Fichier sélectionné</small>
-            }
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => ausgabeDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SpeichereAusgabeAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer la dépense" OnClick="SpeichereAusgabeAsync" CssClass="enote-btn-primary" Disabled="@(neuBetrag <= 0 || string.IsNullOrEmpty(neuKategorieId))" />
+    </Footer>
+</ModalDialog>
+
+@* Kategorien verwalten *@
+<ModalDialog Open="kategorienOffen" Title="Catégories de dépenses" OnClose="() => kategorienOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="dp-kat-neu">
+            <input class="enote-input" @bind="neueKategorieName" @bind:event="oninput" placeholder="ex. Loyer, Électricité, Stock…" maxlength="100"
+                   @onkeydown="@(async e => { if (e.Key == "Enter") await FuegeKategorieHinzuAsync(); })" />
+            <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(neueKategorieName)" />
+        </div>
+        @if (kategorien.Count == 0)
+        {
+            <p class="enote-empty" role="status">Aucune catégorie pour le moment.</p>
+        }
+        <div class="dp-kat-liste">
+            @foreach (var k in kategorien.OrderByDescending(k => k.IstAktiv).ThenBy(k => k.Name))
+            {
+                <div class="dp-kat-zeile @(k.IstAktiv ? "" : "aus")">
+                    <span class="dp-kat-punkt" style="--dp-farbe:@KategorieFarbe(k.Id)"></span>
+                    <span class="dp-kat-name">@k.Name</span>
+                    <EnoteCheckbox Value="k.IstAktiv" ValueChanged="v => SetzeKategorieAktivAsync(k, v)" Label="@(k.IstAktiv ? "Visible" : "Masquée")" />
+                </div>
+            }
+        </div>
+        <p class="enote-muted dp-kat-hinweis">Une catégorie masquée n'est plus proposée pour les nouvelles dépenses ; l'historique reste intact.</p>
+    </ChildContent>
+</ModalDialog>
+
+<ModalDialog Open="zuLoeschen is not null" Title="Supprimer la dépense ?" OnClose="() => zuLoeschen = null" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        @if (zuLoeschen is { } z)
+        {
+            <p><strong>@z.Betrag.ToString("N0") F</strong> · @z.Kategorie.Name · @z.DatumUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+            <p class="enote-muted">La dépense disparaît des finances et du rapport PDF.</p>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => zuLoeschen = null">Annuler</button>
+        <AsyncActionButton Text="Supprimer" OnClick="LoescheGewaehlteAsync" CssClass="enote-btn-danger" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

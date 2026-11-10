@@ -25,7 +25,10 @@ public class TeamService(
         bool KannFinanzenSehen,
         bool KannLeistungenVerwalten,
         bool KannRabatteVerwalten,
-        bool IstBesitzer);
+        bool IstBesitzer,
+        string? Pseudonym = null,
+        DateTime? LetzteKasseUtc = null,
+        int VerkaeufeMonat = 0);
 
     /// <summary>Alle Mitglieder eines Salons inklusive ihrer Rechte.</summary>
     public async Task<List<TeamMitglied>> GetTeamAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -47,11 +50,27 @@ public class TeamService(
             .Select(ur => ur.UserId)
             .ToHashSetAsync(cancellationToken);
 
+        // Aktivität an der Kasse: letzte Sitzung und Verkäufe im laufenden Monat (ohne Rückerstattungen).
+        var monatsAnfang = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var letzteKasse = await db.KassenSitzungen.AsNoTracking()
+            .Where(k => k.SalonId == salonId && userIds.Contains(k.KassiererId))
+            .GroupBy(k => k.KassiererId)
+            .Select(g => new { g.Key, Letzte = g.Max(k => k.GestartetUtc) })
+            .ToDictionaryAsync(x => x.Key, x => x.Letzte, cancellationToken);
+        var verkaeufe = await db.Verkaeufe.AsNoTracking()
+            .Where(v => v.SalonId == salonId && v.ZeitUtc >= monatsAnfang && v.StornoVonVerkaufId == null)
+            .GroupBy(v => v.KassenSitzung.KassiererId)
+            .Select(g => new { g.Key, Anzahl = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Anzahl, cancellationToken);
+
         return zuordnungen.Select(us => new TeamMitglied(
             us.Id, us.AppUserId, us.AppUser.FullName, us.AppUser.Email ?? string.Empty,
             us.KassenPinHash is not null,
             us.KannFinanzenSehen, us.KannLeistungenVerwalten, us.KannRabatteVerwalten,
-            besitzerIds.Contains(us.AppUserId))).ToList();
+            besitzerIds.Contains(us.AppUserId),
+            us.AppUser.UserName,
+            letzteKasse.TryGetValue(us.AppUserId, out var letzte) ? letzte : null,
+            verkaeufe.GetValueOrDefault(us.AppUserId))).ToList();
     }
 
     /// <summary>

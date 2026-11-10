@@ -566,14 +566,28 @@ public class KatalogService(
         return rabatt;
     }
 
-    public async Task LoescheRabattAsync(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Löscht eine Remise. Wurde sie schon auf Bons verwendet, wird sie nur deaktiviert
+    /// (Bons verweisen darauf). Liefert <c>true</c> bei echter Löschung.
+    /// </summary>
+    public async Task<bool> LoescheRabattAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var rabatt = await db.Rabatte.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-        if (rabatt is not null)
+        if (rabatt is null)
         {
-            db.Rabatte.Remove(rabatt);
-            await db.SaveChangesAsync(cancellationToken);
+            return true;
         }
+
+        if (await db.VerkaufsPositionen.AnyAsync(p => p.RabattId == id, cancellationToken))
+        {
+            rabatt.IstAktiv = false;
+            await db.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
+        db.Rabatte.Remove(rabatt);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

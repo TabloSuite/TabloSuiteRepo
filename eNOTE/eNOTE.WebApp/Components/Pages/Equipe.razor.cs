@@ -218,10 +218,35 @@ public partial class Equipe(
         dialogFehler = null;
     }
 
+    /// <summary>
+    /// Initialpasswort: 10 gut lesbare Zeichen (ohne i/l/o/0/1), kryptografisch zufällig und
+    /// garantiert mit Ziffer und Kleinbuchstabe (Passwortregel von Identity).
+    /// </summary>
     private static string ErzeugeInitialPasswort()
     {
-        const string zeichen = "abcdefghjkmnpqrstuvwxyz23456789";
-        var zufall = new Random();
-        return new string(Enumerable.Range(0, 10).Select(_ => zeichen[zufall.Next(zeichen.Length)]).ToArray());
+        const string buchstaben = "abcdefghjkmnpqrstuvwxyz";
+        const string ziffern = "23456789";
+        const string alle = buchstaben + ziffern;
+        var zeichen = new char[10];
+        for (var i = 0; i < zeichen.Length; i++)
+            zeichen[i] = alle[System.Security.Cryptography.RandomNumberGenerator.GetInt32(alle.Length)];
+        zeichen[System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 5)] = buchstaben[System.Security.Cryptography.RandomNumberGenerator.GetInt32(buchstaben.Length)];
+        zeichen[System.Security.Cryptography.RandomNumberGenerator.GetInt32(5, 10)] = ziffern[System.Security.Cryptography.RandomNumberGenerator.GetInt32(ziffern.Length)];
+        return new string(zeichen);
+    }
+
+    private static readonly string[] AvatarPalette = ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
+
+    private static string AvatarFarbe(Guid id) => AvatarPalette[(int)((uint)id.GetHashCode() % AvatarPalette.Length)];
+
+    private static string Initialen(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length switch
+        {
+            0 => "?",
+            1 => teile[0][..Math.Min(2, teile[0].Length)].ToUpperInvariant(),
+            _ => string.Concat(teile[0][0], teile[^1][0]).ToUpperInvariant()
+        };
     }
 }

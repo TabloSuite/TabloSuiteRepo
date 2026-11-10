@@ -55,6 +55,61 @@ public partial class Ausgaben(
     }
 
     private string neueKategorieName = string.Empty;
+    private bool kategorienOffen;
+    private Ausgabe? zuLoeschen;
+    private string zeitraum = "monat";
+
+    private static readonly (string Schluessel, string Text)[] Zeitraeume =
+        [("monat", "Ce mois"), ("vormonat", "Mois dernier"), ("30", "30 jours"), ("jahr", "Cette année")];
+
+    /// <summary>Kategoriefarben (gleiche Palette wie die Kasse), stabil je Kategorie.</summary>
+    private static readonly string[] KategoriePalette =
+        ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
+
+    private string KategorieFarbe(Guid kategorieId)
+    {
+        var index = kategorien.OrderBy(k => k.CreatedAtUtc).ThenBy(k => k.Id).ToList().FindIndex(k => k.Id == kategorieId);
+        return KategoriePalette[(index < 0 ? 0 : index) % KategoriePalette.Length];
+    }
+
+    private async Task WaehleZeitraumAsync(string schluessel)
+    {
+        zeitraum = schluessel;
+        var heute = DateTime.Today;
+        var monatsAnfang = new DateTime(heute.Year, heute.Month, 1);
+        (filterVon, filterBis) = schluessel switch
+        {
+            "vormonat" => (monatsAnfang.AddMonths(-1), monatsAnfang.AddDays(-1)),
+            "30" => (heute.AddDays(-29), heute),
+            "jahr" => (new DateTime(heute.Year, 1, 1), heute),
+            _ => (monatsAnfang, heute)
+        };
+        await LadeAsync();
+    }
+
+    private async Task WendeDatumAnAsync()
+    {
+        zeitraum = string.Empty;
+        await LadeAsync();
+    }
+
+    private void FilterKategorie(Guid id)
+        => kategorieFilter = kategorieFilter == id.ToString() ? string.Empty : id.ToString();
+
+    private async Task SetzeKategorieAktivAsync(AusgabenKategorie kategorie, bool aktiv)
+    {
+        await ausgabenService.SpeichereKategorieAsync(salonId, kategorie.Id, kategorie.Name, aktiv);
+        await LadeAsync();
+    }
+
+    private async Task LoescheGewaehlteAsync()
+    {
+        if (zuLoeschen is { } a)
+        {
+            zuLoeschen = null;
+            await LoescheAusgabeAsync(a.Id);
+        }
+    }
 
     private bool ausgabeDialogOffen;
     private string? ausgabeFehler;
@@ -143,10 +198,22 @@ public partial class Ausgaben(
             return;
         }
 
-        await ausgabenService.SpeichereKategorieAsync(salonId, null, neueKategorieName, istAktiv: true);
+        var name = neueKategorieName.Trim();
+        if (kategorien.Any(k => string.Equals(k.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            toast.ZeigeInfo($"La catégorie « {name} » existe déjà.");
+            return;
+        }
+
+        var neu = await ausgabenService.SpeichereKategorieAsync(salonId, null, name, istAktiv: true);
         neueKategorieName = string.Empty;
         toast.ZeigeErfolg("Catégorie ajoutée.");
         await LadeAsync();
+        if (ausgabeDialogOffen)
+        {
+            neuKategorieId = neu.Id.ToString();
+            kategorienOffen = false;
+        }
     }
 
     private void NeueAusgabe()

@@ -1,4 +1,4 @@
-# eNOTE – Projektübersicht & Entwicklungsbeschreibung
+﻿# eNOTE – Projektübersicht & Entwicklungsbeschreibung
 
 > Kassen- und Verwaltungs-App für kleine Geschäfte (Salon, Boutique, Atelier …), optimiert für Tablet und PC. Französische Endnutzertexte, deutsche Entwicklerdoku.
 
@@ -113,7 +113,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 1. **Voraussetzungen:** .NET 10 SDK, SQL Server (lokal), ggf. User Secrets.
 2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Vor administrativen Änderungen die derzeit konkurrierenden Migrationen fachlich abgleichen; kein Reset und keine automatische Startup-DDL.
 3. **Seed:** separater Einmalmodus `--database-admin=seed --database-target=localhost/ENOTEDB`, mit ausdrücklich geprüftem Verbindungsziel. SuperAdmin aus sicherer Konfiguration (`Seed:SuperAdminEmail`, `Seed:SuperAdminPasswort`, optional `Seed:SuperAdminBenutzername`); ohne Zugangsdaten kein Admin. Details und Migrationsmodus in [Deployment-Azure.md](Deployment-Azure.md).
-   **Demo-Daten (nur Development):** `--database-admin=demo --database-target=localhost/ENOTEDB` legt den Laden „Salon Élégance (Démo)“ mit Katalog, Team, Rabatten, Ausgaben und 6 Wochen Verkaufshistorie an (wiederholbar, setzt den Demo-Laden zurück). Zugänge und Screenshot-Rundgang: [`tools/ui-rundgang/README.md`](tools/ui-rundgang/README.md).
+   **Demo-Daten (nur Development):** `--database-admin=demo --database-target=localhost/ENOTEDB` legt den Laden „Salon Élégance (Démo)“ mit Katalog, Team, Rabatten, Ausgaben und 6 Wochen Verkaufshistorie an (wiederholbar, setzt den Demo-Laden zurück). Enthält außerdem einen lokalen Test-Admin `demo.admin` (SuperAdmin) zum Prüfen der Administrationsseiten – der Demo-Modus ist außerhalb von Development gesperrt. Zugänge und Screenshot-Rundgang: [`tools/ui-rundgang/README.md`](tools/ui-rundgang/README.md).
 4. **Start:** `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148 (http://localhost:62149), Environment Development.
 5. **Tests:** `dotnet test eNOTE/eNOTE.Tests`.
 

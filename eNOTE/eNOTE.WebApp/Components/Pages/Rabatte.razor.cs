@@ -18,16 +18,25 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     // Suche
     private string rabattSuche = string.Empty;
+    private string statusFilter = string.Empty;
 
     private IEnumerable<Rabatt> GefilterteRabatte()
     {
+        IEnumerable<Rabatt> liste = statusFilter switch
+        {
+            "aktiv" => rabatte.Where(r => r.IstAktiv),
+            "aus" => rabatte.Where(r => !r.IstAktiv),
+            _ => rabatte
+        };
+        liste = liste.OrderByDescending(r => r.IstAktiv).ThenBy(r => r.Name);
+
         if (string.IsNullOrWhiteSpace(rabattSuche))
         {
-            return rabatte;
+            return liste;
         }
 
         var s = rabattSuche.Trim();
-        return rabatte.Where(r =>
+        return liste.Where(r =>
             r.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
             || (r.Bedingung?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
             || (r.Leistung?.Name.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
@@ -172,6 +181,44 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
         await LadeAsync();
     }
 
+    /// <summary>Schalter direkt auf der Karte: aktiviert/deaktiviert ohne Editor.</summary>
+    private async Task SetzeAktivAsync(Rabatt rabatt, bool aktiv)
+    {
+        if (!darfVerwalten) return;
+        var kopie = new Rabatt
+        {
+            Id = rabatt.Id, SalonId = rabatt.SalonId, Name = rabatt.Name, Bedingung = rabatt.Bedingung, Art = rabatt.Art,
+            Wert = rabatt.Wert, LeistungId = rabatt.LeistungId, IstAktiv = aktiv,
+            GueltigVonUtc = rabatt.GueltigVonUtc, GueltigBisUtc = rabatt.GueltigBisUtc
+        };
+        await katalogService.SpeichereRabattAsync(kopie);
+        rabatt.IstAktiv = aktiv;
+        toast.ZeigeInfo(aktiv ? $"« {rabatt.Name} » est active en caisse." : $"« {rabatt.Name} » est désactivée.");
+    }
+
+    /// <summary>Rechenbeispiel im Editor, damit der Besitzer die Wirkung sofort sieht.</summary>
+    private string BeispielText()
+    {
+        var leistung = Guid.TryParse(ausgewaehlteLeistungId, out var id) ? leistungen.FirstOrDefault(l => l.Id == id) : null;
+        var basis = leistung?.Preis is decimal p && p > 0 ? p : 10000m;
+        var nach = Core.Services.Kasse.KassenRechner.WendeRabattAn(basis, bearbeitungsRabatt.Art, bearbeitungsRabatt.Wert);
+        var wo = leistung is null ? "un ticket de" : $"« {leistung.Name} » à";
+        return $"{wo} {basis:N0} F → {nach:N0} F (−{basis - nach:N0} F)";
+    }
+
+    private static string PeriodeText(Rabatt r)
+    {
+        var von = r.GueltigVonUtc?.ToLocalTime().ToString("dd.MM.yyyy");
+        var bis = r.GueltigBisUtc?.ToLocalTime().ToString("dd.MM.yyyy");
+        return (von, bis) switch
+        {
+            (not null, not null) => $"Du {von} au {bis}",
+            (not null, null) => $"À partir du {von}",
+            (null, not null) => $"Jusqu'au {bis}",
+            _ => string.Empty
+        };
+    }
+
     private void LoeschenFragen(Rabatt rabatt)
     {
         zuLoeschenderRabatt = rabatt;
@@ -182,8 +229,9 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     {
         if (zuLoeschenderRabatt is not null)
         {
-            await katalogService.LoescheRabattAsync(zuLoeschenderRabatt.Id);
-            toast.ZeigeErfolg("Remise supprimée.");
+            var geloescht = await katalogService.LoescheRabattAsync(zuLoeschenderRabatt.Id);
+            if (geloescht) toast.ZeigeErfolg("Remise supprimée.");
+            else toast.ZeigeInfo("Remise déjà utilisée sur des reçus : elle a été désactivée.");
         }
 
         loeschDialogOffen = false;
@@ -194,7 +242,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private void SchliesseLoeschen() => loeschDialogOffen = false;
 
     private static string RabattText(Rabatt r)
-        => r.Art == RabattArt.Prozent ? $"-{r.Wert:N0} %" : $"-{r.Wert:N0} F";
+        => r.Art == RabattArt.Prozent ? $"−{r.Wert:0.##} %" : $"−{r.Wert:N0} F";
 
     private static bool IstGueltig(Rabatt r)
     {

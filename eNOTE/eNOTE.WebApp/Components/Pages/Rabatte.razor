@@ -11,89 +11,131 @@
     <div class="enote-page-header">
         <div>
             <h1>Remises</h1>
-            <p>Créez des remises que le caissier pourra appliquer si la condition est remplie (ex. client fidèle).</p>
+            <p>Le caissier les applique en caisse, si la condition est remplie (ex. client fidèle, étudiant).</p>
         </div>
         @if (darfVerwalten)
         {
-            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle remise</button>
+            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouvelle remise</button>
         }
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else if (rabatte.Count == 0)
     {
-        <p class="enote-empty">Aucune remise pour le moment.</p>
+        <div class="rm-leer">
+            <span class="rm-leer-icon"><Icon Name="percent" Groesse="28" /></span>
+            <strong>Aucune remise pour le moment</strong>
+            <p class="enote-muted">Créez par exemple « Fidélité −10 % » ou « Étudiant −500 F ». Vos caissiers pourront l'appliquer en un geste.</p>
+            @if (darfVerwalten)
+            {
+                <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Créer une remise</button>
+            }
+        </div>
     }
     else
     {
-        <div class="enote-filter-leiste">
-            <input class="enote-filter-suche" placeholder="Rechercher une remise…" @bind="rabattSuche" @bind:event="oninput" />
+        <div class="rm-leiste">
+            <div class="rm-kennzahlen">
+                <span><strong>@rabatte.Count</strong> remise@(rabatte.Count > 1 ? "s" : "")</span>
+                <span class="rm-punkt an"></span><span><strong>@rabatte.Count(r => r.IstAktiv && IstGueltig(r))</strong> utilisable@(rabatte.Count(r => r.IstAktiv && IstGueltig(r)) > 1 ? "s" : "") en caisse</span>
+            </div>
+            <div class="rm-filter">
+                <div class="kx-suche rm-suche">
+                    <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
+                    <input class="kx-suche-feld" placeholder="Rechercher une remise…" @bind="rabattSuche" @bind:event="oninput" aria-label="Rechercher une remise" />
+                </div>
+                <div class="rm-chips" role="tablist">
+                    <button type="button" role="tab" class="enote-chip @(statusFilter == "" ? "enote-chip-aktiv" : "")" @onclick='() => statusFilter = ""'>Toutes</button>
+                    <button type="button" role="tab" class="enote-chip @(statusFilter == "aktiv" ? "enote-chip-aktiv" : "")" @onclick='() => statusFilter = "aktiv"'>Actives</button>
+                    <button type="button" role="tab" class="enote-chip @(statusFilter == "aus" ? "enote-chip-aktiv" : "")" @onclick='() => statusFilter = "aus"'>Désactivées</button>
+                </div>
+            </div>
         </div>
+
         @if (!GefilterteRabatte().Any())
         {
             <p class="enote-empty" role="status">Aucune remise ne correspond à votre recherche.</p>
         }
-        <div class="enote-grid">
+        <div class="rm-grid">
             @foreach (var r in GefilterteRabatte())
             {
-                <div class="enote-item">
-                    <div class="enote-item-head">
-                        <strong>@r.Name</strong>
-                        <span class="enote-price">@RabattText(r)</span>
+                var gueltig = IstGueltig(r);
+                <article class="rm-karte @(r.IstAktiv && gueltig ? "" : "aus")">
+                    <div class="rm-kopf">
+                        <span class="rm-wert @(r.Art == RabattArt.Prozent ? "prozent" : "betrag")">@RabattText(r)</span>
+                        <div class="rm-titel">
+                            <strong>@r.Name</strong>
+                            <small>@(r.Art == RabattArt.Prozent ? "Pourcentage" : "Montant fixe")</small>
+                        </div>
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(r.Bedingung))
-                    {
-                        <p class="enote-item-desc">Condition : @r.Bedingung</p>
-                    }
-                    <div class="enote-item-meta">
-                        @if (r.Leistung is not null)
+
+                    <ul class="rm-details">
+                        <li><Icon Name="tag" Groesse="15" /> @(r.Leistung is not null ? r.Leistung.Name : "Tout le ticket")</li>
+                        @if (!string.IsNullOrWhiteSpace(r.Bedingung))
                         {
-                            <span class="enote-tag">@r.Leistung.Name</span>
+                            <li><Icon Name="check" Groesse="15" /> Condition : @r.Bedingung</li>
+                        }
+                        @if (r.GueltigVonUtc is not null || r.GueltigBisUtc is not null)
+                        {
+                            <li class="@(gueltig ? "" : "warn")"><Icon Name="calendar" Groesse="15" /> @PeriodeText(r)@(gueltig ? "" : " · hors période")</li>
+                        }
+                    </ul>
+
+                    <div class="rm-fuss">
+                        @if (darfVerwalten)
+                        {
+                            <EnoteCheckbox Value="r.IstAktiv" ValueChanged="v => SetzeAktivAsync(r, v)" Label="@(r.IstAktiv ? "Active" : "Désactivée")" />
+                            <div class="rm-aktionen">
+                                <button class="enote-icon-btn" title="Modifier" aria-label="Modifier @r.Name" @onclick="() => Bearbeiten(r)"><Icon Name="edit" Groesse="18" /></button>
+                                <button class="enote-icon-btn rm-loeschen" title="Supprimer" aria-label="Supprimer @r.Name" @onclick="() => LoeschenFragen(r)"><Icon Name="trash" Groesse="18" /></button>
+                            </div>
                         }
                         else
                         {
-                            <span class="enote-tag">Tout le ticket</span>
-                        }
-                        @if (!r.IstAktiv)
-                        {
-                            <span class="enote-tag enote-tag-off">Désactivée</span>
-                        }
-                        @if (!IstGueltig(r))
-                        {
-                            <span class="enote-tag enote-tag-warn">Hors période</span>
+                            <span class="enote-tag @(r.IstAktiv ? "" : "enote-tag-off")">@(r.IstAktiv ? "Active" : "Désactivée")</span>
                         }
                     </div>
-                    @if (darfVerwalten)
-                    {
-                        <div class="enote-item-actions">
-                            <button class="enote-btn enote-btn-ghost" @onclick="() => Bearbeiten(r)">Modifier</button>
-                            <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoeschenFragen(r)">Supprimer</button>
-                        </div>
-                    }
-                </div>
+                </article>
             }
         </div>
     }
 </div>
 
-<ModalDialog Open="editorOffen" Title="@(bearbeitungsRabatt.Id == Guid.Empty ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor">
+<ModalDialog Open="editorOffen" Title="@(bearbeitungsRabatt.Id == Guid.Empty ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
-            <label>Nom <input @bind="bearbeitungsRabatt.Name" /></label>
-            <label>Condition (ex. Client fidèle) <input @bind="bearbeitungsRabatt.Bedingung" /></label>
+            <label>Nom <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="120" /></label>
 
             <label>Type de remise</label>
             <EnoteRadioGroup TValue="RabattArt" @bind-Value="bearbeitungsRabatt.Art" Options="rabattArtOptionen" />
 
             <label>@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "Pourcentage (%)" : "Montant (F)")
-                <input type="number" min="0" step="@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "1" : "50")" @bind="bearbeitungsRabatt.Wert" />
+                <input type="number" min="0" step="@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "1" : "50")" @bind="bearbeitungsRabatt.Wert" @bind:event="oninput" />
             </label>
+            @if (bearbeitungsRabatt.Art == RabattArt.Prozent)
+            {
+                <div class="enote-betrag-schnell">
+                    @foreach (var p in new[] { 5m, 10m, 15m, 20m, 50m })
+                    {
+                        <button type="button" class="enote-chip @(bearbeitungsRabatt.Wert == p ? "enote-chip-aktiv" : "")" @onclick="() => bearbeitungsRabatt.Wert = p">@p.ToString("0") %</button>
+                    }
+                </div>
+            }
 
             <label>Prestation concernée</label>
             <EnoteSelect TValue="string" @bind-Value="ausgewaehlteLeistungId" Options="leistungsOptionen" Placeholder="Tout le ticket" MitSuche="true" />
+
+            <div class="rm-vorschau" aria-live="polite">
+                <Icon Name="sparkles" Groesse="16" />
+                <span>Exemple : @BeispielText()</span>
+            </div>
+
+            <label>Condition <small class="enote-muted">(facultatif — le caissier la confirme)</small>
+                <input @bind="bearbeitungsRabatt.Bedingung" placeholder="ex. Client fidèle, carte étudiant présentée" maxlength="200" />
+            </label>
 
             <EnoteCheckbox @bind-Value="hatGueltigkeit" Label="Période de validité (facultatif)" />
             @if (hatGueltigkeit)
@@ -105,7 +147,7 @@
                 <small class="enote-muted">Vide = valable jusqu'à suppression.</small>
             }
 
-            <label class="enote-check-row"><EnoteCheckbox @bind-Value="bearbeitungsRabatt.IstAktiv" Label="Active (le caissier l'active en caisse)" /></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="bearbeitungsRabatt.IstAktiv" Label="Active (utilisable en caisse)" /></label>
         </div>
     </ChildContent>
     <Footer>
@@ -114,13 +156,14 @@
     </Footer>
 </ModalDialog>
 
-<ModalDialog Open="loeschDialogOffen" Title="Supprimer la remise" OnClose="SchliesseLoeschen">
+<ModalDialog Open="loeschDialogOffen" Title="Supprimer la remise" OnClose="SchliesseLoeschen" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <p>Voulez-vous vraiment supprimer « @zuLoeschenderRabatt?.Name » ?</p>
+        <p class="enote-muted">Si elle a déjà été utilisée sur des reçus, elle sera seulement désactivée (les reçus restent intacts).</p>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseLoeschen">Annuler</button>
-        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-danger" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

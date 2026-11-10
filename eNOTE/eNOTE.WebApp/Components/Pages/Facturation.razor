@@ -1,4 +1,4 @@
-@page "/admin/facturation"
+﻿@page "/admin/facturation"
 @attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Abo
@@ -19,6 +19,13 @@
     }
     else
     {
+        var monatsAnfang = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        <div class="ad-kpis">
+            <div class="ad-kpi"><span>À confirmer</span><strong class="@(gemeldete.Count > 0 ? "warn" : "")">@gemeldete.Count</strong></div>
+            <div class="ad-kpi"><span>À payer</span><strong>@alle.Where(a => a.ZahlungStatus == AboZahlungStatus.Offen).Sum(a => a.PreisSnapshot).ToString("N0") F</strong></div>
+            <div class="ad-kpi"><span>Encaissé ce mois</span><strong>@alle.Where(a => a.ZahlungStatus == AboZahlungStatus.Bestaetigt && a.ZahlungBestaetigtUtc >= monatsAnfang).Sum(a => a.PreisSnapshot).ToString("N0") F</strong></div>
+            <div class="ad-kpi"><span>Factures</span><strong>@alle.Count</strong></div>
+        </div>
         @if (gemeldete.Count > 0)
         {
             <h2 class="enote-section-title">Paiements signalés (@gemeldete.Count)</h2>
@@ -51,10 +58,6 @@
             </div>
         }
 
-        @if (gemeldete.Count == 0)
-        {
-            <p class="enote-empty" role="status">Aucun paiement signalé en attente de confirmation.</p>
-        }
 
         <h2 class="enote-section-title">Abonnements récents</h2>
         @if (alle.Count == 0)
