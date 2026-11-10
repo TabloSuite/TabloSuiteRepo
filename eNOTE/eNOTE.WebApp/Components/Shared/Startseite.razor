@@ -1,0 +1,284 @@
+﻿@* Öffentliche Startseite (nicht angemeldet): echte App-Bilder, Texte, sanfte Einblendungen beim Scrollen. *@
+@using ENote.Core.DataModels.Abo
+@using ENote.Core.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ENote.WebApp.Data.ApplicationDbContext> DbFactory
+@inject IWebHostEnvironment Umgebung
+@inject IJSRuntime JS
+
+<div class="lp">
+    @* ---------- Hero ---------- *@
+    <section class="lp-hero">
+        <div class="lp-hero-text">
+            <span class="lp-eyebrow lp-reveal">Caisse &amp; gestion · Togo, Bénin, Sénégal…</span>
+            <h1 class="lp-reveal" style="--lp-verz: 80ms">La caisse de votre établissement, <span class="lp-akzent">enfin simple.</span></h1>
+            <p class="lp-lead lp-reveal" style="--lp-verz: 160ms">
+                Salon de coiffure, institut, barbershop, boutique ou atelier&nbsp;: encaissez en espèces, Mobile Money ou carte,
+                suivez votre stock et vos finances, et gérez votre équipe – sur tablette, ordinateur et téléphone.
+            </p>
+            <div class="lp-aktionen lp-reveal" style="--lp-verz: 240ms">
+                <a class="enote-btn enote-btn-primary enote-btn-lg" href="/auth/register">Essayer gratuitement</a>
+                @if (HatVideo)
+                {
+                    <button type="button" class="enote-btn enote-btn-lg lp-video-btn" @onclick="() => videoOffen = true">
+                        <span class="lp-play"><Icon Name="arrow-right" Groesse="14" /></span> Voir la vidéo
+                    </button>
+                }
+                else
+                {
+                    <a class="enote-btn enote-btn-lg" href="/auth/login">Se connecter</a>
+                }
+            </div>
+            <ul class="lp-checks lp-reveal" style="--lp-verz: 320ms">
+                <li><Icon Name="check" Groesse="16" /> 3 mois d'essai offerts</li>
+                <li><Icon Name="check" Groesse="16" /> Sans engagement</li>
+                <li><Icon Name="check" Groesse="16" /> Mobile Money inclus</li>
+            </ul>
+        </div>
+
+        <div class="lp-hero-bild" aria-hidden="true">
+            <figure class="lp-tablette lp-reveal lp-von-rechts" style="--lp-verz: 200ms">
+                <img src="img/landing/caisse.webp" alt="" width="1600" height="1000" fetchpriority="high" />
+            </figure>
+            <figure class="lp-telefon lp-reveal lp-von-unten" style="--lp-verz: 520ms">
+                <img src="img/landing/mobile-dashboard.webp" alt="" width="600" height="1299" />
+            </figure>
+            <div class="lp-schwebe lp-reveal lp-von-unten" style="--lp-verz: 760ms">
+                <span class="lp-schwebe-icon"><Icon Name="momo" Groesse="18" /></span>
+                <div><small>Payé par Flooz</small><strong>20.500 F</strong></div>
+            </div>
+        </div>
+    </section>
+
+    @* ---------- Zahlungswege ---------- *@
+    <section class="lp-zahlwege lp-reveal" aria-label="Moyens de paiement acceptés">
+        <span>Acceptez tous les paiements</span>
+        <div class="lp-zahlwege-liste">
+            <span class="lp-zw bar"><Icon Name="banknote" Groesse="16" /> Espèces</span>
+            @foreach (var a in anbieter)
+            {
+                <span class="lp-zw" style="--lp-marke:@a.Farbe"><span class="lp-zw-punkt"></span>@a.Name</span>
+            }
+            <span class="lp-zw karte"><Icon Name="card" Groesse="16" /> Carte bancaire</span>
+        </div>
+    </section>
+
+    @* ---------- Funktionen ---------- *@
+    <div id="fonctions" class="lp-anker"></div>
+    <section class="lp-funktion">
+        <div class="lp-funktion-text lp-reveal">
+            <span class="lp-kapitel"><Icon Name="caisse" Groesse="18" /> Caisse</span>
+            <h2>Pensée pour la tablette, rapide au comptoir</h2>
+            <p>Des tuiles par catégorie, la recherche et le scan de code-barres, les remises en un geste. Le client suit son ticket sur un deuxième écran.</p>
+            <ul class="lp-punkte">
+                <li>Reçu imprimé ou PDF avec votre logo et un QR-code</li>
+                <li>Remboursement d'une vente, en tout ou en partie</li>
+                <li>Fonctionne aussi sur ordinateur et téléphone</li>
+            </ul>
+        </div>
+        <figure class="lp-bild lp-reveal lp-von-rechts"><img src="img/landing/caisse.webp" alt="Écran de caisse eNOTE avec ticket et paiements" loading="lazy" width="1600" height="1000" /></figure>
+    </section>
+
+    <section class="lp-funktion umgekehrt">
+        <div class="lp-funktion-text lp-reveal">
+            <span class="lp-kapitel orange"><Icon Name="momo" Groesse="18" /> Mobile Money</span>
+            <h2>Espèces, Mobile Money, carte – ou les trois</h2>
+            <p>Le rendu monnaie est calculé pour vous. Un client paie une partie en espèces et le reste par Flooz&nbsp;? Le paiement mixte s'en charge.</p>
+            <ul class="lp-punkte">
+                <li>Opérateurs de votre pays, choisis dans les paramètres</li>
+                <li>Référence de la transaction notée depuis le SMS</li>
+                <li>Totaux par opérateur à chaque clôture</li>
+            </ul>
+        </div>
+        <figure class="lp-bild lp-reveal lp-von-links"><img src="img/landing/paiement-mixte.webp" alt="Paiement mixte espèces et Mobile Money" loading="lazy" width="1600" height="1000" /></figure>
+    </section>
+
+    <section class="lp-funktion">
+        <div class="lp-funktion-text lp-reveal">
+            <span class="lp-kapitel gruen"><Icon Name="package" Groesse="18" /> Stock</span>
+            <h2>Votre stock, au franc près</h2>
+            <p>Voyez d'un coup d'œil ce que vaut votre stock à l'achat et à la vente, et le bénéfice si tout était vendu.</p>
+            <ul class="lp-punkte">
+                <li>Alertes de stock bas pendant l'encaissement</li>
+                <li>Codes-barres créés automatiquement, étiquettes à imprimer</li>
+                <li>Pertes déclarées (cassé, périmé, volé) et retraits du propriétaire</li>
+            </ul>
+        </div>
+        <figure class="lp-bild lp-reveal lp-von-rechts"><img src="img/landing/prestations.webp" alt="Prestations et valeur du stock" loading="lazy" width="1600" height="1000" /></figure>
+    </section>
+
+    <section class="lp-funktion umgekehrt">
+        <div class="lp-funktion-text lp-reveal">
+            <span class="lp-kapitel"><Icon Name="chart" Groesse="18" /> Finances</span>
+            <h2>Vos finances en clair, même depuis la maison</h2>
+            <p>Chiffre d'affaires par jour, dépenses avec justificatif, apports et retraits&nbsp;: le solde de votre activité, sur ordinateur comme sur téléphone.</p>
+            <ul class="lp-punkte">
+                <li>Rapport PDF par période et par mode de paiement</li>
+                <li>Ventes suivies en direct pendant la journée</li>
+                <li>Clôture de caisse avec espèces attendues et écart</li>
+            </ul>
+        </div>
+        <div class="lp-bild-paar lp-reveal lp-von-links">
+            <figure class="lp-bild"><img src="img/landing/finances.webp" alt="Tableau des finances" loading="lazy" width="1600" height="1000" /></figure>
+            <figure class="lp-telefon klein"><img src="img/landing/mobile-finances.webp" alt="Finances sur téléphone" loading="lazy" width="600" height="1299" /></figure>
+        </div>
+    </section>
+
+    <section class="lp-funktion">
+        <div class="lp-funktion-text lp-reveal">
+            <span class="lp-kapitel violett"><Icon Name="users" Groesse="18" /> Équipe</span>
+            <h2>Chacun son code PIN, vous gardez la main</h2>
+            <p>Vos caissiers ouvrent la caisse avec leur propre code. Vous savez qui a vendu quoi, et vous déléguez seulement ce qu'il faut.</p>
+            <ul class="lp-punkte">
+                <li>Droits sur les finances, les prestations ou les remises</li>
+                <li>Remboursements et retraits validés par le code du propriétaire</li>
+                <li>Zone propriétaire protégée par PIN sur la tablette partagée</li>
+            </ul>
+        </div>
+        <figure class="lp-bild lp-reveal lp-von-rechts"><img src="img/landing/equipe.webp" alt="Gestion de l'équipe" loading="lazy" width="1600" height="1000" /></figure>
+    </section>
+
+    @* ---------- Weitere Stärken ---------- *@
+    <section class="lp-mehr">
+        <h2 class="lp-reveal">Et pour le quotidien</h2>
+        <div class="lp-mehr-grid">
+            <article class="lp-mehr-karte lp-reveal">
+                <figure><img src="img/landing/ecran-client.webp" alt="Écran client" loading="lazy" width="1200" height="834" /></figure>
+                <h3>Écran client</h3>
+                <p>Une deuxième tablette tournée vers le client affiche le ticket et le total en direct.</p>
+            </article>
+            <article class="lp-mehr-karte lp-reveal" style="--lp-verz: 100ms">
+                <figure><img src="img/landing/cloture.webp" alt="Clôture de caisse" loading="lazy" width="1600" height="1000" /></figure>
+                <h3>Clôture sans surprise</h3>
+                <p>Fonds de départ, ventes, apports, retraits et remboursements : la caisse sait ce qu'elle doit contenir.</p>
+            </article>
+            <article class="lp-mehr-karte lp-reveal" style="--lp-verz: 200ms">
+                <figure><img src="img/landing/caisse-sombre.webp" alt="Mode sombre" loading="lazy" width="1600" height="1000" /></figure>
+                <h3>Mode sombre</h3>
+                <p>Plus doux pour les yeux le soir, au choix ou selon votre appareil.</p>
+            </article>
+        </div>
+    </section>
+
+    @* ---------- In 3 Schritten ---------- *@
+    <section class="lp-schritte">
+        <h2 class="lp-reveal">Prêt en trois étapes</h2>
+        <ol>
+            <li class="lp-reveal"><span>1</span><strong>Inscrivez votre établissement</strong><p>Quelques informations suffisent : votre nom, votre établissement, un mot de passe.</p></li>
+            <li class="lp-reveal" style="--lp-verz: 120ms"><span>2</span><strong>Nous validons votre compte</strong><p>Notre équipe vérifie l'inscription et vous prévient par e-mail.</p></li>
+            <li class="lp-reveal" style="--lp-verz: 240ms"><span>3</span><strong>Encaissez dès aujourd'hui</strong><p>Ajoutez vos prestations et vos caissiers, ouvrez la caisse : c'est parti.</p></li>
+        </ol>
+    </section>
+
+    @* ---------- Preise ---------- *@
+    <div id="tarifs" class="lp-anker"></div>
+    <section class="lp-preise">
+        <div class="lp-preise-kopf lp-reveal">
+            <h2>Un prix clair, sans surprise</h2>
+            <p>3 mois d'essai gratuit, puis la formule de votre choix. Plus la durée est longue, plus vous économisez.</p>
+        </div>
+        @if (monatsPreis > 0)
+        {
+            <div class="lp-preis-grid">
+                @foreach (var i in VertragsRegeln.Intervalle)
+                {
+                    var preis = VertragsRegeln.Preis(monatsPreis, i);
+                    var rabatt = VertragsRegeln.Rabatt(i);
+                    <article class="lp-preis lp-reveal @(i == AboIntervall.Jaehrlich ? "empfohlen" : "")">
+                        @if (i == AboIntervall.Jaehrlich) { <span class="lp-preis-badge">Le plus avantageux</span> }
+                        <h3>@VertragsRegeln.Bezeichnung(i)</h3>
+                        <strong>@preis.ToString("N0") <small>F CFA</small></strong>
+                        <span class="lp-preis-monat">soit @((preis / VertragsRegeln.Monate(i)).ToString("N0")) F / mois</span>
+                        <span class="lp-preis-rabatt @(rabatt > 0 ? "" : "leer")">@(rabatt > 0 ? $"−{rabatt:0.#} %" : "Sans engagement")</span>
+                    </article>
+                }
+            </div>
+        }
+        <div class="lp-preis-inklusive lp-reveal">
+            <span><Icon Name="check" Groesse="16" /> Caissiers illimités</span>
+            <span><Icon Name="check" Groesse="16" /> Mobile Money &amp; paiement mixte</span>
+            <span><Icon Name="check" Groesse="16" /> Reçus, rapports PDF, écran client</span>
+            <span><Icon Name="check" Groesse="16" /> Mises à jour comprises</span>
+        </div>
+    </section>
+
+    @* ---------- Fragen ---------- *@
+    <div id="questions" class="lp-anker"></div>
+    <section class="lp-fragen">
+        <h2 class="lp-reveal">Questions fréquentes</h2>
+        <div class="lp-fragen-liste">
+            @foreach (var (frage, antwort) in Fragen)
+            {
+                <details class="lp-frage lp-reveal">
+                    <summary>@frage<Icon Name="chevron-down" Groesse="18" /></summary>
+                    <p>@antwort</p>
+                </details>
+            }
+        </div>
+    </section>
+
+    @* ---------- Abschluss ---------- *@
+    <section class="lp-schluss lp-reveal">
+        <h2>Votre prochaine journée commence avec une caisse claire</h2>
+        <p>Inscrivez votre établissement aujourd'hui : les 3 premiers mois sont offerts.</p>
+        <div class="lp-aktionen">
+            <a class="enote-btn enote-btn-lg lp-schluss-btn" href="/auth/register">Inscrire mon établissement</a>
+            <a class="enote-btn enote-btn-lg lp-schluss-ghost" href="/auth/login">J'ai déjà un compte</a>
+        </div>
+    </section>
+</div>
+
+@if (videoOffen)
+{
+    <div class="lp-video-overlay" @onclick="() => videoOffen = false">
+        <div class="lp-video-box" @onclick:stopPropagation="true">
+            <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => videoOffen = false"><Icon Name="x" Groesse="20" /></button>
+            <video src="videos/enote-presentation.mp4" controls autoplay playsinline poster="img/landing/caisse.webp"></video>
+        </div>
+    </div>
+}
+
+@code {
+    private sealed record Anbieter(string Name, string Farbe);
+
+    private decimal monatsPreis;
+    private List<Anbieter> anbieter = [];
+    private bool videoOffen;
+
+    private bool HatVideo => Umgebung.WebRootFileProvider.GetFileInfo("videos/enote-presentation.mp4").Exists;
+
+    private static readonly (string Frage, string Antwort)[] Fragen =
+    [
+        ("Faut-il une connexion Internet ?", "Oui, eNOTE fonctionne en ligne : vos données sont sauvegardées en continu et vous les retrouvez sur tous vos appareils. Une connexion mobile (3G/4G) suffit."),
+        ("Quel matériel me faut-il ?", "Une tablette, un ordinateur ou un téléphone avec un navigateur récent. Pour les reçus papier, toute imprimante reconnue par l'appareil convient (ticket 80 mm conseillé)."),
+        ("Comment fonctionne le Mobile Money ?", "Le client paie avec son opérateur habituel ; dès réception du SMS, le caissier confirme le paiement et peut noter la référence. Les totaux par opérateur apparaissent à la clôture."),
+        ("Puis-je gérer plusieurs établissements ?", "Oui. Chaque établissement a sa caisse, son équipe, son stock et ses finances ; vous passez de l'un à l'autre en un geste."),
+        ("Mes caissiers voient-ils mes chiffres ?", "Non, sauf si vous le décidez. Les finances, les prestations et les remises sont des droits que vous accordez à chacun. La zone propriétaire est protégée par votre code PIN."),
+        ("Que se passe-t-il après l'essai gratuit ?", "La formule mensuelle démarre automatiquement ; vous pouvez choisir une formule plus longue pour économiser. L'abonnement est sans engagement.")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            monatsPreis = await ENote.WebApp.Services.AboService.GlobalerMonatsPreisAsync(db);
+            var liste = await db.MobileMoneyAnbieter.AsNoTracking().Where(a => a.IstAktiv)
+                .OrderBy(a => a.Name).Select(a => new { a.Name, a.Farbe }).ToListAsync();
+            anbieter = liste.GroupBy(a => a.Name).Select(g => new Anbieter(g.Key, g.First().Farbe)).Take(8).ToList();
+        }
+        catch
+        {
+            // Startseite bleibt auch ohne Datenbank nutzbar.
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await JS.InvokeVoidAsync("enoteStartseite"); }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { }
+        }
+    }
+}

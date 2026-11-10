@@ -29,6 +29,9 @@ public static class DemoDatenSeeder
     /// <summary>Lokaler Test-Admin (nur Development, wie der ganze Demo-Seed), um Administrationsseiten zu prüfen.</summary>
     public const string AdminPseudonym = "demo.admin";
 
+    /// <summary>Lokaler Demo-Responsable (ProduktOwner), betreut den Demo-Laden (nur Development).</summary>
+    public const string PoPseudonym = "demo.po";
+
     public static async Task SeedAsync(ApplicationDbContext db, UserManager<AppUser> userManager)
     {
         await EntferneVorhandeneDemoAsync(db, userManager);
@@ -41,6 +44,7 @@ public static class DemoDatenSeeder
         var awa = await LegeKontoAnAsync(userManager, KassiererPseudonyme[0], "Awa", "Koffi", AppRollen.Kassierer);
         var kofi = await LegeKontoAnAsync(userManager, KassiererPseudonyme[1], "Kofi", "Agbeko", AppRollen.Kassierer);
         await LegeKontoAnAsync(userManager, AdminPseudonym, "Admin", "Démo", AppRollen.SuperAdmin);
+        var po = await LegeKontoAnAsync(userManager, PoPseudonym, "Yao", "Amegah", AppRollen.ProduktOwner);
 
         // --- Laden ---
         var salon = new Salon
@@ -57,6 +61,7 @@ public static class DemoDatenSeeder
             CreatedAtUtc = jetzt.AddDays(-TageHistorie - 5)
         };
         db.Salons.Add(salon);
+        db.ProduktOwnerSalons.Add(new ProduktOwnerSalon { ProduktOwnerId = po.Id, SalonId = salon.Id, KannLadenUmsatzSehen = true, ProzentProvision = 20 });
         db.UserSalons.AddRange(
             new UserSalon
             {
@@ -158,27 +163,32 @@ public static class DemoDatenSeeder
         var team = new[] { (Konto: besitzer, Name: besitzer.FullName), (Konto: awa, Name: awa.FullName), (Konto: kofi, Name: kofi.FullName) };
         var gewichtet = katalog.SelectMany(l => Enumerable.Repeat(l, l.Preis switch { <= 600 => 3, <= 3000 => 5, <= 8000 => 3, _ => 1 })).ToList();
 
-        for (var tag = TageHistorie; tag >= 1; tag--)
+        // tag == 0: heute – Kasse von Awa ist noch offen, Verkäufe bis kurz vor jetzt (für Dashboard, Kasse, Fotos).
+        for (var tag = TageHistorie; tag >= 0; tag--)
         {
+            var heute = tag == 0;
             var datum = jetzt.Date.AddDays(-tag);
-            if (datum.DayOfWeek == DayOfWeek.Sunday) continue;
+            if (!heute && datum.DayOfWeek == DayOfWeek.Sunday) continue;
 
-            var kassierer = team[zufall.Next(team.Length)];
-            var start = datum.AddHours(8).AddMinutes(zufall.Next(0, 30));
+            var kassierer = heute ? team[1] : team[zufall.Next(team.Length)];
+            var start = heute
+                ? jetzt.AddHours(-5) < datum.AddHours(7) ? jetzt.AddMinutes(-90) : jetzt.AddHours(-5)
+                : datum.AddHours(8).AddMinutes(zufall.Next(0, 30));
             var sitzung = new KassenSitzung
             {
                 SalonId = salon.Id, KassiererId = kassierer.Konto.Id, GestartetUtc = start,
-                Startbestand = 20000, Status = KassenSitzungStatus.Abgeschlossen
+                Startbestand = 20000, Status = heute ? KassenSitzungStatus.Offen : KassenSitzungStatus.Abgeschlossen
             };
             db.KassenSitzungen.Add(sitzung);
 
-            // Samstag deutlich mehr Betrieb
-            var anzahl = datum.DayOfWeek == DayOfWeek.Saturday ? zufall.Next(14, 22) : zufall.Next(6, 14);
+            // Samstag deutlich mehr Betrieb; heute gleichmäßig verteilt bis 5 Minuten vor jetzt
+            var anzahl = heute ? 17 : datum.DayOfWeek == DayOfWeek.Saturday ? zufall.Next(14, 22) : zufall.Next(6, 14);
+            var abstand = heute ? (jetzt.AddMinutes(-5) - start).TotalMinutes / (anzahl + 1) : 0;
             decimal bar = 0;
-            var zeit = start.AddMinutes(20);
+            var zeit = heute ? start : start.AddMinutes(20);
             for (var v = 0; v < anzahl; v++)
             {
-                zeit = zeit.AddMinutes(zufall.Next(15, 45));
+                zeit = heute ? zeit.AddMinutes(abstand) : zeit.AddMinutes(zufall.Next(15, 45));
                 var verkauf = new Verkauf { KassenSitzungId = sitzung.Id, SalonId = salon.Id, ZeitUtc = zeit };
                 var anzahlPos = zufall.Next(1, 4);
                 foreach (var leistung in Enumerable.Range(0, anzahlPos).Select(_ => gewichtet[zufall.Next(gewichtet.Count)]).Distinct())
@@ -229,6 +239,8 @@ public static class DemoDatenSeeder
                 db.Verkaeufe.Add(verkauf);
             }
 
+            if (heute) continue;   // offene Kasse: noch kein Abschluss
+
             var soll = sitzung.Startbestand + bar;
             var differenz = zufall.NextDouble() < 0.15 ? -zufall.Next(1, 6) * 100m : 0m;
             sitzung.AbgeschlossenUtc = zeit.AddMinutes(30);
@@ -249,6 +261,7 @@ public static class DemoDatenSeeder
         Console.WriteLine($"  Besitzer:   {BesitzerPseudonym} / {Passwort}  (Besitzer-PIN {BesitzerPin}, Kassen-PIN 1000)");
         Console.WriteLine($"  Kassierer:  {KassiererPseudonyme[0]} / {Passwort} (PIN 2222), {KassiererPseudonyme[1]} / {Passwort} (PIN 3333)");
         Console.WriteLine($"  Admin:      {AdminPseudonym} / {Passwort} (SuperAdmin, nur lokal)");
+        Console.WriteLine($"  PO:         {PoPseudonym} / {Passwort} (Responsable du salon démo)");
     }
 
     private static async Task<AppUser> LegeKontoAnAsync(UserManager<AppUser> userManager, string pseudonym, string vorname, string nachname, string rolle)
@@ -290,10 +303,11 @@ public static class DemoDatenSeeder
             await db.GeraetSalonFavoriten.Where(f => f.SalonId == id).ExecuteDeleteAsync();
             await db.NutzungsAbos.Where(a => a.SalonId == id).ExecuteDeleteAsync();
             await db.UserSalons.Where(u => u.SalonId == id).ExecuteDeleteAsync();
+            await db.ProduktOwnerSalons.Where(p => p.SalonId == id).ExecuteDeleteAsync();
             await db.Salons.Where(s => s.Id == id).ExecuteDeleteAsync();
         }
 
-        foreach (var pseudonym in KassiererPseudonyme.Append(BesitzerPseudonym).Append(AdminPseudonym))
+        foreach (var pseudonym in KassiererPseudonyme.Append(BesitzerPseudonym).Append(AdminPseudonym).Append(PoPseudonym))
         {
             var konto = await userManager.FindByNameAsync(pseudonym);
             if (konto is null) continue;
