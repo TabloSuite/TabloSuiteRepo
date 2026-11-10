@@ -17,6 +17,8 @@ internal static class UnterrichtModellKonfiguration
         profil.Property(x => x.Matrikelnummer).HasMaxLength(60);
         profil.Property(x => x.Geburtsort).HasMaxLength(150);
         profil.HasIndex(x => x.SchoolId);
+        // Ein Schülerkonto hat genau ein Profil (eine Schule). Schulwechsel = neues Konto der neuen Schule.
+        profil.HasIndex(x => x.AppUserId).IsUnique().HasDatabaseName("IX_StudentProfiles_EinProfilProKonto");
         profil.HasIndex(x => new { x.SchoolId, x.Matrikelnummer }).IsUnique()
             .HasFilter("[Matrikelnummer] IS NOT NULL");
 

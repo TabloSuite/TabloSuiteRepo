@@ -46,6 +46,47 @@ public class ModernDropdownBase<TValue> : ComponentBase
     [Parameter]
     public bool OpenUpward { get; set; }
 
+    /// <summary>
+    /// Gibt es genau eine echte Option (z. B. die einzige Schule eines Kontos), wird sie
+    /// automatisch gewählt und als feste Angabe statt als Auswahlliste angezeigt.
+    /// Platzhalter wie « Toutes les écoles » (null bzw. Standardwert) zählen nicht als echte Option.
+    /// </summary>
+    [Parameter]
+    public bool EinzigeOptionFest { get; set; }
+
+    private bool autoAuswahlLaeuft;
+
+    protected ModernDropdownOption<TValue?>? EinzigeOption
+    {
+        get
+        {
+            if (!EinzigeOptionFest)
+                return null;
+            var echte = Options.Where(option => option.Value is not null && !(option.Value is string text && text.Length == 0)
+                && !EqualityComparer<TValue?>.Default.Equals(option.Value, default)).Take(2).ToList();
+            return echte.Count == 1 ? echte[0] : null;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EinzigeOption is not { } einzige || Disabled || autoAuswahlLaeuft
+            || EqualityComparer<TValue?>.Default.Equals(einzige.Value, Value))
+            return;
+
+        autoAuswahlLaeuft = true;
+        try
+        {
+            Value = einzige.Value;
+            await ValueChanged.InvokeAsync(Value);
+            await Changed.InvokeAsync(Value);
+        }
+        finally
+        {
+            autoAuswahlLaeuft = false;
+        }
+    }
+
     protected ModernDropdownOption<TValue?>? SelectedOption => Options
         .FirstOrDefault(option => EqualityComparer<TValue?>.Default.Equals(option.Value, Value));
 

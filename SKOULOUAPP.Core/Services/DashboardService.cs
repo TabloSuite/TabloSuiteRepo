@@ -1150,7 +1150,7 @@ public class DashboardService(
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<(bool Succeeded, string Message)> SaveSchoolAsync(SchoolFormModel model, IReadOnlyCollection<Guid> teacherIds, Guid benutzerID, CancellationToken cancellationToken = default)
+    public async Task<(bool Succeeded, string Message)> SaveSchoolAsync(SchoolFormModel model, Guid benutzerID, CancellationToken cancellationToken = default)
     {
         if (!await dbContext.Users.AnyAsync(u => u.Id == benutzerID && !u.IsBlocked
             && dbContext.UserRoles.Any(ur => ur.UserId == u.Id && dbContext.Roles.Any(r => r.Id == ur.RoleId && r.Name == Rollen.SuperAdmin)), cancellationToken))
@@ -1204,7 +1204,7 @@ public class DashboardService(
         school.GeaendertAmUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await SyncTeacherAssignmentsAsync(school.Id, teacherIds, cancellationToken);
+        // Lehrkräfte ordnet ausschließlich die Direktion ihrer eigenen Schule zu (ein Konto = eine Schule).
 
         return (true, model.Id.HasValue ? "L'école a été mise à jour." : "L'école a été créée.");
     }
@@ -1219,6 +1219,12 @@ public class DashboardService(
         if (schoolLeader is null || !await userManager.IsInRoleAsync(schoolLeader, Rollen.SchulLeiter))
         {
             return (false, "Seul un directeur peut créer une école.");
+        }
+
+        // Ein Direktor = eine Schule. Nur ein Direktionskonto ohne Schule darf (wieder) eine anlegen.
+        if (await dbContext.UserSchools.AnyAsync(link => link.AppUserId == schoolLeaderId && !link.IstPlattformZuordnung, cancellationToken))
+        {
+            return (false, SchulZuordnungsRegel.MeldungKeineWeitereSchule);
         }
 
         var normalizedName = model.Name.Trim();
@@ -1389,9 +1395,10 @@ public class DashboardService(
             return await benutzerArbeitsvorgang.AusfuehrenAsync((dashboard, _) => dashboard.SaveUserAsync(model, cancellationToken, managedSchoolIds),
                 result => result.Succeeded, cancellationToken);
         model.SchoolIds = model.SchoolIds.Where(schoolId => schoolId != Guid.Empty).Distinct().ToList();
-        if (model.RoleName == Rollen.Schueler && model.SchoolIds.Count > 1)
+        var schulRegel = await SchulZuordnungsRegel.PruefenAsync(dbContext, model.UserId, model.RoleName, model.SchoolIds, cancellationToken);
+        if (schulRegel is not null)
         {
-            return (false, "Un élève ne peut être attribué qu'à une seule école.");
+            return (false, schulRegel);
         }
 
         if (model.RoleName == Rollen.Schueler && model.CurrentKlasseId is Guid klasseId)
@@ -1475,7 +1482,8 @@ public class DashboardService(
         var roleResult = await userManager.AddToRoleAsync(user, model.RoleName);
         if (!roleResult.Succeeded) return (false, string.Join(" ", roleResult.Errors.Select(x => x.Description)));
 
-        await SyncUserSchoolsAsync(user.Id, model.SchoolIds, model.RoleName is Rollen.Lehrer or Rollen.SchulLeiter or Rollen.Koordinator, cancellationToken, managedSchoolIds);
+        await SyncUserSchoolsAsync(user.Id, model.SchoolIds, model.RoleName is Rollen.Lehrer or Rollen.SchulLeiter or Rollen.Koordinator,
+            SchulZuordnungsRegel.IstPlattformZuordnung(model.RoleName), cancellationToken, managedSchoolIds);
         await EnsureStudentProfileStateAsync(user, model.RoleName, model.SchoolIds, model.CurrentKlasseId, model.ElternTelefonNummer, model.ElternEmail, cancellationToken);
         if (model.RoleName == Rollen.Lehrer)
         {
@@ -2672,7 +2680,8 @@ public class DashboardService(
         return (true, "Le média a été enregistré.");
     }
 
-    private async Task SyncUserSchoolsAsync(Guid userId, IReadOnlyCollection<Guid> schoolIds, bool canManageStudents, CancellationToken cancellationToken, IReadOnlyCollection<Guid>? managedSchoolIds = null)
+    private async Task SyncUserSchoolsAsync(Guid userId, IReadOnlyCollection<Guid> schoolIds, bool canManageStudents, bool istPlattformZuordnung,
+        CancellationToken cancellationToken, IReadOnlyCollection<Guid>? managedSchoolIds = null)
     {
         var existingLinks = await dbContext.UserSchools.Where(x => x.AppUserId == userId).ToListAsync(cancellationToken);
 
@@ -2680,6 +2689,9 @@ public class DashboardService(
         if (linksToRemove.Count > 0)
         {
             dbContext.UserSchools.RemoveRange(linksToRemove);
+            // Erst entfernen, dann hinzufügen: Der eindeutige Index „eine Schule pro Konto“ darf
+            // auch innerhalb eines Speichervorgangs nicht kurzzeitig verletzt werden.
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         foreach (var schoolId in schoolIds)
@@ -2693,12 +2705,14 @@ public class DashboardService(
                 {
                     AppUserId = userId,
                     SchoolId = schoolId,
+                    IstPlattformZuordnung = istPlattformZuordnung,
                     CanManageStudents = canManageStudents
                 });
             }
             else
             {
                 link.CanManageStudents = canManageStudents;
+                link.IstPlattformZuordnung = istPlattformZuordnung;
             }
         }
 
@@ -2854,39 +2868,6 @@ public class DashboardService(
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private async Task SyncTeacherAssignmentsAsync(Guid schoolId, IReadOnlyCollection<Guid> teacherIds, CancellationToken cancellationToken)
-    {
-        var teacherRoleUserIds = (await userManager.GetUsersInRoleAsync(Rollen.Lehrer)).Select(user => user.Id).ToHashSet();
-        var existingLinks = await dbContext.UserSchools
-            .Where(link => link.SchoolId == schoolId && link.CanManageStudents)
-            .ToListAsync(cancellationToken);
-
-        var existingTeacherLinks = existingLinks
-            .Where(link => teacherRoleUserIds.Contains(link.AppUserId))
-            .ToList();
-
-        var existingTeacherIds = existingTeacherLinks.Select(link => link.AppUserId).ToHashSet();
-
-        var linksToRemove = existingTeacherLinks.Where(link => !teacherIds.Contains(link.AppUserId)).ToList();
-        if (linksToRemove.Count > 0)
-        {
-            dbContext.UserSchools.RemoveRange(linksToRemove);
-        }
-
-        var teacherIdsToAdd = teacherIds.Where(id => !existingTeacherIds.Contains(id)).ToList();
-        foreach (var teacherId in teacherIdsToAdd)
-        {
-            dbContext.UserSchools.Add(new UserSchool
-            {
-                AppUserId = teacherId,
-                SchoolId = schoolId,
-                CanManageStudents = true
-            });
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
 
     public async Task<IReadOnlyList<TeacherSchoolOverview>> GetTeacherSchoolsAsync(Guid teacherId, CancellationToken cancellationToken = default)
     {
@@ -3808,19 +3789,19 @@ public class DashboardService(
             return (false, "Aucune école n'est associée à votre compte.");
         }
 
+        // Ein Konto = eine Schule: Die Direktion legt Konten immer in ihrer eigenen Schule an.
         var selectedSchoolIds = model.SchoolIds
             .Where(schoolId => schoolId != Guid.Empty)
             .Distinct()
             .ToList();
-
-        if (model.RoleName == Rollen.Schueler && selectedSchoolIds.Count > 1)
+        if (selectedSchoolIds.Count == 0 && directorSchoolIds.Count == 1)
         {
-            return (false, "Un élève ne peut être attribué qu'à une seule école.");
+            selectedSchoolIds = [directorSchoolIds[0]];
         }
 
-        if (selectedSchoolIds.Count == 0 || selectedSchoolIds.Any(schoolId => !directorSchoolIds.Contains(schoolId)))
+        if (selectedSchoolIds.Count != 1 || !directorSchoolIds.Contains(selectedSchoolIds[0]))
         {
-            return (false, "Veuillez choisir une ou plusieurs de vos écoles.");
+            return (false, SchulZuordnungsRegel.MeldungGenauEineSchule);
         }
 
         var financeAccesses = model.CoordinatorFinanceAccesses;
@@ -3857,15 +3838,6 @@ public class DashboardService(
             if (existing is null)
             {
                 return (false, "Vous n'êtes pas autorisé à modifier cet utilisateur.");
-            }
-
-            if (model.RoleName is Rollen.Koordinator or Rollen.Lehrer)
-            {
-                var otherSchoolIds = await dbContext.UserSchools.AsNoTracking()
-                    .Where(link => link.AppUserId == model.UserId.Value && !directorSchoolIds.Contains(link.SchoolId))
-                    .Select(link => link.SchoolId)
-                    .ToListAsync(cancellationToken);
-                model.SchoolIds = selectedSchoolIds.Concat(otherSchoolIds).Distinct().ToList();
             }
         }
         // Schüler eines Directeurs sind sofort akzeptiert (nicht blockiert).

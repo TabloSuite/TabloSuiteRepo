@@ -26,7 +26,7 @@ public class ProvisionsServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => new ProvisionsService(db)
             .SaveCommissionSettingsAsync(new() { GlobalSubscriptionPrice = preis }, adminID));
         var service = new DashboardService(db, TestUserManager.Create(), new FakeMediaStorageService());
-        Assert.False((await service.SaveSchoolAsync(new() { Name = "Prix", SubscriptionPriceOverride = preis }, [], adminID)).Succeeded);
+        Assert.False((await service.SaveSchoolAsync(new() { Name = "Prix", SubscriptionPriceOverride = preis }, adminID)).Succeeded);
         Assert.Empty(db.Schools); Assert.Empty(db.CommissionSettings);
     }
 
@@ -43,7 +43,7 @@ public class ProvisionsServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.SaveCommissionSettingsAsync(model, adminID));
         Assert.Empty(db.CommissionSettings);
         var dashboard = new DashboardService(db, TestUserManager.Create(), new FakeMediaStorageService());
-        Assert.False((await dashboard.SaveSchoolAsync(new() { Name = "Interdite" }, [], adminID)).Succeeded);
+        Assert.False((await dashboard.SaveSchoolAsync(new() { Name = "Interdite" }, adminID)).Succeeded);
         Assert.Empty(db.Schools);
     }
 

@@ -401,8 +401,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     }
 
     /// <summary>
-    /// Generischer Prüfungs-Submit für Choice-, Text-, Satzbau-, Audio- und Lückentext-Fragen.
-    /// Automatische Bewertung bei Choice/GapFill/Musterlösung; Text ohne Musterlösung wird manuell benotet.
+    /// Generischer PrÃ¼fungs-Submit fÃ¼r Choice-, Text-, Satzbau-, Audio- und LÃ¼ckentext-Fragen.
+    /// Automatische Bewertung bei Choice/GapFill/MusterlÃ¶sung; Text ohne MusterlÃ¶sung wird manuell benotet.
     /// </summary>
     public async Task<ExamResult> SubmitExamAsync(
         Guid attemptId,
@@ -430,7 +430,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         var schulID = await dbContext.Exams.Where(x => x.Id == attempt.ExamId).Select(x => x.Klasse.SchoolId).FirstOrDefaultAsync(cancellationToken);
         if (!automatischerFristabschluss && (schulID is null || !await HatAktivenSchulzugangAsync(studentId, schulID.Value, cancellationToken)
             || !attempt.IsCompleted && !await DarfPruefungBearbeitenAsync(studentId, attempt.ExamId, cancellationToken)))
-            return new ExamResult { Succeeded = false, Message = "L'accès à cette épreuve est indisponible. Contactez la direction de votre école." };
+            return new ExamResult { Succeeded = false, Message = "L'accÃ¨s Ã  cette Ã©preuve est indisponible. Contactez la direction de votre Ã©cole." };
 
         if (automatischerFristabschluss && (attempt.DeadlineUtc > DateTime.UtcNow || submissions.Count != 0))
             return new ExamResult { Succeeded = false, Message = "La date limite n'est pas encore atteinte." };
@@ -440,7 +440,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             return new ExamResult
             {
                 Succeeded = true,
-                Message = "Diese Prüfung wurde bereits abgeschlossen.",
+                Message = "Diese PrÃ¼fung wurde bereits abgeschlossen.",
                 CorrectAnswers = attempt.CorrectAnswers,
                 TotalQuestions = attempt.TotalQuestions,
                 ScorePercent = attempt.ScorePercent,
@@ -571,15 +571,15 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         string message;
         if (timedOut)
         {
-            message = "Le temps est écoulé. Vos réponses ont été évaluées.";
+            message = "Le temps est Ã©coulÃ©. Vos rÃ©ponses ont Ã©tÃ© Ã©valuÃ©es.";
         }
         else if (requiresManualGrading)
         {
-            message = "Vos réponses ont été enregistrées. Certaines doivent encore être évaluées par votre enseignant.";
+            message = "Vos rÃ©ponses ont Ã©tÃ© enregistrÃ©es. Certaines doivent encore Ãªtre Ã©valuÃ©es par votre enseignant.";
         }
         else
         {
-            message = isPassed ? "Réussi ! Félicitations." : "Vous n'avez pas réussi. Réessayez.";
+            message = isPassed ? "RÃ©ussi ! FÃ©licitations." : "Vous n'avez pas rÃ©ussi. RÃ©essayez.";
         }
 
         return new ExamResult
@@ -597,12 +597,12 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     }
 
     // ---------------------------------------------------------------------
-    // Authoring (Lehrer/Schulleiter): Erstellen, Bearbeiten, Löschen, PDF
+    // Authoring (Lehrer/Schulleiter): Erstellen, Bearbeiten, LÃ¶schen, PDF
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Legt eine neue Prüfung an oder aktualisiert eine bestehende inklusive
-    /// Aufgabenblöcken (ExamExercise) und Aufgaben (ExamQuestion).
+    /// Legt eine neue PrÃ¼fung an oder aktualisiert eine bestehende inklusive
+    /// AufgabenblÃ¶cken (ExamExercise) und Aufgaben (ExamQuestion).
     /// </summary>
     public async Task<Guid> SaveExamAsync(Guid authorId, ExamFormModel model, CancellationToken cancellationToken = default)
     {
@@ -611,7 +611,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         if ((model.AssignToClassStudents || model.ReleaseTarget == ExamReleaseTarget.ClassStudents)
             && model.SubmissionDueAtUtc is DateTime dueAt && dueAt <= DateTime.UtcNow)
         {
-            throw new InvalidOperationException("La date limite doit être dans le futur pour attribuer l'épreuve aux élèves.");
+            throw new InvalidOperationException("La date limite doit Ãªtre dans le futur pour attribuer l'Ã©preuve aux Ã©lÃ¨ves.");
         }
 
         if (!model.KlasseId.HasValue)
@@ -624,18 +624,18 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         {
             klasse = await dbContext.Klassen
                 .FirstOrDefaultAsync(x => x.Id == model.KlasseId.Value, cancellationToken)
-                ?? throw new InvalidOperationException("La classe sélectionnée est introuvable.");
+                ?? throw new InvalidOperationException("La classe sÃ©lectionnÃ©e est introuvable.");
         }
         else
         {
             var klasseCode = model.NiveauCode.Trim();
             klasse = await dbContext.Klassen
                 .FirstOrDefaultAsync(x => x.Code == klasseCode, cancellationToken)
-                ?? throw new InvalidOperationException("La classe sélectionnée est introuvable.");
+                ?? throw new InvalidOperationException("La classe sÃ©lectionnÃ©e est introuvable.");
         }
         if (klasse.IstSystemNiveau)
         {
-            throw new InvalidOperationException("Les niveaux standard font partie du matériel pédagogique et ne peuvent pas être gérés par les enseignants.");
+            throw new InvalidOperationException("Les niveaux standard font partie du matÃ©riel pÃ©dagogique et ne peuvent pas Ãªtre gÃ©rÃ©s par les enseignants.");
         }
 
         if (klasse.SchoolId is Guid schulID && !await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID, cancellationToken))
@@ -650,7 +650,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 .AnyAsync(user => user.Id == authorId && user.UserRoles.Any(role => role.Role.Name == "SchulLeiter" || role.Role.Name == "Koordinator"), cancellationToken);
         if (!isAssignedTeacher && !isSchoolDirection)
         {
-            throw new InvalidOperationException("Cette classe n'est pas attribuée à votre compte.");
+            throw new InvalidOperationException("Cette classe n'est pas attribuÃ©e Ã  votre compte.");
         }
 
         Exam exam;
@@ -665,10 +665,10 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 .FirstOrDefaultAsync(x => x.Id == model.ExamId.Value && x.AuthorId == authorId && !x.Klasse.IstSystemNiveau, cancellationToken)
                 ?? throw new InvalidOperationException("L'examen est introuvable.");
 
-            // Bestehende Fragen/Blöcke entfernen und neu aufbauen.
+            // Bestehende Fragen/BlÃ¶cke entfernen und neu aufbauen.
             if (exam.IsSuperseded || await dbContext.ExamAttempts.AsNoTracking().AnyAsync(a => a.ExamId == exam.Id, cancellationToken))
             {
-                throw new InvalidOperationException("Une épreuve déjà commencée ne peut plus être modifiée. Modifiez uniquement sa date limite ou créez une nouvelle attribution.");
+                throw new InvalidOperationException("Une Ã©preuve dÃ©jÃ  commencÃ©e ne peut plus Ãªtre modifiÃ©e. Modifiez uniquement sa date limite ou crÃ©ez une nouvelle attribution.");
             }
 
             dbContext.ExamQuestions.RemoveRange(exam.Questions);
@@ -765,14 +765,14 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         await PruefeKlassenSchulzugangAsync(exam.KlasseId, cancellationToken);
         if (exam.IsSuperseded || !exam.IsPublishedToStudents || dueAtUtc <= DateTime.UtcNow)
         {
-            throw new InvalidOperationException("Choisissez une date limite future pour une épreuve active.");
+            throw new InvalidOperationException("Choisissez une date limite future pour une Ã©preuve active.");
         }
 
         var attempts = await dbContext.ExamAttempts.Where(a => a.ExamId == examId).ToListAsync(cancellationToken);
         var now = DateTime.UtcNow;
         if (attempts.Any(a => !a.IsCompleted && a.DeadlineUtc <= now))
         {
-            throw new InvalidOperationException("Une tentative a déjà expiré. Créez une nouvelle attribution au lieu de prolonger cette session.");
+            throw new InvalidOperationException("Une tentative a dÃ©jÃ  expirÃ©. CrÃ©ez une nouvelle attribution au lieu de prolonger cette session.");
         }
 
         exam.SubmissionDueAtUtc = dueAtUtc;
@@ -793,7 +793,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         await PruefeKlassenSchulzugangAsync(source.KlasseId, cancellationToken);
         if (source.IsSuperseded || !source.IsPublishedToStudents)
         {
-            throw new InvalidOperationException("Seule une épreuve attribuée et encore active peut être réattribuée.");
+            throw new InvalidOperationException("Seule une Ã©preuve attribuÃ©e et encore active peut Ãªtre rÃ©attribuÃ©e.");
         }
 
         var now = DateTime.UtcNow;
@@ -801,12 +801,12 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .AnyAsync(a => a.ExamId == sourceExamId && !a.IsCompleted && a.DeadlineUtc > now, cancellationToken);
         if (hasRunningAttempt || (source.SubmissionDueAtUtc.HasValue && source.SubmissionDueAtUtc.Value > now))
         {
-            throw new InvalidOperationException("Attendez la fin de la session actuelle avant de créer une nouvelle attribution.");
+            throw new InvalidOperationException("Attendez la fin de la session actuelle avant de crÃ©er une nouvelle attribution.");
         }
 
         if (model.SubmissionDueAtUtc is not DateTime dueAtUtc || dueAtUtc <= now || model.KlasseId != source.KlasseId)
         {
-            throw new InvalidOperationException("Choisissez une nouvelle date limite future pour la même classe.");
+            throw new InvalidOperationException("Choisissez une nouvelle date limite future pour la mÃªme classe.");
         }
 
         var expiredIds = await dbContext.ExamAttempts.AsNoTracking()
@@ -828,7 +828,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         return newExamId;
     }
 
-    /// <summary>Prüfungen für die Lehrer-/Schulleiterverwaltung.</summary>
+    /// <summary>PrÃ¼fungen fÃ¼r die Lehrer-/Schulleiterverwaltung.</summary>
     public async Task<IReadOnlyList<ExamManagementItem>> GetTeacherExamsAsync(Guid authorId, CancellationToken cancellationToken = default)
     {
         var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
@@ -873,7 +873,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .ToList();
     }
 
-    /// <summary>Lädt eine Prüfung als bearbeitbares Formmodell.</summary>
+    /// <summary>LÃ¤dt eine PrÃ¼fung als bearbeitbares Formmodell.</summary>
     private async Task PruefeKlassenSchulzugangAsync(Guid klasseID, CancellationToken token)
     {
         if (!await IstKlassenSchulzugangErlaubtAsync(klasseID, token))
@@ -928,7 +928,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         };
     }
 
-    /// <summary>Löscht eine Prüfung samt Blöcken, Fragen und Versuchen.</summary>
+    /// <summary>LÃ¶scht eine PrÃ¼fung samt BlÃ¶cken, Fragen und Versuchen.</summary>
     public async Task<(bool Succeeded, string Message)> DeleteExamAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default)
     {
         var exam = await dbContext.Exams
@@ -944,23 +944,23 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         }
         if (exam.Klasse.IstSystemNiveau)
         {
-            return (false, "Cet examen standard fait partie du matériel pédagogique et ne peut pas être supprimé.");
+            return (false, "Cet examen standard fait partie du matÃ©riel pÃ©dagogique et ne peut pas Ãªtre supprimÃ©.");
         }
 
         if (!await IstKlassenSchulzugangErlaubtAsync(exam.KlasseId, cancellationToken))
             return (false, SchulZugangService.GesperrtHinweis);
         if (exam.Attempts.Count > 0)
         {
-            return (false, "Cette épreuve possède des résultats d'élèves et ne peut pas être supprimée.");
+            return (false, "Cette Ã©preuve possÃ¨de des rÃ©sultats d'Ã©lÃ¨ves et ne peut pas Ãªtre supprimÃ©e.");
         }
 
         dbContext.Exams.Remove(exam);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "L'examen a été supprimé.");
+        return (true, "L'examen a Ã©tÃ© supprimÃ©.");
     }
 
     /// <summary>
-    /// Projektion einer Prüfung für den druckbaren Schüler-Prüfungsbogen (ohne Lösungen).
+    /// Projektion einer PrÃ¼fung fÃ¼r den druckbaren SchÃ¼ler-PrÃ¼fungsbogen (ohne LÃ¶sungen).
     /// </summary>
     public async Task<ExamPdfViewModel?> GetExamForPdfAsync(
         Guid userId,
@@ -1036,7 +1036,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             pdf.Exercises.Add(block);
         }
 
-        // Rückwärtskompatibilität: flache (ungruppierte) Fragen als eigener Block.
+        // RÃ¼ckwÃ¤rtskompatibilitÃ¤t: flache (ungruppierte) Fragen als eigener Block.
         if (ungrouped.Count > 0)
         {
             var block = new ExamPdfExercise
@@ -1079,8 +1079,8 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     }
 
     /// <summary>
-    /// Liefert die Abschlussübersicht eines Klassen-Durchlaufs. Pro relevantem Exam wird
-    /// der jüngste abgeschlossene Versuch eines Schülers berücksichtigt; eine nachgetragene
+    /// Liefert die AbschlussÃ¼bersicht eines Klassen-Durchlaufs. Pro relevantem Exam wird
+    /// der jÃ¼ngste abgeschlossene Versuch eines SchÃ¼lers berÃ¼cksichtigt; eine nachgetragene
     /// Note hat dabei Vorrang vor dem automatisch ermittelten Prozentwert.
     /// </summary>
     public async Task<KlassenAbschlussUebersicht?> GetKlassenAbschlussUebersichtAsync(
@@ -1134,7 +1134,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         };
     }
 
-    /// <summary>Liefert historische Prüfungsergebnisse ohne Einfluss auf die manuelle Abschlussnote.</summary>
+    /// <summary>Liefert historische PrÃ¼fungsergebnisse ohne Einfluss auf die manuelle Abschlussnote.</summary>
     public async Task<IReadOnlyList<AbschlussExamErgebnis>> GetAbschlussExamErgebnisseAsync(
         Guid durchlaufId,
         CancellationToken cancellationToken = default)
@@ -1173,7 +1173,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Trägt eine Note zu einem abschlussrelevanten Exam nach, solange der Klassendurchlauf aktiv ist.</summary>
+    /// <summary>TrÃ¤gt eine Note zu einem abschlussrelevanten Exam nach, solange der Klassendurchlauf aktiv ist.</summary>
     public async Task<(bool Succeeded, string Message)> SetManuelleAbschlussExamNoteAsync(
         Guid attemptId,
         decimal note,
@@ -1182,7 +1182,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     {
         if (note is < 0m or > 100m)
         {
-            return (false, "La note doit être comprise entre 0 et 100.");
+            return (false, "La note doit Ãªtre comprise entre 0 et 100.");
         }
 
         var attempt = await dbContext.ExamAttempts
@@ -1190,7 +1190,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .FirstOrDefaultAsync(x => x.Id == attemptId, cancellationToken);
         if (attempt is null || !attempt.IsCompleted || attempt.Exam.ExamType != ExamType.AbschlussRelevant)
         {
-            return (false, "Le résultat sélectionné n'est pas une épreuve finale valide.");
+            return (false, "Le rÃ©sultat sÃ©lectionnÃ© n'est pas une Ã©preuve finale valide.");
         }
 
         var durchlaufIstAktiv = await dbContext.KursNiveauDurchlaeufe.AnyAsync(
@@ -1198,7 +1198,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             cancellationToken);
         if (!durchlaufIstAktiv)
         {
-            return (false, "La classe est clôturée. Les notes ne peuvent plus être modifiées.");
+            return (false, "La classe est clÃ´turÃ©e. Les notes ne peuvent plus Ãªtre modifiÃ©es.");
         }
 
         attempt.ManuelleNote = note;
@@ -1206,10 +1206,10 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         attempt.ManuelleNoteErfasstVonUserId = erfasstVonUserId;
         attempt.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "La note finale a été enregistrée.");
+        return (true, "La note finale a Ã©tÃ© enregistrÃ©e.");
     }
 
-    /// <summary>Setzt die vom Notendurchschnitt unabhängige Bestanden-Entscheidung für einen Schüler.</summary>
+    /// <summary>Setzt die vom Notendurchschnitt unabhÃ¤ngige Bestanden-Entscheidung fÃ¼r einen SchÃ¼ler.</summary>
     public async Task<(bool Succeeded, string Message)> SetKlassenBestandenEntscheidungAsync(
         Guid durchlaufId,
         Guid studentId,
@@ -1224,13 +1224,13 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         }
         if (!bericht.IstAktiv)
         {
-            return (false, "Le cycle est déjà clôturé.");
+            return (false, "Le cycle est dÃ©jÃ  clÃ´turÃ©.");
         }
 
         var schueler = bericht.Schueler.FirstOrDefault(x => x.StudentId == studentId);
         if (schueler is null)
         {
-            return (false, "L'élève n'appartient pas à cette classe.");
+            return (false, "L'Ã©lÃ¨ve n'appartient pas Ã  cette classe.");
         }
 
         var entscheidung = await dbContext.KlassenAbschlussEntscheidungen
@@ -1247,11 +1247,11 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         entscheidung.EntscheidetVonUserId = entscheidetVonUserId;
         entscheidung.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "La décision de réussite a été enregistrée.");
+        return (true, "La dÃ©cision de rÃ©ussite a Ã©tÃ© enregistrÃ©e.");
     }
 
     /// <summary>
-    /// Versetzt ausgewählte, als bestanden entschiedene Schüler nach Abschluss eines
+    /// Versetzt ausgewÃ¤hlte, als bestanden entschiedene SchÃ¼ler nach Abschluss eines
     /// Durchlaufs in eine vorhandene Zielklasse derselben Schule.
     /// </summary>
     public async Task<(bool Succeeded, string Message)> VersetzeSchuelerAsync(
@@ -1279,7 +1279,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     {
         if (studentIds.Count == 0)
         {
-            return (false, "Sélectionnez au moins un élève.");
+            return (false, "SÃ©lectionnez au moins un Ã©lÃ¨ve.");
         }
 
         var durchlauf = await dbContext.KursNiveauDurchlaeufe
@@ -1287,7 +1287,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .FirstOrDefaultAsync(x => x.Id == durchlaufId, cancellationToken);
         if (durchlauf is null || durchlauf.EndDatum is null)
         {
-            return (false, "La classe doit être clôturée avant la promotion.");
+            return (false, "La classe doit Ãªtre clÃ´turÃ©e avant la promotion.");
         }
 
         var zielKlasse = await dbContext.Klassen.FirstOrDefaultAsync(
@@ -1295,7 +1295,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             cancellationToken);
         if (zielKlasse is null || zielKlasse.Id == durchlauf.KlasseId)
         {
-            return (false, "Choisissez une classe cible valide de la même école.");
+            return (false, "Choisissez une classe cible valide de la mÃªme Ã©cole.");
         }
 
         var entscheidungen = await dbContext.KlassenAbschlussEntscheidungen
@@ -1303,7 +1303,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .ToListAsync(cancellationToken);
         if (entscheidungen.Count != studentIds.Count || entscheidungen.Any(x => x.IsBestanden != true))
         {
-            return (false, "Seuls les élèves marqués comme réussis peuvent être promus.");
+            return (false, "Seuls les Ã©lÃ¨ves marquÃ©s comme rÃ©ussis peuvent Ãªtre promus.");
         }
 
         var profile = await dbContext.StudentProfiles
@@ -1311,7 +1311,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             .ToListAsync(cancellationToken);
         if (profile.Count != studentIds.Count)
         {
-            return (false, "Un élève sélectionné n'appartient pas à cette école.");
+            return (false, "Un Ã©lÃ¨ve sÃ©lectionnÃ© n'appartient pas Ã  cette Ã©cole.");
         }
 
         var vorhandeneEinschreibungen = await dbContext.LevelEnrollments
@@ -1340,7 +1340,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
         await new ZyklusTeilnahmeService(dbContext).AktiveKlasseErfassenAsync(
             durchlauf.SchulID, zielKlasse.Id, cancellationToken);
-        return (true, "Les élèves sélectionnés ont été promus.");
+        return (true, "Les Ã©lÃ¨ves sÃ©lectionnÃ©s ont Ã©tÃ© promus.");
     }
 
     private async Task<List<Guid>> GetDurchlaufTeilnehmerIdsAsync(
@@ -1413,7 +1413,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             })
             .ToList();
 
-        // Ungruppierte Alt-Fragen in einen zusätzlichen Block überführen.
+        // Ungruppierte Alt-Fragen in einen zusÃ¤tzlichen Block Ã¼berfÃ¼hren.
         var ungrouped = exam.Questions.Where(q => !q.ExamExerciseId.HasValue).OrderBy(q => q.Order).ToList();
         if (ungrouped.Count > 0)
         {
@@ -1499,7 +1499,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         {
             if (string.IsNullOrWhiteSpace(question.Prompt))
             {
-                throw new InvalidOperationException("Chaque question doit contenir un énoncé.");
+                throw new InvalidOperationException("Chaque question doit contenir un Ã©noncÃ©.");
             }
 
             if (question.Points < 1)
@@ -1509,7 +1509,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
 
             if (IsChoiceType(question.QuestionType) && question.Options.Count < 2)
             {
-                throw new InvalidOperationException("Chaque question à choix doit avoir au moins deux options.");
+                throw new InvalidOperationException("Chaque question Ã  choix doit avoir au moins deux options.");
             }
         }
     }
@@ -1528,7 +1528,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
     };
 
     /// <summary>
-    /// Pflegt die manuelle Abschlussnote (Freitext) eines Schülers in einem Durchlauf.
+    /// Pflegt die manuelle Abschlussnote (Freitext) eines SchÃ¼lers in einem Durchlauf.
     /// </summary>
     public async Task<IReadOnlyList<AbschlussMention>> GetAbschlussMentionsAsync(Guid schulId, Guid bearbeiterId, CancellationToken cancellationToken = default)
     {
@@ -1539,15 +1539,15 @@ public class ExamService(ISkoulouAppDbContext dbContext)
 
     public async Task<(bool Succeeded, string Message)> SaveAbschlussMentionAsync(Guid schulId, Guid? mentionId, string? text, Guid bearbeiterId, CancellationToken cancellationToken = default)
     {
-        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "Accès refusé à cette école.");
+        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "AccÃ¨s refusÃ© Ã  cette Ã©cole.");
         var name = text?.Trim();
-        if (string.IsNullOrEmpty(name) || name.Length > 80) return (false, "La mention doit contenir entre 1 et 80 caractères.");
+        if (string.IsNullOrEmpty(name) || name.Length > 80) return (false, "La mention doit contenir entre 1 et 80 caractÃ¨res.");
         var mention = mentionId.HasValue
             ? await dbContext.AbschlussMentions.FirstOrDefaultAsync(x => x.Id == mentionId && x.SchulID == schulId, cancellationToken)
             : null;
         if (mentionId.HasValue && mention is null) return (false, "Mention introuvable.");
         if (await dbContext.AbschlussMentions.AnyAsync(x => x.SchulID == schulId && x.Text == name && x.Id != mentionId, cancellationToken))
-            return (false, "Cette mention existe déjà dans l'école.");
+            return (false, "Cette mention existe dÃ©jÃ  dans l'Ã©cole.");
         if (mention is null)
         {
             mention = new AbschlussMention { SchulID = schulId, Text = name };
@@ -1559,32 +1559,32 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             mention.GeaendertAmUtc = DateTime.UtcNow;
         }
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "Mention enregistrée.");
+        return (true, "Mention enregistrÃ©e.");
     }
 
     public async Task<(bool Succeeded, string Message)> DeleteAbschlussMentionAsync(Guid schulId, Guid mentionId, Guid bearbeiterId, CancellationToken cancellationToken = default)
     {
-        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "Accès refusé à cette école.");
+        if (!await HatMentionZugriffAsync(schulId, bearbeiterId, true, cancellationToken)) return (false, "AccÃ¨s refusÃ© Ã  cette Ã©cole.");
         var mention = await dbContext.AbschlussMentions.FirstOrDefaultAsync(x => x.Id == mentionId && x.SchulID == schulId, cancellationToken);
         if (mention is null) return (false, "Mention introuvable.");
         dbContext.AbschlussMentions.Remove(mention);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "Mention supprimée.");
+        return (true, "Mention supprimÃ©e.");
     }
 
     public async Task<(bool Succeeded, string Message)> SetAbschlussMentionAsync(Guid durchlaufId, Guid studentId, Guid? mentionId, Guid bearbeiterId, CancellationToken cancellationToken = default)
     {
         var bericht = await GetKlassenAbschlussUebersichtAsync(durchlaufId, cancellationToken);
-        if (bericht is null || !bericht.IstAktiv) return (false, "Le cycle est introuvable ou déjà clôturé.");
-        if (!bericht.Schueler.Any(x => x.StudentId == studentId)) return (false, "L'élève n'appartient pas à ce cycle.");
-        if (!await HatMentionZugriffAsync(bericht.SchulID, bearbeiterId, false, cancellationToken)) return (false, "Accès refusé à cette école.");
+        if (bericht is null || !bericht.IstAktiv) return (false, "Le cycle est introuvable ou dÃ©jÃ  clÃ´turÃ©.");
+        if (!bericht.Schueler.Any(x => x.StudentId == studentId)) return (false, "L'Ã©lÃ¨ve n'appartient pas Ã  ce cycle.");
+        if (!await HatMentionZugriffAsync(bericht.SchulID, bearbeiterId, false, cancellationToken)) return (false, "AccÃ¨s refusÃ© Ã  cette Ã©cole.");
         string? text = null;
         if (mentionId.HasValue)
         {
             text = await dbContext.AbschlussMentions.AsNoTracking()
                 .Where(x => x.Id == mentionId && x.SchulID == bericht.SchulID)
                 .Select(x => x.Text).FirstOrDefaultAsync(cancellationToken);
-            if (text is null) return (false, "Cette mention n'appartient pas à l'école du cycle.");
+            if (text is null) return (false, "Cette mention n'appartient pas Ã  l'Ã©cole du cycle.");
         }
         var entscheidung = await dbContext.KlassenAbschlussEntscheidungen
             .FirstOrDefaultAsync(x => x.DurchlaufId == durchlaufId && x.StudentId == studentId, cancellationToken);
@@ -1596,7 +1596,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         entscheidung.MentionText = text;
         entscheidung.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "Mention enregistrée.");
+        return (true, "Mention enregistrÃ©e.");
     }
 
     private async Task<bool> HatMentionZugriffAsync(Guid schulId, Guid bearbeiterId, bool verwaltung, CancellationToken cancellationToken)
@@ -1623,13 +1623,13 @@ public class ExamService(ISkoulouAppDbContext dbContext)
 
         if (!bericht.IstAktiv)
         {
-            return (false, "Le cycle est déjà clôturé. Les résultats ne peuvent plus être modifiés.");
+            return (false, "Le cycle est dÃ©jÃ  clÃ´turÃ©. Les rÃ©sultats ne peuvent plus Ãªtre modifiÃ©s.");
         }
 
         var schueler = bericht.Schueler.FirstOrDefault(x => x.StudentId == studentId);
         if (schueler is null)
         {
-            return (false, "L'élève n'appartient pas à cette classe.");
+            return (false, "L'Ã©lÃ¨ve n'appartient pas Ã  cette classe.");
         }
 
         var bereinigteNote = string.IsNullOrWhiteSpace(abschlussNoteText)
@@ -1637,7 +1637,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
             : abschlussNoteText.Trim();
         if (bereinigteNote is not null && bereinigteNote.Length > 64)
         {
-            return (false, "La note finale est trop longue (max. 64 caractères).");
+            return (false, "La note finale est trop longue (max. 64 caractÃ¨res).");
         }
 
         var entscheidung = await dbContext.KlassenAbschlussEntscheidungen
@@ -1652,6 +1652,6 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         entscheidung.EntscheidetVonUserId ??= erfasstVonUserId;
         entscheidung.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return (true, "La note finale a été enregistrée.");
+        return (true, "La note finale a Ã©tÃ© enregistrÃ©e.");
     }
 }

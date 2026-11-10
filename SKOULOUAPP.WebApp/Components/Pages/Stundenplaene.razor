@@ -11,7 +11,7 @@
         <p>Consultez les cours par jour, classe ou enseignant.</p>
     </header>
     @if (!string.IsNullOrEmpty(message)) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
-    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" Searchable="true" Disabled="occupe" />
+    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Searchable="true" Disabled="occupe" />
     @if (verwalter && uebersicht is not null)
     {
         <details class="rounded-xl border bg-white p-5">

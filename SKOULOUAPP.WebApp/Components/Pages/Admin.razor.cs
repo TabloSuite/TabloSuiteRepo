@@ -95,32 +95,31 @@ public partial class Admin
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
-    // Aufklappbares Abonnements-/Bezahl-Panel je Schüler.
+    // Aufklappbares Abonnements-/Bezahl-Panel je SchÃ¼ler.
     private Guid? expandedEnrollmentStudentId;
     private IReadOnlyList<LevelEnrollmentItem> levelEnrollments = [];
 
-    // Bestätigungsdialog für die Zahlungsrücknahme (nur SuperAdmin).
+    // BestÃ¤tigungsdialog fÃ¼r die ZahlungsrÃ¼cknahme (nur SuperAdmin).
     private bool confirmRemovePaymentOpen;
     private Guid pendingRemoveStudentId;
     private Guid pendingRemoveLevelId;
     private string pendingRemoveLevelCode = string.Empty;
 
-    // Bestätigungsdialog für das Entfernen eines Abos (nur SuperAdmin).
+    // BestÃ¤tigungsdialog fÃ¼r das Entfernen eines Abos (nur SuperAdmin).
     private bool confirmRemoveAboOpen;
     private Guid pendingRemoveAboStudentId;
     private Guid pendingRemoveAboLevelId;
     private string pendingRemoveAboLevelCode = string.Empty;
     private bool confirmRemoveAboAndClassOpen;
 
-    // Ausschließlich Development: vollständiges Zurücksetzen einer Testschule
-    // über den ihr zugeordneten Schulleiter.
+    // AusschlieÃŸlich Development: vollstÃ¤ndiges ZurÃ¼cksetzen einer Testschule
+    // Ã¼ber den ihr zugeordneten Schulleiter.
     private bool confirmHardDeleteSchoolLeaderOpen;
     private Guid pendingHardDeleteSchoolLeaderId;
     private string pendingHardDeleteSchoolLeaderName = string.Empty;
 
     private DashboardSummary? summary;
     private IReadOnlyList<SchoolManagementViewModel> schoolManagementItems = [];
-    private IReadOnlyList<TeacherAssignmentOption> teacherOptions = [];
     private IReadOnlyList<TeacherAssignmentOption> schoolOptions = [];
     private IReadOnlyList<CourseFormModel> userFormClassOptions = [];
     private IReadOnlyList<UserManagementItem> userManagementItems = [];
@@ -141,7 +140,6 @@ public partial class Admin
     }
     private LessonFormModel lessonForm = new();
     private MediaUploadFormModel mediaUploadForm = new();
-    private HashSet<Guid> selectedTeacherIds = [];
     private HashSet<Guid> selectedUserSchoolIds = [];
     private IBrowserFile? selectedMediaFile;
     private bool isDatabaseActionInProgress;
@@ -170,7 +168,7 @@ public partial class Admin
 
     private IReadOnlyList<ModernDropdownOption<string?>> UserSchoolFilterOptions =>
     [
-        new(null, "Toutes les écoles"),
+        new(null, "Toutes les Ã©coles"),
         .. SchoolFilterNames.Select(name => new ModernDropdownOption<string?>(name, name))
     ];
 
@@ -221,12 +219,12 @@ public partial class Admin
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> MediaSchoolFilterOptions =>
     [
-        new(null, "Toutes les écoles"),
+        new(null, "Toutes les Ã©coles"),
         .. mediaLibraryItems
             .Where(media => media.SchoolId.HasValue)
             .GroupBy(media => new { media.SchoolId, media.SchoolName })
             .OrderBy(group => group.Key.SchoolName)
-            .Select(group => new ModernDropdownOption<Guid?>(group.Key.SchoolId, group.Key.SchoolName ?? "École sans nom", FormatFileSize(group.Sum(media => media.Length)), $"{group.Count()} média(s)"))
+            .Select(group => new ModernDropdownOption<Guid?>(group.Key.SchoolId, group.Key.SchoolName ?? "Ã‰cole sans nom", FormatFileSize(group.Sum(media => media.Length)), $"{group.Count()} mÃ©dia(s)"))
     ];
 
     private Task SetMediaSchoolFilterAsync(Guid? schoolId)
@@ -259,12 +257,12 @@ public partial class Admin
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> CourseSchoolFilterOptions =>
     [
-        new(null, "Toutes les écoles"),
+        new(null, "Toutes les Ã©coles"),
         .. courseManagementItems
             .Where(course => course.SchoolId.HasValue)
             .GroupBy(course => new { course.SchoolId, course.SchoolName })
             .OrderBy(group => group.Key.SchoolName)
-            .Select(group => new ModernDropdownOption<Guid?>(group.Key.SchoolId, group.Key.SchoolName ?? "École sans nom"))
+            .Select(group => new ModernDropdownOption<Guid?>(group.Key.SchoolId, group.Key.SchoolName ?? "Ã‰cole sans nom"))
     ];
 
     private void ShowAllCourses() => courseScopeFilter = "all";
@@ -289,17 +287,17 @@ public partial class Admin
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> UserClassOptions =>
     [
-        new(null, "À attribuer ultérieurement"),
+        new(null, "Ã€ attribuer ultÃ©rieurement"),
         .. userFormClassOptions
             .OrderBy(klasse => klasse.Code)
             .ThenBy(klasse => klasse.Title)
-            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, $"{klasse.Code} · {klasse.Title}"))
+            .Select(klasse => new ModernDropdownOption<Guid?>((Guid?)klasse.CourseId, $"{klasse.Code} Â· {klasse.Title}"))
     ];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> CourseOptions =>
     [
         new((Guid?)Guid.Empty, "Veuillez choisir"),
-        .. courseManagementItems.Select(course => new ModernDropdownOption<Guid?>((Guid?)course.CourseId, $"{course.Code} · {course.Title}"))
+        .. courseManagementItems.Select(course => new ModernDropdownOption<Guid?>((Guid?)course.CourseId, $"{course.Code} Â· {course.Title}"))
     ];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> LessonOptions =>
@@ -329,7 +327,7 @@ public partial class Admin
     private IReadOnlyList<ModernDropdownOption<string?>> TtsLanguageOptions =>
     [
         new("de-DE", "Deutsch (DE)"),
-        new("fr-FR", "Français (FR)"),
+        new("fr-FR", "FranÃ§ais (FR)"),
         new("en-US", "English (EN)")
     ];
 
@@ -505,7 +503,7 @@ public partial class Admin
             "multiplechoice" => "MultipleChoice",
             "audiochoice" or "audiosinglechoice" => "AudioSingleChoice",
             "audiomultiplechoice" => "AudioMultipleChoice",
-            "gapfill" or "gap" or "lücken" or "luecken" => "GapFill",
+            "gapfill" or "gap" or "lÃ¼cken" or "luecken" => "GapFill",
             "text" or "freetext" => "Text",
             "sentencebuilding" or "sentence" or "satzbau" => "SentenceBuilding",
             "audiotext" or "audio" => "AudioText",
@@ -546,7 +544,7 @@ public partial class Admin
     private bool schoolModalOpen;
 
     private string schoolModalTitle =>
-        schoolForm.Id.HasValue ? "Modifier l'école" : "Nouvelle école";
+        schoolForm.Id.HasValue ? "Modifier l'Ã©cole" : "Nouvelle Ã©cole";
 
     private bool courseModalOpen;
 
@@ -556,7 +554,7 @@ public partial class Admin
     private bool lessonModalOpen;
 
     private string lessonModalTitle =>
-        lessonForm.LessonId.HasValue ? "Modifier la leçon" : "Nouvelle leçon";
+        lessonForm.LessonId.HasValue ? "Modifier la leÃ§on" : "Nouvelle leÃ§on";
 
     private bool mediaModalOpen;
 
@@ -586,7 +584,7 @@ public partial class Admin
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
-            // Komponente wurde während des Ladens verworfen (Navigationswechsel).
+            // Komponente wurde wÃ¤hrend des Ladens verworfen (Navigationswechsel).
         }
     }
 
@@ -598,11 +596,10 @@ public partial class Admin
         {
             schoolDirectorFilter = null;
         }
-        teacherOptions = isProduktOwner ? [] : await DashboardService.GetTeacherOptionsAsync(schoolForm.Id);
         var allowedSchools = await DashboardService.GetPlatformSchoolIdsAsync(currentUserId, ComponentToken);
         schoolOptions = (await DashboardService.GetSchoolOptionsAsync(userForm.UserId))
             .Where(option => allowedSchools.Contains(option.TeacherId)).ToList();
-        // Plattformansicht auf Basis bereinigter Schülerkennzahlen laden.
+        // Plattformansicht auf Basis bereinigter SchÃ¼lerkennzahlen laden.
         userManagementItems = (await DashboardService.GetPlatformUsersAsync(currentUserId, ComponentToken))
             .OrderBy(u => GetRoleRank(u.RoleName))
             .ThenBy(u => u.FullName)
@@ -622,11 +619,11 @@ public partial class Admin
 
         if (isProduktOwner)
         {
-            errorMessage = "La gestion des écoles appartient au directeur et à l'Administrateur.";
+            errorMessage = "La gestion des Ã©coles appartient au directeur et Ã  l'Administrateur.";
             return;
         }
 
-        var result = await DashboardService.SaveSchoolAsync(schoolForm, selectedTeacherIds.ToList(), currentUserId, ComponentToken);
+        var result = await DashboardService.SaveSchoolAsync(schoolForm, currentUserId, ComponentToken);
         if (!result.Succeeded)
         {
             errorMessage = result.Message;
@@ -657,7 +654,7 @@ public partial class Admin
     {
         if (isProduktOwner)
         {
-            userErrorMessage = "Cette action est réservée à l'Administrateur.";
+            userErrorMessage = "Cette action est rÃ©servÃ©e Ã  l'Administrateur.";
             return;
         }
 
@@ -682,13 +679,11 @@ public partial class Admin
         var model = await DashboardService.GetSchoolForEditAsync(schoolId);
         if (model is null)
         {
-            errorMessage = "Impossible de charger l'école.";
+            errorMessage = "Impossible de charger l'Ã©cole.";
             return;
         }
 
         schoolForm = model;
-        teacherOptions = await DashboardService.GetTeacherOptionsAsync(schoolId);
-        selectedTeacherIds = teacherOptions.Where(x => x.IsAssigned).Select(x => x.TeacherId).ToHashSet();
         statusMessage = null;
         errorMessage = null;
         schoolModalOpen = true;
@@ -728,7 +723,7 @@ public partial class Admin
             try
             {
                 await CommissionService.SaveCommissionSettingsAsync(commissionSettings, currentUserId, ComponentToken);
-                commissionStatusMessage = "Les commissions seront appliquées aux nouveaux abonnements.";
+                commissionStatusMessage = "Les commissions seront appliquÃ©es aux nouveaux abonnements.";
             }
             catch (InvalidOperationException exception)
             {
@@ -747,11 +742,10 @@ public partial class Admin
         return Task.CompletedTask;
     }
 
-    private async Task ResetFormAsync()
+    private Task ResetFormAsync()
     {
         schoolForm = new SchoolFormModel();
-        selectedTeacherIds = [];
-        teacherOptions = isProduktOwner ? [] : await DashboardService.GetTeacherOptionsAsync();
+        return Task.CompletedTask;
     }
 
     private Task SaveUserAsync() => RunDatabaseActionAsync(SaveUserCoreAsync);
@@ -764,7 +758,7 @@ public partial class Admin
         userForm.SchoolIds = userForm.RoleName == "SuperAdmin" ? [] : selectedUserSchoolIds.ToList();
 
         // Vor dem Speichern merken, ob es sich um eine Neuanlage handelt:
-        // Nur dann wird anschließend eine Willkommensmail versendet.
+        // Nur dann wird anschlieÃŸend eine Willkommensmail versendet.
         var istNeuanlage = !userForm.UserId.HasValue;
         var email = userForm.Email?.Trim() ?? string.Empty;
         var vorname = userForm.Vorname?.Trim() ?? string.Empty;
@@ -781,7 +775,7 @@ public partial class Admin
             if (!string.IsNullOrWhiteSpace(userForm.Password))
                 neueZugangsdaten = [new(userForm.Email, userForm.Password)];
             // Best-Effort: Ein fehlgeschlagener Versand (z. B. nicht existierende
-            // Adresse) darf die Benutzeranlage nicht beeinträchtigen.
+            // Adresse) darf die Benutzeranlage nicht beeintrÃ¤chtigen.
             await AuthService.SendWelcomeEmailAsync(email, vorname);
         }
 
@@ -844,7 +838,7 @@ public partial class Admin
         if (isProduktOwner)
         {
             confirmRemovePaymentOpen = false;
-            userErrorMessage = "La gestion des paiements est réservée à l'Administrateur.";
+            userErrorMessage = "La gestion des paiements est rÃ©servÃ©e Ã  l'Administrateur.";
             return;
         }
 
@@ -885,7 +879,7 @@ public partial class Admin
         if (isProduktOwner)
         {
             confirmRemoveAboOpen = false;
-            userErrorMessage = "La gestion des abonnements est réservée à l'Administrateur.";
+            userErrorMessage = "La gestion des abonnements est rÃ©servÃ©e Ã  l'Administrateur.";
             return;
         }
 
@@ -923,7 +917,7 @@ public partial class Admin
         if (isProduktOwner)
         {
             confirmRemoveAboAndClassOpen = false;
-            userErrorMessage = "La gestion des abonnements est réservée à l'Administrateur.";
+            userErrorMessage = "La gestion des abonnements est rÃ©servÃ©e Ã  l'Administrateur.";
             return;
         }
 
@@ -984,10 +978,12 @@ public partial class Admin
     private async Task ToggleUserSchoolAsync(Guid schoolId, object? value)
     {
         var isChecked = value as bool? == true || string.Equals(value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-        if (userForm.RoleName == "Schüler")
+        if (userForm.RoleName != "ProduktOwner")
         {
+            // Ein Konto = eine Schule: Auswahl ersetzt die bisherige Schule.
             selectedUserSchoolIds = isChecked ? [schoolId] : [];
             userForm.CurrentKlasseId = null;
+            userForm.TeacherClassAssignments.RemoveAll(assignment => assignment.SchoolId != schoolId);
         }
         else if (isChecked)
         {
@@ -1010,8 +1006,13 @@ public partial class Admin
         {
             selectedUserSchoolIds = [];
         }
+        else if (userForm.RoleName != "ProduktOwner" && selectedUserSchoolIds.Count > 1)
+        {
+            // Ein Konto = eine Schule: beim Rollenwechsel die Auswahl neu treffen lassen.
+            selectedUserSchoolIds = [];
+        }
 
-        if (userForm.RoleName != "Schüler")
+        if (userForm.RoleName != "SchÃ¼ler")
         {
             userForm.CurrentKlasseId = null;
         }
@@ -1128,7 +1129,7 @@ public partial class Admin
 
     private async Task SaveLessonCoreAsync()
     {
-        courseErrorMessage = "La création et la modification des leçons sont réservées aux enseignants.";
+        courseErrorMessage = "La crÃ©ation et la modification des leÃ§ons sont rÃ©servÃ©es aux enseignants.";
         courseStatusMessage = null;
         return;
 
@@ -1152,14 +1153,14 @@ public partial class Admin
 
     private async Task EditLessonAsync(Guid lessonId)
     {
-        courseErrorMessage = "La gestion des leçons se fait dans l'espace enseignant.";
+        courseErrorMessage = "La gestion des leÃ§ons se fait dans l'espace enseignant.";
         courseStatusMessage = null;
         return;
 
         var model = await DashboardService.GetLessonForEditAsync(lessonId);
         if (model is null)
         {
-            courseErrorMessage = "Impossible de charger la leçon.";
+            courseErrorMessage = "Impossible de charger la leÃ§on.";
             return;
         }
 
@@ -1188,7 +1189,7 @@ public partial class Admin
 
     private void OpenNewLessonModal()
     {
-        courseErrorMessage = "La création de leçons est réservée aux enseignants.";
+        courseErrorMessage = "La crÃ©ation de leÃ§ons est rÃ©servÃ©e aux enseignants.";
         courseStatusMessage = null;
     }
 
@@ -1221,7 +1222,7 @@ public partial class Admin
 
         if (selectedMediaFile is null)
         {
-            mediaErrorMessage = "Veuillez sélectionner un fichier.";
+            mediaErrorMessage = "Veuillez sÃ©lectionner un fichier.";
             return;
         }
 
@@ -1265,19 +1266,6 @@ public partial class Admin
         if (!open)
         {
             ResetMediaForm();
-        }
-    }
-
-    private void ToggleTeacher(Guid teacherId, object? value)
-    {
-        var isChecked = value as bool? == true || string.Equals(value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-        if (isChecked)
-        {
-            selectedTeacherIds.Add(teacherId);
-        }
-        else
-        {
-            selectedTeacherIds.Remove(teacherId);
         }
     }
 
@@ -1368,7 +1356,7 @@ public partial class Admin
         "SchulLeiter" => "Directeurs",
         "Koordinator" => "Coordinateurs",
         "Lehrer" => "Enseignants",
-        "Schüler" => "Élèves",
+        "SchÃ¼ler" => "Ã‰lÃ¨ves",
         _ => "Autres"
     };
 

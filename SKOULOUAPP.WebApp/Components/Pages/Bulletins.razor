@@ -7,7 +7,7 @@
 <div class="mx-auto max-w-6xl space-y-5 p-4">
     <header class="rounded-2xl bg-slate-900 p-6 text-white"><a href="/" class="text-sky-300">← Accueil</a><h1 class="mt-3 text-2xl font-bold">Bulletins scolaires</h1></header>
     @if (message.Length > 0) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
-    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" Disabled="occupe" />
+    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Disabled="occupe" />
     @if (verwalter && unterricht is not null)
     {
         <details class="rounded-xl border bg-white p-5"><summary class="cursor-pointer text-lg font-semibold">Modèles par classe</summary>

@@ -8,7 +8,7 @@
     <header class="rounded-2xl bg-slate-900 p-6 text-white"><a href="/" class="text-sky-300">← Accueil</a><h1 class="mt-3 text-2xl font-bold">Notes et évaluations</h1><p>Préparez les périodes et saisissez les notes par matière.</p></header>
     @if (message.Length > 0) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
     <div class="grid gap-4 md:grid-cols-2">
-        <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="SchuleAsync" Options="Options(schulen)" Label="École" Disabled="occupe" />
+        <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="SchuleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Disabled="occupe" />
         <ModernDropdown TValue="Guid" Value="jahrID" ValueChanged="JahrAsync" Options="Options(jahre)" Label="Année scolaire" Disabled="occupe" />
     </div>
     @if (verwalter && jahrID != Guid.Empty)

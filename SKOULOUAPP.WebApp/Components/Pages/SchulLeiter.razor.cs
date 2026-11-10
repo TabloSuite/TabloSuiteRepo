@@ -926,16 +926,6 @@ public partial class SchulLeiter
         coordinatorFinanceBilling = true;
     }
 
-    private void SetCoordinatorSchoolAssignment(Guid schoolId, bool isAssigned)
-    {
-        if (isAssigned)
-        {
-            if (!userForm.SchoolIds.Contains(schoolId)) userForm.SchoolIds.Add(schoolId);
-            return;
-        }
-
-        userForm.SchoolIds.Remove(schoolId);
-    }
     private string? userStatusMessage;
     private string? userErrorMessage;
     private bool isStudentPersonalEditMode;
@@ -1011,13 +1001,6 @@ public partial class SchulLeiter
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
-    }
-
-    private void OpenNewSchoolModal()
-    {
-        schoolForm = new SchoolFormModel { Country = "Togo", IsActive = true };
-        schoolErrorMessage = null;
-        schoolModalOpen = true;
     }
 
     private Task OpenEditSelectedSchoolAsync() => RunDatabaseActionAsync(OpenEditSelectedSchoolCoreAsync);
@@ -1585,25 +1568,6 @@ public partial class SchulLeiter
                 KlasseId = option.KlasseId
             });
         }
-    }
-
-    private void SetTeacherSchoolAssignment(Guid schoolId, bool isAssigned)
-    {
-        if (isAssigned)
-        {
-            if (!userForm.SchoolIds.Contains(schoolId))
-            {
-                userForm.SchoolIds.Add(schoolId);
-            }
-
-            EnsureTeacherFachSelectionInUserForm();
-
-            return;
-        }
-
-        userForm.SchoolIds.Remove(schoolId);
-        EnsureTeacherClassReferenceFilter();
-        EnsureTeacherFachSelectionInUserForm();
     }
 
     private async Task OpenEditUserAsync(Guid userId)

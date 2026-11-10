@@ -18,18 +18,10 @@
 		<div class="pointer-events-none absolute -top-16 -right-12 h-32 w-32 rounded-full bg-cyan-400/25 blur-3xl"></div>
 		<div class="relative flex flex-wrap items-center justify-between gap-3 pr-14">
 			<div class="min-w-0">
-				<p class="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-cyan-200">Gestion des écoles attribuées</p>
+				<p class="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-cyan-200">@(isProduktOwner ? "Établissements suivis" : "Direction de l'établissement")</p>
 				<h1 class="mt-1 text-xl font-bold leading-tight xl:text-2xl">Gestion des élèves, des classes et des abonnements</h1>
 				<p class="mt-1 hidden max-w-2xl text-sm text-slate-300 md:block">Valide les inscriptions, active les accès des élèves et pilote les classes, supports et examens de ton établissement.</p>
 			</div>
-			@if (!isProduktOwner)
-			{
-				<button type="button"
-						class="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-4 py-2 text-xs font-semibold text-slate-950 transition duration-200 hover:bg-cyan-300"
-						@onclick="OpenNewSchoolModal">
-					➕ Nouvelle école
-				</button>
-			}
 		</div>
 	</div>
 
@@ -1124,22 +1116,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 @if (userForm.RoleName == "Lehrer")
                 {
-                    <div class="sm:col-span-2">
-                        <label class="skoulou-label">Écoles attribuées <span class="text-rose-600">*</span></label>
-                        <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                            @foreach (var school in schools)
-                            {
-                                var isAssigned = userForm.SchoolIds.Contains(school.SchoolId);
-                                <label class="flex items-center gap-2 text-sm text-slate-700">
-                                    <input type="checkbox"
-                                           checked="@isAssigned"
-                                           @onchange="args => SetTeacherSchoolAssignment(school.SchoolId, args.Value as bool? == true)" />
-                                    @school.SchoolName
-                                </label>
-                            }
-                        </div>
-                        <p class="mt-1 text-xs text-slate-500">Un enseignant doit être attribué à au moins une école avant de recevoir des classes.</p>
-                    </div>
+                    <EtablissementZeile Schulen="schools" />
                     <div class="sm:col-span-2">
                         <label class="skoulou-label">Classes attribuées</label>
                         @if (TeacherClassReferenceFilterOptions.Count > 1)
@@ -1190,28 +1167,21 @@
                 }
                 else if (userForm.RoleName == "Koordinator")
                 {
-                    <div class="sm:col-span-2">
-                        <label class="skoulou-label">Écoles attribuées <span class="text-rose-600">*</span></label>
-                        <div class="grid gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
-                            @foreach (var school in schools)
-                            {
-                                <label class="flex items-center gap-2 text-sm text-slate-700">
-                                    <input type="checkbox"
-                                           checked="@userForm.SchoolIds.Contains(school.SchoolId)"
-                                           @onchange="args => SetCoordinatorSchoolAssignment(school.SchoolId, args.Value as bool? == true)" />
-                                    @school.SchoolName
-                                </label>
-                            }
-                        </div>
-                        <p class="mt-1 text-xs text-slate-500">Attribue au moins une école au coordinateur. Les mêmes accès financiers s'appliquent à toutes les écoles attribuées.</p>
-                    </div>
+                    <EtablissementZeile Schulen="schools" />
                 }
                 else
                 {
-                    <div>
-                        <ModernDropdown TValue="Guid?" Label="École *" Value="SelectedStudentSchoolId" ValueChanged="SetSelectedStudentSchoolAsync" Options="UserSchoolOptions" />
-                        <p class="mt-1 text-xs text-slate-500">@SchoolAssignmentHintText</p>
-                    </div>
+                    @if (HasMultipleSchools)
+                    {
+                        <div>
+                            <ModernDropdown TValue="Guid?" Label="École *" Value="SelectedStudentSchoolId" ValueChanged="SetSelectedStudentSchoolAsync" Options="UserSchoolOptions" />
+                            <p class="mt-1 text-xs text-slate-500">@SchoolAssignmentHintText</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <EtablissementZeile Schulen="schools" />
+                    }
                     @if (userForm.RoleName == "Schüler")
                     {
                         <div>

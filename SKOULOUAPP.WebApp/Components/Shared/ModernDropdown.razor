@@ -2,6 +2,20 @@
 @typeparam TValue
 @inherits ModernDropdownBase<TValue>
 
+@if (EinzigeOption is { } einzige)
+{
+    <div class="min-w-0 @ContainerClass">
+        @if (!string.IsNullOrWhiteSpace(Label))
+        {
+            <span class="mb-2 block text-sm font-semibold text-slate-700">@Label</span>
+        }
+        <p class="flex min-w-0 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 @ButtonClass">
+            <span class="truncate">@einzige.Label</span>
+        </p>
+    </div>
+}
+else
+{
 <div class="relative min-w-0 @ContainerClass">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
@@ -88,3 +102,4 @@
         </div>
     }
 </div>
+}

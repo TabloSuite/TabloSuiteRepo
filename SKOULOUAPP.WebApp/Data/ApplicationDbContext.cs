@@ -203,6 +203,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         modelBuilder.Entity<AppUserRole>().HasKey(x => new { x.UserId, x.RoleId });
         modelBuilder.Entity<UserSchool>().HasKey(x => new { x.AppUserId, x.SchoolId });
+        // Ein Konto = eine Schule. Nur Plattformzuordnungen (ProduktOwner) dürfen mehrfach vorkommen.
+        modelBuilder.Entity<UserSchool>()
+            .HasIndex(x => x.AppUserId)
+            .IsUnique()
+            .HasFilter("[IstPlattformZuordnung] = 0")
+            .HasDatabaseName("IX_UserSchools_EineSchuleProKonto");
         modelBuilder.Entity<RolePermission>().HasKey(x => new { x.RoleId, x.PermissionId });
 
         modelBuilder.Entity<AppUserRole>()

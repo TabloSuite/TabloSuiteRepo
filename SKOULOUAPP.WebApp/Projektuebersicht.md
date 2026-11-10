@@ -73,7 +73,7 @@ In Development meldet der Start offene Modelländerungen ohne Migration. Ein erf
 | `ProduktOwner` | Zugewiesene Schulen und berechtigte Plattform-/Facturation-Funktionen. |
 | `SuperAdmin` | Globale Verwaltung, Schulen, Benutzer, Preis-/Kommissionskonfiguration, Broadcast-E-Mails, Fehlerprotokolle und schulübergreifende Finanzen. |
 
-`Routes.razor` setzt `AuthorizeRouteView` ein. Einzelne Seiten ergänzen dies mit Rollen oder Policies (`RequireSuperAdmin`, `RequireSchulLeiter`, `RequireTeacher`, `RequireStudent`). Die Navigation in `Components/Layout/NavMenu.razor` blendet Einträge rollenbasiert ein; sie ersetzt keine serverseitige Prüfung. `UserSchool` bindet Nutzer an einzelne Schulen und hält die Finanzrechte `CanAccessFinances`, `CanViewFinanceDashboard`, `CanCreateFinanceEntries`, `CanManageCyclePayments` und `CanAccessBilling`. Beim Koordinator müssen Schule und jeweiliges Tab-/Aktionsrecht geprüft werden, auch bei direktem Aufruf von `/abrechnung`.
+`Routes.razor` setzt `AuthorizeRouteView` ein. Einzelne Seiten ergänzen dies mit Rollen oder Policies (`RequireSuperAdmin`, `RequireSchulLeiter`, `RequireTeacher`, `RequireStudent`). Die Navigation in `Components/Layout/NavMenu.razor` blendet Einträge rollenbasiert ein; sie ersetzt keine serverseitige Prüfung. `UserSchool` bindet ein Konto an **genau eine Schule** (seit 10.11.2026: ein Konto = eine Schule für SchulLeiter, Koordinator, Lehrer und Schüler; nur ProduktOwner-Betreuungen mit `IstPlattformZuordnung` dürfen mehrfach vorkommen, SuperAdmin sieht alle Schulen ohne Zuordnung). Die Regel prüft `SchulZuordnungsRegel` beim Speichern jedes Kontos; die Datenbank sichert sie mit `IX_UserSchools_EineSchuleProKonto` (gefiltert) und `IX_StudentProfiles_EinProfilProKonto` ab. Die Schule eines bestehenden Kontos ist fest – eine Lehrkraft an einer zweiten Schule bekommt dort ein eigenes Konto. `UserSchool` hält außerdem die Finanzrechte `CanAccessFinances`, `CanViewFinanceDashboard`, `CanCreateFinanceEntries`, `CanManageCyclePayments` und `CanAccessBilling`. Beim Koordinator müssen Schule und jeweiliges Tab-/Aktionsrecht geprüft werden, auch bei direktem Aufruf von `/abrechnung`.
 
 ## Blazor-Oberfläche
 
@@ -95,15 +95,16 @@ In Development meldet der Start offene Modelländerungen ohne Migration. Ein erf
 
 ## Fachmodell und Persistenz
 
-`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den Anwendungsdaten. Migrationen liegen unter `SKOULOUAPP.WebApp/Migrations`; maßgeblich für die jeweilige Datenbank ist `__EFMigrationsHistory`. Im aktuellen Quellstand liegen 16 Migrationen von `20261002111952_InitialMigration` bis `20261102170932_SchulbezogeneKlassenOhneSprachgruppen`. Modelländerungen erfordern eine neue EF-Migration; ein erfolgreicher Build allein ändert das SQL-Schema nicht.
+`ApplicationDbContext` kombiniert ASP.NET-Core-Identity mit den Anwendungsdaten. Migrationen liegen unter `SKOULOUAPP.WebApp/Migrations`; maßgeblich für die jeweilige Datenbank ist `__EFMigrationsHistory`. Im aktuellen Quellstand liegen 17 Migrationen von `20261002111952_InitialMigration` bis `20261110202806_EineSchuleProKonto` (lokal auf `localhost / SKOULOUAPPDB` angewendet, Azure unverändert). Die letzte Migration schlägt bewusst fehl, wenn ein Schulkonto noch mehrere Schulen hat – vor einer Azure-Anwendung mit `SELECT AppUserId FROM UserSchools WHERE IstPlattformZuordnung = 0 GROUP BY AppUserId HAVING COUNT(*) > 1` prüfen. Modelländerungen erfordern eine neue EF-Migration; ein erfolgreicher Build allein ändert das SQL-Schema nicht.
 
-Die Kette umfasst neben dem Koordinatorrecht `CanAccessBilling` die Unterrichtsgrundlagen, Schul-Dokumentstammdaten, Stundenpläne, Bewertungen, Bulletin-Ausgaben und -Gestaltung, Notenhistorie, endgültige Bulletins und Berichtigungen sowie die automatische Zyklusteilnahme und Commit-Belege der Benutzeranlage. Die letzten drei Migrationen sind:
+Die Kette umfasst neben dem Koordinatorrecht `CanAccessBilling` die Unterrichtsgrundlagen, Schul-Dokumentstammdaten, Stundenpläne, Bewertungen, Bulletin-Ausgaben und -Gestaltung, Notenhistorie, endgültige Bulletins und Berichtigungen sowie die automatische Zyklusteilnahme und Commit-Belege der Benutzeranlage. Die letzten Migrationen sind:
 
 | Migration | Änderung |
 |---|---|
 | `20261102151047_AutomatischeZyklusteilnahme` | Ergänzt fünf nullable Felder für die automatische Zyklusabrechnung. |
 | `20261102162907_BenutzerVorgangsBestaetigung` | Ergänzt die Tabelle für Commit-Belege atomarer Benutzervorgänge. |
 | `20261102170932_SchulbezogeneKlassenOhneSprachgruppen` | Entfernt die historische Spalte `Klassen.CEFRGroup`. |
+| `20261110202806_EineSchuleProKonto` | `UserSchools.IstPlattformZuordnung`, eindeutige Indizes „eine Schule pro Konto“ und „ein Schülerprofil pro Konto“. |
 
 **Wichtig bei bestehenden Datenbanken:** Vor einer Aktualisierung Zielumgebung, angewandte Historie und ausstehendes SQL prüfen, Wiederherstellbarkeit und App-Kompatibilität sicherstellen. Vor dem Entfernen von `Klassen.CEFRGroup` noch benötigte historische Werte separat mit Klassen-ID sichern; die `Down`-Migration erstellt nur eine leere Spalte und rekonstruiert keine Werte. Keine Migrationskette ersetzen und kein Drop/Reset zur Fehlerbehebung. Diese Übersicht bestätigt keinen tatsächlich angewandten lokalen oder Azure-Migrationsstand.
 

@@ -14,7 +14,7 @@
     {
         <div role="status" class="rounded-xl border p-4 @(erreur ? "border-red-300 bg-red-50 text-red-800" : "border-green-300 bg-green-50 text-green-800")">@message</div>
     }
-    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="ChangerEcoleAsync" Options="Options(schulen)" Label="École" Searchable="true" Disabled="occupe" />
+    <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="ChangerEcoleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Searchable="true" Disabled="occupe" />
     @if (schulen.Count == 0 && !occupe)
     {
         <p>Aucune école active n'est disponible pour votre compte.</p>

@@ -45,7 +45,7 @@
                             Label="École"
                             Value="selectedSchoolFilterId"
                             ValueChanged="SetSchoolFilterAsync"
-                            Options="SchoolFilterOptions" />
+                            Options="SchoolFilterOptions" EinzigeOptionFest="true" />
             <ModernDropdown TValue="Guid?"
                             Label="Classe"
                             Value="selectedKlasseFilterId"
@@ -144,7 +144,7 @@
                         <input class="skoulou-input text-sm" @bind="form.Title" />
                     </div>
                     <div>
-                        <ModernDropdown TValue="Guid?" Label="École" Value="editorSchoolId" ValueChanged="SetEditorSchoolAsync" Options="EditorSchoolOptions" />
+                        <ModernDropdown TValue="Guid?" Label="École" Value="editorSchoolId" ValueChanged="SetEditorSchoolAsync" Options="EditorSchoolOptions" EinzigeOptionFest="true" />
                     </div>
                     <div class="sm:col-span-2">
                         <ModernDropdown TValue="Guid?" Label="Classe" Value="form.KlasseId" ValueChanged="SetKlasseAsync" Options="KlasseOptions" Disabled="@(!editorSchoolId.HasValue)" />

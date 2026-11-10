@@ -56,7 +56,7 @@
                                     Label="École"
                                     Value="pendingReviewSchoolFilterId"
                                     ValueChanged="SetPendingReviewSchoolFilterAsync"
-                                    Options="PendingReviewSchoolFilterOptions" />
+                                    Options="PendingReviewSchoolFilterOptions" EinzigeOptionFest="true" />
                     <ModernDropdown TValue="Guid?"
                                     Label="Classe"
                                     Value="pendingReviewKlasseFilterId"
@@ -121,7 +121,7 @@
                                 Label="École"
                                 Value="lessonListSchoolFilterId"
                                 ValueChanged="SetLessonListSchoolFilterAsync"
-                                Options="LessonListSchoolFilterOptions" />
+                                Options="LessonListSchoolFilterOptions" EinzigeOptionFest="true" />
                 <ModernDropdown TValue="Guid?"
                                 Label="Classe"
                                 Value="lessonListKlasseFilterId"
@@ -250,7 +250,7 @@
                                        placeholder="@(isReassignCreationMode ? "Saisir le nouveau titre (obligatoire)" : null)" />
                         </div>
                         <div>
-                            <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" Disabled="@isCurrentAssignmentVersionLocked" />
+                            <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SetLessonSchoolAsync" Options="SchoolOptions" EinzigeOptionFest="true" Disabled="@isCurrentAssignmentVersionLocked" />
                         </div>
                         <div>
                             <ModernDropdown TValue="Guid?" Label="Niveau" Value="form.CourseId" ValueChanged="SetLessonCourseAsync" Options="CourseOptions" Disabled="@isCurrentAssignmentVersionLocked" />

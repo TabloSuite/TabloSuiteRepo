@@ -155,7 +155,7 @@
                 }
                 @if (fullProfile?.Schulen?.Count > 0)
                 {
-                    <p class="mt-1"><span class="font-semibold text-slate-900">École(s) :</span> @string.Join(", ", fullProfile.Schulen.Select(item => item.SchoolName))</p>
+                    <p class="mt-1"><span class="font-semibold text-slate-900">@(fullProfile.Schulen.Count > 1 ? "Établissements suivis :" : "Établissement :")</span> @string.Join(", ", fullProfile.Schulen.Select(item => item.SchoolName))</p>
                 }
                 @if (!string.IsNullOrWhiteSpace(fullProfile?.ElternTelefonNummer))
                 {

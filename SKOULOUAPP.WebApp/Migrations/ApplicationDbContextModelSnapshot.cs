@@ -2162,7 +2162,9 @@ namespace SkoulouApp.WebApp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AppUserId");
+                    b.HasIndex("AppUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudentProfiles_EinProfilProKonto");
 
                     b.HasIndex("CurrentKlasseId");
 
@@ -2201,7 +2203,15 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<bool>("CanViewFinanceDashboard")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IstPlattformZuordnung")
+                        .HasColumnType("bit");
+
                     b.HasKey("AppUserId", "SchoolId");
+
+                    b.HasIndex("AppUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserSchools_EineSchuleProKonto")
+                        .HasFilter("[IstPlattformZuordnung] = 0");
 
                     b.HasIndex("SchoolId");
 

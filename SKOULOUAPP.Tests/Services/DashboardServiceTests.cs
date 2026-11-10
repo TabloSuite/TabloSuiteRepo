@@ -186,7 +186,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveUserAsync_SchulLeiterErhaeltMehrereVomSuperAdminZugewieseneSchulen()
+    public async Task SaveUserAsync_SchulLeiterErhaeltGenauEineSchule()
     {
         using var db = TestDbContext.CreateInMemory();
         var firstSchool = new School { Id = Guid.NewGuid(), Name = "École A", City = "Lomé" };
@@ -196,26 +196,61 @@ public class DashboardServiceTests
 
         var userManager = TestUserManager.Create([]);
         var service = new DashboardService(db, userManager, new FakeMediaStorageService());
-
-        var result = await service.SaveUserAsync(new UserFormModel
+        UserFormModel Formular(params Guid[] schulen) => new()
         {
             Vorname = "Marie",
             Nachname = "Directrice",
             Email = "marie.directrice@test.local",
             RoleName = "SchulLeiter",
             Password = "Start123!",
+            SchoolIds = [.. schulen]
+        };
+
+        // Zwei Schulen für ein Direktionskonto werden abgelehnt.
+        var zweiSchulen = await service.SaveUserAsync(Formular(firstSchool.Id, secondSchool.Id));
+        Assert.False(zweiSchulen.Succeeded);
+        Assert.Equal(SchulZuordnungsRegel.MeldungGenauEineSchule, zweiSchulen.Message);
+        Assert.Empty(await db.UserSchools.ToListAsync());
+
+        var result = await service.SaveUserAsync(Formular(firstSchool.Id));
+        Assert.True(result.Succeeded, result.Message);
+        var link = Assert.Single(await db.UserSchools.ToListAsync());
+        Assert.Equal(firstSchool.Id, link.SchoolId);
+        Assert.False(link.IstPlattformZuordnung);
+
+        // Die Schule eines bestehenden Kontos ist fest: kein Wechsel in eine andere Schule.
+        var wechsel = Formular(secondSchool.Id);
+        wechsel.UserId = link.AppUserId;
+        var wechselErgebnis = await service.SaveUserAsync(wechsel);
+        Assert.False(wechselErgebnis.Succeeded);
+        Assert.Equal(SchulZuordnungsRegel.MeldungSchuleFest, wechselErgebnis.Message);
+        Assert.Equal(firstSchool.Id, Assert.Single(await db.UserSchools.ToListAsync()).SchoolId);
+    }
+
+    [Fact]
+    public async Task SaveUserAsync_ProduktOwnerBetreutMehrereSchulenAlsPlattformzuordnung()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var firstSchool = new School { Id = Guid.NewGuid(), Name = "École A", City = "Lomé" };
+        var secondSchool = new School { Id = Guid.NewGuid(), Name = "École B", City = "Kara" };
+        db.Schools.AddRange(firstSchool, secondSchool);
+        await db.SaveChangesAsync();
+        var service = new DashboardService(db, TestUserManager.Create([]), new FakeMediaStorageService());
+
+        var result = await service.SaveUserAsync(new UserFormModel
+        {
+            Vorname = "Paul",
+            Nachname = "Produit",
+            Email = "paul.produit@test.local",
+            RoleName = "ProduktOwner",
+            Password = "Start123!",
             SchoolIds = [firstSchool.Id, secondSchool.Id]
         });
 
         Assert.True(result.Succeeded, result.Message);
-        var links = await db.UserSchools
-            .Where(link => link.CanManageStudents)
-            .ToListAsync();
+        var links = await db.UserSchools.ToListAsync();
         Assert.Equal(2, links.Count);
-        Assert.Single(links.Select(link => link.AppUserId).Distinct());
-        Assert.Equal(
-            new[] { firstSchool.Id, secondSchool.Id }.OrderBy(id => id),
-            links.Select(link => link.SchoolId).OrderBy(id => id));
+        Assert.All(links, link => Assert.True(link.IstPlattformZuordnung));
     }
 
     [Fact]
@@ -289,7 +324,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolUserAsync_LehrerSpeichertFachzuweisungenAusSeinenSchulen()
+    public async Task SaveSchoolUserAsync_LehrerSpeichertNurFaecherDerEigenenSchule()
     {
         using var db = TestDbContext.CreateInMemory();
         var director = new AppUser { Id = Guid.NewGuid(), UserName = "director-fach-save", Email = "director.fach.save@test.local" };
@@ -304,8 +339,7 @@ public class DashboardServiceTests
         db.Faecher.AddRange(facSkoulouwed, fachDenied);
         db.UserSchools.AddRange(
             new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true },
-            new UserSchool { AppUserId = teacher.Id, SchoolId = school.Id },
-            new UserSchool { AppUserId = teacher.Id, SchoolId = otherSchool.Id });
+            new UserSchool { AppUserId = teacher.Id, SchoolId = school.Id });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, teacher]);
@@ -338,38 +372,21 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolUserAsync_LehrerBearbeitungBewahrtFremdeSchulKlassenUndFachzuordnungen()
+    public async Task SaveSchoolUserAsync_AltbestandMitZweiSchulenWirdNichtStillGespeichert()
     {
+        // Ein Konto = eine Schule: Ein (historisches) Lehrerkonto mit einer zweiten Schule darf die
+        // Direktion nicht unbemerkt weiterführen; es bleibt unverändert, bis der Altbestand bereinigt ist.
         using var db = TestDbContext.CreateInMemory();
         var director = new AppUser { Id = Guid.NewGuid(), UserName = "director", Email = "director@test.local" };
         var teacher = new AppUser { Id = Guid.NewGuid(), UserName = "teacher", Email = "teacher@test.local", Vorname = "Theo", Nachname = "Prof" };
         var ownSchool = new School { Id = Guid.NewGuid(), Name = "École A" };
-        var removedSchool = new School { Id = Guid.NewGuid(), Name = "École B" };
         var foreignSchool = new School { Id = Guid.NewGuid(), Name = "École C" };
-        var ownClass = new Klasse { Id = Guid.NewGuid(), SchoolId = ownSchool.Id, Code = "A", Title = "A" };
-        var removedClass = new Klasse { Id = Guid.NewGuid(), SchoolId = removedSchool.Id, Code = "B", Title = "B" };
-        var foreignClass = new Klasse { Id = Guid.NewGuid(), SchoolId = foreignSchool.Id, Code = "C", Title = "C" };
-        var ownFach = new Fach { Id = Guid.NewGuid(), SchoolId = ownSchool.Id, Name = "Mathématiques" };
-        var removedFach = new Fach { Id = Guid.NewGuid(), SchoolId = removedSchool.Id, Name = "Français" };
-        var foreignFach = new Fach { Id = Guid.NewGuid(), SchoolId = foreignSchool.Id, Name = "Sciences" };
         db.Users.AddRange(director, teacher);
-        db.Schools.AddRange(ownSchool, removedSchool, foreignSchool);
-        db.Klassen.AddRange(ownClass, removedClass, foreignClass);
-        db.Faecher.AddRange(ownFach, removedFach, foreignFach);
+        db.Schools.AddRange(ownSchool, foreignSchool);
         db.UserSchools.AddRange(
             new UserSchool { AppUserId = director.Id, SchoolId = ownSchool.Id, CanManageStudents = true },
-            new UserSchool { AppUserId = director.Id, SchoolId = removedSchool.Id, CanManageStudents = true },
             new UserSchool { AppUserId = teacher.Id, SchoolId = ownSchool.Id, CanManageStudents = true },
-            new UserSchool { AppUserId = teacher.Id, SchoolId = removedSchool.Id, CanManageStudents = true },
-            new UserSchool { AppUserId = teacher.Id, SchoolId = foreignSchool.Id, CanManageStudents = false });
-        db.LehrerNiveauZuordnungen.AddRange(
-            new LehrerNiveauZuordnung { LehrerID = teacher.Id, SchulID = ownSchool.Id, KlasseId = ownClass.Id, Wochenstunden = 2m },
-            new LehrerNiveauZuordnung { LehrerID = teacher.Id, SchulID = removedSchool.Id, KlasseId = removedClass.Id, Wochenstunden = 3m },
-            new LehrerNiveauZuordnung { LehrerID = teacher.Id, SchulID = foreignSchool.Id, KlasseId = foreignClass.Id, Wochenstunden = 4m });
-        db.LehrerFachZuordnungen.AddRange(
-            new LehrerFachZuordnung { LehrerId = teacher.Id, FachId = ownFach.Id },
-            new LehrerFachZuordnung { LehrerId = teacher.Id, FachId = removedFach.Id },
-            new LehrerFachZuordnung { LehrerId = teacher.Id, FachId = foreignFach.Id });
+            new UserSchool { AppUserId = teacher.Id, SchoolId = foreignSchool.Id, CanManageStudents = true });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, teacher]);
@@ -378,28 +395,51 @@ public class DashboardServiceTests
         var service = new DashboardService(db, userManager, new FakeMediaStorageService());
         var form = await service.GetSchoolUserForEditAsync(director.Id, teacher.Id);
         Assert.NotNull(form);
-        Assert.DoesNotContain(foreignSchool.Id, form.SchoolIds);
-        Assert.DoesNotContain(form.TeacherClassAssignments, assignment => assignment.SchoolId == foreignSchool.Id);
-        Assert.DoesNotContain(foreignFach.Id, form.FachIds);
+        Assert.Equal([ownSchool.Id], form.SchoolIds);
 
-        form.SchoolIds.Remove(removedSchool.Id);
-        form.TeacherClassAssignments.RemoveAll(assignment => assignment.SchoolId == removedSchool.Id);
-        form.FachIds.Remove(removedFach.Id);
+        form.Vorname = "Théo";
         var result = await service.SaveSchoolUserAsync(director.Id, form);
 
+        Assert.False(result.Succeeded);
+        Assert.Equal(SchulZuordnungsRegel.MeldungSchuleFest, result.Message);
+        Assert.Equal(2, await db.UserSchools.CountAsync(link => link.AppUserId == teacher.Id));
+    }
+
+    [Fact]
+    public async Task SaveSchoolUserAsync_NeuesKontoLandetImmerInDerSchuleDerDirektion()
+    {
+        using var db = TestDbContext.CreateInMemory();
+        var director = new AppUser { Id = Guid.NewGuid(), UserName = "director-neu", Email = "director.neu@test.local" };
+        var ownSchool = new School { Id = Guid.NewGuid(), Name = "École A" };
+        var foreignSchool = new School { Id = Guid.NewGuid(), Name = "École B" };
+        db.Users.Add(director);
+        db.Schools.AddRange(ownSchool, foreignSchool);
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = ownSchool.Id, CanManageStudents = true });
+        await db.SaveChangesAsync();
+
+        var userManager = TestUserManager.Create([director]);
+        userManager.SeedRole(director, Rollen.SchulLeiter);
+        var service = new DashboardService(db, userManager, new FakeMediaStorageService());
+        UserFormModel Lehrer(string email, params Guid[] schulen) => new()
+        {
+            Vorname = "Ama",
+            Nachname = "Prof",
+            Email = email,
+            RoleName = Rollen.Lehrer,
+            Password = "Start123!",
+            SchoolIds = [.. schulen],
+            TeacherClassAssignments = []
+        };
+
+        // Fremde oder zusätzliche Schulen werden abgelehnt.
+        Assert.False((await service.SaveSchoolUserAsync(director.Id, Lehrer("ama.fremd@test.local", foreignSchool.Id))).Succeeded);
+        Assert.False((await service.SaveSchoolUserAsync(director.Id, Lehrer("ama.zwei@test.local", ownSchool.Id, foreignSchool.Id))).Succeeded);
+
+        // Ohne Angabe wird die (einzige) Schule der Direktion verwendet.
+        var result = await service.SaveSchoolUserAsync(director.Id, Lehrer("ama.prof@test.local"));
         Assert.True(result.Succeeded, result.Message);
-        var links = await db.UserSchools.Where(link => link.AppUserId == teacher.Id).ToListAsync();
-        Assert.Equal(2, links.Count);
-        Assert.Contains(links, link => link.SchoolId == ownSchool.Id && link.CanManageStudents);
-        Assert.Contains(links, link => link.SchoolId == foreignSchool.Id && !link.CanManageStudents);
-        var classAssignments = await db.LehrerNiveauZuordnungen.Where(assignment => assignment.LehrerID == teacher.Id).ToListAsync();
-        Assert.Equal(2, classAssignments.Count);
-        Assert.Contains(classAssignments, assignment => assignment.SchulID == ownSchool.Id);
-        Assert.Contains(classAssignments, assignment => assignment.SchulID == foreignSchool.Id && assignment.KlasseId == foreignClass.Id && assignment.Wochenstunden == 4m);
-        var fachIds = await db.LehrerFachZuordnungen.Where(assignment => assignment.LehrerId == teacher.Id).Select(assignment => assignment.FachId).ToListAsync();
-        Assert.Equal(2, fachIds.Count);
-        Assert.Contains(ownFach.Id, fachIds);
-        Assert.Contains(foreignFach.Id, fachIds);
+        var lehrerID = (await userManager.FindByEmailAsync("ama.prof@test.local"))!.Id;
+        Assert.Equal(ownSchool.Id, (await db.UserSchools.SingleAsync(link => link.AppUserId == lehrerID)).SchoolId);
     }
 
     [Fact]
@@ -1145,7 +1185,7 @@ public class DashboardServiceTests
         };
 
         // Act
-        var result = await service.SaveSchoolAsync(form, new List<Guid>(), await TestIdentityFactory.AddSuperAdminAsync(db));
+        var result = await service.SaveSchoolAsync(form, await TestIdentityFactory.AddSuperAdminAsync(db));
 
         // Assert
         Assert.True(result.Succeeded);
@@ -1201,7 +1241,7 @@ public class DashboardServiceTests
             ProductOwnerCommissionPercentOverride = 2m
         };
 
-        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
+        var result = await service.SaveSchoolAsync(form, await TestIdentityFactory.AddSuperAdminAsync(db));
 
         Assert.True(result.Succeeded, result.Message);
         var school = Assert.Single(db.Schools);
@@ -1228,7 +1268,7 @@ public class DashboardServiceTests
             ProductOwnerCommissionPercentOverride = 20m
         };
 
-        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
+        var result = await service.SaveSchoolAsync(form, await TestIdentityFactory.AddSuperAdminAsync(db));
 
         Assert.True(result.Succeeded, result.Message);
         var school = Assert.Single(db.Schools);
@@ -1237,7 +1277,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolAsync_BehaeltDirektorZuordnungBeimLehrerSync()
+    public async Task SaveSchoolAsync_AendertKeineLehrerOderDirektionsZuordnungen()
     {
         using var db = TestDbContext.CreateInMemory();
 
@@ -1281,12 +1321,13 @@ public class DashboardServiceTests
             IsActive = true
         };
 
-        var result = await service.SaveSchoolAsync(form, [], await TestIdentityFactory.AddSuperAdminAsync(db));
+        var result = await service.SaveSchoolAsync(form, await TestIdentityFactory.AddSuperAdminAsync(db));
 
         Assert.True(result.Succeeded, result.Message);
 
         var links = db.UserSchools.Where(link => link.SchoolId == schoolId && link.CanManageStudents).ToList();
-        Assert.DoesNotContain(links, link => link.AppUserId == teacherId);
+        // Die Schulstammdaten des SuperAdmins ändern keine Personalzuordnungen (Lehrer verwaltet die Direktion).
+        Assert.Contains(links, link => link.AppUserId == teacherId);
         Assert.Contains(links, link => link.AppUserId == direktorId);
     }
 
@@ -1959,7 +2000,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolUserAsync_DirektorKannKoordinatorMehrerenEigenenSchulenZuweisen()
+    public async Task SaveSchoolUserAsync_KoordinatorErhaeltFinanzrechteInDerSchuleDerDirektion()
     {
         using var db = TestDbContext.CreateInMemory();
         var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter", Email = "leiter@test.local" };
@@ -1967,60 +2008,39 @@ public class DashboardServiceTests
         var schoolB = new School { Id = Guid.NewGuid(), Name = "École B" };
         db.Users.Add(director);
         db.Schools.AddRange(schoolA, schoolB);
-        db.UserSchools.AddRange(
-            new UserSchool { AppUserId = director.Id, SchoolId = schoolA.Id, CanManageStudents = true },
-            new UserSchool { AppUserId = director.Id, SchoolId = schoolB.Id, CanManageStudents = true });
+        db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = schoolA.Id, CanManageStudents = true });
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director]);
         userManager.SeedRole(director, Rollen.SchulLeiter);
         var service = new DashboardService(db, userManager, new FakeMediaStorageService());
-
-        var result = await service.SaveSchoolUserAsync(director.Id, new UserFormModel
+        UserFormModel Koordinator(params Guid[] schulen) => new()
         {
             Vorname = "Kossi",
             Nachname = "Coord",
             Email = "kossi.coord@test.local",
             Password = "Start123!",
             RoleName = Rollen.Koordinator,
-            SchoolIds = [schoolA.Id, schoolB.Id],
-            CoordinatorFinanceAccesses =
-            [
-                new() { SchoolId = schoolA.Id, Menu = true, Dashboard = true, Entries = true, Billing = true },
-                new() { SchoolId = schoolB.Id, Menu = true, Dashboard = true, Entries = true, Billing = true }
-            ]
-        });
+            SchoolIds = [.. schulen],
+            CoordinatorFinanceAccesses = [.. schulen.Select(id => new CoordinatorFinanceAccessFormModel
+                { SchoolId = id, Menu = true, Dashboard = true, Entries = true, Billing = true })]
+        };
 
+        // Ein Konto = eine Schule: keine zweite Schule für den Koordinator.
+        Assert.False((await service.SaveSchoolUserAsync(director.Id, Koordinator(schoolA.Id, schoolB.Id))).Succeeded);
+
+        var result = await service.SaveSchoolUserAsync(director.Id, Koordinator(schoolA.Id));
         Assert.True(result.Succeeded, result.Message);
 
-        var coordinatorId = await db.UserSchools
-            .Where(link => (link.SchoolId == schoolA.Id || link.SchoolId == schoolB.Id) && link.AppUserId != director.Id)
-            .Select(link => link.AppUserId)
-            .Distinct()
-            .SingleAsync();
-
-        var assignedSchoolIds = await db.UserSchools
-            .Where(link => link.AppUserId == coordinatorId)
-            .Select(link => link.SchoolId)
-            .OrderBy(id => id)
-            .ToListAsync();
-
-        Assert.Equal(2, assignedSchoolIds.Count);
-        Assert.Contains(schoolA.Id, assignedSchoolIds);
-        Assert.Contains(schoolB.Id, assignedSchoolIds);
-        Assert.All(await db.UserSchools.Where(link => link.AppUserId == coordinatorId).ToListAsync(), link => Assert.True(link.CanManageStudents));
-        var financeA = await db.UserSchools.SingleAsync(link => link.AppUserId == coordinatorId && link.SchoolId == schoolA.Id);
-        var financeB = await db.UserSchools.SingleAsync(link => link.AppUserId == coordinatorId && link.SchoolId == schoolB.Id);
-        Assert.True(financeA.CanAccessFinances);
-        Assert.True(financeA.CanViewFinanceDashboard);
-        Assert.True(financeA.CanCreateFinanceEntries);
-        Assert.False(financeA.CanManageCyclePayments);
-        Assert.True(financeA.CanAccessBilling);
-        Assert.True(financeB.CanAccessFinances);
-        Assert.True(financeB.CanViewFinanceDashboard);
-        Assert.True(financeB.CanCreateFinanceEntries);
-        Assert.False(financeB.CanManageCyclePayments);
-        Assert.True(financeB.CanAccessBilling);
+        var coordinatorId = (await userManager.FindByEmailAsync("kossi.coord@test.local"))!.Id;
+        var link = await db.UserSchools.SingleAsync(item => item.AppUserId == coordinatorId);
+        Assert.Equal(schoolA.Id, link.SchoolId);
+        Assert.True(link.CanManageStudents);
+        Assert.True(link.CanAccessFinances);
+        Assert.True(link.CanViewFinanceDashboard);
+        Assert.True(link.CanCreateFinanceEntries);
+        Assert.False(link.CanManageCyclePayments);
+        Assert.True(link.CanAccessBilling);
     }
 
     [Fact]
@@ -2059,21 +2079,18 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SaveSchoolUserAsync_EntziehtFinanzrechteInAllenZugewiesenenSchulen()
+    public async Task SaveSchoolUserAsync_EntziehtFinanzrechteDesKoordinators()
     {
         using var db = TestDbContext.CreateInMemory();
         var director = new AppUser { Id = Guid.NewGuid(), UserName = "leiter", Email = "leiter@test.local" };
         var coordinator = new AppUser { Id = Guid.NewGuid(), UserName = "koord", Email = "koord@test.local" };
-        var schoolA = new School { Id = Guid.NewGuid(), Name = "École A" };
-        var schoolB = new School { Id = Guid.NewGuid(), Name = "École B" };
+        var school = new School { Id = Guid.NewGuid(), Name = "École A" };
         db.Users.AddRange(director, coordinator);
-        db.Schools.AddRange(schoolA, schoolB);
-        foreach (var school in new[] { schoolA, schoolB })
-        {
-            db.UserSchools.Add(new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true });
-            db.UserSchools.Add(new UserSchool { AppUserId = coordinator.Id, SchoolId = school.Id, CanManageStudents = true,
+        db.Schools.Add(school);
+        db.UserSchools.AddRange(
+            new UserSchool { AppUserId = director.Id, SchoolId = school.Id, CanManageStudents = true },
+            new UserSchool { AppUserId = coordinator.Id, SchoolId = school.Id, CanManageStudents = true,
                 CanAccessFinances = true, CanCreateFinanceEntries = true, CanManageCyclePayments = true });
-        }
         await db.SaveChangesAsync();
 
         var userManager = TestUserManager.Create([director, coordinator]);
@@ -2082,18 +2099,16 @@ public class DashboardServiceTests
         var service = new DashboardService(db, userManager, new FakeMediaStorageService());
         var form = await service.GetSchoolUserForEditAsync(director.Id, coordinator.Id);
         Assert.NotNull(form);
-        form.CoordinatorFinanceAccesses = form.SchoolIds.Select(id => new CoordinatorFinanceAccessFormModel { SchoolId = id }).ToList();
+        form.CoordinatorFinanceAccesses = [new CoordinatorFinanceAccessFormModel { SchoolId = school.Id }];
 
         var result = await service.SaveSchoolUserAsync(director.Id, form);
 
         Assert.True(result.Succeeded, result.Message);
-        Assert.All(await db.UserSchools.Where(link => link.AppUserId == coordinator.Id).ToListAsync(), link =>
-        {
-            Assert.False(link.CanAccessFinances);
-            Assert.False(link.CanViewFinanceDashboard);
-            Assert.False(link.CanCreateFinanceEntries);
-            Assert.False(link.CanManageCyclePayments);
-        });
+        var link = await db.UserSchools.SingleAsync(item => item.AppUserId == coordinator.Id);
+        Assert.False(link.CanAccessFinances);
+        Assert.False(link.CanViewFinanceDashboard);
+        Assert.False(link.CanCreateFinanceEntries);
+        Assert.False(link.CanManageCyclePayments);
     }
 
     [Fact]
