@@ -35,9 +35,9 @@ public class KontoBenachrichtigungServiceTests
         await service.RegistrierungFreigegebenAsync(vorher);
         var sent = Assert.Single(email.Gesendet);
         Assert.Equal(user.Email, sent.Recipient.Email);
-        Assert.Contains("SKOULOUAPP", sent.Message.HtmlBody);
+        Assert.Contains("SKOULOU", sent.Message.HtmlBody);
         Assert.Contains("CONTACT", sent.Message.HtmlBody);
-        Assert.Contains("Ton inscription a été validée", sent.Message.HtmlBody);
+        Assert.Contains("Votre inscription a été validée", sent.Message.HtmlBody);
         Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
         await service.RegistrierungFreigegebenAsync(await service.LadeEmpfaengerAsync(user.Id));
         Assert.Single(email.Gesendet);
@@ -75,7 +75,7 @@ public class KontoBenachrichtigungServiceTests
         }
         await service.AdresseModifieeAsync(vorher);
         Assert.Equal(["old@example.org", "new@example.org"], email.Gesendet.Select(item => item.Recipient.Email));
-        Assert.All(email.Gesendet, item => Assert.Contains("Si tu n'es pas à l'origine", item.Message.HtmlBody));
+        Assert.All(email.Gesendet, item => Assert.Contains("Si vous n'êtes pas à l'origine", item.Message.HtmlBody));
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class KontoBenachrichtigungServiceTests
         var sent = Assert.Single(email.Gesendet);
         Assert.Equal(student.Email, sent.Recipient.Email);
         Assert.Contains("2 500", sent.Message.HtmlBody.Replace("\u00a0", "\u202f"));
-        Assert.Contains("SKOULOUAPP", sent.Message.HtmlBody);
+        Assert.Contains("SKOULOU", sent.Message.HtmlBody);
         Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
     }
 

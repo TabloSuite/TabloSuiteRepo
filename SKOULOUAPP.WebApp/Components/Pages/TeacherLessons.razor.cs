@@ -596,7 +596,7 @@ public partial class TeacherLessons
         }
         else
         {
-            videoUploadError = "Choisis une vidéo de la même école et de la même classe que le cours.";
+            videoUploadError = "Choisissez une vidéo de la même école et de la même classe que le cours.";
         }
         return Task.CompletedTask;
     }
@@ -794,7 +794,7 @@ public partial class TeacherLessons
     {
         if (!canManageLessons)
         {
-            statusMessage = "La direction ne peut pas modifier les leçons. Utilise l'espace examens pour les évaluations imprimables.";
+            statusMessage = "La direction ne peut pas modifier les leçons. Utilisez l'espace examens pour les évaluations imprimables.";
             return;
         }
 
@@ -861,7 +861,7 @@ public partial class TeacherLessons
     {
         if (isCopying || copySourceLessonId == Guid.Empty || copyTargetKlasseId is not Guid targetKlasseId)
         {
-            copyErrorMessage = "Sélectionne d'abord la classe cible.";
+            copyErrorMessage = "Sélectionnez d'abord la classe cible.";
             return;
         }
 

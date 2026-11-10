@@ -25,14 +25,14 @@ public sealed class KontoBenachrichtigungService(
         if (vorher is not { IsSelfRegistered: true, IsBlocked: true }) return;
         var aktuell = await LadeEmpfaengerAsync(vorher.Id, cancellationToken);
         if (aktuell is null || aktuell.IsBlocked) return;
-        await SendenAsync(aktuell.Email, aktuell.Vorname, "Ton compte SKOULOUAPP est activé", "Ton inscription a été validée",
-            "<p>Ton inscription a été validée. Tu peux maintenant te connecter à SKOULOUAPP.</p>", cancellationToken);
+        await SendenAsync(aktuell.Email, aktuell.Vorname, "Votre compte SKOULOU est activé", "Votre inscription a été validée",
+            "<p>Votre inscription a été validée. Vous pouvez maintenant vous connecter à SKOULOU.</p>", cancellationToken);
     }
 
     public Task RegistrierungAbgelehntAsync(KontoBenachrichtigungEmpfaenger? vorher, CancellationToken cancellationToken = default)
         => vorher is { IsSelfRegistered: true, IsBlocked: true }
-            ? SendenAsync(vorher.Email, vorher.Vorname, "Ta demande d'inscription à SKOULOUAPP",
-                "Information sur ton inscription", "<p>Ta demande d'inscription n'a pas été acceptée. Ton compte en attente a été supprimé.</p><p>Pour toute question, contacte ton établissement.</p>", cancellationToken)
+            ? SendenAsync(vorher.Email, vorher.Vorname, "Votre demande d'inscription à SKOULOU",
+                "Information sur votre inscription", "<p>Votre demande d'inscription n'a pas été acceptée. Votre compte en attente a été supprimé.</p><p>Pour toute question, contactez votre établissement.</p>", cancellationToken)
             : Task.CompletedTask;
 
     public async Task AdresseModifieeAsync(KontoBenachrichtigungEmpfaenger? vorher, CancellationToken cancellationToken = default)
@@ -40,8 +40,8 @@ public sealed class KontoBenachrichtigungService(
         if (vorher is null) return;
         var aktuell = await LadeEmpfaengerAsync(vorher.Id, cancellationToken);
         if (aktuell is null || string.Equals(vorher.Email, aktuell.Email, StringComparison.OrdinalIgnoreCase)) return;
-        const string subject = "Adresse e-mail de ton compte SKOULOUAPP modifiée";
-        const string content = "<p>L'adresse e-mail de ton compte SKOULOUAPP a été modifiée.</p><p>Si tu n'es pas à l'origine de ce changement, contacte immédiatement l'assistance.</p>";
+        const string subject = "Adresse e-mail de votre compte SKOULOU modifiée";
+        const string content = "<p>L'adresse e-mail de votre compte SKOULOU a été modifiée.</p><p>Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'assistance.</p>";
         await SendenAsync(vorher.Email, vorher.Vorname, subject, "Confirmation de sécurité", content, cancellationToken);
         await SendenAsync(aktuell.Email, aktuell.Vorname, subject, "Confirmation de sécurité", content, cancellationToken);
     }
@@ -55,8 +55,8 @@ public sealed class KontoBenachrichtigungService(
         if (zahlung is null || zahlung.Betrag <= 0) return;
         var betrag = System.Net.WebUtility.HtmlEncode(zahlung.Betrag.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")));
         var datum = System.Net.WebUtility.HtmlEncode(zahlung.Wirkungsdatum.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture));
-        await SendenAsync(zahlung.Email, zahlung.Vorname, "Paiement scolaire enregistré – SKOULOUAPP", "Confirmation de paiement",
-            $"<p>Un paiement scolaire de <strong>{betrag} FCFA</strong> a été enregistré le {datum}.</p><p>Type de paiement : {(zahlung.ZahlungsArt == ZahlungsArt.Cash ? "paiement intégral" : "versement")}. Consulte ton établissement pour le suivi de ton solde.</p>", cancellationToken);
+        await SendenAsync(zahlung.Email, zahlung.Vorname, "Paiement scolaire enregistré – SKOULOU", "Confirmation de paiement",
+            $"<p>Un paiement scolaire de <strong>{betrag} FCFA</strong> a été enregistré le {datum}.</p><p>Type de paiement : {(zahlung.ZahlungsArt == ZahlungsArt.Cash ? "paiement intégral" : "versement")}. Consultez votre établissement pour le suivi de votre solde.</p>", cancellationToken);
     }
 
     public async Task<bool> IstAboBezahltAsync(Guid studentId, Guid klasseId, CancellationToken cancellationToken = default)
@@ -79,15 +79,15 @@ public sealed class KontoBenachrichtigungService(
                 && buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung, cancellationToken)) return;
 
         var betrag = System.Net.WebUtility.HtmlEncode(abo.PriceAtEnrollment.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")));
-        await SendenAsync(abo.Email, abo.Vorname, "Abonnement SKOULOUAPP enregistré comme payé", "Confirmation d'abonnement",
-            $"<p>L'abonnement SKOULOUAPP de ta classe a été enregistré comme payé pour <strong>{betrag} FCFA</strong>.</p><p>Tu peux consulter tes contenus disponibles dans ton espace.</p>", cancellationToken);
+        await SendenAsync(abo.Email, abo.Vorname, "Abonnement SKOULOU enregistré comme payé", "Confirmation d'abonnement",
+            $"<p>L'abonnement SKOULOU de votre classe a été enregistré comme payé pour <strong>{betrag} FCFA</strong>.</p><p>Vous pouvez consulter vos contenus disponibles dans votre espace.</p>", cancellationToken);
     }
 
     private async Task SendenAsync(string? email, string? vorname, string subject, string heading, string content, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email) || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email)) return;
         var name = System.Net.WebUtility.HtmlEncode(vorname ?? string.Empty);
-        var html = EmailTemplates.Wrap(heading, $"<p>Bonjour {name},</p>{content}<p>À bientôt,<br/>L'équipe SKOULOUAPP</p>");
+        var html = EmailTemplates.Wrap(heading, $"<p>Bonjour {name},</p>{content}<p>À bientôt,<br/>L'équipe SKOULOU</p>");
         try
         {
             var result = await emailService.SendAsync(new EmailRecipient(email, vorname),

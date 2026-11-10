@@ -143,7 +143,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("unbekannt@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Equal("Bienvenue chez SKOULOUAPP", nachricht.Subject);
+        Assert.Equal("Bienvenue chez SKOULOU", nachricht.Subject);
         Assert.Contains("Jean", nachricht.HtmlBody);
     }
 
@@ -171,7 +171,7 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("jean@test.local");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
-        Assert.Contains("SKOULOUAPP", html);
+        Assert.Contains("SKOULOU", html);
         Assert.Contains("CONTACT", html);
         Assert.Contains("Tous droits réservés", html);
     }
@@ -265,12 +265,12 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("chef@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
+        Assert.Contains("école SKOULOU est enregistrée", nachricht.Subject);
         Assert.Contains("Institut Goethe", nachricht.HtmlBody);
         Assert.Contains("directeur d'école", nachricht.HtmlBody);
         Assert.Contains("href=\"https://test.local/auth/login\"", nachricht.HtmlBody);
         Assert.DoesNotContain("href=\"https://test.local/login\"", nachricht.HtmlBody);
-        Assert.Contains("Tout ton établissement, dans un seul espace", nachricht.HtmlBody);
+        Assert.Contains("Tout votre établissement, dans un seul espace", nachricht.HtmlBody);
         Assert.Contains("Frais scolaires", nachricht.HtmlBody);
         Assert.Contains("paiements comptants ou échelonnés", nachricht.HtmlBody);
         Assert.Contains("Finances de l'école", nachricht.HtmlBody);
@@ -327,7 +327,7 @@ public class WillkommensMailTests
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Contains("enseignant", nachricht.Subject);
-        Assert.Contains("tes élèves bénéficient", nachricht.HtmlBody);
+        Assert.Contains("vos élèves bénéficient", nachricht.HtmlBody);
     }
 
     [Fact]
@@ -341,13 +341,13 @@ public class WillkommensMailTests
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
         Assert.Contains("SKOULOUAPPABO", html);
-        Assert.Contains("tu bénéficies des leçons, supports, exercices et examens", html);
+        Assert.Contains("vous bénéficiez des leçons, supports, exercices et examens", html);
         Assert.Contains("La direction attribue et suit cet abonnement pour chaque classe", html);
-        Assert.Contains("Ton espace scolaire, toujours à portée de main", html);
+        Assert.Contains("Votre espace scolaire, toujours à portée de main", html);
         Assert.Contains("Cours et supports", html);
         Assert.Contains("Exercices et examens", html);
         Assert.Contains("Progression personnelle", html);
-        Assert.Contains("direction de ton école", html);
+        Assert.Contains("direction de votre école", html);
     }
 
     [Fact]
@@ -361,7 +361,7 @@ public class WillkommensMailTests
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
         Assert.Contains("SKOULOUAPPABO", html);
-        Assert.Contains("tu bénéficies des leçons, supports, exercices et examens", html);
+        Assert.Contains("vous bénéficiez des leçons, supports, exercices et examens", html);
         Assert.Contains("La direction attribue et suit cet abonnement pour chaque classe", html);
     }
 
@@ -385,6 +385,6 @@ public class WillkommensMailTests
         await service.SendWelcomeEmailAsync("chef2@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
-        Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
+        Assert.Contains("école SKOULOU est enregistrée", nachricht.Subject);
     }
 }

@@ -833,7 +833,7 @@ public partial class TeacherLessonExercises
         }
         else
         {
-            videoUploadError = "Choisis une vidéo de la même école et de la même classe que la leçon.";
+            videoUploadError = "Choisissez une vidéo de la même école et de la même classe que la leçon.";
         }
         return Task.CompletedTask;
     }

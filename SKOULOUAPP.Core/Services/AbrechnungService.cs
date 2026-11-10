@@ -266,7 +266,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         var positionen = await GetOffenePositionenAusGeschlossenenKlassenAsync(cancellationToken);
         if (positionen.Count == 0)
         {
-            return (false, "Il n'existe aucun abonnement SKOULOUAPP ouvert issu de cycles de classes clôturés.");
+            return (false, "Il n'existe aucun abonnement SKOULOU ouvert issu de cycles de classes clôturés.");
         }
 
         var anzahlAbrechnungen = 0;
@@ -409,7 +409,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
         var positionen = await OffenePositionenAsync(schulId, vonUtc, periodeBisUtc, cancellationToken);
         if (positionen.Count == 0)
         {
-            return (false, "Aucun paiement d'abonnement SKOULOUAPP ouvert n'est à facturer pour cette période.", null);
+            return (false, "Aucun paiement d'abonnement SKOULOU ouvert n'est à facturer pour cette période.", null);
         }
 
         var periode = new Abrechnungsperiode
@@ -434,7 +434,7 @@ public class AbrechnungService(ISkoulouAppDbContext dbContext)
 
         await dbContext.SaveChangesAsync(cancellationToken);
         var prefix = automatischDurchKlassenabschluss
-            ? "La facturation SKOULOUAPP a été créée automatiquement lors de la clôture de la classe."
+            ? "La facturation SKOULOU a été créée automatiquement lors de la clôture de la classe."
             : "La facturation a été créée.";
         return (true, $"{prefix} Montant : {periode.Umsatz:N0} FCFA.", periode.Id);
     }

@@ -254,7 +254,7 @@ public class AboServiceTests
         var (succeeded, message) = await service.AboZuweisenAsync(student.Id, level.Id, AboTyp.SkoulouApp);
 
         Assert.False(succeeded);
-        Assert.Contains("SKOULOUAPP", message);
+        Assert.Contains("SKOULOU", message);
         Assert.Equal(AboTyp.SkoulouApp, db.LevelEnrollments.Single().AboTyp);
     }
 

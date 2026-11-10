@@ -22,9 +22,9 @@ public class LevelEnrollmentItem
     public bool AutomatischeZyklusabrechnung { get; set; }
     public bool CanAssignOrUpgradeAbo => !AutomatischeZyklusabrechnung && IsCurrentKlasse && HasActiveClassCycle && !IsClassCycleClosed && !IsUnlocked;
     public string? AboActionHint => !IsCurrentKlasse
-        ? "L'abonnement SKOULOUAPP se gère uniquement pour la classe actuelle de l'élève."
+        ? "L'abonnement SKOULOU se gère uniquement pour la classe actuelle de l'élève."
         : !HasActiveClassCycle
-            ? "Démarre d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOUAPP."
+            ? "Démarrez d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOU."
             : IsClassCycleClosed
                 ? "Le cycle de cette classe est clôturé. L'abonnement ne peut plus être modifié."
                 : null;

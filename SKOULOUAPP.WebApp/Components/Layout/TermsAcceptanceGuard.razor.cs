@@ -25,7 +25,7 @@ public partial class TermsAcceptanceGuard
     private Guid currentUserId;
     private string currentRole = Rollen.Schueler;
     private string currentRoleLabel = "Élève";
-    private string currentRoleSummary = "Tu consultes les contenus de ta classe selon les autorisations de ton école.";
+    private string currentRoleSummary = "Vous consultez les contenus de votre classe selon les autorisations de votre école.";
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,7 +74,7 @@ public partial class TermsAcceptanceGuard
                 return;
             }
 
-            termsErrorMessage = "Les conditions n'ont pas pu être enregistrées. Réessaie.";
+            termsErrorMessage = "Les conditions n'ont pas pu être enregistrées. Réessayez.";
         }
         finally
         {
@@ -110,10 +110,10 @@ public partial class TermsAcceptanceGuard
 
     private static string GetRoleSummary(string role) => role switch
     {
-        Rollen.SchulLeiter => "Tu gères les comptes, les classes et les validations de ton établissement.",
-        Rollen.Koordinator => "Tu assistes la direction sur les opérations pédagogiques et organisationnelles.",
-        Rollen.Lehrer => "Tu publies des leçons, exercices et évaluations pour les classes attribuées.",
-        Rollen.ProduktOwner => "Tu suis les écoles attribuées avec un accès de pilotage limité à ton périmètre.",
-        _ => "Tu consultes les contenus de ta classe selon les autorisations de ton école."
+        Rollen.SchulLeiter => "Vous gérez les comptes, les classes et les validations de votre établissement.",
+        Rollen.Koordinator => "Vous assistez la direction sur les opérations pédagogiques et organisationnelles.",
+        Rollen.Lehrer => "Vous publiez des leçons, exercices et évaluations pour les classes attribuées.",
+        Rollen.ProduktOwner => "Vous suivez les écoles attribuées avec un accès de pilotage limité à votre périmètre.",
+        _ => "Vous consultez les contenus de votre classe selon les autorisations de votre école."
     };
 }

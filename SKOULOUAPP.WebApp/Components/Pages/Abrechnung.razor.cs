@@ -280,7 +280,7 @@ public partial class Abrechnung
         if (uebersicht is null || uebersicht.AnzahlPositionen == 0) return;
         if (!CanManageBilling || selectedSchoolId is null || !schools.Any(school => school.SchoolId == selectedSchoolId.Value))
         {
-            errorMessage = "Sélectionne une école autorisée avant de créer la facturation.";
+            errorMessage = "Sélectionnez une école autorisée avant de créer la facturation.";
             return;
         }
 

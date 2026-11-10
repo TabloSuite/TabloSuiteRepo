@@ -389,7 +389,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
         if (kategorie.SystemCode != FinanzSystemCode.Keiner)
         {
-            return (false, "Les catégories automatiques SKOULOUAPP ne peuvent pas être saisies manuellement.", null);
+            return (false, "Les catégories automatiques SKOULOU ne peuvent pas être saisies manuellement.", null);
         }
 
         var buchung = new FinanzBuchung
@@ -581,11 +581,11 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             return (false, "L'activation de l'abonnement est introuvable.");
         }
         if (enrollment.DurchlaufId is { } zyklusID && await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == zyklusID && x.PlattformPreisProSchueler != null, cancellationToken))
-            return (false, "La participation ne constitue pas un paiement élève. La charge SKOULOUAPP est enregistrée à la clôture du cycle.");
+            return (false, "La participation ne constitue pas un paiement élève. La charge SKOULOU est enregistrée à la clôture du cycle.");
 
         if (!enrollment.IsPaid || enrollment.PaidAtUtc is null)
         {
-            return (false, "L'abonnement SKOULOUAPP n'a pas encore été payé.");
+            return (false, "L'abonnement SKOULOU n'a pas encore été payé.");
         }
 
         if (enrollment.PriceAtEnrollment <= 0m)
@@ -789,7 +789,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
         if (await HatNichtGemeldeteCycleUeberweisungAsync(schulId, klasseId, cancellationToken))
         {
-            return (false, "Avant de démarrer un nouveau cycle, déclarez le virement de la facturation du cycle précédent dans Facturation SKOULOUAPP.", null);
+            return (false, "Avant de démarrer un nouveau cycle, déclarez le virement de la facturation du cycle précédent dans Facturation SKOULOU.", null);
         }
 
         var teilnahmeService = new ZyklusTeilnahmeService(dbContext);
@@ -899,7 +899,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                 && autorisierungErzwingen
                 && !await DarfSchulleiterFinanzenVerwaltenAsync(beendetVonUserId, istSuperAdmin, durchlauf.SchulID, cancellationToken))
             {
-                return (false, "Seul le directeur de l'école peut déclencher cette facturation SKOULOUAPP automatique lors de la clôture.", 0m, null);
+                return (false, "Seul le directeur de l'école peut déclencher cette facturation SKOULOU automatique lors de la clôture.", 0m, null);
             }
 
             if (durchlauf.EndDatum is not null)
@@ -979,7 +979,7 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                         }
                     }
 
-                    automatischeAbrechnungMessage = $"Facturation SKOULOUAPP automatique créée pour {positionen.Count} participant(s) du cycle, montant {periode.Umsatz:N0} FCFA. Le paiement de l'école reste à confirmer.";
+                    automatischeAbrechnungMessage = $"Facturation SKOULOU automatique créée pour {positionen.Count} participant(s) du cycle, montant {periode.Umsatz:N0} FCFA. Le paiement de l'école reste à confirmer.";
                 }
             }
 

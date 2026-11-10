@@ -17,7 +17,7 @@ else
             <div class="relative">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-100 sm:text-sm">Espace élève</p>
             <h1 class="mt-3 text-2xl font-black sm:text-3xl">Bienvenue, @dashboard.FullName</h1>
-            <p class="mt-3 max-w-3xl text-xs leading-6 text-indigo-50 sm:mt-4 sm:text-sm sm:leading-7">Ton école : @dashboard.SchoolName · @KlassenLabel actuelle : @CurrentClassDisplay</p>
+            <p class="mt-3 max-w-3xl text-xs leading-6 text-indigo-50 sm:mt-4 sm:text-sm sm:leading-7">Votre école : @dashboard.SchoolName · @KlassenLabel actuelle : @CurrentClassDisplay</p>
             <div class="student-dashboard-meta mt-4 flex flex-wrap items-center gap-2">
                 @if (dashboard.StreakDays >= 2)
                 {
@@ -124,7 +124,7 @@ else
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Ma classe</p>
                 <h2 class="mt-2 text-2xl font-bold text-slate-900">Ma classe actuelle et mon parcours</h2>
-                <p class="mt-2 text-sm text-slate-600">Retrouve les leçons, résultats et contenus disponibles pour ta classe.</p>
+                <p class="mt-2 text-sm text-slate-600">Retrouvez les leçons, résultats et contenus disponibles pour votre classe.</p>
             </div>
             @if (CurrentClassCard is null)
             {
@@ -247,8 +247,8 @@ else
                     {
                         <div class="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-8 text-center">
                             <span class="text-3xl" aria-hidden="true"><Icon Name="layers" Groesse="16" /> </span>
-                            <p class="text-sm font-semibold text-slate-600">Tes classes précédentes s'afficheront ici</p>
-                            <p class="max-w-md text-xs text-slate-500">Dès que tu termines un cycle de classe, tu retrouveras ici son historique complet : score, exercices réalisés et supports de cours partagés.</p>
+                            <p class="text-sm font-semibold text-slate-600">Vos classes précédentes s'afficheront ici</p>
+                            <p class="max-w-md text-xs text-slate-500">Dès que vous terminez un cycle de classe, vous retrouverez ici son historique complet : score, exercices réalisés et supports de cours partagés.</p>
                         </div>
                     }
                 </CollapsibleCard>
@@ -260,15 +260,15 @@ else
             <div class="mt-4 grid gap-3 sm:mt-5 sm:gap-4 xl:grid-cols-3">
                 <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
                     <h3 class="font-semibold text-slate-900">1. Étudier les leçons</h3>
-                    <p class="mt-2 text-sm text-slate-600">Travaille les leçons de ta classe actuelle dans l'ordre.</p>
+                    <p class="mt-2 text-sm text-slate-600">Travaillez les leçons de votre classe actuelle dans l'ordre.</p>
                 </div>
                 <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
                     <h3 class="font-semibold text-slate-900">2. Terminer les exercices</h3>
-                    <p class="mt-2 text-sm text-slate-600">Résous les exercices de chaque leçon pour progresser.</p>
+                    <p class="mt-2 text-sm text-slate-600">Résolvez les exercices de chaque leçon pour progresser.</p>
                 </div>
                 <div class="rounded-3xl bg-slate-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50">
                     <h3 class="font-semibold text-slate-900">3. Réussir l'épreuve</h3>
-                    <p class="mt-2 text-sm text-slate-600">Dès qu'un enseignant t'assigne une épreuve pendant le cycle actif, tu peux la passer quand tu veux.</p>
+                    <p class="mt-2 text-sm text-slate-600">Dès qu'un enseignant vous assigne une épreuve pendant le cycle actif, vous pouvez la passer quand vous voulez.</p>
                 </div>
             </div>
         </div>

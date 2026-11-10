@@ -19,12 +19,12 @@
             <h1 class="mt-3 text-3xl font-black">@(isProduktOwner ? "Mes parts d'abonnement" : "Commissions")</h1>
             <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
                 @(isProduktOwner
-                    ? "Consulte uniquement ta part de responsable produit pour les écoles qui te sont attribuées."
+                    ? "Consultez uniquement votre part de responsable produit pour les écoles qui vous sont attribuées."
                     : isLehrerView
-                    ? "Consulte le fonds enseignants global de ton école après chaque facturation clôturée. La répartition individuelle est gérée par l'école."
+                    ? "Consultez le fonds enseignants global de votre école après chaque facturation clôturée. La répartition individuelle est gérée par l'école."
                     : isSuperAdmin
-                    ? "Consulte toutes les parts SKOULOUAPP : direction, enseignants, responsables produit et opérateur."
-                    : "Consulte la part école ainsi que le fonds enseignants de ton école.")
+                    ? "Consultez toutes les parts SKOULOU : direction, enseignants, responsables produit et opérateur."
+                    : "Consultez la part école ainsi que le fonds enseignants de votre école.")
             </p>
         </div>
     </div>
@@ -42,7 +42,7 @@
         {
             <div class="rounded-[2rem] bg-slate-50 px-6 py-5 text-slate-700 ring-1 ring-slate-100">
                 <h2 class="text-lg font-black text-slate-900">Aucune commission disponible</h2>
-                <p class="mt-2 text-sm leading-6">Les commissions des écoles qui te sont attribuées apparaîtront après la clôture de leur facturation.</p>
+                <p class="mt-2 text-sm leading-6">Les commissions des écoles qui vous sont attribuées apparaîtront après la clôture de leur facturation.</p>
             </div>
         }
         else
@@ -50,7 +50,7 @@
             <div class="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
                 <p class="text-xs font-bold uppercase tracking-[0.16em] text-violet-600">Mes parts d'abonnement</p>
                 <div class="mt-2 text-3xl font-black text-slate-900">@produktOwnerUebersichten.Sum(u => u.ProvisionProductOwner).ToString("N0") FCFA</div>
-                <p class="mt-1 text-sm text-slate-500">Somme de tes commissions sur les écoles qui te sont attribuées. Le chiffre d'affaires de SKOULOUAPP n'est pas affiché.</p>
+                <p class="mt-1 text-sm text-slate-500">Somme de vos commissions sur les écoles qui vous sont attribuées. Le chiffre d'affaires de SKOULOU n'est pas affiché.</p>
             </div>
             <div class="grid gap-4">
                 @foreach (var u in produktOwnerUebersichten)
@@ -67,7 +67,7 @@
                             </div>
                         </div>
                         <div class="mt-4 rounded-2xl bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-800 ring-1 ring-violet-100">
-                            Cette vue affiche uniquement ta part liée aux abonnements de cette école.
+                            Cette vue affiche uniquement votre part liée aux abonnements de cette école.
                         </div>
                     </div>
                 }
@@ -80,7 +80,7 @@
         {
             <div class="rounded-[2rem] bg-slate-50 px-6 py-5 text-slate-700 ring-1 ring-slate-100">
                 <h2 class="text-lg font-black text-slate-900">Aucune commission disponible</h2>
-                <p class="mt-2 text-sm leading-6">Le fonds enseignants apparaîtra après la clôture d'une facturation de ton école.</p>
+                <p class="mt-2 text-sm leading-6">Le fonds enseignants apparaîtra après la clôture d'une facturation de votre école.</p>
             </div>
         }
         else
@@ -151,7 +151,7 @@
                 <h2 class="text-xl font-black text-slate-900">Commissions ouvertes · @offeneUebersicht.SchulName</h2>
                 <p class="mt-1 text-sm font-semibold text-slate-600">
                     @offeneUebersicht.AnzahlPositionen abo(s) payé(s), non encore facturé(s)
-                    · @offeneUebersicht.AnzahlPositionen SKOULOUAPP
+                    · @offeneUebersicht.AnzahlPositionen SKOULOU
                 </p>
 
                 <div class="mt-4 grid gap-4 @(isSuperAdmin ? "sm:grid-cols-4" : "sm:grid-cols-2")">
@@ -190,7 +190,7 @@
                                             Du @u.VonUtc.ToLocalTime().ToString("dd.MM.yyyy") au @u.BisUtc.ToLocalTime().ToString("dd.MM.yyyy")
                                         </div>
                                         <div class="text-sm font-semibold text-slate-600">
-                                            @u.AnzahlPositionen SKOULOUAPP · Total affiché : @GetVisibleTotal(u).ToString("N0") FCFA
+                                            @u.AnzahlPositionen SKOULOU · Total affiché : @GetVisibleTotal(u).ToString("N0") FCFA
                                         </div>
                                     </div>
                                     <div class="mt-3 grid gap-3 @(isSuperAdmin ? "sm:grid-cols-4" : "sm:grid-cols-2")">

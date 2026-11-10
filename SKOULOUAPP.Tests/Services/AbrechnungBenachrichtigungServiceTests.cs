@@ -55,7 +55,7 @@ public class AbrechnungBenachrichtigungServiceTests
         Assert.Contains("22", sent.Message.HtmlBody);
         Assert.Contains("2", sent.Message.HtmlBody);
         Assert.Contains("virement", sent.Message.HtmlBody);
-        Assert.Contains("SKOULOUAPP", sent.Message.HtmlBody);
+        Assert.Contains("SKOULOU", sent.Message.HtmlBody);
         Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
     }
 

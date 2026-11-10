@@ -10,7 +10,7 @@ public sealed class StundenplanPdfService
         page.Size(PageSizes.A4);
         page.Margin(24);
         page.DefaultTextStyle(x => x.FontSize(10));
-        page.Header().Text("SKOULOUAPP · Emploi du temps").Bold().FontSize(18);
+        page.Header().Text("SKOULOU · Emploi du temps").Bold().FontSize(18);
         page.Content().PaddingTop(15).Column(column =>
         {
             column.Spacing(8);

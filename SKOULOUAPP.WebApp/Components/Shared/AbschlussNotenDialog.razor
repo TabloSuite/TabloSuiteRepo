@@ -10,7 +10,7 @@
     }
     else
     {
-        <p class="mb-4 text-sm text-slate-600">Saisis une note finale et indique si chaque élève a réussi. Les résultats ne pourront plus être modifiés après la clôture.</p>
+        <p class="mb-4 text-sm text-slate-600">Saisissez une note finale et indiquez si chaque élève a réussi. Les résultats ne pourront plus être modifiés après la clôture.</p>
         @if (!string.IsNullOrWhiteSpace(message))
         {
             <p class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">@message</p>
@@ -153,7 +153,7 @@
         var offen = bericht.Schueler.Count - komplett.Count;
         if (komplett.Count == 0)
         {
-            error = "Saisis au moins une note et une décision avant d'enregistrer.";
+            error = "Saisissez au moins une note et une décision avant d'enregistrer.";
             return;
         }
 
@@ -176,7 +176,7 @@
                 }
             }
             message = offen == 0
-                ? "Tous les résultats ont été enregistrés. Tu peux clôturer le cycle."
+                ? "Tous les résultats ont été enregistrés. Vous pouvez clôturer le cycle."
                 : $"{komplett.Count} résultat(s) enregistré(s). Il reste {offen} élève(s) à compléter.";
             await OnSaved.InvokeAsync();
         }

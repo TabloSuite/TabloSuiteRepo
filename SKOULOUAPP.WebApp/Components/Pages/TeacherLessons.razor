@@ -17,7 +17,7 @@
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">@(canManageLessons ? "Espace enseignant" : "Espace direction")</p>
         <h1 class="mt-3 text-3xl font-black">Cours &amp; supports de cours</h1>
         <p class="mt-3 max-w-2xl text-sm leading-7 text-indigo-50">@(canManageLessons
-            ? "Crée des supports de cours (scripts) page par page pour chaque niveau. Tous les élèves du niveau concerné pourront les consulter."
+            ? "Créez des supports de cours (scripts) page par page pour chaque niveau. Tous les élèves du niveau concerné pourront les consulter."
             : "Vous voyez ici tous les supports publiés des enseignants de vos écoles en lecture seule.")</p>
     </div>
 
@@ -266,7 +266,7 @@
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="text-sm font-black text-cyan-950">Vidéo de cours optionnelle</p>
-                            <p class="mt-1 text-xs leading-5 text-cyan-800">Choisis une vidéo enregistrée ou téléverse-en une nouvelle. La vidéo n'apparaît pas dans le PDF. Durée maximale : 1 heure.</p>
+                            <p class="mt-1 text-xs leading-5 text-cyan-800">Choisissez une vidéo enregistrée ou téléversez-en une nouvelle. La vidéo n'apparaît pas dans le PDF. Durée maximale : 1 heure.</p>
                         </div>
                         @if (form.VideoAssetId.HasValue)
                         {
@@ -310,7 +310,7 @@
                                     OnPageCount="OnPageCountChanged"
                                     DefaultFont="inter"
                                     MinEditorHeightRem="28"
-                                    Placeholder="Rédige le contenu du cours..." />
+                                    Placeholder="Rédigez le contenu du cours..." />
                 </section>
                 <p class="lesson-editor-pagecount">@pageCount page(s)</p>
             </div>
@@ -333,7 +333,7 @@
                  ErrorMessage="@copyErrorMessage"
                  MaxWidthClass="max-w-xl">
                 <div class="grid gap-4">
-                    <p class="text-sm text-slate-600">Crée une nouvelle copie en brouillon dans une autre classe. Le support original reste inchangé.</p>
+                    <p class="text-sm text-slate-600">Créez une nouvelle copie en brouillon dans une autre classe. Le support original reste inchangé.</p>
                     <ModernDropdown TValue="Guid?"
                                     Label="Classe cible"
                                     Value="copyTargetKlasseId"

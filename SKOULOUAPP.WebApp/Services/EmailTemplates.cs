@@ -10,7 +10,7 @@ namespace SkoulouApp.WebApp.Services;
 internal static class EmailTemplates
 {
     private const string LayoutMarker = "<!-- SKOULOUAPP-EMAIL-LAYOUT -->";
-    private const string BrandName = "SKOULOUAPP";
+    private const string BrandName = "SKOULOU";
     private const string BrandClaim = "APPRENDRE. PROGRESSER. RÉUSSIR.";
     private const string BrandDescription = "L'espace d'apprentissage qui rapproche les écoles, les enseignants et les élèves.";
     private const string SiteUrl = "https://skoulou.etsetech.com";
@@ -93,7 +93,7 @@ internal static class EmailTemplates
                                     <h1 style="margin:0 0 18px;font-family:{FontStack};font-size:22px;line-height:1.3;font-weight:800;color:{ColorNavy};">{heading}</h1>
                                     <div style="font-family:{FontStack};font-size:15px;line-height:1.75;color:{ColorBody};">{innerHtml}</div>
                                     <div style="margin-top:26px;border-top:1px solid {ColorBorder};padding-top:18px;font-family:{FontStack};font-size:14px;line-height:1.6;color:{ColorMuted};">
-                                        Une question ? Écris-nous à
+                                        Une question ? Écrivez-nous à
                                         <a href="mailto:{SupportEmail}" style="color:{ColorBlue};text-decoration:none;font-weight:600;">{SupportEmail}</a>.
                                     </div>
                                 </td>

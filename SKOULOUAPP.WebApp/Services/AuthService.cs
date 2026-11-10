@@ -23,7 +23,7 @@ public class AuthService(
     IConfiguration configuration,
     ILogger<AuthService> logger)
 {
-    public const string BlockedAccountMessage = "Ton compte n'a pas encore été validé ou a été bloqué.";
+    public const string BlockedAccountMessage = "Votre compte n'a pas encore été validé ou a été bloqué.";
     private const string AktuelleAgbVersion = "2026-08-05";
     public static string CurrentTermsVersion => AktuelleAgbVersion;
 
@@ -359,7 +359,7 @@ public class AuthService(
                 new EmailRecipient(user.Email!, user.FullName),
                 new EmailMessage
                 {
-                    Subject = "SKOULOUAPP – Réinitialisation du mot de passe",
+                    Subject = "SKOULOU – Réinitialisation du mot de passe",
                     HtmlBody = body,
                     TextBody = EmailTemplates.ToPlainText(body)
                 },
@@ -418,24 +418,24 @@ public class AuthService(
         var sessionResult = await userManager.UpdateAsync(user);
         if (!sessionResult.Succeeded) return (false, "Le mot de passe a changé. Veuillez vous reconnecter.");
         await SendPasswordChangedEmailAsync(user, false);
-        return (true, "Ton mot de passe a été mis à jour.");
+        return (true, "Votre mot de passe a été mis à jour.");
     }
 
     private async Task SendPasswordChangedEmailAsync(AppUser user, bool wasReset)
     {
         if (!IstPlausibleEmail(user.Email ?? string.Empty)) return;
 
-        var subject = wasReset ? "SKOULOUAPP – Mot de passe réinitialisé" : "SKOULOUAPP – Mot de passe modifié";
+        var subject = wasReset ? "SKOULOU – Mot de passe réinitialisé" : "SKOULOU – Mot de passe modifié";
         var loginUrl = BuildAppUrl("/auth/login");
         var forgotPasswordUrl = BuildAppUrl("/auth/forgot-password");
         var body = EmailTemplates.Wrap(
             "Confirmation de sécurité",
             $"""
             <p>Bonjour {System.Net.WebUtility.HtmlEncode(user.Vorname)},</p>
-            <p>Le mot de passe de ton compte SKOULOUAPP a été {(wasReset ? "réinitialisé" : "modifié")}.</p>
-            <p>Tu peux maintenant te connecter avec ton nouveau mot de passe.</p>
-            {EmailTemplates.Button(loginUrl, "Se connecter à SKOULOUAPP")}
-            {EmailTemplates.InfoBox($"<strong>Tu n'es pas à l'origine de cette action&nbsp;?</strong><br/>Protège immédiatement ton compte en <a href=\"{forgotPasswordUrl}\" style=\"color:#1d4ed8;font-weight:700;\">demandant un nouveau mot de passe</a>, puis contacte l'assistance.")}
+            <p>Le mot de passe de votre compte SKOULOU a été {(wasReset ? "réinitialisé" : "modifié")}.</p>
+            <p>Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
+            {EmailTemplates.Button(loginUrl, "Se connecter à SKOULOU")}
+            {EmailTemplates.InfoBox($"<strong>Vous n'êtes pas à l'origine de cette action&nbsp;?</strong><br/>Protégez immédiatement votre compte en <a href=\"{forgotPasswordUrl}\" style=\"color:#1d4ed8;font-weight:700;\">demandant un nouveau mot de passe</a>, puis contactez l'assistance.")}
             """);
 
         try
@@ -701,7 +701,7 @@ public class AuthService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return (true, "Ton profil a été mis à jour.");
+        return (true, "Votre profil a été mis à jour.");
     }
 
     // ----------------------------------------------------------------------
@@ -816,16 +816,16 @@ public class AuthService(
         var gruss = $"<p>Bonjour {name},</p>";
         var schulZeile = schule is null
             ? string.Empty
-            : $"<p>Ton compte est rattaché à l'école <strong>{schule}</strong>.</p>";
-        var abschluss = "<p>À bientôt,<br/>L'équipe SKOULOUAPP</p>";
-        var button = EmailTemplates.Button(loginUrl, "Accéder à SKOULOUAPP");
+            : $"<p>Votre compte est rattaché à l'école <strong>{schule}</strong>.</p>";
+        var abschluss = "<p>À bientôt,<br/>L'équipe SKOULOU</p>";
+        var button = EmailTemplates.Button(loginUrl, "Accéder à SKOULOU");
 
         var adminHinweis = EmailTemplates.InfoBox(
-            "Tu peux gérer les écoles, valider les comptes des directeurs, suivre les abonnements "
+            "Vous pouvez gérer les écoles, valider les comptes des directeurs, suivre les abonnements "
             + "<strong>SKOULOUAPPABO</strong> ainsi que la facturation de toute la plateforme.");
         var directionHinweis = EmailTemplates.InfoBox("""
-            <strong>Tout ton établissement, dans un seul espace</strong><br/>
-            Une fois ton compte validé, tu pourras organiser simplement le fonctionnement quotidien de ton école&nbsp;:
+            <strong>Tout votre établissement, dans un seul espace</strong><br/>
+            Une fois votre compte validé, vous pourrez organiser simplement le fonctionnement quotidien de votre école&nbsp;:
             <ul style="margin:12px 0 4px;padding-left:20px;">
                 <li style="margin:6px 0;"><strong>Organisation scolaire&nbsp;:</strong> gérer les classes, les cycles, les enseignants, les élèves et leurs affectations.</li>
                 <li style="margin:6px 0;"><strong>Frais scolaires&nbsp;:</strong> enregistrer les montants dus, les paiements comptants ou échelonnés et suivre immédiatement les soldes restant à payer.</li>
@@ -836,50 +836,50 @@ public class AuthService(
             """);
         var aboHinweisTeam = EmailTemplates.InfoBox(BaueAboHinweis(istSchueler: false));
         var schuelerHinweis = EmailTemplates.InfoBox("""
-            <strong>Ton espace scolaire, toujours à portée de main</strong><br/>
-            Dès que ton compte et ton accès de classe seront validés par ton école, tu pourras profiter d'un espace personnel pour apprendre et suivre ton parcours&nbsp;:
+            <strong>Votre espace scolaire, toujours à portée de main</strong><br/>
+            Dès que votre compte et votre accès de classe seront validés par votre école, vous pourrez profiter d'un espace personnel pour apprendre et suivre votre parcours&nbsp;:
             <ul style="margin:12px 0 4px;padding-left:20px;">
-                <li style="margin:6px 0;"><strong>Cours et supports&nbsp;:</strong> retrouver les leçons et documents publiés pour ta classe par tes enseignants.</li>
-                <li style="margin:6px 0;"><strong>Exercices et examens&nbsp;:</strong> réaliser les activités qui te sont proposées et consulter les résultats disponibles.</li>
-                <li style="margin:6px 0;"><strong>Progression personnelle&nbsp;:</strong> suivre tes leçons terminées, tes scores et tes dernières activités au même endroit.</li>
-                <li style="margin:6px 0;"><strong>SKOULOUAPPABO&nbsp;:</strong> avec l'abonnement actif de ta classe, tu bénéficies des leçons, supports, exercices et examens autorisés. La direction attribue et suit cet abonnement pour chaque classe.</li>
-                <li style="margin:6px 0;"><strong>Un accompagnement clair&nbsp;:</strong> pour toute question sur ton compte, ta classe ou un paiement, adresse-toi directement à la direction de ton école.</li>
+                <li style="margin:6px 0;"><strong>Cours et supports&nbsp;:</strong> retrouver les leçons et documents publiés pour votre classe par vos enseignants.</li>
+                <li style="margin:6px 0;"><strong>Exercices et examens&nbsp;:</strong> réaliser les activités qui vous sont proposées et consulter les résultats disponibles.</li>
+                <li style="margin:6px 0;"><strong>Progression personnelle&nbsp;:</strong> suivre vos leçons terminées, vos scores et vos dernières activités au même endroit.</li>
+                <li style="margin:6px 0;"><strong>SKOULOUAPPABO&nbsp;:</strong> avec l'abonnement actif de votre classe, vous bénéficiez des leçons, supports, exercices et examens autorisés. La direction attribue et suit cet abonnement pour chaque classe.</li>
+                <li style="margin:6px 0;"><strong>Un accompagnement clair&nbsp;:</strong> pour toute question sur votre compte, votre classe ou un paiement, adressez-vous directement à la direction de votre école.</li>
             </ul>
             """);
 
         return rolle switch
         {
             Rollen.SuperAdmin => (
-                "Ton accès administrateur SKOULOUAPP est prêt",
+                "Votre accès administrateur SKOULOU est prêt",
                 "Bienvenue dans l'espace administrateur",
                 $"""
                 {gruss}
-                <p>Ton compte <strong>administrateur</strong> SKOULOUAPP a été créé.</p>
+                <p>Votre compte <strong>administrateur</strong> SKOULOU a été créé.</p>
                 {adminHinweis}
                 {button}
                 {abschluss}
                 """),
 
             Rollen.SchulLeiter => (
-                "Ton école SKOULOUAPP est enregistrée",
+                "Votre école SKOULOU est enregistrée",
                 "Bienvenue, direction d'école",
                 $"""
                 {gruss}
-                <p>Ton compte de <strong>directeur d'école</strong> a bien été créé.</p>
+                <p>Votre compte de <strong>directeur d'école</strong> a bien été créé.</p>
                 {schulZeile}
-                <p>Il sera activé après validation par l'exploitant. Tu recevras une notification dès que tu pourras te connecter.</p>
-                 <p>Ton futur espace de direction t'aidera à suivre l'administration, les paiements et les activités de ton établissement avec une vue claire et centralisée.</p>
+                <p>Il sera activé après validation par l'exploitant. Vous recevrez une notification dès que vous pourrez vous connecter.</p>
+                 <p>Votre futur espace de direction vous aidera à suivre l'administration, les paiements et les activités de votre établissement avec une vue claire et centralisée.</p>
                  {directionHinweis}
                 {button}
                 {abschluss}
                 """),
 
             Rollen.Lehrer => (
-                "Ton compte enseignant SKOULOUAPP est prêt",
-                "Bienvenue dans ton espace enseignant",
+                "Votre compte enseignant SKOULOU est prêt",
+                "Bienvenue dans votre espace enseignant",
                 $"""
                 {gruss}
-                <p>Ton compte <strong>enseignant</strong> SKOULOUAPP a été créé.</p>
+                <p>Votre compte <strong>enseignant</strong> SKOULOU a été créé.</p>
                 {schulZeile}
                 {aboHinweisTeam}
                 {button}
@@ -887,27 +887,27 @@ public class AuthService(
                 """),
 
             Rollen.Schueler => (
-                "Bienvenue chez SKOULOUAPP",
-                "Bienvenue dans ton espace d'apprentissage",
+                "Bienvenue chez SKOULOU",
+                "Bienvenue dans votre espace d'apprentissage",
                 $"""
                 {gruss}
-                <p>Merci pour ton inscription à <strong>SKOULOUAPP</strong> ! Ton compte d'élève a bien été créé.</p>
+                <p>Merci pour votre inscription à <strong>SKOULOU</strong> ! Votre compte d'élève a bien été créé.</p>
                 {schulZeile}
-                <p>Il sera activé après validation. Tu pourras te connecter dès que ton compte sera activé.</p>
-                 <p>Une fois ton accès validé, ton espace personnel réunira les contenus et informations utiles à ton apprentissage.</p>
+                <p>Il sera activé après validation. Vous pourrez vous connecter dès que votre compte sera activé.</p>
+                 <p>Une fois votre accès validé, votre espace personnel réunira les contenus et informations utiles à votre apprentissage.</p>
                  {schuelerHinweis}
                 {button}
                 {abschluss}
                 """),
 
             _ => (
-                "Bienvenue chez SKOULOUAPP",
-                "Bienvenue chez SKOULOUAPP",
+                "Bienvenue chez SKOULOU",
+                "Bienvenue chez SKOULOU",
                 $"""
                 {gruss}
-                <p>Merci pour ton inscription à <strong>SKOULOUAPP</strong> ! Ton compte a bien été créé.</p>
+                <p>Merci pour votre inscription à <strong>SKOULOU</strong> ! Votre compte a bien été créé.</p>
                 {schulZeile}
-                <p>Il sera activé après validation. Tu recevras une notification dès que tu pourras te connecter.</p>
+                <p>Il sera activé après validation. Vous recevrez une notification dès que vous pourrez vous connecter.</p>
                 {button}
                 {abschluss}
                 """)
@@ -919,8 +919,8 @@ public class AuthService(
     /// </summary>
     private static string BaueAboHinweis(bool istSchueler)
     {
-        var anrede = istSchueler ? "tu bénéficies" : "tes élèves bénéficient";
-        var besitz = istSchueler ? "ton enseignant" : "l'enseignant";
+        var anrede = istSchueler ? "vous bénéficiez" : "vos élèves bénéficient";
+        var besitz = istSchueler ? "votre enseignant" : "l'enseignant";
 
         return $"""
             <strong>SKOULOUAPPABO</strong><br/>
@@ -1009,7 +1009,7 @@ public class AuthService(
         }
 
         return result.Succeeded
-            ? (true, "Merci ! Ton message a bien été envoyé.")
+            ? (true, "Merci ! Votre message a bien été envoyé.")
             : (false, "L'envoi a échoué. Merci de réessayer plus tard.");
     }
 

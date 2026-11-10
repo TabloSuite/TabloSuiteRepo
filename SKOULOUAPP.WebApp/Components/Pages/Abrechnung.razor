@@ -7,7 +7,7 @@
 @using SkoulouApp.Core.Models.Dashboard
 @using SkoulouApp.WebApp.Components.Shared
 
-<PageTitle>Facturation SKOULOUAPP</PageTitle>
+<PageTitle>Facturation SKOULOU</PageTitle>
 
 <section class="grid gap-6">
     @if (!Embedded)
@@ -17,13 +17,13 @@
         <div class="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl"></div>
         <div class="relative">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">@(isProduktOwner ? "Responsable produit" : isKoordinator ? "Coordinateur" : isReadOnly ? "Directeur" : "Administrateur")</p>
-            <h1 class="mt-3 text-3xl font-black">Facturation SKOULOUAPP</h1>
+            <h1 class="mt-3 text-3xl font-black">Facturation SKOULOU</h1>
             <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
                 @(isProduktOwner
-                    ? "Gère les facturations des écoles qui te sont attribuées. Seuls les abonnements de ces écoles sont visibles."
+                    ? "Gérez les facturations des écoles qui vous sont attribuées. Seuls les abonnements de ces écoles sont visibles."
                     : isReadOnly
-                    ? "Consulte toutes les facturations SKOULOUAPP de ton école et déclare les virements effectués."
-                    : "Gère les facturations SKOULOUAPP par école et clôture une période une fois le paiement reçu.")
+                    ? "Consultez toutes les facturations SKOULOU de votre école et déclarez les virements effectués."
+                    : "Gérez les facturations SKOULOU par école et clôturez une période une fois le paiement reçu.")
             </p>
         </div>
     </div>
@@ -52,7 +52,7 @@
                 <div class="min-w-0 flex-1">
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-rose-700">Attention requise · @ueberfaelligeForderungenAusAktivenKlassen.Count classe(s)</p>
                     <h2 class="mt-1 text-xl font-black">Cycles actifs et abonnements payés depuis au moins 10 mois</h2>
-                    <p class="mt-2 text-sm leading-6 text-rose-900">Facturations encore ouvertes : contacte la direction pour connaître la raison. Afficher les classes concernées.</p>
+                    <p class="mt-2 text-sm leading-6 text-rose-900">Facturations encore ouvertes : contactez la direction pour connaître la raison. Afficher les classes concernées.</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="rounded-2xl bg-white px-4 py-3 text-right ring-1 ring-rose-200">
@@ -80,8 +80,8 @@
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">À facturer</p>
-                    <h2 class="mt-1 text-xl font-black">Abonnements SKOULOUAPP issus de classes clôturées</h2>
-                    <p class="mt-2 max-w-3xl text-sm leading-6 text-amber-900">Ces montants restent dus à SKOULOUAPP. Ils ne sont pas encore inclus dans une facturation et aucune part du responsable produit n'est affichée à l'école.</p>
+                    <h2 class="mt-1 text-xl font-black">Abonnements SKOULOU issus de classes clôturées</h2>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-amber-900">Ces montants restent dus à SKOULOU. Ils ne sont pas encore inclus dans une facturation et aucune part du responsable produit n'est affichée à l'école.</p>
                 </div>
                 <div class="rounded-2xl bg-white px-4 py-3 text-right ring-1 ring-amber-200">
                     <p class="text-xs font-bold uppercase tracking-wide text-amber-700">Total à facturer</p>
@@ -151,7 +151,7 @@
                     <div>
                         <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Action requise · Direction</p>
                         <h2 class="text-lg font-black">@PendingDirectorApprovals.Count facturation(s) à valider</h2>
-                        <p class="mt-1 text-sm font-medium">Effectue le virement, puis confirme-le dans la liste « Facturations de l'école » ci-dessous.</p>
+                        <p class="mt-1 text-sm font-medium">Effectuez le virement, puis confirmez-le dans la liste « Facturations de l'école » ci-dessous.</p>
                     </div>
                 </div>
                 <div class="mt-3 grid gap-2">
@@ -177,7 +177,7 @@
                     <div>
                         <p class="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Information automatique</p>
                         <h2 class="text-lg font-black">Facturation générée à la clôture d'un cycle</h2>
-                        <p class="mt-1 text-sm text-sky-800">Elle attend la confirmation de virement par l'école. Après réception du paiement, tu pourras la confirmer définitivement.</p>
+                        <p class="mt-1 text-sm text-sky-800">Elle attend la confirmation de virement par l'école. Après réception du paiement, vous pourrez la confirmer définitivement.</p>
                     </div>
                 </div>
                 <div class="mt-3 grid gap-2">
@@ -212,7 +212,7 @@
                     <div>
                         <p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Contrôle bancaire requis</p>
                         <h2 class="mt-1 text-lg font-black">@offeneSuperAdminBestaetigungen.Count paiement(s) à confirmer</h2>
-                        <p class="mt-1 text-sm font-semibold">La direction a déclaré le virement. Vérifie le compte puis marque chaque facturation comme terminée.</p>
+                        <p class="mt-1 text-sm font-semibold">La direction a déclaré le virement. Vérifiez le compte puis marquez chaque facturation comme terminée.</p>
                     </div>
                     <div class="rounded-2xl bg-white px-4 py-3 text-right ring-1 ring-emerald-100">
                         <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">À contrôler</p>
@@ -297,7 +297,7 @@
                     <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl" aria-hidden="true"><Icon Name="tag" Groesse="16" /> </span>
                     <div>
                         <div class="text-3xl font-black">@uebersicht.AnzahlAbonnements</div>
-                        <div class="mt-0.5 text-sm text-indigo-50">Abonnements SKOULOUAPP</div>
+                        <div class="mt-0.5 text-sm text-indigo-50">Abonnements SKOULOU</div>
                     </div>
                 </div>
                 <div class="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 p-5 text-white shadow-lg shadow-emerald-200/60 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
@@ -415,7 +415,7 @@
                                     {
                                         @if (periode.Status == AbrechnungStatus.Erstellt)
                                         {
-                                            <span>Cette facturation a été générée automatiquement lors de la clôture du cycle pour un montant total de @periode.Umsatz.ToString("N0") FCFA. Après avoir effectué le virement, confirme-la ici avec « Accepter &amp; virement effectué ».</span>
+                                            <span>Cette facturation a été générée automatiquement lors de la clôture du cycle pour un montant total de @periode.Umsatz.ToString("N0") FCFA. Après avoir effectué le virement, confirmez-la ici avec « Accepter &amp; virement effectué ».</span>
                                         }
                                         else if (periode.Status == AbrechnungStatus.Akzeptiert)
                                         {
@@ -480,7 +480,7 @@
                     }
                     @if (GefilterteHistorie.Count == 0)
                     {
-                        <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Aucune facturation dans cette vue. Vérifie les dates ou change de statut.</p>
+                        <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Aucune facturation dans cette vue. Vérifiez les dates ou changez de statut.</p>
                     }
                 </div>
             }
@@ -488,8 +488,8 @@
             {
                 <p class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 ring-1 ring-slate-100">
                     @(isReadOnly && !isProduktOwner
-                        ? "Aucune facturation n'a encore été créée pour ton école."
-                        : "Aucune facturation créée pour le moment. Crée la première facturation à partir de la période ouverte ci-dessus.")
+                        ? "Aucune facturation n'a encore été créée pour votre école."
+                        : "Aucune facturation créée pour le moment. Créez la première facturation à partir de la période ouverte ci-dessus.")
                 </p>
             }
             </ChildContent>
@@ -506,7 +506,7 @@
     <p class="text-sm leading-6 text-slate-600">
         Créer la facturation de la période ouverte pour
         <span class="font-semibold text-slate-900">@uebersicht?.SchulName</span> ?
-        Seuls les abonnements SKOULOUAPP payés seront regroupés et envoyés au directeur pour validation.
+        Seuls les abonnements SKOULOU payés seront regroupés et envoyés au directeur pour validation.
     </p>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"
@@ -530,7 +530,7 @@
              ErrorMessage="@errorMessage"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
-        Confirmes-tu que le virement a bien été reçu ? La facturation sera clôturée définitivement
+        Confirmez-vous que le virement a bien été reçu ? La facturation sera clôturée définitivement
         et ne pourra plus être modifiée.
     </p>
     <div class="mt-6 flex justify-end gap-3">
@@ -555,7 +555,7 @@
              ErrorMessage="@errorMessage"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
-        Indique le motif du refus. Le statut pourra être modifié plus tard une fois la situation clarifiée.
+        Indiquez le motif du refus. Le statut pourra être modifié plus tard une fois la situation clarifiée.
     </p>
     <textarea @bind="rejectReason" rows="3"
               class="skoulou-input mt-4 text-sm"

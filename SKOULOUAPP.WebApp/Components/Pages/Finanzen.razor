@@ -14,7 +14,7 @@
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">Gestion financière</p>
             <h1 class="mt-3 text-3xl font-black">Recettes &amp; dépenses de l'école</h1>
             <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
-                @(isPlatformViewer ? "Consulte les finances des écoles sans modifier leurs écritures, paiements ou cycles." : !canViewDashboard && !canCreateEntries && !canManageCycles ? "Consulte les facturations SKOULOUAPP de l'école sélectionnée et déclare les virements effectués." : "Saisir les recettes/dépenses, gérer les cycles de classes (démarrage/clôture) et suivre les paiements échelonnés des élèves.")
+                @(isPlatformViewer ? "Consultez les finances des écoles sans modifier leurs écritures, paiements ou cycles." : !canViewDashboard && !canCreateEntries && !canManageCycles ? "Consultez les facturations SKOULOU de l'école sélectionnée et déclarez les virements effectués." : "Saisir les recettes/dépenses, gérer les cycles de classes (démarrage/clôture) et suivre les paiements échelonnés des élèves.")
             </p>
         </div>
     </div>
@@ -55,7 +55,7 @@
             @if (canViewDashboard) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "dashboard" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("dashboard")'>Finances de l'école</button> }
             @if (canCreateEntries) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "erfassen" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("erfassen")'>Nouvelle écriture</button> }
             @if (canManageCycles) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "durchlaeufe" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("durchlaeufe")'>Paiements des cycles</button> }
-            @if (canAccessBilling) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "facturation" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("facturation")'>Facturation SKOULOUAPP</button> }
+            @if (canAccessBilling) { <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold @(aktiverTab == "facturation" ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700")" @onclick='() => SetTab("facturation")'>Facturation SKOULOU</button> }
         </div>
         </div>
 
@@ -73,7 +73,7 @@
                     <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                         <h2 class="font-bold text-slate-900">Rapprochement des justificatifs et des écritures</h2>
                         <p class="mt-2">Scolarité : paiements enregistrés @finanzAbgleich.SchulgebuehrenZahlungen.ToString("N0") FCFA · écritures liées @finanzAbgleich.SchulgebuehrenBuchungen.ToString("N0") FCFA · anomalies @finanzAbgleich.SchulgebuehrenAbweichungen</p>
-                        <p class="mt-1">Factures SKOULOUAPP : total facturé @finanzAbgleich.PlattformRechnungen.ToString("N0") FCFA · parts comptabilisées pour ces factures @finanzAbgleich.PlattformBuchungenZuRechnungen.ToString("N0") FCFA · virements confirmés @finanzAbgleich.BestaetigtePlattformZahlungen.ToString("N0") FCFA · factures à vérifier @finanzAbgleich.PlattformRechnungenMitAbweichung</p>
+                        <p class="mt-1">Factures SKOULOU : total facturé @finanzAbgleich.PlattformRechnungen.ToString("N0") FCFA · parts comptabilisées pour ces factures @finanzAbgleich.PlattformBuchungenZuRechnungen.ToString("N0") FCFA · virements confirmés @finanzAbgleich.BestaetigtePlattformZahlungen.ToString("N0") FCFA · factures à vérifier @finanzAbgleich.PlattformRechnungenMitAbweichung</p>
                         <p class="mt-1 text-xs text-slate-500">Les factures en attente ne sont pas des paiements reçus. La confirmation d'un virement ne crée pas une seconde dépense.</p>
                     </div>
                 }
@@ -93,26 +93,26 @@
                                 <div class="mt-6 grid items-stretch gap-5 lg:grid-cols-2 lg:gap-8">
                                     <div class="flex flex-col justify-center">
                                         <h2 class="text-2xl font-black leading-tight sm:text-3xl">Le solde qui revient à l'école</h2>
-                                        <p class="mt-3 max-w-xl text-sm leading-6 text-cyan-50">Recettes et dépenses de l'école, après déduction de la part SKOULOUAPP comptabilisée. Les paiements encore attendus ne sont pas inclus.</p>
+                                        <p class="mt-3 max-w-xl text-sm leading-6 text-cyan-50">Recettes et dépenses de l'école, après déduction de la part SKOULOU comptabilisée. Les paiements encore attendus ne sont pas inclus.</p>
                                     </div>
                                     <div class="min-w-0 rounded-3xl bg-white px-6 py-7 text-slate-950 shadow-xl ring-1 ring-emerald-100 sm:px-8 sm:py-9 print:border print:border-slate-200">
                                         <p class="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-800">Montant revenant à l'école</p>
                                         <p class="mt-3 break-words text-4xl font-black leading-none tabular-nums sm:text-5xl xl:text-6xl @SoldeFarbe(direktorKontostand.WirklicherKontostandNachAboVerteilung)">@direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") <span class="text-2xl sm:text-3xl">FCFA</span></p>
                                         <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-5">
-                                            <p class="text-xs font-bold uppercase tracking-wide text-slate-600">Solde provisoire avant règlement SKOULOUAPP</p>
+                                            <p class="text-xs font-bold uppercase tracking-wide text-slate-600">Solde provisoire avant règlement SKOULOU</p>
                                             <p class="mt-2 break-words text-2xl font-black leading-tight tabular-nums text-slate-900 sm:text-3xl">@direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") <span class="text-lg sm:text-xl">FCFA</span></p>
-                                            <p class="mt-2 text-xs font-semibold text-rose-700 sm:text-sm">(Part SKOULOUAPP comptabilisée : @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA)</p>
+                                            <p class="mt-2 text-xs font-semibold text-rose-700 sm:text-sm">(Part SKOULOU comptabilisée : @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA)</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Solde provisoire avant règlement SKOULOUAPP</p>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Solde provisoire avant règlement SKOULOU</p>
                                         <p class="mt-1 text-xl font-black tabular-nums text-emerald-300">@direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
-                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOUAPP comptabilisée</p>
+                                        <p class="text-[11px] font-bold uppercase tracking-wide text-cyan-100">Part SKOULOU comptabilisée</p>
                                         <p class="mt-1 text-xl font-black tabular-nums text-rose-300">@direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</p>
                                     </div>
                                     <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/20">
@@ -133,7 +133,7 @@
                                     <div class="mt-4 space-y-3 text-sm">
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Scolarité encaissée</span><strong class="text-emerald-300">+ @direktorKontostand.SchulgebuehrenEingenommen.ToString("N0") FCFA</strong></div>
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Autres recettes</span><strong class="text-emerald-300">+ @direktorKontostand.SonstigeEinnahmen.ToString("N0") FCFA</strong></div>
-                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Abonnements SKOULOUAPP encaissés</span><strong class="text-emerald-300">+ @direktorKontostand.SkoulouAppAboEingenommen.ToString("N0") FCFA</strong></div>
+                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Abonnements SKOULOU encaissés</span><strong class="text-emerald-300">+ @direktorKontostand.SkoulouAppAboEingenommen.ToString("N0") FCFA</strong></div>
                                         <div class="flex justify-between gap-3"><span class="text-slate-300">Dépenses de fonctionnement</span><strong class="text-rose-300">− @direktorKontostand.BetrieblicheAusgaben.ToString("N0") FCFA</strong></div>
                                     </div>
                                      <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
@@ -145,16 +145,16 @@
                                 <div class="rounded-2xl bg-cyan-950/45 p-4 ring-1 ring-cyan-300/20 lg:col-span-3">
                                     <div class="flex flex-wrap items-start justify-between gap-3">
                                         <div>
-                                            <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">Abonnements SKOULOUAPP encaissés</p>
+                                            <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">Abonnements SKOULOU encaissés</p>
                                             <p class="mt-1 text-2xl font-black text-cyan-100">@direktorKontostand.SkoulouAppAboEingenommen.ToString("N0") FCFA</p>
                                             <p class="mt-2 text-sm font-semibold text-cyan-100">@direktorKontostand.SchuelerMitBezahltemAboAnzahl élève(s) avec abonnement payé</p>
                                         </div>
-                                        <div class="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-semibold text-cyan-100">Montant encaissé pour le compte de SKOULOUAPP</div>
+                                        <div class="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-semibold text-cyan-100">Montant encaissé pour le compte de SKOULOU</div>
                                     </div>
                                     <div class="mt-4 grid gap-2 sm:grid-cols-3">
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part direction (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.SchulleiterAboAnteil.ToString("N0") FCFA</p></div>
                                         <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part enseignants (dans l'école)</p><p class="mt-1 font-black text-emerald-300">+ @direktorKontostand.LehrerAboAnteil.ToString("N0") FCFA</p></div>
-                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOUAPP comptabilisée</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</p></div>
+                                        <div class="rounded-xl bg-slate-950/35 p-3"><p class="text-xs text-slate-300">Part SKOULOU comptabilisée</p><p class="mt-1 font-black text-rose-300">− @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</p></div>
                                     </div>
                                     <p class="mt-3 text-xs leading-5 text-cyan-100">Calcul appliqué: @direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA − @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA = @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA.</p>
                                 </div>
@@ -174,7 +174,7 @@
                             {
                                 <div class="mx-5 mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-5 py-4">
                                     <div>
-                                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Facturation SKOULOUAPP à régler</p>
+                                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Facturation SKOULOU à régler</p>
                                         <p class="mt-1 text-sm text-amber-50">@offeneSkoulouAppAbrechnungen.Count facture(s) demandée(s) par l'Administrateur. Les parts du responsable produit ne sont pas affichées dans cet espace.</p>
                                     </div>
                                     <div class="text-right">
@@ -187,11 +187,11 @@
                                 <div>
                                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Récapitulatif du calcul</p>
                                     <h3 class="mt-1 text-xl font-black">Solde disponible après règlement</h3>
-                                    <p class="mt-1 text-sm text-slate-600">Solde calculé à partir des écritures enregistrées. Les parts direction et enseignants restent dans l'école; seule la part SKOULOUAPP comptabilisée est déduite. Les factures encore à régler sont indiquées séparément.</p>
+                                    <p class="mt-1 text-sm text-slate-600">Solde calculé à partir des écritures enregistrées. Les parts direction et enseignants restent dans l'école; seule la part SKOULOU comptabilisée est déduite. Les factures encore à régler sont indiquées séparément.</p>
                                     <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
-                                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOUAPP&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</span>
+                                        <span class="rounded-lg bg-slate-100 px-3 py-2 text-slate-700">Solde avec abonnement SKOULOU&nbsp;: @direktorKontostand.KontostandMitNichtUeberwiesenenSkoulouAppAnteilen.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">−</span>
-                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOUAPP comptabilisée&nbsp;: @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</span>
+                                        <span class="rounded-lg bg-cyan-50 px-3 py-2 text-cyan-800">Part SKOULOU comptabilisée&nbsp;: @direktorKontostand.SkoulouAppAboAnteil.ToString("N0") FCFA</span>
                                         <span class="text-lg text-slate-400">=</span>
                                         <span class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">Solde disponible après règlement&nbsp;: @direktorKontostand.WirklicherKontostandNachAboVerteilung.ToString("N0") FCFA</span>
                                     </div>
@@ -228,7 +228,7 @@
                             </div>
                             <label class="mt-4 flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-indigo-100 bg-white/90 p-3 text-sm text-slate-800 shadow-sm">
                                 <input type="checkbox" class="h-5 w-5 shrink-0 accent-indigo-600" @bind="mitSkoulouAbos" />
-                                <span class="font-bold">Avec les abonnements SKOULOUAPP</span>
+                                <span class="font-bold">Avec les abonnements SKOULOU</span>
                                 <span class="text-xs text-slate-500">Totaux regroupés, sans détail par élève. La part de la direction est indiquée séparément.</span>
                             </label>
                             <div class="mt-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
@@ -274,7 +274,7 @@
                                             @if (mitSkoulouAbos)
                                             {
                                                 <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                                                    <span class="text-slate-600">Dont abonnements SKOULOUAPP</span>
+                                                    <span class="text-slate-600">Dont abonnements SKOULOU</span>
                                                     <span class="text-right text-base font-bold text-emerald-700">@(BerichtDarstellung?.AboEinnahmen.ToString("N0") ?? "0") FCFA</span>
                                                 </div>
                                             }
@@ -299,7 +299,7 @@
                                                 <span class="text-right font-semibold text-slate-900">@(mitSkoulouAbos ? $"{BerichtDarstellung?.Lehreranteil:N0} FCFA" : "—")</span>
                                             </div>
                                             <div style="display:grid;grid-template-columns:1fr 12rem;column-gap:1rem;align-items:center;">
-                                                <span class="text-slate-600">Part SKOULOUAPP</span>
+                                                <span class="text-slate-600">Part SKOULOU</span>
                                                 <span class="text-right text-base font-bold text-rose-700">@(mitSkoulouAbos ? $"{BerichtDarstellung?.Plattformanteil:N0} FCFA" : "—")</span>
                                             </div>
                                             <p class="text-xs text-slate-500">Seule la part plateforme est déduite du solde de l'école. Les parts direction et enseignants restent à l'école et ne sont pas déduites une seconde fois. Avec un seul type d'écriture, la part direction complète n'est pas disponible.</p>
@@ -327,7 +327,7 @@
                                 @if (mitSkoulouAbos && BerichtDarstellung is { HatAboBuchungen: true } rapportAbos)
                                 {
                                     <div class="mb-4 grid gap-2 rounded-2xl bg-indigo-50 p-4 text-sm text-indigo-950 sm:grid-cols-2">
-                                        <strong class="sm:col-span-2">Abonnements SKOULOUAPP · @rapportAbos.AboZahlungenAnzahl paiement(s) regroupé(s)</strong>
+                                        <strong class="sm:col-span-2">Abonnements SKOULOU · @rapportAbos.AboZahlungenAnzahl paiement(s) regroupé(s)</strong>
                                         <span>Recettes : <strong>@rapportAbos.AboEinnahmen.ToString("N0") FCFA</strong></span>
                                         <span>Part plateforme déduite : <strong>@rapportAbos.AboAusgaben.ToString("N0") FCFA</strong></span>
                                         <span>Part enseignants conservée : <strong>@rapportAbos.Lehreranteil.ToString("N0") FCFA</strong></span>
@@ -524,10 +524,10 @@
                 {
                     <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800" role="alert">@errorMessage</div>
                 }
-                <p class="mt-5 text-sm leading-6 text-slate-600">Démarre un nouveau cycle pour <span class="font-semibold text-slate-900">@AusgewaehlteKlasseName</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
+                <p class="mt-5 text-sm leading-6 text-slate-600">Démarrez un nouveau cycle pour <span class="font-semibold text-slate-900">@AusgewaehlteKlasseName</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
                 @if (durchlaufStartDurchUeberweisungGesperrt)
                 {
-                    <p class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Déclare d'abord le virement de la facturation du cycle précédent dans <a class="font-bold underline" href="/abrechnung">Facturation SKOULOUAPP</a>.</p>
+                    <p class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Déclarez d'abord le virement de la facturation du cycle précédent dans <a class="font-bold underline" href="/abrechnung">Facturation SKOULOU</a>.</p>
                 }
 
                 <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -683,7 +683,7 @@
 					@if (beendenOhneNote > 0)
 					{
 						<p class="text-xl font-black text-amber-700">@beendenOhneNote / @beendenTeilnehmerGesamt <span class="text-sm font-bold">non définies</span></p>
-                        <p class="mt-1 text-xs font-medium">Information : tu peux clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
+                        <p class="mt-1 text-xs font-medium">Information : vous pouvez clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
 					}
 					else
 					{
@@ -710,8 +710,8 @@
             else
             {
             <p class="mt-2">@(!istDirektor
-				? "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOUAPP."
-				: "Les abonnements SKOULOUAPP payés et non encore facturés seront facturés automatiquement lors de la clôture. Tu devras ensuite déclarer le virement dans Facturation SKOULOUAPP avant de démarrer un nouveau cycle.")</p>
+				? "La clôture par un coordinateur ne crée pas de facturation automatique. La direction doit demander la facturation des abonnements non encore facturés dans Facturation SKOULOU."
+				: "Les abonnements SKOULOU payés et non encore facturés seront facturés automatiquement lors de la clôture. Vous devrez ensuite déclarer le virement dans Facturation SKOULOU avant de démarrer un nouveau cycle.")</p>
 			@if (beendenOffeneSkoulouAppAbos > 0 && istDirektor)
 			{
 				<p class="mt-2 text-xs font-semibold text-sky-700">@beendenOffeneSkoulouAppAbos abonnement(s) payé(s) non encore facturé(s) (@beendenOffenerSkoulouAppUmsatz.ToString("N0") FCFA).</p>

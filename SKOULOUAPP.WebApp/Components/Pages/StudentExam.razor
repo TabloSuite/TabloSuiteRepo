@@ -13,7 +13,7 @@
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-200">Correction de l'épreuve</p>
             <h1 class="mt-2 text-2xl font-black">@review.CourseCode · @review.Title</h1>
             <p class="mt-2 text-sm text-white/90">Score : <strong>@review.ScorePercent %</strong> · Seuil : @review.PassingScore %</p>
-            <p class="mt-2 text-xs text-white/80">Lecture seule : tes réponses incorrectes ou absentes sont en rouge et les bonnes réponses en vert.</p>
+            <p class="mt-2 text-xs text-white/80">Lecture seule : vos réponses incorrectes ou absentes sont en rouge et les bonnes réponses en vert.</p>
         </div>
 
         @foreach (var question in review.Questions)
@@ -51,7 +51,7 @@
                             var correct = question.CorrectGapAnswers[i];
                             var isGapCorrect = correct.Any(value => AnswerMatches(answer, value));
                             <div class="grid gap-2 sm:grid-cols-2">
-                                <div class="rounded-xl border p-3 text-sm @(isGapCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Ta réponse :</strong> @(string.IsNullOrWhiteSpace(answer) ? "Non répondu" : answer)</div>
+                                <div class="rounded-xl border p-3 text-sm @(isGapCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Votre réponse :</strong> @(string.IsNullOrWhiteSpace(answer) ? "Non répondu" : answer)</div>
                                 <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Bonne réponse :</strong> @string.Join(" / ", correct)</div>
                             </div>
                         }
@@ -60,7 +60,7 @@
                 else
                 {
                     <div class="mt-4 grid gap-2">
-                        <div class="rounded-xl border p-3 text-sm @(question.IsCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Ta réponse :</strong> @(string.IsNullOrWhiteSpace(question.TextAnswer) ? "Non répondu" : question.TextAnswer)</div>
+                        <div class="rounded-xl border p-3 text-sm @(question.IsCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900")"><strong>Votre réponse :</strong> @(string.IsNullOrWhiteSpace(question.TextAnswer) ? "Non répondu" : question.TextAnswer)</div>
                         @if (question.AcceptedAnswers.Count > 0)
                         {
                             <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Bonne réponse :</strong> @string.Join(" / ", question.AcceptedAnswers)</div>
@@ -97,7 +97,7 @@ else if (result is not null)
             }
             @if (result.RequiresManualGrading)
             {
-                <p class="mt-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold inline-block">Certaines réponses seront corrigées par ton enseignant. Le résultat final peut encore changer.</p>
+                <p class="mt-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold inline-block">Certaines réponses seront corrigées par votre enseignant. Le résultat final peut encore changer.</p>
             }
         </div>
         <div class="flex flex-wrap gap-3">
@@ -112,7 +112,7 @@ else if (session is not null)
         @if (showLeaveConfirmation)
         {
             <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-                <p>Le chronomètre continue si tu quittes l'épreuve. Tu pourras reprendre avec le temps restant. Tes réponses sont enregistrées.</p>
+                <p>Le chronomètre continue si vous quittez l'épreuve. Vous pourrez reprendre avec le temps restant. Vos réponses sont enregistrées.</p>
                 <div class="mt-3 flex gap-3">
                     <button type="button" class="rounded-full bg-amber-700 px-4 py-2 font-semibold text-white" @onclick="LeaveExamAsync">Quitter l'épreuve</button>
                     <button type="button" class="rounded-full bg-white px-4 py-2 font-semibold" @onclick="() => showLeaveConfirmation = false">Continuer l'épreuve</button>
@@ -210,7 +210,7 @@ else if (session is not null)
                                 <div class="flex-1">
                                     <RichTextEditor Value="@GetGapValue(question.QuestionId, gapIndex)"
                                                     ValueChanged="value => SetGapValue(question.QuestionId, question.GapCount, gapIndex, value)"
-                                                    Placeholder="Ta réponse..."
+                                                    Placeholder="Votre réponse..."
                                                     ReadOnly="@(result is not null)"
                                                     EnableLargeEditor="true"
                                                     Paged="true"
@@ -225,7 +225,7 @@ else if (session is not null)
                     <div class="mt-4">
                         <RichTextEditor Value="@GetTextAnswer(question.QuestionId)"
                                         ValueChanged="value => SetTextAnswer(question.QuestionId, value)"
-                                        Placeholder="Ta réponse..."
+                                        Placeholder="Votre réponse..."
                                         Paged="true"
                                         ReadOnly="@(result is not null)" />
                     </div>

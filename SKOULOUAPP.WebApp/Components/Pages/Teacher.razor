@@ -30,7 +30,7 @@ else if (teacherSchools.Count == 0 && students.Count == 0)
         <h2 class="text-lg font-black text-slate-900">@(isSchoolDirectionUser ? "Aucune classe d'enseignant configurée" : "Aucune classe attribuée")</h2>
         <p class="mt-2 text-sm leading-6 text-slate-600">@(isSchoolDirectionUser
             ? "Aucun enseignant n'a encore de classe attribuée. Dès qu'une classe est affectée à un enseignant, elle apparaîtra ici."
-            : "Ton directeur doit d'abord t'attribuer au moins une classe et indiquer tes heures hebdomadaires. Tu verras ensuite uniquement les éléves de ces classes.")</p>
+            : "Votre directeur doit d'abord vous attribuer au moins une classe et indiquer vos heures hebdomadaires. Vous verrez ensuite uniquement les éléves de ces classes.")</p>
     </div>
 }
 else
@@ -39,7 +39,7 @@ else
         <DataListPanel Items="filteredStudents"
                        PageSize="10"
                        SearchPlaceholder="Rechercher un élève..."
-                       EmptyText="@(selectedSchoolId.HasValue && selectedKlasseId.HasValue ? "Aucun élève trouvé." : "Sélectionne d'abord une école et une classe.")"
+                       EmptyText="@(selectedSchoolId.HasValue && selectedKlasseId.HasValue ? "Aucun élève trouvé." : "Sélectionnez d'abord une école et une classe.")"
                        ResultLabelSingular="élève"
                        ResultLabelPlural="élèves"
                        SortOptions="studentSortOptions"

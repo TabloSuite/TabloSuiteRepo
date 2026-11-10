@@ -129,7 +129,7 @@ public partial class Teacher
             teacherSchools = [];
             students = [];
             progress = [];
-            loadErrorMessage = "Le tableau de bord n'a pas pu être chargé. Réessaie dans quelques instants.";
+            loadErrorMessage = "Le tableau de bord n'a pas pu être chargé. Réessayez dans quelques instants.";
         }
         finally
         {

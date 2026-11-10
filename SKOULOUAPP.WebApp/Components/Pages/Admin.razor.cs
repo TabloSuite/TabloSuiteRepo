@@ -1299,9 +1299,9 @@ public partial class Admin
 
     private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isSkoulouPlus)
         => hasPaidEnrollment
-            ? "Abo actuel : SKOULOUAPP pay\u00e9"
+            ? "Abo actuel : SKOULOU pay\u00e9"
             : isSkoulouPlus
-                ? "Abo actuel : SKOULOUAPP actif"
+                ? "Abo actuel : SKOULOU actif"
                 : "Abo actuel : non pay\u00e9";
 
     private static string GetSchoolFeeHeaderLabel(decimal paidAmount, decimal? totalAmount, bool hasActiveCycle)

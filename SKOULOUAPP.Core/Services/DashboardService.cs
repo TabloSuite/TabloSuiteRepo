@@ -1257,7 +1257,7 @@ public class DashboardService(
         }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return (true, "L'école a été créée et t'est maintenant attribuée.");
+        return (true, "L'école a été créée et vous est maintenant attribuée.");
     }
 
     public async Task<(bool Succeeded, string Message)> UpdateSchoolForSchoolLeaderAsync(
@@ -1931,7 +1931,7 @@ public class DashboardService(
         var isAssigned = assignedSchoolIds.Contains(schoolId);
         if (!isAssigned)
         {
-            return (false, "Tu ne peux gérer que tes propres écoles.", null);
+            return (false, "Vous ne pouvez gérer que vos propres écoles.", null);
         }
 
         return await SaveSchoolKlasseAsync(schoolId, model, schoolLeaderId, cancellationToken);
@@ -1969,7 +1969,7 @@ public class DashboardService(
 
         if (duplicateExists)
         {
-            return (false, "Une classe avec ce nom existe déjà dans ton école.", null);
+            return (false, "Une classe avec ce nom existe déjà dans votre école.", null);
         }
 
         Klasse klasse;
@@ -2038,7 +2038,7 @@ public class DashboardService(
 
             if (hasStudentsWithAboInCurrentClass)
             {
-                return (false, "Impossible de désactiver l'option : des élèves de la classe active ont déjà un abonnement. Tu pourras la modifier au prochain cycle.", null);
+                return (false, "Impossible de désactiver l'option : des élèves de la classe active ont déjà un abonnement. Vous pourrez la modifier au prochain cycle.", null);
             }
         }
 
@@ -2062,7 +2062,7 @@ public class DashboardService(
         }
         else
         {
-            return (false, "Sélectionne ou crée un nom de référence pour cette classe.", null);
+            return (false, "Sélectionnez ou créez un nom de référence pour cette classe.", null);
         }
 
         klasse.Code = normalizedCode;
@@ -3066,7 +3066,7 @@ public class DashboardService(
     {
         if (studentIds.Count == 0)
         {
-            return (false, "Sélectionne au moins un élève.");
+            return (false, "Sélectionnez au moins un élève.");
         }
 
         var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
@@ -3180,7 +3180,7 @@ public class DashboardService(
             && !await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == enrollment.DurchlaufId && x.PlattformPreisProSchueler != null, cancellationToken)
             && (enrollment.IsUnlocked || enrollment.IsPaid || enrollment.AbgerechnetInPeriodeId.HasValue))
         {
-            return (false, "Cette affectation possède déjà un abonnement actif ou payé. Annule d'abord l'abonnement via le workflow autorisé.");
+            return (false, "Cette affectation possède déjà un abonnement actif ou payé. Annulez d'abord l'abonnement via le workflow autorisé.");
         }
 
         profile.CurrentKlasseId = null;
@@ -3514,7 +3514,7 @@ public class DashboardService(
     {
         if (studentIds is null || studentIds.Count == 0)
         {
-            return (false, "Sélectionne au moins un élève à archiver.");
+            return (false, "Sélectionnez au moins un élève à archiver.");
         }
 
         var schoolIds = await GetDirectorSchoolIdsAsync(directorId, cancellationToken);
@@ -4344,7 +4344,7 @@ public class DashboardService(
     public async Task SetLevelPaidAsync(Guid studentId, Guid klasseId, bool isPaid, CancellationToken cancellationToken = default)
     {
         if (await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.KlasseId == klasseId && x.PlattformPreisProSchueler != null, cancellationToken))
-            throw new InvalidOperationException("La facturation est gérée automatiquement par cycle. Aucun paiement individuel SKOULOUAPP ne doit être enregistré ici.");
+            throw new InvalidOperationException("La facturation est gérée automatiquement par cycle. Aucun paiement individuel SKOULOU ne doit être enregistré ici.");
         var enrollment = await dbContext.LevelEnrollments
             .FirstOrDefaultAsync(x => x.StudentId == studentId && x.KlasseId == klasseId && x.IstAktuell, cancellationToken);
 

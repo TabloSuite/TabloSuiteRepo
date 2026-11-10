@@ -215,7 +215,7 @@ public partial class Finanzen
 
     private decimal ZeitraumSaldoAnzeige => ZeitraumSoldeAvantPartSkoulou - SkoulouAboAnteilFuerSaldo;
 
-    private string ZeitraumOptionLabel => "Part SKOULOUAPP issue des écritures enregistrées; les filtres s'appliquent à chaque écriture.";
+    private string ZeitraumOptionLabel => "Part SKOULOU issue des écritures enregistrées; les filtres s'appliquent à chaque écriture.";
 
     private static string GetMaskedErfasstVonForPdf(string? erfasstVon)
     {

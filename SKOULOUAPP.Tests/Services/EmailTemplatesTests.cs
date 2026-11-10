@@ -15,7 +15,7 @@ public class EmailTemplatesTests
         var html = EmailTemplates.Wrap("Bienvenue", "<p>Bonjour</p>");
 
         // Header
-        Assert.Contains("SKOULOUAPP", html);
+        Assert.Contains("SKOULOU", html);
         Assert.Contains("https://skoulou.etsetech.com", html);
 
         // Footer

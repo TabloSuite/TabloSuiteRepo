@@ -597,7 +597,7 @@ public partial class SchulLeiter
 
         if (selectedIds.Count == 0)
         {
-            SetResult(false, "Sélectionne au moins un élève à archiver.");
+            SetResult(false, "Sélectionnez au moins un élève à archiver.");
             return;
         }
 
@@ -647,13 +647,13 @@ public partial class SchulLeiter
     {
         if (SelectedKlasseSchoolId is null)
         {
-            SetResult(false, "Sélectionne d'abord une école.");
+            SetResult(false, "Sélectionnez d'abord une école.");
             return;
         }
 
         if (!reassignTargetKlasseId.HasValue)
         {
-            SetResult(false, "Sélectionne une classe cible.");
+            SetResult(false, "Sélectionnez une classe cible.");
             return;
         }
 
@@ -662,7 +662,7 @@ public partial class SchulLeiter
             .ToList();
         if (selectedIds.Count == 0)
         {
-            SetResult(false, "Sélectionne au moins un élève sans classe active.");
+            SetResult(false, "Sélectionnez au moins un élève sans classe active.");
             return;
         }
 
@@ -1003,7 +1003,7 @@ public partial class SchulLeiter
         var school = SelectedSchoolForManagement;
         if (school is null)
         {
-            schoolErrorMessage = "Sélectionne d'abord une école.";
+            schoolErrorMessage = "Sélectionnez d'abord une école.";
             return;
         }
 
@@ -1159,7 +1159,7 @@ public partial class SchulLeiter
 
         if (ActiveFachSchoolId is not Guid schoolId)
         {
-            fachVerwaltungErrorMessage = "Sélectionne d'abord une école en haut de la page.";
+            fachVerwaltungErrorMessage = "Sélectionnez d'abord une école en haut de la page.";
             return;
         }
 
@@ -1253,14 +1253,14 @@ public partial class SchulLeiter
     {
         if (SelectedKlasseSchoolId is not Guid schoolId)
         {
-            SetResult(false, "Sélectionne d'abord une école précise pour l'import.");
+            SetResult(false, "Sélectionnez d'abord une école précise pour l'import.");
             return;
         }
 
         if (!string.Equals(Path.GetExtension(file.Name), ".csv", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(Path.GetExtension(file.Name), ".xlsx", StringComparison.OrdinalIgnoreCase))
         {
-            SetResult(false, "Utilise un fichier CSV ou Excel (.xlsx).");
+            SetResult(false, "Utilisez un fichier CSV ou Excel (.xlsx).");
             return;
         }
 
@@ -1303,12 +1303,12 @@ public partial class SchulLeiter
 
             SetResult(preview.Succeeded, preview.Succeeded
                 ? $"Prévisualisation prête: {preview.ValidRowCount} ligne(s) valide(s)."
-                : "La prévisualisation contient des erreurs. Corrige le fichier puis recharge-le.");
+                : "La prévisualisation contient des erreurs. Corrigez le fichier puis rechargez-le.");
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Xml.XmlException)
         {
             Logger.LogError(ex, "Importdatei für Schule {SchoolId} konnte nicht gelesen werden.", schoolId);
-            SetResult(false, "Le fichier n'a pas pu être lu. Utilise un fichier CSV ou Excel (.xlsx) de moins de 2 Mo.");
+            SetResult(false, "Le fichier n'a pas pu être lu. Utilisez un fichier CSV ou Excel (.xlsx) de moins de 2 Mo.");
         }
     }
 
@@ -1341,14 +1341,14 @@ public partial class SchulLeiter
     {
         if (SelectedKlasseSchoolId is not Guid schoolId)
         {
-            SetResult(false, "Sélectionne d'abord une école précise pour l'import.");
+            SetResult(false, "Sélectionnez d'abord une école précise pour l'import.");
             return;
         }
 
         var csv = kind == SchoolUserImportKind.Teacher ? teacherImportCsv : studentImportCsv;
         if (string.IsNullOrWhiteSpace(csv))
         {
-            SetResult(false, "Charge d'abord un fichier CSV ou Excel et vérifie la prévisualisation.");
+            SetResult(false, "Chargez d'abord un fichier CSV ou Excel et vérifiez la prévisualisation.");
             return;
         }
 
@@ -1433,7 +1433,7 @@ public partial class SchulLeiter
     {
         if (pendingAboTyp is not AboTyp aboTyp)
         {
-            errorMessage = "Sélectionne un abonnement.";
+            errorMessage = "Sélectionnez un abonnement.";
             return;
         }
 
@@ -1875,9 +1875,9 @@ public partial class SchulLeiter
 
     private static string GetStudentAboHeaderLabel(bool hasPaidEnrollment, bool isSkoulouPlus)
         => hasPaidEnrollment
-            ? "Abo actuel : SKOULOUAPP payé"
+            ? "Abo actuel : SKOULOU payé"
             : isSkoulouPlus
-                ? "Abo actuel : SKOULOUAPP actif (paiement en attente)"
+                ? "Abo actuel : SKOULOU actif (paiement en attente)"
                 : "Abo actuel : aucun abonnement";
 
     private static string GetSchoolFeeHeaderLabel(decimal paidAmount, decimal? totalAmount, bool hasActiveCycle)
@@ -2205,7 +2205,7 @@ public partial class SchulLeiter
 
         if (zahlungDurchlauf is null || zahlungStudentId == Guid.Empty)
         {
-            klasseErrorMessage = "Sélectionne un élève.";
+            klasseErrorMessage = "Sélectionnez un élève.";
             return;
         }
 
@@ -2361,7 +2361,7 @@ public partial class SchulLeiter
 
         if (klasseForm.SchoolId is not Guid schoolId)
         {
-            klasseErrorMessage = "Sélectionne l'école de cette classe.";
+            klasseErrorMessage = "Sélectionnez l'école de cette classe.";
             return;
         }
 
@@ -2384,7 +2384,7 @@ public partial class SchulLeiter
         if (!klasseForm.CourseId.HasValue
             && HasReferencePrefixMismatch(formReferenceName, klasseForm.Code, klasseForm.Title))
         {
-            klasseWarnMessage = "Référence incohérente : vérifie la correspondance entre nom de référence et classe (ex. CP1 ↔ CP1A/CP1B).";
+            klasseWarnMessage = "Référence incohérente : vérifiez la correspondance entre nom de référence et classe (ex. CP1 ↔ CP1A/CP1B).";
         }
         klasseModalOpen = false;
         autoAssignConfirmOpen = false;

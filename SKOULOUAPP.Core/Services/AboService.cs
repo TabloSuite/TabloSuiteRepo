@@ -94,7 +94,7 @@ public class AboService(ISkoulouAppDbContext dbContext, KlassenZuordnungsService
             .FirstOrDefaultAsync(cancellationToken);
         if (activeClassCycleId is null)
         {
-            return (false, "Démarre d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOUAPP.");
+            return (false, "Démarrez d'abord le cycle de cette classe avant d'attribuer ou modifier un abonnement SKOULOU.");
         }
         if (await dbContext.KursNiveauDurchlaeufe.AnyAsync(x => x.Id == activeClassCycleId && x.PlattformPreisProSchueler != null, cancellationToken))
             return (false, "Les participants de ce cycle sont enregistrés automatiquement. Aucune attribution manuelle n'est nécessaire.");
@@ -196,7 +196,7 @@ public class AboService(ISkoulouAppDbContext dbContext, KlassenZuordnungsService
             }
             else
             {
-                return (false, "L'abonnement SKOULOUAPP de cette classe est déjà attribué et ne peut plus être modifié.");
+                return (false, "L'abonnement SKOULOU de cette classe est déjà attribué et ne peut plus être modifié.");
             }
         }
 
@@ -296,7 +296,7 @@ public class AboService(ISkoulouAppDbContext dbContext, KlassenZuordnungsService
     {
         if (!istSuperAdmin)
         {
-            return (false, "Seul l'Administrateur peut annuler un paiement SKOULOUAPP.");
+            return (false, "Seul l'Administrateur peut annuler un paiement SKOULOU.");
         }
 
         var enrollment = await dbContext.LevelEnrollments
@@ -336,7 +336,7 @@ public class AboService(ISkoulouAppDbContext dbContext, KlassenZuordnungsService
                 && durchlauf.EndDatum == null, cancellationToken);
         if (!hasActiveClassCycle)
         {
-            return (false, "Le paiement SKOULOUAPP ne peut être annulé que tant que le cycle de cette classe est encore ouvert.");
+            return (false, "Le paiement SKOULOU ne peut être annulé que tant que le cycle de cette classe est encore ouvert.");
         }
 
         enrollment.IsPaid = false;

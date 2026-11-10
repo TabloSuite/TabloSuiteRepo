@@ -65,16 +65,16 @@ public sealed class AbrechnungBenachrichtigungService(
 
         var amount = periode.Umsatz.ToString("N0", CultureInfo.GetCultureInfo("fr-FR"));
         var school = WebUtility.HtmlEncode(periode.Name);
-        var html = EmailTemplates.Wrap("Nouvelle facturation SKOULOUAPP",
-            $"<p>Bonjour,</p><p>Une facturation SKOULOUAPP a été créée pour votre établissement <strong>{school}</strong>.</p>" +
+        var html = EmailTemplates.Wrap("Nouvelle facturation SKOULOU",
+            $"<p>Bonjour,</p><p>Une facturation SKOULOU a été créée pour votre établissement <strong>{school}</strong>.</p>" +
             $"<p>Période : du {periode.VonUtc:dd/MM/yyyy} au {periode.BisUtc:dd/MM/yyyy}<br/>" +
             $"Abonnements : {periode.AnzahlAbonnements}<br/>Montant à virer : <strong>{amount} FCFA</strong>.</p>" +
-            "<p>Consultez la facturation dans votre espace SKOULOUAPP. Après avoir effectué le virement, signalez-le dans l'application. " +
+            "<p>Consultez la facturation dans votre espace SKOULOU. Après avoir effectué le virement, signalez-le dans l'application. " +
             "L'Administrateur vérifiera ensuite la réception sur le compte avant de confirmer la facturation.</p>" +
-            "<p>À bientôt,<br/>L'équipe SKOULOUAPP</p>");
+            "<p>À bientôt,<br/>L'équipe SKOULOU</p>");
         var message = new EmailMessage
         {
-            Subject = "Facturation SKOULOUAPP à régler",
+            Subject = "Facturation SKOULOU à régler",
             HtmlBody = html,
             TextBody = EmailTemplates.ToPlainText(html)
         };

@@ -90,7 +90,7 @@ public sealed class ZyklusTeilnahmeService(ISkoulouAppDbContext db)
             ?? SkoulouAppKonstanten.StandardPreisAbo;
         var preis = schule.EffektiverPreis(standard);
         if (preis <= 0 || decimal.Round(preis, 2) != preis)
-            throw new InvalidOperationException("Le tarif SKOULOUAPP fixé par l'administrateur doit être positif et comporter au maximum deux décimales.");
+            throw new InvalidOperationException("Le tarif SKOULOU fixé par l'administrateur doit être positif et comporter au maximum deux décimales.");
         return preis;
     }
 

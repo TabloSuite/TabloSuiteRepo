@@ -112,7 +112,7 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
         if (string.IsNullOrWhiteSpace(empfaenger) || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(empfaenger.Trim())
             || string.IsNullOrWhiteSpace(betreff) || betreff.Length > 300 || HtmlSanitizer.ToPlainText(inhalt).Length < 1)
         {
-            return (false, "Vérifie l'adresse, l'objet et le message.");
+            return (false, "Vérifiez l'adresse, l'objet et le message.");
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);

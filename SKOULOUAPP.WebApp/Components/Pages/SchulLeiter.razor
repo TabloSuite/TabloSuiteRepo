@@ -20,7 +20,7 @@
 			<div class="min-w-0">
 				<p class="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-cyan-200">@(isProduktOwner ? "Établissements suivis" : "Direction de l'établissement")</p>
 				<h1 class="mt-1 text-xl font-bold leading-tight xl:text-2xl">Gestion des élèves, des classes et des abonnements</h1>
-				<p class="mt-1 hidden max-w-2xl text-sm text-slate-300 md:block">Valide les inscriptions, active les accès des élèves et pilote les classes, supports et examens de ton établissement.</p>
+				<p class="mt-1 hidden max-w-2xl text-sm text-slate-300 md:block">Validez les inscriptions, activez les accès des élèves et pilotez les classes, supports et examens de votre établissement.</p>
 			</div>
 		</div>
 	</div>
@@ -139,7 +139,7 @@
         <div class="mt-3 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900 ring-1 ring-indigo-100">
             @if (SelectedSchoolForManagement is null)
             {
-                <span>Sélectionne une école en haut de la page pour gérer les matières.</span>
+                <span>Sélectionnez une école en haut de la page pour gérer les matières.</span>
             }
             else
             {
@@ -203,7 +203,7 @@
     {
     <CollapsibleCard Title="Classes de mon école"
                       Eyebrow="Gestion des classes"
-                      Subtitle="Crée et gère uniquement les classes propres à ton école."
+                      Subtitle="Créez et gérez uniquement les classes propres à votre école."
                      Icon="school"
                      Accent="violet"
                      Expanded="klassenExpanded"
@@ -226,13 +226,13 @@
 
             @if (SelectedKlasseSchoolId is null)
             {
-                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionne une école pour gérer ses classes.</p>
+                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour gérer ses classes.</p>
             }
             else
             {
                 <div class="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
                     <h3 class="font-bold text-slate-900">Mentions de fin de cycle</h3>
-                    <p class="mt-1 text-sm text-slate-600">Définis les mentions de l'école une seule fois. Les mentions déjà enregistrées pour les élèves restent inchangées si cette liste évolue.</p>
+                    <p class="mt-1 text-sm text-slate-600">Définissez les mentions de l'école une seule fois. Les mentions déjà enregistrées pour les élèves restent inchangées si cette liste évolue.</p>
                     @if (!string.IsNullOrWhiteSpace(mentionError)) { <p class="mt-2 text-sm text-rose-700">@mentionError</p> }
                     @if (!string.IsNullOrWhiteSpace(mentionMessage)) { <p class="mt-2 text-sm text-emerald-700">@mentionMessage</p> }
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -413,7 +413,7 @@
                                     {
                                         <div class="mt-2 flex flex-wrap gap-2 text-xs">
                                             <span class="inline-flex items-center rounded-full bg-cyan-50 px-3 py-1 font-semibold text-cyan-800 ring-1 ring-cyan-100">
-                                                SKOULOUAPP: @(studentInfo.HasPaidEnrollment ? "Actif" : "Inactif")
+                                                SKOULOU: @(studentInfo.HasPaidEnrollment ? "Actif" : "Inactif")
                                             </span>
                                             <span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-100">
                                                 @(studentInfo.IsSchoolFeeFullyPaid
@@ -629,7 +629,7 @@
                                             }
                                             else if (level.IsUnlocked)
                                             {
-                                                <Badge Accent="cyan">Abonnement SKOULOUAPP</Badge>
+                                                <Badge Accent="cyan">Abonnement SKOULOU</Badge>
                                                 <Badge Accent="slate">@level.AboPreis.ToString("N0") FCFA</Badge>
                                             }
 
@@ -690,7 +690,7 @@
         <ChildContent>
             @if (SelectedKlasseSchoolId is null)
             {
-                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionne une école pour réattribuer les élèves.</p>
+                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour réattribuer les élèves.</p>
             }
             else
             {
@@ -724,7 +724,7 @@
                                 }
                             </div>
                         }
-                        <p class="mt-3 text-xs text-slate-500">Astuce: utilise le filtre de référence (CP1, CP2, etc.) au-dessus pour limiter la liste des classes.</p>
+                        <p class="mt-3 text-xs text-slate-500">Astuce: utilisez le filtre de référence (CP1, CP2, etc.) au-dessus pour limiter la liste des classes.</p>
                     </article>
 
                     <article class="rounded-2xl border border-slate-100 bg-white p-4">
@@ -828,7 +828,7 @@
     {
     <CollapsibleCard Title="Import utilisateurs"
                      Eyebrow="Création automatique"
-                     Subtitle="Ajoute beaucoup d'enseignants ou d'élèves à partir d'un fichier CSV Excel. Champs obligatoires : Prénom, Nom, Classe."
+                     Subtitle="Ajoutez beaucoup d'enseignants ou d'élèves à partir d'un fichier CSV Excel. Champs obligatoires : Prénom, Nom, Classe."
                      Icon="download"
                      Accent="cyan"
                      Expanded="userImportExpanded"
@@ -837,7 +837,7 @@
             @if (SelectedKlasseSchoolId is null)
             {
                 <p class="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
-                    Sélectionne d'abord une école précise. L'import n'est pas disponible dans la vue combinée « Toutes les écoles ».
+                    Sélectionnez d'abord une école précise. L'import n'est pas disponible dans la vue combinée « Toutes les écoles ».
                 </p>
             }
 
@@ -846,13 +846,13 @@
                     <div class="flex items-start gap-3">
                         <span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-600 text-lg font-black text-white">1</span>
                         <div>
-                            <h3 class="text-lg font-black text-slate-900">Prépare ton fichier en 4 étapes</h3>
+                            <h3 class="text-lg font-black text-slate-900">Préparez votre fichier en 4 étapes</h3>
                             <ol class="mt-3 grid gap-3 text-sm leading-6 text-slate-700 sm:grid-cols-2">
-                                <li><strong>1. Ouvre Excel</strong> et crée un nouveau tableau.</li>
-                                <li><strong>2. Copie les titres de colonnes</strong> indiqués dans l'exemple correspondant.</li>
-                                <li><strong>3. Ajoute une personne par ligne.</strong> Les champs optionnels peuvent rester vides. Si l'e-mail est vide, il est créé automatiquement. Chaque personne reçoit un mot de passe initial individuel, affiché après l'import pour transmission confidentielle.</li>
+                                <li><strong>1. Ouvrez Excel</strong> et créez un nouveau tableau.</li>
+                                <li><strong>2. Copiez les titres de colonnes</strong> indiqués dans l'exemple correspondant.</li>
+                                <li><strong>3. Ajoutez une personne par ligne.</strong> Les champs optionnels peuvent rester vides. Si l'e-mail est vide, il est créé automatiquement. Chaque personne reçoit un mot de passe initial individuel, affiché après l'import pour transmission confidentielle.</li>
 
-                                <li><strong>4. Enregistre le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong> ou <strong>Excel (*.xlsx)</strong>, puis charge-le ci-dessous.</li>
+                                <li><strong>4. Enregistrez le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong> ou <strong>Excel (*.xlsx)</strong>, puis chargez-le ci-dessous.</li>
                             </ol>
                             <p class="mt-3 text-xs font-medium text-cyan-900">Les classes doivent déjà exister dans l'école sélectionnée. Seule la première feuille Excel est lue. Taille maximale : 2 Mo par fichier.</p>
                         </div>
@@ -863,7 +863,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h3 class="text-xl font-black text-slate-900">Ajouter des enseignants</h3>
-                            <p class="mt-1 text-sm text-slate-600">Un enseignant peut être attribué à une ou plusieurs classes. Sépare plusieurs classes par une virgule.</p>
+                            <p class="mt-1 text-sm text-slate-600">Un enseignant peut être attribué à une ou plusieurs classes. Séparez plusieurs classes par une virgule.</p>
                         </div>
                         <Badge Accent="cyan">CSV / Excel</Badge>
                     </div>
@@ -904,7 +904,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h3 class="text-xl font-black text-slate-900">Ajouter des élèves</h3>
-                            <p class="mt-1 text-sm text-slate-600">Attribue chaque élève à une classe existante. L'e-mail et le téléphone sont optionnels.</p>
+                            <p class="mt-1 text-sm text-slate-600">Attribuez chaque élève à une classe existante. L'e-mail et le téléphone sont optionnels.</p>
                         </div>
                         <Badge Accent="emerald">CSV / Excel</Badge>
                     </div>
@@ -1011,7 +1011,7 @@
         </div>
         <div>
             <label class="skoulou-label">Description de l'école (facultatif)</label>
-            <RichTextEditor @bind-Value="schoolForm.DescriptionHtml" EnableImages="false" EnableLargeEditor="true" Placeholder="Présente ton établissement..." />
+            <RichTextEditor @bind-Value="schoolForm.DescriptionHtml" EnableImages="false" EnableLargeEditor="true" Placeholder="Présentez votre établissement..." />
         </div>
         <div class="mt-2 flex justify-end gap-3">
             <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="() => schoolModalOpen = false">Annuler</button>
@@ -1027,7 +1027,7 @@
              ErrorMessage="@fachVerwaltungErrorMessage"
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-md">
-    <p class="text-sm text-slate-700">Veux-tu vraiment supprimer la matière <strong>@fachToDeleteName</strong> ?</p>
+    <p class="text-sm text-slate-700">Voulez-vous vraiment supprimer la matière <strong>@fachToDeleteName</strong> ?</p>
     <p class="mt-2 text-xs text-slate-500">La suppression n'est possible que si la matière n'est attribuée à aucun enseignant.</p>
     <div class="mt-5 flex justify-end gap-2">
         <button type="button"
@@ -1154,7 +1154,7 @@
                         <label class="skoulou-label">Matières attribuées</label>
                         @if (UserFormTeacherFachOptions.Count == 0)
                         {
-                            <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Aucune matière disponible pour les écoles attribuées. Ajoute d'abord les matières de l'école ci-dessus.</p>
+                            <p class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Aucune matière disponible pour les écoles attribuées. Ajoutez d'abord les matières de l'école ci-dessus.</p>
                         }
                         else
                         {
@@ -1196,7 +1196,7 @@
                         @if (SelectedStudentSchoolId == Guid.Empty)
                         {
                             <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                                Choisis d'abord l'école pour afficher les classes disponibles.
+                                Choisissez d'abord l'école pour afficher les classes disponibles.
                             </div>
                         }
                         else
@@ -1208,7 +1208,7 @@
                                            Options="UserCurrentClassOptions"
                                            Searchable="true"
                                            SearchPlaceholder="Rechercher une classe..." />
-                            <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOUAPP.</p>
+                            <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOU.</p>
                         }
                         </div>
                     }
@@ -1223,11 +1223,11 @@
                 <p class="mt-1 text-xs text-slate-600">Les mêmes accès financiers s'appliquent à toutes les écoles sélectionnées lors de l'enregistrement.</p>
                 @if (coordinatorFinanceHadDifferentAccess)
                 {
-                    <p class="mt-2 text-xs text-amber-800">Les droits existants diffèrent selon les écoles. Seuls les accès déjà autorisés partout sont présélectionnés ; vérifie-les avant d'enregistrer.</p>
+                    <p class="mt-2 text-xs text-amber-800">Les droits existants diffèrent selon les écoles. Seuls les accès déjà autorisés partout sont présélectionnés ; vérifiez-les avant d'enregistrer.</p>
                 }
                 @if (userForm.SchoolIds.Count == 0)
                 {
-                    <p class="mt-3 text-xs text-slate-600">Sélectionne au moins une école pour définir les accès financiers.</p>
+                    <p class="mt-3 text-xs text-slate-600">Sélectionnez au moins une école pour définir les accès financiers.</p>
                 }
                 else
                 {
@@ -1236,7 +1236,7 @@
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceDashboard" disabled="@(!coordinatorFinanceMenu)" />Finances de l'école</label>
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceEntries" disabled="@(!coordinatorFinanceMenu)" />Nouvelle écriture</label>
                         <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceCycles" disabled="@(!coordinatorFinanceMenu)" />Paiements des cycles</label>
-                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceBilling" disabled="@(!coordinatorFinanceMenu)" />Facturation SKOULOUAPP</label>
+                        <label class="flex items-center gap-2"><InputCheckbox @bind-Value="coordinatorFinanceBilling" disabled="@(!coordinatorFinanceMenu)" />Facturation SKOULOU</label>
                     </div>
                     @if (!coordinatorFinanceMenu || !coordinatorFinanceCycles)
                     {
@@ -1295,7 +1295,7 @@
                     Seul l'Administrateur peut intervenir après clarification avec la direction.
                 </div>
             <button type="button" class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-left transition hover:border-cyan-500 hover:bg-cyan-100" @onclick="() => SelectAboTyp(AboTyp.SkoulouApp)">
-                <span class="flex items-center justify-between gap-3 font-bold text-cyan-950"><span>SKOULOUAPP</span><span>@PendingAboPreis?.ToString("N0") FCFA</span></span>
+                <span class="flex items-center justify-between gap-3 font-bold text-cyan-950"><span>SKOULOU</span><span>@PendingAboPreis?.ToString("N0") FCFA</span></span>
                 <span class="mt-1 block text-sm text-cyan-800">Abonnement unique pour l'accès aux contenus et évaluations de la classe.</span>
             </button>
         </div>
@@ -1331,7 +1331,7 @@
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-2xl">
     <p class="text-sm leading-6 text-slate-600">
-        Sélectionne les classes que cet enseignant peut gérer dans chaque école et indique ses heures hebdomadaires.
+        Sélectionnez les classes que cet enseignant peut gérer dans chaque école et indiquez ses heures hebdomadaires.
         Sans classe attribuée, l'enseignant ne voit aucun élève.
     </p>
 
@@ -1412,7 +1412,7 @@
 
         <div>
             <ModernDropdown TValue="Guid?" Label="Nom de référence" Value="klasseForm.KlassenStufeId" ValueChanged="SetKlassenStufeAsync" Options="KlassenStufeOptions" Disabled="@(!string.IsNullOrWhiteSpace(klasseForm.NeueKlassenStufe))" />
-            <p class="mt-2 text-xs text-slate-500">Choisis un nom de référence existant ou crée-en un nouveau ci-dessous. Exemples : CP1, CP2, CE1, CE2, CM1, CM2.</p>
+            <p class="mt-2 text-xs text-slate-500">Choisissez un nom de référence existant ou créez-en un nouveau ci-dessous. Exemples : CP1, CP2, CE1, CE2, CM1, CM2.</p>
             <input type="text" @bind="klasseForm.NeueKlassenStufe" placeholder="Nouveau nom de référence, ex. CP1" class="skoulou-input mt-2 text-sm" />
             <ValidationMessage For="() => klasseForm.NeueKlassenStufe" class="mt-1 text-xs text-rose-600" />
         </div>
@@ -1470,7 +1470,7 @@
              CloseOnBackdrop="false"
              MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-700">
-        Ce cycle est actif. Si tu continues, tous les élèves actuellement attribués à cette classe recevront immédiatement l'abonnement SKOULOUAPP.
+        Ce cycle est actif. Si vous continuez, tous les élèves actuellement attribués à cette classe recevront immédiatement l'abonnement SKOULOU.
     </p>
     <p class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
         Cette action n'est plus réversible pendant ce cycle. Le retour en arrière sera possible seulement après ouverture d'un nouveau cycle.
@@ -1501,10 +1501,10 @@
              MaxWidthClass="max-w-lg">
     @if (startKlasse is not null)
     {
-        <p class="text-sm leading-6 text-slate-600">Démarre un nouveau cycle pour <span class="font-semibold text-slate-900">@startKlasse.Title</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
+        <p class="text-sm leading-6 text-slate-600">Démarrez un nouveau cycle pour <span class="font-semibold text-slate-900">@startKlasse.Title</span>. La date de fin sera définie lorsque le cycle sera réellement clôturé.</p>
         @if (durchlaufStartDurchUeberweisungGesperrt)
         {
-            <p class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Déclare d'abord le virement de la facturation du cycle précédent dans <a class="font-bold underline" href="/abrechnung">Facturation SKOULOUAPP</a>. La confirmation bancaire de l'Administrateur n'est pas nécessaire pour démarrer.</p>
+            <p class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Déclarez d'abord le virement de la facturation du cycle précédent dans <a class="font-bold underline" href="/abrechnung">Facturation SKOULOU</a>. La confirmation bancaire de l'Administrateur n'est pas nécessaire pour démarrer.</p>
         }
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
@@ -1555,7 +1555,7 @@
                     @if (beendenOhneNote > 0)
                     {
                         <p class="text-xl font-black text-amber-700">@beendenOhneNote / @beendenTeilnehmerGesamt <span class="text-sm font-bold">non définies</span></p>
-                        <p class="mt-1 text-xs font-medium">Information : tu peux clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
+                        <p class="mt-1 text-xs font-medium">Information : vous pouvez clôturer sans les définir. Ces résultats resteront non renseignés après la clôture.</p>
                     }
                     else
                     {
@@ -1568,7 +1568,7 @@
             <p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true"><Icon Name="alert" Groesse="16" /> </span>Clôture définitive du cycle de classe</p>
             <p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
             <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture. Pour les nouveaux cycles, les élèves restent dans leur classe et conservent l'accès aux supports publiés ; la promotion est une opération distincte. Les anciens cycles conservent leur traitement historique.</p>
-            <p class="mt-2">Pour les nouveaux cycles, la clôture par la direction ou un coordinateur autorisé crée automatiquement la facture de toutes les participations enregistrées, au tarif fixé au démarrage. Aucun paiement individuel SKOULOUAPP n'est demandé. Déclare ensuite le virement dans Facturation SKOULOUAPP ; le paiement de l'école ne conditionne pas l'accès des élèves ni le démarrage du cycle suivant.</p>
+            <p class="mt-2">Pour les nouveaux cycles, la clôture par la direction ou un coordinateur autorisé crée automatiquement la facture de toutes les participations enregistrées, au tarif fixé au démarrage. Aucun paiement individuel SKOULOU n'est demandé. Déclarez ensuite le virement dans Facturation SKOULOU ; le paiement de l'école ne conditionne pas l'accès des élèves ni le démarrage du cycle suivant.</p>
         </div>
         <div class="mt-5">
             <label class="skoulou-label">Date de fin effective</label>

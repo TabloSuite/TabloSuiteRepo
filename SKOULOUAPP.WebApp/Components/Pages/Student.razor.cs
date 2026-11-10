@@ -83,25 +83,25 @@ public partial class Student
 
             if (!dashboard.HasCurrentKlasseAssignment)
             {
-                return "Ton école doit d'abord te rattacher à une classe active.";
+                return "Votre école doit d'abord vous rattacher à une classe active.";
             }
 
             if (!dashboard.HasCurrentClassCycle)
             {
-                return "Le cycle n'a pas encore commencé. Les contenus publiés de ta classe restent accessibles.";
+                return "Le cycle n'a pas encore commencé. Les contenus publiés de votre classe restent accessibles.";
             }
 
             if (dashboard.IsCurrentClassCycleClosed)
             {
-                return "Le cycle est clôturé. Tu peux toujours consulter les contenus publiés de ta classe.";
+                return "Le cycle est clôturé. Vous pouvez toujours consulter les contenus publiés de votre classe.";
             }
 
             if (!dashboard.IsCurrentClassUnlocked)
             {
-                return "Ton accès est indisponible. Contacte la direction de ton école.";
+                return "Votre accès est indisponible. Contactez la direction de votre école.";
             }
 
-            return "Ton accès à la classe est actif. Tu peux continuer tes leçons et exercices.";
+            return "Votre accès à la classe est actif. Vous pouvez continuer vos leçons et exercices.";
         }
     }
 
@@ -120,10 +120,10 @@ public partial class Student
             : !dashboard.HasCurrentKlasseAssignment
                 ? "Aucune classe n'est encore attribuée."
                 : !dashboard.HasCurrentClassCycle
-                    ? "Ta classe est attribuée, mais son cycle n'a pas encore démarré."
+                    ? "Votre classe est attribuée, mais son cycle n'a pas encore démarré."
                     : dashboard.IsCurrentClassCycleClosed
-                        ? "Le cycle de ta classe est clôturé. Les nouvelles leçons dépendront de la prochaine affectation."
-                        : "Aucune leçon publiée pour ta classe actuellement.";
+                        ? "Le cycle de votre classe est clôturé. Les nouvelles leçons dépendront de la prochaine affectation."
+                        : "Aucune leçon publiée pour votre classe actuellement.";
 
     private static string FormatClasseLabel(string? code, string? title)
     {

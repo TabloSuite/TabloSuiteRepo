@@ -30,15 +30,15 @@ public sealed class FinanzBerichtPdfService
                 content.Item().Row(summary =>
                 {
                     summary.RelativeItem().Text($"Recettes : {darstellung.Einnahmen:N0} FCFA").SemiBold().FontColor(Colors.Green.Darken2);
-                    summary.RelativeItem().Text($"Charges de l'école, frais SKOULOUAPP compris : {darstellung.Ausgaben:N0} FCFA").SemiBold().FontColor(Colors.Red.Darken2);
+                    summary.RelativeItem().Text($"Charges de l'école, frais SKOULOU compris : {darstellung.Ausgaben:N0} FCFA").SemiBold().FontColor(Colors.Red.Darken2);
                 });
                 content.Item().Text($"Solde comptable de l'école : {darstellung.Saldo:N0} FCFA").Bold().FontSize(15);
-                content.Item().Text("Résultat des frais scolaires, autres recettes, dépenses de fonctionnement et frais SKOULOUAPP. Une charge de cycle facturée n'est pas une confirmation de virement.").FontSize(9);
+                content.Item().Text("Résultat des frais scolaires, autres recettes, dépenses de fonctionnement et frais SKOULOU. Une charge de cycle facturée n'est pas une confirmation de virement.").FontSize(9);
                 if (bericht.MitAbos && darstellung.HatAboBuchungen)
                 {
                     content.Item().Background(Colors.Blue.Lighten5).Padding(10).Column(abo =>
                     {
-                        abo.Item().Text($"Abonnements SKOULOUAPP · {darstellung.AboZahlungenAnzahl} paiement(s) regroupé(s)").Bold();
+                        abo.Item().Text($"Abonnements SKOULOU · {darstellung.AboZahlungenAnzahl} paiement(s) regroupé(s)").Bold();
                         abo.Item().Text($"Recettes : {darstellung.AboEinnahmen:N0} FCFA · Part plateforme déduite : {darstellung.AboAusgaben:N0} FCFA");
                         abo.Item().Text($"Anciennes commissions enseignants (historique uniquement) : {darstellung.Lehreranteil:N0} FCFA");
                         abo.Item().Text(darstellung.Direktionsanteil is decimal part

@@ -43,7 +43,7 @@ else
         <div class="director-sticky-band">
             <div class="flex flex-wrap items-center gap-3 pr-14 sm:pr-16">
                 <ModernDropdown TValue="string?" Value="userSchoolFilter" ValueChanged="v => SetUserSchoolFilter(v)" Options="UserSchoolFilterOptions" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
-                <span class="text-xs font-medium text-slate-500">Filtre la liste des utilisateurs par école.</span>
+                <span class="text-xs font-medium text-slate-500">Filtrez la liste des utilisateurs par école.</span>
             </div>
         </div>
 
@@ -184,7 +184,7 @@ else
                         <div class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
                             <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@school.TeacherCount</div><div class="text-slate-500">Enseignants</div></div>
                             <div class="rounded-xl bg-slate-50 p-2.5"><div class="font-bold text-slate-900">@school.StudentCount</div><div class="text-slate-500">Eleves</div></div>
-                            <div class="rounded-xl @(school.OutstandingDebt > 0 ? "bg-rose-50" : "bg-slate-50") p-2.5"><div class="font-bold @(school.OutstandingDebt > 0 ? "text-rose-700" : "text-slate-900")">@school.OutstandingDebt.ToString("N0") FCFA</div><div class="@(school.OutstandingDebt > 0 ? "text-rose-500" : "text-slate-500")">Dette de l'ecole envers SKOULOUAPP</div></div>
+                            <div class="rounded-xl @(school.OutstandingDebt > 0 ? "bg-rose-50" : "bg-slate-50") p-2.5"><div class="font-bold @(school.OutstandingDebt > 0 ? "text-rose-700" : "text-slate-900")">@school.OutstandingDebt.ToString("N0") FCFA</div><div class="@(school.OutstandingDebt > 0 ? "text-rose-500" : "text-slate-500")">Dette de l'ecole envers SKOULOU</div></div>
                         </div>
                         <div class="mt-2.5 grid gap-2 text-xs sm:grid-cols-2">
                             <div class="rounded-xl bg-cyan-50 p-2.5"><div class="font-bold text-cyan-800">@school.EffectiveSubscriptionPrice.ToString("N0") FCFA</div><div class="text-cyan-600">Prix de l'abonnement affiche</div></div>
@@ -273,7 +273,7 @@ else
 
                     <div class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-950">
                         <p class="font-bold">Information</p>
-                        <p class="mt-1">Vérifie le rôle, l'école et l'adresse e-mail avant d'enregistrer. Les droits d'accès et les leçons visibles dépendent de ces choix.</p>
+                        <p class="mt-1">Vérifiez le rôle, l'école et l'adresse e-mail avant d'enregistrer. Les droits d'accès et les leçons visibles dépendent de ces choix.</p>
                     </div>
 
                     <div>
@@ -368,7 +368,7 @@ else
                         {
                             <div>
                                 <ModernDropdown TValue="Guid?" Label="Classe ou niveau actuel" Value="userForm.CurrentKlasseId" ValueChanged="SetUserClassAsync" Options="UserClassOptions" />
-                                <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOUAPP.</p>
+                                <p class="mt-1 text-xs text-slate-500">Cette affectation ne crée pas d'abonnement SKOULOU.</p>
                             </div>
                         }
                         @if (userForm.RoleName == "Lehrer")
@@ -538,7 +538,7 @@ else
                                                     <span class="text-sm text-slate-500">@level.CourseTitle</span>
                                                 </div>
                                                 <div class="flex flex-wrap items-center gap-2">
-                                                    <Badge Accent="cyan">SKOULOUAPP</Badge>
+                                                    <Badge Accent="cyan">SKOULOU</Badge>
                                                     @if (!level.IsUnlocked)
                                                     {
                                                         <Badge Accent="slate">Désactivé</Badge>
@@ -996,7 +996,7 @@ else
     <section class="mt-10 rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:mt-12 sm:p-8">
         <p class="text-sm font-semibold uppercase tracking-[.18em] text-violet-700">Administrateur</p>
         <h2 class="mt-2 text-2xl font-black text-slate-900">Prix général et rémunération interne</h2>
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Définis ici le prix général de l'abonnement. Si une école n'a pas de prix spécifique, ce prix général est utilisé automatiquement. Les nouveaux abonnements figent ensuite leur prix et leurs montants calculés.</p>
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Définissez ici le prix général de l'abonnement. Si une école n'a pas de prix spécifique, ce prix général est utilisé automatiquement. Les nouveaux abonnements figent ensuite leur prix et leurs montants calculés.</p>
 
         <Toast Message="@commissionStatusMessage" MessageChanged="v => commissionStatusMessage = v" Kind="Toast.ToastKind.Success" />
         <Toast Message="@commissionErrorMessage" MessageChanged="v => commissionErrorMessage = v" Kind="Toast.ToastKind.Error" />
@@ -1033,7 +1033,7 @@ else
                  Eyebrow="Action réservée à l'Administrateur"
                  MaxWidthClass="max-w-lg">
         <p class="text-sm leading-6 text-slate-600">
-            Confirmes-tu le retrait du paiement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveLevelCode</span> ?
+            Confirmez-vous le retrait du paiement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveLevelCode</span> ?
             Cette action est réservée à l'Administrateur et n'est possible que tant que le paiement n'a pas encore été facturé et que le cycle de la classe est encore ouvert.
         </p>
         <div class="mt-6 flex justify-end gap-3">
@@ -1055,7 +1055,7 @@ else
                  Eyebrow="Action réservée à l'Administrateur"
                  MaxWidthClass="max-w-lg">
     <p class="text-sm leading-6 text-slate-600">
-        Confirmes-tu l'annulation de l'abonnement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveAboLevelCode</span> ?
+        Confirmez-vous l'annulation de l'abonnement pour le niveau <span class="font-semibold text-slate-900">@pendingRemoveAboLevelCode</span> ?
         Le niveau ne sera plus accessible à l'élève et le statut payé sera retiré. Cette action n'est possible que tant que le niveau n'est pas encore facturé.
     </p>
     <div class="mt-6 flex justify-end gap-3">
@@ -1078,7 +1078,7 @@ else
                  MaxWidthClass="max-w-lg">
         <div class="space-y-4 text-sm leading-6 text-slate-600">
             <p>
-                Confirme l'annulation de l'abonnement pour la classe <span class="font-semibold text-slate-900">@pendingRemoveAboLevelCode</span> et le retrait de l'élève de cette classe.
+                Confirmez l'annulation de l'abonnement pour la classe <span class="font-semibold text-slate-900">@pendingRemoveAboLevelCode</span> et le retrait de l'élève de cette classe.
             </p>
             <p class="mt-2 rounded-xl bg-rose-50 p-3 font-medium text-rose-800">
                 L'accès et le statut payé seront supprimés, les écritures financières liées seront annulées et l'élève n'appartiendra plus à cette classe. Cette action est impossible après facturation.

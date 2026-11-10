@@ -22,7 +22,7 @@ public sealed class AnkuendigungService(ISkoulouAppDbContext dbContext)
         inhaltHtml = HtmlSanitizer.Sanitize(inhaltHtml);
         if (titel.Length is < 1 or > 200 || HtmlSanitizer.ToPlainText(inhaltHtml).Length < 5 || ablaufAmUtc <= jetztUtc)
         {
-            return (false, "Indique un titre, un texte d'au moins cinq caractères et une date d'expiration future.");
+            return (false, "Indiquez un titre, un texte d'au moins cinq caractères et une date d'expiration future.");
         }
 
         dbContext.Ankuendigungen.Add(new Ankuendigung { Titel = titel, InhaltHtml = inhaltHtml, ErstelltAmUtc = jetztUtc, AblaufAmUtc = ablaufAmUtc });

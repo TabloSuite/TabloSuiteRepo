@@ -713,13 +713,13 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken);
         if (profile is null || exercise.Lesson.Klasse.SchoolId != profile.SchoolId)
         {
-            return new AnswerResult { Succeeded = false, Message = "Cette leçon n'appartient pas à ton école." };
+            return new AnswerResult { Succeeded = false, Message = "Cette leçon n'appartient pas à votre école." };
         }
 
         var accessibleKlasseIds = await GetAccessibleKlasseIdsAsync(studentId, cancellationToken);
         if (!accessibleKlasseIds.Contains(exercise.Lesson.KlasseId))
         {
-            return new AnswerResult { Succeeded = false, Message = "Ce niveau n'est pas encore débloqué pour ton compte." };
+            return new AnswerResult { Succeeded = false, Message = "Ce niveau n'est pas encore débloqué pour votre compte." };
         }
 
         if (!exercise.Lesson.IsPublished)
@@ -752,7 +752,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             awardedPoints = isCorrect ? exercise.Points : 0;
             message = isCorrect
                 ? "Bravo, toutes les réponses sont correctes !"
-                : $"{correct}/{total} correct(s). Réessaie.";
+                : $"{correct}/{total} correct(s). Réessayez.";
         }
         else if (IsMultipleChoiceExerciseType(normalizedType))
         {
@@ -770,7 +770,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             // Alles-oder-nichts: genau die korrekten Optionen müssen gewählt sein.
             isCorrect = correctIds.Count > 0 && correctIds.SetEquals(selectedIds);
             awardedPoints = isCorrect ? exercise.Points : 0;
-            message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessaie.";
+            message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessayez.";
         }
         else if (IsChoiceExerciseType(normalizedType))
         {
@@ -789,7 +789,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             correctOptionId = exercise.Options.FirstOrDefault(x => x.IsCorrect)?.Id;
             isCorrect = selectedOption.IsCorrect;
             awardedPoints = isCorrect ? exercise.Points : 0;
-            message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessaie.";
+            message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessayez.";
         }
         else
         {
@@ -810,7 +810,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
             {
                 isCorrect = AnswerMatchingService.Matches(textAnswer, accepted);
                 awardedPoints = isCorrect ? exercise.Points : 0;
-                message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessaie.";
+                message = isCorrect ? "Bravo, c'est correct !" : "Ce n'est pas la bonne réponse. Réessayez.";
             }
             else
             {
@@ -818,7 +818,7 @@ public class LearningService(ISkoulouAppDbContext dbContext)
                 isCorrect = false;
                 requiresManualGrading = true;
                 awardedPoints = 0;
-                message = "Ta réponse a été enregistrée. Elle sera corrigée par ton enseignant.";
+                message = "Votre réponse a été enregistrée. Elle sera corrigée par votre enseignant.";
             }
         }
 

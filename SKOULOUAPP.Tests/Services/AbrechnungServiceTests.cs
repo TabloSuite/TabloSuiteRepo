@@ -419,7 +419,7 @@ public class AbrechnungServiceTests
         Assert.Equal(0, uebersicht.AnzahlPositionen);
         Assert.Equal(0m, uebersicht.OffenerUmsatz);
         Assert.False(succeeded);
-        Assert.Contains("abonnement SKOULOUAPP", message);
+        Assert.Contains("abonnement SKOULOU", message);
     }
 
     [Fact]
@@ -626,7 +626,7 @@ public class AbrechnungServiceTests
 
         // Assert
         Assert.False(succeeded);
-        Assert.Contains("abonnement SKOULOUAPP", message);
+        Assert.Contains("abonnement SKOULOU", message);
     }
 
     [Fact]
