@@ -1,26 +1,38 @@
-# eNOTE – Copilot Instructions
+﻿# eNOTE – Copilot Instructions
 
-> Gilt für alles unter `eNOTE/` (eNOTE.Core, eNOTE.WebApp, eNOTE.Tests). Vorrang vor den allgemeinen SKOULOUAPP-Regeln bei eNOTE-spezifischen Themen.
+> Gilt für alles unter `eNOTE/` (eNOTE.Core, eNOTE.WebApp, eNOTE.Tests). Vorrang vor den allgemeinen SKOULOUAPP-Regeln bei eNOTE-spezifischen Themen. Stand: 10.11.2026.
 
 ## Einstieg
-- Architektur, Fachregeln, lokale Startschritte und Flows stehen in [`eNOTE/Projektuebersicht.md`](../eNOTE/Projektuebersicht.md). Vor Änderungen an Geschäftsregeln den beschriebenen Laden-/Rollen-/Kassen-Datenfluss mit dem tatsächlichen Code abgleichen.
-- Projekte: `eNOTE.Core` (Modelle + domänenreine Services, keine EF/Web-Abhängigkeit), `eNOTE.WebApp` (Blazor Interactive Server, Identity, EF Core/SQL Server, Migrationen, Services, Pages), `eNOTE.Tests` (xUnit). Zielplattform .NET 10.
-- DB lokal: `localhost / ENOTEDB` (siehe `appsettings.Development.json`). Start: `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148.
+- Architektur, Fachregeln, lokale Startschritte und Abläufe: [`eNOTE/Projektuebersicht.md`](Projektuebersicht.md). Azure-Betrieb, Einstellungen und Migrationsablauf: [`eNOTE/Deployment-Azure.md`](Deployment-Azure.md). Vor Änderungen an Geschäftsregeln die Beschreibung mit dem tatsächlichen Code abgleichen.
+- Projekte: `eNOTE.Core` (Modelle + domänenreine Services, keine EF/Web-Abhängigkeit), `eNOTE.WebApp` (Blazor Interactive Server, Identity, EF Core/SQL Server, Migrationen, Services, Pages), `eNOTE.Tests` (xUnit, InMemory). Zielplattform .NET 10.
+- Lokal: DB `localhost / ENOTEDB`, Start `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148. Produktion: Azure App Service `enote` (Linux, B1, eine Instanz) → https://enote.tablosuite.com, DB `ENote-Database`.
 
 ## Verbindliche Fachregeln
-- **Mandant = Salon (Laden).** `IstFreigegeben` (Admin-Freigabe), `IstAktiv`, `ProbeBisUtc`. Erste Registrierung legt Besitzer + ersten Laden an (3-Monats-Probe, nicht freigegeben → Admin prüft). Weitere Läden darf der Besitzer erst nach abgelaufener Probezeit eines freigegebenen Ladens anlegen (`SalonService.FuegeSalonHinzuAsync`); neue Läden sind aktiv, aber nicht freigegeben und haben keine neue Probezeit.
-- **Daten pro Laden verwalten:** globaler `AktiverSalonState` (scoped, LocalStorage-persistiert) + `SalonSwitcher` in der Topbar. Verwaltungsseiten (Équipe, Prestations, Remises, Finances, Dépenses, Abonnement, Paramètres) laden ihre Daten anhand des aktiven Ladens und reagieren auf `OnChange`. Nicht mehr pro Seite eigene Salon-Auswahl einführen.
-- **Caisse:** Kassenstart per Kassen-PIN löst den Laden über `UserSalon` auf; höchstens eine offene Sitzung pro Laden. Soll-Barbestand = Startbestand + nur Bar-Einnahmen (`KassenRechner.BerechneBarSoll`); Karte erhöht die Kasse nicht. Beim erneuten Öffnen mit laufender Sitzung modalen Hinweis (Kassierer, Start, Soll) zeigen.
-- **Rabatte** sind aktivierbar (optional mit Bedingung) und können auf eine Leistung begrenzt sein. Standard-Artikel „Divers" nutzt einen freien Betrag.
-- **Kein QZ Tray / keine lokale Drucker-Zusatzsoftware.** Bon via `/bon/{id}` (PDF) und `/bon/{id}/druck` (HTML, ruft `window.print()`); dialogloser Windows-Druck über Browser-Kiosk-Modus (`eNOTE/Bon-Drucken.md`, `eNOTE/Start-Kasse.ps1`).
-- **Schulden/Abrechnung:** Plattform-Abopreis global als Standard oder individuell pro Salon; ProduktOwner-Provision (Prozent/Festbetrag) ist plattformintern und darf die Laden-Finanzen nicht verfälschen. Finanzberichte strikt pro Laden.
+- **Ein Konto pro Laden.** Mandant = `Salon` (`IstFreigegeben`, `IstAktiv`, `ProbeBisUtc`). Die Registrierung legt Besitzerkonto + Laden an (Probezeit, Admin-Freigabe nötig). Ein **weiterer Laden** entsteht über Paramètres → « Nouvel établissement » (`SalonService.FuegeSalonHinzuAsync`, erst nach abgelaufener Probezeit eines freigegebenen Ladens) und bekommt ein **neues Besitzerkonto** mit eigenem Pseudonym und Passwort; die E-Mail darf gleich sein (Kontakt-/Wiederherstellungsadresse, nie Anmeldeschlüssel, gewährt nie Zugriff auf andere Konten). Neuer Laden: aktiv, nicht freigegeben, keine neue Probezeit.
+- **Anmeldung per Pseudonym.** Kassierer sind eigene Konten (Rolle `Kassierer`, Pseudonym, Initialpasswort, Kassen-PIN), ohne Profilseite und ohne Passwort-Wiederherstellung per Mail. `AktiverSalonState` liefert die Zuordnung des Kontos; `SalonSwitcher` erscheint nur bei mehr als einer Zuordnung. Services prüfen die tatsächliche Konto-/Ladenzugehörigkeit (`LadenZugriff`), nie nur die UI.
+- **Besitzer-Zone:** Verwaltungsseiten liegen hinter der Besitzer-PIN (`BesitzerPinGuard`, `BesitzerPinState`), auch für den angemeldeten Besitzer (gemeinsames Tablet).
+- **Kasse:** Start per Kassierer + Kassen-PIN + Fond de caisse; höchstens eine offene Sitzung pro Laden. Bar-Soll = Startbestand + Baranteile (Rückerstattungen negativ) + Einlagen − Entnahmen (`KassenRechner.BerechneBarSoll`). Zahlungen 1..n Anteile (Bar, Mobile Money, Karte, gemischt). Rückerstattung nur als Gegenbuchung (`StornoService`), Verkäufe werden nie geändert oder gelöscht.
+- **Barcode-Scanner** im Tastatur-Modus werden überall in der Kasse erkannt (`enoteScanner` in `wwwroot/js/enote.js` → `Caisse.ScanErkannt`); das Enter des Scanners darf keine Kachel auslösen.
+- **Kundenkartei:** Kunde am Verkauf optional. Telefonnummer nur mit Zustimmung des Kunden (Häkchen, `TelefonEinwilligungUtc`); Kassierer sehen nur die letzten 4 Ziffern und keine Liste. Löschen entfernt Personendaten, Verkäufe bleiben (ohne Kundenbezug). Mobile Money speichert keine Telefonnummern.
+- **Tarife:** Standard-Monatspreis = Mindestpreis, individueller Preis nie darunter. Erhöhung wirkt auf alle Preise (individuell + Differenz) und nur ab dem 1. eines kommenden Monats; Senkung auch sofort. Bereits erzeugte Perioden ändern sich nie (`PreisAnpassungService`, datierte `MonatsPreisStaende`). Formeln nur aus dem Monatspreis ableiten (`VertragsRegeln`). Nur der SuperAdmin bestätigt Zahlungen.
+- **Administratoren:** nur der Hauptadministrator (`IstErsterAdmin`) legt Admins an, bearbeitet, sperrt oder löscht sie (`AdminKontenService`); `demo.*`-Konten werden nie Hauptadmin.
+- **E-Mails:** Pflicht-Mails (Zugang, Rechnung, Sperre, Tarifänderung) sind nicht abschaltbar; alle anderen über `MailArten`/`MailRegeln`. Postmark-Kontingent beachten (`Mail:MonatsLimit`).
+- **Bon:** kein QZ Tray, keine lokale Drucker-Zusatzsoftware. `/bon/{id}` (PDF) und `/bon/{id}/druck` (HTML, `window.print()`), dialoglos per Browser-Kiosk-Modus (`eNOTE/Bon-Drucken.md`). QR-Code: eigener Link des Ladens, sonst https://enote.tablosuite.com (`BonQr`).
+- **Abrechnung:** ProduktOwner-Provision ist plattformintern und darf Laden-Finanzen nicht verfälschen; Finanzberichte strikt pro Laden.
 
 ## Technische Regeln
-- Medien: Development lokal außerhalb von wwwroot; Production ausschließlich privater Azure Blob Storage per Managed Identity, ohne lokalen/Shared-Key-Fallback. Deployment-Einstellungen und getrennte, zielbestätigte DB-Administration: [Deployment-Azure.md](Deployment-Azure.md). Keine Veröffentlichung, DB-/Cloudänderungen oder Secret-Lesezugriffe; vorhandene Änderungen erhalten. Lokaler App-Start gegen die Entwicklungs-DB und visuelle Prüfung im (Headless-)Browser sind für Design-/UI-Arbeit erlaubt.
-- Pro DB-Operation `IDbContextFactory` verwenden; Rechte serverseitig im Service prüfen (nicht nur in der UI).
-- Code/Core-Modelle **deutsch**, alle sichtbaren Nutzertexte **französisch**. Kommunikation/Entwicklerdoku deutsch.
-- IDs: `Id` für Basis, zusammengesetzt mit `…ID`/`…Id` (z. B. `SalonId`, `VerkaufId`).
-- Bei Modelländerungen EF-Migration erstellen (`dotnet ef migrations add … --project eNOTE/eNOTE.WebApp`).
-- Scoped UI-States (`KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`): Komponenten abonnieren `OnChange` und implementieren `IDisposable`/`IAsyncDisposable` zum sauberen Abmelden.
-- Design: System „Soft Modern“ in `wwwroot/app.css` (Tokens in `:root`, keine hart codierten Farben; Icons nur über `<Icon Name="…" />`, keine Emojis); Details in `Projektuebersicht.md` §6. Horizontale Scrollbars vermeiden (Grids mit `minmax(0, 1fr)`); Touch-Targets ≥ 44px; native Selects/DatePicker durch `EnoteSelect`/`EnoteDatePicker`; Modals über `ModalDialog`; `AsyncActionButton` für async Aktionen.
-- Nach jeder Änderung relevante Tests und den Lösungsbuild ausführen.
+- Pro DB-Operation `IDbContextFactory`; Rechte serverseitig im Service prüfen. Neue Services in `Program.cs` registrieren (fehlende Registrierung fällt in Unit-Tests nicht auf – Seite einmal live öffnen).
+- Code/Core-Modelle **deutsch**, alle sichtbaren Nutzertexte **französisch** (« vous »). Kommunikation und Entwicklerdoku deutsch.
+- IDs: `Id` für Basis, zusammengesetzt mit `…Id` (z. B. `SalonId`, `VerkaufId`).
+- Modelländerung → EF-Migration (`dotnet ef migrations add … --project eNOTE/eNOTE.WebApp --configuration Release`), lokal anwenden mit `--database-admin=migrate --database-target=localhost/ENOTEDB`. Der normale App-Start migriert und seedet nie.
+- **Azure:** Datenbankänderungen nur nach ausdrücklichem OK des Nutzers im jeweiligen Moment, per geprüftem Skript (`Deployment-Azure.md` §5 „Praxis-Ablauf“), danach lesend prüfen, erst dann deployen. Azure-Ressourcen nicht ohne Auftrag ändern; Lesen (Einstellungen, Migrationshistorie) ist erlaubt. Always On und Sitzungsaffinität bleiben an; kein Azure SignalR Service bei einer Instanz.
+- Medien der Nutzer (Logos, Produktbilder, Belege): Development lokal außerhalb von `wwwroot`, Production ausschließlich privater Azure Blob Storage per Managed Identity. **Ausnahme Videos:** Programm-Assets in `eNOTE.WebApp/Medien/videos` (nicht `wwwroot` – `MapStaticAssets` beantwortet Range-Anfragen falsch), Auslieferung über `/medien/videos/{datei}` mit Rollenprüfung (`VideoKatalog`) und `?v=`-Versionsnummer.
+- Scoped UI-States (`KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`): `OnChange` abonnieren, `IDisposable`/`IAsyncDisposable` implementieren.
+- Design „Soft Modern“ in `wwwroot/app.css`: nur Tokens (hell `:root`, dunkel `html[data-theme="dark"]`), keine hart codierten Farben; Icons nur über `<Icon Name="…" />`, keine Emojis; keine `.razor.css`. Keine horizontalen Scrollbars (`minmax(0, 1fr)`), Touch-Targets ≥ 44px, `EnoteSelect`/`EnoteDatePicker`/`EnoteCheckbox`, Modals über `ModalDialog`, async Aktionen über `AsyncActionButton`. PC/Tablet zuerst, Handy muss funktionieren.
+- Nach jeder Änderung relevante Tests und Build. Läuft die App in Visual Studio, in eigene Ordner bauen (`-p:OutDir=<Temp>/…`), keine VS-Prozesse beenden.
+
+## Zusammenarbeit
+- Commits nur auf Wunsch des Nutzers, dann auch pushen. Bei geänderten Seiten Bilder zeigen (Headless-Screenshots, Demo-Laden).
+- Screenshots und Videos immer anonymisieren: E-Mails maskieren, echte Namen der lokalen DB ersetzen, den eigenen Benutzernamen des Nutzers nie zeigen.
+- Secrets nie in Chat, Repository oder Logs. Azure-Speech-Schlüssel in `eNOTE/.env` (gitignored) – nie per `source` einlesen oder ausgeben.
+- Videos (Erklär- und Werbevideos) werden außerhalb des Repos hergestellt: `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\` (`erklaer/README.md`, `werbung-lang/promo.py`). Bei sichtbaren UI-Änderungen die Pipeline erneut laufen lassen.

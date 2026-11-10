@@ -1,4 +1,4 @@
-# Bondruck ohne lokale Zusatzsoftware
+﻿# Bondruck ohne lokale Zusatzsoftware
 
 ## Aktueller Stand
 
@@ -27,3 +27,7 @@ Der aktuelle Browserdruck öffnet weiterhin einen Bon-Tab. `--kiosk-printing` un
 Normales Android-Chrome bietet keinen entsprechenden Desktop-Kioskparameter. Der bestehende Weg verwendet dort den Systemdruckdialog und benötigt einen kompatiblen Druckdienst/Treiber des Geräts. Dialogloser Direktdruck ohne Zusatzsoftware benötigt eine zum Browser passende Druckerschnittstelle.
 
 Empfehlung vor dem Kauf: 80-mm-Thermodrucker mit USB plus LAN/WLAN. Für Android-Direktdruck zusätzlich beim konkreten Modell eine dokumentierte Web-Druckschnittstelle prüfen, beispielsweise kompatible Epson-ePOS-Print-Unterstützung. HTTPS, Zertifikate, erlaubte Browser-Ursprünge und lokale Netzwerkzugriffe müssen zum Einsatz passen. WLAN und ESC/POS allein garantieren keinen Browser-Direktdruck. Erst nach Wahl eines konkreten Modells dessen Integration umsetzen; keine beliebigen Netzwerkdrucker über einen offenen Server-Druckproxy ansprechen.
+
+## Barcode-Scanner
+
+Kein Treiber und keine Zusatzsoftware nötig: USB- oder Bluetooth-Handscanner im **Tastatur-Modus (HID)** mit **Enter als Abschluss** (Werkseinstellung bei fast allen Geräten). Die Kasse erkennt die schnelle Ziffernfolge überall (`enoteScanner` in `wwwroot/js/enote.js`), auch ohne Fokus im Suchfeld. Wichtig: Nutzt PC/Tablet eine französische Tastatur (AZERTY), den Scanner ebenfalls auf AZERTY stellen (Konfigurationscode aus der Anleitung), sonst kommen Sonderzeichen statt Ziffern an. Mit echter Hardware noch nicht getestet (Stand 10.11.2026, simuliert per Playwright).

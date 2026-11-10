@@ -1,9 +1,5 @@
 # eNOTE – Technischer Einstieg
 
-Die aktuelle Architektur, Fachregeln, Einrichtung und Validierung stehen zentral in [../Projektuebersicht.md](../Projektuebersicht.md).
+Architektur, Fachregeln, Einrichtung und Abläufe stehen zentral in [../Projektuebersicht.md](../Projektuebersicht.md), Regeln für die Zusammenarbeit in [../copilot-instructions.md](../copilot-instructions.md), Azure-Betrieb und Migrationsablauf in [../Deployment-Azure.md](../Deployment-Azure.md).
 
-Es gilt: ein Geschäft pro Besitzerkonto, eindeutiges Pseudonym als Anmeldung, wiederverwendbare Kontakt-E-Mail, interne Kassierer nur mit Name und PIN. Keine Mehrladenauswahl im Besitzerkonto.
-
-Historischer Arbeitsstand: Für `localhost / ENOTEDB` wurde ein Neuaufbau gemeldet und `20261105144750_InitialNeustart` angelegt. Im aktuell vorliegenden Dateistand existieren daneben alte Migrationen; weder lokales noch entferntes Schema wurde im Infrastrukturauftrag geprüft. Die Migrationskette vor Ausführung klären; kein erneuter Reset.
-
-Development-Seed ohne Webserver/Worker: `dotnet run --project eNOTE/eNOTE.WebApp --no-launch-profile -- --environment Development --database-admin=seed --database-target=localhost/ENOTEDB`. Vorher Verbindung und vollständigen Build prüfen. Kein automatischer Migrations-/Seedlauf beim normalen App-Start. Zugangsdaten stammen ausschließlich aus sicherer Konfiguration; dieser Modus löscht keine Daten. Deployment-Einstellungen und der getrennte administrative Migrationspfad stehen in [../Deployment-Azure.md](../Deployment-Azure.md).
+Kurz (Stand 10.11.2026): ein Konto pro Laden (ein weiterer Laden bekommt ein neues Besitzerkonto), Anmeldung per Pseudonym, wiederverwendbare Kontakt-E-Mail, Kassierer mit eigenem Konto und Kassen-PIN. Migrationskette bis `20261110173221_Kundenkartei`, lokal und auf Azure angewendet. Der normale App-Start migriert und seedet nie; Datenbank-Administration nur über `--database-admin=migrate|seed|demo --database-target=<Server>/<Datenbank>`.

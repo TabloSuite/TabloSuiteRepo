@@ -1,6 +1,16 @@
 ﻿# eNOTE – sichere Azure-Deployment-Vorbereitung
 
-## Status und Grenzen
+## Aktueller Betriebsstand (10.11.2026, abends)
+
+Dieser Abschnitt hat Vorrang vor älteren Aussagen weiter unten (die aus der Vorbereitungsphase stammen).
+
+- **Veröffentlicht:** App Service `enote` (Linux, .NET 10, Plan `ENote-AppServicePlan`, Tarif **B1**, 1 Instanz), Veröffentlichung durch den Nutzer per Visual Studio (Zip Deploy). Ziel `https://enote.tablosuite.com`.
+- **Einstellungen (geprüft):** **Always On = Ein** (sonst schläft die App ein und die Hintergrunddienste – stündliche Abo-Synchronisierung, Mail-Wiederholung, fällige Tarifänderungen – stoppen), **Sitzungsaffinität = Ein**. WebSockets sind unter Linux immer aktiv (der Schalter existiert nur für Windows-Apps). **Kein Azure SignalR Service nötig**, solange nur eine Instanz läuft.
+- **Datenbank:** `ENote-Database` steht auf `20261110173221_Kundenkartei` (gleich wie lokal). Ablauf für weitere Migrationen siehe §5 „Praxis-Ablauf“.
+- **Videos:** Erklär- und Werbevideos liegen in `eNOTE.WebApp/Medien/videos/` und werden mit dem Publish ausgeliefert (csproj `CopyToPublishDirectory`). Das ist eine bewusste Ausnahme zur Blob-Regel: es sind Programm-Assets, keine Nutzerdaten. Ausgabe über `/medien/videos/{datei}` (Range-fähig, Rollenprüfung); Adressen tragen `?v=<Dateidatum>` gegen veralteten Browser-Cache.
+- **Tests:** 270/270 grün (Stand Commit `2b0f40d`).
+
+## Status und Grenzen (Vorbereitungsphase, historisch)
 
 Die aktive Solution `SKOULOUAPPMAPPE.slnx` enthält **eNOTE.Core, eNOTE.WebApp und eNOTE.Tests**. Veröffentlicht werden soll die Kassen-/Geschäftsverwaltungs-App eNOTE, nicht die daneben im Repository vorhandene Schul-App SKOULOUAPP. Zieladresse ist `https://enote.tablosuite.com`.
 
@@ -124,6 +134,16 @@ Verhalten: Jede Mail wird zuerst in `MailNachrichten` gespeichert und sofort ver
 Development-Medien werden nicht automatisch nach Azure übertragen. Ein späterer expliziter Transfer müsste Dateien **und** passende Datenbank-Asset-Metadaten erhalten; lokale Ordner sind kein Production-Fallback.
 
 ## 5. Migrationen und Seed: separater administrativer Einmalprozess
+
+### Praxis-Ablauf (so am 10.11.2026 angewendet)
+
+1. **Stand auf Azure lesen** (nur lesend):
+   `SELECT TOP 5 MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC` – Verbindung per PowerShell `SqlConnection` mit `AccessToken` aus `az account get-access-token --resource https://database.windows.net/` (Konto mit Entra-Admin-Rechten auf dem SQL-Server).
+2. **Skript erzeugen** ab der letzten Azure-Migration bis zur neuesten:
+   `dotnet ef migrations script <letzteAzure> <neueste> --project eNOTE/eNOTE.WebApp --configuration Release -o <Temp>/enote-azure-migration.sql`
+3. **Skript prüfen:** keine `DROP`/`DELETE`/`UPDATE` ohne fachliche Begründung; neue Tabellen/Spalten sind unkritisch.
+4. **Nur nach ausdrücklichem OK des Nutzers** ausführen (Skript blockweise an `GO` trennen und nacheinander ausführen; EF-Skripte enthalten je Migration eine eigene Transaktion), danach Historie und neue Tabellen/Spalten erneut lesend prüfen.
+5. **Erst dann deployen.** Neue Seiten, deren Tabellen fehlen, würden sonst auf Azure abstürzen.
 
 **In diesem Auftrag nicht ausführen.** Zuerst den fachlich vollständigen Stand und eine eindeutige Migrationskette herstellen. Insbesondere nicht alte Migrationen plus konkurrierende Initialmigration ungeprüft anwenden. Keine `EnsureDeleted`-/Reset-/automatische Cloud-Initialisierung.
 

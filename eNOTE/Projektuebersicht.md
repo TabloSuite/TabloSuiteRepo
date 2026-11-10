@@ -1,163 +1,162 @@
 ﻿# eNOTE – Projektübersicht & Entwicklungsbeschreibung
 
-> Kassen- und Verwaltungs-App für kleine Geschäfte (Salon, Boutique, Atelier …), optimiert für Tablet und PC. Französische Endnutzertexte, deutsche Entwicklerdoku.
+> Kassen- und Verwaltungs-App für kleine Geschäfte in Westafrika (Salon, Institut, Barbershop, Boutique, Atelier …), optimiert für Tablet und PC, nutzbar auf dem Handy. Französische Endnutzertexte, deutsche Entwicklerdoku. Regeln für die Zusammenarbeit: [copilot-instructions.md](copilot-instructions.md).
 
-## Aktueller Infrastrukturstand
+## Aktueller Stand (10.11.2026, abends)
 
-Deployment-Konfiguration, private Medienrechte und der getrennte Administrationspfad stehen in [Deployment-Azure.md](Deployment-Azure.md). Development speichert Medien lokal außerhalb von `wwwroot`; Production ausschließlich per Managed Identity in privaten Blobs, ohne lokalen Fallback. Der normale App-Start migriert und seedet nicht.
-
-Stand 10.11.2026: Lösungsbuild `SKOULOUAPPMAPPE.slnx` erfolgreich (0 Fehler, 73 Warnungen), `eNOTE.Tests` 200/200 grün. `Migrations` enthält eine konsistente Kette (`InitialCreate` → `ProfilBildHinzugefuegt` → `LeistungsTypHinzugefuegt` → `KategorieUnterkategorien`), die lokale `ENOTEDB` ist darauf aktuell, das Modell hat keine offenen Änderungen. Lokaler App-Start und visuelle Prüfung (Headless-Browser-Screenshots) gegen die Entwicklungs-DB sind für Design-Arbeit freigegeben; Azure-Datenbanken weiterhin nicht ungeprüft migrieren. Die fachlichen Bestandsbeschreibungen unten sind kein Nachweis einer abgeschlossenen Ein-Geschäft-/Pseudonym-/PIN-Umstellung und keine Deployment-Freigabe. Datenbankstände wurden nicht geprüft oder geändert. Ein rein lokales Linux-Publish-Profil und SVG-basierte Etiketten-Barcodes sind vorbereitet; Linux-Laufzeit und Veröffentlichung wurden nicht getestet. Ziel ist `enote.tablosuite.com`, E-Mail bleibt bis zur späteren IONOS-/Postmark-Einrichtung unverändert.
+- **Code:** Lösungsbuild erfolgreich, `eNOTE.Tests` **270/270** grün, letzter Commit `2b0f40d`.
+- **Datenbank:** Migrationskette bis `20261110173221_Kundenkartei`; lokale `ENOTEDB` **und** Azure `ENote-Database` sind auf diesem Stand. Der normale App-Start migriert und seedet nie.
+- **Betrieb:** Azure App Service `enote` (Linux, .NET 10, Tarif B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und Sitzungsaffinität an, E-Mails über Postmark, Nutzer-Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
+- **Nächste Schritte:** Der Nutzer testet ab 11.11.2026 alles manuell und sammelt Fehler. Danach offen: Bondrucker und Scanner mit echter Hardware testen, Grundpreis auf Azure auf 3.600 F setzen (Administration → Tarifs), optional Treueprogramm.
 
 ## 1. Zweck
 
-eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden" als Mandant):
-- **Kasse (Caisse):** Verkauf per Touch-Kacheln (Kategorien/Unterkategorien, Suche + Barcode-Scan), freie Beträge („Divers"), Rabatte, Zahlung **bar, Mobile Money, Karte oder gemischt**, Kassenbon (PDF/Druck), Kunden-Display.
-- **Startseite:** Dashboard (Tagesumsatz vs. Durchschnitt, 14-Tage-Verlauf, Zahlungsmix, Bestseller, Lagerwarnungen, Kassenstatus) – nur Besitzer/Finanzrecht, hinter der Besitzer-PIN.
-- **Verwaltung:** Leistungen, Kategorien, Rabatte, Team (Kassierer mit PIN), Ausgaben, Finanzen (Umsatz, Kassenabschlüsse), Abonnement, Einstellungen (Bon-Branding).
-- **Plattform:** SuperAdmin/ProduktOwner verwalten Läden, Freigaben, Probezeit, Preise/Provisionen.
+eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
+- **Kasse:** Touch-Kacheln (Kategorien/Unterkategorien, Suche, Barcode-Scanner), freie Beträge (« Divers »), Remises, optionaler Kunde, Zahlung **bar, Mobile Money, Karte oder gemischt**, Bon (PDF/Druck), Kunden-Display, Rückerstattung, Kassenabschluss.
+- **Besitzer:** Dashboard, Prestations & Stock, Remises, Clients, Équipe & Rechte, Finances, Dépenses, Abonnement, Paramètres (Bon-Branding, Mobile Money).
+- **Plattform:** SuperAdmin und ProduktOwner (« Responsable ») verwalten Läden, Freigaben, Probezeit, Tarife, Provisionen, Facturation, Annonces und E-Mails.
+- **Öffentlich:** Startseite mit App-Bildern und Werbevideo, Registrierung.
 
 ## 2. Technologie-Stack
 
-- **.NET 10**, **Blazor Interactive Server** (Echtzeit-UI, serverseitig).
-- **EF Core + SQL Server** (Code-First, Migrationen in `eNOTE.WebApp/Migrations`).
-- **ASP.NET Core Identity** (AppUser + Rollen).
-- **SignalR** für Live-Umsatz (`/hubs/umsatz`) und Kunden-Display (`DisplayBenachrichtigungService`).
-- **QuestPDF** (Bon-/Berichts-/Etikett-PDFs), **QRCoder** (Bon-QR), **ZXing** (Barcode-Etiketten).
-- **Azure Blob Storage** für private Medien (Logos, Produktbilder, Belege) außerhalb Development per systemseitiger Managed Identity; Development lokal `C:\DevBlob\ENoteDataLibrary`, außerhalb von `wwwroot`.
+- **.NET 10**, **Blazor Interactive Server** (global `@rendermode InteractiveServer` in `Routes.razor`).
+- **EF Core + SQL Server** (Code-First, Migrationen in `eNOTE.WebApp/Migrations`), **ASP.NET Core Identity** (Anmeldung per Pseudonym, eine aktive Sitzung pro Konto über `ActiveSessionId`, Prüfung bei jeder Anfrage).
+- **SignalR** für Live-Umsatz (`/hubs/umsatz`) und Kunden-Display.
+- **QuestPDF** (Bon-, Berichts-, Etikett-PDFs), **QRCoder** (Bon-QR), **ZXing** (SVG-Barcodes).
+- **Postmark** (HTTP-API) für E-Mails, Warteschlange `MailNachrichten` mit Wiederholung.
+- **Azure Blob Storage** (Managed Identity) für Nutzer-Medien in Production; Development lokal `C:\DevBlob\ENoteDataLibrary`, außerhalb von `wwwroot`.
 - **PWA** (`manifest.webmanifest`, `service-worker.js`) – installierbar auf dem Tablet.
 
 ## 3. Projektstruktur
 
 | Projekt | Zweck |
 |---|---|
-| `eNOTE.Core` | Datenmodelle (`DataModels`), domänenreine Services (`Services/Kasse/KassenRechner`), Storage-Abstraktion, Options. Keine EF-/Web-Abhängigkeiten. |
-| `eNOTE.WebApp` | Blazor-App: `Components/Pages` (Seiten + Code-Behind), `Components/Shared`, `Components/Layout`, `Services` (Anwendungs-Services), `Data` (DbContext, Seed), `Program.cs`, `wwwroot`. |
-| `eNOTE.Tests` | xUnit-Tests (InMemory/SQLite) für Rechner und Services. |
+| `eNOTE.Core` | Datenmodelle (`DataModels/{Abo,Finanzen,Identity,Infrastruktur,Kasse,Katalog,Salons}`), domänenreine Rechner (`KassenRechner`, `StornoRechner`, `VertragsRegeln`, `BarcodeRegeln`), Storage-Abstraktion. Keine EF-/Web-Abhängigkeiten. |
+| `eNOTE.WebApp` | Blazor-App: `Components/{Pages,Shared,Layout}`, `Services` (Anwendungs-Services, `Mails/`, `Storage/`), `Data` (DbContext, Seed), `Medien/videos`, `Program.cs`, `wwwroot`. |
+| `eNOTE.Tests` | xUnit-Tests (EF InMemory) für Rechner, Services und ausgewählte UI-Zustände. |
 
 ### Wichtige Orte in `eNOTE.WebApp`
-- `Program.cs` – DI-Registrierung, Identity, Auth-Cookie, vorhandene Endpunkte (`/bon/{id}`, `/bon/{id}/druck`, `/finances/rapport`) und SignalR-Hub. `Services/Storage/MedienEndpunkte.cs` registriert `/media/{**blobName}` mit DB-basierter Mandantenprüfung; `EnoteInfrastruktur.cs` prüft Production-Konfiguration und persistenten Schlüsselpfad.
-- `Data/ApplicationDbContext.cs` – EF-Modell (Salons, UserSalons, Leistungen, Rabatte, KassenSitzungen, Verkaeufe, Ausgaben, Abos, BlobMediaAssets, GeraetSalonFavoriten …).
-- `Data/Seed/ApplicationDbInitializer.cs` – Rollen + SuperAdmin aus User Secrets (`Seed:SuperAdminEmail`/`Seed:SuperAdminPasswort`), Plattform-Standardpreise.
-- `Components/App.razor` – bindet `app.css` ein. Es gibt bewusst **keine** `*.razor.css`-Dateien mehr (kein Scoped-CSS-Bundle); alle Stile liegen zentral in `app.css`. Wer wieder eine `.razor.css` anlegt, muss `eNOTE.WebApp.styles.css` in `App.razor` erneut einbinden.
-- `wwwroot/app.css` – komplettes Soft-UI/Neumorphismus-Design-System.
-- `wwwroot/js/enote.js` – JS-Interop (Passwort-Toggle, Popup-Closer, Bildzuschnitt, Tab-Öffnen).
+- `Program.cs` – DI-Registrierung, Identity/Cookie, Endpunkte `/auth/*`, `/bon/{id}`, `/bon/{id}/druck`, `/finances/rapport`, `/medien/videos/{datei}`, SignalR-Hub, Datenbank-Administrationsmodi (`--database-admin=…`). `Services/Storage/MedienEndpunkte.cs` registriert `/media/{**blobName}` mit Mandantenprüfung; `EnoteInfrastruktur.cs` prüft die Production-Konfiguration.
+- `Data/ApplicationDbContext.cs` – EF-Modell; `Data/Seed/ApplicationDbInitializer.cs` (Rollen, SuperAdmin aus sicherer Konfiguration, Standardpreis 3.600 F/Monat für neue Datenbanken); `Data/Seed/DemoDatenSeeder.cs` (Demo-Laden, nur Development).
+- `Components/App.razor` – `app.css`, Theme-Skript (Dunkelmodus ohne Aufblitzen). Bewusst **keine** `*.razor.css`; wer wieder eine anlegt, muss `eNOTE.WebApp.styles.css` einbinden.
+- `Components/Layout/MainLayout.razor` – Topbar, Benutzermenü, Ankündigungs-Banner; `NavMenu.razor` – Navigation je Rolle (Sidebar, Icon-Leiste, Handy-Leiste + « Plus »).
+- `wwwroot/app.css` – Design-System „Soft Modern“; `wwwroot/js/enote.js` – JS-Interop (Passwort-Toggle, Popup-Closer, Bildzuschnitt, Tab-Öffnen, Scroll-Animation der Startseite, Barcode-Scanner).
 
 ## 4. Kern-Domänen & Fachregeln
 
-### Mandant = Salon (Laden)
-- Jeder Laden ist ein `Salon` mit `IstAktiv`, `IstFreigegeben`, `ProbeBisUtc`, Branding (Slogan, Telefon, Adresse, Logo, Bon-QR-Link), Land, optionalem Monatspreis.
-- `UserSalon` verknüpft Benutzer ↔ Salon mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN und Besitzer-PIN-Hash + PIN-Sperrlogik.
+### Konten, Läden, Rollen
+- **Ein Konto pro Laden.** Die Registrierung legt Besitzerkonto + Laden an (`IstFreigegeben=false`, Probezeit) → Admin gibt frei. Ein weiterer Laden (Paramètres → « Nouvel établissement », `SalonService.FuegeSalonHinzuAsync`) ist erst nach abgelaufener Probezeit eines freigegebenen Ladens möglich und bekommt ein **neues Besitzerkonto** (eigenes Pseudonym + Passwort, gleiche E-Mail erlaubt). Der neue Laden ist aktiv, nicht freigegeben, ohne neue Probezeit.
+- `Salon`: `IstAktiv`, `IstFreigegeben`, `ProbeBisUtc`, Branding (Slogan, Telefon, Adresse, Logo, Bon-QR-Link), Land, optionaler individueller Monatspreis.
+- `UserSalon` verknüpft Konto ↔ Laden mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN sowie Besitzer-PIN-Hash mit Fehlversuchs-Sperre. `AktiverSalonState` liefert die Zuordnung; `SalonSwitcher` erscheint nur bei mehreren Zuordnungen.
+- **Rollen** (`AppRollen`): `Besitzer`, `Kassierer`, `ProduktOwner` (« Responsable »), `SuperAdmin`. Seiten per `[Authorize(Roles=…)]`, Rechte zusätzlich im Service (`LadenZugriff`).
+- **Kassierer** sind eigene Konten (Pseudonym, Initialpasswort, Kassen-PIN), angelegt in Équipe; kein Profil und keine Passwort-Wiederherstellung per Mail.
+- Anmeldung per Pseudonym; die E-Mail ist nur Kontakt-/Wiederherstellungsadresse und gewährt nie Zugriff auf andere Konten. **Abmelden** führt auf die öffentliche Startseite; Anmeldung und Registrierung haben « Retour à l'accueil ».
 
-### Rollen (`AppRollen`)
-`Besitzer`, `Kassierer`, `ProduktOwner`, `SuperAdmin`. Seiten sind per `[Authorize(Roles=…)]` abgesichert; sensible Verwaltungsseiten zusätzlich über `BesitzerPinGuard` (PIN-Sperre am gemeinsamen Tablet).
+### Besitzer-Zone (PIN-Sperre)
+- Vente (Prestations, Remises, Clients), Gestion (Finances, Dépenses, Équipe) und Compte (Abonnement, Paramètres) liegen hinter der Besitzer-PIN, auch für den angemeldeten Besitzer (gemeinsames Tablet). In der Navigation sind sie hinter « Zone propriétaire » eingeklappt; entsperren per PIN-Dialog (`KassenService.PruefeBesitzerPinAsync`), sperren über « Verrouiller ». Zustand circuit-weit in `BesitzerPinState`, pro Sitzung zunächst gesperrt.
+- Die eigentliche Absicherung ist `BesitzerPinGuard` auf den Seiten; SuperAdmin/ProduktOwner sind ausgenommen; ohne konfigurierte PIN gibt es keine Sperre.
 
-### Besitzer-Zone (PIN-Sperre der Verwaltungsbereiche)
-- Die Besitzer-Bereiche **Vente** (Prestations, Remises), **Gestion** (Finances, Dépenses, Équipe) und **Compte** (Abonnement, Paramètres) sind hinter der Besitzer-PIN zusammengefasst: In Sidebar und mobiler Bottom-Nav erscheinen sie standardmäßig eingeklappt hinter einem Schloss-Eintrag („🔒 Zone propriétaire" oberhalb der Gruppen bzw. „🔒 Propriétaire" mobil).
-- **Entsperren:** Klick auf das Schloss öffnet einen PIN-Dialog (`KassenService.PruefeBesitzerPinAsync` mit Fehlversuchs-Sperre). **Sperren:** 🔓 „Verrouiller" in der Sidebar. Der Zustand lebt circuit-weit in `BesitzerPinState` und startet pro Session gesperrt.
-- Die Sperre gilt **auch für den angemeldeten Besitzer** (Tablet-Schutz: kein Kassierer soll in der offenen Session Verwaltungsseiten öffnen); SuperAdmin/ProduktOwner sind ausgenommen. Ohne konfigurierte Besitzer-PIN gibt es kein Schloss und keine Sperre.
-- Die UI-Ebene (Navigation) ist dabei nur Sichtbarkeit; die eigentliche Absicherung bleibt `BesitzerPinGuard` auf den Seiten (greift jetzt ebenfalls für den Besitzer).
-
-### Registrierung & Laden-Anlage
-- Erste Registrierung legt Besitzer + ersten Laden an (`IstFreigegeben=false`, 3-Monats-Probezeit) → Admin muss freigeben.
-- Weitere Läden: Besitzer kann nach **abgelaufener Probezeit** eines freigegebenen Ladens weitere anlegen (`SalonService.FuegeSalonHinzuAsync`). Neue Läden: aktiv, aber **nicht freigegeben**, **keine** erneute Probezeit → Admin-Freigabe nötig.
-
-### Kasse (Caisse) – `Caisse.razor`
-- Drei Zustände: minimiert (schwebender Button), kein aktiver Sitzung (Start: Kassierer + PIN + Wechselgeld), aktive Kasse.
-- Kassenstart: PIN löst `UserSalon` (und damit den Laden) auf; `KassenService.StarteSitzungAsync` verhindert eine zweite offene Sitzung.
-- Ticket: Positionen mit Menge, freie Beträge, Rabatt (aktivierbar, ggf. Bedingung), Barzahlung (Rückgeld) / Karte (Bestätigung). Abbrechen mit Bestätigungsdialog leert das Ticket.
-- `KassenAnzeigeState` (scoped) steuert Minimieren/Kassen-Modus; `AktiverSalonState` (scoped) den gewählten Laden (Topbar-Umschalter, LocalStorage).
-- Wiederherstellung: offene Sitzung wird beim Öffnen von `/caisse` geladen; ein modaler Hinweis (Kassierer, Start, Soll-Kassenstand) informiert über die nicht abgeschlossene Kasse.
-- Kassenabschluss: Soll-Barbestand = Startbestand + Baranteile der Verkäufe (Rückerstattungen bar sind negativ) + Einlagen in die Kasse − Bar-Entnahmen des Besitzers (`KassenRechner.BerechneBarSoll`); Ist wird gezählt, Differenz + Notiz dokumentiert. Der Dialog zeigt Barverkäufe und Bar-Rückerstattungen getrennt.
+### Kasse (`Caisse.razor`)
+- Zustände: minimiert (schwebender Knopf), ohne Sitzung (Start: Kassierer + PIN + Fond de caisse), aktiv. Höchstens eine offene Sitzung pro Laden (`KassenService.StarteSitzungAsync`); beim erneuten Öffnen Hinweis « Caisse encore ouverte » (Kassierer, Start, Soll).
+- Ticket: Kacheln mit Kategorien, Suche, Mengen, freier Betrag « Divers », Remise (aktivierbar, ggf. Bedingung, auf eine Leistung begrenzbar). **Kunde optional** über « Client (facultatif) » (siehe Kundenkartei). « Vider » leert nach Rückfrage.
+- **Barcode-Scanner** (USB/Bluetooth im Tastatur-Modus, Enter am Ende): `enoteScanner` erkennt eine schnelle Ziffernfolge + Enter überall in der Kasse, auch ohne Fokus im Suchfeld, ruft `Caisse.ScanErkannt` auf und fängt das Enter ab, damit keine Kachel doppelt gebucht wird. Bei offenem Dialog wird nichts gebucht; Eingabefelder (PIN, Beträge, Suche) bleiben unberührt. Mit echter Hardware noch nicht getestet; Scanner auf AZERTY einstellen, wenn das Gerät AZERTY nutzt.
+- Aktionen oben: « Ventes » (letzte Verkäufe, Bon-Nachdruck, Rückerstattung), « Écran client » (QR/Link für eine zweite Tablette), « Retrait » (Entnahme des Besitzers), « Réduire », « Clôturer ». `KassenAnzeigeState` steuert Minimieren und Vollbild.
+- Kassenabschluss: Bar-Soll = Startbestand + Baranteile der Verkäufe (Rückerstattungen bar negativ) + Einlagen − Bar-Entnahmen (`KassenRechner.BerechneBarSoll`); das Gezählte wird eingetragen, Écart + Notiz dokumentiert.
+- Kassensperre bei Zahlungsverzug (siehe Abo) – serverseitig beim Start und beim Buchen.
 
 ### Zahlungen & Mobile Money
-- Ein `Verkauf` hat 1..n `VerkaufZahlung`-Anteile (`Art` Bar/Karte/MobileMoney, `Betrag`, bei Mobile Money `MobileMoneyAnbieterId` + Namenskopie `AnbieterName` + optionale `Referenz`). `Verkauf.ZahlungsArt` ist nur noch die Zusammenfassung (`Gemischt` bei mehreren Arten). Summe der Anteile = `GesamtSumme` (`KassenRechner.PruefeZahlungen`), höchstens ein Baranteil; Rückgeld nur aus dem Baranteil.
-- Auswertungen immer über `KassenRechner.Anteile(...)` (Altbestand ohne Anteile = ein Anteil in Höhe der Gesamtsumme). Bar-Soll zählt nur Baranteile.
-- Anbieter sind **Stammdaten, kein Enum** (`MobileMoneyAnbieter`: Name, Land, Markenfarbe, aktiv), gepflegt vom SuperAdmin unter Administration → „Mobile Money“; Startdaten für Togo, Bénin, Sénégal, Côte d'Ivoire, Burkina Faso, Mali per Migration. Ein Laden akzeptiert standardmäßig alle aktiven Anbieter seines Landes; der Besitzer kann in den Paramètres eine eigene Auswahl treffen (`Salon.MobileMoneyIndividuell` + `SalonMobileMoneyAnbieter`, leere Auswahl = kein Mobile Money). Validierung serverseitig beim Buchen.
-- Keine API-Anbindung an Aggregatoren (CinetPay, FedaPay …): der Kassierer bestätigt nach Eingang der SMS. Kundentelefonnummern werden bewusst nicht gespeichert.
+- Ein `Verkauf` hat 1..n `VerkaufZahlung`-Anteile (`Bar`, `Karte`, `MobileMoney` mit `MobileMoneyAnbieterId`, Namenskopie `AnbieterName` und optionaler `Referenz`). `Verkauf.ZahlungsArt` ist nur die Zusammenfassung (`Gemischt` bei mehreren Arten). Summe der Anteile = `GesamtSumme` (`KassenRechner.PruefeZahlungen`), höchstens ein Baranteil, Rückgeld nur daraus. Auswertungen immer über `KassenRechner.Anteile(...)`.
+- Anbieter sind **Stammdaten** (`MobileMoneyAnbieter`: Name, Land, Farbe, aktiv), gepflegt vom SuperAdmin (Administration → Mobile Money); Startdaten für Togo, Bénin, Sénégal, Côte d'Ivoire, Burkina Faso, Mali. Ein Laden akzeptiert standardmäßig alle aktiven Anbieter seines Landes; der Besitzer kann in den Paramètres auswählen (`Salon.MobileMoneyIndividuell` + `SalonMobileMoneyAnbieter`). Validierung serverseitig beim Buchen.
+- Keine Aggregator-API (CinetPay, FedaPay …): Der Kassierer bestätigt nach Eingang der SMS. Mobile Money speichert keine Telefonnummern.
 
-### E-Mails (`Services/Mails`)
-- `EmailService`: Versand über Postmark-HTTP-API (`Mail:Provider=Postmark`, `Mail:PostmarkServerToken`) oder SMTP; jede Mail landet zuerst in `MailNachrichten` (Kategorie, Versuche, Fehler, Postmark-ID). `MailVersandDienst` wiederholt Fehlversuche (5 min) und prüft stündlich die Abo-Mails.
-- `MailBenachrichtigungen` entscheidet, wer wann was bekommt: Bienvenue + Admin-Hinweis bei Registrierung, Validierung, Konto durch Admin angelegt (mit Link „Choisir mon mot de passe“), neuer Kassierer, Passwort geändert/zurückgesetzt, Laden (de)aktiviert, Zahlung gemeldet (Admin), bestätigt/abgelehnt (Besitzer), neue Rechnung, Erinnerung 3 Tage vor Sperre, Kasse gesperrt, Probe-Ende in 7 Tagen. Zeitgesteuerte Mails je Datensatz nur einmal (Zeitstempel an `NutzungsAbo`/`Salon`).
-- **Schalter (`MailArten`, Tabelle `MailRegeln`):** Pflicht-Mails gehen immer (Mot de passe oublié, Compte créé, Établissement validé, Nouvelle facture, Caisse suspendue, Paiement non retrouvé). Alle anderen sind abschaltbar; standardmäßig an: Rappel, Nouvel établissement (Admin), Paiement signalé (Admin), Statut établissement; aus: Bienvenue, Paiement confirmé, Nouveau caissier, Mot de passe modifié, Fin de l'essai. Gate zentral in `EmailService.SendeAsync`; abgeschaltete zeitgesteuerte Mails werden als erledigt markiert (kein Nachholen beim Einschalten).
-- **Manuelle Nachrichten (`NachrichtenService`):** an Personen (Suche nach Name/Identifiant/E-Mail/Laden), alle Besitzer, Besitzer oder Teams bestimmter Läden, ProduktOwner; jede Mail einzeln, max. 200 pro Versand, gesperrte/adresslose Konten ausgenommen, Text wird HTML-maskiert.
-- Vorlagen in `TabloSuiteMails` (Tabellen-Layout, Inline-Styles, Text-Fallback automatisch). `Administration → E-mails` (`/admin/emails`, nur SuperAdmin): Envoyer un message · Envois automatiques (Schalter) · Modèles · Historique; Monatszähler gegen `Mail:MonatsLimit` (Standard 100). Azure-Einstellungen: [Deployment-Azure.md](Deployment-Azure.md).
+### Rückerstattung (`StornoService`)
+- Verkäufe werden nie geändert oder gelöscht. « Rembourser » (Kasse → Ventes) erzeugt in der offenen Kasse einen Gegenbon mit negativen Mengen/Beträgen (`StornoVonVerkaufId`, `StornoGrund`, `StornoErfasstVonName`, Positionen mit `StornoVonPositionId`). Umsätze, Bar-Soll und Bestseller heben sich automatisch auf; Zählungen schließen Rückerstattungen aus (`StornoVonVerkaufId == null`).
+- Teil-Erstattung nach Zeile/Menge (anteilig inkl. Rabatt, Rest auf die letzte Menge – `StornoRechner`), über einen Zahlweg des Originals bis zum dort bezahlten Rest; bar nur bei genug erwartetem Bargeld. Pflicht-Motiv, Freigabe per Besitzer-PIN, Ware optional zurück ins Lager. Bon « REMBOURSEMENT »; die Rückerstattung übernimmt den Kunden des Originals und zählt am Tag, an dem sie passiert.
 
-### Dunkelmodus
-- Benutzermenü → „Apparence“: Clair / Sombre / Auto (folgt dem System). Gespeichert in `localStorage` (`enote-theme`), gesetzt per Inline-Skript in `App.razor` vor dem ersten Zeichnen (`<html data-theme>`), damit nichts aufblitzt.
-- Farben nur über Tokens in `app.css` (`:root` hell, `html[data-theme="dark"]` dunkel; u. a. `--enote-primary-text`, `--enote-danger-text`, `--enote-warning-text`, `--enote-accent-text`, `--enote-glass`, `--enote-inverse-bg`). Neue Styles bitte ohne fest codierte Hellfarben. Zahlungsfarben im Dunkelmodus validiert (Karte `#5b80f0`). Der Bon bleibt immer weiß (Papier).
+### Kundenkartei (`/clients`, `KundenService`, `KundenAuswahl`)
+- Kasse: « Client (facultatif) » über dem Ticket – Suche nach Name oder Nummer (mit Besuchszahl), wählen oder mit einem Tipp neu anlegen. `Verkauf.KundeId` ist optional; der Bon zeigt « Client : … ».
+- **Telefonnummer nur mit Zustimmung des Kunden** (Pflicht-Häkchen « Le client est d'accord pour enregistrer son numéro », Zeitpunkt in `TelefonEinwilligungUtc`, Dubletten je Laden verhindert). Kassierer sehen nur die letzten 4 Ziffern und keine Kundenliste.
+- Besitzer: Kennzahlen (Kunden, neu im Monat, Stammkunden ≥ 2 Besuche, Anteil Verkäufe mit Kunde der letzten 30 Tage), Liste mit Besuchen/Umsatz/letztem Besuch, Kundenblatt mit Lieblingsleistungen, Notiz, letzten 10 Besuchen und Bearbeiten. **Löschen** entfernt die Personendaten; Verkäufe bleiben ohne Kundenbezug.
+- Später möglich: Treueprogramm (z. B. 10. Besuch −10 % über Remises) – erst nach Rückfrage bauen.
 
-### Bon & Druck
-- `/bon/{id}` → PDF (QuestPDF, 80mm, Logo, QR). `/bon/{id}/druck` → HTML-Druckansicht (80mm, QR, ruft `window.print()`).
-- QR-Ziel (`BonQr`): eigener Link des Ladens (Paramètres), sonst **https://enote.tablosuite.com** (überschreibbar über `App:BonQrStandard`).
-- **Kein QZ Tray / keine lokale Zusatzsoftware** (festgelegte Regel). Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe `eNOTE/Bon-Drucken.md` und `eNOTE/Start-Kasse.ps1`.
-
-### Rückerstattung (Storno als Gegenbuchung) – `StornoService`
-- Ein Verkauf wird nie gelöscht oder geändert. „Rembourser“ (Kasse → Ventes) erzeugt in der **aktuell offenen Kasse** einen eigenen Bon mit negativen Mengen/Beträgen: `Verkauf.StornoVonVerkaufId` (+ `StornoGrund`, `StornoErfasstVonName`), Positionen mit `StornoVonPositionId`. Umsätze, Bar-Soll und Bestseller heben sich dadurch automatisch auf; Zählungen („ventes“) schließen Rückerstattungen aus (`StornoVonVerkaufId == null`).
-- Teil-Erstattungen nach Zeile/Menge, bis alles erstattet ist; Betrag anteilig inkl. Rabatt, die letzte offene Menge bekommt genau den Rest (`StornoRechner.Betrag`).
-- Erstattet wird über einen Zahlweg des Originals (Bar, Karte, je Mobile-Money-Anbieter), höchstens bis zum dort bezahlten Rest; bar nur, wenn genug Bargeld in der Kasse erwartet wird. Pflicht-Motiv; Freigabe per Besitzer-PIN (ohne PIN: nur Besitzer). Ware optional zurück ins Lager (Sammel-Artikel → Basisbestand).
-- Bon „REMBOURSEMENT“ mit Verweis auf den Originalbon (HTML-Druck + PDF); Finances zeigt „Remboursements“ in den Entrées und markiert Bons als „Remboursée“/„Remboursement“. Die Erstattung zählt am Tag, an dem sie passiert.
-
-### Katalog (Leistungen, Kategorien, Rabatte)
-- Leistungen pro Laden: Preis, optional Lager (`HatStueckzahl`, Mindestbestand-Warnung), Barcode, Kategorie, Bild, Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät.
-- Standard-Artikel „Divers" (freier Betrag) wird pro Sitzung sichergestellt.
-- Rabatte: Prozent/Festbetrag, optional auf eine Leistung begrenzt, optional mit Bedingung (Checkbox).
+### Katalog, Stock & Team
+- Leistungen pro Laden: Typ Prestation/Produit, Preis, Kategorie, Bild, Barcode (oder automatisch erzeugt), bei Produkten Lager (`HatStueckzahl`, Mindestbestand-Warnung, Einkaufspreis), Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät. Das Inventar zeigt Lagerwert und möglichen Gewinn. Standard-Artikel « Divers » wird pro Sitzung sichergestellt.
+- Remises: Prozent oder Festbetrag, optional auf eine Leistung begrenzt, optional mit Bedingung (der Kassierer bestätigt sie), aktivierbar direkt auf der Karte; bereits genutzte Remises werden beim Löschen nur deaktiviert.
+- Équipe: Kassierer mit PIN, letzte Kasse, Verkäufe im Monat; « Droits » delegiert Finanzen, Prestations, Remises.
 
 ### Finanzen & Ausgaben
-- Finanzen (`/finances`, Tabs): Tages-Umsätze (Zeitraum-Filter + PDF-Export `/finances/rapport`), letzte Verkäufe (Suche/Zahlart-Filter), Kassenabschlüsse (Soll/Ist/Écart).
-- **Solde de caisse (Besitzer-Übersicht)**: Prominent auf `/finances` unter dem Filter: Entrées (Verkäufe, Bar/Karte), Dépenses (mit Link nach `/ausgaben`) und Saldo = Entrées − Dépenses (grün/rot), dazu Ausgaben-Chips pro Kategorie. Zeitraum folgt dem Filter (Standard: letzte 14 Tage); im PDF enthalten (inkl. Dépenses par catégorie).
-- Live-Umsatz via SignalR (`/hubs/umsatz`).
-- Ausgaben (`/ausgaben`): Kategorien (immer sichtbar), Ausgaben mit optionalem Beleg (Bild/PDF aus Blob).
+- `/finances`: Zeitraum-Filter, Entrées je Zahlungsart (inkl. Mobile-Money-Anbieter und Remboursements), Dépenses je Kategorie, Solde; Tabs Par jour, Dernières ventes, Clôtures de caisse, Mouvements; « Apport / aide » (Einlagen außerhalb der Verkäufe); PDF-Bericht `/finances/rapport`. Live-Umsatz via SignalR.
+- `/ausgaben`: Zeiträume, Summe je Kategorie, Ausgaben mit optionalem Beleg (Bild/PDF im Blob), eigene Kategorien.
 
-### Abo & Plattform (automatischer Vertrag)
-- **Eine Preisregel überall** (`AboService.MonatsBasisAsync` / `GetFormelPreiseAsync`, `VertragsRegeln`): Monatsbasis (individueller Ladenpreis, sonst globaler Monatspreis) × Monate − Rabatt (Trimestriel −5 %, Semestriel −7,5 %, Annuel −10 %). Der Admin pflegt nur den **Monatspreis**; die übrigen Formeln werden abgeleitet. Änderungen des globalen Monatspreises werden zusätzlich in `MonatsPreisStaende` historisiert.
-- **Probezeit**: angefangener Registrierungsmonat + 2 volle Monate, gespeichert als Tagesende (z. B. Registrierung 10.11. → bis 31.01. 23:59:59); ein vom Admin gewähltes Datum gilt einschließlich des Tages. Das Abo beginnt am ersten Tag danach um 00:00 (`VertragsRegeln.BeginnNachProbe`), Rechnungen über 0 F werden nie angelegt.
-- **Perioden entstehen automatisch** (`VertragsService.SynchronisiereAsync`, idempotent): nach Ende der Probezeit, beim Kassenstart, beim Öffnen von Abonnement/Facturation und stündlich durch `VertragsSynchronisierungsDienst`. Beginnt der Vertrag nicht am 1. eines Monats, gibt es zuerst eine anteilige Monatsperiode bis zum Monatsersten. Jede Periode speichert Preis, Monatsbasis und Rabatt als Kopie – spätere Preisänderungen ändern bestehende Rechnungen nie; maßgeblich ist der am Periodenbeginn gültige Preis (vor dem ersten erfassten Preis: frühester bekannter globaler Preis).
-- **Formelwechsel** (`WechsleAsync`, Vorschau `GetWechselVorschauAsync`): Ist die laufende Rechnung eine volle Periode und noch **offen oder abgelehnt** (nicht gemeldet/bezahlt), wird sie **sofort umgewandelt** – gleicher Start, Monatspreis vom Periodenbeginn, Fälligkeit und Sperrfrist unverändert, Eintrag „Formule convertie“ in `VertragsHistorien`. Sonst (gemeldet/bezahlt, anteilige Startrechnung, Probezeit) gilt die Formel ab der nächsten Periode.
-- **Zahlung**: Besitzer meldet („J'ai payé“, `MeldeAsync`), nur der **SuperAdmin** bestätigt (`AboService.SetzeZahlungsStatusAsync` mit Bearbeiter-Prüfung); ProduktOwner sehen in Facturation nur ihre zugewiesenen Läden.
-- **Kassensperre** (`KassenZugangService`, serverseitig in `KassenService.StarteSitzungAsync`/`BucheVerkaufAsync`): ab dem 15. Tag nach Fälligkeit ohne Bestätigung keine neuen Sitzungen/Verkäufe; der Abschluss einer laufenden Sitzung bleibt möglich. Wäre die Frist beim (verspäteten) Erzeugen schon abgelaufen, gibt es 15 Tage ab Erzeugung. Ohne konfigurierten Tarif wird nicht gesperrt.
+### Bon & Druck
+- `/bon/{id}` → PDF (QuestPDF, 80 mm, Logo, QR, Kunde), `/bon/{id}/druck` → HTML-Druckansicht (80 mm, ruft `window.print()`).
+- QR-Ziel (`BonQr`): eigener Link des Ladens (Paramètres), sonst **https://enote.tablosuite.com** (`App:BonQrStandard`).
+- **Kein QZ Tray / keine lokale Zusatzsoftware.** Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe [Bon-Drucken.md](Bon-Drucken.md) (mit Hinweisen zum Scanner) und `Start-Kasse.ps1`. Mit echtem Bondrucker noch nicht getestet.
 
-### Kundenkartei (`/clients`, `KundenService`)
-- Kasse: über dem Ticket optional « Client » – suchen (Name/Nummer), wählen oder mit einem Tipp neu anlegen; ohne Auswahl bleibt der Verkauf anonym. `Verkauf.KundeId` (optional, Rückerstattung übernimmt den Kunden), Bon zeigt « Client : … ».
-- Telefonnummer nur mit Zustimmung des Kunden (Häkchen, `TelefonEinwilligungUtc`); Kassierer sehen nur die letzten 4 Ziffern, keine Liste.
-- Besitzer (PIN-Zone): Kennzahlen, Liste mit Besuchen/Umsatz/letztem Besuch, Kundenblatt mit Lieblingsleistungen, Notiz, letzten Besuchen; Löschen entfernt die Personendaten, Verkäufe bleiben ohne Kundenbezug.
-- Später möglich: Treue (z. B. 10. Besuch −10 % über Remises).
+### Abo, Vertrag & Tarife
+- **Eine Preisregel** (`AboService.MonatsBasisAsync`, `VertragsRegeln`): Monatsbasis (individueller Ladenpreis, sonst Standard-Monatspreis) × Monate − Rabatt (Trimestriel −5 %, Semestriel −7,5 %, Annuel −10 %). Nur der Monatspreis wird gepflegt; die übrigen Formeln werden abgeleitet.
+- **Probezeit:** angefangener Registrierungsmonat + 2 volle Monate, gespeichert als Tagesende; ein vom Admin gewähltes Datum gilt einschließlich des Tages. Das Abo beginnt am Tag danach um 00:00 (`VertragsRegeln.BeginnNachProbe`). Rechnungen über 0 F gibt es nie.
+- **Perioden entstehen automatisch** (`VertragsService.SynchronisiereAsync`, idempotent): beim Kassenstart, beim Öffnen von Abonnement/Facturation und stündlich durch `VertragsSynchronisierungsDienst` (der zuvor fällige Tarifänderungen übernimmt). Anteilige erste Periode bis zum Monatsersten. Jede Periode speichert Preis, Basis und Rabatt als Kopie; maßgeblich ist der am Periodenbeginn gültige Preis (datierte `MonatsPreisStaende`).
+- **Formelwechsel** (`WechsleAsync`): Eine offene oder abgelehnte volle Rechnung wird sofort umgewandelt (Fälligkeit und Sperrfrist bleiben, Eintrag in `VertragsHistorien`); sonst gilt die neue Formel ab der nächsten Periode.
+- **Zahlung:** Der Besitzer meldet « J'ai payé », nur der **SuperAdmin** bestätigt; ProduktOwner sehen in Facturation nur ihre Läden.
+- **Kassensperre** (`KassenZugangService`): ab dem 15. Tag nach Fälligkeit ohne Bestätigung keine neuen Sitzungen/Verkäufe (der Abschluss bleibt möglich); wäre die Frist beim Erzeugen schon abgelaufen, gibt es 15 Tage ab Erzeugung.
+- **Tarifänderung für alle** (Administration → Tarifs, `PreisAnpassungService`): Standard-Monatspreis = Mindestpreis, individuelle Preise nie darunter. Eine Erhöhung um X F gilt ab dem 1. eines kommenden Monats und erhöht auch alle individuellen Preise um X F; eine Senkung geht auch sofort, individuelle Preise bleiben (nie unter Standard). Dazu Vorschau je Laden, Textvorlagen mit Platzhaltern (`{ancien}`, `{nouveau}`, `{ecart}`, `{date}`, `{quand}`) für Banner und optionale Mail `changement-tarif`, Verlauf, und eine geplante Änderung ist aufhebbar. Bestehende Rechnungen ändern sich nie. Startpreis neuer Datenbanken: 3.600 F.
 
-### Vidéos d'aide (`/aide/videos`, `VideoKatalog`)
-- Erklärvideos je Rolle: Caissier, Propriétaire, Responsable, Administrateur. Sichtbar: Admin/Responsable alle, Propriétaire seins + Caissier, Caissier nur seins (Menü « Aide » + Benutzermenü).
-- Dateien in `Medien/videos/` (nicht wwwroot), ausgeliefert über `/medien/videos/{datei}` mit Range-Unterstützung und Rollenprüfung; Werbevideo `enote-presentation.mp4` öffentlich. Vorschaubilder in `wwwroot/videos/*.jpg`.
-- Herstellung (Aufnahmen, Texte, Stimme Azure Vivienne, HyperFrames): `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\erklaer\README.md`.
+### Plattform (Administration)
+- `/admin` (SuperAdmin; ProduktOwner sieht seine Läden): Reiter **Établissements** (Suche, Filter Status/Land/Besitzer, Freigabe, Deaktivieren, Probezeit, individueller Tarif, Besitzer anlegen), **Propriétaires plateforme** (Responsables, Zuweisung, Commissions), **Tarifs**, **Mobile Money**, **Administrateurs**.
+- **Administrateurs** (`AdminKontenService`, Reiter nur für den Hauptadministrator `IstErsterAdmin`): Admins anlegen, bearbeiten, sperren/entsperren (gesperrt → beim nächsten Seitenaufruf abgemeldet), löschen. Fehlt die Kennzeichnung, wird automatisch das älteste echte Admin-Konto Hauptadmin (nie `demo.*`); das eigene Konto ist geschützt.
+- Responsable (`/mes-etablissements`): Ventes du jour/du mois und Commission je Laden, « Nouvel établissement » für einen Besitzer (Admin gibt frei).
+- Weitere Seiten: Facturation (Abonnements, gemeldete Zahlungen bestätigen), Journaux (zentrales Fehlerprotokoll `ExceptionLogs`), E-mails, Annonces.
 
-### Abo & Plattform (Allgemein)
-- `NutzungsAbo` pro Laden + Plattform-Standardpreis (`PlattformPreis`). SuperAdmin legt globalen/individuellen Monatspreis fest; ProduktOwner-Provision (Prozent/Festbetrag) pro Salon-Zuweisung.
-- **Tarifs** (Reiter in `/admin`, `PreisAnpassungService`): Standard-Monatspreis = Mindestpreis. Änderung sofort (nur Senkung) oder ab dem 1. eines kommenden Monats; Erhöhung um X F erhöht auch alle individuellen Preise um X F, Senkung lässt sie stehen (nie unter Standard). Datierte `MonatsPreisStaende` (mit `PreisAnpassungId`) → neue Perioden ab dem Datum nutzen den neuen Preis, bereits erzeugte nicht. Textvorlagen mit Platzhaltern für Banner + optionale Mail (`changement-tarif`). Startpreis neuer Datenbanken: 3.600 F.
-- **Annonces** (`/admin/annonces`, `AnkuendigungService`, Banner `AnkuendigungsBanner` oben in der App): Mise à jour planifiée (Zeitfenster in heure de Lomé, verschwindet danach, optional « eNOTE a été mis à jour »), Nouveauté, Information, Tarif; Zielgruppe Besitzer / Besitzer+Kassierer / alle; pro Nutzer schließbar; optional per Mail an alle Besitzer.
-- Admin (`/admin`): Läden-Übersicht (Suche, Status-, Land-, **Besitzer**-Filter), Freigabe/Deaktivieren, Probezeit setzen, Besitzer/ProduktOwner anlegen, Facturation.
+### Annonces (`/admin/annonces`, `AnkuendigungService`, `AnkuendigungsBanner`)
+- Banner oben in der App, pro Nutzer schließbar, Zielgruppe Besitzer / Besitzer + Kassierer / alle, optional per Mail an alle Besitzer.
+- **Mise à jour planifiée:** Tag, Beginn und Ende (heure de Lomé = UTC; Bénin +1 h), Vorlagen « Courte », « Avec conseil », « Nouveautés » mit Platzhaltern `{jour}`, `{debut}`, `{fin}`, `{duree}`. Während des Fensters erscheint « Mise à jour en cours », danach verschwindet das Banner, optional drei Tage « eNOTE a été mis à jour ». Weitere Arten: Nouveauté, Information, Tarif (von der Tarifänderung erzeugt).
+
+### E-Mails (`Services/Mails`)
+- `EmailService`: Postmark-HTTP-API (`Mail:Provider=Postmark`, `Mail:PostmarkServerToken`) oder SMTP; jede Mail landet zuerst in `MailNachrichten`. `MailVersandDienst` wiederholt Fehlversuche und prüft stündlich die Abo-Mails; zeitgesteuerte Mails je Datensatz nur einmal.
+- **Schalter** (`MailArten`, Tabelle `MailRegeln`): Pflicht-Mails gehen immer (Mot de passe oublié, Compte créé, Établissement validé, Nouvelle facture, Caisse suspendue, Paiement non retrouvé, Changement de tarif). Alle anderen sind abschaltbar; an: Rappel, Nouvel établissement (Admin), Paiement signalé (Admin), Statut établissement; aus: Bienvenue, Paiement confirmé, Nouveau caissier, Mot de passe modifié, Fin de l'essai.
+- Manuelle Nachrichten (`NachrichtenService`) an Personen, alle Besitzer, Besitzer oder Teams bestimmter Läden oder ProduktOwner; jede Mail einzeln, max. 200 pro Versand. Vorlagen in `TabloSuiteMails`; Monatszähler gegen `Mail:MonatsLimit` (Standard 100).
+
+### Vidéos d'aide & Werbevideo
+- `/aide/videos` (Menü « Aide » + Benutzermenü, `VideoKatalog`): Erklärvideos Caissier (2:30), Propriétaire (2:27), Responsable (1:04), Administrateur (2:00). Sichtbar: Admin/Responsable alle, Propriétaire seins + Caissier, Caissier nur seins.
+- Werbevideo « Une journée au salon » (1:30, mit Sprecherin) auf der öffentlichen Startseite.
+- Dateien in `Medien/videos/` (nicht `wwwroot`), ausgeliefert über `/medien/videos/{datei}` mit Range-Unterstützung, Rollenprüfung (fremde Videos 403, ohne Anmeldung 401, Werbevideo öffentlich) und `?v=<Dateidatum>` gegen veralteten Browser-Cache. Vorschaubilder in `wwwroot/videos/*.jpg`.
+- Herstellung außerhalb des Repos: `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\erklaer\README.md` (Aufnahmen → `skripte.json` → `tts.py` → `bau.py` → Render → `fertig.py`) und `projekte\werbung-lang\promo.py`. Stimme Azure Vivienne (−4 %, « eNOTE » als « eunote »).
+
+### Öffentliche Startseite
+- `Components/Shared/Startseite.razor` (über `Home.razor` für nicht Angemeldete): Hero mit echten App-Bildern, Zahlwege aus den Mobile-Money-Stammdaten, Funktionen, Werbevideo, drei Schritte, Preise aus der Datenbank, FAQ; sanfte Scroll-Animation (`enote.js`).
+
+### Dunkelmodus
+- Benutzermenü → « Apparence »: Clair / Sombre / Auto, gespeichert in `localStorage` (`enote-theme`), gesetzt vor dem ersten Zeichnen (`<html data-theme>`). Farben nur über Tokens (`--enote-primary-text`, `--enote-danger-text`, `--enote-warning-text`, `--enote-accent-text`, `--enote-glass`, `--enote-inverse-bg` …); der Bon bleibt immer weiß.
 
 ## 5. Lokal starten
 
-1. **Voraussetzungen:** .NET 10 SDK, SQL Server (lokal), ggf. User Secrets.
-2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Vor administrativen Änderungen die derzeit konkurrierenden Migrationen fachlich abgleichen; kein Reset und keine automatische Startup-DDL.
-3. **Seed:** separater Einmalmodus `--database-admin=seed --database-target=localhost/ENOTEDB`, mit ausdrücklich geprüftem Verbindungsziel. SuperAdmin aus sicherer Konfiguration (`Seed:SuperAdminEmail`, `Seed:SuperAdminPasswort`, optional `Seed:SuperAdminBenutzername`); ohne Zugangsdaten kein Admin. Details und Migrationsmodus in [Deployment-Azure.md](Deployment-Azure.md).
-   **Demo-Daten (nur Development):** `--database-admin=demo --database-target=localhost/ENOTEDB` legt den Laden „Salon Élégance (Démo)“ mit Katalog, Team, Rabatten, Ausgaben und 6 Wochen Verkaufshistorie an (wiederholbar, setzt den Demo-Laden zurück). Enthält außerdem einen lokalen Test-Admin `demo.admin` (SuperAdmin) zum Prüfen der Administrationsseiten – der Demo-Modus ist außerhalb von Development gesperrt. Zugänge und Screenshot-Rundgang: [`tools/ui-rundgang/README.md`](tools/ui-rundgang/README.md).
-4. **Start:** `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148 (http://localhost:62149), Environment Development.
-5. **Tests:** `dotnet test eNOTE/eNOTE.Tests`.
+1. **Voraussetzungen:** .NET 10 SDK, SQL Server lokal, User Secrets für den Seed-Admin.
+2. **Datenbank:** `appsettings.Development.json` → `Server=localhost;Database=ENOTEDB;Trusted_Connection=True…`. Migrationen: `dotnet run --project eNOTE/eNOTE.WebApp --no-launch-profile -- --environment Development --database-admin=migrate --database-target=localhost/ENOTEDB`.
+3. **Seed:** `--database-admin=seed` (Rollen, SuperAdmin aus `Seed:SuperAdminEmail` / `Seed:SuperAdminPasswort` / optional `Seed:SuperAdminBenutzername`, Standardpreise). Ohne Zugangsdaten wird kein Admin angelegt.
+   **Demo (nur Development):** `--database-admin=demo` legt « Salon Élégance (Démo) » neu an: Katalog, Team, Remises, Ausgaben, 6 Wochen Verkäufe, 14 Beispielkundinnen, heute offene Kasse von Awa. Zugänge (Passwort jeweils `demo2026`): `demo.proprio` (Besitzer-PIN 1234, Kassen-PIN 1000), `demo.awa` (PIN 2222), `demo.kofi` (PIN 3333), `demo.po` (Responsable), `demo.admin` (SuperAdmin, nur lokal). Screenshot-Rundgang: [`tools/ui-rundgang/README.md`](tools/ui-rundgang/README.md).
+4. **Start:** `dotnet run --project eNOTE/eNOTE.WebApp` → https://localhost:62148 (Environment Development).
+5. **Tests:** `dotnet test eNOTE/eNOTE.Tests`. Läuft die App parallel in Visual Studio (gesperrte `bin`-Dateien), in eigene Ordner bauen: `-p:OutDir=<Temp>/enote-tests/` bzw. `-p:OutDir=<Temp>/enote-verify/`. Eine so gestartete Instanz liest `Medien/videos` aus ihrem Build-Ordner.
 
 ## 6. Architektur-Regeln & Konventionen
 
-- **IDbContextFactory** für jede DB-Operation (keine geteilten DbContext über parallele Zugriffe).
-- **Deutsch** für Code/Core-Modelle, **Französisch** für alle sichtbaren Nutzertexte.
-- ID-Benennung: `Id` für Basis-ID, zusammengesetzte deutsche Namen mit `…ID` (z. B. `SalonId`, `VerkaufId`).
-- Rechte serverseitig im Service prüfen (nicht nur in der UI).
-- Bei Modelländerungen EF-Migration erstellen (`dotnet ef migrations add …`).
-- Relevante Tests + Lösungsbuild nach jeder Änderung.
-- Design-System „Soft Modern“ in `wwwroot/app.css`: Tokens in `:root` (Farben, Flächen, Radien, Elevation, Zahlart-Farben `--enote-pay-*` – farbsehschwächen-geprüft), keine Farben hart codieren. Icons nur über `<Icon Name="…" />` (SVG, offline), keine Emojis als Icons. Wiederverwendbar: `PinEingabe`, `BetragEingabe`, `AnbieterAuswahl`, `ZahlungsTag`, `SaeulenDiagramm`, `ZahlungsMix`. Präfixe je Bereich: `kx-` Kasse, `db-` Dashboard, `fi-` Finanzen, `pr-` Prestations, `st-` Paramètres, `mm-` Mobile-Money-Admin.
-- Responsiv: Desktop ≥1200px Sidebar, Tablet 641–1199px Icon-Leiste, Handy ≤640px untere Leiste + „Plus“-Blatt; Kasse ≤900px mit aufklappbarer Ticket-Leiste. Keine horizontalen Scrollbars (Grids mit `minmax(0, 1fr)`), Touch-Targets ≥ 44px, native Selects durch `EnoteSelect`/`EnoteDatePicker`, Modals über `ModalDialog` (Escape schließt), Toasts blenden sich selbst aus.
-- Visuelle Prüfung: `tools/ui-rundgang` (Screenshots Tablet/Desktop/Handy, meldet Querscrollen und Browserfehler).
-- Eigene Scoped-States für circuit-weite Zustände: `KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`; Komponenten abonnieren `OnChange` und implementieren `IDisposable`.
+- **IDbContextFactory** für jede DB-Operation; Rechte serverseitig im Service (`LadenZugriff`, `AdminKontenService.PruefeAsync`).
+- **Deutsch** für Code/Core-Modelle, **Französisch** für alle sichtbaren Nutzertexte (« vous »).
+- ID-Benennung: `Id` für die Basis, zusammengesetzt `…Id` (z. B. `SalonId`, `VerkaufId`).
+- Bei Modelländerungen EF-Migration erstellen; Geldbeträge immer mit `HasPrecision(18, 2)`.
+- Neue Services in `Program.cs` registrieren und die Seite einmal live öffnen (Unit-Tests registrieren Dienste selbst und merken eine fehlende Registrierung nicht).
+- Design-System „Soft Modern“ in `wwwroot/app.css`: Tokens in `:root` und `html[data-theme="dark"]` (inkl. farbsehschwächen-geprüfter Zahlart-Farben `--enote-pay-*`), keine Farben hart codieren. Icons nur über `<Icon Name="…" />` (SVG, offline), keine Emojis. Wiederverwendbar: `PinEingabe`, `BetragEingabe`, `AnbieterAuswahl`, `ZahlungsTag`, `SaeulenDiagramm`, `ZahlungsMix`, `KundenAuswahl`, `TarifAnpassung`, `AnkuendigungsBanner`. Präfixe je Bereich: `kx-` Kasse, `ku-` Kunden, `db-` Dashboard, `fi-` Finanzen, `dp-` Dépenses, `pr-` Prestations, `rm-` Remises, `eq-` Équipe, `st-` Paramètres, `ab-` Abonnement, `ad-` Admin, `ak-` Administrateurs, `ta-` Tarifs, `an-` Annonces, `em-` E-mails, `vh-` Vidéos, `lp-` Startseite, `mm-` Mobile-Money-Admin.
+- Responsiv: Desktop ≥ 1200 px Sidebar, Tablet 641–1199 px Icon-Leiste, Handy ≤ 640 px untere Leiste + « Plus »; Kasse ≤ 900 px mit aufklappbarer Ticket-Leiste; Reiter brechen auf dem Handy um. Keine horizontalen Scrollbars (`minmax(0, 1fr)`), Touch-Targets ≥ 44 px, `EnoteSelect`/`EnoteDatePicker`/`EnoteCheckbox`, Modals über `ModalDialog` (Escape schließt), async Aktionen über `AsyncActionButton`, Toasts blenden sich selbst aus.
+- Scoped-States für circuit-weite Zustände (`KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`): `OnChange` abonnieren, `IDisposable`/`IAsyncDisposable`.
+- Visuelle Prüfung per Headless-Browser (Playwright/Edge, `tools/ui-rundgang`) gegen den Demo-Laden; Aufnahmen anonymisieren (E-Mails maskieren, echte Namen ersetzen).
 
-## 7. Wichtige Flows (Kurzüberblick)
+## 7. Wichtige Abläufe (Kurzüberblick)
 
-- **Verkauf:** Kasse starten → Kachel/Scan → Ticket → Espèces/Carte (Modal) → bestätigen → Bon, Bestand mindern, Live-Umsatz pushen.
-- **Kassenabschluss:** „Clôturer" → Soll/Ist vergleichen → Écart + Notiz → Sitzung abgeschlossen, zurück zum Start.
-- **Laden wechseln:** Topbar-Umschalter → alle Verwaltungsseiten laden pro Laden neu.
-- **Zweiter Laden:** Paramètres → „+ Nouvel établissement" → Admin gibt frei → im Umschalter wählbar.
+- **Verkauf:** Kasse starten → Kachel/Scan → (optional Kunde) → Ticket → Espèces / Mobile Money / Carte / Mixte → bestätigen → Bon, Bestand mindern, Live-Umsatz pushen.
+- **Rückerstattung:** Kasse → Ventes → « Rembourser » → Zeilen/Mengen, Zahlweg, Motiv → Besitzer-PIN → Gegenbon.
+- **Kassenabschluss:** « Clôturer » → Espèces comptées → Écart + Notiz → Sitzung abgeschlossen, zurück zum Start.
+- **Neuer Kunde:** Kasse → « Client » → Name tippen → « + Nouveau client » → optional Telefon mit Zustimmung → am Ticket.
+- **Zweiter Laden:** Paramètres → « Nouvel établissement » (neues Besitzerkonto) → Admin gibt frei.
+- **Tarif ändern:** Administration → Tarifs → « Modifier le tarif » → Betrag + Startmonat → Vorschau → Textvorlage → planen (Banner, optional Mail).
+- **Wartung ankündigen:** Administration → Annonces → « Mise à jour planifiée » → Tag + Uhrzeit → Vorlage → veröffentlichen.
+- **Azure-Deploy mit Datenbankänderung:** Migrationshistorie lesen → Skript erzeugen und prüfen → nach OK ausführen → prüfen → Publish (siehe [Deployment-Azure.md](Deployment-Azure.md) §5).
