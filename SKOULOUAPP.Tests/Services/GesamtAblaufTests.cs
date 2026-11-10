@@ -115,6 +115,7 @@ public class GesamtAblaufTests
         {
             Vorname = "Afi",
             Nachname = "Mensah",
+            Identifiant = "afi.mensah",
             Email = "directrice@test.tg",
             TelefonNummer = "+22890000001",
             SchulName = "École Lumière",
@@ -130,7 +131,7 @@ public class GesamtAblaufTests
         var registeredDirector = await userManager.FindByEmailAsync("directrice@test.tg");
         Assert.NotNull(registeredDirector);
 
-        var blockedLogin = await authService.PasswordSignInAsync("directrice@test.tg", "Start123!", rememberMe: false);
+        var blockedLogin = await authService.PasswordSignInAsync("afi.mensah", "Start123!", rememberMe: false);
         Assert.False(blockedLogin.Succeeded);
         Assert.Equal(AuthService.BlockedAccountMessage, blockedLogin.ErrorMessage);
 
@@ -151,7 +152,7 @@ public class GesamtAblaufTests
         director.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        var directorLogin = await authService.PasswordSignInAsync("directrice@test.tg", "Start123!", rememberMe: false);
+        var directorLogin = await authService.PasswordSignInAsync("afi.mensah", "Start123!", rememberMe: false);
         Assert.True(directorLogin.Succeeded, directorLogin.ErrorMessage);
         Assert.NotNull(registeredDirector!.ActiveSessionId);
 
@@ -211,7 +212,7 @@ public class GesamtAblaufTests
             .ToListAsync();
         Assert.Equal(2, teacherAssignments.Count);
 
-        var teacherLogin = await authService.PasswordSignInAsync("enseignant@test.tg", "Start123!", rememberMe: true);
+        var teacherLogin = await authService.PasswordSignInAsync("kokou.aklassou", "Start123!", rememberMe: true);
         Assert.True(teacherLogin.Succeeded, teacherLogin.ErrorMessage);
 
         var studentCreateA = await dashboard.SaveSchoolUserAsync(director.Id, new UserFormModel

@@ -17,8 +17,13 @@ public class UserFormModel
 
     public string FullName => $"{Vorname} {Nachname}".Trim();
 
-    [Required(ErrorMessage = "Veuillez saisir une adresse e-mail.")]
-    [EmailAddress(ErrorMessage = "Veuillez saisir une adresse e-mail valide.")]
+    /// <summary>Anmeldename (Identity-UserName). Leer = automatischer Vorschlag „vorname.nachname“.</summary>
+    [StringLength(40)]
+    public string Identifiant { get; set; } = string.Empty;
+
+    /// <summary>Optionale Kontakt-E-Mail; darf zu mehreren Konten gehören, ist nie Anmeldeschlüssel.</summary>
+    [OptionalEmailAddress(ErrorMessage = "Veuillez saisir une adresse e-mail valide.")]
+    [StringLength(256)]
     public string Email { get; set; } = string.Empty;
 
     [OptionalPhone(ErrorMessage = "Veuillez saisir un numéro de téléphone valide.")]

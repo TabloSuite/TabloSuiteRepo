@@ -79,6 +79,16 @@ public class TestUserManager : UserManager<AppUser>
     public override Task<AppUser?> FindByEmailAsync(string email)
         => Task.FromResult(_users.FirstOrDefault(x => string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase)));
 
+    /// <summary>Anmeldung per Identifiant (UserName), wie Identity: ohne Groß-/Kleinschreibung.</summary>
+    public override Task<AppUser?> FindByNameAsync(string userName)
+        => Task.FromResult(_users.FirstOrDefault(x => string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase)));
+
+    private static void Normalisieren(AppUser user)
+    {
+        user.NormalizedUserName = user.UserName?.ToUpperInvariant();
+        user.NormalizedEmail = user.Email?.ToUpperInvariant();
+    }
+
     public override Task<IdentityResult> ChangePasswordAsync(AppUser user, string currentPassword, string newPassword)
         => Task.FromResult(ChangePasswordResult);
 
@@ -100,6 +110,7 @@ public class TestUserManager : UserManager<AppUser>
             _users.Add(user);
         }
 
+        Normalisieren(user);
         OnUserCreated?.Invoke(user);
 
         return Task.FromResult(IdentityResult.Success);
@@ -107,6 +118,7 @@ public class TestUserManager : UserManager<AppUser>
 
     public override Task<IdentityResult> UpdateAsync(AppUser user)
     {
+        Normalisieren(user);
         OnUserUpdated?.Invoke(user);
         return Task.FromResult(IdentityResult.Success);
     }

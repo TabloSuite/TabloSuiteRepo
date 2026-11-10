@@ -80,9 +80,15 @@
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
-                <div>
-                    <label class="skoulou-label">Adresse e-mail</label>
-                    <input type="email" value="@email" disabled class="skoulou-input" />
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <div>
+                        <label class="skoulou-label">Identifiant de connexion</label>
+                        <input type="text" value="@fullProfile?.Identifiant" disabled class="skoulou-input" />
+                    </div>
+                    <div>
+                        <label class="skoulou-label">Adresse e-mail de contact</label>
+                        <input type="email" value="@(string.IsNullOrWhiteSpace(email) ? "Aucune" : email)" disabled class="skoulou-input" />
+                    </div>
                 </div>
 
                 <div class="grid gap-5 sm:grid-cols-2">

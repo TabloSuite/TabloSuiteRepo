@@ -31,8 +31,9 @@
         <input type="hidden" name="returnUrl" value="@ReturnUrl" />
 
         <div>
-            <label class="skoulou-label">Adresse e-mail</label>
-            <input name="email" type="email" required autocomplete="username" class="skoulou-input" />
+            <label class="skoulou-label" for="identifiant">Identifiant</label>
+            <input id="identifiant" name="identifiant" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" class="skoulou-input" placeholder="ex. ama.mensah" />
+            <p class="mt-1 text-xs text-slate-500">L'identifiant vous a été communiqué par votre établissement ou choisi lors de l'inscription.</p>
         </div>
 
         <div>

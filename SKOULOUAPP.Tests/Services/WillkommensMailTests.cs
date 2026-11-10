@@ -65,16 +65,21 @@ public class WillkommensMailTests
         {
             Id = Guid.NewGuid(),
             UserName = email,
+            NormalizedUserName = email.ToUpperInvariant(),
             Email = email,
+            NormalizedEmail = email.ToUpperInvariant(),
             Vorname = "Jean",
             Nachname = "Dupont",
             FullName = "Jean Dupont"
         };
         db.Users.Add(user);
 
-        var role = new Role { Id = Guid.NewGuid(), Name = rolle, NormalizedName = rolle.ToUpperInvariant() };
-        db.Roles.Add(role);
-        db.UserRoles.Add(new AppUserRole { UserId = user.Id, RoleId = role.Id });
+        if (!string.IsNullOrWhiteSpace(rolle))
+        {
+            var role = new Role { Id = Guid.NewGuid(), Name = rolle, NormalizedName = rolle.ToUpperInvariant() };
+            db.Roles.Add(role);
+            db.UserRoles.Add(new AppUserRole { UserId = user.Id, RoleId = role.Id });
+        }
 
         if (!string.IsNullOrWhiteSpace(schulName))
         {
@@ -99,7 +104,7 @@ public class WillkommensMailTests
         var email = new FakeEmailService();
         var service = ErstelleService(email, out _, out _);
 
-        await service.SendWelcomeEmailAsync("keine-email", "Jean");
+        await service.SendWelcomeEmailAsync("keine-email");
 
         Assert.Empty(email.Gesendet);
     }
@@ -111,7 +116,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out _);
 
         // Darf keine Ausnahme werfen.
-        await service.SendWelcomeEmailAsync("jean@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("jean@test.local");
 
         Assert.Empty(email.Gesendet);
     }
@@ -120,9 +125,10 @@ public class WillkommensMailTests
     public async Task VersandAusnahme_WirdGeschluckt()
     {
         var email = new FakeEmailService { WirftAusnahme = new HttpRequestException("Netzwerkfehler") };
-        var service = ErstelleService(email, out _, out _);
+        var service = ErstelleService(email, out _, out var factory);
+        await SeedAsync(factory, "jean@test.local", string.Empty);
 
-        await service.SendWelcomeEmailAsync("jean@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("jean@test.local");
 
         Assert.Empty(email.Gesendet);
     }
@@ -131,9 +137,10 @@ public class WillkommensMailTests
     public async Task OhneKontext_SendetNeutraleWillkommensmail()
     {
         var email = new FakeEmailService();
-        var service = ErstelleService(email, out _, out _);
+        var service = ErstelleService(email, out _, out var factory);
+        await SeedAsync(factory, "unbekannt@test.local", string.Empty);
 
-        await service.SendWelcomeEmailAsync("unbekannt@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("unbekannt@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Equal("Bienvenue chez SKOULOUAPP", nachricht.Subject);
@@ -144,9 +151,10 @@ public class WillkommensMailTests
     public async Task JedeMail_EnthaeltKlartextTeilGegenSpam()
     {
         var email = new FakeEmailService();
-        var service = ErstelleService(email, out _, out _);
+        var service = ErstelleService(email, out _, out var factory);
+        await SeedAsync(factory, "jean@test.local", string.Empty);
 
-        await service.SendWelcomeEmailAsync("jean@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("jean@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.False(string.IsNullOrWhiteSpace(nachricht.TextBody));
@@ -157,9 +165,10 @@ public class WillkommensMailTests
     public async Task JedeMail_NutztDasGemeinsameTemplateMitHeaderUndFooter()
     {
         var email = new FakeEmailService();
-        var service = ErstelleService(email, out _, out _);
+        var service = ErstelleService(email, out _, out var factory);
+        await SeedAsync(factory, "jean@test.local", string.Empty);
 
-        await service.SendWelcomeEmailAsync("jean@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("jean@test.local");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
         Assert.Contains("SKOULOUAPP", html);
@@ -180,7 +189,7 @@ public class WillkommensMailTests
             Options.Create(new PostmarkOptions()), new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
 
         var result = reset
-            ? await service.ResetPasswordAsync(user.Email, "secret-token", "Secret123!")
+            ? await service.ResetPasswordAsync(user.Id, "secret-token", "Secret123!")
             : await service.ChangePasswordAsync(user.Id, "old-secret", "Secret123!");
 
         Assert.True(result.Succeeded);
@@ -210,7 +219,7 @@ public class WillkommensMailTests
             Options.Create(new PostmarkOptions()), new ConfigurationBuilder().Build(), NullLogger<AuthService>.Instance);
 
         var result = reset
-            ? await service.ResetPasswordAsync(user.Email, "invalid", "Secret123!")
+            ? await service.ResetPasswordAsync(user.Id, "invalid", "Secret123!")
             : await service.ChangePasswordAsync(user.Id, "invalid", "Secret123!");
 
         Assert.False(result.Succeeded);
@@ -239,7 +248,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out var factory);
         await SeedAsync(factory, "admin@test.local", Rollen.SuperAdmin);
 
-        await service.SendWelcomeEmailAsync("admin@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("admin@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Contains("administrateur", nachricht.Subject);
@@ -253,7 +262,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out var factory);
         await SeedAsync(factory, "chef@test.local", Rollen.SchulLeiter, "Institut Goethe");
 
-        await service.SendWelcomeEmailAsync("chef@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("chef@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);
@@ -292,11 +301,18 @@ public class WillkommensMailTests
             .Build();
         var service = new AuthService(factory.CreateDbContext(), factory, manager, null!, email,
             Options.Create(new PostmarkOptions()), configuration, NullLogger<AuthService>.Instance);
+        await using (var db = factory.CreateDbContext())
+        {
+            db.Users.Add(new AppUser { Id = user.Id, UserName = user.UserName, NormalizedUserName = user.UserName.ToUpperInvariant(),
+                Email = user.Email, NormalizedEmail = user.Email.ToUpperInvariant(), Vorname = "Jean", FullName = "Jean Dupont" });
+            await db.SaveChangesAsync();
+        }
 
         await service.SendPasswordResetAsync(user.Email);
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
-        Assert.Contains("https://test.local/auth/reset-password?email=jean%40test.local&amp;token=jeton%20avec%20espaces", html);
+        Assert.Contains($"https://test.local/auth/reset-password?id={user.Id}&amp;token=jeton%20avec%20espaces", html);
+        Assert.Contains("jean@test.local", html);
         Assert.DoesNotContain("https://test.local/reset-password", html);
     }
 
@@ -307,7 +323,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out var factory);
         await SeedAsync(factory, "prof@test.local", Rollen.Lehrer, "École Test");
 
-        await service.SendWelcomeEmailAsync("prof@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("prof@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Contains("enseignant", nachricht.Subject);
@@ -321,7 +337,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out var factory);
         await SeedAsync(factory, "eleve@test.local", Rollen.Schueler, "École Test");
 
-        await service.SendWelcomeEmailAsync("eleve@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("eleve@test.local");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
         Assert.Contains("SKOULOUAPPABO", html);
@@ -341,7 +357,7 @@ public class WillkommensMailTests
         var service = ErstelleService(email, out _, out var factory);
         await SeedAsync(factory, "eleve2@test.local", Rollen.Schueler, "École Test");
 
-        await service.SendWelcomeEmailAsync("eleve2@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("eleve2@test.local");
 
         var html = Assert.Single(email.Gesendet).Message.HtmlBody;
         Assert.Contains("SKOULOUAPPABO", html);
@@ -366,7 +382,7 @@ public class WillkommensMailTests
             await db.SaveChangesAsync();
         }
 
-        await service.SendWelcomeEmailAsync("chef2@test.local", "Jean");
+        await service.SendWelcomeEmailAsync("chef2@test.local");
 
         var nachricht = Assert.Single(email.Gesendet).Message;
         Assert.Contains("école SKOULOUAPP est enregistrée", nachricht.Subject);

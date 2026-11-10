@@ -77,39 +77,16 @@ public partial class SchulLeiter
             ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
             : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700";
 
-    private bool CanSuggestSkoulouAppEmail => CanCurrentUserUseSkoulouAppEmail
-        && !string.IsNullOrWhiteSpace(userForm.Vorname)
+    private bool KannIdentifiantVorschlagen => !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
 
-    private bool ShowSkoulouAppEmailButton => CanCurrentUserUseSkoulouAppEmail;
-
-    private string skoulouAppEmailButtonLabel => "E-mail auto";
-
-    private void SuggestSkoulouAppEmail()
+    /// <summary>Schlägt ein eindeutiges Identifiant „vorname.nachname“ vor (änderbar).</summary>
+    private async Task IdentifiantVorschlagenAsync()
     {
-        if (CanSuggestSkoulouAppEmail)
+        if (KannIdentifiantVorschlagen)
         {
-            userForm.Email = BuildSkoulouAppEmail(userForm.Vorname, userForm.Nachname);
+            userForm.Identifiant = await AuthService.IdentifiantVorschlagAsync(userForm.Vorname, userForm.Nachname, ComponentToken);
         }
-    }
-
-    private bool CanCurrentUserUseSkoulouAppEmail => canCurrentUserUseSkoulouAppEmail;
-
-    private static string BuildSkoulouAppEmail(string vorname, string nachname)
-    {
-        var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(source.Length);
-        foreach (var character in source)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
-            {
-                builder.Append(char.ToLowerInvariant(character));
-            }
-        }
-
-        var localPart = string.Join('.', builder.ToString().Split(new[] { '.', ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(part => part.All(char.IsLetterOrDigit)));
-        return $"{localPart}@skoulou.com";
     }
 
     [Inject]
@@ -873,7 +850,6 @@ public partial class SchulLeiter
     private bool isDatabaseActionInProgress;
     private bool isProduktOwner;
     private bool isKoordinator;
-    private bool canCurrentUserUseSkoulouAppEmail;
 
     [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
@@ -1071,8 +1047,6 @@ public partial class SchulLeiter
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         isProduktOwner = authState.User.IsInRole(Rollen.ProduktOwner) && !authState.User.IsInRole(Rollen.SuperAdmin);
         isKoordinator = authState.User.IsInRole(Rollen.Koordinator) && !authState.User.IsInRole(Rollen.SchulLeiter);
-        canCurrentUserUseSkoulouAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
-            && !authState.User.IsInRole(Rollen.Schueler);
         canViewSharedTeacherContent = authState.User.IsInRole(Rollen.SchulLeiter)
             || authState.User.IsInRole(Rollen.Koordinator);
 
@@ -1743,6 +1717,7 @@ public partial class SchulLeiter
                 UserId = existing.UserId,
                 Vorname = vorname,
                 Nachname = userForm.Nachname,
+                Identifiant = userForm.Identifiant,
                 Email = email,
                 TelefonNummer = userForm.TelefonNummer,
                 ElternTelefonNummer = userForm.ElternTelefonNummer,
@@ -1777,13 +1752,13 @@ public partial class SchulLeiter
         await KontoBenachrichtigungService.AdresseModifieeAsync(vorher, ComponentToken);
 
         if (istNeuanlage && !string.IsNullOrWhiteSpace(modelToSave.Password))
-            neueZugangsdaten = [new SchoolUserImportZugang(modelToSave.Email, modelToSave.Password)];
+            neueZugangsdaten = [new SchoolUserImportZugang(modelToSave.Identifiant, modelToSave.Password)];
 
         if (istNeuanlage)
         {
             // Best-Effort: Ein fehlgeschlagener Versand (z. B. nicht existierende
             // Adresse) darf die Benutzeranlage nicht beeintraechtigen.
-            await AuthService.SendWelcomeEmailAsync(email, vorname);
+            await AuthService.SendWelcomeEmailAsync(modelToSave.Identifiant);
         }
 
         userStatusMessage = result.Message;

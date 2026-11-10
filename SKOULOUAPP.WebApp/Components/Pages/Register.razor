@@ -49,8 +49,18 @@
         </div>
 
         <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Adresse e-mail</label>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">Identifiant de connexion</label>
+            <div class="flex gap-2">
+                <InputText @bind-Value="Model.Identifiant" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. ama.mensah" class="w-full min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
+                <button type="button" class="shrink-0 rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-50" disabled="@(string.IsNullOrWhiteSpace(Model.Vorname) || string.IsNullOrWhiteSpace(Model.Nachname))" @onclick="IdentifiantVorschlagenAsync">Proposer</button>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Vous vous connecterez avec cet identifiant (lettres minuscules, chiffres, point ou tiret).</p>
+        </div>
+
+        <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">Adresse e-mail @(Model.Art == RegistrierungsArt.SchulLeiter ? "" : "(facultative)")</label>
             <InputText @bind-Value="Model.Email" type="email" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
+            <p class="mt-1 text-xs text-slate-500">@(Model.Art == RegistrierungsArt.SchulLeiter ? "Obligatoire pour la direction : validation, factures et mot de passe oublié." : "Pour les messages et « Mot de passe oublié ».")</p>
         </div>
 
         <div>

@@ -33,8 +33,14 @@ public class RegisterInputModel
     [Required(ErrorMessage = "Veuillez choisir un genre.")]
     public Geschlecht Geschlecht { get; set; } = Geschlecht.Divers;
 
-    [Required(ErrorMessage = "Veuillez saisir une adresse e-mail.")]
-    [EmailAddress(ErrorMessage = "Veuillez saisir une adresse e-mail valide.")]
+    /// <summary>Anmeldename (Identifiant); Vorschlag aus Vor- und Nachname.</summary>
+    [Required(ErrorMessage = "Veuillez choisir un identifiant de connexion.")]
+    [StringLength(40, MinimumLength = 3, ErrorMessage = "L'identifiant doit comporter 3 à 40 caractères.")]
+    public string Identifiant { get; set; } = string.Empty;
+
+    /// <summary>Kontaktadresse: Pflicht für die Direktion, optional für Schüler; nie Anmeldeschlüssel.</summary>
+    [OptionalEmailAddress(ErrorMessage = "Veuillez saisir une adresse e-mail valide.")]
+    [StringLength(256)]
     public string Email { get; set; } = string.Empty;
 
     [OptionalPhone(ErrorMessage = "Veuillez saisir un numéro de téléphone valide.")]

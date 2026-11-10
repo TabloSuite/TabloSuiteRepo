@@ -48,8 +48,7 @@ public partial class ForgotPassword
 
     private sealed class ForgotPasswordInput
     {
-        [Required(ErrorMessage = "Veuillez saisir une adresse e-mail.")]
-        [EmailAddress]
+        [Required(ErrorMessage = "Veuillez saisir votre adresse e-mail ou votre identifiant.")]
         public string Email { get; set; } = string.Empty;
     }
 }

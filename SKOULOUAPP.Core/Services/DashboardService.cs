@@ -299,6 +299,7 @@ public class DashboardService(
             {
                 UserId = user.Id,
                 FullName = user.FullName,
+                Identifiant = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
                 RoleName = roles.FirstOrDefault() ?? "Utilisateur",
                 IsBlocked = user.IsBlocked,
@@ -1367,6 +1368,7 @@ public class DashboardService(
             UserId = user.Id,
             Vorname = user.Vorname,
             Nachname = user.Nachname,
+            Identifiant = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty,
             TelefonNummer = user.TelefonNummer,
             RoleName = roleName,
@@ -1418,32 +1420,51 @@ public class DashboardService(
                 return (false, "Attribuez une classe de votre école avant de valider cette inscription.");
         }
 
-        var normalizedEmail = model.Email.Trim();
-        var duplicateExists = await dbContext.Users.AnyAsync(
-            x => x.Email == normalizedEmail && (!model.UserId.HasValue || x.Id != model.UserId.Value),
-            cancellationToken);
-
-        if (duplicateExists)
+        // Anmeldung per Identifiant; die E-Mail ist nur optionale Kontaktadresse (mehrfach erlaubt).
+        var normalizedEmail = NormalizeOptional(model.Email);
+        if (normalizedEmail is null && model.RoleName is Rollen.SchulLeiter or Rollen.ProduktOwner or Rollen.SuperAdmin)
         {
-            return (false, "Un utilisateur avec cette adresse e-mail existe déjà.");
+            return (false, "Une adresse e-mail est nécessaire pour ce rôle (factures, messages de la plateforme).");
         }
 
-        AppUser user;
+        AppUser? bestehend = null;
         if (model.UserId.HasValue)
         {
-            user = await userManager.FindByIdAsync(model.UserId.Value.ToString()) ?? new AppUser();
-            if (user.Id == Guid.Empty)
+            bestehend = await userManager.FindByIdAsync(model.UserId.Value.ToString());
+            if (bestehend is null)
             {
                 return (false, "L'utilisateur est introuvable.");
             }
+        }
+
+        var identifiant = IdentifiantRegel.Normalisieren(model.Identifiant);
+        if (identifiant.Length == 0)
+        {
+            identifiant = bestehend?.UserName ?? await IdentifiantRegel.EindeutigerVorschlagAsync(dbContext, model.Vorname, model.Nachname, cancellationToken: cancellationToken);
+        }
+        else if (!string.Equals(identifiant, bestehend?.UserName, StringComparison.OrdinalIgnoreCase))
+        {
+            var identifiantFehler = await IdentifiantRegel.PruefenAsync(dbContext, identifiant, model.UserId, cancellationToken);
+            if (identifiantFehler is not null)
+            {
+                return (false, identifiantFehler);
+            }
+        }
+
+        model.Identifiant = identifiant;
+
+        AppUser user;
+        if (bestehend is not null)
+        {
+            user = bestehend;
         }
         else
         {
             user = new AppUser
             {
-                UserName = normalizedEmail,
+                UserName = identifiant,
                 Email = normalizedEmail,
-                EmailConfirmed = true
+                EmailConfirmed = normalizedEmail is not null
             };
 
             var password = string.IsNullOrWhiteSpace(model.Password) ? ErstzugangService.PasswortErzeugen() : model.Password;
@@ -1460,7 +1481,8 @@ public class DashboardService(
         user.Nachname = model.Nachname.Trim();
         user.FullName = model.FullName;
         user.Email = normalizedEmail;
-        user.UserName = normalizedEmail;
+        user.EmailConfirmed = normalizedEmail is not null;
+        user.UserName = identifiant;
         user.TelefonNummer = NormalizeOptional(model.TelefonNummer);
         user.IsBlocked = model.IsBlocked;
         user.IsSelfRegistered = model.IsSelfRegistered;
@@ -3659,6 +3681,7 @@ public class DashboardService(
             {
                 UserId = user.Id,
                 FullName = user.FullName,
+                Identifiant = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
                 RoleName = roleName,
                 IsBlocked = user.IsBlocked,
@@ -3735,6 +3758,7 @@ public class DashboardService(
             UserId = user.Id,
             Vorname = user.Vorname,
             Nachname = user.Nachname,
+            Identifiant = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty,
             TelefonNummer = user.TelefonNummer,
             RoleName = roleName,
@@ -3851,7 +3875,7 @@ public class DashboardService(
         {
             var coordinator = model.UserId.HasValue
                 ? await userManager.FindByIdAsync(model.UserId.Value.ToString())
-                : await userManager.FindByEmailAsync(model.Email.Trim());
+                : await userManager.FindByNameAsync(model.Identifiant);
             if (coordinator is null)
             {
                 throw new InvalidOperationException("Le coordinateur enregistré est introuvable.");
@@ -3885,7 +3909,7 @@ public class DashboardService(
             if (!teacherId.HasValue)
             {
                 teacherId = await dbContext.Users
-                    .Where(user => user.Email == model.Email.Trim())
+                    .Where(user => user.NormalizedUserName == model.Identifiant.ToUpperInvariant())
                     .Select(user => (Guid?)user.Id)
                     .FirstOrDefaultAsync(cancellationToken);
             }

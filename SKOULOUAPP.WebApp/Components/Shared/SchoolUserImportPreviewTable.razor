@@ -22,7 +22,7 @@
                         <th class="px-3 py-2 font-semibold uppercase tracking-wide">Ligne</th>
                         <th class="px-3 py-2 font-semibold uppercase tracking-wide">Nom</th>
                         <th class="px-3 py-2 font-semibold uppercase tracking-wide">Classe</th>
-                        <th class="px-3 py-2 font-semibold uppercase tracking-wide">Email</th>
+                        <th class="px-3 py-2 font-semibold uppercase tracking-wide">Identifiant</th>
                         <th class="px-3 py-2 font-semibold uppercase tracking-wide">Statut</th>
                     </tr>
                 </thead>
@@ -33,7 +33,7 @@
                             <td class="px-3 py-2 font-semibold">@row.LineNumber</td>
                             <td class="px-3 py-2 @(string.IsNullOrWhiteSpace(row.Vorname) || string.IsNullOrWhiteSpace(row.Nachname) ? "font-bold text-rose-700" : "")">@($"{row.Vorname} {row.Nachname}".Trim())</td>
                             <td class="px-3 py-2 @(string.IsNullOrWhiteSpace(row.Klasse) ? "font-bold text-rose-700" : "")">@(string.IsNullOrWhiteSpace(row.Klasse) ? "Classe manquante" : row.Klasse)</td>
-                            <td class="px-3 py-2">@(row.EmailGenerated ? $"{row.Email} (auto)" : row.Email)</td>
+                            <td class="px-3 py-2"><span class="font-semibold">@row.Identifiant</span>@if (row.IdentifiantGenerated) { <span class="text-xs text-slate-500"> (proposé)</span> }@if (!string.IsNullOrWhiteSpace(row.Email)) { <span class="block text-xs text-slate-500">@row.Email</span> }</td>
                             <td class="@(row.IsValid ? "px-3 py-2 font-semibold text-emerald-700" : "px-3 py-2 font-semibold text-rose-700")">
                                 @(row.IsValid ? "OK" : string.Join(" ", row.Errors))
                             </td>

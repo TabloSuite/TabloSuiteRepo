@@ -72,9 +72,10 @@ public sealed class SchuelerIdentitaetTests
 
         Assert.True(emailwechsel.Succeeded, emailwechsel.Message);
         Assert.Equal("Nouveau@Test.local", schueler.Email);
-        Assert.Equal(schueler.Email, schueler.UserName);
+        // Anmeldung per Identifiant: Ein E-Mail-Wechsel ändert den Anmeldenamen nicht.
+        Assert.Equal("ancien@test.local", schueler.UserName);
         Assert.Equal("NOUVEAU@TEST.LOCAL", schueler.NormalizedEmail);
-        Assert.Equal(schueler.NormalizedEmail, schueler.NormalizedUserName);
+        Assert.Equal("ANCIEN@TEST.LOCAL", schueler.NormalizedUserName);
         Assert.Equal(alterHash, schueler.PasswordHash);
         Assert.Equal(schueler.Id, (await manager.FindByEmailAsync("nouveau@test.local"))!.Id);
         Assert.Null(await manager.FindByEmailAsync("ancien@test.local"));

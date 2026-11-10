@@ -14,6 +14,14 @@ public partial class Register
     [Inject]
     private AuthService AuthService { get; set; } = default!;
 
+    private async Task IdentifiantVorschlagenAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Model.Vorname) && !string.IsNullOrWhiteSpace(Model.Nachname))
+        {
+            Model.Identifiant = await AuthService.IdentifiantVorschlagAsync(Model.Vorname, Model.Nachname);
+        }
+    }
+
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 

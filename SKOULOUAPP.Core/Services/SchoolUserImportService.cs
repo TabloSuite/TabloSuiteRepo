@@ -23,6 +23,8 @@ public sealed class SchoolUserImportService(
         ["Nom"] = "Nachname",
         ["Klasse"] = "Klasse",
         ["Classe"] = "Klasse",
+        ["Identifiant"] = "Identifiant",
+        ["Login"] = "Identifiant",
         ["Email"] = "Email",
         ["E-mail"] = "Email",
         ["Telefon"] = "Telefon",
@@ -60,12 +62,8 @@ public sealed class SchoolUserImportService(
             .Select(klasse => new { klasse.Id, klasse.Code, klasse.Title })
             .ToListAsync(cancellationToken);
 
-        var existingEmails = await dbContext.Users
-            .AsNoTracking()
-            .Where(user => user.Email != null)
-            .Select(user => user.Email!)
-            .ToListAsync(cancellationToken);
-        var usedEmails = new HashSet<string>(existingEmails.Select(NormalizeEmailKey), StringComparer.OrdinalIgnoreCase);
+        // Identifiants müssen über alle Konten und innerhalb der Datei eindeutig sein; E-Mails nicht.
+        var belegteIdentifiants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var parsedRow in parsedRows)
         {
@@ -116,19 +114,30 @@ public sealed class SchoolUserImportService(
 
             preview.KlasseIds = preview.KlasseIds.Distinct().ToList();
 
-            var providedEmail = NormalizeOptional(Get(parsedRow, "Email"));
-            if (string.IsNullOrWhiteSpace(providedEmail))
+            preview.Email = NormalizeOptional(Get(parsedRow, "Email"))?.ToLowerInvariant() ?? string.Empty;
+            if (preview.Email.Length > 0 && !System.Net.Mail.MailAddress.TryCreate(preview.Email, out _))
             {
-                preview.Email = GenerateUniqueSkoulouAppEmail(preview.Vorname, preview.Nachname, usedEmails);
-                preview.EmailGenerated = true;
+                preview.Errors.Add($"L'adresse e-mail « {preview.Email} » n'est pas valide.");
+            }
+
+            var gewuenscht = IdentifiantRegel.Normalisieren(Get(parsedRow, "Identifiant"));
+            if (gewuenscht.Length == 0)
+            {
+                preview.Identifiant = await IdentifiantRegel.EindeutigerVorschlagAsync(dbContext, preview.Vorname, preview.Nachname, belegteIdentifiants, cancellationToken);
+                preview.IdentifiantGenerated = true;
             }
             else
             {
-                preview.Email = providedEmail.Trim().ToLowerInvariant();
-                var key = NormalizeEmailKey(preview.Email);
-                if (!usedEmails.Add(key))
+                preview.Identifiant = gewuenscht;
+                var fehler = await IdentifiantRegel.PruefenAsync(dbContext, gewuenscht, null, cancellationToken);
+                if (fehler is null && !belegteIdentifiants.Add(gewuenscht))
                 {
-                    preview.Errors.Add($"L'adresse e-mail « {preview.Email} » existe déjà ou apparaît plusieurs fois dans l'importation.");
+                    fehler = "Cet identifiant apparaît plusieurs fois dans l'importation.";
+                }
+
+                if (fehler is not null)
+                {
+                    preview.Errors.Add($"Identifiant « {gewuenscht} » : {fehler}");
                 }
             }
 
@@ -186,6 +195,7 @@ public sealed class SchoolUserImportService(
             {
                 Vorname = row.Vorname.Trim(),
                 Nachname = row.Nachname.Trim(),
+                Identifiant = row.Identifiant,
                 Email = row.Email.Trim(),
                 TelefonNummer = row.Telefon,
                 RoleName = request.Kind == SchoolUserImportKind.Teacher ? Rollen.Lehrer : Rollen.Schueler,
@@ -219,9 +229,9 @@ public sealed class SchoolUserImportService(
             var (succeeded, message) = await dashboardService.SaveUserAsync(model, cancellationToken);
             if (succeeded)
             {
-                var normalizedEmail = model.Email.Trim().ToUpperInvariant();
+                var normalizedIdentifiant = model.Identifiant.ToUpperInvariant();
                 var createdUserId = await dbContext.Users
-                    .Where(user => user.Email != null && user.Email.ToUpper() == normalizedEmail)
+                    .Where(user => user.NormalizedUserName == normalizedIdentifiant)
                     .Select(user => user.Id)
                     .FirstOrDefaultAsync(cancellationToken);
                 if (createdUserId == Guid.Empty)
@@ -260,7 +270,7 @@ public sealed class SchoolUserImportService(
                     await dbContext.SaveChangesAsync(cancellationToken);
                 }
 
-                zugangsdaten.Add(new SchoolUserImportZugang(model.Email, model.Password!));
+                zugangsdaten.Add(new SchoolUserImportZugang(model.Identifiant, model.Password!));
                 created++;
             }
             else
@@ -388,43 +398,6 @@ public sealed class SchoolUserImportService(
     private static bool MatchesClass(string code, string title, string input)
         => string.Equals(code.Trim(), input.Trim(), StringComparison.OrdinalIgnoreCase)
             || string.Equals(title.Trim(), input.Trim(), StringComparison.OrdinalIgnoreCase);
-
-    private static string GenerateUniqueSkoulouAppEmail(string vorname, string nachname, HashSet<string> usedEmails)
-    {
-        var baseLocalPart = BuildEmailLocalPart(vorname, nachname);
-        if (string.IsNullOrWhiteSpace(baseLocalPart))
-        {
-            baseLocalPart = $"user{DateTime.UtcNow:yyyyMMddHHmmss}";
-        }
-
-        var candidate = $"{baseLocalPart}@skoulou.com";
-        var suffix = 2;
-        while (!usedEmails.Add(NormalizeEmailKey(candidate)))
-        {
-            candidate = $"{baseLocalPart}{suffix}@skoulou.com";
-            suffix++;
-        }
-
-        return candidate;
-    }
-
-    private static string BuildEmailLocalPart(string vorname, string nachname)
-    {
-        var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(source.Length);
-        foreach (var character in source)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
-            {
-                builder.Append(char.ToLowerInvariant(character));
-            }
-        }
-
-        return string.Join('.', builder.ToString().Split(['.', ' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries)
-            .Where(part => part.All(char.IsLetterOrDigit)));
-    }
-
-    private static string NormalizeEmailKey(string email) => email.Trim().ToUpperInvariant();
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

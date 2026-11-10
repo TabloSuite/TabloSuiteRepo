@@ -16,22 +16,17 @@ namespace SkoulouApp.WebApp.Components.Pages;
 
 public partial class Admin
 {
-    private bool CanSuggestSkoulouAppEmail => CanCurrentUserUseSkoulouAppEmail
-        && !string.IsNullOrWhiteSpace(userForm.Vorname)
+    private bool KannIdentifiantVorschlagen => !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
 
-    private string skoulouAppEmailButtonLabel => "E-mail auto";
-
-    private void SuggestSkoulouAppEmail()
+    /// <summary>Schlägt ein eindeutiges Identifiant „vorname.nachname“ vor (änderbar).</summary>
+    private async Task IdentifiantVorschlagenAsync()
     {
-        if (CanSuggestSkoulouAppEmail)
+        if (KannIdentifiantVorschlagen)
         {
-            userForm.Email = BuildSkoulouAppEmail(userForm.Vorname, userForm.Nachname);
+            userForm.Identifiant = await AuthService.IdentifiantVorschlagAsync(userForm.Vorname, userForm.Nachname, ComponentToken);
         }
     }
-
-    private bool ShowSkoulouAppEmailButton => CanCurrentUserUseSkoulouAppEmail;
-    private bool CanCurrentUserUseSkoulouAppEmail => canCurrentUserUseSkoulouAppEmail;
 
     private decimal SchoolSubscriptionPriceDisplay
         => schoolForm.SubscriptionPriceOverride ?? commissionSettings.GlobalSubscriptionPrice;
@@ -58,23 +53,6 @@ public partial class Admin
     {
         get => schoolForm.ProductOwnerCommissionPercentOverride ?? commissionSettings.ProductOwnerPercent;
         set => schoolForm.ProductOwnerCommissionPercentOverride = value;
-    }
-
-    private static string BuildSkoulouAppEmail(string vorname, string nachname)
-    {
-        var source = $"{vorname}.{nachname}".Trim().Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(source.Length);
-        foreach (var character in source)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
-            {
-                builder.Append(char.ToLowerInvariant(character));
-            }
-        }
-
-        var localPart = string.Join('.', builder.ToString().Split(new[] { '.', ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(part => part.All(char.IsLetterOrDigit)));
-        return $"{localPart}@skoulou.com";
     }
 
     [Inject]
@@ -157,7 +135,6 @@ public partial class Admin
     private bool isProduktOwner;
     private Guid currentUserId;
     private UserManagementItem? viewedUser;
-    private bool canCurrentUserUseSkoulouAppEmail;
 
     // Filter der Nutzerliste auf eine bestimmte Schule (null = alle Schulen).
     private string? userSchoolFilter;
@@ -575,8 +552,6 @@ public partial class Admin
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            canCurrentUserUseSkoulouAppEmail = !authState.User.IsInRole(Rollen.Lehrer)
-                && !authState.User.IsInRole(Rollen.Schueler);
             isProduktOwner = authState.User.IsInRole("ProduktOwner") && !authState.User.IsInRole("SuperAdmin");
             Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out currentUserId);
             await LoadAsync();
@@ -760,8 +735,6 @@ public partial class Admin
         // Vor dem Speichern merken, ob es sich um eine Neuanlage handelt:
         // Nur dann wird anschließend eine Willkommensmail versendet.
         var istNeuanlage = !userForm.UserId.HasValue;
-        var email = userForm.Email?.Trim() ?? string.Empty;
-        var vorname = userForm.Vorname?.Trim() ?? string.Empty;
 
         var result = await DashboardService.CreatePlatformUserAsync(currentUserId, userForm, ComponentToken);
         if (!result.Succeeded)
@@ -773,10 +746,10 @@ public partial class Admin
         if (istNeuanlage)
         {
             if (!string.IsNullOrWhiteSpace(userForm.Password))
-                neueZugangsdaten = [new(userForm.Email, userForm.Password)];
+                neueZugangsdaten = [new(userForm.Identifiant, userForm.Password)];
             // Best-Effort: Ein fehlgeschlagener Versand (z. B. nicht existierende
             // Adresse) darf die Benutzeranlage nicht beeinträchtigen.
-            await AuthService.SendWelcomeEmailAsync(email, vorname);
+            await AuthService.SendWelcomeEmailAsync(userForm.Identifiant);
         }
 
         userStatusMessage = result.Message;

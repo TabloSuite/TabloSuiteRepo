@@ -110,7 +110,8 @@ public static class ApplicationDbInitializer
         IReadOnlyCollection<string> roles,
         DateTime? geburtsdatumUtc = null)
     {
-        var user = await userManager.FindByEmailAsync(email);
+        // Identifiant des Start-Admins ist die konfigurierte Adresse (E-Mails sind nicht mehr eindeutig).
+        var user = await userManager.FindByNameAsync(email);
         if (user is null)
         {
             user = new AppUser

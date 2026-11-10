@@ -73,7 +73,7 @@ public class AuthServiceRegistrationTests
             configuration: new ConfigurationBuilder().Build(), logger: NullLogger<AuthService>.Instance);
         var input = new RegisterInputModel
         {
-            Vorname = "Afi", Nachname = "Mensah", Email = "afi@example.org", Password = "Secret123!",
+            Vorname = "Afi", Nachname = "Mensah", Identifiant = "afi.mensah", Email = "afi@example.org", Password = "Secret123!",
             AgbAccepted = true, SchulName = "Nouvelle école", SchulStadt = "Lomé",
             SelectedSchoolId = Guid.Parse("11111111-1111-1111-1111-111111111111")
         };
@@ -115,7 +115,7 @@ public class AuthServiceRegistrationTests
         var result = await service.ValidateRegistrationAsync(new RegisterInputModel
         {
             Art = RegistrierungsArt.SchulLeiter,
-            Email = "direction@example.org",
+            Identifiant = "direction.test", Email = "direction@example.org",
             SchulName = "École existante"
         });
 
@@ -138,7 +138,7 @@ public class AuthServiceRegistrationTests
         var result = await service.ValidateRegistrationAsync(new RegisterInputModel
         {
             Art = RegistrierungsArt.SchulLeiter,
-            Email = "direction@example.org",
+            Identifiant = "direction.test", Email = "direction@example.org",
             SchulName = "Nouvelle école"
         });
 

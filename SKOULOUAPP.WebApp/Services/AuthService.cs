@@ -71,13 +71,19 @@ public class AuthService(
         RegisterInputModel input,
         CancellationToken cancellationToken = default)
     {
-        if (!string.IsNullOrWhiteSpace(input.Email)
-            && await userManager.FindByEmailAsync(input.Email.Trim()) is not null)
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        // Anmeldung per Identifiant; die E-Mail ist Kontaktadresse und darf mehrfach vorkommen.
+        input.Identifiant = IdentifiantRegel.Normalisieren(input.Identifiant);
+        var identifiantFehler = await IdentifiantRegel.PruefenAsync(db, input.Identifiant, null, cancellationToken);
+        if (identifiantFehler is not null)
         {
-            return (false, "Un compte avec cette adresse e-mail existe déjà.");
+            return (false, identifiantFehler);
         }
 
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (input.Art == RegistrierungsArt.SchulLeiter && string.IsNullOrWhiteSpace(input.Email))
+        {
+            return (false, "Une adresse e-mail est nécessaire pour la direction (validation, factures, mot de passe oublié).");
+        }
         if (input.Art == RegistrierungsArt.SchulLeiter)
         {
             var schoolName = input.SchulName.Trim();
@@ -139,22 +145,7 @@ public class AuthService(
         db.Schools.Add(schule);
         await db.SaveChangesAsync(cancellationToken);
 
-        var user = new AppUser
-        {
-            UserName = input.Email,
-            Email = input.Email,
-            Vorname = input.Vorname,
-            Nachname = input.Nachname,
-            FullName = input.FullName,
-            TelefonNummer = NormalizeOptional(input.TelefonNummer),
-            Geschlecht = input.Geschlecht,
-            GeburtsdatumUtc = input.Geburtsdatum.HasValue ? DateTime.SpecifyKind(input.Geburtsdatum.Value, DateTimeKind.Utc) : null,
-            AgbVersion = AktuelleAgbVersion,
-            AgbAcceptedAtUtc = DateTime.UtcNow,
-            EmailConfirmed = true,
-            IsSelfRegistered = true,
-            IsBlocked = true
-        };
+        var user = NeuesSelbstregistriertesKonto(input);
 
         var createResult = await userManager.CreateAsync(user, input.Password);
         if (!createResult.Succeeded)
@@ -175,8 +166,8 @@ public class AuthService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        await SendWelcomeEmailAsync(user.Email!, user.Vorname, cancellationToken);
-        return (true, "Ton école et ton compte de directeur ont été créés et attendent la validation par l'exploitant.");
+        await SendWelcomeEmailAsync(user.UserName!, cancellationToken);
+        return (true, "Votre établissement et votre compte de direction ont été créés. Ils attendent la validation par l'exploitant.");
     }
 
     public async Task<(bool Succeeded, string ErrorMessage)> RegisterStudentAsync(RegisterInputModel input, CancellationToken cancellationToken = default)
@@ -207,22 +198,7 @@ public class AuthService(
             return (false, "L'école sélectionnée est introuvable.");
         }
 
-        var user = new AppUser
-        {
-            UserName = input.Email,
-            Email = input.Email,
-            Vorname = input.Vorname,
-            Nachname = input.Nachname,
-            FullName = input.FullName,
-            TelefonNummer = NormalizeOptional(input.TelefonNummer),
-            Geschlecht = input.Geschlecht,
-            GeburtsdatumUtc = input.Geburtsdatum.HasValue ? DateTime.SpecifyKind(input.Geburtsdatum.Value, DateTimeKind.Utc) : null,
-            AgbVersion = AktuelleAgbVersion,
-            AgbAcceptedAtUtc = DateTime.UtcNow,
-            EmailConfirmed = true,
-            IsSelfRegistered = true,
-            IsBlocked = true
-        };
+        var user = NeuesSelbstregistriertesKonto(input);
 
         var createResult = await userManager.CreateAsync(user, input.Password);
         if (!createResult.Succeeded)
@@ -249,22 +225,53 @@ public class AuthService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        await SendWelcomeEmailAsync(user.Email!, user.Vorname, cancellationToken);
-        return (true, "Ton compte a été créé et attend la validation par l'école.");
+        await SendWelcomeEmailAsync(user.UserName!, cancellationToken);
+        return (true, "Votre compte a été créé. Il attend la validation par l'établissement.");
     }
 
-    public async Task<(bool Succeeded, string ErrorMessage)> PasswordSignInAsync(string email, string password, bool rememberMe)
+    private static AppUser NeuesSelbstregistriertesKonto(RegisterInputModel input)
     {
-        var user = await userManager.FindByEmailAsync(email);
+        var email = NormalizeOptional(input.Email);
+        return new AppUser
+        {
+            UserName = IdentifiantRegel.Normalisieren(input.Identifiant),
+            Email = email,
+            Vorname = input.Vorname,
+            Nachname = input.Nachname,
+            FullName = input.FullName,
+            TelefonNummer = NormalizeOptional(input.TelefonNummer),
+            Geschlecht = input.Geschlecht,
+            GeburtsdatumUtc = input.Geburtsdatum.HasValue ? DateTime.SpecifyKind(input.Geburtsdatum.Value, DateTimeKind.Utc) : null,
+            AgbVersion = AktuelleAgbVersion,
+            AgbAcceptedAtUtc = DateTime.UtcNow,
+            EmailConfirmed = email is not null,
+            IsSelfRegistered = true,
+            IsBlocked = true
+        };
+    }
+
+    /// <summary>Vorschlag für das Identifiant aus Vor- und Nachname (eindeutig).</summary>
+    public async Task<string> IdentifiantVorschlagAsync(string? vorname, string? nachname, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await IdentifiantRegel.EindeutigerVorschlagAsync(db, vorname, nachname, cancellationToken: cancellationToken);
+    }
+
+    public const string UngueltigeAnmeldung = "L'identifiant ou le mot de passe est incorrect.";
+
+    /// <summary>Anmeldung mit Identifiant (Identity-UserName) + Passwort. Ältere Konten nutzen ihren bisherigen Benutzernamen.</summary>
+    public async Task<(bool Succeeded, string ErrorMessage)> PasswordSignInAsync(string identifiant, string password, bool rememberMe)
+    {
+        var user = string.IsNullOrWhiteSpace(identifiant) ? null : await userManager.FindByNameAsync(identifiant.Trim());
         if (user is null)
         {
-            return (false, "L'adresse e-mail ou le mot de passe est invalide.");
+            return (false, UngueltigeAnmeldung);
         }
 
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
-            return (false, "L'adresse e-mail ou le mot de passe est invalide.");
+            return (false, UngueltigeAnmeldung);
         }
 
         if (user.IsBlocked)
@@ -303,39 +310,53 @@ public class AuthService(
     /// Erzeugt (falls das Konto existiert) einen Passwort-Reset-Token und versendet den Reset-Link per E-Mail.
     /// Aus Sicherheitsgründen wird immer eine neutrale Erfolgsmeldung zurückgegeben.
     /// </summary>
-    public async Task<(bool Succeeded, string Message)> SendPasswordResetAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<(bool Succeeded, string Message)> SendPasswordResetAsync(string emailOderIdentifiant, CancellationToken cancellationToken = default)
     {
-        const string neutral = "Si un compte existe pour cette adresse, un e-mail de réinitialisation a été envoyé.";
+        const string neutral = "Si un compte correspond, un e-mail de réinitialisation a été envoyé à l'adresse enregistrée.";
 
-        var normalizedEmail = email.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        var eingabe = emailOderIdentifiant.Trim();
+        if (string.IsNullOrWhiteSpace(eingabe))
         {
             return (true, neutral);
         }
 
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        // Eine E-Mail kann zu mehreren Konten gehören (z. B. Lehrkraft an zwei Schulen):
+        // Die Mail nennt dann jedes Identifiant mit eigenem Link.
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var normalisiert = eingabe.ToUpperInvariant();
+        var konten = eingabe.Contains('@')
+            ? await db.Users.AsNoTracking().Where(u => u.NormalizedEmail == normalisiert).OrderBy(u => u.UserName).Take(10).ToListAsync(cancellationToken)
+            : await db.Users.AsNoTracking().Where(u => u.NormalizedUserName == normalisiert && u.Email != null).ToListAsync(cancellationToken);
+        if (konten.Count == 0 || string.IsNullOrWhiteSpace(konten[0].Email))
         {
             return (true, neutral);
         }
 
-        var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var encoded = Uri.EscapeDataString(token);
-        var resetUrl = BuildAppUrl($"/auth/reset-password?email={Uri.EscapeDataString(user.Email)}&token={encoded}");
+        var zeilen = new System.Text.StringBuilder();
+        foreach (var konto in konten)
+        {
+            var kontoUser = await userManager.FindByIdAsync(konto.Id.ToString());
+            if (kontoUser is null) continue;
+            var token = await userManager.GeneratePasswordResetTokenAsync(kontoUser);
+            var resetUrl = BuildAppUrl($"/auth/reset-password?id={kontoUser.Id}&token={Uri.EscapeDataString(token)}");
+            zeilen.Append($"<p>Identifiant : <strong>{System.Net.WebUtility.HtmlEncode(kontoUser.UserName)}</strong></p>");
+            zeilen.Append(EmailTemplates.Button(resetUrl, "Choisir un nouveau mot de passe"));
+        }
 
+        var user = konten[0];
         var body = EmailTemplates.Wrap(
             "Réinitialisation du mot de passe",
             $"""
             <p>Bonjour {System.Net.WebUtility.HtmlEncode(user.Vorname)},</p>
-            <p>Tu as demandé la réinitialisation de ton mot de passe. Clique sur le bouton ci-dessous pour en choisir un nouveau :</p>
-            {EmailTemplates.Button(resetUrl, "Réinitialiser le mot de passe")}
-            <p>Si tu n'es pas à l'origine de cette demande, tu peux ignorer cet e-mail.</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe SKOULOU. {(konten.Count > 1 ? "Plusieurs comptes utilisent cette adresse ; choisissez le compte concerné :" : "Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :")}</p>
+            {zeilen}
+            <p>Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet e-mail.</p>
             """);
 
         try
         {
             var result = await emailService.SendAsync(
-                new EmailRecipient(user.Email, user.FullName),
+                new EmailRecipient(user.Email!, user.FullName),
                 new EmailMessage
                 {
                     Subject = "SKOULOUAPP – Réinitialisation du mot de passe",
@@ -358,15 +379,9 @@ public class AuthService(
     }
 
     /// <summary>Setzt das Passwort anhand des zugesandten Tokens zurück.</summary>
-    public async Task<(bool Succeeded, string Message)> ResetPasswordAsync(string email, string token, string newPassword)
+    public async Task<(bool Succeeded, string Message)> ResetPasswordAsync(Guid kontoID, string token, string newPassword)
     {
-        var normalizedEmail = email.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedEmail))
-        {
-            return (false, "Le lien de réinitialisation est invalide ou a expiré.");
-        }
-
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
+        var user = kontoID == Guid.Empty ? null : await userManager.FindByIdAsync(kontoID.ToString());
         if (user is null)
         {
             return (false, "Le lien de réinitialisation est invalide ou a expiré.");
@@ -380,7 +395,7 @@ public class AuthService(
         var sessionResult = await userManager.UpdateAsync(user);
         if (!sessionResult.Succeeded) return (false, "Le mot de passe a changé. Veuillez vous reconnecter.");
         await SendPasswordChangedEmailAsync(user, true);
-        return (true, "Ton mot de passe a été réinitialisé. Tu peux maintenant te connecter.");
+        return (true, $"Votre mot de passe a été réinitialisé. Connectez-vous avec l'identifiant « {user.UserName} ».");
     }
 
     // ----------------------------------------------------------------------
@@ -504,6 +519,7 @@ public class AuthService(
         return new UserProfileModel
         {
             UserId = user.Id,
+            Identifiant = user.UserName ?? string.Empty,
             Email = user.Email ?? string.Empty,
             Vorname = user.Vorname,
             Nachname = user.Nachname,
@@ -700,18 +716,18 @@ public class AuthService(
     /// von Postmark als "Inactive recipient" markiert ist oder das Kontingent erschöpft ist),
     /// wird der Fehler nur protokolliert. Die Registrierung bleibt davon unberührt.
     /// </summary>
-    public async Task SendWelcomeEmailAsync(string email, string vorname, CancellationToken cancellationToken = default)
+    /// <summary>Willkommensmail an die (optionale) Kontaktadresse des Kontos, mit Identifiant.</summary>
+    public async Task SendWelcomeEmailAsync(string identifiant, CancellationToken cancellationToken = default)
     {
-        if (!IstPlausibleEmail(email))
+        var (email, vorname, rolle, schulName) = await LadeEmpfaengerKontextAsync(identifiant, cancellationToken);
+        if (email is null || !IstPlausibleEmail(email))
         {
-            logger.LogWarning("Willkommensmail übersprungen: '{Email}' ist keine plausible E-Mail-Adresse.", email);
             return;
         }
 
-        var (rolle, schulName) = await LadeEmpfaengerKontextAsync(email, cancellationToken);
-
         var (betreff, titel, inhalt) = BaueWillkommensInhalt(vorname, rolle, schulName);
-        var body = EmailTemplates.Wrap(titel, inhalt, $"Ton compte SKOULOUAPP est prêt, {vorname}.");
+        inhalt = $"<p>Votre identifiant de connexion : <strong>{System.Net.WebUtility.HtmlEncode(identifiant)}</strong></p>" + inhalt;
+        var body = EmailTemplates.Wrap(titel, inhalt, $"Votre compte SKOULOU est prêt, {vorname}.");
 
         try
         {
@@ -741,20 +757,21 @@ public class AuthService(
     /// Ermittelt Rolle und Schulname des Empfängers, damit die
     /// Willkommensmail passende Abo-Hinweise enthalten kann.
     /// </summary>
-    private async Task<(string? Rolle, string? SchulName)> LadeEmpfaengerKontextAsync(
-        string email, CancellationToken cancellationToken)
+    private async Task<(string? Email, string Vorname, string? Rolle, string? SchulName)> LadeEmpfaengerKontextAsync(
+        string identifiant, CancellationToken cancellationToken)
     {
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+            var normalisiert = identifiant.Trim().ToUpperInvariant();
             var user = await db.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+                .FirstOrDefaultAsync(x => x.NormalizedUserName == normalisiert, cancellationToken);
 
             if (user is null)
             {
-                return (null, null);
+                return (null, string.Empty, null, null);
             }
 
             var rollen = await (
@@ -774,13 +791,12 @@ public class AuthService(
                 where us.AppUserId == user.Id
                 select new { s.Name }).FirstOrDefaultAsync(cancellationToken);
 
-            return (rolle, schule?.Name);
+            return (user.Email, user.Vorname, rolle, schule?.Name);
         }
         catch (Exception ex)
         {
-            // Ohne Kontext wird lediglich die neutrale Variante der Mail versendet.
-            logger.LogWarning(ex, "Empfängerkontext für die Willkommensmail an {Email} konnte nicht geladen werden.", email);
-            return (null, null);
+            logger.LogWarning(ex, "Empfängerkontext für die Willkommensmail an {Identifiant} konnte nicht geladen werden.", identifiant);
+            return (null, string.Empty, null, null);
         }
     }
 

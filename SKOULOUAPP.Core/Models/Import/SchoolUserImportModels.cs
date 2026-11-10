@@ -48,8 +48,11 @@ public sealed class SchoolUserImportRowPreview
     public string Klasse { get; set; } = string.Empty;
     public Guid? KlasseId { get; set; }
     public List<Guid> KlasseIds { get; set; } = [];
+    /// <summary>Anmeldename; aus der Datei oder automatisch „vorname.nachname“.</summary>
+    public string Identifiant { get; set; } = string.Empty;
+    public bool IdentifiantGenerated { get; set; }
+    /// <summary>Optionale Kontaktadresse (darf zu mehreren Konten gehören).</summary>
     public string Email { get; set; } = string.Empty;
-    public bool EmailGenerated { get; set; }
     public string? Telefon { get; set; }
     public string? ElternEmail { get; set; }
     public string? ElternTelefon { get; set; }
@@ -62,9 +65,9 @@ public static class SchoolUserImportDefaults
 {
     public const string InitialPassword = "Attribué individuellement lors de l'import";
 
-    public const string TeacherTemplate = "Prénom;Nom;Classe;E-mail;Téléphone\nJean;Koffi;CM1A;jean.koffi@example.com;90000000\nAmah;Mensah;CM1A,CM2B;;";
+    public const string TeacherTemplate = "Prénom;Nom;Classe;Identifiant;E-mail;Téléphone\nJean;Koffi;CM1A;jean.koffi;jean.koffi@example.com;90000000\nAmah;Mensah;CM1A,CM2B;;;";
 
-    public const string StudentTemplate = "Prénom;Nom;Classe;E-mail;Téléphone;E-mail parent;Téléphone parent\nAfi;Mensah;CM1A;afi.mensah@example.com;91111111;parent@example.com;92222222\nKomi;Adjovi;CM1A;;;;";
+    public const string StudentTemplate = "Prénom;Nom;Classe;Identifiant;E-mail;Téléphone;E-mail parent;Téléphone parent\nAfi;Mensah;CM1A;afi.mensah;;91111111;parent@example.com;92222222\nKomi;Adjovi;CM1A;;;;;";
 }
 
-public sealed record SchoolUserImportZugang(string Email, string Passwort);
+public sealed record SchoolUserImportZugang(string Identifiant, string Passwort);

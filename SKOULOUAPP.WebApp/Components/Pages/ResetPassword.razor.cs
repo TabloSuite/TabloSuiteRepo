@@ -12,8 +12,8 @@ public partial class ResetPassword
     [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
 
-    [SupplyParameterFromQuery]
-    private string? Email { get; set; }
+    [SupplyParameterFromQuery(Name = "id")]
+    private Guid? KontoID { get; set; }
 
     [SupplyParameterFromQuery]
     private string? Token { get; set; }
@@ -33,7 +33,7 @@ public partial class ResetPassword
 
     protected override void OnInitialized()
     {
-        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Token))
+        if (KontoID is null || string.IsNullOrWhiteSpace(Token))
         {
             message = "Le lien de réinitialisation est invalide ou incomplet.";
         }
@@ -46,7 +46,7 @@ public partial class ResetPassword
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Token))
+        if (KontoID is null || string.IsNullOrWhiteSpace(Token))
         {
             message = "Le lien de réinitialisation est invalide ou incomplet.";
             return;
@@ -57,7 +57,7 @@ public partial class ResetPassword
         {
             await DatabaseActionGuard.RunAsync(async () =>
             {
-                var result = await AuthService.ResetPasswordAsync(Email!, Token!, Model.Password);
+                var result = await AuthService.ResetPasswordAsync(KontoID!.Value, Token!, Model.Password);
                 succeeded = result.Succeeded;
                 message = result.Message;
             });

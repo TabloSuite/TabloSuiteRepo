@@ -85,7 +85,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services
     .AddIdentityCore<AppUser>(options =>
     {
-        options.User.RequireUniqueEmail = true;
+        // Anmeldung per Identifiant (UserName); eine Kontakt-E-Mail darf zu mehreren Konten gehören.
+        options.User.RequireUniqueEmail = false;
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = false;
@@ -639,12 +640,12 @@ app.MapPost("/auth/login/submit", async (
 {
     await antiforgery.ValidateRequestAsync(httpContext);
     var form = await httpContext.Request.ReadFormAsync();
-    var email = form["email"].ToString();
+    var identifiant = form["identifiant"].ToString();
     var password = form["password"].ToString();
     var rememberMe = string.Equals(form["rememberMe"], "true", StringComparison.OrdinalIgnoreCase);
     var returnUrl = form["returnUrl"].ToString();
 
-    var result = await authService.PasswordSignInAsync(email, password, rememberMe);
+    var result = await authService.PasswordSignInAsync(identifiant, password, rememberMe);
     if (!result.Succeeded)
     {
         return Results.Redirect(result.ErrorMessage == AuthService.BlockedAccountMessage
@@ -652,7 +653,7 @@ app.MapPost("/auth/login/submit", async (
             : "/auth/login?error=invalid-credentials");
     }
 
-    var signedInUser = await userManager.FindByEmailAsync(email);
+    var signedInUser = await userManager.FindByNameAsync(identifiant.Trim());
     if (signedInUser is not null)
     {
         var roles = await userManager.GetRolesAsync(signedInUser);
