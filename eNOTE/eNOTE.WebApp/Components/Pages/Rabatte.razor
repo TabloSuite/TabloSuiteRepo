@@ -104,7 +104,7 @@
     }
 </div>
 
-<ModalDialog Open="editorOffen" Title="@(bearbeitungsRabatt.Id == Guid.Empty ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor" MaxWidthClass="enote-modal-md">
+<ModalDialog Open="editorOffen" Title="@(istNeueRemise ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
             <label>Nom <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="120" /></label>

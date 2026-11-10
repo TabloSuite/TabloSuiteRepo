@@ -46,6 +46,8 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private bool loeschDialogOffen;
     private string? editorFehler;
     private Rabatt bearbeitungsRabatt = new();
+    /// <summary>Editor für eine neue Remise (die Id ist schon vorbelegt, daher eigenes Kennzeichen).</summary>
+    private bool istNeueRemise;
     private Rabatt? zuLoeschenderRabatt;
     private string ausgewaehlteLeistungId = string.Empty;
 
@@ -118,6 +120,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     private void NeuAnlegen()
     {
+        istNeueRemise = true;
         bearbeitungsRabatt = new Rabatt { SalonId = salonId, IstAktiv = false, Art = RabattArt.Prozent };
         ausgewaehlteLeistungId = string.Empty;
         hatGueltigkeit = false;
@@ -129,6 +132,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     private void Bearbeiten(Rabatt rabatt)
     {
+        istNeueRemise = false;
         bearbeitungsRabatt = new Rabatt
         {
             Id = rabatt.Id,
