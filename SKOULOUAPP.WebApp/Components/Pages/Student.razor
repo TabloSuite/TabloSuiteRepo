@@ -22,7 +22,7 @@ else
                 @if (dashboard.StreakDays >= 2)
                 {
                     <span class="streak-badge">
-                        <span aria-hidden="true">🔥</span>
+                        <span aria-hidden="true"><Icon Name="trend-up" Groesse="16" /> </span>
                         <span>@dashboard.StreakDays jours de suite</span>
                     </span>
                 }
@@ -43,7 +43,7 @@ else
                 <div class="student-score-card relative flex w-[92%] shrink-0 snap-center flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 px-5 py-4 ring-1 ring-white/30 backdrop-blur-sm sm:w-auto sm:shrink">
                     <div class="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
                     <div class="relative flex items-center gap-3">
-                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl shadow-inner" aria-hidden="true">🏆</span>
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl shadow-inner" aria-hidden="true"><Icon Name="star" Groesse="16" /> </span>
                         <div class="leading-tight">
                             <div class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-100">Progression · classe actuelle</div>
                             <div class="flex items-baseline gap-2">
@@ -61,7 +61,7 @@ else
                     </div>
                     <div class="relative grid grid-cols-2 gap-3">
                         <div class="student-score-subcard flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-2.5 ring-1 ring-white/15">
-                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400/20 text-base" aria-hidden="true">📝</span>
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400/20 text-base" aria-hidden="true"><Icon Name="pen" Groesse="16" /> </span>
                             <div class="leading-tight">
                                 <div class="text-[0.65rem] font-semibold uppercase tracking-wide text-indigo-100">Leçons &amp; exercices</div>
                                 @if (dashboard.ExercisePointsTotal > 0)
@@ -75,7 +75,7 @@ else
                             </div>
                         </div>
                         <div class="student-score-subcard flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-2.5 ring-1 ring-white/15">
-                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 text-base" aria-hidden="true">🎓</span>
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 text-base" aria-hidden="true"><Icon Name="graduation" Groesse="16" /> </span>
                             <div class="leading-tight">
                                 <div class="text-[0.65rem] font-semibold uppercase tracking-wide text-indigo-100">Examens</div>
                                 @if (dashboard.ExamPointsTotal > 0)
@@ -92,7 +92,7 @@ else
                 </div>
             </div>
             <div class="student-dashboard-upgrade-hint mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 @ClassCycleHintAccentClass">
-                <span aria-hidden="true">✨</span>
+                <span aria-hidden="true"><Icon Name="sparkles" Groesse="16" /> </span>
                 <span>@ClassCycleHintText</span>
             </div>
             <div class="student-dashboard-actions mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -246,7 +246,7 @@ else
                     else
                     {
                         <div class="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-8 text-center">
-                            <span class="text-3xl" aria-hidden="true">🗂️</span>
+                            <span class="text-3xl" aria-hidden="true"><Icon Name="layers" Groesse="16" /> </span>
                             <p class="text-sm font-semibold text-slate-600">Tes classes précédentes s'afficheront ici</p>
                             <p class="max-w-md text-xs text-slate-500">Dès que tu termines un cycle de classe, tu retrouveras ici son historique complet : score, exercices réalisés et supports de cours partagés.</p>
                         </div>

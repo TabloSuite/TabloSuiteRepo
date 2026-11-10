@@ -66,6 +66,9 @@ public partial class CollapsibleCard
         _ => "bg-slate-100 text-slate-700"
     };
 
+    /// <summary>Icon-Name des SVG-Sets (z. B. "book") statt Emoji/Text.</summary>
+    private bool IstIconName => Icon is { Length: > 0 } wert && wert.All(zeichen => zeichen is >= 'a' and <= 'z' or '-');
+
     private bool HasPlaceholderIcon
         => !string.IsNullOrWhiteSpace(Icon)
            && Icon.Trim().All(character => character == '?');

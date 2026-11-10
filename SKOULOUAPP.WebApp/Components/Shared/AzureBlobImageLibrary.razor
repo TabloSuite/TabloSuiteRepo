@@ -54,7 +54,7 @@
                 }
                 <div class="@(ProfileImageMode ? string.Empty : "lg:col-span-4") flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-cyan-200 bg-white/80 p-2.5">
                     <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100 transition hover:bg-cyan-50 hover:ring-cyan-200">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-lg text-cyan-700">@(VideoMode ? "🎬" : "🖼️")</span>
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-lg text-cyan-700"><Icon Name="@(VideoMode ? "video" : "image")" Groesse="18" /></span>
                         <span class="min-w-0">
                             <span class="block text-sm font-bold text-slate-800">@(selectedFile is null ? VideoMode ? "Choisir une vidéo" : "Choisir une image" : selectedFile.Name)</span>
                             <span class="block text-xs text-slate-500">@(VideoMode ? "MP4 ou MOV · 8 Go maximum · 1 heure maximum" : "PNG, JPG, GIF ou WebP · 25 Mo maximum")</span>
@@ -108,7 +108,7 @@
                             <div class="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition hover:-translate-y-0.5 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
                                 @if (image.MediaType == BlobMediaType.Video)
                                 {
-                                    <div class="flex aspect-square items-center justify-center bg-cyan-50 text-5xl">🎬</div>
+                                    <div class="flex aspect-square items-center justify-center bg-cyan-50 text-5xl"><Icon Name="video" Groesse="16" /> </div>
                                 }
                                 else
                                 {

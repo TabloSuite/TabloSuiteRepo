@@ -5,7 +5,7 @@
 
 <PageTitle>Notes et évaluations</PageTitle>
 <div class="mx-auto max-w-6xl space-y-5 p-4">
-    <header class="rounded-2xl bg-slate-900 p-6 text-white"><a href="/" class="text-sky-300">← Accueil</a><h1 class="mt-3 text-2xl font-bold">Notes et évaluations</h1><p>Préparez les périodes et saisissez les notes par matière.</p></header>
+    <SeitenKopf Rubrik="Pédagogie" Titel="Notes et évaluations" IconName="clipboard-check" Untertitel="Préparez les périodes et saisissez les notes par matière." />
     @if (message.Length > 0) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
     <div class="grid gap-4 md:grid-cols-2">
         <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="SchuleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Disabled="occupe" />

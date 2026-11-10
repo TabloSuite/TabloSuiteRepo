@@ -493,7 +493,8 @@ html {
     z-index: 0;
 }
 
-.skoulou-hero > * {
+/* Deko-Elemente (.absolute) bleiben absolut, sonst nehmen sie Platz ein. */
+.skoulou-hero > *:not(.absolute) {
     position: relative;
     z-index: 1;
 }

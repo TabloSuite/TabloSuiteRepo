@@ -40,7 +40,7 @@
 					<button type="button"
 							class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
 							@onclick="() => OpenEditSchoolAsync(selectedSchool.SchoolId)">
-						✏️ Modifier école
+						<Icon Name="edit" Groesse="16" /> Modifier école
 					</button>
 				}
 			}
@@ -52,7 +52,7 @@
 					<button type="button"
 							class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
 							@onclick="() => OpenEditSchoolAsync(school.SchoolId)">
-						✏️ Modifier école
+						<Icon Name="edit" Groesse="16" /> Modifier école
 					</button>
 				}
 			}
@@ -121,7 +121,7 @@
     <CollapsibleCard Title="Matières de l'école"
                      Eyebrow="Gestion des matières"
                      Subtitle="Gestion scolaire des matières. Elles seront disponibles dans le formulaire enseignant."
-                     Icon="📘"
+                     Icon="book"
                      Accent="indigo"
                      Expanded="fachVerwaltungExpanded"
                      ExpandedChanged="value => fachVerwaltungExpanded = value">
@@ -202,7 +202,7 @@
     <CollapsibleCard Title="Classes de mon école"
                       Eyebrow="Gestion des classes"
                       Subtitle="Crée et gère uniquement les classes propres à ton école."
-                     Icon="🏫"
+                     Icon="school"
                      Accent="violet"
                      Expanded="klassenExpanded"
                      ExpandedChanged="value => klassenExpanded = value">
@@ -211,7 +211,7 @@
                     class="skoulou-btn-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                     disabled="@(SelectedKlasseSchoolId is null)"
                     @onclick="OpenNewKlasseModal">
-                ➕ Nouvelle classe
+                <Icon Name="plus" Groesse="16" /> Nouvelle classe
             </button>
         </HeaderRight>
         <ChildContent>
@@ -363,7 +363,7 @@
     {
     <CollapsibleCard Title="@SchoolUsersCardTitle"
                  Eyebrow="Gestion des utilisateurs"
-                 Icon="👥"
+                 Icon="users"
                  Accent="cyan"
                  Expanded="usersExpanded"
                  ExpandedChanged="v => usersExpanded = v">
@@ -544,12 +544,12 @@
                                 <div class="text-sm text-slate-500">@student.Email · @student.SchoolName</div>
                                 <div class="mt-2 flex flex-wrap gap-2">
                                      <div class="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-sm text-cyan-800 ring-1 ring-cyan-100">
-                                         <span aria-hidden="true">🏫</span>
+                                         <span aria-hidden="true"><Icon Name="school" Groesse="16" /> </span>
                                           <span class="font-semibold">Classe active :</span>
                                          <span>@student.CurrentLevelCode@if (!string.IsNullOrWhiteSpace(student.CurrentKlasseName) && student.CurrentKlasseName != student.CurrentLevelCode) { <text> · @student.CurrentKlasseName</text> }</span>
                                      </div>
                                     <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200">
-                                        <span aria-hidden="true">📚</span>
+                                        <span aria-hidden="true"><Icon Name="book" Groesse="16" /> </span>
                                         <span class="text-slate-600">Score exercices &amp; examens :</span>
                                         @if (student.CombinedScorePercent.HasValue)
                                         {
@@ -683,7 +683,7 @@
     <CollapsibleCard InitiallyExpanded="true" Title="Réassignation des élèves sans classe active"
                      Eyebrow="Session de réattribution"
                      Subtitle="À gauche: classe cible. À droite: élèves sans classe active avec recherche et sélection multiple."
-                     Icon="🔁"
+                     Icon="refresh"
                      Accent="indigo">
         <ChildContent>
             @if (SelectedKlasseSchoolId is null)
@@ -827,7 +827,7 @@
     <CollapsibleCard Title="Import utilisateurs"
                      Eyebrow="Création automatique"
                      Subtitle="Ajoute beaucoup d'enseignants ou d'élèves à partir d'un fichier CSV Excel. Champs obligatoires : Prénom, Nom, Classe."
-                     Icon="📥"
+                     Icon="download"
                      Accent="cyan"
                      Expanded="userImportExpanded"
                      ExpandedChanged="value => userImportExpanded = value">
@@ -879,7 +879,7 @@
                     <div class="mt-4 grid gap-3">
                         <label class="group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-cyan-200 bg-white px-4 py-3 shadow-sm transition hover:border-cyan-400 hover:bg-cyan-50/60 hover:shadow-md @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
                             <span class="flex items-center gap-3">
-                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-100 text-xl text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white">📄</span>
+                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-100 text-xl text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white"><Icon Name="log" Groesse="16" /> </span>
                                 <span>
                                     <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
                                     <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
@@ -920,7 +920,7 @@
                     <div class="mt-4 grid gap-3">
                         <label class="group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-emerald-200 bg-white px-4 py-3 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50/60 hover:shadow-md @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
                             <span class="flex items-center gap-3">
-                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-xl text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">📄</span>
+                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-xl text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white"><Icon Name="log" Groesse="16" /> </span>
                                 <span>
                                     <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
                                     <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
@@ -948,7 +948,7 @@
         <CollapsibleCard Title="Contenus partagés par les enseignants"
                          Eyebrow="Consultation"
                          Subtitle="Seuls les contenus que leurs auteurs ont explicitement partagés avec la direction sont affichés ici."
-                         Icon="📚"
+                         Icon="book"
                          Accent="violet"
                          Expanded="sharedContentExpanded"
                          ExpandedChanged="value => sharedContentExpanded = value">
@@ -1532,7 +1532,7 @@
     {
         <div class="grid gap-3 sm:grid-cols-2">
             <div class="flex items-start gap-3 rounded-2xl border-2 p-3 shadow-sm @(zuBeendenderDurchlauf.SummeOffen > 0 ? "border-rose-300 bg-rose-50 text-rose-900" : "border-emerald-200 bg-emerald-50 text-emerald-900")">
-                <span class="text-xl" aria-hidden="true">@(zuBeendenderDurchlauf.SummeOffen > 0 ? "💸" : "✅")</span>
+                <span class="text-xl" aria-hidden="true"><Icon Name="@(zuBeendenderDurchlauf.SummeOffen > 0 ? "wallet" : "check")" /></span>
                 <div>
                     <p class="text-[11px] font-bold uppercase tracking-wide @(zuBeendenderDurchlauf.SummeOffen > 0 ? "text-rose-700" : "text-emerald-700")">Frais de scolarité impayés</p>
                     @if (zuBeendenderDurchlauf.SummeOffen > 0)
@@ -1547,7 +1547,7 @@
                 </div>
             </div>
             <div class="flex items-start gap-3 rounded-2xl border-2 p-3 shadow-sm @(beendenOhneNote > 0 ? "border-amber-300 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900")">
-                <span class="text-xl" aria-hidden="true">@(beendenOhneNote > 0 ? "📝" : "✅")</span>
+                <span class="text-xl" aria-hidden="true"><Icon Name="@(beendenOhneNote > 0 ? "pen" : "check")" /></span>
                 <div>
                     <p class="text-[11px] font-bold uppercase tracking-wide @(beendenOhneNote > 0 ? "text-amber-700" : "text-emerald-700")">Notes finales</p>
                     @if (beendenOhneNote > 0)
@@ -1563,7 +1563,7 @@
             </div>
         </div>
         <div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-            <p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true">⚠️</span>Clôture définitive du cycle de classe</p>
+            <p class="flex items-center gap-2 text-base font-bold text-slate-900"><span aria-hidden="true"><Icon Name="alert" Groesse="16" /> </span>Clôture définitive du cycle de classe</p>
             <p class="mt-2">La clôture n'effectue aucune promotion automatique. Après réouverture d'une classe, le remplissage des élèves se fait manuellement par le directeur ou le coordinateur.</p>
             <p class="mt-2 font-semibold">Les notes finales et décisions déjà enregistrées seront conservées. Les résultats manquants ne bloquent pas la clôture. Pour les nouveaux cycles, les élèves restent dans leur classe et conservent l'accès aux supports publiés ; la promotion est une opération distincte. Les anciens cycles conservent leur traitement historique.</p>
             <p class="mt-2">Pour les nouveaux cycles, la clôture par la direction ou un coordinateur autorisé crée automatiquement la facture de toutes les participations enregistrées, au tarif fixé au démarrage. Aucun paiement individuel SKOULOUAPP n'est demandé. Déclare ensuite le virement dans Facturation SKOULOUAPP ; le paiement de l'école ne conditionne pas l'accès des élèves ni le démarrage du cycle suivant.</p>

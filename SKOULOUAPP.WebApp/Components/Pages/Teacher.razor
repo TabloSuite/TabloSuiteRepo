@@ -94,7 +94,7 @@ else
                                 <div class="mt-1.5 flex flex-wrap gap-2">
                                     <Badge Accent="@GetAboStatusAccent(student)">@GetAboStatusLabel(student)</Badge>
                                     <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2.5 py-1 text-xs ring-1 ring-slate-200">
-                                        <span aria-hidden="true">📈</span>
+                                        <span aria-hidden="true"><Icon Name="trend-up" Groesse="16" /> </span>
                                         <span class="text-slate-600">Score exercices &amp; examens :</span>
                                         @if (student.CombinedScorePercent.HasValue)
                                         {

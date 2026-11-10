@@ -285,3 +285,8 @@ body {
 .app-content form select:focus,
 .app-content form textarea:focus { border-color: var(--sk-primary-hell); box-shadow: 0 0 0 3px rgb(var(--sk-p-600) / .18); }
 .skoulou-input::placeholder { color: var(--sk-text-subtle); }
+
+/* --- Seitenköpfe: Verlauf wie eNOTE (Navy → Teal), ruhiger Schatten --- */
+.skoulou-hero { background-image: var(--sk-gradient) !important; }
+.app-content .skoulou-hero:not(.student-dashboard-hero) { box-shadow: var(--sk-shadow); }
+.skoulou-hero-badge { background-image: linear-gradient(135deg, rgb(var(--sk-p-700)) 0%, rgb(var(--sk-a-600)) 100%) !important; }

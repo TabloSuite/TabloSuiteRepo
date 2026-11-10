@@ -5,11 +5,7 @@
 
 <PageTitle>Emplois du temps</PageTitle>
 <div class="mx-auto max-w-6xl space-y-5 p-4">
-    <header class="rounded-2xl bg-slate-900 p-6 text-white">
-        <a href="/" class="text-sky-300">← Accueil</a>
-        <h1 class="mt-3 text-2xl font-bold">Emplois du temps</h1>
-        <p>Consultez les cours par jour, classe ou enseignant.</p>
-    </header>
+    <SeitenKopf Rubrik="Établissement" Titel="Emplois du temps" IconName="timetable" Untertitel="Consultez les cours par jour, classe ou enseignant." />
     @if (!string.IsNullOrEmpty(message)) { <p role="status" class="rounded-xl bg-slate-100 p-4">@message</p> }
     <ModernDropdown TValue="Guid" Value="schulID" ValueChanged="EcoleAsync" Options="Options(schulen)" Label="École" EinzigeOptionFest="true" Searchable="true" Disabled="occupe" />
     @if (verwalter && uebersicht is not null)
