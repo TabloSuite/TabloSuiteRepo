@@ -229,13 +229,19 @@ public class EmailService(
     /// <summary>Einfache Textfassung (Spamfilter bewerten reine HTML-Mails schlechter).</summary>
     public static string AlsText(string html)
     {
-        var text = Regex.Replace(html, @"<(style|head)[^>]*>.*?</\1>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        var text = Regex.Replace(html, @"<(style|head|title)[^>]*>.*?</\1>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        // Versteckte Vorschauzeile und Logo-Kachel gehören nicht in die Textfassung.
+        text = Regex.Replace(text, @"<div style=""display:none[^""]*"">.*?</div>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<td style=""width:36px[^""]*"">T</td>", "", RegexOptions.IgnoreCase);
+        // Tabellen: Label und Wert trennen (jede Tabellenzeile wird eine Textzeile).
+        text = Regex.Replace(text, @"</td>\s*<td[^>]*>", " : ", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"<a [^>]*href=""([^""]+)""[^>]*>(.*?)</a>", "$2 ($1)", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"<(br|/p|/div|/h1|/h2|/tr|/li)[^>]*>", "\n", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, "<[^>]+>", "");
         text = WebUtility.HtmlDecode(text);
         text = Regex.Replace(text, @"[ \t]+", " ");
-        text = Regex.Replace(text, @"\n\s*\n\s*\n+", "\n\n");
+        text = Regex.Replace(text, @" *\n *", "\n");
+        text = Regex.Replace(text, @"\n{3,}", "\n\n");
         return text.Trim();
     }
 

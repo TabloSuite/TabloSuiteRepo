@@ -163,5 +163,8 @@ public class EmailBenachrichtigungTests
         Assert.Contains("Bonjour Ama,", text);
         Assert.Contains("F CFA", text);
         Assert.Contains("(https://enote.tablosuite.com/abonnement)", text);
+        Assert.Contains("Montant : ", text);                       // Label und Wert getrennt
+        Assert.DoesNotContain(text.Split('\n'), zeile => zeile.Trim() == "T");   // keine Logo-Kachel
+        Assert.False(text.StartsWith("La caisse sera suspendue"));  // keine versteckte Vorschauzeile
     }
 }
