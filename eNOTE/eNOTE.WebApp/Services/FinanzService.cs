@@ -22,9 +22,14 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
         int AnzahlVerkaeufe,
         decimal AusgabenGesamt,
         IReadOnlyList<KategorieAusgabe> AusgabenNachKategorie,
-        IReadOnlyList<KategorieAusgabe> MobileMoneyNachAnbieter)
+        IReadOnlyList<KategorieAusgabe> MobileMoneyNachAnbieter,
+        decimal Einlagen = 0,
+        decimal EntnahmenBar = 0,
+        decimal WarenEntnahmenWert = 0,
+        decimal AbschreibungenWert = 0)
     {
-        public decimal Saldo => EinnahmenGesamt - AusgabenGesamt;
+        /// <summary>Ventes + Apports/aides − Dépenses − Retraits d'espèces du propriétaire.</summary>
+        public decimal Saldo => EinnahmenGesamt + Einlagen - AusgabenGesamt - EntnahmenBar;
     }
 
     public record KategorieAusgabe(string Name, decimal Betrag);
@@ -130,6 +135,13 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             .OrderByDescending(x => x.Betrag)
             .ToList();
 
+        var geld = await db.GeldBewegungen.AsNoTracking()
+            .Where(g => g.SalonId == salonId && g.ZeitUtc >= vonUtc && g.ZeitUtc <= bisUtc)
+            .Select(g => new { g.Art, g.Betrag }).ToListAsync(cancellationToken);
+        var lager = await db.LagerAbgaenge.AsNoTracking()
+            .Where(l => l.SalonId == salonId && l.ZeitUtc >= vonUtc && l.ZeitUtc <= bisUtc && l.EinkaufspreisSnapshot != null)
+            .Select(l => new { l.Art, Wert = l.EinkaufspreisSnapshot!.Value * l.Menge }).ToListAsync(cancellationToken);
+
         return new FinanzUebersicht(
             Summe(ZahlungsArt.Bar),
             Summe(ZahlungsArt.Karte),
@@ -138,7 +150,11 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             verkaeufe.Count,
             ausgaben.Sum(k => k.Betrag),
             ausgaben,
-            mobileNachAnbieter);
+            mobileNachAnbieter,
+            geld.Where(g => g.Art == Core.DataModels.Finanzen.GeldBewegungArt.Einlage).Sum(g => g.Betrag),
+            geld.Where(g => g.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(g => g.Betrag),
+            Math.Round(lager.Where(l => l.Art == Core.DataModels.Katalog.LagerAbgangArt.Eigenentnahme).Sum(l => l.Wert), 0),
+            Math.Round(lager.Where(l => l.Art == Core.DataModels.Katalog.LagerAbgangArt.Abschreibung).Sum(l => l.Wert), 0));
     }
 
     /// <summary>Die letzten Verkäufe eines Salons (für die Live-Ansicht des Besitzers).</summary>

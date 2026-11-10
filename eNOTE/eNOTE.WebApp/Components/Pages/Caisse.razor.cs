@@ -11,6 +11,7 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Caisse(
     KassenService kassenService,
+    BestandsService bestandsService,
     KatalogService katalogService,
     MobileMoneyService mobileMoneyService,
     GeraetFavoritService geraetFavoritService,
@@ -88,6 +89,64 @@ public partial class Caisse(
     private decimal mixBar;
     private ZahlungsArt mixZweitArt = ZahlungsArt.MobileMoney;
     private string? verkaufFehler;
+
+    // --- Entnahme durch den Besitzer ---
+    private bool retraitOffen;
+    private bool retraitWare;
+    private bool retraitBrauchtPin;
+    private decimal retraitBetrag;
+    private string retraitLeistungId = string.Empty;
+    private decimal retraitMenge = 1;
+    private string? retraitNotiz;
+    private string retraitPin = string.Empty;
+    private string? retraitFehler;
+    private static readonly IReadOnlyList<decimal> retraitVorschlaege = [1000m, 2000m, 5000m, 10000m];
+
+    private IReadOnlyList<Shared.EnoteSelectOption<string>> RetraitArtikelOptionen => leistungen
+        .Where(l => l.HatStueckzahl && l.Stueckzahl > 0 && !l.IstStandardArtikel)
+        .OrderBy(l => l.Name)
+        .Select(l => new Shared.EnoteSelectOption<string> { Value = l.Id.ToString(), Label = $"{l.Name} ({l.Stueckzahl:0.##})" })
+        .ToList();
+
+    private Leistung? RetraitArtikel => Guid.TryParse(retraitLeistungId, out var id) ? leistungen.FirstOrDefault(l => l.Id == id) : null;
+
+    private async Task OeffneRetrait()
+    {
+        if (aktiveSitzung is null) return;
+        retraitWare = false;
+        retraitBetrag = 0m;
+        retraitLeistungId = string.Empty;
+        retraitMenge = 1;
+        retraitNotiz = null;
+        retraitPin = string.Empty;
+        retraitFehler = null;
+        retraitBrauchtPin = await kassenService.HatBesitzerPinAsync(aktiveSitzung.SalonId);
+        retraitOffen = true;
+    }
+
+    private async Task BestaetigeRetraitAsync()
+    {
+        if (aktiveSitzung is null) return;
+        retraitFehler = null;
+
+        if (retraitWare)
+        {
+            if (RetraitArtikel is not { } artikel) return;
+            var ergebnis = await bestandsService.EntnehmeWareAsync(aktuellerBenutzerId, aktiveSitzung.Id, retraitPin, artikel.Id, retraitMenge, retraitNotiz);
+            if (!ergebnis.Erfolg) { retraitFehler = ergebnis.Fehler; retraitPin = string.Empty; return; }
+            toast.ZeigeInfo($"Retrait enregistré : {retraitMenge:0.##} × « {artikel.Name} ».");
+            leistungen = (await katalogService.GetLeistungenAsync(aktiveSitzung.SalonId)).Where(l => l.IstAktiv).ToList();
+        }
+        else
+        {
+            var ergebnis = await bestandsService.EntnehmeBargeldAsync(aktuellerBenutzerId, aktiveSitzung.Id, retraitPin, retraitBetrag, retraitNotiz);
+            if (!ergebnis.Erfolg) { retraitFehler = ergebnis.Fehler; retraitPin = string.Empty; return; }
+            anzeigeState.BargeldBewegt(-retraitBetrag);
+            toast.ZeigeInfo($"Retrait de {retraitBetrag:N0} F enregistré.");
+        }
+
+        retraitOffen = false;
+    }
 
     // --- Dialoge ---
     private bool displayDialogOffen;
@@ -212,7 +271,8 @@ public partial class Caisse(
             aktiveSitzung = offene;
             aktiverSalonName = z.Salon.Name;
             var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
-            anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand, aufstellung?.BarEinnahmen ?? 0m);
+            anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
+                aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
             await LadeKatalogAsync(offene.SalonId);
             wiederhergestelltKassierer = offene.Kassierer.FullName;
             wiederhergestelltSoll = aufstellung?.Soll;

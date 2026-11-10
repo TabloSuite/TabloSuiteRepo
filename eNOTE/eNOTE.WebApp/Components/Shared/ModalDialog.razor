@@ -1,7 +1,7 @@
 ﻿@if (Open)
 {
     <div class="enote-modal-backdrop" @onclick="OnBackdropClickAsync" @onkeydown="TasteAsync">
-        <div class="enote-modal @MaxWidthClass" role="dialog" aria-modal="true" aria-label="@Title" @onclick:stopPropagation="true">
+        <div class="enote-modal @MaxWidthClass" role="dialog" aria-modal="true" aria-label="@Title" tabindex="-1" @ref="dialogElement" @onclick:stopPropagation="true">
             <div class="enote-modal-header">
                 <h2>@Title</h2>
                 <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="CloseAsync"><Icon Name="x" Groesse="20" /></button>
@@ -22,6 +22,24 @@
 }
 
 @code {
+    private ElementReference dialogElement;
+    private bool warOffen;
+
     // Escape schließt den Dialog (PC-Tastatur); Ereignisse aus Eingabefeldern blubbern hierher.
     private Task TasteAsync(KeyboardEventArgs e) => e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+
+    /// <summary>Beim Öffnen den Fokus in den Dialog holen – sonst erreicht Escape ihn nicht.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            try { await dialogElement.FocusAsync(preventScroll: true); }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or NotSupportedException or TaskCanceledException) { }
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
 }

@@ -27,6 +27,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
     public DbSet<VerkaufZahlung> VerkaufZahlungen => Set<VerkaufZahlung>();
+    public DbSet<LagerAbgang> LagerAbgaenge => Set<LagerAbgang>();
+    public DbSet<GeldBewegung> GeldBewegungen => Set<GeldBewegung>();
     public DbSet<MobileMoneyAnbieter> MobileMoneyAnbieter => Set<MobileMoneyAnbieter>();
     public DbSet<SalonMobileMoneyAnbieter> SalonMobileMoneyAnbieter => Set<SalonMobileMoneyAnbieter>();
     public DbSet<BesitzerHinweis> BesitzerHinweise => Set<BesitzerHinweis>();
@@ -171,6 +173,34 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(k => k.Verkaeufe)
                 .HasForeignKey(v => v.KassenSitzungId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<LagerAbgang>(entity =>
+        {
+            entity.Property(a => a.Menge).HasPrecision(18, 2);
+            entity.Property(a => a.EinkaufspreisSnapshot).HasPrecision(18, 2);
+            entity.Property(a => a.VerkaufspreisSnapshot).HasPrecision(18, 2);
+            entity.Property(a => a.LeistungName).HasMaxLength(200);
+            entity.Property(a => a.ErfasstVonName).HasMaxLength(200);
+            entity.Property(a => a.Notiz).HasMaxLength(500);
+            entity.Ignore(a => a.Einkaufswert);
+            entity.HasIndex(a => new { a.SalonId, a.ZeitUtc });
+            entity.HasOne(a => a.Leistung).WithMany().HasForeignKey(a => a.LeistungId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Salon>().WithMany().HasForeignKey(a => a.SalonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<KassenSitzung>().WithMany().HasForeignKey(a => a.KassenSitzungId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<GeldBewegung>(entity =>
+        {
+            entity.Property(g => g.Betrag).HasPrecision(18, 2);
+            entity.Property(g => g.Herkunft).HasMaxLength(120);
+            entity.Property(g => g.Notiz).HasMaxLength(500);
+            entity.Property(g => g.ErfasstVonName).HasMaxLength(200);
+            entity.Ignore(g => g.Vorzeichenbetrag);
+            entity.HasIndex(g => new { g.SalonId, g.ZeitUtc });
+            entity.HasIndex(g => g.KassenSitzungId);
+            entity.HasOne<Salon>().WithMany().HasForeignKey(g => g.SalonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<KassenSitzung>().WithMany().HasForeignKey(g => g.KassenSitzungId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<VerkaufZahlung>(entity =>

@@ -23,7 +23,7 @@ public static class FinanzBerichtPdfService
         var gesamt = tage.Sum(t => t.Gesamt);
         var anzahl = tage.Sum(t => t.AnzahlVerkaeufe);
         var ausgaben = uebersicht?.AusgabenGesamt ?? 0m;
-        var saldo = gesamt - ausgaben;
+        var saldo = uebersicht?.Saldo ?? gesamt - ausgaben;
 
         var dokument = Document.Create(container =>
         {
@@ -59,6 +59,10 @@ public static class FinanzBerichtPdfService
                     {
                         ZusammenfassungKarte(row.RelativeItem(), "Entrées (ventes)", $"{gesamt:N0} F", false);
                         ZusammenfassungKarte(row.RelativeItem(), "Dépenses", $"{ausgaben:N0} F", false);
+                        if (uebersicht is { Einlagen: > 0 } || uebersicht is { EntnahmenBar: > 0 })
+                        {
+                            ZusammenfassungKarte(row.RelativeItem(), "Apports / retraits", $"+{uebersicht!.Einlagen:N0} / −{uebersicht.EntnahmenBar:N0} F", false);
+                        }
                         ZusammenfassungKarte(row.RelativeItem(), "Solde de caisse", $"{(saldo < 0 ? "-" : "")}{Math.Abs(saldo):N0} F", true);
                     });
 

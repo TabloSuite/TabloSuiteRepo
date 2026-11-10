@@ -1,0 +1,182 @@
+using ENote.Core.DataModels.Finanzen;
+using ENote.Core.DataModels.Kasse;
+using ENote.Core.DataModels.Katalog;
+using ENote.Core.Services.Kasse;
+using ENote.WebApp.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace ENote.WebApp.Services;
+
+/// <summary>
+/// Bewegungen außerhalb von Verkauf und Ausgabe: Abschreibung defekter Ware, Entnahmen des
+/// Besitzers (Ware oder Bargeld, an der offenen Kasse) und Einlagen/Hilfen ins Finanzbuch.
+/// Alle Rechte werden serverseitig geprüft.
+/// </summary>
+public class BestandsService(IDbContextFactory<ApplicationDbContext> dbContextFactory, KassenService kassenService)
+{
+    public record Ergebnis(bool Erfolg, string? Fehler);
+
+    public static string GrundText(AbschreibungsGrund grund) => grund switch
+    {
+        AbschreibungsGrund.Casse => "Cassé / abîmé",
+        AbschreibungsGrund.Peremption => "Périmé",
+        AbschreibungsGrund.Vol => "Vol / perte",
+        _ => "Autre"
+    };
+
+    private static async Task<string> NameAsync(ApplicationDbContext db, Guid userId, CancellationToken ct)
+        => await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(ct) ?? "—";
+
+    /// <summary>Besitzer oder Mitglied mit Recht „Prestations verwalten“.</summary>
+    private static async Task<bool> DarfLagerVerwaltenAsync(ApplicationDbContext db, Guid userId, Guid salonId, CancellationToken ct)
+        => await LadenZugriff.IstBesitzerAsync(db, userId, salonId, ct)
+            || await db.UserSalons.AnyAsync(us => us.AppUserId == userId && us.SalonId == salonId && us.KannLeistungenVerwalten
+                && !us.AppUser.IsBlocked && us.Salon.IstAktiv, ct);
+
+    /// <summary>
+    /// Bestätigung durch den Besitzer an der (gemeinsamen) Kasse: mit konfigurierter Besitzer-PIN
+    /// zählt nur die PIN; ohne PIN muss der angemeldete Benutzer selbst Besitzer sein.
+    /// </summary>
+    private async Task<string?> PruefeBesitzerFreigabeAsync(ApplicationDbContext db, Guid salonId, Guid userId, string? besitzerPin, CancellationToken ct)
+    {
+        if (await kassenService.HatBesitzerPinAsync(salonId, ct))
+        {
+            if (string.IsNullOrWhiteSpace(besitzerPin)) return "Saisissez le code PIN du propriétaire.";
+            var (ok, fehler) = await kassenService.PruefeBesitzerPinAsync(salonId, besitzerPin, ct);
+            return ok ? null : fehler;
+        }
+
+        return await LadenZugriff.IstBesitzerAsync(db, userId, salonId, ct) ? null : "Réservé au propriétaire de l'établissement.";
+    }
+
+    // ---------------- Lager ----------------
+
+    /// <summary>Defekte/abgelaufene/verlorene Ware abschreiben: Bestand sinkt, Wert zum Einkaufspreis.</summary>
+    public async Task<Ergebnis> SchreibeAbAsync(Guid userId, Guid leistungId, decimal menge, AbschreibungsGrund grund, string? notiz, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var leistung = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == leistungId, ct);
+        if (leistung is null) return new(false, "Article introuvable.");
+        if (!await DarfLagerVerwaltenAsync(db, userId, leistung.SalonId, ct)) return new(false, "Vous n'avez pas le droit de modifier le stock.");
+        if (grund == AbschreibungsGrund.Autre && string.IsNullOrWhiteSpace(notiz)) return new(false, "Précisez la raison dans la note.");
+
+        var fehler = BucheAbgang(db, leistung, menge, LagerAbgangArt.Abschreibung, grund, notiz, null, userId, await NameAsync(db, userId, ct));
+        if (fehler is not null) return new(false, fehler);
+        await db.SaveChangesAsync(ct);
+        return new(true, null);
+    }
+
+    /// <summary>Besitzer entnimmt Ware an der offenen Kasse (kein Umsatz, Wert zum Einkaufspreis).</summary>
+    public async Task<Ergebnis> EntnehmeWareAsync(Guid userId, Guid kassenSitzungId, string? besitzerPin, Guid leistungId, decimal menge, string? notiz, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var sitzung = await db.KassenSitzungen.AsNoTracking().FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, ct);
+        if (sitzung is null) return new(false, "Aucune caisse ouverte.");
+        var leistung = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == leistungId && l.SalonId == sitzung.SalonId, ct);
+        if (leistung is null) return new(false, "Article introuvable.");
+        if (await PruefeBesitzerFreigabeAsync(db, sitzung.SalonId, userId, besitzerPin, ct) is string pinFehler) return new(false, pinFehler);
+
+        var fehler = BucheAbgang(db, leistung, menge, LagerAbgangArt.Eigenentnahme, null, notiz, sitzung.Id, userId, "Propriétaire");
+        if (fehler is not null) return new(false, fehler);
+        await db.SaveChangesAsync(ct);
+        return new(true, null);
+    }
+
+    private static string? BucheAbgang(ApplicationDbContext db, Leistung leistung, decimal menge, LagerAbgangArt art,
+        AbschreibungsGrund? grund, string? notiz, Guid? sitzungId, Guid userId, string userName)
+    {
+        if (!leistung.HatStueckzahl) return "Cet article n'est pas géré en stock.";
+        if (menge <= 0) return "La quantité doit être positive.";
+        if (menge > leistung.Stueckzahl) return $"Quantité supérieure au stock ({leistung.Stueckzahl:0.##}).";
+
+        leistung.Stueckzahl -= menge;
+        leistung.UpdatedAtUtc = DateTime.UtcNow;
+        db.LagerAbgaenge.Add(new LagerAbgang
+        {
+            SalonId = leistung.SalonId, LeistungId = leistung.Id, LeistungName = leistung.Name, Menge = menge,
+            Art = art, Grund = grund, Notiz = Kuerze(notiz),
+            EinkaufspreisSnapshot = leistung.Kaufpreis is > 0 ? leistung.Kaufpreis : null, VerkaufspreisSnapshot = leistung.Preis,
+            KassenSitzungId = sitzungId, ErfasstVonId = userId, ErfasstVonName = userName
+        });
+        return null;
+    }
+
+    // ---------------- Geld ----------------
+
+    /// <summary>Besitzer entnimmt Bargeld an der offenen Kasse – höchstens den erwarteten Bestand.</summary>
+    public async Task<Ergebnis> EntnehmeBargeldAsync(Guid userId, Guid kassenSitzungId, string? besitzerPin, decimal betrag, string? notiz, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var sitzung = await db.KassenSitzungen.AsNoTracking().FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, ct);
+        if (sitzung is null) return new(false, "Aucune caisse ouverte.");
+        if (betrag <= 0) return new(false, "Le montant doit être positif.");
+        if (await PruefeBesitzerFreigabeAsync(db, sitzung.SalonId, userId, besitzerPin, ct) is string pinFehler) return new(false, pinFehler);
+
+        var soll = await kassenService.GetBarSollAsync(kassenSitzungId, ct) ?? 0m;
+        if (betrag > soll) return new(false, $"Il n'y a que {soll:N0} F attendus en caisse.");
+
+        db.GeldBewegungen.Add(new GeldBewegung
+        {
+            SalonId = sitzung.SalonId, Art = GeldBewegungArt.EntnahmeBesitzer, Ort = GeldOrt.Kasse, Betrag = Math.Round(betrag, 0),
+            Notiz = Kuerze(notiz), KassenSitzungId = sitzung.Id, ErfasstVonId = userId, ErfasstVonName = "Propriétaire"
+        });
+        await db.SaveChangesAsync(ct);
+        return new(true, null);
+    }
+
+    /// <summary>
+    /// Einlage/Hilfe ins Finanzbuch (nur Besitzer). „Kasse“ erhöht den erwarteten Bestand der
+    /// offenen Sitzung; „außerhalb“ (Bank/Mobile Money) betrifft nur das Finanzbuch.
+    /// </summary>
+    public async Task<Ergebnis> ErfasseEinlageAsync(Guid userId, Guid salonId, decimal betrag, GeldOrt ort, string? herkunft, string? notiz, DateTime? datumUtc = null, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        if (!await LadenZugriff.IstBesitzerAsync(db, userId, salonId, ct)) return new(false, "Réservé au propriétaire de l'établissement.");
+        if (betrag <= 0) return new(false, "Le montant doit être positif.");
+        if (string.IsNullOrWhiteSpace(herkunft)) return new(false, "Indiquez la provenance (ex. aide familiale, microcrédit).");
+
+        Guid? sitzungId = null;
+        if (ort == GeldOrt.Kasse)
+        {
+            sitzungId = await db.KassenSitzungen.Where(k => k.SalonId == salonId && k.Status == KassenSitzungStatus.Offen)
+                .Select(k => (Guid?)k.Id).FirstOrDefaultAsync(ct);
+            if (sitzungId is null) return new(false, "Aucune caisse ouverte : choisissez « hors caisse » ou ouvrez d'abord la caisse.");
+        }
+
+        db.GeldBewegungen.Add(new GeldBewegung
+        {
+            SalonId = salonId, Art = GeldBewegungArt.Einlage, Ort = ort, Betrag = Math.Round(betrag, 0),
+            Herkunft = Kuerze(herkunft, 120), Notiz = Kuerze(notiz), KassenSitzungId = sitzungId,
+            ErfasstVonId = userId, ErfasstVonName = await NameAsync(db, userId, ct),
+            ZeitUtc = ort == GeldOrt.AusserhalbKasse && datumUtc is DateTime d ? d : DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+        return new(true, null);
+    }
+
+    // ---------------- Auswertung ----------------
+
+    public record Bewegungen(IReadOnlyList<GeldBewegung> Geld, IReadOnlyList<LagerAbgang> Lager)
+    {
+        public decimal Einlagen => Geld.Where(g => g.Art == GeldBewegungArt.Einlage).Sum(g => g.Betrag);
+        public decimal EntnahmenBar => Geld.Where(g => g.Art == GeldBewegungArt.EntnahmeBesitzer).Sum(g => g.Betrag);
+        public decimal WarenEntnahmenWert => Lager.Where(l => l.Art == LagerAbgangArt.Eigenentnahme).Sum(l => l.Einkaufswert ?? 0);
+        public decimal AbschreibungenWert => Lager.Where(l => l.Art == LagerAbgangArt.Abschreibung).Sum(l => l.Einkaufswert ?? 0);
+    }
+
+    public async Task<Bewegungen> GetBewegungenAsync(Guid salonId, DateTime vonUtc, DateTime bisUtc, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var geld = await db.GeldBewegungen.AsNoTracking().Where(g => g.SalonId == salonId && g.ZeitUtc >= vonUtc && g.ZeitUtc <= bisUtc)
+            .OrderByDescending(g => g.ZeitUtc).ToListAsync(ct);
+        var lager = await db.LagerAbgaenge.AsNoTracking().Where(l => l.SalonId == salonId && l.ZeitUtc >= vonUtc && l.ZeitUtc <= bisUtc)
+            .OrderByDescending(l => l.ZeitUtc).ToListAsync(ct);
+        return new(geld, lager);
+    }
+
+    private static string? Kuerze(string? text, int max = 500)
+    {
+        var t = text?.Trim();
+        return string.IsNullOrEmpty(t) ? null : t[..Math.Min(max, t.Length)];
+    }
+}

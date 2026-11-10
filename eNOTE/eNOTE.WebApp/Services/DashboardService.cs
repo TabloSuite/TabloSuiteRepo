@@ -111,7 +111,8 @@ public class DashboardService(IDbContextFactory<ApplicationDbContext> dbContextF
         if (sitzung is not null)
         {
             kasse = new OffeneKasse(sitzung.Kassierer.FullName, sitzung.GestartetUtc,
-                KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe));
+                KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe,
+                    await db.GeldBewegungen.AsNoTracking().Where(g => g.KassenSitzungId == sitzung.Id).ToListAsync(ct)));
         }
 
         var heuteWert = proTag.GetValueOrDefault(heute);

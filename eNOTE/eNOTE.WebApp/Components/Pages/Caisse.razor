@@ -94,6 +94,7 @@ else
             <nav class="kx-kopf-aktionen" aria-label="Actions de caisse">
                 <button class="kx-aktion" @onclick="OeffneHistorieAsync" title="Ventes récentes"><Icon Name="history" /><span>Ventes</span></button>
                 <button class="kx-aktion" @onclick="OeffneDisplayDialog" title="Écran client"><Icon Name="monitor" /><span>Écran client</span></button>
+                <button class="kx-aktion" @onclick="OeffneRetrait" title="Retrait du propriétaire (espèces ou marchandise)"><Icon Name="wallet" /><span>Retrait</span></button>
                 <button class="kx-aktion" @onclick="anzeigeState.Minimieren" title="Réduire la caisse"><Icon Name="minimize" /><span>Réduire</span></button>
                 <button class="kx-aktion kx-aktion-haupt" @onclick="OeffneAbschluss" title="Clôturer la caisse"><Icon Name="lock" /><span>Clôturer</span></button>
             </nav>
@@ -477,6 +478,14 @@ else
                 <div class="kx-abschluss-zeilen">
                     <div><span><Icon Name="banknote" Groesse="16" /> Fonds de départ</span><span>@info.Startbestand.ToString("N0") F</span></div>
                     <div><span><Icon Name="banknote" Groesse="16" /> Ventes en espèces</span><span>+ @info.Bar.ToString("N0") F</span></div>
+                    @if (info.EinlagenBar > 0)
+                    {
+                        <div><span><Icon Name="arrow-down" Groesse="16" /> Apports en caisse</span><span>+ @info.EinlagenBar.ToString("N0") F</span></div>
+                    }
+                    @if (info.EntnahmenBar > 0)
+                    {
+                        <div><span><Icon Name="wallet" Groesse="16" /> Retraits du propriétaire</span><span>− @info.EntnahmenBar.ToString("N0") F</span></div>
+                    }
                     <div class="kx-abschluss-soll"><span>Espèces attendues</span><strong>@info.BarSoll.ToString("N0") F</strong></div>
                     @if (info.Karte > 0)
                     {
@@ -540,6 +549,66 @@ else
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => freierBetragOffen = false">Annuler</button>
         <button class="enote-btn enote-btn-primary" @onclick="FuegeStandardArtikelHinzu">Ajouter au ticket</button>
+    </Footer>
+</ModalDialog>
+
+@* --- Entnahme durch den Besitzer (Bargeld oder Ware) --- *@
+<ModalDialog Open="retraitOffen" Title="Retrait du propriétaire" ErrorMessage="@retraitFehler" OnClose="() => retraitOffen = false" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        <div class="kx-pay">
+            <p class="enote-muted kx-frei-text">Le propriétaire prend de l'argent ou un article pour lui-même. Ce n'est pas une vente : c'est noté comme retrait dans les finances.</p>
+            <div class="kx-pay-modi" role="tablist">
+                <button type="button" role="tab" class="kx-pay-modus @(retraitWare ? "" : "aktiv")" @onclick="() => retraitWare = false"><Icon Name="banknote" Groesse="18" /> Espèces</button>
+                <button type="button" role="tab" class="kx-pay-modus @(retraitWare ? "aktiv" : "")" @onclick="() => retraitWare = true"><Icon Name="package" Groesse="18" /> Marchandise</button>
+            </div>
+
+            @if (!retraitWare)
+            {
+                <BetragEingabe @bind-Wert="retraitBetrag" Label="Montant retiré de la caisse" Kompakt="true" MitZiffernblock="false" Schnellbetraege="retraitVorschlaege" />
+                <div class="kx-pay-rueck">
+                    <span>Espèces attendues après retrait</span>
+                    <strong>@Math.Max(anzeigeState.ErwarteterBarBetrag - retraitBetrag, 0).ToString("N0") F</strong>
+                </div>
+            }
+            else
+            {
+                <label class="kx-pay-ref"><span>Article</span></label>
+                <EnoteSelect TValue="string" @bind-Value="retraitLeistungId" Options="RetraitArtikelOptionen" Placeholder="Choisir un article en stock…" MitSuche="true" />
+                @if (RetraitArtikel is { } ra)
+                {
+                    <div class="kx-frei-menge">
+                        <span>Quantité <small class="enote-muted">(stock : @ra.Stueckzahl.ToString("0.##"))</small></span>
+                        <div class="kx-pos-menge">
+                            <button type="button" @onclick="() => retraitMenge = Math.Max(1, retraitMenge - 1)" aria-label="Diminuer"><Icon Name="minus" Groesse="16" /></button>
+                            <span>@retraitMenge.ToString("0.##")</span>
+                            <button type="button" @onclick="() => retraitMenge = Math.Min(ra.Stueckzahl, retraitMenge + 1)" aria-label="Augmenter"><Icon Name="plus" Groesse="16" /></button>
+                        </div>
+                    </div>
+                    <div class="kx-pay-rueck">
+                        <span>Valeur (prix d'achat)</span>
+                        <strong>@(ra.Kaufpreis is decimal k ? (k * retraitMenge).ToString("N0") + " F" : "inconnue")</strong>
+                    </div>
+                }
+            }
+
+            <label class="kx-pay-ref">
+                <span>Note <small class="enote-muted">(facultatif)</small></span>
+                <input class="enote-input" @bind="retraitNotiz" maxlength="500" placeholder="ex. transport, usage personnel…" />
+            </label>
+
+            @if (retraitBrauchtPin)
+            {
+                <div class="kx-retrait-pin">
+                    <span class="enote-betrag-label">Code PIN du propriétaire</span>
+                    <PinEingabe @bind-Wert="retraitPin" OnBestaetigt="BestaetigeRetraitAsync" />
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => retraitOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer le retrait" OnClick="BestaetigeRetraitAsync" CssClass="enote-btn-primary"
+                           Disabled="@(retraitWare ? RetraitArtikel is null : retraitBetrag <= 0)" />
     </Footer>
 </ModalDialog>
 

@@ -8,6 +8,8 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Finanzen(
     FinanzService finanzService,
+    BestandsService bestandsService,
+    ToastService toast,
     KatalogService katalogService,
     AktiverSalonState aktiverSalon,
     AuthenticationStateProvider authStateProvider,
@@ -149,6 +151,7 @@ public partial class Finanzen(
         letzteVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(salonId);
         abschluesse = await finanzService.GetAbschluesseAsync(salonId);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
+        bewegungen = await bestandsService.GetBewegungenAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
 
         var heute = tagesUmsaetze.FirstOrDefault(t => t.Datum == DateTime.UtcNow.Date);
         liveTagesUmsatz = heute?.Gesamt ?? 0m;
@@ -196,6 +199,45 @@ public partial class Finanzen(
         var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
+        bewegungen = await bestandsService.GetBewegungenAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
+    }
+
+    // --- Mouvements: Einlagen/Hilfen, Entnahmen, Warenabgänge ---
+    private BestandsService.Bewegungen? bewegungen;
+    private bool apportOffen;
+    private decimal apportBetrag;
+    private Core.DataModels.Finanzen.GeldOrt apportOrt = Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse;
+    private string? apportHerkunft;
+    private string? apportNotiz;
+    private DateTime? apportDatum = DateTime.Today;
+    private string? apportFehler;
+    private static readonly string[] HerkunftVorschlaege = ["Aide familiale", "Microcrédit / prêt", "Apport personnel", "Subvention", "Tontine"];
+
+    private void OeffneApport()
+    {
+        apportBetrag = 0m;
+        apportOrt = Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse;
+        apportHerkunft = null;
+        apportNotiz = null;
+        apportDatum = DateTime.Today;
+        apportFehler = null;
+        apportOffen = true;
+    }
+
+    private async Task SpeichereApportAsync()
+    {
+        var datum = apportDatum is DateTime d ? DateTime.SpecifyKind(d.Date.AddHours(12), DateTimeKind.Utc) : (DateTime?)null;
+        var ergebnis = await bestandsService.ErfasseEinlageAsync(benutzerId, salonId, apportBetrag, apportOrt, apportHerkunft, apportNotiz, datum);
+        if (!ergebnis.Erfolg)
+        {
+            apportFehler = ergebnis.Fehler;
+            return;
+        }
+
+        apportOffen = false;
+        toast.ZeigeErfolg($"Apport de {apportBetrag:N0} F enregistré.");
+        aktiverTab = "mouvements";
+        if (filterAktiv) await WendeFilterAsync(); else await LadeAsync();
     }
 
     private string aktiverZeitraum = "14";

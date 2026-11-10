@@ -42,6 +42,15 @@ public static class KassenRechner
     /// Erwarteter Bargeldbestand beim Abschluss: Startbestand + alle Bareinnahmen
     /// der Sitzung (Kartenzahlungen erhöhen die Kasse nicht).
     /// </summary>
+    /// <summary>
+    /// Erwarteter Bargeldbestand inklusive Geldbewegungen in der Kasse:
+    /// Startbestand + Baranteile der Verkäufe + Einlagen in die Kasse − Bar-Entnahmen.
+    /// </summary>
+    public static decimal BerechneBarSoll(decimal startbestand, IEnumerable<Verkauf> verkaeufe, IEnumerable<DataModels.Finanzen.GeldBewegung> bewegungen)
+        => Math.Round(BerechneBarSoll(startbestand, verkaeufe)
+            + bewegungen.Where(b => b.Ort == DataModels.Finanzen.GeldOrt.Kasse).Sum(b => b.Vorzeichenbetrag),
+            2, MidpointRounding.AwayFromZero);
+
     public static decimal BerechneBarSoll(decimal startbestand, IEnumerable<Verkauf> verkaeufe)
     {
         var bareinnahmen = verkaeufe

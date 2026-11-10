@@ -316,8 +316,27 @@ public class KatalogService(
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Barcode automatisch generieren, wenn leer (eindeutig pro Salon).
-        if (string.IsNullOrWhiteSpace(leistung.StrichCode))
+        // Barcode: eingegebenen Code prüfen (Format, eindeutig pro Laden); leer → automatisch erzeugen
+        // (auch beim Bearbeiten, damit jeder Artikel scanbar bleibt).
+        var pruefung = Core.Services.Katalog.BarcodeRegeln.Pruefe(leistung.StrichCode);
+        if (pruefung.Fehler)
+        {
+            throw new InvalidOperationException(pruefung.Hinweis);
+        }
+
+        if (pruefung.Code is string code)
+        {
+            var belegt = await db.Leistungen.AsNoTracking()
+                .Where(l => l.SalonId == leistung.SalonId && l.StrichCode == code && l.Id != leistung.Id)
+                .Select(l => l.Name).FirstOrDefaultAsync(cancellationToken);
+            if (belegt is not null)
+            {
+                throw new InvalidOperationException($"Ce code-barres est déjà utilisé par « {belegt} ».");
+            }
+
+            leistung.StrichCode = code;
+        }
+        else
         {
             leistung.StrichCode = await GeneriereEindeutigenBarcodeAsync(db, leistung.SalonId, cancellationToken);
         }
@@ -341,7 +360,7 @@ public class KatalogService(
             vorhanden.Typ = leistung.Typ;
             vorhanden.Preis = leistung.Preis;
             vorhanden.Kaufpreis = leistung.Typ == LeistungsTyp.Prestation ? null : leistung.Kaufpreis;
-            vorhanden.StrichCode = string.IsNullOrWhiteSpace(leistung.StrichCode) ? null : leistung.StrichCode.Trim();
+            vorhanden.StrichCode = leistung.StrichCode;
             vorhanden.KategorieId = leistung.KategorieId;
             vorhanden.HatStueckzahl = leistung.HatStueckzahl;
             vorhanden.Stueckzahl = leistung.HatStueckzahl ? leistung.Stueckzahl : 0;
@@ -365,24 +384,41 @@ public class KatalogService(
         return await GeneriereEindeutigenBarcodeAsync(db, salonId, cancellationToken);
     }
 
-    /// <summary>Generiert einen eindeutigen Barcode pro Salon (Format: 9 + Salon-Kurz-ID + Zufall).</summary>
+    /// <summary>
+    /// Ergebnis der Barcode-Prüfung für das Eingabefeld: Format-Hinweis plus Dublette im Laden.
+    /// </summary>
+    public async Task<Core.Services.Katalog.BarcodeRegeln.Pruefung> PruefeBarcodeAsync(
+        Guid salonId, string? eingabe, Guid leistungId, CancellationToken cancellationToken = default)
+    {
+        var pruefung = Core.Services.Katalog.BarcodeRegeln.Pruefe(eingabe);
+        if (pruefung.Fehler || pruefung.Code is not string code)
+        {
+            return pruefung;
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var belegt = await db.Leistungen.AsNoTracking()
+            .Where(l => l.SalonId == salonId && l.StrichCode == code && l.Id != leistungId)
+            .Select(l => l.Name).FirstOrDefaultAsync(cancellationToken);
+        return belegt is null
+            ? pruefung
+            : pruefung with { Hinweis = $"Déjà utilisé par « {belegt} » : choisissez un autre code.", Fehler = true, Warnung = false };
+    }
+
+    /// <summary>Erzeugt einen eindeutigen internen Code (gültige EAN-13, Präfix „2“ = laden-intern).</summary>
     private static async Task<string> GeneriereEindeutigenBarcodeAsync(ApplicationDbContext db, Guid salonId, CancellationToken cancellationToken)
     {
-        // Format: 9 (Präfix für interne Codes) + 4 Ziffern aus Salon-ID + 7 Zufallsziffern = 12 Stellen (EAN-12-ähnlich).
-        var salonKurz = Math.Abs(salonId.GetHashCode()) % 10000;
-        var random = new Random();
-        string barcode;
-        int versuche = 0;
-        do
+        var zufall = new Random();
+        for (var versuch = 0; versuch < 100; versuch++)
         {
-            var zufall = random.Next(0, 10000000); // 7 Ziffern
-            barcode = $"9{salonKurz:D4}{zufall:D7}";
-            versuche++;
-            if (versuche > 100) throw new InvalidOperationException("Konnte keinen eindeutigen Barcode generieren.");
+            var barcode = Core.Services.Katalog.BarcodeRegeln.ErzeugeIntern(zufall);
+            if (!await db.Leistungen.AnyAsync(l => l.SalonId == salonId && l.StrichCode == barcode, cancellationToken))
+            {
+                return barcode;
+            }
         }
-        while (await db.Leistungen.AnyAsync(l => l.SalonId == salonId && l.StrichCode == barcode, cancellationToken));
 
-        return barcode;
+        throw new InvalidOperationException("Impossible de générer un code-barres unique. Réessayez.");
     }
 
     public async Task LoescheLeistungAsync(Guid id, CancellationToken cancellationToken = default)

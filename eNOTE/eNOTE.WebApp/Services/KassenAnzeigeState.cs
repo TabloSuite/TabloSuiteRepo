@@ -47,6 +47,13 @@ public class KassenAnzeigeState
         OnChange?.Invoke();
     }
 
+    /// <summary>Bargeld-Einlage (+) oder -Entnahme (−) in der Schublade, ohne Verkauf.</summary>
+    public void BargeldBewegt(decimal betrag)
+    {
+        BarUmsatz += betrag;
+        OnChange?.Invoke();
+    }
+
     public void Minimieren()
     {
         IstMinimiert = true;

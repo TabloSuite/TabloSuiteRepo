@@ -566,9 +566,11 @@ public class KassenService(
     /// <summary>Kennzahlen einer offenen Sitzung für den Kassenabschluss.</summary>
     public record SitzungsUebersicht(
         decimal Startbestand, decimal Bar, decimal Karte, decimal MobileMoney,
-        IReadOnlyList<(string Anbieter, decimal Betrag)> MobileMoneyNachAnbieter, int AnzahlVerkaeufe)
+        IReadOnlyList<(string Anbieter, decimal Betrag)> MobileMoneyNachAnbieter, int AnzahlVerkaeufe,
+        decimal EinlagenBar = 0, decimal EntnahmenBar = 0)
     {
-        public decimal BarSoll => Startbestand + Bar;
+        /// <summary>Startbestand + Baranteile + Einlagen in die Kasse − Bar-Entnahmen des Besitzers.</summary>
+        public decimal BarSoll => Startbestand + Bar + EinlagenBar - EntnahmenBar;
         public decimal Umsatz => Bar + Karte + MobileMoney;
     }
 
@@ -597,9 +599,18 @@ public class KassenService(
             .OrderByDescending(x => x.Item2)
             .ToList();
 
+        var bewegungen = await KassenBewegungenAsync(db, sitzung.Id, cancellationToken);
         return new SitzungsUebersicht(sitzung.Startbestand, Summe(ZahlungsArt.Bar), Summe(ZahlungsArt.Karte),
-            Summe(ZahlungsArt.MobileMoney), nachAnbieter, sitzung.Verkaeufe.Count);
+            Summe(ZahlungsArt.MobileMoney), nachAnbieter, sitzung.Verkaeufe.Count,
+            bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.Einlage).Sum(b => b.Betrag),
+            bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(b => b.Betrag));
     }
+
+    /// <summary>Bargeldbewegungen (Einlagen/Entnahmen) in der Kassenschublade einer Sitzung.</summary>
+    private static Task<List<Core.DataModels.Finanzen.GeldBewegung>> KassenBewegungenAsync(ApplicationDbContext db, Guid sitzungId, CancellationToken ct)
+        => db.GeldBewegungen.AsNoTracking()
+            .Where(g => g.KassenSitzungId == sitzungId && g.Ort == Core.DataModels.Finanzen.GeldOrt.Kasse)
+            .ToListAsync(ct);
 
     /// <summary>Liefert den aktuell erwarteten Bargeldbestand (Soll) einer offenen Sitzung, ohne sie abzuschließen.</summary>
     public async Task<decimal?> GetBarSollAsync(Guid kassenSitzungId, CancellationToken cancellationToken = default)
@@ -626,7 +637,7 @@ public class KassenService(
             .SelectMany(KassenRechner.Anteile)
             .Where(a => a.Art == ZahlungsArt.Bar)
             .Sum(a => a.Betrag);
-        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe);
+        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));
         return (sitzung.Startbestand, Math.Round(barEinnahmen, 2), soll);
     }
 
@@ -650,7 +661,7 @@ public class KassenService(
             return (false, "Aucune caisse ouverte.", null);
         }
 
-        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe);
+        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));
 
         sitzung.Status = KassenSitzungStatus.Abgeschlossen;
         sitzung.AbgeschlossenUtc = DateTime.UtcNow;

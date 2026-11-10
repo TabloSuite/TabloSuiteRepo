@@ -10,6 +10,7 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Leistungen(
     KatalogService katalogService,
+    BestandsService bestandsService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
@@ -24,6 +25,17 @@ public partial class Leistungen(
     private bool editorOffen;
     private bool loeschDialogOffen;
     private string? editorFehler;
+    private Core.Services.Katalog.BarcodeRegeln.Pruefung? barcodePruefung;
+
+    /// <summary>Live-Hinweis am Barcode-Feld (Format, Prüfziffer, Dublette) nach Eingabe/Scan.</summary>
+    private async Task PruefeBarcodeAsync()
+        => barcodePruefung = await katalogService.PruefeBarcodeAsync(salonId, bearbeitungsLeistung.StrichCode, bearbeitungsLeistung.Id);
+
+    private async Task GeneriereBarcodeAsync()
+    {
+        bearbeitungsLeistung.StrichCode = await katalogService.GeneriereNeuenBarcodeAsync(salonId);
+        await PruefeBarcodeAsync();
+    }
     private Leistung bearbeitungsLeistung = new();
     private Leistung? zuLoeschendeLeistung;
     private string? bildVorschau;
@@ -52,6 +64,41 @@ public partial class Leistungen(
     private List<KatalogService.KategorieBaum> kategorieBaum = [];
     private HashSet<Guid> favoritenIds = [];
     private Dictionary<Guid, string> bildUrls = [];
+    private bool inventurOffen;
+
+    // Verlust / Abschreibung
+    private Leistung? verlustArtikel;
+    private decimal verlustMenge = 1;
+    private Core.DataModels.Katalog.AbschreibungsGrund verlustGrund = Core.DataModels.Katalog.AbschreibungsGrund.Casse;
+    private string? verlustNotiz;
+    private string? verlustFehler;
+
+    private void OeffneVerlust(Leistung leistung)
+    {
+        verlustArtikel = leistung;
+        verlustMenge = 1;
+        verlustGrund = Core.DataModels.Katalog.AbschreibungsGrund.Casse;
+        verlustNotiz = null;
+        verlustFehler = null;
+    }
+
+    private async Task SchreibeAbAsync()
+    {
+        if (verlustArtikel is null) return;
+        var ergebnis = await bestandsService.SchreibeAbAsync(aktuellerBenutzerId, verlustArtikel.Id, verlustMenge, verlustGrund, verlustNotiz);
+        if (!ergebnis.Erfolg)
+        {
+            verlustFehler = ergebnis.Fehler;
+            return;
+        }
+
+        toast.ZeigeInfo($"{verlustMenge:0.##} × « {verlustArtikel.Name} » retiré(s) du stock.");
+        verlustArtikel = null;
+        await LadeAsync();
+    }
+
+    /// <summary>Lagerwert (Einkauf/Verkauf) und möglicher Gewinn aller Stückartikel.</summary>
+    private Core.Services.Katalog.LagerRechner.Bewertung Lager => Core.Services.Katalog.LagerRechner.Bewerte(leistungen);
 
     /// <summary>Gleiche Kategoriefarben wie in der Kasse (Wiedererkennung).</summary>
     private static readonly string[] KategoriePalette =
@@ -194,8 +241,8 @@ public partial class Leistungen(
         bildVorschau = null;
         editorOffen = true;
 
-        // Barcode sofort generieren (vorausgefüllt, eindeutig pro Salon).
-        bearbeitungsLeistung.StrichCode = await katalogService.GeneriereNeuenBarcodeAsync(salonId);
+        // Leer lassen: Hersteller-Code kann gescannt werden; sonst wird beim Speichern automatisch ein Code erzeugt.
+        barcodePruefung = Core.Services.Katalog.BarcodeRegeln.Pruefe(null);
         StateHasChanged();
     }
 
@@ -217,8 +264,11 @@ public partial class Leistungen(
             IstAktiv = leistung.IstAktiv,
             BildAssetId = leistung.BildAssetId,
             BasisLeistungId = leistung.BasisLeistungId,
-            BasisAbzugMenge = leistung.BasisAbzugMenge
+            BasisAbzugMenge = leistung.BasisAbzugMenge,
+            // Vorhandenen Code übernehmen – sonst würde jedes Speichern ihn ersetzen (gedruckte Etiketten ungültig).
+            StrichCode = leistung.StrichCode
         };
+        barcodePruefung = Core.Services.Katalog.BarcodeRegeln.Pruefe(leistung.StrichCode);
         istSammelArtikel = leistung.BasisLeistungId is not null;
         basisLeistungIdText = leistung.BasisLeistungId?.ToString() ?? string.Empty;
         basisAbzugMenge = leistung.BasisAbzugMenge;
@@ -417,7 +467,17 @@ public partial class Leistungen(
         bearbeitungsLeistung.KategorieId = Guid.TryParse(kategorieIdText, out var katId) ? katId : null;
 
         bearbeitungsLeistung.SalonId = salonId;
-        var gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung);
+        Leistung gespeichert;
+        try
+        {
+            gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung);
+        }
+        catch (InvalidOperationException ex)
+        {
+            editorFehler = ex.Message;
+            await PruefeBarcodeAsync();
+            return;
+        }
 
         if (ausgewaehltesBildBytes is not null)
         {

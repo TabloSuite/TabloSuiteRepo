@@ -100,6 +100,32 @@
 
             @* RECHTS: Artikel *@
             <section class="pr-liste">
+                @if (darfVerwalten && Lager.Artikel > 0)
+                {
+                    <button type="button" class="pr-lager" @onclick="() => inventurOffen = true" title="Voir l'inventaire détaillé">
+                        <div class="pr-lager-kpi">
+                            <small>Stock</small>
+                            <strong>@Lager.Stueck.ToString("0.##") <span>unités · @Lager.Artikel articles</span></strong>
+                        </div>
+                        <div class="pr-lager-kpi">
+                            <small>Valeur d'achat</small>
+                            <strong>@Lager.Einkaufswert.ToString("N0") F</strong>
+                        </div>
+                        <div class="pr-lager-kpi">
+                            <small>Valeur de vente</small>
+                            <strong>@Lager.Verkaufswert.ToString("N0") F</strong>
+                        </div>
+                        <div class="pr-lager-kpi gewinn">
+                            <small>Bénéfice si tout est vendu</small>
+                            <strong>@Lager.Gewinn.ToString("N0") F @if (Lager.MargeProzent is decimal m) { <span>· @m %</span> }</strong>
+                        </div>
+                        @if (Lager.OhneEinkaufspreis > 0)
+                        {
+                            <span class="pr-lager-hinweis"><Icon Name="info" Groesse="14" /> @Lager.OhneEinkaufspreis article(s) sans prix d'achat : non compté(s) dans le bénéfice.</span>
+                        }
+                        <span class="pr-lager-mehr">Inventaire <Icon Name="chevron-right" Groesse="16" /></span>
+                    </button>
+                }
                 <div class="kx-suche pr-suche">
                     <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
                     <input class="kx-suche-feld" placeholder="Rechercher une prestation ou un code-barres…" @bind="leistungsSuche" @bind:event="oninput" />
@@ -189,6 +215,10 @@
             {
                 <div class="pr-aktionen">
                     <button class="enote-btn enote-btn-sm" @onclick="() => Bearbeiten(l)"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                    @if (l.HatStueckzahl && l.Stueckzahl > 0)
+                    {
+                        <button class="enote-btn enote-btn-sm enote-btn-icon" title="Déclarer une perte (cassé, périmé…)" aria-label="Déclarer une perte" @onclick="() => OeffneVerlust(l)"><Icon Name="alert" Groesse="16" /></button>
+                    }
                     @if (!string.IsNullOrWhiteSpace(l.StrichCode))
                     {
                         <button class="enote-btn enote-btn-sm enote-btn-icon" title="Imprimer des étiquettes" aria-label="Imprimer des étiquettes" @onclick="() => OeffneEtikettDialog(l)"><Icon Name="printer" Groesse="16" /></button>
@@ -229,6 +259,23 @@
 
             <label>Catégorie (facultatif)</label>
             <EnoteSelect TValue="string" @bind-Value="kategorieIdText" Options="kategorieOptionen" Placeholder="— Aucune —" MitSuche="true" />
+
+            <label for="pr-barcode">Code-barres</label>
+            <div class="pr-barcode">
+                <div class="pr-barcode-feld">
+                    <Icon Name="scan" Groesse="18" CssClass="pr-barcode-ico" />
+                    <input id="pr-barcode" class="enote-input" inputmode="text" autocomplete="off" maxlength="40"
+                           placeholder="Scannez ou saisissez le code du fabricant…"
+                           @bind="bearbeitungsLeistung.StrichCode" @bind:after="PruefeBarcodeAsync" />
+                </div>
+                <button type="button" class="enote-btn" title="Créer un code interne" @onclick="GeneriereBarcodeAsync"><Icon Name="refresh" Groesse="16" /> Générer</button>
+            </div>
+            @if (barcodePruefung is { } bp)
+            {
+                <small class="pr-barcode-hinweis @(bp.Fehler ? "fehler" : bp.Warnung ? "warnung" : "ok")" role="@(bp.Fehler ? "alert" : "status")">
+                    <Icon Name="@(bp.Fehler ? "alert" : bp.Warnung ? "info" : "check")" Groesse="14" /> @bp.Hinweis
+                </small>
+            }
 
             @* Preis-Felder je nach Typ *@
             @if (bearbeitungsLeistung.Typ == LeistungsTyp.Prestation)
@@ -284,6 +331,68 @@
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseEditor">Annuler</button>
         <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
     </Footer>
+</ModalDialog>
+
+@* Verlust / Abschreibung *@
+<ModalDialog Open="verlustArtikel is not null" Title="Déclarer une perte" ErrorMessage="@verlustFehler" OnClose="() => verlustArtikel = null" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        @if (verlustArtikel is { } va)
+        {
+            <div class="enote-form">
+                <p class="enote-muted">« @va.Name » · en stock : <strong>@va.Stueckzahl.ToString("0.##")</strong>. L'article sort du stock sans vente ; la perte est comptée au prix d'achat.</p>
+                <label>Raison</label>
+                <div class="enote-betrag-schnell">
+                    @foreach (var g in Enum.GetValues<ENote.Core.DataModels.Katalog.AbschreibungsGrund>())
+                    {
+                        <button type="button" class="enote-chip @(verlustGrund == g ? "enote-chip-aktiv" : "")" @onclick="() => verlustGrund = g">@ENote.WebApp.Services.BestandsService.GrundText(g)</button>
+                    }
+                </div>
+                <div class="kx-frei-menge">
+                    <span>Quantité</span>
+                    <div class="kx-pos-menge">
+                        <button type="button" @onclick="() => verlustMenge = Math.Max(1, verlustMenge - 1)" aria-label="Diminuer"><Icon Name="minus" Groesse="16" /></button>
+                        <span>@verlustMenge.ToString("0.##")</span>
+                        <button type="button" @onclick="() => verlustMenge = Math.Min(va.Stueckzahl, verlustMenge + 1)" aria-label="Augmenter"><Icon Name="plus" Groesse="16" /></button>
+                    </div>
+                </div>
+                <label>Note @(verlustGrund == ENote.Core.DataModels.Katalog.AbschreibungsGrund.Autre ? "" : "(facultatif)") <input @bind="verlustNotiz" maxlength="500" placeholder="ex. flacon tombé, date dépassée…" /></label>
+                <div class="kx-pay-rueck fehlt">
+                    <span>Perte</span>
+                    <strong>@(va.Kaufpreis is decimal k ? (k * verlustMenge).ToString("N0") + " F" : "prix d'achat inconnu")</strong>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => verlustArtikel = null">Annuler</button>
+        <AsyncActionButton Text="Retirer du stock" OnClick="SchreibeAbAsync" CssClass="enote-btn-danger" />
+    </Footer>
+</ModalDialog>
+
+@* Inventar: Wert je Artikel *@
+<ModalDialog Open="inventurOffen" Title="Inventaire et valeur du stock" OnClose="() => inventurOffen = false" MaxWidthClass="enote-modal-lg">
+    <ChildContent>
+        <p class="enote-muted">Valeur d'achat = argent immobilisé en stock. Bénéfice = ce que rapporterait la vente de tout le stock au prix actuel.</p>
+        <div class="enote-table-scroll"><table class="enote-table">
+            <thead><tr><th>Article</th><th class="r">Stock</th><th class="r">Prix d'achat</th><th class="r">Valeur d'achat</th><th class="r">Valeur de vente</th><th class="r">Bénéfice</th></tr></thead>
+            <tbody>
+                @foreach (var p in Lager.Positionen)
+                {
+                    <tr>
+                        <td>@p.Name</td>
+                        <td class="r">@p.Bestand.ToString("0.##")</td>
+                        <td class="r">@(p.Einkaufspreis is decimal e ? e.ToString("N0") + " F" : "—")</td>
+                        <td class="r">@(p.Einkaufswert is decimal ew ? ew.ToString("N0") + " F" : "—")</td>
+                        <td class="r">@p.Verkaufswert.ToString("N0") F</td>
+                        <td class="r">@if (p.Gewinn is decimal g) { <strong class="enote-marge">@g.ToString("N0") F</strong> } else { <span class="enote-tag enote-tag-warn">prix d'achat manquant</span> }</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr><td>Total</td><td class="r">@Lager.Stueck.ToString("0.##")</td><td></td><td class="r">@Lager.Einkaufswert.ToString("N0") F</td><td class="r">@Lager.Verkaufswert.ToString("N0") F</td><td class="r">@Lager.Gewinn.ToString("N0") F</td></tr>
+            </tfoot>
+        </table></div>
+    </ChildContent>
 </ModalDialog>
 
 <ModalDialog Open="loeschDialogOffen" Title="Supprimer la prestation" OnClose="SchliesseLoeschen">
