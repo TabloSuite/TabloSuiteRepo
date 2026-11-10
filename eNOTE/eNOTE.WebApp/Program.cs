@@ -176,6 +176,24 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 
+// Videos: eigener Endpunkt statt wwwroot, damit Teilanfragen (Range) korrekt beantwortet werden –
+// der Browser lädt Videos stückweise; MapStaticAssets lieferte dabei die ganze Datei und das Video brach ab.
+var videoOrdner = Path.Combine(app.Environment.ContentRootPath, "Medien", "videos");
+var oeffentlicheVideos = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "enote-presentation.mp4" };
+app.MapGet("/medien/videos/{datei}", (string datei, HttpContext http) =>
+{
+    if (!System.Text.RegularExpressions.Regex.IsMatch(datei, @"^[a-z0-9-]+\.mp4$"))
+        return Results.NotFound();
+    if (!oeffentlicheVideos.Contains(datei) && http.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    var info = new FileInfo(Path.Combine(videoOrdner, datei));
+    if (!info.Exists)
+        return Results.NotFound();
+    var etag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"");
+    http.Response.Headers.CacheControl = "public, max-age=3600";
+    return Results.File(info.FullName, "video/mp4", lastModified: info.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
@@ -213,7 +231,8 @@ app.MapPost("/auth/login/submit", async (
 app.MapPost("/auth/logout", async (AuthService authService) =>
 {
     await authService.LogoutAsync();
-    return Results.LocalRedirect("/auth/login?info=logged-out");
+    // Nach der Abmeldung zurück auf die öffentliche Startseite
+    return Results.LocalRedirect("/");
 });
 
 // Kassenbon als PDF (inline, für Druck/Anzeige nach dem Verkauf).

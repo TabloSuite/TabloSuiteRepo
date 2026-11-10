@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    eNOTE – Design-System „Soft Modern“
    Helle, ruhige Flächen · weiße Karten mit feinen Rändern ·
    Navy + Teal als Marke · große Touch-Ziele für Tablet/PC/Handy.
@@ -173,7 +173,16 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     background: rgba(255, 255, 255, .25); display: grid; place-items: center; font-size: .8rem;
 }
 
-.auth-panel { display: grid; place-items: center; padding: 2rem 1.5rem; overflow-y: auto; background: var(--enote-bg); }
+.auth-panel { position: relative; display: grid; place-items: center; padding: 2rem 1.5rem; overflow-y: auto; background: var(--enote-bg); }
+.auth-hero-logo { position: relative; z-index: 1; color: #fff; text-decoration: none; transition: transform .2s ease; }
+.auth-hero-logo:hover { transform: scale(1.06); }
+.auth-zurueck {
+    position: absolute; top: 1.25rem; left: 1.5rem; display: inline-flex; align-items: center; gap: .45rem;
+    padding: .5rem .9rem; border-radius: 999px; font-weight: 600; font-size: .92rem; text-decoration: none;
+    color: var(--enote-text-muted, #5d6a82); background: var(--enote-surface); box-shadow: var(--enote-neu-out);
+    transition: color .2s ease, transform .2s ease;
+}
+.auth-zurueck:hover { color: var(--enote-primary-text); transform: translateX(-2px); }
 .auth-card {
     width: 100%; max-width: 26rem; background: var(--enote-surface);
     border-radius: var(--enote-radius-lg); padding: 2.4rem;
@@ -230,7 +239,8 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 @media (max-width: 860px) {
     .auth-page { grid-template-columns: minmax(0, 1fr); }
     .auth-hero { display: none; }
-    .auth-panel { padding: 1.5rem 1rem; }
+    .auth-panel { padding: 4.25rem 1rem 1.5rem; }
+    .auth-zurueck { top: 1rem; left: 1rem; }
     .auth-card { box-shadow: none; border: none; padding: 1.5rem .5rem; }
 }
 
