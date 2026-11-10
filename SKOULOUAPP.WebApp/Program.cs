@@ -214,6 +214,7 @@ builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.SchulLogoService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.DirektionsCockpitService>();
+builder.Services.AddScoped<SkoulouApp.WebApp.Services.QuittungService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPruefungService>();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bulletin-verification", context =>
@@ -400,6 +401,16 @@ app.MapGet("/finanzen/rapport/pdf-file", async (
     var bytes = pdfService.Generate(bericht);
     return Results.File(bytes, "application/pdf", fileDownloadName: $"rapport-financier-{schoolId:N}-{DateTime.UtcNow:yyyyMMdd}.pdf");
 }).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.ProduktOwner, Rollen.SchulLeiter, Rollen.Koordinator));
+
+// Reçu de paiement (Schulgebühren): Direktion/Koordination mit Finanzrecht, Plattform lesend, Schüler für eigene Zahlungen.
+app.MapGet("/finanzen/recu/{zahlungId:guid}", async (
+    Guid zahlungId, ClaimsPrincipal user, SkoulouApp.WebApp.Services.QuittungService quittungen, CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        return Results.Unauthorized();
+    var quittung = await quittungen.LadenAsync(zahlungId, userId, cancellationToken);
+    return quittung is null ? Results.NotFound() : Results.File(quittungen.Pdf(quittung), "application/pdf");
+}).RequireAuthorization();
 
 app.MapGet("/finanzen/justificatif/{buchungId:guid}", async (
     Guid buchungId, ClaimsPrincipal user, FinanzService finanzService, CancellationToken cancellationToken) =>

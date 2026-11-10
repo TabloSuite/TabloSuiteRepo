@@ -81,7 +81,7 @@ internal static class BulletinStandardLayout
             {
                 kopf.Item().PaddingTop(2).Row(z =>
                 {
-                    z.RelativeItem().Text($"N° {b.DokumentNummer} · {b.DokumentDatumUtc:dd/MM/yyyy}").FontSize(7);
+                    z.RelativeItem().Text($"N° {b.DokumentNummer} · {b.DokumentDatumUtc:dd'/'MM'/'yyyy}").FontSize(7);
                     if (b.ErsetztDokumentNummer is not null)
                         z.RelativeItem().AlignRight().Text($"BULLETIN RECTIFICATIF — remplace le n° {b.ErsetztDokumentNummer}").Bold().FontSize(7.5f);
                 });
@@ -297,7 +297,7 @@ internal static class BulletinStandardLayout
                 {
                     zeile.RelativeItem().Element(e => Kasten(e, "VISA DU CHEF D'ÉTABLISSEMENT", s =>
                     {
-                        s.Item().Text($"Fait à {b.Ort ?? "…………"}, le {(b.DokumentDatumUtc ?? DateTime.UtcNow):dd/MM/yyyy}").FontSize(7.5f);
+                        s.Item().Text($"Fait à {b.Ort ?? "…………"}, le {(b.DokumentDatumUtc ?? DateTime.UtcNow):dd'/'MM'/'yyyy}").FontSize(7.5f);
                         s.Item().Height(55);
                         s.Item().AlignCenter().Text("Signature et cachet").FontSize(7).FontColor("#6b7280");
                     }));
