@@ -213,6 +213,7 @@ builder.Services.AddTransient<SkoulouApp.WebApp.Services.BewertungsService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.SchulLogoService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
+builder.Services.AddScoped<SkoulouApp.WebApp.Services.DirektionsCockpitService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPruefungService>();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bulletin-verification", context =>
