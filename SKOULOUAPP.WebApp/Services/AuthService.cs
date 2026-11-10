@@ -89,7 +89,7 @@ public class AuthService(
             var schoolName = input.SchulName.Trim();
             if (string.IsNullOrWhiteSpace(schoolName))
             {
-                return (false, "Veuillez indiquer le nom de ton école.");
+                return (false, "Veuillez indiquer le nom de votre établissement.");
             }
 
             if (await db.Schools.AnyAsync(school => school.Name == schoolName, cancellationToken))
@@ -102,7 +102,7 @@ public class AuthService(
 
         if (input.SelectedSchoolId is null)
         {
-            return (false, "Veuillez choisir une école.");
+            return (false, "Veuillez choisir votre établissement.");
         }
 
         var schoolExists = await db.Schools.AnyAsync(
@@ -122,7 +122,7 @@ public class AuthService(
     {
         if (!input.AgbAccepted)
         {
-            return (false, "Veuillez accepter les conditions d'utilisation avant de t'inscrire.");
+            return (false, "Veuillez accepter les conditions d'utilisation pour finaliser l'inscription.");
         }
 
         var validation = await ValidateRegistrationAsync(input, cancellationToken);
@@ -174,7 +174,7 @@ public class AuthService(
     {
         if (!input.AgbAccepted)
         {
-            return (false, "Veuillez accepter les conditions d'utilisation avant de t'inscrire.");
+            return (false, "Veuillez accepter les conditions d'utilisation pour finaliser l'inscription.");
         }
 
         var validation = await ValidateRegistrationAsync(input, cancellationToken);

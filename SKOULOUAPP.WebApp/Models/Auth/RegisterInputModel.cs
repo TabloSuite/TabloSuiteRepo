@@ -19,11 +19,11 @@ public class RegisterInputModel
     [Required(ErrorMessage = "Veuillez choisir un type d'inscription.")]
     public RegistrierungsArt Art { get; set; } = RegistrierungsArt.SchulLeiter;
 
-    [Required(ErrorMessage = "Veuillez saisir ton prénom.")]
+    [Required(ErrorMessage = "Veuillez saisir votre prénom.")]
     [StringLength(100)]
     public string Vorname { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Veuillez saisir ton nom de famille.")]
+    [Required(ErrorMessage = "Veuillez saisir votre nom de famille.")]
     [StringLength(100)]
     public string Nachname { get; set; } = string.Empty;
 

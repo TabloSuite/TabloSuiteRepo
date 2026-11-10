@@ -6,148 +6,144 @@
 @using SkoulouApp.Core.DataModels.Identity
 @using SkoulouApp.Core.DataModels.Schools
 
-<PageTitle>Inscription</PageTitle>
+<PageTitle>Inscription · SKOULOU</PageTitle>
 
-<section class="relative mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-3xl min-w-0 flex-col overflow-hidden rounded-[2rem] bg-white shadow-xl shadow-emerald-100/80 ring-1 ring-slate-100">
-    <div class="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl"></div>
-    <header class="relative z-10 shrink-0 border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur sm:px-8">
-        <div class="flex items-center gap-4">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-xl font-black text-white shadow-lg shadow-emerald-200">H</div>
-            <div class="min-w-0">
-                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Inscription</p>
-                <h1 class="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">Créer un compte</h1>
-                <p class="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">Après l'inscription, le compte doit être validé par la direction compétente.</p>
-            </div>
+<section class="mx-auto w-full max-w-4xl py-2 sm:py-6">
+    <header class="flex items-center gap-3">
+        <img src="skoulou-app-icon.svg" alt="" class="h-11 w-11 rounded-xl shadow" />
+        <div class="min-w-0">
+            <p class="mb-0 text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Inscription</p>
+            <h1 class="mb-0 mt-1 text-2xl font-extrabold text-slate-900 sm:text-3xl">Créer un compte</h1>
         </div>
-
-        @if (!string.IsNullOrWhiteSpace(message))
-        {
-            <div class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status" aria-live="polite">@message</div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <div class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert">@errorMessage</div>
-        }
     </header>
+    <p class="mb-0 mt-3 max-w-2xl text-sm leading-6 text-slate-500">Chaque compte appartient à un seul établissement. Après l'inscription, le compte est validé : par SKOULOU pour un nouvel établissement, par la direction pour un élève.</p>
 
-    <div class="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 sm:px-8">
-    <EditForm Model="Model" OnValidSubmit="OpenTermsAsync" FormName="register-form" class="grid min-w-0 gap-5 pt-6 xl:grid-cols-2">
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="mt-5 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status" aria-live="polite"><Icon Name="check" Groesse="18" /><span>@message</span></div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="mt-5 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert"><Icon Name="alert" Groesse="18" /><span>@errorMessage</span></div>
+    }
+
+    <div class="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Type d'inscription">
+        <button type="button" role="radio" aria-checked="@(Model.Art == RegistrierungsArt.SchulLeiter)" @onclick="() => SetRegistrierungsArtAsync(RegistrierungsArt.SchulLeiter)"
+                class="flex items-start gap-3 rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition @(Model.Art == RegistrierungsArt.SchulLeiter ? "border-blue-600 ring-4 ring-blue-100" : "border-slate-200 hover:border-slate-300")">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon Name="school" /></span>
+            <span><strong class="block text-slate-900">J'inscris mon établissement</strong><span class="text-sm text-slate-500">Compte de direction et nouvel établissement</span></span>
+        </button>
+        <button type="button" role="radio" aria-checked="@(Model.Art == RegistrierungsArt.Schueler)" @onclick="() => SetRegistrierungsArtAsync(RegistrierungsArt.Schueler)"
+                class="flex items-start gap-3 rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition @(Model.Art == RegistrierungsArt.Schueler ? "border-blue-600 ring-4 ring-blue-100" : "border-slate-200 hover:border-slate-300")">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700"><Icon Name="graduation" /></span>
+            <span><strong class="block text-slate-900">Je suis élève</strong><span class="text-sm text-slate-500">Rejoindre un établissement existant</span></span>
+        </button>
+    </div>
+
+    <EditForm Model="Model" OnValidSubmit="OpenTermsAsync" FormName="register-form" class="mt-5 grid min-w-0 gap-5">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <ValidationSummary class="mb-0 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" />
 
-        <ModernDropdown TValue="RegistrierungsArt" ContainerClass="md:col-span-2" Label="Je m'inscris en tant que" Value="Model.Art" ValueChanged="SetRegistrierungsArtAsync" Options="RegistrierungsArtOptions" />
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Prénom</label>
-            <InputText @bind-Value="Model.Vorname" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-        </div>
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Nom de famille</label>
-            <InputText @bind-Value="Model.Nachname" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-        </div>
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Identifiant de connexion</label>
-            <div class="flex gap-2">
-                <InputText @bind-Value="Model.Identifiant" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. ama.mensah" class="w-full min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-                <button type="button" class="shrink-0 rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-50" disabled="@(string.IsNullOrWhiteSpace(Model.Vorname) || string.IsNullOrWhiteSpace(Model.Nachname))" @onclick="IdentifiantVorschlagenAsync">Proposer</button>
+        <fieldset class="m-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <legend class="float-left mb-4 flex w-full items-center gap-2 text-base font-bold text-slate-900"><Icon Name="user" Groesse="18" />Vos informations</legend>
+            <div class="clear-both grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="skoulou-label">Prénom</label>
+                    <InputText @bind-Value="Model.Vorname" autocomplete="given-name" class="skoulou-input" />
+                </div>
+                <div>
+                    <label class="skoulou-label">Nom de famille</label>
+                    <InputText @bind-Value="Model.Nachname" autocomplete="family-name" class="skoulou-input" />
+                </div>
+                <div>
+                    <label class="skoulou-label">Identifiant de connexion</label>
+                    <div class="flex gap-2">
+                        <InputText @bind-Value="Model.Identifiant" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. ama.mensah" class="skoulou-input min-w-0 flex-1" />
+                        <button type="button" class="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50" disabled="@(string.IsNullOrWhiteSpace(Model.Vorname) || string.IsNullOrWhiteSpace(Model.Nachname))" @onclick="IdentifiantVorschlagenAsync">Proposer</button>
+                    </div>
+                    <p class="mb-0 mt-1 text-xs text-slate-500">Lettres minuscules, chiffres, point ou tiret.</p>
+                </div>
+                <div>
+                    <label class="skoulou-label">Adresse e-mail @(Model.Art == RegistrierungsArt.SchulLeiter ? "" : "(facultative)")</label>
+                    <InputText @bind-Value="Model.Email" type="email" autocomplete="email" class="skoulou-input" />
+                    <p class="mb-0 mt-1 text-xs text-slate-500">@(Model.Art == RegistrierungsArt.SchulLeiter ? "Obligatoire pour la direction : validation, factures et mot de passe oublié." : "Pour les messages et « Mot de passe oublié ».")</p>
+                </div>
+                <div>
+                    <label class="skoulou-label">Téléphone <span class="font-normal text-slate-400">(facultatif)</span></label>
+                    <InputText @bind-Value="Model.TelefonNummer" type="tel" autocomplete="tel" class="skoulou-input" />
+                </div>
+                <div>
+                    <label class="skoulou-label">Date de naissance <span class="font-normal text-slate-400">(facultative)</span></label>
+                    <input @ref="dateInput" type="text" placeholder="jj.mm.aaaa" readonly class="skoulou-input cursor-pointer" />
+                </div>
+                <ModernDropdown TValue="Geschlecht" Label="Genre" Value="Model.Geschlecht" ValueChanged="SetGeschlechtAsync" Options="GeschlechtOptions" />
             </div>
-            <p class="mt-1 text-xs text-slate-500">Vous vous connecterez avec cet identifiant (lettres minuscules, chiffres, point ou tiret).</p>
-        </div>
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Adresse e-mail @(Model.Art == RegistrierungsArt.SchulLeiter ? "" : "(facultative)")</label>
-            <InputText @bind-Value="Model.Email" type="email" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-            <p class="mt-1 text-xs text-slate-500">@(Model.Art == RegistrierungsArt.SchulLeiter ? "Obligatoire pour la direction : validation, factures et mot de passe oublié." : "Pour les messages et « Mot de passe oublié ».")</p>
-        </div>
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Téléphone <span class="font-normal text-slate-400">(optionnel)</span></label>
-            <InputText @bind-Value="Model.TelefonNummer" type="tel" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-        </div>
-
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Date de naissance <span class="font-normal text-slate-400">(optionnel)</span></label>
-            <input @ref="dateInput" type="text" placeholder="jj.mm.aaaa" readonly
-                   class="w-full cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
-        </div>
-
-        <ModernDropdown TValue="Geschlecht" Label="Genre" Value="Model.Geschlecht" ValueChanged="SetGeschlechtAsync" Options="GeschlechtOptions" />
+        </fieldset>
 
         @if (Model.Art == RegistrierungsArt.Schueler)
         {
-            <div class="md:col-span-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">
-                Tu t'inscris comme élève : choisis l'école existante qui validera ton compte.
-            </div>
-
-            <div>
-                <label class="mb-2 block text-sm font-semibold text-slate-700">Téléphone d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label>
-                <InputText @bind-Value="Model.ElternTelefonNummer" type="tel" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-            </div>
-            <div>
-                <label class="mb-2 block text-sm font-semibold text-slate-700">E-mail d'un parent <span class="font-normal text-slate-400">(optionnel)</span></label>
-                <InputText @bind-Value="Model.ElternEmail" type="email" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-            </div>
-            <ModernDropdown TValue="Guid?"
-                            ContainerClass="md:col-span-2"
-                            Label="École"
-                            Value="Model.SelectedSchoolId"
-                            ValueChanged="SetSchoolAsync"
-                            Options="SchoolOptions" />
+            <fieldset class="m-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <legend class="float-left mb-4 flex w-full items-center gap-2 text-base font-bold text-slate-900"><Icon Name="school" Groesse="18" />Votre établissement</legend>
+                <div class="clear-both grid gap-4 sm:grid-cols-2">
+                    <ModernDropdown TValue="Guid?" ContainerClass="sm:col-span-2" Label="Établissement" Value="Model.SelectedSchoolId" ValueChanged="SetSchoolAsync" Options="SchoolOptions" Searchable="true" SearchPlaceholder="Rechercher un établissement..." />
+                    <div>
+                        <label class="skoulou-label">Téléphone d'un parent <span class="font-normal text-slate-400">(facultatif)</span></label>
+                        <InputText @bind-Value="Model.ElternTelefonNummer" type="tel" class="skoulou-input" />
+                    </div>
+                    <div>
+                        <label class="skoulou-label">E-mail d'un parent <span class="font-normal text-slate-400">(facultatif)</span></label>
+                        <InputText @bind-Value="Model.ElternEmail" type="email" class="skoulou-input" />
+                    </div>
+                </div>
+                <p class="mb-0 mt-4 flex items-start gap-2 text-sm text-slate-500"><Icon Name="info" Groesse="16" CssClass="mt-0.5" />La direction de l'établissement valide votre inscription et vous attribue votre classe.</p>
+            </fieldset>
         }
         else
         {
-            <div class="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
-                Tu t'inscris comme directeur : indique ici les informations de ta propre école. Elle sera créée avec ton compte et attendra la validation de SKOULOUAPP.
-            </div>
-
-            <div class="md:col-span-2">
-                <label class="mb-2 block text-sm font-semibold text-slate-700">Nom de l'école</label>
-                <InputText @bind-Value="Model.SchulName" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-            </div>
-
-            <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                SKOULOUAPP fonctionne maintenant comme une <strong>plateforme de gestion scolaire</strong> unique&nbsp;: tu crées ton école, puis tu organises librement tes classes, tes enseignants, tes leçons, tes supports et tes examens.
-            </div>
-
-            <div>
-                <label class="mb-2 block text-sm font-semibold text-slate-700">Ville de l'école</label>
-                <InputText @bind-Value="Model.SchulStadt" class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none" />
-            </div>
-
-            <ModernDropdown TValue="string"
-                            Label="Pays de l'école"
-                            Value="Model.SchulLand"
-                            ValueChanged="SetSchoolCountryAsync"
-                            Options="SchoolCountryOptions"
-                            Searchable="true"
-                            SearchPlaceholder="Rechercher un pays..." />
+            <fieldset class="m-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <legend class="float-left mb-4 flex w-full items-center gap-2 text-base font-bold text-slate-900"><Icon Name="school" Groesse="18" />Votre établissement</legend>
+                <div class="clear-both grid gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="skoulou-label">Nom de l'établissement</label>
+                        <InputText @bind-Value="Model.SchulName" class="skoulou-input" placeholder="ex. Collège Les Palmiers" />
+                    </div>
+                    <div>
+                        <label class="skoulou-label">Ville</label>
+                        <InputText @bind-Value="Model.SchulStadt" class="skoulou-input" />
+                    </div>
+                    <ModernDropdown TValue="string" Label="Pays" Value="Model.SchulLand" ValueChanged="SetSchoolCountryAsync" Options="SchoolCountryOptions" Searchable="true" SearchPlaceholder="Rechercher un pays..." />
+                </div>
+                <p class="mb-0 mt-4 flex items-start gap-2 text-sm text-slate-500"><Icon Name="info" Groesse="16" CssClass="mt-0.5" />Un compte de direction gère un seul établissement. SKOULOU valide votre établissement avant la première connexion.</p>
+            </fieldset>
         }
 
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Mot de passe</label>
-            <PasswordInput @bind-Value="Model.Password" Autocomplete="new-password" />
-            <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
-        </div>
+        <fieldset class="m-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <legend class="float-left mb-4 flex w-full items-center gap-2 text-base font-bold text-slate-900"><Icon Name="lock" Groesse="18" />Mot de passe</legend>
+            <div class="clear-both grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="skoulou-label">Mot de passe</label>
+                    <PasswordInput @bind-Value="Model.Password" Autocomplete="new-password" />
+                    <p class="mb-0 mt-1 text-xs text-slate-500">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</p>
+                </div>
+                <div>
+                    <label class="skoulou-label">Confirmer le mot de passe</label>
+                    <PasswordInput @bind-Value="Model.ConfirmPassword" Autocomplete="new-password" />
+                </div>
+            </div>
+        </fieldset>
 
-        <div>
-            <label class="mb-2 block text-sm font-semibold text-slate-700">Confirmer le mot de passe</label>
-            <PasswordInput @bind-Value="Model.ConfirmPassword" Autocomplete="new-password" />
-        </div>
-
-        <div class="md:col-span-2">
-            <AsyncActionButton Type="submit" Class="rounded-full bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 disabled:opacity-50" IsBusy="@isSubmitting" BusyLabel="Inscription...">S'inscrire</AsyncActionButton>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="mb-0 text-sm text-slate-500">Déjà un compte ? <a href="auth/login" class="font-semibold text-blue-700 no-underline hover:underline">Se connecter</a></p>
+            <AsyncActionButton Type="submit" Class="inline-flex min-h-[2.9rem] items-center justify-center rounded-xl px-6 text-sm font-bold text-white shadow-md transition hover:brightness-110 disabled:opacity-50 [background:var(--sk-gradient)]" IsBusy="@isSubmitting" BusyLabel="Inscription...">Continuer</AsyncActionButton>
         </div>
     </EditForm>
-    </div>
 </section>
 
 <ModalDialog @bind-Open="showTermsModal" Title="Conditions d'utilisation" Eyebrow="Avant de finaliser l'inscription" MaxWidthClass="max-w-4xl" CloseOnBackdrop="false">
     <div class="space-y-6">
         <div class="rounded-2xl bg-sky-50 p-4 text-sm leading-6 text-sky-950">
-            <p class="font-bold">Bienvenue sur SKOULOUAPP Campus</p>
+            <p class="font-bold">Bienvenue sur SKOULOU</p>
             <p class="mt-1">Lis les conditions correspondant à ton rôle. Ton inscription ne sera créée qu'après ton accord explicite.</p>
         </div>
 

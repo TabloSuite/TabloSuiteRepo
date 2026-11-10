@@ -45,12 +45,6 @@ public partial class Register
     private ElementReference dateInput;
     private DotNetObjectReference<Register>? dotNetRef;
 
-    private static readonly IReadOnlyList<ModernDropdownOption<RegistrierungsArt>> RegistrierungsArtOptions =
-    [
-        new(RegistrierungsArt.SchulLeiter, "Directeur (avec une nouvelle école)"),
-        new(RegistrierungsArt.Schueler, "Élève (dans une école existante)")
-    ];
-
     private static readonly IReadOnlyList<ModernDropdownOption<Geschlecht>> GeschlechtOptions =
     [
         new(Geschlecht.Divers, "Divers"),
