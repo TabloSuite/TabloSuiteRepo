@@ -1223,6 +1223,11 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .Where(x => filter.SchulID == null || x.SchulID == filter.SchulID)
             .Select(x => new { x.BuchungID, x.Dateiname }).ToListAsync(cancellationToken))
             .ToDictionary(x => x.BuchungID, x => x.Dateiname);
+        var buchungIDs = buchungen.Select(x => x.Id).ToList();
+        var zahlungen = (await dbContext.RatenZahlungen.AsNoTracking()
+            .Where(z => z.FinanzBuchungID != null && buchungIDs.Contains(z.FinanzBuchungID.Value))
+            .Select(z => new { z.Id, z.FinanzBuchungID }).ToListAsync(cancellationToken))
+            .GroupBy(z => z.FinanzBuchungID!.Value).ToDictionary(g => g.Key, g => g.First().Id);
 
         var uebersicht = new FinanzUebersicht
         {
@@ -1241,7 +1246,8 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
                 HatBelegdatei = belegDateien.ContainsKey(x.Id),
                 BelegDateiname = belegDateien.GetValueOrDefault(x.Id),
                 BeschreibungHtml = x.BeschreibungHtml,
-                ErfasstVon = x.ErfasstVon?.FullName ?? string.Empty
+                ErfasstVon = x.ErfasstVon?.FullName ?? string.Empty,
+                ZahlungID = zahlungen.TryGetValue(x.Id, out var zahlungID) ? zahlungID : null
             }).ToList(),
             SummeEinnahmen = buchungen.Where(x => x.Richtung == FinanzRichtung.Einnahme).Sum(x => x.Betrag),
             SummeAusgaben = buchungen.Where(x => x.Richtung == FinanzRichtung.Ausgabe).Sum(x => x.Betrag)

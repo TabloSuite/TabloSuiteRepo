@@ -2197,6 +2197,9 @@ public partial class SchulLeiter
         }
     }
 
+    /// <summary>Zuletzt erfasste Zahlung – Reçu direkt drucken.</summary>
+    private Guid? letzteQuittungID;
+
     private Task ZahlungBuchenAsync() => RunDatabaseActionAsync(ZahlungBuchenCoreAsync);
 
     private async Task ZahlungBuchenCoreAsync()
@@ -2226,7 +2229,10 @@ public partial class SchulLeiter
         }
 
         if (result.Zahlung is not null)
+        {
             await KontoBenachrichtigungService.PaiementEnregistreAsync(result.Zahlung.Id, ComponentToken);
+            letzteQuittungID = result.Zahlung.Id;
+        }
         klasseStatusMessage = "Le paiement a été enregistré.";
         zahlungModalOpen = false;
         zahlungDurchlauf = null;

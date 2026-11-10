@@ -1082,6 +1082,9 @@ public partial class Finanzen
         ausgewaehlterDurchlauf = null;
     }
 
+    /// <summary>Zuletzt erfasste Zahlung – Reçu direkt drucken.</summary>
+    private Guid? letzteQuittungID;
+
     private async Task ZahlungBuchenAsync()
     {
         if (!await EnsureFinanceTabAccessAsync("durchlaeufe")) return;
@@ -1108,7 +1111,10 @@ public partial class Finanzen
             if (ok)
             {
                 if (zahlung is not null)
+                {
                     await KontoBenachrichtigungService.PaiementEnregistreAsync(zahlung.Id);
+                    letzteQuittungID = zahlung.Id;
+                }
                 message = "Le paiement a été enregistré.";
                 errorMessage = null;
                 var aktualisiert = await FinanzService.GetDurchlaufUebersichtAsync(durchlaufId);

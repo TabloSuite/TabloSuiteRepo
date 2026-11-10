@@ -26,6 +26,7 @@
 	</div>
 
 	<Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
+	<QuittungHinweis @bind-ZahlungID="letzteQuittungID" />
 	<Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
 	<div class="director-sticky-band">

@@ -51,6 +51,8 @@ public class FinanzUebersichtZeile
     public string? BelegDateiname { get; set; }
     public string? BeschreibungHtml { get; set; }
     public string ErfasstVon { get; set; } = string.Empty;
+    /// <summary>Zugehörige Schulgeldzahlung (für das Reçu), falls die Buchung aus einer Zahlung stammt.</summary>
+    public Guid? ZahlungID { get; set; }
 }
 
 /// <summary>Aggregiertes Ergebnis der Finanzübersicht inkl. Summen.</summary>

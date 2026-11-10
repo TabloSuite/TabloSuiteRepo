@@ -48,6 +48,7 @@
         }
 
         <Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
+        <QuittungHinweis @bind-ZahlungID="letzteQuittungID" />
         <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
 
         @* Tabs *@
@@ -358,7 +359,7 @@
                                             @foreach (var z in EchteSchulBuchungen)
                                             {
                                                 <tr class="transition-colors duration-150 odd:bg-white even:bg-slate-50/40 hover:bg-cyan-50/60 print:bg-transparent">
-                                                    <td class="px-3 py-2 pr-4">@z.Wirkungsdatum.ToString("dd.MM.yyyy")</td>
+                                                    <td class="px-3 py-2 pr-4">@z.Wirkungsdatum.ToString("dd'/'MM'/'yyyy")</td>
                                                     <td class="px-3 py-2 pr-4 font-semibold text-slate-800">@GetKategorieLabel(z)</td>
                                                     <td class="px-3 py-2 pr-4 text-slate-600">
                                                         @if (!string.IsNullOrWhiteSpace(z.Belegnummer)) { <span class="block text-xs font-semibold text-slate-700">Référence : @z.Belegnummer</span> }
@@ -368,7 +369,14 @@
                                                         }
                                                         else if (z.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung)
                                                         {
-                                                            <span class="block text-xs text-slate-500">Paiement lié au cycle</span>
+                                                            @if (z.ZahlungID is Guid zahlungID)
+                                                            {
+                                                                <a class="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 no-underline hover:underline" target="_blank" rel="noopener" href="/finanzen/recu/@zahlungID"><Icon Name="receipt" Groesse="14" />Reçu de paiement</a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="block text-xs text-slate-500">Paiement lié au cycle</span>
+                                                            }
                                                         }
                                                         else if (z.KategorieSystemCode is null or FinanzSystemCode.Keiner)
                                                         {

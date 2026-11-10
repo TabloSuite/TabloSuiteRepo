@@ -128,7 +128,7 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
         var basis = new BulletinSnapshot(school.OffizielleBezeichnung ?? school.Name, school.Slogan, school.DokumentAdresse, school.RepublikZeile, school.Ministerium,
             school.StaatsMotto, school.Zulassungsnummer, string.Join(" · ", new[] { school.DokumentTelefon, school.DokumentEmail }.Where(x => !string.IsNullOrWhiteSpace(x))),
             periode.Schuljahr.Bezeichnung, periode.Titel, zuordnung.Klasse.Code, zuordnung.Schueler.FullName, profil?.Matrikelnummer,
-            profil?.Geburtsort, zuordnung.Schueler.GeburtsdatumUtc?.ToString("dd/MM/yyyy"), zuordnung.IstWiederholer,
+            profil?.Geburtsort, zuordnung.Schueler.GeburtsdatumUtc?.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture), zuordnung.IstWiederholer,
             zeilen, durchschnitt, rang, kohorte.Count, vorher, jahresnote, bemerkung?.Trim() ?? "",
             vorlage.AkzentFarbe, vorlage.ZeigeKoeffizienten, vorlage.ZeigeRang, vorlage.ZeigeVorperioden, vorlage.ZeigeUnterschriften, vorlage.FussText, vorlage.BlockReihenfolge,
             await BildAsync(db, user, schule, vorlage.LogoAssetID, token), null,
