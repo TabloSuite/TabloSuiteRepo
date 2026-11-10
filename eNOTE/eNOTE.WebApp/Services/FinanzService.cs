@@ -26,7 +26,8 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
         decimal Einlagen = 0,
         decimal EntnahmenBar = 0,
         decimal WarenEntnahmenWert = 0,
-        decimal AbschreibungenWert = 0)
+        decimal AbschreibungenWert = 0,
+        decimal Erstattungen = 0)
     {
         /// <summary>Ventes + Apports/aides − Dépenses − Retraits d'espèces du propriétaire.</summary>
         public decimal Saldo => EinnahmenGesamt + Einlagen - AusgabenGesamt - EntnahmenBar;
@@ -41,14 +42,20 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
         ZahlungsArt ZahlungsArt,
         decimal GesamtSumme,
         string PositionenText,
-        IReadOnlyList<ZahlungsAnteil> Zahlungen)
+        IReadOnlyList<ZahlungsAnteil> Zahlungen,
+        bool IstStorno = false,
+        string? StornoGrund = null,
+        decimal Erstattet = 0)
     {
+        /// <summary>Verkauf, der bereits ganz erstattet wurde (Summe der Rückerstattungen = Bon).</summary>
+        public bool VollErstattet => !IstStorno && Erstattet >= GesamtSumme && GesamtSumme > 0;
+
         /// <summary>Kurztext der Zahlung, z. B. „Espèces + Flooz“.</summary>
         public string ZahlungText => ZahlungsTexte.Kurz(Zahlungen);
     }
 
     /// <summary>Verkauf mit Zeit und Zahlungsanteilen (für Auswertungen).</summary>
-    private sealed record VerkaufAnteile(DateTime ZeitUtc, IReadOnlyList<ZahlungsAnteil> Anteile)
+    private sealed record VerkaufAnteile(DateTime ZeitUtc, IReadOnlyList<ZahlungsAnteil> Anteile, bool IstStorno = false)
     {
         public decimal Summe(ZahlungsArt art) => Anteile.Where(a => a.Art == art).Sum(a => a.Betrag);
         public decimal Gesamt => Anteile.Sum(a => a.Betrag);
@@ -66,13 +73,14 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
                 v.ZeitUtc,
                 v.ZahlungsArt,
                 v.GesamtSumme,
+                IstStorno = v.StornoVonVerkaufId != null,
                 Zahlungen = v.Zahlungen.OrderBy(z => z.Reihenfolge)
                     .Select(z => new { z.Art, z.Betrag, z.AnbieterName }).ToList()
             })
             .ToListAsync(ct);
 
         return roh.Select(v => new VerkaufAnteile(v.ZeitUtc, KassenRechner.Anteile(v.ZahlungsArt, v.GesamtSumme,
-            v.Zahlungen.Select(z => new ZahlungsAnteil(z.Art, z.Betrag, z.AnbieterName))))).ToList();
+            v.Zahlungen.Select(z => new ZahlungsAnteil(z.Art, z.Betrag, z.AnbieterName))), v.IstStorno)).ToList();
     }
 
     /// <summary>Tagesumsätze der letzten N Tage für einen Salon.</summary>
@@ -96,7 +104,7 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             .GroupBy(v => v.ZeitUtc.Date)
             .Select(g => new TagesUmsatz(
                 g.Key,
-                g.Count(),
+                g.Count(v => !v.IstStorno),
                 g.Sum(v => v.Summe(ZahlungsArt.Bar)),
                 g.Sum(v => v.Summe(ZahlungsArt.Karte)),
                 g.Sum(v => v.Summe(ZahlungsArt.MobileMoney)),
@@ -147,14 +155,15 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             Summe(ZahlungsArt.Karte),
             Summe(ZahlungsArt.MobileMoney),
             anteile.Sum(a => a.Betrag),
-            verkaeufe.Count,
+            verkaeufe.Count(v => !v.IstStorno),
             ausgaben.Sum(k => k.Betrag),
             ausgaben,
             mobileNachAnbieter,
             geld.Where(g => g.Art == Core.DataModels.Finanzen.GeldBewegungArt.Einlage).Sum(g => g.Betrag),
             geld.Where(g => g.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(g => g.Betrag),
             Math.Round(lager.Where(l => l.Art == Core.DataModels.Katalog.LagerAbgangArt.Eigenentnahme).Sum(l => l.Wert), 0),
-            Math.Round(lager.Where(l => l.Art == Core.DataModels.Katalog.LagerAbgangArt.Abschreibung).Sum(l => l.Wert), 0));
+            Math.Round(lager.Where(l => l.Art == Core.DataModels.Katalog.LagerAbgangArt.Abschreibung).Sum(l => l.Wert), 0),
+            -verkaeufe.Where(v => v.IstStorno).Sum(v => v.Gesamt));
     }
 
     /// <summary>Die letzten Verkäufe eines Salons (für die Live-Ansicht des Besitzers).</summary>
@@ -172,14 +181,24 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             .Take(anzahl)
             .ToListAsync(cancellationToken);
 
+        var ids = verkaeufe.Select(v => v.Id).ToList();
+        var erstattet = await db.Verkaeufe.AsNoTracking()
+            .Where(v => v.StornoVonVerkaufId != null && ids.Contains(v.StornoVonVerkaufId.Value))
+            .GroupBy(v => v.StornoVonVerkaufId!.Value)
+            .Select(g => new { g.Key, Summe = g.Sum(v => v.GesamtSumme) })
+            .ToDictionaryAsync(x => x.Key, x => -x.Summe, cancellationToken);
+
         return verkaeufe.Select(v => new VerkaufEintrag(
             v.Id,
             v.ZeitUtc,
             v.KassenSitzung.Kassierer.FullName,
             v.ZahlungsArt,
             v.GesamtSumme,
-            string.Join(", ", v.Positionen.Select(p => $"{p.Menge}× {p.LeistungName}")),
-            KassenRechner.Anteile(v))).ToList();
+            string.Join(", ", v.Positionen.Select(p => $"{Math.Abs(p.Menge)}× {p.LeistungName}")),
+            KassenRechner.Anteile(v),
+            v.IstStorno,
+            v.StornoGrund,
+            erstattet.GetValueOrDefault(v.Id))).ToList();
     }
 
     /// <summary>Die letzten Kassenabschlüsse eines Salons.</summary>

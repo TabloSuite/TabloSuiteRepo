@@ -80,6 +80,10 @@
                     {
                         <div class="fi-zusatz"><Icon Name="plus" Groesse="14" /> Apports / aides : <strong>@uebersicht.Einlagen.ToString("N0") F</strong> <small>(hors ventes)</small></div>
                     }
+                    @if (uebersicht.Erstattungen > 0)
+                    {
+                        <div class="fi-zusatz"><Icon Name="undo" Groesse="14" /> Remboursements : <strong>− @uebersicht.Erstattungen.ToString("N0") F</strong> <small>(déjà déduits des ventes)</small></div>
+                    }
                     @if (uebersicht.MobileMoneyNachAnbieter.Count > 0)
                     {
                         <div class="fi-anbieter">
@@ -186,14 +190,29 @@
                 <div class="enote-feed">
                     @foreach (var v in GefilterteVerkaeufe())
                     {
-                        <div class="enote-feed-item fi-verkauf">
+                        <div class="enote-feed-item fi-verkauf @(v.IstStorno ? "storno" : "")">
                             <div class="fi-verkauf-info">
                                 <div class="enote-feed-head">
-                                    <strong>@v.GesamtSumme.ToString("N0") F</strong>
-                                    <ZahlungsTag Anteile="v.Zahlungen" />
+                                    <strong>@(v.IstStorno ? "− " + (-v.GesamtSumme).ToString("N0") : v.GesamtSumme.ToString("N0")) F</strong>
+                                    @if (v.IstStorno)
+                                    {
+                                        <span class="kx-storno-tag"><Icon Name="undo" Groesse="13" /> Remboursement</span>
+                                    }
+                                    else
+                                    {
+                                        <ZahlungsTag Anteile="v.Zahlungen" />
+                                        @if (v.VollErstattet)
+                                        {
+                                            <span class="kx-storno-tag">Remboursée</span>
+                                        }
+                                        else if (v.Erstattet > 0)
+                                        {
+                                            <span class="kx-storno-tag">− @v.Erstattet.ToString("N0") F remboursé</span>
+                                        }
+                                    }
                                 </div>
                                 <div class="enote-feed-meta">@v.PositionenText</div>
-                                <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName</div>
+                                <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</div>
                             </div>
                             <a class="enote-btn enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank"><Icon Name="receipt" Groesse="16" /> Reçu</a>
                         </div>
@@ -286,11 +305,16 @@
             <span class="enote-betrag-label">Où arrive l'argent ?</span>
             <div class="kx-pay-modi" role="tablist">
                 <button type="button" role="tab" class="kx-pay-modus @(apportOrt == ENote.Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse ? "aktiv" : "")" @onclick="() => apportOrt = ENote.Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse"><Icon Name="momo" Groesse="18" /> Hors caisse (banque, Mobile Money)</button>
-                <button type="button" role="tab" class="kx-pay-modus @(apportOrt == ENote.Core.DataModels.Finanzen.GeldOrt.Kasse ? "aktiv" : "")" @onclick="() => apportOrt = ENote.Core.DataModels.Finanzen.GeldOrt.Kasse"><Icon Name="caisse" Groesse="18" /> Dans la caisse</button>
+                <button type="button" role="tab" class="kx-pay-modus @(apportOrt == ENote.Core.DataModels.Finanzen.GeldOrt.Kasse ? "aktiv" : "")" disabled="@(offeneKasseVon is null)"
+                        title="@(offeneKasseVon is null ? "Ouvrez d'abord la caisse" : null)" @onclick="() => apportOrt = ENote.Core.DataModels.Finanzen.GeldOrt.Kasse"><Icon Name="caisse" Groesse="18" /> Dans la caisse</button>
             </div>
+            @if (offeneKasseVon is null)
+            {
+                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> « Dans la caisse » est possible seulement quand la caisse est ouverte (l'argent est alors compté à la clôture).</p>
+            }
             @if (apportOrt == ENote.Core.DataModels.Finanzen.GeldOrt.Kasse)
             {
-                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Ajouté aux espèces attendues de la caisse ouverte (à compter à la clôture).</p>
+                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Ajouté aux espèces attendues de la caisse ouverte (@offeneKasseVon) – à compter à la clôture.</p>
             }
             else
             {

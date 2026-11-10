@@ -60,6 +60,12 @@ public static class BonPdfService
 
                     col.Item().PaddingTop(4).LineHorizontal(0.5f);
 
+                    if (verkauf.StornoVonVerkaufId is Guid origId)
+                    {
+                        col.Item().AlignCenter().Text("REMBOURSEMENT").Bold().FontSize(11);
+                        col.Item().Text($"Vente d'origine n° {origId.ToString()[..8].ToUpperInvariant()}").FontSize(8);
+                        col.Item().Text($"Motif : {verkauf.StornoGrund}").FontSize(8);
+                    }
                     col.Item().Text($"Reçu n° {verkauf.Id.ToString()[..8].ToUpperInvariant()}").FontSize(8);
                     col.Item().Text(verkauf.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")).FontSize(8);
                     col.Item().Text($"Caissier : {kassiererName}").FontSize(8);
@@ -102,7 +108,7 @@ public static class BonPdfService
                     var anteile = ENote.Core.Services.Kasse.KassenRechner.Anteile(verkauf);
                     if (anteile.Count == 1)
                     {
-                        col.Item().PaddingTop(4).Text($"Paiement : {ZahlungsTexte.Name(anteile[0])}").FontSize(8);
+                        col.Item().PaddingTop(4).Text($"{(verkauf.IstStorno ? "Remboursé en" : "Paiement")} : {ZahlungsTexte.Name(anteile[0])}").FontSize(8);
                     }
                     else
                     {
@@ -131,7 +137,7 @@ public static class BonPdfService
                         }
                     }
 
-                    col.Item().PaddingTop(8).AlignCenter().Text("Merci de votre visite !").FontSize(9).Italic();
+                    col.Item().PaddingTop(8).AlignCenter().Text(verkauf.IstStorno ? "Document de remboursement – à conserver." : "Merci de votre visite !").FontSize(9).Italic();
                 });
             });
         });

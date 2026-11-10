@@ -190,6 +190,24 @@ public class KassenService(
         return (false, "Code PIN incorrect.");
     }
 
+    /// <summary>
+    /// Bestätigung durch den Besitzer an der (gemeinsamen) Kasse: mit konfigurierter Besitzer-PIN
+    /// zählt nur die PIN; ohne PIN muss der angemeldete Benutzer selbst Besitzer sein.
+    /// Liefert eine Fehlermeldung oder <c>null</c>.
+    /// </summary>
+    public async Task<string?> PruefeBesitzerFreigabeAsync(Guid salonId, Guid userId, string? besitzerPin, CancellationToken cancellationToken = default)
+    {
+        if (await HatBesitzerPinAsync(salonId, cancellationToken))
+        {
+            if (string.IsNullOrWhiteSpace(besitzerPin)) return "Saisissez le code PIN du propriétaire.";
+            var (ok, fehler) = await PruefeBesitzerPinAsync(salonId, besitzerPin, cancellationToken);
+            return ok ? null : fehler;
+        }
+
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await LadenZugriff.IstBesitzerAsync(db, userId, salonId, cancellationToken) ? null : "Réservé au propriétaire de l'établissement.";
+    }
+
     /// <summary>Prüft, ob ein Salon eine konfigurierte Besitzer-PIN hat.</summary>
     public async Task<bool> HatBesitzerPinAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
@@ -484,7 +502,7 @@ public class KassenService(
                 .Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute)
                 .SumAsync(v => v.GesamtSumme, cancellationToken);
             var anzahlHeute = await db.Verkaeufe
-                .CountAsync(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute, cancellationToken);
+                .CountAsync(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute && v.StornoVonVerkaufId == null, cancellationToken);
 
             await umsatzBenachrichtigung.VerkaufGemeldetAsync(sitzung.SalonId, tagesUmsatz, anzahlHeute, cancellationToken);
         }
@@ -567,8 +585,11 @@ public class KassenService(
     public record SitzungsUebersicht(
         decimal Startbestand, decimal Bar, decimal Karte, decimal MobileMoney,
         IReadOnlyList<(string Anbieter, decimal Betrag)> MobileMoneyNachAnbieter, int AnzahlVerkaeufe,
-        decimal EinlagenBar = 0, decimal EntnahmenBar = 0)
+        decimal EinlagenBar = 0, decimal EntnahmenBar = 0, decimal Erstattungen = 0, int AnzahlErstattungen = 0, decimal ErstattungenBar = 0)
     {
+        /// <summary>Barverkäufe ohne Rückerstattungen (Bar = Brutto − Bar-Erstattungen).</summary>
+        public decimal BarVerkaeufe => Bar + ErstattungenBar;
+
         /// <summary>Startbestand + Baranteile + Einlagen in die Kasse − Bar-Entnahmen des Besitzers.</summary>
         public decimal BarSoll => Startbestand + Bar + EinlagenBar - EntnahmenBar;
         public decimal Umsatz => Bar + Karte + MobileMoney;
@@ -601,9 +622,12 @@ public class KassenService(
 
         var bewegungen = await KassenBewegungenAsync(db, sitzung.Id, cancellationToken);
         return new SitzungsUebersicht(sitzung.Startbestand, Summe(ZahlungsArt.Bar), Summe(ZahlungsArt.Karte),
-            Summe(ZahlungsArt.MobileMoney), nachAnbieter, sitzung.Verkaeufe.Count,
+            Summe(ZahlungsArt.MobileMoney), nachAnbieter, sitzung.Verkaeufe.Count(v => !v.IstStorno),
             bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.Einlage).Sum(b => b.Betrag),
-            bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(b => b.Betrag));
+            bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(b => b.Betrag),
+            -sitzung.Verkaeufe.Where(v => v.IstStorno).Sum(v => v.GesamtSumme),
+            sitzung.Verkaeufe.Count(v => v.IstStorno),
+            -sitzung.Verkaeufe.Where(v => v.IstStorno).SelectMany(KassenRechner.Anteile).Where(a => a.Art == ZahlungsArt.Bar).Sum(a => a.Betrag));
     }
 
     /// <summary>Bargeldbewegungen (Einlagen/Entnahmen) in der Kassenschublade einer Sitzung.</summary>

@@ -109,6 +109,7 @@ if (administration is null)
     builder.Services.AddScoped<MobileMoneyService>();
     builder.Services.AddScoped<DashboardService>();
     builder.Services.AddScoped<BestandsService>();
+    builder.Services.AddScoped<StornoService>();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<VertragsService>();
     builder.Services.AddScoped<KassenZugangService>();

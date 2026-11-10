@@ -448,16 +448,37 @@ else
             <div class="kx-historie">
                 @foreach (var v in historieVerkaeufe)
                 {
-                    <div class="kx-historie-zeile">
+                    <div class="kx-historie-zeile @(v.IstStorno ? "storno" : "")">
                         <div class="kx-historie-info">
                             <div class="kx-historie-top">
-                                <strong>@v.GesamtSumme.ToString("N0") F</strong>
-                                <ZahlungsTag Anteile="v.Zahlungen" />
+                                <strong>@(v.IstStorno ? "− " + (-v.GesamtSumme).ToString("N0") : v.GesamtSumme.ToString("N0")) F</strong>
+                                @if (v.IstStorno)
+                                {
+                                    <span class="kx-storno-tag"><Icon Name="undo" Groesse="13" /> Remboursement</span>
+                                }
+                                else
+                                {
+                                    <ZahlungsTag Anteile="v.Zahlungen" />
+                                    @if (v.VollErstattet)
+                                    {
+                                        <span class="kx-storno-tag">Remboursée</span>
+                                    }
+                                    else if (v.Erstattet > 0)
+                                    {
+                                        <span class="kx-storno-tag">− @v.Erstattet.ToString("N0") F remboursé</span>
+                                    }
+                                }
                             </div>
-                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName</small>
+                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</small>
                             <small class="kx-historie-pos">@v.PositionenText</small>
                         </div>
-                        <button type="button" class="enote-btn enote-btn-sm" @onclick="() => DruckeBonAsync(v.VerkaufId)"><Icon Name="printer" Groesse="16" /> Reçu</button>
+                        <div class="kx-historie-aktionen">
+                            @if (!v.IstStorno && !v.VollErstattet)
+                            {
+                                <button type="button" class="enote-btn enote-btn-sm enote-btn-ghost" title="Rembourser le client" @onclick="() => OeffneStornoAsync(v.VerkaufId)"><Icon Name="undo" Groesse="16" /> Rembourser</button>
+                            }
+                            <button type="button" class="enote-btn enote-btn-sm" @onclick="() => DruckeBonAsync(v.VerkaufId)"><Icon Name="printer" Groesse="16" /> Reçu</button>
+                        </div>
                     </div>
                 }
             </div>
@@ -477,10 +498,18 @@ else
                 </div>
                 <div class="kx-abschluss-zeilen">
                     <div><span><Icon Name="banknote" Groesse="16" /> Fonds de départ</span><span>@info.Startbestand.ToString("N0") F</span></div>
-                    <div><span><Icon Name="banknote" Groesse="16" /> Ventes en espèces</span><span>+ @info.Bar.ToString("N0") F</span></div>
+                    <div><span><Icon Name="banknote" Groesse="16" /> Ventes en espèces</span><span>+ @info.BarVerkaeufe.ToString("N0") F</span></div>
                     @if (info.EinlagenBar > 0)
                     {
                         <div><span><Icon Name="arrow-down" Groesse="16" /> Apports en caisse</span><span>+ @info.EinlagenBar.ToString("N0") F</span></div>
+                    }
+                    @if (info.ErstattungenBar > 0)
+                    {
+                        <div><span><Icon Name="undo" Groesse="16" /> Remboursements en espèces</span><span>− @info.ErstattungenBar.ToString("N0") F</span></div>
+                    }
+                    @if (info.Erstattungen > info.ErstattungenBar)
+                    {
+                        <div class="kx-abschluss-notiz"><span><Icon Name="info" Groesse="16" /> Remboursés par carte / Mobile Money</span><span>@((info.Erstattungen - info.ErstattungenBar).ToString("N0")) F</span></div>
                     }
                     @if (info.EntnahmenBar > 0)
                     {
@@ -549,6 +578,112 @@ else
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => freierBetragOffen = false">Annuler</button>
         <button class="enote-btn enote-btn-primary" @onclick="FuegeStandardArtikelHinzu">Ajouter au ticket</button>
+    </Footer>
+</ModalDialog>
+
+@* --- Rückerstattung (Gegenbuchung) --- *@
+<ModalDialog Open="stornoOffen" Title="Rembourser une vente" ErrorMessage="@stornoFehler" OnClose="() => stornoOffen = false" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (stornoVorlage is { } sv)
+        {
+            <div class="kx-pay">
+                <p class="enote-muted kx-frei-text">
+                    Vente du @sv.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm") · @sv.KassiererName · @sv.GesamtSumme.ToString("N0") F
+                    @if (sv.BereitsErstattet > 0)
+                    {
+                        <text> · déjà remboursé : @sv.BereitsErstattet.ToString("N0") F</text>
+                    }
+                    <br />Le reçu d'origine reste inchangé : un reçu de remboursement est créé.
+                </p>
+
+                <div class="kx-storno-kopf">
+                    <span class="enote-betrag-label">Articles à rembourser</span>
+                    <button type="button" class="enote-chip" @onclick="StornoAlles">Tout rembourser</button>
+                </div>
+                <div class="kx-storno-liste">
+                    @foreach (var p in sv.Positionen)
+                    {
+                        var menge = stornoMengen.GetValueOrDefault(p.PositionId);
+                        <div class="kx-storno-zeile @(p.Offen <= 0 ? "erledigt" : menge > 0 ? "gewaehlt" : "")">
+                            <div class="kx-storno-info">
+                                <strong>@p.Name</strong>
+                                <small class="enote-muted">@p.Menge × @p.EinzelPreis.ToString("N0") F@(p.ZeilenSumme != p.EinzelPreis * p.Menge ? $" (après remise : {p.ZeilenSumme:N0} F)" : "")@(p.ErstattetMenge > 0 ? $" · {p.ErstattetMenge} déjà remboursé(s)" : "")</small>
+                            </div>
+                            @if (p.Offen > 0)
+                            {
+                                <div class="kx-pos-menge">
+                                    <button type="button" @onclick="() => SetzeStornoMenge(p, menge - 1)" disabled="@(menge <= 0)" aria-label="Diminuer"><Icon Name="minus" Groesse="16" /></button>
+                                    <span>@menge<small class="enote-muted">/@p.Offen</small></span>
+                                    <button type="button" @onclick="() => SetzeStornoMenge(p, menge + 1)" disabled="@(menge >= p.Offen)" aria-label="Augmenter"><Icon Name="plus" Groesse="16" /></button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="kx-storno-tag"><Icon Name="check" Groesse="13" /> Remboursé</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <span class="enote-betrag-label">Rendre l'argent en</span>
+                <div class="kx-storno-wege">
+                    @foreach (var w in sv.Wege)
+                    {
+                        <button type="button" class="kx-storno-weg @(stornoWeg == w.Schluessel ? "aktiv" : "")" disabled="@(w.Offen <= 0)" @onclick="() => stornoWeg = w.Schluessel">
+                            <Icon Name="@(w.Art == ZahlungsArt.Bar ? "banknote" : w.Art == ZahlungsArt.Karte ? "card" : "momo")" Groesse="18" />
+                            <span>@w.Name</span>
+                            <small>max @w.Offen.ToString("N0") F</small>
+                        </button>
+                    }
+                </div>
+                @if (StornoGewaehlterWeg is { Art: ZahlungsArt.Bar })
+                {
+                    <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Les espèces sortent de la caisse ouverte (déduites des espèces attendues).</p>
+                }
+                else if (StornoGewaehlterWeg is { Art: ZahlungsArt.MobileMoney } mw)
+                {
+                    <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Renvoyez le montant au client par @mw.Name, puis enregistrez ici.</p>
+                }
+
+                @if (StornoMitLager)
+                {
+                    <label class="enote-check-row"><EnoteCheckbox @bind-Value="stornoInsLager" Label="Remettre les articles en stock (article intact)" /></label>
+                }
+
+                <label class="kx-pay-ref">
+                    <span>Motif</span>
+                    <input class="enote-input" @bind="stornoGrund" @bind:event="oninput" maxlength="300" placeholder="Pourquoi rembourser ?" />
+                </label>
+                <div class="enote-betrag-schnell">
+                    @foreach (var g in ENote.WebApp.Services.StornoService.GrundVorschlaege)
+                    {
+                        <button type="button" class="enote-chip @(stornoGrund == g ? "enote-chip-aktiv" : "")" @onclick="() => stornoGrund = g">@g</button>
+                    }
+                </div>
+
+                @if (sv.BrauchtPin)
+                {
+                    <div class="kx-retrait-pin">
+                        <span class="enote-betrag-label">Code PIN du propriétaire</span>
+                        <PinEingabe @bind-Wert="stornoPin" OnBestaetigt="BestaetigeStornoAsync" />
+                    </div>
+                }
+
+                <div class="kx-pay-rueck kx-storno-summe">
+                    <span>À rendre au client</span>
+                    <strong>@StornoBetrag.ToString("N0") F</strong>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="enote-muted" role="status">Chargement…</p>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => stornoOffen = false">Annuler</button>
+        <AsyncActionButton Text="@($"Rembourser {StornoBetrag:N0} F")" OnClick="BestaetigeStornoAsync" CssClass="enote-btn-danger"
+                           Disabled="@(StornoBetrag <= 0 || StornoGewaehlterWeg is null || string.IsNullOrWhiteSpace(stornoGrund))" />
     </Footer>
 </ModalDialog>
 

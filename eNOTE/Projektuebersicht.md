@@ -67,7 +67,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 - Ticket: Positionen mit Menge, freie Beträge, Rabatt (aktivierbar, ggf. Bedingung), Barzahlung (Rückgeld) / Karte (Bestätigung). Abbrechen mit Bestätigungsdialog leert das Ticket.
 - `KassenAnzeigeState` (scoped) steuert Minimieren/Kassen-Modus; `AktiverSalonState` (scoped) den gewählten Laden (Topbar-Umschalter, LocalStorage).
 - Wiederherstellung: offene Sitzung wird beim Öffnen von `/caisse` geladen; ein modaler Hinweis (Kassierer, Start, Soll-Kassenstand) informiert über die nicht abgeschlossene Kasse.
-- Kassenabschluss: Soll-Barbestand = Startbestand + nur Bar-Einnahmen (`KassenRechner.BerechneBarSoll`); Ist wird gezählt, Differenz + Notiz dokumentiert.
+- Kassenabschluss: Soll-Barbestand = Startbestand + Baranteile der Verkäufe (Rückerstattungen bar sind negativ) + Einlagen in die Kasse − Bar-Entnahmen des Besitzers (`KassenRechner.BerechneBarSoll`); Ist wird gezählt, Differenz + Notiz dokumentiert. Der Dialog zeigt Barverkäufe und Bar-Rückerstattungen getrennt.
 
 ### Zahlungen & Mobile Money
 - Ein `Verkauf` hat 1..n `VerkaufZahlung`-Anteile (`Art` Bar/Karte/MobileMoney, `Betrag`, bei Mobile Money `MobileMoneyAnbieterId` + Namenskopie `AnbieterName` + optionale `Referenz`). `Verkauf.ZahlungsArt` ist nur noch die Zusammenfassung (`Gemischt` bei mehreren Arten). Summe der Anteile = `GesamtSumme` (`KassenRechner.PruefeZahlungen`), höchstens ein Baranteil; Rückgeld nur aus dem Baranteil.
@@ -78,6 +78,12 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 ### Bon & Druck
 - `/bon/{id}` → PDF (QuestPDF, 80mm, Logo, QR). `/bon/{id}/druck` → HTML-Druckansicht (80mm, QR, ruft `window.print()`).
 - **Kein QZ Tray / keine lokale Zusatzsoftware** (festgelegte Regel). Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe `eNOTE/Bon-Drucken.md` und `eNOTE/Start-Kasse.ps1`.
+
+### Rückerstattung (Storno als Gegenbuchung) – `StornoService`
+- Ein Verkauf wird nie gelöscht oder geändert. „Rembourser“ (Kasse → Ventes) erzeugt in der **aktuell offenen Kasse** einen eigenen Bon mit negativen Mengen/Beträgen: `Verkauf.StornoVonVerkaufId` (+ `StornoGrund`, `StornoErfasstVonName`), Positionen mit `StornoVonPositionId`. Umsätze, Bar-Soll und Bestseller heben sich dadurch automatisch auf; Zählungen („ventes“) schließen Rückerstattungen aus (`StornoVonVerkaufId == null`).
+- Teil-Erstattungen nach Zeile/Menge, bis alles erstattet ist; Betrag anteilig inkl. Rabatt, die letzte offene Menge bekommt genau den Rest (`StornoRechner.Betrag`).
+- Erstattet wird über einen Zahlweg des Originals (Bar, Karte, je Mobile-Money-Anbieter), höchstens bis zum dort bezahlten Rest; bar nur, wenn genug Bargeld in der Kasse erwartet wird. Pflicht-Motiv; Freigabe per Besitzer-PIN (ohne PIN: nur Besitzer). Ware optional zurück ins Lager (Sammel-Artikel → Basisbestand).
+- Bon „REMBOURSEMENT“ mit Verweis auf den Originalbon (HTML-Druck + PDF); Finances zeigt „Remboursements“ in den Entrées und markiert Bons als „Remboursée“/„Remboursement“. Die Erstattung zählt am Tag, an dem sie passiert.
 
 ### Katalog (Leistungen, Kategorien, Rabatte)
 - Leistungen pro Laden: Preis, optional Lager (`HatStueckzahl`, Mindestbestand-Warnung), Barcode, Kategorie, Bild, Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät.

@@ -41,6 +41,12 @@ public static class BonDruckHtml
             ? $"<div class=\"meta\">Espèces reçues : {verkauf.Gegeben:N0} F &nbsp;·&nbsp; Monnaie : {verkauf.Rueckgeld:N0} F</div>"
             : string.Empty;
 
+        var storno = verkauf.StornoVonVerkaufId is Guid origId
+            ? $"<div class=\"c storno\">REMBOURSEMENT</div><div class=\"meta\">Vente d'origine n° {origId.ToString()[..8].ToUpperInvariant()}</div><div class=\"meta\">Motif : {E(verkauf.StornoGrund)}</div>"
+            : string.Empty;
+        var zahlLabel = verkauf.IstStorno ? "Remboursé en" : "Paiement";
+        var fuss = verkauf.IstStorno ? "Document de remboursement – à conserver." : "Merci de votre visite !";
+
         var slogan = string.IsNullOrWhiteSpace(salon.Slogan) ? string.Empty : $"<div class=\"c slogan\">« {E(salon.Slogan)} »</div>";
         var adresse = string.IsNullOrWhiteSpace(salon.Adresse) ? E(salon.Standort) : E(salon.Adresse);
         var adresseHtml = string.IsNullOrWhiteSpace(adresse) ? string.Empty : $"<div class=\"c\">{adresse}</div>";
@@ -70,6 +76,7 @@ public static class BonDruckHtml
   td.r { text-align: right; white-space: nowrap; }
   .rabatt { color: #047857; }
   .total td { font-weight: 700; font-size: 14px; padding-top: 4px; }
+  .storno { font-size: 15px; font-weight: 700; letter-spacing: .08em; border: 2px solid #000; padding: 3px 0; margin-bottom: 4px; }
   .foot { text-align: center; font-style: italic; margin-top: 10px; font-size: 11px; }
   @media print { .no-print { display: none; } }
   .no-print { width: 72mm; margin: 8px 0; text-align: center; }
@@ -84,6 +91,7 @@ public static class BonDruckHtml
     {{adresseHtml}}
     {{tel}}
     <hr />
+    {{storno}}
     <div class="meta">Reçu n° {{verkauf.Id.ToString()[..8].ToUpperInvariant()}}</div>
     <div class="meta">{{verkauf.ZeitUtc.ToLocalTime():dd.MM.yyyy HH:mm}}</div>
     <div class="meta">Caissier : {{E(kassiererName)}}</div>
@@ -95,10 +103,10 @@ public static class BonDruckHtml
         <tr class="total"><td>TOTAL</td><td class="r">{{verkauf.GesamtSumme:N0}} F</td></tr>
       </tbody>
     </table>
-    <div class="meta" style="margin-top:6px;">Paiement : {{zahlung}}</div>
+    <div class="meta" style="margin-top:6px;">{{zahlLabel}} : {{zahlung}}</div>
     {{rueck}}
     {{qrHtml}}
-    <div class="foot">Merci de votre visite !</div>
+    <div class="foot">{{fuss}}</div>
   </div>
   <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 150); });</script>
 </body>

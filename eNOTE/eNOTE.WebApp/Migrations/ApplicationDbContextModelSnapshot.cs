@@ -1086,6 +1086,17 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid>("SalonId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("StornoErfasstVonName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StornoGrund")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid?>("StornoVonVerkaufId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("ZahlungsArt")
                         .HasColumnType("int");
 
@@ -1099,6 +1110,8 @@ namespace ENote.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("KassenSitzungId");
+
+                    b.HasIndex("StornoVonVerkaufId");
 
                     b.ToTable("Verkaeufe");
                 });
@@ -1169,6 +1182,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid?>("RabattId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("StornoVonPositionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("VerkaufId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1181,6 +1197,8 @@ namespace ENote.WebApp.Migrations
                     b.HasIndex("LeistungId");
 
                     b.HasIndex("RabattId");
+
+                    b.HasIndex("StornoVonPositionId");
 
                     b.HasIndex("VerkaufId");
 
@@ -1923,7 +1941,14 @@ namespace ENote.WebApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ENote.Core.DataModels.Kasse.Verkauf", "StornoVonVerkauf")
+                        .WithMany()
+                        .HasForeignKey("StornoVonVerkaufId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("KassenSitzung");
+
+                    b.Navigation("StornoVonVerkauf");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.VerkaufZahlung", b =>

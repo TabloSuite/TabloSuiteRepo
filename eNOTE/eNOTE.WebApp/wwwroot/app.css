@@ -2159,3 +2159,27 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .fi-bewegung-betrag.leise { font-weight: 600; font-size: .86rem; color: var(--enote-text-muted); }
 .fi-ico-lager { background: var(--enote-warning-soft); color: var(--enote-warning); }
 .kx-pay-modi .kx-pay-modus { white-space: normal; text-align: center; }
+.kx-pay-modus:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- Rückerstattung ---------- */
+.kx-historie-zeile.storno { background: var(--enote-surface-2); border-style: dashed; }
+.kx-historie-zeile.storno strong { color: #a1281c; }
+.kx-historie-aktionen { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.kx-storno-tag { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; background: #fdecea; color: #a1281c; }
+.kx-storno-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.kx-storno-liste { display: grid; gap: .45rem; max-height: 34vh; overflow-y: auto; }
+.kx-storno-zeile { display: flex; align-items: center; gap: .75rem; padding: .55rem .75rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.kx-storno-zeile.gewaehlt { border-color: var(--enote-primary); background: color-mix(in srgb, var(--enote-primary) 5%, transparent); }
+.kx-storno-zeile.erledigt { opacity: .6; }
+.kx-storno-info { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+.kx-storno-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx-storno-wege { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr)); gap: .5rem; }
+.kx-storno-weg { display: grid; justify-items: center; gap: .15rem; padding: .6rem .5rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: var(--enote-surface); color: var(--enote-text); cursor: pointer; font: inherit; font-weight: 600; }
+.kx-storno-weg small { color: var(--enote-text-muted); font-weight: 500; }
+.kx-storno-weg.aktiv { border-color: var(--enote-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--enote-primary) 25%, transparent); }
+.kx-storno-weg:disabled { opacity: .45; cursor: not-allowed; }
+.kx-storno-summe { background: #fdecea; color: #a1281c; }
+.kx-storno-summe span { color: #a1281c; }
+.kx-storno-summe strong { color: #a1281c; font-size: 1.25rem; }
+.kx-abschluss-notiz { color: var(--enote-text-muted); font-size: .88rem; }
+.fi-verkauf.storno strong { color: #a1281c; }

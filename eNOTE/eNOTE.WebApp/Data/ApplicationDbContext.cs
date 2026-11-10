@@ -173,6 +173,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(k => k.Verkaeufe)
                 .HasForeignKey(v => v.KassenSitzungId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(v => v.StornoGrund).HasMaxLength(300);
+            entity.Property(v => v.StornoErfasstVonName).HasMaxLength(200);
+            entity.HasOne(v => v.StornoVonVerkauf)
+                .WithMany()
+                .HasForeignKey(v => v.StornoVonVerkaufId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.Ignore(v => v.IstStorno);
         });
 
         builder.Entity<LagerAbgang>(entity =>
@@ -240,6 +247,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(p => p.EinzelPreis).HasPrecision(18, 2);
             entity.Property(p => p.RabattBetrag).HasPrecision(18, 2);
             entity.Property(p => p.ZeilenSumme).HasPrecision(18, 2);
+            entity.HasIndex(p => p.StornoVonPositionId);
             entity.HasOne(p => p.Verkauf)
                 .WithMany(v => v.Positionen)
                 .HasForeignKey(p => p.VerkaufId)

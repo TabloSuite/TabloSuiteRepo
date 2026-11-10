@@ -33,21 +33,9 @@ public class BestandsService(IDbContextFactory<ApplicationDbContext> dbContextFa
             || await db.UserSalons.AnyAsync(us => us.AppUserId == userId && us.SalonId == salonId && us.KannLeistungenVerwalten
                 && !us.AppUser.IsBlocked && us.Salon.IstAktiv, ct);
 
-    /// <summary>
-    /// Bestätigung durch den Besitzer an der (gemeinsamen) Kasse: mit konfigurierter Besitzer-PIN
-    /// zählt nur die PIN; ohne PIN muss der angemeldete Benutzer selbst Besitzer sein.
-    /// </summary>
-    private async Task<string?> PruefeBesitzerFreigabeAsync(ApplicationDbContext db, Guid salonId, Guid userId, string? besitzerPin, CancellationToken ct)
-    {
-        if (await kassenService.HatBesitzerPinAsync(salonId, ct))
-        {
-            if (string.IsNullOrWhiteSpace(besitzerPin)) return "Saisissez le code PIN du propriétaire.";
-            var (ok, fehler) = await kassenService.PruefeBesitzerPinAsync(salonId, besitzerPin, ct);
-            return ok ? null : fehler;
-        }
-
-        return await LadenZugriff.IstBesitzerAsync(db, userId, salonId, ct) ? null : "Réservé au propriétaire de l'établissement.";
-    }
+    /// <summary>Besitzer-Freigabe an der Kasse (PIN oder Besitzer selbst), siehe <see cref="KassenService.PruefeBesitzerFreigabeAsync"/>.</summary>
+    private Task<string?> PruefeBesitzerFreigabeAsync(ApplicationDbContext db, Guid salonId, Guid userId, string? besitzerPin, CancellationToken ct)
+        => kassenService.PruefeBesitzerFreigabeAsync(salonId, userId, besitzerPin, ct);
 
     // ---------------- Lager ----------------
 

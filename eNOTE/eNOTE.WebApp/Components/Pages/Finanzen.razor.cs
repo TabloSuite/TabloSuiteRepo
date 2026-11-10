@@ -11,6 +11,7 @@ public partial class Finanzen(
     BestandsService bestandsService,
     ToastService toast,
     KatalogService katalogService,
+    KassenService kassenService,
     AktiverSalonState aktiverSalon,
     AuthenticationStateProvider authStateProvider,
     NavigationManager navigationManager,
@@ -213,8 +214,13 @@ public partial class Finanzen(
     private string? apportFehler;
     private static readonly string[] HerkunftVorschlaege = ["Aide familiale", "Microcrédit / prêt", "Apport personnel", "Subvention", "Tontine"];
 
-    private void OeffneApport()
+    /// <summary>Name des Kassierers der offenen Kasse (null = keine Kasse offen → « Dans la caisse » gesperrt).</summary>
+    private string? offeneKasseVon;
+
+    private async Task OeffneApport()
     {
+        var offene = await kassenService.GetOffeneSitzungAsync(salonId);
+        offeneKasseVon = offene is null ? null : offene.Kassierer?.FullName ?? "caisse ouverte";
         apportBetrag = 0m;
         apportOrt = Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse;
         apportHerkunft = null;

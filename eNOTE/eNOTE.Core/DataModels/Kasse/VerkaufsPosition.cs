@@ -25,4 +25,7 @@ public class VerkaufsPosition
 
     /// <summary>Zeilensumme nach Rabatt.</summary>
     public decimal ZeilenSumme { get; set; }
+
+    /// <summary>Bei Rückerstattung: die erstattete Originalposition (Menge/Summe hier negativ).</summary>
+    public Guid? StornoVonPositionId { get; set; }
 }

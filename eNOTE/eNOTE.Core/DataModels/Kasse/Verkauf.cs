@@ -45,4 +45,22 @@ public class Verkauf
 
     /// <summary>Zahlungsanteile (1..n); Summe der Beträge = <see cref="GesamtSumme"/>.</summary>
     public ICollection<VerkaufZahlung> Zahlungen { get; set; } = new List<VerkaufZahlung>();
+
+    // ---------- Rückerstattung (Storno als Gegenbuchung) ----------
+
+    /// <summary>
+    /// Gesetzt bei einer Rückerstattung: der ursprüngliche Verkauf. Die Rückerstattung ist ein
+    /// eigener Bon mit negativen Mengen/Beträgen, so heben sich Umsätze und Bargeld automatisch auf;
+    /// der Originalbon bleibt unverändert.
+    /// </summary>
+    public Guid? StornoVonVerkaufId { get; set; }
+    public Verkauf? StornoVonVerkauf { get; set; }
+
+    /// <summary>Pflichtgrund der Rückerstattung (z. B. « Article défectueux »).</summary>
+    public string? StornoGrund { get; set; }
+
+    /// <summary>Wer die Rückerstattung erfasst hat (Kopie des Namens).</summary>
+    public string? StornoErfasstVonName { get; set; }
+
+    public bool IstStorno => StornoVonVerkaufId is not null;
 }

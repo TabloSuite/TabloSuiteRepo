@@ -80,11 +80,12 @@ public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> facto
         var start = zeitraum!.VonUtc;
         var ende = zeitraum.BisExklusivUtc;
         var verkaeufe = (await db.Verkaeufe.AsNoTracking().Where(v => v.SalonId == salonId && v.ZeitUtc >= start && v.ZeitUtc < ende)
-            .Select(v => new { v.ZeitUtc, v.ZahlungsArt, v.GesamtSumme, Zahlungen = v.Zahlungen.Select(z => new { z.Art, z.Betrag }).ToList() })
+            .Select(v => new { v.ZeitUtc, v.ZahlungsArt, v.GesamtSumme, IstStorno = v.StornoVonVerkaufId != null, Zahlungen = v.Zahlungen.Select(z => new { z.Art, z.Betrag }).ToList() })
             .ToListAsync(ct))
             .Select(v => new
             {
                 v.ZeitUtc,
+                v.IstStorno,
                 Anteile = ENote.Core.Services.Kasse.KassenRechner.Anteile(v.ZahlungsArt, v.GesamtSumme,
                     v.Zahlungen.Select(z => new ENote.Core.Services.Kasse.ZahlungsAnteil(z.Art, z.Betrag)))
             }).ToList();
@@ -100,7 +101,7 @@ public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> facto
         }).OrderByDescending(a => a.ZahlungBestaetigtUtc ?? a.ZahlungGemeldetUtc ?? a.CreatedAtUtc).ToList();
         static DateTime Monat(DateTime d) => new(d.Year, d.Month, 1);
         var monate = verkaeufe.Select(v => Monat(v.ZeitUtc)).Concat(ausgaben.Select(a => Monat(a.DatumUtc))).Distinct().OrderBy(d => d)
-            .Select(m => new MonatsFinanzen(m, verkaeufe.Count(v => Monat(v.ZeitUtc) == m),
+            .Select(m => new MonatsFinanzen(m, verkaeufe.Count(v => Monat(v.ZeitUtc) == m && !v.IstStorno),
                 Summe(m, ZahlungsArt.Bar), Summe(m, ZahlungsArt.Karte), Summe(m, ZahlungsArt.MobileMoney),
                 ausgaben.Where(a => Monat(a.DatumUtc) == m).Sum(a => a.Betrag))).ToList();
         return new Bericht(salon.Name, VertragsText(alleAbos, salon.ProbeBisUtc, DateTime.UtcNow), von.Date, bis.Date, monate, abos,

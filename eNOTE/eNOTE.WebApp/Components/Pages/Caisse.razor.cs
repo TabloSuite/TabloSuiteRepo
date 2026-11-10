@@ -12,6 +12,7 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Caisse(
     KassenService kassenService,
     BestandsService bestandsService,
+    StornoService stornoService,
     KatalogService katalogService,
     MobileMoneyService mobileMoneyService,
     GeraetFavoritService geraetFavoritService,
@@ -89,6 +90,86 @@ public partial class Caisse(
     private decimal mixBar;
     private ZahlungsArt mixZweitArt = ZahlungsArt.MobileMoney;
     private string? verkaufFehler;
+
+    // --- Rückerstattung ---
+    private bool stornoOffen;
+    private StornoService.StornoVorlage? stornoVorlage;
+    private Dictionary<Guid, int> stornoMengen = [];
+    private string? stornoWeg;
+    private bool stornoInsLager = true;
+    private string? stornoGrund;
+    private string stornoPin = string.Empty;
+    private string? stornoFehler;
+
+    private StornoService.StornoWeg? StornoGewaehlterWeg => stornoVorlage?.Wege.FirstOrDefault(w => w.Schluessel == stornoWeg);
+
+    private bool StornoMitLager => stornoVorlage?.Positionen.Any(p => p.HatLager && stornoMengen.GetValueOrDefault(p.PositionId) > 0) == true;
+
+    /// <summary>Vorschau mit derselben Regel wie der Server (anteilig inkl. Rabatt, Rest bei letzter Menge).</summary>
+    private decimal StornoBetrag => stornoVorlage is null ? 0m : stornoVorlage.Positionen
+        .Where(p => stornoMengen.GetValueOrDefault(p.PositionId) is var m && m > 0 && m <= p.Offen)
+        .Sum(p => Core.Services.Kasse.StornoRechner.Betrag(p.ZeilenSumme, p.Menge, p.ErstattetMenge, p.ErstattetBetrag, stornoMengen[p.PositionId]));
+
+    private async Task OeffneStornoAsync(Guid verkaufId)
+    {
+        stornoVorlage = null;
+        stornoFehler = null;
+        stornoMengen = [];
+        stornoGrund = null;
+        stornoPin = string.Empty;
+        stornoInsLager = true;
+        historieOffen = false;
+        stornoOffen = true;
+
+        stornoVorlage = await stornoService.GetVorlageAsync(verkaufId);
+        if (stornoVorlage is null)
+        {
+            stornoFehler = "Vente introuvable.";
+            return;
+        }
+
+        StornoAlles();
+        stornoWeg = stornoVorlage.Wege.Where(w => w.Offen > 0).OrderByDescending(w => w.Offen).FirstOrDefault()?.Schluessel;
+    }
+
+    private void StornoAlles()
+    {
+        if (stornoVorlage is null) return;
+        stornoMengen = stornoVorlage.Positionen.Where(p => p.Offen > 0).ToDictionary(p => p.PositionId, p => p.Offen);
+    }
+
+    private void SetzeStornoMenge(StornoService.StornoPosition p, int menge)
+        => stornoMengen[p.PositionId] = Math.Clamp(menge, 0, p.Offen);
+
+    private async Task BestaetigeStornoAsync()
+    {
+        if (aktiveSitzung is null || stornoVorlage is null || stornoWeg is null) return;
+        stornoFehler = null;
+        var warBar = StornoGewaehlterWeg is { Art: ZahlungsArt.Bar };
+
+        var eingaben = stornoMengen.Where(kv => kv.Value > 0).Select(kv => new StornoService.StornoPositionInput(kv.Key, kv.Value)).ToList();
+        var ergebnis = await stornoService.ErstatteAsync(aktuellerBenutzerId, aktiveSitzung.Id, stornoVorlage.VerkaufId, eingaben,
+            stornoWeg, stornoInsLager, stornoGrund, stornoPin);
+        if (!ergebnis.Erfolg)
+        {
+            stornoFehler = ergebnis.Fehler;
+            stornoPin = string.Empty;
+            return;
+        }
+
+        if (warBar)
+        {
+            anzeigeState.BargeldBewegt(-ergebnis.Betrag);
+        }
+
+        stornoOffen = false;
+        toast.ZeigeErfolg($"Remboursement de {ergebnis.Betrag:N0} F enregistré.");
+        leistungen = (await katalogService.GetLeistungenAsync(aktiveSitzung.SalonId)).Where(l => l.IstAktiv).ToList();
+        if (ergebnis.Storno is { } storno)
+        {
+            await DruckeBonAsync(storno.Id);
+        }
+    }
 
     // --- Entnahme durch den Besitzer ---
     private bool retraitOffen;

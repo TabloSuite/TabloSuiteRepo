@@ -270,6 +270,7 @@ public static class DemoDatenSeeder
             await db.GeldBewegungen.Where(g => g.SalonId == id).ExecuteDeleteAsync();
             await db.LagerAbgaenge.Where(l => l.SalonId == id).ExecuteDeleteAsync();
             await db.SalonMobileMoneyAnbieter.Where(x => x.SalonId == id).ExecuteDeleteAsync();
+            await db.Verkaeufe.Where(v => v.SalonId == id && v.StornoVonVerkaufId != null).ExecuteDeleteAsync();
             await db.Verkaeufe.Where(v => v.SalonId == id).ExecuteDeleteAsync();
             await db.KassenSitzungen.Where(k => k.SalonId == id).ExecuteDeleteAsync();
             await db.Ausgaben.Where(a => a.SalonId == id).ExecuteDeleteAsync();

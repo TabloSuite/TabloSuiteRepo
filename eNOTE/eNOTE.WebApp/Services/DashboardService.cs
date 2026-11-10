@@ -64,13 +64,14 @@ public class DashboardService(IDbContextFactory<ApplicationDbContext> dbContextF
             .Select(v => new
             {
                 v.ZeitUtc, v.ZahlungsArt, v.GesamtSumme,
+                IstStorno = v.StornoVonVerkaufId != null,
                 Zahlungen = v.Zahlungen.Select(z => new { z.Art, z.Betrag }).ToList()
             })
             .ToListAsync(ct);
 
         var proTag = verkaeufe
             .GroupBy(v => (v.ZeitUtc + utcOffset).Date)
-            .ToDictionary(g => g.Key, g => (Umsatz: g.Sum(v => v.GesamtSumme), Anzahl: g.Count()));
+            .ToDictionary(g => g.Key, g => (Umsatz: g.Sum(v => v.GesamtSumme), Anzahl: g.Count(v => !v.IstStorno)));
 
         var verlauf = Enumerable.Range(0, VerlaufTage)
             .Select(i => heute.AddDays(-(VerlaufTage - 1) + i))
