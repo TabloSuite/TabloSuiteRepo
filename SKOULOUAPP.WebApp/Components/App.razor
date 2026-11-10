@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" content="#f3f5f9" />
     <script>
         (function () {
             try {
@@ -46,17 +46,19 @@
     <meta name="twitter:description" content="Gestion scolaire, contenus pédagogiques, exercices, évaluations et suivi de progression." />
     <meta name="twitter:image" content="https://skoulou.etsetech.com/images/hero-SKOULOUAPP.png" />
     <base href="/" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    @* Tailwind statisch erzeugt (npm run css), Farbthemen als CSS-Variablen – kein CDN mehr. *@
+    <link rel="stylesheet" href="@Assets["css/skoulou-theme.css"]" />
+    <link rel="stylesheet" href="@Assets["css/tailwind.css"]" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&display=swap" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["css/lesson-a4.css"]" />
     <link rel="stylesheet" href="@Assets["SKOULOUAPP.WebApp.styles.css"]" />
+    <link rel="stylesheet" href="@Assets["css/skoulou-shell.css"]" />
     <ImportMap />
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" sizes="any" />
     <link rel="manifest" href="manifest.webmanifest" />

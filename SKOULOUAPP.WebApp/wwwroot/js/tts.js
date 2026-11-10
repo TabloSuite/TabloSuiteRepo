@@ -166,7 +166,7 @@ window.SKOULOUAPPTts = (function () {
         } catch (e) {
             lastStatus = `html5-error:${e?.name || 'unknown'}`;
             return false;
-
+        }
     }
 
     async function playAudioOrSpeak(audioUrl, text, lang, rate) {

@@ -2,6 +2,7 @@
 @using SkoulouApp.WebApp.Components.Layout
 @inherits LayoutComponentBase
 
+@* App-Hülle „Soft Modern“ (wie eNOTE): Seitenleiste links, schlanke Kopfzeile, ruhige Fläche. Schüler: ohne Seitenleiste, Navigation unten. *@
 <div class="app-shell @(isStudentChromeHidden ? "app-shell--student" : "")">
     @if (!isStudentChromeHidden)
     {
@@ -14,6 +15,11 @@
         @if (!isStudentChromeHidden)
         {
             <header class="app-header">
+                <label class="app-header-menu" for="nav-toggle" aria-label="Ouvrir le menu"><Icon Name="menu" /></label>
+                <a class="app-header-brand" href="" aria-label="SKOULOU – Accueil">
+                    <img src="skoulou-app-icon.svg" alt="" />
+                    <span>SKOULOU</span>
+                </a>
                 <div class="app-header-actions">
                     <UserMenu @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
                 </div>
@@ -29,25 +35,16 @@
         {
             <footer class="app-footer" aria-label="Informations de contact SKOULOU">
                 <div class="app-footer-brand">
-                    <div class="app-footer-logo" aria-hidden="true">
-                        <img src="skoulou-app-icon.svg" alt="" />
-                    </div>
-                    <div>
-                        <p class="app-footer-title">SKOULOU</p>
-                        <p class="app-footer-tagline">Apprendre. Progresser. Réussir.</p>
-                    </div>
+                    <img src="skoulou-app-icon.svg" alt="" class="app-footer-logo" />
+                    <span><strong>SKOULOU</strong> · Apprendre. Progresser. Réussir.</span>
                 </div>
-
                 <div class="app-footer-contact">
-                    <a href="https://skoulou.etsetech.com" target="_blank" rel="noopener noreferrer">skoulou.etsetech.com</a>
-                    <a href="mailto:contact.skoulou@etsetech.com">contact.skoulou@etsetech.com</a>
-                    <span>Lomé, Togo</span>
-                    <a href="tel:+4917661221600">+49 176 61221600</a>
+                    <a href="https://skoulou.etsetech.com" target="_blank" rel="noopener noreferrer"><Icon Name="globe" Groesse="16" />skoulou.etsetech.com</a>
+                    <a href="mailto:contact.skoulou@etsetech.com"><Icon Name="mail" Groesse="16" />contact.skoulou@etsetech.com</a>
+                    <span><Icon Name="home" Groesse="16" />Lomé, Togo</span>
+                    <a href="tel:+4917661221600"><Icon Name="phone" Groesse="16" />+49 176 61221600</a>
                 </div>
-
-                <div class="app-footer-bottom">
-                    <span>© @DateTime.UtcNow.Year SKOULOU. Tous droits réservés.</span>
-                </div>
+                <span class="app-footer-copy">© @DateTime.UtcNow.Year SKOULOU. Tous droits réservés.</span>
             </footer>
         }
     </main>
@@ -62,5 +59,5 @@
 <div id="blazor-error-ui" data-nosnippet>
     Une erreur inattendue s'est produite.
     <a href="." class="reload">Recharger</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss" aria-label="Fermer">×</span>
 </div>

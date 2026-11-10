@@ -1,124 +1,65 @@
-<div class="brand-panel">
-    <div class="brand-copy brand-copy-with-icon">
-        <a class="brand-logo" href="" aria-label="SKOULOU – Accueil">
-            <img src="skoulou-app-icon.svg" alt="" />
-            <span>SKOULOU</span>
-        </a>
-        <p class="brand-subtitle">Plateforme de gestion scolaire pour écoles, classes, supports et examens</p>
-    </div>
+@* Navigation im Design „Soft Modern“ (wie eNOTE). Sichtbarkeit nach Rolle – ersetzt keine Prüfung im Service. *@
+<div class="sk-brand">
+    <a class="sk-brand-link" href="" aria-label="SKOULOU – Accueil">
+        <img src="skoulou-app-icon.svg" alt="" class="sk-brand-logo" />
+        <span class="sk-brand-text">
+            <span class="sk-brand-name">SKOULOU</span>
+            <span class="sk-brand-tag">Gestion scolaire</span>
+        </span>
+    </a>
+    <label class="sk-nav-close" for="nav-toggle" aria-label="Fermer le menu"><Icon Name="x" /></label>
 </div>
 
-<input id="nav-toggle" type="checkbox" title="Menu de navigation" class="navbar-toggler" />
+<input id="nav-toggle" type="checkbox" title="Menu de navigation" class="sk-nav-toggle" />
+<label class="sk-nav-backdrop" for="nav-toggle" aria-hidden="true"></label>
 
-<label class="nav-overlay-backdrop" for="nav-toggle" aria-hidden="true"></label>
-
-<div class="nav-scrollable" onclick="document.getElementById('nav-toggle').checked = false">
-    <nav class="nav-menu-list">
-        <div class="nav-section-label">Accueil</div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" data-scrollspy="top"
-                     onclick="if (location.pathname === '/') { return window.SKOULOUAPPScrollToTop.scrollToId('top'); }">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
-                <span>Accueil</span>
-            </NavLink>
-            <div class="nav-subitem-list">
-                <NavLink class="nav-subitem-link" href="/#apropos" data-scrollspy="apropos"
-                         onclick="if (location.pathname === '/') { return window.SKOULOUAPPScrollToTop.scrollToId('apropos'); }">
-                    <span class="bi bi-book-nav-menu" aria-hidden="true"></span>
-                    <span>À propos</span>
-                </NavLink>
-                <NavLink class="nav-subitem-link" href="/#inscription" data-scrollspy="inscription"
-                         onclick="if (location.pathname === '/') { return window.SKOULOUAPPScrollToTop.scrollToId('inscription'); }">
-                    <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span>
-                    <span>Inscription</span>
-                </NavLink>
-            </div>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="contact">
-                <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
-                <span>Contact</span>
-            </NavLink>
-        </div>
+<div class="sk-nav-scroll" onclick="if (event.target.closest('a')) document.getElementById('nav-toggle').checked = false">
+    <nav class="sk-nav" aria-label="Navigation principale">
+        <AuthorizeView>
+            <NotAuthorized>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="" Match="NavLinkMatch.All"><Icon Name="home" /><span>Accueil</span></NavLink>
+                <NavLink class="sk-nav-link sk-nav-sub" ActiveClass="is-active" href="/#apropos"><Icon Name="info" Groesse="18" /><span>À propos</span></NavLink>
+                <NavLink class="sk-nav-link sk-nav-sub" ActiveClass="is-active" href="/#inscription"><Icon Name="user-plus" Groesse="18" /><span>Inscription</span></NavLink>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="contact"><Icon Name="mail" /><span>Contact</span></NavLink>
+            </NotAuthorized>
+            <Authorized>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="" Match="NavLinkMatch.All"><Icon Name="home" /><span>Accueil</span></NavLink>
+            </Authorized>
+        </AuthorizeView>
 
         <AuthorizeView Roles="SchulLeiter,Koordinator,SuperAdmin,ProduktOwner,Lehrer,Schüler" Context="espaceState">
             <Authorized>
-                <div class="nav-section-label nav-section-spacing">Espace</div>
-
-                @if (espaceState.User.IsInRole("Schüler"))
-                {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="student" Match="NavLinkMatch.All" data-enhance-nav="false">
-                            <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span>
-                            <span>Espace élève</span>
-                        </NavLink>
-                    </div>
+                @{
+                    var user = espaceState.User;
+                    var direktion = user.IsInRole("SchulLeiter") || user.IsInRole("Koordinator");
+                    var nurKoordinator = user.IsInRole("Koordinator") && !user.IsInRole("SchulLeiter");
                 }
+                <p class="sk-nav-section">@(direktion ? "Établissement" : "Mon espace")</p>
 
-                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator"))
+                @if (user.IsInRole("Schüler"))
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="schulleiter" data-enhance-nav="false">
-                            <span class="bi bi-building-nav-menu" aria-hidden="true"></span>
-                            <span>@(espaceState.User.IsInRole("Koordinator") && !espaceState.User.IsInRole("SchulLeiter")
-                                    ? "Espace coordinateur"
-                                    : "Espace directeur")</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="student" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="graduation" /><span>Espace élève</span></NavLink>
                 }
-
-                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator"))
+                @if (direktion)
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="direction/enseignement" data-enhance-nav="false">
-                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Organisation des enseignements</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="schulleiter" data-enhance-nav="false"><Icon Name="school" /><span>@(nurKoordinator ? "Espace coordination" : "Direction")</span></NavLink>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="direction/enseignement" data-enhance-nav="false"><Icon Name="layers" /><span>Organisation des enseignements</span></NavLink>
                 }
-
-                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator") || espaceState.User.IsInRole("Lehrer") || espaceState.User.IsInRole("Schüler"))
+                @if (direktion || user.IsInRole("Lehrer") || user.IsInRole("Schüler"))
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="emplois-du-temps" data-enhance-nav="false">
-                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Emplois du temps</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="emplois-du-temps" data-enhance-nav="false"><Icon Name="timetable" /><span>Emplois du temps</span></NavLink>
                 }
-
-                @if (espaceState.User.IsInRole("SchulLeiter") || espaceState.User.IsInRole("Koordinator") || espaceState.User.IsInRole("Schüler"))
+                @if (direktion || user.IsInRole("Schüler"))
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="bulletins" data-enhance-nav="false">
-                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Bulletins scolaires</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="bulletins" data-enhance-nav="false"><Icon Name="report" /><span>Bulletins scolaires</span></NavLink>
                 }
-
-                @if (espaceState.User.IsInRole("SuperAdmin") || espaceState.User.IsInRole("ProduktOwner"))
+                @if (user.IsInRole("SuperAdmin") || user.IsInRole("ProduktOwner"))
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="admin" Match="NavLinkMatch.All" data-enhance-nav="false">
-                            <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span>
-                            <span>@(espaceState.User.IsInRole("SuperAdmin") ? "Espace administrateur" : "Espace responsable produit")</span>
-                        </NavLink>
-                    </div>
-                    @if (espaceState.User.IsInRole("SuperAdmin"))
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="admin" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="shield" /><span>@(user.IsInRole("SuperAdmin") ? "Administration" : "Responsable produit")</span></NavLink>
+                    @if (user.IsInRole("SuperAdmin"))
                     {
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="admin/communication" data-enhance-nav="false">
-                                <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
-                                <span>Communication</span>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="admin/exception-logs" data-enhance-nav="false">
-                                <span class="bi bi-exclamation-triangle-nav-menu" aria-hidden="true"></span>
-                                <span>Journal des exceptions</span>
-                            </NavLink>
-                        </div>
+                        <NavLink class="sk-nav-link" ActiveClass="is-active" href="admin/communication" data-enhance-nav="false"><Icon Name="megaphone" /><span>Communication</span></NavLink>
+                        <NavLink class="sk-nav-link" ActiveClass="is-active" href="admin/exception-logs" data-enhance-nav="false"><Icon Name="alert" /><span>Journal des erreurs</span></NavLink>
                     }
                 }
             </Authorized>
@@ -126,71 +67,26 @@
 
         <AuthorizeView Roles="ProduktOwner">
             <Authorized>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="admin/courrier" data-enhance-nav="false">
-                        <span class="bi bi-envelope-nav-menu" aria-hidden="true"></span>
-                        <span>Messagerie</span>
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-
-        <AuthorizeView Roles="ProduktOwner">
-            <Authorized>
-                <div class="nav-section-label nav-section-spacing">Mes commissions</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="provisionen" data-enhance-nav="false">
-                        <span class="bi bi-pie-chart-nav-menu" aria-hidden="true"></span>
-                        <span>Parts de mes écoles</span>
-                    </NavLink>
-                </div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="abrechnung" data-enhance-nav="false">
-                        <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span>
-                        <span>Facturations de mes écoles</span>
-                    </NavLink>
-                </div>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="admin/courrier" data-enhance-nav="false"><Icon Name="message" /><span>Messagerie</span></NavLink>
+                <p class="sk-nav-section">Mes établissements</p>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="provisionen" data-enhance-nav="false"><Icon Name="pie" /><span>Parts de mes écoles</span></NavLink>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="abrechnung" data-enhance-nav="false"><Icon Name="receipt" /><span>Facturations de mes écoles</span></NavLink>
             </Authorized>
         </AuthorizeView>
 
         <AuthorizeView Roles="Lehrer,SchulLeiter,Koordinator" Context="pedagogicState">
             <Authorized>
-                <div class="nav-section-label nav-section-spacing">Espace pédagogique</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="notes" data-enhance-nav="false">
-                        <span class="bi bi-checklist-nav-menu" aria-hidden="true"></span>
-                        <span>Notes et évaluations</span>
-                    </NavLink>
-                </div>
+                <p class="sk-nav-section">Pédagogie</p>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="notes" data-enhance-nav="false"><Icon Name="clipboard-check" /><span>Notes et évaluations</span></NavLink>
                 @if (pedagogicState.User.IsInRole("Lehrer") && !pedagogicState.User.IsInRole("SchulLeiter") && !pedagogicState.User.IsInRole("Koordinator"))
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="teacher" Match="NavLinkMatch.All" data-enhance-nav="false">
-                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
-                            <span>Tableau pédagogique</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="teacher/create" data-enhance-nav="false">
-                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Création leçon & examens</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="teacher" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="grid" /><span>Tableau pédagogique</span></NavLink>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="teacher/create" data-enhance-nav="false"><Icon Name="pen" /><span>Leçons et examens</span></NavLink>
                 }
                 else
                 {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="teacher/lessons" data-enhance-nav="false">
-                            <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span>
-                            <span>Contenus pédagogiques des enseignants</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="teacher-exams" Match="NavLinkMatch.All" data-enhance-nav="false">
-                            <span class="bi bi-checklist-nav-menu" aria-hidden="true"></span>
-                            <span>Examens (création PDF)</span>
-                        </NavLink>
-                    </div>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="teacher/lessons" data-enhance-nav="false"><Icon Name="book-open" /><span>Contenus des enseignants</span></NavLink>
+                    <NavLink class="sk-nav-link" ActiveClass="is-active" href="teacher-exams" Match="NavLinkMatch.All" data-enhance-nav="false"><Icon Name="exam" /><span>Examens (PDF)</span></NavLink>
                 }
             </Authorized>
         </AuthorizeView>
@@ -199,66 +95,26 @@
             <Authorized Context="financeState">
                 @if (!financeState.User.IsInRole("Koordinator") || financeState.User.IsInRole("SchulLeiter") || coordinatorHasFinanceAccess)
                 {
-                <div class="nav-section-label nav-section-spacing">Finances</div>
-                @if (financeState.User.IsInRole("SuperAdmin"))
-                {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="superadmin/finances" data-enhance-nav="false">
-                            <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span>
-                            <span>Centre financier</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="abrechnung" data-enhance-nav="false">
-                            <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span>
-                        <span>Gestion SKOULOUAPPABOs</span>
-                        </NavLink>
-                    </div>
-                }
-                else
-                {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="finanzen" data-enhance-nav="false">
-                            <span class="bi bi-wallet2-nav-menu" aria-hidden="true"></span>
-                            <span>@(financeState.User.IsInRole("ProduktOwner") ? "Finances des écoles (lecture seule)" : "Comptabilité et paiements")</span>
-                        </NavLink>
-                    </div>
-                }
+                    <p class="sk-nav-section">Finances</p>
+                    @if (financeState.User.IsInRole("SuperAdmin"))
+                    {
+                        <NavLink class="sk-nav-link" ActiveClass="is-active" href="superadmin/finances" data-enhance-nav="false"><Icon Name="wallet" /><span>Centre financier</span></NavLink>
+                        <NavLink class="sk-nav-link" ActiveClass="is-active" href="abrechnung" data-enhance-nav="false"><Icon Name="receipt" /><span>Facturation SKOULOU</span></NavLink>
+                    }
+                    else
+                    {
+                        <NavLink class="sk-nav-link" ActiveClass="is-active" href="finanzen" data-enhance-nav="false"><Icon Name="wallet" /><span>@(financeState.User.IsInRole("ProduktOwner") ? "Finances des écoles" : "Comptabilité et paiements")</span></NavLink>
+                    }
                 }
             </Authorized>
         </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
-                <div class="nav-section-label nav-section-spacing">Aide</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="handbuch" data-enhance-nav="false">
-                        <span class="bi bi-book-nav-menu" aria-hidden="true"></span>
-                        <span>Guide utilisateur</span>
-                    </NavLink>
-                </div>
+                <p class="sk-nav-section">Aide</p>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="handbuch" data-enhance-nav="false"><Icon Name="help" /><span>Guide utilisateur</span></NavLink>
+                <NavLink class="sk-nav-link" ActiveClass="is-active" href="contact"><Icon Name="mail" /><span>Contact</span></NavLink>
             </Authorized>
         </AuthorizeView>
-
-        <div class="nav-auth-section" onclick="event.stopPropagation()">
-            <AuthorizeView>
-                <Authorized Context="authState">
-                    <div class="nav-auth-card">
-                        <span class="nav-auth-name">@authState.User.Identity?.Name</span>
-                        <form action="auth/logout" method="post" data-submit-loading="true" data-loading-text="Déconnexion..." class="nav-auth-form">
-                            <AntiforgeryToken />
-                            <button type="submit" data-loading-text="Déconnexion..." class="nav-auth-button">Se déconnecter</button>
-                        </form>
-                    </div>
-                </Authorized>
-                <NotAuthorized>
-                    <div class="nav-auth-actions">
-                        <a class="nav-auth-button" href="auth/login">Se connecter</a>
-                        <a class="nav-auth-button nav-auth-button-accent" href="auth/register">S'inscrire</a>
-                    </div>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
     </nav>
 </div>
-

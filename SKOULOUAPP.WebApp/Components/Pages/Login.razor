@@ -2,55 +2,73 @@
 @attribute [AllowAnonymous]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
-<PageTitle>Connexion</PageTitle>
+<PageTitle>Connexion · SKOULOU</PageTitle>
 
-<section class="relative mx-auto mt-12 w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl shadow-cyan-100/80 ring-1 ring-slate-100 sm:mt-20 sm:p-8">
-    <div class="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-cyan-100/70 blur-3xl"></div>
-    <div class="relative">
-    <div class="mb-6 flex items-center gap-4">
-        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 text-2xl font-black text-white shadow-lg shadow-cyan-200">H</div>
-        <div>
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Connexion sécurisée</p>
-            <h1 class="mt-1 text-3xl font-black text-slate-900">Bon retour</h1>
+<section class="mx-auto grid w-full max-w-5xl items-stretch gap-6 py-4 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
+    <div class="relative hidden overflow-hidden rounded-2xl p-8 text-white shadow-lg lg:flex lg:flex-col lg:justify-between" style="background: var(--sk-gradient);">
+        <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10"></div>
+        <div class="pointer-events-none absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/5"></div>
+        <div class="relative">
+            <img src="skoulou-app-icon.svg" alt="" class="h-12 w-12 rounded-xl bg-white/90 p-1" />
+            <h2 class="mb-0 mt-6 text-3xl font-extrabold leading-tight">Votre établissement,<br />simplement organisé.</h2>
+            <p class="mb-0 mt-3 max-w-md text-sm leading-6 text-white/80">Classes, enseignants, élèves, emplois du temps, notes, bulletins et frais de scolarité réunis dans un seul espace.</p>
         </div>
+        <ul class="relative mb-0 mt-8 grid list-none gap-3 p-0 text-sm text-white/90">
+            <li class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-xl bg-white/15"><Icon Name="school" Groesse="18" /></span>Un compte par établissement</li>
+            <li class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-xl bg-white/15"><Icon Name="report" Groesse="18" /></span>Bulletins vérifiables par QR code</li>
+            <li class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-xl bg-white/15"><Icon Name="shield" Groesse="18" /></span>Une seule session active par compte</li>
+        </ul>
     </div>
-    <p class="text-sm leading-7 text-slate-600">Connecte-toi avec ton compte validé. Les élèves peuvent se connecter après confirmation de leur école. Pour protéger ton compte, une nouvelle connexion déconnecte automatiquement l'autre appareil.</p>
 
-    @if (!string.IsNullOrWhiteSpace(infoMessage))
-    {
-        <div class="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">@infoMessage</div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
-    {
-        <div class="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">@errorMessage</div>
-    }
-
-    <form method="post" action="/auth/login/submit" data-submit-loading="true" data-loading-text="Connexion..." class="mt-8 grid gap-5 min-w-0">
-        <AntiforgeryToken />
-        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-
-        <div>
-            <label class="skoulou-label" for="identifiant">Identifiant</label>
-            <input id="identifiant" name="identifiant" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" class="skoulou-input" placeholder="ex. ama.mensah" />
-            <p class="mt-1 text-xs text-slate-500">L'identifiant vous a été communiqué par votre établissement ou choisi lors de l'inscription.</p>
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-md sm:p-8">
+        <div class="flex items-center gap-3">
+            <img src="skoulou-app-icon.svg" alt="" class="h-11 w-11 rounded-xl shadow lg:hidden" />
+            <div>
+                <p class="mb-0 text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Connexion</p>
+                <h1 class="mb-0 mt-1 text-2xl font-extrabold text-slate-900">Bienvenue sur SKOULOU</h1>
+            </div>
         </div>
+        <p class="mb-0 mt-3 text-sm leading-6 text-slate-500">Connectez-vous avec l'identifiant reçu de votre établissement. Une nouvelle connexion ferme automatiquement la session ouverte sur un autre appareil.</p>
 
-        <div>
-            <label class="skoulou-label">Mot de passe</label>
-            <PasswordInput @bind-Value="Model.Password" Name="password" Required="true" />
-            <p class="mt-1 text-xs text-slate-500">Le mot de passe doit contenir au moins 6 caractères, dont au moins 1 chiffre et 1 lettre minuscule.</p>
+        @if (!string.IsNullOrWhiteSpace(infoMessage))
+        {
+            <div class="mt-5 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status"><Icon Name="check" Groesse="18" /><span>@infoMessage</span></div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="mt-5 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert"><Icon Name="alert" Groesse="18" /><span>@errorMessage</span></div>
+        }
+
+        <form method="post" action="/auth/login/submit" data-submit-loading="true" data-loading-text="Connexion..." class="mt-6 grid min-w-0 gap-4">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+            <div>
+                <label class="skoulou-label" for="identifiant">Identifiant</label>
+                <input id="identifiant" name="identifiant" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" class="skoulou-input" placeholder="ex. ama.mensah" />
+            </div>
+
+            <div>
+                <label class="skoulou-label">Mot de passe</label>
+                <PasswordInput @bind-Value="Model.Password" Name="password" Required="true" />
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <label class="mb-0 inline-flex items-center gap-2 text-slate-600">
+                    <input type="checkbox" name="rememberMe" value="true" class="h-4 w-4 rounded border-slate-300" />
+                    <span>Rester connecté</span>
+                </label>
+                <a class="font-semibold text-blue-700 no-underline hover:underline" href="/auth/forgot-password">Mot de passe oublié ?</a>
+            </div>
+
+            <button type="submit" data-loading-text="Connexion..." class="inline-flex min-h-[2.9rem] items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white shadow-md transition hover:brightness-110 disabled:cursor-wait disabled:opacity-80" style="background: var(--sk-gradient);">
+                <Icon Name="logout" Groesse="18" CssClass="rotate-180" />Se connecter
+            </button>
+        </form>
+
+        <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Pas encore de compte ? <a class="font-semibold text-blue-700 no-underline hover:underline" href="/auth/register">Inscrire mon établissement ou m'inscrire comme élève</a>
         </div>
-
-        <label class="inline-flex items-center gap-3 text-sm text-slate-600">
-            <input type="checkbox" name="rememberMe" value="true" />
-            <span>Rester connecté</span>
-        </label>
-
-        <button type="submit" data-loading-text="Connexion..." class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-200 transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80">Se connecter</button>
-    </form>
-
-    <p class="mt-4 text-sm text-slate-600"><a class="font-semibold text-cyan-700" href="/auth/forgot-password">Mot de passe oublié ?</a></p>
-    <p class="mt-2 text-sm text-slate-600">Pas encore de compte ? <a class="font-semibold text-cyan-700" href="/auth/register">S'inscrire maintenant</a></p>
     </div>
 </section>

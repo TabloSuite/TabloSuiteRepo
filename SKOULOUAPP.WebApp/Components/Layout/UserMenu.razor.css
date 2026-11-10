@@ -4,11 +4,11 @@
 }
 
 .user-menu-avatar {
-    width: 3rem;
-    height: 3rem;
+    width: 2.6rem;
+    height: 2.6rem;
     border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, 0.85);
-    background: linear-gradient(135deg, var(--skoulou-accent-1) 0%, var(--skoulou-accent-2) 100%);
+    border: 2px solid #ffffff;
+    background: var(--sk-gradient);
     color: #ffffff;
     font-weight: 800;
     font-size: 1rem;
@@ -17,7 +17,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+    box-shadow: var(--sk-shadow);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     overflow: hidden;
 }
@@ -54,8 +54,9 @@
     width: 24rem;
     max-width: calc(100vw - 2rem);
     background: #ffffff;
-    border-radius: 1.5rem;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    border-radius: 1.15rem;
+    border: 1px solid var(--sk-border);
+    box-shadow: var(--sk-shadow-lg);
     padding: 1.1rem;
     display: grid;
     gap: 0.9rem;
@@ -246,10 +247,13 @@
     justify-content: flex-end;
 }
 
-/* Auf Tablet/Handy sind "Se connecter" und "S'inscrire" bereits im Hamburger-Menü
-   (NavMenu -> .nav-auth-section) enthalten. Im Header wuerden sie das Logo ueberlagern. */
-@media (max-width: 1199px) {
+/* Auf dem Handy bleibt nur « Se connecter » im Kopf; « S'inscrire » steht auf der Startseite. */
+@media (max-width: 480px) {
     .user-menu-guest {
+        gap: 0.5rem;
+    }
+
+    .user-menu-guest .app-link-pill-accent {
         display: none;
     }
 }

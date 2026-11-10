@@ -1,0 +1,287 @@
+/* ============================================================
+   Skoulou – App-Hülle im Design „Soft Modern“ (wie eNOTE)
+   Helle Fläche, weiße Seitenleiste mit Icons, schlanke Kopfzeile.
+   Farben folgen dem Farbthema (--sk-p-* Primär, --sk-a-* Akzent, skoulou-theme.css).
+   ============================================================ */
+:root {
+    --sk-bg: #f3f5f9;
+    --sk-surface: #ffffff;
+    --sk-surface-2: #f7f9fc;
+    --sk-text: #101a33;
+    --sk-text-muted: #5d6a82;
+    --sk-text-subtle: #8a95a8;
+    --sk-border: #e3e8f0;
+    --sk-border-strong: #cfd7e3;
+    --sk-primary: rgb(var(--sk-p-800));
+    --sk-primary-hell: rgb(var(--sk-p-600));
+    --sk-primary-soft: rgb(var(--sk-p-50));
+    --sk-accent: rgb(var(--sk-a-600));
+    --sk-gradient: linear-gradient(135deg, rgb(var(--sk-p-800)) 0%, rgb(var(--sk-p-700)) 62%, rgb(var(--sk-a-600)) 135%);
+    --sk-shadow: 0 1px 2px rgba(16, 26, 51, .04), 0 6px 18px rgba(16, 26, 51, .07);
+    --sk-shadow-lg: 0 24px 60px rgba(16, 26, 51, .20);
+    --sk-radius: .85rem;
+    --sk-nav-w: 16rem;
+    --sk-header-h: 3.75rem;
+}
+
+body {
+    background: var(--sk-bg);
+    color: var(--sk-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+.sk-icon { flex-shrink: 0; display: inline-block; vertical-align: middle; }
+
+/* --- Grundgerüst --- */
+.app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--sk-bg);
+}
+
+.app-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+.app-content {
+    flex: 1;
+    min-width: 0;
+    padding: 1.25rem 1rem 2rem;
+    overflow-x: clip;
+}
+
+.app-content section, .app-content article, .app-content form, .app-content [class*="grid-cols-"] { min-width: 0; }
+.app-content > * { animation: sk-einblenden .28s ease; }
+@keyframes sk-einblenden { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* --- Seitenleiste --- */
+.app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(var(--sk-nav-w), 86vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--sk-surface);
+    border-right: 1px solid var(--sk-border);
+    transform: translateX(-100%);
+    transition: transform .22s ease, box-shadow .22s ease;
+}
+
+.app-sidebar:has(.sk-nav-toggle:checked) {
+    transform: none;
+    box-shadow: var(--sk-shadow-lg);
+}
+
+.sk-nav-toggle { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+
+.sk-nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0 0 0 min(var(--sk-nav-w), 86vw);
+    background: rgba(16, 26, 51, .35);
+    z-index: 59;
+}
+
+.sk-nav-toggle:checked ~ .sk-nav-backdrop { display: block; }
+
+.sk-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: 1rem 1rem .75rem 1.1rem;
+    border-bottom: 1px solid var(--sk-border);
+}
+
+.sk-brand-link { display: flex; align-items: center; gap: .7rem; text-decoration: none; color: inherit; min-width: 0; }
+.sk-brand-logo { width: 2.35rem; height: 2.35rem; border-radius: .7rem; box-shadow: var(--sk-shadow); }
+.sk-brand-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.sk-brand-name { font-weight: 800; letter-spacing: .04em; color: var(--sk-primary); font-size: 1.05rem; }
+.sk-brand-tag { font-size: .75rem; color: var(--sk-text-muted); margin-top: .15rem; }
+
+.sk-nav-close {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .7rem;
+    color: var(--sk-text-muted);
+    cursor: pointer;
+}
+.sk-nav-close:hover { background: var(--sk-surface-2); color: var(--sk-text); }
+
+.sk-nav-scroll { flex: 1; overflow-y: auto; padding: .6rem .7rem 1.5rem; }
+.sk-nav { display: flex; flex-direction: column; gap: .15rem; }
+
+.sk-nav-section {
+    margin: 1rem .7rem .35rem;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sk-text-subtle);
+}
+
+.sk-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-height: 2.75rem;
+    padding: .5rem .75rem;
+    border-radius: .75rem;
+    color: #333e55;
+    font-size: .92rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.sk-nav-link .sk-icon { color: var(--sk-text-subtle); transition: color .15s ease; }
+.sk-nav-link:hover { background: var(--sk-surface-2); color: var(--sk-primary); }
+.sk-nav-link:hover .sk-icon { color: var(--sk-primary-hell); }
+
+.sk-nav-link.is-active {
+    background: var(--sk-primary-soft);
+    color: var(--sk-primary);
+    box-shadow: inset 3px 0 0 var(--sk-accent);
+}
+.sk-nav-link.is-active .sk-icon { color: var(--sk-primary-hell); }
+
+.sk-nav-sub { min-height: 2.4rem; padding-left: 2.1rem; font-size: .86rem; font-weight: 500; }
+
+/* --- Kopfzeile --- */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    height: var(--sk-header-h);
+    padding: 0 1rem;
+    background: rgba(243, 245, 249, .86);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    border-bottom: 1px solid var(--sk-border);
+}
+
+.app-header-menu {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .75rem;
+    color: var(--sk-text);
+    cursor: pointer;
+    background: var(--sk-surface);
+    border: 1px solid var(--sk-border);
+}
+
+.app-header-brand { display: flex; align-items: center; gap: .55rem; text-decoration: none; color: var(--sk-primary); font-weight: 800; letter-spacing: .04em; }
+.app-header-brand img { width: 2rem; height: 2rem; border-radius: .6rem; }
+.app-header-actions { margin-left: auto; display: flex; align-items: center; gap: .5rem; min-width: 0; }
+
+/* Gast-Schaltflächen im Kopf (UserMenu) */
+.app-link-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.6rem;
+    padding: .5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--sk-border);
+    background: var(--sk-surface);
+    color: var(--sk-text);
+    font-size: .9rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.app-link-pill:hover { border-color: var(--sk-border-strong); color: var(--sk-primary); }
+.app-link-pill-accent { background: var(--sk-gradient); color: #fff; border-color: transparent; }
+.app-link-pill-accent:hover { color: #fff; filter: brightness(1.06); }
+
+/* --- Fußzeile --- */
+.app-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem 1.5rem;
+    padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--sk-border);
+    background: var(--sk-surface);
+    color: var(--sk-text-muted);
+    font-size: .82rem;
+}
+.app-footer-brand { display: flex; align-items: center; gap: .55rem; color: var(--sk-text); }
+.app-footer-logo { width: 1.6rem; height: 1.6rem; border-radius: .45rem; }
+.app-footer-contact { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; }
+.app-footer-contact a, .app-footer-contact span { display: inline-flex; align-items: center; gap: .35rem; color: var(--sk-text-muted); text-decoration: none; }
+.app-footer-contact a:hover { color: var(--sk-primary); }
+.app-footer-copy { margin-left: auto; color: var(--sk-text-subtle); }
+
+/* --- Ab Tablet quer / PC: feste Seitenleiste --- */
+@media (min-width: 1024px) {
+    .app-shell:not(.app-shell--student) { grid-template-columns: var(--sk-nav-w) minmax(0, 1fr); }
+    .app-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        height: 100dvh;
+        width: auto;
+        transform: none;
+        box-shadow: none;
+    }
+    .sk-nav-close, .sk-nav-backdrop, .sk-nav-toggle:checked ~ .sk-nav-backdrop { display: none; }
+    .app-header { padding: 0 2rem; background: rgba(243, 245, 249, .72); border-bottom-color: transparent; }
+    .app-header-menu, .app-header-brand { display: none; }
+    .app-content { padding: 1.5rem 2rem 2.5rem; }
+    .app-footer { padding: 1.1rem 2rem; }
+}
+
+@media (max-width: 640px) {
+    .app-footer-copy { margin-left: 0; width: 100%; }
+    .app-link-pill { padding: .45rem .8rem; font-size: .85rem; }
+}
+
+/* --- Schüler: ohne Seitenleiste/Kopf, Navigation unten --- */
+.app-main--student { padding-bottom: calc(6.4rem + env(safe-area-inset-bottom, 0px)); }
+.app-content--student { padding: .75rem .75rem calc(6.6rem + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 640px) { .app-content--student { padding: 1rem 1.25rem calc(6.8rem + env(safe-area-inset-bottom, 0px)); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .app-content > * { animation: none; }
+    .app-sidebar { transition: none; }
+}
+
+/* --- Blazor-Fehlerleiste --- */
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: .7rem 1.25rem;
+    background: #fdeeee;
+    color: #a1281c;
+    box-shadow: 0 -1px 2px rgba(16, 26, 51, .12);
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .9rem; top: .55rem; font-size: 1.2rem; }
+
+/* --- Eingabefelder im eNOTE-Stil (überschreibt app.css) --- */
+.skoulou-label { margin-bottom: .4rem; font-size: .82rem; font-weight: 600; color: #333e55; }
+.skoulou-input { min-height: 2.75rem; border-radius: .75rem; border-color: var(--sk-border); font-size: .9rem; color: var(--sk-text); }
+.skoulou-input:hover { border-color: var(--sk-border-strong); }
+.skoulou-input:focus,
+.app-content form input.skoulou-input:focus,
+.app-content form select:focus,
+.app-content form textarea:focus { border-color: var(--sk-primary-hell); box-shadow: 0 0 0 3px rgb(var(--sk-p-600) / .18); }
+.skoulou-input::placeholder { color: var(--sk-text-subtle); }

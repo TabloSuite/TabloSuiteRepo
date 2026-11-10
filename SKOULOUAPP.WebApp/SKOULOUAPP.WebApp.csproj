@@ -2,7 +2,24 @@
 
   <ItemGroup>
     <Content Remove="web.config" />
+    <!-- Werkzeuge für die Tailwind-Erzeugung gehören nicht ins Veröffentlichungspaket. -->
+    <Content Remove="package.json;package-lock.json" />
+    <None Include="package.json;tailwind.config.js;Styles\tailwind.css" />
   </ItemGroup>
+
+  <!--
+    Tailwind statisch erzeugen (wwwroot/css/tailwind.css, eingecheckt). Läuft nur, wenn `npm install`
+    im Projektordner ausgeführt wurde, und nur bei geänderten Razor-/C#-Dateien. Ohne Node bleibt die
+    eingecheckte Datei unverändert (z. B. Build-Server).
+  -->
+  <ItemGroup>
+    <TailwindEingabe Include="Components\**\*.razor;Components\**\*.cs;Services\**\*.cs;wwwroot\js\**\*.js;tailwind.config.js;Styles\tailwind.css" />
+  </ItemGroup>
+  <Target Name="SkoulouTailwind" BeforeTargets="BeforeBuild"
+          Condition="'$(DesignTimeBuild)' != 'true' And Exists('$(MSBuildProjectDirectory)\node_modules\.bin\tailwindcss.cmd')"
+          Inputs="@(TailwindEingabe)" Outputs="wwwroot\css\tailwind.css">
+    <Exec Command="npm run css --silent" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\SKOULOUAPP.Core\SKOULOUAPP.Core.csproj" />
