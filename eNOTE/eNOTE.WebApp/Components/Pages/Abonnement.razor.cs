@@ -21,6 +21,7 @@ public partial class Abonnement(
     ILogger<Abonnement> logger) : IDisposable
 {
     private List<AboService.FormelPreis> formeln = [];
+    private (DateTime AbUtc, decimal Preis)? kommenderPreis;
     private VertragsService.LadenVertrag? vertrag;
 
     private bool isLoading = true;
@@ -90,6 +91,7 @@ public partial class Abonnement(
         try
         {
             formeln = await aboService.GetFormelPreiseAsync(salonId);
+            kommenderPreis = await aboService.GetKommenderPreisAsync(salonId);
             vertrag = await vertragsService.GetLadenVertragAsync(benutzerId, salonId);
         }
         catch (InvalidOperationException ex)

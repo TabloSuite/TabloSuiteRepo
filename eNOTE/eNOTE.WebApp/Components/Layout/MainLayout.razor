@@ -62,6 +62,10 @@
                     </header>
                 }
                 <main class="enote-main">
+                    @if (!KassenVollbild)
+                    {
+                        <AnkuendigungsBanner />
+                    }
                     @Body
                 </main>
             </div>

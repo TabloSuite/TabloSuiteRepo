@@ -34,6 +34,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<decimal?>("MonatsPreis")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("PreisAnpassungId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("SalonId")
                         .HasColumnType("uniqueidentifier");
 
@@ -306,6 +309,51 @@ namespace ENote.WebApp.Migrations
                     b.HasIndex("NutzungsAboId");
 
                     b.ToTable("PoZahlungseingaenge");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Abo.PreisAnpassung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AlterStandard")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("AngepassteLaeden")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("AnkuendigungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ErstelltVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GueltigAbUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstAngewendet")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IstAufgehoben")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MailsGesendet")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("NeuerStandard")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GueltigAbUtc");
+
+                    b.ToTable("PreisAnpassungen");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Abo.ProduktOwnerAuszahlung", b =>
@@ -650,6 +698,83 @@ namespace ENote.WebApp.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.Ankuendigung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Art")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ErstelltVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IstAktiv")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LinkText")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("LinkUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("MailsGesendet")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SichtbarAbUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SichtbarBisUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Titel")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("WartungBisUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("WartungVonUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Ziel")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IstAktiv", "SichtbarAbUtc");
+
+                    b.ToTable("Ankuendigungen");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.AnkuendigungGelesen", b =>
+                {
+                    b.Property<Guid>("AnkuendigungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GelesenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AnkuendigungId", "UserId");
+
+                    b.ToTable("AnkuendigungenGelesen");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.BlobMediaAsset", b =>
@@ -1941,6 +2066,15 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.AnkuendigungGelesen", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Infrastruktur.Ankuendigung", null)
+                        .WithMany()
+                        .HasForeignKey("AnkuendigungId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.BesitzerHinweis", b =>

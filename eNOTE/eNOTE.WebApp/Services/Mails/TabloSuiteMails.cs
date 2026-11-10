@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Net;
 using System.Text;
 
@@ -190,6 +190,24 @@ public static class TabloSuiteMails
         var knopf = !string.IsNullOrWhiteSpace(knopfText) && !string.IsNullOrWhiteSpace(knopfUrl) ? Knopf(knopfText.Trim(), knopfUrl) : "";
         return Wrap(titel, vorschau.Length > 110 ? vorschau[..110] + "…" : vorschau,
             Anrede(vorname) + string.Concat(absaetze) + knopf + Gruss());
+    }
+
+    /// <summary>
+    /// Tarifänderung: frei formulierter Text (Vorlage, vom Admin anpassbar) und der persönliche
+    /// neue Monatspreis des Ladens ab dem Datum.
+    /// </summary>
+    public static string ChangementTarif(string vorname, string salonName, string titel, string text,
+        decimal alterPreis, decimal neuerPreis, DateTime abUtc, string aboUrl)
+    {
+        var absaetze = text.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(a => P(H(a).Replace("\n", "<br/>")));
+        return Wrap(titel, $"Votre tarif mensuel : {Betrag(neuerPreis)}.",
+            Anrede(vorname)
+            + string.Concat(absaetze)
+            + P($"Pour <strong>{H(salonName)}</strong> :", unten: 8)
+            + Tabelle([("Tarif actuel", Betrag(alterPreis) + " / mois"), ("Nouveau tarif", Betrag(neuerPreis) + " / mois"), ("À partir du", Datum(abUtc))], hervorheben: 1)
+            + Knopf("Voir mon abonnement", aboUrl)
+            + Gruss());
     }
 
     // ------------------------------------------------------------------ Bausteine

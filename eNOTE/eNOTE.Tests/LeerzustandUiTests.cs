@@ -79,6 +79,7 @@ public class LeerzustandUiTests
         services.AddScoped<AdminService>();
         services.AddSingleton<ProduktOwnerService>();
         services.AddSingleton<PoAbrechnungService>();
+        services.AddSingleton(sp => new PreisAnpassungService(factory, TimeProvider.System));
         services.AddSingleton<IComponentActivator>(provider => new KomponentenAktivator(provider, konfigurieren));
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new SeitenRenderer(provider, provider.GetRequiredService<ILoggerFactory>());

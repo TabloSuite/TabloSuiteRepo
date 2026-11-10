@@ -1,0 +1,90 @@
+﻿@using System.Security.Claims
+@using ENote.Core.DataModels.Infrastruktur
+@using ENote.WebApp.Services
+@implements IDisposable
+@inject AnkuendigungService ankuendigungen
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager nav
+
+@* Ankündigungen der Plattform (App-Update, Wartung, Tarif) als Banner oben in der App – eine nach der anderen. *@
+
+@if (aktuell is { } a)
+{
+    var laeuft = a.WartungLaeuft(DateTime.UtcNow);
+    <div class="an-banner an-@AnkuendigungService.Klasse(a.Art) @(laeuft ? "laeuft" : "")" role="status" aria-live="polite">
+        <span class="an-symbol"><Icon Name="@AnkuendigungService.Symbol(a.Art)" Groesse="20" /></span>
+        <div class="an-inhalt">
+            <div class="an-kopf">
+                <span class="an-art">@(laeuft ? "Mise à jour en cours" : AnkuendigungService.ArtText(a.Art))</span>
+                <strong>@a.Titel</strong>
+            </div>
+            <p class="@(ausgeklappt ? "offen" : "")">@a.Text</p>
+            @if (a.Text.Length > 120)
+            {
+                <button type="button" class="an-mehr" @onclick="() => ausgeklappt = !ausgeklappt">@(ausgeklappt ? "Réduire" : "Lire la suite")</button>
+            }
+            @if (a.WartungVonUtc is DateTime von && a.WartungBisUtc is DateTime bis)
+            {
+                <span class="an-zeitfenster"><Icon Name="clock" Groesse="14" /> @von.ToString("dd/MM") · @AnkuendigungService.Uhrzeit(von) – @AnkuendigungService.Uhrzeit(bis) (heure de Lomé)</span>
+            }
+        </div>
+        <div class="an-aktionen">
+            @if (!string.IsNullOrWhiteSpace(a.LinkUrl))
+            {
+                <a class="enote-btn enote-btn-sm an-link" href="@a.LinkUrl" target="@(a.LinkUrl.StartsWith('/') ? null : "_blank")"
+                   rel="@(a.LinkUrl.StartsWith('/') ? null : "noopener noreferrer")">@(a.LinkText ?? "En savoir plus")</a>
+            }
+            @if (liste.Count > 1)
+            {
+                <span class="an-zaehler">1 / @liste.Count</span>
+            }
+            <button type="button" class="enote-icon-btn an-zu" aria-label="J'ai compris, fermer l'annonce" title="J'ai compris" @onclick="SchliesseAsync">
+                <Icon Name="x" Groesse="18" />
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AnkuendigungService.Banner> liste = [];
+    private AnkuendigungService.Banner? aktuell => liste.FirstOrDefault();
+    private bool ausgeklappt;
+    private Guid userId;
+    private ClaimsPrincipal? user;
+    private DateTime naechsteAbfrage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        user = state.User;
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId)) return;
+        await LadeAsync();
+        nav.LocationChanged += BeiNavigation;
+    }
+
+    private async Task LadeAsync()
+    {
+        if (user is null || userId == Guid.Empty) return;
+        try { liste = await ankuendigungen.GetFuerNutzerAsync(userId, user); }
+        catch (Exception) { liste = []; } // Banner ist Komfort – nie die Seite blockieren
+        naechsteAbfrage = DateTime.UtcNow.AddMinutes(5);
+    }
+
+    // Neue Ankündigungen erscheinen beim nächsten Seitenwechsel (höchstens alle 5 Minuten abgefragt).
+    private void BeiNavigation(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (DateTime.UtcNow < naechsteAbfrage) return;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    private async Task SchliesseAsync()
+    {
+        if (aktuell is not { } a) return;
+        liste.RemoveAt(0);
+        ausgeklappt = false;
+        try { await ankuendigungen.MarkiereGelesenAsync(userId, a.Id); }
+        catch (Exception) { /* beim nächsten Laden erneut angezeigt */ }
+    }
+
+    public void Dispose() => nav.LocationChanged -= BeiNavigation;
+}

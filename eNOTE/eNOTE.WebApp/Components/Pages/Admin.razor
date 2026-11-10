@@ -32,6 +32,7 @@
             <button class="enote-tab @(aktiverTab == "plateforme" ? "aktiv" : "")" @onclick='() => WechsleTab("plateforme")'>Propriétaires plateforme</button>
             <AuthorizeView Roles="SuperAdmin" Context="mmTabCtx">
                 <Authorized>
+                    <button class="enote-tab @(aktiverTab == "tarifs" ? "aktiv" : "")" @onclick='() => WechsleTab("tarifs")'>Tarifs</button>
                     <button class="enote-tab @(aktiverTab == "mobilemoney" ? "aktiv" : "")" @onclick='() => WechsleTab("mobilemoney")'>Mobile Money</button>
                 </Authorized>
             </AuthorizeView>
@@ -134,35 +135,6 @@
                     }
                 </div>
             }
-
-            <AuthorizeView Roles="SuperAdmin">
-                <Authorized>
-                    <h2 class="enote-section-title">Prix de la plateforme</h2>
-                    <section class="enote-card ab-tarif">
-                        <div class="ab-tarif-kopf">
-                            <div>
-                                <span class="fi-kpi-label">Tarif mensuel général</span>
-                                <strong class="ab-tarif-wert">@(GlobalerMonatsPreis > 0 ? GlobalerMonatsPreis.ToString("N0") + " F" : "Non défini")</strong>
-                                <p class="enote-muted">Base de toutes les formules. Les établissements avec un tarif personnalisé utilisent leur propre base.</p>
-                            </div>
-                            <button class="enote-btn enote-btn-primary" @onclick="OeffneMonatsPreisDialog"><Icon Name="edit" Groesse="16" /> Modifier</button>
-                        </div>
-                        @if (GlobalerMonatsPreis > 0)
-                        {
-                            <div class="ab-tarif-formeln">
-                                @foreach (var intervall in ENote.Core.Services.VertragsRegeln.Intervalle)
-                                {
-                                    <div>
-                                        <small>@ENote.Core.Services.VertragsRegeln.Bezeichnung(intervall)</small>
-                                        <strong>@ENote.Core.Services.VertragsRegeln.Preis(GlobalerMonatsPreis, intervall).ToString("N0") F</strong>
-                                        <span class="enote-muted">@(ENote.Core.Services.VertragsRegeln.Rabatt(intervall) > 0 ? $"−{ENote.Core.Services.VertragsRegeln.Rabatt(intervall):0.#} %" : "prix de base")</span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </section>
-                </Authorized>
-            </AuthorizeView>
         }
         else if (aktiverTab == "plateforme")
         {
@@ -318,6 +290,14 @@
                 </Authorized>
             </AuthorizeView>
         }
+        else if (aktiverTab == "tarifs")
+        {
+            <AuthorizeView Roles="SuperAdmin" Context="tarifCtx">
+                <Authorized>
+                    <TarifAnpassung BearbeiterId="aktuellerBenutzerId" OnGeaendert="LadeAsync" />
+                </Authorized>
+            </AuthorizeView>
+        }
         else if (aktiverTab == "mobilemoney")
         {
             <AuthorizeView Roles="SuperAdmin" Context="mmCtx">
@@ -329,18 +309,6 @@
     }
 </div>
 
-<ModalDialog Open="preisDialogOffen" Title="@PreisDialogTitel" ErrorMessage="@preisFehler" OnClose="() => preisDialogOffen = false">
-    <ChildContent>
-        <div class="enote-form">
-            <p class="enote-muted">Les formules trimestrielle (−5 %), semestrielle (−7,5 %) et annuelle (−10 %) sont calculées automatiquement à partir de ce montant. Les périodes déjà facturées ne changent pas.</p>
-            <label>Montant mensuel (F) <input type="number" min="0" step="100" @bind="neuerPreis" /></label>
-        </div>
-    </ChildContent>
-    <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => preisDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SetzePreisAsync" CssClass="enote-btn-primary" />
-    </Footer>
-</ModalDialog>
 
 @* Besitzer + Geschäft durch Admin anlegen *@
 <ModalDialog Open="besitzerDialogOffen" Title="Ajouter un propriétaire" ErrorMessage="@besitzerFehler" OnClose="() => besitzerDialogOffen = false">
@@ -439,8 +407,8 @@
         {
             <p>Tarif général : <strong>@tarif.Global.ToString("N0") F CFA / mois</strong></p>
             <p>Tarif actuellement appliqué : <strong>@((tarif.Individuell ?? tarif.Global).ToString("N0")) F CFA / mois</strong> · @(tarif.Individuell is null ? "tarif général" : "tarif personnalisé")</p>
-            <p class="enote-muted">Un tarif personnalisé remplace le tarif général pour cet établissement. Les remises sont calculées automatiquement. Les périodes déjà facturées ne changent pas.</p>
-            <div class="enote-form"><label>Montant mensuel (F CFA)</label><input type="number" min="1" step="1" @bind="tarifPreis" /></div>
+            <p class="enote-muted">Un tarif personnalisé remplace le tarif général pour cet établissement, sans jamais être inférieur à celui-ci. Les remises sont calculées automatiquement. Les périodes déjà facturées ne changent pas.</p>
+            <div class="enote-form"><label>Montant mensuel (F CFA)</label><input type="number" min="@tarif.Global" step="100" @bind="tarifPreis" /></div>
             @if (tarifPreis is > 0)
             {
                 @foreach (var i in VertragsRegeln.Intervalle) { <p>@VertragsRegeln.Bezeichnung(i) : @VertragsRegeln.Preis(tarifPreis.Value, i).ToString("N0") F · @VertragsRegeln.Rabatt(i) %</p> }

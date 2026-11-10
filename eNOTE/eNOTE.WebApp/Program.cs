@@ -121,6 +121,8 @@ if (administration is null)
     builder.Services.AddScoped<FinanzService>();
     builder.Services.AddScoped<AusgabenService>();
     builder.Services.AddScoped<HinweisService>();
+    builder.Services.AddScoped<AnkuendigungService>();
+    builder.Services.AddScoped<PreisAnpassungService>();
     builder.Services.AddScoped<AboService>();
     builder.Services.AddScoped<ExceptionLogService>();
     builder.Services.AddScoped<UmsatzBenachrichtigungService>();
@@ -258,10 +260,8 @@ app.MapGet("/bon/{verkaufId:guid}", async (
     var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);
     var logoBytes = await salonService.GetLogoBytesAsync(salon.Id, cancellationToken);
 
-    // QR-Ziel: eigener Link des Salons (z. B. WhatsApp/Bewertung) oder die digitale Bon-Kopie.
-    var qrZiel = !string.IsNullOrWhiteSpace(salon.BonQrLink)
-        ? salon.BonQrLink
-        : $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/bon/{verkauf.Id}";
+    // QR-Ziel: eigener Link des Salons (z. B. WhatsApp/Bewertung), sonst die eNOTE-Seite.
+    var qrZiel = BonQr.Ziel(salon, app.Configuration);
 
     var pdf = BonPdfService.ErzeugeBon(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, logoBytes, qrZiel);
     httpContext.Response.Headers.CacheControl = "private, no-store";
@@ -288,9 +288,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
     }
 
     var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);
-    var qrZiel = !string.IsNullOrWhiteSpace(salon.BonQrLink)
-        ? salon.BonQrLink
-        : $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/bon/{verkauf.Id}";
+    var qrZiel = BonQr.Ziel(salon, app.Configuration);
     var html = BonDruckHtml.Erzeuge(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, qrZiel);
     httpContext.Response.Headers.CacheControl = "private, no-store";
     return Results.Content(html, "text/html; charset=utf-8");

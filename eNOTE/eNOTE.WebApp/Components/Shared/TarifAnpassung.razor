@@ -1,0 +1,310 @@
+﻿@using ENote.Core.Services
+@using ENote.WebApp.Services
+@inject PreisAnpassungService preise
+@inject ToastService toast
+
+@* Tarif mensuel général: aktueller Preis, geplante Änderung und Dialog „Modifier le tarif“ (nur SuperAdmin). *@
+
+<section class="enote-card ab-tarif">
+    <div class="ab-tarif-kopf">
+        <div>
+            <span class="fi-kpi-label">Tarif mensuel général</span>
+            <strong class="ab-tarif-wert">@(stand is { AktuellerStandard: > 0 } ? stand.AktuellerStandard.ToString("N0") + " F" : "Non défini")</strong>
+            <p class="enote-muted">Prix minimum et base de toutes les formules. Un tarif personnalisé n'est jamais inférieur à ce montant.</p>
+        </div>
+        <button class="enote-btn enote-btn-primary" @onclick="Oeffne" disabled="@(stand is null)"><Icon Name="edit" Groesse="16" /> Modifier le tarif</button>
+    </div>
+
+    @if (stand?.Geplant is { } geplant)
+    {
+        <div class="ta-geplant">
+            <Icon Name="calendar" Groesse="20" />
+            <div>
+                <strong>@geplant.NeuerStandard.ToString("N0") F / mois à partir du @PreisAnpassungService.DatumText(geplant.GueltigAbUtc)</strong>
+                <span>
+                    @(geplant.NeuerStandard > geplant.AlterStandard ? "+" : "−")@Math.Abs(geplant.NeuerStandard - geplant.AlterStandard).ToString("N0") F
+                    · @geplant.AngepassteLaeden tarif(s) personnalisé(s) ajusté(s)
+                    · @(geplant.MailsGesendet > 0 ? $"{geplant.MailsGesendet} e-mail(s) envoyé(s)" : "annonce dans l'app")
+                </span>
+            </div>
+            <AsyncActionButton Text="Annuler" BusyText="Annulation…" OnClick="() => AufhebenAsync(geplant.Id)" CssClass="enote-btn-ghost enote-btn-sm" />
+        </div>
+    }
+
+    @if (stand is { AktuellerStandard: > 0 })
+    {
+        <div class="ab-tarif-formeln">
+            @foreach (var intervall in VertragsRegeln.Intervalle)
+            {
+                <div>
+                    <small>@VertragsRegeln.Bezeichnung(intervall)</small>
+                    <strong>@VertragsRegeln.Preis(stand.AktuellerStandard, intervall).ToString("N0") F</strong>
+                    <span class="enote-muted">@(VertragsRegeln.Rabatt(intervall) > 0 ? $"−{VertragsRegeln.Rabatt(intervall):0.#} %" : "prix de base")</span>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@if (stand is { Verlauf.Count: > 0 })
+{
+    <section class="ta-verlauf">
+        <h2 class="enote-section-title">Historique des changements</h2>
+        <div class="enote-card ta-verlauf-liste">
+            @foreach (var p in stand.Verlauf)
+            {
+                var hoch = p.NeuerStandard > p.AlterStandard;
+                var kommend = p.GueltigAbUtc > DateTime.UtcNow;
+                <div class="ta-verlauf-zeile">
+                    <span class="ta-verlauf-datum">@PreisAnpassungService.DatumText(p.GueltigAbUtc)</span>
+                    <span class="ta-verlauf-preis"><s>@p.AlterStandard.ToString("N0") F</s> <Icon Name="arrow-right" Groesse="14" /> <strong>@p.NeuerStandard.ToString("N0") F</strong></span>
+                    <span class="ta-verlauf-diff @(hoch ? "hoch" : "runter")">@(hoch ? "+" : "−")@Math.Abs(p.NeuerStandard - p.AlterStandard).ToString("N0") F</span>
+                    <span class="enote-muted">@(p.AngepassteLaeden > 0 ? $"{p.AngepassteLaeden} tarif(s) perso." : "—") · @(p.MailsGesendet > 0 ? $"{p.MailsGesendet} e-mail(s)" : "app")</span>
+                    <span class="ta-verlauf-status @(kommend ? "kommend" : "")">@(kommend ? "Planifié" : "En vigueur")</span>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<ModalDialog Open="offen" Title="Modifier le tarif général" ErrorMessage="@fehler" OnClose="() => offen = false" MaxWidthClass="enote-modal-lg">
+    <ChildContent>
+        <div class="enote-form ta-form">
+            <div class="enote-form-grid">
+                <label>
+                    Nouveau tarif mensuel (F)
+                    <input type="number" min="1" step="100" value="@neuerPreis" @oninput="PreisGeaendertAsync" />
+                </label>
+                <label>
+                    À partir du
+                    <EnoteSelect TValue="string" Value="abWahl" ValueChanged="AbGeaendertAsync" Options="abOptionen" />
+                </label>
+            </div>
+
+            @if (vorschau is not null && vorschau.Differenz != 0)
+            {
+                var hoch = vorschau.Differenz > 0;
+                <div class="ta-vorschau @(hoch ? "hoch" : "runter")">
+                    <div class="ta-vorschau-kopf">
+                        <span>@vorschau.AlterStandard.ToString("N0") F</span>
+                        <Icon Name="arrow-right" Groesse="18" />
+                        <strong>@vorschau.NeuerStandard.ToString("N0") F</strong>
+                        <em>@(hoch ? "+" : "−")@Math.Abs(vorschau.Differenz).ToString("N0") F</em>
+                    </div>
+                    <p>
+                        @if (hoch)
+                        {
+                            <text>Tous les tarifs augmentent de <strong>@vorschau.Differenz.ToString("N0") F</strong>, tarifs personnalisés compris.</text>
+                        }
+                        else
+                        {
+                            <text>Le tarif général baisse. Les tarifs personnalisés restent inchangés, mais jamais en dessous du nouveau tarif.</text>
+                        }
+                        Les périodes déjà facturées ne changent pas.
+                    </p>
+                    @{ var individuelle = vorschau.Laeden.Where(l => l.Individuell).ToList(); }
+                    @if (individuelle.Count > 0)
+                    {
+                        <div class="ta-liste">
+                            <span class="ta-liste-titel">Tarifs personnalisés (@individuelle.Count)</span>
+                            @foreach (var l in individuelle.Take(8))
+                            {
+                                <div class="ta-zeile"><span>@l.Laden</span><span>@l.Alt.ToString("N0") F</span><Icon Name="arrow-right" Groesse="14" /><strong>@l.Neu.ToString("N0") F</strong></div>
+                            }
+                            @if (individuelle.Count > 8)
+                            {
+                                <span class="enote-muted">… et @(individuelle.Count - 8) autre(s)</span>
+                            }
+                        </div>
+                    }
+                    <span class="enote-muted">@vorschau.Betroffen établissement(s) concerné(s) sur @vorschau.Laeden.Count.</span>
+                </div>
+            }
+            else if (vorschau is not null)
+            {
+                <p class="enote-muted">Saisissez un montant différent du tarif actuel.</p>
+            }
+
+            @if (vorschau is not null && vorschau.Differenz != 0)
+            {
+                <div class="ta-text">
+                    <div class="ta-text-kopf">
+                        <span class="ta-liste-titel">Message aux propriétaires</span>
+                        <div class="ta-vorlagen" role="radiogroup" aria-label="Modèles de texte">
+                            @foreach (var v in PreisAnpassungService.Vorlagen(IstErhoehung))
+                            {
+                                <button type="button" role="radio" aria-checked="@(vorlageName == v.Name)"
+                                        class="ta-vorlage @(vorlageName == v.Name ? "aktiv" : "")" @onclick="() => WaehleVorlage(v)">@v.Name</button>
+                            }
+                        </div>
+                    </div>
+                    <label>Titre <input @bind="titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
+                    <label>Message <textarea rows="5" @bind="text" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
+                    <small class="enote-muted ta-platzhalter">
+                        Remplacés automatiquement :
+                        @foreach (var (platzhalter, bedeutung) in PreisAnpassungService.Platzhalter)
+                        {
+                            <span><code>@platzhalter</code> @bedeutung</span>
+                        }
+                    </small>
+                    <span class="an-vorschau-titel">Aperçu dans l'app</span>
+                    <div class="an-banner an-tarif an-vorschau">
+                        <span class="an-symbol"><Icon Name="tag" Groesse="20" /></span>
+                        <div class="an-inhalt">
+                            <div class="an-kopf"><span class="an-art">Tarif</span><strong>@Gefuellt(titel)</strong></div>
+                            <p class="offen">@Gefuellt(text)</p>
+                        </div>
+                        <div class="an-aktionen"><span class="enote-btn enote-btn-sm an-link">Voir mon abonnement</span></div>
+                    </div>
+                </div>
+            }
+
+            <EnoteCheckbox @bind-Value="perMail" Label="Informer aussi chaque propriétaire par e-mail (même message + son nouveau tarif personnel)" />
+            <small class="enote-muted">Une annonce apparaît dans l'app pour tous les propriétaires, avec ou sans e-mail.</small>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => offen = false">Annuler</button>
+        <AsyncActionButton Text="@(abWahl == Sofort ? "Appliquer maintenant" : "Planifier le changement")" BusyText="Enregistrement…"
+                           OnClick="SpeichernAsync" CssClass="enote-btn-primary" Disabled="@(vorschau is null || vorschau.Differenz == 0)" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter, EditorRequired] public Guid BearbeiterId { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private const string Sofort = "sofort";
+    private PreisAnpassungService.Stand? stand;
+    private PreisAnpassungService.Vorschau? vorschau;
+    private bool offen, perMail = true;
+    private string? fehler;
+    private decimal neuerPreis;
+    private string abWahl = "";
+    private List<EnoteSelectOption<string>> abOptionen = [];
+    private string titel = "", text = "";
+    private string? vorlageName;
+    private bool? vorlagenFuerErhoehung;
+
+    private bool IstErhoehung => vorschau is { Differenz: > 0 };
+
+    private string Gefuellt(string vorlage) => vorschau is null
+        ? vorlage
+        : PreisAnpassungService.Fuelle(vorlage, vorschau.AlterStandard, vorschau.NeuerStandard, Ab);
+
+    private void WaehleVorlage(PreisAnpassungService.TextVorlage v)
+    {
+        vorlageName = v.Name;
+        titel = v.Titel;
+        text = v.Text;
+    }
+
+    /// <summary>Wechselt die Richtung (Erhöhung ↔ Senkung), passt die Vorlage dazu; eigene Texte bleiben sonst stehen.</summary>
+    private void PasseVorlagenAn()
+    {
+        if (vorschau is null || vorschau.Differenz == 0) return;
+        if (vorlagenFuerErhoehung == IstErhoehung) return;
+        vorlagenFuerErhoehung = IstErhoehung;
+        WaehleVorlage(PreisAnpassungService.Vorlagen(IstErhoehung)[0]);
+    }
+
+    protected override async Task OnInitializedAsync() => await LadeAsync();
+
+    private async Task LadeAsync()
+    {
+        try { stand = await preise.GetStandAsync(BearbeiterId); }
+        catch (UnauthorizedAccessException) { stand = null; }
+    }
+
+    private void BaueOptionen()
+    {
+        var aktuell = stand?.AktuellerStandard ?? 0;
+        abOptionen = preise.Monatsanfaenge()
+            .Select(d => new EnoteSelectOption<string> { Value = d.ToString("yyyy-MM-dd"), Label = PreisAnpassungService.DatumText(d) })
+            .ToList();
+        // Eine Senkung darf sofort gelten; eine Erhöhung wird immer angekündigt.
+        if (neuerPreis > 0 && neuerPreis <= aktuell)
+            abOptionen.Insert(0, new EnoteSelectOption<string> { Value = Sofort, Label = "Immédiatement" });
+        if (abOptionen.All(o => o.Value != abWahl)) abWahl = abOptionen[0].Value!;
+    }
+
+    private DateTime? Ab => abWahl == Sofort ? null : DateTime.SpecifyKind(DateTime.ParseExact(abWahl, "yyyy-MM-dd", null), DateTimeKind.Utc);
+
+    private async Task Oeffne()
+    {
+        await LadeAsync();
+        if (stand?.Geplant is not null)
+        {
+            toast.ZeigeInfo("Un changement est déjà planifié : annulez-le pour en saisir un autre.");
+            return;
+        }
+        fehler = null;
+        neuerPreis = stand?.AktuellerStandard ?? 0;
+        abWahl = "";
+        vorlagenFuerErhoehung = null;
+        vorlageName = null;
+        titel = text = "";
+        BaueOptionen();
+        await AktualisiereVorschauAsync();
+        offen = true;
+    }
+
+    private async Task PreisGeaendertAsync(ChangeEventArgs e)
+    {
+        neuerPreis = decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0;
+        BaueOptionen();
+        await AktualisiereVorschauAsync();
+    }
+
+    private async Task AbGeaendertAsync(string? wert)
+    {
+        abWahl = wert ?? abWahl;
+        await AktualisiereVorschauAsync();
+    }
+
+    private async Task AktualisiereVorschauAsync()
+    {
+        fehler = null;
+        if (neuerPreis <= 0) { vorschau = null; return; }
+        try { vorschau = await preise.GetVorschauAsync(BearbeiterId, neuerPreis, Ab); PasseVorlagenAn(); }
+        catch (ArgumentException ex) { vorschau = null; fehler = ex.Message; }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(titel) || string.IsNullOrWhiteSpace(text))
+            {
+                fehler = "Saisissez un titre et un message pour les propriétaires.";
+                return;
+            }
+            var ergebnis = await preise.PlaneAsync(BearbeiterId, neuerPreis, Ab, perMail, titel, text);
+            offen = false;
+            toast.ZeigeErfolg(Ab is null
+                ? $"Nouveau tarif appliqué : {neuerPreis:N0} F / mois."
+                : $"Changement planifié au {PreisAnpassungService.DatumText(ergebnis.AbUtc)}" + (ergebnis.Mails > 0 ? $" · {ergebnis.Mails} e-mail(s) envoyé(s)." : "."));
+            await LadeAsync();
+            await OnGeaendert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task AufhebenAsync(Guid id)
+    {
+        try
+        {
+            await preise.AufhebenAsync(BearbeiterId, id);
+            toast.ZeigeInfo("Changement de tarif annulé.");
+            await LadeAsync();
+            await OnGeaendert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
+    }
+}

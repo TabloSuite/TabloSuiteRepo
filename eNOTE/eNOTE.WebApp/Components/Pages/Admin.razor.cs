@@ -154,10 +154,6 @@ public partial class Admin(
 
     private void WechsleTab(string tab) => aktiverTab = tab;
 
-    private bool preisDialogOffen;
-    private string? preisFehler;
-    private AboIntervall aktuellesIntervall;
-    private decimal neuerPreis;
 
     // Tarif-Dialog (zentral, nicht innerhalb der scrollbaren Salon-Liste)
     private bool tarifDialogOffen;
@@ -432,6 +428,11 @@ public partial class Admin(
             tarifFehler = null;
             toast.ZeigeErfolg(standard ? "Tarif général appliqué." : "Tarif personnalisé enregistré.");
         }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            // z. B. Preis unter dem Standard – die Meldung steht nach „ (Parameter …)“ ohne den Zusatz.
+            tarifFehler = ex.Message.Split(" (Parameter")[0];
+        }
         catch (Exception)
         {
             tarifFehler = "L'enregistrement du tarif a échoué.";
@@ -460,26 +461,6 @@ public partial class Admin(
         }
     }
 
-    private async Task SetzePreisAsync()
-    {
-        if (neuerPreis < 0)
-        {
-            preisFehler = "Le prix ne peut pas être négatif.";
-            return;
-        }
-
-        if (neuerPreis <= 0)
-        {
-            preisFehler = "Veuillez saisir un montant positif.";
-            return;
-        }
-
-        await adminService.SetzePlattformPreisAsync(aktuellerBenutzerId, AboIntervall.Monatlich, neuerPreis);
-        preisDialogOffen = false;
-        toast.ZeigeErfolg("Prix enregistré.");
-        await LadeAsync();
-    }
-
     private static string IntervallText(AboIntervall intervall) => intervall switch
     {
         AboIntervall.Monatlich => "Mensuel",
@@ -489,17 +470,9 @@ public partial class Admin(
         _ => intervall.ToString()
     };
 
-    private string PreisDialogTitel => "Tarif mensuel général";
 
     /// <summary>Globaler Monatspreis (Basis aller Formeln).</summary>
     private decimal globalerMonatsPreis;
     private decimal GlobalerMonatsPreis => globalerMonatsPreis;
 
-    private void OeffneMonatsPreisDialog()
-    {
-        aktuellesIntervall = AboIntervall.Monatlich;
-        neuerPreis = GlobalerMonatsPreis;
-        preisFehler = null;
-        preisDialogOffen = true;
-    }
 }

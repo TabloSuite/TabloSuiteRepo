@@ -48,6 +48,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
+    public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
+    public DbSet<AnkuendigungGelesen> AnkuendigungenGelesen => Set<AnkuendigungGelesen>();
+    public DbSet<PreisAnpassung> PreisAnpassungen => Set<PreisAnpassung>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -181,6 +184,28 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasForeignKey(v => v.StornoVonVerkaufId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.Ignore(v => v.IstStorno);
+        });
+
+        builder.Entity<Ankuendigung>(entity =>
+        {
+            entity.Property(a => a.Titel).HasMaxLength(150);
+            entity.Property(a => a.Text).HasMaxLength(2000);
+            entity.Property(a => a.LinkUrl).HasMaxLength(500);
+            entity.Property(a => a.LinkText).HasMaxLength(60);
+            entity.HasIndex(a => new { a.IstAktiv, a.SichtbarAbUtc });
+        });
+
+        builder.Entity<AnkuendigungGelesen>(entity =>
+        {
+            entity.HasKey(g => new { g.AnkuendigungId, g.UserId });
+            entity.HasOne<Ankuendigung>().WithMany().HasForeignKey(g => g.AnkuendigungId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PreisAnpassung>(entity =>
+        {
+            entity.Property(p => p.AlterStandard).HasPrecision(18, 2);
+            entity.Property(p => p.NeuerStandard).HasPrecision(18, 2);
+            entity.HasIndex(p => p.GueltigAbUtc);
         });
 
         builder.Entity<MailRegel>(entity =>

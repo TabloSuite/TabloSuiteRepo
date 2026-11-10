@@ -98,6 +98,13 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         return liste;
     }
 
+    /// <summary>Geplanter neuer Monatspreis des Ladens (Tarifänderung durch den Admin), sonst null.</summary>
+    public async Task<(DateTime AbUtc, decimal Preis)?> GetKommenderPreisAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await PreisAnpassungService.KommenderPreisAsync(db, salonId, DateTime.UtcNow, cancellationToken);
+    }
+
     /// <summary>Effektiver Preis einer Formel (0 = kein Preis konfiguriert).</summary>
     public async Task<decimal> GetPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
         => (await GetFormelPreisAsync(salonId, intervall, cancellationToken))?.Preis ?? 0m;

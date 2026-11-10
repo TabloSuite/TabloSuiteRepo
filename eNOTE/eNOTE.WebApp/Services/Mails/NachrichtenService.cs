@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -109,7 +109,7 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
 
     /// <summary>Sendet die Nachricht einzeln an jeden Empfänger (persönliche Anrede).</summary>
     public async Task<(int Gesendet, int Fehlgeschlagen)> SendeAsync(Guid bearbeiter, IReadOnlyList<Empfaenger> empfaenger,
-        string betreff, string text, string? knopfText, string? knopfUrl, CancellationToken ct = default)
+        string betreff, string text, string? knopfText, string? knopfUrl, CancellationToken ct = default, string kategorie = "message")
     {
         await using (var db = await factory.CreateDbContextAsync(ct))
             await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
@@ -125,7 +125,7 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
         foreach (var e in empfaenger)
         {
             var html = TabloSuiteMails.Nachricht(e.Vorname, betreff.Trim(), text, knopfText, knopfUrl?.Trim());
-            if (await email.SendeAsync(e.Email, betreff.Trim(), html, "message", ct)) ok++; else fehler++;
+            if (await email.SendeAsync(e.Email, betreff.Trim(), html, kategorie, ct)) ok++; else fehler++;
         }
         return (ok, fehler);
     }

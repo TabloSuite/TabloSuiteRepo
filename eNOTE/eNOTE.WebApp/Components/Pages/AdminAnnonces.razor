@@ -1,0 +1,290 @@
+﻿@page "/admin/annonces"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using System.Security.Claims
+@using ENote.Core.DataModels.Infrastruktur
+@using ENote.WebApp.Services
+@inject AnkuendigungService ankuendigungen
+@inject AuthenticationStateProvider authStateProvider
+@inject ToastService toast
+
+<PageTitle>Annonces</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Annonces</h1>
+            <p>Informez les utilisateurs d'une mise à jour, d'une maintenance ou d'un changement : l'annonce s'affiche en haut de l'app.</p>
+        </div>
+    </div>
+
+    <div class="an-raster">
+        <section class="enote-card an-formular">
+            <h2 class="enote-section-title">Nouvelle annonce</h2>
+            <div class="enote-form">
+                <div class="an-arten" role="radiogroup" aria-label="Type d'annonce">
+                    @foreach (var art in ArtReihenfolge)
+                    {
+                        <button type="button" role="radio" aria-checked="@(neu.Art == art)" class="an-art-wahl an-@AnkuendigungService.Klasse(art) @(neu.Art == art ? "aktiv" : "")" @onclick="() => WaehleArt(art)">
+                            <Icon Name="@AnkuendigungService.Symbol(art)" Groesse="18" /> @AnkuendigungService.ArtText(art)
+                        </button>
+                    }
+                </div>
+                @if (IstWartung)
+                {
+                    <div class="an-fenster">
+                        <label>Jour <input type="date" @bind="neu.Tag" min="@DateTime.UtcNow.ToString("yyyy-MM-dd")" /></label>
+                        <label>De <input type="time" step="300" @bind="neu.Von" /></label>
+                        <label>À <input type="time" step="300" @bind="neu.Bis2" /></label>
+                    </div>
+                    <small class="enote-muted">Heure de Lomé (GMT) – au Bénin, une heure de plus. L'annonce s'affiche dès maintenant et disparaît après la mise à jour.</small>
+                    <div class="ta-text-kopf">
+                        <span class="ta-liste-titel">Modèles</span>
+                        <div class="ta-vorlagen" role="radiogroup" aria-label="Modèles de texte">
+                            @foreach (var v in AnkuendigungService.WartungsVorlagen)
+                            {
+                                <button type="button" role="radio" aria-checked="@(vorlageName == v.Name)"
+                                        class="ta-vorlage @(vorlageName == v.Name ? "aktiv" : "")" @onclick="() => WaehleVorlage(v)">@v.Name</button>
+                            }
+                        </div>
+                    </div>
+                }
+                <label>Titre <input @bind="neu.Titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" placeholder="ex. Nouvelle version d'eNOTE disponible" /></label>
+                <label>
+                    Message
+                    <textarea rows="5" @bind="neu.Text" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"
+                              placeholder="ex. Nouveau : remboursements depuis l'historique des ventes et mode sombre. Rechargez la page pour en profiter."></textarea>
+                </label>
+                @if (IstWartung)
+                {
+                    <small class="enote-muted ta-platzhalter">
+                        Remplacés automatiquement :
+                        @foreach (var (platzhalter, bedeutung) in AnkuendigungService.WartungsPlatzhalter)
+                        {
+                            <span><code>@platzhalter</code> @bedeutung</span>
+                        }
+                    </small>
+                    <label>Destinataires <EnoteSelect TValue="string" @bind-Value="zielWahl" Options="zielOptionen" /></label>
+                    <EnoteCheckbox @bind-Value="neu.HinweisDanach" Label="Afficher ensuite « eNOTE a été mis à jour » (3 jours)" />
+                }
+                else
+                {
+                    <div class="enote-form-grid">
+                        <label>Destinataires <EnoteSelect TValue="string" @bind-Value="zielWahl" Options="zielOptionen" /></label>
+                        <label>Visible jusqu'au <small class="enote-muted">(facultatif)</small> <input type="date" @bind="neu.Bis" min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" /></label>
+                    </div>
+                }
+                <div class="enote-form-grid">
+                    <label>Lien <small class="enote-muted">(facultatif)</small> <input @bind="neu.LinkUrl" placeholder="/abonnement ou https://…" /></label>
+                    <label>Texte du bouton <input @bind="neu.LinkText" maxlength="60" placeholder="En savoir plus" /></label>
+                </div>
+                <EnoteCheckbox @bind-Value="neu.PerMail" Label="Envoyer aussi par e-mail à tous les propriétaires" />
+                @if (neu.PerMail)
+                {
+                    <small class="enote-muted">Compte dans le quota mensuel d'e-mails (un e-mail par propriétaire).</small>
+                }
+                @if (fehler is not null)
+                {
+                    <div class="alert alert-error">@fehler</div>
+                }
+            </div>
+
+            @* Vorschau, so wie das Banner in der App aussieht *@
+            @if (!string.IsNullOrWhiteSpace(neu.Titel) || !string.IsNullOrWhiteSpace(neu.Text))
+            {
+                <span class="an-vorschau-titel">Aperçu</span>
+                <div class="an-banner an-@AnkuendigungService.Klasse(neu.Art) an-vorschau">
+                    <span class="an-symbol"><Icon Name="@AnkuendigungService.Symbol(neu.Art)" Groesse="20" /></span>
+                    <div class="an-inhalt">
+                        <div class="an-kopf"><span class="an-art">@AnkuendigungService.ArtText(neu.Art)</span><strong>@Vorschau(neu.Titel)</strong></div>
+                        <p class="offen">@Vorschau(neu.Text)</p>
+                        @if (IstWartung && Fenster is { } f)
+                        {
+                            <span class="an-zeitfenster"><Icon Name="clock" Groesse="14" /> @f.Von.ToString("dd/MM") · @AnkuendigungService.Uhrzeit(f.Von) – @AnkuendigungService.Uhrzeit(f.Bis)</span>
+                        }
+                    </div>
+                    <div class="an-aktionen">
+                        @if (!string.IsNullOrWhiteSpace(neu.LinkUrl))
+                        {
+                            <span class="enote-btn enote-btn-sm an-link">@(string.IsNullOrWhiteSpace(neu.LinkText) ? "En savoir plus" : neu.LinkText)</span>
+                        }
+                        <span class="enote-icon-btn an-zu"><Icon Name="x" Groesse="18" /></span>
+                    </div>
+                </div>
+            }
+
+            <div class="an-fuss">
+                <AsyncActionButton Text="Publier l'annonce" BusyText="Publication…" OnClick="VeroeffentlicheAsync" CssClass="enote-btn-primary" />
+            </div>
+        </section>
+
+        <section class="an-verlauf">
+            <h2 class="enote-section-title">Annonces publiées</h2>
+            @if (liste is null)
+            {
+                <p class="enote-muted">Chargement…</p>
+            }
+            else if (liste.Count == 0)
+            {
+                <div class="enote-card an-leer">
+                    <Icon Name="bell" Groesse="28" />
+                    <p>Aucune annonce pour le moment.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var a in liste)
+                {
+                    var laeuft = a.IstAktiv && (a.SichtbarBisUtc is null || a.SichtbarBisUtc > DateTime.UtcNow);
+                    <article class="enote-card an-eintrag @(laeuft ? "" : "beendet")">
+                        <span class="an-symbol an-@AnkuendigungService.Klasse(a.Art)"><Icon Name="@AnkuendigungService.Symbol(a.Art)" Groesse="18" /></span>
+                        <div class="an-eintrag-text">
+                            <div class="an-kopf">
+                                <strong>@a.Titel</strong>
+                                <span class="an-status @(laeuft ? "an" : "aus")">@(laeuft ? "Affichée" : a.IstAktiv ? "Expirée" : "Masquée")</span>
+                            </div>
+                            <p>@a.Text</p>
+                            <small class="enote-muted">
+                                @a.ErstelltUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @AnkuendigungService.ZielText(a.Ziel)
+                                · lue par @a.Gelesen
+                                @if (a.MailsGesendet > 0) { <text> · @a.MailsGesendet e-mail(s)</text> }
+                                @if (a.WartungVonUtc is DateTime wv && a.WartungBisUtc is DateTime wb)
+                                {
+                                    <text> · mise à jour le @wv.ToString("dd/MM") de @AnkuendigungService.Uhrzeit(wv) à @AnkuendigungService.Uhrzeit(wb)</text>
+                                }
+                                else if (a.SichtbarBisUtc is DateTime bis) { <text> · jusqu'au @bis.ToLocalTime().ToString("dd/MM/yyyy")</text> }
+                            </small>
+                        </div>
+                        <div class="an-eintrag-aktionen">
+                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => SetzeAktivAsync(a.Id, !a.IstAktiv)">@(a.IstAktiv ? "Masquer" : "Réafficher")</button>
+                            <button class="enote-icon-btn" aria-label="Supprimer" title="Supprimer" @onclick="() => loeschenId = a.Id"><Icon Name="trash" Groesse="16" /></button>
+                        </div>
+                    </article>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+<ModalDialog Open="loeschenId is not null" Title="Supprimer l'annonce ?" OnClose="() => loeschenId = null" MaxWidthClass="enote-modal-sm">
+    <ChildContent><p>L'annonce disparaît pour tous les utilisateurs. Les e-mails déjà envoyés ne peuvent pas être repris.</p></ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => loeschenId = null">Annuler</button>
+        <AsyncActionButton Text="Supprimer" BusyText="Suppression…" OnClick="LoescheAsync" CssClass="enote-btn-danger" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private sealed class Formular
+    {
+        public AnkuendigungArt Art { get; set; } = AnkuendigungArt.Maintenance;
+        // Zeitfenster einer geplanten Aktualisierung (heure de Lomé = UTC)
+        public DateTime? Tag { get; set; } = DateTime.UtcNow.Date.AddDays(1);
+        public TimeOnly? Von { get; set; } = new(22, 0);
+        public TimeOnly? Bis2 { get; set; } = new(22, 30);
+        public bool HinweisDanach { get; set; } = true;
+        public string Titel { get; set; } = "";
+        public string Text { get; set; } = "";
+        public DateTime? Bis { get; set; }
+        public string? LinkUrl { get; set; }
+        public string? LinkText { get; set; }
+        public bool PerMail { get; set; }
+    }
+
+    private Formular neu = NeuesFormular();
+    private string? vorlageName;
+
+    private static readonly AnkuendigungArt[] ArtReihenfolge =
+        [AnkuendigungArt.Maintenance, AnkuendigungArt.Nouveaute, AnkuendigungArt.Information, AnkuendigungArt.Tarif];
+
+    private bool IstWartung => neu.Art == AnkuendigungArt.Maintenance;
+
+    private (DateTime Von, DateTime Bis)? Fenster => neu.Tag is DateTime tag && neu.Von is TimeOnly von && neu.Bis2 is TimeOnly bis
+        ? (DateTime.SpecifyKind(tag.Date + von.ToTimeSpan(), DateTimeKind.Utc),
+           DateTime.SpecifyKind(tag.Date + bis.ToTimeSpan() + (bis <= von ? TimeSpan.FromDays(1) : TimeSpan.Zero), DateTimeKind.Utc))
+        : null;
+
+    private string Vorschau(string text) => IstWartung && Fenster is { } f ? AnkuendigungService.FuelleWartung(text, f.Von, f.Bis) : text;
+
+    private static Formular NeuesFormular()
+    {
+        var f = new Formular();
+        var v = AnkuendigungService.WartungsVorlagen[0];
+        f.Titel = v.Titel;
+        f.Text = v.Text;
+        return f;
+    }
+
+    private void WaehleArt(AnkuendigungArt art)
+    {
+        var warWartung = IstWartung;
+        neu.Art = art;
+        if (IstWartung && !warWartung && string.IsNullOrWhiteSpace(neu.Titel)) WaehleVorlage(AnkuendigungService.WartungsVorlagen[0]);
+        // Vorlagentexte mit Platzhaltern passen nicht zu anderen Arten – dann leeren.
+        if (!IstWartung && warWartung && vorlageName is not null) { neu.Titel = neu.Text = ""; vorlageName = null; }
+    }
+
+    private void WaehleVorlage(AnkuendigungService.TextVorlage v)
+    {
+        vorlageName = v.Name;
+        neu.Titel = v.Titel;
+        neu.Text = v.Text;
+    }
+
+    private List<AnkuendigungService.Eintrag>? liste;
+    private Guid bearbeiter;
+    private string? fehler;
+    private Guid? loeschenId;
+    private string? zielWahl = AnkuendigungZiel.ProprietairesEtCaissiers.ToString();
+    private readonly List<EnoteSelectOption<string>> zielOptionen = Enum.GetValues<AnkuendigungZiel>()
+        .Select(z => new EnoteSelectOption<string> { Value = z.ToString(), Label = AnkuendigungService.ZielText(z) }).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier), out bearbeiter);
+        vorlageName = AnkuendigungService.WartungsVorlagen[0].Name;
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync() => liste = await ankuendigungen.GetAlleAsync(bearbeiter);
+
+    private async Task VeroeffentlicheAsync()
+    {
+        fehler = null;
+        try
+        {
+            var ziel = Enum.TryParse<AnkuendigungZiel>(zielWahl, out var z) ? z : AnkuendigungZiel.ProprietairesEtCaissiers;
+            // „Visible jusqu'au“ gilt einschließlich dieses Tages.
+            DateTime? bis = neu.Bis is DateTime d ? DateTime.SpecifyKind(d.Date.AddDays(1), DateTimeKind.Utc) : null;
+            var fenster = IstWartung ? Fenster : null;
+            if (IstWartung && fenster is null) { fehler = "Indiquez le jour, l'heure de début et l'heure de fin."; return; }
+            var (_, mails) = await ankuendigungen.VeroeffentlicheAsync(bearbeiter,
+                new AnkuendigungService.Entwurf(neu.Art, ziel, neu.Titel, neu.Text, neu.LinkUrl, neu.LinkText, bis, neu.PerMail,
+                    fenster?.Von, fenster?.Bis, IstWartung && neu.HinweisDanach));
+            toast.ZeigeErfolg(mails > 0 ? $"Annonce publiée · {mails} e-mail(s) envoyé(s)." : "Annonce publiée.");
+            neu = NeuesFormular();
+            vorlageName = AnkuendigungService.WartungsVorlagen[0].Name;
+            await LadeAsync();
+        }
+        catch (ArgumentException ex)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task SetzeAktivAsync(Guid id, bool aktiv)
+    {
+        await ankuendigungen.SetzeAktivAsync(bearbeiter, id, aktiv);
+        toast.ZeigeInfo(aktiv ? "Annonce de nouveau affichée." : "Annonce masquée.");
+        await LadeAsync();
+    }
+
+    private async Task LoescheAsync()
+    {
+        if (loeschenId is not Guid id) return;
+        await ankuendigungen.LoescheAsync(bearbeiter, id);
+        loeschenId = null;
+        toast.ZeigeInfo("Annonce supprimée.");
+        await LadeAsync();
+    }
+}

@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -125,9 +125,10 @@ public static class ApplicationDbInitializer
         // Sichert, dass es je Intervall mindestens einen aktuellen Standardpreis gibt.
         var standardPreise = new Dictionary<AboIntervall, decimal>
         {
-            [AboIntervall.Monatlich] = 5000m,
-            [AboIntervall.DreiMonate] = 13500m,
-            [AboIntervall.Jaehrlich] = 50000m
+            // Monatspreis ist die Basis aller Formeln (Rabatte nach VertragsRegeln); die übrigen Werte passen dazu.
+            [AboIntervall.Monatlich] = 3600m,
+            [AboIntervall.DreiMonate] = 10260m,
+            [AboIntervall.Jaehrlich] = 38880m
         };
 
         foreach (var (intervall, preis) in standardPreise)

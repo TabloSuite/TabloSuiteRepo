@@ -81,6 +81,14 @@
                 {
                     <p class="ab-hinweis"><Icon Name="sparkles" Groesse="16" /> Tarif personnalisé pour votre établissement : @formeln[0].MonatsBasis.ToString("N0") F / mois.</p>
                 }
+                @if (kommenderPreis is { } kommend && kommend.Preis != formeln[0].MonatsBasis)
+                {
+                    <p class="ab-hinweis ab-hinweis-tarif">
+                        <Icon Name="calendar" Groesse="16" />
+                        <span>À partir du <strong>@ENote.WebApp.Services.PreisAnpassungService.DatumText(kommend.AbUtc)</strong> : <strong>@kommend.Preis.ToString("N0") F / mois</strong>
+                        (au lieu de @formeln[0].MonatsBasis.ToString("N0") F). Les remises restent les mêmes ; les périodes déjà facturées ne changent pas.</span>
+                    </p>
+                }
                 <div class="ab-formeln">
                     @foreach (var f in formeln)
                     {

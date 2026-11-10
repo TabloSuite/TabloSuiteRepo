@@ -1,4 +1,4 @@
-namespace ENote.WebApp.Services;
+﻿namespace ENote.WebApp.Services;
 
 /// <summary>
 /// Erzeugt regelmäßig die fälligen Abo-Perioden aller abrechenbaren Läden (nach der Probezeit),
@@ -21,6 +21,8 @@ public sealed class VertragsSynchronisierungsDienst(
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
+                // Fällig gewordene Tarifänderungen zuerst übernehmen (Anzeige der Preise).
+                await scope.ServiceProvider.GetRequiredService<PreisAnpassungService>().WendeFaelligeAnAsync(stoppingToken);
                 var vertrag = scope.ServiceProvider.GetRequiredService<VertragsService>();
                 foreach (var (salonId, fehler) in await vertrag.SynchronisiereAlleAsync(stoppingToken))
                 {

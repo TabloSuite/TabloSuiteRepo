@@ -88,6 +88,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 
 ### Bon & Druck
 - `/bon/{id}` → PDF (QuestPDF, 80mm, Logo, QR). `/bon/{id}/druck` → HTML-Druckansicht (80mm, QR, ruft `window.print()`).
+- QR-Ziel (`BonQr`): eigener Link des Ladens (Paramètres), sonst **https://enote.tablosuite.com** (überschreibbar über `App:BonQrStandard`).
 - **Kein QZ Tray / keine lokale Zusatzsoftware** (festgelegte Regel). Dialogloser Druck unter Windows über Browser-Kiosk-Modus (`--kiosk-printing`), siehe `eNOTE/Bon-Drucken.md` und `eNOTE/Start-Kasse.ps1`.
 
 ### Rückerstattung (Storno als Gegenbuchung) – `StornoService`
@@ -117,6 +118,8 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 
 ### Abo & Plattform (Allgemein)
 - `NutzungsAbo` pro Laden + Plattform-Standardpreis (`PlattformPreis`). SuperAdmin legt globalen/individuellen Monatspreis fest; ProduktOwner-Provision (Prozent/Festbetrag) pro Salon-Zuweisung.
+- **Tarifs** (Reiter in `/admin`, `PreisAnpassungService`): Standard-Monatspreis = Mindestpreis. Änderung sofort (nur Senkung) oder ab dem 1. eines kommenden Monats; Erhöhung um X F erhöht auch alle individuellen Preise um X F, Senkung lässt sie stehen (nie unter Standard). Datierte `MonatsPreisStaende` (mit `PreisAnpassungId`) → neue Perioden ab dem Datum nutzen den neuen Preis, bereits erzeugte nicht. Textvorlagen mit Platzhaltern für Banner + optionale Mail (`changement-tarif`). Startpreis neuer Datenbanken: 3.600 F.
+- **Annonces** (`/admin/annonces`, `AnkuendigungService`, Banner `AnkuendigungsBanner` oben in der App): Mise à jour planifiée (Zeitfenster in heure de Lomé, verschwindet danach, optional « eNOTE a été mis à jour »), Nouveauté, Information, Tarif; Zielgruppe Besitzer / Besitzer+Kassierer / alle; pro Nutzer schließbar; optional per Mail an alle Besitzer.
 - Admin (`/admin`): Läden-Übersicht (Suche, Status-, Land-, **Besitzer**-Filter), Freigabe/Deaktivieren, Probezeit setzen, Besitzer/ProduktOwner anlegen, Facturation.
 
 ## 5. Lokal starten

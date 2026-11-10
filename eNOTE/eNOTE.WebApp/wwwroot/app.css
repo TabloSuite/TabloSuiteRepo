@@ -2744,3 +2744,132 @@ html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe)
 .lp-film-rahmen { padding: .6rem; border-radius: 1.4rem; background: #0f172a; box-shadow: 0 34px 80px rgba(16, 26, 51, .26); }
 .lp-film-rahmen video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: .9rem; background: #0f172a; }
 @media (max-width: 980px) { .lp-film { grid-template-columns: minmax(0, 1fr); } }
+
+/* ============================================================ Annonces (Banner + Admin) */
+.an-banner {
+    --an-farbe: var(--enote-primary-text); --an-grund: var(--enote-primary-soft); --an-rand: color-mix(in srgb, var(--enote-primary) 28%, transparent);
+    display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: .85rem;
+    margin: 0 0 1.1rem; padding: .85rem 1rem; border-radius: var(--enote-radius-lg);
+    background: var(--an-grund); border: 1px solid var(--an-rand); border-left: 4px solid var(--an-farbe);
+    animation: an-ein .35s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes an-ein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.an-banner.an-wartung { --an-farbe: var(--enote-warning-text); --an-grund: var(--enote-warning-soft); --an-rand: var(--enote-warning-border); }
+.an-banner.an-tarif { --an-farbe: var(--enote-accent-text); --an-grund: var(--enote-accent-soft); --an-rand: color-mix(in srgb, var(--enote-accent) 30%, transparent); }
+.an-banner.an-info { --an-farbe: var(--enote-text); --an-grund: var(--enote-surface-2); --an-rand: var(--enote-border); }
+.an-symbol { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .75rem; color: var(--an-farbe, var(--enote-primary-text)); background: var(--enote-surface); flex-shrink: 0; }
+.an-inhalt { min-width: 0; }
+.an-kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .55rem; }
+.an-kopf strong { font-size: .98rem; color: var(--enote-text); }
+.an-art { font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--an-farbe); }
+.an-inhalt p { margin: .2rem 0 0; font-size: .9rem; line-height: 1.5; color: var(--enote-text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.an-inhalt p.offen { -webkit-line-clamp: unset; display: block; }
+.an-mehr { margin-top: .2rem; padding: 0; border: 0; background: none; font: inherit; font-size: .82rem; font-weight: 700; color: var(--an-farbe); cursor: pointer; }
+.an-aktionen { display: flex; align-items: center; gap: .45rem; }
+.an-link { background: var(--enote-surface); color: var(--an-farbe); font-weight: 700; white-space: nowrap; }
+.an-zaehler { font-size: .78rem; font-weight: 700; color: var(--enote-text-muted); font-variant-numeric: tabular-nums; }
+.an-zu { color: var(--enote-text-muted); }
+@media (max-width: 640px) {
+    .an-banner { grid-template-columns: auto 1fr; }
+    .an-aktionen { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+.an-raster { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 1000px) { .an-raster { grid-template-columns: minmax(0, 1fr); } }
+.an-formular { padding: 1.25rem; display: grid; gap: .9rem; }
+.an-formular .enote-section-title { margin: 0; }
+.an-arten { display: flex; flex-wrap: wrap; gap: .45rem; }
+.an-art-wahl {
+    display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .8rem; border-radius: var(--enote-radius-pill);
+    border: 1px solid var(--enote-border); background: var(--enote-surface); color: var(--enote-text-muted); font: inherit; font-weight: 700; font-size: .86rem; cursor: pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.an-art-wahl.aktiv { background: var(--enote-primary-soft); color: var(--enote-primary-text); border-color: color-mix(in srgb, var(--enote-primary) 40%, transparent); }
+.an-art-wahl.an-wartung.aktiv { background: var(--enote-warning-soft); color: var(--enote-warning-text); border-color: var(--enote-warning-border); }
+.an-art-wahl.an-tarif.aktiv { background: var(--enote-accent-soft); color: var(--enote-accent-text); border-color: color-mix(in srgb, var(--enote-accent) 40%, transparent); }
+.an-art-wahl.an-info.aktiv { background: var(--enote-surface-2); color: var(--enote-text); border-color: var(--enote-border-strong); }
+.an-vorschau-titel { font-size: .75rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--enote-text-muted); }
+.an-vorschau { margin: 0; animation: none; }
+.an-fuss { display: flex; justify-content: flex-end; }
+.an-verlauf { display: grid; gap: .7rem; }
+.an-verlauf .enote-section-title { margin: 0 0 .2rem; }
+.an-leer { padding: 2rem 1rem; display: grid; place-items: center; gap: .4rem; color: var(--enote-text-muted); }
+.an-leer p { margin: 0; }
+.an-eintrag { display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: start; padding: .9rem 1rem; }
+.an-eintrag.beendet { opacity: .68; }
+.an-eintrag .an-symbol { background: var(--enote-primary-soft); color: var(--enote-primary-text); }
+.an-eintrag .an-symbol.an-wartung { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+.an-eintrag .an-symbol.an-tarif { background: var(--enote-accent-soft); color: var(--enote-accent-text); }
+.an-eintrag .an-symbol.an-info { background: var(--enote-surface-2); color: var(--enote-text); }
+.an-eintrag-text { min-width: 0; }
+.an-eintrag-text p { margin: .2rem 0 .35rem; font-size: .88rem; color: var(--enote-text-muted); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.an-status { font-size: .72rem; font-weight: 800; padding: .1rem .5rem; border-radius: var(--enote-radius-pill); }
+.an-status.an { background: var(--enote-success-soft); color: var(--enote-success); }
+.an-status.aus { background: var(--enote-surface-2); color: var(--enote-text-muted); }
+.an-eintrag-aktionen { display: flex; align-items: center; gap: .3rem; }
+
+/* ============================================================ Tarifänderung (Admin) */
+.ta-geplant {
+    display: grid; grid-template-columns: auto 1fr auto; gap: .75rem; align-items: center;
+    padding: .75rem .9rem; border-radius: var(--enote-radius); background: var(--enote-accent-soft); color: var(--enote-accent-text);
+    border: 1px solid color-mix(in srgb, var(--enote-accent) 30%, transparent);
+}
+.ta-geplant div { display: grid; gap: .1rem; }
+.ta-geplant span { font-size: .84rem; color: var(--enote-text-muted); }
+.ta-form { gap: .9rem; }
+.ta-vorschau { display: grid; gap: .55rem; padding: .9rem 1rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+.ta-vorschau p { margin: 0; font-size: .88rem; color: var(--enote-text-muted); line-height: 1.5; }
+.ta-vorschau-kopf { display: flex; align-items: center; gap: .6rem; font-variant-numeric: tabular-nums; }
+.ta-vorschau-kopf span { color: var(--enote-text-muted); text-decoration: line-through; }
+.ta-vorschau-kopf strong { font-size: 1.4rem; font-weight: 800; }
+.ta-vorschau-kopf em { font-style: normal; font-weight: 800; font-size: .82rem; padding: .15rem .55rem; border-radius: var(--enote-radius-pill); }
+.ta-vorschau.hoch em { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+.ta-vorschau.runter em { background: var(--enote-success-soft); color: var(--enote-success); }
+.ta-liste { display: grid; gap: .25rem; padding-top: .35rem; border-top: 1px dashed var(--enote-border); }
+.ta-liste-titel { font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--enote-text-muted); }
+.ta-zeile { display: grid; grid-template-columns: 1fr auto auto auto; gap: .5rem; align-items: center; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.ta-zeile span:nth-child(2) { color: var(--enote-text-muted); }
+.ab-hinweis-tarif { align-items: flex-start; background: var(--enote-accent-soft); color: var(--enote-accent-text); font-weight: 600; }
+.ab-hinweis-tarif span { color: var(--enote-text); }
+
+/* Tarifänderung: Textvorlagen */
+.ta-text { display: grid; gap: .65rem; padding: .9rem 1rem; border-radius: var(--enote-radius); border: 1px solid var(--enote-border); background: var(--enote-surface); }
+.ta-text-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
+.ta-vorlagen { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ta-vorlage {
+    padding: .35rem .75rem; border-radius: var(--enote-radius-pill); border: 1px solid var(--enote-border);
+    background: var(--enote-surface-2); color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.ta-vorlage:hover { color: var(--enote-text); }
+.ta-vorlage.aktiv { background: var(--enote-accent-soft); color: var(--enote-accent-text); border-color: color-mix(in srgb, var(--enote-accent) 40%, transparent); }
+.ta-platzhalter { display: flex; flex-wrap: wrap; gap: .2rem .7rem; line-height: 1.5; }
+.ta-platzhalter code { font-size: .8rem; padding: 0 .3rem; border-radius: .3rem; background: var(--enote-surface-2); color: var(--enote-text); }
+
+/* Reiter „Tarifs“: Verlauf */
+.ta-verlauf { margin-top: 1.4rem; }
+.ta-verlauf-liste { padding: .3rem 0; }
+.ta-verlauf-zeile {
+    display: grid; grid-template-columns: minmax(9rem, 1.1fr) minmax(10rem, 1.2fr) auto minmax(8rem, 1fr) auto;
+    gap: .75rem; align-items: center; padding: .7rem 1.1rem; font-size: .9rem; font-variant-numeric: tabular-nums;
+}
+.ta-verlauf-zeile + .ta-verlauf-zeile { border-top: 1px solid var(--enote-border); }
+.ta-verlauf-datum { font-weight: 700; }
+.ta-verlauf-preis { display: inline-flex; align-items: center; gap: .35rem; }
+.ta-verlauf-preis s { color: var(--enote-text-muted); }
+.ta-verlauf-diff { font-weight: 800; font-size: .8rem; padding: .12rem .5rem; border-radius: var(--enote-radius-pill); }
+.ta-verlauf-diff.hoch { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+.ta-verlauf-diff.runter { background: var(--enote-success-soft); color: var(--enote-success); }
+.ta-verlauf-status { font-size: .75rem; font-weight: 800; padding: .12rem .55rem; border-radius: var(--enote-radius-pill); background: var(--enote-surface-2); color: var(--enote-text-muted); justify-self: end; }
+.ta-verlauf-status.kommend { background: var(--enote-accent-soft); color: var(--enote-accent-text); }
+@media (max-width: 760px) {
+    .ta-verlauf-zeile { grid-template-columns: 1fr auto; }
+    .ta-verlauf-zeile > .enote-muted { grid-column: 1 / -1; }
+}
+
+/* Mise à jour planifiée: Zeitfenster im Formular, Banner während der Wartung */
+.an-fenster { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: .75rem; }
+@media (max-width: 640px) { .an-fenster { grid-template-columns: 1fr 1fr; } .an-fenster > label:first-child { grid-column: 1 / -1; } }
+.an-banner.an-wartung.laeuft { --an-farbe: #b45309; border-left-width: 6px; }
+html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
+.an-zeitfenster { display: flex; width: fit-content; align-items: center; gap: .35rem; margin-top: .35rem; font-size: .82rem; font-weight: 700; color: var(--an-farbe); }

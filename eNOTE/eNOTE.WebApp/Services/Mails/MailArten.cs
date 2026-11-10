@@ -1,4 +1,4 @@
-namespace ENote.WebApp.Services.Mails;
+﻿namespace ENote.WebApp.Services.Mails;
 
 /// <summary>
 /// Katalog aller E-Mail-Arten (Kategorie = Postmark-Tag). <see cref="MailArt.Pflicht"/>-Mails gehen immer
@@ -18,6 +18,7 @@ public static class MailArten
         new("facture", "Nouvelle facture", "Propriétaire", "Dès qu'une période d'abonnement est facturée", true, true),
         new("caisse-suspendue", "Caisse suspendue", "Propriétaire", "Le jour de la suspension pour impayé", true, true),
         new("paiement-refuse", "Paiement non retrouvé", "Propriétaire", "Quand l'admin refuse un paiement signalé", true, true),
+        new("changement-tarif", "Changement de tarif", "Propriétaire", "Quand l'admin modifie le tarif général (si coché)", true, true),
 
         // Abschaltbar – standardmäßig an
         new("rappel-paiement", "Rappel de paiement", "Propriétaire", $"{MailBenachrichtigungen.ErinnerungTageVorSperre} jours avant la suspension", false, true),
@@ -34,7 +35,7 @@ public static class MailArten
     ];
 
     /// <summary>Manuelle Nachrichten und Test-Mails – immer erlaubt, nicht im Schalter-Katalog.</summary>
-    public static readonly IReadOnlySet<string> Manuell = new HashSet<string> { "test", "message" };
+    public static readonly IReadOnlySet<string> Manuell = new HashSet<string> { "test", "message", "annonce" };
 
     public static MailArt? Finde(string? kategorie) => Alle.FirstOrDefault(a => a.Kategorie == kategorie);
 }

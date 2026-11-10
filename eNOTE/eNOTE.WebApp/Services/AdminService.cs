@@ -319,6 +319,11 @@ public class AdminService(
         }
 
         var jetzt = DateTime.UtcNow;
+        // Der Standardpreis ist der Mindestpreis: ein individueller Preis darf nicht darunter liegen.
+        var standard = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
+        if (preis is decimal eigener && standard > 0 && eigener < standard)
+            throw new ArgumentOutOfRangeException(nameof(preis),
+                $"Le tarif personnalisé ne peut pas être inférieur au tarif général ({standard:N0} F).");
         salon.IndividuellerMonatsPreis = preis;
         salon.UpdatedAtUtc = jetzt;
         db.MonatsPreisStaende.Add(new MonatsPreisStand
@@ -327,6 +332,8 @@ public class AdminService(
             MonatsPreis = preis,
             GueltigAbUtc = jetzt
         });
+        // Ist eine Tarifänderung geplant, gilt sie auch für diesen neuen Preis.
+        await PreisAnpassungService.PasseGeplanteAnAsync(db, salonId, preis, jetzt, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
