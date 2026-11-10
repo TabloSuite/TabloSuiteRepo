@@ -1,0 +1,31 @@
+@using ENote.Core.DataModels.Kasse
+@using ENote.Core.Services.Kasse
+@using ENote.WebApp.Services
+
+@* Farbige Kennzeichnung der Zahlart(en) eines Verkaufs, z. B. „Espèces“ + „Flooz“. *@
+<span class="enote-zahlungs-tags">
+    @foreach (var a in Anteile.GroupBy(x => ZahlungsTexte.Name(x)).Select(g => g.First()))
+    {
+        <span class="enote-tag @Klasse(a.Art)"><Icon Name="@IconName(a.Art)" Groesse="13" Strich="2.2" /> @ZahlungsTexte.Name(a)</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ZahlungsAnteil> Anteile { get; set; } = [];
+
+    public static string Klasse(ZahlungsArt art) => art switch
+    {
+        ZahlungsArt.Bar => "enote-tag-bar",
+        ZahlungsArt.Karte => "enote-tag-karte",
+        ZahlungsArt.MobileMoney => "enote-tag-momo",
+        _ => "enote-tag-mixte"
+    };
+
+    public static string IconName(ZahlungsArt art) => art switch
+    {
+        ZahlungsArt.Bar => "banknote",
+        ZahlungsArt.Karte => "card",
+        ZahlungsArt.MobileMoney => "momo",
+        _ => "split"
+    };
+}

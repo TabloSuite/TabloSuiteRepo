@@ -1,12 +1,13 @@
 ﻿using ENote.Core.DataModels.Abo;
+using ENote.Core.Services;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// Abo-/Nutzungsgebühr-Verwaltung: Besitzer wählt Intervall und meldet die Zahlung;
-/// der SuperAdmin bestätigt den Zahlungseingang (Workflow analog SKOULOUAPP).
+/// Abo-Preise (eine Regel für Besitzer und Admin) und Zahlungsbestätigung durch den SuperAdmin.
+/// Perioden entstehen ausschließlich automatisch über <see cref="VertragsService"/>.
 /// </summary>
 public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
 {
@@ -37,81 +38,69 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         return (laeuft, probeBis);
     }
 
-    /// <summary>Effektiver Preis: individueller Salonpreis hat Vorrang vor dem globalen Standard.</summary>
-    public async Task<decimal> GetPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
+    /// <summary>Preis einer Formel mit Monatsbasis und Rabatt (für die Anzeige beim Besitzer).</summary>
+    public record FormelPreis(AboIntervall Intervall, decimal Preis, decimal MonatsBasis, decimal RabattProzent, bool Individuell)
     {
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var salon = await db.Salons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
-        if (salon?.IndividuellerMonatsPreis is decimal individuell && intervall == AboIntervall.Monatlich)
-        {
-            return individuell;
-        }
-
-        var standard = await db.PlattformPreise
-            .AsNoTracking()
-            .Where(p => p.Intervall == intervall && p.IstAktuell)
-            .OrderByDescending(p => p.GueltigAbUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return standard?.Preis ?? 0m;
+        public int Monate => VertragsRegeln.Monate(Intervall);
+        public decimal ProMonat => Math.Round(Preis / Monate, 0, MidpointRounding.AwayFromZero);
+        public decimal Ersparnis => MonatsBasis * Monate - Preis;
     }
-
-    private static int IntervallMonate(AboIntervall intervall) => intervall switch
-    {
-        AboIntervall.Monatlich => 1,
-        AboIntervall.DreiMonate => 3,
-        AboIntervall.Jaehrlich => 12,
-        _ => 1
-    };
 
     /// <summary>
-    /// Besitzer wählt ein Intervall und meldet die Zahlung. Legt eine Abrechnungsperiode
-    /// mit Preis-Snapshot an (Status „Gemeldet“). Startet ab Ende des laufenden Abos oder jetzt.
+    /// Globaler Monatspreis der Plattform: letzter gültiger Stand (Historie), sonst der aktuelle
+    /// Monats-Plattformpreis. Einzige Quelle für Admin-Anzeige und Besitzer-Preise.
     /// </summary>
-    public async Task<(bool Erfolg, string? Fehler, NutzungsAbo? Abo)> MeldeZahlungAsync(
-        Guid salonId, AboIntervall intervall, string? notiz, CancellationToken cancellationToken = default)
+    public static async Task<decimal> GlobalerMonatsPreisAsync(ApplicationDbContext db, CancellationToken ct = default)
+    {
+        var jetzt = DateTime.UtcNow;
+        var stand = await db.MonatsPreisStaende.AsNoTracking()
+            .Where(p => p.SalonId == null && p.GueltigAbUtc <= jetzt)
+            .OrderByDescending(p => p.GueltigAbUtc)
+            .Select(p => p.MonatsPreis)
+            .FirstOrDefaultAsync(ct);
+        return stand ?? await db.PlattformPreise.AsNoTracking()
+            .Where(p => p.Intervall == AboIntervall.Monatlich && p.IstAktuell)
+            .OrderByDescending(p => p.GueltigAbUtc)
+            .Select(p => (decimal?)p.Preis)
+            .FirstOrDefaultAsync(ct) ?? 0m;
+    }
+
+    /// <summary>Monatsbasis eines Ladens: individueller Preis hat Vorrang vor dem globalen Preis.</summary>
+    public static async Task<(decimal Basis, bool Individuell)> MonatsBasisAsync(ApplicationDbContext db, Guid salonId, CancellationToken ct = default)
+    {
+        var individuell = await db.Salons.AsNoTracking().Where(s => s.Id == salonId)
+            .Select(s => s.IndividuellerMonatsPreis).FirstOrDefaultAsync(ct);
+        return individuell is decimal p and > 0 ? (p, true) : (await GlobalerMonatsPreisAsync(db, ct), false);
+    }
+
+    /// <summary>
+    /// Preis einer Formel nach den Vertragsregeln: Monatsbasis × Monate − Rabatt
+    /// (3 Monate −5 %, 6 Monate −7,5 %, 12 Monate −10 %). Gleiche Rechnung wie im Admin-Tarifdialog.
+    /// </summary>
+    public async Task<FormelPreis?> GetFormelPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var offen = await db.NutzungsAbos
-            .AnyAsync(a => a.SalonId == salonId
-                && (a.ZahlungStatus == AboZahlungStatus.Offen || a.ZahlungStatus == AboZahlungStatus.Gemeldet),
-                cancellationToken);
-        if (offen)
-        {
-            return (false, "Un paiement est déjà en cours pour ce salon.", null);
-        }
-
-        var preis = await GetPreisAsync(salonId, intervall, cancellationToken);
-
-        var letztesEnde = await db.NutzungsAbos
-            .AsNoTracking()
-            .Where(a => a.SalonId == salonId && a.ZahlungStatus == AboZahlungStatus.Bestaetigt)
-            .Select(a => (DateTime?)a.ZeitraumBisUtc)
-            .OrderByDescending(d => d)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var jetzt = DateTime.UtcNow;
-        var von = letztesEnde is DateTime ende && ende > jetzt ? ende : jetzt;
-        var bis = von.AddMonths(IntervallMonate(intervall));
-
-        var abo = new NutzungsAbo
-        {
-            SalonId = salonId,
-            Intervall = intervall,
-            PreisSnapshot = preis,
-            ZeitraumVonUtc = von,
-            ZeitraumBisUtc = bis,
-            ZahlungStatus = AboZahlungStatus.Gemeldet,
-            ZahlungGemeldetUtc = jetzt,
-            ZahlungsNotiz = string.IsNullOrWhiteSpace(notiz) ? null : notiz.Trim()
-        };
-
-        db.NutzungsAbos.Add(abo);
-        await db.SaveChangesAsync(cancellationToken);
-        return (true, null, abo);
+        var (basis, individuell) = await MonatsBasisAsync(db, salonId, cancellationToken);
+        return basis <= 0
+            ? null
+            : new FormelPreis(intervall, VertragsRegeln.Preis(basis, intervall), basis, VertragsRegeln.Rabatt(intervall), individuell);
     }
+
+    /// <summary>Alle Formeln (Mensuel, Trimestriel, Semestriel, Annuel) eines Ladens.</summary>
+    public async Task<List<FormelPreis>> GetFormelPreiseAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        var liste = new List<FormelPreis>();
+        foreach (var intervall in VertragsRegeln.Intervalle)
+        {
+            if (await GetFormelPreisAsync(salonId, intervall, cancellationToken) is { } preis)
+                liste.Add(preis);
+        }
+        return liste;
+    }
+
+    /// <summary>Effektiver Preis einer Formel (0 = kein Preis konfiguriert).</summary>
+    public async Task<decimal> GetPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
+        => (await GetFormelPreisAsync(salonId, intervall, cancellationToken))?.Preis ?? 0m;
 
     /// <summary>SuperAdmin bestätigt oder lehnt eine gemeldete Zahlung.</summary>
     public async Task<bool> SetzeZahlungsStatusAsync(
@@ -143,23 +132,38 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     }
 
     /// <summary>Gemeldete (zu bestätigende) Zahlungen aller Salons für den SuperAdmin.</summary>
-    public async Task<List<NutzungsAbo>> GetGemeldeteZahlungenAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Sichtbare Abos für Facturation: SuperAdmin alle, ProduktOwner nur die seiner zugewiesenen
+    /// Läden, sonst keine (serverseitig gefiltert).
+    /// </summary>
+    private static async Task<IQueryable<NutzungsAbo>> SichtbareAbosAsync(ApplicationDbContext db, Guid benutzerId, CancellationToken ct)
+    {
+        var istAdmin = await db.Users.AnyAsync(u => u.Id == benutzerId && !u.IsBlocked && db.UserRoles.Any(ur => ur.UserId == benutzerId
+            && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == ENote.Core.DataModels.Identity.AppRollen.SuperAdmin)), ct);
+        if (istAdmin)
+            return db.NutzungsAbos.AsNoTracking();
+        var istPo = await db.Users.AnyAsync(u => u.Id == benutzerId && !u.IsBlocked && db.UserRoles.Any(ur => ur.UserId == benutzerId
+            && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == ENote.Core.DataModels.Identity.AppRollen.ProduktOwner)), ct);
+        return istPo
+            ? db.NutzungsAbos.AsNoTracking().Where(a => db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == benutzerId && p.SalonId == a.SalonId))
+            : db.NutzungsAbos.AsNoTracking().Where(_ => false);
+    }
+
+    public async Task<List<NutzungsAbo>> GetGemeldeteZahlungenAsync(Guid benutzerId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await db.NutzungsAbos
-            .AsNoTracking()
+        return await (await SichtbareAbosAsync(db, benutzerId, cancellationToken))
             .Include(a => a.Salon)
             .Where(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet)
             .OrderBy(a => a.ZahlungGemeldetUtc)
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Alle Abos aller Salons (neueste zuerst) für die Facturation-Übersicht.</summary>
-    public async Task<List<NutzungsAbo>> GetAlleAbosAsync(CancellationToken cancellationToken = default)
+    /// <summary>Sichtbare Abos (neueste zuerst) für die Facturation-Übersicht.</summary>
+    public async Task<List<NutzungsAbo>> GetAlleAbosAsync(Guid benutzerId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await db.NutzungsAbos
-            .AsNoTracking()
+        return await (await SichtbareAbosAsync(db, benutzerId, cancellationToken))
             .Include(a => a.Salon)
             .OrderByDescending(a => a.CreatedAtUtc)
             .Take(100)

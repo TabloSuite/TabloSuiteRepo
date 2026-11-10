@@ -1,0 +1,8 @@
+{
+  "name": "enote-ui-rundgang",
+  "private": true,
+  "type": "module",
+  "description": "Screenshot-Rundgang durch eNOTE (Tablet/Desktop/Mobil) mit dem Demo-Laden",
+  "scripts": { "shots": "node shots.mjs" },
+  "dependencies": { "playwright-core": "^1.57.0" }
+}

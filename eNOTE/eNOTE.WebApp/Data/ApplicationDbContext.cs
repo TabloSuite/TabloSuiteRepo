@@ -7,6 +7,7 @@ using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using ENote.WebApp.Data.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Data;
@@ -25,6 +26,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<KassenSitzung> KassenSitzungen => Set<KassenSitzung>();
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
+    public DbSet<VerkaufZahlung> VerkaufZahlungen => Set<VerkaufZahlung>();
+    public DbSet<MobileMoneyAnbieter> MobileMoneyAnbieter => Set<MobileMoneyAnbieter>();
+    public DbSet<SalonMobileMoneyAnbieter> SalonMobileMoneyAnbieter => Set<SalonMobileMoneyAnbieter>();
     public DbSet<BesitzerHinweis> BesitzerHinweise => Set<BesitzerHinweis>();
     public DbSet<PlattformPreis> PlattformPreise => Set<PlattformPreis>();
     public DbSet<NutzungsAbo> NutzungsAbos => Set<NutzungsAbo>();
@@ -167,6 +171,38 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(k => k.Verkaeufe)
                 .HasForeignKey(v => v.KassenSitzungId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<VerkaufZahlung>(entity =>
+        {
+            entity.Property(z => z.Betrag).HasPrecision(18, 2);
+            entity.Property(z => z.AnbieterName).HasMaxLength(80);
+            entity.Property(z => z.Referenz).HasMaxLength(80);
+            entity.HasIndex(z => new { z.VerkaufId, z.Reihenfolge });
+            entity.HasOne(z => z.Verkauf)
+                .WithMany(v => v.Zahlungen)
+                .HasForeignKey(z => z.VerkaufId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(z => z.MobileMoneyAnbieter)
+                .WithMany()
+                .HasForeignKey(z => z.MobileMoneyAnbieterId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<MobileMoneyAnbieter>(entity =>
+        {
+            entity.Property(a => a.Name).HasMaxLength(80).IsRequired();
+            entity.Property(a => a.Land).HasMaxLength(80).IsRequired();
+            entity.Property(a => a.Farbe).HasMaxLength(7).IsRequired();
+            entity.HasIndex(a => new { a.Land, a.Name }).IsUnique();
+            entity.HasData(MobileMoneyAnbieterStammdaten.Alle);
+        });
+
+        builder.Entity<SalonMobileMoneyAnbieter>(entity =>
+        {
+            entity.HasIndex(x => new { x.SalonId, x.AnbieterId }).IsUnique();
+            entity.HasOne(x => x.Salon).WithMany().HasForeignKey(x => x.SalonId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Anbieter).WithMany().HasForeignKey(x => x.AnbieterId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<VerkaufsPosition>(entity =>

@@ -8,11 +8,11 @@ Die Infrastruktur ist im Quellcode umgesetzt. Dies ist **keine Freigabe zur Ver�
 
 - Dateidiagnostik der geänderten Dateien: keine Probleme gemeldet.
 - Projektbuild `eNOTE.WebApp`: erfolgreich, einschließlich plattformunabhängiger SVG-Barcodes.
-- Lösungsbuild: fehlgeschlagen mit **73 Compilerfehlern** in bestehenden Tests, unter anderem veraltete Finanzservice-, Nutzeranlage- und Mehrladen-Aufrufe (`CS1061`, `CS1503`, `CS7036`).
-- Testausführung für `eNOTE.Tests`: wegen Buildfehlern abgebrochen, **0 Tests ausgeführt**. Neue SVG-Regressionstests sind vorhanden, aber nicht als bestanden validiert.
+- Lösungsbuild (Stand 10.11.2026): **erfolgreich**, 0 Fehler, 73 Warnungen.
+- Testausführung für `eNOTE.Tests`: **200/200 bestanden**, einschließlich der SVG-Regressionstests.
 - Linux-Publish-Profil vorbereitet, noch kein Publish-Paket erzeugt und kein Linux-Laufzeittest durchgeführt. Ein Windows-Projektbuild ist kein Linux-Betriebsnachweis.
 
-Alte Migrationen und `20261105144750_InitialNeustart` koexistieren; keine davon ungeprüft gegen Azure ausführen. Die Hosting-Vorbereitung benötigt selbst keine neue EF-Migration. Testinkonsistenzen vor Veröffentlichung fachlich beheben, nicht durch Ausschluss von Tests oder Wiederherstellen veralteter APIs verdecken.
+Die Migrationskette ist bereinigt (`InitialCreate` bis `KategorieUnterkategorien`, ohne konkurrierende Dateien); trotzdem nicht ungeprüft gegen Azure ausführen. Die Hosting-Vorbereitung benötigt selbst keine neue EF-Migration. Testinkonsistenzen vor Veröffentlichung fachlich beheben, nicht durch Ausschluss von Tests oder Wiederherstellen veralteter APIs verdecken.
 
 Es wurden keine Azure-Ressourcen verändert, keine Datenbank migriert/befüllt und keine Secrets gelesen. Angaben zu Ressourcen und Berechtigungen unten stammen vom Nutzer, nicht aus einer aktuellen Cloudprüfung.
 

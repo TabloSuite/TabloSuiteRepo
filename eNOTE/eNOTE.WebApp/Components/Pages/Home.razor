@@ -1,101 +1,258 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@using ENote.WebApp.Services
 
 <PageTitle>eNOTE</PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        <div class="enote-home">
-            <h1>Bonjour @context.User.Identity?.Name</h1>
+        <div class="db">
+            <header class="db-kopf">
+                <div>
+                    <p class="db-datum">@DateTime.Now.ToString("dddd d MMMM", Francais)</p>
+                    <h1>Bonjour@(string.IsNullOrWhiteSpace(vorname) ? "" : $", {vorname}") <span aria-hidden="true">👋</span></h1>
+                    @if (!string.IsNullOrWhiteSpace(ladenName))
+                    {
+                        <p class="enote-muted">@ladenName</p>
+                    }
+                </div>
+                <AuthorizeView Roles="Besitzer, Kassierer" Context="kasseCtx">
+                    <Authorized>
+                        @if (!wartetAufFreigabe)
+                        {
+                            <a class="enote-btn enote-btn-primary enote-btn-lg db-kasse-btn" href="/caisse"><Icon Name="caisse" /> @(daten?.Kasse is null ? "Ouvrir la caisse" : "Aller à la caisse")</a>
+                        }
+                    </Authorized>
+                </AuthorizeView>
+            </header>
 
             @if (wartetAufFreigabe)
             {
-                <div class="alert alert-error enote-home-warn">
-                    Votre établissement « @salonNameWartend » est en cours de validation par l'administrateur.
-                    Vous pourrez utiliser la caisse et la gestion dès qu'il sera validé.
+                <div class="db-hinweis-karte">
+                    <span class="db-hinweis-ico"><Icon Name="clock" Groesse="24" /></span>
+                    <div>
+                        <h2>Votre établissement est en cours de validation</h2>
+                        <p>« @salonNameWartend » sera activé dès que l'administrateur l'aura validé. Vous pourrez alors utiliser la caisse et la gestion.</p>
+                    </div>
                 </div>
             }
             else
             {
+                <AuthorizeView Roles="SuperAdmin, ProduktOwner" Context="adminCtx">
+                    <Authorized>
+                        <div class="db-schnell">
+                            <a class="db-schnell-karte" href="/admin"><span><Icon Name="shield" /></span><strong>Administration</strong><small>Établissements, validations, comptes</small></a>
+                            <a class="db-schnell-karte" href="/admin/facturation"><span><Icon Name="receipt" /></span><strong>Facturation</strong><small>Abonnements et paiements</small></a>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
                 @if (ungeleseneHinweise.Count > 0)
                 {
-                    <div class="enote-hinweis-box">
-                        <div class="enote-hinweis-head">
-                            <strong>⚠️ @ungeleseneHinweise.Count notification(s) à lire</strong>
-                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="MarkiereAlleGelesenAsync">Tout marquer lu</button>
+                    <section class="db-meldungen" aria-label="Notifications">
+                        <div class="db-meldungen-kopf">
+                            <strong><Icon Name="bell" Groesse="18" /> @ungeleseneHinweise.Count notification@(ungeleseneHinweise.Count > 1 ? "s" : "")</strong>
+                            <button class="enote-btn enote-btn-sm" @onclick="MarkiereAlleGelesenAsync">Tout marquer comme lu</button>
                         </div>
                         @foreach (var h in ungeleseneHinweise)
                         {
-                            <div class="enote-hinweis-item">
-                                <span>@h.Text</span>
-                                <small class="enote-muted">@h.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm") · @h.AusgeloestVonName</small>
-                                <button class="enote-tag-btn" @onclick="() => MarkiereGelesenAsync(h.Id)">Marquer lu</button>
+                            <div class="db-meldung">
+                                <span class="db-meldung-text">@h.Text</span>
+                                <small class="enote-muted">@h.CreatedAtUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @h.AusgeloestVonName</small>
+                                <button class="db-meldung-ok" title="Marquer comme lu" @onclick="() => MarkiereGelesenAsync(h.Id)"><Icon Name="check" Groesse="16" /></button>
                             </div>
                         }
-                    </div>
-                }
-                else if (hinweiseGeladen)
-                {
-                    <p class="enote-empty" role="status">Aucune notification à lire.</p>
+                    </section>
                 }
 
-                <AuthorizeView Roles="SuperAdmin, ProduktOwner" Context="adminCtx">
-                    <Authorized>
-                        <p class="enote-muted">Bienvenue sur eNOTE, la plateforme d'administration.</p>
-                        <div class="enote-home-actions">
-                            <a class="enote-btn enote-btn-primary" href="/admin">Administration</a>
-                        </div>
-                    </Authorized>
-                    <NotAuthorized>
-                        <p class="enote-muted">Bienvenue sur eNOTE, la caisse simple pour votre établissement.</p>
-                        <div class="enote-home-actions">
-                            <a class="enote-btn enote-btn-primary" href="/caisse">Ouvrir la caisse</a>
-                            <a class="enote-btn enote-btn-ghost" href="/services">Prestations</a>
-                        </div>
-                    </NotAuthorized>
-                </AuthorizeView>
+                @if (darfZahlenSehen)
+                {
+                    <BesitzerPinGuard>
+                        @if (daten is { } d)
+                        {
+                            <section class="db-kpis" aria-label="Chiffres du jour">
+                                <div class="db-kpi db-kpi-haupt">
+                                    <span class="db-kpi-label">Chiffre d'affaires aujourd'hui</span>
+                                    <strong class="enote-kpi-wert">@d.UmsatzHeute.ToString("N0") F</strong>
+                                    @if (d.VerkaeufeHeute > 0 && d.VeraenderungProzent is decimal p)
+                                    {
+                                        <span class="db-trend @(p >= 0 ? "hoch" : "runter")">
+                                            <Icon Name="@(p >= 0 ? "arrow-up" : "arrow-down")" Groesse="14" Strich="2.5" />
+                                            @Math.Abs(p)% <span>vs moyenne (@d.DurchschnittTag.ToString("N0") F)</span>
+                                        </span>
+                                    }
+                                    else if (d.DurchschnittTag > 0)
+                                    {
+                                        <span class="db-trend"><span>Moyenne : @d.DurchschnittTag.ToString("N0") F / jour</span></span>
+                                    }
+                                </div>
+                                <div class="db-kpi">
+                                    <span class="db-kpi-label">Ventes</span>
+                                    <strong class="enote-kpi-wert">@d.VerkaeufeHeute</strong>
+                                    <span class="db-kpi-unter">aujourd'hui</span>
+                                </div>
+                                <div class="db-kpi">
+                                    <span class="db-kpi-label">Panier moyen</span>
+                                    <strong class="enote-kpi-wert">@d.PanierMoyen.ToString("N0") F</strong>
+                                    <span class="db-kpi-unter">par vente</span>
+                                </div>
+                                <div class="db-kpi @(d.Kasse is null ? "" : "db-kpi-offen")">
+                                    <span class="db-kpi-label">Caisse</span>
+                                    @if (d.Kasse is { } k)
+                                    {
+                                        <strong class="enote-kpi-wert">@k.BarSoll.ToString("N0") F</strong>
+                                        <span class="db-kpi-unter"><span class="kx-live-punkt"></span> Ouverte · @k.Kassierer</span>
+                                    }
+                                    else
+                                    {
+                                        <strong class="enote-kpi-wert db-kpi-leise">Fermée</strong>
+                                        <span class="db-kpi-unter">Aucune session en cours</span>
+                                    }
+                                </div>
+                            </section>
+
+                            <div class="db-raster">
+                                <section class="db-karte db-verlauf">
+                                    <div class="db-karte-kopf">
+                                        <div>
+                                            <h2>Chiffre d'affaires</h2>
+                                            <p>@DashboardService.VerlaufTage derniers jours · @d.Verlauf.Sum(t => t.Umsatz).ToString("N0") F</p>
+                                        </div>
+                                        <a class="enote-btn enote-btn-sm" href="/finances">Détails <Icon Name="arrow-right" Groesse="16" /></a>
+                                    </div>
+                                    <SaeulenDiagramm Werte="d.Verlauf" />
+                                </section>
+
+                                <section class="db-karte">
+                                    <div class="db-karte-kopf">
+                                        <div>
+                                            <h2>Modes de paiement</h2>
+                                            <p>@DashboardService.AuswertungTage derniers jours</p>
+                                        </div>
+                                    </div>
+                                    <ZahlungsMix Bar="d.Bar" Karte="d.Karte" MobileMoney="d.MobileMoney" />
+                                </section>
+
+                                <section class="db-karte">
+                                    <div class="db-karte-kopf">
+                                        <div>
+                                            <h2>Meilleures ventes</h2>
+                                            <p>@DashboardService.AuswertungTage derniers jours</p>
+                                        </div>
+                                    </div>
+                                    @if (d.Bestseller.Count == 0)
+                                    {
+                                        <p class="enote-empty">Pas encore de ventes.</p>
+                                    }
+                                    else
+                                    {
+                                        var max = d.Bestseller.Max(b => b.Umsatz);
+                                        <ol class="db-top">
+                                            @foreach (var b in d.Bestseller)
+                                            {
+                                                <li>
+                                                    <div class="db-top-zeile">
+                                                        <span class="db-top-name">@b.Name</span>
+                                                        <strong>@b.Umsatz.ToString("N0") F</strong>
+                                                    </div>
+                                                    <div class="db-top-balken"><span style="width: @Prozent(b.Umsatz, max)%"></span></div>
+                                                    <small class="enote-muted">@b.Menge vendu@(b.Menge > 1 ? "s" : "")</small>
+                                                </li>
+                                            }
+                                        </ol>
+                                    }
+                                </section>
+
+                                <section class="db-karte">
+                                    <div class="db-karte-kopf">
+                                        <div>
+                                            <h2>Stock à surveiller</h2>
+                                            <p>Articles sous le seuil d'alerte</p>
+                                        </div>
+                                        <a class="enote-btn enote-btn-sm" href="/services">Gérer</a>
+                                    </div>
+                                    @if (d.Lager.Count == 0)
+                                    {
+                                        <div class="db-alles-gut"><Icon Name="check" Groesse="18" /> Tous les stocks sont suffisants.</div>
+                                    }
+                                    else
+                                    {
+                                        <ul class="db-lager">
+                                            @foreach (var l in d.Lager)
+                                            {
+                                                <li>
+                                                    <span class="db-lager-ico"><Icon Name="alert" Groesse="16" /></span>
+                                                    <span class="db-lager-name">@l.Name</span>
+                                                    <span class="enote-tag enote-tag-warn">@l.Bestand.ToString("0.##") / min. @l.Mindestbestand.ToString("0.##")</span>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                </section>
+                            </div>
+                        }
+                        else if (datenLaedt)
+                        {
+                            <div class="db-kpis db-skelett" aria-hidden="true"><div></div><div></div><div></div><div></div></div>
+                        }
+                    </BesitzerPinGuard>
+                }
+                else
+                {
+                    <AuthorizeView Roles="Kassierer" Context="kCtx">
+                        <Authorized>
+                            <div class="db-hinweis-karte">
+                                <span class="db-hinweis-ico"><Icon Name="caisse" Groesse="24" /></span>
+                                <div>
+                                    <h2>Prêt à encaisser ?</h2>
+                                    <p>Ouvrez la caisse avec votre code PIN. Vos ventes sont enregistrées automatiquement.</p>
+                                </div>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                }
             }
         </div>
     </Authorized>
     <NotAuthorized>
         <div class="enote-landing">
             <section class="enote-landing-hero">
-                <span class="enote-landing-badge">Caisse &amp; gestion pour tout établissement</span>
+                <span class="enote-landing-badge">Caisse &amp; gestion · Togo, Bénin, Sénégal…</span>
                 <h1>La caisse simple et moderne pour votre établissement.</h1>
-                <p class="enote-lead">Salon de coiffure, institut, barbershop, boutique ou atelier : eNOTE vous aide à encaisser, suivre vos ventes et gérer votre équipe – pensé pour la tablette.</p>
+                <p class="enote-lead">Salon de coiffure, institut, barbershop, boutique ou atelier : encaissez en espèces, Mobile Money ou carte, suivez vos ventes et gérez votre équipe – pensé pour la tablette.</p>
                 <div class="enote-home-actions">
                     <a class="enote-btn enote-btn-primary enote-btn-lg" href="/auth/register">Inscrire mon établissement</a>
-                    <a class="enote-btn enote-btn-ghost enote-btn-lg" href="/auth/login">Connexion</a>
+                    <a class="enote-btn enote-btn-lg" href="/auth/login">Connexion</a>
                 </div>
             </section>
 
             <section class="enote-landing-features">
                 <div class="enote-feature">
-                    <div class="enote-feature-icon">🧾</div>
+                    <div class="enote-feature-icon"><Icon Name="caisse" Groesse="22" /></div>
                     <h3>Encaissement rapide</h3>
-                    <p>Espèces avec rendu monnaie ou carte, reçu imprimé avec votre logo, votre slogan et un QR-code.</p>
+                    <p>Espèces avec rendu monnaie, Mobile Money (Flooz, Mixx, MTN, Orange, Wave…) ou carte, et paiement mixte.</p>
                 </div>
                 <div class="enote-feature">
-                    <div class="enote-feature-icon">📦</div>
+                    <div class="enote-feature-icon"><Icon Name="package" Groesse="22" /></div>
                     <h3>Prestations &amp; stock</h3>
-                    <p>Services et articles en vente avec suivi de stock, alertes et scan de code-barres en caisse.</p>
+                    <p>Services et articles avec photos, catégories, alertes de stock et scan de code-barres.</p>
                 </div>
                 <div class="enote-feature">
-                    <div class="enote-feature-icon">👥</div>
+                    <div class="enote-feature-icon"><Icon Name="users" Groesse="22" /></div>
                     <h3>Équipe &amp; caisse</h3>
                     <p>Caissiers avec code PIN, droits délégués, clôture de caisse avec écart et suivi en direct.</p>
                 </div>
                 <div class="enote-feature">
-                    <div class="enote-feature-icon">📊</div>
+                    <div class="enote-feature-icon"><Icon Name="chart" Groesse="22" /></div>
                     <h3>Finances claires</h3>
-                    <p>Chiffre d'affaires en direct, dépenses avec justificatifs et rapports PDF exportables.</p>
+                    <p>Tableau de bord, dépenses avec justificatifs et rapports PDF par mode de paiement.</p>
                 </div>
             </section>
 
             <section class="enote-landing-cta">
                 <h2>Prêt à simplifier votre caisse ?</h2>
                 <p>Créez votre compte en quelques minutes. L'administrateur valide ensuite votre établissement.</p>
-                <a class="enote-btn enote-btn-primary enote-btn-lg" href="/auth/register">Commencer gratuitement</a>
+                <a class="enote-btn enote-btn-lg enote-landing-cta-btn" href="/auth/register">Commencer gratuitement</a>
             </section>
         </div>
     </NotAuthorized>

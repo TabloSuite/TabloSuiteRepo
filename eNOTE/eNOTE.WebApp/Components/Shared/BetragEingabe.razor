@@ -1,0 +1,105 @@
+@* Betragseingabe für die Kasse (Francs ohne Nachkommastellen): Anzeige, Schnellbeträge, Ziffernblock. Tastatur funktioniert parallel. *@
+<div class="enote-betrag @(Kompakt ? "kompakt" : "")">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <span class="enote-betrag-label">@Label</span>
+    }
+    <label class="enote-betrag-anzeige @(Hervorheben ? "hervor" : "")">
+        <input class="enote-betrag-feld"
+               type="text"
+               inputmode="numeric"
+               autocomplete="off"
+               aria-label="@(Label ?? "Montant")"
+               value="@(Wert == 0 ? string.Empty : Wert.ToString("N0"))"
+               placeholder="0"
+               @onchange="EingabeGeaendert"
+               @onkeydown="TasteAsync" />
+        <span class="enote-betrag-waehrung">F</span>
+    </label>
+
+    @if (Schnellbetraege is { Count: > 0 })
+    {
+        <div class="enote-betrag-schnell">
+            @foreach (var b in Schnellbetraege)
+            {
+                <button type="button" class="enote-chip @(b == Wert ? "enote-chip-aktiv" : "")" @onclick="() => SetzeAsync(b)">@b.ToString("N0")</button>
+            }
+        </div>
+    }
+
+    @NachSchnellbetraegen
+
+    @if (MitZiffernblock)
+    {
+        <div class="enote-betrag-block" role="group" aria-label="Clavier numérique">
+            @foreach (var z in new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" })
+            {
+                <button type="button" class="enote-pin-taste" @onclick="() => Tippe(z)">@z</button>
+            }
+            <button type="button" class="enote-pin-taste leise" @onclick='() => Tippe("000")'>000</button>
+            <button type="button" class="enote-pin-taste" @onclick='() => Tippe("0")'>0</button>
+            <button type="button" class="enote-pin-taste leise" @onclick="Zurueck" aria-label="Effacer"><Icon Name="backspace" Groesse="22" /></button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public decimal Wert { get; set; }
+    [Parameter] public EventCallback<decimal> WertChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public IReadOnlyList<decimal>? Schnellbetraege { get; set; }
+    [Parameter] public bool MitZiffernblock { get; set; } = true;
+    [Parameter] public bool Kompakt { get; set; }
+    [Parameter] public bool Hervorheben { get; set; }
+    [Parameter] public EventCallback OnBestaetigt { get; set; }
+
+    /// <summary>Inhalt zwischen Schnellbeträgen und Ziffernblock (z. B. das Rückgeld – wichtiger als die Tasten).</summary>
+    [Parameter] public RenderFragment? NachSchnellbetraegen { get; set; }
+
+    private const decimal Maximum = 999_999_999m;
+
+    private async Task SetzeAsync(decimal neu)
+    {
+        neu = Math.Clamp(Math.Floor(neu), 0m, Maximum);
+        if (neu == Wert) return;
+        Wert = neu;
+        await WertChanged.InvokeAsync(neu);
+    }
+
+    private Task EingabeGeaendert(ChangeEventArgs e)
+    {
+        var ziffern = new string((e.Value?.ToString() ?? string.Empty).Where(char.IsDigit).ToArray());
+        return SetzeAsync(decimal.TryParse(ziffern, out var b) ? b : 0m);
+    }
+
+    private Task Tippe(string ziffern)
+    {
+        var text = (Wert == 0 ? string.Empty : ((long)Wert).ToString()) + ziffern;
+        return text.Length > 9 ? Task.CompletedTask : SetzeAsync(decimal.Parse(text));
+    }
+
+    private Task Zurueck()
+    {
+        var text = ((long)Wert).ToString();
+        return SetzeAsync(text.Length <= 1 ? 0m : decimal.Parse(text[..^1]));
+    }
+
+    private async Task TasteAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await OnBestaetigt.InvokeAsync();
+    }
+
+    /// <summary>Sinnvolle Schnellbeträge: passend, dann typische aufgerundete Scheine (max. 4).</summary>
+    public static IReadOnlyList<decimal> VorschlaegeFuer(decimal total)
+    {
+        if (total <= 0) return [];
+        var liste = new List<decimal> { total };
+        foreach (var schritt in new[] { 500m, 1000m, 2000m, 5000m, 10000m })
+        {
+            var gerundet = Math.Ceiling(total / schritt) * schritt;
+            if (gerundet > total && !liste.Contains(gerundet)) liste.Add(gerundet);
+        }
+        return liste.Take(5).ToList();
+    }
+}

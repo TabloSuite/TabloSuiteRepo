@@ -11,9 +11,12 @@ public partial class Toast : IDisposable
         _ => "info"
     };
 
-    protected override void OnInitialized() => ToastService.OnChange += StateHasChanged;
+    // Das automatische Ausblenden kommt von einem Timer-Thread – daher über den Renderer-Kontext.
+    private void HandleChange() => _ = InvokeAsync(StateHasChanged);
+
+    protected override void OnInitialized() => ToastService.OnChange += HandleChange;
 
     private void Verbergen() => ToastService.Verbergen();
 
-    public void Dispose() => ToastService.OnChange -= StateHasChanged;
+    public void Dispose() => ToastService.OnChange -= HandleChange;
 }

@@ -106,6 +106,12 @@ if (administration is null)
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<KatalogService>();
     builder.Services.AddScoped<KassenService>();
+    builder.Services.AddScoped<MobileMoneyService>();
+    builder.Services.AddScoped<DashboardService>();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddScoped<VertragsService>();
+    builder.Services.AddScoped<KassenZugangService>();
+    builder.Services.AddHostedService<VertragsSynchronisierungsDienst>();
     builder.Services.AddScoped<TeamService>();
     builder.Services.AddScoped<AdminService>();
     builder.Services.AddScoped<ProduktOwnerService>();
@@ -145,6 +151,8 @@ if (administration is not null)
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         await ApplicationDbInitializer.SeedAsync(dbContext, roleManager, userManager, app.Configuration);
+        if (administration.DemoDaten)
+            await DemoDatenSeeder.SeedAsync(dbContext, userManager);
     }
     Console.WriteLine("Datenbankadministration abgeschlossen; kein Webserver gestartet.");
     return;
@@ -214,6 +222,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
     await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
     var verkauf = await db.Verkaeufe
         .Include(v => v.Positionen)
+        .Include(v => v.Zahlungen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
     if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
@@ -245,6 +254,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
     await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
     var verkauf = await db.Verkaeufe
         .Include(v => v.Positionen)
+        .Include(v => v.Zahlungen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
     if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))

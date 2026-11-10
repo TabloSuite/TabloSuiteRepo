@@ -35,14 +35,60 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         return string.IsNullOrWhiteSpace(name) ? "Responsable désigné" : name;
     }
 
+    /// <summary>Aktueller Preis einer Formel – dieselbe Quelle wie Besitzer-Seite und Admin-Tarif.</summary>
     public static async Task<decimal> PreisAsync(ApplicationDbContext db, Guid salonId, AboIntervall intervall, CancellationToken ct)
     {
         _ = VertragsRegeln.Monate(intervall);
-        var individuell = await db.Salons.Where(s => s.Id == salonId).Select(s => s.IndividuellerMonatsPreis).SingleAsync(ct);
-        if (individuell is decimal p) return VertragsRegeln.Preis(p, intervall);
-        var preis = await db.PlattformPreise.Where(p => p.Intervall == AboIntervall.Monatlich && p.IstAktuell)
-            .OrderByDescending(p => p.GueltigAbUtc).Select(p => (decimal?)p.Preis).FirstOrDefaultAsync(ct);
-        return preis is > 0 ? VertragsRegeln.Preis(preis.Value, intervall) : throw new InvalidOperationException("Le prix mensuel doit être configuré par l'administrateur.");
+        var (basis, _) = await AboService.MonatsBasisAsync(db, salonId, ct);
+        return basis > 0 ? VertragsRegeln.Preis(basis, intervall) : throw new InvalidOperationException("Le prix mensuel doit être configuré par l'administrateur.");
+    }
+
+    /// <summary>Vertragsstand eines Ladens für die Besitzer-Seite.</summary>
+    public record LadenVertrag(
+        bool ProbeLaeuft, DateTime? ProbeBisUtc, AboIntervall Intervall, AboIntervall? NaechstesIntervall,
+        DateTime? WechselAbUtc, string? Zahlungsempfaenger, IReadOnlyList<ZahlungEintrag> Perioden)
+    {
+        /// <summary>Formel, die ab der nächsten Periode gilt.</summary>
+        public AboIntervall KuenftigesIntervall => NaechstesIntervall ?? Intervall;
+    }
+
+    /// <summary>
+    /// Synchronisiert die Perioden und liefert den Vertragsstand (aktuelle/vorgemerkte Formel,
+    /// letzte Perioden) – nur für den Besitzer des Ladens.
+    /// </summary>
+    public async Task<LadenVertrag> GetLadenVertragAsync(Guid user, Guid salonId, CancellationToken ct = default)
+    {
+        await using (var pruefung = await factory.CreateDbContextAsync(ct)) await PruefeBesitzerAsync(pruefung, user, salonId, ct);
+        await SynchronisiereAsync(salonId, ct);
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var salon = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
+        var jetzt = zeit.GetUtcNow().UtcDateTime;
+        var perioden = await db.NutzungsAbos.AsNoTracking().Where(a => a.SalonId == salonId)
+            .OrderByDescending(a => a.ZeitraumVonUtc).Take(12).ToListAsync(ct);
+        var empfaenger = await GetZahlungsempfaengerAsync(user, salonId, ct);
+        return new LadenVertrag(salon.ProbeBisUtc > jetzt, salon.ProbeBisUtc, salon.VertragsIntervall,
+            salon.NaechstesVertragsIntervall, salon.VertragsWechselAbUtc, empfaenger,
+            perioden.Select(a => new ZahlungEintrag(a.Id, a.SalonId, salon.Name, string.Empty, a.Intervall,
+                a.ZeitraumVonUtc, a.ZeitraumBisUtc, a.PreisSnapshot, a.ZahlungStatus,
+                a.FaelligUtc ?? a.ZeitraumVonUtc, a.KassenSperreAbUtc ?? VertragsRegeln.SperreAb(a.FaelligUtc ?? a.ZeitraumVonUtc),
+                a.RabattProzentSnapshot, a.IndividuellerPreisSnapshot, a.ZahlungGemeldetUtc)).ToList());
+    }
+
+    /// <summary>Synchronisiert alle abrechenbaren Läden (Hintergrunddienst). Fehler je Laden werden gemeldet, nicht geworfen.</summary>
+    public async Task<List<(Guid SalonId, Exception Fehler)>> SynchronisiereAlleAsync(CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var jetzt = zeit.GetUtcNow().UtcDateTime;
+        var ids = await db.Salons.AsNoTracking()
+            .Where(s => s.IstAktiv && s.IstFreigegeben && (s.ProbeBisUtc == null || s.ProbeBisUtc <= jetzt))
+            .Select(s => s.Id).ToListAsync(ct);
+        var fehler = new List<(Guid, Exception)>();
+        foreach (var id in ids)
+        {
+            try { await SynchronisiereAsync(id, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { fehler.Add((id, ex)); }
+        }
+        return fehler;
     }
 
     public async Task SynchronisiereAsync(Guid salonId, CancellationToken ct = default)
@@ -60,7 +106,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
             var abos = await db.NutzungsAbos.Where(a => a.SalonId == salonId).OrderBy(a => a.ZeitraumVonUtc).ToListAsync(ct);
             if (salon.VertragsBeginnUtc is null)
             {
-                salon.VertragsBeginnUtc = salon.ProbeBisUtc ?? jetzt;
+                salon.VertragsBeginnUtc = salon.ProbeBisUtc is DateTime probe ? VertragsRegeln.BeginnNachProbe(probe) : jetzt;
                 var letztes = abos.Where(a => a.ZeitraumBisUtc > a.ZeitraumVonUtc).MaxBy(a => a.ZeitraumBisUtc);
                 if (letztes is not null)
                 {
@@ -83,13 +129,26 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
                 var intervall = teil ? AboIntervall.Monatlich : salon.VertragsIntervall;
                 var ende = VertragsRegeln.PeriodenEnde(start, intervall);
                 var basisStand = await MonatsBasisAsync(db, salonId, start, ct);
+                // Regel: Sperre am 15. Tag nach Fälligkeit. Wäre diese Frist beim (verspäteten)
+                // Erzeugen schon abgelaufen – z. B. erste Aktivierung lange nach Probezeitende –,
+                // gibt es stattdessen 15 Tage ab heute: nie eine Sperre ohne Vorwarnung.
+                var sperreAb = VertragsRegeln.SperreAb(start);
+                if (sperreAb <= jetzt) sperreAb = VertragsRegeln.SperreAb(jetzt.Date);
+                var preis = teil ? VertragsRegeln.Teilpreis(basisStand.Preis, start) : VertragsRegeln.Preis(basisStand.Preis, intervall);
+                if (preis <= 0)
+                {
+                    // Nie eine Rechnung über 0 F: sie würde nie „bezahlt“ und die Kasse sperren.
+                    start = ende;
+                    continue;
+                }
+
                 db.NutzungsAbos.Add(new NutzungsAbo
                 {
                     SalonId = salonId, Intervall = intervall, ZeitraumVonUtc = start, ZeitraumBisUtc = ende,
-                    PreisSnapshot = teil ? VertragsRegeln.Teilpreis(basisStand.Preis, start) : VertragsRegeln.Preis(basisStand.Preis, intervall),
+                    PreisSnapshot = preis,
                     MonatsBasisSnapshot = basisStand.Preis, IndividuellerPreisSnapshot = basisStand.Individuell,
                     RabattProzentSnapshot = teil ? 0 : VertragsRegeln.Rabatt(intervall), IstTeilperiode = teil,
-                    FaelligUtc = start, KassenSperreAbUtc = VertragsRegeln.SperreAb(start),
+                    FaelligUtc = start, KassenSperreAbUtc = sperreAb,
                     ZahlungStatus = AboZahlungStatus.Offen, AutomatischErstellt = true, CreatedAtUtc = jetzt
                 });
                 start = ende;
@@ -111,16 +170,81 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         var historischeBasis = await db.PlattformPreise.Where(p => p.Intervall == AboIntervall.Monatlich && p.GueltigAbUtc <= datum)
             .OrderByDescending(p => p.GueltigAbUtc).Select(p => (decimal?)p.Preis).FirstOrDefaultAsync(ct);
         if (historischeBasis is > 0) return (historischeBasis.Value, false);
-        if (!await db.MonatsPreisStaende.AnyAsync(ct))
-        {
-            var laden = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
-            var basis = laden.IndividuellerMonatsPreis ?? await db.PlattformPreise.Where(p => p.Intervall == AboIntervall.Monatlich && p.IstAktuell)
-                .OrderByDescending(p => p.GueltigAbUtc).Select(p => (decimal?)p.Preis).FirstOrDefaultAsync(ct);
-            if (basis is > 0) return (basis.Value, laden.IndividuellerMonatsPreis is not null);
-        }
-        throw new InvalidOperationException("Le tarif historique de cette période doit être vérifié par l'administrateur.");
+        // Periode beginnt vor dem ersten erfassten Preis (z. B. Probezeit endete vor der Tarif-Einrichtung):
+        // frühester bekannter globaler Preis – nicht rückwirkend der heutige, und ein erst später
+        // vergebener individueller Preis gilt nicht rückwirkend.
+        var fruehesterStand = await db.MonatsPreisStaende.AsNoTracking().Where(p => p.SalonId == null && p.MonatsPreis != null)
+            .OrderBy(p => p.GueltigAbUtc).Select(p => p.MonatsPreis).FirstOrDefaultAsync(ct);
+        var fruehesterPreis = fruehesterStand ?? await db.PlattformPreise.AsNoTracking().Where(p => p.Intervall == AboIntervall.Monatlich)
+            .OrderBy(p => p.GueltigAbUtc).Select(p => (decimal?)p.Preis).FirstOrDefaultAsync(ct);
+        if (fruehesterPreis is > 0) return (fruehesterPreis.Value, false);
+
+        // Gar kein globaler Preis: nur der individuelle Preis des Ladens kommt in Frage.
+        var laden = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
+        if (laden.IndividuellerMonatsPreis is > 0) return (laden.IndividuellerMonatsPreis.Value, true);
+        throw new InvalidOperationException("Le tarif mensuel doit être configuré par l'administrateur.");
     }
-    public async Task WechsleAsync(Guid user, Guid salonId, AboIntervall intervall, CancellationToken ct = default)
+    public enum WechselArt
+    {
+        /// <summary>Die laufende, noch offene Rechnung wurde in die neue Formel umgewandelt.</summary>
+        SofortUmgewandelt,
+
+        /// <summary>Die neue Formel gilt ab der nächsten Periode (bzw. nach der Probezeit).</summary>
+        AbNaechsterPeriode,
+
+        /// <summary>Formel entspricht bereits der laufenden Periode – ein vorgemerkter Wechsel wurde aufgehoben.</summary>
+        Unveraendert
+    }
+
+    /// <summary>Was ein Formelwechsel bewirken würde (für die Bestätigung beim Besitzer).</summary>
+    public record WechselVorschau(WechselArt Art, decimal? NeuerBetrag, DateTime? AbUtc, DateTime? Faellig, DateTime? SperreAb);
+
+    /// <summary>
+    /// Laufende Periode, die sofort in eine andere Formel umgewandelt werden darf: volle Periode
+    /// (keine anteilige Startrechnung), noch nicht bezahlt und nicht als bezahlt gemeldet
+    /// (offen oder vom Admin abgelehnt), und die jüngste Periode des Ladens.
+    /// </summary>
+    private static async Task<NutzungsAbo?> UmwandelbarePeriodeAsync(ApplicationDbContext db, Guid salonId, AboIntervall intervall, DateTime jetzt, CancellationToken ct)
+    {
+        var aktuell = await db.NutzungsAbos.Where(a => a.SalonId == salonId && a.ZeitraumVonUtc <= jetzt && a.ZeitraumBisUtc > jetzt)
+            .OrderByDescending(a => a.ZeitraumVonUtc).FirstOrDefaultAsync(ct);
+        if (aktuell is null || aktuell.IstTeilperiode || aktuell.Intervall == intervall
+            || aktuell.ZahlungStatus is not (AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt))
+            return null;
+        var spaetere = await db.NutzungsAbos.AnyAsync(a => a.SalonId == salonId && a.ZeitraumVonUtc > aktuell.ZeitraumVonUtc, ct);
+        return spaetere ? null : aktuell;
+    }
+
+    /// <summary>Basis der umgewandelten Rechnung: Monatspreis vom Periodenbeginn (nicht ein späterer).</summary>
+    private static async Task<decimal> BasisFuerPeriodeAsync(ApplicationDbContext db, NutzungsAbo periode, CancellationToken ct)
+        => periode.MonatsBasisSnapshot is > 0 ? periode.MonatsBasisSnapshot.Value : (await MonatsBasisAsync(db, periode.SalonId, periode.ZeitraumVonUtc, ct)).Preis;
+
+    public async Task<WechselVorschau> GetWechselVorschauAsync(Guid user, Guid salonId, AboIntervall intervall, CancellationToken ct = default)
+    {
+        _ = VertragsRegeln.Monate(intervall);
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await PruefeBesitzerAsync(db, user, salonId, ct);
+        var jetzt = zeit.GetUtcNow().UtcDateTime;
+        if (await UmwandelbarePeriodeAsync(db, salonId, intervall, jetzt, ct) is { } periode)
+        {
+            var basis = await BasisFuerPeriodeAsync(db, periode, ct);
+            return new(WechselArt.SofortUmgewandelt, VertragsRegeln.Preis(basis, intervall), periode.ZeitraumVonUtc,
+                periode.FaelligUtc ?? periode.ZeitraumVonUtc, periode.KassenSperreAbUtc);
+        }
+
+        var salon = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
+        var ende = await db.NutzungsAbos.Where(a => a.SalonId == salonId && a.ZeitraumBisUtc > jetzt)
+            .Select(a => (DateTime?)a.ZeitraumBisUtc).MaxAsync(ct);
+        return new(WechselArt.AbNaechsterPeriode, await PreisAsync(db, salonId, intervall, ct),
+            ende ?? (salon.ProbeBisUtc is DateTime probe ? VertragsRegeln.BeginnNachProbe(probe) : jetzt), null, null);
+    }
+
+    /// <summary>
+    /// Formel wechseln. Ist die laufende Rechnung noch offen (nicht gemeldet/bezahlt) und eine volle
+    /// Periode, wird sie sofort in die neue Formel umgewandelt (gleicher Start, Monatspreis vom
+    /// Periodenbeginn, Zahlungsfrist unverändert). Sonst gilt die Formel ab der nächsten Periode.
+    /// </summary>
+    public async Task<WechselArt> WechsleAsync(Guid user, Guid salonId, AboIntervall intervall, CancellationToken ct = default)
     {
         _ = VertragsRegeln.Monate(intervall);
         await using (var pruefung = await factory.CreateDbContextAsync(ct)) await PruefeBesitzerAsync(pruefung, user, salonId, ct);
@@ -129,11 +253,38 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         await PruefeBesitzerAsync(db, user, salonId, ct);
         var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
+
+        if (await UmwandelbarePeriodeAsync(db, salonId, intervall, jetzt, ct) is { } periode)
+        {
+            var basis = await BasisFuerPeriodeAsync(db, periode, ct);
+            var vorher = periode.Intervall;
+            var betragVorher = periode.PreisSnapshot;
+            periode.Intervall = intervall;
+            periode.ZeitraumBisUtc = periode.ZeitraumVonUtc.AddMonths(VertragsRegeln.Monate(intervall));
+            periode.MonatsBasisSnapshot = basis;
+            periode.RabattProzentSnapshot = VertragsRegeln.Rabatt(intervall);
+            periode.PreisSnapshot = VertragsRegeln.Preis(basis, intervall);
+            // Fälligkeit und Sperrfrist bleiben bewusst unverändert (kein Aufschub durch Hin- und Herwechseln).
+            salon.VertragsIntervall = intervall;
+            salon.NaechstesVertragsIntervall = null;
+            salon.VertragsWechselAbUtc = null;
+            db.VertragsHistorien.Add(new VertragsHistorie
+            {
+                NutzungsAboId = periode.Id, BenutzerId = user, ZeitpunktUtc = jetzt, Aktion = "Formule convertie",
+                Begruendung = $"{VertragsRegeln.Bezeichnung(vorher)} ({betragVorher:N0} F) → {VertragsRegeln.Bezeichnung(intervall)} ({periode.PreisSnapshot:N0} F)"
+            });
+            await db.SaveChangesAsync(ct);
+            return WechselArt.SofortUmgewandelt;
+        }
+
+        var laufend = await db.NutzungsAbos.Where(a => a.SalonId == salonId && a.ZeitraumVonUtc <= jetzt && a.ZeitraumBisUtc > jetzt)
+            .OrderByDescending(a => a.ZeitraumVonUtc).Select(a => (AboIntervall?)a.Intervall).FirstOrDefaultAsync(ct);
         var ende = await db.NutzungsAbos.Where(a => a.SalonId == salonId && a.ZeitraumBisUtc > jetzt)
             .Select(a => (DateTime?)a.ZeitraumBisUtc).MaxAsync(ct);
         salon.NaechstesVertragsIntervall = intervall;
-        salon.VertragsWechselAbUtc = ende ?? salon.ProbeBisUtc ?? jetzt;
+        salon.VertragsWechselAbUtc = ende ?? (salon.ProbeBisUtc is DateTime probe ? VertragsRegeln.BeginnNachProbe(probe) : jetzt);
         await db.SaveChangesAsync(ct);
+        return laufend == intervall ? WechselArt.Unveraendert : WechselArt.AbNaechsterPeriode;
     }
 
     public async Task<string?> GetWechselHinweisAsync(Guid user, Guid salonId, CancellationToken ct = default)

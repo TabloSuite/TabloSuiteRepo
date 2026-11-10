@@ -1,0 +1,106 @@
+@using ENote.Core.DataModels.Kasse
+@using ENote.Core.DataModels.Salons
+@using ENote.WebApp.Services
+@inject MobileMoneyService Service
+@inject ToastService Toast
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+@* SuperAdmin: Mobile-Money-Anbieter je Land pflegen (Name, Markenfarbe, Reihenfolge, aktiv). *@
+<div class="mm">
+    <div class="mm-kopf">
+        <p class="enote-muted">Les opérateurs actifs d'un pays sont proposés par défaut aux établissements de ce pays ; chaque propriétaire peut ensuite choisir les siens dans ses paramètres. Les ventes conservent le nom de l'opérateur au moment du paiement.</p>
+        <button class="enote-btn enote-btn-primary" @onclick="Neu"><Icon Name="plus" Groesse="18" /> Nouvel opérateur</button>
+    </div>
+
+    @foreach (var gruppe in anbieter.GroupBy(a => a.Land).OrderBy(g => Array.IndexOf(Laender.Alle, g.Key)))
+    {
+        <section class="mm-land">
+            <h3><Icon Name="globe" Groesse="16" /> @gruppe.Key</h3>
+            <div class="mm-liste">
+                @foreach (var a in gruppe.OrderBy(x => x.Reihenfolge).ThenBy(x => x.Name))
+                {
+                    <div class="mm-zeile @(a.IstAktiv ? "" : "aus")">
+                        <span class="enote-anbieter-logo" style="--marke: @a.Farbe; --marke-text: @MobileMoneyService.TextFarbe(a.Farbe)">@a.Name[..Math.Min(2, a.Name.Length)].ToUpperInvariant()</span>
+                        <strong>@a.Name</strong>
+                        <span class="enote-tag @(a.IstAktiv ? "enote-tag-ok" : "enote-tag-off")">@(a.IstAktiv ? "Actif" : "Inactif")</span>
+                        <button class="enote-btn enote-btn-sm" @onclick="() => Bearbeite(a)"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<ModalDialog Open="bearbeitung is not null" Title="@(istNeu ? "Nouvel opérateur" : "Modifier l'opérateur")" ErrorMessage="@fehler" OnClose="() => bearbeitung = null" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        @if (bearbeitung is { } b)
+        {
+            <div class="enote-form">
+                <label>Nom <input @bind="b.Name" maxlength="80" placeholder="ex. Flooz" /></label>
+                <label>Pays</label>
+                <EnoteSelect TValue="string" @bind-Value="b.Land" Options="landOptionen" MitSuche="true" />
+                <div class="enote-form-grid">
+                    <label>Couleur de marque <input type="color" @bind="b.Farbe" class="mm-farbe" /></label>
+                    <label>Ordre <input type="number" min="0" max="99" @bind="b.Reihenfolge" /></label>
+                </div>
+                <EnoteCheckbox @bind-Value="b.IstAktiv" Label="Actif (proposé aux établissements)" />
+                <div class="mm-vorschau">
+                    <span class="enote-anbieter-logo" style="--marke: @b.Farbe; --marke-text: @MobileMoneyService.TextFarbe(b.Farbe)">@(string.IsNullOrEmpty(b.Name) ? "?" : b.Name[..Math.Min(2, b.Name.Length)].ToUpperInvariant())</span>
+                    <span>Aperçu à la caisse</span>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => bearbeitung = null">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private List<MobileMoneyAnbieter> anbieter = [];
+    private MobileMoneyAnbieter? bearbeitung;
+    private bool istNeu;
+    private string? fehler;
+    private Guid adminId;
+
+    private static readonly IReadOnlyList<EnoteSelectOption<string>> landOptionen =
+        Laender.Alle.Select(l => new EnoteSelectOption<string> { Value = l, Label = l }).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out adminId);
+        anbieter = await Service.GetAlleAsync();
+    }
+
+    private void Neu()
+    {
+        istNeu = true;
+        fehler = null;
+        bearbeitung = new MobileMoneyAnbieter { Id = Guid.Empty, Land = "Togo", Farbe = "#0d9488", IstAktiv = true, Reihenfolge = 1 };
+    }
+
+    private void Bearbeite(MobileMoneyAnbieter a)
+    {
+        istNeu = false;
+        fehler = null;
+        // Kopie bearbeiten, damit „Annuler“ nichts verändert.
+        bearbeitung = new MobileMoneyAnbieter { Id = a.Id, Name = a.Name, Land = a.Land, Farbe = a.Farbe, Reihenfolge = a.Reihenfolge, IstAktiv = a.IstAktiv };
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (bearbeitung is null) return;
+        var (erfolg, f) = await Service.SpeichereAsync(adminId, bearbeitung);
+        if (!erfolg)
+        {
+            fehler = f;
+            return;
+        }
+
+        bearbeitung = null;
+        anbieter = await Service.GetAlleAsync();
+        Toast.ZeigeErfolg("Opérateur enregistré.");
+    }
+}

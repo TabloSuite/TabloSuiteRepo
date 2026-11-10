@@ -6,12 +6,16 @@
 <PageTitle>Finances</PageTitle>
 
 <BesitzerPinGuard>
-<div class="enote-page enote-finances">
+<div class="enote-page fi">
     <div class="enote-page-header">
         <div>
-            <h1>Finances – @salonName</h1>
-            <p>Solde de caisse, chiffre d'affaires, dernières ventes et clôtures de caisse.</p>
+            <h1>Finances</h1>
+            <p>@salonName · entrées, dépenses, ventes et clôtures de caisse.</p>
         </div>
+        @if (darfFinanzenSehen && !isLoading)
+        {
+            <button class="enote-btn" @onclick="ExportierePdf"><Icon Name="download" Groesse="18" /> Rapport PDF</button>
+        }
     </div>
 
     @if (!darfFinanzenSehen)
@@ -20,172 +24,204 @@
     }
     else if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else
     {
-        <div class="enote-live-banner @(liveVerbunden ? "verbunden" : "")">
-            <span class="enote-live-dot"></span>
-            <div>
-                <div class="enote-live-label">Aujourd'hui @(liveVerbunden ? "(en direct)" : "")</div>
-                <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">· @liveAnzahlHeute vente(s)</span></div>
+        <div class="fi-leiste">
+            <div class="enote-live-banner fi-live @(liveVerbunden ? "verbunden" : "")">
+                <span class="enote-live-dot"></span>
+                <div>
+                    <div class="enote-live-label">Aujourd'hui @(liveVerbunden ? "· en direct" : "")</div>
+                    <div class="enote-live-wert">@liveTagesUmsatz.ToString("N0") F <span class="enote-muted">· @liveAnzahlHeute vente@(liveAnzahlHeute == 1 ? "" : "s")</span></div>
+                </div>
             </div>
-        </div>
 
-        <div class="enote-filter-row">
-            <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
-            <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
-            <button class="enote-btn enote-btn-ghost" @onclick="WendeFilterAsync">Filtrer</button>
-            <button class="enote-btn enote-btn-primary" @onclick="ExportierePdf">Exporter en PDF</button>
+            <div class="fi-zeitraum">
+                <div class="fi-chips" role="group" aria-label="Période">
+                    <button class="enote-chip @(aktiverZeitraum == "7" ? "enote-chip-aktiv" : "")" @onclick="() => WaehleZeitraumAsync(7)">7 jours</button>
+                    <button class="enote-chip @(aktiverZeitraum == "14" ? "enote-chip-aktiv" : "")" @onclick="() => WaehleZeitraumAsync(14)">14 jours</button>
+                    <button class="enote-chip @(aktiverZeitraum == "30" ? "enote-chip-aktiv" : "")" @onclick="() => WaehleZeitraumAsync(30)">30 jours</button>
+                    <button class="enote-chip @(aktiverZeitraum == "mois" ? "enote-chip-aktiv" : "")" @onclick="WaehleMonatAsync">Ce mois</button>
+                </div>
+                <div class="fi-daten">
+                    <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="filterVon" /></div>
+                    <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="filterBis" /></div>
+                    <button class="enote-btn" @onclick="WendeEigenenZeitraumAsync"><Icon Name="filter" Groesse="16" /> Appliquer</button>
+                </div>
+            </div>
         </div>
 
         @if (uebersicht is not null)
         {
-            <section class="enote-solde">
-                <div class="enote-solde-grid">
-                    <div class="enote-solde-hero @(uebersicht.Saldo < 0 ? "negativ" : "positiv")">
-                        <span class="enote-solde-hero-label">Solde de caisse</span>
-                        <strong class="enote-solde-hero-wert">@FormatEcart(uebersicht.Saldo) F</strong>
-                        <span class="enote-solde-hero-meta">Entrées − Dépenses · @ZeitraumLabel</span>
+            <section class="fi-kpis" aria-label="Solde de la période">
+                <div class="fi-solde @(uebersicht.Saldo < 0 ? "negativ" : "positiv")">
+                    <span class="fi-kpi-label">Solde · @ZeitraumLabel</span>
+                    <strong>@FormatEcart(uebersicht.Saldo) F</strong>
+                    <span class="fi-solde-formel">Entrées − Dépenses</span>
+                </div>
+
+                <div class="fi-karte">
+                    <div class="fi-karte-kopf">
+                        <span class="fi-ico fi-ico-ein"><Icon Name="arrow-down" Groesse="16" Strich="2.5" /></span>
+                        <span class="fi-kpi-label">Entrées</span>
+                        <span class="enote-muted fi-anzahl">@uebersicht.AnzahlVerkaeufe vente@(uebersicht.AnzahlVerkaeufe == 1 ? "" : "s")</span>
                     </div>
-                    <div class="enote-solde-karte enote-solde-ein">
-                        <div class="enote-solde-karte-kopf">
-                            <span class="enote-solde-ico" aria-hidden="true">↑</span>
-                            <span class="enote-solde-label">Entrées</span>
+                    <strong class="fi-wert">@uebersicht.EinnahmenGesamt.ToString("N0") F</strong>
+                    <ZahlungsMix Bar="uebersicht.EinnahmenBar" Karte="uebersicht.EinnahmenKarte" MobileMoney="uebersicht.EinnahmenMobileMoney" />
+                    @if (uebersicht.MobileMoneyNachAnbieter.Count > 0)
+                    {
+                        <div class="fi-anbieter">
+                            @foreach (var a in uebersicht.MobileMoneyNachAnbieter)
+                            {
+                                <span class="enote-tag enote-tag-momo">@a.Name · @a.Betrag.ToString("N0") F</span>
+                            }
                         </div>
-                        <strong class="enote-solde-wert">@uebersicht.EinnahmenGesamt.ToString("N0") F</strong>
-                        <div class="enote-solde-zeilen">
-                            <div><span>Espèces</span><span>@uebersicht.EinnahmenBar.ToString("N0") F</span></div>
-                            <div><span>Carte</span><span>@uebersicht.EinnahmenKarte.ToString("N0") F</span></div>
-                            <div><span>Ventes</span><span>@uebersicht.AnzahlVerkaeufe</span></div>
-                        </div>
+                    }
+                </div>
+
+                <div class="fi-karte">
+                    <div class="fi-karte-kopf">
+                        <span class="fi-ico fi-ico-aus"><Icon Name="arrow-up" Groesse="16" Strich="2.5" /></span>
+                        <span class="fi-kpi-label">Dépenses</span>
+                        <a class="fi-link" href="/ausgaben">Voir <Icon Name="arrow-right" Groesse="14" /></a>
                     </div>
-                    <div class="enote-solde-karte enote-solde-aus">
-                        <div class="enote-solde-karte-kopf">
-                            <span class="enote-solde-ico" aria-hidden="true">↓</span>
-                            <span class="enote-solde-label">Dépenses</span>
-                        </div>
-                        <strong class="enote-solde-wert">@uebersicht.AusgabenGesamt.ToString("N0") F</strong>
-                        @if (uebersicht.AusgabenNachKategorie.Count > 0)
-                        {
-                            <div class="enote-solde-kategorien">
-                                @foreach (var k in uebersicht.AusgabenNachKategorie)
-                                {
-                                    <span class="enote-tag">@k.Name · @k.Betrag.ToString("N0") F</span>
-                                }
-                            </div>
-                        }
-                        <a class="enote-solde-link" href="/ausgaben">Voir les dépenses →</a>
-                    </div>
+                    <strong class="fi-wert">@uebersicht.AusgabenGesamt.ToString("N0") F</strong>
+                    @if (uebersicht.AusgabenNachKategorie.Count == 0)
+                    {
+                        <p class="enote-muted fi-leer">Aucune dépense sur la période.</p>
+                    }
+                    else
+                    {
+                        var maxAusgabe = uebersicht.AusgabenNachKategorie.Max(k => k.Betrag);
+                        <ul class="fi-ausgaben">
+                            @foreach (var k in uebersicht.AusgabenNachKategorie)
+                            {
+                                <li>
+                                    <div class="db-top-zeile"><span class="db-top-name fi-ohne-rang">@k.Name</span><strong>@k.Betrag.ToString("N0") F</strong></div>
+                                    <div class="db-top-balken fi-balken-aus"><span style="width: @Prozent(k.Betrag, maxAusgabe)%"></span></div>
+                                </li>
+                            }
+                        </ul>
+                    }
                 </div>
             </section>
         }
 
         <div class="enote-tabs">
-            <button class="enote-tab @(aktiverTab == "umsatz" ? "aktiv" : "")" @onclick='() => WechsleTab("umsatz")'>Chiffre d'affaires</button>
+            <button class="enote-tab @(aktiverTab == "umsatz" ? "aktiv" : "")" @onclick='() => WechsleTab("umsatz")'>Par jour</button>
             <button class="enote-tab @(aktiverTab == "ventes" ? "aktiv" : "")" @onclick='() => WechsleTab("ventes")'>Dernières ventes</button>
             <button class="enote-tab @(aktiverTab == "clotures" ? "aktiv" : "")" @onclick='() => WechsleTab("clotures")'>Clôtures de caisse</button>
         </div>
 
         @if (aktiverTab == "umsatz")
         {
-        <CollapsibleCard Title="@ZeitraumTitel" Subtitle="@($"{tagesUmsaetze.Sum(t => t.Gesamt):N0} F au total")" IsExpanded="true">
-            @if (tagesUmsaetze.Count == 0)
-            {
-                <p class="enote-muted">Aucune vente sur la période.</p>
-            }
-            else
-            {
-                <div class="enote-table-scroll"><table class="enote-table">
-                    <thead><tr><th>Date</th><th>Ventes</th><th>Espèces</th><th>Carte</th><th>Total</th></tr></thead>
-                    <tbody>
-                        @foreach (var t in tagesUmsaetze)
-                        {
+            <section class="enote-card fi-tabelle">
+                @if (tagesUmsaetze.Count == 0)
+                {
+                    <p class="enote-empty">Aucune vente sur la période.</p>
+                }
+                else
+                {
+                    <div class="enote-table-scroll"><table class="enote-table">
+                        <thead><tr><th>Date</th><th class="r">Ventes</th><th class="r">Espèces</th><th class="r">Mobile Money</th><th class="r">Carte</th><th class="r">Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in tagesUmsaetze)
+                            {
+                                <tr>
+                                    <td>@t.Datum.ToString("ddd dd.MM", Fr)</td>
+                                    <td class="r">@t.AnzahlVerkaeufe</td>
+                                    <td class="r">@t.Bar.ToString("N0")</td>
+                                    <td class="r">@t.MobileMoney.ToString("N0")</td>
+                                    <td class="r">@t.Karte.ToString("N0")</td>
+                                    <td class="r"><strong>@t.Gesamt.ToString("N0") F</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
                             <tr>
-                                <td>@t.Datum.ToString("dd.MM.yyyy")</td>
-                                <td>@t.AnzahlVerkaeufe</td>
-                                <td>@t.Bar.ToString("N0") F</td>
-                                <td>@t.Karte.ToString("N0") F</td>
-                                <td><strong>@t.Gesamt.ToString("N0") F</strong></td>
+                                <td>Total</td>
+                                <td class="r">@tagesUmsaetze.Sum(t => t.AnzahlVerkaeufe)</td>
+                                <td class="r">@tagesUmsaetze.Sum(t => t.Bar).ToString("N0")</td>
+                                <td class="r">@tagesUmsaetze.Sum(t => t.MobileMoney).ToString("N0")</td>
+                                <td class="r">@tagesUmsaetze.Sum(t => t.Karte).ToString("N0")</td>
+                                <td class="r">@tagesUmsaetze.Sum(t => t.Gesamt).ToString("N0") F</td>
                             </tr>
-                        }
-                    </tbody>
-                </table></div>
-            }
-        </CollapsibleCard>
+                        </tfoot>
+                    </table></div>
+                }
+            </section>
         }
         else if (aktiverTab == "ventes")
         {
-        <CollapsibleCard Title="Dernières ventes" Subtitle="Aperçu en direct" IsExpanded="true">
-            @if (letzteVerkaeufe.Count == 0)
-            {
-                <p class="enote-muted">Aucune vente pour le moment.</p>
-            }
-            else
-            {
+            <section class="fi-ventes">
                 <div class="enote-filter-leiste">
                     <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
                     <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
                 </div>
                 @if (!GefilterteVerkaeufe().Any())
                 {
-                    <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche ou au mode de paiement sélectionné.</p>
+                    <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche.</p>
                 }
                 <div class="enote-feed">
                     @foreach (var v in GefilterteVerkaeufe())
                     {
-                        <div class="enote-feed-item">
-                            <div class="enote-feed-head">
-                                <strong>@v.GesamtSumme.ToString("N0") F</strong>
-                                <span class="enote-tag">@(v.ZahlungsArt == ZahlungsArt.Bar ? "Espèces" : "Carte")</span>
+                        <div class="enote-feed-item fi-verkauf">
+                            <div class="fi-verkauf-info">
+                                <div class="enote-feed-head">
+                                    <strong>@v.GesamtSumme.ToString("N0") F</strong>
+                                    <ZahlungsTag Anteile="v.Zahlungen" />
+                                </div>
+                                <div class="enote-feed-meta">@v.PositionenText</div>
+                                <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName</div>
                             </div>
-                            <div class="enote-feed-meta">@v.PositionenText</div>
-                            <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM HH:mm") · @v.KassiererName</div>
-                            <div class="enote-item-actions">
-                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank">📄 Reçu</a>
-                            </div>
+                            <a class="enote-btn enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank"><Icon Name="receipt" Groesse="16" /> Reçu</a>
                         </div>
                     }
                 </div>
-            }
-        </CollapsibleCard>
+            </section>
         }
         else if (aktiverTab == "clotures")
         {
-        <CollapsibleCard Title="Clôtures de caisse" Subtitle="@($"{abschluesse.Count} clôture(s)")" IsExpanded="true">
-            @if (abschluesse.Count == 0)
-            {
-                <p class="enote-muted">Aucune clôture pour le moment.</p>
-            }
-            else
-            {
-                <div class="enote-table-scroll"><table class="enote-table">
-                    <thead><tr><th>Clôturée le</th><th>Caissier</th><th>Attendu</th><th>Compté</th><th>Écart</th></tr></thead>
-                    <tbody>
-                        @foreach (var a in abschluesse)
-                        {
-                            <tr>
-                                <td>@a.AbgeschlossenUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                                <td>@a.Kassierer.FullName</td>
-                                <td>@a.BareinnahmenSoll?.ToString("N0") F</td>
-                                <td>@a.EndbestandGezaehlt?.ToString("N0") F</td>
-                                <td class="@(a.Differenz < 0 ? "enote-danger" : "")">@FormatEcart(a.Differenz) F</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table></div>
-            }
-        </CollapsibleCard>
+            <section class="enote-card fi-tabelle">
+                @if (abschluesse.Count == 0)
+                {
+                    <p class="enote-empty">Aucune clôture pour le moment.</p>
+                }
+                else
+                {
+                    <div class="enote-table-scroll"><table class="enote-table">
+                        <thead><tr><th>Clôturée le</th><th>Caissier</th><th class="r">Attendu</th><th class="r">Compté</th><th class="r">Écart</th></tr></thead>
+                        <tbody>
+                            @foreach (var a in abschluesse)
+                            {
+                                <tr>
+                                    <td>@a.AbgeschlossenUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@a.Kassierer.FullName</td>
+                                    <td class="r">@a.BareinnahmenSoll?.ToString("N0") F</td>
+                                    <td class="r">@a.EndbestandGezaehlt?.ToString("N0") F</td>
+                                    <td class="r"><span class="enote-tag @(a.Differenz < 0 ? "enote-tag-warn" : a.Differenz > 0 ? "" : "enote-tag-ok")">@FormatEcart(a.Differenz) F</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table></div>
+                }
+            </section>
         }
     }
 </div>
 </BesitzerPinGuard>
 
 @code {
+    private static readonly System.Globalization.CultureInfo Fr = new("fr-FR");
+
     private static string FormatEcart(decimal? differenz)
     {
         var wert = differenz ?? 0m;
         var formatiert = Math.Abs(wert).ToString("N0");
         return wert < 0 ? $"-{formatiert}" : wert > 0 ? $"+{formatiert}" : "0";
     }
+
+    private static string Prozent(decimal wert, decimal max)
+        => (max <= 0 ? 0 : Math.Round(wert / max * 100, 1)).ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

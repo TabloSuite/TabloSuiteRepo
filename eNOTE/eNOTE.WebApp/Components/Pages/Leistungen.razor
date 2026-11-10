@@ -6,204 +6,197 @@
 
 <PageTitle>Prestations</PageTitle>
 
-
 <BesitzerPinGuard>
-<div class="enote-page enote-page-full">
+<div class="enote-page">
     <div class="enote-page-header">
         <div>
             <h1>Prestations &amp; articles</h1>
-            <p>Définissez les prestations et les articles en vente dans votre établissement.</p>
+            <p>@leistungen.Count(l => !l.IstStandardArtikel) éléments en vente · @kategorien.Count catégories</p>
         </div>
         @if (darfVerwalten)
         {
-            <div class="enote-item-actions">
-                <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouvelle prestation</button>
-            </div>
+            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouvelle prestation</button>
         }
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else
     {
-        <div class="enote-katalog-layout">
-            @* LINKS: Kategorie-Baum verwalten *@
-            <div class="enote-katalog-baum enote-card">
-                <div class="enote-katalog-baum-header">
+        <div class="pr-layout">
+            @* LINKS: Kategorien (zugleich Filter) *@
+            <aside class="pr-kats enote-card">
+                <div class="pr-kats-kopf">
                     <h2>Catégories</h2>
                 </div>
-                <div class="enote-kategorie-row">
-                    <input @bind="neueKategorieName" placeholder="ex. Boissons, Tissus…" class="enote-input-inline" />
-                    <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
-                </div>
-
-                @if (kategorieBaum.Count == 0)
+                <button type="button" class="pr-kat @(string.IsNullOrEmpty(kategorieFilter) ? "aktiv" : "")" @onclick='() => kategorieFilter = string.Empty'>
+                    <Icon Name="grid" Groesse="16" /><span class="pr-kat-name">Toutes</span><span class="enote-baum-anzahl">@leistungen.Count(l => !l.IstStandardArtikel)</span>
+                </button>
+                @foreach (var knoten in kategorieBaum)
                 {
-                    <p class="enote-empty" role="status">Aucune catégorie pour le moment.</p>
-                }
-                else
-                {
-                    <div class="enote-baum-liste">
-                        @foreach (var knoten in kategorieBaum)
-                        {
-                            var hatUnter = knoten.Unterkategorien.Count > 0;
-                            var istAuf = aufgeklappteKategorieId == knoten.Kategorie.Id;
-                            <div class="enote-baum-knoten">
-                                <div class="enote-baum-zeile">
-                                    <button type="button" class="enote-baum-toggle" @onclick="() => ToggleAufklappen(knoten.Kategorie.Id)">
-                                        @(hatUnter ? (istAuf ? "▾" : "▸") : "•")
-                                    </button>
-                                    <span class="enote-baum-name">@knoten.Kategorie.Name</span>
-                                    <span class="enote-baum-anzahl">@AnzahlInKategorie(knoten.Kategorie.Id)</span>
-                                    <div class="enote-baum-aktionen">
-                                        <button type="button" class="enote-icon-btn" title="Sous-catégorie" @onclick="() => OeffneUnterkategorieDialog(knoten.Kategorie.Id)">+</button>
-                                        <button type="button" class="enote-icon-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)">✎</button>
-                                        <button type="button" class="enote-icon-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(knoten.Kategorie)">✕</button>
-                                    </div>
+                    var hatUnter = knoten.Unterkategorien.Count > 0;
+                    var istAuf = aufgeklappteKategorieId == knoten.Kategorie.Id || knoten.Unterkategorien.Any(u => u.Id.ToString() == kategorieFilter);
+                    <div class="pr-kat-gruppe">
+                        <div class="pr-kat-zeile">
+                            <button type="button" class="pr-kat @(kategorieFilter == knoten.Kategorie.Id.ToString() ? "aktiv" : "")" @onclick="() => FilterKategorie(knoten.Kategorie.Id)">
+                                <span class="pr-kat-auf" @onclick="() => ToggleAufklappen(knoten.Kategorie.Id)" @onclick:stopPropagation="true">
+                                    @if (hatUnter) { <Icon Name="@(istAuf ? "chevron-down" : "chevron-right")" Groesse="16" /> } else { <Icon Name="tag" Groesse="16" /> }
+                                </span>
+                                <span class="pr-kat-name">@knoten.Kategorie.Name</span>
+                                <span class="enote-baum-anzahl">@AnzahlInKategorie(knoten.Kategorie.Id)</span>
+                            </button>
+                            @if (darfVerwalten)
+                            {
+                                <div class="pr-kat-aktionen">
+                                    <button type="button" title="Ajouter une sous-catégorie" aria-label="Ajouter une sous-catégorie" @onclick="() => OeffneUnterkategorieDialog(knoten.Kategorie.Id)"><Icon Name="plus" Groesse="16" /></button>
+                                    <button type="button" title="Renommer" aria-label="Renommer" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)"><Icon Name="edit" Groesse="16" /></button>
+                                    <button type="button" class="gefahr" title="Supprimer" aria-label="Supprimer" @onclick="() => LoescheKategorieFragen(knoten.Kategorie)"><Icon Name="trash" Groesse="16" /></button>
                                 </div>
-                                @if (istAuf)
-                                {
-                                    @foreach (var unter in knoten.Unterkategorien)
+                            }
+                        </div>
+                        @if (istAuf)
+                        {
+                            @foreach (var unter in knoten.Unterkategorien)
+                            {
+                                <div class="pr-kat-zeile pr-kat-unter">
+                                    <button type="button" class="pr-kat @(kategorieFilter == unter.Id.ToString() ? "aktiv" : "")" @onclick="() => FilterKategorie(unter.Id)">
+                                        <span class="pr-kat-name">@unter.Name</span>
+                                        <span class="enote-baum-anzahl">@AnzahlInKategorie(unter.Id)</span>
+                                    </button>
+                                    @if (darfVerwalten)
                                     {
-                                        <div class="enote-baum-zeile enote-baum-unter">
-                                            <span class="enote-baum-toggle"></span>
-                                            <span class="enote-baum-name">@unter.Name</span>
-                                            <span class="enote-baum-anzahl">@AnzahlInKategorie(unter.Id)</span>
-                                            <div class="enote-baum-aktionen">
-                                                <button type="button" class="enote-icon-btn" title="Renommer" @onclick="() => OeffneKategorieUmbenennen(unter)">✎</button>
-                                                <button type="button" class="enote-icon-btn enote-danger" title="Supprimer" @onclick="() => LoescheKategorieFragen(unter)">✕</button>
-                                            </div>
+                                        <div class="pr-kat-aktionen">
+                                            <button type="button" title="Renommer" aria-label="Renommer" @onclick="() => OeffneKategorieUmbenennen(unter)"><Icon Name="edit" Groesse="16" /></button>
+                                            <button type="button" class="gefahr" title="Supprimer" aria-label="Supprimer" @onclick="() => LoescheKategorieFragen(unter)"><Icon Name="trash" Groesse="16" /></button>
                                         </div>
                                     }
-                                    @if (unterkategorieParentId == knoten.Kategorie.Id)
-                                    {
-                                        <div class="enote-baum-zeile enote-baum-unter enote-baum-neu">
-                                            <input @bind="neueUnterkategorieName" placeholder="Nom de la sous-catégorie…" class="enote-input-inline" />
-                                            <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
-                                            <button type="button" class="enote-icon-btn" @onclick="SchliesseUnterkategorieDialog">✕</button>
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(unterkategorieFehler))
-                                        {
-                                            <div class="alert alert-error">@unterkategorieFehler</div>
-                                        }
-                                    }
-                                }
+                                </div>
+                            }
+                        }
+                        @if (unterkategorieParentId == knoten.Kategorie.Id)
+                        {
+                            <div class="pr-kat-neu pr-kat-unter">
+                                <input @bind="neueUnterkategorieName" placeholder="Nom de la sous-catégorie…" class="enote-input-inline" />
+                                <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+                                <button type="button" class="enote-icon-btn" aria-label="Annuler" @onclick="SchliesseUnterkategorieDialog"><Icon Name="x" Groesse="16" /></button>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(unterkategorieFehler))
+                            {
+                                <div class="alert alert-error">@unterkategorieFehler</div>
+                            }
                         }
                     </div>
                 }
-            </div>
+                @if (darfVerwalten)
+                {
+                    <div class="pr-kat-neu">
+                        <input @bind="neueKategorieName" placeholder="Nouvelle catégorie…" class="enote-input-inline" />
+                        <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-sm" />
+                    </div>
+                }
+            </aside>
 
-            @* RECHTS: Kasse-Vorschau gruppiert *@
-            <div class="enote-katalog-vorschau">
-                <div class="enote-filter-leiste">
-                    <input class="enote-filter-suche" placeholder="Rechercher une prestation…" @bind="leistungsSuche" @bind:event="oninput" />
+            @* RECHTS: Artikel *@
+            <section class="pr-liste">
+                <div class="kx-suche pr-suche">
+                    <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
+                    <input class="kx-suche-feld" placeholder="Rechercher une prestation ou un code-barres…" @bind="leistungsSuche" @bind:event="oninput" />
                 </div>
 
-                @if (leistungen.Count == 0)
+                @{ var gefiltert = GefilterteLeistungen().Where(l => !l.IstStandardArtikel).OrderBy(l => l.Name).ToList(); }
+                @if (leistungen.Count(l => !l.IstStandardArtikel) == 0)
                 {
-                    <p class="enote-empty">Aucune prestation pour le moment. Créez votre première prestation.</p>
+                    <div class="enote-empty pr-leer">
+                        <Icon Name="tag" Groesse="30" Strich="1.5" />
+                        <p>Aucune prestation pour le moment.</p>
+                        @if (darfVerwalten)
+                        {
+                            <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Créer ma première prestation</button>
+                        }
+                    </div>
+                }
+                else if (gefiltert.Count == 0)
+                {
+                    <p class="enote-empty">Aucun résultat.</p>
                 }
                 else
                 {
-                    var gefiltert = GefilterteLeistungen().ToList();
-
-                    @* Favoriten zuerst *@
-                    var favoriten = gefiltert.Where(l => favoritenIds.Contains(l.Id)).ToList();
-                    @if (favoriten.Count > 0)
-                    {
-                        <div class="enote-vorschau-gruppe">
-                            <div class="enote-vorschau-gruppe-titel">★ Favoris</div>
-                            <div class="enote-vorschau-items">
-                                @foreach (var l in favoriten)
-                                {
-                                    @PrestationKarte(l)
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    @* Je Kategorie (Haupt + Unter) *@
-                    @foreach (var knoten in kategorieBaum)
-                    {
-                        var hauptItems = gefiltert.Where(l => l.KategorieId == knoten.Kategorie.Id).ToList();
-                        var unterItems = knoten.Unterkategorien
-                            .Select(u => (Kategorie: u, Items: gefiltert.Where(l => l.KategorieId == u.Id).ToList()))
-                            .Where(x => x.Items.Count > 0)
-                            .ToList();
-                        @if (hauptItems.Count > 0 || unterItems.Count > 0)
+                    <div class="pr-raster">
+                        @foreach (var l in gefiltert)
                         {
-                            <div class="enote-vorschau-gruppe">
-                                <div class="enote-vorschau-gruppe-titel">@knoten.Kategorie.Name</div>
-                                @if (hauptItems.Count > 0)
-                                {
-                                    <div class="enote-vorschau-items">
-                                        @foreach (var l in hauptItems)
-                                        {
-                                            @PrestationKarte(l)
-                                        }
-                                    </div>
-                                }
-                                @foreach (var unter in unterItems)
-                                {
-                                    <div class="enote-vorschau-untertitel">└ @unter.Kategorie.Name</div>
-                                    <div class="enote-vorschau-items">
-                                        @foreach (var l in unter.Items)
-                                        {
-                                            @PrestationKarte(l)
-                                        }
-                                    </div>
-                                }
-                            </div>
+                            @PrestationKarte(l)
                         }
-                    }
-
-                    @* Ohne Kategorie *@
-                    var ohneKategorie = gefiltert.Where(l => l.KategorieId is null && !favoritenIds.Contains(l.Id)).ToList();
-                    @if (ohneKategorie.Count > 0)
-                    {
-                        <div class="enote-vorschau-gruppe">
-                            <div class="enote-vorschau-gruppe-titel">Sans catégorie</div>
-                            <div class="enote-vorschau-items">
-                                @foreach (var l in ohneKategorie)
-                                {
-                                    @PrestationKarte(l)
-                                }
-                            </div>
-                        </div>
-                    }
+                    </div>
                 }
-            </div>
+            </section>
         </div>
     }
 </div>
 
-@* Lokale Render-Funktion für eine Prestation-Karte mit Kategorie-Dropdown *@
 @code {
     private RenderFragment<Leistung> PrestationKarte => l => __builder =>
     {
-        <div class="enote-vorschau-item">
-            <div class="enote-vorschau-item-info">
-                <strong>@l.Name</strong>
-                <span class="enote-price">@l.Preis.ToString("N0") F</span>
-                @if (l.HatStueckzahl)
+        <article class="pr-karte @(l.IstAktiv ? "" : "inaktiv")">
+            <div class="pr-bild" style="--kat: @KategorieFarbe(l.KategorieId)">
+                @if (bildUrls.TryGetValue(l.Id, out var bild))
                 {
-                    <span class="@BestandKlasse(l)">Stock : @l.Stueckzahl</span>
+                    <img src="@bild" alt="" loading="lazy" />
+                }
+                else
+                {
+                    <span>@l.Name[..Math.Min(2, l.Name.Length)].ToUpperInvariant()</span>
+                }
+            </div>
+            <div class="pr-info">
+                <div class="pr-titel">
+                    <strong>@l.Name</strong>
+                    @if (favoritenIds.Contains(l.Id))
+                    {
+                        <Icon Name="star" Groesse="14" CssClass="pr-stern" Titel="Favori" />
+                    }
+                </div>
+                <div class="pr-meta">
+                    @if (darfVerwalten)
+                    {
+                        <button type="button" class="pr-kat-chip" @onclick="() => OeffneZuordnungModal(l)" title="Changer la catégorie">
+                            <span class="kx-kat-punkt" style="background: @KategorieFarbe(l.KategorieId)"></span>@KategorieNameVon(l)<Icon Name="chevron-down" Groesse="12" />
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="pr-kat-chip"><span class="kx-kat-punkt" style="background: @KategorieFarbe(l.KategorieId)"></span>@KategorieNameVon(l)</span>
+                    }
+                    @if (l.HatStueckzahl)
+                    {
+                        <span class="enote-tag @(BestandWarnung(l) ? "enote-tag-warn" : "enote-tag-off")">@(BestandWarnung(l) ? "Stock bas · " : "Stock · ")@l.Stueckzahl.ToString("0.##")</span>
+                    }
+                    @if (!l.IstAktiv)
+                    {
+                        <span class="enote-tag enote-tag-off">Inactive</span>
+                    }
+                </div>
+            </div>
+            <div class="pr-preis">
+                <strong>@l.Preis.ToString("N0") F</strong>
+                @if (l.Typ == LeistungsTyp.Produit && l.Kaufpreis is decimal kauf && l.Preis > 0)
+                {
+                    <small class="enote-marge">+@((l.Preis - kauf).ToString("N0")) F</small>
                 }
             </div>
             @if (darfVerwalten)
             {
-                <div class="enote-vorschau-item-aktionen">
-                    <button type="button" class="enote-kategorie-btn" @onclick="() => OeffneZuordnungModal(l)">
-                        <span class="enote-kategorie-btn-label">@(KategorieNameVon(l))</span>
-                        <span class="enote-kategorie-btn-chevron">▾</span>
-                    </button>
-                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => Bearbeiten(l)">Modifier</button>
+                <div class="pr-aktionen">
+                    <button class="enote-btn enote-btn-sm" @onclick="() => Bearbeiten(l)"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                    @if (!string.IsNullOrWhiteSpace(l.StrichCode))
+                    {
+                        <button class="enote-btn enote-btn-sm enote-btn-icon" title="Imprimer des étiquettes" aria-label="Imprimer des étiquettes" @onclick="() => OeffneEtikettDialog(l)"><Icon Name="printer" Groesse="16" /></button>
+                    }
+                    <button class="enote-btn enote-btn-sm enote-btn-icon enote-btn-abbrechen" title="Supprimer" aria-label="Supprimer" @onclick="() => LoeschenFragen(l)"><Icon Name="trash" Groesse="16" /></button>
                 </div>
             }
-        </div>;
+        </article>;
     };
 }
 
@@ -299,7 +292,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseLoeschen">Annuler</button>
-        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+        <AsyncActionButton Text="Supprimer" OnClick="LoeschenAsync" CssClass="enote-btn-danger" />
     </Footer>
 </ModalDialog>
 
@@ -366,7 +359,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => kategorieLoeschenOffen = false">Annuler</button>
-        <AsyncActionButton Text="Supprimer" OnClick="KategorieLoeschenAsync" CssClass="enote-btn-primary enote-danger-bg" />
+        <AsyncActionButton Text="Supprimer" OnClick="KategorieLoeschenAsync" CssClass="enote-btn-danger" />
     </Footer>
 </ModalDialog>
 

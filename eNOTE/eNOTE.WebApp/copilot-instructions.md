@@ -17,11 +17,11 @@
 - **Schulden/Abrechnung:** Plattform-Abopreis global als Standard oder individuell pro Salon; ProduktOwner-Provision (Prozent/Festbetrag) ist plattformintern und darf die Laden-Finanzen nicht verfälschen. Finanzberichte strikt pro Laden.
 
 ## Technische Regeln
-- Medien: Development ausschließlich lokal außerhalb von wwwroot; Production ausschließlich privater Azure Blob Storage per Managed Identity, ohne lokalen oder Shared-Key-Fallback. Deployment nur vorbereiten, nicht veröffentlichen; keine Secrets lesen, keine DB-/Cloudänderungen oder Browserprüfung ohne gesonderten Auftrag. Vorhandene Änderungen erhalten.
+- Medien: Development ausschließlich lokal außerhalb von wwwroot; Production ausschließlich privater Azure Blob Storage per Managed Identity, ohne lokalen oder Shared-Key-Fallback. Deployment nur vorbereiten, nicht veröffentlichen; keine Secrets lesen, keine DB-/Cloudänderungen ohne gesonderten Auftrag. Lokaler App-Start gegen die Entwicklungs-DB und visuelle Browserprüfung sind für Design-/UI-Arbeit erlaubt. Vorhandene Änderungen erhalten.
 - Pro DB-Operation `IDbContextFactory` verwenden; Rechte serverseitig im Service prüfen (nicht nur in der UI).
 - Code/Core-Modelle **deutsch**, alle sichtbaren Nutzertexte **französisch**. Kommunikation/Entwicklerdoku deutsch.
 - IDs: `Id` für Basis, zusammengesetzt mit `…ID`/`…Id` (z. B. `SalonId`, `VerkaufId`).
 - Bei Modelländerungen EF-Migration erstellen (`dotnet ef migrations add … --project eNOTE/eNOTE.WebApp`).
 - Scoped UI-States (`KassenAnzeigeState`, `AktiverSalonState`, `BesitzerPinState`): Komponenten abonnieren `OnChange` und implementieren `IDisposable`/`IAsyncDisposable` zum sauberen Abmelden.
-- Design: Soft-UI/Neumorphismus in `wwwroot/app.css`; horizontale Scrollbars vermeiden; Touch-Targets ≥ 44px; native Selects/DatePicker durch `EnoteSelect`/`EnoteDatePicker`; Modals über `ModalDialog`; `AsyncActionButton` für async Aktionen.
+- Design: System „Soft Modern“ in `wwwroot/app.css` (Tokens in `:root`, keine hart codierten Farben; Icons nur über `<Icon Name="…" />`, keine Emojis); Details in `Projektuebersicht.md` §6. Horizontale Scrollbars vermeiden (Grids mit `minmax(0, 1fr)`); Touch-Targets ≥ 44px; native Selects/DatePicker durch `EnoteSelect`/`EnoteDatePicker`; Modals über `ModalDialog`; `AsyncActionButton` für async Aktionen.
 - Nach jeder Änderung relevante Tests und den Lösungsbuild ausführen.

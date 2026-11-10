@@ -1,10 +1,10 @@
 ﻿@if (Open)
 {
-    <div class="enote-modal-backdrop" @onclick="OnBackdropClickAsync">
-        <div class="enote-modal @MaxWidthClass" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+    <div class="enote-modal-backdrop" @onclick="OnBackdropClickAsync" @onkeydown="TasteAsync">
+        <div class="enote-modal @MaxWidthClass" role="dialog" aria-modal="true" aria-label="@Title" @onclick:stopPropagation="true">
             <div class="enote-modal-header">
                 <h2>@Title</h2>
-                <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="CloseAsync">&times;</button>
+                <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="CloseAsync"><Icon Name="x" Groesse="20" /></button>
             </div>
             @if (!string.IsNullOrWhiteSpace(ErrorMessage))
             {
@@ -19,4 +19,9 @@
             }
         </div>
     </div>
+}
+
+@code {
+    // Escape schließt den Dialog (PC-Tastatur); Ereignisse aus Eingabefeldern blubbern hierher.
+    private Task TasteAsync(KeyboardEventArgs e) => e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
 }

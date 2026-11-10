@@ -9,9 +9,25 @@ public class KassenZugangService(IDbContextFactory<ApplicationDbContext> factory
 {
     public record Zugang(bool Gesperrt, string? Hinweis, DateTime? SperreAb);
 
-    public async Task<Zugang> PruefeAsync(Guid salonId, CancellationToken ct = default)
+    /// <param name="synchronisieren">
+    /// true: fällige Perioden vorher anlegen (Kassenstart, Hinweise). false: nur vorhandene Perioden
+    /// prüfen – schnell genug für jeden einzelnen Verkauf.
+    /// </param>
+    public async Task<Zugang> PruefeAsync(Guid salonId, CancellationToken ct = default, bool synchronisieren = true)
     {
-        await new VertragsService(factory, zeit).SynchronisiereAsync(salonId, ct);
+        if (synchronisieren)
+        {
+            try
+            {
+                await new VertragsService(factory, zeit).SynchronisiereAsync(salonId, ct);
+            }
+            catch (InvalidOperationException)
+            {
+                // Kein Tarif konfiguriert: es kann nichts in Rechnung gestellt werden – das darf
+                // die Kasse nicht blockieren (Admin-Aufgabe). Vorhandene Perioden zählen weiter.
+            }
+        }
+
         await using var db = await factory.CreateDbContextAsync(ct);
         var salon = await db.Salons.AsNoTracking().SingleOrDefaultAsync(s => s.Id == salonId, ct);
         if (salon is null || !salon.IstAktiv || !salon.IstFreigegeben)

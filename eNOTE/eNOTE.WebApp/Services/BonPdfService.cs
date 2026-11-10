@@ -99,11 +99,27 @@ public static class BonPdfService
                         row.ConstantItem(70).AlignRight().Text($"{verkauf.GesamtSumme:N0} F").Bold().FontSize(11);
                     });
 
-                    col.Item().PaddingTop(4).Text(verkauf.ZahlungsArt == ZahlungsArt.Bar ? "Paiement : Espèces" : "Paiement : Carte").FontSize(8);
-
-                    if (verkauf.ZahlungsArt == ZahlungsArt.Bar && verkauf.Gegeben is not null)
+                    var anteile = ENote.Core.Services.Kasse.KassenRechner.Anteile(verkauf);
+                    if (anteile.Count == 1)
                     {
-                        col.Item().Text($"Reçu : {verkauf.Gegeben:N0} F   Monnaie : {verkauf.Rueckgeld:N0} F").FontSize(8);
+                        col.Item().PaddingTop(4).Text($"Paiement : {ZahlungsTexte.Name(anteile[0])}").FontSize(8);
+                    }
+                    else
+                    {
+                        col.Item().PaddingTop(4).Text("Paiement :").FontSize(8);
+                        foreach (var anteil in anteile)
+                        {
+                            col.Item().Row(row =>
+                            {
+                                row.RelativeItem().Text($"  {ZahlungsTexte.Name(anteil)}").FontSize(8);
+                                row.ConstantItem(70).AlignRight().Text($"{anteil.Betrag:N0} F").FontSize(8);
+                            });
+                        }
+                    }
+
+                    if (verkauf.Gegeben is not null)
+                    {
+                        col.Item().Text($"Espèces reçues : {verkauf.Gegeben:N0} F   Monnaie : {verkauf.Rueckgeld:N0} F").FontSize(8);
                     }
 
                     if (!string.IsNullOrWhiteSpace(qrLinkZiel))

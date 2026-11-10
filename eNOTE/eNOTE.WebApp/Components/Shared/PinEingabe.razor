@@ -1,0 +1,66 @@
+@* PIN-Eingabe für Tablet und PC: Punkte-Anzeige + großer Ziffernblock; Tastatur funktioniert parallel. *@
+<div class="enote-pin">
+    <label class="enote-pin-anzeige @(Fehlerhaft ? "fehler" : "")">
+        <input class="enote-pin-feld"
+               type="password"
+               inputmode="numeric"
+               autocomplete="off"
+               maxlength="@MaxLaenge"
+               aria-label="@AriaLabel"
+               value="@Wert"
+               @oninput="EingabeGeaendert"
+               @onkeydown="TasteAsync" />
+        @for (var i = 0; i < Math.Max(4, Math.Min(MaxLaenge, Wert.Length + (Wert.Length < MaxLaenge ? 1 : 0))); i++)
+        {
+            <span class="enote-pin-punkt @(i < Wert.Length ? "voll" : "")"></span>
+        }
+    </label>
+
+    <div class="enote-pin-block" role="group" aria-label="Clavier numérique">
+        @foreach (var z in new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" })
+        {
+            <button type="button" class="enote-pin-taste" @onclick="() => Tippe(z)">@z</button>
+        }
+        <button type="button" class="enote-pin-taste leise" @onclick="Leeren" aria-label="Effacer tout">C</button>
+        <button type="button" class="enote-pin-taste" @onclick='() => Tippe("0")'>0</button>
+        <button type="button" class="enote-pin-taste leise" @onclick="Zurueck" aria-label="Effacer"><Icon Name="backspace" Groesse="22" /></button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Wert { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WertChanged { get; set; }
+
+    /// <summary>Wird bei Enter (Tastatur) ausgelöst; am Tablet bestätigt der Dialog-Button.</summary>
+    [Parameter] public EventCallback OnBestaetigt { get; set; }
+
+    [Parameter] public int MaxLaenge { get; set; } = 6;
+    [Parameter] public bool Fehlerhaft { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Code PIN";
+
+    private async Task SetzeAsync(string neu)
+    {
+        neu = new string(neu.Where(char.IsDigit).Take(MaxLaenge).ToArray());
+        if (neu == Wert) return;
+        Wert = neu;
+        await WertChanged.InvokeAsync(neu);
+    }
+
+    private Task EingabeGeaendert(ChangeEventArgs e) => SetzeAsync(e.Value?.ToString() ?? string.Empty);
+
+    private async Task Tippe(string ziffer)
+    {
+        if (Wert.Length >= MaxLaenge) return;
+        await SetzeAsync(Wert + ziffer);
+    }
+
+    private Task Zurueck() => SetzeAsync(Wert.Length > 0 ? Wert[..^1] : Wert);
+
+    private Task Leeren() => SetzeAsync(string.Empty);
+
+    private async Task TasteAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && Wert.Length > 0)
+            await OnBestaetigt.InvokeAsync();
+    }
+}

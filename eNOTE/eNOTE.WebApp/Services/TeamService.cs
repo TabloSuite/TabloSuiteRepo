@@ -38,18 +38,20 @@ public class TeamService(
             .OrderBy(us => us.AppUser.FullName)
             .ToListAsync(cancellationToken);
 
-        var ergebnis = new List<TeamMitglied>();
-        foreach (var us in zuordnungen)
-        {
-            var istBesitzer = await userManager.IsInRoleAsync(us.AppUser, AppRollen.Besitzer);
-            ergebnis.Add(new TeamMitglied(
-                us.Id, us.AppUserId, us.AppUser.FullName, us.AppUser.Email ?? string.Empty,
-                us.KassenPinHash is not null,
-                us.KannFinanzenSehen, us.KannLeistungenVerwalten, us.KannRabatteVerwalten,
-                istBesitzer));
-        }
+        // Rollen über denselben Factory-Context lesen (nicht über den circuit-weiten UserManager,
+        // dessen geteilter DbContext bei parallelen Abfragen Concurrency-Fehler auslöst).
+        var userIds = zuordnungen.Select(us => us.AppUserId).ToList();
+        var besitzerIds = await db.UserRoles
+            .Where(ur => userIds.Contains(ur.UserId)
+                && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.Besitzer))
+            .Select(ur => ur.UserId)
+            .ToHashSetAsync(cancellationToken);
 
-        return ergebnis;
+        return zuordnungen.Select(us => new TeamMitglied(
+            us.Id, us.AppUserId, us.AppUser.FullName, us.AppUser.Email ?? string.Empty,
+            us.KassenPinHash is not null,
+            us.KannFinanzenSehen, us.KannLeistungenVerwalten, us.KannRabatteVerwalten,
+            besitzerIds.Contains(us.AppUserId))).ToList();
     }
 
     /// <summary>

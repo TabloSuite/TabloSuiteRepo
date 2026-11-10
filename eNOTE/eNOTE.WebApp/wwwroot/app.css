@@ -1,26 +1,62 @@
 /* ============================================================
-   eNOTE – Soft-UI / Neumorphismus Design-System
-   Weiche Doppelschatten, Pill-Formen, Navy + Teal
+   eNOTE – Design-System „Soft Modern“
+   Helle, ruhige Flächen · weiße Karten mit feinen Rändern ·
+   Navy + Teal als Marke · große Touch-Ziele für Tablet/PC/Handy.
+   Die alten --enote-neu-*-Namen bleiben als Tokens erhalten
+   (Elevation statt Neumorphismus), damit alle Komponenten folgen.
    ============================================================ */
 :root {
+    /* Marke */
     --enote-primary: #1e3a8a;
     --enote-primary-dark: #172554;
-    --enote-primary-light: #2f4ec9;
+    --enote-primary-light: #2f54d0;
+    --enote-primary-soft: #eef2ff;
     --enote-accent: #0d9488;
-    --enote-bg: #e8eef5;                    /* weiche Grundfläche */
-    --enote-surface: #e8eef5;               /* Neumorphismus: Surface = Hintergrund */
-    --enote-text: #1b2640;
-    --enote-text-muted: #64748b;
-    --enote-border: #d6deea;
-    --enote-radius: 1.1rem;
-    --enote-radius-lg: 1.75rem;
+    --enote-accent-soft: #e6f6f4;
+    --enote-gradient: linear-gradient(135deg, #1b3384 0%, #2547b8 62%, #0f8f86 135%);
+
+    /* Flächen & Text */
+    --enote-bg: #f3f5f9;
+    --enote-surface: #ffffff;
+    --enote-surface-2: #f7f9fc;
+    --enote-surface-3: #eef2f7;
+    --enote-text: #101a33;
+    --enote-text-muted: #5d6a82;
+    --enote-text-subtle: #8a95a8;
+    --enote-border: #e3e8f0;
+    --enote-border-strong: #cfd7e3;
+
+    /* Status */
+    --enote-success: #047857;
+    --enote-success-soft: #e7f6ef;
+    --enote-danger: #c42b2b;
+    --enote-danger-soft: #fdeeee;
+    --enote-warning: #b45309;
+    --enote-warning-soft: #fdf3e3;
+
+    /* Zahlarten */
+    --enote-pay-bar: #0d9488;
+    --enote-pay-karte: #2547b8;
+    --enote-pay-momo: #d97706;
+
+    /* Form */
+    --enote-radius-sm: .6rem;
+    --enote-radius: .85rem;
+    --enote-radius-lg: 1.15rem;
     --enote-radius-pill: 999px;
-    /* Neumorphismus-Doppelschatten (hell + dunkel) – Highlight dezent, kein weißer Fleck */
-    --enote-neu-out: 9px 9px 18px #c9d3e2, -6px -6px 14px #f1f5fa;
-    --enote-neu-out-sm: 4px 4px 10px #cdd6e4, -3px -3px 8px #f1f5fa;
-    --enote-neu-in: inset 4px 4px 10px #cdd6e4, inset -4px -4px 10px #ffffff;
-    --enote-shadow-lg: 0 24px 60px rgba(23, 37, 84, .22);
-    --enote-gradient: linear-gradient(135deg, #172554 0%, #1e3a8a 55%, #0d9488 130%);
+
+    /* Elevation (Namen historisch) */
+    --enote-neu-out: 0 1px 2px rgba(16, 26, 51, .04), 0 6px 18px rgba(16, 26, 51, .07);
+    --enote-neu-out-sm: 0 1px 2px rgba(16, 26, 51, .05), 0 2px 6px rgba(16, 26, 51, .05);
+    --enote-neu-in: inset 0 0 0 1px var(--enote-border);
+    --enote-shadow-lg: 0 24px 60px rgba(16, 26, 51, .20);
+    --enote-ring: 0 0 0 3px rgba(47, 84, 208, .22);
+
+    /* Layout */
+    --enote-topbar-h: 3.75rem;
+    --enote-nav-w: 15rem;
+    --enote-nav-rail-w: 5.25rem;
+    --enote-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -30,28 +66,38 @@ html { scroll-behavior: smooth; }
 html, body {
     margin: 0;
     padding: 0;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 50%, #e8eef5 100%);
+    font-family: var(--enote-font);
+    background: var(--enote-bg);
     color: var(--enote-text);
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
+
+/* Beträge immer mit gleich breiten Ziffern (Spalten bleiben ruhig) */
+.enote-price, .enote-tile-price, .enote-ticket-pos-sum, .enote-total, .enote-table td,
+.enote-zahl-total strong, .enote-rueckgeld strong, .enote-live-wert, .enote-kpi-wert { font-variant-numeric: tabular-nums; }
+
+button, input, select, textarea { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--enote-primary-light); outline-offset: 2px; }
+
+.enote-icon { flex-shrink: 0; display: inline-block; vertical-align: middle; }
 
 /* Eingefärbte, schlanke Scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--enote-bg); }
-::-webkit-scrollbar-thumb { background: #a5b4cf; border-radius: 999px; border: 2px solid var(--enote-bg); }
-::-webkit-scrollbar-thumb:hover { background: var(--enote-primary); }
-* { scrollbar-width: thin; scrollbar-color: #a5b4cf var(--enote-bg); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c3cbd8; border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #98a3b5; background-clip: content-box; }
+* { scrollbar-width: thin; scrollbar-color: #c3cbd8 transparent; }
 
 /* Sanfte Seiten-Animation */
-.enote-main > * { animation: enote-fadein .35s ease; }
-@@keyframes enote-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.enote-main > * { animation: enote-fadein .28s ease; }
+@keyframes enote-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
 /* Überschriften nie mit Fokus-Rahmen markieren (Programm-/Tastaturfokus bei Navigation) */
 h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
-/* Buttons nie überlang: nur so breit wie nötig, außer explizit .enote-btn-lg */
-.enote-btn { width: fit-content; max-width: 100%; }
 
 /* --- Passwort-Auge --- */
 .enote-pw-wrap { position: relative; display: flex; }
@@ -80,7 +126,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .auth-page {
     min-height: 100vh;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     background: var(--enote-surface);
 }
 
@@ -152,10 +198,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled { opacity: .7; cursor: wait; transform: none; }
 
-.alert { padding: .8rem 1rem; border-radius: .8rem; font-size: .9rem; font-weight: 500; }
-.alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-.alert-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-.alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.alert { padding: .8rem 1rem; border-radius: var(--enote-radius); font-size: .9rem; font-weight: 600; }
+.alert-error { background: var(--enote-danger-soft); color: var(--enote-danger); border: 1px solid #f6caca; }
+.alert-success { background: var(--enote-success-soft); color: var(--enote-success); border: 1px solid #b7e4cd; }
+.alert-info { background: var(--enote-primary-soft); color: var(--enote-primary); border: 1px solid #cdd8fb; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 
 /* Hinweis-Dialog: offene Kasse wiederhergestellt */
 .enote-wiederhergestellt { display: grid; gap: .7rem; }
@@ -170,152 +216,277 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* Handy: Hero ausblenden, Formular zentrieren */
 @media (max-width: 860px) {
-    .auth-page { grid-template-columns: 1fr; }
+    .auth-page { grid-template-columns: minmax(0, 1fr); }
     .auth-hero { display: none; }
     .auth-panel { padding: 1.5rem 1rem; }
     .auth-card { box-shadow: none; border: none; padding: 1.5rem .5rem; }
 }
 
 
-/* --- Layout --- */
-.enote-layout {
+/* ============================================================
+   Layout: Shell (Sidebar + Inhalt), Topbar, Navigation
+   ============================================================ */
+.enote-shell {
     height: 100vh;
     height: 100dvh;
-    overflow: hidden; /* Seite scrollt nicht; einzelne Bereiche scrollen intern */
     display: flex;
-    flex-direction: column;
+    overflow: hidden; /* Seite scrollt nicht; .enote-main scrollt intern */
+}
+.enote-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.enote-brand-icon {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 2.35rem; height: 2.35rem; border-radius: .75rem;
+    background: var(--enote-gradient); color: #fff; font-weight: 800; font-size: .88rem; letter-spacing: .02em;
+    box-shadow: 0 4px 12px rgba(37, 71, 184, .28);
+}
+.enote-brand-name { font-weight: 800; font-size: 1.1rem; color: var(--enote-text); letter-spacing: .04em; }
+
+/* --- Sidebar --- */
+.enote-sidebar {
+    width: var(--enote-nav-w); flex-shrink: 0;
+    display: flex; flex-direction: column;
+    background: var(--enote-surface);
+    border-right: 1px solid var(--enote-border);
+    padding: .9rem .75rem;
+    overflow-y: auto; overflow-x: hidden;
+}
+.enote-sidebar-brand { display: flex; align-items: center; gap: .7rem; padding: .25rem .45rem 1rem; text-decoration: none; min-width: 0; }
+.enote-sidebar-brand-text { display: grid; min-width: 0; line-height: 1.15; }
+.enote-sidebar-laden { font-size: .76rem; color: var(--enote-text-muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.enote-sidebar-nav { display: flex; flex-direction: column; gap: .15rem; flex: 1; }
+
+.enote-nav-link {
+    display: flex; align-items: center; gap: .75rem;
+    min-height: 2.75rem; padding: .55rem .8rem;
+    border-radius: var(--enote-radius);
+    color: var(--enote-text-muted); text-decoration: none; font-weight: 600; font-size: .93rem;
+    transition: background .15s ease, color .15s ease;
+}
+.enote-nav-link:hover { background: var(--enote-surface-2); color: var(--enote-text); }
+.enote-nav-link.active { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.enote-nav-link.active .enote-icon { color: var(--enote-primary-light); }
+.enote-nav-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.enote-nav-group-label {
+    margin: 1rem .8rem .3rem; font-size: .68rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--enote-text-subtle);
 }
 
+.enote-sidebar-foot { padding-top: .75rem; margin-top: .75rem; border-top: 1px solid var(--enote-border); }
+
+/* Besitzer-Zone (Schloss) als Karte */
+.enote-lock-card {
+    width: 100%; display: flex; align-items: center; gap: .7rem; text-align: left;
+    padding: .65rem .7rem; border-radius: var(--enote-radius);
+    border: 1px solid var(--enote-border); background: var(--enote-surface-2);
+    color: var(--enote-text); cursor: pointer; font: inherit;
+    transition: border-color .15s, background .15s;
+}
+.enote-lock-card:hover { border-color: var(--enote-border-strong); background: var(--enote-surface-3); }
+.enote-lock-card-ico {
+    width: 2.2rem; height: 2.2rem; border-radius: .65rem; display: grid; place-items: center; flex-shrink: 0;
+    background: var(--enote-warning-soft); color: var(--enote-warning);
+}
+.enote-lock-card.offen .enote-lock-card-ico { background: var(--enote-success-soft); color: var(--enote-success); }
+.enote-lock-card-text { display: grid; min-width: 0; line-height: 1.25; }
+.enote-lock-card-text strong { font-size: .86rem; }
+.enote-lock-card-text small { font-size: .74rem; color: var(--enote-text-muted); }
+
+/* --- Topbar --- */
 .enote-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: .8rem 1.4rem;
-    background: var(--enote-bg);
-    box-shadow: 0 6px 18px #cdd6e4;
+    position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+    height: var(--enote-topbar-h);
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 1.5rem;
+    background: rgba(255, 255, 255, .85); backdrop-filter: saturate(160%) blur(10px);
+    border-bottom: 1px solid var(--enote-border);
 }
-.enote-brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
-.enote-brand-icon {
-    display: grid; place-items: center;
-    width: 2.4rem; height: 2.4rem;
-    border-radius: .9rem;
-    background: var(--enote-gradient); color: #fff; font-weight: 800; font-size: .9rem;
-    box-shadow: var(--enote-neu-out-sm);
-}
-.enote-brand-name { font-weight: 800; font-size: 1.15rem; color: var(--enote-text); letter-spacing: .02em; }
+.enote-topbar-brand { display: none; align-items: center; gap: .6rem; text-decoration: none; }
+.enote-topbar-spacer { flex: 1; }
 .enote-topbar-actions { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 
 /* Laden-Umschalter in der Topbar */
-.enote-salon-switcher { display: flex; align-items: center; gap: .4rem; min-width: 0; }
-.enote-salon-switcher-ico { font-size: 1.05rem; }
-.enote-salon-switcher .enote-select2 { min-width: 10rem; max-width: 16rem; }
-.enote-user { font-size: .9rem; color: var(--enote-text-muted); }
-.enote-topbar-actions form { margin: 0; }
+.enote-salon-switcher { display: flex; align-items: center; gap: .45rem; min-width: 0; color: var(--enote-text-muted); }
+.enote-salon-switcher .enote-select2 { min-width: 11rem; max-width: 16rem; }
+.enote-salon-switcher .enote-select2-trigger { padding: .5rem .9rem; min-height: 2.5rem; }
 
-/* --- User-Menü (Avatar + Dropdown: Profil + Logout) --- */
+/* --- User-Menü --- */
 .enote-usermenu { position: relative; }
 .enote-avatar-btn {
-    border: none; background: transparent; cursor: pointer; padding: 0;
-    border-radius: 50%; box-shadow: var(--enote-neu-out-sm);
-    transition: transform .15s, box-shadow .2s;
+    display: flex; align-items: center; gap: .3rem;
+    border: 1px solid transparent; background: transparent; cursor: pointer; padding: .2rem .35rem .2rem .2rem;
+    border-radius: var(--enote-radius-pill); color: var(--enote-text-muted);
+    transition: background .15s, border-color .15s;
 }
-.enote-avatar-btn:hover { transform: translateY(-1px); box-shadow: var(--enote-neu-out); }
+.enote-avatar-btn:hover, .enote-avatar-btn[aria-expanded="true"] { background: var(--enote-surface-2); border-color: var(--enote-border); }
 .enote-avatar {
-    display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%;
-    background: var(--enote-gradient); color: #fff; font-weight: 800; font-size: .95rem;
+    display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%;
+    background: var(--enote-gradient); color: #fff; font-weight: 800; font-size: .85rem;
 }
+.enote-avatar-sm { width: 2rem; height: 2rem; font-size: .72rem; }
 .enote-usermenu-popup {
-    position: absolute; right: 0; top: calc(100% + .6rem); z-index: 1500;
-    min-width: 13rem; background: var(--enote-surface); border-radius: var(--enote-radius);
-    box-shadow: var(--enote-shadow-lg); padding: .5rem; display: grid; gap: .15rem;
-    animation: enote-fadein .18s ease;
+    position: absolute; right: 0; top: calc(100% + .5rem); z-index: 1500;
+    min-width: 15rem; background: var(--enote-surface); border-radius: var(--enote-radius-lg);
+    border: 1px solid var(--enote-border);
+    box-shadow: var(--enote-shadow-lg); padding: .4rem; display: grid; gap: .1rem;
+    animation: enote-fadein .16s ease;
 }
 .enote-usermenu-name {
-    padding: .6rem .8rem; font-weight: 700; font-size: .88rem; color: var(--enote-text);
+    display: flex; align-items: center; gap: .6rem;
+    padding: .55rem .65rem .7rem; font-weight: 700; font-size: .88rem; color: var(--enote-text);
     border-bottom: 1px solid var(--enote-border); margin-bottom: .25rem;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .enote-usermenu-link {
-    display: flex; align-items: center; gap: .5rem; width: 100%;
-    padding: .6rem .8rem; border: none; background: transparent; border-radius: .6rem;
+    display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 2.6rem;
+    padding: .55rem .65rem; border: none; background: transparent; border-radius: var(--enote-radius-sm);
     color: var(--enote-text); text-decoration: none; font-size: .9rem; font-weight: 600;
     cursor: pointer; text-align: left; transition: background .15s;
 }
-.enote-usermenu-link:hover { background: rgba(30, 58, 138, .08); }
-.enote-usermenu-danger { color: #b91c1c; }
+.enote-usermenu-link .enote-icon { color: var(--enote-text-muted); }
+.enote-usermenu-link:hover { background: var(--enote-surface-2); }
+.enote-usermenu-danger, .enote-usermenu-danger .enote-icon { color: var(--enote-danger); }
 .enote-usermenu form { margin: 0; }
 
+/* --- Hauptbereich --- */
+.enote-main {
+    flex: 1; min-width: 0; min-height: 0;
+    padding: 1.75rem 2rem 2.5rem;
+    overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+}
+.enote-main > * { width: 100%; max-width: 88rem; margin-inline: auto; min-width: 0; }
+
+/* --- Öffentlicher Bereich (Landing) --- */
+.enote-public { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.enote-public-topbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    height: 4rem; padding: 0 clamp(1rem, 4vw, 2.5rem);
+    background: rgba(255, 255, 255, .85); backdrop-filter: saturate(160%) blur(10px);
+    border-bottom: 1px solid var(--enote-border);
+}
+.enote-public-topbar .enote-topbar-brand { display: flex; }
+.enote-public-main { flex: 1; padding: 0 clamp(1rem, 4vw, 2.5rem); }
+
+/* --- Buttons --- */
 .enote-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-    padding: .6rem 1.3rem; border-radius: var(--enote-radius-pill); border: none;
-    font-size: .92rem; font-weight: 700; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    min-height: 2.75rem; padding: .6rem 1.15rem;
+    border-radius: var(--enote-radius); border: 1px solid var(--enote-border);
+    font-size: .92rem; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap;
     background: var(--enote-surface); color: var(--enote-text);
-    box-shadow: var(--enote-neu-out-sm);
-    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 1px 2px rgba(16, 26, 51, .05);
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .1s ease;
     width: fit-content; max-width: 100%;
 }
-.enote-btn:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-btn:active { transform: translateY(0); box-shadow: var(--enote-neu-in); }
-.enote-btn-primary { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 20px rgba(23, 37, 84, .35); }
-.enote-btn-primary:hover { box-shadow: 0 12px 26px rgba(23, 37, 84, .45); }
+.enote-btn:hover { background: var(--enote-surface-2); border-color: var(--enote-border-strong); }
+.enote-btn:active { transform: scale(.98); }
+.enote-btn-primary { background: var(--enote-primary); border-color: var(--enote-primary); color: #fff; box-shadow: 0 6px 16px rgba(30, 58, 138, .22); }
+.enote-btn-primary:hover { background: var(--enote-primary-dark); border-color: var(--enote-primary-dark); }
 .enote-btn-ghost { background: var(--enote-surface); color: var(--enote-text); }
-.enote-btn-abbrechen { background: var(--enote-surface); color: #b91c1c; box-shadow: var(--enote-neu-out-sm); }
-.enote-btn-abbrechen:hover { color: #991b1b; box-shadow: var(--enote-neu-out); }
-.enote-btn:disabled { opacity: .65; cursor: wait; transform: none; }
-.enote-btn-sm { padding: .4rem .85rem; font-size: .8rem; }
+.enote-btn-abbrechen { background: var(--enote-surface); color: var(--enote-danger); }
+.enote-btn-abbrechen:hover { background: var(--enote-danger-soft); border-color: #f3c7c7; }
+.enote-btn-danger { background: var(--enote-danger); border-color: var(--enote-danger); color: #fff; }
+.enote-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.enote-btn-sm { min-height: 2.25rem; padding: .35rem .8rem; font-size: .82rem; border-radius: var(--enote-radius-sm); }
+.enote-btn-lg { min-height: 3.25rem; padding: .85rem 1.5rem; font-size: 1.02rem; }
+.enote-btn-icon { width: 2.75rem; padding: 0; }
+.enote-btn-block { width: 100%; }
 
-.enote-body { flex: 1; display: flex; min-height: 0; }
-
-.enote-nav-desktop {
-    display: flex; flex-direction: column; gap: .35rem;
-    width: 14rem; padding: 1.1rem .85rem;
-    background: var(--enote-bg);
-    /* sichtbare Trennung zum Hauptinhalt rechts */
-    border-right: 1px solid var(--enote-border);
-    box-shadow: 6px 0 18px rgba(205, 214, 228, .45);
+/* --- Handy-Navigation (unten) + „Plus“-Blatt --- */
+.enote-nav-mobile { display: none; }
+.enote-sheet-backdrop { position: fixed; inset: 0; z-index: 1290; background: rgba(15, 23, 42, .35); animation: enote-fadein .15s ease; }
+.enote-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1300;
+    max-height: 80vh; overflow-y: auto;
+    background: var(--enote-surface); border-radius: 1.4rem 1.4rem 0 0;
+    padding: .6rem 1rem calc(6rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -20px 50px rgba(16, 26, 51, .2);
+    animation: enote-sheet-in .22s cubic-bezier(.2, .9, .3, 1);
 }
-.enote-nav-link {
-    padding: .7rem 1rem; border-radius: var(--enote-radius-pill);
-    color: var(--enote-text); text-decoration: none; font-weight: 600; font-size: .95rem;
-    transition: box-shadow .18s ease, color .18s ease, transform .15s ease;
+@keyframes enote-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+.enote-sheet-griff { width: 2.75rem; height: .3rem; border-radius: 999px; background: var(--enote-border-strong); margin: 0 auto .9rem; }
+.enote-sheet .enote-lock-card { margin-bottom: .4rem; }
+.enote-sheet .enote-nav-group-label { margin-inline: .2rem; }
+.enote-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.enote-sheet-link {
+    display: grid; justify-items: center; gap: .35rem; padding: .75rem .3rem; min-height: 4.75rem;
+    border-radius: var(--enote-radius); border: 1px solid var(--enote-border);
+    color: var(--enote-text); text-decoration: none; font-size: .78rem; font-weight: 600; text-align: center;
 }
-.enote-nav-link:hover { box-shadow: var(--enote-neu-in); }
-.enote-nav-link.active { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
+.enote-sheet-link-ico { color: var(--enote-primary-light); }
+.enote-sheet-link.active { background: var(--enote-primary-soft); border-color: #c9d4fb; color: var(--enote-primary); }
 
-/* Untergruppe (z. B. Administration → Facturation/Journaux) */
-.enote-nav-subgroup {
-    display: flex; flex-direction: column; gap: .2rem;
-    margin-left: 1.1rem; padding-left: .9rem;
-    border-left: 2px solid var(--enote-border);
+/* --- Kassen-Vollbild: Navigation und Topbar ausblenden --- */
+.enote-kassen-modus .enote-main { padding: 1rem 1.25rem; overflow: hidden; }
+.enote-kassen-modus .enote-main > * { max-width: none; }
+
+/* --- Mini-Kasse (schwebend, bei minimierter Kasse) --- */
+.enote-mini-caisse {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 1500;
+    display: flex; align-items: center; gap: .7rem;
+    background: var(--enote-primary-dark); color: #fff; border: none; border-radius: var(--enote-radius-lg);
+    padding: .7rem 1.1rem .7rem .9rem; cursor: pointer; text-align: left;
+    box-shadow: 0 14px 30px rgba(23, 37, 84, .35);
 }
-.enote-nav-sub { font-size: .88rem; padding: .5rem .9rem; }
+.enote-mini-caisse-text { display: grid; line-height: 1.2; }
+.enote-mini-caisse-text small { opacity: .8; font-size: .74rem; font-weight: 600; }
+.enote-mini-caisse-text strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 
-/* Gruppen-Label in der Sidebar (z. B. Vente / Gestion / Compte) */
-.enote-nav-group-label {
-    margin: .9rem 0 .15rem .3rem; font-size: .7rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: .06em; color: var(--enote-text-muted);
-    /* sichtbare Trennung zur vorherigen Gruppe */
-    padding-top: .8rem; border-top: 1px solid var(--enote-border);
+/* ============================================================
+   Responsive Navigation
+   ============================================================ */
+/* Tablet & kleine PCs: schmale Icon-Leiste mit Kurzbeschriftung */
+@media (min-width: 641px) and (max-width: 1199px) {
+    .enote-sidebar { width: var(--enote-nav-rail-w); padding: .8rem .5rem; align-items: stretch; }
+    .enote-sidebar-brand { justify-content: center; padding: .2rem 0 .9rem; }
+    .enote-sidebar-brand-text, .enote-nav-group-label, .enote-lock-card-text { display: none; }
+    .enote-sidebar-nav { gap: .25rem; }
+    /* Gruppen-Überschriften werden in der Leiste zu dezenten Trennlinien */
+    .enote-sidebar-nav .enote-nav-group-label { display: block; height: 1px; margin: .45rem .6rem; padding: 0; background: var(--enote-border); font-size: 0; }
+    .enote-nav-link { flex-direction: column; gap: .2rem; justify-content: center; min-height: 3.6rem; padding: .45rem .2rem; font-size: .66rem; text-align: center; }
+    .enote-nav-text { max-width: 100%; }
+    .enote-lock-card { justify-content: center; padding: .55rem; }
+    .enote-main { padding: 1.25rem 1.25rem 2rem; }
+    .enote-topbar { padding: 0 1.25rem; }
 }
 
-/* Besitzer-Zone: Schloss-Eintrag oben in der Sidebar (ent-/sperrt die Verwaltungsgruppen) */
-.enote-nav-lock-row {
-    display: flex; align-items: center; gap: .6rem;
-    margin-top: .4rem; padding: .6rem 1rem;
-    border: none; border-radius: var(--enote-radius-pill);
-    background: transparent; cursor: pointer; font-family: inherit;
-    color: var(--enote-text); font-weight: 600; font-size: .9rem;
-    transition: box-shadow .18s ease;
+/* Handy: Sidebar aus, untere Leiste an, Seite scrollt normal */
+@media (max-width: 640px) {
+    .enote-shell { height: auto; min-height: 100dvh; overflow: visible; }
+    .enote-sidebar { display: none; }
+    .enote-topbar { padding: 0 .9rem; height: 3.5rem; }
+    .enote-topbar-brand { display: flex; }
+    .enote-topbar-brand .enote-brand-name { display: none; }
+    .enote-salon-switcher .enote-select2 { min-width: 0; max-width: 11.5rem; }
+    .enote-avatar-chevron { display: none; }
+    .enote-main { overflow: visible; padding: 1rem 1rem calc(6rem + env(safe-area-inset-bottom)); }
+
+    .enote-nav-mobile {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1310;
+        display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+        padding: .35rem .5rem calc(.35rem + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, .94); backdrop-filter: saturate(160%) blur(12px);
+        border-top: 1px solid var(--enote-border);
+    }
+    .enote-mnav-link {
+        display: grid; justify-items: center; align-content: center; gap: .2rem;
+        min-height: 3.5rem; padding: .3rem .2rem; border: none; background: transparent; cursor: pointer;
+        border-radius: var(--enote-radius); color: var(--enote-text-muted);
+        text-decoration: none; font: inherit; font-size: .7rem; font-weight: 700; white-space: nowrap;
+    }
+    .enote-mnav-link .enote-icon { padding: .2rem .85rem; border-radius: 999px; box-sizing: content-box; transition: background .15s; }
+    .enote-mnav-link.active { color: var(--enote-primary); }
+    .enote-mnav-link.active .enote-icon { background: var(--enote-primary-soft); }
+
+    .enote-btn { min-height: 44px; }
+    .enote-public-topbar .enote-btn { padding: .45rem .8rem; font-size: .85rem; }
+    .enote-mini-caisse { bottom: calc(5.25rem + env(safe-area-inset-bottom)); right: .9rem; }
 }
-.enote-nav-lock-row:hover { box-shadow: var(--enote-neu-in); }
-.enote-nav-lock-ico { font-size: 1rem; line-height: 1; }
 
-.enote-main { flex: 1; min-width: 0; min-height: 0; padding: 1.5rem; overflow-x: hidden; display: flex; flex-direction: column; }
-
+/* --- Fußzeile (nur öffentlicher Bereich) --- */
 .enote-footer {
     flex-shrink: 0;
     padding: 1rem 1.5rem .65rem;
@@ -359,86 +530,82 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     .enote-footer-bottom { gap: .4rem; }
 }
 
-/* Auf der Caisse-Seite: keine Seiten-Scrollbar, nur Listen scrollen intern */
-.enote-caisse {
-    display: flex; flex-direction: column; gap: 1rem;
-    flex: 1; min-height: 0; /* volle Höhe des Main-Bereichs nutzen */
-}
-.enote-caisse-body {
-    display: grid; grid-template-columns: 1fr 22rem; grid-template-rows: minmax(0, 1fr);
-    gap: 1rem; flex: 1; min-height: 0; /* Zeile füllt die verfügbare Höhe, wächst nicht über den Inhalt hinaus */
-}
-@media (max-width: 900px) { .enote-caisse-body { grid-template-columns: 1fr; grid-template-rows: none; } }
-
-/* Katalog-Spalte: volle Höhe, Tiles füllen den Rest unterhalb von Scan + Filter */
-.enote-caisse-katalog { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.enote-caisse-katalog .enote-tiles { flex: 1; min-height: 0; }
-
-/* Handy-Bottom-Nav standardmäßig ausblenden (Desktop/Tablet zeigen Sidebar) */
-.enote-nav-mobile { display: none; }
 
 /* --- Modal --- */
 .enote-modal-backdrop {
     position: fixed; inset: 0; z-index: 3000;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(15, 23, 42, .5); padding: 1rem;
+    background: rgba(15, 23, 42, .45); backdrop-filter: blur(3px); padding: 1rem;
+    animation: enote-fadein .15s ease;
     /* WICHTIG: Verhindert, dass das Modal von overflow: hidden eines Eltern-Containers beschnitten wird */
     isolation: isolate;
 }
 .enote-modal {
-    width: 100%; background: var(--enote-bg); border-radius: var(--enote-radius-lg);
+    width: 100%; max-width: 36rem; background: var(--enote-surface); border-radius: 1.25rem;
     box-shadow: var(--enote-shadow-lg);
-    max-height: calc(100vh - 3rem); display: flex; flex-direction: column;
+    max-height: calc(100dvh - 3rem); display: flex; flex-direction: column;
+    animation: enote-modal-in .2s cubic-bezier(.2, .9, .3, 1);
 }
-.enote-modal-md { max-width: 32rem; }
-.enote-modal-lg { max-width: 48rem; }
+@keyframes enote-modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 .enote-modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--enote-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1.15rem 1.25rem .5rem 1.5rem;
 }
-.enote-modal-header h2 { margin: 0; font-size: 1.25rem; }
+.enote-modal-header h2 { margin: 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -.01em; }
 .enote-icon-btn {
-    border: none; background: #f3f4f6; color: #6b7280;
-    width: 2.25rem; height: 2.25rem; border-radius: 999px;
-    font-size: 1.4rem; line-height: 1; cursor: pointer;
+    border: none; background: var(--enote-surface-2); color: var(--enote-text-muted);
+    width: 2.5rem; height: 2.5rem; border-radius: 999px; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 1.4rem; line-height: 1; cursor: pointer;
+    transition: background .15s, color .15s;
 }
-.enote-modal-body { padding: 1.25rem 1.5rem; overflow-y: auto; }
-.enote-modal-error { margin: 1rem 1.5rem 0; }
-.enote-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #eef2f7; display: flex; justify-content: flex-end; gap: .6rem; }
+.enote-icon-btn:hover { background: var(--enote-surface-3); color: var(--enote-text); }
+.enote-modal-body { padding: .75rem 1.5rem 1.25rem; overflow-y: auto; }
+.enote-modal-error { margin: .5rem 1.5rem 0; }
+.enote-modal-footer {
+    padding: .9rem 1.25rem; border-top: 1px solid var(--enote-border);
+    display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap;
+    background: var(--enote-surface-2); border-radius: 0 0 1.25rem 1.25rem;
+}
 
 /* --- Toast: Schöner, weicher, mit Icon --- */
+/* Oben rechts (Desktop/Tablet) bzw. oben mittig (Handy): verdeckt nie Navigation oder Zahlungsbuttons */
 .enote-toast {
-    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%) translateY(0);
-    z-index: 2400; display: flex; align-items: center; gap: .65rem;
-    padding: .9rem 1.3rem; border-radius: 1rem; color: #fff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, .18), 0 2px 6px rgba(15, 23, 42, .1);
-    max-width: min(92vw, 32rem);
-    font-size: .94rem; font-weight: 500; line-height: 1.4;
-    animation: enote-toast-in .3s cubic-bezier(.21, 1.02, .73, 1) both;
-    backdrop-filter: blur(8px);
+    position: fixed; top: 1rem; right: 1rem;
+    z-index: 3100; display: flex; align-items: center; gap: .7rem;
+    padding: .75rem .8rem .75rem 1rem; border-radius: var(--enote-radius-lg);
+    background: var(--enote-surface); color: var(--enote-text);
+    border: 1px solid var(--enote-border); border-left: 4px solid var(--enote-primary-light);
+    box-shadow: var(--enote-shadow-lg);
+    max-width: min(92vw, 26rem);
+    font-size: .92rem; font-weight: 600; line-height: 1.4;
+    animation: enote-toast-in .28s cubic-bezier(.2, .9, .3, 1) both;
 }
-@keyframes enote-toast-in {
-    from { transform: translateX(-50%) translateY(100%); opacity: 0; }
-    to { transform: translateX(-50%) translateY(0); opacity: 1; }
-}
-.enote-toast-erfolg { background: linear-gradient(135deg, #059669, #047857); }
-.enote-toast-fehler { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-.enote-toast-info { background: linear-gradient(135deg, #334155, #1e293b); }
+@keyframes enote-toast-in { from { transform: translateY(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.enote-toast-erfolg { border-left-color: var(--enote-success); }
+.enote-toast-fehler { border-left-color: var(--enote-danger); }
+.enote-toast-info { border-left-color: var(--enote-primary-light); }
+.enote-toast-ico { width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+.enote-toast-erfolg .enote-toast-ico { background: var(--enote-success-soft); color: var(--enote-success); }
+.enote-toast-fehler .enote-toast-ico { background: var(--enote-danger-soft); color: var(--enote-danger); }
+.enote-toast-info .enote-toast-ico { background: var(--enote-primary-soft); color: var(--enote-primary-light); }
+body:has(.enote-kassen-modus) .enote-toast { top: auto; right: auto; bottom: 1rem; left: 1rem; }
+@media (max-width: 900px) { body:has(.enote-kassen-modus) .enote-toast { bottom: auto; top: .6rem; left: .75rem; right: .75rem; max-width: none; } }
+@media (max-width: 640px) { .enote-toast { left: .75rem; right: .75rem; top: .6rem; max-width: none; } }
 .enote-toast-close {
-    border: none; background: rgba(255, 255, 255, .15); color: inherit;
+    border: none; background: transparent; color: var(--enote-text-muted);
     width: 1.6rem; height: 1.6rem; border-radius: 50%; display: grid; place-items: center;
     font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0;
     transition: background .15s;
 }
-.enote-toast-close:hover { background: rgba(255, 255, 255, .28); }
+.enote-toast-close:hover { background: var(--enote-surface-2); }
 
 /* --- CollapsibleCard --- */
-.enote-card { background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-out-sm); }
+.enote-card { background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-out-sm); }
 .enote-card-header {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     background: none; border: none; padding: 1.1rem 1.4rem; cursor: pointer; text-align: left;
 }
-.enote-card-titles h2 { margin: 0; font-size: 1.05rem; }
+.enote-card-titles h2 { margin: 0; font-size: 1.02rem; font-weight: 800; }
 .enote-card-titles p { margin: .15rem 0 0; color: var(--enote-text-muted); font-size: .88rem; }
 .enote-card-chevron { color: var(--enote-text-muted); transition: transform .25s; }
 .enote-card-chevron.open { transform: rotate(180deg); }
@@ -448,10 +615,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- Spinner --- */
 .enote-spinner {
     width: 1rem; height: 1rem; border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff;
+    border: 2px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor;
     animation: enote-spin .7s linear infinite;
 }
-@@keyframes enote-spin { to { transform: rotate(360deg); } }
+
 
 /* --- Verwaltungsseiten --- */
 .enote-page { max-width: none; margin: 0; width: 100%; }
@@ -459,12 +626,15 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     display: flex; align-items: flex-start; justify-content: space-between;
     gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;
 }
-.enote-page-header h1 { margin: 0; font-size: 1.5rem; }
-.enote-page-header p { margin: .25rem 0 0; color: #6b7280; }
-.enote-empty { color: var(--enote-text-muted); background: var(--enote-surface); padding: 1.5rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-in); }
+.enote-page-header h1 { margin: 0; font-size: clamp(1.35rem, 2.2vw, 1.7rem); font-weight: 800; letter-spacing: -.02em; }
+.enote-page-header p { margin: .3rem 0 0; color: var(--enote-text-muted); }
+.enote-empty {
+    color: var(--enote-text-muted); background: var(--enote-surface-2); padding: 1.25rem 1.4rem;
+    border-radius: var(--enote-radius-lg); border: 1px dashed var(--enote-border-strong); text-align: center;
+}
 
 .enote-grid { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
-.enote-item { background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg); padding: 1.15rem 1.25rem; display: grid; gap: .6rem; box-shadow: var(--enote-neu-out-sm); }
+.enote-item { background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); padding: 1.1rem 1.2rem; display: grid; gap: .6rem; box-shadow: var(--enote-neu-out-sm); }
 .enote-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
 .enote-item-head strong { font-size: 1.02rem; }
 .enote-price { font-weight: 800; color: var(--enote-primary); }
@@ -472,23 +642,34 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-item-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .enote-item-actions { display: flex; gap: .5rem; margin-top: .25rem; }
 
-.enote-tag { font-size: .72rem; font-weight: 700; padding: .25rem .7rem; border-radius: 999px; background: #dbe6f5; color: var(--enote-primary); box-shadow: var(--enote-neu-in); }
-.enote-tag-warn { background: #fdeede; color: #c2410c; }
-.enote-tag-off { background: #e2e8f0; color: var(--enote-text-muted); }
+.enote-tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .74rem; font-weight: 700; padding: .22rem .65rem; border-radius: 999px;
+    background: var(--enote-primary-soft); color: var(--enote-primary); white-space: nowrap;
+}
+.enote-tag-warn { background: var(--enote-warning-soft); color: var(--enote-warning); }
+.enote-tag-off { background: var(--enote-surface-3); color: var(--enote-text-muted); }
+.enote-tag-ok { background: var(--enote-success-soft); color: var(--enote-success); }
+.enote-tag-bar { background: var(--enote-success-soft); color: var(--enote-pay-bar); }
+.enote-tag-karte { background: var(--enote-primary-soft); color: var(--enote-pay-karte); }
+.enote-tag-momo { background: #fef3e2; color: #b45309; }
+.enote-tag-mixte { background: var(--enote-surface-3); color: var(--enote-text); }
 .enote-bestand { font-size: .85rem; color: var(--enote-text); }
-.enote-bestand-warn { color: #c2410c; font-weight: 700; }
+.enote-bestand-warn { color: var(--enote-warning); font-weight: 700; }
 
 .enote-form { display: grid; gap: .9rem; }
-.enote-form label { display: grid; gap: .35rem; font-weight: 600; font-size: .9rem; color: var(--enote-text); }
-.enote-form input, .enote-select, .enote-form textarea {
-    width: 100%; max-width: 30rem; padding: .75rem 1rem; border: 1px solid var(--enote-border);
-    border-radius: var(--enote-radius-pill); font-size: 1rem;
-    background: #ffffff; color: var(--enote-text);
-    box-shadow: 0 1px 3px rgba(23, 37, 84, .06);
-    transition: box-shadow .18s ease, border-color .18s ease;
+.enote-form label { display: grid; gap: .4rem; font-weight: 700; font-size: .86rem; color: var(--enote-text); }
+.enote-form label > small { margin-top: -.35rem; font-weight: 600; }
+.enote-form label.enote-btn { display: inline-flex; font-size: .82rem; }
+.enote-form input, .enote-select, .enote-form textarea, .enote-input {
+    width: 100%; max-width: 32rem; min-height: 2.9rem; padding: .7rem .95rem; border: 1px solid var(--enote-border-strong);
+    border-radius: var(--enote-radius); font-size: 1rem;
+    background: var(--enote-surface); color: var(--enote-text);
+    transition: box-shadow .15s ease, border-color .15s ease;
 }
+.enote-form input::placeholder, .enote-input::placeholder, .enote-form textarea::placeholder { color: var(--enote-text-subtle); }
 .enote-form textarea { border-radius: var(--enote-radius); resize: vertical; min-height: 4.5rem; font-family: inherit; line-height: 1.4; }
-.enote-form input:focus, .enote-select:focus, .enote-form textarea:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: 0 1px 3px rgba(23, 37, 84, .06), 0 0 0 3px rgba(30, 58, 138, .18); }
+.enote-form input:focus, .enote-select:focus, .enote-form textarea:focus, .enote-input:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
 .enote-form .checkbox { display: flex; align-items: center; gap: .55rem; font-weight: 500; }
 .enote-form .checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--enote-primary); }
 
@@ -515,11 +696,11 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 @keyframes enote-loading-slide { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 .enote-loading-overlay {
     position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center;
-    background: rgba(232, 238, 245, .55); backdrop-filter: blur(2px);
+    background: rgba(243, 245, 249, .6); backdrop-filter: blur(2px);
 }
 .enote-loading-ring {
     width: 52px; height: 52px; border-radius: 50%;
-    border: 5px solid #cdd6e4; border-top-color: var(--enote-primary);
+    border: 4px solid var(--enote-border); border-top-color: var(--enote-primary-light);
     animation: enote-spin .8s linear infinite;
 }
 @keyframes enote-spin { to { transform: rotate(360deg); } }
@@ -562,12 +743,12 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* Filter-Chips (für Listen) */
 .enote-filter-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
 .enote-chip {
-    padding: .45rem .85rem; border: none; border-radius: var(--enote-radius-pill);
-    background: #f1f5f9; color: var(--enote-text); font-weight: 600; font-size: .82rem;
-    cursor: pointer; transition: all .15s ease; box-shadow: inset 0 0 0 1px var(--enote-border);
+    min-height: 2.4rem; padding: .4rem .9rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius-pill);
+    background: var(--enote-surface); color: var(--enote-text); font-weight: 700; font-size: .84rem;
+    cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
-.enote-chip:hover { background: #e2e8f0; }
-.enote-chip-aktiv { background: var(--enote-gradient); color: #fff; box-shadow: 0 2px 8px rgba(30, 58, 138, .25); }
+.enote-chip:hover { background: var(--enote-surface-2); border-color: var(--enote-border-strong); }
+.enote-chip-aktiv, .enote-chip-aktiv:hover { background: var(--enote-primary); border-color: var(--enote-primary); color: #fff; }
 .enote-po-salon-item {
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: .6rem .85rem; border-radius: var(--enote-radius);
@@ -578,7 +759,6 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-po-salon-info { display: grid; gap: .2rem; flex: 1; min-width: 0; }
 .enote-po-salon-name { font-weight: 600; font-size: .92rem; color: var(--enote-text); }
 .enote-po-salon-details { font-size: .78rem; color: var(--enote-text-muted); }
-.enote-tag-warn { background: #fef3c7; color: #92400e; }
 .enote-tag-probe { background: #dbeafe; color: #1e40af; }
 .enote-tag-paid { background: #ecfdf5; color: #047857; }
 
@@ -611,235 +791,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-commissions-po { font-size: .92rem; color: var(--enote-text); }
 .enote-commissions-po strong { color: var(--enote-primary); font-weight: 700; }
 
-.enote-danger { color: #b91c1c; }
-.enote-danger-bg { background: #dc2626; }
+.enote-danger { color: var(--enote-danger); }
+.enote-danger-bg { background: var(--enote-danger); }
 
 .enote-radio-row { display: flex; gap: 1.25rem; }
-
-/* --- Kasse --- */
-.enote-muted { color: var(--enote-text-muted); }
-.enote-caisse-start { max-width: 30rem; margin: 2rem auto; background: var(--enote-surface); padding: 2rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-out); }
-.enote-caisse-start h1 { margin: 0 0 .25rem; }
-.enote-caisse-hinweis { max-width: 28rem; margin: 3rem auto; text-align: center; }
-
-.enote-kassierer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: .7rem; margin-bottom: .5rem; }
-.enote-kassierer-btn {
-    padding: 1rem .8rem; border: none; border-radius: var(--enote-radius-lg);
-    background: var(--enote-surface); font-weight: 700; cursor: pointer; font-size: .95rem;
-    box-shadow: var(--enote-neu-out-sm); transition: transform .15s, box-shadow .2s;
-}
-.enote-kassierer-btn:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-kassierer-btn.gewaehlt { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
-.enote-pin-input { text-align: center; font-size: 1.5rem; letter-spacing: .4em; }
-
-/* Großer Button (mehr Padding/Schrift), aber NICHT automatisch volle Breite */
-.enote-btn-lg { padding: 1rem 1.75rem; font-size: 1.05rem; width: auto; }
-
-/* In der Kasse darf der Encaisser-Button bewusst breit sein */
-.enote-ticket .enote-btn-lg, .enote-caisse-start .enote-btn-lg { width: 100%; }
-
-.enote-caisse-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
-.enote-caisse-header h1 { margin: 0; font-size: 1.4rem; }
-.enote-caisse-sitzung-info { display: grid; gap: .1rem; }
-.enote-caisse-sitzung-titel { font-weight: 800; font-size: 1.05rem; color: var(--enote-text); }
-.enote-caisse-header-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-
-/* Katalog-Spalte: Tiles scrollen intern, Seite selbst scrollt nicht mit */
-.enote-tiles-wrap { min-height: 0; }
-.enote-tiles {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .85rem;
-    align-content: start;
-    height: 100%; overflow-y: auto; overscroll-behavior: contain;
-    padding: .15rem; /* Platz für Schatten */
-    /* Scrollbar ausblenden (Browser-Scrollbar vermeiden) */
-    scrollbar-width: none; -ms-overflow-style: none;
-}
-.enote-tiles::-webkit-scrollbar { width: 0; height: 0; display: none; }
-
-/* Ticket: volle Höhe der Spalte; NUR die Positionsliste scrollt, Rest bleibt fix */
-.enote-ticket {
-    background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg);
-    padding: 1.2rem 1.35rem; display: flex; flex-direction: column; gap: .9rem;
-    box-shadow: var(--enote-neu-out);
-    min-height: 0; overflow: hidden; /* kein Scrollen des ganzen Tickets; Grid-Item darf schrumpfen */
-}
-
-/* ScrollBox für die Leistungs-Positionen im Ticket */
-.enote-ticket-scroll {
-    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-    scrollbar-width: thin; scrollbar-color: #b9c6d6 transparent;
-    margin: 0 -.35rem; padding: 0 .35rem; /* Schatten der Buttons nicht abschneiden */
-}
-.enote-ticket-scroll::-webkit-scrollbar { width: 8px; }
-.enote-ticket-scroll::-webkit-scrollbar-track { background: transparent; }
-.enote-ticket-scroll::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 4px; }
-.enote-ticket-scroll::-webkit-scrollbar-thumb:hover { background: #93a4ba; }
-.enote-tile {
-    display: flex; flex-direction: column; gap: .2rem; align-items: stretch;
-    padding: .8rem .9rem .75rem; border: none; border-radius: var(--enote-radius-lg); background: var(--enote-surface);
-    text-align: left; min-height: 5.4rem;
-    box-shadow: var(--enote-neu-out-sm);
-    user-select: none; -webkit-user-select: none;
-}
-.enote-tile-main { display: flex; flex-direction: column; gap: .15rem; align-items: flex-start; cursor: pointer; touch-action: manipulation; flex: 1; transition: transform .15s, box-shadow .2s; }
-.enote-tile-main:active { transform: scale(.97); }
-.enote-tile:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-tile-name { font-weight: 700; font-size: .98rem; }
-.enote-tile-price { color: var(--enote-primary); font-weight: 800; }
-.enote-tile-warn { font-size: .72rem; color: #c2410c; font-weight: 700; }
-
-.enote-ticket h2 { margin: 0; font-size: 1.15rem; }
-.enote-ticket-kopf { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
-.enote-ticket-pos { display: grid; gap: .35rem; padding: .55rem 0; border-bottom: 1px solid var(--enote-border); }
-.enote-ticket-pos-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
-.enote-ticket-pos-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.enote-ticket-pos-del { width: 2rem; height: 2rem; border-radius: 999px; border: none; background: var(--enote-surface); cursor: pointer; font-weight: 800; box-shadow: var(--enote-neu-out-sm); touch-action: manipulation; }
-.enote-ticket-pos-del:active { box-shadow: var(--enote-neu-in); }
-.enote-ticket-pos-bottom { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-.enote-ticket-pos-preis { font-size: .82rem; color: var(--enote-text-muted); }
-.enote-ticket-pos-actions { display: flex; align-items: center; gap: .45rem; }
-.enote-ticket-pos-actions button { width: 2.5rem; height: 2.5rem; border-radius: 999px; border: none; background: var(--enote-surface); cursor: pointer; font-weight: 800; font-size: 1.1rem; box-shadow: var(--enote-neu-out-sm); touch-action: manipulation; }
-.enote-ticket-pos-actions button:active { box-shadow: var(--enote-neu-in); }
-.enote-ticket-pos-sum { font-weight: 800; margin-left: auto; text-align: right; }
-
-.enote-ticket-rabatt { display: grid; gap: .5rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
-.enote-ticket-total { display: grid; gap: .25rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
-.enote-ticket-total > div { display: flex; justify-content: space-between; font-size: .92rem; color: var(--enote-text-muted); }
-.enote-ticket-total .enote-total { font-size: 1.3rem; font-weight: 800; color: var(--enote-text); }
-
-.enote-zahlart { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-.enote-zahlart button { padding: 1.05rem; border: none; border-radius: var(--enote-radius-pill); background: var(--enote-surface); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: var(--enote-neu-out-sm); transition: all .15s; touch-action: manipulation; }
-.enote-zahlart button.aktiv { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
-
-.enote-rueckgeld { display: flex; justify-content: space-between; align-items: center; background: #d7f5e8; padding: 1rem 1.15rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-in); }
-.enote-rueckgeld strong { font-size: 1.5rem; color: #047857; }
-
-.enote-abschluss-soll { display: grid; gap: .55rem; background: var(--enote-surface); padding: .9rem 1.1rem; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-in); }
-.enote-abschluss-soll-zeilen { display: grid; gap: .3rem; }
-.enote-abschluss-soll-zeilen > div { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; color: var(--enote-text-muted); }
-.enote-abschluss-soll-total { display: flex; justify-content: space-between; align-items: center; padding-top: .55rem; border-top: 1px solid var(--enote-border); }
-.enote-abschluss-soll-total span { color: var(--enote-text-muted); font-weight: 600; }
-.enote-abschluss-soll-total strong { font-size: 1.4rem; color: var(--enote-primary); }
-
-/* --- Zahlungs-Buttons unten im Ticket (platzsparend, Modal-basiert) --- */
-.enote-zahl-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; padding-top: .5rem; border-top: 1px solid var(--enote-border); }
-.enote-zahl-btn {
-    padding: 1.15rem .5rem; border: none; border-radius: var(--enote-radius-lg); cursor: pointer;
-    font-weight: 800; font-size: 1.1rem; background: var(--enote-surface); color: var(--enote-text);
-    box-shadow: var(--enote-neu-out-sm); transition: transform .15s, box-shadow .2s; touch-action: manipulation;
-}
-.enote-zahl-btn:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-zahl-btn:active { transform: scale(.97); box-shadow: var(--enote-neu-in); }
-.enote-zahl-bar { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
-.enote-zahl-karte { background: var(--enote-surface); }
-
-/* --- Zahlungs-Modal-Inhalt --- */
-.enote-zahl-modal { display: grid; gap: 1rem; }
-.enote-zahl-total {
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--enote-surface); padding: 1.1rem 1.25rem; border-radius: var(--enote-radius-lg);
-    box-shadow: var(--enote-neu-in);
-}
-.enote-zahl-total span { color: var(--enote-text-muted); font-weight: 600; }
-.enote-zahl-total strong { font-size: 1.7rem; color: var(--enote-text); }
-.enote-zahl-input {
-    text-align: center; font-size: 1.4rem; font-weight: 700; padding: .9rem;
-    border: 1.5px solid var(--enote-border); border-radius: var(--enote-radius-lg);
-    background: #f4f7fb; width: 100%; box-shadow: none;
-}
-.enote-zahl-input:focus { outline: none; border-color: var(--enote-primary); background: #fff; box-shadow: 0 0 0 3px rgba(30, 58, 138, .15); }
-.enote-zahl-input::-webkit-outer-spin-button,
-.enote-zahl-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.enote-zahl-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-.enote-modal-sm { max-width: 24rem; }
-
-/* --- Verkaufshistorie in der Kasse --- */
-.enote-historie-liste { display: grid; gap: .7rem; max-height: 26rem; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
-.enote-historie-liste::-webkit-scrollbar { width: 0; display: none; }
-.enote-historie-item {
-    display: flex; align-items: center; justify-content: space-between; gap: .9rem;
-    padding: 1rem 1.15rem; background: var(--enote-surface); border-radius: var(--enote-radius-lg);
-    box-shadow: var(--enote-neu-out-sm); transition: transform .15s, box-shadow .2s;
-}
-.enote-historie-item:hover { transform: translateY(-2px); box-shadow: var(--enote-neu-out); }
-.enote-historie-info { display: grid; gap: .3rem; min-width: 0; flex: 1; }
-.enote-historie-top { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-.enote-historie-betrag { font-size: 1.2rem; font-weight: 800; color: var(--enote-text); }
-.enote-tag-zahlart { box-shadow: none; }
-.enote-historie-pos { color: var(--enote-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.enote-historie-reçu { flex: 0 0 auto; }
-
-/* --- Barcode-Scan --- */
-.enote-scan-box { margin-bottom: .9rem; }
-.enote-scan-input {
-    width: 100%; padding: 1.05rem 1.25rem; font-size: 1.05rem;
-    border: none; border-radius: var(--enote-radius-pill); background: var(--enote-surface);
-    box-shadow: var(--enote-neu-in);
-}
-.enote-scan-input:focus { outline: none; box-shadow: var(--enote-neu-in), 0 0 0 3px rgba(30, 58, 138, .18); }
-
-/* Kategorie-Filter in der Kasse */
-.enote-kat-filter { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .9rem; }
-
-/* Besitzer-PIN-Sperre */
-.enote-pin-sperre { display: grid; place-items: center; min-height: 50vh; }
-.enote-pin-sperre-card {
-    max-width: 24rem; width: 100%; text-align: center;
-    background: var(--enote-surface); border-radius: var(--enote-radius-lg);
-    padding: 2.25rem; box-shadow: var(--enote-neu-out); display: grid; gap: .9rem; justify-items: center;
-}
-.enote-pin-sperre-icon { font-size: 2.4rem; }
-.enote-pin-sperre-card h2 { margin: 0; font-size: 1.3rem; }
-.enote-pin-sperre-card .enote-btn-primary { min-width: 12rem; }
-
-/* Favoriten-Stern auf Tiles */
-.enote-tile-wrap { position: relative; }
-.enote-tile { width: 100%; }
-.enote-tile-menge {
-    display: flex; align-items: center; justify-content: center; gap: .4rem; margin-top: .35rem;
-    padding-top: .4rem; border-top: 1px solid var(--enote-border); width: 100%;
-}
-.enote-tile-menge button {
-    width: 2.75rem; height: 2.75rem; border: none; border-radius: 50%; cursor: pointer;
-    background: var(--enote-surface); box-shadow: var(--enote-neu-out-sm); font-weight: 800; font-size: 1.3rem;
-    display: grid; place-items: center; touch-action: manipulation;
-}
-.enote-tile-menge button:active { box-shadow: var(--enote-neu-in); }
-.enote-tile-menge span { font-weight: 800; min-width: 1.4rem; text-align: center; font-size: 1.05rem; }
-.enote-fav-btn {
-    position: absolute; top: .4rem; right: .4rem; z-index: 2;
-    width: 2rem; height: 2rem; border: none; border-radius: 50%; cursor: pointer;
-    background: var(--enote-surface); box-shadow: var(--enote-neu-out-sm);
-    font-size: 1rem; line-height: 1; color: #b6c0d4;
-    display: grid; place-items: center; transition: color .15s, transform .15s;
-}
-.enote-fav-btn:hover { transform: scale(1.12); }
-.enote-fav-btn.aktiv { color: #f59e0b; }
-
-
-/* --- Schwebender Mini-Kassen-Button --- */
-.enote-mini-caisse {
-    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 1500;
-    display: flex; align-items: center; gap: .6rem;
-    background: var(--enote-primary-dark); color: #fff; border: none; border-radius: 999px;
-    padding: .85rem 1.25rem; font-weight: 700; cursor: pointer;
-    box-shadow: 0 12px 28px rgba(30,58,138,.4);
-}
-.enote-mini-caisse .betrag { font-size: 1.05rem; }
-
-/* Kassen-Modus: Navigation (Desktop + Mobile) ausblenden, volle Breite für die Kasse */
-.enote-kassen-modus .enote-nav-desktop,
-.enote-kassen-modus .enote-nav-mobile { display: none !important; }
-
-/* Sperr-Button (Verwaltung wieder sperren) */
-.enote-sperr-btn {
-    position: fixed; left: 1.25rem; bottom: 1.25rem; z-index: 1500;
-    display: flex; align-items: center; gap: .45rem;
-    background: var(--enote-surface); color: var(--enote-text); border: none; border-radius: 999px;
-    padding: .7rem 1.1rem; font-weight: 700; cursor: pointer;
-    box-shadow: var(--enote-neu-out);
-}
-.enote-sperr-btn:hover { box-shadow: var(--enote-shadow-lg); }
 
 /* ============================================================
    Kunden-Display (zweites Tablet, öffentlich)
@@ -939,8 +894,8 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* --- Ausgaben --- */
 .enote-kategorie-row { display: flex; gap: .6rem; margin-bottom: .75rem; }
-.enote-input-inline { flex: 1; padding: .55rem .8rem; border: 1.5px solid var(--enote-border); border-radius: .6rem; }
-.enote-input-inline:focus { outline: none; border-color: var(--enote-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+.enote-input-inline { flex: 1; min-width: 0; min-height: 2.6rem; padding: .55rem .85rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius); font-size: .95rem; }
+.enote-input-inline:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
 .enote-kategorie-liste { display: flex; flex-wrap: wrap; gap: .4rem; }
 .enote-ausgaben-summe { margin-left: auto; font-size: .95rem; align-self: center; }
 .enote-ausgabe-item { border-left: 3px solid #fca5a5; }
@@ -952,7 +907,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     padding: 0 .15rem; line-height: 1; color: inherit; opacity: .7;
 }
 .enote-tag-btn:hover { opacity: 1; }
-.enote-tag-btn.enote-danger { color: #b91c1c; }
+.enote-tag-btn.enote-danger { color: var(--enote-danger); }
 
 
 
@@ -961,7 +916,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-home { max-width: 40rem; margin: 3rem auto; text-align: center; }
 .enote-home h1 { font-size: 2.25rem; margin: 0 0 .5rem; }
 .enote-home-public h1 { font-size: 3rem; color: var(--enote-primary-dark); }
-.enote-lead { font-size: 1.2rem; color: #374151; margin: 0 0 .5rem; }
+.enote-lead { font-size: 1.15rem; color: var(--enote-text-muted); margin: 0 0 .5rem; }
 .enote-home-actions { display: flex; gap: .75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
 .enote-home-actions .enote-btn { flex: 0 0 auto; }
 .enote-home-warn { text-align: left; margin-top: 1.5rem; }
@@ -976,7 +931,11 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* Wiederverwendbare Bild-Auswahl (Kamera/Galerie + Zuschnitt) */
 .enote-bild-auswahl { display: grid; gap: .75rem; }
 .enote-bild-auswahl-aktionen { display: flex; gap: .6rem; flex-wrap: wrap; }
-.enote-hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+/* Unsichtbares Datei-Feld: muss allgemeine Formularregeln (width:100%) schlagen, sonst entsteht am Handy Querscrollen */
+.enote-hidden-input, .enote-form .enote-hidden-input, input.enote-hidden-input {
+    position: absolute !important; inset: 0 auto auto 0; width: 1px !important; height: 1px !important; min-height: 0 !important;
+    padding: 0 !important; border: 0 !important; opacity: 0; overflow: hidden; clip: rect(0 0 0 0);
+}
 
 /* Upload-Button (label um verstecktes InputFile) */
 .enote-btn-upload { position: relative; cursor: pointer; overflow: hidden; max-width: 100%; white-space: nowrap; text-overflow: ellipsis; }
@@ -985,26 +944,28 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* --- Finanzen --- */
 .enote-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-.enote-table th, .enote-table td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid #f3f4f6; }
-.enote-table th { color: #6b7280; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
-.enote-feed { display: grid; gap: .6rem; }
-.enote-feed-item { background: var(--enote-surface); border-radius: var(--enote-radius); padding: .8rem 1rem; box-shadow: var(--enote-neu-out-sm); }
-.enote-feed-head { display: flex; justify-content: space-between; align-items: center; }
-.enote-feed-meta { font-size: .85rem; color: #374151; margin-top: .15rem; }
+.enote-table th, .enote-table td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid var(--enote-border); }
+.enote-table th { position: sticky; top: 0; background: var(--enote-surface); color: var(--enote-text-muted); font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+.enote-table tbody tr:hover { background: var(--enote-surface-2); }
+.enote-table .r, .enote-table th.r { text-align: right; }
+.enote-feed { display: grid; gap: .5rem; }
+.enote-feed-item { background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius); padding: .8rem 1rem; }
+.enote-feed-head { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.enote-feed-meta { font-size: .86rem; color: var(--enote-text); margin-top: .2rem; }
 
 /* --- Abo --- */
 .enote-abo-status {
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-    background: var(--enote-surface); border: none; border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-out-sm);
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); box-shadow: var(--enote-neu-out-sm);
     padding: 1rem 1.25rem; margin-bottom: 1rem;
 }
-.enote-probe-banner { background: linear-gradient(135deg, #d7f5e8, #e8eef5); }
+.enote-probe-banner { background: linear-gradient(135deg, var(--enote-success-soft), var(--enote-primary-soft)); }
 
 /* --- Filter & Logs --- */
 .enote-filter-row {
-    display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;
-    background: #fff; border: 1px solid #eef2f7; border-radius: 1rem;
-    padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    display: flex; gap: .9rem; align-items: flex-end; flex-wrap: wrap;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    padding: .9rem 1.1rem; margin-bottom: 1.25rem;
 }
 .enote-filter-row label { display: grid; gap: .3rem; font-weight: 600; font-size: .85rem; }
 .enote-filter-row input[type="date"] { padding: .5rem .7rem; border: 1px solid #d1d5db; border-radius: .5rem; }
@@ -1024,12 +985,13 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- Live-Umsatz --- */
 .enote-live-banner {
     display: flex; align-items: center; gap: .85rem;
-    background: linear-gradient(135deg, var(--enote-primary-dark), var(--enote-primary-light)); color: #fff;
-    border-radius: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    background: var(--enote-gradient); color: #fff;
+    border-radius: var(--enote-radius-lg); padding: 1rem 1.3rem; margin-bottom: 1.25rem;
+    box-shadow: 0 10px 24px rgba(30, 58, 138, .2);
 }
 .enote-live-dot { width: .7rem; height: .7rem; border-radius: 999px; background: #d1d5db; }
 .enote-live-banner.verbunden .enote-live-dot { background: #34d399; box-shadow: 0 0 0 4px rgba(52,211,153,.3); animation: enote-pulse 1.6s infinite; }
-@@keyframes enote-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes enote-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 .enote-live-label { font-size: .8rem; opacity: .85; }
 .enote-live-wert { font-size: 1.4rem; font-weight: 800; }
 .enote-live-wert .enote-muted { color: rgba(255,255,255,.75); font-weight: 500; font-size: .95rem; }
@@ -1042,10 +1004,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-page-narrow { max-width: 40rem; }
 .enote-settings-card { padding: 1.25rem 1.4rem; margin-bottom: 1.25rem; }
 .enote-settings-card h2 { margin: 0 0 1rem; font-size: 1.1rem; }
-.enote-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+.enote-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
 .enote-logo-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .enote-logo-vorschau { width: 4.5rem; height: 4.5rem; border-radius: .8rem; object-fit: cover; border: 1px solid var(--enote-border); }
-.enote-marge { color: #047857; font-weight: 600; }
+.enote-marge { color: var(--enote-success); font-weight: 700; }
 
 
 .enote-bon-preview { background: #fff; border: 1px dashed var(--enote-border); border-radius: .8rem; padding: 1.25rem; text-align: center; font-family: Consolas, monospace; }
@@ -1062,66 +1024,18 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-profil-name { font-size: 1.25rem; font-weight: 800; }
 .enote-profil-rollen { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .4rem; }
 
-/* --- Große PCs --- */
-@media (min-width: 1400px) {
-    .enote-main { padding: 2rem 2.5rem; }
-    .enote-page { max-width: 80rem; }
-}
-
-/* --- Handy (≤640px): Sidebar aus, flache Bottom-Nav an --- */
+/* --- Inhalte auf Handy/Tablet (Navigation siehe Layout-Block) --- */
 @media (max-width: 640px) {
-    .enote-layout { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; } /* Handy: Seite darf normal scrollen */
-    .enote-body { flex-direction: column; }
-    .enote-nav-desktop { display: none; }
-
-    .enote-nav-mobile {
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200;
-        display: flex; align-items: stretch; justify-content: flex-start;
-        gap: .1rem; padding: .45rem .4rem calc(.45rem + env(safe-area-inset-bottom));
-        background: var(--enote-bg); box-shadow: 0 -8px 22px #cdd6e4;
-        overflow-x: auto; overflow-y: hidden;
-        /* verhindert Abschneiden beim Scrollen auf iOS/Android */
-        padding-bottom: max(.45rem, env(safe-area-inset-bottom));
-        -webkit-overflow-scrolling: touch;
-    }
-    .enote-mnav-link {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .15rem; padding: .45rem .8rem; min-width: 4rem; min-height: 3.4rem; flex: 0 0 auto;
-        border-radius: var(--enote-radius); color: var(--enote-text);
-        text-decoration: none; font-size: .68rem; font-weight: 600; white-space: nowrap;
-        transition: box-shadow .15s, color .15s;
-    }
-    .enote-mnav-ico { font-size: 1.25rem; line-height: 1; }
-    .enote-mnav-link.active { background: var(--enote-gradient); color: #fff; box-shadow: 0 6px 16px rgba(23, 37, 84, .3); }
-    .enote-mnav-lock { border: none; background: transparent; cursor: pointer; font-family: inherit; }
-
-    /* Genug Platz, damit Inhalt nicht hinter der Bottom-Nav verschwindet */
-    .enote-main { padding: 1rem; padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
-    .enote-btn { min-height: 44px; }
     .enote-tile { min-height: 6rem; }
-    .enote-caisse-body { grid-template-columns: 1fr; }
-    .enote-ticket { position: static; height: auto; max-height: none; }
-    .enote-tiles { height: auto; max-height: none; } /* auf dem Handy normal mit der Seite scrollen */
-    .enote-caisse { flex: none; } /* Handy: Seite darf normal scrollen */
-    .enote-grid { grid-template-columns: 1fr; }
-    .enote-form-grid { grid-template-columns: 1fr; }
+    .enote-grid { grid-template-columns: minmax(0, 1fr); }
+    .enote-form-grid { grid-template-columns: minmax(0, 1fr); }
     .enote-card .enote-table { display: block; overflow-x: auto; white-space: nowrap; }
     .enote-live-banner { padding: .85rem 1rem; }
     .enote-live-wert { font-size: 1.2rem; }
     .enote-filter-row { flex-direction: column; align-items: stretch; }
     .enote-filter-row .enote-btn { width: 100%; }
-    .enote-modal { max-height: calc(100vh - 1rem); }
-    .enote-modal-backdrop { padding: .5rem; }
-    .enote-topbar { padding: .6rem .9rem; }
-    .enote-topbar-actions .enote-btn { padding: .45rem .7rem; font-size: .82rem; }
-    .enote-user { display: none; }
-}
-
-/* --- Tablet (641-1024px) --- */
-@media (min-width: 641px) and (max-width: 1024px) {
-    .enote-nav { width: 12rem; }
-    .enote-caisse-body { grid-template-columns: 1fr 20rem; }
-    .enote-main { padding: 1.25rem; }
+    .enote-modal { max-height: calc(100dvh - 1rem); }
+    .enote-modal-backdrop { padding: .5rem; align-items: flex-end; }
 }
 
 /* ============================================================
@@ -1131,16 +1045,16 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- Toggle-Checkbox --- */
 .enote-toggle {
     position: relative; width: 3.2rem; height: 1.8rem; border: none; cursor: pointer;
-    border-radius: 999px; background: var(--enote-surface); box-shadow: var(--enote-neu-in);
-    transition: background .25s; flex-shrink: 0;
+    border-radius: 999px; background: var(--enote-surface-3); box-shadow: inset 0 0 0 1px var(--enote-border-strong);
+    transition: background .2s; flex-shrink: 0;
 }
 .enote-toggle:disabled { opacity: .5; cursor: not-allowed; }
 .enote-toggle-knob {
     position: absolute; top: .25rem; left: .25rem; width: 1.3rem; height: 1.3rem;
-    border-radius: 50%; background: #fff; box-shadow: var(--enote-neu-out-sm);
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(16, 26, 51, .25);
     transition: left .22s cubic-bezier(.34,1.56,.64,1);
 }
-.enote-toggle.an { background: var(--enote-gradient); }
+.enote-toggle.an { background: var(--enote-primary-light); box-shadow: none; }
 .enote-toggle.an .enote-toggle-knob { left: calc(100% - 1.55rem); }
 .enote-toggle-label { font-weight: 600; font-size: .9rem; cursor: pointer; user-select: none; }
 
@@ -1149,7 +1063,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* Katalog-Layout: Baum links + Vorschau rechts – volle Breite */
 .enote-katalog-layout { display: grid; grid-template-columns: 400px 1fr; gap: 1.25rem; align-items: start; }
-@media (max-width: 980px) { .enote-katalog-layout { grid-template-columns: 1fr; } }
+@media (max-width: 980px) { .enote-katalog-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* Seiten mit voller Breite: max-width entfernen UND Zentrierung aufheben. */
 .enote-page.enote-page-full { max-width: none !important; margin: 0 !important; width: 100%; }
@@ -1159,12 +1073,12 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-katalog-baum-header h2 { margin: 0 0 .8rem; font-size: 1.1rem; }
 .enote-baum-liste { display: grid; gap: .15rem; margin-top: .75rem; max-height: 34rem; overflow-y: auto; }
 .enote-baum-zeile { display: flex; align-items: center; gap: .45rem; padding: .35rem .45rem; border-radius: .55rem; }
-.enote-baum-zeile:hover { background: #f1f5f9; }
+.enote-baum-zeile:hover { background: var(--enote-surface-2); }
 .enote-baum-unter { margin-left: 1.6rem; }
 .enote-baum-toggle { width: 1.3rem; border: none; background: none; color: var(--enote-text-muted); cursor: pointer; font-size: .85rem; flex-shrink: 0; }
 .enote-baum-name { flex: 1; font-weight: 600; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .enote-baum-unter .enote-baum-name { font-weight: 500; }
-.enote-baum-anzahl { font-size: .75rem; color: var(--enote-text-muted); background: #eef2f7; border-radius: 999px; padding: .05rem .5rem; flex-shrink: 0; }
+.enote-baum-anzahl { font-size: .75rem; color: var(--enote-text-muted); background: var(--enote-surface-3); border-radius: 999px; padding: .05rem .5rem; flex-shrink: 0; }
 .enote-baum-aktionen { display: flex; gap: .15rem; }
 .enote-baum-neu { display: flex; align-items: center; gap: .4rem; padding: .4rem .45rem; }
 
@@ -1221,7 +1135,7 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-zuordnung-check { font-weight: 800; flex-shrink: 0; }
 
 /* Typ-Auswahl (Prestation/Produit): Große Karten mit Icon */
-.enote-typ-auswahl { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.enote-typ-auswahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .enote-typ-btn {
     display: flex; align-items: center; gap: .8rem; padding: .9rem 1rem;
     border: 2px solid var(--enote-border); border-radius: var(--enote-radius);
@@ -1236,27 +1150,29 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-typ-text { display: grid; gap: .15rem; }
 .enote-typ-text strong { font-size: .95rem; color: var(--enote-text); }
 .enote-typ-text small { font-size: .78rem; color: var(--enote-text-muted); font-weight: 400; line-height: 1.35; }
-@media (max-width: 520px) { .enote-typ-auswahl { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .enote-typ-auswahl { grid-template-columns: minmax(0, 1fr); } }
 
 /* --- Pill-Radio --- */
 .enote-radio-group { display: flex; gap: .5rem; flex-wrap: wrap; }
 .enote-radio-pill {
-    padding: .7rem 1.35rem; border: none; border-radius: 999px; cursor: pointer;
-    background: var(--enote-surface); color: var(--enote-text); font-weight: 600; font-size: .95rem;
-    box-shadow: var(--enote-neu-out-sm); transition: all .18s; touch-action: manipulation;
+    min-height: 2.75rem; padding: .55rem 1.15rem; border: 1px solid var(--enote-border); border-radius: 999px; cursor: pointer;
+    background: var(--enote-surface); color: var(--enote-text); font-weight: 700; font-size: .92rem; white-space: nowrap;
+    transition: background .15s, border-color .15s, color .15s; touch-action: manipulation;
 }
-.enote-radio-pill:hover { transform: translateY(-1px); box-shadow: var(--enote-neu-out); }
-.enote-radio-pill.aktiv { background: var(--enote-gradient); color: #fff; box-shadow: 0 8px 18px rgba(23, 37, 84, .3); }
+.enote-radio-pill:hover { background: var(--enote-surface-2); border-color: var(--enote-border-strong); }
+.enote-radio-pill.aktiv, .enote-radio-pill.aktiv:hover { background: var(--enote-primary); border-color: var(--enote-primary); color: #fff; }
 .enote-radio-pill:disabled { opacity: .5; cursor: not-allowed; }
 
 /* --- Custom-Select --- */
 .enote-select2 { position: relative; width: 100%; }
 .enote-select2-trigger {
-    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-    padding: .75rem 1.1rem; border: none; border-radius: var(--enote-radius-pill);
-    background: var(--enote-surface); color: var(--enote-text); font-size: .95rem; cursor: pointer;
-    box-shadow: var(--enote-neu-in); text-align: left;
+    width: 100%; min-height: 2.9rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    padding: .65rem .95rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius);
+    background: var(--enote-surface); color: var(--enote-text); font-size: .95rem; cursor: pointer; text-align: left;
+    transition: border-color .15s, box-shadow .15s;
 }
+.enote-select2-trigger:hover { border-color: #b7c2d3; }
+.enote-select2.offen .enote-select2-trigger { border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
 .enote-select2-trigger:disabled { opacity: .5; cursor: not-allowed; }
 .enote-select2-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .enote-select2-chevron { color: var(--enote-text-muted); transition: transform .2s; }
@@ -1283,10 +1199,9 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 /* --- DatePicker --- */
 .enote-datepicker { position: relative; width: 100%; }
 .enote-datepicker-trigger {
-    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-    padding: .75rem 1.1rem; border: none; border-radius: var(--enote-radius-pill);
+    width: 100%; min-height: 2.9rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    padding: .65rem .95rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius);
     background: var(--enote-surface); color: var(--enote-text); font-size: .95rem; cursor: pointer;
-    box-shadow: var(--enote-neu-in);
 }
 .enote-datepicker-trigger:disabled { opacity: .5; }
 .enote-datepicker-ico { font-size: 1rem; }
@@ -1319,22 +1234,28 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .enote-check-row { display: flex; align-items: center; gap: .55rem; }
 
 /* --- Tabs (Admin u. a.) --- */
-.enote-tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; border-bottom: 2px solid #e5e7eb; }
-.enote-tab {
-    background: none; border: none; padding: .7rem 1.2rem; font-size: .95rem; font-weight: 600;
-    color: var(--enote-text-muted); cursor: pointer; border-bottom: 2px solid transparent;
-    margin-bottom: -2px; transition: color .15s ease, border-color .15s ease;
+/* Segment-Tabs: kompakt, touchfreundlich, scrollen bei Platzmangel statt umzubrechen */
+.enote-tabs {
+    display: inline-flex; gap: .25rem; margin-bottom: 1.25rem; padding: .3rem;
+    background: var(--enote-surface-3); border-radius: var(--enote-radius); max-width: 100%;
+    overflow-x: auto; scrollbar-width: none;
 }
-.enote-tab:hover { color: var(--enote-primary); }
-.enote-tab.aktiv { color: var(--enote-primary); border-bottom-color: var(--enote-primary); }
+.enote-tabs::-webkit-scrollbar { display: none; }
+.enote-tab {
+    min-height: 2.5rem; background: none; border: none; padding: .5rem 1.05rem; font-size: .9rem; font-weight: 700;
+    color: var(--enote-text-muted); cursor: pointer; border-radius: var(--enote-radius-sm); white-space: nowrap;
+    transition: color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.enote-tab:hover { color: var(--enote-text); }
+.enote-tab.aktiv { color: var(--enote-primary); background: var(--enote-surface); box-shadow: 0 1px 3px rgba(16, 26, 51, .1); }
 
 /* --- Filter-Leiste (Suche + Filter über Listen) --- */
 .enote-filter-leiste { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
 .enote-filter-suche {
-    flex: 1 1 14rem; min-width: 12rem; padding: .55rem .9rem; border: 1px solid #d1d5db;
-    border-radius: .6rem; font-size: .9rem; background: #fff;
+    flex: 1 1 14rem; min-width: 12rem; min-height: 2.75rem; padding: .55rem .95rem; border: 1px solid var(--enote-border-strong);
+    border-radius: var(--enote-radius); font-size: .92rem; background: var(--enote-surface);
 }
-.enote-filter-suche:focus { outline: none; border-color: var(--enote-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+.enote-filter-suche:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
 /* Dropdowns in der Filter-Leiste kompakt halten (nicht volle Breite) */
 .enote-filter-leiste .enote-select2 { flex: 0 0 auto; width: auto; min-width: 10rem; max-width: 14rem; }
 .enote-filter-leiste .enote-select2-trigger { width: 100%; }
@@ -1416,24 +1337,779 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 
 @media (max-width: 640px) {
     .enote-landing-hero { padding: 2.25rem 1rem 2rem; }
-    .enote-landing-features { grid-template-columns: 1fr; padding: 1.75rem 1rem; }
+    .enote-landing-features { grid-template-columns: minmax(0, 1fr); padding: 1.75rem 1rem; }
     .enote-landing-cta { margin: .5rem 1rem 2rem; padding: 2rem 1.25rem; }
 }
 
+/* ============================================================
+   PIN-Eingabe (Punkte + Ziffernblock) · Besitzer-Sperre
+   ============================================================ */
+.enote-pin { display: grid; gap: 1rem; justify-items: center; width: 100%; }
+.enote-pin-anzeige {
+    position: relative; display: flex; justify-content: center; gap: .85rem;
+    padding: .9rem 1.25rem; min-width: 14rem; border-radius: var(--enote-radius-lg);
+    background: var(--enote-surface-2); border: 1px solid var(--enote-border); cursor: text;
+}
+.enote-pin-anzeige:focus-within { border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
+.enote-pin-anzeige.fehler { border-color: var(--enote-danger); animation: enote-wackeln .35s; }
+@keyframes enote-wackeln { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+.enote-pin-feld { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: none; cursor: text; font-size: 16px; }
+.enote-pin-punkt { width: .95rem; height: .95rem; border-radius: 50%; border: 2px solid var(--enote-border-strong); transition: background .12s, border-color .12s, transform .12s; }
+.enote-pin-punkt.voll { background: var(--enote-primary); border-color: var(--enote-primary); transform: scale(1.05); }
+.enote-pin-block { display: grid; grid-template-columns: repeat(3, 4.25rem); gap: .6rem; }
+.enote-pin-taste {
+    height: 3.6rem; border-radius: var(--enote-radius-lg); border: 1px solid var(--enote-border);
+    background: var(--enote-surface); color: var(--enote-text); font-size: 1.45rem; font-weight: 700;
+    cursor: pointer; display: grid; place-items: center; touch-action: manipulation;
+    transition: background .1s, transform .08s;
+}
+.enote-pin-taste:hover { background: var(--enote-surface-2); }
+.enote-pin-taste:active { transform: scale(.94); background: var(--enote-primary-soft); }
+.enote-pin-taste.leise { background: transparent; border-color: transparent; color: var(--enote-text-muted); font-size: 1.05rem; }
 
+.enote-pin-dialog { display: grid; gap: .75rem; justify-items: center; text-align: center; }
+.enote-pin-dialog p { margin: 0; }
+.enote-pin-dialog-ico {
+    width: 3.25rem; height: 3.25rem; border-radius: 1rem; display: grid; place-items: center;
+    background: var(--enote-primary-soft); color: var(--enote-primary-light);
+}
 
+.enote-pin-sperre { display: grid; place-items: center; min-height: 60vh; padding: 1rem 0; }
+.enote-pin-sperre-card {
+    max-width: 24rem; width: 100%; text-align: center;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: 1.5rem;
+    padding: 2rem 1.75rem; box-shadow: var(--enote-neu-out); display: grid; gap: .9rem; justify-items: center;
+}
+.enote-pin-sperre-card h2 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+.enote-pin-sperre-card p { margin: 0; }
 
+/* ============================================================
+   Kasse (kx-*) – Tablet zuerst, PC und Handy mitgedacht
+   ============================================================ */
+.enote-muted { color: var(--enote-text-muted); }
+.enote-modal-sm { max-width: 26rem; }
+.enote-modal-md { max-width: 34rem; }
+.enote-modal-lg { max-width: 48rem; }
 
+/* --- Hinweis (Kasse minimiert) --- */
+.kx-hinweis { max-width: 30rem; margin: 4rem auto; text-align: center; display: grid; gap: .8rem; justify-items: center; }
+.kx-hinweis h1 { margin: 0; font-size: 1.35rem; }
+.kx-hinweis p { margin: 0; }
+.kx-hinweis-ico, .kx-start-ico {
+    width: 3.5rem; height: 3.5rem; border-radius: 1rem; display: grid; place-items: center;
+    background: var(--enote-primary-soft); color: var(--enote-primary-light);
+}
 
+/* --- Kassenstart --- */
+.kx-start { max-width: 68rem; margin: 0 auto; display: grid; gap: 1.25rem; }
+.kx-start-kopf { display: flex; align-items: center; gap: 1rem; }
+.kx-start-kopf h1 { margin: 0; font-size: clamp(1.4rem, 2.4vw, 1.8rem); font-weight: 800; letter-spacing: -.02em; }
+.kx-start-kopf p { margin: .2rem 0 0; }
+.kx-start-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 1rem; align-items: start; }
+.kx-start-karte {
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    padding: 1.15rem; display: grid; gap: 1rem; transition: opacity .2s;
+}
+.kx-start-karte.gedimmt { opacity: .55; }
+.kx-start-karte h2 { margin: 0; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: .55rem; }
+.kx-schritt {
+    width: 1.6rem; height: 1.6rem; border-radius: 50%; display: grid; place-items: center;
+    background: var(--enote-primary); color: #fff; font-size: .8rem;
+}
+.kx-kassierer { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .6rem; }
+.kx-kassierer-btn {
+    display: grid; justify-items: center; gap: .5rem; padding: .9rem .5rem;
+    border: 2px solid var(--enote-border); border-radius: var(--enote-radius-lg); background: var(--enote-surface);
+    cursor: pointer; font: inherit; color: var(--enote-text); transition: border-color .15s, background .15s;
+}
+.kx-kassierer-btn:hover { background: var(--enote-surface-2); }
+.kx-kassierer-btn .enote-avatar { width: 3rem; height: 3rem; font-size: 1rem; background: var(--enote-surface-3); color: var(--enote-text-muted); }
+.kx-kassierer-btn.gewaehlt { border-color: var(--enote-primary-light); background: var(--enote-primary-soft); }
+.kx-kassierer-btn.gewaehlt .enote-avatar { background: var(--enote-gradient); color: #fff; }
+.kx-kassierer-name { font-weight: 700; font-size: .88rem; text-align: center; line-height: 1.2; }
 
+/* --- Aktive Kasse: Gerüst --- */
+.kx { display: flex; flex-direction: column; gap: .85rem; height: 100%; min-height: 0; flex: 1; }
+.enote-kassen-modus .enote-main > .kx { max-width: none; }
 
+.kx-kopf {
+    display: flex; align-items: center; gap: 1rem; flex-shrink: 0;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    padding: .55rem .6rem .55rem .75rem;
+}
+.kx-kopf-info { display: flex; align-items: center; gap: .7rem; min-width: 0; flex: 1; }
+.kx-kopf-text { display: grid; min-width: 0; line-height: 1.25; }
+.kx-kopf-text strong { font-size: .98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-kopf-text > span { font-size: .8rem; color: var(--enote-text-muted); display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
+.kx-live-punkt { width: .5rem; height: .5rem; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, .2); }
+.kx-kopf-kasse { display: grid; text-align: right; line-height: 1.15; padding: .2rem .9rem; border-left: 1px solid var(--enote-border); border-right: 1px solid var(--enote-border); }
+.kx-kopf-kasse small { font-size: .7rem; font-weight: 700; color: var(--enote-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.kx-kopf-kasse strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; color: var(--enote-pay-bar); }
+.kx-kopf-aktionen { display: flex; gap: .3rem; }
+.kx-aktion {
+    display: grid; justify-items: center; gap: .15rem; min-width: 4.4rem; min-height: 3.1rem; padding: .35rem .5rem;
+    border: none; border-radius: var(--enote-radius); background: transparent; color: var(--enote-text-muted);
+    font: inherit; font-size: .7rem; font-weight: 700; cursor: pointer; transition: background .15s, color .15s;
+}
+.kx-aktion:hover { background: var(--enote-surface-2); color: var(--enote-text); }
+.kx-aktion-haupt { color: var(--enote-primary); background: var(--enote-primary-soft); }
+.kx-aktion-haupt:hover { background: #e0e7ff; color: var(--enote-primary-dark); }
 
+.kx-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 23.5rem; gap: .85rem; }
 
+/* --- Katalog --- */
+.kx-katalog { display: flex; flex-direction: column; gap: .7rem; min-height: 0; min-width: 0; }
+.kx-suche { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.kx-suche-ico { position: absolute; left: 1rem; color: var(--enote-text-subtle); pointer-events: none; }
+.kx-suche-scan { position: absolute; right: 1rem; color: var(--enote-text-subtle); pointer-events: none; }
+.kx-suche-feld {
+    width: 100%; min-height: 3.1rem; padding: .7rem 3rem; font-size: 1rem;
+    border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); background: var(--enote-surface);
+}
+.kx-suche-feld:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
+.kx-suche-leeren {
+    position: absolute; right: .45rem; width: 2.3rem; height: 2.3rem; border: none; border-radius: 50%;
+    background: var(--enote-surface-3); color: var(--enote-text-muted); display: grid; place-items: center; cursor: pointer;
+}
 
+.kx-kats, .kx-unterkats { display: flex; gap: .45rem; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; padding-bottom: 2px; }
+.kx-kats::-webkit-scrollbar, .kx-unterkats::-webkit-scrollbar { display: none; }
+.kx-kat {
+    --kat: var(--enote-primary);
+    display: inline-flex; align-items: center; gap: .45rem; flex-shrink: 0;
+    min-height: 2.75rem; padding: .45rem 1rem; border-radius: 999px;
+    border: 1px solid var(--enote-border); background: var(--enote-surface); color: var(--enote-text);
+    font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.kx-kat:hover { background: var(--enote-surface-2); }
+.kx-kat-punkt { width: .6rem; height: .6rem; border-radius: 50%; background: var(--kat); }
+.kx-kat.aktiv { background: var(--enote-text); border-color: var(--enote-text); color: #fff; }
+.kx-kat.aktiv .kx-kat-punkt { box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
+.kx-unterkat {
+    flex-shrink: 0; min-height: 2.3rem; padding: .3rem .85rem; border-radius: 999px; border: none;
+    background: transparent; color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+}
+.kx-unterkat.aktiv { background: var(--enote-surface-3); color: var(--enote-text); }
 
+.kx-kacheln {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(9.75rem, 1fr)); gap: .65rem;
+    align-content: start; padding: 2px 2px .5rem;
+}
+.kx-kachel {
+    --kat: var(--enote-border-strong);
+    position: relative; min-height: 6.25rem; display: flex;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    overflow: hidden; transition: border-color .15s, box-shadow .15s;
+}
+.kx-kachel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--kat); }
+.kx-kachel:hover { border-color: var(--enote-border-strong); box-shadow: var(--enote-neu-out-sm); }
+.kx-kachel.im-ticket { border-color: var(--enote-primary-light); box-shadow: 0 0 0 1px var(--enote-primary-light); }
+.kx-kachel-haupt {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: .35rem;
+    padding: .75rem .8rem .7rem 1rem; border: none; background: transparent; text-align: left; cursor: pointer;
+    font: inherit; color: var(--enote-text); touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.kx-kachel-haupt:active { background: var(--enote-primary-soft); }
+.kx-kachel-bild { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: .6rem; margin-bottom: .1rem; background: var(--enote-surface-3); }
+.kx-kachel-name {
+    font-weight: 700; font-size: .95rem; line-height: 1.25; padding-right: 1.6rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.kx-kachel-fuss { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; }
+.kx-kachel-preis { font-weight: 800; color: var(--enote-primary); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: .25rem; }
+.kx-kachel-lager { order: -1; font-size: .7rem; font-weight: 800; color: var(--enote-warning); background: var(--enote-warning-soft); padding: .1rem .45rem; border-radius: 999px; }
+.kx-kachel.frei { border-style: dashed; border-color: var(--enote-border-strong); background: var(--enote-surface-2); }
+.kx-kachel.frei .kx-kachel-preis { color: var(--enote-text-muted); font-size: .86rem; }
+.kx-kachel-menge {
+    position: absolute; top: .45rem; right: .45rem; min-width: 1.7rem; height: 1.7rem; padding: 0 .4rem;
+    border-radius: 999px; background: var(--enote-primary); color: #fff; font-size: .82rem; font-weight: 800;
+    display: grid; place-items: center; pointer-events: none;
+}
+.kx-fav {
+    position: absolute; right: .3rem; bottom: .3rem; width: 2.1rem; height: 2.1rem; border: none; border-radius: 50%;
+    background: transparent; color: #c5cdd9; display: grid; place-items: center; cursor: pointer; transition: color .15s, background .15s;
+}
+.kx-fav:hover { background: var(--enote-surface-2); color: #f59e0b; }
+.kx-fav.aktiv { color: #f59e0b; }
+.kx-fav.aktiv .enote-icon { fill: currentColor; }
+.kx-kachel-fuss { padding-right: 1.5rem; }
 
+/* --- Ticket --- */
+.kx-ticket {
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg);
+    box-shadow: var(--enote-neu-out); overflow: hidden;
+}
+.kx-ticket-griff { display: none; }
+.kx-ticket-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .9rem 1rem .6rem 1.15rem; }
+.kx-ticket-kopf h2 { margin: 0; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: .45rem; }
+.kx-ticket-anzahl { min-width: 1.5rem; height: 1.5rem; padding: 0 .4rem; border-radius: 999px; background: var(--enote-primary-soft); color: var(--enote-primary); font-size: .78rem; display: grid; place-items: center; }
+.kx-ticket-leeren {
+    display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .3rem .7rem; border: none; border-radius: var(--enote-radius-sm);
+    background: transparent; color: var(--enote-danger); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+}
+.kx-ticket-leeren:hover { background: var(--enote-danger-soft); }
 
+.kx-ticket-liste { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 .55rem; }
+.kx-ticket-leer { height: 100%; min-height: 10rem; display: grid; place-content: center; justify-items: center; gap: .5rem; color: var(--enote-text-subtle); text-align: center; padding: 1rem; }
+.kx-ticket-leer p { margin: 0; max-width: 14rem; font-size: .9rem; }
 
+.kx-pos {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .55rem;
+    padding: .55rem .6rem; border-radius: var(--enote-radius); animation: enote-fadein .18s ease;
+}
+.kx-pos + .kx-pos { border-top: 1px solid var(--enote-border); border-radius: 0; }
+.kx-pos-text { display: grid; min-width: 0; line-height: 1.25; }
+.kx-pos-name { font-weight: 700; font-size: .92rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kx-pos-einzel { font-size: .76rem; color: var(--enote-text-muted); font-variant-numeric: tabular-nums; }
+.kx-pos-menge { display: flex; align-items: center; gap: .15rem; background: var(--enote-surface-2); border: 1px solid var(--enote-border); border-radius: 999px; padding: .15rem; }
+.kx-pos-menge button {
+    width: 2.25rem; height: 2.25rem; border: none; border-radius: 50%; background: var(--enote-surface);
+    color: var(--enote-text); display: grid; place-items: center; cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 1px 2px rgba(16, 26, 51, .08);
+}
+.kx-pos-menge button:active { transform: scale(.92); }
+.kx-pos-menge span { min-width: 1.6rem; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kx-pos-summe { min-width: 5rem; text-align: right; font-size: .95rem; font-variant-numeric: tabular-nums; }
 
+.kx-ticket-fuss { flex-shrink: 0; border-top: 1px solid var(--enote-border); padding: .75rem .9rem .9rem; display: grid; gap: .65rem; background: var(--enote-surface-2); }
+.kx-rabatt-btn {
+    display: inline-flex; align-items: center; gap: .4rem; justify-self: start; min-height: 2.25rem; padding: .3rem .75rem;
+    border: 1px dashed var(--enote-border-strong); border-radius: 999px; background: var(--enote-surface);
+    color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+}
+.kx-rabatt-btn:hover { color: var(--enote-primary); border-color: var(--enote-primary-light); }
+.kx-rabatt-aktiv {
+    display: flex; align-items: center; gap: .5rem; padding: .4rem .45rem .4rem .75rem;
+    border-radius: var(--enote-radius); background: var(--enote-success-soft); color: var(--enote-success); font-size: .88rem; font-weight: 700;
+}
+.kx-rabatt-aktiv span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-rabatt-aktiv button { width: 1.9rem; height: 1.9rem; border: none; border-radius: 50%; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; }
+.kx-summen { display: grid; gap: .2rem; }
+.kx-summen > div { display: flex; justify-content: space-between; font-size: .88rem; color: var(--enote-text-muted); font-variant-numeric: tabular-nums; }
+.kx-summen .kx-total { align-items: baseline; color: var(--enote-text); font-size: 1rem; font-weight: 700; }
+.kx-total strong { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; }
 
+.kx-zahlen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.kx-zahlen.drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kx-zahl {
+    display: grid; justify-items: center; gap: .3rem; min-height: 4.6rem; padding: .6rem .3rem;
+    border: none; border-radius: var(--enote-radius-lg); color: #fff; cursor: pointer;
+    font: inherit; font-size: .86rem; font-weight: 800; line-height: 1.15; text-align: center;
+    touch-action: manipulation; transition: filter .15s, transform .1s;
+}
+.kx-zahl:hover { filter: brightness(1.06); }
+.kx-zahl:active { transform: scale(.97); }
+.kx-zahl-bar { background: var(--enote-pay-bar); box-shadow: 0 8px 18px rgba(13, 148, 136, .25); }
+.kx-zahl-momo { background: var(--enote-pay-momo); box-shadow: 0 8px 18px rgba(217, 119, 6, .25); }
+.kx-zahl-karte { background: var(--enote-pay-karte); box-shadow: 0 8px 18px rgba(37, 71, 184, .25); }
+.kx-mixte {
+    justify-self: center; display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .2rem .6rem;
+    border: none; background: transparent; color: var(--enote-text-muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+}
+.kx-mixte:hover { color: var(--enote-primary); }
 
+/* Abgeschlossener Verkauf: Rückgeld bleibt groß sichtbar */
+.kx-fertig { min-height: 100%; display: grid; place-content: center; justify-items: center; gap: .45rem; text-align: center; padding: 1.5rem 1rem; animation: enote-modal-in .25s ease; }
+.kx-fertig-ico { width: 3.5rem; height: 3.5rem; border-radius: 50%; display: grid; place-items: center; background: var(--enote-success-soft); color: var(--enote-success); }
+.kx-fertig > strong { font-size: 1.1rem; }
+.kx-fertig-rueck { margin: .4rem 0 .6rem; padding: .8rem 1.4rem; border-radius: var(--enote-radius-lg); background: var(--enote-success-soft); display: grid; }
+.kx-fertig-rueck small { color: var(--enote-success); font-weight: 700; }
+.kx-fertig-rueck strong { font-size: 2rem; color: var(--enote-success); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* --- Zahlungsdialog --- */
+.kx-pay { display: grid; gap: 1rem; }
+.kx-pay-total { display: flex; justify-content: space-between; align-items: baseline; padding: .9rem 1.1rem; border-radius: var(--enote-radius-lg); background: var(--enote-text); color: #fff; }
+.kx-pay-total span { opacity: .75; font-weight: 600; }
+.kx-pay-total strong { font-size: 1.8rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kx-pay-modi { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .3rem; padding: .3rem; background: var(--enote-surface-3); border-radius: var(--enote-radius); }
+.kx-pay-modus {
+    display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.6rem; padding: .3rem .4rem;
+    border: none; border-radius: var(--enote-radius-sm); background: transparent; color: var(--enote-text-muted);
+    font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.kx-pay-modus.aktiv { background: var(--enote-surface); color: var(--enote-text); box-shadow: 0 1px 3px rgba(16, 26, 51, .12); }
+.kx-pay-rueck { display: flex; justify-content: space-between; align-items: center; padding: .85rem 1.1rem; border-radius: var(--enote-radius-lg); background: var(--enote-success-soft); color: var(--enote-success); font-weight: 700; }
+.kx-pay-rueck strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.kx-pay-rueck.fehlt { background: var(--enote-danger-soft); color: var(--enote-danger); }
+.kx-pay-info { display: grid; justify-items: center; gap: .6rem; text-align: center; padding: 1rem; color: var(--enote-text-muted); }
+.kx-pay-info p { margin: 0; color: var(--enote-text); }
+.kx-pay-ref { display: grid; gap: .35rem; font-size: .86rem; font-weight: 700; }
+.kx-pay-ref .enote-input { max-width: none; }
+.kx-pay-hinweis { margin: 0; display: flex; align-items: center; gap: .45rem; font-size: .82rem; color: var(--enote-text-muted); }
+.kx-pay-rest { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); font-size: .88rem; font-weight: 700; }
+.kx-pay-rest strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.kx-pay-rest-wahl { display: flex; gap: .35rem; flex-wrap: wrap; }
+
+/* --- Remise --- */
+.kx-rabatte { display: grid; gap: .5rem; }
+.kx-rabatt-option {
+    display: flex; align-items: center; gap: .8rem; width: 100%; padding: .7rem .8rem; text-align: left;
+    border: 2px solid var(--enote-border); border-radius: var(--enote-radius); background: var(--enote-surface); cursor: pointer; font: inherit; color: var(--enote-text);
+}
+.kx-rabatt-option:disabled { opacity: .45; cursor: not-allowed; }
+.kx-rabatt-option.aktiv { border-color: var(--enote-primary-light); background: var(--enote-primary-soft); }
+.kx-rabatt-wert { min-width: 4.2rem; padding: .35rem .5rem; border-radius: var(--enote-radius-sm); background: var(--enote-success-soft); color: var(--enote-success); font-weight: 800; text-align: center; }
+.kx-rabatt-text { display: grid; line-height: 1.3; }
+.kx-rabatt-text small { color: var(--enote-text-muted); }
+.kx-bedingung { padding: .7rem .8rem; border-radius: var(--enote-radius); background: var(--enote-warning-soft); }
+
+/* --- Historie --- */
+.kx-historie { display: grid; gap: .5rem; max-height: 60vh; overflow-y: auto; }
+.kx-historie-zeile { display: flex; align-items: center; gap: .8rem; padding: .7rem .85rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.kx-historie-info { display: grid; gap: .2rem; min-width: 0; flex: 1; }
+.kx-historie-top { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.kx-historie-top strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.kx-historie-pos { color: var(--enote-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.enote-zahlungs-tags { display: inline-flex; gap: .3rem; flex-wrap: wrap; }
+
+/* --- Abschluss --- */
+.kx-abschluss { display: grid; gap: .9rem; }
+.kx-abschluss-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.kx-abschluss-kpis > div { display: grid; padding: .7rem .9rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+.kx-abschluss-kpis small { color: var(--enote-text-muted); font-weight: 700; font-size: .76rem; }
+.kx-abschluss-kpis strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.kx-abschluss-zeilen { display: grid; gap: .35rem; }
+.kx-abschluss-zeilen > div { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; color: var(--enote-text-muted); font-variant-numeric: tabular-nums; }
+.kx-abschluss-zeilen span { display: inline-flex; align-items: center; gap: .4rem; }
+.kx-abschluss-soll { padding: .5rem 0; border-top: 1px solid var(--enote-border); border-bottom: 1px solid var(--enote-border); color: var(--enote-text) !important; font-weight: 700; }
+.kx-abschluss-soll strong { font-size: 1.3rem; color: var(--enote-pay-bar); }
+.kx-abschluss-neben { font-size: .84rem !important; }
+.kx-ecart { display: flex; justify-content: space-between; align-items: center; padding: .7rem 1rem; border-radius: var(--enote-radius); font-weight: 700; }
+.kx-ecart strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.kx-ecart.null { background: var(--enote-success-soft); color: var(--enote-success); }
+.kx-ecart.plus { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.kx-ecart.minus { background: var(--enote-danger-soft); color: var(--enote-danger); }
+
+.kx-frei-text { margin: 0 0 .75rem; font-size: .88rem; }
+.kx-frei-menge { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; font-weight: 700; }
+
+/* --- Betragseingabe & Anbieter (Shared) --- */
+.enote-betrag { display: grid; gap: .7rem; }
+.enote-betrag-label { font-size: .86rem; font-weight: 700; }
+.enote-betrag-anzeige {
+    position: relative; display: flex; align-items: center; gap: .5rem; padding: 0 1rem;
+    border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius-lg); background: var(--enote-surface);
+}
+.enote-betrag-anzeige:focus-within { border-color: var(--enote-primary-light); box-shadow: var(--enote-ring); }
+.enote-betrag-anzeige.hervor { border-width: 2px; }
+.enote-betrag-feld { flex: 1; min-width: 0; min-height: 3.6rem; border: none; background: transparent; font-size: 1.9rem; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--enote-text); }
+.enote-betrag-feld:focus { outline: none; }
+.enote-betrag-waehrung { font-size: 1.2rem; font-weight: 800; color: var(--enote-text-muted); }
+.enote-betrag-schnell { display: flex; gap: .4rem; flex-wrap: wrap; }
+.enote-betrag-schnell .enote-chip { font-variant-numeric: tabular-nums; }
+.enote-betrag-block { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+.enote-betrag-block .enote-pin-taste { height: 3.3rem; }
+.enote-betrag.kompakt .enote-betrag-feld { min-height: 3rem; font-size: 1.5rem; }
+.enote-betrag.kompakt .enote-betrag-block .enote-pin-taste { height: 2.75rem; font-size: 1.2rem; }
+.enote-betrag.kompakt .enote-betrag-block { gap: .4rem; }
+.kx-pay { gap: .85rem; }
+
+.enote-anbieter { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .55rem; }
+.enote-anbieter-kachel {
+    --marke: var(--enote-pay-momo); --marke-text: #fff;
+    position: relative; display: flex; align-items: center; gap: .65rem; min-height: 3.6rem; padding: .55rem .7rem;
+    border: 2px solid var(--enote-border); border-radius: var(--enote-radius-lg); background: var(--enote-surface);
+    color: var(--enote-text); font: inherit; font-weight: 800; font-size: .92rem; cursor: pointer; text-align: left;
+    transition: border-color .15s, box-shadow .15s;
+}
+.enote-anbieter-logo { width: 2.4rem; height: 2.4rem; border-radius: .7rem; flex-shrink: 0; display: grid; place-items: center; background: var(--marke); color: var(--marke-text); font-size: .8rem; font-weight: 900; }
+.enote-anbieter-kachel.aktiv { border-color: var(--marke); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marke) 25%, transparent); }
+.enote-anbieter-check { position: absolute; top: -.45rem; right: -.45rem; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--marke); color: var(--marke-text); display: grid; place-items: center; }
+
+/* --- Kasse responsiv --- */
+@media (max-width: 1199px) {
+    .kx-body { grid-template-columns: minmax(0, 1fr) 21rem; }
+    .kx-aktion span { display: none; }
+    .kx-aktion { min-width: 3rem; }
+    .kx-start-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kx-start-grid > :first-child { grid-column: 1 / -1; }
+}
+
+/* Tablet hochkant & Handy: Ticket als Leiste unten, aufklappbar */
+@media (max-width: 900px) {
+    .kx-body { grid-template-columns: minmax(0, 1fr); }
+    .kx-kopf-kasse { display: none; }
+    .kx-kacheln { padding-bottom: 9.5rem; }
+    .kx-ticket {
+        position: fixed; left: .6rem; right: .6rem; bottom: .6rem; z-index: 1250;
+        max-height: 4.5rem; transition: max-height .25s ease; box-shadow: 0 -10px 40px rgba(16, 26, 51, .18);
+    }
+    .kx-ticket.offen { max-height: calc(100dvh - 5rem); }
+    .kx-ticket-griff {
+        display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 4.4rem; padding: .6rem 1rem;
+        border: none; background: var(--enote-text); color: #fff; font: inherit; font-weight: 700; cursor: pointer; flex-shrink: 0;
+    }
+    .kx-ticket-griff > span { display: inline-flex; align-items: center; gap: .45rem; flex: 1; text-align: left; }
+    .kx-ticket-griff strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+    .kx-ticket-griff-pfeil { transform: rotate(180deg); transition: transform .2s; }
+    .kx-ticket.offen .kx-ticket-griff-pfeil { transform: none; }
+    .kx-ticket-kopf { display: none; }
+    .kx-start-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .enote-kassen-modus .enote-main { padding: .6rem; }
+    .kx-kopf { padding: .45rem; gap: .5rem; }
+    .kx-kopf-info .enote-brand-icon { display: none; }
+    .kx-aktion { min-width: 2.75rem; padding: .3rem; }
+    .kx-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kx-zahl { min-height: 4rem; font-size: .78rem; }
+    .kx-pay-modus { font-size: 0; gap: 0; }
+    .kx-pay-modus .enote-icon { width: 20px; height: 20px; }
+}
+
+/* ============================================================
+   Startseite / Dashboard (db-*) · Diagramme
+   ============================================================ */
+.db { display: grid; gap: 1.25rem; }
+.db-kopf { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.db-kopf h1 { margin: 0; font-size: clamp(1.5rem, 2.8vw, 2rem); font-weight: 800; letter-spacing: -.02em; }
+.db-kopf p { margin: .15rem 0 0; }
+.db-datum { margin: 0 0 .2rem !important; font-size: .82rem; font-weight: 700; color: var(--enote-text-muted); }
+.db-datum::first-letter { text-transform: uppercase; }
+.db-kasse-btn { box-shadow: 0 10px 24px rgba(30, 58, 138, .25); }
+
+.db-hinweis-karte { display: flex; gap: 1rem; align-items: flex-start; padding: 1.25rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); }
+.db-hinweis-karte h2 { margin: 0 0 .25rem; font-size: 1.05rem; }
+.db-hinweis-karte p { margin: 0; color: var(--enote-text-muted); }
+.db-hinweis-ico { width: 3rem; height: 3rem; border-radius: .9rem; display: grid; place-items: center; flex-shrink: 0; background: var(--enote-primary-soft); color: var(--enote-primary-light); }
+
+.db-schnell { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem; }
+.db-schnell-karte { display: grid; gap: .25rem; padding: 1.1rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); text-decoration: none; color: var(--enote-text); transition: border-color .15s, box-shadow .15s; }
+.db-schnell-karte:hover { border-color: var(--enote-border-strong); box-shadow: var(--enote-neu-out); }
+.db-schnell-karte > span { width: 2.6rem; height: 2.6rem; border-radius: .8rem; display: grid; place-items: center; background: var(--enote-primary-soft); color: var(--enote-primary-light); margin-bottom: .4rem; }
+.db-schnell-karte small { color: var(--enote-text-muted); }
+
+/* Meldungen */
+.db-meldungen { border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid #f7d9a8; overflow: hidden; }
+.db-meldungen-kopf { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .9rem .7rem 1.1rem; background: var(--enote-warning-soft); color: var(--enote-warning); flex-wrap: wrap; }
+.db-meldungen-kopf strong { display: inline-flex; align-items: center; gap: .45rem; }
+.db-meldung { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .3rem 1rem; padding: .65rem .8rem .65rem 1.1rem; border-top: 1px solid var(--enote-border); }
+.db-meldung-text { font-size: .9rem; }
+.db-meldung-ok { width: 2.4rem; height: 2.4rem; border-radius: 50%; border: 1px solid var(--enote-border); background: var(--enote-surface); color: var(--enote-text-muted); display: grid; place-items: center; cursor: pointer; }
+.db-meldung-ok:hover { color: var(--enote-success); border-color: var(--enote-success); }
+
+/* Kennzahlen */
+.db-kpis { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr; gap: .8rem; }
+.db-kpi { display: grid; gap: .25rem; align-content: start; padding: 1rem 1.15rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); min-width: 0; }
+.db-kpi-label { font-size: .78rem; font-weight: 700; color: var(--enote-text-muted); }
+.db-kpi .enote-kpi-wert { font-size: clamp(1.35rem, 2.2vw, 1.75rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.db-kpi-unter { font-size: .8rem; color: var(--enote-text-muted); display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-kpi-leise { color: var(--enote-text-subtle); }
+.db-kpi-haupt { background: var(--enote-gradient); border: none; color: #fff; box-shadow: 0 12px 28px rgba(30, 58, 138, .22); }
+.db-kpi-haupt .db-kpi-label { color: rgba(255, 255, 255, .8); }
+.db-kpi-haupt .enote-kpi-wert { font-size: clamp(1.6rem, 2.8vw, 2.2rem); }
+.db-trend { display: inline-flex; align-items: center; gap: .3rem; justify-self: start; padding: .15rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 800; background: rgba(255, 255, 255, .18); }
+.db-trend span { font-weight: 600; opacity: .85; }
+.db-kpi-offen { border-color: #b8e6df; }
+.db-skelett > div { height: 6.5rem; border-radius: var(--enote-radius-lg); background: linear-gradient(90deg, var(--enote-surface-3), var(--enote-surface), var(--enote-surface-3)); background-size: 200% 100%; animation: enote-loading-slide 1.4s linear infinite; }
+
+/* Karten-Raster */
+.db-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.db-karte { display: flex; flex-direction: column; gap: .9rem; padding: 1.1rem 1.15rem 1.15rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); min-width: 0; }
+.db-verlauf { grid-column: 1 / -1; }
+.db-karte-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
+.db-karte-kopf h2 { margin: 0; font-size: 1rem; font-weight: 800; }
+.db-karte-kopf p { margin: .15rem 0 0; font-size: .8rem; color: var(--enote-text-muted); }
+
+.db-top { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; counter-reset: rang; }
+.db-top li { display: grid; gap: .25rem; counter-increment: rang; }
+.db-top-zeile { display: flex; justify-content: space-between; gap: .75rem; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.db-top-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-top-name::before { content: counter(rang) "."; color: var(--enote-text-subtle); margin-right: .45rem; font-weight: 800; }
+.db-top-balken { height: 8px; border-radius: 4px; background: var(--enote-surface-3); overflow: hidden; }
+.db-top-balken span { display: block; height: 100%; border-radius: 4px; background: var(--enote-primary-light); }
+
+.db-lager { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.db-lager li { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); }
+.db-lager-ico { color: var(--enote-warning); display: grid; }
+.db-lager-name { flex: 1; min-width: 0; font-weight: 700; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-alles-gut { display: flex; align-items: center; gap: .5rem; padding: .8rem 1rem; border-radius: var(--enote-radius); background: var(--enote-success-soft); color: var(--enote-success); font-weight: 700; font-size: .9rem; }
+
+/* Säulendiagramm */
+.enote-saeulen { position: relative; height: 13.5rem; padding: 1.4rem 0 1.6rem 2.6rem; }
+.enote-saeulen-raster { position: absolute; inset: 1.4rem 0 1.6rem 2.6rem; pointer-events: none; }
+.enote-saeulen-linie { position: absolute; left: 0; right: 0; border-top: 1px solid var(--enote-border); }
+.enote-saeulen-linie span { position: absolute; right: calc(100% + .5rem); top: -.55rem; font-size: .7rem; color: var(--enote-text-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.enote-saeulen-flaeche { position: relative; height: 100%; display: flex; align-items: stretch; gap: 2px; }
+.enote-saeule {
+    position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    border: none; background: transparent; padding: 0; cursor: default; font: inherit; border-radius: 6px;
+}
+.enote-saeule:hover, .enote-saeule:focus-visible { background: var(--enote-surface-2); outline: none; }
+.enote-saeule-balken { position: relative; width: 100%; max-width: 24px; min-height: 2px; border-radius: 4px 4px 0 0; background: #b7c5f3; transition: background .15s; }
+.enote-saeule.heute .enote-saeule-balken { background: var(--enote-primary-light); }
+.enote-saeule:hover .enote-saeule-balken, .enote-saeule:focus-visible .enote-saeule-balken { background: var(--enote-primary); }
+.enote-saeule-wert { position: absolute; bottom: calc(100% + .25rem); left: 50%; transform: translateX(-50%); font-size: .7rem; font-weight: 800; color: var(--enote-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.enote-saeule-tag { position: absolute; top: calc(100% + .35rem); font-size: .68rem; font-weight: 700; color: var(--enote-text-subtle); font-variant-numeric: tabular-nums; }
+.enote-saeule.heute .enote-saeule-tag { color: var(--enote-primary); }
+.enote-saeule.sonntag .enote-saeule-tag { opacity: .6; }
+.enote-saeule-tipp {
+    position: absolute; bottom: calc(100% - .5rem); left: 50%; transform: translateX(-50%); z-index: 5;
+    display: none; gap: .1rem; padding: .45rem .65rem; border-radius: .6rem; white-space: nowrap; pointer-events: none;
+    background: var(--enote-text); color: #fff; box-shadow: var(--enote-shadow-lg); text-align: center;
+}
+.enote-saeule-tipp small { color: rgba(255, 255, 255, .75); font-size: .72rem; }
+.enote-saeule:hover .enote-saeule-tipp, .enote-saeule:focus-visible .enote-saeule-tipp { display: grid; }
+.enote-saeule:first-child .enote-saeule-tipp { left: 0; transform: none; }
+.enote-saeule:last-child .enote-saeule-tipp { left: auto; right: 0; transform: none; }
+
+/* Zahlungsmix */
+.enote-mix { display: grid; gap: 1rem; }
+.enote-mix-balken { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; background: var(--enote-surface); }
+.enote-mix-teil { min-width: 4px; flex-basis: 0; }
+.enote-mix-teil:first-child { border-radius: 4px 0 0 4px; }
+.enote-mix-teil:last-child { border-radius: 0 4px 4px 0; }
+.enote-mix-legende { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.enote-mix-legende li { display: grid; grid-template-columns: auto 1fr auto 3.2rem; align-items: center; gap: .6rem; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.enote-mix-punkt { width: .75rem; height: .75rem; border-radius: 3px; }
+.enote-mix-name { display: inline-flex; align-items: center; gap: .4rem; color: var(--enote-text); font-weight: 600; }
+.enote-mix-name .enote-icon { color: var(--enote-text-muted); }
+.enote-mix-pz { text-align: right; color: var(--enote-text-muted); font-weight: 700; }
+
+.enote-nur-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 1199px) { .db-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+    .db-raster { grid-template-columns: minmax(0, 1fr); }
+    .db-kasse-btn { width: 100%; }
+    .db-meldung { grid-template-columns: 1fr auto; }
+    .db-meldung small { grid-column: 1; }
+    .db-meldung-ok { grid-row: 1 / span 2; grid-column: 2; }
+}
+@media (max-width: 640px) {
+    .db-kpis { gap: .55rem; }
+    .db-kpi { padding: .8rem .9rem; }
+    .db-kpi-haupt { grid-column: 1 / -1; }
+    .db-trend span { display: none; }
+    .enote-saeulen { height: 11rem; padding-left: 2.2rem; }
+    .enote-saeulen-raster { left: 2.2rem; }
+    .enote-saeule-tag { font-size: .6rem; }
+    .enote-saeule:nth-child(odd):not(:last-child) .enote-saeule-tag { visibility: hidden; }
+}
+.enote-landing-cta-btn { background: #fff; color: var(--enote-primary-dark); border-color: #fff; box-shadow: 0 10px 25px rgba(0, 0, 0, .2); }
+.enote-landing-cta-btn:hover { background: var(--enote-primary-soft); }
+.enote-feature { border: 1px solid var(--enote-border); }
+
+/* ============================================================
+   Einstellungen (st-*)
+   ============================================================ */
+.st-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.25rem; align-items: start; }
+.st-spalte { display: grid; gap: 1rem; min-width: 0; }
+.st-karte { padding: 1.25rem 1.35rem; display: grid; gap: 1.1rem; }
+.st-karte-kopf { display: flex; gap: .85rem; align-items: flex-start; }
+.st-karte-kopf h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.st-karte-kopf p { margin: .2rem 0 0; color: var(--enote-text-muted); font-size: .88rem; }
+.st-ico { width: 2.6rem; height: 2.6rem; border-radius: .8rem; flex-shrink: 0; display: grid; place-items: center; background: var(--enote-primary-soft); color: var(--enote-primary-light); }
+.st-ico-momo { background: #fef3e2; color: var(--enote-pay-momo); }
+.st-ico-lock { background: var(--enote-warning-soft); color: var(--enote-warning); }
+.st-karte .enote-form input { max-width: none; }
+.st-karte .enote-form > .enote-btn { justify-self: start; }
+.st-momo { display: grid; gap: .5rem; }
+.st-momo-zeile { display: flex; align-items: center; gap: .8rem; padding: .65rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); cursor: pointer; transition: border-color .15s, background .15s; }
+.st-momo-zeile.an { border-color: var(--enote-border-strong); background: var(--enote-surface-2); }
+.st-momo-name { flex: 1; display: grid; line-height: 1.25; }
+.st-momo-name small { color: var(--enote-text-muted); }
+.st-vorschau { position: sticky; top: 1rem; display: grid; gap: .6rem; }
+.st-vorschau-titel { font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--enote-text-subtle); }
+.st-vorschau .enote-bon-preview { box-shadow: var(--enote-neu-out); border-style: solid; border-color: var(--enote-border); border-radius: .4rem; background: #fff repeating-linear-gradient(transparent 0 23px, rgba(16, 26, 51, .02) 23px 24px); }
+.enote-bon-mitte { text-align: center !important; }
+.enote-bon-zeile { display: flex; justify-content: space-between; gap: .5rem; font-size: .85rem; }
+.enote-bon-qr { display: grid; place-items: center; margin: .8rem 0 .3rem; color: var(--enote-text-muted); }
+@media (max-width: 1100px) { .st-layout { grid-template-columns: minmax(0, 1fr); } .st-vorschau { position: static; max-width: 22rem; } }
+
+/* --- Mobile-Money-Verwaltung (Admin) --- */
+.mm { display: grid; gap: 1rem; }
+.mm-kopf { display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.mm-kopf p { margin: 0; max-width: 46rem; }
+.mm-land { background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); padding: .9rem 1rem; }
+.mm-land h3 { margin: 0 0 .7rem; font-size: .95rem; display: flex; align-items: center; gap: .45rem; color: var(--enote-text-muted); }
+.mm-liste { display: grid; gap: .4rem; }
+.mm-zeile { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: .75rem; padding: .45rem .5rem; border-radius: var(--enote-radius); }
+.mm-zeile:hover { background: var(--enote-surface-2); }
+.mm-zeile.aus { opacity: .6; }
+.mm-farbe { padding: .2rem !important; height: 2.9rem; cursor: pointer; }
+.mm-vorschau { display: flex; align-items: center; gap: .7rem; padding: .7rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); color: var(--enote-text-muted); font-weight: 600; }
+
+/* ============================================================
+   Finanzen (fi-*)
+   ============================================================ */
+.fi { display: grid; gap: 1.1rem; }
+.fi .enote-page-header { margin-bottom: 0; }
+.fi-leiste { display: grid; grid-template-columns: minmax(16rem, 22rem) 1fr; gap: .8rem; align-items: stretch; }
+.fi-live { margin: 0; }
+.fi-zeitraum { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem; padding: .8rem 1rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); }
+.fi-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.fi-daten { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; }
+.fi-daten .enote-filter-feld { min-width: 9.5rem; }
+
+.fi-kpis { display: grid; grid-template-columns: minmax(14rem, .8fr) 1.2fr 1fr; gap: .8rem; }
+.fi-solde { display: grid; align-content: center; gap: .3rem; padding: 1.2rem 1.3rem; border-radius: var(--enote-radius-lg); color: #fff; background: linear-gradient(135deg, #0b7f76, #0d9488 55%, #14b8a6); box-shadow: 0 12px 28px rgba(13, 148, 136, .22); }
+.fi-solde.negativ { background: linear-gradient(135deg, #a61d24, #c42b2b 60%, #e05252); box-shadow: 0 12px 28px rgba(196, 43, 43, .22); }
+.fi-solde strong { font-size: clamp(1.7rem, 3vw, 2.3rem); font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fi-solde .fi-kpi-label, .fi-solde-formel { color: rgba(255, 255, 255, .85); }
+.fi-solde-formel { font-size: .8rem; }
+.fi-karte { display: grid; gap: .7rem; align-content: start; padding: 1rem 1.15rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); min-width: 0; }
+.fi-karte-kopf { display: flex; align-items: center; gap: .55rem; }
+.fi-kpi-label { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--enote-text-muted); }
+.fi-anzahl, .fi-link { margin-left: auto; font-size: .8rem; }
+.fi-link { display: inline-flex; align-items: center; gap: .2rem; color: var(--enote-primary-light); font-weight: 700; text-decoration: none; }
+.fi-ico { width: 1.8rem; height: 1.8rem; border-radius: 50%; display: grid; place-items: center; }
+.fi-ico-ein { background: var(--enote-success-soft); color: var(--enote-success); }
+.fi-ico-aus { background: var(--enote-danger-soft); color: var(--enote-danger); }
+.fi-wert { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fi-anbieter { display: flex; flex-wrap: wrap; gap: .35rem; }
+.fi-leer { margin: 0; font-size: .88rem; }
+.fi-ausgaben { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.fi-ohne-rang::before { content: none !important; }
+.fi-balken-aus span { background: #e38b8b; }
+.fi .enote-tabs { margin-bottom: 0; justify-self: start; }
+.fi-tabelle { padding: .4rem .6rem; }
+.fi-tabelle .enote-table-scroll { max-height: 30rem; }
+.enote-table tfoot td { font-weight: 800; border-top: 2px solid var(--enote-border); border-bottom: none; background: var(--enote-surface-2); }
+.fi-ventes { display: grid; gap: .75rem; }
+.fi-ventes .enote-filter-leiste { margin: 0; }
+.fi-verkauf { display: flex; align-items: center; gap: .8rem; }
+.fi-verkauf-info { flex: 1; min-width: 0; }
+
+@media (max-width: 1100px) {
+    .fi-leiste { grid-template-columns: minmax(0, 1fr); }
+    .fi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fi-solde { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+    .fi-kpis { grid-template-columns: minmax(0, 1fr); }
+    .fi-zeitraum { padding: .7rem; }
+    .fi-daten { width: 100%; }
+    .fi-daten .enote-filter-feld { min-width: 0; flex: 1 1 8rem; }
+    .fi-daten > .enote-btn { width: 100%; }
+    .fi-verkauf { align-items: flex-start; }
+}
+
+/* ============================================================
+   Prestations (pr-*)
+   ============================================================ */
+.pr-layout { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+.pr-kats { position: sticky; top: 0; padding: .8rem; display: grid; gap: .15rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
+.pr-kats-kopf h2 { margin: .2rem .4rem .5rem; font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--enote-text-subtle); }
+.pr-kat-zeile { position: relative; display: flex; align-items: center; }
+.pr-kat {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: .55rem; min-height: 2.6rem; padding: .4rem .6rem;
+    border: none; border-radius: var(--enote-radius-sm); background: transparent; color: var(--enote-text); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; text-align: left;
+}
+.pr-kat:hover { background: var(--enote-surface-2); }
+.pr-kat.aktiv { background: var(--enote-primary-soft); color: var(--enote-primary); }
+.pr-kat .enote-icon { color: var(--enote-text-subtle); }
+.pr-kat-auf { display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: .35rem; }
+.pr-kat-auf:hover { background: var(--enote-surface-3); }
+.pr-kat-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-kat-unter { padding-left: 1.6rem; }
+.pr-kat-unter .pr-kat { font-weight: 500; font-size: .86rem; }
+.pr-kat-aktionen { position: absolute; right: 2.6rem; display: none; gap: .1rem; background: var(--enote-surface-2); border-radius: var(--enote-radius-sm); padding: .1rem; }
+.pr-kat-zeile:hover .pr-kat-aktionen, .pr-kat-zeile:focus-within .pr-kat-aktionen { display: flex; }
+.pr-kat-aktionen button { width: 2rem; height: 2rem; border: none; border-radius: .4rem; background: transparent; color: var(--enote-text-muted); display: grid; place-items: center; cursor: pointer; }
+.pr-kat-aktionen button:hover { background: var(--enote-surface); color: var(--enote-text); }
+.pr-kat-aktionen button.gefahr:hover { color: var(--enote-danger); }
+.pr-kat-neu { display: flex; gap: .4rem; align-items: center; margin-top: .5rem; padding-top: .6rem; border-top: 1px solid var(--enote-border); }
+.pr-kat-neu.pr-kat-unter { margin-top: .2rem; padding-top: .2rem; border-top: none; }
+
+.pr-liste { display: grid; gap: .8rem; min-width: 0; }
+.pr-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: .6rem; }
+.pr-karte {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "bild info preis" "bild aktionen aktionen"; gap: .35rem .85rem;
+    padding: .75rem .85rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border);
+    transition: border-color .15s, box-shadow .15s;
+}
+.pr-karte:hover { border-color: var(--enote-border-strong); box-shadow: var(--enote-neu-out-sm); }
+.pr-karte.inaktiv { opacity: .6; }
+.pr-bild { --kat: var(--enote-border-strong); grid-area: bild; width: 3.5rem; height: 3.5rem; border-radius: .8rem; overflow: hidden; display: grid; place-items: center; background: color-mix(in srgb, var(--kat) 14%, white); color: var(--kat); font-weight: 900; font-size: .95rem; }
+.pr-bild img { width: 100%; height: 100%; object-fit: cover; }
+.pr-info { grid-area: info; display: grid; gap: .3rem; min-width: 0; }
+.pr-titel { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.pr-titel strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-stern { color: #f59e0b; fill: currentColor; }
+.pr-meta { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.pr-kat-chip {
+    display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .18rem .55rem; border-radius: 999px;
+    border: 1px solid var(--enote-border); background: var(--enote-surface-2); color: var(--enote-text-muted); font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
+}
+button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(--enote-text); }
+.pr-preis { grid-area: preis; display: grid; justify-items: end; align-content: start; font-variant-numeric: tabular-nums; }
+.pr-preis strong { color: var(--enote-primary); font-size: 1.02rem; }
+.pr-preis small { font-size: .74rem; }
+.pr-aktionen { grid-area: aktionen; display: flex; justify-content: flex-end; gap: .35rem; }
+.pr-leer { display: grid; justify-items: center; gap: .6rem; padding: 2rem 1rem; }
+.pr-leer p { margin: 0; }
+
+@media (max-width: 900px) {
+    .pr-layout { grid-template-columns: minmax(0, 1fr); }
+    .pr-kats { position: static; max-height: none; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding: .5rem; }
+    .pr-kats-kopf, .pr-kat-aktionen, .pr-kat-neu, .pr-kat-unter, .pr-kat-auf { display: none !important; }
+    .pr-kat { border: 1px solid var(--enote-border); border-radius: 999px; }
+}
+@media (max-width: 640px) {
+    .pr-karte { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "bild info" "bild preis" "aktionen aktionen"; }
+    .pr-preis { justify-items: start; }
+}
+
+/* Einspaltige Grid-Container: Spalte darf schrumpfen (sonst erzwingt der breiteste Inhalt Querscrollen am Handy) */
+.fi, .db, .pr-liste, .st-spalte, .kx-start, .mm, .fi-ventes, .kx-pay, .kx-abschluss, .enote-betrag, .db-karte, .fi-karte { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+
+/* ============================================================
+   Abonnement (ab-*) · Plattformtarif im Admin
+   ============================================================ */
+.ab-hinweis { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; padding: .6rem .9rem; border-radius: var(--enote-radius); background: var(--enote-primary-soft); color: var(--enote-primary); font-weight: 700; font-size: .9rem; }
+.ab-formeln { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .8rem; align-items: stretch; }
+.ab-formel { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.15rem 1.1rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface); border: 1px solid var(--enote-border); }
+.ab-formel.empfohlen { border: 2px solid var(--enote-primary-light); box-shadow: 0 12px 28px rgba(37, 71, 184, .14); }
+.ab-formel header { display: flex; justify-content: space-between; align-items: baseline; }
+.ab-formel header strong { font-size: 1.05rem; }
+.ab-preis { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ab-preis small { font-size: 1rem; color: var(--enote-text-muted); }
+.ab-details { display: grid; gap: .4rem; justify-items: start; font-size: .86rem; color: var(--enote-text-muted); flex: 1; align-content: start; }
+.ab-badge { position: absolute; top: -.7rem; left: 1rem; padding: .2rem .65rem; border-radius: 999px; background: var(--enote-primary-light); color: #fff; font-size: .72rem; font-weight: 800; }
+.ab-tarif { padding: 1.1rem 1.25rem; display: grid; gap: 1rem; }
+.ab-tarif-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.ab-tarif-kopf p { margin: .25rem 0 0; max-width: 34rem; font-size: .86rem; }
+.ab-tarif-wert { display: block; font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ab-tarif-formeln { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .5rem; }
+.ab-tarif-formeln > div { display: grid; gap: .1rem; padding: .6rem .8rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); font-variant-numeric: tabular-nums; }
+.ab-tarif-formeln small { font-weight: 700; color: var(--enote-text-muted); }
+.ab-tarif-formeln span { font-size: .78rem; }
+
+/* --- Abonnement: Fälligkeiten, Abschnitte, Rechnungen --- */
+.ab { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); }
+.ab .enote-page-header, .ab .enote-abo-status { margin-bottom: 0; }
+.ab-faellig { display: flex; align-items: center; gap: .9rem; padding: .9rem 1rem; border-radius: var(--enote-radius-lg); background: var(--enote-warning-soft); border: 1px solid #f3d29b; color: var(--enote-warning); }
+.ab-faellig > div { flex: 1; display: grid; gap: .15rem; min-width: 0; }
+.ab-faellig strong { color: var(--enote-text); }
+.ab-faellig span { font-size: .86rem; }
+.ab-faellig.gesperrt { background: var(--enote-danger-soft); border-color: #f2c4c4; color: var(--enote-danger); }
+.ab-faellig-ico { width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .7); flex-shrink: 0; }
+.ab-abschnitt { display: grid; gap: .8rem; }
+.ab-abschnitt-kopf h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+.ab-abschnitt-kopf p { margin: .2rem 0 0; font-size: .88rem; }
+.ab-formel .enote-btn[disabled] { opacity: 1; background: var(--enote-primary-soft); border-color: #cdd8fb; color: var(--enote-primary); cursor: default; }
+.ab-rechnungen { display: grid; gap: .4rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); padding: .4rem; }
+.ab-rechnung { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 7.5rem; align-items: center; gap: .8rem; padding: .6rem .7rem; border-radius: var(--enote-radius); }
+.ab-rechnung:hover { background: var(--enote-surface-2); }
+.ab-rechnung-info { display: grid; gap: .1rem; min-width: 0; }
+.ab-rechnung-info span { font-size: .82rem; }
+.ab-rechnung-betrag { font-weight: 800; font-variant-numeric: tabular-nums; }
+.ab-rechnung .enote-btn { justify-self: end; }
+@media (max-width: 640px) {
+    .ab-faellig { flex-wrap: wrap; }
+    .ab-faellig .enote-btn { width: 100%; }
+    .ab-rechnung { grid-template-columns: minmax(0, 1fr) auto; }
+    .ab-rechnung .enote-tag { justify-self: start; }
+}
+
+/* --- Hinweis Kassensperre (Abo) --- */
+.enote-sperre { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .75rem .9rem; border-radius: var(--enote-radius-lg); background: var(--enote-warning-soft); border: 1px solid #f3d29b; color: var(--enote-warning); }
+.enote-sperre.gesperrt { background: var(--enote-danger-soft); border-color: #f2c4c4; color: var(--enote-danger); }
+.enote-sperre-ico { width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .7); flex-shrink: 0; }
+.enote-sperre-text { flex: 1 1 18rem; min-width: 0; font-size: .9rem; font-weight: 600; color: var(--enote-text); }
+.kx > .enote-sperre { flex-shrink: 0; }

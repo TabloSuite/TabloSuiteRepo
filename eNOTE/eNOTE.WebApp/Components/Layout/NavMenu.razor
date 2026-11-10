@@ -2,137 +2,116 @@
 @inject ENote.WebApp.Services.KassenService KassenService
 @inject ENote.WebApp.Services.AktiverSalonState AktiverSalon
 @inject ENote.WebApp.Services.ToastService Toast
+@inject NavigationManager Nav
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @using System.Security.Claims
 @implements IDisposable
 
-@* Desktop/Tablet: Sidebar *@
-<nav class="enote-nav enote-nav-desktop">
-    <AuthorizeView>
-        <Authorized>
-            <NavLink href="/" Match="NavLinkMatch.All" class="enote-nav-link">Accueil</NavLink>
+@* Desktop: Sidebar mit Beschriftung · Tablet: schmale Icon-Leiste (per CSS) *@
+<aside class="enote-sidebar" aria-label="Navigation principale">
+    <a class="enote-sidebar-brand" href="/">
+        <span class="enote-brand-icon">eN</span>
+        <span class="enote-sidebar-brand-text">
+            <span class="enote-brand-name">eNOTE</span>
+            @if (AktiverSalon.Aktiv is { } laden)
+            {
+                <span class="enote-sidebar-laden" title="@laden.Salon.Name">@laden.Salon.Name</span>
+            }
+        </span>
+    </a>
 
-            <AuthorizeView Roles="Kassierer, Besitzer">
-                <Authorized Context="kasseCtx">
-                    <NavLink href="/caisse" class="enote-nav-link">Caisse</NavLink>
-                </Authorized>
-            </AuthorizeView>
+    <nav class="enote-sidebar-nav">
+        @foreach (var gruppe in Gruppen)
+        {
+            @if (gruppe.Titel is not null)
+            {
+                <div class="enote-nav-group-label">@gruppe.Titel</div>
+            }
+            @foreach (var e in gruppe.Eintraege)
+            {
+                <NavLink href="@e.Href" Match="@e.Match" class="enote-nav-link" title="@e.Label">
+                    <Icon Name="@e.Icon" Groesse="20" />
+                    <span class="enote-nav-text">@e.Label</span>
+                </NavLink>
+            }
+        }
+    </nav>
 
-            <AuthorizeView Roles="Besitzer">
-                <Authorized Context="bCtx">
-                    @if (hatBesitzerPin)
-                    {
-                        <button type="button"
-                                class="enote-nav-lock-row"
-                                title="@(BesitzerZoneFreigeschaltet ? "Verrouiller la zone propriétaire" : "Déverrouiller avec le code PIN")"
-                                @onclick="@(BesitzerZoneFreigeschaltet ? SperreBesitzerZone : OeffnePinDialog)">
-                            <span class="enote-nav-lock-ico">@(BesitzerZoneFreigeschaltet ? "🔓" : "🔒")</span>
-                            <span>@(BesitzerZoneFreigeschaltet ? "Verrouiller" : "Zone propriétaire")</span>
-                        </button>
-                    }
+    @if (istBesitzer && hatBesitzerPin)
+    {
+        <div class="enote-sidebar-foot">
+            <button type="button"
+                    class="enote-lock-card @(BesitzerZoneFreigeschaltet ? "offen" : "")"
+                    title="@(BesitzerZoneFreigeschaltet ? "Verrouiller la zone propriétaire" : "Déverrouiller avec le code PIN")"
+                    @onclick="@(BesitzerZoneFreigeschaltet ? SperreBesitzerZone : OeffnePinDialog)">
+                <span class="enote-lock-card-ico"><Icon Name="@(BesitzerZoneFreigeschaltet ? "unlock" : "lock")" Groesse="18" /></span>
+                <span class="enote-lock-card-text">
+                    <strong>Zone propriétaire</strong>
+                    <small>@(BesitzerZoneFreigeschaltet ? "Ouverte · toucher pour verrouiller" : "Verrouillée · code PIN")</small>
+                </span>
+            </button>
+        </div>
+    }
+</aside>
 
-                    @if (BesitzerZoneFreigeschaltet)
-                    {
-                        <div class="enote-nav-group-label">Vente</div>
-                        <NavLink href="/services" class="enote-nav-link">Prestations</NavLink>
-                        <NavLink href="/remises" class="enote-nav-link">Remises</NavLink>
-
-                        <div class="enote-nav-group-label">Gestion</div>
-                        <NavLink href="/finances" class="enote-nav-link">Finances</NavLink>
-                        <NavLink href="/ausgaben" class="enote-nav-link">Dépenses</NavLink>
-                        <NavLink href="/equipe" class="enote-nav-link">Équipe</NavLink>
-
-                        <div class="enote-nav-group-label">Compte</div>
-                        <NavLink href="/abonnement" class="enote-nav-link">Abonnement</NavLink>
-                        <NavLink href="/parametres" class="enote-nav-link">Paramètres</NavLink>
-                    }
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="ProduktOwner">
-                <Authorized Context="poCtx">
-                    <NavLink href="/mes-etablissements" class="enote-nav-link">Mes établissements</NavLink>
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="SuperAdmin, ProduktOwner">
-                <Authorized Context="aCtx">
-                    <NavLink href="/admin" Match="NavLinkMatch.All" class="enote-nav-link">Administration</NavLink>
-                    <div class="enote-nav-subgroup">
-                        <NavLink href="/admin/facturation" class="enote-nav-link enote-nav-sub">Facturation</NavLink>
-                        <AuthorizeView Roles="SuperAdmin">
-                            <Authorized Context="saCtx">
-                                <NavLink href="/admin/journaux" class="enote-nav-link enote-nav-sub">Journaux</NavLink>
-                            </Authorized>
-                        </AuthorizeView>
-                    </div>
-                </Authorized>
-            </AuthorizeView>
-        </Authorized>
-    </AuthorizeView>
+@* Handy: untere Leiste mit den wichtigsten Zielen + „Plus“-Blatt für alles Weitere *@
+<nav class="enote-nav-mobile" aria-label="Navigation">
+    @foreach (var e in MobilHaupt)
+    {
+        <NavLink href="@e.Href" Match="@e.Match" class="enote-mnav-link">
+            <Icon Name="@e.Icon" Groesse="22" />
+            <span>@e.KurzLabel</span>
+        </NavLink>
+    }
+    <button type="button" class="enote-mnav-link @(mehrOffen ? "active" : "")" @onclick="() => mehrOffen = !mehrOffen" aria-expanded="@mehrOffen">
+        <Icon Name="grid" Groesse="22" />
+        <span>Plus</span>
+    </button>
 </nav>
 
-@* Handy: flache Bottom-Nav (ohne Untergruppen) *@
-<nav class="enote-nav-mobile">
-    <AuthorizeView>
-        <Authorized>
-            <NavLink href="/" Match="NavLinkMatch.All" class="enote-mnav-link"><span class="enote-mnav-ico">🏠</span><span>Accueil</span></NavLink>
+@if (mehrOffen)
+{
+    <div class="enote-sheet-backdrop" @onclick="() => mehrOffen = false"></div>
+    <div class="enote-sheet" role="dialog" aria-label="Plus">
+        <div class="enote-sheet-griff" aria-hidden="true"></div>
+        @if (istBesitzer && hatBesitzerPin)
+        {
+            <button type="button" class="enote-lock-card @(BesitzerZoneFreigeschaltet ? "offen" : "")"
+                    @onclick="@(BesitzerZoneFreigeschaltet ? SperreBesitzerZone : OeffnePinDialog)">
+                <span class="enote-lock-card-ico"><Icon Name="@(BesitzerZoneFreigeschaltet ? "unlock" : "lock")" Groesse="18" /></span>
+                <span class="enote-lock-card-text">
+                    <strong>Zone propriétaire</strong>
+                    <small>@(BesitzerZoneFreigeschaltet ? "Ouverte · toucher pour verrouiller" : "Verrouillée · toucher pour ouvrir")</small>
+                </span>
+            </button>
+        }
+        @foreach (var gruppe in Gruppen)
+        {
+            @if (gruppe.Titel is not null)
+            {
+                <div class="enote-nav-group-label">@gruppe.Titel</div>
+            }
+            <div class="enote-sheet-grid">
+                @foreach (var e in gruppe.Eintraege)
+                {
+                    <NavLink href="@e.Href" Match="@e.Match" class="enote-sheet-link" @onclick="() => mehrOffen = false">
+                        <span class="enote-sheet-link-ico"><Icon Name="@e.Icon" Groesse="22" /></span>
+                        <span>@e.Label</span>
+                    </NavLink>
+                }
+            </div>
+        }
+    </div>
+}
 
-            <AuthorizeView Roles="Kassierer, Besitzer">
-                <Authorized Context="kasseCtx">
-                    <NavLink href="/caisse" class="enote-mnav-link"><span class="enote-mnav-ico">🧾</span><span>Caisse</span></NavLink>
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="Besitzer">
-                <Authorized Context="bCtx">
-                    @if (BesitzerZoneFreigeschaltet)
-                    {
-                        <NavLink href="/services" class="enote-mnav-link"><span class="enote-mnav-ico">📦</span><span>Prestations</span></NavLink>
-                        <NavLink href="/finances" class="enote-mnav-link"><span class="enote-mnav-ico">📊</span><span>Finances</span></NavLink>
-                        <NavLink href="/equipe" class="enote-mnav-link"><span class="enote-mnav-ico">👥</span><span>Équipe</span></NavLink>
-                    }
-                    else if (hatBesitzerPin)
-                    {
-                        <button type="button" class="enote-mnav-link enote-mnav-lock" @onclick="OeffnePinDialog"><span class="enote-mnav-ico">🔒</span><span>Propriétaire</span></button>
-                    }
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="ProduktOwner">
-                <Authorized Context="poCtx">
-                    <NavLink href="/mes-etablissements" class="enote-mnav-link"><span class="enote-mnav-ico">🏪</span><span>Mes étab.</span></NavLink>
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="SuperAdmin, ProduktOwner">
-                <Authorized Context="aCtx">
-                    <NavLink href="/admin" Match="NavLinkMatch.All" class="enote-mnav-link"><span class="enote-mnav-ico">⚙️</span><span>Admin</span></NavLink>
-                    <NavLink href="/admin/facturation" class="enote-mnav-link"><span class="enote-mnav-ico">💳</span><span>Facturation</span></NavLink>
-                </Authorized>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="SuperAdmin">
-                <Authorized Context="saCtx">
-                    <NavLink href="/admin/journaux" class="enote-mnav-link"><span class="enote-mnav-ico">🪵</span><span>Journaux</span></NavLink>
-                </Authorized>
-            </AuthorizeView>
-        </Authorized>
-    </AuthorizeView>
-</nav>
-
-@* PIN-Dialog zum Entsperren der Besitzer-Zone (Sidebar) *@
-<ModalDialog Open="pinDialogOffen" Title="Zone propriétaire" ErrorMessage="@pinFehler" OnClose="SchliessePinDialog">
+@* PIN-Dialog zum Entsperren der Besitzer-Zone *@
+<ModalDialog Open="pinDialogOffen" Title="Zone propriétaire" ErrorMessage="@pinFehler" OnClose="SchliessePinDialog" MaxWidthClass="enote-modal-sm">
     <ChildContent>
-        <p class="enote-muted">Saisissez le code PIN du propriétaire pour afficher Prestations, Remises, Finances, Dépenses, Équipe, Abonnement et Paramètres.</p>
-        <input type="password"
-               inputmode="numeric"
-               maxlength="6"
-               class="enote-pin-input"
-               placeholder="••••"
-               @bind="pin"
-               @bind:event="oninput"
-               @onkeydown="HandlePinTaste" />
+        <div class="enote-pin-dialog">
+            <span class="enote-pin-dialog-ico"><Icon Name="lock" Groesse="26" /></span>
+            <p class="enote-muted">Saisissez le code PIN du propriétaire pour accéder à la vente, la gestion et le compte.</p>
+            <PinEingabe @bind-Wert="pin" OnBestaetigt="PruefePinAsync" />
+        </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliessePinDialog">Annuler</button>
@@ -141,35 +120,96 @@
 </ModalDialog>
 
 @code {
+    private sealed record NavEintrag(string Href, string Label, string Icon, NavLinkMatch Match = NavLinkMatch.Prefix, string? Kurz = null)
+    {
+        public string KurzLabel => Kurz ?? Label;
+    }
+
+    private sealed record NavGruppe(string? Titel, IReadOnlyList<NavEintrag> Eintraege);
+
     private bool pinDialogOffen;
+    private bool mehrOffen;
     private string pin = string.Empty;
     private string? pinFehler;
     private bool hatBesitzerPin;
     private bool pinGeprueft;
+    private bool istBesitzer, istKassierer, istProduktOwner, istSuperAdmin;
 
     private bool BesitzerZoneFreigeschaltet =>
         pinGeprueft && (!hatBesitzerPin || PinState.VerwaltungFreigeschaltet);
+
+    private static readonly NavEintrag Accueil = new("/", "Accueil", "home", NavLinkMatch.All);
+    private static readonly NavEintrag Caisse = new("/caisse", "Caisse", "caisse");
+    private static readonly NavEintrag Finances = new("/finances", "Finances", "chart");
+
+    private IReadOnlyList<NavGruppe> Gruppen
+    {
+        get
+        {
+            var gruppen = new List<NavGruppe>();
+            var start = new List<NavEintrag> { Accueil };
+            if (istBesitzer || istKassierer) start.Add(Caisse);
+            if (istProduktOwner) start.Add(new("/mes-etablissements", "Mes établissements", "store", Kurz: "Mes étab."));
+            gruppen.Add(new(null, start));
+
+            if (istBesitzer && BesitzerZoneFreigeschaltet)
+            {
+                gruppen.Add(new("Vente", [new("/services", "Prestations", "tag"), new("/remises", "Remises", "percent")]));
+                gruppen.Add(new("Gestion", [Finances, new("/ausgaben", "Dépenses", "wallet"), new("/equipe", "Équipe", "users")]));
+                gruppen.Add(new("Compte", [new("/abonnement", "Abonnement", "badge"), new("/parametres", "Paramètres", "settings")]));
+            }
+
+            if (istSuperAdmin || istProduktOwner)
+            {
+                var admin = new List<NavEintrag>
+                {
+                    new("/admin", "Administration", "shield", NavLinkMatch.All, "Admin"),
+                    new("/admin/facturation", "Facturation", "receipt")
+                };
+                if (istSuperAdmin) admin.Add(new("/admin/journaux", "Journaux", "log"));
+                gruppen.Add(new("Plateforme", admin));
+            }
+
+            return gruppen;
+        }
+    }
+
+    /// <summary>Höchstens vier feste Ziele in der Handy-Leiste, der Rest liegt im „Plus“-Blatt.</summary>
+    private IReadOnlyList<NavEintrag> MobilHaupt
+        => Gruppen.SelectMany(g => g.Eintraege)
+            .OrderBy(e => e == Accueil ? 0 : e == Caisse ? 1 : e == Finances ? 2 : 3)
+            .Take(3).ToList();
 
     protected override async Task OnInitializedAsync()
     {
         PinState.OnChange += HandlePinStateChanged;
         AktiverSalon.OnChange += HandleSalonChanged;
+        Nav.LocationChanged += HandleLocationChanged;
 
-        // Der aktive Salon kann beim ersten Render der NavMenu noch nicht geladen sein
-        // (wird von der jeweiligen Seite initialisiert). Dann selbst nachladen.
-        if (!AktiverSalon.IstGeladen)
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        istBesitzer = user.IsInRole("Besitzer");
+        istKassierer = user.IsInRole("Kassierer");
+        istProduktOwner = user.IsInRole("ProduktOwner");
+        istSuperAdmin = user.IsInRole("SuperAdmin");
+
+        // Der aktive Laden kann beim ersten Render noch nicht geladen sein – dann selbst nachladen.
+        if (!AktiverSalon.IstGeladen && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-            {
-                await AktiverSalon.InitialisiereAsync(userId);
-            }
+            await AktiverSalon.InitialisiereAsync(userId);
         }
 
         // Ohne konfigurierte Besitzer-PIN gibt es nichts zu sperren.
         var aktive = AktiverSalon.Aktiv;
         hatBesitzerPin = aktive is not null && await KassenService.HatBesitzerPinAsync(aktive.SalonId);
         pinGeprueft = true;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (!mehrOffen) return;
+        mehrOffen = false;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void HandleSalonChanged()
@@ -187,6 +227,7 @@
     {
         pin = string.Empty;
         pinFehler = null;
+        mehrOffen = false;
         pinDialogOffen = true;
     }
 
@@ -209,7 +250,7 @@
             pin = string.Empty;
             pinDialogOffen = false;
             PinState.Freischalten();
-            Toast.ZeigeErfolg("Zone déverrouillée.");
+            Toast.ZeigeErfolg("Zone propriétaire ouverte.");
         }
         else
         {
@@ -218,16 +259,9 @@
         }
     }
 
-    private async Task HandlePinTaste(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await PruefePinAsync();
-        }
-    }
-
     private void SperreBesitzerZone()
     {
+        mehrOffen = false;
         PinState.Sperren();
         Toast.ZeigeInfo("Zone propriétaire verrouillée.");
     }
@@ -236,5 +270,6 @@
     {
         PinState.OnChange -= HandlePinStateChanged;
         AktiverSalon.OnChange -= HandleSalonChanged;
+        Nav.LocationChanged -= HandleLocationChanged;
     }
 }

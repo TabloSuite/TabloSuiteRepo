@@ -19,6 +19,7 @@ public static class FinanzBerichtPdfService
 
         var gesamtBar = tage.Sum(t => t.Bar);
         var gesamtKarte = tage.Sum(t => t.Karte);
+        var gesamtMobile = tage.Sum(t => t.MobileMoney);
         var gesamt = tage.Sum(t => t.Gesamt);
         var anzahl = tage.Sum(t => t.AnzahlVerkaeufe);
         var ausgaben = uebersicht?.AusgabenGesamt ?? 0m;
@@ -49,6 +50,7 @@ public static class FinanzBerichtPdfService
                         ZusammenfassungKarte(row.RelativeItem(), "Total", $"{gesamt:N0} F", true);
                         ZusammenfassungKarte(row.RelativeItem(), "Espèces", $"{gesamtBar:N0} F", false);
                         ZusammenfassungKarte(row.RelativeItem(), "Carte", $"{gesamtKarte:N0} F", false);
+                        ZusammenfassungKarte(row.RelativeItem(), "Mobile Money", $"{gesamtMobile:N0} F", false);
                         ZusammenfassungKarte(row.RelativeItem(), "Ventes", anzahl.ToString(), false);
                     });
 
@@ -59,6 +61,25 @@ public static class FinanzBerichtPdfService
                         ZusammenfassungKarte(row.RelativeItem(), "Dépenses", $"{ausgaben:N0} F", false);
                         ZusammenfassungKarte(row.RelativeItem(), "Solde de caisse", $"{(saldo < 0 ? "-" : "")}{Math.Abs(saldo):N0} F", true);
                     });
+
+                    if (uebersicht is not null && uebersicht.MobileMoneyNachAnbieter.Count > 0)
+                    {
+                        col.Item().PaddingTop(4).Text("Mobile Money par opérateur").SemiBold().FontSize(11);
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(cols =>
+                            {
+                                cols.RelativeColumn(3);
+                                cols.RelativeColumn();
+                            });
+
+                            foreach (var a in uebersicht.MobileMoneyNachAnbieter)
+                            {
+                                table.Cell().Element(DatenZelle).Text(a.Name);
+                                table.Cell().Element(DatenZelle).AlignRight().Text($"{a.Betrag:N0} F");
+                            }
+                        });
+                    }
 
                     if (uebersicht is not null && uebersicht.AusgabenNachKategorie.Count > 0)
                     {
@@ -88,6 +109,7 @@ public static class FinanzBerichtPdfService
                             cols.RelativeColumn();  // Ventes
                             cols.RelativeColumn();  // Espèces
                             cols.RelativeColumn();  // Carte
+                            cols.RelativeColumn();  // Mobile Money
                             cols.RelativeColumn();  // Total
                         });
 
@@ -97,6 +119,7 @@ public static class FinanzBerichtPdfService
                             header.Cell().Element(KopfZelle).AlignRight().Text("Ventes");
                             header.Cell().Element(KopfZelle).AlignRight().Text("Espèces");
                             header.Cell().Element(KopfZelle).AlignRight().Text("Carte");
+                            header.Cell().Element(KopfZelle).AlignRight().Text("Mobile M.");
                             header.Cell().Element(KopfZelle).AlignRight().Text("Total");
                         });
 
@@ -106,6 +129,7 @@ public static class FinanzBerichtPdfService
                             table.Cell().Element(DatenZelle).AlignRight().Text(t.AnzahlVerkaeufe.ToString());
                             table.Cell().Element(DatenZelle).AlignRight().Text($"{t.Bar:N0} F");
                             table.Cell().Element(DatenZelle).AlignRight().Text($"{t.Karte:N0} F");
+                            table.Cell().Element(DatenZelle).AlignRight().Text($"{t.MobileMoney:N0} F");
                             table.Cell().Element(DatenZelle).AlignRight().Text($"{t.Gesamt:N0} F").SemiBold();
                         }
                     });

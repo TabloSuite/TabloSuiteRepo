@@ -1,23 +1,23 @@
-@page "/equipe"
+ï»¿@page "/equipe"
 @attribute [Authorize(Roles = "Besitzer")]
 @rendermode InteractiveServer
 
-<PageTitle>Équipe</PageTitle>
+<PageTitle>Ã‰quipe</PageTitle>
 
 
 <BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
-            <h1>Équipe – @salonName</h1>
-            <p>Créez des caissiers, définissez leur code PIN et déléguez des droits.</p>
+            <h1>Ã‰quipe â€“ @salonName</h1>
+            <p>CrÃ©ez des caissiers, dÃ©finissez leur code PIN et dÃ©lÃ©guez des droits.</p>
         </div>
         <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen">+ Nouveau caissier</button>
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p>Chargementâ€¦</p>
     }
     else if (team.Count == 0)
     {
@@ -26,11 +26,11 @@
     else
     {
         <div class="enote-filter-leiste">
-            <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)…" @bind="teamSuche" @bind:event="oninput" />
+            <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)â€¦" @bind="teamSuche" @bind:event="oninput" />
         </div>
         @if (!GefiltertesTeam().Any())
         {
-            <p class="enote-empty" role="status">Aucun membre ne correspond à votre recherche.</p>
+            <p class="enote-empty" role="status">Aucun membre ne correspond Ã  votre recherche.</p>
         }
         <div class="enote-grid-scroll">
             @foreach (var m in GefiltertesTeam())
@@ -40,11 +40,11 @@
                         <strong>@m.Name</strong>
                         @if (m.IstBesitzer)
                         {
-                            <span class="enote-tag">Propriétaire</span>
+                            <span class="enote-tag">PropriÃ©taire</span>
                         }
                         else if (m.HatPin)
                         {
-                            <span class="enote-tag">PIN défini</span>
+                            <span class="enote-tag">PIN dÃ©fini</span>
                         }
                     </div>
                     <p class="enote-item-desc">@m.Email</p>
@@ -66,26 +66,26 @@
 <ModalDialog Open="anlegedialogOffen" Title="Nouveau caissier" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge">
     <ChildContent>
         <div class="enote-form">
-            <label>Prénom <input @bind="neuVorname" /></label>
+            <label>PrÃ©nom <input @bind="neuVorname" /></label>
             <label>Nom <input @bind="neuNachname" /></label>
             <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
             <label>Adresse e-mail <input type="email" @bind="neuEmail" /></label>
             <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
-            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
-            <label>Code PIN caisse (4–6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
+            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractÃ¨res, dont 1 chiffre et 1 lettre minuscule.</small>
+            <label>Code PIN caisse (4â€“6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="CrÃ©er" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 
-@* PIN ändern *@
-<ModalDialog Open="pinDialogOffen" Title="@("Code PIN – " + aktivesMitglied?.Name)" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge">
+@* PIN Ã¤ndern *@
+<ModalDialog Open="pinDialogOffen" Title="@("Code PIN â€“ " + aktivesMitglied?.Name)" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge">
     <ChildContent>
         <div class="enote-form">
-            <label>Nouveau code PIN (4–6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
+            <label>Nouveau code PIN (4â€“6 chiffres) <input inputmode="numeric" maxlength="6" @bind="neuPin" /></label>
         </div>
     </ChildContent>
     <Footer>
@@ -95,12 +95,12 @@
 </ModalDialog>
 
 @* Rechte *@
-<ModalDialog Open="rechteDialogOffen" Title="@("Droits – " + aktivesMitglied?.Name)" OnClose="SchliesseDialoge">
+<ModalDialog Open="rechteDialogOffen" Title="@("Droits â€“ " + aktivesMitglied?.Name)" OnClose="SchliesseDialoge">
     <ChildContent>
         <div class="enote-form">
             <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteFinanzen" Label="Voir les finances" /></label>
-            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteLeistungen" Label="Gérer les prestations" /></label>
-            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteRabatte" Label="Gérer les remises" /></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteLeistungen" Label="GÃ©rer les prestations" /></label>
+            <label class="enote-check-row"><EnoteCheckbox @bind-Value="rechteRabatte" Label="GÃ©rer les remises" /></label>
         </div>
     </ChildContent>
     <Footer>
@@ -112,7 +112,7 @@
 @* Entfernen *@
 <ModalDialog Open="entfernenDialogOffen" Title="Retirer le membre" OnClose="SchliesseDialoge">
     <ChildContent>
-        <p>Retirer « @aktivesMitglied?.Name » de cet établissement ? Le compte reste actif.</p>
+        <p>Retirer Â« @aktivesMitglied?.Name Â» de cet Ã©tablissement ? Le compte reste actif.</p>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>

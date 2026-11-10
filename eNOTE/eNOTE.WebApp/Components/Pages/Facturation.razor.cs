@@ -1,11 +1,22 @@
 using ENote.Core.DataModels.Abo;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Facturation(AboService aboService, ToastService toast, LadeZustand ladeZustand)
+public partial class Facturation(
+    AboService aboService,
+    VertragsService vertragsService,
+    ToastService toast,
+    LadeZustand ladeZustand,
+    AuthenticationStateProvider authStateProvider)
 {
+    private Guid benutzerId;
+
+    /// <summary>Nur der SuperAdmin bestätigt Zahlungseingänge (ProduktOwner sehen ihre Läden nur).</summary>
+    private bool darfBestaetigen;
     private List<NutzungsAbo> gemeldete = [];
     private List<NutzungsAbo> alle = [];
     private bool isLoading = true;
@@ -44,20 +55,34 @@ public partial class Facturation(AboService aboService, ToastService toast, Lade
     protected override async Task OnInitializedAsync()
     {
         using var _ = ladeZustand.Beginnen();
+        var auth = await authStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(auth.User.FindFirstValue(ClaimTypes.NameIdentifier), out benutzerId);
+        darfBestaetigen = auth.User.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
         await LadeAsync();
     }
 
     private async Task LadeAsync()
     {
         isLoading = true;
-        gemeldete = await aboService.GetGemeldeteZahlungenAsync();
-        alle = await aboService.GetAlleAbosAsync();
+        // Fällige Perioden aller Läden erzeugen, damit die Übersicht aktuell ist.
+        await vertragsService.SynchronisiereAlleAsync();
+        gemeldete = await aboService.GetGemeldeteZahlungenAsync(benutzerId);
+        alle = await aboService.GetAlleAbosAsync(benutzerId);
         isLoading = false;
     }
 
     private async Task SetzeStatusAsync(Guid aboId, AboZahlungStatus status)
     {
-        await aboService.SetzeZahlungsStatusAsync(aboId, status);
+        try
+        {
+            await aboService.SetzeZahlungsStatusAsync(benutzerId, aboId, status);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            toast.ZeigeFehler(ex.Message);
+            return;
+        }
+
         toast.ZeigeErfolg(status == AboZahlungStatus.Bestaetigt ? "Paiement confirmé." : "Paiement refusé.");
         await LadeAsync();
     }
@@ -65,7 +90,8 @@ public partial class Facturation(AboService aboService, ToastService toast, Lade
     private static string IntervallText(AboIntervall intervall) => intervall switch
     {
         AboIntervall.Monatlich => "Mensuel",
-        AboIntervall.DreiMonate => "3 mois",
+        AboIntervall.DreiMonate => "Trimestriel",
+        AboIntervall.SechsMonate => "Semestriel",
         AboIntervall.Jaehrlich => "Annuel",
         _ => intervall.ToString()
     };

@@ -1,0 +1,52 @@
+@using System.Globalization
+
+@* Anteil der Zahlarten: ein gestapelter Balken (2px Lücken) + Legende mit Betrag und Prozent.
+   Feste Farbreihenfolge (Espèces · Mobile Money · Carte), validiert auf Farbsehschwächen. *@
+@if (Gesamt <= 0)
+{
+    <p class="enote-empty">Pas encore de paiements sur la période.</p>
+}
+else
+{
+    <div class="enote-mix">
+        <div class="enote-mix-balken" role="img" aria-label="@AriaText">
+            @foreach (var t in Teile.Where(t => t.Betrag > 0))
+            {
+                <span class="enote-mix-teil" style="flex-grow: @Pz(t.Betrag); background: @t.Farbe" title="@t.Name : @t.Betrag.ToString("N0") F (@Pz(t.Betrag) %)"></span>
+            }
+        </div>
+        <ul class="enote-mix-legende">
+            @foreach (var t in Teile)
+            {
+                <li>
+                    <span class="enote-mix-punkt" style="background: @t.Farbe"></span>
+                    <span class="enote-mix-name"><Icon Name="@t.Icon" Groesse="16" /> @t.Name</span>
+                    <strong>@t.Betrag.ToString("N0") F</strong>
+                    <span class="enote-mix-pz">@Pz(t.Betrag) %</span>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter] public decimal Bar { get; set; }
+    [Parameter] public decimal Karte { get; set; }
+    [Parameter] public decimal MobileMoney { get; set; }
+
+    private sealed record Teil(string Name, string Icon, decimal Betrag, string Farbe);
+
+    private decimal Gesamt => Bar + Karte + MobileMoney;
+
+    private IEnumerable<Teil> Teile =>
+    [
+        new("Espèces", "banknote", Bar, "var(--enote-pay-bar)"),
+        new("Mobile Money", "momo", MobileMoney, "var(--enote-pay-momo)"),
+        new("Carte", "card", Karte, "var(--enote-pay-karte)")
+    ];
+
+    private string Pz(decimal betrag)
+        => (Gesamt <= 0 ? 0 : Math.Round(betrag / Gesamt * 100, 0)).ToString(CultureInfo.InvariantCulture);
+
+    private string AriaText => $"Espèces {Pz(Bar)} %, Mobile Money {Pz(MobileMoney)} %, Carte {Pz(Karte)} %.";
+}

@@ -1,6 +1,5 @@
 ﻿using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
-using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -13,6 +12,7 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Caisse(
     KassenService kassenService,
     KatalogService katalogService,
+    MobileMoneyService mobileMoneyService,
     GeraetFavoritService geraetFavoritService,
     KassenAnzeigeState anzeigeState,
     IDisplayBenachrichtigungService displayService,
@@ -22,189 +22,203 @@ public partial class Caisse(
     FinanzService finanzService,
     IJSRuntime js) : IDisposable
 {
-    // Start
+    private enum ZahlModus { Bar, Karte, MobileMoney, Mixte }
+
+    private sealed record AbgeschlossenerVerkauf(Guid VerkaufId, decimal Total, decimal? Rueckgeld, string ZahlungText);
+
+    /// <summary>Kategoriefarben (gut unterscheidbar, auf Weiß lesbar).</summary>
+    private static readonly string[] KategoriePalette =
+        ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
+
+    // --- Start ---
     private List<(Guid UserId, string Name)> kassiererListe = [];
     private Guid ausgewaehlterKassiererId = Guid.Empty;
     private string pin = string.Empty;
     private decimal startbestand;
     private string? startFehler;
+    private static readonly IReadOnlyList<decimal> startVorschlaege = [0m, 5000m, 10000m, 20000m, 50000m];
 
-    // Aktive Kasse
+    /// <summary>Abo unbezahlt nach Frist: keine neuen Verkäufe/Starts (serverseitig ebenfalls geprüft), Abschluss möglich.</summary>
+    private bool kasseGesperrt;
+
+    // --- Aktive Kasse ---
     private KassenSitzung? aktiveSitzung;
     private string aktiverSalonName = string.Empty;
-    private bool sitzungWiederhergestellt;
     private bool wiederhergestelltModalOffen;
     private string? wiederhergestelltKassierer;
     private decimal? wiederhergestelltSoll;
     private DateTime wiederhergestelltGestartet;
-    private List<Leistung> leistungen = [];
-    private List<Rabatt> rabatte = [];
-    private IReadOnlyList<EnoteSelectOption<string>> rabattOptionen = [];
-    private List<TicketPosition> ticket = [];
-    private readonly Dictionary<Guid, int> tileMengen = [];
 
+    // --- Katalog ---
+    private List<Leistung> leistungen = [];
+    private List<LeistungKategorie> kategorien = [];
+    private Dictionary<Guid, string> bildUrls = [];
+    private HashSet<Guid> favoritenIds = [];
+    private Guid? aktiveKategorieId;
+    private Guid? aktiveUnterKategorieId;
+    private bool nurFavoriten;
+    private string suchtext = string.Empty;
+    private Guid aktuellerBenutzerId;
+
+    // --- Ticket ---
+    private List<TicketPosition> ticket = [];
+    private bool ticketAufgeklappt;
+    private AbgeschlossenerVerkauf? letzterVerkauf;
+    private List<Rabatt> rabatte = [];
+    private Rabatt? ausgewaehlterRabatt;
+    private Rabatt? rabattKandidat;
+    private bool bedingungBestaetigt;
+    private bool rabattDialogOffen;
+    private bool abbrechenBestaetigungOffen;
+
+    // --- Divers (freier Betrag) ---
     private bool freierBetragOffen;
     private string? freierBetragFehler;
     private decimal freierBetrag;
     private int freierBetragMenge = 1;
     private Leistung? standardArtikel;
 
+    // --- Zahlung ---
+    private List<MobileMoneyAnbieter> mobileAnbieter = [];
+    private bool zahlDialogOffen;
+    private ZahlModus zahlModus = ZahlModus.Bar;
+    private decimal gegeben;
+    private Guid? mobileAnbieterId;
+    private string? mobileReferenz;
+    private decimal mixBar;
+    private ZahlungsArt mixZweitArt = ZahlungsArt.MobileMoney;
+    private string? verkaufFehler;
+
+    // --- Dialoge ---
     private bool displayDialogOffen;
     private string? displayQrDataUrl;
     private string displayLink = string.Empty;
-
-    private string? aktiveKategorie;
-    private List<string> kategorien = [];
-    private HashSet<Guid> favoritenIds = [];
-    private Guid aktuellerBenutzerId;
-    private bool istBesitzerOderAdmin;
-    private IEnumerable<Leistung> GefilterteLeistungen =>
-        (aktiveKategorie is null ? leistungen : leistungen.Where(l => l.Kategorie?.Name == aktiveKategorie))
-        .OrderByDescending(l => favoritenIds.Contains(l.Id))
-        .ThenBy(l => l.Name);
-
-    // Zahlung
-    private ZahlungsArt zahlungsArt = ZahlungsArt.Bar;
-    private readonly IReadOnlyList<EnoteRadioOption<ZahlungsArt>> zahlungsArtOptionen =
-    [
-        new() { Value = ZahlungsArt.Bar, Label = "Espèces" },
-        new() { Value = ZahlungsArt.Karte, Label = "Carte" }
-    ];
-    private decimal gegeben;
-    private bool karteBestaetigt;
-    private string ausgewaehlteRabattId = string.Empty;
-    private bool rabattAktiviert;
-    private bool bedingungBestaetigt;
-    private string? verkaufFehler;
-
-    // Zahlungs-Modale (platzsparend statt Inline-Zahlungsblock)
-    private bool barModalOffen;
-    private bool karteModalOffen;
-    private bool abbrechenBestaetigungOffen;
-
-    // Rückgeld im Bar-Modal live (unabhängig von zahlungsArt).
-    private decimal rueckgeldModal => gegeben >= gesamtSumme ? Math.Round(gegeben - gesamtSumme, 2) : 0m;
-    private bool barBetragZuWenig => gegeben < gesamtSumme;
-
-    private void OeffneBarModal()
-    {
-        if (ticket.Count == 0)
-        {
-            return;
-        }
-
-        verkaufFehler = null;
-        gegeben = gesamtSumme; // komfortabel: exakter Betrag vorbefüllt
-        barModalOffen = true;
-    }
-
-    private void OeffneKarteModal()
-    {
-        if (ticket.Count == 0)
-        {
-            return;
-        }
-
-        verkaufFehler = null;
-        karteBestaetigt = false;
-        karteModalOffen = true;
-    }
-
-    private async Task BestaetigeBarAsync()
-    {
-        zahlungsArt = ZahlungsArt.Bar;
-        await BucheVerkaufAsync();
-        if (string.IsNullOrWhiteSpace(verkaufFehler))
-        {
-            barModalOffen = false;
-        }
-    }
-
-    private async Task BestaetigeKarteAsync()
-    {
-        zahlungsArt = ZahlungsArt.Karte;
-        karteBestaetigt = true;
-        await BucheVerkaufAsync();
-        if (string.IsNullOrWhiteSpace(verkaufFehler))
-        {
-            karteModalOffen = false;
-        }
-    }
-    private Guid? letzterVerkaufId;
-    private string scanCode = string.Empty;
-
-    private string bedingungLabel =>
-        ausgewaehlterRabatt?.Bedingung is string b && !string.IsNullOrWhiteSpace(b)
-            ? "Condition remplie : " + b
-            : "Condition remplie";
-
-    // Abschluss
+    private bool historieOffen;
+    private bool historieLaedt;
+    private List<FinanzService.VerkaufEintrag> historieVerkaeufe = [];
     private bool abschlussOffen;
     private decimal endbestandGezaehlt;
     private string? abschlussNotiz;
     private string? abschlussFehler;
-    private (decimal Startbestand, decimal BarEinnahmen, decimal Soll)? barSollInfo;
+    private KassenService.SitzungsUebersicht? abschlussInfo;
 
-    // Verkaufshistorie (Kassierer darf vorherige Verkäufe sehen + Bon nachdrucken)
-    private bool historieOffen;
-    private bool historieLaedt;
-    private List<FinanzService.VerkaufEintrag> historieVerkaeufe = [];
-
-    private async Task OeffneHistorieAsync()
-    {
-        historieOffen = true;
-        if (aktiveSitzung is null)
-        {
-            return;
-        }
-
-        historieLaedt = true;
-        historieVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(aktiveSitzung.SalonId, 50);
-        historieLaedt = false;
-    }
-
-    private Rabatt? ausgewaehlterRabatt =>
-        Guid.TryParse(ausgewaehlteRabattId, out var id) ? rabatte.FirstOrDefault(r => r.Id == id) : null;
+    // ================= Berechnete Werte =================
 
     private decimal zwischensumme => ticket.Sum(p => p.EffektivPreis * p.Menge);
     private decimal rabattSumme => BerechneRabattSumme();
     private decimal gesamtSumme => Math.Max(zwischensumme - rabattSumme, 0m);
+    private int AnzahlArtikel => ticket.Sum(p => p.Menge);
+    private decimal Ecart => abschlussInfo is null ? 0m : endbestandGezaehlt - abschlussInfo.BarSoll;
+
+    private IReadOnlyList<LeistungKategorie> HauptKategorien
+    {
+        get
+        {
+            var genutzt = leistungen.Where(l => l.KategorieId is not null).Select(l => l.KategorieId!.Value).ToHashSet();
+            return kategorien
+                .Where(k => k.ParentId is null && (genutzt.Contains(k.Id) || kategorien.Any(u => u.ParentId == k.Id && genutzt.Contains(u.Id))))
+                .OrderBy(k => k.Name)
+                .ToList();
+        }
+    }
+
+    private IReadOnlyList<LeistungKategorie> UnterKategorien
+        => aktiveKategorieId is Guid id
+            ? kategorien.Where(k => k.ParentId == id && leistungen.Any(l => l.KategorieId == k.Id)).OrderBy(k => k.Name).ToList()
+            : [];
+
+    private bool IstAlles => aktiveKategorieId is null && !nurFavoriten;
+
+    private IEnumerable<Leistung> SichtbareLeistungen
+    {
+        get
+        {
+            IEnumerable<Leistung> q = leistungen;
+            var suche = suchtext.Trim();
+            if (suche.Length > 0)
+            {
+                q = q.Where(l => l.Name.Contains(suche, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(l.StrichCode, suche, StringComparison.OrdinalIgnoreCase));
+            }
+            else if (nurFavoriten)
+            {
+                q = q.Where(l => favoritenIds.Contains(l.Id));
+            }
+            else if (aktiveKategorieId is Guid hauptId)
+            {
+                var ids = aktiveUnterKategorieId is Guid unterId
+                    ? [unterId]
+                    : kategorien.Where(k => k.Id == hauptId || k.ParentId == hauptId).Select(k => k.Id).ToHashSet();
+                q = q.Where(l => l.KategorieId is Guid k && ids.Contains(k));
+            }
+
+            return q.OrderByDescending(l => l.IstStandardArtikel)
+                .ThenByDescending(l => favoritenIds.Contains(l.Id))
+                .ThenBy(l => l.Name);
+        }
+    }
+
+    private string ZahlTitel => zahlModus switch
+    {
+        ZahlModus.Bar => "Paiement en espèces",
+        ZahlModus.Karte => "Paiement par carte",
+        ZahlModus.MobileMoney => "Paiement Mobile Money",
+        _ => "Paiement mixte"
+    };
+
+    private string ZahlButtonText => zahlModus switch
+    {
+        ZahlModus.Bar => "Encaisser",
+        ZahlModus.Karte => "Paiement reçu",
+        ZahlModus.MobileMoney => "Paiement reçu",
+        _ => "Encaisser"
+    };
+
+    private bool ZahlungMoeglich => zahlModus switch
+    {
+        ZahlModus.Bar => gegeben >= gesamtSumme && gesamtSumme > 0,
+        ZahlModus.Karte => gesamtSumme > 0,
+        ZahlModus.MobileMoney => mobileAnbieterId is not null && gesamtSumme > 0,
+        _ => mixBar > 0 && mixBar < gesamtSumme && (mixZweitArt != ZahlungsArt.MobileMoney || mobileAnbieterId is not null)
+    };
+
+    private bool RabattAnwendbar => rabattKandidat is not null
+        && (string.IsNullOrWhiteSpace(rabattKandidat.Bedingung) || bedingungBestaetigt);
+
+    // ================= Lebenszyklus =================
 
     protected override async Task OnInitializedAsync()
     {
         anzeigeState.OnChange += HandleAnzeigeStateChanged;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
-        var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var userId))
+        if (!Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return;
         }
 
         aktuellerBenutzerId = userId;
-        istBesitzerOderAdmin = authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer)
-            || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.SuperAdmin)
-            || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.ProduktOwner);
 
-        // Offene Sitzung eines der dem Nutzer zugeordneten Salons wiederherstellen.
+        // Offene Sitzung eines der dem Nutzer zugeordneten Läden wiederherstellen.
         var zuordnungen = await katalogService.GetUserSalonsAsync(userId);
         foreach (var z in zuordnungen)
         {
             var offene = await kassenService.GetOffeneSitzungAsync(z.SalonId);
-            if (offene is not null)
+            if (offene is null)
             {
-                aktiveSitzung = offene;
-                aktiverSalonName = z.Salon.Name;
-                sitzungWiederhergestellt = true;
-                var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
-                anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand, aufstellung?.BarEinnahmen ?? 0m);
-                await LadeKatalogAsync(offene.SalonId);
-                wiederhergestelltKassierer = offene.Kassierer.FullName;
-                wiederhergestelltSoll = aufstellung?.Soll;
-                wiederhergestelltGestartet = offene.GestartetUtc;
-                wiederhergestelltModalOffen = true;
-                return;
+                continue;
             }
+
+            aktiveSitzung = offene;
+            aktiverSalonName = z.Salon.Name;
+            var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
+            anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand, aufstellung?.BarEinnahmen ?? 0m);
+            await LadeKatalogAsync(offene.SalonId);
+            wiederhergestelltKassierer = offene.Kassierer.FullName;
+            wiederhergestelltSoll = aufstellung?.Soll;
+            wiederhergestelltGestartet = offene.GestartetUtc;
+            wiederhergestelltModalOffen = true;
+            return;
         }
 
         await LadeKassiererListeAsync(zuordnungen);
@@ -212,7 +226,7 @@ public partial class Caisse(
 
     private async Task LadeKassiererListeAsync(List<Core.DataModels.Salons.UserSalon> zuordnungen)
     {
-        // Kassierer aus allen dem Nutzer zugeordneten (freigegebenen) Salons sammeln.
+        // Kassierer aus allen dem Nutzer zugeordneten (freigegebenen) Läden sammeln.
         var distinct = new Dictionary<Guid, string>();
         foreach (var z in zuordnungen.Where(x => x.Salon.IstFreigegeben))
         {
@@ -224,11 +238,10 @@ public partial class Caisse(
 
         kassiererListe = distinct.Select(kv => (kv.Key, kv.Value)).OrderBy(x => x.Value).ToList();
 
-        // Optionaler Geräte-Favorit: Salon vorbestimmen und dessen Kassierer zuerst zeigen.
+        // Optionaler Geräte-Favorit: Laden vorbestimmen und dessen Kassierer zuerst zeigen.
         try
         {
-            var favoritSalonId = await geraetFavoritService.GetFavoritSalonIdAsync();
-            if (favoritSalonId is Guid salonId)
+            if (await geraetFavoritService.GetFavoritSalonIdAsync() is Guid salonId)
             {
                 var favoritKassierer = await kassenService.GetKassiererAsync(salonId);
                 var rest = kassiererListe.Where(k => favoritKassierer.All(f => f.UserId != k.UserId)).ToList();
@@ -239,6 +252,19 @@ public partial class Caisse(
         {
             // JS noch nicht verfügbar (Prerendering) – Favorit wird ignoriert.
         }
+
+        // Nur ein Kassierer: direkt vorauswählen (spart einen Tipp).
+        if (kassiererListe.Count == 1)
+        {
+            ausgewaehlterKassiererId = kassiererListe[0].UserId;
+        }
+    }
+
+    private void WaehleKassierer(Guid id)
+    {
+        ausgewaehlterKassiererId = id;
+        startFehler = null;
+        pin = string.Empty;
     }
 
     private async Task StarteSitzungAsync()
@@ -262,6 +288,7 @@ public partial class Caisse(
         if (!gefunden || zuordnung is null)
         {
             startFehler = findFehler;
+            pin = string.Empty;
             return;
         }
 
@@ -286,42 +313,50 @@ public partial class Caisse(
     private async Task LadeKatalogAsync(Guid salonId)
     {
         leistungen = (await katalogService.GetLeistungenAsync(salonId)).Where(l => l.IstAktiv).ToList();
+        kategorien = await katalogService.GetKategorienAsync(salonId);
         rabatte = (await katalogService.GetRabatteAsync(salonId)).Where(r => r.IstAktiv).ToList();
-        rabattOptionen = rabatte
-            .Select(r => new EnoteSelectOption<string> { Value = r.Id.ToString(), Label = $"{r.Name} ({RabattText(r)})" })
-            .ToList();
-        kategorien = leistungen
-            .Where(l => l.Kategorie is not null)
-            .Select(l => l.Kategorie!.Name)
-            .Distinct()
-            .OrderBy(k => k)
-            .ToList();
         favoritenIds = await katalogService.GetFavoritenIdsAsync(salonId);
+        bildUrls = await katalogService.GetLeistungsBildUrlsAsync(salonId);
+        mobileAnbieter = await mobileMoneyService.GetErlaubteAnbieterAsync(salonId);
     }
 
-    private void AendereTileMenge(Guid leistungId, int delta)
+    // ================= Katalog-Bedienung =================
+
+    private void ZeigeAlles()
     {
-        var aktuell = tileMengen.GetValueOrDefault(leistungId, 1);
-        var neu = Math.Clamp(aktuell + delta, 1, 99);
-        tileMengen[leistungId] = neu;
+        aktiveKategorieId = null;
+        aktiveUnterKategorieId = null;
+        nurFavoriten = false;
+        suchtext = string.Empty;
     }
 
-    private void FuegeHinzuMitMenge(Leistung leistung)
+    private void ZeigeFavoriten()
     {
-        var menge = tileMengen.GetValueOrDefault(leistung.Id, 1);
-        var vorhanden = ticket.FirstOrDefault(p => p.Leistung.Id == leistung.Id && p.Rabatt is null);
-        if (vorhanden is not null)
+        ZeigeAlles();
+        nurFavoriten = true;
+    }
+
+    private void WaehleKategorie(Guid id)
+    {
+        ZeigeAlles();
+        aktiveKategorieId = id;
+    }
+
+    private string KategorieFarbe(Guid? kategorieId)
+    {
+        if (kategorieId is not Guid id)
         {
-            vorhanden.Menge += menge;
-        }
-        else
-        {
-            ticket.Add(new TicketPosition { Leistung = leistung, Menge = menge });
+            return "var(--enote-border-strong)";
         }
 
-        tileMengen[leistung.Id] = 1; // zurücksetzen
-        _ = SendeTicketAnDisplayAsync();
+        // Unterkategorien erben die Farbe ihrer Hauptkategorie.
+        var kat = kategorien.FirstOrDefault(k => k.Id == id);
+        var hauptId = kat?.ParentId ?? id;
+        var index = kategorien.Where(k => k.ParentId is null).OrderBy(k => k.Name).Select(k => k.Id).ToList().IndexOf(hauptId);
+        return index < 0 ? "var(--enote-border-strong)" : KategoriePalette[index % KategoriePalette.Length];
     }
+
+    private int MengeImTicket(Guid leistungId) => ticket.Where(p => p.Leistung.Id == leistungId).Sum(p => p.Menge);
 
     /// <summary>Standard-Artikel öffnet den Betrag-Dialog; normale Leistungen werden direkt hinzugefügt.</summary>
     private void WaehleLeistung(Leistung leistung)
@@ -330,13 +365,29 @@ public partial class Caisse(
         {
             standardArtikel = leistung;
             freierBetrag = 0m;
-            freierBetragMenge = tileMengen.GetValueOrDefault(leistung.Id, 1);
+            freierBetragMenge = 1;
             freierBetragFehler = null;
             freierBetragOffen = true;
             return;
         }
 
-        FuegeHinzuMitMenge(leistung);
+        FuegeHinzu(leistung);
+    }
+
+    private void FuegeHinzu(Leistung leistung)
+    {
+        letzterVerkauf = null;
+        var vorhanden = ticket.FirstOrDefault(p => p.Leistung.Id == leistung.Id && p.FreierBetrag is null);
+        if (vorhanden is not null)
+        {
+            vorhanden.Menge++;
+        }
+        else
+        {
+            ticket.Add(new TicketPosition { Leistung = leistung, Menge = 1 });
+        }
+
+        _ = SendeTicketAnDisplayAsync();
     }
 
     private void FuegeStandardArtikelHinzu()
@@ -348,27 +399,55 @@ public partial class Caisse(
 
         if (freierBetrag <= 0)
         {
-            freierBetragFehler = "Veuillez saisir un montant positif.";
+            freierBetragFehler = "Veuillez saisir un montant.";
             return;
         }
 
+        letzterVerkauf = null;
         ticket.Add(new TicketPosition { Leistung = standardArtikel, Menge = freierBetragMenge, FreierBetrag = freierBetrag });
         freierBetragOffen = false;
         _ = SendeTicketAnDisplayAsync();
     }
 
-    private void FuegeHinzu(Leistung leistung)
+    private void HandleSuchTaste(KeyboardEventArgs e)
     {
-        var vorhanden = ticket.FirstOrDefault(p => p.Leistung.Id == leistung.Id && p.Rabatt is null);
-        if (vorhanden is not null)
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(suchtext))
         {
-            vorhanden.Menge++;
+            return;
+        }
+
+        var code = suchtext.Trim();
+        var treffer = leistungen.FirstOrDefault(l => string.Equals(l.StrichCode, code, StringComparison.OrdinalIgnoreCase));
+        var sichtbar = SichtbareLeistungen.Where(l => !l.IstStandardArtikel).Take(2).ToList();
+        treffer ??= sichtbar.Count == 1 ? sichtbar[0] : null;
+
+        if (treffer is not null)
+        {
+            FuegeHinzu(treffer);
+            suchtext = string.Empty;
         }
         else
         {
-            ticket.Add(new TicketPosition { Leistung = leistung, Menge = 1 });
+            toast.ZeigeFehler($"Aucun article unique pour « {code} ».");
         }
     }
+
+    private async Task ToggleFavoritAsync(Guid leistungId)
+    {
+        if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty)
+        {
+            return;
+        }
+
+        await katalogService.ToggleFavoritAsync(aktiveSitzung.SalonId, leistungId, aktuellerBenutzerId);
+        favoritenIds = await katalogService.GetFavoritenIdsAsync(aktiveSitzung.SalonId);
+        if (nurFavoriten && favoritenIds.Count == 0)
+        {
+            ZeigeAlles();
+        }
+    }
+
+    // ================= Ticket =================
 
     private void AendereMenge(TicketPosition pos, int delta)
     {
@@ -378,40 +457,91 @@ public partial class Caisse(
             ticket.Remove(pos);
         }
 
+        PruefeRabattNochGueltig();
         _ = SendeTicketAnDisplayAsync();
     }
 
-    private void EntfernePos(TicketPosition pos)
-    {
-        ticket.Remove(pos);
-        _ = SendeTicketAnDisplayAsync();
-    }
-
-    /// <summary>Öffnet die Bestätigung zum Abbrechen des aktuellen Verkaufs.</summary>
     private void OeffneAbbrechenBestaetigung()
     {
-        if (ticket.Count == 0)
+        if (ticket.Count > 0)
+        {
+            abbrechenBestaetigungOffen = true;
+        }
+    }
+
+    /// <summary>Leert das Ticket und setzt Rabatt/Eingaben zurück.</summary>
+    private void BrecheTicketAb()
+    {
+        SetzeTicketZurueck();
+        abbrechenBestaetigungOffen = false;
+        _ = SendeTicketAnDisplayAsync();
+    }
+
+    private void SetzeTicketZurueck()
+    {
+        ticket.Clear();
+        ausgewaehlterRabatt = null;
+        rabattKandidat = null;
+        bedingungBestaetigt = false;
+        gegeben = 0m;
+        mixBar = 0m;
+        mobileReferenz = null;
+        ticketAufgeklappt = false;
+    }
+
+    private void WendeRabattAn()
+    {
+        if (!RabattAnwendbar)
         {
             return;
         }
 
-        abbrechenBestaetigungOffen = true;
+        ausgewaehlterRabatt = rabattKandidat;
+        rabattDialogOffen = false;
+        _ = SendeTicketAnDisplayAsync();
     }
 
-    /// <summary>Bricht den aktuellen Verkauf ab: entfernt alle Positionen und setzt Rabatt/Eingaben zurück.</summary>
-    private void BrecheTicketAb()
+    private void EntferneRabatt()
     {
-        ticket.Clear();
-        tileMengen.Clear();
-        ausgewaehlteRabattId = string.Empty;
-        rabattAktiviert = false;
+        ausgewaehlterRabatt = null;
+        rabattKandidat = null;
         bedingungBestaetigt = false;
-        gegeben = 0m;
-        karteBestaetigt = false;
-        freierBetragOffen = false;
-        freierBetragFehler = null;
-        abbrechenBestaetigungOffen = false;
         _ = SendeTicketAnDisplayAsync();
+    }
+
+    /// <summary>Ein leistungsbezogener Rabatt verfällt, wenn die Leistung nicht mehr im Ticket ist.</summary>
+    private void PruefeRabattNochGueltig()
+    {
+        if (ausgewaehlterRabatt?.LeistungId is Guid id && ticket.All(p => p.Leistung.Id != id))
+        {
+            EntferneRabatt();
+        }
+    }
+
+    private decimal BerechneRabattSumme()
+    {
+        var rabatt = ausgewaehlterRabatt;
+        if (rabatt is null)
+        {
+            return 0m;
+        }
+
+        // Leistungsbezogener Rabatt gilt nur auf Positionen dieser Leistung, globaler auf den ganzen Bon.
+        var basis = rabatt.LeistungId is Guid leistungId
+            ? ticket.Where(p => p.Leistung.Id == leistungId).Sum(p => p.EffektivPreis * p.Menge)
+            : zwischensumme;
+
+        var nachRabatt = Core.Services.Kasse.KassenRechner.WendeRabattAn(basis, rabatt.Art, rabatt.Wert);
+        return Math.Round(basis - nachRabatt, 2);
+    }
+
+    private decimal ZeilenSumme(TicketPosition pos)
+    {
+        var betrag = pos.EffektivPreis * pos.Menge;
+        var rabatt = ausgewaehlterRabatt;
+        return rabatt?.LeistungId is Guid id && id == pos.Leistung.Id
+            ? Core.Services.Kasse.KassenRechner.WendeRabattAn(betrag, rabatt.Art, rabatt.Wert)
+            : betrag;
     }
 
     /// <summary>Sendet den aktuellen Ticket-Stand an das Kunden-Display (falls verbunden).</summary>
@@ -434,95 +564,63 @@ public partial class Caisse(
         }
     }
 
-    /// <summary>
-    /// Beendet den Kassen-Modus (nur für Besitzer/Admin sichtbar), ohne die
-    /// Sitzung zu schließen. Der Kassierer kann später per PIN weitermachen.
-    /// </summary>
-    private async Task ToggleFavoritAsync(Guid leistungId)
+    // ================= Zahlung =================
+
+    private void OeffneZahlung(ZahlModus modus)
     {
-        if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty)
+        if (ticket.Count == 0)
         {
             return;
         }
 
-        await katalogService.ToggleFavoritAsync(aktiveSitzung.SalonId, leistungId, aktuellerBenutzerId);
-        favoritenIds = await katalogService.GetFavoritenIdsAsync(aktiveSitzung.SalonId);
-    }
-
-    private void HandleScanTaste(KeyboardEventArgs e)
-    {
-        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(scanCode))
+        if (kasseGesperrt)
         {
+            toast.ZeigeFehler("Caisse suspendue : abonnement impayé. La clôture reste possible.");
             return;
         }
 
-        var code = scanCode.Trim();
-        var treffer = leistungen.FirstOrDefault(l =>
-            string.Equals(l.StrichCode, code, StringComparison.OrdinalIgnoreCase));
-
-        if (treffer is not null)
-        {
-            FuegeHinzu(treffer);
-        }
-        else
-        {
-            toast.ZeigeFehler($"Code-barres inconnu : {code}");
-        }
-
-        scanCode = string.Empty;
-    }
-
-    private decimal BerechneRabattSumme()
-    {
-        var rabatt = ausgewaehlterRabatt;
-        if (rabatt is null || !rabattAktiviert)
-        {
-            return 0m;
-        }
-
-        // Leistungsbezogener Rabatt gilt nur auf Positionen dieser Leistung,
-        // globaler Rabatt auf den ganzen Bon.
-        var basis = rabatt.LeistungId is Guid leistungId
-            ? ticket.Where(p => p.Leistung.Id == leistungId).Sum(p => p.EffektivPreis * p.Menge)
-            : zwischensumme;
-
-        var nachRabatt = Core.Services.Kasse.KassenRechner.WendeRabattAn(basis, rabatt.Art, rabatt.Wert);
-        return Math.Round(basis - nachRabatt, 2);
-    }
-
-    private decimal ZeilenSumme(TicketPosition pos)
-    {
-        var rabatt = ausgewaehlterRabatt;
-        if (rabatt is not null && (rabatt.LeistungId is null || rabatt.LeistungId == pos.Leistung.Id))
-        {
-            var betrag = pos.EffektivPreis * pos.Menge;
-            // Bei globalem Rabatt verteilen wir nicht pro Zeile in der Anzeige.
-            if (rabatt.LeistungId is not null)
-            {
-                return Core.Services.Kasse.KassenRechner.WendeRabattAn(betrag, rabatt.Art, rabatt.Wert);
-            }
-        }
-
-        return pos.EffektivPreis * pos.Menge;
-    }
-
-    private async Task BucheVerkaufAsync()
-    {
         verkaufFehler = null;
+        WechsleModus(modus);
+        zahlDialogOffen = true;
+    }
 
-        if (aktiveSitzung is null)
+    private void WechsleModus(ZahlModus modus)
+    {
+        zahlModus = modus;
+        verkaufFehler = null;
+        gegeben = gesamtSumme; // passender Betrag vorbefüllt
+        mixBar = 0m;
+        mixZweitArt = mobileAnbieter.Count > 0 ? ZahlungsArt.MobileMoney : ZahlungsArt.Karte;
+        mobileAnbieterId ??= mobileAnbieter.Count == 1 ? mobileAnbieter[0].Id : null;
+    }
+
+    private void SchliesseZahlung()
+    {
+        zahlDialogOffen = false;
+        verkaufFehler = null;
+    }
+
+    private async Task BestaetigeZahlungAsync()
+    {
+        if (!ZahlungMoeglich || aktiveSitzung is null)
         {
-            verkaufFehler = "Aucune caisse ouverte.";
             return;
         }
 
-        var rabatt = rabattAktiviert ? ausgewaehlterRabatt : null;
-        if (rabatt is not null && !string.IsNullOrWhiteSpace(rabatt.Bedingung) && !bedingungBestaetigt)
+        verkaufFehler = null;
+        IReadOnlyList<KassenService.ZahlungInput> zahlungen = zahlModus switch
         {
-            verkaufFehler = "Veuillez confirmer la condition de la remise.";
-            return;
-        }
+            ZahlModus.Bar => [new(ZahlungsArt.Bar, Gegeben: gegeben)],
+            ZahlModus.Karte => [new(ZahlungsArt.Karte)],
+            ZahlModus.MobileMoney => [new(ZahlungsArt.MobileMoney, AnbieterId: mobileAnbieterId, Referenz: mobileReferenz)],
+            _ =>
+            [
+                new(ZahlungsArt.Bar, Betrag: mixBar, Gegeben: mixBar),
+                new(mixZweitArt, AnbieterId: mixZweitArt == ZahlungsArt.MobileMoney ? mobileAnbieterId : null)
+            ]
+        };
 
+        var rabatt = ausgewaehlterRabatt;
         var positionen = ticket.Select(p => new KassenService.VerkaufsPositionInput(
             p.Leistung.Id,
             p.Menge,
@@ -530,51 +628,50 @@ public partial class Caisse(
             bedingungBestaetigt,
             p.FreierBetrag)).ToList();
 
-        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(
-            aktiveSitzung.Id, positionen, zahlungsArt,
-            zahlungsArt == ZahlungsArt.Bar ? gegeben : null,
-            karteBestaetigt);
-
+        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen);
         if (!erfolg || verkauf is null)
         {
             verkaufFehler = fehler;
             return;
         }
 
-        anzeigeState.VerkaufGebucht(verkauf.ZahlungsArt == ZahlungsArt.Bar ? verkauf.GesamtSumme : 0m);
-        letzterVerkaufId = verkauf.Id;
+        var anteile = Core.Services.Kasse.KassenRechner.Anteile(verkauf);
+        anzeigeState.VerkaufGebucht(anteile.Where(a => a.Art == ZahlungsArt.Bar).Sum(a => a.Betrag));
+        letzterVerkauf = new AbgeschlossenerVerkauf(verkauf.Id, verkauf.GesamtSumme, verkauf.Rueckgeld, ZahlungsTexte.Kurz(anteile));
+        zahlDialogOffen = false;
+
         foreach (var warnung in warnungen)
         {
             toast.ZeigeInfo(warnung);
         }
 
-        toast.ZeigeErfolg(zahlungsArt == ZahlungsArt.Bar
-            ? $"Encaissé. Monnaie à rendre : {verkauf.Rueckgeld:N0} F"
-            : "Paiement par carte confirmé.");
+        // Kunden-Display: abgeschlossenen Verkauf zeigen (Total + Rückgeld).
+        var abgeschlossenesTicket = new DisplayTicket(
+            verkauf.Positionen.Select(p => new DisplayPosition(p.LeistungName, p.Menge, p.ZeilenSumme)).ToList(),
+            verkauf.Zwischensumme, verkauf.RabattSumme, verkauf.GesamtSumme,
+            Abgeschlossen: true, Rueckgeld: verkauf.Rueckgeld);
+        _ = displayService.TicketAktualisiertAsync(aktiveSitzung.Id, abgeschlossenesTicket);
 
-        // Kunden-Display: abgeschlossenen Verkauf zeigen (Total + Rückgeld), dann zurücksetzen.
-        if (aktiveSitzung is not null)
+        SetzeTicketZurueck();
+        ticketAufgeklappt = true; // auf Handy/Tablet das Rückgeld sofort zeigen
+
+        // Bestand (Lagerwarnungen) aktualisieren.
+        leistungen = (await katalogService.GetLeistungenAsync(aktiveSitzung.SalonId)).Where(l => l.IstAktiv).ToList();
+    }
+
+    // ================= Dialoge =================
+
+    private async Task OeffneHistorieAsync()
+    {
+        historieOffen = true;
+        if (aktiveSitzung is null)
         {
-            var abgeschlossenesTicket = new DisplayTicket(
-                verkauf.Positionen.Select(p => new DisplayPosition(p.LeistungName, p.Menge, p.ZeilenSumme)).ToList(),
-                verkauf.Zwischensumme,
-                verkauf.RabattSumme,
-                verkauf.GesamtSumme,
-                Abgeschlossen: true,
-                Rueckgeld: verkauf.Rueckgeld);
-            _ = displayService.TicketAktualisiertAsync(aktiveSitzung.Id, abgeschlossenesTicket);
+            return;
         }
 
-        // Ticket zurücksetzen.
-        ticket.Clear();
-        gegeben = 0m;
-        karteBestaetigt = false;
-        ausgewaehlteRabattId = string.Empty;
-        rabattAktiviert = false;
-        bedingungBestaetigt = false;
-        zahlungsArt = ZahlungsArt.Bar;
-
-        await LadeKatalogAsync(aktiveSitzung.SalonId);
+        historieLaedt = true;
+        historieVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(aktiveSitzung.SalonId, 50);
+        historieLaedt = false;
     }
 
     /// <summary>Öffnet den Kunden-Display-Dialog mit QR-Code und Link auf die laufende Sitzung.</summary>
@@ -590,7 +687,6 @@ public partial class Caisse(
         displayDialogOffen = true;
     }
 
-    /// <summary>Erzeugt einen QR-Code als PNG-Data-URL.</summary>
     private static string? ErzeugeQrDataUrl(string inhalt)
     {
         try
@@ -611,7 +707,7 @@ public partial class Caisse(
         abschlussFehler = null;
         endbestandGezaehlt = 0m;
         abschlussNotiz = null;
-        barSollInfo = aktiveSitzung is not null ? await kassenService.GetBarSollAufstellungAsync(aktiveSitzung.Id) : null;
+        abschlussInfo = aktiveSitzung is not null ? await kassenService.GetSitzungsUebersichtAsync(aktiveSitzung.Id) : null;
         abschlussOffen = true;
     }
 
@@ -622,9 +718,7 @@ public partial class Caisse(
             return;
         }
 
-        var (erfolg, fehler, sitzung) = await kassenService.SchliesseSitzungAsync(
-            aktiveSitzung.Id, endbestandGezaehlt, abschlussNotiz);
-
+        var (erfolg, fehler, sitzung) = await kassenService.SchliesseSitzungAsync(aktiveSitzung.Id, endbestandGezaehlt, abschlussNotiz);
         if (!erfolg || sitzung is null)
         {
             abschlussFehler = fehler;
@@ -633,44 +727,57 @@ public partial class Caisse(
 
         abschlussOffen = false;
         var differenzText = sitzung.Differenz >= 0 ? $"+{sitzung.Differenz:N0}" : $"{sitzung.Differenz:N0}";
-        toast.ZeigeErfolg($"Caisse clôturée. Attendu : {sitzung.BareinnahmenSoll:N0} F, compté : {sitzung.EndbestandGezaehlt:N0} F (écart {differenzText} F).");
+        toast.ZeigeErfolg($"Caisse clôturée · écart {differenzText} F.");
 
         aktiveSitzung = null;
+        letzterVerkauf = null;
+        SetzeTicketZurueck();
         anzeigeState.SitzungBeendet();
 
         // Zurück zum Start: Kassiererliste neu laden.
-        var authState = await authStateProvider.GetAuthenticationStateAsync();
-        var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Guid.TryParse(userIdValue, out var userId))
+        if (aktuellerBenutzerId != Guid.Empty)
         {
-            var zuordnungen = await katalogService.GetUserSalonsAsync(userId);
-            await LadeKassiererListeAsync(zuordnungen);
+            ausgewaehlterKassiererId = Guid.Empty;
+            startbestand = 0m;
+            await LadeKassiererListeAsync(await katalogService.GetUserSalonsAsync(aktuellerBenutzerId));
         }
     }
 
     /// <summary>Öffnet den Browserdruck; im eingerichteten Windows-Kioskprofil ohne Druckdialog.</summary>
     private async Task DruckeBonAsync(Guid verkaufId)
-    {
-        await js.InvokeVoidAsync("enoteOeffneTab", $"/bon/{verkaufId}/druck");
-    }
+        => await js.InvokeVoidAsync("enoteOeffneTab", $"/bon/{verkaufId}/druck");
 
     private void HandleAnzeigeStateChanged() => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose() => anzeigeState.OnChange -= HandleAnzeigeStateChanged;
 
+    // ================= Hilfen =================
+
+    private static string Initialen(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length switch
+        {
+            0 => "?",
+            1 => teile[0][..Math.Min(2, teile[0].Length)].ToUpperInvariant(),
+            _ => string.Concat(teile[0][0], teile[^1][0]).ToUpperInvariant()
+        };
+    }
+
+    /// <summary>Lagermenge ohne überflüssige Nachkommastellen (3 statt 3,00).</summary>
+    private static string Menge(decimal wert) => wert.ToString("0.##");
+
+    private static string RabattText(Rabatt r)
+        => r.Art == RabattArt.Prozent ? $"-{r.Wert:0.##} %" : $"-{r.Wert:N0} F";
+
     private sealed class TicketPosition
     {
         public Leistung Leistung { get; set; } = null!;
         public int Menge { get; set; }
-        public Rabatt? Rabatt { get; set; }
 
         /// <summary>Freier Betrag beim Standard-Artikel „Divers“ (ersetzt den Preis).</summary>
         public decimal? FreierBetrag { get; set; }
 
-        /// <summary>Effektiver Einzelpreis (FreierBetrag beim Standard-Artikel, sonst Leistung.Preis).</summary>
         public decimal EffektivPreis => FreierBetrag ?? Leistung.Preis;
     }
-
-    private static string RabattText(Rabatt r)
-        => r.Art == RabattArt.Prozent ? $"-{r.Wert:N0} %" : $"-{r.Wert:N0} F";
 }

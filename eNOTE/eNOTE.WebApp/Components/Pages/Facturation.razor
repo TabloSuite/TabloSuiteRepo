@@ -35,10 +35,17 @@
                         {
                             <p class="enote-item-desc">« @a.ZahlungsNotiz »</p>
                         }
-                        <div class="enote-item-actions">
-                            <AsyncActionButton Text="Confirmer" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Bestaetigt)" CssClass="enote-btn-primary enote-btn-sm" />
-                            <AsyncActionButton Text="Refuser" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Abgelehnt)" CssClass="enote-btn-ghost enote-btn-sm enote-danger" />
-                        </div>
+                        @if (darfBestaetigen)
+                        {
+                            <div class="enote-item-actions">
+                                <AsyncActionButton Text="Confirmer" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Bestaetigt)" CssClass="enote-btn-primary enote-btn-sm" />
+                                <AsyncActionButton Text="Refuser" OnClick="() => SetzeStatusAsync(a.Id, AboZahlungStatus.Abgelehnt)" CssClass="enote-btn-abbrechen enote-btn-sm" />
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="enote-item-desc enote-muted">Confirmation par le super-administrateur.</p>
+                        }
                     </div>
                 }
             </div>

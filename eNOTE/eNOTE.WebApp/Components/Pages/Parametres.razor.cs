@@ -8,6 +8,7 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Parametres(
     SalonService salonService,
+    MobileMoneyService mobileMoneyService,
     KatalogService katalogService,
     TeamService teamService,
     ToastService toast,
@@ -15,7 +16,15 @@ public partial class Parametres(
     AuthenticationStateProvider authStateProvider,
     LadeZustand ladeZustand) : IDisposable
 {
+    private sealed class MomoEintrag(Core.DataModels.Kasse.MobileMoneyAnbieter anbieter, bool akzeptiert)
+    {
+        public Core.DataModels.Kasse.MobileMoneyAnbieter Anbieter { get; } = anbieter;
+        public bool Akzeptiert { get; set; } = akzeptiert;
+    }
+
     private bool isLoading = true;
+    private string? land;
+    private List<MomoEintrag> momoAuswahl = [];
     private Guid salonId;
     private Guid benutzerId;
     private string salonName = string.Empty;
@@ -28,7 +37,6 @@ public partial class Parametres(
 
     private string neueBesitzerPin = string.Empty;
     private string? pinFehler;
-    private bool pinGespeichert;
     private bool hatBesitzerPin;
     private bool pinSichtbar;
 
@@ -100,7 +108,11 @@ public partial class Parametres(
             adresse = salon.Adresse;
             bonQrLink = salon.BonQrLink;
             logoVorschau = salonService.GetLogoUrl(salon);
+            land = salon.Land;
         }
+
+        momoAuswahl = (await mobileMoneyService.GetAuswahlFuerLadenAsync(salonId))
+            .Select(a => new MomoEintrag(a.Anbieter, a.Akzeptiert)).ToList();
 
         hatBesitzerPin = await salonService.HatBesitzerPinAsync(salonId, benutzerId);
         darfWeiterenLaden = await salonService.DarfWeiterenLadenAnlegenAsync(benutzerId);
@@ -175,10 +187,25 @@ public partial class Parametres(
         toast.ZeigeErfolg("Paramètres enregistrés.");
     }
 
+    private async Task SpeichereMomoAsync()
+    {
+        var (erfolg, fehler) = await mobileMoneyService.SetzeAuswahlAsync(
+            benutzerId, salonId, momoAuswahl.Where(m => m.Akzeptiert).Select(m => m.Anbieter.Id).ToList());
+        if (erfolg)
+            toast.ZeigeErfolg(momoAuswahl.Any(m => m.Akzeptiert) ? "Opérateurs Mobile Money enregistrés." : "Mobile Money désactivé pour la caisse.");
+        else
+            toast.ZeigeFehler(fehler ?? "L'enregistrement a échoué.");
+    }
+
+    private static string Kuerzel(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length >= 2 ? string.Concat(teile[0][0], teile[1][0]).ToUpperInvariant() : name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+
     private async Task SpeichereBesitzerPinAsync()
     {
         pinFehler = null;
-        pinGespeichert = false;
 
         if (string.IsNullOrWhiteSpace(neueBesitzerPin))
         {
@@ -202,7 +229,6 @@ public partial class Parametres(
 
         neueBesitzerPin = string.Empty;
         hatBesitzerPin = true;
-        pinGespeichert = true;
         toast.ZeigeErfolg("Code PIN propriétaire enregistré.");
     }
 }

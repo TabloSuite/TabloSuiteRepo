@@ -6,20 +6,27 @@
 
 @if (hinweis is not null)
 {
-    <div class="@(gesperrt ? "alert alert-error" : "enote-card enote-settings-card")" role="status">
-        @hinweis
+    <div class="enote-sperre @(gesperrt ? "gesperrt" : "")" role="@(gesperrt ? "alert" : "status")">
+        <span class="enote-sperre-ico"><Icon Name="@(gesperrt ? "lock" : "alert")" Groesse="20" /></span>
+        <span class="enote-sperre-text">@hinweis</span>
         @if (besitzer)
         {
-            <a class="enote-btn enote-btn-ghost" href="/abonnement">Abonnement et paiement</a>
+            <a class="enote-btn enote-btn-sm" href="/abonnement">Abonnement et paiement</a>
         }
-        @if (gesperrt)
+        @if (gesperrt && !ImKassenKontext)
         {
-            <a class="enote-btn enote-btn-ghost" href="/caisse">Consulter ou clôturer la caisse existante</a>
+            <a class="enote-btn enote-btn-sm" href="/caisse">Consulter ou clôturer la caisse</a>
         }
     </div>
 }
 @code {
     [Parameter] public Guid? SalonId { get; set; }
+
+    /// <summary>In der Kasse selbst: kein Link „zur Kasse“.</summary>
+    [Parameter] public bool ImKassenKontext { get; set; }
+
+    /// <summary>Meldet, ob die Kasse gesperrt ist (z. B. um Bedienelemente zu deaktivieren).</summary>
+    [Parameter] public EventCallback<bool> GesperrtGeaendert { get; set; }
     private Guid? geladenerSalon;
     private bool berechtigt;
     private string? hinweis;
@@ -53,6 +60,7 @@
             if (entsorgt || aktuell != version) return;
             hinweis = status.Hinweis;
             gesperrt = status.Gesperrt;
+            await GesperrtGeaendert.InvokeAsync(gesperrt);
         }
         catch (Exception) { if (!entsorgt && aktuell == version) hinweis = "Le statut de la caisse ne peut pas être vérifié. Réessayez avant de commencer les ventes."; }
     }

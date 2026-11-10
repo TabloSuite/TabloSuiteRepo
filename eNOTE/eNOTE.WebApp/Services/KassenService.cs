@@ -9,14 +9,27 @@ using Microsoft.EntityFrameworkCore;
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// Kassendomäne: Sitzung per PIN starten, Verkäufe (Bar/Karte) buchen,
+/// Kassendomäne: Sitzung per PIN starten, Verkäufe (Bar/Karte/Mobile Money, kombinierbar) buchen,
 /// Kassenabschluss. Läuft über IDbContextFactory, damit parallele
 /// Tablet-/Besitzer-Zugriffe keinen geteilten DbContext verwenden.
 /// </summary>
 public class KassenService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
-    IUmsatzBenachrichtigungService umsatzBenachrichtigung)
+    IUmsatzBenachrichtigungService umsatzBenachrichtigung,
+    TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
+    /// <summary>
+    /// Kassensperre wegen unbezahltem Abo (ab dem 15. nach Fälligkeit, bis der Admin bestätigt).
+    /// Abschluss einer laufenden Sitzung bleibt immer möglich.
+    /// </summary>
+    private async Task<string?> PruefeKassenSperreAsync(Guid salonId, bool synchronisieren, CancellationToken ct)
+    {
+        var zugang = await new KassenZugangService(dbContextFactory, uhr).PruefeAsync(salonId, ct, synchronisieren);
+        return zugang.Gesperrt ? zugang.Hinweis ?? "Caisse suspendue : abonnement impayé." : null;
+    }
+
     public record StartErgebnis(bool Erfolg, string? Fehler, KassenSitzung? Sitzung, int VerbleibendeVersuche);
 
     /// <summary>Aktuell offene Kassensitzung eines Salons (höchstens eine).</summary>
@@ -230,6 +243,11 @@ public class KassenService(
             return new(false, "Une caisse est déjà ouverte pour ce salon.", null, 0);
         }
 
+        if (await PruefeKassenSperreAsync(salonId, synchronisieren: true, cancellationToken) is string sperre)
+        {
+            return new(false, sperre, null, 0);
+        }
+
         var zuordnung = await db.UserSalons
             .Include(us => us.AppUser)
             .FirstOrDefaultAsync(us => us.SalonId == salonId && us.AppUserId == kassiererId, cancellationToken);
@@ -261,16 +279,37 @@ public class KassenService(
     public record VerkaufsPositionInput(Guid LeistungId, int Menge, Guid? RabattId, bool BedingungBestaetigt, decimal? FreierBetrag = null);
 
     /// <summary>
-    /// Bucht einen Verkauf. Bei Barzahlung wird das Rückgeld berechnet und geprüft;
-    /// bei Kartenzahlung muss der Kassierer den externen Vorgang bestätigt haben.
-    /// Artikel-Bestand wird gemindert (auch unter 0 erlaubt, mit Hinweis).
+    /// Ein Zahlungsanteil der Kasse. <c>Betrag</c> = <c>null</c> heißt „Restbetrag“
+    /// (nur für den letzten Anteil). Bei Bar ist <c>Gegeben</c> der vom Kunden gegebene
+    /// Betrag; Karte/Mobile Money gelten mit dem Aufruf als vom Kassierer bestätigt.
     /// </summary>
-    public async Task<(bool Erfolg, string? Fehler, Verkauf? Verkauf, List<string> Warnungen)> BucheVerkaufAsync(
+    public record ZahlungInput(ZahlungsArt Art, decimal? Betrag = null, decimal? Gegeben = null, Guid? AnbieterId = null, string? Referenz = null);
+
+    /// <summary>Kompatibilität: Verkauf mit genau einer Zahlart (Bar oder Karte).</summary>
+    public Task<(bool Erfolg, string? Fehler, Verkauf? Verkauf, List<string> Warnungen)> BucheVerkaufAsync(
         Guid kassenSitzungId,
         IReadOnlyList<VerkaufsPositionInput> positionen,
         ZahlungsArt zahlungsArt,
         decimal? gegeben,
         bool karteBestaetigt,
+        CancellationToken cancellationToken = default)
+    {
+        if (zahlungsArt == ZahlungsArt.Bar && gegeben is null)
+            return Task.FromResult<(bool, string?, Verkauf?, List<string>)>((false, "Veuillez saisir le montant reçu.", null, []));
+        if (zahlungsArt != ZahlungsArt.Bar && !karteBestaetigt)
+            return Task.FromResult<(bool, string?, Verkauf?, List<string>)>((false, "Veuillez confirmer que le paiement par carte a été effectué.", null, []));
+        return BucheVerkaufAsync(kassenSitzungId, positionen, [new ZahlungInput(zahlungsArt, Gegeben: gegeben)], cancellationToken);
+    }
+
+    /// <summary>
+    /// Bucht einen Verkauf mit 1..n Zahlungsanteilen (Bar, Karte, Mobile Money, kombinierbar).
+    /// Bar: Rückgeld aus dem gegebenen Betrag. Mobile Money: Anbieter muss für den Laden
+    /// zugelassen sein. Artikel-Bestand wird gemindert (auch unter 0 erlaubt, mit Hinweis).
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler, Verkauf? Verkauf, List<string> Warnungen)> BucheVerkaufAsync(
+        Guid kassenSitzungId,
+        IReadOnlyList<VerkaufsPositionInput> positionen,
+        IReadOnlyList<ZahlungInput> zahlungen,
         CancellationToken cancellationToken = default)
     {
         var warnungen = new List<string>();
@@ -287,6 +326,11 @@ public class KassenService(
         if (sitzung is null)
         {
             return (false, "Aucune caisse ouverte.", null, warnungen);
+        }
+
+        if (await PruefeKassenSperreAsync(sitzung.SalonId, synchronisieren: false, cancellationToken) is string sperre)
+        {
+            return (false, sperre, null, warnungen);
         }
 
         var leistungIds = positionen.Select(p => p.LeistungId).Distinct().ToList();
@@ -313,7 +357,6 @@ public class KassenService(
         {
             KassenSitzungId = sitzung.Id,
             SalonId = sitzung.SalonId,
-            ZahlungsArt = zahlungsArt,
             ZeitUtc = DateTime.UtcNow
         };
 
@@ -424,32 +467,10 @@ public class KassenService(
         verkauf.RabattSumme = Math.Round(rabattSumme, 2);
         verkauf.GesamtSumme = Math.Round(zwischensumme - rabattSumme, 2);
 
-        if (zahlungsArt == ZahlungsArt.Bar)
+        var zahlFehler = await ErfasseZahlungenAsync(db, sitzung.SalonId, verkauf, zahlungen, cancellationToken);
+        if (zahlFehler is not null)
         {
-            if (gegeben is null)
-            {
-                return (false, "Veuillez saisir le montant reçu.", null, warnungen);
-            }
-
-            try
-            {
-                verkauf.Rueckgeld = KassenRechner.BerechneRueckgeld(verkauf.GesamtSumme, gegeben.Value);
-            }
-            catch (InvalidOperationException)
-            {
-                return (false, "Le montant reçu est inférieur au total.", null, warnungen);
-            }
-
-            verkauf.Gegeben = gegeben.Value;
-        }
-        else
-        {
-            if (!karteBestaetigt)
-            {
-                return (false, "Veuillez confirmer que le paiement par carte a été effectué.", null, warnungen);
-            }
-
-            verkauf.KarteZahlungBestaetigt = true;
+            return (false, zahlFehler, null, warnungen);
         }
 
         db.Verkaeufe.Add(verkauf);
@@ -475,6 +496,111 @@ public class KassenService(
         return (true, null, verkauf, warnungen);
     }
 
+    /// <summary>
+    /// Validiert die Zahlungsanteile, löst „Restbetrag“ auf, berechnet das Rückgeld und
+    /// hängt die <see cref="VerkaufZahlung"/>-Einträge an. Liefert eine Fehlermeldung oder null.
+    /// </summary>
+    private static async Task<string?> ErfasseZahlungenAsync(
+        ApplicationDbContext db, Guid salonId, Verkauf verkauf, IReadOnlyList<ZahlungInput> zahlungen, CancellationToken ct)
+    {
+        if (zahlungen.Count == 0)
+            return "Veuillez choisir un mode de paiement.";
+        if (zahlungen.Take(zahlungen.Count - 1).Any(z => z.Betrag is null))
+            return "Seul le dernier paiement peut couvrir le reste.";
+
+        var fest = zahlungen.Where(z => z.Betrag is not null).Sum(z => z.Betrag!.Value);
+        var anteile = zahlungen
+            .Select(z => (z.Art, Betrag: Math.Round(z.Betrag ?? verkauf.GesamtSumme - fest, 2)))
+            .ToList();
+        var fehler = KassenRechner.PruefeZahlungen(verkauf.GesamtSumme, anteile);
+        if (fehler is not null)
+            return fehler;
+
+        var mobile = zahlungen.Where(z => z.Art == ZahlungsArt.MobileMoney).ToList();
+        if (mobile.Any(z => z.AnbieterId is null))
+            return "Veuillez choisir l'opérateur Mobile Money.";
+        var erlaubt = mobile.Count == 0
+            ? new Dictionary<Guid, MobileMoneyAnbieter>()
+            : await MobileMoneyService.ErlaubteAnbieterAbfrage(db, salonId).ToDictionaryAsync(a => a.Id, ct);
+
+        for (var i = 0; i < zahlungen.Count; i++)
+        {
+            var eingabe = zahlungen[i];
+            var zahlung = new VerkaufZahlung { Art = eingabe.Art, Betrag = anteile[i].Betrag, Reihenfolge = i };
+
+            switch (eingabe.Art)
+            {
+                case ZahlungsArt.Bar:
+                    if (eingabe.Gegeben is null)
+                        return "Veuillez saisir le montant reçu.";
+                    try
+                    {
+                        verkauf.Rueckgeld = KassenRechner.BerechneRueckgeld(zahlung.Betrag, eingabe.Gegeben.Value);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return "Le montant reçu est inférieur au montant en espèces.";
+                    }
+                    verkauf.Gegeben = Math.Round(eingabe.Gegeben.Value, 2);
+                    break;
+                case ZahlungsArt.Karte:
+                    verkauf.KarteZahlungBestaetigt = true;
+                    break;
+                case ZahlungsArt.MobileMoney:
+                    if (!erlaubt.TryGetValue(eingabe.AnbieterId!.Value, out var anbieter))
+                        return "Cet opérateur Mobile Money n'est pas accepté par l'établissement.";
+                    var referenz = eingabe.Referenz?.Trim();
+                    zahlung.MobileMoneyAnbieterId = anbieter.Id;
+                    zahlung.AnbieterName = anbieter.Name;
+                    zahlung.Referenz = string.IsNullOrEmpty(referenz) ? null : referenz[..Math.Min(80, referenz.Length)];
+                    break;
+            }
+
+            verkauf.Zahlungen.Add(zahlung);
+        }
+
+        verkauf.ZahlungsArt = KassenRechner.Zusammenfassen(verkauf.Zahlungen.Select(z => z.Art));
+        return null;
+    }
+
+    /// <summary>Kennzahlen einer offenen Sitzung für den Kassenabschluss.</summary>
+    public record SitzungsUebersicht(
+        decimal Startbestand, decimal Bar, decimal Karte, decimal MobileMoney,
+        IReadOnlyList<(string Anbieter, decimal Betrag)> MobileMoneyNachAnbieter, int AnzahlVerkaeufe)
+    {
+        public decimal BarSoll => Startbestand + Bar;
+        public decimal Umsatz => Bar + Karte + MobileMoney;
+    }
+
+    /// <summary>
+    /// Übersicht einer offenen Sitzung: Bar-Soll sowie Karten- und Mobile-Money-Einnahmen
+    /// (pro Anbieter), damit der Abschluss mit Terminal- und MoMo-Saldo abgeglichen werden kann.
+    /// </summary>
+    public async Task<SitzungsUebersicht?> GetSitzungsUebersichtAsync(Guid kassenSitzungId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var sitzung = await db.KassenSitzungen
+            .AsNoTracking()
+            .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
+            .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
+        if (sitzung is null)
+        {
+            return null;
+        }
+
+        var anteile = sitzung.Verkaeufe.SelectMany(KassenRechner.Anteile).ToList();
+        decimal Summe(ZahlungsArt art) => anteile.Where(a => a.Art == art).Sum(a => a.Betrag);
+        var nachAnbieter = anteile
+            .Where(a => a.Art == ZahlungsArt.MobileMoney)
+            .GroupBy(a => a.AnbieterName ?? "Mobile Money")
+            .Select(g => (g.Key, g.Sum(a => a.Betrag)))
+            .OrderByDescending(x => x.Item2)
+            .ToList();
+
+        return new SitzungsUebersicht(sitzung.Startbestand, Summe(ZahlungsArt.Bar), Summe(ZahlungsArt.Karte),
+            Summe(ZahlungsArt.MobileMoney), nachAnbieter, sitzung.Verkaeufe.Count);
+    }
+
     /// <summary>Liefert den aktuell erwarteten Bargeldbestand (Soll) einer offenen Sitzung, ohne sie abzuschließen.</summary>
     public async Task<decimal?> GetBarSollAsync(Guid kassenSitzungId, CancellationToken cancellationToken = default)
     {
@@ -489,7 +615,7 @@ public class KassenService(
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var sitzung = await db.KassenSitzungen
-            .Include(k => k.Verkaeufe)
+            .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
             .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
         if (sitzung is null)
         {
@@ -497,8 +623,9 @@ public class KassenService(
         }
 
         var barEinnahmen = sitzung.Verkaeufe
-            .Where(v => v.ZahlungsArt == ZahlungsArt.Bar)
-            .Sum(v => v.GesamtSumme);
+            .SelectMany(KassenRechner.Anteile)
+            .Where(a => a.Art == ZahlungsArt.Bar)
+            .Sum(a => a.Betrag);
         var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe);
         return (sitzung.Startbestand, Math.Round(barEinnahmen, 2), soll);
     }
@@ -516,7 +643,7 @@ public class KassenService(
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var sitzung = await db.KassenSitzungen
-            .Include(k => k.Verkaeufe)
+            .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
             .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
         if (sitzung is null)
         {

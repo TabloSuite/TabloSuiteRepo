@@ -47,6 +47,13 @@ public class Salon
     /// <summary>Freier Slogan des Salons (z. B. „In God we trust“), erscheint auf dem Bon.</summary>
     public string? Slogan { get; set; }
 
+    /// <summary>
+    /// true = der Besitzer hat die akzeptierten Mobile-Money-Anbieter selbst gewählt
+    /// (<see cref="SalonMobileMoneyAnbieter"/>, auch leer = keine). false = alle aktiven
+    /// Anbieter des Landes.
+    /// </summary>
+    public bool MobileMoneyIndividuell { get; set; }
+
     /// <summary>Optionales Logo aus dem Blob-Speicher, erscheint auf dem Bon.</summary>
     public Guid? LogoAssetId { get; set; }
     public Infrastruktur.BlobMediaAsset? LogoAsset { get; set; }

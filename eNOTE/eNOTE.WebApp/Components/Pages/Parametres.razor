@@ -1,134 +1,174 @@
 ﻿@page "/parametres"
 @attribute [Authorize(Roles = "Besitzer")]
 @rendermode InteractiveServer
-@using Microsoft.AspNetCore.Components.Forms
+@using ENote.WebApp.Services
 
 <PageTitle>Paramètres de l'établissement</PageTitle>
 
-
 <BesitzerPinGuard>
-<div class="enote-page enote-page-narrow">
+<div class="enote-page">
     <div class="enote-page-header">
         <div>
-            <h1>Paramètres de l'établissement</h1>
-            <p>Personnalisez votre reçu : logo et slogan.</p>
+            <h1>Paramètres</h1>
+            <p>Reçu, moyens de paiement et sécurité de « @salonName ».</p>
         </div>
         @if (darfWeiterenLaden)
         {
-            <button class="enote-btn enote-btn-primary" @onclick="OeffneNeuerLadenDialog">+ Nouvel établissement</button>
+            <button class="enote-btn" @onclick="OeffneNeuerLadenDialog"><Icon Name="store" Groesse="18" /> Nouvel établissement</button>
         }
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
     else
     {
-        <div class="enote-card enote-settings-card">
-            <h2>Identité sur le reçu</h2>
+        <div class="st-layout">
+            <div class="st-spalte">
+                <section class="enote-card st-karte">
+                    <div class="st-karte-kopf">
+                        <span class="st-ico"><Icon Name="receipt" /></span>
+                        <div>
+                            <h2>Identité sur le reçu</h2>
+                            <p>Ces informations apparaissent en haut de chaque reçu.</p>
+                        </div>
+                    </div>
 
-            <div class="enote-form">
-                <label>Slogan (ex. « In God we trust »)</label>
-                <input @bind="slogan" placeholder="Votre devise…" maxlength="120" />
+                    <div class="enote-form">
+                        <label>Logo <small class="enote-muted">(facultatif)</small></label>
+                        <BildAuswahl @bind-VorschauUrl="logoVorschau" OnBildBereit="HandleLogoBereit" OnEntfernt="HandleLogoEntfernt" />
+                        @if (!string.IsNullOrWhiteSpace(logoFehler))
+                        {
+                            <div class="alert alert-error">@logoFehler</div>
+                        }
 
-                <label>Téléphone</label>
-                <input @bind="telefon" placeholder="ex. +228 90 00 00 00" />
+                        <label>Slogan <input @bind="slogan" @bind:event="oninput" placeholder="ex. Votre beauté, notre passion" maxlength="120" /></label>
+                        <div class="enote-form-grid">
+                            <label>Téléphone <input @bind="telefon" @bind:event="oninput" inputmode="tel" placeholder="ex. +228 90 00 00 00" /></label>
+                            <label>Adresse <input @bind="adresse" @bind:event="oninput" placeholder="ex. Rue de la Paix, Lomé" /></label>
+                        </div>
+                        <label>
+                            Lien du QR-code sur le reçu <small class="enote-muted">(facultatif)</small>
+                            <input @bind="bonQrLink" placeholder="ex. lien WhatsApp ou avis Google" />
+                        </label>
+                        <small class="enote-muted">Vide : le QR-code ouvre la copie numérique du reçu.</small>
 
-                <label>Adresse</label>
-                <input @bind="adresse" placeholder="ex. Rue de la Paix, Lomé" />
+                        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+                    </div>
+                </section>
 
-                <label>Lien du QR-code sur le reéu (facultatif)</label>
-                <input @bind="bonQrLink" placeholder="ex. lien WhatsApp ou avis Google" />
-                <small class="enote-muted">Vide : le QR-code ouvre la copie numérique du reéu.</small>
+                <section class="enote-card st-karte">
+                    <div class="st-karte-kopf">
+                        <span class="st-ico st-ico-momo"><Icon Name="momo" /></span>
+                        <div>
+                            <h2>Mobile Money</h2>
+                            <p>Opérateurs acceptés à la caisse@(string.IsNullOrWhiteSpace(land) ? "" : $" ({land})").</p>
+                        </div>
+                    </div>
 
-                <label>Logo (facultatif)</label>
-                <BildAuswahl @bind-VorschauUrl="logoVorschau"
-                             OnBildBereit="HandleLogoBereit"
-                             OnEntfernt="HandleLogoEntfernt" />
-                @if (!string.IsNullOrWhiteSpace(logoFehler))
-                {
-                    <div class="alert alert-error">@logoFehler</div>
-                }
-                @if (!string.IsNullOrWhiteSpace(logoFehler))
-                {
-                    <div class="alert alert-error">@logoFehler</div>
-                }
+                    @if (momoAuswahl.Count == 0)
+                    {
+                        <p class="enote-empty">Aucun opérateur Mobile Money n'est encore configuré pour @(string.IsNullOrWhiteSpace(land) ? "votre pays" : land). Contactez l'administrateur.</p>
+                    }
+                    else
+                    {
+                        <div class="st-momo">
+                            @foreach (var eintrag in momoAuswahl)
+                            {
+                                <label class="st-momo-zeile @(eintrag.Akzeptiert ? "an" : "")">
+                                    <span class="enote-anbieter-logo" style="--marke: @eintrag.Anbieter.Farbe; --marke-text: @MobileMoneyService.TextFarbe(eintrag.Anbieter.Farbe)">@Kuerzel(eintrag.Anbieter.Name)</span>
+                                    <span class="st-momo-name">
+                                        <strong>@eintrag.Anbieter.Name</strong>
+                                        <small>@(eintrag.Akzeptiert ? "Proposé à la caisse" : "Non proposé")</small>
+                                    </span>
+                                    <EnoteCheckbox Value="eintrag.Akzeptiert" ValueChanged="(bool an) => eintrag.Akzeptiert = an" Label="" />
+                                </label>
+                            }
+                        </div>
+                        <AsyncActionButton Text="Enregistrer les opérateurs" OnClick="SpeichereMomoAsync" CssClass="enote-btn-primary" />
+                    }
+                </section>
 
-                <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+                <section class="enote-card st-karte">
+                    <div class="st-karte-kopf">
+                        <span class="st-ico st-ico-lock"><Icon Name="lock" /></span>
+                        <div>
+                            <h2>Code PIN propriétaire</h2>
+                            <p>Protège la gestion (finances, équipe…) sur la tablette partagée, sans fermer la caisse.</p>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(pinFehler))
+                    {
+                        <div class="alert alert-error">@pinFehler</div>
+                    }
+
+                    <div class="enote-form">
+                        <label>@(hatBesitzerPin ? "Nouveau code PIN" : "Code PIN") <small class="enote-muted">(4 à 6 chiffres)</small></label>
+                        <div class="enote-pin-feld">
+                            <input type="text" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin"
+                                   autocomplete="off" name="enote-pin" data-lpignore="true" data-form-type="other"
+                                   class="@(pinSichtbar ? "" : "enote-pin-masked")" />
+                            <button type="button" class="enote-pin-eye" title="@(pinSichtbar ? "Masquer" : "Afficher")" @onclick="() => pinSichtbar = !pinSichtbar">
+                                <Icon Name="@(pinSichtbar ? "eye-off" : "eye")" Groesse="18" />
+                            </button>
+                        </div>
+                        <small class="enote-muted">@(hatBesitzerPin ? "Un code est déjà défini. Saisissez-en un nouveau pour le changer." : "Aucun code défini : la gestion est accessible sans code.")</small>
+                        <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" />
+                    </div>
+                </section>
             </div>
-        </div>
 
-        <div class="enote-card enote-settings-card">
-            <h2>Sécurité</h2>
-            <p class="enote-muted">Ce code PIN déverrouille les pages de gestion (finances, équipe…) sur la tablette partagée, sans fermer la caisse.</p>
-
-            @if (!string.IsNullOrWhiteSpace(pinFehler))
-            {
-                <div class="alert alert-error">@pinFehler</div>
-            }
-            @if (pinGespeichert)
-            {
-                <div class="alert alert-success">Code PIN enregistré.</div>
-            }
-
-            <div class="enote-form">
-                <label>Code PIN propriétaire (4–6 chiffres)</label>
-                <div class="enote-pin-feld">
-                    <input type="text" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin"
-                           autocomplete="off" name="enote-pin" data-lpignore="true" data-form-type="other"
-                           class="@(pinSichtbar ? "" : "enote-pin-masked")" />
-                    <button type="button" class="enote-pin-eye" title="@(pinSichtbar ? "Masquer" : "Afficher")" @onclick="() => pinSichtbar = !pinSichtbar">
-                        @(pinSichtbar ? "🙈" : "👁")
-                    </button>
+            <aside class="st-vorschau" aria-label="Aperçu du reçu">
+                <span class="st-vorschau-titel">Aperçu du reçu</span>
+                <div class="enote-bon-preview">
+                    @if (!string.IsNullOrWhiteSpace(logoVorschau))
+                    {
+                        <img src="@logoVorschau" alt="Logo" class="enote-bon-logo" />
+                    }
+                    <div class="enote-bon-name">@salonName</div>
+                    @if (!string.IsNullOrWhiteSpace(slogan))
+                    {
+                        <div class="enote-bon-slogan">« @slogan »</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(adresse))
+                    {
+                        <div class="enote-bon-muted enote-bon-mitte">@adresse</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(telefon))
+                    {
+                        <div class="enote-bon-muted enote-bon-mitte">Tél : @telefon</div>
+                    }
+                    <div class="enote-bon-line"></div>
+                    <div class="enote-bon-zeile"><span>1× Brushing</span><span>3 000 F</span></div>
+                    <div class="enote-bon-zeile"><span>2× Coupe homme</span><span>3 000 F</span></div>
+                    <div class="enote-bon-line"></div>
+                    <div class="enote-bon-zeile enote-bon-total"><span>TOTAL</span><span>6 000 F</span></div>
+                    <div class="enote-bon-muted">Paiement : @(momoAuswahl.FirstOrDefault(m => m.Akzeptiert)?.Anbieter.Name ?? "Espèces")</div>
+                    <div class="enote-bon-qr" aria-hidden="true"><Icon Name="grid" Groesse="44" Strich="1.2" /></div>
+                    <div class="enote-bon-muted enote-bon-mitte">Merci de votre visite !</div>
                 </div>
-                <small class="enote-muted">@(hatBesitzerPin ? "Un code est déjà défini. Saisissez-en un nouveau pour le changer." : "Aucun code défini pour le moment.")</small>
-                <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" />
-            </div>
-        </div>
-
-        <div class="enote-card enote-settings-card">
-            <h2>Aperçu du reçu</h2>
-            <div class="enote-bon-preview">
-                @if (!string.IsNullOrWhiteSpace(logoVorschau))
-                {
-                    <img src="@logoVorschau" alt="Logo" class="enote-bon-logo" />
-                }
-                <div class="enote-bon-name">@salonName</div>
-                @if (!string.IsNullOrWhiteSpace(slogan))
-                {
-                    <div class="enote-bon-slogan">« @slogan »</div>
-                }
-                @if (!string.IsNullOrWhiteSpace(adresse))
-                {
-                    <div class="enote-bon-muted" style="text-align:center">@adresse</div>
-                }
-                @if (!string.IsNullOrWhiteSpace(telefon))
-                {
-                    <div class="enote-bon-muted" style="text-align:center">Tél : @telefon</div>
-                }
-                <div class="enote-bon-line"></div>
-                <div class="enote-bon-muted">1× Coupe …… 3 000 F</div>
-                <div class="enote-bon-total">TOTAL 3 000 F</div>
-            </div>
+            </aside>
         </div>
     }
 </div>
 
 @* --- Neuen Laden hinzufügen --- *@
-<ModalDialog Open="neuerLadenDialogOffen" Title="Nouvel établissement" ErrorMessage="@neuerLadenFehler" OnClose="() => neuerLadenDialogOffen = false" MaxWidthClass="enote-modal-sm">
+<ModalDialog Open="neuerLadenDialogOffen" Title="Nouvel établissement" ErrorMessage="@neuerLadenFehler" OnClose="() => neuerLadenDialogOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
             <p class="enote-muted">Le nouvel établissement sera activé après validation par l'administrateur. Un nouveau compte (pseudonyme + mot de passe) est créé pour cet établissement ; l'adresse e-mail peut être la même que celle du premier établissement.</p>
-            <label>Nom de l'établissement <input @bind="neuerLadenName" placeholder="ex. Salon B" /></label>
-            <label>Ville / quartier (facultatif) <input @bind="neuerLadenStandort" placeholder="ex. Lomé" /></label>
-            <hr />
-            <label>Prénom <input @bind="neuerLadenVorname" placeholder="ex. Jean" /></label>
-            <label>Nom <input @bind="neuerLadenNachname" placeholder="ex. Dupont" /></label>
+            <div class="enote-form-grid">
+                <label>Nom de l'établissement <input @bind="neuerLadenName" placeholder="ex. Salon B" /></label>
+                <label>Ville / quartier <input @bind="neuerLadenStandort" placeholder="ex. Lomé" /></label>
+                <label>Prénom <input @bind="neuerLadenVorname" placeholder="ex. Jean" /></label>
+                <label>Nom <input @bind="neuerLadenNachname" placeholder="ex. Dupont" /></label>
+            </div>
             <label>Pseudonyme (identifiant de connexion) <input @bind="neuerLadenPseudonym" placeholder="ex. jean.salonb" autocomplete="username" /></label>
             <label>Adresse e-mail de contact <input type="email" @bind="neuerLadenEmail" placeholder="ex. contact@exemple.com" autocomplete="email" /></label>
             <label>Mot de passe initial <PasswordInput @bind-Value="neuerLadenPasswort" Autocomplete="new-password" /></label>
-            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+            <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
         </div>
     </ChildContent>
     <Footer>

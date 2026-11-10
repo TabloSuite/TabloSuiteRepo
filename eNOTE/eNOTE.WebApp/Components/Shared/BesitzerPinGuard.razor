@@ -17,7 +17,7 @@ else
 {
     <div class="enote-pin-sperre">
         <div class="enote-pin-sperre-card">
-            <div class="enote-pin-sperre-icon">🔒</div>
+            <span class="enote-pin-dialog-ico"><Icon Name="lock" Groesse="26" /></span>
             <h2>Zone réservée au propriétaire</h2>
             <p class="enote-muted">Saisissez le code PIN du propriétaire pour accéder à cette page.</p>
 
@@ -26,16 +26,9 @@ else
                 <div class="alert alert-error">@fehler</div>
             }
 
-            <input type="password"
-                   inputmode="numeric"
-                   maxlength="6"
-                   class="enote-pin-input"
-                   placeholder="••••"
-                   @bind="pin"
-                   @bind:event="oninput"
-                   @onkeydown="HandleTaste" />
+            <PinEingabe @bind-Wert="pin" OnBestaetigt="PruefeAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(fehler))" />
 
-            <AsyncActionButton Text="Déverrouiller" OnClick="PruefeAsync" CssClass="enote-btn-primary" />
+            <AsyncActionButton Text="Déverrouiller" OnClick="PruefeAsync" CssClass="enote-btn-primary enote-btn-lg enote-btn-block" />
         </div>
     </div>
 }

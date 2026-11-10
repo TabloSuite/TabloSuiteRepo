@@ -80,7 +80,7 @@ else if (bericht is not null)
         <div class="enote-item"><strong>Dépenses enregistrées</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Ausgaben))</span></div>
         <div class="enote-item"><strong>Résultat d'exploitation</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Ergebnis))</span></div>
     </div>
-    <p class="enote-muted">Résultat = ventes en espèces et par carte − dépenses enregistrées. Ce n'est pas le solde de caisse ni un solde bancaire. Les abonnements ci-dessous sont présentés séparément et ne sont pas déduits une seconde fois.</p>
+    <p class="enote-muted">Résultat = ventes (espèces, carte et Mobile Money) − dépenses enregistrées. Ce n'est pas le solde de caisse ni un solde bancaire. Les abonnements ci-dessous sont présentés séparément et ne sont pas déduits une seconde fois.</p>
     @if (bericht.Monate.Count == 0)
     {
         <p class="enote-empty">Aucune vente ni dépense dans cette période.</p>
@@ -90,7 +90,7 @@ else if (bericht is not null)
         {
             <div class="enote-item">
                 <strong>@m.Monat.ToString("MMMM yyyy", francais)</strong>
-                <span>Espèces : @Geld(m.Bar)</span><span>Carte : @Geld(m.Karte)</span>
+                <span>Espèces : @Geld(m.Bar)</span><span>Carte : @Geld(m.Karte)</span><span>Mobile Money : @Geld(m.MobileMoney)</span>
                 <span>Dépenses : @Geld(m.Ausgaben)</span><strong>Résultat : @Geld(m.Ergebnis)</strong>
             </div>
         }

@@ -45,13 +45,64 @@ public static class KassenRechner
     public static decimal BerechneBarSoll(decimal startbestand, IEnumerable<Verkauf> verkaeufe)
     {
         var bareinnahmen = verkaeufe
-            .Where(v => v.ZahlungsArt == ZahlungsArt.Bar)
-            .Sum(v => v.GesamtSumme);
+            .SelectMany(Anteile)
+            .Where(a => a.Art == ZahlungsArt.Bar)
+            .Sum(a => a.Betrag);
 
         return Math.Round(startbestand + bareinnahmen, 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Zahlungsanteile eines Verkaufs. Verkäufe ohne erfasste Anteile (Altbestand vor
+    /// der Aufteilung) gelten als ein Anteil in Höhe der Gesamtsumme.
+    /// </summary>
+    public static IReadOnlyList<ZahlungsAnteil> Anteile(Verkauf verkauf)
+        => Anteile(verkauf.ZahlungsArt, verkauf.GesamtSumme,
+            verkauf.Zahlungen.OrderBy(z => z.Reihenfolge).Select(z => new ZahlungsAnteil(z.Art, z.Betrag, z.AnbieterName)));
+
+    /// <inheritdoc cref="Anteile(Verkauf)"/>
+    public static IReadOnlyList<ZahlungsAnteil> Anteile(ZahlungsArt verkaufsArt, decimal gesamtSumme, IEnumerable<ZahlungsAnteil>? zahlungen)
+    {
+        var liste = zahlungen?.ToList() ?? [];
+        return liste.Count > 0
+            ? liste
+            : [new ZahlungsAnteil(verkaufsArt == ZahlungsArt.Gemischt ? ZahlungsArt.Bar : verkaufsArt, gesamtSumme)];
+    }
+
+    /// <summary>Zusammenfassende Verkaufs-Zahlart: die einzige Art oder <see cref="ZahlungsArt.Gemischt"/>.</summary>
+    public static ZahlungsArt Zusammenfassen(IEnumerable<ZahlungsArt> arten)
+    {
+        var verschieden = arten.Distinct().ToList();
+        return verschieden.Count == 1 ? verschieden[0] : ZahlungsArt.Gemischt;
+    }
+
+    /// <summary>
+    /// Prüft die Zahlungsanteile gegen die Gesamtsumme: jeder Anteil positiv, keine
+    /// Art „Gemischt“, höchstens ein Baranteil, Summe exakt gleich der Gesamtsumme.
+    /// Liefert eine französische Fehlermeldung oder <c>null</c>.
+    /// </summary>
+    public static string? PruefeZahlungen(decimal gesamtSumme, IReadOnlyList<(ZahlungsArt Art, decimal Betrag)> anteile)
+    {
+        if (anteile.Count == 0)
+            return "Veuillez choisir un mode de paiement.";
+        if (anteile.Any(a => a.Art == ZahlungsArt.Gemischt || !Enum.IsDefined(a.Art)))
+            return "Mode de paiement invalide.";
+        if (anteile.Any(a => a.Betrag <= 0m))
+            return "Chaque paiement doit avoir un montant positif.";
+        if (anteile.Count(a => a.Art == ZahlungsArt.Bar) > 1)
+            return "Un seul paiement en espèces par vente.";
+        var summe = Math.Round(anteile.Sum(a => a.Betrag), 2, MidpointRounding.AwayFromZero);
+        if (summe != Math.Round(gesamtSumme, 2, MidpointRounding.AwayFromZero))
+            return summe < gesamtSumme
+                ? $"Il manque {gesamtSumme - summe:N0} F pour couvrir le total."
+                : $"Les paiements dépassent le total de {summe - gesamtSumme:N0} F.";
+        return null;
     }
 
     /// <summary>Differenz zwischen gezähltem Ist- und erwartetem Soll-Bestand.</summary>
     public static decimal BerechneDifferenz(decimal soll, decimal gezaehlt)
         => Math.Round(gezaehlt - soll, 2, MidpointRounding.AwayFromZero);
 }
+
+/// <summary>Ein Zahlungsanteil für Auswertungen (Art, Betrag, optional Mobile-Money-Anbieter).</summary>
+public sealed record ZahlungsAnteil(ZahlungsArt Art, decimal Betrag, string? AnbieterName = null);

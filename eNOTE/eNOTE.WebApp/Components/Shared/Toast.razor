@@ -3,8 +3,11 @@
 
 @if (ToastService.Sichtbar && !string.IsNullOrWhiteSpace(ToastService.Nachricht))
 {
-    <div class="enote-toast enote-toast-@ArtKlasse" role="status">
+    <div class="enote-toast enote-toast-@ArtKlasse" role="status" aria-live="polite">
+        <span class="enote-toast-ico">
+            <Icon Name="@(ArtKlasse switch { "erfolg" => "check", "fehler" => "alert", _ => "info" })" Groesse="16" Strich="2.5" />
+        </span>
         <span>@ToastService.Nachricht</span>
-        <button type="button" class="enote-toast-close" aria-label="Fermer" @onclick="Verbergen">&times;</button>
+        <button type="button" class="enote-toast-close" aria-label="Fermer" @onclick="Verbergen"><Icon Name="x" Groesse="16" /></button>
     </div>
 }

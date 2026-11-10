@@ -10,54 +10,67 @@
 @if (anzeigeState.IstMinimiert && anzeigeState.AktiveSitzungId is not null)
 {
     @* Minimiert: nur der schwebende Button (in MainLayout gerendert). *@
-    <div class="enote-caisse-hinweis">
-        <p>La caisse est ouverte en arrière-plan. Utilisez le bouton flottant pour la rouvrir.</p>
-        <button class="enote-btn enote-btn-primary" @onclick="anzeigeState.Wiederherstellen">Rouvrir la caisse</button>
+    <div class="kx-hinweis">
+        <span class="kx-hinweis-ico"><Icon Name="caisse" Groesse="28" /></span>
+        <h1>La caisse est ouverte en arrière-plan</h1>
+        <p class="enote-muted">Vous pouvez la rouvrir à tout moment, les ventes en cours sont conservées.</p>
+        <button class="enote-btn enote-btn-primary enote-btn-lg" @onclick="anzeigeState.Wiederherstellen">Rouvrir la caisse</button>
     </div>
 }
 else if (aktiveSitzung is null)
 {
-    @* --- Zustand 1: Kassenstart (Name + PIN + Wechselgeld) --- *@
-    <div class="enote-caisse-start">
-        <h1>Ouvrir la caisse</h1>
-        <p class="enote-muted">Choisissez votre nom, saisissez votre code PIN et confirmez la monnaie de départ.</p>
+    @* --- Zustand 1: Kassenstart (Kassierer + PIN + Wechselgeld) --- *@
+    <div class="kx-start">
+        <div class="kx-start-kopf">
+            <span class="kx-start-ico"><Icon Name="caisse" Groesse="26" /></span>
+            <div>
+                <h1>Ouvrir la caisse</h1>
+                <p class="enote-muted">Choisissez votre nom, saisissez votre code PIN et comptez la monnaie de départ.</p>
+            </div>
+        </div>
+
+        <KassenZugangsHinweis ImKassenKontext="true" GesperrtGeaendert="(bool g) => kasseGesperrt = g" />
 
         @if (!string.IsNullOrWhiteSpace(startFehler))
         {
-            <div class="alert alert-error">@startFehler</div>
+            <div class="alert alert-error" role="alert">@startFehler</div>
         }
 
         @if (kassiererListe.Count == 0)
         {
-            <p class="enote-empty">Aucun caissier configuré. Le propriétaire doit d'abord créer des caissiers avec un code PIN.</p>
+            <p class="enote-empty">Aucun caissier configuré. Le propriétaire doit d'abord créer des caissiers avec un code PIN (Équipe).</p>
         }
         else
         {
-            <div class="enote-form">
-                <label>Caissier</label>
-                <div class="enote-kassierer-grid">
-                    @foreach (var k in kassiererListe)
-                    {
-                        <button type="button"
-                                class="enote-kassierer-btn @(ausgewaehlterKassiererId == k.UserId ? "gewaehlt" : "")"
-                                @onclick="() => ausgewaehlterKassiererId = k.UserId">
-                            @k.Name
-                        </button>
-                    }
-                </div>
+            <div class="kx-start-grid">
+                <section class="kx-start-karte">
+                    <h2><span class="kx-schritt">1</span> Caissier</h2>
+                    <div class="kx-kassierer">
+                        @foreach (var k in kassiererListe)
+                        {
+                            <button type="button"
+                                    class="kx-kassierer-btn @(ausgewaehlterKassiererId == k.UserId ? "gewaehlt" : "")"
+                                    aria-pressed="@(ausgewaehlterKassiererId == k.UserId)"
+                                    @onclick="() => WaehleKassierer(k.UserId)">
+                                <span class="enote-avatar">@Initialen(k.Name)</span>
+                                <span class="kx-kassierer-name">@k.Name</span>
+                            </button>
+                        }
+                    </div>
+                </section>
 
-                <label>Code PIN</label>
-                <input type="password"
-                       inputmode="numeric"
-                       maxlength="6"
-                       class="enote-pin-input"
-                       @bind="pin"
-                       placeholder="••••" />
+                <section class="kx-start-karte @(ausgewaehlterKassiererId == Guid.Empty ? "gedimmt" : "")">
+                    <h2><span class="kx-schritt">2</span> Code PIN</h2>
+                    <PinEingabe @bind-Wert="pin" OnBestaetigt="StarteSitzungAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(startFehler))" />
+                </section>
 
-                <label>Monnaie de départ (F) <span class="enote-muted">– comptez et confirmez</span></label>
-                <input type="number" min="0" step="100" @bind="startbestand" />
-
-                <AsyncActionButton Text="Ouvrir la caisse" OnClick="StarteSitzungAsync" CssClass="enote-btn-primary enote-btn-lg" Disabled="@(ausgewaehlterKassiererId == Guid.Empty)" />
+                <section class="kx-start-karte @(ausgewaehlterKassiererId == Guid.Empty ? "gedimmt" : "")">
+                    <h2><span class="kx-schritt">3</span> Monnaie de départ</h2>
+                    <BetragEingabe @bind-Wert="startbestand" Schnellbetraege="startVorschlaege" MitZiffernblock="false" Label="Comptez le fond de caisse" />
+                    <AsyncActionButton Text="Ouvrir la caisse" BusyText="Ouverture…" OnClick="StarteSitzungAsync"
+                                       CssClass="enote-btn-primary enote-btn-lg enote-btn-block"
+                                       Disabled="@(kasseGesperrt || ausgewaehlterKassiererId == Guid.Empty || pin.Length < 4)" />
+                </section>
             </div>
         }
     </div>
@@ -65,286 +78,430 @@ else if (aktiveSitzung is null)
 else
 {
     @* --- Zustand 2: Aktive Kasse --- *@
-    <div class="enote-caisse">
-        <div class="enote-caisse-header">
-            @if (aktiveSitzung is not null)
-            {
-                <div class="enote-caisse-sitzung-info">
-                    <span class="enote-caisse-sitzung-titel">🟢 Caisse ouverte</span>
-                    <span class="enote-muted">@anzeigeState.KassiererName · démarrée à @aktiveSitzung.GestartetUtc.ToLocalTime().ToString("HH:mm")</span>
+    <div class="kx">
+        <header class="kx-kopf">
+            <div class="kx-kopf-info">
+                <span class="enote-brand-icon">eN</span>
+                <div class="kx-kopf-text">
+                    <strong>@aktiverSalonName</strong>
+                    <span><span class="kx-live-punkt"></span>@anzeigeState.KassiererName · depuis @aktiveSitzung.GestartetUtc.ToLocalTime().ToString("HH:mm")</span>
                 </div>
-            }
-            <div class="enote-caisse-header-actions">
-                <button class="enote-btn enote-btn-ghost" @onclick="OeffneHistorieAsync">🧾 Ventes</button>
-                <button class="enote-btn enote-btn-ghost" @onclick="anzeigeState.Minimieren">Réduire la caisse</button>
-                <button class="enote-btn enote-btn-ghost" @onclick="OeffneDisplayDialog">📺 Affichage client</button>
-                <button class="enote-btn enote-btn-ghost" @onclick="OeffneAbschluss">Clôturer</button>
             </div>
-        </div>
+            <div class="kx-kopf-kasse" title="Espèces attendues en caisse">
+                <small>En caisse</small>
+                <strong>@anzeigeState.ErwarteterBarBetrag.ToString("N0") F</strong>
+            </div>
+            <nav class="kx-kopf-aktionen" aria-label="Actions de caisse">
+                <button class="kx-aktion" @onclick="OeffneHistorieAsync" title="Ventes récentes"><Icon Name="history" /><span>Ventes</span></button>
+                <button class="kx-aktion" @onclick="OeffneDisplayDialog" title="Écran client"><Icon Name="monitor" /><span>Écran client</span></button>
+                <button class="kx-aktion" @onclick="anzeigeState.Minimieren" title="Réduire la caisse"><Icon Name="minimize" /><span>Réduire</span></button>
+                <button class="kx-aktion kx-aktion-haupt" @onclick="OeffneAbschluss" title="Clôturer la caisse"><Icon Name="lock" /><span>Clôturer</span></button>
+            </nav>
+        </header>
 
-        <div class="enote-caisse-body">
-            <div class="enote-caisse-katalog">
-                @* Barcode-Scan *@
-                <div class="enote-scan-box">
-                    <input class="enote-scan-input"
-                           placeholder="🔍 Scanner le code-barres…"
-                           @bind="scanCode"
+        <KassenZugangsHinweis SalonId="aktiveSitzung.SalonId" ImKassenKontext="true" GesperrtGeaendert="(bool g) => kasseGesperrt = g" />
+
+        <div class="kx-body">
+            @* --- Katalog --- *@
+            <section class="kx-katalog" aria-label="Catalogue">
+                <div class="kx-suche">
+                    <Icon Name="search" Groesse="20" CssClass="kx-suche-ico" />
+                    <input class="kx-suche-feld"
+                           placeholder="Rechercher ou scanner un code-barres…"
+                           aria-label="Rechercher ou scanner"
+                           @bind="suchtext"
                            @bind:event="oninput"
-                           @onkeydown="HandleScanTaste" />
+                           @onkeydown="HandleSuchTaste" />
+                    @if (!string.IsNullOrEmpty(suchtext))
+                    {
+                        <button class="kx-suche-leeren" @onclick='() => suchtext = string.Empty' aria-label="Effacer la recherche"><Icon Name="x" Groesse="18" /></button>
+                    }
+                    else
+                    {
+                        <Icon Name="scan" Groesse="20" CssClass="kx-suche-scan" />
+                    }
                 </div>
 
-                @* Kategorie-Filter *@
-                @if (kategorien.Count > 1)
+                @if (HauptKategorien.Count > 0 || favoritenIds.Count > 0)
                 {
-                    <div class="enote-kat-filter">
-                        <button type="button" class="enote-radio-pill @(aktiveKategorie is null ? "aktiv" : "")" @onclick="() => aktiveKategorie = null">Tout</button>
-                        @foreach (var kat in kategorien)
+                    <div class="kx-kats" role="tablist" aria-label="Catégories">
+                        <button type="button" role="tab" class="kx-kat @(IstAlles ? "aktiv" : "")" @onclick="ZeigeAlles">Tout</button>
+                        @if (favoritenIds.Count > 0)
                         {
-                            <button type="button" class="enote-radio-pill @(aktiveKategorie == kat ? "aktiv" : "")" @onclick="() => aktiveKategorie = kat">@kat</button>
+                            <button type="button" role="tab" class="kx-kat @(nurFavoriten ? "aktiv" : "")" @onclick="ZeigeFavoriten"><Icon Name="star" Groesse="15" /> Favoris</button>
+                        }
+                        @foreach (var kat in HauptKategorien)
+                        {
+                            <button type="button" role="tab" class="kx-kat @(aktiveKategorieId == kat.Id ? "aktiv" : "")" style="--kat: @KategorieFarbe(kat.Id)"
+                                    @onclick="() => WaehleKategorie(kat.Id)">
+                                <span class="kx-kat-punkt"></span>@kat.Name
+                            </button>
                         }
                     </div>
+                    @if (UnterKategorien.Count > 0)
+                    {
+                        <div class="kx-unterkats">
+                            <button type="button" class="kx-unterkat @(aktiveUnterKategorieId is null ? "aktiv" : "")" @onclick="() => aktiveUnterKategorieId = null">Toutes</button>
+                            @foreach (var u in UnterKategorien)
+                            {
+                                <button type="button" class="kx-unterkat @(aktiveUnterKategorieId == u.Id ? "aktiv" : "")" @onclick="() => aktiveUnterKategorieId = u.Id">@u.Name</button>
+                            }
+                        </div>
+                    }
                 }
 
-                @* Schnellauswahl *@
-                @if (!GefilterteLeistungen.Any())
-                {
-                    <p class="enote-empty" role="status">Aucune prestation disponible pour cette sélection.</p>
-                }
-                <div class="enote-tiles">
-                    @foreach (var l in GefilterteLeistungen)
+                <div class="kx-kacheln">
+                    @foreach (var l in SichtbareLeistungen)
                     {
-                        <div class="enote-tile-wrap">
-                            <div class="enote-tile">
-                                <div class="enote-tile-main" @onclick="() => WaehleLeistung(l)">
-                                    <span class="enote-tile-name">@l.Name</span>
-                                    <span class="enote-tile-price">@(l.IstStandardArtikel ? "Montant libre" : l.Preis.ToString("N0") + " F")</span>
-                                    @if (l.HatStueckzahl && l.MindestbestandWarnung is decimal min && l.Stueckzahl <= min)
-                                    {
-                                        <span class="enote-tile-warn">Stock: @l.Stueckzahl</span>
-                                    }
-                                </div>
-                                @* Plus/Minus nur bei „Divers" (Standard-Artikel mit freiem Betrag) *@
-                                @if (l.IstStandardArtikel)
+                        var imTicket = MengeImTicket(l.Id);
+                        var lagerKnapp = l.HatStueckzahl && l.MindestbestandWarnung is decimal min && l.Stueckzahl <= min;
+                        <div class="kx-kachel @(l.IstStandardArtikel ? "frei" : "") @(imTicket > 0 ? "im-ticket" : "")" style="--kat: @KategorieFarbe(l.KategorieId)">
+                            <button type="button" class="kx-kachel-haupt" @onclick="() => WaehleLeistung(l)" aria-label="Ajouter @l.Name">
+                                @if (bildUrls.TryGetValue(l.Id, out var bild))
                                 {
-                                    <div class="enote-tile-menge">
-                                        <button type="button" @onclick="() => AendereTileMenge(l.Id, -1)" @onclick:stopPropagation="true">−</button>
-                                        <span>@(tileMengen.GetValueOrDefault(l.Id, 1))</span>
-                                        <button type="button" @onclick="() => AendereTileMenge(l.Id, 1)" @onclick:stopPropagation="true">+</button>
-                                    </div>
+                                    <img class="kx-kachel-bild" src="@bild" alt="" loading="lazy" />
                                 }
-                            </div>
-                            <button type="button"
-                                    class="enote-fav-btn @(favoritenIds.Contains(l.Id) ? "aktiv" : "")"
-                                    title="Favorit"
-                                    @onclick="() => ToggleFavoritAsync(l.Id)"
-                                    @onclick:stopPropagation="true">
-                                @(favoritenIds.Contains(l.Id) ? "★" : "☆")
+                                <span class="kx-kachel-name">@l.Name</span>
+                                <span class="kx-kachel-fuss">
+                                    @if (l.IstStandardArtikel)
+                                    {
+                                        <span class="kx-kachel-preis"><Icon Name="plus" Groesse="16" /> Montant libre</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="kx-kachel-preis">@l.Preis.ToString("N0") F</span>
+                                    }
+                                    @if (lagerKnapp)
+                                    {
+                                        <span class="kx-kachel-lager" title="Stock bas">@Menge(l.Stueckzahl) en stock</span>
+                                    }
+                                </span>
                             </button>
+                            @if (imTicket > 0)
+                            {
+                                <span class="kx-kachel-menge" aria-label="@imTicket dans le ticket">@imTicket</span>
+                            }
+                            @if (!l.IstStandardArtikel)
+                            {
+                                <button type="button" class="kx-fav @(favoritenIds.Contains(l.Id) ? "aktiv" : "")"
+                                        title="@(favoritenIds.Contains(l.Id) ? "Retirer des favoris" : "Ajouter aux favoris")"
+                                        aria-pressed="@favoritenIds.Contains(l.Id)"
+                                        @onclick="() => ToggleFavoritAsync(l.Id)">
+                                    <Icon Name="star" Groesse="16" />
+                                </button>
+                            }
                         </div>
                     }
                 </div>
-            </div>
+                @if (!SichtbareLeistungen.Any())
+                {
+                    <p class="enote-empty" role="status">
+                        @(string.IsNullOrWhiteSpace(suchtext) ? "Aucune prestation dans cette catégorie." : $"Aucun résultat pour « {suchtext} ».")
+                    </p>
+                }
+            </section>
 
-            @* Ticket *@
-            <div class="enote-ticket">
-                <div class="enote-ticket-kopf">
-                    <h2>Ticket</h2>
+            @* --- Ticket --- *@
+            <aside class="kx-ticket @(ticketAufgeklappt ? "offen" : "")" aria-label="Ticket">
+                <button type="button" class="kx-ticket-griff" @onclick="() => ticketAufgeklappt = !ticketAufgeklappt" aria-expanded="@ticketAufgeklappt">
+                    <span><Icon Name="receipt" Groesse="18" /> Ticket · @AnzahlArtikel article(s)</span>
+                    <strong>@gesamtSumme.ToString("N0") F</strong>
+                    <Icon Name="chevron-down" Groesse="18" CssClass="kx-ticket-griff-pfeil" />
+                </button>
+
+                <div class="kx-ticket-kopf">
+                    <h2>Ticket @if (ticket.Count > 0) { <span class="kx-ticket-anzahl">@AnzahlArtikel</span> }</h2>
                     @if (ticket.Count > 0)
                     {
-                        <button type="button" class="enote-btn enote-btn-abbrechen enote-btn-sm" @onclick="OeffneAbbrechenBestaetigung">✕ Annuler</button>
+                        <button type="button" class="kx-ticket-leeren" @onclick="OeffneAbbrechenBestaetigung"><Icon Name="trash" Groesse="16" /> Vider</button>
                     }
                 </div>
-                @if (ticket.Count == 0)
-                {
-                    <p class="enote-muted">Touchez une prestation pour l'ajouter.</p>
-                }
-                else
-                {
-                    @* Nur die Positionsliste scrollt – Remise/Total/Buttons bleiben unten fix *@
-                    <div class="enote-ticket-scroll">
-                        @foreach (var pos in ticket)
+
+                <div class="kx-ticket-liste">
+                    @if (ticket.Count == 0)
+                    {
+                        @if (letzterVerkauf is { } lv)
                         {
-                            <div class="enote-ticket-pos">
-                                <div class="enote-ticket-pos-top">
-                                    <strong class="enote-ticket-pos-name">@pos.Leistung.Name</strong>
-                                    <button type="button" class="enote-danger enote-ticket-pos-del" title="Supprimer" @onclick="() => EntfernePos(pos)">✕</button>
-                                </div>
-                                <div class="enote-ticket-pos-bottom">
-                                    <div class="enote-ticket-pos-actions">
-                                        <button @onclick="() => AendereMenge(pos, -1)">−</button>
-                                        <span>@pos.Menge</span>
-                                        <button @onclick="() => AendereMenge(pos, 1)">+</button>
-                                    </div>
-                                    <span class="enote-ticket-pos-preis">@pos.EffektivPreis.ToString("N0") F × @pos.Menge</span>
-                                    <div class="enote-ticket-pos-sum">@ZeilenSumme(pos).ToString("N0") F</div>
-                                </div>
-                                @if (pos.Rabatt is not null)
+                            <div class="kx-fertig" role="status">
+                                <span class="kx-fertig-ico"><Icon Name="check" Groesse="28" Strich="2.5" /></span>
+                                <strong>Vente enregistrée</strong>
+                                <span class="enote-muted">@lv.Total.ToString("N0") F · @lv.ZahlungText</span>
+                                @if (lv.Rueckgeld is > 0)
                                 {
-                                    <span class="enote-tag">@pos.Rabatt.Name</span>
+                                    <div class="kx-fertig-rueck">
+                                        <small>Monnaie à rendre</small>
+                                        <strong>@lv.Rueckgeld.Value.ToString("N0") F</strong>
+                                    </div>
                                 }
+                                <button type="button" class="enote-btn" @onclick="() => DruckeBonAsync(lv.VerkaufId)"><Icon Name="printer" Groesse="18" /> Imprimer le reçu</button>
                             </div>
                         }
-                    </div>
-                }
+                        else
+                        {
+                            <div class="kx-ticket-leer">
+                                <Icon Name="tag" Groesse="30" Strich="1.5" />
+                                <p>Touchez une prestation pour l'ajouter au ticket.</p>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var pos in ticket)
+                        {
+                            <div class="kx-pos">
+                                <div class="kx-pos-text">
+                                    <span class="kx-pos-name">@pos.Leistung.Name</span>
+                                    <span class="kx-pos-einzel">@pos.EffektivPreis.ToString("N0") F</span>
+                                </div>
+                                <div class="kx-pos-menge">
+                                    <button type="button" @onclick="() => AendereMenge(pos, -1)" aria-label="Diminuer"><Icon Name="@(pos.Menge == 1 ? "trash" : "minus")" Groesse="16" /></button>
+                                    <span>@pos.Menge</span>
+                                    <button type="button" @onclick="() => AendereMenge(pos, 1)" aria-label="Augmenter"><Icon Name="plus" Groesse="16" /></button>
+                                </div>
+                                <strong class="kx-pos-summe">@ZeilenSumme(pos).ToString("N0") F</strong>
+                            </div>
+                        }
+                    }
+                </div>
 
                 @if (ticket.Count > 0)
                 {
-                    <div class="enote-ticket-rabatt">
-                        <div class="enote-rabatt-kopf">
-                            <label>Remise</label>
-                            @if (!string.IsNullOrEmpty(ausgewaehlteRabattId))
+                    <div class="kx-ticket-fuss">
+                        @if (ausgewaehlterRabatt is { } r)
+                        {
+                            <div class="kx-rabatt-aktiv">
+                                <Icon Name="percent" Groesse="16" />
+                                <span>@r.Name</span>
+                                <strong>-@rabattSumme.ToString("N0") F</strong>
+                                <button type="button" @onclick="EntferneRabatt" aria-label="Retirer la remise"><Icon Name="x" Groesse="16" /></button>
+                            </div>
+                        }
+                        else if (rabatte.Count > 0)
+                        {
+                            <button type="button" class="kx-rabatt-btn" @onclick="() => rabattDialogOffen = true"><Icon Name="percent" Groesse="16" /> Ajouter une remise</button>
+                        }
+
+                        <div class="kx-summen">
+                            @if (rabattSumme > 0)
                             {
-                                <EnoteCheckbox @bind-Value="rabattAktiviert" Label="Activer" />
+                                <div><span>Sous-total</span><span>@zwischensumme.ToString("N0") F</span></div>
                             }
+                            <div class="kx-total"><span>Total</span><strong>@gesamtSumme.ToString("N0") F</strong></div>
                         </div>
-                        <EnoteSelect TValue="string" @bind-Value="ausgewaehlteRabattId" Options="rabattOptionen" Placeholder="Aucune" MitSuche="true" />
-                        @if (!string.IsNullOrEmpty(ausgewaehlteRabattId) && !rabattAktiviert)
-                        {
-                            <small class="enote-muted">Activez la remise pour l'appliquer.</small>
-                        }
-                        @if (rabattAktiviert && ausgewaehlterRabatt?.Bedingung is string bedingung && !string.IsNullOrWhiteSpace(bedingung))
-                        {
-                            <label class="enote-check-row"><EnoteCheckbox @bind-Value="bedingungBestaetigt" Label="@bedingungLabel" /></label>
-                        }
-                    </div>
 
-                    <div class="enote-ticket-total">
-                        <div><span>Sous-total</span><span>@zwischensumme.ToString("N0") F</span></div>
-                        <div><span>Remise</span><span>-@rabattSumme.ToString("N0") F</span></div>
-                        <div class="enote-total"><span>Total</span><span>@gesamtSumme.ToString("N0") F</span></div>
+                        <div class="kx-zahlen @(mobileAnbieter.Count > 0 ? "drei" : "")">
+                            <button type="button" class="kx-zahl kx-zahl-bar" @onclick="() => OeffneZahlung(ZahlModus.Bar)">
+                                <Icon Name="banknote" Groesse="24" /><span>Espèces</span>
+                            </button>
+                            @if (mobileAnbieter.Count > 0)
+                            {
+                                <button type="button" class="kx-zahl kx-zahl-momo" @onclick="() => OeffneZahlung(ZahlModus.MobileMoney)">
+                                    <Icon Name="momo" Groesse="24" /><span>Mobile Money</span>
+                                </button>
+                            }
+                            <button type="button" class="kx-zahl kx-zahl-karte" @onclick="() => OeffneZahlung(ZahlModus.Karte)">
+                                <Icon Name="card" Groesse="24" /><span>Carte</span>
+                            </button>
+                        </div>
+                        <button type="button" class="kx-mixte" @onclick="() => OeffneZahlung(ZahlModus.Mixte)"><Icon Name="split" Groesse="16" /> Paiement mixte</button>
                     </div>
-
-                    @* Zahlung: zwei große Touch-Buttons, öffnen je ein Modal *@
-                    <div class="enote-zahl-buttons">
-                        <button type="button" class="enote-zahl-btn enote-zahl-bar" @onclick="OeffneBarModal">💵 Espèces</button>
-                        <button type="button" class="enote-zahl-btn enote-zahl-karte" @onclick="OeffneKarteModal">💳 Carte</button>
-                    </div>
-
-                    @if (letzterVerkaufId is Guid bonId)
-                    {
-                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-lg" @onclick="() => DruckeBonAsync(bonId)">🖨️ Imprimer le reçu</button>
-                    }
                 }
-            </div>
+            </aside>
         </div>
     </div>
 }
 
-@* --- Zahlung Espèces (Bar) --- *@
-<ModalDialog Open="barModalOffen" Title="Paiement en espèces" ErrorMessage="@verkaufFehler" OnClose="() => barModalOffen = false" MaxWidthClass="enote-modal-sm">
+@* --- Encaissement (alle Zahlarten) --- *@
+<ModalDialog Open="zahlDialogOffen" Title="@ZahlTitel" ErrorMessage="@verkaufFehler" OnClose="SchliesseZahlung" MaxWidthClass="enote-modal-md">
     <ChildContent>
-        <div class="enote-zahl-modal">
-            <div class="enote-zahl-total">
+        <div class="kx-pay">
+            <div class="kx-pay-total">
                 <span>Total à payer</span>
                 <strong>@gesamtSumme.ToString("N0") F</strong>
             </div>
-            <label>Montant reçu (F)</label>
-            <input type="number" min="0" step="50" inputmode="numeric" class="enote-zahl-input" @bind="gegeben" @bind:event="oninput" />
-            @if (barBetragZuWenig)
+
+            <div class="kx-pay-modi" role="tablist">
+                <button type="button" role="tab" class="kx-pay-modus @(zahlModus == ZahlModus.Bar ? "aktiv" : "")" @onclick="() => WechsleModus(ZahlModus.Bar)"><Icon Name="banknote" Groesse="18" /> Espèces</button>
+                @if (mobileAnbieter.Count > 0)
+                {
+                    <button type="button" role="tab" class="kx-pay-modus @(zahlModus == ZahlModus.MobileMoney ? "aktiv" : "")" @onclick="() => WechsleModus(ZahlModus.MobileMoney)"><Icon Name="momo" Groesse="18" /> Mobile Money</button>
+                }
+                <button type="button" role="tab" class="kx-pay-modus @(zahlModus == ZahlModus.Karte ? "aktiv" : "")" @onclick="() => WechsleModus(ZahlModus.Karte)"><Icon Name="card" Groesse="18" /> Carte</button>
+                <button type="button" role="tab" class="kx-pay-modus @(zahlModus == ZahlModus.Mixte ? "aktiv" : "")" @onclick="() => WechsleModus(ZahlModus.Mixte)"><Icon Name="split" Groesse="18" /> Mixte</button>
+            </div>
+
+            @switch (zahlModus)
             {
-                <small class="enote-danger">Montant insuffisant – il manque @((gesamtSumme - gegeben).ToString("N0")) F.</small>
+                case ZahlModus.Bar:
+                    <BetragEingabe @bind-Wert="gegeben" Label="Montant reçu" Schnellbetraege="BetragEingabe.VorschlaegeFuer(gesamtSumme)" Hervorheben="true" Kompakt="true" OnBestaetigt="BestaetigeZahlungAsync">
+                        <NachSchnellbetraegen>
+                            <div class="kx-pay-rueck @(gegeben < gesamtSumme ? "fehlt" : "")">
+                                @if (gegeben < gesamtSumme)
+                                {
+                                    <span>Il manque</span><strong>@((gesamtSumme - gegeben).ToString("N0")) F</strong>
+                                }
+                                else
+                                {
+                                    <span>Monnaie à rendre</span><strong>@((gegeben - gesamtSumme).ToString("N0")) F</strong>
+                                }
+                            </div>
+                        </NachSchnellbetraegen>
+                    </BetragEingabe>
+                    break;
+
+                case ZahlModus.Karte:
+                    <div class="kx-pay-info">
+                        <Icon Name="card" Groesse="32" Strich="1.6" />
+                        <p>Effectuez le paiement de <strong>@gesamtSumme.ToString("N0") F</strong> sur le terminal, puis confirmez.</p>
+                    </div>
+                    break;
+
+                case ZahlModus.MobileMoney:
+                    <AnbieterAuswahl Anbieter="mobileAnbieter" @bind-Ausgewaehlt="mobileAnbieterId" />
+                    <label class="kx-pay-ref">
+                        <span>Référence de la transaction <small class="enote-muted">(facultatif, voir SMS)</small></span>
+                        <input class="enote-input" @bind="mobileReferenz" maxlength="80" placeholder="ex. MP241110.1234.A56789" />
+                    </label>
+                    <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Confirmez seulement après réception du SMS de paiement.</p>
+                    break;
+
+                case ZahlModus.Mixte:
+                    <BetragEingabe @bind-Wert="mixBar" Label="Part en espèces" MitZiffernblock="true" Kompakt="true" />
+                    <div class="kx-pay-rest">
+                        <span>Reste à payer par</span>
+                        <div class="kx-pay-rest-wahl">
+                            @if (mobileAnbieter.Count > 0)
+                            {
+                                <button type="button" class="enote-chip @(mixZweitArt == ZahlungsArt.MobileMoney ? "enote-chip-aktiv" : "")" @onclick="() => mixZweitArt = ZahlungsArt.MobileMoney">Mobile Money</button>
+                            }
+                            <button type="button" class="enote-chip @(mixZweitArt == ZahlungsArt.Karte ? "enote-chip-aktiv" : "")" @onclick="() => mixZweitArt = ZahlungsArt.Karte">Carte</button>
+                        </div>
+                        <strong>@(Math.Max(gesamtSumme - mixBar, 0).ToString("N0")) F</strong>
+                    </div>
+                    @if (mixZweitArt == ZahlungsArt.MobileMoney)
+                    {
+                        <AnbieterAuswahl Anbieter="mobileAnbieter" @bind-Ausgewaehlt="mobileAnbieterId" />
+                    }
+                    break;
             }
-            <div class="enote-rueckgeld">
-                <span>Monnaie à rendre</span>
-                <strong>@rueckgeldModal.ToString("N0") F</strong>
-            </div>
         </div>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => barModalOffen = false">Annuler</button>
-        <AsyncActionButton Text="Confirmer" OnClick="BestaetigeBarAsync" CssClass="enote-btn-primary" Disabled="@barBetragZuWenig" />
+        <button class="enote-btn enote-btn-ghost" @onclick="SchliesseZahlung">Annuler</button>
+        <AsyncActionButton Text="@ZahlButtonText" BusyText="Enregistrement…" OnClick="BestaetigeZahlungAsync" CssClass="enote-btn-primary enote-btn-lg" Disabled="@(!ZahlungMoeglich)" />
     </Footer>
 </ModalDialog>
 
-@* --- Zahlung Carte --- *@
-<ModalDialog Open="karteModalOffen" Title="Paiement par carte" ErrorMessage="@verkaufFehler" OnClose="() => karteModalOffen = false" MaxWidthClass="enote-modal-sm">
+@* --- Remise wählen --- *@
+<ModalDialog Open="rabattDialogOffen" Title="Ajouter une remise" OnClose="() => rabattDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
-        <div class="enote-zahl-modal">
-            <div class="enote-zahl-total">
-                <span>Total à payer</span>
-                <strong>@gesamtSumme.ToString("N0") F</strong>
-            </div>
-            <p class="enote-muted">Effectuez le paiement par carte, puis confirmez.</p>
+        <div class="kx-rabatte">
+            @foreach (var r in rabatte)
+            {
+                var anwendbar = r.LeistungId is null || ticket.Any(p => p.Leistung.Id == r.LeistungId);
+                <button type="button" class="kx-rabatt-option @(rabattKandidat?.Id == r.Id ? "aktiv" : "")" disabled="@(!anwendbar)"
+                        @onclick="() => { rabattKandidat = r; bedingungBestaetigt = false; }">
+                    <span class="kx-rabatt-wert">@RabattText(r)</span>
+                    <span class="kx-rabatt-text">
+                        <strong>@r.Name</strong>
+                        <small>@(r.Leistung is not null ? $"Sur « {r.Leistung.Name} »" : "Sur tout le ticket")@(anwendbar ? "" : " · non applicable")</small>
+                    </span>
+                </button>
+            }
+            @if (rabattKandidat?.Bedingung is string bed && !string.IsNullOrWhiteSpace(bed))
+            {
+                <label class="kx-bedingung"><EnoteCheckbox @bind-Value="bedingungBestaetigt" Label="@($"Condition remplie : {bed}")" /></label>
+            }
         </div>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => karteModalOffen = false">Annuler</button>
-        <AsyncActionButton Text="Confirmer le paiement" OnClick="BestaetigeKarteAsync" CssClass="enote-btn-primary" />
+        <button class="enote-btn enote-btn-ghost" @onclick="() => rabattDialogOffen = false">Annuler</button>
+        <button class="enote-btn enote-btn-primary" disabled="@(!RabattAnwendbar)" @onclick="WendeRabattAn">Appliquer</button>
     </Footer>
 </ModalDialog>
 
-@* --- Bestätigung: Verkauf abbrechen --- *@
-<ModalDialog Open="abbrechenBestaetigungOffen" Title="Annuler la vente" OnClose="() => abbrechenBestaetigungOffen = false" MaxWidthClass="enote-modal-sm">
+@* --- Bestätigung: Ticket leeren --- *@
+<ModalDialog Open="abbrechenBestaetigungOffen" Title="Vider le ticket ?" OnClose="() => abbrechenBestaetigungOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
-        <p>Voulez-vous vraiment annuler la vente ? Toutes les prestations sélectionnées seront supprimées.</p>
+        <p>Toutes les prestations du ticket en cours seront retirées. Aucune vente n'est enregistrée.</p>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => abbrechenBestaetigungOffen = false">Non, garder</button>
-        <button class="enote-btn enote-btn-abbrechen" @onclick="BrecheTicketAb">Oui, annuler</button>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => abbrechenBestaetigungOffen = false">Garder</button>
+        <button class="enote-btn enote-btn-danger" @onclick="BrecheTicketAb">Vider le ticket</button>
     </Footer>
 </ModalDialog>
 
-@* --- Verkaufshistorie (vorherige Verkäufe + Bon nachdrucken) --- *@
+@* --- Verkaufshistorie (Bon nachdrucken) --- *@
 <ModalDialog Open="historieOffen" Title="Ventes récentes" OnClose="() => historieOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
         @if (historieLaedt)
         {
-            <p>Chargement…</p>
+            <p class="enote-muted" role="status">Chargement…</p>
         }
         else if (historieVerkaeufe.Count == 0)
         {
-            <p class="enote-muted">Aucune vente pour le moment.</p>
+            <p class="enote-empty">Aucune vente pour le moment.</p>
         }
         else
         {
-            <div class="enote-historie-liste">
+            <div class="kx-historie">
                 @foreach (var v in historieVerkaeufe)
                 {
-                    <div class="enote-historie-item">
-                        <div class="enote-historie-info">
-                            <div class="enote-historie-top">
-                                <strong class="enote-historie-betrag">@v.GesamtSumme.ToString("N0") F</strong>
-                                <span class="enote-tag enote-tag-zahlart">@(v.ZahlungsArt == ZahlungsArt.Bar ? "💵 Espèces" : "💳 Carte")</span>
+                    <div class="kx-historie-zeile">
+                        <div class="kx-historie-info">
+                            <div class="kx-historie-top">
+                                <strong>@v.GesamtSumme.ToString("N0") F</strong>
+                                <ZahlungsTag Anteile="v.Zahlungen" />
                             </div>
-                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm") – @v.KassiererName</small>
-                            <small class="enote-historie-pos">@v.PositionenText</small>
+                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName</small>
+                            <small class="kx-historie-pos">@v.PositionenText</small>
                         </div>
-                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm enote-historie-reçu" @onclick="() => DruckeBonAsync(v.VerkaufId)">🖨️ Reçu</button>
+                        <button type="button" class="enote-btn enote-btn-sm" @onclick="() => DruckeBonAsync(v.VerkaufId)"><Icon Name="printer" Groesse="16" /> Reçu</button>
                     </div>
                 }
             </div>
         }
     </ChildContent>
-    <Footer>
-        <button class="enote-btn enote-btn-primary" @onclick="() => historieOffen = false">Fermer</button>
-    </Footer>
 </ModalDialog>
 
 @* --- Kassenabschluss --- *@
-<ModalDialog Open="abschlussOffen" Title="Clôturer la caisse" ErrorMessage="@abschlussFehler" OnClose="() => abschlussOffen = false">
+<ModalDialog Open="abschlussOffen" Title="Clôturer la caisse" ErrorMessage="@abschlussFehler" OnClose="() => abschlussOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
-        <div class="enote-form">
-            <p>Comptez l'argent en caisse et saisissez le montant.</p>
-            @if (barSollInfo is var info && info is not null)
-            {
-                <div class="enote-abschluss-soll">
-                    <div class="enote-abschluss-soll-zeilen">
-                        <div><span>Fonds de départ</span><span>@info.Value.Startbestand.ToString("N0") F</span></div>
-                        <div><span>Ventes en espèces</span><span>+ @info.Value.BarEinnahmen.ToString("N0") F</span></div>
-                    </div>
-                    <div class="enote-abschluss-soll-total">
-                        <span>Montant attendu en espèces</span>
-                        <strong>@info.Value.Soll.ToString("N0") F</strong>
-                    </div>
+        @if (abschlussInfo is { } info)
+        {
+            <div class="kx-abschluss">
+                <div class="kx-abschluss-kpis">
+                    <div><small>Ventes</small><strong>@info.AnzahlVerkaeufe</strong></div>
+                    <div><small>Chiffre d'affaires</small><strong>@info.Umsatz.ToString("N0") F</strong></div>
                 </div>
-            }
-            <label>Montant compté (F) <input type="number" min="0" step="100" @bind="endbestandGezaehlt" /></label>
-            <label>Note (facultatif) <textarea rows="3" @bind="abschlussNotiz"></textarea></label>
-        </div>
+                <div class="kx-abschluss-zeilen">
+                    <div><span><Icon Name="banknote" Groesse="16" /> Fonds de départ</span><span>@info.Startbestand.ToString("N0") F</span></div>
+                    <div><span><Icon Name="banknote" Groesse="16" /> Ventes en espèces</span><span>+ @info.Bar.ToString("N0") F</span></div>
+                    <div class="kx-abschluss-soll"><span>Espèces attendues</span><strong>@info.BarSoll.ToString("N0") F</strong></div>
+                    @if (info.Karte > 0)
+                    {
+                        <div class="kx-abschluss-neben"><span><Icon Name="card" Groesse="16" /> Carte (terminal)</span><span>@info.Karte.ToString("N0") F</span></div>
+                    }
+                    @foreach (var (anbieter, betrag) in info.MobileMoneyNachAnbieter)
+                    {
+                        <div class="kx-abschluss-neben"><span><Icon Name="momo" Groesse="16" /> @anbieter</span><span>@betrag.ToString("N0") F</span></div>
+                    }
+                </div>
+                <BetragEingabe @bind-Wert="endbestandGezaehlt" Label="Espèces comptées" Kompakt="true" Hervorheben="true" />
+                <div class="kx-ecart @(Ecart < 0 ? "minus" : Ecart > 0 ? "plus" : "null")">
+                    <span>Écart</span>
+                    <strong>@(Ecart > 0 ? "+" : "")@Ecart.ToString("N0") F</strong>
+                </div>
+                <label class="kx-pay-ref">
+                    <span>Note <small class="enote-muted">(facultatif)</small></span>
+                    <textarea class="enote-input" rows="2" @bind="abschlussNotiz" placeholder="ex. billet de 1 000 F abîmé"></textarea>
+                </label>
+            </div>
+        }
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => abschlussOffen = false">Annuler</button>
-        <AsyncActionButton Text="Clôturer" OnClick="SchliesseSitzungAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Clôturer la caisse" OnClick="SchliesseSitzungAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 
@@ -352,48 +509,50 @@ else
 <ModalDialog Open="wiederhergestelltModalOffen" Title="Caisse encore ouverte" OnClose="() => wiederhergestelltModalOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="enote-wiederhergestellt">
-            <p class="enote-wiederhergestellt-text">Une caisse de la session précédente n'a pas été clôturée.</p>
+            <p class="enote-wiederhergestellt-text">La caisse de la session précédente n'a pas été clôturée. Vous pouvez continuer à encaisser.</p>
             <div class="enote-wiederhergestellt-zeile"><span>Caissier</span><strong>@wiederhergestelltKassierer</strong></div>
-            <div class="enote-wiederhergestellt-zeile"><span>Démarrée le</span><strong>@wiederhergestelltGestartet.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
+            <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
             @if (wiederhergestelltSoll is decimal soll)
             {
-                <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Montant attendu en espèces</span><strong>@soll.ToString("N0") F</strong></div>
+                <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Espèces attendues</span><strong>@soll.ToString("N0") F</strong></div>
             }
         </div>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-primary" @onclick="() => wiederhergestelltModalOffen = false">OK</button>
+        <button class="enote-btn enote-btn-primary" @onclick="() => wiederhergestelltModalOffen = false">Continuer</button>
     </Footer>
 </ModalDialog>
 
 @* --- Freier Betrag für Standard-Artikel „Divers“ --- *@
-<ModalDialog Open="freierBetragOffen" Title="Montant – Divers" ErrorMessage="@freierBetragFehler" OnClose="() => freierBetragOffen = false">
+<ModalDialog Open="freierBetragOffen" Title="Montant libre" ErrorMessage="@freierBetragFehler" OnClose="() => freierBetragOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
-        <div class="enote-form">
-            <p>Saisissez le montant de cette vente (prestation non créée).</p>
-            <label>Montant (F) <input type="number" min="0" step="50" @bind="freierBetrag" /></label>
-            <label>Quantité <input type="number" min="1" @bind="freierBetragMenge" /></label>
+        <p class="enote-muted kx-frei-text">Pour une prestation qui n'existe pas encore dans le catalogue. Le propriétaire en sera informé.</p>
+        <BetragEingabe @bind-Wert="freierBetrag" Label="Montant" Hervorheben="true" OnBestaetigt="FuegeStandardArtikelHinzu" />
+        <div class="kx-frei-menge">
+            <span>Quantité</span>
+            <div class="kx-pos-menge">
+                <button type="button" @onclick="() => freierBetragMenge = Math.Max(1, freierBetragMenge - 1)" aria-label="Diminuer"><Icon Name="minus" Groesse="16" /></button>
+                <span>@freierBetragMenge</span>
+                <button type="button" @onclick="() => freierBetragMenge = Math.Min(99, freierBetragMenge + 1)" aria-label="Augmenter"><Icon Name="plus" Groesse="16" /></button>
+            </div>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => freierBetragOffen = false">Annuler</button>
-        <AsyncActionButton Text="Ajouter" OnClick="FuegeStandardArtikelHinzu" CssClass="enote-btn-primary" />
+        <button class="enote-btn enote-btn-primary" @onclick="FuegeStandardArtikelHinzu">Ajouter au ticket</button>
     </Footer>
 </ModalDialog>
 
 @* --- Kunden-Display verbinden (QR-Code + Link) --- *@
-<ModalDialog Open="displayDialogOffen" Title="Affichage client" OnClose="() => displayDialogOffen = false">
+<ModalDialog Open="displayDialogOffen" Title="Écran client" OnClose="() => displayDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="enote-display-dialog">
-            <p class="enote-muted">Le client scanne ce code (ou ouvre ce lien) sur une tablette pour suivre sa commande en direct.</p>
+            <p class="enote-muted">Scannez ce code avec une deuxième tablette tournée vers le client : il suit son ticket en direct.</p>
             @if (!string.IsNullOrWhiteSpace(displayQrDataUrl))
             {
-                <img src="@displayQrDataUrl" alt="QR-code" class="enote-display-qr" />
+                <img src="@displayQrDataUrl" alt="QR-code de l'écran client" class="enote-display-qr" />
             }
             <div class="enote-display-link">@displayLink</div>
         </div>
     </ChildContent>
-    <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => displayDialogOffen = false">Fermer</button>
-    </Footer>
 </ModalDialog>

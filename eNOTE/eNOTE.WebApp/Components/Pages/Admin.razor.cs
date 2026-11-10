@@ -210,6 +210,7 @@ public partial class Admin(
         isLoading = true;
         salons = await adminService.GetSalonUebersichtFuerAsync(aktuellerBenutzerId, istSuperAdmin);
         plattformPreise = await adminService.GetPlattformPreiseAsync();
+        globalerMonatsPreis = await adminService.GetGlobalenMonatsPreisAsync();
         if (istSuperAdmin)
         {
             produktOwners = await adminService.GetProduktOwnersAsync();
@@ -231,13 +232,6 @@ public partial class Admin(
         await LadeAsync();
     }
 
-    private void OeffnePreisDialog(PlattformPreis preis)
-    {
-        aktuellesIntervall = preis.Intervall;
-        neuerPreis = preis.Preis;
-        preisFehler = null;
-        preisDialogOffen = true;
-    }
 
     private void OeffneBesitzerDialog()
     {
@@ -474,7 +468,13 @@ public partial class Admin(
             return;
         }
 
-        await adminService.SetzePlattformPreisAsync(aktuellesIntervall, neuerPreis);
+        if (neuerPreis <= 0)
+        {
+            preisFehler = "Veuillez saisir un montant positif.";
+            return;
+        }
+
+        await adminService.SetzePlattformPreisAsync(aktuellerBenutzerId, AboIntervall.Monatlich, neuerPreis);
         preisDialogOffen = false;
         toast.ZeigeErfolg("Prix enregistré.");
         await LadeAsync();
@@ -484,9 +484,22 @@ public partial class Admin(
     {
         AboIntervall.Monatlich => "Mensuel",
         AboIntervall.DreiMonate => "3 mois",
+        AboIntervall.SechsMonate => "6 mois",
         AboIntervall.Jaehrlich => "Annuel",
         _ => intervall.ToString()
     };
 
-    private string PreisDialogTitel => "Prix " + IntervallText(aktuellesIntervall);
+    private string PreisDialogTitel => "Tarif mensuel général";
+
+    /// <summary>Globaler Monatspreis (Basis aller Formeln).</summary>
+    private decimal globalerMonatsPreis;
+    private decimal GlobalerMonatsPreis => globalerMonatsPreis;
+
+    private void OeffneMonatsPreisDialog()
+    {
+        aktuellesIntervall = AboIntervall.Monatlich;
+        neuerPreis = GlobalerMonatsPreis;
+        preisFehler = null;
+        preisDialogOffen = true;
+    }
 }

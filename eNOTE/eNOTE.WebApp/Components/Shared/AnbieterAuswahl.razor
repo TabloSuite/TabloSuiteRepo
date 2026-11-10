@@ -1,0 +1,39 @@
+@using ENote.Core.DataModels.Kasse
+@using ENote.WebApp.Services
+
+@* Mobile-Money-Anbieter als große Kacheln in Markenfarbe (ein Tipp = Auswahl). *@
+<div class="enote-anbieter" role="radiogroup" aria-label="Opérateur Mobile Money">
+    @foreach (var a in Anbieter)
+    {
+        var aktiv = Ausgewaehlt == a.Id;
+        <button type="button" role="radio" aria-checked="@aktiv"
+                class="enote-anbieter-kachel @(aktiv ? "aktiv" : "")"
+                style="--marke: @a.Farbe; --marke-text: @MobileMoneyService.TextFarbe(a.Farbe)"
+                @onclick="() => WaehleAsync(a.Id)">
+            <span class="enote-anbieter-logo">@Kuerzel(a.Name)</span>
+            <span class="enote-anbieter-name">@a.Name</span>
+            @if (aktiv)
+            {
+                <span class="enote-anbieter-check"><Icon Name="check" Groesse="14" Strich="3" /></span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MobileMoneyAnbieter> Anbieter { get; set; } = [];
+    [Parameter] public Guid? Ausgewaehlt { get; set; }
+    [Parameter] public EventCallback<Guid?> AusgewaehltChanged { get; set; }
+
+    private async Task WaehleAsync(Guid id)
+    {
+        Ausgewaehlt = id;
+        await AusgewaehltChanged.InvokeAsync(id);
+    }
+
+    private static string Kuerzel(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length >= 2 ? string.Concat(teile[0][0], teile[1][0]).ToUpperInvariant() : name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+}

@@ -1,0 +1,85 @@
+@using System.Globalization
+@using ENote.WebApp.Services
+
+@* Tagesumsatz als Säulen: eine Reihe (keine Legende), dezentes Raster, Tooltip pro Säule
+   (Hover/Fokus/Tippen), Beschriftung nur für heute und das Maximum, Tabellenansicht für Screenreader. *@
+<div class="enote-saeulen" role="img" aria-label="@AriaText">
+    <div class="enote-saeulen-raster" aria-hidden="true">
+        @foreach (var linie in Achse)
+        {
+            <div class="enote-saeulen-linie" style="bottom: @Pz(linie, AchsenMax)%"><span>@Kompakt(linie)</span></div>
+        }
+    </div>
+    <div class="enote-saeulen-flaeche">
+        @for (var i = 0; i < Werte.Count; i++)
+        {
+            var w = Werte[i];
+            var istHeute = i == Werte.Count - 1;
+            var istMax = w.Umsatz > 0 && w.Umsatz == maxWert && !istHeute;
+            <button type="button" class="enote-saeule @(istHeute ? "heute" : "") @(w.Datum.DayOfWeek == DayOfWeek.Sunday ? "sonntag" : "")" aria-label="@w.Datum.ToString("dddd d MMMM", Fr) : @w.Umsatz.ToString("N0") F, @w.Verkaeufe ventes">
+                <span class="enote-saeule-balken" style="height: @Pz(w.Umsatz, AchsenMax)%">
+                    @if (istHeute || istMax)
+                    {
+                        <span class="enote-saeule-wert">@Kompakt(w.Umsatz)</span>
+                    }
+                </span>
+                <span class="enote-saeule-tipp" role="tooltip">
+                    <strong>@w.Umsatz.ToString("N0") F</strong>
+                    <small>@w.Datum.ToString("ddd d MMM", Fr) · @w.Verkaeufe vente@(w.Verkaeufe == 1 ? "" : "s")</small>
+                </span>
+                <span class="enote-saeule-tag">@(istHeute ? "Auj." : w.Datum.ToString("dd", Fr))</span>
+            </button>
+        }
+    </div>
+</div>
+<table class="enote-nur-sr">
+    <caption>Chiffre d'affaires par jour</caption>
+    <thead><tr><th>Jour</th><th>Chiffre d'affaires</th><th>Ventes</th></tr></thead>
+    <tbody>
+        @foreach (var w in Werte)
+        {
+            <tr><td>@w.Datum.ToString("dd.MM.yyyy")</td><td>@w.Umsatz.ToString("N0") F</td><td>@w.Verkaeufe</td></tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private static readonly CultureInfo Fr = new("fr-FR");
+
+    [Parameter, EditorRequired] public IReadOnlyList<DashboardService.TagesWert> Werte { get; set; } = [];
+
+    private decimal maxWert => Werte.Count == 0 ? 0 : Werte.Max(w => w.Umsatz);
+
+    /// <summary>Saubere Achse: Maximum auf eine „runde“ Zahl aufgerundet, drei Linien.</summary>
+    private decimal AchsenMax
+    {
+        get
+        {
+            if (maxWert <= 0) return 1000;
+            var magnitude = (decimal)Math.Pow(10, Math.Floor(Math.Log10((double)maxWert)));
+            foreach (var faktor in new[] { 1m, 2m, 2.5m, 5m, 10m })
+            {
+                if (faktor * magnitude >= maxWert) return faktor * magnitude;
+            }
+            return 10 * magnitude;
+        }
+    }
+
+    private IEnumerable<decimal> Achse => [0, AchsenMax / 2, AchsenMax];
+
+    private string AriaText => Werte.Count == 0
+        ? "Aucune donnée"
+        : $"Chiffre d'affaires des {Werte.Count} derniers jours, total {Werte.Sum(w => w.Umsatz):N0} F, aujourd'hui {Werte[^1].Umsatz:N0} F.";
+
+    private static string Pz(decimal wert, decimal max)
+        => (max <= 0 ? 0 : Math.Min(100, Math.Round(wert / max * 100, 2))).ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Kompakte Achsen-/Wertbeschriftung: 950 · 12 K · 1,2 M.</summary>
+    private static string Kompakt(decimal wert) => wert switch
+    {
+        >= 1_000_000 => (wert / 1_000_000).ToString("0.#", Fr) + " M",
+        >= 10_000 => (wert / 1000).ToString("0", Fr) + " K",
+        >= 1000 => (wert / 1000).ToString("0.#", Fr) + " K",
+        _ => wert.ToString("0", Fr)
+    };
+}

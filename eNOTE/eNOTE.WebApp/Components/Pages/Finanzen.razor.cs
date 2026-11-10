@@ -46,7 +46,8 @@ public partial class Finanzen(
     [
         new() { Value = "alle", Label = "Tous les paiements" },
         new() { Value = "bar", Label = "Espèces" },
-        new() { Value = "karte", Label = "Carte" }
+        new() { Value = "karte", Label = "Carte" },
+        new() { Value = "mobile", Label = "Mobile Money" }
     ];
 
     private IEnumerable<FinanzService.VerkaufEintrag> GefilterteVerkaeufe()
@@ -63,8 +64,9 @@ public partial class Finanzen(
 
         q = zahlungsArtFilter switch
         {
-            "bar" => q.Where(v => v.ZahlungsArt == Core.DataModels.Kasse.ZahlungsArt.Bar),
-            "karte" => q.Where(v => v.ZahlungsArt != Core.DataModels.Kasse.ZahlungsArt.Bar),
+            "bar" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.Bar)),
+            "karte" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.Karte)),
+            "mobile" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.MobileMoney)),
             _ => q
         };
 
@@ -75,9 +77,14 @@ public partial class Finanzen(
         ? $"Chiffre d'affaires du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
         : "Chiffre d'affaires (14 jours)";
 
-    private string ZeitraumLabel => filterAktiv
-        ? $"du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
-        : "14 derniers jours";
+    private string ZeitraumLabel => aktiverZeitraum switch
+    {
+        "7" => "7 derniers jours",
+        "14" => "14 derniers jours",
+        "30" => "30 derniers jours",
+        "mois" => "ce mois",
+        _ => $"du {filterVon:dd.MM} au {filterBis:dd.MM.yyyy}"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,12 +191,35 @@ public partial class Finanzen(
 
     private async Task WendeFilterAsync()
     {
+        // Kein seitenweites „Chargement…“: die Zahlen werden an Ort und Stelle ersetzt.
         filterAktiv = true;
-        isLoading = true;
         var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
-        isLoading = false;
+    }
+
+    private string aktiverZeitraum = "14";
+
+    private async Task WaehleZeitraumAsync(int tage)
+    {
+        aktiverZeitraum = tage.ToString();
+        filterVon = DateTime.Today.AddDays(-(tage - 1));
+        filterBis = DateTime.Today;
+        await WendeFilterAsync();
+    }
+
+    private async Task WaehleMonatAsync()
+    {
+        aktiverZeitraum = "mois";
+        filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        filterBis = DateTime.Today;
+        await WendeFilterAsync();
+    }
+
+    private async Task WendeEigenenZeitraumAsync()
+    {
+        aktiverZeitraum = "frei";
+        await WendeFilterAsync();
     }
 
     // Ohne aktiven Filter gilt der Standard-Zeitraum der Umsatzliste (14 Tage).

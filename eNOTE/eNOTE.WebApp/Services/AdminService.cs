@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+Ôªøusing ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Salons;
@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// SuperAdmin-/ProduktOwner-Verwaltung: Salons freigeben/ablehnen, ‹bersicht aller
-/// L‰den inklusive Teamgrˆﬂe und Umsatz, Plattformpreise und Abo-Verwaltung.
+/// SuperAdmin-/ProduktOwner-Verwaltung: Salons freigeben/ablehnen, √úbersicht aller
+/// L√§den inklusive Teamgr√∂√üe und Umsatz, Plattformpreise und Abo-Verwaltung.
 /// </summary>
 public class AdminService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -19,7 +19,7 @@ public class AdminService(
     Mails.EmailService emailService)
 {
     // UserManager lazy holen, um ObjectDisposedException zu vermeiden
-    // (UserManager ist scoped; wenn der Scope geschlossen ist, w‰re er disposed).
+    // (UserManager ist scoped; wenn der Scope geschlossen ist, w√§re er disposed).
     private UserManager<AppUser> UserManager => serviceProvider.GetRequiredService<UserManager<AppUser>>();
     public record SalonUebersicht(
         Guid SalonId,
@@ -40,9 +40,9 @@ public class AdminService(
         => await GetSalonUebersichtGefiltertAsync(null, null, null, null, cancellationToken);
 
     /// <summary>
-    /// Gefilterte Salon-‹bersicht f¸r groﬂe Datenmengen. Alle Parameter optional.
+    /// Gefilterte Salon-√úbersicht f√ºr gro√üe Datenmengen. Alle Parameter optional.
     /// suchBegriff filtert Name/Standort (case-insensitiv), nurFreigegebene/nurWartende
-    /// schr‰nken den Status ein, land filtert exakt, limit begrenzt die Trefferzahl.
+    /// schr√§nken den Status ein, land filtert exakt, limit begrenzt die Trefferzahl.
     /// </summary>
     public async Task<List<SalonUebersicht>> GetSalonUebersichtGefiltertAsync(
         string? suchBegriff,
@@ -158,14 +158,14 @@ public class AdminService(
                 {
                     await emailService.SendeAsync(
                         besitzer.Email,
-                        "Ton inscription a ÈtÈ validÈe",
+                        "Ton inscription a √©t√© valid√©e",
                         Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", "https://enote.tablosuite.com"),
                         cancellationToken);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Validierungs-Mail f¸r Salon {SalonId} fehlgeschlagen.", salonId);
+                logger.LogWarning(ex, "Validierungs-Mail f√ºr Salon {SalonId} fehlgeschlagen.", salonId);
             }
         }
         return true;
@@ -186,7 +186,7 @@ public class AdminService(
         return true;
     }
 
-    /// <summary>Admin/PO ‰ndert die Probezeit eines Ladens (verl‰ngern/anpassen/entfernen).</summary>
+    /// <summary>Admin/PO √§ndert die Probezeit eines Ladens (verl√§ngern/anpassen/entfernen).</summary>
     public async Task<bool> SetzeProbezeitAsync(Guid salonId, DateTime? probeBisUtc, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -196,7 +196,10 @@ public class AdminService(
             return false;
         }
 
-        salon.ProbeBisUtc = probeBisUtc;
+        // Datum aus dem Datumsfeld gilt einschlie√ülich des Tages (wie bei der Registrierung: Tagesende).
+        salon.ProbeBisUtc = probeBisUtc is DateTime tag && tag.TimeOfDay == TimeSpan.Zero
+            ? ENote.Core.Services.VertragsRegeln.ProbeEndeEinschliesslich(tag)
+            : probeBisUtc;
         salon.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
@@ -223,6 +226,17 @@ public class AdminService(
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>SuperAdmin setzt den globalen Monatspreis (serverseitig gepr√ºft).</summary>
+    public async Task SetzePlattformPreisAsync(Guid bearbeiter, AboIntervall intervall, decimal preis, CancellationToken cancellationToken = default)
+    {
+        await using (var pruefung = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            await AdminKontenService.PruefeAsync(pruefung, bearbeiter, false, cancellationToken);
+        }
+
+        await SetzePlattformPreisAsync(intervall, preis, cancellationToken);
+    }
+
     public async Task SetzePlattformPreisAsync(AboIntervall intervall, decimal preis, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -236,18 +250,33 @@ public class AdminService(
             alt.IstAktuell = false;
         }
 
+        var jetzt = DateTime.UtcNow;
         db.PlattformPreise.Add(new PlattformPreis
         {
             Intervall = intervall,
             Preis = preis,
             IstAktuell = true,
-            GueltigAbUtc = DateTime.UtcNow
+            GueltigAbUtc = jetzt
         });
+
+        // Der Monatspreis ist die einzige Basis aller Formeln: auch in der Preis-Historie festhalten,
+        // sonst h√§tte ein √§lterer globaler Historien-Eintrag Vorrang und die √Ñnderung bliebe wirkungslos.
+        if (intervall == AboIntervall.Monatlich)
+        {
+            db.MonatsPreisStaende.Add(new MonatsPreisStand { SalonId = null, MonatsPreis = preis, GueltigAbUtc = jetzt });
+        }
 
         await db.SaveChangesAsync(cancellationToken);
     }
 
     public record LadenTarif(string Name, decimal Global, decimal? Individuell);
+
+    /// <summary>Globaler Monatspreis aus derselben Quelle wie Besitzer-Preise und Tarifdialog.</summary>
+    public async Task<decimal> GetGlobalenMonatsPreisAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
+    }
 
     public async Task<LadenTarif> GetLadenTarifAsync(
         Guid bearbeiter, Guid salonId, CancellationToken cancellationToken = default)
@@ -256,17 +285,7 @@ public class AdminService(
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
         var salon = await db.Salons.AsNoTracking()
             .SingleAsync(s => s.Id == salonId, cancellationToken);
-        var jetzt = DateTime.UtcNow;
-        var historischerStandard = await db.MonatsPreisStaende.AsNoTracking()
-            .Where(p => p.SalonId == null && p.GueltigAbUtc <= jetzt)
-            .OrderByDescending(p => p.GueltigAbUtc)
-            .Select(p => p.MonatsPreis)
-            .FirstOrDefaultAsync(cancellationToken);
-        var global = historischerStandard ?? await db.PlattformPreise.AsNoTracking()
-            .Where(p => p.Intervall == AboIntervall.Monatlich && p.IstAktuell)
-            .OrderByDescending(p => p.GueltigAbUtc)
-            .Select(p => (decimal?)p.Preis)
-            .FirstOrDefaultAsync(cancellationToken) ?? 0m;
+        var global = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
         return new LadenTarif(salon.Name, global, salon.IndividuellerMonatsPreis);
     }
 
@@ -306,8 +325,8 @@ public class AdminService(
     }
 
     /// <summary>
-    /// SuperAdmin legt einen Besitzer samt Gesch‰ft an (freigegeben & aktiv).
-    /// Der Besitzer erh‰lt ein Initialpasswort und kann sich sofort anmelden.
+    /// SuperAdmin legt einen Besitzer samt Gesch√§ft an (freigegeben & aktiv).
+    /// Der Besitzer erh√§lt ein Initialpasswort und kann sich sofort anmelden.
     /// </summary>
     public Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
         string vorname, string nachname, string email, string initialPasswort,
@@ -343,18 +362,18 @@ public class AdminService(
             || string.IsNullOrWhiteSpace(bereinigtSalon) || string.IsNullOrWhiteSpace(pseudonym)
             || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(bereinigtEmail))
         {
-            return (false, "Veuillez saisir les coordonnÈes et un pseudonyme valide.", null);
+            return (false, "Veuillez saisir les coordonn√©es et un pseudonyme valide.", null);
         }
 
         if (await UserManager.FindByNameAsync(pseudonym) is not null)
         {
-            return (false, "Ce pseudonyme est dÈj‡ utilisÈ.", null);
+            return (false, "Ce pseudonyme est d√©j√† utilis√©.", null);
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (await db.Salons.AnyAsync(s => s.Name == bereinigtSalon, cancellationToken))
         {
-            return (false, "Un Ètablissement portant ce nom existe dÈj‡.", null);
+            return (false, "Un √©tablissement portant ce nom existe d√©j√†.", null);
         }
 
         var besitzer = new AppUser
@@ -371,8 +390,8 @@ public class AdminService(
         if (!erstellen.Succeeded)
         {
             var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
-            logger.LogWarning("Admin: Besitzer-Anlage fehlgeschlagen f¸r {Email}: {Fehler}", bereinigtEmail, fehler);
-            return (false, string.IsNullOrWhiteSpace(fehler) ? "La crÈation a ÈchouÈ." : fehler, null);
+            logger.LogWarning("Admin: Besitzer-Anlage fehlgeschlagen f√ºr {Email}: {Fehler}", bereinigtEmail, fehler);
+            return (false, string.IsNullOrWhiteSpace(fehler) ? "La cr√©ation a √©chou√©." : fehler, null);
         }
 
         await UserManager.AddToRoleAsync(besitzer, AppRollen.Besitzer);
@@ -417,7 +436,7 @@ public class AdminService(
         // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
         if (await UserManager.FindByNameAsync(bereinigtPseudonym) is not null)
         {
-            return (false, "Ce pseudonyme est dÈj‡ utilisÈ.", null);
+            return (false, "Ce pseudonyme est d√©j√† utilis√©.", null);
         }
 
         var bereinigtEmail = email.Trim();
@@ -435,15 +454,15 @@ public class AdminService(
         if (!erstellen.Succeeded)
         {
             var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
-            logger.LogWarning("Admin: ProduktOwner-Anlage fehlgeschlagen f¸r {Email}: {Fehler}", bereinigtEmail, fehler);
-            return (false, string.IsNullOrWhiteSpace(fehler) ? "La crÈation a ÈchouÈ." : fehler, null);
+            logger.LogWarning("Admin: ProduktOwner-Anlage fehlgeschlagen f√ºr {Email}: {Fehler}", bereinigtEmail, fehler);
+            return (false, string.IsNullOrWhiteSpace(fehler) ? "La cr√©ation a √©chou√©." : fehler, null);
         }
 
         await UserManager.AddToRoleAsync(po, AppRollen.ProduktOwner);
         return (true, null, po);
     }
 
-    /// <summary>Alle ProduktOwner (f¸r die Admin-Verwaltung).</summary>
+    /// <summary>Alle ProduktOwner (f√ºr die Admin-Verwaltung).</summary>
     public async Task<List<AppUser>> GetProduktOwnersAsync(CancellationToken cancellationToken = default)
     {
         var poInRolle = await UserManager.GetUsersInRoleAsync(AppRollen.ProduktOwner);
@@ -451,8 +470,8 @@ public class AdminService(
     }
 
     /// <summary>
-    /// Salon-‹bersicht gefiltert nach Rolle: SuperAdmin sieht alle, ProduktOwner nur
-    /// zugewiesene + selbst angelegte L‰den.
+    /// Salon-√úbersicht gefiltert nach Rolle: SuperAdmin sieht alle, ProduktOwner nur
+    /// zugewiesene + selbst angelegte L√§den.
     /// </summary>
     public async Task<List<SalonUebersicht>> GetSalonUebersichtFuerAsync(
         Guid userId, bool istSuperAdmin, CancellationToken cancellationToken = default)

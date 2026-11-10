@@ -41,7 +41,7 @@ public class VertragsUiTests
     }
 
     [Fact]
-    public async Task Abonnement_Zeigt_Essai_Banner_Und_Drei_Formeln()
+    public async Task Abonnement_Zeigt_Essai_Banner_Und_Vier_Formeln_Nach_Vertragsregeln()
     {
         var factory = TestDbContextFactory.Create();
         var owner = new AppUser { Id = Guid.NewGuid() };
@@ -79,13 +79,20 @@ public class VertragsUiTests
         });
         html = System.Net.WebUtility.HtmlDecode(html);
         // Titel und kostenlose Probezeit
-        Assert.Contains("Abonnement – Boutique A", html);
+        Assert.Contains("Abonnement", html);
+        Assert.Contains("Boutique A", html);
         Assert.Contains("Essai gratuit", html);
-        // Genau drei Formel-Karten, jeweils mit eigener Auswahl
+        // Vier Formeln (wie im Admin-Tarif): die künftige ist markiert, die drei anderen wählbar
         Assert.Equal(3, Regex.Matches(html, ">Choisir</button>").Count);
+        Assert.Contains("Sélectionnée", html);
         Assert.Contains("Mensuel", html);
-        Assert.Contains("3 mois", html);
+        Assert.Contains("Trimestriel", html);
+        Assert.Contains("Semestriel", html);
         Assert.Contains("Annuel", html);
+        // Abgeleitete Preise aus 5.000 F/Monat: 14.250 (−5 %), 27.750 (−7,5 %), 54.000 (−10 %)
+        Assert.Matches(new Regex(@"14\D?250"), html);
+        Assert.Matches(new Regex(@"27\D?750"), html);
+        Assert.Matches(new Regex(@"54\D?000"), html);
         // Geseedeter Monatspreis wird angezeigt (Tausendertrennzeichen kulturabhängig)
         Assert.Matches(new Regex(@"5\D?000"), html);
     }
@@ -116,7 +123,7 @@ public class VertragsUiTests
         var html = await renderer.Dispatcher.InvokeAsync(async () =>
             (await renderer.RenderComponentAsync<KassenZugangsHinweis>(ParameterView.FromDictionary(
                 new Dictionary<string, object?> { [nameof(KassenZugangsHinweis.SalonId)] = b.Id }))).ToHtmlString());
-        Assert.Contains("alert-error", html);
-        Assert.Contains("caisse existante", html);
+        Assert.Contains("enote-sperre gesperrt", html);
+        Assert.Contains("clôturer la caisse", html);
     }
 }

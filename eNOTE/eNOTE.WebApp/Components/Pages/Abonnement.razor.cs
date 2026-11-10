@@ -1,34 +1,45 @@
 ﻿using ENote.Core.DataModels.Abo;
+using ENote.Core.Services;
 using ENote.WebApp.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
 namespace ENote.WebApp.Components.Pages;
 
+/// <summary>
+/// Abonnement des Besitzers (automatischer Vertrag): Perioden entstehen automatisch nach der
+/// Probezeit; der Besitzer wählt die Formel für die nächste Periode und meldet Zahlungen,
+/// der Administrator bestätigt den Eingang.
+/// </summary>
 public partial class Abonnement(
     AboService aboService,
-    KatalogService katalogService,
+    VertragsService vertragsService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
-    LadeZustand ladeZustand) : IDisposable
+    LadeZustand ladeZustand,
+    ILogger<Abonnement> logger) : IDisposable
 {
-    private readonly AboIntervall[] formeln = [AboIntervall.Monatlich, AboIntervall.DreiMonate, AboIntervall.Jaehrlich];
+    private List<AboService.FormelPreis> formeln = [];
+    private VertragsService.LadenVertrag? vertrag;
 
     private bool isLoading = true;
+    private string? ladeFehler;
     private Guid salonId;
     private Guid benutzerId;
     private string salonName = string.Empty;
-    private NutzungsAbo? aktuellesAbo;
-    private Dictionary<AboIntervall, decimal> preise = [];
-    private bool probeLaeuft;
-    private DateTime? probeBis;
 
-    private bool zahlungOffen;
-    private AboIntervall ausgewaehltesIntervall;
+    // Formelwechsel
+    private AboIntervall? wechselZiel;
+    private VertragsService.WechselVorschau? wechselVorschau;
+
+    // Zahlungsmeldung
+    private VertragsService.ZahlungEintrag? meldungFuer;
     private string? zahlungsNotiz;
     private string? zahlungFehler;
+
+    private IEnumerable<VertragsService.ZahlungEintrag> OffenePerioden =>
+        vertrag?.Perioden.Where(p => p.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt) ?? [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -36,21 +47,18 @@ public partial class Abonnement(
         aktiverSalon.OnChange += HandleSalonWechsel;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
-        var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var userId))
+        if (!Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out benutzerId))
         {
             isLoading = false;
             return;
         }
 
-        benutzerId = userId;
         if (!aktiverSalon.IstGeladen)
         {
-            await aktiverSalon.InitialisiereAsync(userId);
+            await aktiverSalon.InitialisiereAsync(benutzerId);
         }
 
-        var aktive = aktiverSalon.Aktiv;
-        if (aktive is null)
+        if (aktiverSalon.Aktiv is not { } aktive)
         {
             isLoading = false;
             return;
@@ -63,8 +71,7 @@ public partial class Abonnement(
 
     private void HandleSalonWechsel()
     {
-        var aktive = aktiverSalon.Aktiv;
-        if (aktive is null || aktive.SalonId == salonId)
+        if (aktiverSalon.Aktiv is not { } aktive || aktive.SalonId == salonId)
         {
             return;
         }
@@ -79,63 +86,116 @@ public partial class Abonnement(
     private async Task LadeAsync()
     {
         isLoading = true;
-        aktuellesAbo = await aboService.GetAktuellesAboAsync(salonId);
-        (probeLaeuft, probeBis) = await aboService.GetProbeStatusAsync(salonId);
-        preise = new Dictionary<AboIntervall, decimal>();
-        foreach (var formel in formeln)
+        ladeFehler = null;
+        try
         {
-            preise[formel] = await aboService.GetPreisAsync(salonId, formel);
+            formeln = await aboService.GetFormelPreiseAsync(salonId);
+            vertrag = await vertragsService.GetLadenVertragAsync(benutzerId, salonId);
         }
-
-        isLoading = false;
+        catch (InvalidOperationException ex)
+        {
+            // z. B. kein Tarif konfiguriert: Seite trotzdem anzeigen.
+            ladeFehler = ex.Message;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ladeFehler = "Seul le propriétaire de l'établissement peut gérer l'abonnement.";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Abonnement für Laden {SalonId} konnte nicht geladen werden.", salonId);
+            ladeFehler = "L'abonnement ne peut pas être chargé pour le moment.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private void OeffneZahlung(AboIntervall intervall)
+    private async Task OeffneWechselAsync(AboIntervall ziel)
     {
-        ausgewaehltesIntervall = intervall;
+        wechselZiel = ziel;
+        wechselVorschau = null;
+        try
+        {
+            wechselVorschau = await vertragsService.GetWechselVorschauAsync(benutzerId, salonId, ziel);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            wechselZiel = null;
+            toast.ZeigeFehler(ex.Message);
+        }
+    }
+
+    private async Task WechsleFormelAsync()
+    {
+        if (wechselZiel is not AboIntervall ziel)
+        {
+            return;
+        }
+
+        try
+        {
+            var art = await vertragsService.WechsleAsync(benutzerId, salonId, ziel);
+            wechselZiel = null;
+            var name = VertragsRegeln.Bezeichnung(ziel).ToLowerInvariant();
+            toast.ZeigeErfolg(art switch
+            {
+                VertragsService.WechselArt.SofortUmgewandelt => $"Facture en cours convertie en formule {name}.",
+                VertragsService.WechselArt.Unveraendert => $"Vous gardez la formule {name}.",
+                _ => $"Formule {name} enregistrée pour la prochaine période."
+            });
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            wechselZiel = null;
+            toast.ZeigeFehler(ex.Message);
+        }
+    }
+
+    private void OeffneMeldung(VertragsService.ZahlungEintrag periode)
+    {
+        meldungFuer = periode;
         zahlungsNotiz = null;
         zahlungFehler = null;
-        zahlungOffen = true;
     }
 
     private async Task MeldeZahlungAsync()
     {
-        var (erfolg, fehler, _) = await aboService.MeldeZahlungAsync(salonId, ausgewaehltesIntervall, zahlungsNotiz);
-        if (!erfolg)
+        if (meldungFuer is null)
         {
-            zahlungFehler = fehler;
             return;
         }
 
-        zahlungOffen = false;
-        toast.ZeigeErfolg("Paiement signalé. L'administrateur confirmera la réception.");
-        await LadeAsync();
+        try
+        {
+            await vertragsService.MeldeAsync(benutzerId, meldungFuer.Id, zahlungsNotiz);
+            meldungFuer = null;
+            toast.ZeigeErfolg("Paiement signalé. L'administrateur confirmera la réception.");
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            zahlungFehler = ex.Message;
+        }
     }
 
-    private static string IntervallText(AboIntervall intervall) => intervall switch
-    {
-        AboIntervall.Monatlich => "Mensuel",
-        AboIntervall.DreiMonate => "3 mois",
-        AboIntervall.Jaehrlich => "Annuel",
-        _ => intervall.ToString()
-    };
-
-    private string ZahlungDialogTitel => "Signaler le paiement – " + IntervallText(ausgewaehltesIntervall);
+    private AboService.FormelPreis? Formel(AboIntervall intervall) => formeln.FirstOrDefault(f => f.Intervall == intervall);
 
     private static string StatusText(AboZahlungStatus status) => status switch
     {
         AboZahlungStatus.Offen => "À payer",
-        AboZahlungStatus.Gemeldet => "Paiement signalé",
-        AboZahlungStatus.Bestaetigt => "Confirmé",
-        AboZahlungStatus.Abgelehnt => "Refusé",
+        AboZahlungStatus.Gemeldet => "Signalé · en vérification",
+        AboZahlungStatus.Bestaetigt => "Payé",
+        AboZahlungStatus.Abgelehnt => "Refusé · à payer",
         _ => status.ToString()
     };
 
     private static string StatusKlasse(AboZahlungStatus status) => status switch
     {
-        AboZahlungStatus.Bestaetigt => "",
-        AboZahlungStatus.Gemeldet => "enote-tag-warn",
-        AboZahlungStatus.Abgelehnt => "enote-tag-off",
+        AboZahlungStatus.Bestaetigt => "enote-tag-ok",
+        AboZahlungStatus.Gemeldet => "",
         _ => "enote-tag-warn"
     };
 }

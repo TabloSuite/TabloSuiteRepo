@@ -1,4 +1,4 @@
-@page "/admin/journaux"
+ï»¿@page "/admin/journaux"
 @attribute [Authorize(Roles = "SuperAdmin")]
 @rendermode InteractiveServer
 
@@ -8,36 +8,36 @@
     <div class="enote-page-header">
         <div>
             <h1>Journaux d'erreurs</h1>
-            <p>Exceptions centralisées de l'application.</p>
+            <p>Exceptions centralisÃ©es de l'application.</p>
         </div>
         @if (logs.Any(l => l.IstBehandelt))
         {
-            <AsyncActionButton Text="Supprimer les traités" OnClick="LoescheBehandelteAsync" CssClass="enote-btn-ghost enote-danger" />
+            <AsyncActionButton Text="Supprimer les traitÃ©s" OnClick="LoescheBehandelteAsync" CssClass="enote-btn-ghost enote-danger" />
         }
     </div>
 
     <div class="enote-filter-row">
         <div class="enote-filter-feld"><span class="enote-filter-label">Du</span><EnoteDatePicker @bind-Value="vonDatum" /></div>
         <div class="enote-filter-feld"><span class="enote-filter-label">Au</span><EnoteDatePicker @bind-Value="bisDatum" /></div>
-        <label class="enote-check-row"><EnoteCheckbox @bind-Value="nurUnbehandelt" Label="Non traités seulement" /></label>
+        <label class="enote-check-row"><EnoteCheckbox @bind-Value="nurUnbehandelt" Label="Non traitÃ©s seulement" /></label>
         <button class="enote-btn enote-btn-ghost" @onclick="LadeAsync">Filtrer</button>
     </div>
 
     <div class="enote-filter-leiste">
-        <input class="enote-filter-suche" placeholder="Rechercher (message, chemin)…" @bind="logSuche" @bind:event="oninput" />
+        <input class="enote-filter-suche" placeholder="Rechercher (message, chemin)â€¦" @bind="logSuche" @bind:event="oninput" />
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p>Chargementâ€¦</p>
     }
     else if (logs.Count == 0)
     {
-        <p class="enote-empty">Aucune erreur journalisée. ??</p>
+        <p class="enote-empty">Aucune erreur journalisÃ©e. ??</p>
     }
     else if (!GefilterteLogs().Any())
     {
-        <p class="enote-empty" role="status">Aucune erreur ne correspond à votre recherche.</p>
+        <p class="enote-empty" role="status">Aucune erreur ne correspond Ã  votre recherche.</p>
     }
     else
     {
@@ -49,7 +49,7 @@
                         <span class="enote-log-zeit">@log.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</span>
                         @if (log.IstBehandelt)
                         {
-                            <span class="enote-tag">Traité</span>
+                            <span class="enote-tag">TraitÃ©</span>
                         }
                         @if (!string.IsNullOrWhiteSpace(log.Pfad))
                         {
@@ -62,8 +62,8 @@
                         <pre class="enote-log-trace">@log.Ausnahme</pre>
                     }
                     <div class="enote-item-actions">
-                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleDetails(log.Id)">@(zeigeDetails.GetValueOrDefault(log.Id) ? "Masquer" : "Détails")</button>
-                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleBehandeltAsync(log)">@(log.IstBehandelt ? "Rouvrir" : "Marquer traité")</button>
+                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleDetails(log.Id)">@(zeigeDetails.GetValueOrDefault(log.Id) ? "Masquer" : "DÃ©tails")</button>
+                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleBehandeltAsync(log)">@(log.IstBehandelt ? "Rouvrir" : "Marquer traitÃ©")</button>
                         <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoescheAsync(log.Id)">Supprimer</button>
                     </div>
                 </div>

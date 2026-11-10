@@ -51,6 +51,11 @@ public partial class Leistungen(
     // Kategorie-Baum (Haupt + Unter) und Vorschau
     private List<KatalogService.KategorieBaum> kategorieBaum = [];
     private HashSet<Guid> favoritenIds = [];
+    private Dictionary<Guid, string> bildUrls = [];
+
+    /// <summary>Gleiche Kategoriefarben wie in der Kasse (Wiedererkennung).</summary>
+    private static readonly string[] KategoriePalette =
+        ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
     private Guid? aufgeklappteKategorieId;
     private Guid? unterkategorieParentId; // für das Anlegen einer Unterkategorie
     private string neueUnterkategorieName = string.Empty;
@@ -136,6 +141,7 @@ public partial class Leistungen(
         kategorien = kategorienListe;
         kategorieBaum = await katalogService.GetKategorieBaumAsync(salonId);
         favoritenIds = await katalogService.GetFavoritenIdsAsync(salonId);
+        bildUrls = await katalogService.GetLeistungsBildUrlsAsync(salonId);
         kategorieOptionen = kategorienListe
             .Select(k => new EnoteSelectOption<string>
             {
@@ -163,12 +169,14 @@ public partial class Leistungen(
         if (!string.IsNullOrWhiteSpace(leistungsSuche))
         {
             var s = leistungsSuche.Trim();
-            q = q.Where(l => l.Name.Contains(s, StringComparison.OrdinalIgnoreCase));
+            q = q.Where(l => l.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(l.StrichCode, s, StringComparison.OrdinalIgnoreCase));
         }
-
-        if (!string.IsNullOrWhiteSpace(kategorieFilter))
+        else if (Guid.TryParse(kategorieFilter, out var filterId))
         {
-            q = q.Where(l => l.KategorieId?.ToString() == kategorieFilter);
+            // Hauptkategorie zeigt auch die Artikel ihrer Unterkategorien.
+            var ids = kategorien.Where(k => k.Id == filterId || k.ParentId == filterId).Select(k => k.Id).ToHashSet();
+            q = q.Where(l => l.KategorieId is Guid k && ids.Contains(k));
         }
 
         return q;
@@ -484,8 +492,26 @@ public partial class Leistungen(
     }
 
     // Anzahl der Leistungen in einer Kategorie (für die Baum-Anzeige).
+    /// <summary>Anzahl Artikel einer Kategorie inklusive ihrer Unterkategorien.</summary>
     private int AnzahlInKategorie(Guid kategorieId)
-        => leistungen.Count(l => l.KategorieId == kategorieId);
+    {
+        var ids = kategorien.Where(k => k.Id == kategorieId || k.ParentId == kategorieId).Select(k => k.Id).ToHashSet();
+        return leistungen.Count(l => !l.IstStandardArtikel && l.KategorieId is Guid k && ids.Contains(k));
+    }
+
+    private void FilterKategorie(Guid id)
+    {
+        kategorieFilter = id.ToString();
+        leistungsSuche = string.Empty;
+    }
+
+    private string KategorieFarbe(Guid? kategorieId)
+    {
+        if (kategorieId is not Guid id) return "var(--enote-border-strong)";
+        var hauptId = kategorien.FirstOrDefault(k => k.Id == id)?.ParentId ?? id;
+        var index = kategorien.Where(k => k.ParentId is null).OrderBy(k => k.Name).Select(k => k.Id).ToList().IndexOf(hauptId);
+        return index < 0 ? "var(--enote-border-strong)" : KategoriePalette[index % KategoriePalette.Length];
+    }
 
     // Name der Kategorie einer Leistung (für den Zuordnungs-Button auf der Karte).
     private string KategorieNameVon(Leistung leistung)

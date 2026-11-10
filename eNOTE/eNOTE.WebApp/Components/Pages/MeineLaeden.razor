@@ -1,34 +1,34 @@
-@page "/mes-etablissements"
+ï»¿@page "/mes-etablissements"
 @attribute [Authorize(Roles = "ProduktOwner")]
 @rendermode InteractiveServer
 
-<PageTitle>Mes établissements</PageTitle>
+<PageTitle>Mes Ã©tablissements</PageTitle>
 
 
 <BesitzerPinGuard>
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
-            <h1>Mes établissements</h1>
-            <p>Vue d'ensemble de vos établissements gérés.</p>
+            <h1>Mes Ã©tablissements</h1>
+            <p>Vue d'ensemble de vos Ã©tablissements gÃ©rÃ©s.</p>
         </div>
-        <button class="enote-btn enote-btn-primary" @onclick="OeffneAnlegeDialog">+ Nouvel établissement</button>
+        <button class="enote-btn enote-btn-primary" @onclick="OeffneAnlegeDialog">+ Nouvel Ã©tablissement</button>
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p>Chargementâ€¦</p>
     }
     else if (laeden.Count == 0)
     {
-        <p class="enote-empty">Aucun établissement ne vous est encore assigné. Contactez l'administrateur.</p>
+        <p class="enote-empty">Aucun Ã©tablissement ne vous est encore assignÃ©. Contactez l'administrateur.</p>
     }
     else
     {
         @if (laeden.Count > 5)
         {
             <div class="enote-filter-row" style="margin-bottom: .9rem;">
-                <input class="enote-filter-suche" placeholder="Rechercher un établissement…" @bind="laedenSuche" @bind:event="oninput" />
+                <input class="enote-filter-suche" placeholder="Rechercher un Ã©tablissementâ€¦" @bind="laedenSuche" @bind:event="oninput" />
             </div>
         }
         <div class="enote-grid-scroll">
@@ -39,7 +39,7 @@
                         <strong>@l.SalonName</strong>
                         @if (l.IstFreigegeben)
                         {
-                            <span class="enote-tag">Validé</span>
+                            <span class="enote-tag">ValidÃ©</span>
                         }
                         else
                         {
@@ -56,7 +56,7 @@
                     }
                     else
                     {
-                        <p class="enote-muted">Chiffre d'affaires masqué par l'administrateur.</p>
+                        <p class="enote-muted">Chiffre d'affaires masquÃ© par l'administrateur.</p>
                     }
 
                     @if (l.ProzentProvision is not null || l.FestbetragProvision is not null)
@@ -72,26 +72,26 @@
     }
 </div>
 
-<ModalDialog Open="anlegedialogOffen" Title="Nouvel établissement" ErrorMessage="@anlegeFehler" OnClose="() => anlegedialogOffen = false">
+<ModalDialog Open="anlegedialogOffen" Title="Nouvel Ã©tablissement" ErrorMessage="@anlegeFehler" OnClose="() => anlegedialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">L'établissement sera activé après validation par l'administrateur. Un nouveau compte propriétaire (pseudonyme + mot de passe) est créé ; l'adresse e-mail peut être la même que pour un autre établissement.</p>
+            <p class="enote-muted">L'Ã©tablissement sera activÃ© aprÃ¨s validation par l'administrateur. Un nouveau compte propriÃ©taire (pseudonyme + mot de passe) est crÃ©Ã© ; l'adresse e-mail peut Ãªtre la mÃªme que pour un autre Ã©tablissement.</p>
             <div class="enote-form-grid">
-                <label>Prénom du propriétaire <input @bind="neuVorname" /></label>
-                <label>Nom du propriétaire <input @bind="neuNachname" /></label>
+                <label>PrÃ©nom du propriÃ©taire <input @bind="neuVorname" /></label>
+                <label>Nom du propriÃ©taire <input @bind="neuNachname" /></label>
             </div>
             <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
             <label>Adresse e-mail de contact <input type="email" @bind="neuEmail" /></label>
             <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
-            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
-            <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
+            <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractÃ¨res, dont 1 chiffre et 1 lettre minuscule.</small>
+            <label>Nom de l'Ã©tablissement <input @bind="neuSalonName" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
             <label>Pays (facultatif) <input @bind="neuLand" /></label>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => anlegedialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="LegeSalonSelbstAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="CrÃ©er" OnClick="LegeSalonSelbstAnAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

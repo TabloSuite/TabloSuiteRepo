@@ -96,8 +96,9 @@ public class VertragsServiceTests
             Assert.Equal(AboZahlungStatus.Offen, abo.ZahlungStatus);
             Assert.Equal(5000, abo.PreisSnapshot);
         }
-        await service.WechsleAsync(besitzer.Id, salon.Id, AboIntervall.SechsMonate);
+        // Zahlung bereits gemeldet → Wechsel gilt ab der nächsten Periode (keine Sofort-Umwandlung).
         await service.MeldeAsync(besitzer.Id, aboId, "reference");
+        Assert.Equal(VertragsService.WechselArt.AbNaechsterPeriode, await service.WechsleAsync(besitzer.Id, salon.Id, AboIntervall.SechsMonate));
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.MeldeAsync(besitzer.Id, aboId, null));
         uhr.Jetzt = ende.AddMonths(1);
         await service.SynchronisiereAsync(salon.Id);

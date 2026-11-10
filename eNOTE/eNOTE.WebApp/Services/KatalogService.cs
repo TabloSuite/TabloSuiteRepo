@@ -70,8 +70,11 @@ public class KatalogService(
 
     private async Task<bool> IstBesitzerAsync(Guid userId)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        return user is not null && await userManager.IsInRoleAsync(user, AppRollen.Besitzer);
+        // Eigener Factory-Context statt UserManager: der UserManager teilt sich im Blazor-Circuit
+        // einen DbContext, parallele Komponenten-Abfragen führten sonst zu Concurrency-Fehlern.
+        await using var db = await dbContextFactory.CreateDbContextAsync();
+        return await db.UserRoles.AnyAsync(ur => ur.UserId == userId
+            && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.Besitzer));
     }
 
     // --- Kategorien ---
@@ -449,6 +452,21 @@ public class KatalogService(
         await db.SaveChangesAsync(cancellationToken);
 
         return (true, null, mediaStorage.GetPublicUrl(ergebnis.BlobName!));
+    }
+
+    /// <summary>Bild-URLs aller Leistungen eines Ladens (eine Abfrage, für die Kassen-Kacheln).</summary>
+    public async Task<Dictionary<Guid, string>> GetLeistungsBildUrlsAsync(Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var bilder = await db.Leistungen
+            .AsNoTracking()
+            .Where(l => l.SalonId == salonId && l.BildAssetId != null)
+            .Select(l => new { l.Id, l.BildAsset!.BlobName })
+            .ToListAsync(cancellationToken);
+
+        return bilder
+            .Where(b => !string.IsNullOrWhiteSpace(b.BlobName))
+            .ToDictionary(b => b.Id, b => mediaStorage.GetPublicUrl(b.BlobName));
     }
 
     /// <summary>Liefert die abrufbare URL eines Leistungs-Bildes (falls vorhanden).</summary>

@@ -2,75 +2,209 @@
 @attribute [Authorize(Roles = "Besitzer")]
 @rendermode InteractiveServer
 @using ENote.Core.DataModels.Abo
+@using ENote.Core.Services
 
 <PageTitle>Abonnement</PageTitle>
 
-
 <BesitzerPinGuard>
-<div class="enote-page">
+<div class="enote-page ab">
     <div class="enote-page-header">
         <div>
-            <h1>Abonnement – @salonName</h1>
-            <p>Choisissez une formule et signalez votre paiement. L'administrateur confirme la réception.</p>
+            <h1>Abonnement</h1>
+            <p>@salonName · facturation automatique, paiement à signaler, confirmation par l'administrateur.</p>
         </div>
     </div>
 
     @if (isLoading)
     {
-        <p>Chargement…</p>
+        <p class="enote-muted" role="status">Chargement…</p>
     }
-    else
+    else if (ladeFehler is not null && vertrag is null)
     {
-        @if (probeLaeuft)
+        <div class="alert alert-error" role="alert">@ladeFehler</div>
+    }
+    else if (vertrag is { } v)
+    {
+        @* --- Status: Probezeit / offene Zahlungen --- *@
+        @if (v.ProbeLaeuft)
         {
             <div class="enote-abo-status enote-probe-banner">
                 <div>
-                    <strong>Essai gratuit</strong>
-                    <div class="enote-muted">Gratuit jusqu'au @probeBis?.ToLocalTime().ToString("dd.MM.yyyy") (ce mois-ci inclus). Choisissez ensuite une formule.</div>
+                    <strong>Essai gratuit jusqu'au @v.ProbeBisUtc?.ToLocalTime().ToString("dd.MM.yyyy")</strong>
+                    <div class="enote-muted">Ensuite, la formule « @VertragsRegeln.Bezeichnung(v.KuenftigesIntervall) » démarre automatiquement. Vous pouvez la changer ci-dessous.</div>
                 </div>
-                <span class="enote-tag">Essai</span>
+                <span class="enote-tag enote-tag-ok">Essai</span>
             </div>
         }
-
-        @if (aktuellesAbo is not null)
+        @foreach (var p in OffenePerioden.OrderBy(p => p.Faellig))
         {
-            <div class="enote-abo-status">
+            var ueberfaellig = DateTime.UtcNow >= p.SperreAb;
+            <div class="ab-faellig @(ueberfaellig ? "gesperrt" : "")" role="status">
+                <span class="ab-faellig-ico"><Icon Name="@(ueberfaellig ? "lock" : "alert")" Groesse="20" /></span>
                 <div>
-                    <strong>@IntervallText(aktuellesAbo.Intervall)</strong> · @aktuellesAbo.PreisSnapshot.ToString("N0") F
-                    <div class="enote-muted">Du @aktuellesAbo.ZeitraumVonUtc.ToLocalTime().ToString("dd.MM.yyyy") au @aktuellesAbo.ZeitraumBisUtc.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    <strong>@p.Betrag.ToString("N0") F à payer · @VertragsRegeln.Bezeichnung(p.Intervall)</strong>
+                    <span>@(ueberfaellig
+                        ? "Les ventes sont suspendues jusqu'à la confirmation du paiement."
+                        : $"Échéance le {p.Faellig.ToLocalTime():dd.MM.yyyy} · sans paiement confirmé, les ventes seront suspendues le {p.SperreAb.ToLocalTime():dd.MM.yyyy}.")</span>
                 </div>
-                <span class="enote-tag @StatusKlasse(aktuellesAbo.ZahlungStatus)">@StatusText(aktuellesAbo.ZahlungStatus)</span>
+                <button class="enote-btn enote-btn-primary" @onclick="() => OeffneMeldung(p)">J'ai payé</button>
             </div>
         }
 
-        <h2 class="enote-section-title">Nouvelle formule</h2>
-        <div class="enote-grid">
-            @foreach (var formel in formeln)
+        @* --- Formel --- *@
+        <section class="ab-abschnitt">
+            <div class="ab-abschnitt-kopf">
+                <h2>Votre formule</h2>
+                <p class="enote-muted">
+                    @if (v.NaechstesIntervall is AboIntervall naechstes && naechstes != v.Intervall)
+                    {
+                        <span>Actuelle : <strong>@VertragsRegeln.Bezeichnung(v.Intervall)</strong> · passage à <strong>@VertragsRegeln.Bezeichnung(naechstes)</strong> le @v.WechselAbUtc?.ToLocalTime().ToString("dd.MM.yyyy").</span>
+                    }
+                    else if (OffenePerioden.Any())
+                    {
+                        <span>Facture en cours non payée : un changement de formule la convertit immédiatement (même échéance).</span>
+                    }
+                    else
+                    {
+                        <span>Un changement prend effet à la prochaine période ; la période en cours et ses paiements ne changent pas.</span>
+                    }
+                </p>
+            </div>
+
+            @if (formeln.Count == 0)
             {
-                <div class="enote-item">
-                    <div class="enote-item-head">
-                        <strong>@IntervallText(formel)</strong>
-                        <span class="enote-price">@preise.GetValueOrDefault(formel).ToString("N0") F</span>
-                    </div>
-                    <div class="enote-item-actions">
-                        <button class="enote-btn enote-btn-primary" @onclick="() => OeffneZahlung(formel)">Choisir</button>
-                    </div>
+                <p class="enote-empty">Le tarif n'est pas encore configuré. Contactez l'administrateur.</p>
+            }
+            else
+            {
+                @if (formeln[0].Individuell)
+                {
+                    <p class="ab-hinweis"><Icon Name="sparkles" Groesse="16" /> Tarif personnalisé pour votre établissement : @formeln[0].MonatsBasis.ToString("N0") F / mois.</p>
+                }
+                <div class="ab-formeln">
+                    @foreach (var f in formeln)
+                    {
+                        var istKuenftig = f.Intervall == v.KuenftigesIntervall;
+                        <article class="ab-formel @(istKuenftig ? "empfohlen" : "")">
+                            @if (istKuenftig)
+                            {
+                                <span class="ab-badge">@(v.NaechstesIntervall is not null && v.NaechstesIntervall != v.Intervall ? "Prochaine formule" : "Votre formule")</span>
+                            }
+                            <header>
+                                <strong>@VertragsRegeln.Bezeichnung(f.Intervall)</strong>
+                                <span class="enote-muted">@f.Monate mois</span>
+                            </header>
+                            <div class="ab-preis">@f.Preis.ToString("N0") <small>F</small></div>
+                            <div class="ab-details">
+                                <span>soit @f.ProMonat.ToString("N0") F / mois</span>
+                                @if (f.RabattProzent > 0)
+                                {
+                                    <span class="enote-tag enote-tag-ok">−@f.RabattProzent.ToString("0.#") % · économie @f.Ersparnis.ToString("N0") F</span>
+                                }
+                                else
+                                {
+                                    <span class="enote-tag enote-tag-off">Sans engagement</span>
+                                }
+                            </div>
+                            @if (istKuenftig)
+                            {
+                                <button class="enote-btn enote-btn-block" disabled><Icon Name="check" Groesse="16" /> Sélectionnée</button>
+                            }
+                            else
+                            {
+                                <button class="enote-btn enote-btn-block" @onclick="() => OeffneWechselAsync(f.Intervall)">Choisir</button>
+                            }
+                        </article>
+                    }
                 </div>
             }
-        </div>
+        </section>
+
+        @* --- Rechnungen --- *@
+        <section class="ab-abschnitt">
+            <div class="ab-abschnitt-kopf">
+                <h2>Factures</h2>
+                @if (!string.IsNullOrWhiteSpace(v.Zahlungsempfaenger))
+                {
+                    <p class="enote-muted">Paiement à effectuer auprès de : <strong>@v.Zahlungsempfaenger</strong></p>
+                }
+            </div>
+            @if (v.Perioden.Count == 0)
+            {
+                <p class="enote-empty">@(v.ProbeLaeuft ? "Aucune facture pendant l'essai gratuit." : "Aucune facture pour le moment.")</p>
+            }
+            else
+            {
+                <div class="ab-rechnungen">
+                    @foreach (var p in v.Perioden)
+                    {
+                        <div class="ab-rechnung">
+                            <div class="ab-rechnung-info">
+                                <strong>@VertragsRegeln.Bezeichnung(p.Intervall)@(p.Bis.Subtract(p.Von).TotalDays < 27 ? " (prorata)" : "")</strong>
+                                <span class="enote-muted">@p.Von.ToLocalTime().ToString("dd.MM.yyyy") – @p.Bis.AddDays(-1).ToLocalTime().ToString("dd.MM.yyyy")</span>
+                            </div>
+                            <span class="ab-rechnung-betrag">@p.Betrag.ToString("N0") F</span>
+                            <span class="enote-tag @StatusKlasse(p.Status)">@StatusText(p.Status)</span>
+                            @if (p.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt)
+                            {
+                                <button class="enote-btn enote-btn-sm" @onclick="() => OeffneMeldung(p)">J'ai payé</button>
+                            }
+                            else
+                            {
+                                <span></span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </section>
     }
 </div>
 
-<ModalDialog Open="zahlungOffen" Title="@ZahlungDialogTitel" ErrorMessage="@zahlungFehler" OnClose="() => zahlungOffen = false">
+@* Formelwechsel bestätigen *@
+<ModalDialog Open="wechselZiel is not null" Title="Changer de formule" OnClose="() => wechselZiel = null" MaxWidthClass="enote-modal-sm">
     <ChildContent>
-        <div class="enote-form">
-            <p>Montant : <strong>@(preise.GetValueOrDefault(ausgewaehltesIntervall).ToString("N0")) F</strong></p>
-            <label>Référence / note (facultatif) <input @bind="zahlungsNotiz" /></label>
-        </div>
+        @if (wechselZiel is AboIntervall ziel && wechselVorschau is { } vs)
+        {
+            var monate = VertragsRegeln.Monate(ziel);
+            @if (vs.Art == ENote.WebApp.Services.VertragsService.WechselArt.SofortUmgewandelt)
+            {
+                <p>Votre facture en cours n'est pas encore payée : elle sera <strong>convertie immédiatement</strong> en formule <strong>@VertragsRegeln.Bezeichnung(ziel)</strong>.</p>
+                <div class="kx-pay-total"><span>Nouveau montant</span><strong>@vs.NeuerBetrag?.ToString("N0") F</strong></div>
+                <p class="enote-muted">Période : du @vs.AbUtc?.ToLocalTime().ToString("dd.MM.yyyy") au @vs.AbUtc?.AddMonths(monate).AddDays(-1).ToLocalTime().ToString("dd.MM.yyyy"). L'échéance ne change pas@(vs.SperreAb is DateTime s ? $" : sans paiement confirmé, les ventes seront suspendues le {s.ToLocalTime():dd.MM.yyyy}" : "").</p>
+            }
+            else
+            {
+                <p>Passer à la formule <strong>@VertragsRegeln.Bezeichnung(ziel)</strong> (@vs.NeuerBetrag?.ToString("N0") F pour @monate mois) ?</p>
+                <p class="enote-muted">Elle démarre le @vs.AbUtc?.ToLocalTime().ToString("dd.MM.yyyy")@(vertrag?.ProbeLaeuft == true ? ", après l'essai gratuit" : ""). La période en cours et les factures déjà émises restent inchangées.</p>
+            }
+        }
+        else if (wechselZiel is not null)
+        {
+            <p class="enote-muted" role="status">Calcul…</p>
+        }
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => zahlungOffen = false">Annuler</button>
-        <AsyncActionButton Text="Signaler le paiement" OnClick="MeldeZahlungAsync" CssClass="enote-btn-primary" />
+        <button class="enote-btn enote-btn-ghost" @onclick="() => wechselZiel = null">Annuler</button>
+        <AsyncActionButton Text="Confirmer" OnClick="WechsleFormelAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Zahlung melden *@
+<ModalDialog Open="meldungFuer is not null" Title="Signaler un paiement" ErrorMessage="@zahlungFehler" OnClose="() => meldungFuer = null" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        @if (meldungFuer is { } p)
+        {
+            <div class="enote-form">
+                <div class="kx-pay-total"><span>@VertragsRegeln.Bezeichnung(p.Intervall)</span><strong>@p.Betrag.ToString("N0") F</strong></div>
+                <p class="enote-muted">Confirmez uniquement après avoir réellement payé (virement, Mobile Money, espèces). L'administrateur vérifie la réception ; jusque-là, la facture reste « en vérification ».</p>
+                <label>Référence <small class="enote-muted">(facultatif)</small> <input @bind="zahlungsNotiz" maxlength="500" placeholder="ex. Flooz MP241110.1234, virement du 10/11…" /></label>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => meldungFuer = null">Annuler</button>
+        <AsyncActionButton Text="Oui, j'ai payé" OnClick="MeldeZahlungAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

@@ -1,9 +1,9 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 
 namespace ENote.WebApp.Data.Seed;
 
 /// <summary>Expliziter Einmalprozess: kein Webserver, keine automatische DDL im Runtime-Start.</summary>
-public sealed record DatenbankAdministration(bool Migrieren, bool Seed)
+public sealed record DatenbankAdministration(bool Migrieren, bool Seed, bool DemoDaten = false)
 {
     public static DatenbankAdministration? Pruefe(string[] args, IConfiguration configuration, IHostEnvironment environment, string connectionString)
     {
@@ -23,8 +23,11 @@ public sealed record DatenbankAdministration(bool Migrieren, bool Seed)
             "migrate" => new DatenbankAdministration(true, false),
             "seed" => new DatenbankAdministration(false, true),
             "migrate-and-seed" => new DatenbankAdministration(true, true),
-            _ => throw new InvalidOperationException("Ungültiger --database-admin-Modus (migrate, seed, migrate-and-seed).")
+            "demo" => new DatenbankAdministration(false, true, DemoDaten: true),
+            _ => throw new InvalidOperationException("Ungültiger --database-admin-Modus (migrate, seed, migrate-and-seed, demo).")
         };
+        if (plan.DemoDaten && !environment.IsDevelopment())
+            throw new InvalidOperationException("Demo-Daten dürfen nur in der Development-Umgebung angelegt werden.");
         var sql = new SqlConnectionStringBuilder(connectionString);
         var ziel = $"{sql.DataSource}/{sql.InitialCatalog}";
         if (string.IsNullOrWhiteSpace(sql.DataSource) || string.IsNullOrWhiteSpace(sql.InitialCatalog)

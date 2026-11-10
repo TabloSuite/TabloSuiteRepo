@@ -1,12 +1,12 @@
 @* Wiederverwendbare Bild-Auswahl: Kamera (Handy/Tablet) oder Galerie/Datei, mit quadratischem Zuschnitt + Vorschau *@
 <div class="enote-bild-auswahl">
     <div class="enote-bild-auswahl-aktionen">
-        <label class="enote-btn enote-btn-ghost enote-btn-sm">
-            📷 Foto aufnehmen
+        <label class="enote-btn enote-btn-sm enote-btn-upload">
+            <Icon Name="camera" Groesse="16" /> Prendre une photo
             <InputFile OnChange="HandleKamera" accept="image/*" capture="environment" class="enote-hidden-input" />
         </label>
-        <label class="enote-btn enote-btn-ghost enote-btn-sm">
-            🖼 Auswählen
+        <label class="enote-btn enote-btn-sm enote-btn-upload">
+            <Icon Name="image" Groesse="16" /> Choisir une image
             <InputFile OnChange="HandleDatei" accept="image/*" class="enote-hidden-input" />
         </label>
     </div>
@@ -15,7 +15,7 @@
     {
         <div class="enote-bild-vorschau-wrap">
             <img src="@AnzeigeVorschau" alt="Aperçu" class="enote-bild-vorschau" />
-            <button type="button" class="enote-tag-btn enote-danger" @onclick="Entfernen" title="Retirer">✕ Retirer</button>
+            <button type="button" class="enote-btn enote-btn-sm enote-btn-abbrechen" @onclick="Entfernen"><Icon Name="trash" Groesse="16" /> Retirer</button>
         </div>
     }
 

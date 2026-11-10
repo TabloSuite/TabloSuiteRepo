@@ -805,6 +805,206 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("LeistungFavoriten");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.MobileMoneyAnbieter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Farbe")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<bool>("IstAktiv")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Land")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("Reihenfolge")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Land", "Name")
+                        .IsUnique();
+
+                    b.ToTable("MobileMoneyAnbieter");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("7a0d0001-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#0b5cad",
+                            IstAktiv = true,
+                            Land = "Togo",
+                            Name = "Flooz",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0001-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ffc800",
+                            IstAktiv = true,
+                            Land = "Togo",
+                            Name = "Mixx by Yas",
+                            Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0002-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ffcb05",
+                            IstAktiv = true,
+                            Land = "Bénin",
+                            Name = "MTN MoMo",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0002-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#0b5cad",
+                            IstAktiv = true,
+                            Land = "Bénin",
+                            Name = "Moov Money",
+                            Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0002-0000-4000-8000-000000000003"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#d71920",
+                            IstAktiv = true,
+                            Land = "Bénin",
+                            Name = "Celtiis Cash",
+                            Reihenfolge = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0003-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ff7900",
+                            IstAktiv = true,
+                            Land = "Sénégal",
+                            Name = "Orange Money",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0003-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#1dc8f2",
+                            IstAktiv = true,
+                            Land = "Sénégal",
+                            Name = "Wave",
+                            Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0003-0000-4000-8000-000000000003"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ffc800",
+                            IstAktiv = true,
+                            Land = "Sénégal",
+                            Name = "Mixx by Yas",
+                            Reihenfolge = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0004-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ff7900",
+                            IstAktiv = true,
+                            Land = "Côte d'Ivoire",
+                            Name = "Orange Money",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0004-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ffcb05",
+                            IstAktiv = true,
+                            Land = "Côte d'Ivoire",
+                            Name = "MTN MoMo",
+                            Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0004-0000-4000-8000-000000000003"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#0b5cad",
+                            IstAktiv = true,
+                            Land = "Côte d'Ivoire",
+                            Name = "Moov Money",
+                            Reihenfolge = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0004-0000-4000-8000-000000000004"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#1dc8f2",
+                            IstAktiv = true,
+                            Land = "Côte d'Ivoire",
+                            Name = "Wave",
+                            Reihenfolge = 4
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0005-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ff7900",
+                            IstAktiv = true,
+                            Land = "Burkina Faso",
+                            Name = "Orange Money",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0005-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#0b5cad",
+                            IstAktiv = true,
+                            Land = "Burkina Faso",
+                            Name = "Moov Money",
+                            Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0006-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ff7900",
+                            IstAktiv = true,
+                            Land = "Mali",
+                            Name = "Orange Money",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0006-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#0b5cad",
+                            IstAktiv = true,
+                            Land = "Mali",
+                            Name = "Moov Money",
+                            Reihenfolge = 2
+                        });
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.Verkauf", b =>
                 {
                     b.Property<Guid>("Id")
@@ -851,6 +1051,45 @@ namespace ENote.WebApp.Migrations
                     b.HasIndex("KassenSitzungId");
 
                     b.ToTable("Verkaeufe");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.VerkaufZahlung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AnbieterName")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("Art")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Betrag")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("MobileMoneyAnbieterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Referenz")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("Reihenfolge")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("VerkaufId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MobileMoneyAnbieterId");
+
+                    b.HasIndex("VerkaufId", "Reihenfolge");
+
+                    b.ToTable("VerkaufZahlungen");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.VerkaufsPosition", b =>
@@ -1189,6 +1428,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid?>("LogoAssetId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("MobileMoneyIndividuell")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("NaechstesVertragsIntervall")
                         .HasColumnType("int");
 
@@ -1228,6 +1470,28 @@ namespace ENote.WebApp.Migrations
                         .IsUnique();
 
                     b.ToTable("Salons");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Salons.SalonMobileMoneyAnbieter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnbieterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnbieterId");
+
+                    b.HasIndex("SalonId", "AnbieterId")
+                        .IsUnique();
+
+                    b.ToTable("SalonMobileMoneyAnbieter");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Salons.UserSalon", b =>
@@ -1534,6 +1798,24 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("KassenSitzung");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.VerkaufZahlung", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Kasse.MobileMoneyAnbieter", "MobileMoneyAnbieter")
+                        .WithMany()
+                        .HasForeignKey("MobileMoneyAnbieterId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ENote.Core.DataModels.Kasse.Verkauf", "Verkauf")
+                        .WithMany("Zahlungen")
+                        .HasForeignKey("VerkaufId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MobileMoneyAnbieter");
+
+                    b.Navigation("Verkauf");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.VerkaufsPosition", b =>
                 {
                     b.HasOne("ENote.Core.DataModels.Katalog.Leistung", "Leistung")
@@ -1667,6 +1949,25 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("LogoAsset");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Salons.SalonMobileMoneyAnbieter", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Kasse.MobileMoneyAnbieter", "Anbieter")
+                        .WithMany()
+                        .HasForeignKey("AnbieterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ENote.Core.DataModels.Salons.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Anbieter");
+
+                    b.Navigation("Salon");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Salons.UserSalon", b =>
                 {
                     b.HasOne("ENote.Core.DataModels.Identity.AppUser", "AppUser")
@@ -1747,6 +2048,8 @@ namespace ENote.WebApp.Migrations
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.Verkauf", b =>
                 {
                     b.Navigation("Positionen");
+
+                    b.Navigation("Zahlungen");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Salons.Salon", b =>

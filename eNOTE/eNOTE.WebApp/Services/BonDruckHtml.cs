@@ -33,9 +33,12 @@ public static class BonDruckHtml
             ? $"<tr><td>Remise</td><td class=\"r rabatt\">-{verkauf.RabattSumme:N0} F</td></tr>"
             : string.Empty;
 
-        var zahlung = verkauf.ZahlungsArt == ZahlungsArt.Bar ? "Espèces" : "Carte";
-        var rueck = verkauf.ZahlungsArt == ZahlungsArt.Bar && verkauf.Gegeben is not null
-            ? $"<div class=\"meta\">Reçu : {verkauf.Gegeben:N0} F &nbsp;·&nbsp; Monnaie : {verkauf.Rueckgeld:N0} F</div>"
+        var anteile = ENote.Core.Services.Kasse.KassenRechner.Anteile(verkauf);
+        var zahlung = anteile.Count == 1
+            ? E(ZahlungsTexte.Name(anteile[0]))
+            : string.Join(" + ", anteile.Select(a => $"{E(ZahlungsTexte.Name(a))} {a.Betrag:N0} F"));
+        var rueck = verkauf.Gegeben is not null
+            ? $"<div class=\"meta\">Espèces reçues : {verkauf.Gegeben:N0} F &nbsp;·&nbsp; Monnaie : {verkauf.Rueckgeld:N0} F</div>"
             : string.Empty;
 
         var slogan = string.IsNullOrWhiteSpace(salon.Slogan) ? string.Empty : $"<div class=\"c slogan\">« {E(salon.Slogan)} »</div>";
