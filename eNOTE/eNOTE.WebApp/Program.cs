@@ -133,7 +133,10 @@ if (administration is null)
     builder.Services.AddScoped<GeraetFavoritService>();
     builder.Services.AddScoped<ToastService>();
     builder.Services.AddScoped<MedienZugriff>();
+    builder.Services.AddHttpClient("postmark", c => c.Timeout = TimeSpan.FromSeconds(20));
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.EmailService>();
+    builder.Services.AddScoped<ENote.WebApp.Services.Mails.MailBenachrichtigungen>();
+    builder.Services.AddHostedService<ENote.WebApp.Services.Mails.MailVersandDienst>();
     builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
 }
 else

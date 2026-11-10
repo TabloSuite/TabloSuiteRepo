@@ -167,6 +167,7 @@
                     new("/admin/facturation", "Facturation", "receipt")
                 };
                 if (istSuperAdmin) admin.Add(new("/admin/journaux", "Journaux", "log"));
+                if (istSuperAdmin) admin.Add(new("/admin/emails", "E-mails", "mail"));
                 gruppen.Add(new("Plateforme", admin));
             }
 

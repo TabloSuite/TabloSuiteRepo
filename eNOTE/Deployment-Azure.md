@@ -1,4 +1,4 @@
-# eNOTE – sichere Azure-Deployment-Vorbereitung
+﻿# eNOTE – sichere Azure-Deployment-Vorbereitung
 
 ## Status und Grenzen
 
@@ -22,7 +22,7 @@ Empfohlen ist der bereits dokumentierte **Linux Azure App Service mit .NET 10 un
 
 Die vorhandene ASP.NET-Core-Identity-Anmeldung bleibt bestehen. Managed Identity ist im Produktionscode bereits für Blob und SQL vorgesehen und bedeutet **keine Umstellung der Benutzeranmeldung auf Entra ID**. Serilog bleibt unverändert; keine pauschale OpenTelemetry-, Key-Vault- oder Authentifizierungsmigration. Der historische Plan unter `.appmod/.migration/` wird nicht wiederaufgenommen: seine Forderung nach Entfernen des lokalen Development-Speichers widerspricht den aktuellen Vorgaben. Kein Modernize, Branchwechsel oder automatischer Commit.
 
-**E-Mail bleibt unverändert.** IONOS/Postmark erst später nach Aktivierung von `contact@tablosuite.com` einrichten. Kein Azure Communication Email, kein Domaintransfer und keine neue Domainregistrierung. Ohne funktionierenden vorhandenen SMTP-Versand ist die E-Mail-Passwortwiederherstellung nicht betriebsbereit; das ist vor öffentlicher Nutzung bewusst zu klären, nicht durch einen ungefragten Dienstwechsel zu umgehen.
+**E-Mail:** Versand über **Postmark** (HTTP-API, Domain `tablosuite.com` mit DKIM und Return-Path verifiziert); das Postfach `contact@tablosuite.com` bleibt bei **IONOS** (MX unverändert) und empfängt Antworten. Kein Azure Communication Email, kein Domaintransfer. Details siehe Abschnitt „E-Mail (Postmark)“ unten.
 
 ## 1. Speicher und Authentifizierung
 
@@ -70,7 +70,14 @@ Folgende Einstellungen erst nach Behebung der Build-/Modellblockaden setzen bzw.
 | `DataProtection__ApplicationName` | `eNOTE` – bei Folgeversionen unverändert lassen |
 | `DataProtection__KeysPath` | `/home/data/enote/keys` |
 | `WEBSITES_ENABLE_APP_SERVICE_STORAGE` | `true`; Persistenz von `/home` sicherstellen |
-| `App__PublicBaseUrl` | `https://enote.tablosuite.com`; vorhandene feste Basisadresse für spätere Wiederherstellungslinks, keine Aktivierung von E-Mail |
+| `App__PublicBaseUrl` | `https://enote.tablosuite.com` – Basis für alle Links in E-Mails (Passwort, Abonnement, Admin) |
+| `Mail__Provider` | `Postmark` |
+| `Mail__PostmarkServerToken` | **Geheim** – Postmark → Server → *API Tokens* → „Server API token“. Als App Setting (oder Key-Vault-Referenz), nie ins Repository |
+| `Mail__Absender` | `contact@tablosuite.com` (jede Adresse der verifizierten Domain ist möglich) |
+| `Mail__AbsenderName` | `eNOTE · TabloSuite` |
+| `Mail__AntwortAn` | `contact@tablosuite.com` (Antworten landen im IONOS-Postfach) |
+| `Mail__AdminEmpfaenger` | `contact@tablosuite.com` – Hinweise „Nouvel établissement“ und „Paiement signalé“ |
+| `Mail__MessageStream` | `outbound` (Standard-Transaktionsstream in Postmark) |
 
 Zusätzlich vor Freigabe am bestehenden App Service prüfen: .NET-10-Linux-Runtime, **Always On**, funktionsfähige WebSocket-Verbindungen für Blazor/SignalR, eine Instanz und HTTPS Only. Bei späterer Skalierung sind Circuits, Sitzungsaﬃnität und gemeinsamer Schlüsselring neu zu planen. `AllowedHosts` auf die eigene Domain und den **tatsächlich bestätigten** Azure-Standardhostname begrenzen; keinen unbestätigten Standardhostname raten. Keine dieser Einstellungen wird durch das lokale Publish-Profil in Azure gesetzt.
 
@@ -93,6 +100,15 @@ Cookies, Identity-Tokens und verschlüsselte PIN-Daten benötigen denselben Schl
 Der Ordner muss persistent und nur für den App-Prozess/administrativ berechtigte Betreiber zugänglich sein. Nicht in ein Publish-Paket aufnehmen, öffentlich bereitstellen, löschen oder bei jedem Release neu erzeugen. Falls bereits produktive geschützte Daten existieren, den bisherigen Schlüsselring und ApplicationName erhalten bzw. kontrolliert übernehmen; neue Schlüssel machen alte Daten nicht entschlüsselbar.
 
 Es wird kein zusätzlicher Key-Vault-/Blob-Schlüsselring-Dienst eingeführt. Die Schlüsseldateien erhalten hier keine zusätzliche XML-Verschlüsselung durch eine App-Zertifikatkonfiguration; Schutz und Verschlüsselung des persistenten App-Service-Speichers sowie restriktiver Betreiberzugriff sind daher Voraussetzung. Ein entsprechender DataProtection-Laufzeithinweis ist nicht durch Warnungsunterdrückung versteckt. Das beschriebene Betriebsmodell gilt für die genannte **eine Instanz**; vor späterer Skalierung oder Slotwechseln Schlüsselring-/Cookie-Verhalten erneut planen.
+
+### E-Mail (Postmark)
+
+1. **Postmark-Konto freischalten lassen:** Neue Konten sind im *Test-/Approval-Modus* und dürfen nur an Adressen der eigenen Domain senden. In Postmark „Request approval“ stellen (kurze Beschreibung: transaktionale Mails einer Kassen-App, keine Werbung). Der Gratis-Plan umfasst 100 Mails/Monat – bei mehreren Läden auf einen bezahlten Plan wechseln.
+2. **DNS bei IONOS:** DKIM und Return-Path sind verifiziert (✓). Empfohlen zusätzlich ein DMARC-Eintrag: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:contact@tablosuite.com` (später auf `p=quarantine` verschärfen). SPF muss für Postmark nicht geändert werden (Return-Path-Domain übernimmt das); den bestehenden IONOS-SPF/MX nicht anfassen.
+3. **App Settings** wie oben setzen und die App neu starten.
+4. **Prüfen:** Als SuperAdmin `Administration → E-mails` öffnen: Status muss „Envoi actif via Postmark“ zeigen. Eine Test-Mail an eine externe Adresse (z. B. Gmail) senden und Posteingang/Spam prüfen. Fehler stehen im Historique (Postmark-Fehlercode + Meldung) und im Postmark-Dashboard unter *Activity*.
+
+Verhalten: Jede Mail wird zuerst in `MailNachrichten` gespeichert und sofort versendet; fehlgeschlagene Mails wiederholt der Hintergrunddienst alle 5 Minuten (max. 5 Versuche, 3 Tage). Stündlich prüft er Rechnungen (neue Rechnung, Erinnerung 3 Tage vor der Kassensperre, Sperrhinweis) und das Probe-Ende (7 Tage vorher) – jeweils einmal pro Datensatz. Rechnungen, die beim ersten Einschalten älter als 3 Tage sind, lösen keine Rechnungsmail mehr aus. Ohne Konfiguration bleiben Mails nur in der Queue.
 
 ## 4. Private Medien und Rechte
 
@@ -158,7 +174,7 @@ Kein `az webapp deploy`, kein automatischer DB-Startschritt und keine Veröffent
 
 1. Vorhandenen App Service, Subscription, Resource Group, Region, Tarif/Kosten und dessen echten Standardhostname bestätigen. Keine zweite App oder neuen Plan vorsorglich anlegen.
 2. Privaten Container, Runtime-MI-Zugriff, SQL-Firewall und tatsächliches Schema separat bestätigen; keine DB-Resets. Eine Datenbankänderung benötigt eine eigene Freigabe für das genaue Ziel.
-3. Bei Freigabe DNS-CNAME `enote` auf den bestätigten App-Service-Standardhostname und TXT `asuid.enote` auf dessen tatsächliche Domain-Verifizierungs-ID setzen. Keine MX-, SPF-, DKIM- oder anderen E-Mail-Einträge ändern. Bei IONOS nur dann konfigurieren, wenn IONOS tatsächlich der autoritative DNS-Verwalter ist.
+3. Bei Freigabe DNS-CNAME `enote` auf den bestätigten App-Service-Standardhostname und TXT `asuid.enote` auf dessen tatsächliche Domain-Verifizierungs-ID setzen. Keine MX- oder SPF-Einträge ändern (DKIM/Return-Path für Postmark sind bereits gesetzt, DMARC siehe „E-Mail (Postmark)“). Bei IONOS nur dann konfigurieren, wenn IONOS tatsächlich der autoritative DNS-Verwalter ist.
 4. Eigene Domain am bestehenden App Service binden und ein unterstütztes App-Service-Managed-Certificate mit SNI/TLS aktivieren; Voraussetzungen und mögliche Kosten vorher prüfen. HTTPS Only und Weiterleitung kontrollieren.
 5. Erst nach erfolgreichem Build/Tests, Linux-PDF-/Runtimevalidierung, bestätigter Konfiguration und ausdrücklicher Veröffentlichungsfreigabe das lokale Paket hochladen. Externe Prüfung nur mit gesondertem Auftrag; keinen Browser-Praxistest eigenständig starten.
 

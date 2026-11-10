@@ -18,6 +18,9 @@ public class AdminService(
     ILogger<AdminService> logger,
     Mails.EmailService emailService)
 {
+    /// <summary>Fachliche Mails (optional – in Tests ohne Service-Provider nicht vorhanden).</summary>
+    private Mails.MailBenachrichtigungen? MailDienst => serviceProvider?.GetService(typeof(Mails.MailBenachrichtigungen)) as Mails.MailBenachrichtigungen;
+
     // UserManager lazy holen, um ObjectDisposedException zu vermeiden
     // (UserManager ist scoped; wenn der Scope geschlossen ist, wäre er disposed).
     private UserManager<AppUser> UserManager => serviceProvider.GetRequiredService<UserManager<AppUser>>();
@@ -159,7 +162,8 @@ public class AdminService(
                     await emailService.SendeAsync(
                         besitzer.Email,
                         "Ton inscription a été validée",
-                        Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", "https://enote.tablosuite.com"),
+                        Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", MailDienst?.AppUrl ?? "https://enote.tablosuite.com"),
+                        "inscription-validee",
                         cancellationToken);
                 }
             }
@@ -180,9 +184,12 @@ public class AdminService(
             return false;
         }
 
+        var geaendert = salon.IstAktiv != aktiv;
         salon.IstAktiv = aktiv;
         salon.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+        if (geaendert && MailDienst is { } m)
+            await m.LadenStatusAsync(salonId, aktiv, cancellationToken);
         return true;
     }
 
@@ -418,6 +425,22 @@ public class AdminService(
             KannRabatteVerwalten = true
         });
         await db.SaveChangesAsync(cancellationToken);
+
+        // Zugangsmail an den neuen Besitzer – mit Link zum Festlegen des eigenen Passworts.
+        if (MailDienst is { } m && !string.IsNullOrWhiteSpace(besitzer.Email))
+        {
+            string? link = null;
+            try
+            {
+                var token = await UserManager.GeneratePasswordResetTokenAsync(besitzer);
+                link = $"{m.AppUrl}/auth/reinitialiser?compte={besitzer.Id}&code={Uri.EscapeDataString(token)}";
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Passwort-Link für neuen Besitzer konnte nicht erzeugt werden.");
+            }
+            await m.KontoErstelltAsync(besitzer.Email, besitzer.Vorname, besitzer.UserName ?? "", salon.Name, link, cancellationToken);
+        }
 
         return (true, null, besitzer);
     }

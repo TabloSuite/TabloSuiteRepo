@@ -54,6 +54,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ErinnerungMailUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("FaelligUtc")
                         .HasColumnType("datetime2");
 
@@ -79,8 +82,14 @@ namespace ENote.WebApp.Migrations
                     b.Property<decimal>("RabattProzentSnapshot")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime?>("RechnungMailUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("SalonId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("SperrMailUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ZahlungBestaetigtUtc")
                         .HasColumnType("datetime2");
@@ -716,16 +725,22 @@ namespace ENote.WebApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AnbieterId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Betreff")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Empfaenger")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
 
                     b.Property<DateTime?>("GesendetUtc")
                         .HasColumnType("datetime2");
@@ -737,7 +752,20 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("IstGesendet")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Kategorie")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("LetzterFehler")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Versuche")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("IstGesendet", "CreatedAtUtc");
 
                     b.ToTable("MailNachrichten");
                 });
@@ -1571,6 +1599,9 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime?>("ProbeBisUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProbeEndeMailUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Slogan")

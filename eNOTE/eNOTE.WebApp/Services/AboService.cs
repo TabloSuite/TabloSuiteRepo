@@ -9,7 +9,7 @@ namespace ENote.WebApp.Services;
 /// Abo-Preise (eine Regel für Besitzer und Admin) und Zahlungsbestätigung durch den SuperAdmin.
 /// Perioden entstehen ausschließlich automatisch über <see cref="VertragsService"/>.
 /// </summary>
-public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
+public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory, Mails.MailBenachrichtigungen? mails = null)
 {
     /// <summary>Aktuelles (letztes) Abo eines Salons.</summary>
     public async Task<NutzungsAbo?> GetAktuellesAboAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -121,6 +121,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
             return false;
         }
 
+        var vorher = abo.ZahlungStatus;
         abo.ZahlungStatus = status;
         if (status == AboZahlungStatus.Bestaetigt)
         {
@@ -128,6 +129,8 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        if (mails is not null && vorher != status)
+            await mails.ZahlungsStatusAsync(abo.Id, status, cancellationToken);
         return true;
     }
 

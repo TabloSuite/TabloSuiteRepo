@@ -10,4 +10,16 @@ public class MailNachricht
     public bool IstGesendet { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? GesendetUtc { get; set; }
+
+    /// <summary>Art der Nachricht (z. B. « facture », « bienvenue ») – Postmark-Tag und Filter in der Übersicht.</summary>
+    public string? Kategorie { get; set; }
+
+    /// <summary>Anzahl Versandversuche (Wiederholung durch den Hintergrunddienst, max. 5).</summary>
+    public int Versuche { get; set; }
+
+    /// <summary>Letzte Fehlermeldung des Versanddienstes (gekürzt).</summary>
+    public string? LetzterFehler { get; set; }
+
+    /// <summary>Kennung beim Anbieter (Postmark MessageID) zur Nachverfolgung.</summary>
+    public string? AnbieterId { get; set; }
 }

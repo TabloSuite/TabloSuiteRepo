@@ -55,4 +55,12 @@ public class NutzungsAbo
     public string? ZahlungsNotiz { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    // ---------- E-Mail-Benachrichtigungen (jeweils höchstens einmal) ----------
+    /// <summary>Mail « Nouvelle facture » versendet.</summary>
+    public DateTime? RechnungMailUtc { get; set; }
+    /// <summary>Erinnerung kurz vor der Kassensperre versendet.</summary>
+    public DateTime? ErinnerungMailUtc { get; set; }
+    /// <summary>Hinweis « Caisse suspendue » versendet.</summary>
+    public DateTime? SperrMailUtc { get; set; }
 }

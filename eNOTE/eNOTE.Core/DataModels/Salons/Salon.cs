@@ -36,6 +36,9 @@ public class Salon
     /// </summary>
     public DateTime? ProbeBisUtc { get; set; }
 
+    /// <summary>Hinweis « Fin de l'essai gratuit » (7 Tage vorher) versendet.</summary>
+    public DateTime? ProbeEndeMailUtc { get; set; }
+
     /// <summary>Individueller monatlicher Nutzungspreis; null = globaler Standard gilt.</summary>
     public decimal? IndividuellerMonatsPreis { get; set; }
 

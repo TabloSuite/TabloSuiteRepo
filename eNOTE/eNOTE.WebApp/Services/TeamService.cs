@@ -14,7 +14,8 @@ namespace ENote.WebApp.Services;
 public class TeamService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     UserManager<AppUser> userManager,
-    ILogger<TeamService> logger)
+    ILogger<TeamService> logger,
+    Mails.MailBenachrichtigungen? mails = null)
 {
     public record TeamMitglied(
         Guid UserSalonId,
@@ -134,6 +135,9 @@ public class TeamService(
             KassenPinHash = KassenPinService.HashPin(kassenPin)
         });
         await db.SaveChangesAsync(cancellationToken);
+
+        if (mails is not null)
+            await mails.KassiererAngelegtAsync(bereinigtEmail, kassierer.Vorname, kassierer.UserName ?? "", salonId, cancellationToken);
 
         return (true, null, kassierer);
     }

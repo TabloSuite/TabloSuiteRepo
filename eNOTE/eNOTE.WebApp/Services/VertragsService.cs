@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Services;
 
-public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, TimeProvider zeit)
+public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, TimeProvider zeit, Mails.MailBenachrichtigungen? mails = null)
 {
     public record ZahlungEintrag(Guid Id, Guid SalonId, string Laden, string Besitzer, AboIntervall Intervall,
         DateTime Von, DateTime Bis, decimal Betrag, AboZahlungStatus Status,
@@ -310,6 +310,8 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         db.VertragsHistorien.Add(new VertragsHistorie { NutzungsAboId = abo.Id, BenutzerId = user,
             ZeitpunktUtc = zeit.GetUtcNow().UtcDateTime, Aktion = "Virement signalé", Begruendung = abo.ZahlungsNotiz });
         await db.SaveChangesAsync(ct);
+        if (mails is not null)
+            await mails.ZahlungGemeldetAsync(abo.Id, ct);
     }
 
     public async Task<List<ZahlungEintrag>> GetZahlungenAsync(Guid user, DateTime von, DateTime bis, CancellationToken ct = default)

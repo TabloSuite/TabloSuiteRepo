@@ -2498,3 +2498,40 @@ html[data-theme="dark"] .pr-bild { color: color-mix(in srgb, var(--kat) 50%, #ff
 html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe) 50%, #fff); }
 .pr-kat-neu .enote-input-inline { width: 0; }
 .pr-kat-neu .enote-btn, .pr-kat-neu button { flex-shrink: 0; }
+
+/* ---------- Administration : E-mails ---------- */
+.em-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.em-karte { padding: 1.2rem 1.3rem; margin-bottom: 1rem; }
+.em-grid .em-karte { margin-bottom: 0; }
+.em-karte h2 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; font-size: 1.05rem; }
+.em-kopf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.em-status { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border-radius: var(--enote-radius); font-weight: 700; margin-bottom: .8rem; }
+.em-status.ok { background: var(--enote-success-soft); color: var(--enote-success); }
+.em-status.aus { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+.em-werte { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .35rem 1rem; margin: 0; font-size: .9rem; }
+.em-werte dt { color: var(--enote-text-muted); }
+.em-werte dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.em-test { display: flex; gap: .5rem; }
+.em-test .enote-input { flex: 1; min-width: 0; max-width: none; }
+.em-ergebnis { margin: .7rem 0 0; font-weight: 600; }
+.em-ergebnis.ok { color: var(--enote-success); }
+.em-ergebnis.fehler { color: var(--enote-danger-text); }
+.em-vorlagen { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; }
+.em-liste { display: grid; gap: .3rem; align-content: start; max-height: 38rem; overflow-y: auto; }
+.em-vorlage { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px solid transparent; border-radius: var(--enote-radius); background: none; color: var(--enote-text); font: inherit; text-align: left; cursor: pointer; }
+.em-vorlage:hover { background: var(--enote-surface-2); }
+.em-vorlage.aktiv { border-color: var(--enote-primary); background: var(--enote-primary-soft); }
+.em-vorlage small { color: var(--enote-text-muted); font-size: .78rem; }
+.em-vorschau { width: 100%; height: 38rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: #eef2f7; }
+.em-verlauf { display: grid; gap: .35rem; }
+.em-zeile { display: flex; align-items: center; gap: .75rem; padding: .6rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); }
+.em-zeile-info { display: grid; min-width: 0; flex: 1; }
+.em-zeile-info strong, .em-zeile-info small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-zeile-info small { color: var(--enote-text-muted); }
+.em-fehler { color: var(--enote-danger-text) !important; white-space: normal !important; }
+.em-punkt { width: .6rem; height: .6rem; border-radius: 50%; flex-shrink: 0; }
+.em-punkt.ok { background: #0d9488; } .em-punkt.warte { background: #f59e0b; } .em-punkt.fehler { background: #dc2626; }
+.em-tag { font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; white-space: nowrap; }
+.em-tag.ok { background: var(--enote-success-soft); color: var(--enote-success); }
+.em-tag.warte { background: var(--enote-warning-soft); color: var(--enote-warning-text); }
+@media (max-width: 860px) { .em-vorlagen { grid-template-columns: minmax(0, 1fr); } .em-liste { max-height: 14rem; } }

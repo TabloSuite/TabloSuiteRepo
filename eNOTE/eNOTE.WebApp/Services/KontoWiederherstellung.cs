@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace ENote.WebApp.Services;
 
-public class KontoWiederherstellung(UserManager<AppUser> users, IConfiguration configuration, ILogger<KontoWiederherstellung> logger, EmailService emailService)
+public class KontoWiederherstellung(UserManager<AppUser> users, IConfiguration configuration, ILogger<KontoWiederherstellung> logger, EmailService emailService, MailBenachrichtigungen? mails = null)
 {
     public async Task AnfordernAsync(string pseudonym)
     {
@@ -20,7 +20,7 @@ public class KontoWiederherstellung(UserManager<AppUser> users, IConfiguration c
         }
         var token = await users.GeneratePasswordResetTokenAsync(user);
         var link = new Uri(basis, $"/auth/reinitialiser?compte={user.Id}&code={Uri.EscapeDataString(token)}").AbsoluteUri;
-        await emailService.SendeAsync(user.Email, "Réinitialisation du mot de passe", TabloSuiteMails.Reinitialisation(user.UserName ?? "", link));
+        await emailService.SendeAsync(user.Email, "Réinitialisation du mot de passe", TabloSuiteMails.Reinitialisation(user.UserName ?? "", link), "reinitialisation");
     }
 
     public async Task<bool> ReinitialiseAsync(Guid id, string token, string passwort)
@@ -31,6 +31,9 @@ public class KontoWiederherstellung(UserManager<AppUser> users, IConfiguration c
         if (!result.Succeeded) return false;
         user.ActiveSessionId = null;
         user.EmailConfirmed = true;
-        return (await users.UpdateAsync(user)).Succeeded;
+        var ok = (await users.UpdateAsync(user)).Succeeded;
+        if (ok && mails is not null)
+            await mails.PasswortGeaendertAsync(user.Id);
+        return ok;
     }
 }

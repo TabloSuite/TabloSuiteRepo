@@ -182,6 +182,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Ignore(v => v.IstStorno);
         });
 
+        builder.Entity<MailNachricht>(entity =>
+        {
+            entity.Property(m => m.Empfaenger).HasMaxLength(320);
+            entity.Property(m => m.Betreff).HasMaxLength(300);
+            entity.Property(m => m.Kategorie).HasMaxLength(50);
+            entity.Property(m => m.LetzterFehler).HasMaxLength(1000);
+            entity.Property(m => m.AnbieterId).HasMaxLength(100);
+            entity.HasIndex(m => new { m.IstGesendet, m.CreatedAtUtc });
+        });
+
         builder.Entity<LagerAbgang>(entity =>
         {
             entity.Property(a => a.Menge).HasPrecision(18, 2);

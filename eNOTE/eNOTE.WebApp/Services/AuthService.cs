@@ -17,7 +17,8 @@ public class AuthService(
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
     ILogger<AuthService> logger,
-    Mails.EmailService emailService)
+    Mails.EmailService emailService,
+    Mails.MailBenachrichtigungen? mails = null)
 {
     private const string AppName = "eNOTE";
     private const string AppUrl = "https://enote.tablosuite.com";
@@ -106,6 +107,9 @@ public class AuthService(
             var fehler = string.Join(" ", ergebnis.Errors.Select(e => e.Description));
             return (false, string.IsNullOrWhiteSpace(fehler) ? "Le changement de mot de passe a échoué." : fehler);
         }
+
+        if (mails is not null)
+            await mails.PasswortGeaendertAsync(user.Id, cancellationToken);
 
         // Sitzung rotieren, damit andere Geräte abgemeldet werden.
         user.ActiveSessionId = Guid.NewGuid();
@@ -213,6 +217,10 @@ public class AuthService(
         {
             logger.LogWarning(ex, "Willkommensmail an {Email} fehlgeschlagen.", bereinigtEmail);
         }
+
+        // Info an das TabloSuite-Team: neues Établissement wartet auf Validierung.
+        if (mails is not null)
+            await mails.NeueRegistrierungAsync(bereinigtSalon, $"{vorname.Trim()} {nachname.Trim()}", bereinigtEmail, null, salonStandort?.Trim(), cancellationToken);
 
         return (true, string.Empty);
     }
