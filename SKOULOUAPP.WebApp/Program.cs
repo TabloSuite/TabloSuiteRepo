@@ -215,6 +215,7 @@ builder.Services.AddTransient<SkoulouApp.WebApp.Services.SchulLogoService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.AnwesenheitsService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.DirektionsCockpitService>();
 builder.Services.AddScoped<SkoulouApp.WebApp.Services.QuittungService>();
+builder.Services.AddScoped<SkoulouApp.WebApp.Services.SchuelerkartenService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPdfService>();
 builder.Services.AddTransient<SkoulouApp.WebApp.Services.BulletinPruefungService>();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bulletin-verification", context =>
@@ -401,6 +402,16 @@ app.MapGet("/finanzen/rapport/pdf-file", async (
     var bytes = pdfService.Generate(bericht);
     return Results.File(bytes, "application/pdf", fileDownloadName: $"rapport-financier-{schoolId:N}-{DateTime.UtcNow:yyyyMMdd}.pdf");
 }).RequireAuthorization(policy => policy.RequireRole(Rollen.SuperAdmin, Rollen.ProduktOwner, Rollen.SchulLeiter, Rollen.Koordinator));
+
+// Cartes d'élève einer Klasse (Direktion/Koordination der eigenen Schule).
+app.MapGet("/direction/cartes/{klasseId:guid}", async (
+    Guid klasseId, ClaimsPrincipal user, SkoulouApp.WebApp.Services.SchuelerkartenService karten, CancellationToken cancellationToken) =>
+{
+    if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        return Results.Unauthorized();
+    var ergebnis = await karten.KlasseAsync(userId, klasseId, cancellationToken);
+    return ergebnis is null ? Results.NotFound() : Results.File(ergebnis.Value.Pdf, "application/pdf");
+}).RequireAuthorization(policy => policy.RequireRole(Rollen.SchulLeiter, Rollen.Koordinator));
 
 // Reçu de paiement (Schulgebühren): Direktion/Koordination mit Finanzrecht, Plattform lesend, Schüler für eigene Zahlungen.
 app.MapGet("/finanzen/recu/{zahlungId:guid}", async (

@@ -26,7 +26,8 @@ public sealed record DirektionsCockpit(
     decimal SchulgebuehrenEingenommen,
     decimal SchulgebuehrenOffen,
     decimal Kontostand,
-    int LaufendeZyklen);
+    int LaufendeZyklen,
+    IReadOnlyList<(Guid Id, string Code)> KlassenListe);
 
 public sealed class DirektionsCockpitService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
 {
@@ -55,7 +56,10 @@ public sealed class DirektionsCockpitService(IDbContextFactory<ApplicationDbCont
         var schuelerAktiv = await profile.CountAsync(profil => !profil.AppUser.IsBlocked, cancellationToken);
         var anmeldungenOffen = await profile.CountAsync(profil => profil.AppUser.IsSelfRegistered && profil.AppUser.IsBlocked, cancellationToken);
         var gesperrt = await profile.CountAsync(profil => profil.AppUser.IsBlocked && !profil.AppUser.IsSelfRegistered, cancellationToken);
-        var klassen = await db.Set<Klasse>().AsNoTracking().CountAsync(klasse => klasse.SchoolId == schule.Id && !klasse.IstSystemNiveau, cancellationToken);
+        var klassenListe = (await db.Set<Klasse>().AsNoTracking().Where(klasse => klasse.SchoolId == schule.Id && !klasse.IstSystemNiveau)
+            .OrderBy(klasse => klasse.Code).Select(klasse => new { klasse.Id, klasse.Code }).ToListAsync(cancellationToken))
+            .Select(klasse => (klasse.Id, klasse.Code)).ToList();
+        var klassen = klassenListe.Count;
         var lehrkraefte = lehrerRolleID is Guid rolleID
             ? await db.UserSchools.AsNoTracking().CountAsync(link => link.SchoolId == schule.Id && link.CanManageStudents && !link.IstPlattformZuordnung
                 && db.UserRoles.Any(benutzerRolle => benutzerRolle.UserId == link.AppUserId && benutzerRolle.RoleId == rolleID), cancellationToken)
@@ -91,6 +95,6 @@ public sealed class DirektionsCockpitService(IDbContextFactory<ApplicationDbCont
         }
 
         return new DirektionsCockpit(schule.Id, schule.Name, schule.City, schuljahr?.Bezeichnung, schuelerAktiv, anmeldungenOffen, gesperrt,
-            klassen, lehrkraefte, abwesend, verspaetet, erfasst, bulletins, finanzenSichtbar, eingenommen, offen, kontostand, laufendeZyklen);
+            klassen, lehrkraefte, abwesend, verspaetet, erfasst, bulletins, finanzenSichtbar, eingenommen, offen, kontostand, laufendeZyklen, klassenListe);
     }
 }

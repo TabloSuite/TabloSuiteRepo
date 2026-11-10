@@ -119,6 +119,19 @@
             </article>
         </section>
 
+        @if (cockpit.KlassenListe.Count > 0)
+        {
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-label="Documents">
+                <h2 class="mb-0 flex items-center gap-2 text-base font-bold text-slate-900"><Icon Name="id-card" Groesse="18" />Cartes d'élève</h2>
+                <p class="mb-0 mt-1 text-sm text-slate-500">Une feuille A4 avec dix cartes à découper par classe : photo de profil, matricule et QR code.</p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,18rem)_auto] sm:items-end">
+                    <ModernDropdown TValue="Guid" @bind-Value="kartenKlasseID" Options="KlassenOptionen" Label="Classe" Searchable="true" />
+                    <a href="@(kartenKlasseID == Guid.Empty ? null : $"direction/cartes/{kartenKlasseID}")" target="_blank" rel="noopener"
+                       class="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold no-underline @(kartenKlasseID == Guid.Empty ? "pointer-events-none bg-slate-100 text-slate-400" : "bg-blue-700 text-white")"><Icon Name="printer" Groesse="16" />Imprimer les cartes</a>
+                </div>
+            </section>
+        }
+
         <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Accès rapides">
             @foreach (var (icon, titel, link) in Schnellzugriffe)
             {

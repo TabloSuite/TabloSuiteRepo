@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
+using SkoulouApp.WebApp.Components.Shared;
 using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -16,6 +17,9 @@ public partial class DirektionsCockpit
 
     private SkoulouApp.WebApp.Services.DirektionsCockpit? cockpit;
     private bool laedt = true;
+    private Guid kartenKlasseID;
+
+    private List<ModernDropdownOption<Guid>> KlassenOptionen => cockpit?.KlassenListe.Select(k => new ModernDropdownOption<Guid>(k.Id, k.Code)).ToList() ?? [];
 
     private static readonly (string Icon, string Titel, string Link)[] Schnellzugriffe =
     [
