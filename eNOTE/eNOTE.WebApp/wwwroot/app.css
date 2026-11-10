@@ -2727,3 +2727,10 @@ html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe)
 }
 @media (prefers-reduced-motion: reduce) { .lp-reveal, .lp-bild img { transition: none; } }
 .enote-public:has(.lp) { overflow-x: clip; background: radial-gradient(48rem 30rem at 82% 14rem, color-mix(in srgb, #2547b8 13%, transparent), transparent 72%) no-repeat, radial-gradient(36rem 26rem at 6% 36rem, color-mix(in srgb, #0d9488 11%, transparent), transparent 72%) no-repeat; }
+
+/* Film-Abschnitt der Startseite */
+.lp-film { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+.lp-film-text p { margin: 0; font-size: 1.08rem; line-height: 1.65; color: var(--enote-text-muted); }
+.lp-film-rahmen { padding: .6rem; border-radius: 1.4rem; background: #0f172a; box-shadow: 0 34px 80px rgba(16, 26, 51, .26); }
+.lp-film-rahmen video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: .9rem; background: #0f172a; }
+@media (max-width: 980px) { .lp-film { grid-template-columns: minmax(0, 1fr); } }

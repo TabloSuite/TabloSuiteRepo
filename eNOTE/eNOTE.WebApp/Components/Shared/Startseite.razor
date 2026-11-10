@@ -63,6 +63,21 @@
         </div>
     </section>
 
+    @* ---------- Film ---------- *@
+    @if (HatVideo)
+    {
+        <section class="lp-film lp-reveal" aria-label="Vidéo de présentation">
+            <div class="lp-film-text">
+                <span class="lp-kapitel"><Icon Name="monitor" Groesse="18" /> En moins d'une minute</span>
+                <h2>Une journée au salon, avec eNOTE</h2>
+                <p>Du premier client du matin à la clôture du soir : encaisser, payer par Mobile Money, imprimer le reçu et retrouver une caisse juste.</p>
+            </div>
+            <div class="lp-film-rahmen">
+                <video src="videos/enote-presentation.mp4" poster="videos/enote-presentation.jpg" controls preload="metadata" playsinline></video>
+            </div>
+        </section>
+    }
+
     @* ---------- Funktionen ---------- *@
     <div id="fonctions" class="lp-anker"></div>
     <section class="lp-funktion">
@@ -233,7 +248,7 @@
     <div class="lp-video-overlay" @onclick="() => videoOffen = false">
         <div class="lp-video-box" @onclick:stopPropagation="true">
             <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => videoOffen = false"><Icon Name="x" Groesse="20" /></button>
-            <video src="videos/enote-presentation.mp4" controls autoplay playsinline poster="img/landing/caisse.webp"></video>
+            <video src="videos/enote-presentation.mp4" controls autoplay playsinline poster="videos/enote-presentation.jpg"></video>
         </div>
     </div>
 }
