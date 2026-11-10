@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Kasse;
+﻿using ENote.Core.DataModels.Kasse;
 using ENote.Core.Services.Kasse;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
@@ -99,6 +99,7 @@ public class StornoService(
             ZeitUtc = DateTime.UtcNow,
             ZahlungsArt = weg.Art,
             StornoVonVerkaufId = original.Id,
+            KundeId = original.KundeId,
             StornoGrund = grund.Length > 300 ? grund[..300] : grund,
             StornoErfasstVonName = await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(ct) ?? "—",
             KarteZahlungBestaetigt = weg.Art == ZahlungsArt.Karte

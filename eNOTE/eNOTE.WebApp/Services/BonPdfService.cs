@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Kasse;
+﻿using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Salons;
 using QRCoder;
 using QuestPDF.Fluent;
@@ -69,6 +69,8 @@ public static class BonPdfService
                     col.Item().Text($"Reçu n° {verkauf.Id.ToString()[..8].ToUpperInvariant()}").FontSize(8);
                     col.Item().Text(verkauf.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")).FontSize(8);
                     col.Item().Text($"Caissier : {kassiererName}").FontSize(8);
+                    if (verkauf.Kunde is { } kunde)
+                        col.Item().Text($"Client : {kunde.Name}").FontSize(8);
 
                     col.Item().PaddingTop(4).LineHorizontal(0.5f);
 

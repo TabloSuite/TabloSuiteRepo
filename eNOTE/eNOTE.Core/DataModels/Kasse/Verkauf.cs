@@ -28,6 +28,10 @@ public class Verkauf
     /// </summary>
     public ZahlungsArt ZahlungsArt { get; set; }
 
+    /// <summary>Optionaler Kunde aus der Kundenkartei (bei Rückerstattung vom Original übernommen).</summary>
+    public Guid? KundeId { get; set; }
+    public Kunde? Kunde { get; set; }
+
     public decimal Zwischensumme { get; set; }
     public decimal RabattSumme { get; set; }
     public decimal GesamtSumme { get; set; }

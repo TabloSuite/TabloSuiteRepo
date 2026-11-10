@@ -2919,3 +2919,80 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
     .ak-zeile { grid-template-columns: auto minmax(0, 1fr) auto; }
     .ak-aktionen { grid-column: 1 / -1; justify-content: flex-end; }
 }
+
+/* Reiter auf dem Handy umbrechen, damit der aktive Reiter immer sichtbar ist */
+@media (max-width: 640px) {
+    .enote-tabs { display: flex; flex-wrap: wrap; overflow-x: visible; }
+    .enote-tab { flex: 1 1 auto; padding: .5rem .75rem; }
+}
+
+/* ============================================================ Kundenkartei */
+.ku-auswahl { padding: 0 1rem .6rem; }
+.ku-oeffnen {
+    display: inline-flex; align-items: center; gap: .4rem; width: 100%; padding: .55rem .75rem; border-radius: var(--enote-radius);
+    border: 1px dashed var(--enote-border-strong); background: transparent; color: var(--enote-text-muted); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+}
+.ku-oeffnen small { font-weight: 500; }
+.ku-oeffnen:hover { color: var(--enote-primary-text); border-color: var(--enote-primary); }
+.ku-avatar { display: grid; place-items: center; flex-shrink: 0; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--enote-accent-soft); color: var(--enote-accent-text); font-size: .78rem; font-weight: 800; }
+.ku-avatar.plus { background: var(--enote-primary-soft); color: var(--enote-primary-text); }
+.ku-chip { display: flex; align-items: center; gap: .6rem; padding: .45rem .5rem .45rem .55rem; border-radius: var(--enote-radius); background: var(--enote-accent-soft); }
+.ku-chip-text { display: grid; min-width: 0; flex: 1; }
+.ku-chip-text strong { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ku-chip-text small { font-size: .76rem; color: var(--enote-text-muted); }
+.ku-suche { display: flex; align-items: center; gap: .4rem; padding: .2rem .3rem .2rem .6rem; border-radius: var(--enote-radius); border: 1px solid var(--enote-primary); background: var(--enote-surface); }
+.ku-suche .ku-feld { border: 0; padding: .4rem 0; background: transparent; }
+.ku-suche-ico { color: var(--enote-text-muted); }
+.ku-feld { width: 100%; min-width: 0; font: inherit; font-size: .9rem; padding: .5rem .65rem; border-radius: var(--enote-radius-sm); border: 1px solid var(--enote-border); background: var(--enote-surface); color: var(--enote-text); outline: none; }
+.ku-treffer { margin-top: .35rem; display: grid; gap: .1rem; max-height: 15rem; overflow-y: auto; padding: .25rem; border-radius: var(--enote-radius); background: var(--enote-surface); box-shadow: var(--enote-shadow-lg); }
+.ku-treffer-zeile { display: flex; align-items: center; gap: .6rem; padding: .45rem .5rem; border: 0; border-radius: var(--enote-radius-sm); background: none; text-align: left; font: inherit; cursor: pointer; color: var(--enote-text); }
+.ku-treffer-zeile:hover { background: var(--enote-surface-2); }
+.ku-treffer-zeile > span:last-child { display: grid; min-width: 0; }
+.ku-treffer-zeile strong { font-size: .9rem; }
+.ku-treffer-zeile small { font-size: .76rem; color: var(--enote-text-muted); }
+.ku-anlegen strong { color: var(--enote-primary-text); }
+.ku-neu { display: grid; gap: .45rem; padding: .7rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); }
+.ku-neu-kopf { display: flex; justify-content: space-between; align-items: center; }
+.ku-fehler { color: var(--enote-danger-text); font-weight: 600; }
+.ku-weg { color: var(--enote-text-muted); }
+
+.ku-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .8rem; margin-bottom: 1.1rem; }
+.ku-kpi { padding: .9rem 1.1rem; display: grid; gap: .15rem; }
+.ku-kpi span { font-size: .74rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--enote-text-muted); }
+.ku-kpi strong { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ku-kpi small { font-size: .78rem; color: var(--enote-text-muted); }
+.ku-liste-suche { flex: 1; max-width: 32rem; }
+.ku-liste { padding: .3rem 0; }
+.ku-zeile {
+    display: grid; grid-template-columns: auto minmax(0, 1.6fr) repeat(3, minmax(6rem, 1fr)) auto; gap: .9rem; align-items: center; width: 100%;
+    padding: .75rem 1.1rem; border: 0; background: none; text-align: left; font: inherit; color: var(--enote-text); cursor: pointer;
+}
+.ku-zeile + .ku-zeile { border-top: 1px solid var(--enote-border); }
+.ku-zeile:hover { background: var(--enote-surface-2); }
+.ku-zeile-name { display: grid; min-width: 0; }
+.ku-zeile-name strong { display: inline-flex; align-items: center; gap: .35rem; }
+.ku-zeile-name small, .ku-zahl small { font-size: .78rem; color: var(--enote-text-muted); }
+.ku-notiz-ico { color: var(--enote-warning-text); }
+.ku-zahl { display: grid; font-variant-numeric: tabular-nums; }
+.ku-pfeil { color: var(--enote-text-muted); }
+@media (max-width: 760px) {
+    .ku-zeile { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .ku-zeile .ku-zahl:not(.ku-letzter) { display: none; }
+    .ku-pfeil { display: none; }
+}
+
+.ku-blatt { display: grid; gap: 1rem; }
+.ku-blatt-zahlen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+.ku-blatt-zahlen > div { display: grid; gap: .1rem; padding: .6rem .75rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); }
+.ku-blatt-zahlen span { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--enote-text-muted); }
+.ku-blatt-zahlen strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .ku-blatt-zahlen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ku-lieblinge { display: grid; gap: .35rem; }
+.ku-lieblinge > div { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ku-liebling { padding: .25rem .65rem; border-radius: var(--enote-radius-pill); background: var(--enote-accent-soft); color: var(--enote-accent-text); font-size: .84rem; font-weight: 700; }
+.ku-liebling small { font-weight: 600; opacity: .75; }
+.ku-besuche { display: grid; gap: .2rem; }
+.ku-besuch { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr) auto; gap: .6rem; padding: .4rem 0; border-bottom: 1px dashed var(--enote-border); font-size: .88rem; font-variant-numeric: tabular-nums; }
+.ku-besuch-inhalt { color: var(--enote-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ku-besuch.storno strong { color: var(--enote-danger-text); }
+.ku-loeschen { margin-right: auto; color: var(--enote-danger-text); }

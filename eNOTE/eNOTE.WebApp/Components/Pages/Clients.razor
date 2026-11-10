@@ -1,0 +1,262 @@
+﻿@page "/clients"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@implements IDisposable
+@using System.Security.Claims
+@using ENote.WebApp.Services
+@inject KundenService kunden
+@inject AktiverSalonState aktiverSalon
+@inject AuthenticationStateProvider authStateProvider
+@inject ToastService toast
+
+<PageTitle>Clients</PageTitle>
+
+<BesitzerPinGuard>
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Clients</h1>
+            <p>Vos clients, leurs visites et ce qu'ils préfèrent. En caisse, le client est facultatif sur chaque ticket.</p>
+        </div>
+        <button class="enote-btn enote-btn-primary" @onclick="NeuOeffnen"><Icon Name="plus" Groesse="18" /> Nouveau client</button>
+    </div>
+
+    @if (fehler is not null)
+    {
+        <div class="alert alert-error">@fehler</div>
+    }
+    else if (zahlen is { } z)
+    {
+        <div class="ku-kpis">
+            <div class="enote-card ku-kpi"><span>Clients</span><strong>@z.Kunden</strong></div>
+            <div class="enote-card ku-kpi"><span>Nouveaux ce mois</span><strong>@z.NeuDiesenMonat</strong></div>
+            <div class="enote-card ku-kpi"><span>Clients fidèles</span><strong>@z.Wiederkehrend</strong><small>2 visites ou plus</small></div>
+            <div class="enote-card ku-kpi"><span>Ventes avec client</span><strong>@z.AnteilVerkaeufeMitKundeProzent %</strong><small>30 derniers jours</small></div>
+        </div>
+
+        <div class="enote-filter-leiste">
+            <div class="kx-suche ku-liste-suche">
+                <Icon Name="search" Groesse="18" CssClass="kx-suche-ico" />
+                <input class="kx-suche-feld" placeholder="Rechercher un nom ou un numéro…" value="@suche" @oninput="SucheAsync" />
+            </div>
+        </div>
+
+        @if (liste is null)
+        {
+            <p class="enote-muted" role="status">Chargement…</p>
+        }
+        else if (liste.Count == 0)
+        {
+            <div class="rm-leer">
+                <span class="rm-leer-icon"><Icon Name="user" Groesse="28" /></span>
+                <strong>@(string.IsNullOrWhiteSpace(suche) ? "Aucun client pour le moment" : $"Aucun client pour « {suche} »")</strong>
+                <p class="enote-muted">En caisse, touchez « Client » au-dessus du ticket pour enregistrer un client en quelques secondes.</p>
+            </div>
+        }
+        else
+        {
+            <div class="enote-card ku-liste">
+                @foreach (var k in liste)
+                {
+                    <button type="button" class="ku-zeile" @onclick="() => OeffneDetailAsync(k.Id)">
+                        <span class="ku-avatar">@Initialen(k.Name)</span>
+                        <span class="ku-zeile-name">
+                            <strong>@k.Name @if (k.HatNotiz) { <Icon Name="edit" Groesse="13" CssClass="ku-notiz-ico" /> }</strong>
+                            <small>@(k.Telefon ?? "Sans téléphone")</small>
+                        </span>
+                        <span class="ku-zahl"><strong>@k.Besuche</strong><small>visite@(k.Besuche > 1 ? "s" : "")</small></span>
+                        <span class="ku-zahl"><strong>@k.Umsatz.ToString("N0") F</strong><small>dépensés</small></span>
+                        <span class="ku-zahl ku-letzter"><strong>@Wann(k.LetzterBesuchUtc)</strong><small>dernière visite</small></span>
+                        <Icon Name="chevron-right" Groesse="18" CssClass="ku-pfeil" />
+                    </button>
+                }
+            </div>
+        }
+    }
+</div>
+</BesitzerPinGuard>
+
+@* Kundenblatt *@
+<ModalDialog Open="detail is not null" Title="@(detail?.Name ?? "")" OnClose="() => detail = null" ErrorMessage="@detailFehler" MaxWidthClass="enote-modal-lg">
+    <ChildContent>
+        @if (detail is { } d)
+        {
+            <div class="ku-blatt">
+                <div class="ku-blatt-zahlen">
+                    <div><span>Visites</span><strong>@d.Besuche</strong></div>
+                    <div><span>Dépensé</span><strong>@d.Umsatz.ToString("N0") F</strong></div>
+                    <div><span>Panier moyen</span><strong>@d.Durchschnitt.ToString("N0") F</strong></div>
+                    <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ToLocalTime().ToString("dd/MM/yyyy"))</strong></div>
+                </div>
+
+                @if (d.Lieblinge.Count > 0)
+                {
+                    <div class="ku-lieblinge">
+                        <span class="ta-liste-titel">Ses préférés</span>
+                        <div>@foreach (var (leistung, menge) in d.Lieblinge) { <span class="ku-liebling">@leistung <small>× @menge</small></span> }</div>
+                    </div>
+                }
+
+                <div class="enote-form">
+                    <div class="enote-form-grid">
+                        <label>Nom <input @bind="bName" maxlength="@KundenService.NameMax" /></label>
+                        <label>Téléphone <small class="enote-muted">(facultatif)</small> <input @bind="bTelefon" @bind:event="oninput" inputmode="tel" maxlength="30" /></label>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(bTelefon) && KundenService.Ziffern(bTelefon) != KundenService.Ziffern(d.Telefon))
+                    {
+                        <EnoteCheckbox @bind-Value="bEinwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
+                    }
+                    <label>Note <small class="enote-muted">(visible seulement par vous)</small>
+                        <textarea rows="3" @bind="bNotiz" maxlength="@KundenService.NotizMax" placeholder="ex. allergique au henné, préfère Awa, vient le samedi"></textarea>
+                    </label>
+                </div>
+
+                <div class="ku-besuche">
+                    <span class="ta-liste-titel">Dernières visites</span>
+                    @if (d.LetzteBesuche.Count == 0)
+                    {
+                        <p class="enote-muted">Pas encore de vente avec ce client.</p>
+                    }
+                    @foreach (var b in d.LetzteBesuche)
+                    {
+                        <div class="ku-besuch @(b.IstRueckerstattung ? "storno" : "")">
+                            <span>@b.ZeitUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                            <span class="ku-besuch-inhalt">@(b.IstRueckerstattung ? "Remboursement · " : "")@b.Inhalt</span>
+                            <strong>@b.Betrag.ToString("N0") F</strong>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost ku-loeschen" @onclick="() => loeschenOffen = true"><Icon Name="trash" Groesse="16" /> Supprimer</button>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => detail = null">Fermer</button>
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="SpeichereAsync" />
+    </Footer>
+</ModalDialog>
+
+<ModalDialog Open="loeschenOffen" Title="Supprimer ce client ?" OnClose="() => loeschenOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent><p>Ses données (nom, téléphone, note) sont effacées. Les ventes restent dans vos chiffres, sans nom de client.</p></ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => loeschenOffen = false">Annuler</button>
+        <AsyncActionButton Text="Supprimer" BusyText="Suppression…" CssClass="enote-btn-danger" OnClick="LoescheAsync" />
+    </Footer>
+</ModalDialog>
+
+@* Neuer Kunde (auch ohne Kasse) *@
+<ModalDialog Open="neuOffen" Title="Nouveau client" OnClose="() => neuOffen = false" ErrorMessage="@neuFehler">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nom <input @bind="nName" maxlength="@KundenService.NameMax" /></label>
+            <label>Téléphone <small class="enote-muted">(facultatif)</small> <input @bind="nTelefon" @bind:event="oninput" inputmode="tel" maxlength="30" /></label>
+            @if (!string.IsNullOrWhiteSpace(nTelefon))
+            {
+                <EnoteCheckbox @bind-Value="nEinwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
+            }
+            <small class="enote-muted">Le numéro n'est enregistré que si le client le souhaite. Les caissiers n'en voient que les 4 derniers chiffres.</small>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => neuOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="LegeAnAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private Guid benutzer, salonId;
+    private KundenService.Kennzahlen? zahlen;
+    private List<KundenService.Zeile>? liste;
+    private string suche = "";
+    private string? fehler, detailFehler, neuFehler;
+    private KundenService.Detail? detail;
+    private bool loeschenOffen, neuOffen, bEinwilligung, nEinwilligung;
+    private string bName = "", bTelefon = "", bNotiz = "", nName = "", nTelefon = "";
+    private int abfrage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        aktiverSalon.OnChange += SalonGewechselt;
+        var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
+        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzer);
+        if (!aktiverSalon.IstGeladen) await aktiverSalon.InitialisiereAsync(benutzer);
+        await LadeAsync();
+    }
+
+    private void SalonGewechselt() => _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+
+    private async Task LadeAsync()
+    {
+        fehler = null;
+        if (aktiverSalon.Aktiv is not { } us) { fehler = "Aucun établissement sélectionné."; return; }
+        salonId = us.SalonId;
+        try
+        {
+            zahlen = await kunden.GetKennzahlenAsync(benutzer, salonId);
+            liste = await kunden.GetListeAsync(benutzer, salonId, suche);
+        }
+        catch (UnauthorizedAccessException) { fehler = "Seul le propriétaire peut consulter la liste des clients."; }
+    }
+
+    private async Task SucheAsync(ChangeEventArgs e)
+    {
+        suche = e.Value?.ToString() ?? "";
+        var meine = ++abfrage;
+        var ergebnis = await kunden.GetListeAsync(benutzer, salonId, suche);
+        if (meine == abfrage) liste = ergebnis;
+    }
+
+    private static string Initialen(string n)
+        => string.Concat(n.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0]))) is { Length: > 0 } i ? i : "?";
+
+    private static string Wann(DateTime? utc)
+    {
+        if (utc is not DateTime d) return "—";
+        var tage = (DateTime.UtcNow.Date - d.Date).Days;
+        return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ToLocalTime().ToString("dd/MM/yyyy") };
+    }
+
+    private async Task OeffneDetailAsync(Guid id)
+    {
+        detailFehler = null;
+        detail = await kunden.GetDetailAsync(benutzer, id);
+        bName = detail.Name; bTelefon = detail.Telefon ?? ""; bNotiz = detail.Notiz ?? ""; bEinwilligung = false;
+    }
+
+    private async Task SpeichereAsync()
+    {
+        if (detail is null) return;
+        try
+        {
+            await kunden.AktualisiereAsync(benutzer, detail.Id, bName, bTelefon, bEinwilligung, bNotiz);
+            toast.ZeigeErfolg("Client enregistré.");
+            detail = null;
+            await LadeAsync();
+        }
+        catch (ArgumentException ex) { detailFehler = ex.Message; }
+    }
+
+    private async Task LoescheAsync()
+    {
+        if (detail is null) return;
+        await kunden.LoescheAsync(benutzer, detail.Id);
+        loeschenOffen = false; detail = null;
+        toast.ZeigeInfo("Client supprimé.");
+        await LadeAsync();
+    }
+
+    private void NeuOeffnen() { nName = nTelefon = ""; nEinwilligung = false; neuFehler = null; neuOffen = true; }
+
+    private async Task LegeAnAsync()
+    {
+        try
+        {
+            await kunden.LegeAnAsync(benutzer, salonId, nName, nTelefon, nEinwilligung);
+            neuOffen = false; toast.ZeigeErfolg("Client ajouté.");
+            await LadeAsync();
+        }
+        catch (ArgumentException ex) { neuFehler = ex.Message; }
+    }
+
+    public void Dispose() => aktiverSalon.OnChange -= SalonGewechselt;
+}

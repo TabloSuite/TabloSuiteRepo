@@ -154,7 +154,7 @@
 
             if (istBesitzer && BesitzerZoneFreigeschaltet)
             {
-                gruppen.Add(new("Vente", [new("/services", "Prestations", "tag"), new("/remises", "Remises", "percent")]));
+                gruppen.Add(new("Vente", [new("/services", "Prestations", "tag"), new("/remises", "Remises", "percent"), new("/clients", "Clients", "user")]));
                 gruppen.Add(new("Gestion", [Finances, new("/ausgaben", "Dépenses", "wallet"), new("/equipe", "Équipe", "users")]));
                 gruppen.Add(new("Compte", [new("/abonnement", "Abonnement", "badge"), new("/parametres", "Paramètres", "settings")]));
             }

@@ -64,6 +64,8 @@ public partial class Caisse(
 
     // --- Ticket ---
     private List<TicketPosition> ticket = [];
+    /// <summary>Optionaler Kunde am Ticket (Kundenkartei); null = anonymer Verkauf wie bisher.</summary>
+    private KundenService.Kurz? ticketKunde;
     private bool ticketAufgeklappt;
     private AbgeschlossenerVerkauf? letzterVerkauf;
     private List<Rabatt> rabatte = [];
@@ -642,6 +644,7 @@ public partial class Caisse(
     private void SetzeTicketZurueck()
     {
         ticket.Clear();
+        ticketKunde = null;
         ausgewaehlterRabatt = null;
         rabattKandidat = null;
         bedingungBestaetigt = false;
@@ -790,7 +793,7 @@ public partial class Caisse(
             bedingungBestaetigt,
             p.FreierBetrag)).ToList();
 
-        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen);
+        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen, kundeId: ticketKunde?.Id);
         if (!erfolg || verkauf is null)
         {
             verkaufFehler = fehler;

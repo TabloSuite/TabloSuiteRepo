@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Finanzen;
+﻿using ENote.Core.DataModels.Finanzen;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
@@ -163,6 +163,34 @@ public static class DemoDatenSeeder
         var team = new[] { (Konto: besitzer, Name: besitzer.FullName), (Konto: awa, Name: awa.FullName), (Konto: kofi, Name: kofi.FullName) };
         var gewichtet = katalog.SelectMany(l => Enumerable.Repeat(l, l.Preis switch { <= 600 => 3, <= 3000 => 5, <= 8000 => 3, _ => 1 })).ToList();
 
+        // --- Kundenkartei: Stammkundinnen (eigener Zufall, damit Umsätze/Verkäufe unverändert bleiben) ---
+        var kundenZufall = new Random(77);
+        var demoKunden = new (string Name, string? Telefon, string? Notiz, int Gewicht)[]
+        {
+            ("Akossiwa Mensah", "+228 90 11 22 33", "Préfère Awa pour les tresses.", 6),
+            ("Edem Agbeko", "+228 91 45 67 12", null, 5),
+            ("Yawa Lawson", null, "Allergique au henné.", 4),
+            ("Kossi Amegah", "+228 92 30 40 50", null, 3),
+            ("Afi Dzidzonu", null, null, 3),
+            ("Komla Adjo", "+228 99 87 65 43", "Vient le samedi matin.", 2),
+            ("Sena Kpodar", null, null, 2),
+            ("Dela Attiogbe", "+228 93 21 43 65", null, 1),
+            ("Ayélé Sossou", null, null, 2),
+            ("Kodjo Amouzou", "+228 90 55 66 77", null, 2),
+            ("Essi Gbeasor", null, "Cheveux fragiles : soin doux.", 2),
+            ("Mawuli Tete", null, null, 1),
+            ("Abla Kpogo", "+228 96 12 34 56", null, 1),
+            ("Elikem Ahadji", null, null, 1),
+        }.Select(k => (Kunde: new Kunde
+        {
+            SalonId = salon.Id, Name = k.Name, Telefon = k.Telefon,
+            TelefonZiffern = k.Telefon is null ? null : new string(k.Telefon.Where(char.IsDigit).ToArray()),
+            TelefonEinwilligungUtc = k.Telefon is null ? null : jetzt.AddDays(-TageHistorie),
+            Notiz = k.Notiz, ErstelltUtc = jetzt.AddDays(-TageHistorie).AddHours(8), ErstelltVonId = besitzer.Id
+        }, k.Gewicht)).ToList();
+        db.Kunden.AddRange(demoKunden.Select(k => k.Kunde));
+        var kundenGewichtet = demoKunden.SelectMany(k => Enumerable.Repeat(k.Kunde, k.Gewicht)).ToList();
+
         // tag == 0: heute – Kasse von Awa ist noch offen, Verkäufe bis kurz vor jetzt (für Dashboard, Kasse, Fotos).
         for (var tag = TageHistorie; tag >= 0; tag--)
         {
@@ -190,6 +218,8 @@ public static class DemoDatenSeeder
             {
                 zeit = heute ? zeit.AddMinutes(abstand) : zeit.AddMinutes(zufall.Next(15, 45));
                 var verkauf = new Verkauf { KassenSitzungId = sitzung.Id, SalonId = salon.Id, ZeitUtc = zeit };
+                // Etwa jeder vierte Verkauf mit bekannter Kundin
+                if (kundenZufall.NextDouble() < 0.25) verkauf.KundeId = kundenGewichtet[kundenZufall.Next(kundenGewichtet.Count)].Id;
                 var anzahlPos = zufall.Next(1, 4);
                 foreach (var leistung in Enumerable.Range(0, anzahlPos).Select(_ => gewichtet[zufall.Next(gewichtet.Count)]).Distinct())
                 {
@@ -290,6 +320,7 @@ public static class DemoDatenSeeder
             await db.SalonMobileMoneyAnbieter.Where(x => x.SalonId == id).ExecuteDeleteAsync();
             await db.Verkaeufe.Where(v => v.SalonId == id && v.StornoVonVerkaufId != null).ExecuteDeleteAsync();
             await db.Verkaeufe.Where(v => v.SalonId == id).ExecuteDeleteAsync();
+            await db.Kunden.Where(k => k.SalonId == id).ExecuteDeleteAsync();
             await db.KassenSitzungen.Where(k => k.SalonId == id).ExecuteDeleteAsync();
             await db.Ausgaben.Where(a => a.SalonId == id).ExecuteDeleteAsync();
             await db.AusgabenKategorien.Where(a => a.SalonId == id).ExecuteDeleteAsync();

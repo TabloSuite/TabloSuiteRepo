@@ -116,6 +116,12 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft („Salon"/„Laden"
 - **Zahlung**: Besitzer meldet („J'ai payé“, `MeldeAsync`), nur der **SuperAdmin** bestätigt (`AboService.SetzeZahlungsStatusAsync` mit Bearbeiter-Prüfung); ProduktOwner sehen in Facturation nur ihre zugewiesenen Läden.
 - **Kassensperre** (`KassenZugangService`, serverseitig in `KassenService.StarteSitzungAsync`/`BucheVerkaufAsync`): ab dem 15. Tag nach Fälligkeit ohne Bestätigung keine neuen Sitzungen/Verkäufe; der Abschluss einer laufenden Sitzung bleibt möglich. Wäre die Frist beim (verspäteten) Erzeugen schon abgelaufen, gibt es 15 Tage ab Erzeugung. Ohne konfigurierten Tarif wird nicht gesperrt.
 
+### Kundenkartei (`/clients`, `KundenService`)
+- Kasse: über dem Ticket optional « Client » – suchen (Name/Nummer), wählen oder mit einem Tipp neu anlegen; ohne Auswahl bleibt der Verkauf anonym. `Verkauf.KundeId` (optional, Rückerstattung übernimmt den Kunden), Bon zeigt « Client : … ».
+- Telefonnummer nur mit Zustimmung des Kunden (Häkchen, `TelefonEinwilligungUtc`); Kassierer sehen nur die letzten 4 Ziffern, keine Liste.
+- Besitzer (PIN-Zone): Kennzahlen, Liste mit Besuchen/Umsatz/letztem Besuch, Kundenblatt mit Lieblingsleistungen, Notiz, letzten Besuchen; Löschen entfernt die Personendaten, Verkäufe bleiben ohne Kundenbezug.
+- Später möglich: Treue (z. B. 10. Besuch −10 % über Remises).
+
 ### Vidéos d'aide (`/aide/videos`, `VideoKatalog`)
 - Erklärvideos je Rolle: Caissier, Propriétaire, Responsable, Administrateur. Sichtbar: Admin/Responsable alle, Propriétaire seins + Caissier, Caissier nur seins (Menü « Aide » + Benutzermenü).
 - Dateien in `Medien/videos/` (nicht wwwroot), ausgeliefert über `/medien/videos/{datei}` mit Range-Unterstützung und Rollenprüfung; Werbevideo `enote-presentation.mp4` öffentlich. Vorschaubilder in `wwwroot/videos/*.jpg`.

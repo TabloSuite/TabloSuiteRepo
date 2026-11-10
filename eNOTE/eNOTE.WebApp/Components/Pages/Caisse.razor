@@ -218,6 +218,11 @@ else
                     }
                 </div>
 
+                @if (aktiveSitzung is not null)
+                {
+                    <KundenAuswahl SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" @bind-Kunde="ticketKunde" />
+                }
+
                 <div class="kx-ticket-liste">
                     @if (ticket.Count == 0)
                     {

@@ -122,6 +122,7 @@ if (administration is null)
     builder.Services.AddScoped<AusgabenService>();
     builder.Services.AddScoped<HinweisService>();
     builder.Services.AddScoped<AdminKontenService>();
+    builder.Services.AddScoped<KundenService>();
     builder.Services.AddScoped<AnkuendigungService>();
     builder.Services.AddScoped<PreisAnpassungService>();
     builder.Services.AddScoped<AboService>();
@@ -253,6 +254,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
         .Include(v => v.Positionen)
         .Include(v => v.Zahlungen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
+        .Include(v => v.Kunde)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
     if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
     {
@@ -283,6 +285,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
         .Include(v => v.Positionen)
         .Include(v => v.Zahlungen)
         .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
+        .Include(v => v.Kunde)
         .FirstOrDefaultAsync(v => v.Id == verkaufId, cancellationToken);
     if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
     {

@@ -1,0 +1,136 @@
+@using ENote.WebApp.Services
+@inject KundenService kunden
+@inject ToastService toast
+
+@* Kunde am Ticket (optional): suchen, wählen oder schnell anlegen. Ohne Auswahl bleibt der Verkauf anonym. *@
+
+<div class="ku-auswahl">
+    @if (Kunde is { } k)
+    {
+        <div class="ku-chip">
+            <span class="ku-avatar">@Initialen(k.Name)</span>
+            <span class="ku-chip-text">
+                <strong>@k.Name</strong>
+                <small>@(k.Besuche == 0 ? "Nouveau client" : $"{k.Besuche} visite{(k.Besuche > 1 ? "s" : "")}")@(k.TelefonGekuerzt is { } t ? $" · {t}" : "")</small>
+            </span>
+            <button type="button" class="enote-icon-btn ku-weg" aria-label="Retirer le client du ticket" title="Retirer le client" @onclick="EntferneAsync"><Icon Name="x" Groesse="16" /></button>
+        </div>
+    }
+    else if (!offen)
+    {
+        <button type="button" class="ku-oeffnen" @onclick="Oeffne"><Icon Name="user" Groesse="16" /> Client <small>(facultatif)</small></button>
+    }
+    else if (neu)
+    {
+        <div class="ku-neu">
+            <div class="ku-neu-kopf"><strong>Nouveau client</strong><button type="button" class="enote-icon-btn" aria-label="Annuler" @onclick="Schliesse"><Icon Name="x" Groesse="16" /></button></div>
+            <input class="ku-feld" placeholder="Nom du client" @bind="name" @bind:event="oninput" maxlength="@KundenService.NameMax" />
+            <input class="ku-feld" placeholder="Téléphone (facultatif)" inputmode="tel" @bind="telefon" @bind:event="oninput" maxlength="30" />
+            @if (!string.IsNullOrWhiteSpace(telefon))
+            {
+                <EnoteCheckbox @bind-Value="einwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
+            }
+            @if (fehler is not null) { <small class="ku-fehler">@fehler</small> }
+            <AsyncActionButton Text="Ajouter au ticket" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="LegeAnAsync" />
+        </div>
+    }
+    else
+    {
+        <div class="ku-suche">
+            <Icon Name="search" Groesse="16" CssClass="ku-suche-ico" />
+            <input class="ku-feld" placeholder="Nom ou téléphone du client" value="@suche" @oninput="SucheAsync" @onkeydown="Taste" @ref="feld" />
+            <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="Schliesse"><Icon Name="x" Groesse="16" /></button>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(suche))
+        {
+            <div class="ku-treffer" role="listbox">
+                @foreach (var t in treffer)
+                {
+                    <button type="button" role="option" class="ku-treffer-zeile" @onclick="() => WaehleAsync(t)">
+                        <span class="ku-avatar">@Initialen(t.Name)</span>
+                        <span><strong>@t.Name</strong><small>@(t.Besuche == 0 ? "Aucune visite" : $"{t.Besuche} visite{(t.Besuche > 1 ? "s" : "")}")@(t.TelefonGekuerzt is { } tel ? $" · {tel}" : "")</small></span>
+                    </button>
+                }
+                <button type="button" class="ku-treffer-zeile ku-anlegen" @onclick="StarteNeu">
+                    <span class="ku-avatar plus"><Icon Name="plus" Groesse="16" /></span>
+                    <span><strong>Nouveau client « @suche.Trim() »</strong><small>Créer et ajouter au ticket</small></span>
+                </button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid SalonId { get; set; }
+    [Parameter, EditorRequired] public Guid BenutzerId { get; set; }
+    [Parameter] public KundenService.Kurz? Kunde { get; set; }
+    [Parameter] public EventCallback<KundenService.Kurz?> KundeChanged { get; set; }
+
+    private bool offen, neu, einwilligung;
+    private string suche = "", name = "", telefon = "";
+    private string? fehler;
+    private List<KundenService.Kurz> treffer = [];
+    private ElementReference feld;
+    private bool fokusSetzen;
+    private int abfrage;
+
+    private static string Initialen(string n)
+        => string.Concat(n.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0]))) is { Length: > 0 } i ? i : "?";
+
+    private void Oeffne() { offen = true; neu = false; suche = ""; treffer = []; fokusSetzen = true; }
+    private void Schliesse() { offen = false; neu = false; fehler = null; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!fokusSetzen) return;
+        fokusSetzen = false;
+        try { await feld.FocusAsync(); } catch (Exception) { /* Feld schon weg */ }
+    }
+
+    private async Task SucheAsync(ChangeEventArgs e)
+    {
+        suche = e.Value?.ToString() ?? "";
+        var meine = ++abfrage;
+        if (string.IsNullOrWhiteSpace(suche)) { treffer = []; return; }
+        try
+        {
+            var ergebnis = await kunden.SucheAsync(BenutzerId, SalonId, suche);
+            if (meine == abfrage) treffer = ergebnis; // nur die neueste Antwort anzeigen
+        }
+        catch (UnauthorizedAccessException) { treffer = []; }
+    }
+
+    private async Task Taste(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") Schliesse();
+        else if (e.Key == "Enter" && treffer.Count == 1) await WaehleAsync(treffer[0]);
+    }
+
+    private void StarteNeu()
+    {
+        var s = suche.Trim();
+        // Ziffern in der Suche → als Telefonnummer vorschlagen, sonst als Name
+        if (KundenService.Ziffern(s) is { Length: >= 6 } && s.All(c => char.IsDigit(c) || c is ' ' or '+' or '-' or '.')) { telefon = s; name = ""; }
+        else { name = s; telefon = ""; }
+        einwilligung = false; fehler = null; neu = true;
+    }
+
+    private async Task LegeAnAsync()
+    {
+        try
+        {
+            var k = await kunden.LegeAnAsync(BenutzerId, SalonId, name, telefon, einwilligung);
+            await WaehleAsync(k);
+            toast.ZeigeErfolg($"Client « {k.Name} » créé.");
+        }
+        catch (ArgumentException ex) { fehler = ex.Message; }
+    }
+
+    private async Task WaehleAsync(KundenService.Kurz k)
+    {
+        offen = false; neu = false; fehler = null;
+        await KundeChanged.InvokeAsync(k);
+    }
+
+    private async Task EntferneAsync() => await KundeChanged.InvokeAsync(null);
+}

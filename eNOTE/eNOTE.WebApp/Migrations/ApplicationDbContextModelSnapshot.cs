@@ -32,6 +32,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("MonatsPreis")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid?>("PreisAnpassungId")
@@ -76,6 +77,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("MonatsBasisSnapshot")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("PreisSnapshot")
@@ -83,6 +85,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("RabattProzentSnapshot")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("RechnungMailUtc")
@@ -161,6 +164,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Betrag")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Notiz")
@@ -191,6 +195,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Betrag")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("ErfasstUtc")
@@ -226,6 +231,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Betrag")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("ErstelltUtc")
@@ -244,6 +250,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("VerrechneteProvision")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -265,6 +272,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Betrag")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("BisUtc")
@@ -277,6 +285,7 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("FestProvision")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Laden")
@@ -290,9 +299,11 @@ namespace ENote.WebApp.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Provision")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ProzentProvision")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Referenz")
@@ -1000,6 +1011,53 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("KassenSitzungen");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.Kunde", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ErstelltVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("GeaendertUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Notiz")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Telefon")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("TelefonEinwilligungUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TelefonZiffern")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalonId", "Name");
+
+                    b.HasIndex("SalonId", "TelefonZiffern");
+
+                    b.ToTable("Kunden");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1248,6 +1306,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid>("KassenSitzungId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("KundeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("RabattSumme")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -1283,6 +1344,8 @@ namespace ENote.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("KassenSitzungId");
+
+                    b.HasIndex("KundeId");
 
                     b.HasIndex("StornoVonVerkaufId");
 
@@ -2107,6 +2170,15 @@ namespace ENote.WebApp.Migrations
                     b.Navigation("Salon");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.Kunde", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Salons.Salon", null)
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>
                 {
                     b.HasOne("ENote.Core.DataModels.Katalog.Leistung", "Leistung")
@@ -2126,12 +2198,19 @@ namespace ENote.WebApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ENote.Core.DataModels.Kasse.Kunde", "Kunde")
+                        .WithMany()
+                        .HasForeignKey("KundeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ENote.Core.DataModels.Kasse.Verkauf", "StornoVonVerkauf")
                         .WithMany()
                         .HasForeignKey("StornoVonVerkaufId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("KassenSitzung");
+
+                    b.Navigation("Kunde");
 
                     b.Navigation("StornoVonVerkauf");
                 });

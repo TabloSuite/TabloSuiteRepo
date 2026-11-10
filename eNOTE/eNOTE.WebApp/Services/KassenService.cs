@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
@@ -328,7 +328,8 @@ public class KassenService(
         Guid kassenSitzungId,
         IReadOnlyList<VerkaufsPositionInput> positionen,
         IReadOnlyList<ZahlungInput> zahlungen,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? kundeId = null)
     {
         var warnungen = new List<string>();
 
@@ -371,11 +372,18 @@ public class KassenService(
             .Where(r => rabattIds.Contains(r.Id) && r.SalonId == sitzung.SalonId)
             .ToListAsync(cancellationToken);
 
+        // Optionaler Kunde: muss zum selben Laden gehören.
+        if (kundeId is Guid kid && !await db.Kunden.AnyAsync(k => k.Id == kid && k.SalonId == sitzung.SalonId, cancellationToken))
+        {
+            return (false, "Le client choisi est introuvable.", null, warnungen);
+        }
+
         var verkauf = new Verkauf
         {
             KassenSitzungId = sitzung.Id,
             SalonId = sitzung.SalonId,
-            ZeitUtc = DateTime.UtcNow
+            ZeitUtc = DateTime.UtcNow,
+            KundeId = kundeId
         };
 
         var jetzt = DateTime.UtcNow;

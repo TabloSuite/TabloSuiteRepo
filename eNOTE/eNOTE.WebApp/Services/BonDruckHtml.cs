@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Salons;
 using QRCoder;
@@ -95,6 +95,7 @@ public static class BonDruckHtml
     <div class="meta">Reçu n° {{verkauf.Id.ToString()[..8].ToUpperInvariant()}}</div>
     <div class="meta">{{verkauf.ZeitUtc.ToLocalTime():dd.MM.yyyy HH:mm}}</div>
     <div class="meta">Caissier : {{E(kassiererName)}}</div>
+    {{(verkauf.Kunde is { } kunde ? $"<div class=\"meta\">Client : {E(kunde.Name)}</div>" : "")}}
     <hr />
     <table>
       <tbody>

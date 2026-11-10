@@ -48,6 +48,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
+    public DbSet<Kunde> Kunden => Set<Kunde>();
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<AnkuendigungGelesen> AnkuendigungenGelesen => Set<AnkuendigungGelesen>();
     public DbSet<PreisAnpassung> PreisAnpassungen => Set<PreisAnpassung>();
@@ -185,6 +186,42 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Restrict);
             entity.Ignore(v => v.IstStorno);
         });
+
+        // Geldbeträge der Responsable-Abrechnung: feste Genauigkeit wie alle anderen Beträge
+        // (entspricht dem bisherigen SQL-Typ decimal(18,2) – keine Datenänderung, nur keine EF-Warnung mehr).
+        builder.Entity<PoZahlungseingang>(entity =>
+        {
+            entity.Property(e => e.Betrag).HasPrecision(18, 2);
+            entity.Property(e => e.ProzentProvision).HasPrecision(18, 2);
+            entity.Property(e => e.FestProvision).HasPrecision(18, 2);
+            entity.Property(e => e.Provision).HasPrecision(18, 2);
+        });
+        builder.Entity<PoZahlungsanforderung>(entity =>
+        {
+            entity.Property(a => a.Betrag).HasPrecision(18, 2);
+            entity.Property(a => a.VerrechneteProvision).HasPrecision(18, 2);
+        });
+        builder.Entity<PoGeldbewegung>(entity => entity.Property(b => b.Betrag).HasPrecision(18, 2));
+        builder.Entity<PoAbrechnungsEreignis>(entity => entity.Property(e => e.Betrag).HasPrecision(18, 2));
+        builder.Entity<MonatsPreisStand>(entity => entity.Property(p => p.MonatsPreis).HasPrecision(18, 2));
+        builder.Entity<NutzungsAbo>(entity =>
+        {
+            entity.Property(a => a.MonatsBasisSnapshot).HasPrecision(18, 2);
+            entity.Property(a => a.RabattProzentSnapshot).HasPrecision(18, 2);
+        });
+
+        builder.Entity<Kunde>(entity =>
+        {
+            entity.Property(k => k.Name).HasMaxLength(100);
+            entity.Property(k => k.Telefon).HasMaxLength(30);
+            entity.Property(k => k.TelefonZiffern).HasMaxLength(20);
+            entity.Property(k => k.Notiz).HasMaxLength(1000);
+            entity.HasIndex(k => new { k.SalonId, k.Name });
+            entity.HasIndex(k => new { k.SalonId, k.TelefonZiffern });
+            entity.HasOne<Salon>().WithMany().HasForeignKey(k => k.SalonId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<Verkauf>()
+            .HasOne(v => v.Kunde).WithMany().HasForeignKey(v => v.KundeId).OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<Ankuendigung>(entity =>
         {
