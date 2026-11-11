@@ -13,7 +13,7 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
 {
     public const int MaxEmpfaenger = 200;
 
-    public enum Gruppe { Einzeln, AlleBesitzer, BesitzerVonLaeden, TeamVonLaeden, AlleProduktOwner }
+    public enum Gruppe { Einzeln, AlleBesitzer, BesitzerVonLaeden, TeamVonLaeden, AlleProduktOwner, AlleBesitzerUndProduktOwner }
 
     public sealed record Empfaenger(Guid UserId, string Name, string Vorname, string Email, string Rolle, string? Laden);
 
@@ -85,6 +85,7 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
                 .Where(id => MitRolle(db, AppRollen.Besitzer).Contains(id)),
             Gruppe.TeamVonLaeden => db.UserSalons.Where(us => ladenIds.Contains(us.SalonId)).Select(us => us.AppUserId),
             Gruppe.AlleProduktOwner => MitRolle(db, AppRollen.ProduktOwner),
+            Gruppe.AlleBesitzerUndProduktOwner => MitRolle(db, AppRollen.Besitzer, AppRollen.ProduktOwner),
             _ => db.Users.Where(_ => false).Select(u => u.Id)
         };
 
@@ -93,8 +94,11 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
         return liste.GroupBy(e => e.Email.Trim().ToLowerInvariant()).Select(g => g.First()).ToList();
     }
 
-    private static IQueryable<Guid> MitRolle(ApplicationDbContext db, string rolle)
-        => db.UserRoles.Where(ur => db.Roles.Any(r => r.Id == ur.RoleId && r.Name == rolle)).Select(ur => ur.UserId);
+    private static IQueryable<Guid> MitRolle(ApplicationDbContext db, params string[] rollen)
+    {
+        var namen = rollen.ToList(); // List.Contains statt Span-Überladung (EF-Übersetzung)
+        return db.UserRoles.Where(ur => db.Roles.Any(r => r.Id == ur.RoleId && namen.Contains(r.Name!))).Select(ur => ur.UserId);
+    }
 
     private static async Task<List<Empfaenger>> MitDetailsAsync(ApplicationDbContext db, List<Kandidat> kandidaten, CancellationToken ct)
     {

@@ -228,12 +228,15 @@ public class EmailBenachrichtigungTests
         var admin = new AppUser { Id = Guid.NewGuid(), UserName = "admin", Email = "admin@exemple.com", FullName = "Admin" };
         var kassierer = new AppUser { Id = Guid.NewGuid(), UserName = "awa", Email = "awa@exemple.com", FullName = "Awa Koffi", Vorname = "Awa" };
         var gesperrt = new AppUser { Id = Guid.NewGuid(), UserName = "kofi", Email = "kofi@exemple.com", FullName = "Kofi", IsBlocked = true };
+        var po = new AppUser { Id = Guid.NewGuid(), UserName = "pamela", Email = "po@exemple.com", FullName = "Pamela PO", Vorname = "Pamela" };
         await using (var db = await b.F.CreateDbContextAsync())
         {
             var rolle = new Role { Name = AppRollen.SuperAdmin, NormalizedName = "SUPERADMIN" };
-            db.Roles.Add(rolle);
-            db.Users.AddRange(admin, kassierer, gesperrt);
+            var poRolle = new Role { Name = AppRollen.ProduktOwner, NormalizedName = "PRODUKTOWNER" };
+            db.Roles.AddRange(rolle, poRolle);
+            db.Users.AddRange(admin, kassierer, gesperrt, po);
             db.UserRoles.Add(new AppUserRole { UserId = admin.Id, RoleId = rolle.Id });
+            db.UserRoles.Add(new AppUserRole { UserId = po.Id, RoleId = poRolle.Id });
             db.UserSalons.AddRange(new UserSalon { AppUserId = kassierer.Id, SalonId = b.Salon.Id }, new UserSalon { AppUserId = gesperrt.Id, SalonId = b.Salon.Id });
             await db.SaveChangesAsync();
         }
@@ -242,6 +245,10 @@ public class EmailBenachrichtigungTests
 
         var besitzer = await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.AlleBesitzer, [], []);
         Assert.Equal(["ama@exemple.com"], besitzer.Select(e => e.Email));
+
+        var besitzerUndPo = await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.AlleBesitzerUndProduktOwner, [], []);
+        Assert.Equal(["ama@exemple.com", "po@exemple.com"], besitzerUndPo.Select(e => e.Email).Order());
+        Assert.Equal(["po@exemple.com"], (await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.AlleProduktOwner, [], [])).Select(e => e.Email));
 
         var team = await service.ErmittleAsync(admin.Id, NachrichtenService.Gruppe.TeamVonLaeden, [], [b.Salon.Id]);
         Assert.Equal(["Ama Mensah", "Awa Koffi"], team.Select(e => e.Name).Order());   // Gesperrter fehlt
