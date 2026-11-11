@@ -3,7 +3,7 @@ using ENote.Core.DataModels.Kasse;
 namespace ENote.WebApp.Data.Seed;
 
 /// <summary>
-/// Start-Stammdaten der Mobile-Money-Anbieter (UEMOA-Zone, per Migration eingespielt).
+/// Start-Stammdaten der Mobile-Money-Anbieter (UEMOA-Zone und Kamerun, per Migration eingespielt).
 /// Feste IDs, damit Migrationen stabil bleiben. Namen/Farben pflegt der SuperAdmin
 /// danach in der Administration (Marken ändern sich, z. B. Togocom → Yas).
 /// </summary>
@@ -40,5 +40,8 @@ public static class MobileMoneyAnbieterStammdaten
 
         A("7a0d0006-0000-4000-8000-000000000001", "Mali", "Orange Money", "#ff7900", 1),
         A("7a0d0006-0000-4000-8000-000000000002", "Mali", "Moov Money", "#0b5cad", 2),
+
+        A("7a0d0007-0000-4000-8000-000000000001", "Cameroun", "MTN MoMo", "#ffcb05", 1),
+        A("7a0d0007-0000-4000-8000-000000000002", "Cameroun", "Orange Money", "#ff7900", 2),
     ];
 }

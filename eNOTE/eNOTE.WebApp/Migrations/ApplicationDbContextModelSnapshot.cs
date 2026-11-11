@@ -1370,6 +1370,26 @@ namespace ENote.WebApp.Migrations
                             Land = "Mali",
                             Name = "Moov Money",
                             Reihenfolge = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0007-0000-4000-8000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ffcb05",
+                            IstAktiv = true,
+                            Land = "Cameroun",
+                            Name = "MTN MoMo",
+                            Reihenfolge = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d0007-0000-4000-8000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Farbe = "#ff7900",
+                            IstAktiv = true,
+                            Land = "Cameroun",
+                            Name = "Orange Money",
+                            Reihenfolge = 2
                         });
                 });
 
