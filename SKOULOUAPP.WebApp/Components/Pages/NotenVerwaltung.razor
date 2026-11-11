@@ -49,7 +49,7 @@
         <ModernDropdown TValue="Guid" Value="periodeID" ValueChanged="WaehlePeriode" Options="PeriodenOptionen" Label="Période" Disabled="occupe" />
         @if (verwalter && periodeID != Guid.Empty)
         {
-            <button type="button" class="rounded-lg border p-3" disabled="@occupe" @onclick="ClotureAsync">@(daten.Perioden.Single(x => x.Id == periodeID).IstGeschlossen ? "Rouvrir la période pour correction" : "Clôturer et verrouiller la période")</button>
+            <button type="button" class="sk-btn sk-btn-secondary" disabled="@occupe" @onclick="ClotureAsync">@(daten.Perioden.Single(x => x.Id == periodeID).IstGeschlossen ? "Rouvrir la période pour correction" : "Clôturer et verrouiller la période")</button>
             <details class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><summary class="cursor-pointer text-base font-bold text-slate-900">Composantes de la moyenne</summary>
                 <p class="mt-2 text-sm text-slate-600">Définissez toutes les composantes avant de saisir les premières notes : interrogation, devoir, composition…</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-3">
@@ -74,7 +74,7 @@
         <details class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <summary class="cursor-pointer font-semibold">Historique de la note sélectionnée</summary>
             <p class="mt-2 text-sm">Sélectionnez une matière, une composante et un élève. L'historique commence à l'activation de cette fonctionnalité ; les anciennes corrections ne peuvent pas être reconstituées.</p>
-            <button type="button" class="mt-3 rounded-lg border p-3" disabled="@(occupe || schuelerID == Guid.Empty || bestandteilID == Guid.Empty || bewertungsFachID == Guid.Empty)" @onclick="HistorieAsync">Afficher / actualiser l'historique</button>
+            <button type="button" class="sk-btn sk-btn-secondary mt-3" disabled="@(occupe || schuelerID == Guid.Empty || bestandteilID == Guid.Empty || bewertungsFachID == Guid.Empty)" @onclick="HistorieAsync">Afficher / actualiser l'historique</button>
             @foreach (var changement in historie)
             {
                 <article class="mt-3 break-words rounded-lg border p-3">
