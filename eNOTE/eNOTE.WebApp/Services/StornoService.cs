@@ -174,7 +174,8 @@ public class StornoService(
 
         try
         {
-            var heute = DateTime.UtcNow.Date;
+            var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == sitzung.SalonId).Select(s => s.Land).FirstOrDefaultAsync(ct));
+            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, DateTime.UtcNow), zone);
             var tagesUmsatz = await db.Verkaeufe.Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute).SumAsync(v => v.GesamtSumme, ct);
             var anzahl = await db.Verkaeufe.CountAsync(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute && v.StornoVonVerkaufId == null, ct);
             await umsatzBenachrichtigung.VerkaufGemeldetAsync(sitzung.SalonId, tagesUmsatz, anzahl, ct);

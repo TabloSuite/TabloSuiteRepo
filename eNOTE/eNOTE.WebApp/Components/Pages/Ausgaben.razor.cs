@@ -18,6 +18,8 @@ public partial class Ausgaben(
 {
     private bool isLoading = true;
     private Guid salonId;
+    /// <summary>Heutiges Datum im Laden (nicht auf dem Server).</summary>
+    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(aktiverSalon.Zeitzone, DateTime.UtcNow);
     private Guid benutzerId;
     private string salonName = string.Empty;
 
@@ -26,8 +28,8 @@ public partial class Ausgaben(
     private List<Ausgabe> ausgaben = [];
     private Dictionary<Guid, string> belegUrls = [];
 
-    private DateTime? filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private DateTime? filterBis = DateTime.Today;
+    private DateTime? filterVon = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+    private DateTime? filterBis = DateTime.UtcNow.Date;
 
     // Suche/Filter
     private string ausgabenSuche = string.Empty;
@@ -75,7 +77,7 @@ public partial class Ausgaben(
     private async Task WaehleZeitraumAsync(string schluessel)
     {
         zeitraum = schluessel;
-        var heute = DateTime.Today;
+        var heute = Heute;
         var monatsAnfang = new DateTime(heute.Year, heute.Month, 1);
         (filterVon, filterBis) = schluessel switch
         {
@@ -114,7 +116,7 @@ public partial class Ausgaben(
     private bool ausgabeDialogOffen;
     private string? ausgabeFehler;
     private decimal neuBetrag;
-    private DateTime? neuDatum = DateTime.Today;
+    private DateTime? neuDatum = DateTime.UtcNow.Date;
     private string neuKategorieId = string.Empty;
     private string? neuNotiz;
     private IBrowserFile? belegDatei;
@@ -175,8 +177,8 @@ public partial class Ausgaben(
         kategorieFilterOptionen = new[] { new EnoteSelectOption<string> { Value = "", Label = "Toutes les catégories" } }
             .Concat(kategorienOptionen)
             .ToList();
-        var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
-        ausgaben = await ausgabenService.GetAusgabenAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
+        var bisEnde = (filterBis ?? Heute).Date.AddDays(1).AddTicks(-1);
+        ausgaben = await ausgabenService.GetAusgabenAsync(salonId, (filterVon ?? Heute).Date, bisEnde);
 
         belegUrls = new Dictionary<Guid, string>();
         foreach (var a in ausgaben.Where(x => x.BelegAssetId is not null))
@@ -219,7 +221,7 @@ public partial class Ausgaben(
     private void NeueAusgabe()
     {
         neuBetrag = 0m;
-        neuDatum = DateTime.Today;
+        neuDatum = Heute;
         neuKategorieId = string.Empty;
         neuNotiz = null;
         belegDatei = null;
@@ -263,7 +265,7 @@ public partial class Ausgaben(
         }
 
         var (erfolg, fehler, _) = await ausgabenService.ErfasseAusgabeAsync(
-            salonId, kategorieId, neuBetrag, (neuDatum ?? DateTime.Today).Date, neuNotiz, benutzerId, beleg);
+            salonId, kategorieId, neuBetrag, (neuDatum ?? Heute).Date, neuNotiz, benutzerId, beleg);
 
         beleg?.Inhalt.Dispose();
 

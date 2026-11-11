@@ -212,8 +212,8 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     private static string PeriodeText(Rabatt r)
     {
-        var von = r.GueltigVonUtc?.ToLocalTime().ToString("dd.MM.yyyy");
-        var bis = r.GueltigBisUtc?.ToLocalTime().ToString("dd.MM.yyyy");
+        var von = r.GueltigVonUtc?.ToString("dd.MM.yyyy");
+        var bis = r.GueltigBisUtc?.ToString("dd.MM.yyyy");
         return (von, bis) switch
         {
             (not null, not null) => $"Du {von} au {bis}",

@@ -511,7 +511,8 @@ public class KassenService(
         // Live-Update an abonnierte Besitzer-Ansichten desselben Salons.
         try
         {
-            var heute = DateTime.UtcNow.Date;
+            var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == sitzung.SalonId).Select(s => s.Land).FirstOrDefaultAsync(cancellationToken));
+            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, DateTime.UtcNow), zone);
             var tagesUmsatz = await db.Verkaeufe
                 .Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute)
                 .SumAsync(v => v.GesamtSumme, cancellationToken);

@@ -66,9 +66,9 @@
                         <span class="ku-avatar">@Initialen(a.Name)</span>
                         <div class="pz-name">
                             <strong>@a.Name</strong>
-                            <small>Arrivée à @a.AnkunftUtc.ToLocalTime().ToString("HH':'mm")@(string.IsNullOrWhiteSpace(a.ErfasstVon) ? "" : $" · {a.ErfasstVon}")</small>
+                            <small>Arrivée à @a.AnkunftUtc.ImLaden(aktiverSalon.Zeitzone).ToString("HH':'mm")@(string.IsNullOrWhiteSpace(a.ErfasstVon) ? "" : $" · {a.ErfasstVon}")</small>
                         </div>
-                        <span class="pz-dauer @(a.Vergessen ? "alt" : "")" title="Temps de présence">@(a.Vergessen ? $"depuis le {a.AnkunftUtc.ToLocalTime():dd'/'MM}" : KundenBesuchRegeln.Kurz(a.AnkunftUtc, DateTime.UtcNow))</span>
+                        <span class="pz-dauer @(a.Vergessen ? "alt" : "")" title="Temps de présence">@(a.Vergessen ? $"depuis le {a.AnkunftUtc.ImLaden(aktiverSalon.Zeitzone):dd'/'MM}" : KundenBesuchRegeln.Kurz(a.AnkunftUtc, DateTime.UtcNow))</span>
                     </div>
                     <div class="pz-grund">
                         <span>Présent pour</span>
@@ -94,7 +94,7 @@
     }
 </div>
 
-<KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="salonId" BenutzerId="benutzer"
+<KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="salonId" BenutzerId="benutzer" Zone="aktiverSalon.Zeitzone"
                    OnClose="() => ficheKundeId = null" OnGeaendert="LadeAsync" />
 
 <ModalDialog Open="neuOffen" Title="Nouvelle arrivée" OnClose="() => neuOffen = false" ErrorMessage="@neuFehler">

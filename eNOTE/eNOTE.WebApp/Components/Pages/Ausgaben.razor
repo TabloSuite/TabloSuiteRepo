@@ -101,7 +101,7 @@
         else
         {
             <div class="dp-liste">
-                @foreach (var tag in gefiltert.GroupBy(a => a.DatumUtc.ToLocalTime().Date).OrderByDescending(g => g.Key))
+                @foreach (var tag in gefiltert.GroupBy(a => a.DatumUtc.Date).OrderByDescending(g => g.Key))
                 {
                     <div class="dp-tag">
                         <span>@tag.Key.ToString("dddd d MMMM", new System.Globalization.CultureInfo("fr-FR"))</span>
@@ -199,7 +199,7 @@
     <ChildContent>
         @if (zuLoeschen is { } z)
         {
-            <p><strong>@z.Betrag.ToString("N0") F</strong> · @z.Kategorie.Name · @z.DatumUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+            <p><strong>@z.Betrag.ToString("N0") F</strong> · @z.Kategorie.Name · @z.DatumUtc.ToString("dd.MM.yyyy")</p>
             <p class="enote-muted">La dépense disparaît des finances et du rapport PDF.</p>
         }
     </ChildContent>

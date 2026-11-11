@@ -84,24 +84,25 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
     }
 
     /// <summary>Tagesumsätze der letzten N Tage für einen Salon.</summary>
-    public async Task<List<TagesUmsatz>> GetTagesUmsaetzeAsync(Guid salonId, int tage = 14, CancellationToken cancellationToken = default)
+    /// <param name="versatz">Versatz der Ortszeit des Ladens zu UTC (Tage werden in Ortszeit gebildet).</param>
+    public async Task<List<TagesUmsatz>> GetTagesUmsaetzeAsync(Guid salonId, int tage = 14, CancellationToken cancellationToken = default, TimeSpan versatz = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var ab = DateTime.UtcNow.Date.AddDays(-tage);
-        return GruppiereNachTag(await LadeAnteileAsync(db, salonId, ab, DateTime.MaxValue, cancellationToken));
+        return GruppiereNachTag(await LadeAnteileAsync(db, salonId, ab, DateTime.MaxValue, cancellationToken), versatz);
     }
 
     /// <summary>Tagesumsätze in einem frei wählbaren Zeitraum (für Filter + PDF-Export).</summary>
     public async Task<List<TagesUmsatz>> GetTagesUmsaetzeImZeitraumAsync(
-        Guid salonId, DateTime vonUtc, DateTime bisUtc, CancellationToken cancellationToken = default)
+        Guid salonId, DateTime vonUtc, DateTime bisUtc, CancellationToken cancellationToken = default, TimeSpan versatz = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return GruppiereNachTag(await LadeAnteileAsync(db, salonId, vonUtc, bisUtc, cancellationToken));
+        return GruppiereNachTag(await LadeAnteileAsync(db, salonId, vonUtc, bisUtc, cancellationToken), versatz);
     }
 
-    private static List<TagesUmsatz> GruppiereNachTag(IEnumerable<VerkaufAnteile> verkaeufe)
+    private static List<TagesUmsatz> GruppiereNachTag(IEnumerable<VerkaufAnteile> verkaeufe, TimeSpan versatz)
         => verkaeufe
-            .GroupBy(v => v.ZeitUtc.Date)
+            .GroupBy(v => (v.ZeitUtc + versatz).Date)
             .Select(g => new TagesUmsatz(
                 g.Key,
                 g.Count(v => !v.IstStorno),

@@ -87,7 +87,7 @@
                     <div><span>Achats</span><strong>@d.Besuche</strong></div>
                     <div><span>Dépensé</span><strong>@d.Umsatz.ToString("N0") F</strong></div>
                     <div><span>Panier moyen</span><strong>@d.Durchschnitt.ToString("N0") F</strong></div>
-                    <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ToLocalTime().ToString("dd/MM/yyyy"))</strong></div>
+                    <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy"))</strong></div>
                 </div>
 
                 @if (d.Lieblinge.Count > 0)
@@ -116,7 +116,7 @@
                 {
                     <div class="ku-verlauf">
                         <span class="ta-liste-titel">Passages et notes de l'équipe</span>
-                        <KundenVerlauf Fiche="fiche" BenutzerId="benutzer" OnGeaendert="LadeFicheAsync" />
+                        <KundenVerlauf Fiche="fiche" BenutzerId="benutzer" Zone="aktiverSalon.Zeitzone" OnGeaendert="LadeFicheAsync" />
                     </div>
                 }
 
@@ -129,7 +129,7 @@
                     @foreach (var b in d.LetzteBesuche)
                     {
                         <div class="ku-besuch @(b.IstRueckerstattung ? "storno" : "")">
-                            <span>@b.ZeitUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                            <span>@b.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy")</span>
                             <span class="ku-besuch-inhalt">@(b.IstRueckerstattung ? "Remboursement · " : "")@b.Inhalt</span>
                             <strong>@b.Betrag.ToString("N0") F</strong>
                         </div>
@@ -219,11 +219,11 @@
     private static string Initialen(string n)
         => string.Concat(n.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0]))) is { Length: > 0 } i ? i : "?";
 
-    private static string Wann(DateTime? utc)
+    private string Wann(DateTime? utc)
     {
         if (utc is not DateTime d) return "—";
-        var tage = (DateTime.UtcNow.Date - d.Date).Days;
-        return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ToLocalTime().ToString("dd/MM/yyyy") };
+        var tage = (Zeitzonen.Heute(aktiverSalon.Zeitzone, DateTime.UtcNow) - d.ImLaden(aktiverSalon.Zeitzone).Date).Days;
+        return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy") };
     }
 
     private async Task OeffneDetailAsync(Guid id)

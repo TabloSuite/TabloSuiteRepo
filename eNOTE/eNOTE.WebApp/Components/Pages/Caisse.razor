@@ -84,7 +84,7 @@ else
                 <span class="enote-brand-icon">eN</span>
                 <div class="kx-kopf-text">
                     <strong>@aktiverSalonName</strong>
-                    <span><span class="kx-live-punkt"></span>@anzeigeState.KassiererName · depuis @aktiveSitzung.GestartetUtc.ToLocalTime().ToString("HH:mm")</span>
+                    <span><span class="kx-live-punkt"></span>@anzeigeState.KassiererName · depuis @aktiveSitzung.GestartetUtc.ImLaden(zone).ToString("HH:mm")</span>
                 </div>
             </div>
             <div class="kx-kopf-kasse" title="Espèces attendues en caisse">
@@ -476,7 +476,7 @@ else
                                     }
                                 }
                             </div>
-                            <small class="enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</small>
+                            <small class="enote-muted">@v.ZeitUtc.ImLaden(zone).ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</small>
                             <small class="kx-historie-pos">@v.PositionenText</small>
                         </div>
                         <div class="kx-historie-aktionen">
@@ -556,7 +556,7 @@ else
         <div class="enote-wiederhergestellt">
             <p class="enote-wiederhergestellt-text">La caisse de la session précédente n'a pas été clôturée. Vous pouvez continuer à encaisser.</p>
             <div class="enote-wiederhergestellt-zeile"><span>Employé</span><strong>@wiederhergestelltKassierer</strong></div>
-            <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
+            <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ImLaden(zone).ToString("dd.MM.yyyy HH:mm")</strong></div>
             @if (wiederhergestelltSoll is decimal soll)
             {
                 <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Espèces attendues</span><strong>@soll.ToString("N0") F</strong></div>
@@ -595,7 +595,7 @@ else
         {
             <div class="kx-pay">
                 <p class="enote-muted kx-frei-text">
-                    Vente du @sv.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm") · @sv.KassiererName · @sv.GesamtSumme.ToString("N0") F
+                    Vente du @sv.ZeitUtc.ImLaden(zone).ToString("dd.MM.yyyy · HH:mm") · @sv.KassiererName · @sv.GesamtSumme.ToString("N0") F
                     @if (sv.BereitsErstattet > 0)
                     {
                         <text> · déjà remboursé : @sv.BereitsErstattet.ToString("N0") F</text>
@@ -757,7 +757,7 @@ else
 @* --- Kunden-Display verbinden (QR-Code + Link) --- *@
 @if (aktiveSitzung is not null)
 {
-    <KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId"
+    <KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" Zone="zone"
                        OnClose="() => ficheKundeId = null" OnGeaendert="LadeAnwesendeAsync" />
 }
 

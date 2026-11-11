@@ -34,6 +34,8 @@ public partial class Caisse(
     public Guid? KundeAusLink { get; set; }
 
     private List<KundenBesuchService.Anwesend> anwesende = [];
+    /// <summary>Ortszeit des Ladens der offenen Kasse.</summary>
+    private TimeZoneInfo zone = ENote.Core.Services.Zeitzonen.Standard;
     private bool anwesendeOffen;
     private Guid? ficheKundeId;
 
@@ -405,6 +407,7 @@ public partial class Caisse(
 
             aktiveSitzung = offene;
             aktiverSalonName = z.Salon.Name;
+            zone = ENote.Core.Services.Zeitzonen.Fuer(z.Salon.Land);
             var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
             anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
                 aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
@@ -498,6 +501,7 @@ public partial class Caisse(
 
         aktiveSitzung = sitzung;
         aktiverSalonName = zuordnung.Salon.Name;
+        zone = ENote.Core.Services.Zeitzonen.Fuer(zuordnung.Salon.Land);
         anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName, sitzung.Startbestand);
         await LadeKatalogAsync(sitzung.SalonId);
 

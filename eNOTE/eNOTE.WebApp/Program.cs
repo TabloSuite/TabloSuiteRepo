@@ -348,9 +348,12 @@ app.MapGet("/finances/rapport", async (
         return Results.NotFound();
     }
 
-    var bisEnde = zeitraum!.BisExklusivUtc.AddTicks(-1);
-    var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, zeitraum.VonUtc, bisEnde, cancellationToken);
-    var uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, zeitraum.VonUtc, bisEnde, cancellationToken);
+    // Gewählte Tage sind Kalendertage des Ladens (Ortszeit aus dem Land).
+    var zone = ENote.Core.Services.Zeitzonen.Fuer(salon.Land);
+    var (vonUtc, bisEnde) = ENote.Core.Services.Zeitzonen.TageInUtc(zeitraum!.VonUtc, zeitraum.Bis, zone);
+    var versatz = ENote.Core.Services.Zeitzonen.Versatz(zone, DateTime.UtcNow);
+    var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, vonUtc, bisEnde, cancellationToken, versatz);
+    var uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, vonUtc, bisEnde, cancellationToken);
     var pdf = FinanzBerichtPdfService.ErzeugeBericht(salon, zeitraum.VonUtc, zeitraum.Bis, tage, uebersicht);
     httpContext.Response.Headers.CacheControl = "private, no-store";
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"rapport-{salon.Name}-{zeitraum.VonUtc:yyyyMMdd}-{zeitraum.Bis:yyyyMMdd}.pdf");

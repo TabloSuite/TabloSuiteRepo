@@ -212,7 +212,7 @@
                                     }
                                 </div>
                                 <div class="enote-feed-meta">@v.PositionenText</div>
-                                <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ToLocalTime().ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</div>
+                                <div class="enote-feed-meta enote-muted">@v.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</div>
                             </div>
                             <a class="enote-btn enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank"><Icon Name="receipt" Groesse="16" /> Reçu</a>
                         </div>
@@ -237,7 +237,7 @@
                                 <span class="fi-ico @(einlage ? "fi-ico-ein" : "fi-ico-aus")"><Icon Name="@(einlage ? "arrow-down" : "wallet")" Groesse="15" Strich="2.3" /></span>
                                 <div class="fi-bewegung-text">
                                     <strong>@(einlage ? $"Apport · {g.Herkunft}" : "Retrait d'espèces du propriétaire")</strong>
-                                    <small class="enote-muted">@g.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @(g.Ort == ENote.Core.DataModels.Finanzen.GeldOrt.Kasse ? "en caisse" : "hors caisse")@(string.IsNullOrWhiteSpace(g.Notiz) ? "" : $" · {g.Notiz}")</small>
+                                    <small class="enote-muted">@g.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm") · @(g.Ort == ENote.Core.DataModels.Finanzen.GeldOrt.Kasse ? "en caisse" : "hors caisse")@(string.IsNullOrWhiteSpace(g.Notiz) ? "" : $" · {g.Notiz}")</small>
                                 </div>
                                 <strong class="fi-bewegung-betrag @(einlage ? "plus" : "minus")">@(einlage ? "+" : "−")@g.Betrag.ToString("N0") F</strong>
                             </div>
@@ -249,7 +249,7 @@
                                 <span class="fi-ico fi-ico-lager"><Icon Name="@(entnahme ? "package" : "alert")" Groesse="15" Strich="2.3" /></span>
                                 <div class="fi-bewegung-text">
                                     <strong>@l.Menge.ToString("0.##") × @l.LeistungName · @(entnahme ? "retrait du propriétaire" : ENote.WebApp.Services.BestandsService.GrundText(l.Grund ?? ENote.Core.DataModels.Katalog.AbschreibungsGrund.Autre).ToLowerInvariant())</strong>
-                                    <small class="enote-muted">@l.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @l.ErfasstVonName@(string.IsNullOrWhiteSpace(l.Notiz) ? "" : $" · {l.Notiz}")</small>
+                                    <small class="enote-muted">@l.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm") · @l.ErfasstVonName@(string.IsNullOrWhiteSpace(l.Notiz) ? "" : $" · {l.Notiz}")</small>
                                 </div>
                                 <span class="fi-bewegung-betrag leise">@(l.Einkaufswert is decimal w ? w.ToString("N0") + " F (achat)" : "valeur inconnue")</span>
                             </div>
@@ -273,7 +273,7 @@
                             @foreach (var a in abschluesse)
                             {
                                 <tr>
-                                    <td>@a.AbgeschlossenUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@a.AbgeschlossenUtc?.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm")</td>
                                     <td>@a.Kassierer.FullName</td>
                                     <td class="r">@a.BareinnahmenSoll?.ToString("N0") F</td>
                                     <td class="r">@a.EndbestandGezaehlt?.ToString("N0") F</td>

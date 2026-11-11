@@ -93,7 +93,7 @@ public static class BonDruckHtml
     <hr />
     {{storno}}
     <div class="meta">Reçu n° {{verkauf.Id.ToString()[..8].ToUpperInvariant()}}</div>
-    <div class="meta">{{verkauf.ZeitUtc.ToLocalTime():dd.MM.yyyy HH:mm}}</div>
+    <div class="meta">{{ENote.Core.Services.Zeitzonen.ImLaden(verkauf.ZeitUtc, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)):dd.MM.yyyy HH:mm}}</div>
     <div class="meta">Servi par : {{E(kassiererName)}}</div>
     {{(verkauf.Kunde is { } kunde ? $"<div class=\"meta\">Client : {E(kunde.Name)}</div>" : "")}}
     <hr />

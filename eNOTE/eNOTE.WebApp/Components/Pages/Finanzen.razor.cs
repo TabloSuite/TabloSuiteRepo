@@ -20,6 +20,10 @@ public partial class Finanzen(
     private bool isLoading = true;
     private bool darfFinanzenSehen;
     private Guid salonId;
+    private TimeZoneInfo Zone => aktiverSalon.Zeitzone;
+    /// <summary>Heutiges Datum im Laden (nicht auf dem Server).</summary>
+    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(Zone, DateTime.UtcNow);
+    private TimeSpan Versatz => ENote.Core.Services.Zeitzonen.Versatz(Zone, DateTime.UtcNow);
     private Guid benutzerId;
     private string salonName = string.Empty;
 
@@ -148,13 +152,13 @@ public partial class Finanzen(
     private async Task LadeAsync()
     {
         isLoading = true;
-        tagesUmsaetze = await finanzService.GetTagesUmsaetzeAsync(salonId);
+        tagesUmsaetze = await finanzService.GetTagesUmsaetzeAsync(salonId, versatz: Versatz);
         letzteVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(salonId);
         abschluesse = await finanzService.GetAbschluesseAsync(salonId);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
         bewegungen = await bestandsService.GetBewegungenAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
 
-        var heute = tagesUmsaetze.FirstOrDefault(t => t.Datum == DateTime.UtcNow.Date);
+        var heute = tagesUmsaetze.FirstOrDefault(t => t.Datum == Heute);
         liveTagesUmsatz = heute?.Gesamt ?? 0m;
         liveAnzahlHeute = heute?.AnzahlVerkaeufe ?? 0;
 
@@ -197,10 +201,11 @@ public partial class Finanzen(
     {
         // Kein seitenweites „Chargement…“: die Zahlen werden an Ort und Stelle ersetzt.
         filterAktiv = true;
-        var bisEnde = (filterBis ?? DateTime.Today).Date.AddDays(1).AddTicks(-1);
-        tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
-        uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
-        bewegungen = await bestandsService.GetBewegungenAsync(salonId, (filterVon ?? DateTime.Today).Date, bisEnde);
+        // Kalendertage des Ladens → UTC-Bereich (in Kamerun beginnt der Tag eine Stunde früher in UTC)
+        var (vonUtc, bisEnde) = ENote.Core.Services.Zeitzonen.TageInUtc(filterVon ?? Heute, filterBis ?? Heute, Zone);
+        tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, vonUtc, bisEnde, versatz: Versatz);
+        uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, vonUtc, bisEnde);
+        bewegungen = await bestandsService.GetBewegungenAsync(salonId, vonUtc, bisEnde);
     }
 
     // --- Mouvements: Einlagen/Hilfen, Entnahmen, Warenabgänge ---
@@ -225,7 +230,7 @@ public partial class Finanzen(
         apportOrt = Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse;
         apportHerkunft = null;
         apportNotiz = null;
-        apportDatum = DateTime.Today;
+        apportDatum = Heute;
         apportFehler = null;
         apportOffen = true;
     }
@@ -251,16 +256,16 @@ public partial class Finanzen(
     private async Task WaehleZeitraumAsync(int tage)
     {
         aktiverZeitraum = tage.ToString();
-        filterVon = DateTime.Today.AddDays(-(tage - 1));
-        filterBis = DateTime.Today;
+        filterVon = Heute.AddDays(-(tage - 1));
+        filterBis = Heute;
         await WendeFilterAsync();
     }
 
     private async Task WaehleMonatAsync()
     {
         aktiverZeitraum = "mois";
-        filterVon = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        filterBis = DateTime.Today;
+        filterVon = new DateTime(Heute.Year, Heute.Month, 1);
+        filterBis = Heute;
         await WendeFilterAsync();
     }
 
@@ -275,8 +280,8 @@ public partial class Finanzen(
 
     private void ExportierePdf()
     {
-        var von = (filterVon ?? DateTime.Today).ToString("yyyy-MM-dd");
-        var bis = (filterBis ?? DateTime.Today).ToString("yyyy-MM-dd");
+        var von = (filterVon ?? Heute).ToString("yyyy-MM-dd");
+        var bis = (filterBis ?? Heute).ToString("yyyy-MM-dd");
         navigationManager.NavigateTo($"/finances/rapport?salonId={salonId}&von={von}&bis={bis}", forceLoad: true);
     }
 

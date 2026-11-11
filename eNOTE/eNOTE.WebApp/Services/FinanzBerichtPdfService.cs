@@ -141,7 +141,7 @@ public static class FinanzBerichtPdfService
 
                 page.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("eNOTE · Généré le " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + " · Page ").FontSize(8).FontColor(Colors.Grey.Medium);
+                    t.Span("eNOTE · Généré le " + ENote.Core.Services.Zeitzonen.ImLaden(DateTime.UtcNow, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)).ToString("dd.MM.yyyy HH:mm") + " · Page ").FontSize(8).FontColor(Colors.Grey.Medium);
                     t.CurrentPageNumber().FontSize(8);
                     t.Span(" / ").FontSize(8);
                     t.TotalPages().FontSize(8);

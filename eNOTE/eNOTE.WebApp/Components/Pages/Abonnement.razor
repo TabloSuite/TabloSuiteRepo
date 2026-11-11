@@ -65,7 +65,7 @@
         {
             <div class="enote-abo-status enote-probe-banner">
                 <div>
-                    <strong>Essai gratuit jusqu'au @v.ProbeBisUtc?.ToLocalTime().ToString("dd.MM.yyyy")</strong>
+                    <strong>Essai gratuit jusqu'au @v.ProbeBisUtc?.ToString("dd.MM.yyyy")</strong>
                     <div class="enote-muted">Ensuite, la formule « @VertragsRegeln.Bezeichnung(v.KuenftigesIntervall) » démarre automatiquement. Vous pouvez la changer ci-dessous.</div>
                 </div>
                 <span class="enote-tag enote-tag-ok">Essai</span>
@@ -80,7 +80,7 @@
                     <strong>@p.Betrag.ToString("N0") F à payer · @VertragsRegeln.Bezeichnung(p.Intervall)</strong>
                     <span>@(ueberfaellig
                         ? "Les ventes sont suspendues jusqu'à la confirmation du paiement."
-                        : $"Échéance le {p.Faellig.ToLocalTime():dd.MM.yyyy} · sans paiement confirmé, les ventes seront suspendues le {p.SperreAb.ToLocalTime():dd.MM.yyyy}.")</span>
+                        : $"Échéance le {p.Faellig:dd.MM.yyyy} · sans paiement confirmé, les ventes seront suspendues le {p.SperreAb:dd.MM.yyyy}.")</span>
                 </div>
                 <button class="enote-btn enote-btn-primary" @onclick="() => OeffneMeldung(p)">J'ai payé</button>
             </div>
@@ -93,7 +93,7 @@
                 <p class="enote-muted">
                     @if (v.NaechstesIntervall is AboIntervall naechstes && naechstes != v.Intervall)
                     {
-                        <span>Actuelle : <strong>@VertragsRegeln.Bezeichnung(v.Intervall)</strong> · passage à <strong>@VertragsRegeln.Bezeichnung(naechstes)</strong> le @v.WechselAbUtc?.ToLocalTime().ToString("dd.MM.yyyy").</span>
+                        <span>Actuelle : <strong>@VertragsRegeln.Bezeichnung(v.Intervall)</strong> · passage à <strong>@VertragsRegeln.Bezeichnung(naechstes)</strong> le @v.WechselAbUtc?.ToString("dd.MM.yyyy").</span>
                     }
                     else if (OffenePerioden.Any())
                     {
@@ -184,7 +184,7 @@
                         <div class="ab-rechnung">
                             <div class="ab-rechnung-info">
                                 <strong>@VertragsRegeln.Bezeichnung(p.Intervall)@(p.Bis.Subtract(p.Von).TotalDays < 27 ? " (prorata)" : "")</strong>
-                                <span class="enote-muted">@p.Von.ToLocalTime().ToString("dd.MM.yyyy") – @p.Bis.AddDays(-1).ToLocalTime().ToString("dd.MM.yyyy")</span>
+                                <span class="enote-muted">@p.Von.ToString("dd.MM.yyyy") – @p.Bis.AddDays(-1).ToString("dd.MM.yyyy")</span>
                             </div>
                             <span class="ab-rechnung-betrag">@p.Betrag.ToString("N0") F</span>
                             <span class="enote-tag @StatusKlasse(p.Status)">@StatusText(p.Status)</span>
@@ -307,12 +307,12 @@
             {
                 <p>Votre facture en cours n'est pas encore payée : elle sera <strong>convertie immédiatement</strong> en formule <strong>@VertragsRegeln.Bezeichnung(ziel)</strong>.</p>
                 <div class="kx-pay-total"><span>Nouveau montant</span><strong>@vs.NeuerBetrag?.ToString("N0") F</strong></div>
-                <p class="enote-muted">Période : du @vs.AbUtc?.ToLocalTime().ToString("dd.MM.yyyy") au @vs.AbUtc?.AddMonths(monate).AddDays(-1).ToLocalTime().ToString("dd.MM.yyyy"). L'échéance ne change pas@(vs.SperreAb is DateTime s ? $" : sans paiement confirmé, les ventes seront suspendues le {s.ToLocalTime():dd.MM.yyyy}" : "").</p>
+                <p class="enote-muted">Période : du @vs.AbUtc?.ToString("dd.MM.yyyy") au @vs.AbUtc?.AddMonths(monate).AddDays(-1).ToString("dd.MM.yyyy"). L'échéance ne change pas@(vs.SperreAb is DateTime s ? $" : sans paiement confirmé, les ventes seront suspendues le {s:dd.MM.yyyy}" : "").</p>
             }
             else
             {
                 <p>Passer à la formule <strong>@VertragsRegeln.Bezeichnung(ziel)</strong> (@vs.NeuerBetrag?.ToString("N0") F pour @monate mois) ?</p>
-                <p class="enote-muted">Elle démarre le @vs.AbUtc?.ToLocalTime().ToString("dd.MM.yyyy")@(vertrag?.ProbeLaeuft == true ? ", après l'essai gratuit" : ""). La période en cours et les factures déjà émises restent inchangées.</p>
+                <p class="enote-muted">Elle démarre le @vs.AbUtc?.ToString("dd.MM.yyyy")@(vertrag?.ProbeLaeuft == true ? ", après l'essai gratuit" : ""). La période en cours et les factures déjà émises restent inchangées.</p>
             }
         }
         else if (wechselZiel is not null)

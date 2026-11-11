@@ -22,6 +22,9 @@ public class AktiverSalonState(IDbContextFactory<ApplicationDbContext> dbContext
     /// <summary>Aktuell aktiver Laden (null, solange nicht geladen).</summary>
     public UserSalon? Aktiv { get; private set; }
 
+    /// <summary>Ortszeit des aktiven Ladens (aus dem Land); ohne Laden Lomé (UTC+0).</summary>
+    public TimeZoneInfo Zeitzone => ENote.Core.Services.Zeitzonen.Fuer(Aktiv?.Salon?.Land);
+
     public bool IstGeladen { get; private set; }
 
     /// <summary>Lädt die Läden des Nutzers und stellt den gespeicherten (oder ersten freigegebenen) Laden ein.</summary>

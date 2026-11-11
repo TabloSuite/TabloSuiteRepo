@@ -93,7 +93,7 @@
                         </div>
 
                         <div class="eq-aktivitaet">
-                            <span><Icon Name="clock" Groesse="14" /> @(m.LetzteKasseUtc is DateTime l ? "Dernière caisse : " + l.ToLocalTime().ToString("dd.MM · HH:mm") : "Jamais en caisse")</span>
+                            <span><Icon Name="clock" Groesse="14" /> @(m.LetzteKasseUtc is DateTime l ? "Dernière caisse : " + l.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM · HH:mm") : "Jamais en caisse")</span>
                             <span><Icon Name="receipt" Groesse="14" /> @m.VerkaeufeMonat vente@(m.VerkaeufeMonat > 1 ? "s" : "") ce mois</span>
                         </div>
 

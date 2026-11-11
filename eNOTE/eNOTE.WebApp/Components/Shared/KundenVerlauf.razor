@@ -65,6 +65,8 @@
 @code {
     [Parameter, EditorRequired] public KundenBesuchService.Fiche Fiche { get; set; } = null!;
     [Parameter, EditorRequired] public Guid BenutzerId { get; set; }
+    /// <summary>Ortszeit des Ladens für Datum und Uhrzeit.</summary>
+    [Parameter] public TimeZoneInfo Zone { get; set; } = Zeitzonen.Standard;
     [Parameter] public EventCallback OnGeaendert { get; set; }
 
     private string text = string.Empty;
@@ -91,10 +93,10 @@
         </div>
     </div>;
 
-    private static string Datum(DateTime utc)
+    private string Datum(DateTime utc)
     {
-        var lokal = utc.ToLocalTime();
-        var tage = (DateTime.Now.Date - lokal.Date).Days;
+        var lokal = utc.ImLaden(Zone);
+        var tage = (Zeitzonen.Heute(Zone, DateTime.UtcNow) - lokal.Date).Days;
         var tag = tage switch { 0 => "Aujourd'hui", 1 => "Hier", _ => lokal.ToString("dd'/'MM'/'yyyy") };
         return $"{tag} {lokal:HH':'mm}";
     }
