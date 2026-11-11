@@ -14,5 +14,8 @@ public class LeistungKategorie
     public Guid? ParentId { get; set; }
     public LeistungKategorie? Parent { get; set; }
 
+    /// <summary>Vom Besitzer gewählte Farbe (#rrggbb); null = automatisch bzw. von der Hauptkategorie.</summary>
+    public string? Farbe { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

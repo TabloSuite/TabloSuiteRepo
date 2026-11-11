@@ -5,7 +5,7 @@
 ## Aktueller Stand (10.11.2026, abends)
 
 - **Code:** Lösungsbuild erfolgreich, `eNOTE.Tests` **270/270** grün, letzter Commit `2b0f40d`.
-- **Datenbank:** Migrationskette bis `20261110173221_Kundenkartei`; lokale `ENOTEDB` **und** Azure `ENote-Database` sind auf diesem Stand. Der normale App-Start migriert und seedet nie.
+- **Datenbank:** Migrationskette bis `20261111080232_KategorieFarbe` (lokale `ENOTEDB`); Azure `ENote-Database` steht auf `20261110173221_Kundenkartei` (Nachziehen nur mit OK). Der normale App-Start migriert und seedet nie.
 - **Betrieb:** Azure App Service `enote` (Linux, .NET 10, Tarif B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und Sitzungsaffinität an, E-Mails über Postmark, Nutzer-Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
 - **Nächste Schritte:** Der Nutzer testet ab 11.11.2026 alles manuell und sammelt Fehler. Danach offen: Bondrucker und Scanner mit echter Hardware testen, Grundpreis auf Azure auf 3.600 F setzen (Administration → Tarifs), optional Treueprogramm.
 
@@ -80,7 +80,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - Später möglich: Treueprogramm (z. B. 10. Besuch −10 % über Remises) – erst nach Rückfrage bauen.
 
 ### Katalog, Stock & Team
-- Leistungen pro Laden: Typ Prestation/Produit, Preis, Kategorie, Bild, Barcode (oder automatisch erzeugt), bei Produkten Lager (`HatStueckzahl`, Mindestbestand-Warnung, Einkaufspreis), Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät. Das Inventar zeigt Lagerwert und möglichen Gewinn. Standard-Artikel « Divers » wird pro Sitzung sichergestellt.
+- Leistungen pro Laden: Typ Prestation/Produit, Preis, Kategorie, Bild, Barcode (oder automatisch erzeugt), bei Produkten Lager (`HatStueckzahl`, Mindestbestand-Warnung, Einkaufspreis), Sammel-Artikel (Basis-Leistung + Abzugsmenge), Favoriten pro Gerät. Kategorien (eine Unterebene) haben eine wählbare Farbe aus einer festen, kontraststarken Auswahl (`KategorieFarben`, « Modifier la catégorie »); ohne Wahl automatisch nach Namen, Unterkategorien erben die Farbe der Hauptkategorie – gleich in Katalog und Kasse. Das Inventar zeigt Lagerwert und möglichen Gewinn. Standard-Artikel « Divers » wird pro Sitzung sichergestellt.
 - Remises: Prozent oder Festbetrag, optional auf eine Leistung begrenzt, optional mit Bedingung (der Kassierer bestätigt sie), aktivierbar direkt auf der Karte; bereits genutzte Remises werden beim Löschen nur deaktiviert.
 - Équipe: Kassierer mit PIN, letzte Kasse, Verkäufe im Monat; « Droits » delegiert Finanzen, Prestations, Remises.
 

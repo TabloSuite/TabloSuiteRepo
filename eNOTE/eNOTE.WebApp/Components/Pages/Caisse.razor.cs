@@ -29,8 +29,6 @@ public partial class Caisse(
     private sealed record AbgeschlossenerVerkauf(Guid VerkaufId, decimal Total, decimal? Rueckgeld, string ZahlungText);
 
     /// <summary>Kategoriefarben (gut unterscheidbar, auf Weiß lesbar).</summary>
-    private static readonly string[] KategoriePalette =
-        ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
 
     // --- Start ---
     private List<(Guid UserId, string Name)> kassiererListe = [];
@@ -485,19 +483,8 @@ public partial class Caisse(
         aktiveKategorieId = id;
     }
 
-    private string KategorieFarbe(Guid? kategorieId)
-    {
-        if (kategorieId is not Guid id)
-        {
-            return "var(--enote-border-strong)";
-        }
-
-        // Unterkategorien erben die Farbe ihrer Hauptkategorie.
-        var kat = kategorien.FirstOrDefault(k => k.Id == id);
-        var hauptId = kat?.ParentId ?? id;
-        var index = kategorien.Where(k => k.ParentId is null).OrderBy(k => k.Name).Select(k => k.Id).ToList().IndexOf(hauptId);
-        return index < 0 ? "var(--enote-border-strong)" : KategoriePalette[index % KategoriePalette.Length];
-    }
+    // Gewählte Farbe der Kategorie, sonst Hauptkategorie, sonst automatisch (wie im Katalog).
+    private string KategorieFarbe(Guid? kategorieId) => ENote.Core.Services.Katalog.KategorieFarben.Ermittle(kategorien, kategorieId);
 
     private int MengeImTicket(Guid leistungId) => ticket.Where(p => p.Leistung.Id == leistungId).Sum(p => p.Menge);
 

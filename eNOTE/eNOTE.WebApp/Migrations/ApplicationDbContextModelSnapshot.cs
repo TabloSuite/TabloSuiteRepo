@@ -1593,6 +1593,10 @@ namespace ENote.WebApp.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Farbe")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
                     b.Property<bool>("IstAktiv")
                         .HasColumnType("bit");
 

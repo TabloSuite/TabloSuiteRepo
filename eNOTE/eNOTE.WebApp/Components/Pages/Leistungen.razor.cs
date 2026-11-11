@@ -1,4 +1,5 @@
 using ENote.Core.DataModels.Katalog;
+using ENote.Core.Services.Katalog;
 using ENote.WebApp.Components.Shared;
 using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
@@ -100,9 +101,6 @@ public partial class Leistungen(
     /// <summary>Lagerwert (Einkauf/Verkauf) und möglicher Gewinn aller Stückartikel.</summary>
     private Core.Services.Katalog.LagerRechner.Bewertung Lager => Core.Services.Katalog.LagerRechner.Bewerte(leistungen);
 
-    /// <summary>Gleiche Kategoriefarben wie in der Kasse (Wiedererkennung).</summary>
-    private static readonly string[] KategoriePalette =
-        ["#2547b8", "#0f8f86", "#c2410c", "#7c3aed", "#be185d", "#0369a1", "#4d7c0f", "#b45309"];
     private Guid? aufgeklappteKategorieId;
     private Guid? unterkategorieParentId; // für das Anlegen einer Unterkategorie
     private string neueUnterkategorieName = string.Empty;
@@ -119,6 +117,15 @@ public partial class Leistungen(
     private LeistungKategorie? aktiveKategorie;
     private LeistungKategorie? zuLoeschendeKategorie;
     private string kategorieNeuerName = string.Empty;
+    private string? kategorieNeueFarbe; // null = automatisch / wie Hauptkategorie
+
+    /// <summary>Farbe, die die bearbeitete Kategorie ohne eigene Wahl hätte.</summary>
+    private string AutoFarbeAktiveKategorie => aktiveKategorie switch
+    {
+        null => KategorieFarben.Neutral,
+        { ParentId: Guid parentId } => KategorieFarben.Ermittle(kategorien, parentId),
+        var k => KategorieFarben.Automatisch(kategorien, k.Id),
+    };
 
     private bool etikettDialogOffen;
     private Leistung? etikettLeistung;
@@ -345,6 +352,7 @@ public partial class Leistungen(
     {
         aktiveKategorie = kategorie;
         kategorieNeuerName = kategorie.Name;
+        kategorieNeueFarbe = KategorieFarben.Normalisiere(kategorie.Farbe);
         kategorieFehler = null;
         kategorieUmbenennenOffen = true;
     }
@@ -356,7 +364,7 @@ public partial class Leistungen(
             return;
         }
 
-        var (erfolg, fehler) = await katalogService.BenenneKategorieUmAsync(aktiveKategorie.Id, salonId, kategorieNeuerName);
+        var (erfolg, fehler) = await katalogService.AktualisiereKategorieAsync(aktiveKategorie.Id, salonId, kategorieNeuerName, kategorieNeueFarbe);
         if (!erfolg)
         {
             kategorieFehler = fehler;
@@ -364,7 +372,7 @@ public partial class Leistungen(
         }
 
         kategorieUmbenennenOffen = false;
-        toast.ZeigeErfolg("Catégorie renommée.");
+        toast.ZeigeErfolg("Catégorie enregistrée.");
         await LadeAsync();
     }
 
@@ -565,13 +573,8 @@ public partial class Leistungen(
         leistungsSuche = string.Empty;
     }
 
-    private string KategorieFarbe(Guid? kategorieId)
-    {
-        if (kategorieId is not Guid id) return "var(--enote-border-strong)";
-        var hauptId = kategorien.FirstOrDefault(k => k.Id == id)?.ParentId ?? id;
-        var index = kategorien.Where(k => k.ParentId is null).OrderBy(k => k.Name).Select(k => k.Id).ToList().IndexOf(hauptId);
-        return index < 0 ? "var(--enote-border-strong)" : KategoriePalette[index % KategoriePalette.Length];
-    }
+    /// <summary>Gleiche Kategoriefarben wie in der Kasse (Wiedererkennung).</summary>
+    private string KategorieFarbe(Guid? kategorieId) => KategorieFarben.Ermittle(kategorien, kategorieId);
 
     // Name der Kategorie einer Leistung (für den Zuordnungs-Button auf der Karte).
     private string KategorieNameVon(Leistung leistung)

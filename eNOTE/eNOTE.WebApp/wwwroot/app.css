@@ -2996,3 +2996,33 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .ku-besuch-inhalt { color: var(--enote-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ku-besuch.storno strong { color: var(--enote-danger-text); }
 .ku-loeschen { margin-right: auto; color: var(--enote-danger-text); }
+
+/* Kategoriefarbe wählen (Katalog → Modifier la catégorie) */
+.kat-farben { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: .45rem; }
+.kat-farben legend { padding: 0; margin-bottom: .1rem; font-weight: 700; font-size: .86rem; color: var(--enote-text); }
+.kat-farben-hinweis { margin: 0; font-size: .8rem; color: var(--enote-text-muted); }
+.kat-farben-raster { display: flex; flex-wrap: wrap; gap: .5rem; }
+.kat-farbe {
+    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+    min-width: 2.75rem; min-height: 2.75rem; padding: 0; border-radius: 999px;
+    border: 2px solid transparent; background: var(--enote-surface-2); cursor: pointer;
+    font: inherit; font-size: .84rem; font-weight: 700; color: var(--enote-text);
+    transition: border-color .15s, transform .15s;
+}
+.kat-farbe:hover { transform: translateY(-1px); }
+.kat-farbe:focus-visible { outline: none; box-shadow: var(--enote-ring); }
+.kat-farbe-punkt { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--farbe); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.kat-farbe.aktiv { border-color: var(--farbe); background: color-mix(in srgb, var(--farbe) 12%, var(--enote-surface)); }
+.kat-farbe.aktiv .kat-farbe-punkt { box-shadow: 0 0 0 3px var(--enote-surface), 0 0 0 5px var(--farbe); }
+.kat-farbe-auto { padding: 0 .9rem 0 .55rem; }
+.kat-farbe-auto .kat-farbe-punkt { width: 1.2rem; height: 1.2rem; }
+.kat-farbe-vorschau { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .75rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); }
+.kat-farbe-vorschau-titel { width: 100%; font-size: .75rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--enote-text-muted); }
+.kat-farbe-vorschau .kx-kat { cursor: default; }
+.kat-farbe-kachel {
+    position: relative; display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1rem 0 1.1rem;
+    background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius); overflow: hidden;
+    font-size: .88rem; font-weight: 700; color: var(--enote-text);
+}
+.kat-farbe-kachel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--kat); }
+.pr-kat .kx-kat-punkt { flex-shrink: 0; }

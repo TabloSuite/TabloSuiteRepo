@@ -118,6 +118,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<LeistungKategorie>(entity =>
         {
             entity.HasIndex(k => new { k.SalonId, k.Name }).IsUnique();
+            entity.Property(k => k.Farbe).HasMaxLength(7);
             entity.HasOne(k => k.Salon)
                 .WithMany()
                 .HasForeignKey(k => k.SalonId)

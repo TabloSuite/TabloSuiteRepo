@@ -3,6 +3,7 @@ using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
+using ENote.Core.Services.Katalog;
 using ENote.Core.Services.Storage;
 using ENote.WebApp.Data;
 using Microsoft.AspNetCore.Identity;
@@ -190,11 +191,26 @@ public class KatalogService(
     }
 
     /// <summary>Benennt eine Kategorie um (Leistungen behalten die Verknüpfung über die Id).</summary>
-    public async Task<(bool Erfolg, string? Fehler)> BenenneKategorieUmAsync(Guid kategorieId, Guid salonId, string neuerName, CancellationToken cancellationToken = default)
+    public Task<(bool Erfolg, string? Fehler)> BenenneKategorieUmAsync(Guid kategorieId, Guid salonId, string neuerName, CancellationToken cancellationToken = default)
+        => AktualisiereKategorieAsync(kategorieId, salonId, neuerName, farbe: null, farbeSetzen: false, cancellationToken);
+
+    /// <summary>
+    /// Ändert Name und Farbe einer Kategorie. <paramref name="farbe"/> null/leer = automatisch
+    /// (Unterkategorien übernehmen dann die Farbe der Hauptkategorie).
+    /// </summary>
+    public Task<(bool Erfolg, string? Fehler)> AktualisiereKategorieAsync(Guid kategorieId, Guid salonId, string neuerName, string? farbe, CancellationToken cancellationToken = default)
+        => AktualisiereKategorieAsync(kategorieId, salonId, neuerName, farbe, farbeSetzen: true, cancellationToken);
+
+    private async Task<(bool Erfolg, string? Fehler)> AktualisiereKategorieAsync(Guid kategorieId, Guid salonId, string neuerName, string? farbe, bool farbeSetzen, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(neuerName))
         {
             return (false, "Veuillez saisir un nom.");
+        }
+
+        if (farbeSetzen && !KategorieFarben.IstGueltig(farbe))
+        {
+            return (false, "Couleur invalide.");
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -214,6 +230,11 @@ public class KatalogService(
         }
 
         kategorie.Name = bereinigt;
+        if (farbeSetzen)
+        {
+            kategorie.Farbe = KategorieFarben.Normalisiere(farbe);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }

@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Forms
 @using ENote.Core.DataModels.Katalog
+@using ENote.Core.Services.Katalog
 
 <PageTitle>Prestations</PageTitle>
 
@@ -44,6 +45,7 @@
                                 <span class="pr-kat-auf" @onclick="() => ToggleAufklappen(knoten.Kategorie.Id)" @onclick:stopPropagation="true">
                                     @if (hatUnter) { <Icon Name="@(istAuf ? "chevron-down" : "chevron-right")" Groesse="16" /> } else { <Icon Name="tag" Groesse="16" /> }
                                 </span>
+                                <span class="kx-kat-punkt" style="background: @KategorieFarbe(knoten.Kategorie.Id)" aria-hidden="true"></span>
                                 <span class="pr-kat-name">@knoten.Kategorie.Name</span>
                                 <span class="enote-baum-anzahl">@AnzahlInKategorie(knoten.Kategorie.Id)</span>
                             </button>
@@ -51,7 +53,7 @@
                             {
                                 <div class="pr-kat-aktionen">
                                     <button type="button" title="Ajouter une sous-catégorie" aria-label="Ajouter une sous-catégorie" @onclick="() => OeffneUnterkategorieDialog(knoten.Kategorie.Id)"><Icon Name="plus" Groesse="16" /></button>
-                                    <button type="button" title="Renommer" aria-label="Renommer" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)"><Icon Name="edit" Groesse="16" /></button>
+                                    <button type="button" title="Modifier (nom, couleur)" aria-label="Modifier la catégorie" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)"><Icon Name="edit" Groesse="16" /></button>
                                     <button type="button" class="gefahr" title="Supprimer" aria-label="Supprimer" @onclick="() => LoescheKategorieFragen(knoten.Kategorie)"><Icon Name="trash" Groesse="16" /></button>
                                 </div>
                             }
@@ -62,13 +64,14 @@
                             {
                                 <div class="pr-kat-zeile pr-kat-unter">
                                     <button type="button" class="pr-kat @(kategorieFilter == unter.Id.ToString() ? "aktiv" : "")" @onclick="() => FilterKategorie(unter.Id)">
+                                        <span class="kx-kat-punkt" style="background: @KategorieFarbe(unter.Id)" aria-hidden="true"></span>
                                         <span class="pr-kat-name">@unter.Name</span>
                                         <span class="enote-baum-anzahl">@AnzahlInKategorie(unter.Id)</span>
                                     </button>
                                     @if (darfVerwalten)
                                     {
                                         <div class="pr-kat-aktionen">
-                                            <button type="button" title="Renommer" aria-label="Renommer" @onclick="() => OeffneKategorieUmbenennen(unter)"><Icon Name="edit" Groesse="16" /></button>
+                                            <button type="button" title="Modifier (nom, couleur)" aria-label="Modifier la sous-catégorie" @onclick="() => OeffneKategorieUmbenennen(unter)"><Icon Name="edit" Groesse="16" /></button>
                                             <button type="button" class="gefahr" title="Supprimer" aria-label="Supprimer" @onclick="() => LoescheKategorieFragen(unter)"><Icon Name="trash" Groesse="16" /></button>
                                         </div>
                                     }
@@ -449,10 +452,34 @@
 </ModalDialog>
 
 @* Kategorie umbenennen *@
-<ModalDialog Open="kategorieUmbenennenOffen" Title="Renommer la catégorie" ErrorMessage="@kategorieFehler" OnClose="() => kategorieUmbenennenOffen = false">
+<ModalDialog Open="kategorieUmbenennenOffen" Title="@(aktiveKategorie?.ParentId is null ? "Modifier la catégorie" : "Modifier la sous-catégorie")" ErrorMessage="@kategorieFehler" OnClose="() => kategorieUmbenennenOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <label>Nom <input @bind="kategorieNeuerName" /></label>
+            <label>Nom <input @bind="kategorieNeuerName" @bind:event="oninput" /></label>
+            <fieldset class="kat-farben">
+                <legend>Couleur</legend>
+                <p class="kat-farben-hinweis">Visible sur les articles du catalogue et dans la caisse.@(aktiveKategorie?.ParentId is null ? " Les sous-catégories reprennent cette couleur." : "")</p>
+                <div class="kat-farben-raster" role="radiogroup" aria-label="Couleur de la catégorie">
+                    <button type="button" role="radio" aria-checked="@(kategorieNeueFarbe is null ? "true" : "false")"
+                            class="kat-farbe kat-farbe-auto @(kategorieNeueFarbe is null ? "aktiv" : "")" style="--farbe: @AutoFarbeAktiveKategorie"
+                            @onclick="() => kategorieNeueFarbe = null">
+                        <span class="kat-farbe-punkt"></span>@(aktiveKategorie?.ParentId is null ? "Automatique" : "Comme la catégorie")
+                    </button>
+                    @foreach (var (hex, name) in KategorieFarben.Auswahl)
+                    {
+                        <button type="button" role="radio" aria-checked="@(kategorieNeueFarbe == hex ? "true" : "false")" aria-label="@name" title="@name"
+                                class="kat-farbe @(kategorieNeueFarbe == hex ? "aktiv" : "")" style="--farbe: @hex"
+                                @onclick="() => kategorieNeueFarbe = hex">
+                            <span class="kat-farbe-punkt"></span>
+                        </button>
+                    }
+                </div>
+            </fieldset>
+            <div class="kat-farbe-vorschau">
+                <span class="kat-farbe-vorschau-titel">Aperçu</span>
+                <span class="kx-kat" style="--kat: @(kategorieNeueFarbe ?? AutoFarbeAktiveKategorie)"><span class="kx-kat-punkt"></span>@(string.IsNullOrWhiteSpace(kategorieNeuerName) ? "Catégorie" : kategorieNeuerName)</span>
+                <span class="kat-farbe-kachel" style="--kat: @(kategorieNeueFarbe ?? AutoFarbeAktiveKategorie)">Article</span>
+            </div>
         </div>
     </ChildContent>
     <Footer>
