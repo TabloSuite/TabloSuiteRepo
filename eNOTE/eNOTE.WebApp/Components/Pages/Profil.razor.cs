@@ -15,8 +15,29 @@ public partial class Profil(
     NavigationManager navigationManager,
     IMediaStorageService mediaStorage,
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
-    LadeZustand ladeZustand)
+    LadeZustand ladeZustand,
+    KontoProfilService kontoProfil,
+    ToastService toast)
 {
+    // Persönliche Daten (nur Admin, PO, Besitzer; Kassierer: null)
+    private KontoProfilService.KontoProfil? profil;
+    private string vorname = string.Empty;
+    private string nachname = string.Empty;
+    private string telefon = string.Empty;
+    private string? datenFehler;
+    private bool DatenGeaendert => profil is not null
+        && (vorname.Trim() != profil.Vorname || nachname.Trim() != profil.Nachname || telefon.Trim() != (profil.Telefon ?? ""));
+
+    private bool emailDialogOffen;
+    private string neueEmail = string.Empty;
+    private string emailPasswort = string.Empty;
+    private string? emailFehler;
+
+    private bool pseudonymDialogOffen;
+    private string neuesPseudonym = string.Empty;
+    private string pseudonymPasswort = string.Empty;
+    private string? pseudonymFehler;
+
     private bool isLoading = true;
     private Guid userId;
     private string fullName = string.Empty;
@@ -73,6 +94,8 @@ public partial class Profil(
             fullName = email;
         }
 
+        await LadeProfilDatenAsync();
+
         // Profilbild laden
         await LadeProfilBildAsync();
 
@@ -80,6 +103,86 @@ public partial class Profil(
     }
 
 
+
+    private async Task LadeProfilDatenAsync()
+    {
+        profil = await kontoProfil.GetAsync(userId);
+        if (profil is null) return;
+        vorname = profil.Vorname;
+        nachname = profil.Nachname;
+        telefon = profil.Telefon ?? string.Empty;
+        // Ältere Konten ohne getrennte Felder: Vor-/Nachname aus dem Anzeigenamen vorschlagen.
+        if (vorname.Length == 0 && nachname.Length == 0 && profil.Name.Contains(' '))
+        {
+            var teile = profil.Name.Trim().Split(' ', 2);
+            vorname = teile[0];
+            nachname = teile[1];
+        }
+        if (!string.IsNullOrWhiteSpace(profil.Name)) fullName = profil.Name;
+        email = profil.Email;
+        pseudonym = profil.Pseudonym;
+    }
+
+    private async Task SpeichereDatenAsync()
+    {
+        datenFehler = null;
+        var (erfolg, fehler) = await kontoProfil.AenderePersoenlicheDatenAsync(userId, vorname, nachname, telefon);
+        if (!erfolg)
+        {
+            datenFehler = fehler;
+            return;
+        }
+
+        await LadeProfilDatenAsync();
+        toast.ZeigeErfolg("Informations enregistrées.");
+    }
+
+    private void OeffneEmailDialog()
+    {
+        neueEmail = string.Empty;
+        emailPasswort = string.Empty;
+        emailFehler = null;
+        emailDialogOffen = true;
+    }
+
+    private async Task AendereEmailAsync()
+    {
+        emailFehler = null;
+        var (erfolg, fehler) = await kontoProfil.AendereEmailAsync(userId, neueEmail, emailPasswort);
+        emailPasswort = string.Empty;
+        if (!erfolg)
+        {
+            emailFehler = fehler;
+            return;
+        }
+
+        emailDialogOffen = false;
+        await LadeProfilDatenAsync();
+        toast.ZeigeErfolg("Adresse e-mail modifiée.");
+    }
+
+    private void OeffnePseudonymDialog()
+    {
+        neuesPseudonym = string.Empty;
+        pseudonymPasswort = string.Empty;
+        pseudonymFehler = null;
+        pseudonymDialogOffen = true;
+    }
+
+    private async Task AenderePseudonymAsync()
+    {
+        pseudonymFehler = null;
+        var (erfolg, fehler) = await kontoProfil.AenderePseudonymAsync(userId, neuesPseudonym, pseudonymPasswort);
+        pseudonymPasswort = string.Empty;
+        if (!erfolg)
+        {
+            pseudonymFehler = fehler;
+            return;
+        }
+
+        // Sitzung wurde beendet → mit dem neuen Identifiant neu anmelden.
+        navigationManager.NavigateTo("/auth/login?info=identifiant-modifie", forceLoad: true);
+    }
 
     private async Task LadeProfilBildAsync()
     {

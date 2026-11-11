@@ -8,7 +8,7 @@
     <div class="enote-page-header">
         <div>
             <h1>Mon profil</h1>
-            <p>Vos informations, votre photo et votre mot de passe.</p>
+            <p>Vos informations personnelles, votre photo, votre adresse e-mail et votre mot de passe.</p>
         </div>
     </div>
 
@@ -86,6 +86,53 @@
                 }
             </section>
 
+            <div class="pf-spalte">
+            @if (profil is not null)
+            {
+                <section class="enote-card pf-karte" aria-labelledby="pf-daten-titel">
+                    <h2 id="pf-daten-titel"><Icon Name="user" Groesse="20" /> Informations personnelles</h2>
+                    <p class="enote-muted">Votre nom apparaît dans l'équipe, sur les reçus et dans les messages d'eNOTE.</p>
+                    <div class="enote-form">
+                        <div class="pf-zwei">
+                            <label>Prénom <input @bind="vorname" @bind:event="oninput" autocomplete="given-name" maxlength="60" /></label>
+                            <label>Nom <input @bind="nachname" @bind:event="oninput" autocomplete="family-name" maxlength="60" /></label>
+                        </div>
+                        <label>
+                            <span>Téléphone <span class="enote-muted pf-optional">(facultatif)</span></span>
+                            <input @bind="telefon" @bind:event="oninput" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="+228 90 00 00 00" />
+                        </label>
+                        @if (!string.IsNullOrWhiteSpace(datenFehler))
+                        {
+                            <div class="alert alert-error" role="alert">@datenFehler</div>
+                        }
+                        <div><AsyncActionButton Text="Enregistrer" OnClick="SpeichereDatenAsync" CssClass="enote-btn-primary" Disabled="!DatenGeaendert" /></div>
+                    </div>
+                </section>
+
+                <section class="enote-card pf-karte" aria-labelledby="pf-zugang-titel">
+                    <h2 id="pf-zugang-titel"><Icon Name="mail" Groesse="20" /> Adresse e-mail et identifiant</h2>
+                    <p class="enote-muted">Le mot de passe actuel est demandé pour chaque modification.</p>
+                    <div class="pf-zugang">
+                        <div class="pf-zugang-zeile">
+                            <div>
+                                <span class="pf-zugang-label">Adresse e-mail</span>
+                                <span class="pf-zugang-wert">@(string.IsNullOrWhiteSpace(email) ? "—" : email)</span>
+                                <small class="enote-muted">Factures, informations et « Mot de passe oublié ».</small>
+                            </div>
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="OeffneEmailDialog"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                        </div>
+                        <div class="pf-zugang-zeile">
+                            <div>
+                                <span class="pf-zugang-label">Identifiant de connexion</span>
+                                <span class="pf-zugang-wert">@pseudonym</span>
+                                <small class="enote-muted">Utilisé pour vous connecter.</small>
+                            </div>
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="OeffnePseudonymDialog"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                        </div>
+                    </div>
+                </section>
+            }
+
             <section class="enote-card pf-karte">
                 <h2><Icon Name="lock" Groesse="20" /> Mot de passe</h2>
                 <p class="enote-muted">Après la modification, vous serez déconnecté et devrez vous reconnecter.</p>
@@ -112,6 +159,45 @@
                     <div><AsyncActionButton Text="Changer le mot de passe" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" /></div>
                 </EditForm>
             </section>
+            </div>
         </div>
     }
 </div>
+
+<ModalDialog Open="emailDialogOffen" Title="Changer l'adresse e-mail" ErrorMessage="@emailFehler" OnClose="() => emailDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>Nouvelle adresse e-mail <input @bind="neueEmail" @bind:event="oninput" type="email" autocomplete="email" maxlength="256" /></label>
+            <label>
+                Mot de passe actuel
+                <PasswordInput @bind-Value="emailPasswort" Required="true" Autocomplete="current-password" />
+            </label>
+            <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Un message de sécurité est envoyé à l'ancienne adresse.</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => emailDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" OnClick="AendereEmailAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+<ModalDialog Open="pseudonymDialogOffen" Title="Changer l'identifiant" ErrorMessage="@pseudonymFehler" OnClose="() => pseudonymDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <label>
+                Nouvel identifiant
+                <input @bind="neuesPseudonym" @bind:event="oninput" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" />
+                <small class="enote-muted">3 à 64 caractères : lettres, chiffres, point, tiret ou soulignement.</small>
+            </label>
+            <label>
+                Mot de passe actuel
+                <PasswordInput @bind-Value="pseudonymPasswort" Required="true" Autocomplete="current-password" />
+            </label>
+            <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Vous serez ensuite déconnecté et vous reconnecterez avec le nouvel identifiant.</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => pseudonymDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Changer l'identifiant" OnClick="AenderePseudonymAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

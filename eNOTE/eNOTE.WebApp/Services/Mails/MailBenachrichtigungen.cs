@@ -114,6 +114,28 @@ public class MailBenachrichtigungen(
                 TabloSuiteMails.PasswortGeaendert(u.Vorname, u.UserName ?? "", uhr.GetUtcNow().UtcDateTime, AppUrl), "mot-de-passe", ct);
         });
 
+    /// <summary>Sicherheitshinweis an die bisherige Adresse nach einer Änderung der E-Mail-Adresse.</summary>
+    public Task EmailGeaendertAsync(Guid userId, string alteAdresse, string neueAdresse, CancellationToken ct = default)
+        => SicherAsync("email-modifiee", async () =>
+        {
+            if (string.IsNullOrWhiteSpace(alteAdresse)) return;
+            await using var db = await factory.CreateDbContextAsync(ct);
+            var u = await db.Users.AsNoTracking().Where(x => x.Id == userId).Select(x => new { x.Vorname, x.UserName }).FirstOrDefaultAsync(ct);
+            if (u is null) return;
+            await email.SendeAsync(alteAdresse, "Votre adresse e-mail a été modifiée",
+                TabloSuiteMails.EmailGeaendert(u.Vorname, u.UserName ?? "", MaskiereEmail(neueAdresse), uhr.GetUtcNow().UtcDateTime, AppUrl), "email-modifiee", ct);
+        });
+
+    /// <summary>„ama.mensah@exemple.com“ → „a•••h@exemple.com“ (für Hinweise an die alte Adresse).</summary>
+    public static string MaskiereEmail(string adresse)
+    {
+        var at = adresse.IndexOf('@');
+        if (at <= 0) return "•••";
+        var lokal = adresse[..at];
+        var maskiert = lokal.Length <= 2 ? lokal[0] + "•••" : lokal[0] + "•••" + lokal[^1];
+        return maskiert + adresse[at..];
+    }
+
     // ------------------------------------------------------------------ Zeitgesteuert
 
     /// <summary>

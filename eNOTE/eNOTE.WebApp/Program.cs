@@ -122,6 +122,7 @@ if (administration is null)
     builder.Services.AddScoped<AusgabenService>();
     builder.Services.AddScoped<HinweisService>();
     builder.Services.AddScoped<AdminKontenService>();
+    builder.Services.AddScoped<KontoProfilService>();
     builder.Services.AddScoped<KundenService>();
     builder.Services.AddScoped<AnkuendigungService>();
     builder.Services.AddScoped<PreisAnpassungService>();

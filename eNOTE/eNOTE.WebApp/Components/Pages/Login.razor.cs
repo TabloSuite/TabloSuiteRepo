@@ -28,6 +28,8 @@ public partial class Login
         {
             "registered" => "Votre salon a été enregistré. Il sera activé après validation par l'administrateur.",
             "logged-out" => "Vous avez été déconnecté.",
+            "password-updated" => "Mot de passe modifié. Connectez-vous avec le nouveau mot de passe.",
+            "identifiant-modifie" => "Identifiant modifié. Connectez-vous avec le nouvel identifiant.",
             _ => null
         };
     }

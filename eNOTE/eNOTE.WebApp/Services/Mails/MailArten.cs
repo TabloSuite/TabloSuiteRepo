@@ -25,6 +25,7 @@ public static class MailArten
         new("inscription-admin", "Nouvel établissement", "Équipe TabloSuite", "À chaque nouvelle inscription", false, true),
         new("paiement-signale", "Paiement signalé", "Équipe TabloSuite", "Quand un propriétaire signale un paiement", false, true),
         new("etablissement-statut", "Établissement désactivé / réactivé", "Propriétaire", "Quand l'admin change le statut", false, true),
+        new("email-modifiee", "Adresse e-mail modifiée", "Utilisateur (ancienne adresse)", "Quand l'adresse e-mail du compte change (sécurité)", false, true),
 
         // Abschaltbar – standardmäßig aus (später bei größerem Mail-Kontingent aktivieren)
         new("bienvenue", "Bienvenue", "Propriétaire", "Juste après l'inscription", false, false),

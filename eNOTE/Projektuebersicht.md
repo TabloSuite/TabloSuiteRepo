@@ -50,6 +50,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - `UserSalon` verknüpft Konto ↔ Laden mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN sowie Besitzer-PIN-Hash mit Fehlversuchs-Sperre. `AktiverSalonState` liefert die Zuordnung; `SalonSwitcher` erscheint nur bei mehreren Zuordnungen.
 - **Rollen** (`AppRollen`): `Besitzer`, `Kassierer`, `ProduktOwner` (« Responsable »), `SuperAdmin`. Seiten per `[Authorize(Roles=…)]`, Rechte zusätzlich im Service (`LadenZugriff`).
 - **Kassierer** sind eigene Konten (Pseudonym, Initialpasswort, Kassen-PIN), angelegt in Équipe; kein Profil und keine Passwort-Wiederherstellung per Mail.
+- **Mon profil** (`/profil`, `KontoProfilService`): Admin, PO und Besitzer ändern Prénom, Nom und Téléphone (ohne Abmeldung); E-Mail-Adresse und Identifiant nur mit aktuellem Passwort. Die alte Adresse erhält den Sicherheitshinweis « Adresse e-mail modifiée » (neue Adresse maskiert); nach neuem Identifiant ist eine erneute Anmeldung nötig. Kassierer sehen nur Foto und Passwort.
 - Anmeldung per Pseudonym; die E-Mail ist nur Kontakt-/Wiederherstellungsadresse und gewährt nie Zugriff auf andere Konten. **Abmelden** führt auf die öffentliche Startseite; Anmeldung und Registrierung haben « Retour à l'accueil ».
 
 ### Besitzer-Zone (PIN-Sperre)

@@ -57,6 +57,17 @@ public static class TabloSuiteMails
             + Knopf("Ouvrir eNOTE", appUrl)
             + Gruss());
 
+    /// <summary>Hinweis an die bisherige Adresse, wenn die E-Mail-Adresse des Kontos geändert wurde (Sicherheit).</summary>
+    public static string EmailGeaendert(string vorname, string pseudonym, string neueAdresseMaskiert, DateTime zeitpunktUtc, string appUrl)
+        => Wrap("Votre adresse e-mail a été modifiée", "Confirmation de sécurité.",
+            Anrede(vorname)
+            + P($"L'adresse e-mail du compte <strong>{H(pseudonym)}</strong> a été remplacée le {Datum(zeitpunktUtc, mitZeit: true)}.")
+            + Tabelle([("Nouvelle adresse", neueAdresseMaskiert)])
+            + P("Les prochains messages d'eNOTE (factures, mot de passe oublié) seront envoyés à la nouvelle adresse.")
+            + Box("warn", "Ce n'était pas vous ?", $"Contactez-nous immédiatement à {Kontakt}.")
+            + Knopf("Ouvrir eNOTE", appUrl)
+            + Gruss());
+
     /// <summary>Vom Admin angelegtes Besitzerkonto.</summary>
     public static string KontoErstellt(string vorname, string pseudonym, string salonName, string appUrl, string? passwortLink)
         => Wrap("Votre compte eNOTE est prêt", $"Votre établissement « {salonName} » a été créé.",

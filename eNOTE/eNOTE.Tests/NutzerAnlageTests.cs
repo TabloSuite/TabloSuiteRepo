@@ -117,6 +117,87 @@ public class NutzerAnlageTests
     }
 
     [Fact]
+    public async Task Profil_Aendert_Name_Und_Telefon_Ohne_Abmeldung()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var besitzer = await NutzerAsync(scope.ServiceProvider, AppRollen.Besitzer);
+        var sitzung = Guid.NewGuid();
+        besitzer.ActiveSessionId = sitzung;
+        await users.UpdateAsync(besitzer);
+        var service = new KontoProfilService(users);
+
+        Assert.False((await service.AenderePersoenlicheDatenAsync(besitzer.Id, "  ", "Mensah", null)).Erfolg);
+        Assert.False((await service.AenderePersoenlicheDatenAsync(besitzer.Id, "Ama", "Mensah", "appelle-moi")).Erfolg);
+        Assert.False((await service.AenderePersoenlicheDatenAsync(besitzer.Id, new string('a', 61), "Mensah", null)).Erfolg);
+        var (ok, fehler) = await service.AenderePersoenlicheDatenAsync(besitzer.Id, " Ama  Akossiwa ", " Mensah ", " +228 90  12 34 56 ");
+        Assert.True(ok, fehler);
+
+        await using var db = await factory.CreateDbContextAsync();
+        var konto = await db.Users.SingleAsync(u => u.Id == besitzer.Id);
+        Assert.Equal("Ama Akossiwa", konto.Vorname);
+        Assert.Equal("Mensah", konto.Nachname);
+        Assert.Equal("Ama Akossiwa Mensah", konto.FullName);
+        Assert.Equal("+228 90 12 34 56", konto.TelefonNummer);
+        Assert.Equal(sitzung, konto.ActiveSessionId); // bleibt angemeldet
+
+        Assert.True((await service.AenderePersoenlicheDatenAsync(besitzer.Id, "Ama", "Mensah", "")).Erfolg);
+        Assert.Null((await service.GetAsync(besitzer.Id))!.Telefon);
+    }
+
+    [Fact]
+    public async Task Profil_Aendert_Email_Nur_Mit_Passwort_Und_Warnt_Alte_Adresse()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var po = await NutzerAsync(scope.ServiceProvider, AppRollen.ProduktOwner);
+        var alt = po.Email!;
+        var config = new ConfigurationBuilder().Build();
+        var mails = new MailBenachrichtigungen(factory, new EmailService(config, factory, NullLogger<EmailService>.Instance), config, NullLogger<MailBenachrichtigungen>.Instance);
+        var service = new KontoProfilService(users, mails);
+
+        Assert.Equal("Le mot de passe actuel est incorrect.", (await service.AendereEmailAsync(po.Id, "neu@example.test", "faux")).Fehler);
+        Assert.False((await service.AendereEmailAsync(po.Id, "pas-une-adresse", "Initial123!Ab")).Erfolg);
+        Assert.False((await service.AendereEmailAsync(po.Id, alt.ToUpperInvariant(), "Initial123!Ab")).Erfolg);
+        var (ok, fehler) = await service.AendereEmailAsync(po.Id, "  neu@example.test ", "Initial123!Ab");
+        Assert.True(ok, fehler);
+
+        await using var db = await factory.CreateDbContextAsync();
+        var konto = await db.Users.SingleAsync(u => u.Id == po.Id);
+        Assert.Equal("neu@example.test", konto.Email);
+        Assert.Equal("NEU@EXAMPLE.TEST", konto.NormalizedEmail);
+        var hinweis = await db.MailNachrichten.SingleAsync(m => m.Kategorie == "email-modifiee");
+        Assert.Equal(alt, hinweis.Empfaenger);                    // an die alte Adresse
+        Assert.Contains("n•••u@example.test", hinweis.HtmlInhalt); // neue Adresse nur maskiert
+        Assert.DoesNotContain("neu@example.test", hinweis.HtmlInhalt);
+    }
+
+    [Theory]
+    [InlineData("ama.mensah@exemple.com", "a•••h@exemple.com")]
+    [InlineData("ab@x.tg", "a•••@x.tg")]
+    [InlineData("kein-at", "•••")]
+    public void Email_Wird_Fuer_Hinweise_Maskiert(string adresse, string erwartet)
+        => Assert.Equal(erwartet, MailBenachrichtigungen.MaskiereEmail(adresse));
+
+    [Fact]
+    public async Task Profil_Bleibt_Fuer_Kassierer_Gesperrt()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var kassierer = await NutzerAsync(scope.ServiceProvider, AppRollen.Kassierer);
+        var service = new KontoProfilService(users);
+        Assert.Null(await service.GetAsync(kassierer.Id));
+        Assert.False((await service.AenderePersoenlicheDatenAsync(kassierer.Id, "Awa", "Koffi", null)).Erfolg);
+        Assert.False((await service.AendereEmailAsync(kassierer.Id, "awa@example.test", "Initial123!Ab")).Erfolg);
+    }
+
+    [Fact]
     public async Task Gleiche_Email_Mit_Unterschiedlichen_Pseudonymen_Erlaubt()
     {
         var factory = TestDbContextFactory.Create();
