@@ -47,6 +47,18 @@ public class Salon
     public DateTime? VertragsBeginnUtc { get; set; }
     public DateTime? VertragsWechselAbUtc { get; set; }
 
+    /// <summary>Kündigung ausgesprochen (vom Besitzer, zurücknehmbar).</summary>
+    public DateTime? GekuendigtAmUtc { get; set; }
+    /// <summary>Ab hier keine neuen Perioden; die Kasse ist ab diesem Zeitpunkt geschlossen.</summary>
+    public DateTime? GekuendigtZumUtc { get; set; }
+    /// <summary>Freiwillige Angabe des Besitzers (Rückmeldung).</summary>
+    public string? KuendigungGrund { get; set; }
+    /// <summary>Kontolöschung beantragt: Laden sofort gesperrt, Bedenkzeit bis <see cref="LoeschungAbUtc"/>.</summary>
+    public DateTime? LoeschungBeantragtUtc { get; set; }
+    public DateTime? LoeschungAbUtc { get; set; }
+    /// <summary>Löschung ausgeführt: Daten entfernt, Konten anonymisiert, nur die eNOTE-Rechnungen bleiben.</summary>
+    public DateTime? GeloeschtUtc { get; set; }
+
     /// <summary>Freier Slogan des Salons (z. B. „In God we trust“), erscheint auf dem Bon.</summary>
     public string? Slogan { get; set; }
 

@@ -69,6 +69,7 @@ public class VertragsUiTests
         services.AddSingleton<LadeZustand>();
         services.AddSingleton(new KatalogService(factory, null!, null!));
         services.AddSingleton(new KassenService(factory, new FakeUmsatzBenachrichtigungService()));
+        services.AddSingleton(new KuendigungService(factory, TimeProvider.System, users: null!));
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new SeitenRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
         var html = await renderer.Dispatcher.InvokeAsync(async () =>
@@ -95,6 +96,10 @@ public class VertragsUiTests
         Assert.Matches(new Regex(@"54\D?000"), html);
         // Geseedeter Monatspreis wird angezeigt (Tausendertrennzeichen kulturabhängig)
         Assert.Matches(new Regex(@"5\D?000"), html);
+        // Kündigen und Löschen: in der Probezeit endet das Abonnement mit dem Essai
+        Assert.Contains("Résiliation et suppression", html);
+        Assert.Contains("à la fin de l'essai gratuit", html);
+        Assert.Contains("Supprimer le compte…", html);
     }
 
     [Fact]

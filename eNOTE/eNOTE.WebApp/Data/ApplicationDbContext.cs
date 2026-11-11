@@ -5,6 +5,7 @@ using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
+using ENote.Core.Services;
 using ENote.Core.Services.Kunden;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -81,6 +82,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasIndex(s => s.Name).IsUnique();
             entity.Property(s => s.IndividuellerMonatsPreis).HasPrecision(18, 2);
+            entity.Property(s => s.KuendigungGrund).HasMaxLength(KuendigungsRegeln.GrundMax);
             entity.HasOne(s => s.LogoAsset)
                 .WithMany()
                 .HasForeignKey(s => s.LogoAssetId)

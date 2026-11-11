@@ -114,6 +114,34 @@ public class MailBenachrichtigungen(
                 TabloSuiteMails.PasswortGeaendert(u.Vorname, u.UserName ?? "", uhr.GetUtcNow().UtcDateTime, AppUrl), "mot-de-passe", ct);
         });
 
+    /// <summary>Kündigung: Bestätigung an den Besitzer und Info an das Team.</summary>
+    public Task KuendigungAsync(Guid salonId, Guid besitzerId, CancellationToken ct = default)
+        => SicherAsync("resiliation", async () =>
+        {
+            await using var db = await factory.CreateDbContextAsync(ct);
+            var salon = await db.Salons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == salonId, ct);
+            var u = await db.Users.AsNoTracking().Where(x => x.Id == besitzerId).Select(x => new { x.Email, x.Vorname, x.FullName }).FirstOrDefaultAsync(ct);
+            if (salon?.GekuendigtZumUtc is not DateTime zum || u is null) return;
+            if (!string.IsNullOrWhiteSpace(u.Email))
+                await email.SendeAsync(u.Email, "Résiliation de votre abonnement eNOTE", TabloSuiteMails.KuendigungBestaetigt(u.Vorname, salon.Name, zum, AboUrl), "resiliation", ct);
+            await email.SendeAsync(AdminEmpfaenger, $"Résiliation : {salon.Name}",
+                TabloSuiteMails.KuendigungAdmin(salon.Name, u.FullName, "Résiliation de l'abonnement", zum, salon.KuendigungGrund, AppUrl + "/admin"), "resiliation-admin", ct);
+        });
+
+    /// <summary>Kontolöschung beantragt: Sicherheitsbestätigung an den Besitzer und Info an das Team.</summary>
+    public Task LoeschungGeplantAsync(Guid salonId, Guid besitzerId, CancellationToken ct = default)
+        => SicherAsync("suppression-compte", async () =>
+        {
+            await using var db = await factory.CreateDbContextAsync(ct);
+            var salon = await db.Salons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == salonId, ct);
+            var u = await db.Users.AsNoTracking().Where(x => x.Id == besitzerId).Select(x => new { x.Email, x.Vorname, x.FullName }).FirstOrDefaultAsync(ct);
+            if (salon?.LoeschungAbUtc is not DateTime ab || u is null) return;
+            if (!string.IsNullOrWhiteSpace(u.Email))
+                await email.SendeAsync(u.Email, "Suppression de votre compte eNOTE programmée", TabloSuiteMails.LoeschungGeplant(u.Vorname, salon.Name, ab, AboUrl), "suppression-compte", ct);
+            await email.SendeAsync(AdminEmpfaenger, $"Suppression demandée : {salon.Name}",
+                TabloSuiteMails.KuendigungAdmin(salon.Name, u.FullName, "Suppression du compte demandée", ab, salon.KuendigungGrund, AppUrl + "/admin"), "resiliation-admin", ct);
+        });
+
     /// <summary>Sicherheitshinweis an die bisherige Adresse nach einer Änderung der E-Mail-Adresse.</summary>
     public Task EmailGeaendertAsync(Guid userId, string alteAdresse, string neueAdresse, CancellationToken ct = default)
         => SicherAsync("email-modifiee", async () =>

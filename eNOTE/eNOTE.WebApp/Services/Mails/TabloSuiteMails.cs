@@ -68,6 +68,36 @@ public static class TabloSuiteMails
             + Knopf("Ouvrir eNOTE", appUrl)
             + Gruss());
 
+    /// <summary>Bestätigung der Kündigung an den Besitzer.</summary>
+    public static string KuendigungBestaetigt(string vorname, string salonName, DateTime zumUtc, string aboUrl)
+        => Wrap("Résiliation confirmée", $"Votre abonnement prend fin le {Datum(zumUtc)}.",
+            Anrede(vorname)
+            + P($"Nous avons bien enregistré la résiliation de l'abonnement eNOTE de <strong>{H(salonName)}</strong>.")
+            + Tabelle([("Établissement", salonName), ("Caisse disponible jusqu'au", Datum(zumUtc.AddTicks(-1)))])
+            + P("Aucune nouvelle facture ne sera émise. Vos données restent conservées : vous pouvez réactiver l'abonnement à tout moment dans « Abonnement ».")
+            + Knopf("Gérer mon abonnement", aboUrl)
+            + Box("warn", "Ce n'était pas vous ?", $"Annulez la résiliation dans « Abonnement » et contactez-nous à {Kontakt}.")
+            + Gruss());
+
+    /// <summary>Sicherheitsbestätigung: Kontolöschung beantragt (Bedenkzeit).</summary>
+    public static string LoeschungGeplant(string vorname, string salonName, DateTime abUtc, string aboUrl)
+        => Wrap("Suppression du compte programmée", $"Vos données seront supprimées le {Datum(abUtc)}.",
+            Anrede(vorname)
+            + P($"La suppression du compte eNOTE de <strong>{H(salonName)}</strong> a été demandée. L'établissement est fermé dès maintenant.")
+            + Tabelle([("Établissement", salonName), ("Suppression définitive le", Datum(abUtc))])
+            + P("À cette date, les ventes, clients, prestations, dépenses et comptes de l'équipe seront supprimés. Seules nos factures d'abonnement sont conservées, sans données personnelles.")
+            + P("Vous avez changé d'avis ? Connectez-vous et choisissez « Annuler la suppression » dans « Abonnement » avant cette date.")
+            + Knopf("Annuler la suppression", aboUrl)
+            + Box("warn", "Ce n'était pas vous ?", $"Annulez la suppression immédiatement, changez votre mot de passe et contactez-nous à {Kontakt}.")
+            + Gruss());
+
+    /// <summary>Info an das TabloSuite-Team: Kündigung oder Löschung.</summary>
+    public static string KuendigungAdmin(string salonName, string besitzerName, string art, DateTime datumUtc, string? grund, string adminUrl)
+        => Wrap(art, $"{salonName} · {Datum(datumUtc)}.",
+            P($"{H(art)} pour l'établissement suivant :")
+            + Tabelle([("Établissement", salonName), ("Propriétaire", besitzerName), ("Date", Datum(datumUtc)), ("Motif", string.IsNullOrWhiteSpace(grund) ? "—" : grund)])
+            + Knopf("Ouvrir l'administration", adminUrl));
+
     /// <summary>Vom Admin angelegtes Besitzerkonto.</summary>
     public static string KontoErstellt(string vorname, string pseudonym, string salonName, string appUrl, string? passwortLink)
         => Wrap("Votre compte eNOTE est prêt", $"Votre établissement « {salonName} » a été créé.",

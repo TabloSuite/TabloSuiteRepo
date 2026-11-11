@@ -19,12 +19,15 @@ public static class MailArten
         new("caisse-suspendue", "Caisse suspendue", "Propriétaire", "Le jour de la suspension pour impayé", true, true),
         new("paiement-refuse", "Paiement non retrouvé", "Propriétaire", "Quand l'admin refuse un paiement signalé", true, true),
         new("changement-tarif", "Changement de tarif", "Propriétaire", "Quand l'admin modifie le tarif général (si coché)", true, true),
+        new("suppression-compte", "Suppression du compte programmée", "Propriétaire", "Quand le propriétaire demande la suppression (sécurité)", true, true),
 
         // Abschaltbar – standardmäßig an
         new("rappel-paiement", "Rappel de paiement", "Propriétaire", $"{MailBenachrichtigungen.ErinnerungTageVorSperre} jours avant la suspension", false, true),
         new("inscription-admin", "Nouvel établissement", "Équipe TabloSuite", "À chaque nouvelle inscription", false, true),
         new("paiement-signale", "Paiement signalé", "Équipe TabloSuite", "Quand un propriétaire signale un paiement", false, true),
         new("etablissement-statut", "Établissement désactivé / réactivé", "Propriétaire", "Quand l'admin change le statut", false, true),
+        new("resiliation", "Résiliation confirmée", "Propriétaire", "Quand le propriétaire résilie son abonnement", false, true),
+        new("resiliation-admin", "Résiliation (admin)", "Équipe TabloSuite", "Quand un établissement résilie ou demande la suppression", false, true),
         new("email-modifiee", "Adresse e-mail modifiée", "Utilisateur (ancienne adresse)", "Quand l'adresse e-mail du compte change (sécurité)", false, true),
 
         // Abschaltbar – standardmäßig aus (später bei größerem Mail-Kontingent aktivieren)

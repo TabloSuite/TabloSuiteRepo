@@ -123,6 +123,7 @@ if (administration is null)
     builder.Services.AddScoped<HinweisService>();
     builder.Services.AddScoped<AdminKontenService>();
     builder.Services.AddScoped<KontoProfilService>();
+    builder.Services.AddScoped<KuendigungService>();
     builder.Services.AddScoped<KundenService>();
     builder.Services.AddScoped<KundenBesuchService>();
     builder.Services.AddSingleton<AnwesenheitsSignal>();

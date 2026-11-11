@@ -117,7 +117,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
             var start = salon.VertragsBeginnUtc.Value;
             var letztePeriode = abos.Where(a => a.ZeitraumBisUtc > a.ZeitraumVonUtc).MaxBy(a => a.ZeitraumBisUtc);
             if (letztePeriode is not null && letztePeriode.ZeitraumBisUtc > start) start = letztePeriode.ZeitraumBisUtc;
-            while (start <= jetzt)
+            while (start <= jetzt && KuendigungsRegeln.DarfPeriodeBeginnen(start, salon.GekuendigtZumUtc, salon.LoeschungBeantragtUtc))
             {
                 if (salon.NaechstesVertragsIntervall is AboIntervall wechsel && salon.VertragsWechselAbUtc <= start)
                 {

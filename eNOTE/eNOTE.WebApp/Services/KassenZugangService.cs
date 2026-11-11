@@ -33,7 +33,14 @@ public class KassenZugangService(IDbContextFactory<ApplicationDbContext> factory
         if (salon is null || !salon.IstAktiv || !salon.IstFreigegeben)
             return new(true, "Cet établissement n'est pas autorisé à utiliser la caisse.", null);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
-        if (salon.ProbeBisUtc > jetzt) return new(false, null, null);
+        if (salon.LoeschungBeantragtUtc is not null)
+            return new(true, $"Suppression du compte demandée : l'établissement est fermé. Le propriétaire peut l'annuler dans « Abonnement » jusqu'au {salon.LoeschungAbUtc:dd'/'MM'/'yyyy}.", salon.LoeschungBeantragtUtc);
+        if (salon.GekuendigtZumUtc is DateTime zum && zum <= jetzt)
+            return new(true, $"Abonnement résilié depuis le {zum:dd'/'MM'/'yyyy} : la caisse est fermée. Le propriétaire peut le réactiver dans « Abonnement ».", zum);
+        var kuendigungsHinweis = salon.GekuendigtZumUtc is DateTime ende
+            ? $"Abonnement résilié : la caisse reste disponible jusqu'au {ende.AddTicks(-1):dd'/'MM'/'yyyy} inclus."
+            : null;
+        if (salon.ProbeBisUtc > jetzt) return new(false, kuendigungsHinweis, salon.GekuendigtZumUtc);
 
         // Unbezahlt = alles außer "Bestaetigt". Auch "Gemeldet" (vom Besitzer als
         // überwiesen markiert) sperrt weiter, bis der Admin den Eingang bestätigt hat.
@@ -42,7 +49,7 @@ public class KassenZugangService(IDbContextFactory<ApplicationDbContext> factory
             && (a.FaelligUtc ?? a.ZeitraumVonUtc) <= jetzt).ToListAsync(ct);
         var frist = offen.Select(a => a.KassenSperreAbUtc ?? VertragsRegeln.SperreAb(a.FaelligUtc ?? a.ZeitraumVonUtc))
             .OrderBy(d => d).Select(d => (DateTime?)d).FirstOrDefault();
-        if (frist is null) return new(false, null, null);
+        if (frist is null) return new(false, kuendigungsHinweis, salon.GekuendigtZumUtc);
 
         var gesperrt = jetzt >= frist;
         var nurGemeldet = offen.All(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet);

@@ -25,6 +25,41 @@
     }
     else if (vertrag is { } v)
     {
+        @* --- Kündigung / Löschung --- *@
+        @if (stand is { LoeschungLaeuft: true } sl)
+        {
+            <div class="ab-faellig gesperrt ab-ende" role="status">
+                <span class="ab-faellig-ico"><Icon Name="trash" Groesse="20" /></span>
+                <div>
+                    <strong>Suppression du compte prévue le @Datum(sl.LoeschungAbUtc)</strong>
+                    <span>L'établissement est fermé. À cette date, ses données seront supprimées définitivement. Vous pouvez encore annuler.</span>
+                </div>
+                <AsyncActionButton Text="Annuler la suppression" BusyText="…" CssClass="enote-btn-primary" OnClick="NimmLoeschungZurueckAsync" />
+            </div>
+        }
+        else if (stand is { IstGekuendigt: true, KuendigungWirksam: true } sw)
+        {
+            <div class="ab-faellig gesperrt ab-ende" role="status">
+                <span class="ab-faellig-ico"><Icon Name="lock" Groesse="20" /></span>
+                <div>
+                    <strong>Abonnement terminé depuis le @Datum(sw.GekuendigtZumUtc)</strong>
+                    <span>La caisse est fermée. Vos données sont conservées : réactivez l'abonnement pour reprendre (facturation à partir d'aujourd'hui).</span>
+                </div>
+                <AsyncActionButton Text="Réactiver l'abonnement" BusyText="…" CssClass="enote-btn-primary" OnClick="NimmKuendigungZurueckAsync" />
+            </div>
+        }
+        else if (stand is { IstGekuendigt: true } sk)
+        {
+            <div class="ab-faellig ab-ende" role="status">
+                <span class="ab-faellig-ico"><Icon Name="calendar" Groesse="20" /></span>
+                <div>
+                    <strong>Abonnement résilié · fin le @Datum(sk.GekuendigtZumUtc?.AddTicks(-1)) au soir</strong>
+                    <span>Jusque-là, tout fonctionne normalement. Aucune nouvelle facture ne sera émise.</span>
+                </div>
+                <AsyncActionButton Text="Annuler la résiliation" BusyText="…" CssClass="enote-btn-primary" OnClick="NimmKuendigungZurueckAsync" />
+            </div>
+        }
+
         @* --- Status: Probezeit / offene Zahlungen --- *@
         @if (v.ProbeLaeuft)
         {
@@ -166,8 +201,101 @@
                 </div>
             }
         </section>
+
+        @* --- Kündigen / Löschen --- *@
+        @if (stand is { } s)
+        {
+            <section class="ab-abschnitt" aria-labelledby="ab-ende-titel">
+                <div class="ab-abschnitt-kopf">
+                    <h2 id="ab-ende-titel">Résiliation et suppression</h2>
+                    <p class="enote-muted">Sans engagement : vous pouvez arrêter quand vous voulez.</p>
+                </div>
+                <div class="ab-ende-raster">
+                    <article class="ab-ende-karte">
+                        <h3><Icon Name="calendar" Groesse="18" /> Résilier l'abonnement</h3>
+                        @if (s.IstGekuendigt)
+                        {
+                            <p>Résiliation enregistrée le @Datum(s.GekuendigtAmUtc). @(s.KuendigungWirksam ? "L'abonnement est terminé." : $"Fin le {Datum(s.GekuendigtZumUtc?.AddTicks(-1))} au soir.")</p>
+                        }
+                        else
+                        {
+                            <p>L'abonnement s'arrête à la fin de @(s.ProbeLaeuft ? "l'essai gratuit" : "la période en cours"), le <strong>@Datum(s.WuerdeWirkenZumUtc.AddTicks(-1))</strong> au soir. Jusque-là, tout fonctionne. Vos données sont conservées et vous pouvez réactiver à tout moment.</p>
+                            @if (s.OffeneRechnungen > 0)
+                            {
+                                <p class="enote-muted">Les factures déjà émises (@s.OffenerBetrag.ToString("N0") F) restent à payer.</p>
+                            }
+                            <div><button class="enote-btn enote-btn-ghost" @onclick="OeffneKuendigung">Résilier l'abonnement</button></div>
+                        }
+                    </article>
+                    <article class="ab-ende-karte gefahr">
+                        <h3><Icon Name="trash" Groesse="18" /> Supprimer le compte</h3>
+                        <p>L'établissement est fermé tout de suite. Après <strong>@KuendigungsRegeln.LoeschFristTage jours</strong>, les ventes, clients, prestations, dépenses et comptes de l'équipe sont supprimés définitivement. Nos factures d'abonnement sont conservées, sans données personnelles. Annulable pendant @KuendigungsRegeln.LoeschFristTage jours.</p>
+                        @if (s.LoeschungLaeuft)
+                        {
+                            <p class="ab-ende-status">Suppression prévue le @Datum(s.LoeschungAbUtc).</p>
+                        }
+                        else if (s.OffeneRechnungen > 0)
+                        {
+                            <p class="ab-ende-status"><Icon Name="info" Groesse="16" /> Réglez d'abord @(s.OffeneRechnungen == 1 ? "la facture ouverte" : $"les {s.OffeneRechnungen} factures ouvertes") (@s.OffenerBetrag.ToString("N0") F) : la suppression n'est possible que sans facture impayée.</p>
+                            <div><button class="enote-btn enote-btn-ghost" disabled>Supprimer le compte</button></div>
+                        }
+                        else
+                        {
+                            <div><button class="enote-btn enote-btn-danger-ghost" @onclick="OeffneLoeschung">Supprimer le compte…</button></div>
+                        }
+                    </article>
+                </div>
+            </section>
+        }
     }
 </div>
+
+<ModalDialog Open="kuendigungOffen" Title="Résilier l'abonnement" ErrorMessage="@endeFehler" OnClose="() => kuendigungOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        @if (stand is { } ks)
+        {
+            <div class="enote-form">
+                <p>L'abonnement prendra fin le <strong>@Datum(ks.WuerdeWirkenZumUtc.AddTicks(-1))</strong> au soir. Ensuite, la caisse sera fermée et aucune facture ne sera émise.</p>
+                <div>
+                    <span class="kv-label">Pourquoi partez-vous ? <span class="enote-muted kv-optional">(facultatif)</span></span>
+                    <div class="kv-chips" role="group" aria-label="Motif">
+                        @foreach (var g in Gruende)
+                        {
+                            <button type="button" class="kv-chip @(kuendigungGrund == g ? "aktiv" : "")" @onclick="() => kuendigungGrund = kuendigungGrund == g ? null : g">@g</button>
+                        }
+                    </div>
+                </div>
+                <label>Un mot pour nous aider à nous améliorer <span class="enote-muted kv-optional">(facultatif)</span>
+                    <textarea rows="2" @bind="kuendigungText" maxlength="400"></textarea>
+                </label>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => kuendigungOffen = false">Garder l'abonnement</button>
+        <AsyncActionButton Text="Confirmer la résiliation" BusyText="…" CssClass="enote-btn-primary" OnClick="KuendigeAsync" />
+    </Footer>
+</ModalDialog>
+
+<ModalDialog Open="loeschungOffen" Title="Supprimer le compte" ErrorMessage="@endeFehler" OnClose="() => loeschungOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-form">
+            <ul class="ab-ende-liste">
+                <li><Icon Name="lock" Groesse="16" /> <span>L'établissement <strong>@salonName</strong> est fermé immédiatement (caisse et équipe).</span></li>
+                <li><Icon Name="calendar" Groesse="16" /> <span>Le <strong>@Datum(DateTime.UtcNow.AddDays(KuendigungsRegeln.LoeschFristTage))</strong>, toutes ses données sont supprimées définitivement.</span></li>
+                <li><Icon Name="undo" Groesse="16" /> <span>D'ici là, vous pouvez annuler dans « Abonnement ».</span></li>
+            </ul>
+            <label>Mot de passe actuel
+                <PasswordInput @bind-Value="loeschPasswort" Required="true" Autocomplete="current-password" />
+            </label>
+            <EnoteCheckbox @bind-Value="loeschVerstanden" Label="J'ai compris : après 30 jours, les données ne pourront plus être récupérées." />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => loeschungOffen = false">Annuler</button>
+        <AsyncActionButton Text="Supprimer le compte" BusyText="…" CssClass="enote-btn-danger" Disabled="!loeschVerstanden" OnClick="BeantrageLoeschungAsync" />
+    </Footer>
+</ModalDialog>
 
 @* Formelwechsel bestätigen *@
 <ModalDialog Open="wechselZiel is not null" Title="Changer de formule" OnClose="() => wechselZiel = null" MaxWidthClass="enote-modal-sm">

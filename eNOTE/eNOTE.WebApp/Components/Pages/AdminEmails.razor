@@ -486,6 +486,9 @@
         new("paiement-confirme", "Paiement confirmé", () => TabloSuiteMails.PaiementConfirme("Ama", "Salon Élégance", 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), mails.AppUrl + "/abonnement")),
         new("caissier-bienvenue", "Nouvel employé", () => TabloSuiteMails.KassiererWillkommen("Awa", "awa.koffi", "Salon Élégance", "Ama Mensah", mails.AppUrl)),
         new("mot-de-passe", "Mot de passe modifié", () => TabloSuiteMails.PasswortGeaendert("Ama", "ama.mensah", DateTime.UtcNow, mails.AppUrl)),
+        new("resiliation", "Résiliation confirmée", () => TabloSuiteMails.KuendigungBestaetigt("Ama", "Salon Élégance", new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1), mails.AppUrl + "/abonnement")),
+        new("suppression-compte", "Suppression du compte programmée", () => TabloSuiteMails.LoeschungGeplant("Ama", "Salon Élégance", DateTime.UtcNow.Date.AddDays(30), mails.AppUrl + "/abonnement")),
+        new("resiliation-admin", "Résiliation (admin)", () => TabloSuiteMails.KuendigungAdmin("Salon Élégance", "Ama Mensah", "Résiliation de l'abonnement", DateTime.UtcNow.Date.AddDays(20), "Fermeture temporaire", mails.AppUrl + "/admin")),
         new("email-modifiee", "Adresse e-mail modifiée", () => TabloSuiteMails.EmailGeaendert("Ama", "ama.mensah", ENote.WebApp.Services.Mails.MailBenachrichtigungen.MaskiereEmail("ama.nouveau@exemple.com"), DateTime.UtcNow, mails.AppUrl)),
         new("fin-essai", "Fin de l'essai", () => TabloSuiteMails.FinEssai("Ama", "Salon Élégance", DateTime.UtcNow.Date.AddDays(7), "Mensuel", 5000, mails.AppUrl + "/abonnement"))
     ];

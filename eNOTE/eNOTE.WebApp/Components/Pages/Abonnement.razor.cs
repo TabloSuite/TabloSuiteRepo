@@ -14,6 +14,7 @@ namespace ENote.WebApp.Components.Pages;
 public partial class Abonnement(
     AboService aboService,
     VertragsService vertragsService,
+    KuendigungService kuendigungService,
     AktiverSalonState aktiverSalon,
     ToastService toast,
     AuthenticationStateProvider authStateProvider,
@@ -38,6 +39,66 @@ public partial class Abonnement(
     private VertragsService.ZahlungEintrag? meldungFuer;
     private string? zahlungsNotiz;
     private string? zahlungFehler;
+
+    // Kündigung / Löschung
+    private KuendigungService.Stand? stand;
+    private bool kuendigungOffen, loeschungOffen, loeschVerstanden;
+    private string? kuendigungGrund, kuendigungText, endeFehler;
+    private string loeschPasswort = string.Empty;
+    private static readonly string[] Gruende = ["Trop cher", "Je l'utilise trop peu", "Il manque une fonction", "Fermeture de l'établissement", "Autre outil"];
+
+    // Periodengrenzen liegen auf 00:00 UTC (Vertragsregeln): Datum in UTC anzeigen, sonst verschiebt die Server-Zeitzone den Tag.
+    private static string Datum(DateTime? utc) => utc?.ToString("dd'/'MM'/'yyyy") ?? "—";
+
+    private void OeffneKuendigung()
+    {
+        kuendigungGrund = kuendigungText = endeFehler = null;
+        kuendigungOffen = true;
+    }
+
+    private void OeffneLoeschung()
+    {
+        loeschPasswort = string.Empty;
+        loeschVerstanden = false;
+        endeFehler = null;
+        loeschungOffen = true;
+    }
+
+    private async Task EndeAktionAsync(Func<Task> aktion, string erfolg)
+    {
+        endeFehler = null;
+        try
+        {
+            await aktion();
+            kuendigungOffen = loeschungOffen = false;
+            toast.ZeigeErfolg(erfolg);
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UnauthorizedAccessException)
+        {
+            if (kuendigungOffen || loeschungOffen) endeFehler = ex.Message;
+            else toast.ZeigeFehler(ex.Message);
+        }
+    }
+
+    private Task KuendigeAsync()
+    {
+        var grund = string.Join(" · ", new[] { kuendigungGrund, kuendigungText?.Trim() }.Where(t => !string.IsNullOrWhiteSpace(t)));
+        return EndeAktionAsync(async () => await kuendigungService.KuendigeAsync(benutzerId, salonId, grund), "Résiliation enregistrée. Un e-mail de confirmation vous a été envoyé.");
+    }
+
+    private Task NimmKuendigungZurueckAsync()
+        => EndeAktionAsync(() => kuendigungService.NimmKuendigungZurueckAsync(benutzerId, salonId), "Votre abonnement continue.");
+
+    private Task BeantrageLoeschungAsync()
+    {
+        var passwort = loeschPasswort;
+        loeschPasswort = string.Empty;
+        return EndeAktionAsync(async () => await kuendigungService.BeantrageLoeschungAsync(benutzerId, salonId, passwort), "Suppression programmée. L'établissement est fermé.");
+    }
+
+    private Task NimmLoeschungZurueckAsync()
+        => EndeAktionAsync(() => kuendigungService.NimmLoeschungZurueckAsync(benutzerId, salonId), "Suppression annulée.");
 
     private IEnumerable<VertragsService.ZahlungEintrag> OffenePerioden =>
         vertrag?.Perioden.Where(p => p.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt) ?? [];
@@ -93,6 +154,7 @@ public partial class Abonnement(
             formeln = await aboService.GetFormelPreiseAsync(salonId);
             kommenderPreis = await aboService.GetKommenderPreisAsync(salonId);
             vertrag = await vertragsService.GetLadenVertragAsync(benutzerId, salonId);
+            stand = await kuendigungService.GetStandAsync(benutzerId, salonId);
         }
         catch (InvalidOperationException ex)
         {

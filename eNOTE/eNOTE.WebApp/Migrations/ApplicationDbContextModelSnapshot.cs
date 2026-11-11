@@ -1871,6 +1871,15 @@ namespace ENote.WebApp.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("GekuendigtAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GekuendigtZumUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("GeloeschtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal?>("IndividuellerMonatsPreis")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -1881,8 +1890,18 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("IstFreigegeben")
                         .HasColumnType("bit");
 
+                    b.Property<string>("KuendigungGrund")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Land")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LoeschungAbUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LoeschungBeantragtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("LogoAssetId")
                         .HasColumnType("uniqueidentifier");
