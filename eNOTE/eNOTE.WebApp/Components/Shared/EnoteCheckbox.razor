@@ -3,7 +3,7 @@
     <button type="button"
             class="enote-toggle @(Value ? "an" : "")"
             role="switch"
-            aria-checked="@Value"
+            aria-checked="@(Value ? "true" : "false")"
             disabled="@Disabled"
             @onclick="ToggleAsync">
         <span class="enote-toggle-knob"></span>

@@ -63,7 +63,7 @@
             <span>@e.KurzLabel</span>
         </NavLink>
     }
-    <button type="button" class="enote-mnav-link @(mehrOffen ? "active" : "")" @onclick="() => mehrOffen = !mehrOffen" aria-expanded="@mehrOffen">
+    <button type="button" class="enote-mnav-link @(mehrOffen ? "active" : "")" @onclick="() => mehrOffen = !mehrOffen" aria-expanded="@(mehrOffen ? "true" : "false")">
         <Icon Name="grid" Groesse="22" />
         <span>Plus</span>
     </button>
@@ -152,6 +152,16 @@
             if (istBesitzer || istKassierer) start.Add(new("/presents", "Clients présents", "user-check", Kurz: "Présents"));
             if (istProduktOwner) start.Add(new("/mes-etablissements", "Mes établissements", "store", Kurz: "Mes étab."));
             gruppen.Add(new(null, start));
+
+            if (!istBesitzer && istKassierer && AktiverSalon.Aktiv is { } recht)
+            {
+                // Vom Besitzer delegierte Rechte (Équipe › Droits) – nur diese Bereiche erscheinen.
+                var vente = new List<NavEintrag>();
+                if (recht.KannLeistungenVerwalten) vente.Add(new("/services", "Prestations", "tag"));
+                if (recht.KannRabatteVerwalten) vente.Add(new("/remises", "Remises", "percent"));
+                if (vente.Count > 0) gruppen.Add(new("Vente", vente));
+                if (recht.KannFinanzenSehen) gruppen.Add(new("Gestion", [Finances, new("/ausgaben", "Dépenses", "wallet")]));
+            }
 
             if (istBesitzer && BesitzerZoneFreigeschaltet)
             {

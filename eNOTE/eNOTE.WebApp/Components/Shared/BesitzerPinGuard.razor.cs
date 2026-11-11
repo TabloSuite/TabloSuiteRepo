@@ -13,6 +13,12 @@ public partial class BesitzerPinGuard : IDisposable
 {
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    /// <summary>
+    /// Delegiertes Recht, das diese Seite öffnet: "finanzen", "leistungen" oder "rabatte".
+    /// Ein Mitarbeiter mit eigenem Konto und diesem Recht braucht keine Besitzer-PIN.
+    /// </summary>
+    [Parameter] public string? Recht { get; set; }
+
     private string pin = string.Empty;
     private string? fehler;
     private Guid salonId;
@@ -54,6 +60,15 @@ public partial class BesitzerPinGuard : IDisposable
         // Sperre ist der Standard, sobald eine Besitzer-PIN konfiguriert ist
         // (damit der Besitzer das Ausschalten nicht vergisst). Erst die korrekte
         // PIN schaltet frei; beim Kassenabschluss wird automatisch wieder gesperrt.
+        if (zuordnung is not null && HatRecht(zuordnung, Recht)
+            && authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Kassierer)
+            && !authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer))
+        {
+            istGesperrt = false;
+            laedt = false;
+            return;
+        }
+
         var hatBesitzerPin = salonId != Guid.Empty && await KassenService.HatBesitzerPinAsync(salonId);
         istGesperrt = hatBesitzerPin && !PinState.VerwaltungFreigeschaltet;
         laedt = false;
@@ -90,6 +105,14 @@ public partial class BesitzerPinGuard : IDisposable
             await PruefeAsync();
         }
     }
+
+    private static bool HatRecht(Core.DataModels.Salons.UserSalon zuordnung, string? recht) => recht switch
+    {
+        "finanzen" => zuordnung.KannFinanzenSehen,
+        "leistungen" => zuordnung.KannLeistungenVerwalten,
+        "rabatte" => zuordnung.KannRabatteVerwalten,
+        _ => false
+    };
 
     public void Dispose() => PinState.OnChange -= StateHasChanged;
 }

@@ -6,7 +6,7 @@
     @foreach (var a in Anbieter)
     {
         var aktiv = Ausgewaehlt == a.Id;
-        <button type="button" role="radio" aria-checked="@aktiv"
+        <button type="button" role="radio" aria-checked="@(aktiv ? "true" : "false")"
                 class="enote-anbieter-kachel @(aktiv ? "aktiv" : "")"
                 style="--marke: @a.Farbe; --marke-text: @MobileMoneyService.TextFarbe(a.Farbe)"
                 @onclick="() => WaehleAsync(a.Id)">

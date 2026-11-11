@@ -12,6 +12,46 @@ window.enoteTogglePassword = function (button) {
     button.setAttribute('aria-label', istText ? 'Afficher' : 'Masquer');
 };
 
+// Ladeanzeige für klassische Formulare (Anmelden, Abmelden …): <form data-ladeanzeige="Texte…">.
+// Ein einziger, global registrierter Handler – Inline-Skripte in Seiten laufen nach einer
+// Blazor-Navigation (z. B. Startseite → Connexion auf dem Handy) nicht und fehlten deshalb.
+(function () {
+    if (window.__enoteLadeanzeige) return;
+    window.__enoteLadeanzeige = true;
+
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute('data-ladeanzeige') || e.defaultPrevented) return;
+        if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
+        var btn = e.submitter || form.querySelector('[type="submit"]');
+        if (!btn || btn.classList.contains('enote-laedt')) return;
+
+        btn.classList.add('enote-laedt');
+        btn.setAttribute('aria-busy', 'true');
+        btn.dataset.enoteInhalt = btn.innerHTML;
+        var spinner = document.createElement('span');
+        spinner.className = 'enote-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        var text = document.createElement('span');
+        text.textContent = form.getAttribute('data-ladeanzeige') || btn.textContent.trim();
+        btn.innerHTML = '';
+        btn.appendChild(spinner);
+        btn.appendChild(text);
+        // Erst nach dem Absenden sperren, sonst verwerfen manche Browser den Submit.
+        setTimeout(function () { btn.disabled = true; }, 0);
+    }, true);
+
+    // « Zurück » auf dem Handy (bfcache) zeigt sonst einen dauerhaft drehenden, gesperrten Knopf.
+    window.addEventListener('pageshow', function () {
+        document.querySelectorAll('.enote-laedt').forEach(function (btn) {
+            btn.classList.remove('enote-laedt');
+            btn.removeAttribute('aria-busy');
+            btn.disabled = false;
+            if (btn.dataset.enoteInhalt !== undefined) { btn.innerHTML = btn.dataset.enoteInhalt; delete btn.dataset.enoteInhalt; }
+        });
+    });
+})();
+
 // User-Menü (Avatar-Dropdown) schließt bei Klick außerhalb.
 window.enoteOeffneTab = function (url) {
     window.open(url, '_blank');

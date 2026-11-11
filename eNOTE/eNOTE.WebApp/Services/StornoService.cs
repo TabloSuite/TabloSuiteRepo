@@ -43,6 +43,13 @@ public class StornoService(
 
     /// <summary>Lädt einen Verkauf mit allem, was der Erstattungsdialog braucht (offene Mengen, Zahlwege).</summary>
     public async Task<StornoVorlage?> GetVorlageAsync(Guid verkaufId, CancellationToken ct = default)
+        => await GetVorlageAsync(verkaufId, null, null, ct);
+
+    /// <summary>
+    /// Vorlage für die Erstattung. Mit Sitzung und Benutzer: entfällt die PIN, wenn der Kassierer
+    /// der offenen Sitzung das Recht « Remboursements » hat (siehe <see cref="DarfOhneFreigabeErstattenAsync"/>).
+    /// </summary>
+    public async Task<StornoVorlage?> GetVorlageAsync(Guid verkaufId, Guid? sitzungId, Guid? userId, CancellationToken ct = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
         var verkauf = await LadeOriginalAsync(db, verkaufId, ct);
@@ -51,7 +58,23 @@ public class StornoService(
         var storni = await LadeStorniAsync(db, verkaufId, ct);
         var kassierer = await db.KassenSitzungen.Where(k => k.Id == verkauf.KassenSitzungId)
             .Select(k => k.Kassierer.FullName).FirstOrDefaultAsync(ct) ?? "—";
-        return BaueVorlage(verkauf, storni, kassierer, await kassenService.HatBesitzerPinAsync(verkauf.SalonId, ct));
+        var sitzung = sitzungId is Guid sid
+            ? await db.KassenSitzungen.AsNoTracking().FirstOrDefaultAsync(k => k.Id == sid && k.Status == KassenSitzungStatus.Offen, ct)
+            : null;
+        var ohneFreigabe = sitzung is not null && userId is Guid uid && await DarfOhneFreigabeErstattenAsync(db, sitzung, uid, ct);
+        return BaueVorlage(verkauf, storni, kassierer, !ohneFreigabe && await kassenService.HatBesitzerPinAsync(verkauf.SalonId, ct));
+    }
+
+    /// <summary>
+    /// Recht « Remboursements »: Der Kassierer der offenen Sitzung hat es im Laden und bedient selbst –
+    /// mit eigenem Konto oder am gemeinsamen Tablet des Besitzers. Dann ist keine Besitzer-Freigabe nötig.
+    /// </summary>
+    public static async Task<bool> DarfOhneFreigabeErstattenAsync(ApplicationDbContext db, KassenSitzung sitzung, Guid userId, CancellationToken ct = default)
+    {
+        var kassiererHatRecht = await db.UserSalons.AnyAsync(us => us.AppUserId == sitzung.KassiererId && us.SalonId == sitzung.SalonId
+            && us.KannErstatten && !us.AppUser.IsBlocked, ct);
+        if (!kassiererHatRecht) return false;
+        return userId == sitzung.KassiererId || await LadenZugriff.IstBesitzerAsync(db, userId, sitzung.SalonId, ct);
     }
 
     /// <summary>
@@ -83,7 +106,8 @@ public class StornoService(
         if (original is null || original.SalonId != sitzung.SalonId) return new(false, "Vente introuvable.");
         if (original.IstStorno) return new(false, "Un remboursement ne peut pas être remboursé.");
 
-        if (await kassenService.PruefeBesitzerFreigabeAsync(sitzung.SalonId, userId, besitzerPin, ct) is string freigabeFehler)
+        if (!await DarfOhneFreigabeErstattenAsync(db, sitzung, userId, ct)
+            && await kassenService.PruefeBesitzerFreigabeAsync(sitzung.SalonId, userId, besitzerPin, ct) is string freigabeFehler)
             return new(false, freigabeFehler);
 
         var storni = await LadeStorniAsync(db, verkaufId, ct);

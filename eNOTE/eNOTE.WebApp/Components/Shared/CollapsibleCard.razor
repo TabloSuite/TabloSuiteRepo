@@ -2,7 +2,7 @@
     <button type="button"
             class="enote-card-header"
             @onclick="Toggle"
-            aria-expanded="@IsExpanded">
+            aria-expanded="@(IsExpanded ? "true" : "false")">
         <div class="enote-card-titles">
             <h2>@Title</h2>
             @if (!string.IsNullOrWhiteSpace(Subtitle))

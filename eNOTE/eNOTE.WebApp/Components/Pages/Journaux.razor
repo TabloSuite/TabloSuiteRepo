@@ -63,8 +63,8 @@
                     }
                     <div class="enote-item-actions">
                         <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleDetails(log.Id)">@(zeigeDetails.GetValueOrDefault(log.Id) ? "Masquer" : "Détails")</button>
-                        <button class="enote-btn enote-btn-ghost" @onclick="() => ToggleBehandeltAsync(log)">@(log.IstBehandelt ? "Rouvrir" : "Marquer traité")</button>
-                        <button class="enote-btn enote-btn-ghost enote-danger" @onclick="() => LoescheAsync(log.Id)">Supprimer</button>
+                        <AsyncActionButton CssClass="enote-btn-ghost" Text="@(log.IstBehandelt ? "Rouvrir" : "Marquer traité")" OnClick="() => ToggleBehandeltAsync(log)" />
+                        <AsyncActionButton CssClass="enote-btn-ghost enote-danger" Text="Supprimer" BusyText="Suppression…" OnClick="() => LoescheAsync(log.Id)" />
                     </div>
                 </div>
             }

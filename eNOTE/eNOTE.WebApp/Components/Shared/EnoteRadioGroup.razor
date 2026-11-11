@@ -11,7 +11,7 @@
         <button type="button"
                 class="enote-radio-pill @(istAktiv ? "aktiv" : "")"
                 role="radio"
-                aria-checked="@istAktiv"
+                aria-checked="@(istAktiv ? "true" : "false")"
                 disabled="@Disabled"
                 @onclick="() => WaehleAsync(option.Value)">
             @option.Label

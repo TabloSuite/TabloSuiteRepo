@@ -28,6 +28,8 @@ public class UserSalon
     public bool KannFinanzenSehen { get; set; }
     public bool KannLeistungenVerwalten { get; set; }
     public bool KannRabatteVerwalten { get; set; }
+    /// <summary>Darf an der Kasse Kunden erstatten (« Rembourser ») ohne Freigabe durch den Besitzer.</summary>
+    public bool KannErstatten { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

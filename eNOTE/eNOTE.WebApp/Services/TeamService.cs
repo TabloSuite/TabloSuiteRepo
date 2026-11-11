@@ -29,7 +29,8 @@ public class TeamService(
         bool IstBesitzer,
         string? Pseudonym = null,
         DateTime? LetzteKasseUtc = null,
-        int VerkaeufeMonat = 0);
+        int VerkaeufeMonat = 0,
+        bool KannErstatten = false);
 
     /// <summary>Alle Mitglieder eines Salons inklusive ihrer Rechte.</summary>
     public async Task<List<TeamMitglied>> GetTeamAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -71,7 +72,8 @@ public class TeamService(
             besitzerIds.Contains(us.AppUserId),
             us.AppUser.UserName,
             letzteKasse.TryGetValue(us.AppUserId, out var letzte) ? letzte : null,
-            verkaeufe.GetValueOrDefault(us.AppUserId))).ToList();
+            verkaeufe.GetValueOrDefault(us.AppUserId),
+            us.KannErstatten)).ToList();
     }
 
     /// <summary>
@@ -188,6 +190,7 @@ public class TeamService(
         bool kannFinanzenSehen,
         bool kannLeistungenVerwalten,
         bool kannRabatteVerwalten,
+        bool kannErstatten = false,
         CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -200,6 +203,7 @@ public class TeamService(
         zuordnung.KannFinanzenSehen = kannFinanzenSehen;
         zuordnung.KannLeistungenVerwalten = kannLeistungenVerwalten;
         zuordnung.KannRabatteVerwalten = kannRabatteVerwalten;
+        zuordnung.KannErstatten = kannErstatten;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

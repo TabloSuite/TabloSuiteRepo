@@ -83,13 +83,14 @@
                         </div>
 
                         <div class="eq-rechte">
-                            @if (!m.KannFinanzenSehen && !m.KannLeistungenVerwalten && !m.KannRabatteVerwalten)
+                            @if (!m.KannFinanzenSehen && !m.KannLeistungenVerwalten && !m.KannRabatteVerwalten && !m.KannErstatten)
                             {
                                 <span class="eq-recht neutral"><Icon Name="caisse" Groesse="13" /> Caisse uniquement</span>
                             }
                             @if (m.KannFinanzenSehen) { <span class="eq-recht"><Icon Name="chart" Groesse="13" /> Finances</span> }
                             @if (m.KannLeistungenVerwalten) { <span class="eq-recht"><Icon Name="tag" Groesse="13" /> Prestations</span> }
                             @if (m.KannRabatteVerwalten) { <span class="eq-recht"><Icon Name="percent" Groesse="13" /> Remises</span> }
+                            @if (m.KannErstatten) { <span class="eq-recht"><Icon Name="undo" Groesse="13" /> Remboursements</span> }
                         </div>
 
                         <div class="eq-aktivitaet">
@@ -172,6 +173,11 @@
                 <span class="eq-recht-icon"><Icon Name="percent" Groesse="18" /></span>
                 <div class="eq-recht-text"><strong>Gérer les remises</strong><small>Créer, modifier et activer des remises.</small></div>
                 <EnoteCheckbox @bind-Value="rechteRabatte" Label="" />
+            </div>
+            <div class="eq-recht-zeile">
+                <span class="eq-recht-icon"><Icon Name="undo" Groesse="18" /></span>
+                <div class="eq-recht-text"><strong>Rembourser les clients</strong><small>À la caisse, sans le code PIN du propriétaire. Chaque remboursement reste visible dans les finances.</small></div>
+                <EnoteCheckbox @bind-Value="rechteErstatten" Label="" />
             </div>
         </div>
     </ChildContent>

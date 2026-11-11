@@ -205,7 +205,7 @@ else
 
             @* --- Ticket --- *@
             <aside class="kx-ticket @(ticketAufgeklappt ? "offen" : "")" aria-label="Ticket">
-                <button type="button" class="kx-ticket-griff" @onclick="() => ticketAufgeklappt = !ticketAufgeklappt" aria-expanded="@ticketAufgeklappt">
+                <button type="button" class="kx-ticket-griff" @onclick="() => ticketAufgeklappt = !ticketAufgeklappt" aria-expanded="@(ticketAufgeklappt ? "true" : "false")">
                     <span><Icon Name="receipt" Groesse="18" /> Ticket · @AnzahlArtikel article(s)</span>
                     <strong>@gesamtSumme.ToString("N0") F</strong>
                     <Icon Name="chevron-down" Groesse="18" CssClass="kx-ticket-griff-pfeil" />
@@ -779,7 +779,7 @@ else
                             <small>@a.Grund@(a.Raum is { } r ? $" · {r}" : "") · @ENote.Core.Services.Kunden.KundenBesuchRegeln.Seit(a.AnkunftUtc, DateTime.UtcNow)</small>
                         </span>
                         <button type="button" class="enote-icon-btn" title="Fiche" aria-label="@($"Fiche de {a.Name}")" @onclick="() => { anwesendeOffen = false; ficheKundeId = a.KundeId; }"><Icon Name="note" Groesse="16" /></button>
-                        <button type="button" class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => AnwesendenAnsTicketAsync(a)">Au ticket</button>
+                        <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="Au ticket" OnClick="() => AnwesendenAnsTicketAsync(a)" />
                     </li>
                 }
             </ul>

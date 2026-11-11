@@ -155,7 +155,7 @@
                             </small>
                         </div>
                         <div class="an-eintrag-aktionen">
-                            <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => SetzeAktivAsync(a.Id, !a.IstAktiv)">@(a.IstAktiv ? "Masquer" : "Réafficher")</button>
+                            <AsyncActionButton CssClass="enote-btn-ghost enote-btn-sm" Text="@(a.IstAktiv ? "Masquer" : "Réafficher")" OnClick="() => SetzeAktivAsync(a.Id, !a.IstAktiv)" />
                             <button class="enote-icon-btn" aria-label="Supprimer" title="Supprimer" @onclick="() => loeschenId = a.Id"><Icon Name="trash" Groesse="16" /></button>
                         </div>
                     </article>

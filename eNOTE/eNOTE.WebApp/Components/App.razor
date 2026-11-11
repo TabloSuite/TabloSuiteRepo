@@ -40,7 +40,7 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
-    <script src="js/enote.js"></script>
+    <script src="@Assets["js/enote.js"]"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/js/service-worker.js', { updateViaCache: 'none' });

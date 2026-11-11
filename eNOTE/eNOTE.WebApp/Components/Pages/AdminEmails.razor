@@ -260,7 +260,7 @@
                             <span class="em-tag @(m.IstGesendet ? "ok" : "warte")">@(m.IstGesendet ? "Envoyé" : "En attente")</span>
                             @if (!m.IstGesendet && email.IstKonfiguriert)
                             {
-                                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => ErneutAsync(m.Id)"><Icon Name="refresh" Groesse="15" /> Renvoyer</button>
+                                <AsyncActionButton CssClass="enote-btn-ghost enote-btn-sm" BusyText="Envoi…" OnClick="() => ErneutAsync(m.Id)"><Icon Name="refresh" Groesse="15" /> Renvoyer</AsyncActionButton>
                             }
                         </div>
                     }

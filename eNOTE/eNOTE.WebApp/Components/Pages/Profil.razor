@@ -69,7 +69,7 @@
                     </label>
                     @if (!string.IsNullOrWhiteSpace(profilBildUrl))
                     {
-                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="EntferneProfilBildAsync"><Icon Name="trash" Groesse="16" /> Retirer</button>
+                        <AsyncActionButton CssClass="enote-btn-ghost enote-btn-sm" BusyText="Suppression…" OnClick="EntferneProfilBildAsync"><Icon Name="trash" Groesse="16" /> Retirer</AsyncActionButton>
                     }
                 </div>
                 <small class="enote-muted">JPG, PNG ou GIF · 8 Mo max.</small>

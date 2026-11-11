@@ -43,7 +43,7 @@
                                 <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="StarteBearbeiten"><Icon Name="edit" Groesse="16" /> Motif / salle</button>
                                 <AsyncActionButton Text="Départ" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="BeendeAsync" />
                             </div>
-                            <button type="button" class="kf-annulieren" @onclick="AnnuliereAsync">Arrivée enregistrée par erreur ? Annuler</button>
+                            <AsyncActionButton BasisKlasse="kf-annulieren" Text="Arrivée enregistrée par erreur ? Annuler" BusyText="Annulation…" OnClick="AnnuliereAsync" />
                         }
                     </div>
                 }
@@ -62,9 +62,9 @@
                 }
                 else
                 {
-                    <button type="button" class="kf-ankunft-knopf" @onclick="StarteAnkunftAsync">
+                    <AsyncActionButton BasisKlasse="kf-ankunft-knopf" BusyText="Enregistrement…" OnClick="StarteAnkunftAsync">
                         <Icon Name="user-check" Groesse="18" /> Enregistrer l'arrivée <small>Le client est là pour une prestation</small>
-                    </button>
+                    </AsyncActionButton>
                 }
 
                 <KundenVerlauf Fiche="fiche" BenutzerId="BenutzerId" Zone="Zone" OnGeaendert="LadeAsync" />

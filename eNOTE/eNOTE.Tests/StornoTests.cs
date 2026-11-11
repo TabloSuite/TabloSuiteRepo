@@ -130,4 +130,63 @@ public class StornoTests
         Assert.False(zuViel.Erfolg);
         Assert.Contains("espèces", zuViel.Fehler);
     }
+
+    private static async Task GibRechtAsync(Basis b, bool kannErstatten)
+    {
+        await using var db = await b.F.CreateDbContextAsync();
+        var zuordnung = await db.UserSalons.SingleAsync(us => us.AppUserId == b.Kassierer.Id);
+        zuordnung.KannErstatten = kannErstatten;
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Kassierer_Mit_Recht_Erstattet_Ohne_Besitzer_Pin()
+    {
+        var b = await BasisAsync();
+        var verkauf = await VerkaufeAsync(b, 2, new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 6000));
+        var posId = verkauf.Positionen.Single().Id;
+
+        // Ohne Recht: PIN des Besitzers nötig
+        Assert.True((await b.Service.GetVorlageAsync(verkauf.Id, b.SitzungId, b.Kassierer.Id))!.BrauchtPin);
+        Assert.False((await b.Service.ErstatteAsync(b.Kassierer.Id, b.SitzungId, verkauf.Id, [new(posId, 1)], "0:", true, "Défaut", null)).Erfolg);
+
+        await GibRechtAsync(b, true);
+        Assert.False((await b.Service.GetVorlageAsync(verkauf.Id, b.SitzungId, b.Kassierer.Id))!.BrauchtPin);
+        var ok = await b.Service.ErstatteAsync(b.Kassierer.Id, b.SitzungId, verkauf.Id, [new(posId, 1)], "0:", true, "Défaut", null);
+        Assert.True(ok.Erfolg, ok.Fehler);
+        Assert.Equal(3000m, ok.Betrag);
+    }
+
+    [Fact]
+    public async Task Recht_Gilt_Am_Gemeinsamen_Tablet_Des_Besitzers_Aber_Nicht_Fuer_Andere_Konten()
+    {
+        var b = await BasisAsync();
+        var verkauf = await VerkaufeAsync(b, 2, new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 6000));
+        var posId = verkauf.Positionen.Single().Id;
+        await GibRechtAsync(b, true);
+
+        // Am Tablet ist der Besitzer angemeldet, die Sitzung gehört der berechtigten Kassiererin
+        var amTablet = await b.Service.ErstatteAsync(b.Besitzer.Id, b.SitzungId, verkauf.Id, [new(posId, 1)], "0:", true, "Erreur", null);
+        Assert.True(amTablet.Erfolg, amTablet.Fehler);
+
+        // Ein anderes Konto (weder Kassiererin der Sitzung noch Besitzer) bekommt das Recht nicht
+        var fremd = Guid.NewGuid();
+        Assert.True((await b.Service.GetVorlageAsync(verkauf.Id, b.SitzungId, fremd))!.BrauchtPin);
+        Assert.False((await b.Service.ErstatteAsync(fremd, b.SitzungId, verkauf.Id, [new(posId, 1)], "0:", true, "Erreur", null)).Erfolg);
+    }
+
+    [Fact]
+    public async Task Recht_Wirkt_Nicht_Fuer_Gesperrte_Kassierer()
+    {
+        var b = await BasisAsync();
+        var verkauf = await VerkaufeAsync(b, 1, new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 3000));
+        await GibRechtAsync(b, true);
+        await using (var db = await b.F.CreateDbContextAsync())
+        {
+            (await db.Users.SingleAsync(u => u.Id == b.Kassierer.Id)).IsBlocked = true;
+            await db.SaveChangesAsync();
+        }
+
+        Assert.False((await b.Service.ErstatteAsync(b.Kassierer.Id, b.SitzungId, verkauf.Id, [new(verkauf.Positionen.Single().Id, 1)], "0:", true, "Erreur", null)).Erfolg);
+    }
 }

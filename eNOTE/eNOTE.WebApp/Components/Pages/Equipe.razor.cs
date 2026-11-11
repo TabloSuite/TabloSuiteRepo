@@ -56,6 +56,7 @@ public partial class Equipe(
     private bool rechteFinanzen;
     private bool rechteLeistungen;
     private bool rechteRabatte;
+    private bool rechteErstatten;
 
     protected override async Task OnInitializedAsync()
     {
@@ -176,6 +177,7 @@ public partial class Equipe(
         rechteFinanzen = mitglied.KannFinanzenSehen;
         rechteLeistungen = mitglied.KannLeistungenVerwalten;
         rechteRabatte = mitglied.KannRabatteVerwalten;
+        rechteErstatten = mitglied.KannErstatten;
         rechteDialogOffen = true;
     }
 
@@ -187,7 +189,7 @@ public partial class Equipe(
         }
 
         await teamService.SetzeRechteAsync(
-            aktivesMitglied.UserSalonId, rechteFinanzen, rechteLeistungen, rechteRabatte);
+            aktivesMitglied.UserSalonId, rechteFinanzen, rechteLeistungen, rechteRabatte, rechteErstatten);
         rechteDialogOffen = false;
         toast.ZeigeErfolg("Droits enregistrés.");
         await LadeAsync();

@@ -2010,6 +2010,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("KannErstatten")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("KannFinanzenSehen")
                         .HasColumnType("bit");
 

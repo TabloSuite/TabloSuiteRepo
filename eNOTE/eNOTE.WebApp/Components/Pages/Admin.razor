@@ -122,17 +122,17 @@
                             <div class="ad-aktionen">
                                 @if (!s.IstFreigegeben)
                                 {
-                                    <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => SetzeFreigabeAsync(s.SalonId, true)">Valider</button>
+                                    <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="Valider" BusyText="Validation…" OnClick="() => SetzeFreigabeAsync(s.SalonId, true)" />
                                 }
                                 <button class="enote-btn enote-btn-ghost enote-btn-sm" title="Période d'essai" @onclick="() => OeffneProbeDialogAsync(s.SalonId, s.Name)"><Icon Name="clock" Groesse="15" /> Essai</button>
                                 <LadenTarifVerwaltung SalonId="@s.SalonId" OnOeffnen="OeffneTarifDialogAsync" />
                                 @if (s.IstAktiv)
                                 {
-                                    <button class="enote-icon-btn rm-loeschen" title="Désactiver l'établissement" aria-label="Désactiver @s.Name" @onclick="() => SetzeAktivAsync(s.SalonId, false)"><Icon Name="lock" Groesse="17" /></button>
+                                    <AsyncActionButton BasisKlasse="enote-icon-btn" CssClass="rm-loeschen" title="Désactiver l'établissement" aria-label="@($"Désactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, false)"><Icon Name="lock" Groesse="17" /></AsyncActionButton>
                                 }
                                 else
                                 {
-                                    <button class="enote-icon-btn" title="Réactiver l'établissement" aria-label="Réactiver @s.Name" @onclick="() => SetzeAktivAsync(s.SalonId, true)"><Icon Name="unlock" Groesse="17" /></button>
+                                    <AsyncActionButton BasisKlasse="enote-icon-btn" title="Réactiver l'établissement" aria-label="@($"Réactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, true)"><Icon Name="unlock" Groesse="17" /></AsyncActionButton>
                                 }
                             </div>
                         </div>

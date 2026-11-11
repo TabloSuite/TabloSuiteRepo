@@ -176,7 +176,7 @@ public partial class Caisse(
         historieOffen = false;
         stornoOffen = true;
 
-        stornoVorlage = await stornoService.GetVorlageAsync(verkaufId);
+        stornoVorlage = await stornoService.GetVorlageAsync(verkaufId, aktiveSitzung?.Id, aktuellerBenutzerId);
         if (stornoVorlage is null)
         {
             stornoFehler = "Vente introuvable.";
