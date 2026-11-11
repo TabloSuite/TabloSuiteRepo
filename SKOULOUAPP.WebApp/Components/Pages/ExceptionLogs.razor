@@ -29,8 +29,8 @@
                 Non traitées uniquement
             </label>
             <div class="flex flex-wrap items-end justify-end gap-3 xl:col-span-3">
-                <AsyncActionButton Class="w-full rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto" IsBusy="@isLoading" BusyLabel="Filtrage..." OnClick="ApplyFiltersAsync">Filtrer</AsyncActionButton>
-                <button type="button" class="w-full rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-800 sm:w-auto" @onclick="ResetFiltersAsync">Réinitialiser</button>
+                <AsyncActionButton Class="sk-btn sk-btn-primary w-full sm:w-auto" IsBusy="@isLoading" BusyLabel="Filtrage..." OnClick="ApplyFiltersAsync">Filtrer</AsyncActionButton>
+                <button type="button" class="sk-btn sk-btn-secondary w-full sm:w-auto" @onclick="ResetFiltersAsync">Réinitialiser</button>
             </div>
         </div>
     </div>
@@ -64,7 +64,7 @@
                                 <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">À traiter</span>
                             }
 
-                            <AsyncActionButton Class="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50"
+                            <AsyncActionButton Class="sk-btn sk-btn-secondary sk-btn-sm"
                                                IsBusy="@(copyingLogId == log.Id)"
                                                BusyLabel="Copie..."
                                                OnClick="@(_ => CopyLogAsync(log))">
@@ -73,7 +73,7 @@
 
                             @if (!log.IsHandled)
                             {
-                                <AsyncActionButton Class="rounded-full bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                <AsyncActionButton Class="sk-btn sk-btn-success sk-btn-sm"
                                                    IsBusy="@(busyLogId == log.Id)"
                                                    BusyLabel="..."
                                                    OnClick="@(_ => MarkHandledAsync(log.Id))">
@@ -81,7 +81,7 @@
                                 </AsyncActionButton>
                             }
 
-                            <AsyncActionButton Class="rounded-full bg-rose-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            <AsyncActionButton Class="sk-btn sk-btn-danger sk-btn-sm"
                                                IsBusy="@(busyLogId == log.Id)"
                                                BusyLabel="..."
                                                OnClick="@(_ => DeleteAsync(log.Id))">

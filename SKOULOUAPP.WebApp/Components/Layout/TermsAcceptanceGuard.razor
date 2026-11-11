@@ -114,7 +114,7 @@
                     <AntiforgeryToken />
                     <button type="submit" data-loading-text="Déconnexion..." class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 disabled:cursor-wait disabled:opacity-70">Se déconnecter</button>
                 </form>
-                <AsyncActionButton Type="button" Class="rounded-full bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 disabled:opacity-50" IsBusy="@isAcceptingTerms" BusyLabel="Enregistrement..." OnClick="AcceptTermsAsync">J'accepte et je continue</AsyncActionButton>
+                <AsyncActionButton Type="button" Class="sk-btn sk-btn-success" IsBusy="@isAcceptingTerms" BusyLabel="Enregistrement..." OnClick="AcceptTermsAsync">J'accepte et je continue</AsyncActionButton>
             </div>
         </div>
     </ModalDialog>

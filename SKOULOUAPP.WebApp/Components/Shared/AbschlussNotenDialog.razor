@@ -62,8 +62,8 @@
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
             <span class="text-sm font-semibold text-slate-700">@bericht.Schueler.Count(s => !string.IsNullOrWhiteSpace(s.AbschlussNoteText) && s.IsBestanden.HasValue) / @bericht.Schueler.Count résultat(s) complets</span>
             <div class="flex gap-2">
-                <button type="button" class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold" @onclick="() => OpenChanged.InvokeAsync(false)">Fermer</button>
-                <button type="button" class="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled="@saving" @onclick="SaveAsync">Enregistrer</button>
+                <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => OpenChanged.InvokeAsync(false)">Fermer</button>
+                <button type="button" class="sk-btn sk-btn-primary" disabled="@saving" @onclick="SaveAsync">Enregistrer</button>
             </div>
         </div>
     }

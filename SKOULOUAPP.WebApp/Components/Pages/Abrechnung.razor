@@ -238,7 +238,7 @@
                     <h2 class="mt-1 text-xl font-black text-slate-900">@uebersicht.SchulName</h2>
                 </div>
                 <span class="flex flex-wrap items-center gap-2">
-                    <button type="button" class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-200 disabled:opacity-50" disabled="@isDatabaseActionInProgress" @onclick="AktualisierenAsync"><Icon Name="refresh" Groesse="16" /> Actualiser</button>
+                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@isDatabaseActionInProgress" @onclick="AktualisierenAsync"><Icon Name="refresh" Groesse="16" /> Actualiser</button>
                     <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"><Icon Name="calendar" Groesse="16" /> @uebersicht.VonUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") → @uebersicht.BisUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
                 </span>
             </div>
@@ -270,7 +270,7 @@
                             @if (filterBisLokal is not null)
                             {
                                 <button type="button"
-                                        class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                                        class="sk-btn sk-btn-secondary"
                                         @onclick="ResetFilterAsync">
                                     Jusqu'à maintenant
                                 </button>
@@ -279,7 +279,7 @@
                         <p class="mt-1 text-xs text-slate-500">Ce filtre ne clôture pas le cycle de la classe. Sans filtre, les abonnements sont affichés jusqu'à maintenant.</p>
                     </div>
                     <button type="button"
-                            class="rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
+                            class="sk-btn sk-btn-primary"
                             @onclick="ApplyFilterAsync">
                         Filtrer
                     </button>
@@ -319,7 +319,7 @@
                 @if (CanManageBilling && uebersicht.AnzahlPositionen > 0)
                 {
                     <button type="button"
-                            class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+                            class="sk-btn sk-btn-primary"
                             disabled="@(uebersicht.AnzahlPositionen == 0)"
                             @onclick="() => confirmCreateOpen = true">
                         Facturer les anciennes inscriptions uniquement
@@ -352,7 +352,7 @@
                     <label class="mb-1 block text-xs font-semibold text-slate-600" for="historie-bis">Au</label>
                     <input id="historie-bis" type="date" class="skoulou-input" @bind="historieBisDatum" @bind:format="yyyy-MM-dd" />
                 </div>
-                <button type="button" class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100" @onclick="() => { historieVonDatum = null; historieBisDatum = null; }">Effacer les dates</button>
+                <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => { historieVonDatum = null; historieBisDatum = null; }">Effacer les dates</button>
                 <span class="text-xs text-slate-500">@GefilterteHistorie.Count facturation(s) affichée(s)</span>
             </div>
             @if (historieVonDatum > historieBisDatum)
@@ -442,7 +442,7 @@
                                     && !periode.IstSammelabrechnungAusGeschlossenenKlassen)
                                 {
                                     <button type="button"
-                                            class="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            class="sk-btn sk-btn-secondary sk-btn-sm"
                                             disabled="@isDatabaseActionInProgress"
                                             @onclick="() => RenvoyerFacturationAsync(periode.Id)">
                                         Renvoyer l'e-mail
@@ -469,7 +469,7 @@
                                     @if (periode.Status == AbrechnungStatus.Erstellt)
                                     {
                                         <button type="button"
-                                                class="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-200"
+                                                class="sk-btn sk-btn-danger sk-btn-sm"
                                                 @onclick="() => { rejectPeriodId = periode.Id; rejectReason = string.Empty; }">
                                             Refuser
                                         </button>
@@ -510,7 +510,7 @@
     </p>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"
-                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                class="sk-btn sk-btn-secondary"
                 @onclick="() => confirmCreateOpen = false">
             Annuler
         </button>
@@ -535,7 +535,7 @@
     </p>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"
-                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                class="sk-btn sk-btn-secondary"
                 @onclick="() => confirmPeriodId = null">
             Annuler
         </button>
@@ -562,11 +562,11 @@
               placeholder="Motif du refus..."></textarea>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"
-                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                class="sk-btn sk-btn-secondary"
                 @onclick="() => { rejectPeriodId = null; rejectReason = string.Empty; }">
             Annuler
         </button>
-        <AsyncActionButton Class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        <AsyncActionButton Class="sk-btn sk-btn-danger"
                            Disabled="@string.IsNullOrWhiteSpace(rejectReason)"
                            IsBusy="@isDatabaseActionInProgress"
                            BusyLabel="Refus..."

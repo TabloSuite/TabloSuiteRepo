@@ -54,7 +54,7 @@
                         }
                         @if (mail.IstEingehend)
                         {
-                            <button type="button" class="mt-3 rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800" @onclick="() => Reply(mail)">Répondre</button>
+                            <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm mt-3" @onclick="() => Reply(mail)">Répondre</button>
                         }
                     </article>
                 }
@@ -95,7 +95,7 @@
             </label>
             <div><label class="skoulou-label">Message</label><RichTextEditor @bind-Value="body" EnableImages="false" EnableLargeEditor="true" /></div>
             <div class="flex justify-end gap-2">
-                <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700" @onclick="() => composeOpen = false">Annuler</button>
+                <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => composeOpen = false">Annuler</button>
                 <button type="button" class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50" disabled="@(sending || (!isAdmin && !schoolId.HasValue))" @onclick="SendAsync">@(sending ? "Envoi..." : "Envoyer")</button>
             </div>
         </div>

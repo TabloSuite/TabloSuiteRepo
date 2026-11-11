@@ -25,7 +25,7 @@
     {
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4" @key="item.Id">
             <div><strong class="text-slate-900">@item.Titel</strong><p class="text-xs text-slate-600">Expire le @item.AblaufAmUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
-            <AsyncActionButton Class="rounded-full bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-800" IsBusy="@isSavingAnnouncement" BusyLabel="Suppression..." OnClick="@(_ => DeleteAnnouncementAsync(item.Id))">Supprimer</AsyncActionButton>
+            <AsyncActionButton Class="sk-btn sk-btn-danger" IsBusy="@isSavingAnnouncement" BusyLabel="Suppression..." OnClick="@(_ => DeleteAnnouncementAsync(item.Id))">Supprimer</AsyncActionButton>
         </div>
     }
 </section>
@@ -71,7 +71,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50" IsBusy="@isSubmitting" BusyLabel="Envoi...">Envoyer</AsyncActionButton>
+            <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isSubmitting" BusyLabel="Envoi...">Envoyer</AsyncActionButton>
         </div>
     </EditForm>
 </section>

@@ -63,7 +63,7 @@ else
                 <div class="mt-6 flex justify-end">
                     @if (!isProduktOwner)
                     {
-                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" @onclick="OpenNewSchoolModalAsync">
+                    <button type="button" class="sk-btn sk-btn-primary" @onclick="OpenNewSchoolModalAsync">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
@@ -129,8 +129,8 @@ else
                     <p class="text-sm text-slate-600">Les enseignants sont ajoutés par la direction de l'établissement.</p>
 
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseSchoolModalAsync">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(schoolForm.Id.HasValue ? "Enregistrer l'ecole" : "Creer l'ecole")</AsyncActionButton>
+                        <button type="button" class="sk-btn sk-btn-secondary" disabled="@isDatabaseActionInProgress" @onclick="CloseSchoolModalAsync">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(schoolForm.Id.HasValue ? "Enregistrer l'ecole" : "Creer l'ecole")</AsyncActionButton>
                     </div>
                 </EditForm>
                 </ModalDialog>
@@ -209,7 +209,7 @@ else
                         <div class="mt-3">
                             @if (!isProduktOwner)
                             {
-                            <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditSchoolAsync(school.SchoolId)">
+                            <button type="button" class="sk-btn sk-btn-primary sk-btn-sm" @onclick="() => EditSchoolAsync(school.SchoolId)">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="@(school.IsActive ? "m4.5 15.75 7.5-7.5 7.5 7.5" : "m19.5 8.25-7.5 7.5-7.5-7.5")" />
                                 </svg>
@@ -232,7 +232,7 @@ else
                 <Toast Message="@userErrorMessage" MessageChanged="v => userErrorMessage = v" Kind="Toast.ToastKind.Error" />
 
                 <div class="mt-6 flex justify-end">
-                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" @onclick="OpenNewUserModalAsync">
+                    <button type="button" class="sk-btn sk-btn-primary" @onclick="OpenNewUserModalAsync">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
@@ -389,8 +389,8 @@ else
                     }
 
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseUserModalAsync">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(userForm.UserId.HasValue ? "Enregistrer l'utilisateur" : "Créer l'utilisateur")</AsyncActionButton>
+                        <button type="button" class="sk-btn sk-btn-secondary" disabled="@isDatabaseActionInProgress" @onclick="CloseUserModalAsync">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(userForm.UserId.HasValue ? "Enregistrer l'utilisateur" : "Créer l'utilisateur")</AsyncActionButton>
                     </div>
                 </EditForm>
                 </ModalDialog>
@@ -488,7 +488,7 @@ else
                                 </div>
                             }
                             <div class="mt-3 flex flex-wrap gap-2">
-                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => ViewUser(user)">
+                                <button type="button" class="sk-btn sk-btn-primary sk-btn-sm" @onclick="() => ViewUser(user)">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487a2.25 2.25 0 1 1 3.182 3.182L8.25 19.463 4.5 20.25l.787-3.75L16.862 4.487z" />
                                     </svg>
@@ -496,14 +496,14 @@ else
                                 </button>
                             @if (user.IsBlocked)
                             {
-                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, false)">
+                                <button type="button" class="sk-btn sk-btn-success sk-btn-sm" @onclick="() => SetUserBlockedAsync(user.UserId, false)">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                                     Activer
                                 </button>
                             }
                             else
                             {
-                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, true)">
+                                <button type="button" class="sk-btn sk-btn-danger sk-btn-sm" @onclick="() => SetUserBlockedAsync(user.UserId, true)">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                     Bloquer
                                 </button>
@@ -511,7 +511,7 @@ else
                             @if (!isProduktOwner && IsDevelopment && user.RoleName == "SchulLeiter")
                             {
                                 <button type="button"
-                                        class="inline-flex items-center gap-2 rounded-full bg-rose-950 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-900 hover:shadow-md"
+                                        class="sk-btn sk-btn-secondary"
                                         @onclick="() => RequestHardDeleteSchoolLeader(user)">
                                     Supprimer définitivement (test)
                                 </button>
@@ -521,7 +521,7 @@ else
                         {
                             <div class="mt-4">
                                 <button type="button"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                        class="sk-btn sk-btn-primary"
                                         @onclick="() => ToggleEnrollmentPanelAsync(user.UserId)">
                                     Abonnements &amp; paiements
                                     <svg class="h-4 w-4 transition-transform duration-200 @(expandedEnrollmentStudentId == user.UserId ? "rotate-180" : "")" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
@@ -554,12 +554,12 @@ else
                                                     @if (level.IsUnlocked && !level.IstAbgerechnet)
 {
     <button type="button"
-            class="rounded-full bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+            class="sk-btn sk-btn-secondary sk-btn-sm"
             @onclick="() => RequestRemoveAbo(user.UserId, level)">
         Annuler l'abonnement
     </button>
     <button type="button"
-            class="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+            class="sk-btn sk-btn-danger sk-btn-sm"
             @onclick="() => RequestRemoveAboAndClass(user.UserId, level)">
         Annuler et retirer de la classe
     </button>
@@ -692,8 +692,8 @@ else
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseCourseModal">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(courseForm.CourseId.HasValue ? "Enregistrer la classe / le niveau" : "Créer la classe / le niveau")</AsyncActionButton>
+                        <button type="button" class="sk-btn sk-btn-secondary" disabled="@isDatabaseActionInProgress" @onclick="CloseCourseModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(courseForm.CourseId.HasValue ? "Enregistrer la classe / le niveau" : "Créer la classe / le niveau")</AsyncActionButton>
                     </div>
                 </EditForm>
             </ModalDialog>
@@ -737,7 +737,7 @@ else
                                 <h3 class="text-sm font-black text-slate-900">Exercices de la leçon</h3>
                                 <p class="mt-1 text-xs text-slate-500">Même structure que les examens, mais rattachée à cette leçon.</p>
                             </div>
-                            <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="AddLessonExercise">+ Ajouter un exercice</button>
+                            <button type="button" class="sk-btn sk-btn-primary sk-btn-sm" @onclick="AddLessonExercise">+ Ajouter un exercice</button>
                         </div>
 
                         <div class="mt-4 space-y-4">
@@ -752,7 +752,7 @@ else
                                 <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
                                     <div class="mb-3 flex items-center justify-between gap-3">
                                         <h4 class="text-sm font-bold text-slate-800">Exercice @(localExerciseIndex + 1)</h4>
-                                        <button type="button" class="rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExercise(exercise)">Supprimer</button>
+                                        <button type="button" class="sk-btn sk-btn-danger sk-btn-sm" @onclick="() => RemoveLessonExercise(exercise)">Supprimer</button>
                                     </div>
 
                                     <div class="grid gap-3">
@@ -801,7 +801,7 @@ else
                                             <div class="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
                                                 <div class="mb-2 flex items-center justify-between gap-2">
                                                     <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Réponses par trou</p>
-                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100" @onclick="() => AddLessonGap(exercise)">+ Ajouter un trou</button>
+                                                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" @onclick="() => AddLessonGap(exercise)">+ Ajouter un trou</button>
                                                 </div>
                                                 @for (var gapIndex = 0; gapIndex < exercise.Gaps.Count; gapIndex++)
                                                 {
@@ -829,7 +829,7 @@ else
                                             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                                 <div class="mb-2 flex items-center justify-between gap-2">
                                                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Options</p>
-                                                    <button type="button" class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100" @onclick="() => AddLessonExerciseOption(exercise)">+ Ajouter une option</button>
+                                                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" @onclick="() => AddLessonExerciseOption(exercise)">+ Ajouter une option</button>
                                                 </div>
 
                                                 @for (var optionIndex = 0; optionIndex < exercise.Options.Count; optionIndex++)
@@ -846,7 +846,7 @@ else
                                                                 <input type="checkbox" @bind="option.IsCorrect" />
                                                             }
                                                             <InputText @bind-Value="option.Text" class="skoulou-input" />
-                                                            <button type="button" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
+                                                            <button type="button" class="sk-btn sk-btn-danger sk-btn-sm" @onclick="() => RemoveLessonExerciseOption(exercise, option)">Supprimer</button>
                                                         </div>
                                                     </div>
                                                 }
@@ -858,8 +858,8 @@ else
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseLessonModal">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(lessonForm.LessonId.HasValue ? "Enregistrer la leçon" : "Créer la leçon")</AsyncActionButton>
+                        <button type="button" class="sk-btn sk-btn-secondary" disabled="@isDatabaseActionInProgress" @onclick="CloseLessonModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement...">@(lessonForm.LessonId.HasValue ? "Enregistrer la leçon" : "Créer la leçon")</AsyncActionButton>
                     </div>
                 </EditForm>
                 </ModalDialog>
@@ -905,8 +905,8 @@ else
                         <InputText @bind-Value="mediaUploadForm.AltText" class="skoulou-input" />
                     </div>
                     <div class="flex flex-wrap justify-end gap-3">
-                        <button type="button" class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition duration-200 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" disabled="@isDatabaseActionInProgress" @onclick="CloseMediaModal">Annuler</button>
-                        <AsyncActionButton Type="submit" Class="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Téléverser le média" />
+                        <button type="button" class="sk-btn sk-btn-secondary" disabled="@isDatabaseActionInProgress" @onclick="CloseMediaModal">Annuler</button>
+                        <AsyncActionButton Type="submit" Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Téléverser le média" />
                     </div>
                 </EditForm>
                 </ModalDialog>
@@ -950,7 +950,7 @@ else
                         {
                         <p class="mt-3 text-sm text-slate-600">@course.Description</p>
                         <div class="mt-4">
-                            <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => EditCourseAsync(course.CourseId)">
+                            <button type="button" class="sk-btn sk-btn-primary" @onclick="() => EditCourseAsync(course.CourseId)">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                                 Modifier la classe / le niveau
                             </button>
@@ -974,7 +974,7 @@ else
                                     </div>
                                     <p class="mt-2 text-sm text-slate-600">@lesson.Summary</p>
                                     <div class="mt-3">
-                                        <button type="button" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 ring-1 ring-slate-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-md" @onclick="() => EditLessonAsync(lesson.LessonId)">
+                                        <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => EditLessonAsync(lesson.LessonId)">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                                             Modifier la leçon
                                         </button>
@@ -1012,7 +1012,7 @@ else
             <div class="rounded-2xl bg-slate-100 p-4"><p class="font-bold text-slate-900">Plateforme</p><p class="mt-4 text-2xl font-black text-slate-900">@commissionSettings.PlatformAmount.ToString("N0") FCFA</p><p class="mt-1 text-sm text-slate-600">@commissionSettings.PlatformPercent.ToString("N2") %</p><p class="mt-5 text-xs text-slate-500">Calculé automatiquement.</p></div>
         </div>
         <p class="mt-4 text-sm text-slate-600">Aucune commission scolaire ni enseignante pour les nouveaux cycles. La rémunération du responsable produit est interne à la plateforme et ne réduit jamais la facture de l'école.</p>
-        <AsyncActionButton Class="mt-5 rounded-full bg-violet-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement..." OnClick="@(_ => SaveCommissionSettingsAsync())">Enregistrer le tarif et la rémunération interne</AsyncActionButton>
+        <AsyncActionButton Class="sk-btn sk-btn-primary mt-5" IsBusy="@isDatabaseActionInProgress" BusyLabel="Enregistrement..." OnClick="@(_ => SaveCommissionSettingsAsync())">Enregistrer le tarif et la rémunération interne</AsyncActionButton>
     </section>
     }
 
@@ -1038,12 +1038,12 @@ else
         </p>
         <div class="mt-6 flex justify-end gap-3">
             <button type="button"
-                    class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                    class="sk-btn sk-btn-secondary"
                     @onclick="() => confirmRemovePaymentOpen = false">
                 Annuler
             </button>
             <button type="button"
-                    class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                    class="sk-btn sk-btn-danger"
                     @onclick="ConfirmRemovePaymentAsync">
                 Retirer le paiement
             </button>
@@ -1060,12 +1060,12 @@ else
     </p>
     <div class="mt-6 flex justify-end gap-3">
         <button type="button"
-                class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                class="sk-btn sk-btn-secondary"
                 @onclick="() => confirmRemoveAboOpen = false">
             Annuler
         </button>
         <button type="button"
-                class="rounded-full bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                class="sk-btn sk-btn-secondary"
                 @onclick="ConfirmRemoveAboAsync">
             Annuler l'abonnement
         </button>
@@ -1086,12 +1086,12 @@ else
         </div>
         <div class="mt-6 flex flex-wrap justify-end gap-3">
             <button type="button"
-                    class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                    class="sk-btn sk-btn-secondary"
                     @onclick="() => confirmRemoveAboAndClassOpen = false">
                 Conserver l'élève dans la classe
             </button>
             <button type="button"
-                    class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                    class="sk-btn sk-btn-danger"
                     @onclick="ConfirmRemoveAboAndClassAsync">
                 Annuler et retirer de la classe
             </button>
@@ -1114,11 +1114,11 @@ else
             </div>
             <div class="mt-6 flex flex-wrap justify-end gap-3">
                 <button type="button"
-                        class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                        class="sk-btn sk-btn-secondary"
                         @onclick="() => confirmHardDeleteSchoolLeaderOpen = false">
                     Annuler
                 </button>
-                <AsyncActionButton Class="rounded-full bg-rose-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-900 disabled:opacity-50"
+                <AsyncActionButton Class="sk-btn sk-btn-secondary"
                                    IsBusy="@isDatabaseActionInProgress"
                                    BusyLabel="Suppression..."
                                    OnClick="@(_ => ConfirmHardDeleteSchoolLeaderAsync())">

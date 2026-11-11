@@ -489,7 +489,7 @@
                 <h2 class="text-lg font-bold text-slate-800">Paiements des cycles</h2>
                 <p class="mt-2 text-sm text-slate-600">Le démarrage et la clôture des cycles se font dans l'<strong>Espace directeur</strong>, section <strong>Classes de mon école</strong>. Cette vue Finance reste disponible pour le suivi des paiements et des états.</p>
                 <div class="mt-4">
-                    <a href="/schulleiter" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                    <a href="/schulleiter" class="sk-btn sk-btn-success">
                         Ouvrir l'Espace directeur
                     </a>
                 </div>
@@ -550,8 +550,8 @@
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200" @onclick="DurchlaufStartModalSchliessen">Annuler</button>
-                    <button type="button" class="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300" disabled="@(IsBusy || durchlaufStartDurchUeberweisungGesperrt)" @onclick="DurchlaufStartenAsync">Démarrer</button>
+                    <button type="button" class="sk-btn sk-btn-secondary" @onclick="DurchlaufStartModalSchliessen">Annuler</button>
+                    <button type="button" class="sk-btn sk-btn-success" disabled="@(IsBusy || durchlaufStartDurchUeberweisungGesperrt)" @onclick="DurchlaufStartenAsync">Démarrer</button>
                 </div>
             </div>
         </div>
@@ -562,8 +562,8 @@
                         <div class="flex gap-2">
                             @if (d.IstAktiv)
                             {
-                                <button type="button" class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white" @onclick="() => ZahlungPanelOeffnen(d)">Enregistrer un paiement</button>
-                                <button type="button" class="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700" @onclick="() => BeendenVorbereitenAsync(d)">Clôturer le cycle</button>
+                                <button type="button" class="sk-btn sk-btn-success sk-btn-sm" @onclick="() => ZahlungPanelOeffnen(d)">Enregistrer un paiement</button>
+                                <button type="button" class="sk-btn sk-btn-danger sk-btn-sm" @onclick="() => BeendenVorbereitenAsync(d)">Clôturer le cycle</button>
                             }
                         </div>
                     </div>
@@ -731,8 +731,8 @@
 			<TailwindDateTimePicker Value="beendenDatum" ValueChanged="SetBeendenDatumAsync" ShowTime="false" />
 		</div>
 		<div class="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 md:flex-row md:flex-wrap md:justify-end">
-			<button type="button" class="w-full whitespace-nowrap rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 md:w-auto" @onclick="BeendenAbbrechen">Annuler</button>
-			<AsyncActionButton Class="w-full whitespace-nowrap rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 md:w-auto" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
+			<button type="button" class="sk-btn sk-btn-secondary w-full whitespace-nowrap md:w-auto" @onclick="BeendenAbbrechen">Annuler</button>
+			<AsyncActionButton Class="sk-btn sk-btn-danger w-full whitespace-nowrap md:w-auto" IsBusy="IsBusy" OnClick="DurchlaufBeendenBestaetigenAsync">Confirmer la clôture</AsyncActionButton>
 		</div>
 	}
 </ModalDialog>
@@ -756,8 +756,8 @@
         }
     </div>
     <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="() => beendenEndgueltigOffen = false">Retour</button>
-        <AsyncActionButton Class="rounded-full bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-800"
+        <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => beendenEndgueltigOffen = false">Retour</button>
+        <AsyncActionButton Class="sk-btn sk-btn-danger"
                            IsBusy="IsBusy"
                            BusyLabel="Clôture..."
                            OnClick="DurchlaufEndgueltigBeendenAsync">

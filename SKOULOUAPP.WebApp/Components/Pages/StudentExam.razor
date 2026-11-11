@@ -73,14 +73,14 @@
                 }
             </article>
         }
-        <a class="w-fit rounded-full bg-indigo-700 px-5 py-2 text-sm font-semibold text-white no-underline" href="/student/exams">Retour aux épreuves</a>
+        <a class="sk-btn sk-btn-primary w-fit" href="/student/exams">Retour aux épreuves</a>
     </section>
 }
 else if (session is null && result is null)
 {
     <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
         <p class="text-sm text-slate-600">@(notFound ? "Cette épreuve n'est pas disponible." : "Préparation de l'épreuve...")</p>
-        <a class="mt-4 inline-block rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white no-underline" href="/student/exams">Retour aux épreuves</a>
+        <a class="sk-btn sk-btn-secondary mt-4 inline-block" href="/student/exams">Retour aux épreuves</a>
     </div>
 }
 else if (result is not null)
@@ -101,8 +101,8 @@ else if (result is not null)
             }
         </div>
         <div class="flex flex-wrap gap-3">
-            <a class="rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white no-underline transition hover:bg-amber-700" href="/student/exams">Retour à la liste</a>
-            <a class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 no-underline transition hover:bg-slate-50" href="/student/lessons">Continuer à s'entraîner</a>
+            <a class="sk-btn sk-btn-secondary" href="/student/exams">Retour à la liste</a>
+            <a class="sk-btn sk-btn-secondary" href="/student/lessons">Continuer à s'entraîner</a>
         </div>
     </section>
 }
@@ -114,8 +114,8 @@ else if (session is not null)
             <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
                 <p>Le chronomètre continue si vous quittez l'épreuve. Vous pourrez reprendre avec le temps restant. Vos réponses sont enregistrées.</p>
                 <div class="mt-3 flex gap-3">
-                    <button type="button" class="rounded-full bg-amber-700 px-4 py-2 font-semibold text-white" @onclick="LeaveExamAsync">Quitter l'épreuve</button>
-                    <button type="button" class="rounded-full bg-white px-4 py-2 font-semibold" @onclick="() => showLeaveConfirmation = false">Continuer l'épreuve</button>
+                    <button type="button" class="sk-btn sk-btn-secondary" @onclick="LeaveExamAsync">Quitter l'épreuve</button>
+                    <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => showLeaveConfirmation = false">Continuer l'épreuve</button>
                 </div>
             </div>
         }
@@ -126,7 +126,7 @@ else if (session is not null)
             </div>
             <div class="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
                 <button type="button"
-                        class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        class="sk-btn sk-btn-success"
                         disabled="@isSubmitting"
                         @onclick="() => SubmitAsync(false)">
                     @(isSubmitting ? "Envoi en cours..." : "Envoyer l'épreuve")
@@ -162,7 +162,7 @@ else if (session is not null)
                     @if (IsAudioType(question.QuestionType) && !string.IsNullOrWhiteSpace(question.AudioText))
                     {
                         <button type="button"
-                                class="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-700"
+                                class="sk-btn sk-btn-primary"
                                 data-skoulouapp-tts-text="@question.AudioText"
                                 data-skoulouapp-tts-lang="@question.TtsLanguage"
                                 >
@@ -234,13 +234,13 @@ else if (session is not null)
 
             <div class="flex items-center justify-between gap-3">
                 <button type="button"
-                        class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        class="sk-btn sk-btn-secondary"
                         disabled="@IsFirstQuestion"
                         @onclick="GoToPreviousQuestion">
                     ← Précédent
                 </button>
                 <button type="button"
-                        class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        class="sk-btn sk-btn-secondary"
                         disabled="@IsLastQuestion"
                         @onclick="GoToNextQuestion">
                     Suivant →
@@ -249,7 +249,7 @@ else if (session is not null)
         }
 
         <div class="border-t border-slate-200 pt-5">
-            <button type="button" class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" @onclick="() => showLeaveConfirmation = true">Quitter l'épreuve</button>
+            <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => showLeaveConfirmation = true">Quitter l'épreuve</button>
         </div>
     </section>
 }

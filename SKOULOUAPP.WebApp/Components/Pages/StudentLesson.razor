@@ -29,8 +29,8 @@ else
                     <div class="progress-ring" style="--ring-percent:@LessonPercent; --ring-color:#4f46e5;">
                         <span class="progress-ring-label text-slate-900">@LessonPercent%</span>
                     </div>
-                    <a class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 sm:px-4 sm:py-2 sm:text-sm" href="/student/lessons">Retour</a>
-                    <a class="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-800 no-underline sm:px-4 sm:py-2 sm:text-sm" href="/student/lessons/@LessonId/pdf-file" target="_blank">Télécharger la leçon et les exercices (sans solutions)</a>
+                    <a class="sk-btn sk-btn-secondary sk-btn-sm" href="/student/lessons">Retour</a>
+                    <a class="sk-btn sk-btn-secondary sk-btn-sm" href="/student/lessons/@LessonId/pdf-file" target="_blank">Télécharger la leçon et les exercices (sans solutions)</a>
                 </div>
             </div>
         </div>
@@ -170,7 +170,7 @@ else
                                 @if (IsAudioType(exercise.ExerciseType) && !string.IsNullOrWhiteSpace(exercise.AudioText))
                                 {
                                     <button type="button"
-                                            class="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-700"
+                                            class="sk-btn sk-btn-primary"
                                             data-skoulouapp-tts-text="@exercise.AudioText"
                                              data-skoulouapp-audio-url="@GetLessonAudioUrl()"
                                              data-skoulouapp-tts-lang="@exercise.TtsLanguage">
@@ -298,13 +298,13 @@ else
 
                         <div class="flex items-center justify-between gap-3">
                             <button type="button"
-                                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    class="sk-btn sk-btn-secondary"
                                     disabled="@IsFirstExercise"
                                     @onclick="GoToPreviousExercise">
                                 ← Précédent
                             </button>
                             <button type="button"
-                                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                    class="sk-btn sk-btn-secondary"
                                     disabled="@IsLastExercise"
                                     @onclick="GoToNextExercise">
                                 Suivant →
