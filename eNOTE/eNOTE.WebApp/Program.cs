@@ -11,6 +11,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
+// Einheitliche Anzeige auf jedem Server (Azure läuft auf Englisch): « 15.000 F », « −7,5 % », « 11/11/2026 ».
+var enoteKultur = ENote.Core.Services.EnoteKultur.Erstelle();
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = enoteKultur;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = enoteKultur;
+System.Globalization.CultureInfo.CurrentCulture = enoteKultur;
+System.Globalization.CultureInfo.CurrentUICulture = enoteKultur;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((_, services, loggerConfiguration) => loggerConfiguration
@@ -181,6 +188,14 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Jede Anfrage (auch die Blazor-Verbindung) in derselben Kultur, unabhängig von Browser und Server.
+app.UseRequestLocalization(optionen =>
+{
+    optionen.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(enoteKultur);
+    optionen.SupportedCultures = [enoteKultur];
+    optionen.SupportedUICultures = [enoteKultur];
+    optionen.RequestCultureProviders.Clear();
+});
 app.UseStaticFiles();
 app.UseAntiforgery();
 
