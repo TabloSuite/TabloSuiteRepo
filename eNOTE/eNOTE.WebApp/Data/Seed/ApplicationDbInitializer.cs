@@ -78,7 +78,14 @@ public static class ApplicationDbInitializer
 
         // 2) Bestehenden SuperAdmin (z. B. alter Stand mit E-Mail als Benutzername) auf
         //    das Ziel-Pseudonym umstellen, damit der Login per Pseudonym funktioniert.
-        var bestehend = await userManager.FindByEmailAsync(email);
+        // E-Mail ist nicht eindeutig: nur ein SuperAdmin mit dieser Adresse zählt.
+        var normalisiert = userManager.NormalizeEmail(email);
+        var kandidaten = userManager.Users.Where(u => u.NormalizedEmail == normalisiert).ToList();
+        AppUser? bestehend = null;
+        foreach (var k in kandidaten)
+        {
+            if (await userManager.IsInRoleAsync(k, AppRollen.SuperAdmin)) { bestehend = k; break; }
+        }
         if (bestehend is null)
         {
             bestehend = (await userManager.GetUsersInRoleAsync(AppRollen.SuperAdmin)).FirstOrDefault();

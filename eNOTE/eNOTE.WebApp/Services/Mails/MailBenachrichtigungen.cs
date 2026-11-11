@@ -31,7 +31,7 @@ public class MailBenachrichtigungen(
     private string AboUrl => AppUrl + "/abonnement";
     private string AdminEmpfaenger => configuration["Mail:AdminEmpfaenger"] is { Length: > 0 } a ? a : "contact@tablosuite.com";
 
-    private sealed record Besitzer(string Email, string Vorname, string SalonName);
+    private sealed record Besitzer(string Email, string Vorname, string SalonName, string Name);
 
     /// <summary>Besitzer (Rolle „Besitzer“) eines Ladens mit E-Mail-Adresse.</summary>
     private static async Task<Besitzer?> BesitzerAsync(ApplicationDbContext db, Guid salonId, CancellationToken ct)
@@ -39,7 +39,7 @@ public class MailBenachrichtigungen(
             .Where(us => us.SalonId == salonId && !us.AppUser.IsBlocked && us.AppUser.Email != null
                 && db.UserRoles.Any(ur => ur.UserId == us.AppUserId && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.Besitzer)))
             .OrderByDescending(us => us.AppUser.IsSelfRegistered)
-            .Select(us => new Besitzer(us.AppUser.Email!, us.AppUser.Vorname, us.Salon.Name))
+            .Select(us => new Besitzer(us.AppUser.Email!, us.AppUser.Vorname, us.Salon.Name, us.AppUser.FullName))
             .FirstOrDefaultAsync(ct);
 
     private async Task SicherAsync(string was, Func<Task> aktion)
@@ -99,7 +99,8 @@ public class MailBenachrichtigungen(
             await using var db = await factory.CreateDbContextAsync(ct);
             var b = await BesitzerAsync(db, salonId, ct);
             var salonName = b?.SalonName ?? await db.Salons.Where(s => s.Id == salonId).Select(s => s.Name).FirstOrDefaultAsync(ct) ?? "votre établissement";
-            var besitzerName = b is null ? "Le propriétaire" : await db.Users.Where(u => u.Email == b.Email).Select(u => u.FullName).FirstOrDefaultAsync(ct) ?? "Le propriétaire";
+            // Name direkt über den Laden (E-Mail-Adressen sind nicht eindeutig).
+            var besitzerName = string.IsNullOrWhiteSpace(b?.Name) ? "Le propriétaire" : b.Name;
             await email.SendeAsync(empfaenger, $"Bienvenue dans l'équipe {salonName}",
                 TabloSuiteMails.KassiererWillkommen(vorname, pseudonym, salonName, besitzerName, AppUrl), "caissier-bienvenue", ct);
         });

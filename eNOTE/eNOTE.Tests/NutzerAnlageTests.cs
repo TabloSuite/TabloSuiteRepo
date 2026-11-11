@@ -197,6 +197,32 @@ public class NutzerAnlageTests
         Assert.False((await service.AendereEmailAsync(kassierer.Id, "awa@example.test", "Initial123!Ab")).Erfolg);
     }
 
+    /// <summary>Entscheidung: gleiche E-Mail für mehrere Konten (zweiter Laden = zweites Konto). Schutz gegen Rückfall.</summary>
+    [Fact]
+    public void Programm_Erlaubt_Gleiche_Email_Fuer_Mehrere_Konten()
+    {
+        var program = File.ReadAllText(Path.Combine(Path.GetDirectoryName(Quelle())!, "..", "eNOTE.WebApp", "Program.cs"));
+        Assert.Contains("RequireUniqueEmail = false", program);
+        Assert.DoesNotContain("RequireUniqueEmail = true", program);
+    }
+
+    private static string Quelle([System.Runtime.CompilerServices.CallerFilePath] string pfad = "") => pfad;
+
+    [Fact]
+    public async Task Profil_Erlaubt_Email_Die_Ein_Anderes_Konto_Schon_Nutzt()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var laden1 = await NutzerAsync(scope.ServiceProvider, AppRollen.Besitzer);
+        var laden2 = await NutzerAsync(scope.ServiceProvider, AppRollen.Besitzer);
+        var (ok, fehler) = await new KontoProfilService(users).AendereEmailAsync(laden2.Id, laden1.Email!, "Initial123!Ab");
+        Assert.True(ok, fehler);
+        await using var db = await factory.CreateDbContextAsync();
+        Assert.Equal(2, await db.Users.CountAsync(u => u.Email == laden1.Email));
+    }
+
     [Fact]
     public async Task Gleiche_Email_Mit_Unterschiedlichen_Pseudonymen_Erlaubt()
     {

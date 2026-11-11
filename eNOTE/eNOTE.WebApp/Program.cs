@@ -55,7 +55,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services
     .AddIdentityCore<AppUser>(options =>
     {
-        options.User.RequireUniqueEmail = true;
+        // Gleiche E-Mail für mehrere Konten erlaubt (z. B. Besitzer mit zweitem Laden = zweites Konto).
+        // Anmeldung und « Mot de passe oublié » laufen über das Pseudonym, nie über die E-Mail.
+        options.User.RequireUniqueEmail = false;
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = false;
