@@ -26,7 +26,7 @@ public class NachrichtenService(IDbContextFactory<ApplicationDbContext> factory,
         AppRollen.SuperAdmin => "Administrateur",
         AppRollen.ProduktOwner => "Responsable",
         AppRollen.Besitzer => "Propriétaire",
-        AppRollen.Kassierer => "Caissier",
+        AppRollen.Kassierer => "Employé",
         _ => "Utilisateur"
     };
 

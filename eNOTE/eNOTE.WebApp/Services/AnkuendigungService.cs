@@ -82,7 +82,7 @@ public class AnkuendigungService(IDbContextFactory<ApplicationDbContext> factory
     public static string ZielText(AnkuendigungZiel ziel) => ziel switch
     {
         AnkuendigungZiel.Proprietaires => "Propriétaires",
-        AnkuendigungZiel.ProprietairesEtCaissiers => "Propriétaires et caissiers",
+        AnkuendigungZiel.ProprietairesEtCaissiers => "Propriétaires et employés",
         _ => "Tous les utilisateurs"
     };
 

@@ -26,9 +26,9 @@ public static class VideoKatalog
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
         new("enote-caissier.mp4", "Encaisser avec eNOTE",
-            "Ouvrir la caisse, encaisser en espèces ou Mobile Money, imprimer le reçu et clôturer le soir.", "Caissier", Alle),
+            "Ouvrir la caisse, encaisser en espèces ou Mobile Money, imprimer le reçu et clôturer le soir.", "Employé", Alle),
         new("enote-proprietaire.mp4", "Gérer votre établissement",
-            "Prestations et prix, équipe et caissiers, finances, dépenses et abonnement.", "Propriétaire", AbBesitzer),
+            "Prestations et prix, équipe et employés, finances, dépenses et abonnement.", "Propriétaire", AbBesitzer),
         new("enote-responsable.mp4", "Suivre vos établissements",
             "Vos établissements, les paiements d'abonnement et vos commissions.", "Responsable", Plattform),
         new("enote-admin.mp4", "Piloter la plateforme",

@@ -5,6 +5,7 @@
 @using System.Security.Claims
 @using ENote.WebApp.Services
 @inject KundenService kunden
+@inject KundenBesuchService besuche
 @inject AktiverSalonState aktiverSalon
 @inject AuthenticationStateProvider authStateProvider
 @inject ToastService toast
@@ -16,7 +17,7 @@
     <div class="enote-page-header">
         <div>
             <h1>Clients</h1>
-            <p>Vos clients, leurs visites et ce qu'ils préfèrent. En caisse, le client est facultatif sur chaque ticket.</p>
+            <p>Vos clients, leurs achats, leurs passages et les notes de l'équipe. En caisse, le client est facultatif sur chaque ticket.</p>
         </div>
         <button class="enote-btn enote-btn-primary" @onclick="NeuOeffnen"><Icon Name="plus" Groesse="18" /> Nouveau client</button>
     </div>
@@ -30,7 +31,7 @@
         <div class="ku-kpis">
             <div class="enote-card ku-kpi"><span>Clients</span><strong>@z.Kunden</strong></div>
             <div class="enote-card ku-kpi"><span>Nouveaux ce mois</span><strong>@z.NeuDiesenMonat</strong></div>
-            <div class="enote-card ku-kpi"><span>Clients fidèles</span><strong>@z.Wiederkehrend</strong><small>2 visites ou plus</small></div>
+            <div class="enote-card ku-kpi"><span>Clients fidèles</span><strong>@z.Wiederkehrend</strong><small>2 achats ou plus</small></div>
             <div class="enote-card ku-kpi"><span>Ventes avec client</span><strong>@z.AnteilVerkaeufeMitKundeProzent %</strong><small>30 derniers jours</small></div>
         </div>
 
@@ -64,9 +65,9 @@
                             <strong>@k.Name @if (k.HatNotiz) { <Icon Name="edit" Groesse="13" CssClass="ku-notiz-ico" /> }</strong>
                             <small>@(k.Telefon ?? "Sans téléphone")</small>
                         </span>
-                        <span class="ku-zahl"><strong>@k.Besuche</strong><small>visite@(k.Besuche > 1 ? "s" : "")</small></span>
+                        <span class="ku-zahl"><strong>@k.Besuche</strong><small>achat@(k.Besuche > 1 ? "s" : "")</small></span>
                         <span class="ku-zahl"><strong>@k.Umsatz.ToString("N0") F</strong><small>dépensés</small></span>
-                        <span class="ku-zahl ku-letzter"><strong>@Wann(k.LetzterBesuchUtc)</strong><small>dernière visite</small></span>
+                        <span class="ku-zahl ku-letzter"><strong>@Wann(k.LetzterBesuchUtc)</strong><small>dernier achat</small></span>
                         <Icon Name="chevron-right" Groesse="18" CssClass="ku-pfeil" />
                     </button>
                 }
@@ -83,7 +84,7 @@
         {
             <div class="ku-blatt">
                 <div class="ku-blatt-zahlen">
-                    <div><span>Visites</span><strong>@d.Besuche</strong></div>
+                    <div><span>Achats</span><strong>@d.Besuche</strong></div>
                     <div><span>Dépensé</span><strong>@d.Umsatz.ToString("N0") F</strong></div>
                     <div><span>Panier moyen</span><strong>@d.Durchschnitt.ToString("N0") F</strong></div>
                     <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ToLocalTime().ToString("dd/MM/yyyy"))</strong></div>
@@ -106,13 +107,21 @@
                     {
                         <EnoteCheckbox @bind-Value="bEinwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
                     }
-                    <label>Note <small class="enote-muted">(visible seulement par vous)</small>
+                    <label>Note privée <small class="enote-muted">(visible seulement par vous)</small>
                         <textarea rows="3" @bind="bNotiz" maxlength="@KundenService.NotizMax" placeholder="ex. allergique au henné, préfère Awa, vient le samedi"></textarea>
                     </label>
                 </div>
 
+                @if (fiche is not null)
+                {
+                    <div class="ku-verlauf">
+                        <span class="ta-liste-titel">Passages et notes de l'équipe</span>
+                        <KundenVerlauf Fiche="fiche" BenutzerId="benutzer" OnGeaendert="LadeFicheAsync" />
+                    </div>
+                }
+
                 <div class="ku-besuche">
-                    <span class="ta-liste-titel">Dernières visites</span>
+                    <span class="ta-liste-titel">Derniers achats</span>
                     @if (d.LetzteBesuche.Count == 0)
                     {
                         <p class="enote-muted">Pas encore de vente avec ce client.</p>
@@ -137,7 +146,7 @@
 </ModalDialog>
 
 <ModalDialog Open="loeschenOffen" Title="Supprimer ce client ?" OnClose="() => loeschenOffen = false" MaxWidthClass="enote-modal-sm">
-    <ChildContent><p>Ses données (nom, téléphone, note) sont effacées. Les ventes restent dans vos chiffres, sans nom de client.</p></ChildContent>
+    <ChildContent><p>Ses données (nom, téléphone, notes et passages) sont effacées. Les ventes restent dans vos chiffres, sans nom de client.</p></ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => loeschenOffen = false">Annuler</button>
         <AsyncActionButton Text="Supprimer" BusyText="Suppression…" CssClass="enote-btn-danger" OnClick="LoescheAsync" />
@@ -154,7 +163,7 @@
             {
                 <EnoteCheckbox @bind-Value="nEinwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
             }
-            <small class="enote-muted">Le numéro n'est enregistré que si le client le souhaite. Les caissiers n'en voient que les 4 derniers chiffres.</small>
+            <small class="enote-muted">Le numéro n'est enregistré que si le client le souhaite. Les employés n'en voient que les 4 derniers chiffres.</small>
         </div>
     </ChildContent>
     <Footer>
@@ -170,6 +179,7 @@
     private string suche = "";
     private string? fehler, detailFehler, neuFehler;
     private KundenService.Detail? detail;
+    private KundenBesuchService.Fiche? fiche;
     private bool loeschenOffen, neuOffen, bEinwilligung, nEinwilligung;
     private string bName = "", bTelefon = "", bNotiz = "", nName = "", nTelefon = "";
     private int abfrage;
@@ -219,8 +229,17 @@
     private async Task OeffneDetailAsync(Guid id)
     {
         detailFehler = null;
+        fiche = null;
         detail = await kunden.GetDetailAsync(benutzer, id);
         bName = detail.Name; bTelefon = detail.Telefon ?? ""; bNotiz = detail.Notiz ?? ""; bEinwilligung = false;
+        await LadeFicheAsync();
+    }
+
+    private async Task LadeFicheAsync()
+    {
+        if (detail is null) return;
+        try { fiche = await besuche.GetFicheAsync(benutzer, detail.Id); }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { fiche = null; }
     }
 
     private async Task SpeichereAsync()

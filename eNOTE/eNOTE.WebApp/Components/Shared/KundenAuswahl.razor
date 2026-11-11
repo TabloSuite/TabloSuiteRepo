@@ -11,14 +11,19 @@
             <span class="ku-avatar">@Initialen(k.Name)</span>
             <span class="ku-chip-text">
                 <strong>@k.Name</strong>
-                <small>@(k.Besuche == 0 ? "Nouveau client" : $"{k.Besuche} visite{(k.Besuche > 1 ? "s" : "")}")@(k.TelefonGekuerzt is { } t ? $" · {t}" : "")</small>
+                <small>@(k.Besuche == 0 ? "Nouveau client" : $"{k.Besuche} achat{(k.Besuche > 1 ? "s" : "")}")@(k.TelefonGekuerzt is { } t ? $" · {t}" : "")</small>
+                @if (!string.IsNullOrWhiteSpace(Hinweis)) { <small class="ku-chip-hinweis"><Icon Name="user-check" Groesse="13" /> @Hinweis</small> }
             </span>
+            @if (OnFiche.HasDelegate)
+            {
+                <button type="button" class="enote-icon-btn ku-fiche" aria-label="Ouvrir la fiche du client" title="Fiche : passages et notes" @onclick="() => OnFiche.InvokeAsync()"><Icon Name="note" Groesse="16" /></button>
+            }
             <button type="button" class="enote-icon-btn ku-weg" aria-label="Retirer le client du ticket" title="Retirer le client" @onclick="EntferneAsync"><Icon Name="x" Groesse="16" /></button>
         </div>
     }
     else if (!offen)
     {
-        <button type="button" class="ku-oeffnen" @onclick="Oeffne"><Icon Name="user" Groesse="16" /> Client <small>(facultatif)</small></button>
+        <button type="button" class="ku-oeffnen" @onclick="Oeffne"><Icon Name="user" Groesse="16" /> Client @if (Optional) { <small>(facultatif)</small> }</button>
     }
     else if (neu)
     {
@@ -31,14 +36,14 @@
                 <EnoteCheckbox @bind-Value="einwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
             }
             @if (fehler is not null) { <small class="ku-fehler">@fehler</small> }
-            <AsyncActionButton Text="Ajouter au ticket" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="LegeAnAsync" />
+            <AsyncActionButton Text="@AnlegenText" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="LegeAnAsync" />
         </div>
     }
     else
     {
         <div class="ku-suche">
             <Icon Name="search" Groesse="16" CssClass="ku-suche-ico" />
-            <input class="ku-feld" placeholder="Nom ou téléphone du client" value="@suche" @oninput="SucheAsync" @onkeydown="Taste" @ref="feld" />
+            <input class="ku-feld" placeholder="@Platzhalter" value="@suche" @oninput="SucheAsync" @onkeydown="Taste" @ref="feld" />
             <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="Schliesse"><Icon Name="x" Groesse="16" /></button>
         </div>
         @if (!string.IsNullOrWhiteSpace(suche))
@@ -48,12 +53,12 @@
                 {
                     <button type="button" role="option" class="ku-treffer-zeile" @onclick="() => WaehleAsync(t)">
                         <span class="ku-avatar">@Initialen(t.Name)</span>
-                        <span><strong>@t.Name</strong><small>@(t.Besuche == 0 ? "Aucune visite" : $"{t.Besuche} visite{(t.Besuche > 1 ? "s" : "")}")@(t.TelefonGekuerzt is { } tel ? $" · {tel}" : "")</small></span>
+                        <span><strong>@t.Name</strong><small>@(t.Besuche == 0 ? "Aucun achat" : $"{t.Besuche} achat{(t.Besuche > 1 ? "s" : "")}")@(t.TelefonGekuerzt is { } tel ? $" · {tel}" : "")</small></span>
                     </button>
                 }
                 <button type="button" class="ku-treffer-zeile ku-anlegen" @onclick="StarteNeu">
                     <span class="ku-avatar plus"><Icon Name="plus" Groesse="16" /></span>
-                    <span><strong>Nouveau client « @suche.Trim() »</strong><small>Créer et ajouter au ticket</small></span>
+                    <span><strong>Nouveau client « @suche.Trim() »</strong><small>@AnlegenHinweis</small></span>
                 </button>
             </div>
         }
@@ -65,6 +70,14 @@
     [Parameter, EditorRequired] public Guid BenutzerId { get; set; }
     [Parameter] public KundenService.Kurz? Kunde { get; set; }
     [Parameter] public EventCallback<KundenService.Kurz?> KundeChanged { get; set; }
+    /// <summary>Zusatzzeile unter dem gewählten Kunden (z. B. „Présent pour Coupe · Salle 2“).</summary>
+    [Parameter] public string? Hinweis { get; set; }
+    /// <summary>Wenn gesetzt: Knopf „Fiche“ (Passagen und Notizen) am gewählten Kunden.</summary>
+    [Parameter] public EventCallback OnFiche { get; set; }
+    [Parameter] public string Platzhalter { get; set; } = "Nom ou téléphone du client";
+    [Parameter] public string AnlegenText { get; set; } = "Ajouter au ticket";
+    [Parameter] public string AnlegenHinweis { get; set; } = "Créer et ajouter au ticket";
+    [Parameter] public bool Optional { get; set; } = true;
 
     private bool offen, neu, einwilligung;
     private string suche = "", name = "", telefon = "";

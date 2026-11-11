@@ -124,6 +124,8 @@ if (administration is null)
     builder.Services.AddScoped<AdminKontenService>();
     builder.Services.AddScoped<KontoProfilService>();
     builder.Services.AddScoped<KundenService>();
+    builder.Services.AddScoped<KundenBesuchService>();
+    builder.Services.AddSingleton<AnwesenheitsSignal>();
     builder.Services.AddScoped<AnkuendigungService>();
     builder.Services.AddScoped<PreisAnpassungService>();
     builder.Services.AddScoped<AboService>();

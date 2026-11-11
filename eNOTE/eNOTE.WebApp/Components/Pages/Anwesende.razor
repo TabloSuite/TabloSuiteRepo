@@ -1,0 +1,207 @@
+@page "/presents"
+@attribute [Authorize(Roles = "Besitzer, Kassierer")]
+@rendermode InteractiveServer
+@implements IDisposable
+@using System.Security.Claims
+@using ENote.Core.Services.Kunden
+@using ENote.WebApp.Services
+@inject KundenBesuchService besuche
+@inject AnwesenheitsSignal signal
+@inject AktiverSalonState aktiverSalon
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager nav
+@inject ToastService toast
+
+<PageTitle>Clients présents</PageTitle>
+
+<div class="enote-page">
+    <div class="enote-page-header">
+        <div>
+            <h1>Clients présents</h1>
+            <p>Qui est là, pour quoi et dans quelle salle. Le départ s'enregistre à l'encaissement ou avec « Départ ».</p>
+        </div>
+        @if (salonId != Guid.Empty)
+        {
+            <button class="enote-btn enote-btn-primary" @onclick="NeuOeffnenAsync"><Icon Name="plus" Groesse="18" /> Nouvelle arrivée</button>
+        }
+    </div>
+
+    @if (fehler is not null)
+    {
+        <div class="alert alert-error">@fehler</div>
+    }
+    else if (liste is null)
+    {
+        <p class="enote-muted" role="status">Chargement…</p>
+    }
+    else if (liste.Count == 0)
+    {
+        <div class="rm-leer">
+            <span class="rm-leer-icon"><Icon Name="user-check" Groesse="28" /></span>
+            <strong>Personne n'est enregistré pour le moment</strong>
+            <p class="enote-muted">Quand un client arrive, touchez « Nouvelle arrivée » : nom, motif (coupe, consultation…) et salle si besoin.</p>
+        </div>
+    }
+    else
+    {
+        <div class="pz-kopfzeile">
+            <span class="pz-zahl" role="status"><strong>@liste.Count</strong> client@(liste.Count > 1 ? "s" : "") présent@(liste.Count > 1 ? "s" : "")</span>
+            @if (Raeume.Count > 1)
+            {
+                <div class="kv-chips" role="group" aria-label="Filtrer par salle">
+                    <button type="button" class="kv-chip @(raumFilter is null ? "aktiv" : "")" @onclick="() => raumFilter = null">Toutes</button>
+                    @foreach (var r in Raeume)
+                    {
+                        <button type="button" class="kv-chip @(raumFilter == r ? "aktiv" : "")" @onclick="() => raumFilter = r"><Icon Name="door" Groesse="14" /> @r</button>
+                    }
+                </div>
+            }
+        </div>
+
+        <ul class="pz-raster">
+            @foreach (var a in Gefiltert)
+            {
+                <li class="enote-card pz-karte @(a.Vergessen ? "vergessen" : "")">
+                    <div class="pz-karte-kopf">
+                        <span class="ku-avatar">@Initialen(a.Name)</span>
+                        <div class="pz-name">
+                            <strong>@a.Name</strong>
+                            <small>Arrivée à @a.AnkunftUtc.ToLocalTime().ToString("HH':'mm")@(string.IsNullOrWhiteSpace(a.ErfasstVon) ? "" : $" · {a.ErfasstVon}")</small>
+                        </div>
+                        <span class="pz-dauer @(a.Vergessen ? "alt" : "")" title="Temps de présence">@(a.Vergessen ? $"depuis le {a.AnkunftUtc.ToLocalTime():dd'/'MM}" : KundenBesuchRegeln.Kurz(a.AnkunftUtc, DateTime.UtcNow))</span>
+                    </div>
+                    <div class="pz-grund">
+                        <span>Présent pour</span>
+                        <strong>@a.Grund</strong>
+                        @if (a.Raum is { } raum) { <span class="kv-raum"><Icon Name="door" Groesse="13" /> @raum</span> }
+                    </div>
+                    @if (a.LetzteNotiz is { } notiz)
+                    {
+                        <p class="pz-notiz"><Icon Name="note" Groesse="14" /> <span>@notiz</span>@if (a.Notizen > 1) { <small> (+@(a.Notizen - 1))</small> }</p>
+                    }
+                    @if (a.Vergessen)
+                    {
+                        <p class="pz-hinweis"><Icon Name="alert" Groesse="14" /> Départ oublié ? Enregistrez-le pour garder la liste à jour.</p>
+                    }
+                    <div class="pz-aktionen">
+                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneFiche(a.KundeId)"><Icon Name="note" Groesse="16" /> Fiche</button>
+                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => nav.NavigateTo(KasseLink(a.KundeId))"><Icon Name="caisse" Groesse="16" /> Encaisser</button>
+                        <AsyncActionButton Text="Départ" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="() => BeendeAsync(a)" />
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="salonId" BenutzerId="benutzer"
+                   OnClose="() => ficheKundeId = null" OnGeaendert="LadeAsync" />
+
+<ModalDialog Open="neuOffen" Title="Nouvelle arrivée" OnClose="() => neuOffen = false" ErrorMessage="@neuFehler">
+    <ChildContent>
+        <div class="enote-form pz-neu">
+            <div class="pz-neu-kunde">
+                <span class="kv-label">Client</span>
+                <KundenAuswahl SalonId="salonId" BenutzerId="benutzer" @bind-Kunde="neuKunde" Platzhalter="Nom ou téléphone du client" Optional="false"
+                               AnlegenText="Créer le client" AnlegenHinweis="Créer ce client" />
+            </div>
+            <AnkunftFelder @bind-Grund="neuGrund" @bind-Raum="neuRaum" @bind-Notiz="neuNotiz" Vorschlaege="vorschlaege" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => neuOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer l'arrivée" BusyText="…" CssClass="enote-btn-primary" Disabled="neuKunde is null" OnClick="AnkunftAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private Guid benutzer, salonId;
+    private List<KundenBesuchService.Anwesend>? liste;
+    private KundenBesuchService.Vorschlaege? vorschlaege;
+    private string? fehler, neuFehler, raumFilter;
+    private Guid? ficheKundeId;
+    private bool neuOffen;
+    private KundenService.Kurz? neuKunde;
+    private string neuGrund = "", neuRaum = "", neuNotiz = "";
+    private Timer? uhr;
+
+    private List<string> Raeume => liste?.Where(a => a.Raum is not null).Select(a => a.Raum!).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList() ?? [];
+    private IEnumerable<KundenBesuchService.Anwesend> Gefiltert
+        => raumFilter is null ? liste ?? [] : (liste ?? []).Where(a => string.Equals(a.Raum, raumFilter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        aktiverSalon.OnChange += SalonGewechselt;
+        signal.Geaendert += AnwesenheitGeaendert;
+        var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
+        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzer);
+        if (!aktiverSalon.IstGeladen) await aktiverSalon.InitialisiereAsync(benutzer);
+        await LadeAsync();
+        // Dauer-Anzeige aktuell halten und Änderungen anderer Server-Instanzen nachladen.
+        uhr = new Timer(_ => _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); }), null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private void SalonGewechselt() => _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+
+    private void AnwesenheitGeaendert(Guid geaenderterSalon)
+    {
+        if (geaenderterSalon != salonId) return;
+        _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
+    }
+
+    private async Task LadeAsync()
+    {
+        fehler = null;
+        if (aktiverSalon.Aktiv is not { } us) { fehler = "Aucun établissement sélectionné."; return; }
+        salonId = us.SalonId;
+        try { liste = await besuche.GetAnwesendeAsync(benutzer, salonId); }
+        catch (UnauthorizedAccessException) { fehler = "Accès refusé."; }
+        if (raumFilter is not null && !Raeume.Contains(raumFilter, StringComparer.OrdinalIgnoreCase)) raumFilter = null;
+    }
+
+    private static string Initialen(string n)
+        => string.Concat(n.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0]))) is { Length: > 0 } i ? i : "?";
+
+    private static string KasseLink(Guid kundeId) => $"/caisse?kunde={kundeId}";
+
+    private void OeffneFiche(Guid kundeId) => ficheKundeId = kundeId;
+
+    private async Task BeendeAsync(KundenBesuchService.Anwesend a)
+    {
+        try
+        {
+            await besuche.BeendeAsync(benutzer, a.BesuchId);
+            toast.ZeigeErfolg($"Départ de « {a.Name} » enregistré.");
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { toast.ZeigeFehler(ex.Message); }
+    }
+
+    private async Task NeuOeffnenAsync()
+    {
+        neuKunde = null; neuGrund = neuRaum = neuNotiz = ""; neuFehler = null;
+        try { vorschlaege = await besuche.GetVorschlaegeAsync(benutzer, salonId); } catch (UnauthorizedAccessException) { vorschlaege = null; }
+        neuOffen = true;
+    }
+
+    private async Task AnkunftAsync()
+    {
+        if (neuKunde is null) { neuFehler = "Choisissez ou créez d'abord le client."; return; }
+        neuFehler = null;
+        try
+        {
+            await besuche.AnkunftAsync(benutzer, salonId, neuKunde.Id, neuGrund, neuRaum, neuNotiz);
+            toast.ZeigeErfolg($"Arrivée de « {neuKunde.Name} » enregistrée.");
+            neuOffen = false;
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { neuFehler = ex.Message; }
+    }
+
+    public void Dispose()
+    {
+        aktiverSalon.OnChange -= SalonGewechselt;
+        signal.Geaendert -= AnwesenheitGeaendert;
+        uhr?.Dispose();
+    }
+}

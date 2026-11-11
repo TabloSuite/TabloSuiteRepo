@@ -5,7 +5,7 @@
 ## Aktueller Stand (10.11.2026, abends)
 
 - **Code:** Lösungsbuild erfolgreich, `eNOTE.Tests` **270/270** grün, letzter Commit `2b0f40d`.
-- **Datenbank:** Migrationskette bis `20261111080232_KategorieFarbe` (lokale `ENOTEDB`); Azure `ENote-Database` steht auf `20261110173221_Kundenkartei` (Nachziehen nur mit OK). Der normale App-Start migriert und seedet nie.
+- **Datenbank:** Migrationskette bis `20261111082614_KundenBesucheUndNotizen` (lokale `ENOTEDB`); Azure `ENote-Database` steht auf `20261110173221_Kundenkartei` (Nachziehen nur mit OK). Der normale App-Start migriert und seedet nie.
 - **Betrieb:** Azure App Service `enote` (Linux, .NET 10, Tarif B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und Sitzungsaffinität an, E-Mails über Postmark, Nutzer-Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
 - **Nächste Schritte:** Der Nutzer testet ab 11.11.2026 alles manuell und sammelt Fehler. Danach offen: Bondrucker und Scanner mit echter Hardware testen, Grundpreis auf Azure auf 3.600 F setzen (Administration → Tarifs), optional Treueprogramm.
 
@@ -49,7 +49,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - `Salon`: `IstAktiv`, `IstFreigegeben`, `ProbeBisUtc`, Branding (Slogan, Telefon, Adresse, Logo, Bon-QR-Link), Land, optionaler individueller Monatspreis.
 - `UserSalon` verknüpft Konto ↔ Laden mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN sowie Besitzer-PIN-Hash mit Fehlversuchs-Sperre. `AktiverSalonState` liefert die Zuordnung; `SalonSwitcher` erscheint nur bei mehreren Zuordnungen.
 - **Rollen** (`AppRollen`): `Besitzer`, `Kassierer`, `ProduktOwner` (« Responsable »), `SuperAdmin`. Seiten per `[Authorize(Roles=…)]`, Rechte zusätzlich im Service (`LadenZugriff`).
-- **Kassierer** sind eigene Konten (Pseudonym, Initialpasswort, Kassen-PIN), angelegt in Équipe; kein Profil und keine Passwort-Wiederherstellung per Mail.
+- **Kassierer** (sichtbar überall « Employé », technisch Rolle `Kassierer`) sind eigene Konten (Pseudonym, Initialpasswort, Kassen-PIN), angelegt in Équipe; kein Profil und keine Passwort-Wiederherstellung per Mail.
 - **Mon profil** (`/profil`, `KontoProfilService`): Admin, PO und Besitzer ändern Prénom, Nom und Téléphone (ohne Abmeldung); E-Mail-Adresse und Identifiant nur mit aktuellem Passwort. Die alte Adresse erhält den Sicherheitshinweis « Adresse e-mail modifiée » (neue Adresse maskiert); nach neuem Identifiant ist eine erneute Anmeldung nötig. Kassierer sehen nur Foto und Passwort.
 - Anmeldung per Pseudonym; die E-Mail ist nur Kontakt-/Wiederherstellungsadresse und gewährt nie Zugriff auf andere Konten. **Abmelden** führt auf die öffentliche Startseite; Anmeldung und Registrierung haben « Retour à l'accueil ».
 
@@ -74,10 +74,12 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - Verkäufe werden nie geändert oder gelöscht. « Rembourser » (Kasse → Ventes) erzeugt in der offenen Kasse einen Gegenbon mit negativen Mengen/Beträgen (`StornoVonVerkaufId`, `StornoGrund`, `StornoErfasstVonName`, Positionen mit `StornoVonPositionId`). Umsätze, Bar-Soll und Bestseller heben sich automatisch auf; Zählungen schließen Rückerstattungen aus (`StornoVonVerkaufId == null`).
 - Teil-Erstattung nach Zeile/Menge (anteilig inkl. Rabatt, Rest auf die letzte Menge – `StornoRechner`), über einen Zahlweg des Originals bis zum dort bezahlten Rest; bar nur bei genug erwartetem Bargeld. Pflicht-Motiv, Freigabe per Besitzer-PIN, Ware optional zurück ins Lager. Bon « REMBOURSEMENT »; die Rückerstattung übernimmt den Kunden des Originals und zählt am Tag, an dem sie passiert.
 
-### Kundenkartei (`/clients`, `KundenService`, `KundenAuswahl`)
-- Kasse: « Client (facultatif) » über dem Ticket – Suche nach Name oder Nummer (mit Besuchszahl), wählen oder mit einem Tipp neu anlegen. `Verkauf.KundeId` ist optional; der Bon zeigt « Client : … ».
-- **Telefonnummer nur mit Zustimmung des Kunden** (Pflicht-Häkchen « Le client est d'accord pour enregistrer son numéro », Zeitpunkt in `TelefonEinwilligungUtc`, Dubletten je Laden verhindert). Kassierer sehen nur die letzten 4 Ziffern und keine Kundenliste.
-- Besitzer: Kennzahlen (Kunden, neu im Monat, Stammkunden ≥ 2 Besuche, Anteil Verkäufe mit Kunde der letzten 30 Tage), Liste mit Besuchen/Umsatz/letztem Besuch, Kundenblatt mit Lieblingsleistungen, Notiz, letzten 10 Besuchen und Bearbeiten. **Löschen** entfernt die Personendaten; Verkäufe bleiben ohne Kundenbezug.
+### Kundenkartei (`/clients`, `/presents`, `KundenService`, `KundenBesuchService`, `KundenAuswahl`)
+- Kasse: « Client (facultatif) » über dem Ticket – Suche nach Name oder Nummer (mit Anzahl Käufe), wählen oder mit einem Tipp neu anlegen. `Verkauf.KundeId` ist optional; der Bon zeigt « Client : … ».
+- **Telefonnummer nur mit Zustimmung des Kunden** (Pflicht-Häkchen « Le client est d'accord pour enregistrer son numéro », Zeitpunkt in `TelefonEinwilligungUtc`, Dubletten je Laden verhindert). Employés (Rolle `Kassierer`) sehen nur die letzten 4 Ziffern und keine Kundenliste.
+- Besitzer: Kennzahlen (Kunden, neu im Monat, Stammkunden ≥ 2 Käufe, Anteil Verkäufe mit Kunde der letzten 30 Tage), Liste mit Käufen/Umsatz/letztem Kauf, Kundenblatt mit Lieblingsleistungen, **Note privée** (nur Besitzer), Verlauf « Passages et notes de l'équipe », letzten 10 Käufen und Bearbeiten. **Löschen** entfernt Personendaten, Notizen und Passagen; Verkäufe bleiben ohne Kundenbezug.
+- **Clients présents** (`/presents`, Besitzer + Employés, außerhalb der PIN-Zone; auch für kleine Arztpraxen gedacht): « Nouvelle arrivée » = Kunde suchen/anlegen, « Présent pour … » (Anlass, Pflicht), Salle/Poste (optional), erste Notiz (optional); häufige Anlässe/Räume der letzten 90 Tage als Schnellauswahl. Karten mit Dauer, Raumfilter, Fiche, « Encaisser » (`/caisse?kunde=…` setzt den Kunden ans Ticket) und « Départ ». Ein offener Besuch endet automatisch beim Encaissement mit diesem Kunden (`KundenBesuch.VerkaufId`). Offen > 12 h → Hinweis « Départ oublié ? ». Ein Kunde kann nur einen offenen Besuch haben. Live-Aktualisierung über `AnwesenheitsSignal` (Singleton) + Neuladen jede Minute.
+- **Kundenfiche** (`KundenFicheDialog`, aus Clients présents und in der Kasse über das Symbol am gewählten Kunden; Kasse-Kopf « Présents » mit Zähler und « Au ticket »): Anwesenheit (arrivée, Motif/salle ändern, départ, versehentliche Ankunft annullieren – nur Erfasser oder Besitzer) und Verlauf (`KundenVerlauf`): Passagen mit ihren Notizen und allgemeine Notizen, **neueste zuerst**. Notizen (`KundenNotiz`, max. 1000 Zeichen) lesen/schreiben Besitzer und Employés, Hinweis « Notez seulement ce qui est utile au service »; löschen nur Verfasser oder Besitzer.
 - Später möglich: Treueprogramm (z. B. 10. Besuch −10 % über Remises) – erst nach Rückfrage bauen.
 
 ### Katalog, Stock & Team

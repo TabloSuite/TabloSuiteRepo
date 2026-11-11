@@ -139,7 +139,7 @@ public partial class Equipe(
         }
 
         anlegedialogOffen = false;
-        toast.ZeigeErfolg("Caissier créé. Communiquez-lui son mot de passe initial et son code PIN.");
+        toast.ZeigeErfolg("Employé créé. Communiquez-lui son mot de passe initial et son code PIN.");
         await LadeAsync();
     }
 

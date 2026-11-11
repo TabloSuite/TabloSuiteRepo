@@ -1,0 +1,129 @@
+@using ENote.Core.Services.Kunden
+@using ENote.WebApp.Services
+@inject KundenBesuchService besuche
+@inject ToastService toast
+
+@* Verlauf eines Kunden: Passagen (mit ihren Notizen) und allgemeine Notizen, neueste zuerst. Für Besitzer und Équipe. *@
+
+<section class="kv" aria-label="Passages et notes">
+    <div class="kv-neu">
+        <label class="kv-label" for="kv-text-@Fiche.KundeId">Ajouter une note</label>
+        <textarea id="kv-text-@Fiche.KundeId" rows="2" value="@text" @oninput="e => text = e.Value?.ToString() ?? string.Empty" maxlength="@KundenBesuchRegeln.NotizMax"
+                  placeholder="ex. couleur 6.3, préfère l'eau tiède, revient dans 3 semaines"></textarea>
+        @if (Fiche.Offen is { } offen)
+        {
+            <EnoteCheckbox @bind-Value="zumBesuch" Label="@($"Liée au passage en cours ({offen.Grund})")" />
+        }
+        @if (fehler is not null) { <small class="ku-fehler" role="alert">@fehler</small> }
+        <div class="kv-neu-fuss">
+            <small class="enote-muted kv-datenschutz"><Icon Name="info" Groesse="14" /> Visible par toute l'équipe de l'établissement. Notez seulement ce qui est utile au service.</small>
+            <AsyncActionButton Text="Ajouter" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" Disabled="string.IsNullOrWhiteSpace(text)" OnClick="NotizAsync" />
+        </div>
+    </div>
+
+    @if (Fiche.Verlauf.Count == 0)
+    {
+        <p class="enote-muted kv-leer">Pas encore de passage ni de note pour ce client.</p>
+    }
+    else
+    {
+        <ol class="kv-liste">
+            @foreach (var e in Fiche.Verlauf)
+            {
+                @if (e.Besuch is { } b)
+                {
+                    <li class="kv-eintrag kv-besuch @(b.EndeUtc is null ? "offen" : "")">
+                        <span class="kv-punkt" aria-hidden="true"><Icon Name="@(b.EndeUtc is null ? "user-check" : "clock")" Groesse="14" /></span>
+                        <div class="kv-inhalt">
+                            <div class="kv-kopf">
+                                <strong>@b.Grund</strong>
+                                @if (b.Raum is { } raum) { <span class="kv-raum"><Icon Name="door" Groesse="13" /> @raum</span> }
+                                @if (b.EndeUtc is null) { <span class="kv-status">Présent</span> }
+                            </div>
+                            <small class="enote-muted">
+                                @Datum(b.AnkunftUtc) · @(b.EndeUtc is DateTime ende ? $"durée {KundenBesuchRegeln.Dauer(b.AnkunftUtc, ende)}" : KundenBesuchRegeln.Seit(b.AnkunftUtc, DateTime.UtcNow))@(string.IsNullOrWhiteSpace(b.ErfasstVon) ? "" : $" · accueilli par {b.ErfasstVon}")@(b.MitVerkauf ? " · encaissé" : "")
+                            </small>
+                            @foreach (var n in b.Notizen)
+                            {
+                                @Notiz(n)
+                            }
+                        </div>
+                    </li>
+                }
+                else if (e.Notiz is { } n)
+                {
+                    <li class="kv-eintrag">
+                        <span class="kv-punkt kv-punkt-notiz" aria-hidden="true"><Icon Name="note" Groesse="14" /></span>
+                        <div class="kv-inhalt">@Notiz(n)</div>
+                    </li>
+                }
+            }
+        </ol>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public KundenBesuchService.Fiche Fiche { get; set; } = null!;
+    [Parameter, EditorRequired] public Guid BenutzerId { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private string text = string.Empty;
+    private bool zumBesuch = true;
+    private string? fehler;
+    private KundenBesuchService.NotizEintrag? zuLoeschen;
+
+    private RenderFragment Notiz(KundenBesuchService.NotizEintrag n) => @<div class="kv-notiz">
+        <p class="kv-text">@n.Text</p>
+        <div class="kv-notiz-fuss">
+            <small class="enote-muted">@Datum(n.ErstelltUtc)@(string.IsNullOrWhiteSpace(n.Von) ? "" : $" · {n.Von}")</small>
+            @if (n.DarfLoeschen && zuLoeschen?.Id == n.Id)
+            {
+                <span class="kv-bestaetigen" role="group" aria-label="Confirmer la suppression">
+                    <span>Supprimer ?</span>
+                    <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => zuLoeschen = null">Non</button>
+                    <AsyncActionButton Text="Oui, supprimer" BusyText="…" CssClass="enote-btn-danger enote-btn-sm" OnClick="LoescheAsync" />
+                </span>
+            }
+            else if (n.DarfLoeschen)
+            {
+                <button type="button" class="enote-icon-btn kv-loeschen" title="Supprimer la note" aria-label="Supprimer la note" @onclick="() => zuLoeschen = n"><Icon Name="trash" Groesse="14" /></button>
+            }
+        </div>
+    </div>;
+
+    private static string Datum(DateTime utc)
+    {
+        var lokal = utc.ToLocalTime();
+        var tage = (DateTime.Now.Date - lokal.Date).Days;
+        var tag = tage switch { 0 => "Aujourd'hui", 1 => "Hier", _ => lokal.ToString("dd'/'MM'/'yyyy") };
+        return $"{tag} {lokal:HH':'mm}";
+    }
+
+    private async Task NotizAsync()
+    {
+        fehler = null;
+        try
+        {
+            await besuche.NotizAsync(BenutzerId, Fiche.KundeId, text, zumBesuch ? Fiche.Offen?.Id : null);
+            text = string.Empty;
+            toast.ZeigeErfolg("Note ajoutée.");
+            await OnGeaendert.InvokeAsync();
+        }
+        catch (ArgumentException ex) { fehler = ex.Message; }
+        catch (UnauthorizedAccessException) { fehler = "Accès refusé."; }
+    }
+
+    private async Task LoescheAsync()
+    {
+        if (zuLoeschen is null) return;
+        try
+        {
+            await besuche.LoescheNotizAsync(BenutzerId, zuLoeschen.Id);
+            toast.ZeigeInfo("Note supprimée.");
+            await OnGeaendert.InvokeAsync();
+        }
+        catch (UnauthorizedAccessException ex) { toast.ZeigeFehler(ex.Message); }
+        catch (ArgumentException ex) { toast.ZeigeFehler(ex.Message); }
+        zuLoeschen = null;
+    }
+}

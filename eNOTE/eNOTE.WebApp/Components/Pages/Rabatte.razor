@@ -11,7 +11,7 @@
     <div class="enote-page-header">
         <div>
             <h1>Remises</h1>
-            <p>Le caissier les applique en caisse, si la condition est remplie (ex. client fidèle, étudiant).</p>
+            <p>L'employé les applique en caisse, si la condition est remplie (ex. client fidèle, étudiant).</p>
         </div>
         @if (darfVerwalten)
         {
@@ -28,7 +28,7 @@
         <div class="rm-leer">
             <span class="rm-leer-icon"><Icon Name="percent" Groesse="28" /></span>
             <strong>Aucune remise pour le moment</strong>
-            <p class="enote-muted">Créez par exemple « Fidélité −10 % » ou « Étudiant −500 F ». Vos caissiers pourront l'appliquer en un geste.</p>
+            <p class="enote-muted">Créez par exemple « Fidélité −10 % » ou « Étudiant −500 F ». Vos employés pourront l'appliquer en un geste.</p>
             @if (darfVerwalten)
             {
                 <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Créer une remise</button>
@@ -133,7 +133,7 @@
                 <span>Exemple : @BeispielText()</span>
             </div>
 
-            <label>Condition <small class="enote-muted">(facultatif — le caissier la confirme)</small>
+            <label>Condition <small class="enote-muted">(facultatif — l'employé la confirme)</small>
                 <input @bind="bearbeitungsRabatt.Bedingung" placeholder="ex. Client fidèle, carte étudiant présentée" maxlength="200" />
             </label>
 

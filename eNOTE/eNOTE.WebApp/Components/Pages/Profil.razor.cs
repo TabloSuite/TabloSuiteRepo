@@ -303,7 +303,7 @@ public partial class Profil(
         "SuperAdmin" => "Administrateur",
         "ProduktOwner" => "Propriétaire plateforme",
         "Besitzer" => "Propriétaire",
-        "Kassierer" => "Caissier",
+        "Kassierer" => "Employé",
         _ => rolle
     };
 }

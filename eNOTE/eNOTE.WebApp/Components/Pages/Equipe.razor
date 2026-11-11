@@ -10,9 +10,9 @@
     <div class="enote-page-header">
         <div>
             <h1>Équipe</h1>
-            <p>@salonName · caissiers, codes PIN et droits délégués.</p>
+            <p>@salonName · employés, codes PIN et droits délégués.</p>
         </div>
-        <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouveau caissier</button>
+        <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouvel employé</button>
     </div>
 
     @if (isLoading)
@@ -37,7 +37,7 @@
         }
 
         <div class="eq-leiste">
-            <h2>Caissiers <small>(@team.Count(m => !m.IstBesitzer))</small></h2>
+            <h2>Employés <small>(@team.Count(m => !m.IstBesitzer))</small></h2>
             @if (team.Count(m => !m.IstBesitzer) > 3)
             {
                 <div class="kx-suche eq-suche">
@@ -51,9 +51,9 @@
         {
             <div class="rm-leer">
                 <span class="rm-leer-icon"><Icon Name="users" Groesse="28" /></span>
-                <strong>Pas encore de caissier</strong>
+                <strong>Pas encore d'employé</strong>
                 <p class="enote-muted">Créez un compte pour chaque personne qui encaisse : chacun ouvre la caisse avec son propre code PIN, vous savez qui a vendu quoi.</p>
-                <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouveau caissier</button>
+                <button class="enote-btn enote-btn-primary" @onclick="NeuAnlegen"><Icon Name="plus" Groesse="18" /> Nouvel employé</button>
             </div>
         }
         else if (kassierer.Count == 0)
@@ -110,7 +110,7 @@
 </div>
 
 @* Kassierer anlegen *@
-<ModalDialog Open="anlegedialogOffen" Title="Nouveau caissier" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge" MaxWidthClass="enote-modal-md">
+<ModalDialog Open="anlegedialogOffen" Title="Nouvel employé" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
@@ -125,7 +125,7 @@
                     <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => neuPasswort = ErzeugeInitialPasswort()" title="Générer un autre mot de passe"><Icon Name="refresh" Groesse="16" /> Générer</button>
                 </span>
             </label>
-            <small class="enote-muted eq-hinweis">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule. Notez-le et remettez-le au caissier.</small>
+            <small class="enote-muted eq-hinweis">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule. Notez-le et remettez-le à l'employé.</small>
         </div>
         <div class="eq-pin-feld eq-pin-neu">
             <span class="enote-betrag-label">Code PIN caisse (4 à 6 chiffres)</span>
@@ -134,7 +134,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
-        <AsyncActionButton Text="Créer le caissier" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Créer l'employé" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 
@@ -144,7 +144,7 @@
         <div class="eq-pin-feld">
             <span class="enote-betrag-label">Nouveau code PIN (4 à 6 chiffres)</span>
             <PinEingabe @bind-Wert="neuPin" MaxLaenge="6" OnBestaetigt="SetzePinAsync" />
-            <small class="enote-muted">Le caissier l'utilise pour ouvrir la caisse.</small>
+            <small class="enote-muted">L'employé l'utilise pour ouvrir la caisse.</small>
         </div>
     </ChildContent>
     <Footer>

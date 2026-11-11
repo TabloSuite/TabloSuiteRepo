@@ -30,7 +30,7 @@ public static class MailArten
         // Abschaltbar – standardmäßig aus (später bei größerem Mail-Kontingent aktivieren)
         new("bienvenue", "Bienvenue", "Propriétaire", "Juste après l'inscription", false, false),
         new("paiement-confirme", "Paiement confirmé", "Propriétaire", "Quand l'admin confirme un paiement", false, false),
-        new("caissier-bienvenue", "Nouveau caissier", "Caissier", "Quand le propriétaire crée un caissier", false, false),
+        new("caissier-bienvenue", "Nouvel employé", "Employé", "Quand le propriétaire crée un employé", false, false),
         new("mot-de-passe", "Mot de passe modifié", "Utilisateur", "Après chaque changement de mot de passe", false, false),
         new("fin-essai", "Fin de l'essai", "Propriétaire", $"{MailBenachrichtigungen.ProbeHinweisTage} jours avant la fin de l'essai", false, false),
     ];

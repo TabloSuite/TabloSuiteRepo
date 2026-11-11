@@ -22,8 +22,61 @@ public partial class Caisse(
     AuthenticationStateProvider authStateProvider,
     NavigationManager navigationManager,
     FinanzService finanzService,
+    KundenService kundenService,
+    KundenBesuchService besuchService,
+    AnwesenheitsSignal anwesenheitsSignal,
     IJSRuntime js) : IAsyncDisposable
 {
+    // ================= Anwesende Kunden (« Clients présents ») =================
+
+    /// <summary>Aus « Clients présents » → Encaisser: Kunde direkt ans Ticket.</summary>
+    [SupplyParameterFromQuery(Name = "kunde")]
+    public Guid? KundeAusLink { get; set; }
+
+    private List<KundenBesuchService.Anwesend> anwesende = [];
+    private bool anwesendeOffen;
+    private Guid? ficheKundeId;
+
+    private string? TicketKundeHinweis => ticketKunde is { } k && anwesende.FirstOrDefault(a => a.KundeId == k.Id) is { } a
+        ? $"Présent pour {a.Grund}{(a.Raum is { } r ? $" · {r}" : "")}"
+        : null;
+
+    private async Task LadeAnwesendeAsync()
+    {
+        if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty) { anwesende = []; return; }
+        try { anwesende = await besuchService.GetAnwesendeAsync(aktuellerBenutzerId, aktiveSitzung.SalonId); }
+        catch (UnauthorizedAccessException) { anwesende = []; }
+    }
+
+    private void AnwesenheitGeaendert(Guid salonId)
+    {
+        if (aktiveSitzung?.SalonId != salonId) return;
+        _ = InvokeAsync(async () => { await LadeAnwesendeAsync(); StateHasChanged(); });
+    }
+
+    private async Task UebernehmeKundeAusLinkAsync()
+    {
+        if (KundeAusLink is not Guid kundeId || aktiveSitzung is null) return;
+        KundeAusLink = null;
+        var kunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kundeId);
+        if (kunde is null) return;
+        ticketKunde = kunde;
+        toast.ZeigeInfo($"« {kunde.Name} » est sur le ticket.");
+    }
+
+    private async Task AnwesendenAnsTicketAsync(KundenBesuchService.Anwesend a)
+    {
+        if (aktiveSitzung is null) return;
+        ticketKunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, a.KundeId);
+        anwesendeOffen = false;
+    }
+
+    private async Task OeffneAnwesendeAsync()
+    {
+        await LadeAnwesendeAsync();
+        anwesendeOffen = true;
+    }
+
     private enum ZahlModus { Bar, Karte, MobileMoney, Mixte }
 
     private sealed record AbgeschlossenerVerkauf(Guid VerkaufId, decimal Total, decimal? Rueckgeld, string ZahlungText);
@@ -330,6 +383,7 @@ public partial class Caisse(
     protected override async Task OnInitializedAsync()
     {
         anzeigeState.OnChange += HandleAnzeigeStateChanged;
+        anwesenheitsSignal.Geaendert += AnwesenheitGeaendert;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         if (!Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -414,7 +468,7 @@ public partial class Caisse(
 
         if (ausgewaehlterKassiererId == Guid.Empty)
         {
-            startFehler = "Veuillez choisir un caissier.";
+            startFehler = "Veuillez choisir un employé.";
             return;
         }
 
@@ -459,6 +513,8 @@ public partial class Caisse(
         favoritenIds = await katalogService.GetFavoritenIdsAsync(salonId);
         bildUrls = await katalogService.GetLeistungsBildUrlsAsync(salonId);
         mobileAnbieter = await mobileMoneyService.GetErlaubteAnbieterAsync(salonId);
+        await LadeAnwesendeAsync();
+        await UebernehmeKundeAusLinkAsync();
     }
 
     // ================= Katalog-Bedienung =================
@@ -904,6 +960,7 @@ public partial class Caisse(
     public async ValueTask DisposeAsync()
     {
         anzeigeState.OnChange -= HandleAnzeigeStateChanged;
+        anwesenheitsSignal.Geaendert -= AnwesenheitGeaendert;
         if (scannerRef is not null)
         {
             try { await js.InvokeVoidAsync("enoteScanner.stop"); }

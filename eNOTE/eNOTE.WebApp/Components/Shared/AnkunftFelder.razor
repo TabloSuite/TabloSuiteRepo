@@ -1,0 +1,66 @@
+@using ENote.Core.Services.Kunden
+@using ENote.WebApp.Services
+
+@* « Client présent pour … », salle facultative, première note facultative. Vorschläge = häufige Einträge des Ladens. *@
+
+<div class="kv-ankunft">
+    <label>
+        Présent pour
+        <input value="@Grund" @oninput="e => GrundGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.GrundMax"
+               placeholder="ex. coupe, consultation, pansement, retouche…" />
+    </label>
+    @if (Vorschlaege?.Gruende is { Count: > 0 } gruende)
+    {
+        <div class="kv-chips" aria-label="Motifs fréquents">
+            @foreach (var g in gruende)
+            {
+                <button type="button" class="kv-chip @(string.Equals(g, Grund, StringComparison.OrdinalIgnoreCase) ? "aktiv" : "")" @onclick="() => GrundGeaendert(g)">@g</button>
+            }
+        </div>
+    }
+
+    <label>
+        <span>Salle / poste <span class="enote-muted kv-optional">(facultatif)</span></span>
+        <input value="@Raum" @oninput="e => RaumGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.RaumMax"
+               placeholder="ex. Salle 2, Bac, Cabine 1" />
+    </label>
+    @if (Vorschlaege?.Raeume is { Count: > 0 } raeume)
+    {
+        <div class="kv-chips" aria-label="Salles utilisées">
+            @foreach (var r in raeume)
+            {
+                <button type="button" class="kv-chip @(string.Equals(r, Raum, StringComparison.OrdinalIgnoreCase) ? "aktiv" : "")" @onclick="() => RaumGeaendert(r)"><Icon Name="door" Groesse="14" /> @r</button>
+            }
+        </div>
+    }
+
+    @if (MitNotiz)
+    {
+        <label>
+            <span>Note <span class="enote-muted kv-optional">(facultatif)</span></span>
+            <textarea rows="2" value="@Notiz" @oninput="e => NotizGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.NotizMax"
+                      placeholder="ex. a attendu 10 min, souhaite la même coupe"></textarea>
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public string Grund { get; set; } = "";
+    [Parameter] public EventCallback<string> GrundChanged { get; set; }
+    [Parameter] public string Raum { get; set; } = "";
+    [Parameter] public EventCallback<string> RaumChanged { get; set; }
+    [Parameter] public string Notiz { get; set; } = "";
+    [Parameter] public EventCallback<string> NotizChanged { get; set; }
+    [Parameter] public bool MitNotiz { get; set; } = true;
+    [Parameter] public KundenBesuchService.Vorschlaege? Vorschlaege { get; set; }
+
+    private Task GrundGeaendert(string? wert) { Grund = wert ?? ""; return GrundChanged.InvokeAsync(Grund); }
+    private Task RaumGeaendert(string? wert)
+    {
+        // Gleichen Raum erneut antippen = Auswahl aufheben
+        var neu = wert ?? "";
+        Raum = string.Equals(neu, Raum, StringComparison.OrdinalIgnoreCase) && Vorschlaege?.Raeume.Contains(neu) == true ? "" : neu;
+        return RaumChanged.InvokeAsync(Raum);
+    }
+    private Task NotizGeaendert(string? wert) { Notiz = wert ?? ""; return NotizChanged.InvokeAsync(Notiz); }
+}

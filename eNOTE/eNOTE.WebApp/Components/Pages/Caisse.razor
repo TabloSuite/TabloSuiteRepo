@@ -38,13 +38,13 @@ else if (aktiveSitzung is null)
 
         @if (kassiererListe.Count == 0)
         {
-            <p class="enote-empty">Aucun caissier configuré. Le propriétaire doit d'abord créer des caissiers avec un code PIN (Équipe).</p>
+            <p class="enote-empty">Aucun employé configuré. Le propriétaire doit d'abord créer des employés avec un code PIN (Équipe).</p>
         }
         else
         {
             <div class="kx-start-grid">
                 <section class="kx-start-karte">
-                    <h2><span class="kx-schritt">1</span> Caissier</h2>
+                    <h2><span class="kx-schritt">1</span> Employé</h2>
                     <div class="kx-kassierer">
                         @foreach (var k in kassiererListe)
                         {
@@ -92,6 +92,7 @@ else
                 <strong>@anzeigeState.ErwarteterBarBetrag.ToString("N0") F</strong>
             </div>
             <nav class="kx-kopf-aktionen" aria-label="Actions de caisse">
+                <button class="kx-aktion kx-aktion-praesenz" @onclick="OeffneAnwesendeAsync" title="Clients présents"><Icon Name="user-check" /><span>Présents</span>@if (anwesende.Count > 0) { <span class="kx-badge" aria-label="@($"{anwesende.Count} présents")">@anwesende.Count</span> }</button>
                 <button class="kx-aktion" @onclick="OeffneHistorieAsync" title="Ventes récentes"><Icon Name="history" /><span>Ventes</span></button>
                 <button class="kx-aktion" @onclick="OeffneDisplayDialog" title="Écran client"><Icon Name="monitor" /><span>Écran client</span></button>
                 <button class="kx-aktion" @onclick="OeffneRetrait" title="Retrait du propriétaire (espèces ou marchandise)"><Icon Name="wallet" /><span>Retrait</span></button>
@@ -220,7 +221,8 @@ else
 
                 @if (aktiveSitzung is not null)
                 {
-                    <KundenAuswahl SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" @bind-Kunde="ticketKunde" />
+                    <KundenAuswahl SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" @bind-Kunde="ticketKunde"
+                                   Hinweis="@TicketKundeHinweis" OnFiche="() => ficheKundeId = ticketKunde?.Id" />
                 }
 
                 <div class="kx-ticket-liste">
@@ -553,7 +555,7 @@ else
     <ChildContent>
         <div class="enote-wiederhergestellt">
             <p class="enote-wiederhergestellt-text">La caisse de la session précédente n'a pas été clôturée. Vous pouvez continuer à encaisser.</p>
-            <div class="enote-wiederhergestellt-zeile"><span>Caissier</span><strong>@wiederhergestelltKassierer</strong></div>
+            <div class="enote-wiederhergestellt-zeile"><span>Employé</span><strong>@wiederhergestelltKassierer</strong></div>
             <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong></div>
             @if (wiederhergestelltSoll is decimal soll)
             {
@@ -753,6 +755,42 @@ else
 </ModalDialog>
 
 @* --- Kunden-Display verbinden (QR-Code + Link) --- *@
+@if (aktiveSitzung is not null)
+{
+    <KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId"
+                       OnClose="() => ficheKundeId = null" OnGeaendert="LadeAnwesendeAsync" />
+}
+
+<ModalDialog Open="anwesendeOffen" Title="Clients présents" OnClose="() => anwesendeOffen = false" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (anwesende.Count == 0)
+        {
+            <p class="enote-muted">Personne n'est enregistré comme présent. Les arrivées se notent dans « Clients présents » ou dans la fiche du client.</p>
+        }
+        else
+        {
+            <ul class="pz-kasse-liste">
+                @foreach (var a in anwesende)
+                {
+                    <li>
+                        <span class="ku-avatar">@string.Concat(a.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0])))</span>
+                        <span class="pz-kasse-text">
+                            <strong>@a.Name</strong>
+                            <small>@a.Grund@(a.Raum is { } r ? $" · {r}" : "") · @ENote.Core.Services.Kunden.KundenBesuchRegeln.Seit(a.AnkunftUtc, DateTime.UtcNow)</small>
+                        </span>
+                        <button type="button" class="enote-icon-btn" title="Fiche" aria-label="@($"Fiche de {a.Name}")" @onclick="() => { anwesendeOffen = false; ficheKundeId = a.KundeId; }"><Icon Name="note" Groesse="16" /></button>
+                        <button type="button" class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => AnwesendenAnsTicketAsync(a)">Au ticket</button>
+                    </li>
+                }
+            </ul>
+        }
+    </ChildContent>
+    <Footer>
+        <a class="enote-btn enote-btn-ghost" href="/presents">Ouvrir la liste complète</a>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => anwesendeOffen = false">Fermer</button>
+    </Footer>
+</ModalDialog>
+
 <ModalDialog Open="displayDialogOffen" Title="Écran client" OnClose="() => displayDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="enote-display-dialog">

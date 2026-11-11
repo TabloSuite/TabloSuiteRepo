@@ -1058,6 +1058,93 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("Kunden");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.KundenBesuch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AnkunftUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EndeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ErfasstVonName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Grund")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("KundeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Raum")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("VerkaufId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KundeId", "AnkunftUtc");
+
+                    b.HasIndex("SalonId", "EndeUtc");
+
+                    b.ToTable("KundenBesuche");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.KundenNotiz", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BesuchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ErstelltVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ErstelltVonName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("KundeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BesuchId");
+
+                    b.HasIndex("KundeId", "ErstelltUtc");
+
+                    b.ToTable("KundenNotizen");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2181,6 +2268,33 @@ namespace ENote.WebApp.Migrations
                         .HasForeignKey("SalonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.KundenBesuch", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Kasse.Kunde", "Kunde")
+                        .WithMany()
+                        .HasForeignKey("KundeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Kunde");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.KundenNotiz", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Kasse.KundenBesuch", null)
+                        .WithMany()
+                        .HasForeignKey("BesuchId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("ENote.Core.DataModels.Kasse.Kunde", "Kunde")
+                        .WithMany()
+                        .HasForeignKey("KundeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Kunde");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.LeistungFavorit", b =>

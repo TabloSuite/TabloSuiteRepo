@@ -91,6 +91,19 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
             .Take(8).ToList();
     }
 
+    /// <summary>Einzelner Kunde für die Kasse (z. B. aus « Clients présents » → Encaisser).</summary>
+    public async Task<Kurz?> GetKurzAsync(Guid user, Guid salonId, Guid kundeId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await PruefeZugangAsync(db, user, salonId, false, ct);
+        var k = await db.Kunden.AsNoTracking().Where(x => x.Id == kundeId && x.SalonId == salonId)
+            .Select(x => new { x.Id, x.Name, x.TelefonZiffern }).FirstOrDefaultAsync(ct);
+        if (k is null) return null;
+        var anzahl = await VerkaeufeVon(db, salonId).CountAsync(v => v.KundeId == k.Id && v.StornoVonVerkaufId == null, ct);
+        var letzter = await VerkaeufeVon(db, salonId).Where(v => v.KundeId == k.Id && v.StornoVonVerkaufId == null).MaxAsync(v => (DateTime?)v.ZeitUtc, ct);
+        return new Kurz(k.Id, k.Name, Gekuerzt(k.TelefonZiffern), anzahl, letzter);
+    }
+
     /// <summary>Schnell anlegen (Kasse oder Kundenseite). Gleiche Nummer im Laden → Hinweis auf den vorhandenen Kunden.</summary>
     public async Task<Kurz> LegeAnAsync(Guid user, Guid salonId, string name, string? telefon, bool einwilligung, CancellationToken ct = default)
     {
@@ -199,13 +212,15 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Löscht den Kunden (z. B. auf seinen Wunsch). Seine Verkäufe bleiben – nur ohne Kundenbezug.</summary>
+    /// <summary>Löscht den Kunden (z. B. auf seinen Wunsch) samt Notizen und Passagen. Seine Verkäufe bleiben – nur ohne Kundenbezug.</summary>
     public async Task LoescheAsync(Guid user, Guid kundeId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
         await PruefeZugangAsync(db, user, k.SalonId, true, ct);
         foreach (var v in await db.Verkaeufe.Where(v => v.KundeId == k.Id).ToListAsync(ct)) v.KundeId = null;
+        db.KundenNotizen.RemoveRange(await db.KundenNotizen.Where(n => n.KundeId == k.Id).ToListAsync(ct));
+        db.KundenBesuche.RemoveRange(await db.KundenBesuche.Where(b => b.KundeId == k.Id).ToListAsync(ct));
         db.Kunden.Remove(k);
         await db.SaveChangesAsync(ct);
     }

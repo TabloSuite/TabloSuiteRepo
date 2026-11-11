@@ -34,7 +34,7 @@ public static class TabloSuiteMails
             + P($"Bonne nouvelle : votre inscription a été validée. Vous pouvez vous connecter à <strong>{H(appName)}</strong> et commencer à encaisser.")
             + Liste("Pour bien démarrer :", [
                 "Ajoutez vos prestations et articles (avec prix et stock).",
-                "Créez vos caissiers et leur code PIN dans « Équipe ».",
+                "Créez vos employés et leur code PIN dans « Équipe ».",
                 "Ajoutez votre logo et votre slogan dans « Paramètres » pour vos reçus."])
             + Knopf("Se connecter", appUrl)
             + Gruss());
@@ -86,7 +86,7 @@ public static class TabloSuiteMails
     public static string KassiererWillkommen(string vorname, string pseudonym, string salonName, string besitzerName, string appUrl)
         => Wrap("Bienvenue dans l'équipe", $"Vous encaissez désormais pour « {salonName} ».",
             Anrede(vorname)
-            + P($"{H(besitzerName)} vous a ajouté(e) comme caissier/caissière de <strong>{H(salonName)}</strong> sur eNOTE.")
+            + P($"{H(besitzerName)} vous a ajouté(e) comme employé(e) de <strong>{H(salonName)}</strong> sur eNOTE.")
             + Tabelle([("Identifiant", pseudonym), ("Établissement", salonName)])
             + P("Votre mot de passe et votre code PIN de caisse vous sont remis par le propriétaire. Ne les communiquez à personne.")
             + Knopf("Ouvrir eNOTE", appUrl)

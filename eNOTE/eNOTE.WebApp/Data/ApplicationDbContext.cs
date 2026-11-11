@@ -5,6 +5,7 @@ using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Kasse;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
+using ENote.Core.Services.Kunden;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using ENote.WebApp.Data.Seed;
@@ -25,6 +26,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Rabatt> Rabatte => Set<Rabatt>();
     public DbSet<KassenSitzung> KassenSitzungen => Set<KassenSitzung>();
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
+    public DbSet<KundenBesuch> KundenBesuche => Set<KundenBesuch>();
+    public DbSet<KundenNotiz> KundenNotizen => Set<KundenNotiz>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
     public DbSet<VerkaufZahlung> VerkaufZahlungen => Set<VerkaufZahlung>();
     public DbSet<LagerAbgang> LagerAbgaenge => Set<LagerAbgang>();
@@ -223,6 +226,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         });
         builder.Entity<Verkauf>()
             .HasOne(v => v.Kunde).WithMany().HasForeignKey(v => v.KundeId).OnDelete(DeleteBehavior.SetNull);
+
+        // Besuche und Notizen gehören zum Kunden und verschwinden mit ihm (Löschen auf Wunsch).
+        builder.Entity<KundenBesuch>(entity =>
+        {
+            entity.Property(b => b.Grund).HasMaxLength(KundenBesuchRegeln.GrundMax);
+            entity.Property(b => b.Raum).HasMaxLength(KundenBesuchRegeln.RaumMax);
+            entity.Property(b => b.ErfasstVonName).HasMaxLength(200);
+            entity.HasOne(b => b.Kunde).WithMany().HasForeignKey(b => b.KundeId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(b => new { b.SalonId, b.EndeUtc });
+            entity.HasIndex(b => new { b.KundeId, b.AnkunftUtc });
+        });
+        builder.Entity<KundenNotiz>(entity =>
+        {
+            entity.Property(n => n.Text).HasMaxLength(KundenBesuchRegeln.NotizMax);
+            entity.Property(n => n.ErstelltVonName).HasMaxLength(200);
+            entity.HasOne(n => n.Kunde).WithMany().HasForeignKey(n => n.KundeId).OnDelete(DeleteBehavior.Cascade);
+            // Kein zweiter Kaskadenpfad (Kunde → Besuch → Notiz): Besuch ist nur ein Verweis.
+            entity.HasOne<KundenBesuch>().WithMany().HasForeignKey(n => n.BesuchId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasIndex(n => new { n.KundeId, n.ErstelltUtc });
+        });
 
         builder.Entity<Ankuendigung>(entity =>
         {

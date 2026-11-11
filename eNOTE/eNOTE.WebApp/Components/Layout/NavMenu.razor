@@ -149,6 +149,7 @@
             var gruppen = new List<NavGruppe>();
             var start = new List<NavEintrag> { Accueil };
             if (istBesitzer || istKassierer) start.Add(Caisse);
+            if (istBesitzer || istKassierer) start.Add(new("/presents", "Clients présents", "user-check", Kurz: "Présents"));
             if (istProduktOwner) start.Add(new("/mes-etablissements", "Mes établissements", "store", Kurz: "Mes étab."));
             gruppen.Add(new(null, start));
 

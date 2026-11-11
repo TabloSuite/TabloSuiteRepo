@@ -180,7 +180,7 @@
         {
             <section class="fi-ventes">
                 <div class="enote-filter-leiste">
-                    <input class="enote-filter-suche" placeholder="Rechercher (article, caissier)…" @bind="verkaufsSuche" @bind:event="oninput" />
+                    <input class="enote-filter-suche" placeholder="Rechercher (article, employé)…" @bind="verkaufsSuche" @bind:event="oninput" />
                     <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
                 </div>
                 @if (!GefilterteVerkaeufe().Any())
@@ -268,7 +268,7 @@
                 else
                 {
                     <div class="enote-table-scroll"><table class="enote-table">
-                        <thead><tr><th>Clôturée le</th><th>Caissier</th><th class="r">Attendu</th><th class="r">Compté</th><th class="r">Écart</th></tr></thead>
+                        <thead><tr><th>Clôturée le</th><th>Employé</th><th class="r">Attendu</th><th class="r">Compté</th><th class="r">Écart</th></tr></thead>
                         <tbody>
                             @foreach (var a in abschluesse)
                             {

@@ -16,7 +16,8 @@ namespace ENote.WebApp.Services;
 public class KassenService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     IUmsatzBenachrichtigungService umsatzBenachrichtigung,
-    TimeProvider? zeit = null)
+    TimeProvider? zeit = null,
+    AnwesenheitsSignal? anwesenheit = null)
 {
     private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
 
@@ -76,7 +77,7 @@ public class KassenService(
 
         if (zuordnungen.Count == 0)
         {
-            return (false, "Caissier introuvable ou sans code PIN.", null, 0);
+            return (false, "Employé introuvable ou sans code PIN.", null, 0);
         }
 
         var jetzt = DateTime.UtcNow;
@@ -272,7 +273,7 @@ public class KassenService(
 
         if (zuordnung is null || (zuordnung.KassenPinHash is null && zuordnung.BesitzerPinHash is null))
         {
-            return new(false, "Caissier introuvable ou sans code PIN.", null, 0);
+            return new(false, "Employé introuvable ou sans code PIN.", null, 0);
         }
 
         var jetzt = DateTime.UtcNow;
@@ -421,7 +422,7 @@ public class KassenService(
                     SalonId = sitzung.SalonId,
                     Text = $"{pos.Menge}× « {leistung.Name} » utilisé(s) en caisse ({einzelPreis * pos.Menge:N0} F). Pensez à créer la prestation.",
                     AusgeloestVonId = sitzung.KassiererId,
-                    AusgeloestVonName = kassierer?.FullName ?? "Caissier"
+                    AusgeloestVonName = kassierer?.FullName ?? "Employé"
                 });
             }
 
@@ -500,7 +501,12 @@ public class KassenService(
         }
 
         db.Verkaeufe.Add(verkauf);
+        // Kunde war als anwesend gemeldet → Besuch endet mit dem Encaissement.
+        var beendeteBesuche = kundeId is Guid anwesenderKunde
+            ? await KundenBesuchService.BeendeOffeneAsync(db, sitzung.SalonId, anwesenderKunde, verkauf.Id, verkauf.ZeitUtc, cancellationToken)
+            : 0;
         await db.SaveChangesAsync(cancellationToken);
+        if (beendeteBesuche > 0) anwesenheit?.Melde(sitzung.SalonId);
 
         // Live-Update an abonnierte Besitzer-Ansichten desselben Salons.
         try
