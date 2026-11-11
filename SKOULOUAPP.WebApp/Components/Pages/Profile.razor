@@ -5,14 +5,13 @@
 
 <PageTitle>Mon profil</PageTitle>
 
-<section id="personal-data" class="mx-auto mt-16 w-full max-w-2xl space-y-8">
+<section id="personal-data" class="mx-auto w-full max-w-2xl space-y-5">
+    <SeitenKopf Rubrik="Mon compte" Titel="Mon profil" IconName="user" Untertitel="Vos coordonnées, votre photo, la couleur de l'application et votre mot de passe." />
     <Toast Message="@profileToastMessage" MessageChanged="v => profileToastMessage = v" Kind="@profileToastKind" />
     <Toast Message="@passwordToastMessage" MessageChanged="v => passwordToastMessage = v" Kind="@passwordToastKind" />
 
-    <div class="rounded-[1.25rem] bg-white px-5 py-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:px-6 sm:py-5">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">Profil</p>
-        <h1 class="mt-3 text-3xl font-black text-slate-900">Mon profil</h1>
-        <a href="@ReturnTarget" class="sk-btn sk-btn-secondary sk-btn-sm mt-3">@(HasReturnTarget ? "← Retour à la page précédente" : "← Retour à l’accueil")</a>
+    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+        <a href="@ReturnTarget" class="sk-btn sk-btn-secondary sk-btn-sm">@(HasReturnTarget ? "← Retour à la page précédente" : "← Retour à l’accueil")</a>
 
         @if (isLoading)
         {
