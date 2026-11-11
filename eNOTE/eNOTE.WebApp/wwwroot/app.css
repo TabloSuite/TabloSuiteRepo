@@ -3158,3 +3158,17 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .ab-ende-liste li .enote-icon { flex-shrink: 0; margin-top: .15rem; color: var(--enote-danger-text); }
 .enote-btn-danger-ghost { border: 1px solid var(--enote-danger-border); background: var(--enote-surface); color: var(--enote-danger-text); }
 .enote-btn-danger-ghost:hover { background: var(--enote-danger-soft); }
+
+/* Vidéos d'aide: Gruppen je Rolle */
+.vh-gruppe { display: grid; gap: .8rem; margin-bottom: 1.8rem; }
+.vh-gruppe-kopf { display: grid; gap: .15rem; }
+.vh-gruppe-kopf h2 { margin: 0; font-size: 1.2rem; }
+.vh-gruppe-kopf p { margin: 0; color: var(--enote-text-muted); font-size: .9rem; }
+.vh-text h3 { margin: 0; font-size: 1.05rem; }
+.vh-dauer { position: absolute; right: .55rem; bottom: .55rem; padding: .15rem .5rem; border-radius: var(--enote-radius-pill); background: rgba(10, 16, 32, .78); color: #fff; font-size: .75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.vh-gruppe-pourquoi .vh-raster { grid-template-columns: minmax(0, 1fr); }
+.vh-gruppe-pourquoi .vh-karte { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-rows: none; align-items: center; }
+.vh-gruppe-pourquoi .vh-text { padding: 1.4rem 1.6rem; }
+.vh-gruppe-pourquoi .vh-text h3 { font-size: 1.4rem; }
+.vh-gruppe-pourquoi .vh-text p { font-size: 1rem; }
+@media (max-width: 760px) { .vh-gruppe-pourquoi .vh-karte { grid-template-columns: minmax(0, 1fr); } }

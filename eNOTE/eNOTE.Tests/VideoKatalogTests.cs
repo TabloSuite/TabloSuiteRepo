@@ -5,7 +5,7 @@ using Xunit;
 
 namespace ENote.Tests;
 
-/// <summary>Erklärvideos: Admin/Responsable alle, Besitzer seins + Kassierer, Kassierer nur seins.</summary>
+/// <summary>Lernvideos: « Pourquoi eNOTE ? » für alle, mehrere Videos je Rolle, eigene Rolle zuerst.</summary>
 public class VideoKatalogTests
 {
     private static ClaimsPrincipal Mit(string? rolle) => rolle is null
@@ -13,24 +13,42 @@ public class VideoKatalogTests
         : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, rolle)], "test"));
 
     [Theory]
-    [InlineData(AppRollen.SuperAdmin, "enote-caissier.mp4,enote-proprietaire.mp4,enote-responsable.mp4,enote-admin.mp4")]
-    [InlineData(AppRollen.ProduktOwner, "enote-caissier.mp4,enote-proprietaire.mp4,enote-responsable.mp4,enote-admin.mp4")]
-    [InlineData(AppRollen.Besitzer, "enote-caissier.mp4,enote-proprietaire.mp4")]
-    [InlineData(AppRollen.Kassierer, "enote-caissier.mp4")]
-    public void Sichtbarkeit_Je_Rolle(string rolle, string erwartet)
+    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 13)]
+    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 12)]
+    [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 8)]
+    [InlineData(AppRollen.Kassierer, "Pour tous,Employé", 4)]
+    public void Gruppen_Je_Rolle_Eigene_Zuerst(string rolle, string gruppen, int anzahl)
     {
         var user = Mit(rolle);
-        var sichtbar = VideoKatalog.Videos.Where(v => v.DarfSehen(user)).Select(v => v.Datei);
-        Assert.Equal(erwartet.Split(','), sichtbar);
+        var ergebnis = VideoKatalog.FuerNutzer(user);
+        Assert.Equal(gruppen.Split(','), ergebnis.Select(g => g.Fuer));
+        Assert.Equal(anzahl, ergebnis.Sum(g => g.Videos.Count));
         foreach (var v in VideoKatalog.Videos)
-            Assert.Equal(erwartet.Split(',').Contains(v.Datei), VideoKatalog.DarfAbrufen(v.Datei, user));
+            Assert.Equal(ergebnis.Any(g => g.Videos.Contains(v)), VideoKatalog.DarfAbrufen(v.Datei, user));
     }
 
     [Fact]
-    public void Werbevideo_Oeffentlich_Erklaervideos_Nicht()
+    public void Kommunikation_Nur_Fuer_Admin_Pourquoi_Fuer_Alle()
+    {
+        Assert.False(VideoKatalog.DarfAbrufen("enote-admin-communication.mp4", Mit(AppRollen.ProduktOwner)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-admin-communication.mp4", Mit(AppRollen.SuperAdmin)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-pourquoi.mp4", Mit(AppRollen.Kassierer)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-proprietaire-demarrer.mp4", Mit(AppRollen.Kassierer)));
+    }
+
+    [Fact]
+    public void Werbevideo_Oeffentlich_Lernvideos_Nicht()
     {
         Assert.True(VideoKatalog.DarfAbrufen(VideoKatalog.Werbung, Mit(null)));
-        Assert.False(VideoKatalog.DarfAbrufen("enote-caissier.mp4", Mit(null)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-pourquoi.mp4", Mit(null)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-caissier.mp4", Mit(AppRollen.SuperAdmin))); // alte Datei entfernt
         Assert.False(VideoKatalog.DarfAbrufen("unbekannt.mp4", Mit(AppRollen.SuperAdmin)));
+    }
+
+    [Fact]
+    public void Jedes_Video_Hat_Eindeutige_Datei_Und_Dauer()
+    {
+        Assert.Equal(VideoKatalog.Videos.Count, VideoKatalog.Videos.Select(v => v.Datei).Distinct().Count());
+        Assert.All(VideoKatalog.Videos, v => Assert.Matches(@"^\d:\d\d$", v.Dauer));
     }
 }

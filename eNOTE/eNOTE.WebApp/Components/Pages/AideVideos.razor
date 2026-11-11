@@ -10,47 +10,60 @@
     <div class="enote-page-header">
         <div>
             <h1>Vidéos d'aide</h1>
-            <p>Quelques minutes pour découvrir eNOTE pas à pas, selon votre rôle.</p>
+            <p>Des vidéos courtes, une situation à la fois. Commencez par celles de votre rôle.</p>
         </div>
     </div>
 
-    @if (videos.Count == 0)
+    @if (gruppen.Count == 0)
     {
         <div class="enote-card vh-leer"><Icon Name="monitor" Groesse="28" /><p>Aucune vidéo pour votre rôle pour le moment.</p></div>
     }
     else
     {
-        <div class="vh-raster">
-            @foreach (var v in videos)
-            {
-                var vorhanden = Vorhanden(v);
-                <article class="enote-card vh-karte @(vorhanden ? "" : "bald")">
-                    <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => offen = v">
-                        @if (PosterVorhanden(v))
-                        {
-                            <img src="@PosterUrl(v)" alt="" loading="lazy" />
-                        }
-                        else
-                        {
-                            <span class="vh-bild-leer"><Icon Name="monitor" Groesse="34" /></span>
-                        }
-                        @if (vorhanden)
-                        {
-                            <span class="vh-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg></span>
-                        }
-                    </button>
-                    <div class="vh-text">
-                        <span class="vh-fuer">@v.Fuer</span>
-                        <h2>@v.Titel</h2>
-                        <p>@v.Beschreibung</p>
-                        @if (!vorhanden)
-                        {
-                            <span class="vh-bald">Bientôt disponible</span>
-                        }
-                    </div>
-                </article>
-            }
-        </div>
+        @foreach (var g in gruppen)
+        {
+            var istPourquoi = g.Fuer == VideoKatalog.Alle_;
+            <section class="vh-gruppe @(istPourquoi ? "vh-gruppe-pourquoi" : "")" aria-labelledby="vh-@Slug(g.Fuer)">
+                <div class="vh-gruppe-kopf">
+                    <h2 id="vh-@Slug(g.Fuer)">@g.Titel</h2>
+                    <p>@g.Untertitel@(g.Videos.Count > 1 ? $" · {g.Videos.Count} vidéos · {Gesamt(g.Videos)}" : "")</p>
+                </div>
+                <div class="vh-raster">
+                    @for (var i = 0; i < g.Videos.Count; i++)
+                    {
+                        var v = g.Videos[i];
+                        var nr = i + 1;
+                        var vorhanden = Vorhanden(v);
+                        <article class="enote-card vh-karte @(vorhanden ? "" : "bald")">
+                            <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => offen = v">
+                                @if (PosterVorhanden(v))
+                                {
+                                    <img src="@PosterUrl(v)" alt="" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <span class="vh-bild-leer"><Icon Name="monitor" Groesse="34" /></span>
+                                }
+                                @if (vorhanden)
+                                {
+                                    <span class="vh-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg></span>
+                                }
+                                <span class="vh-dauer">@v.Dauer</span>
+                            </button>
+                            <div class="vh-text">
+                                <span class="vh-fuer">@(istPourquoi ? "Pour tous" : $"{v.Fuer} · {nr}/{g.Videos.Count}")</span>
+                                <h3>@v.Titel</h3>
+                                <p>@v.Beschreibung</p>
+                                @if (!vorhanden)
+                                {
+                                    <span class="vh-bald">Bientôt disponible</span>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
     }
 </div>
 
@@ -65,17 +78,22 @@
 }
 
 @code {
-    private List<VideoKatalog.LernVideo> videos = [];
+    private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
     private VideoKatalog.LernVideo? offen;
 
     protected override async Task OnInitializedAsync()
     {
         var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
-        // Besitzer: eigenes Video zuerst, dann das des Kassierers. Admin/Responsable: alle in Lernreihenfolge.
-        var plattform = user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin)
-                        || user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.ProduktOwner);
-        var sichtbar = VideoKatalog.Videos.Where(v => v.DarfSehen(user));
-        videos = (plattform ? sichtbar : sichtbar.Reverse()).ToList();
+        gruppen = VideoKatalog.FuerNutzer(user);
+    }
+
+    private static string Slug(string text) => new string(text.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+    /// <summary>Gesamtdauer einer Reihe („4 min“).</summary>
+    private static string Gesamt(IEnumerable<VideoKatalog.LernVideo> videos)
+    {
+        var sekunden = videos.Sum(v => v.Dauer.Split(':') is [var m, var s] && int.TryParse(m, out var mi) && int.TryParse(s, out var se) ? mi * 60 + se : 0);
+        return $"{Math.Max(1, (int)Math.Round(sekunden / 60.0))} min";
     }
 
     private bool Vorhanden(VideoKatalog.LernVideo v)
@@ -84,8 +102,9 @@
     private string VideoUrl(VideoKatalog.LernVideo v)
         => VideoKatalog.MitVersion(v.Url, Path.Combine(umgebung.ContentRootPath, "Medien", "videos", v.Datei));
 
+    // Pfad über den File-Provider: WebRootPath kann leer sein (z. B. Start aus einem Build-Ordner mit Static-Web-Assets-Manifest).
     private string PosterUrl(VideoKatalog.LernVideo v)
-        => VideoKatalog.MitVersion(v.Poster, Path.Combine(umgebung.WebRootPath, v.Poster.Replace('/', Path.DirectorySeparatorChar)));
+        => VideoKatalog.MitVersion(v.Poster, umgebung.WebRootFileProvider.GetFileInfo(v.Poster).PhysicalPath);
 
     private bool PosterVorhanden(VideoKatalog.LernVideo v)
         => umgebung.WebRootFileProvider.GetFileInfo(v.Poster).Exists;
