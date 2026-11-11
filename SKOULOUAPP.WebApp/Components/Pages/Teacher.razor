@@ -5,125 +5,115 @@
 @using SkoulouApp.Core.Models.Dashboard
 @using SkoulouApp.Core.DataModels.Schools
 
-<PageTitle>Espace enseignant</PageTitle>
+<PageTitle>Tableau pédagogique · SKOULOU</PageTitle>
 
-@if (isLoading)
-{
-    <div class="rounded-[1.25rem] bg-white px-5 py-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-        <div class="flex items-center gap-3 text-slate-600">
-            <ProgressRing Size="1.5rem" Label="Chargement du tableau de bord" />
-            <p class="text-sm">Chargement du tableau de bord...</p>
+<div class="mx-auto grid max-w-6xl gap-5">
+    <SeitenKopf Rubrik="@(isSchoolDirectionUser ? "Direction" : "Espace enseignant")" Titel="Tableau pédagogique" IconName="grid"
+                Untertitel="Suivez la progression de vos élèves : leçons terminées, exercices, examens et score." />
+
+    @if (isLoading)
+    {
+        <div class="h-40 animate-pulse rounded-2xl bg-slate-200" role="status" aria-label="Chargement du tableau de bord"></div>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+    {
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-800">
+            <h2 class="mb-0 text-base font-bold">Chargement impossible</h2>
+            <p class="mb-0 mt-1 text-sm">@loadErrorMessage</p>
+            <button type="button" class="sk-btn sk-btn-danger mt-4" @onclick="LoadAsync"><Icon Name="refresh" Groesse="16" />Réessayer</button>
         </div>
-    </div>
-}
-else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
-{
-    <div class="rounded-[1.25rem] bg-rose-50 px-5 py-4 text-rose-800 shadow-lg shadow-rose-100/70 ring-1 ring-rose-100">
-        <h2 class="text-lg font-black">Chargement impossible</h2>
-        <p class="mt-2 text-sm">@loadErrorMessage</p>
-        <button type="button" class="mt-5 rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700" @onclick="LoadAsync">Réessayer</button>
-    </div>
-}
-else if (teacherSchools.Count == 0 && students.Count == 0)
-{
-    <div class="rounded-[1.25rem] bg-white px-5 py-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-        <h2 class="text-lg font-black text-slate-900">@(isSchoolDirectionUser ? "Aucune classe d'enseignant configurée" : "Aucune classe attribuée")</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-600">@(isSchoolDirectionUser
-            ? "Aucun enseignant n'a encore de classe attribuée. Dès qu'une classe est affectée à un enseignant, elle apparaîtra ici."
-            : "Votre directeur doit d'abord vous attribuer au moins une classe et indiquer vos heures hebdomadaires. Vous verrez ensuite uniquement les éléves de ces classes.")</p>
-    </div>
-}
-else
-{
-    <section class="teacher-dashboard grid gap-6">
-        <DataListPanel Items="filteredStudents"
-                       PageSize="10"
-                       SearchPlaceholder="Rechercher un élève..."
-                       EmptyText="@(selectedSchoolId.HasValue && selectedKlasseId.HasValue ? "Aucun élève trouvé." : "Sélectionnez d'abord une école et une classe.")"
-                       ResultLabelSingular="élève"
-                       ResultLabelPlural="élèves"
-                       SortOptions="studentSortOptions"
-                       Filter="@((StudentApprovalItem s, string term) => Contains(s.FullName, term) || Contains(s.Email, term) || Contains(s.SchoolName, term) || Contains(s.CurrentLevelCode, term))">
-            <HeaderContent>
-                <div class="sticky top-2 z-30 flex items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-slate-900 to-blue-600 px-5 py-3 pr-16 text-white shadow-lg">
+    }
+    else if (teacherSchools.Count == 0 && students.Count == 0)
+    {
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="mb-0 flex items-center gap-2 text-base font-bold text-slate-900"><Icon Name="info" Groesse="18" />@(isSchoolDirectionUser ? "Aucune classe d'enseignant configurée" : "Aucune classe attribuée")</h2>
+            <p class="mb-0 mt-2 text-sm leading-6 text-slate-600">@(isSchoolDirectionUser
+                ? "Aucun enseignant n'a encore de classe attribuée. Dès qu'une classe est affectée à un enseignant, elle apparaîtra ici."
+                : "Votre direction doit d'abord vous attribuer au moins une classe. Vous verrez ensuite uniquement les élèves de ces classes.")</p>
+        </div>
+    }
+    else
+    {
+        <Abschnitt Titel="Élèves" Untertitel="@($"{filteredStudents.Count} élève(s) dans la sélection")" IconName="graduation">
+            <div class="grid gap-4">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    @if (teacherSchools.Count > 0)
+                    {
+                        <ModernDropdown TValue="Guid?" Label="École" Value="selectedSchoolId" ValueChanged="SelectSchool" Options="SchoolFilterOptions" EinzigeOptionFest="true" />
+                        <ModernDropdown TValue="Guid?" Label="Classe" Value="selectedKlasseId" ValueChanged="SelectKlasse" Options="KlasseFilterOptions" />
+                    }
                     <div>
-                        <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-blue-100">Statut &amp; progression</p>
-                        <h2 class="text-lg font-black leading-tight">Statut et progression des élèves</h2>
-                    </div>
-                    <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/25">@filteredStudents.Count élèves</span>
-                </div>
-                <div class="z-20 grid gap-3 rounded-2xl bg-white p-4 shadow-md ring-1 ring-slate-200 md:sticky md:top-[4.75rem]">
-                @if (teacherSchools.Count > 0)
-                {
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-xs font-semibold text-slate-600">École</label>
-                            <ModernDropdown TValue="Guid?" Value="selectedSchoolId" ValueChanged="SelectSchool" Options="SchoolFilterOptions" EinzigeOptionFest="true" />
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-semibold text-slate-600">Classe</label>
-                            <ModernDropdown TValue="Guid?" Value="selectedKlasseId" ValueChanged="SelectKlasse" Options="KlasseFilterOptions" />
-                        </div>
-                    </div>
-                }
-                <div class="flex flex-wrap items-end gap-3">
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-600">Inscrit depuis le</label>
+                        <label class="skoulou-label">Inscrit depuis le</label>
                         <TailwindDateTimePicker @bind-Value="enrolledFromDate" ShowTime="false" @bind-Value:after="OnDateFilterChanged" />
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-semibold text-slate-600">Inscrit jusqu'au</label>
+                        <label class="skoulou-label">Inscrit jusqu'au</label>
                         <TailwindDateTimePicker @bind-Value="enrolledToDate" ShowTime="false" @bind-Value:after="OnDateFilterChanged" />
                     </div>
                 </div>
-                </div>
-            </HeaderContent>
-            <ChildContent>
-                <div class="grid gap-4">
-                    @foreach (var student in context)
-                    {
-                        var studentProgress = GetProgress(student.UserId);
-                        <article class="rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
-                            <div class="flex-1">
+
+                <DataListPanel Items="filteredStudents"
+                               PageSize="10"
+                               SearchPlaceholder="Rechercher un élève…"
+                               EmptyText="@(selectedSchoolId.HasValue && selectedKlasseId.HasValue ? "Aucun élève trouvé." : "Sélectionnez d'abord une école et une classe.")"
+                               ResultLabelSingular="élève"
+                               ResultLabelPlural="élèves"
+                               SortOptions="studentSortOptions"
+                               Filter="@((StudentApprovalItem s, string term) => Contains(s.FullName, term) || Contains(s.Email, term) || Contains(s.SchoolName, term) || Contains(s.CurrentLevelCode, term))">
+                    <ul class="m-0 grid list-none gap-2 p-0">
+                        @foreach (var student in context)
+                        {
+                            var studentProgress = GetProgress(student.UserId);
+                            <li class="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4" @key="student.UserId">
                                 <div class="flex flex-wrap items-center gap-3">
-                                    <h3 class="text-base font-bold text-slate-900">@student.FullName</h3>
-                                    <Badge Accent="@(student.IsBlocked ? "rose" : "emerald")">@(student.IsBlocked ? "Bloqué / en attente" : "Validé")</Badge>
-                                </div>
-                                <p class="mt-1.5 text-xs text-slate-500">@student.Email • @student.SchoolName • Classe @student.CurrentLevelCode</p>
-                                <p class="mt-1.5 text-sm text-slate-600">Leçons terminées : @student.CompletedLessonsCount</p>
-                                <div class="mt-1.5 flex flex-wrap gap-2">
-                                    <Badge Accent="@GetAboStatusAccent(student)">@GetAboStatusLabel(student)</Badge>
-                                    <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2.5 py-1 text-xs ring-1 ring-slate-200">
-                                        <span aria-hidden="true"><Icon Name="trend-up" Groesse="16" /> </span>
-                                        <span class="text-slate-600">Score exercices &amp; examens :</span>
-                                        @if (student.CombinedScorePercent.HasValue)
-                                        {
-                                            <span class="font-black" style="color:@ScoreColorHelper.GetScoreColor(student.CombinedScorePercent.Value)">@student.CombinedScorePercent %</span>
-                                            <span class="text-xs text-slate-400">(@student.CombinedScoreCount)</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-slate-400">—</span>
-                                        }
+                                    <NamensKreis Name="@student.FullName" />
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="mb-0 font-bold text-slate-900">@student.FullName</p>
+                                            @if (student.IsBlocked)
+                                            {
+                                                <Badge Accent="rose">Bloqué / en attente</Badge>
+                                            }
+                                        </div>
+                                        <p class="mb-0 mt-0.5 text-sm text-slate-500">
+                                            Classe @student.CurrentLevelCode
+                                            @if (!string.IsNullOrWhiteSpace(student.Email))
+                                            {
+                                                <span> · @student.Email</span>
+                                            }
+                                            @if (studentProgress?.LastActivityUtc is DateTime letzte)
+                                            {
+                                                <span> · Dernière activité le @letzte.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                            }
+                                        </p>
+                                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                                            <Badge Accent="@GetAboStatusAccent(student)">@GetAboStatusLabel(student)</Badge>
+                                        </div>
                                     </div>
+                                    <dl class="m-0 grid grid-cols-4 gap-2 text-center">
+                                        <div class="min-w-[4.5rem] rounded-xl bg-slate-50 px-2 py-1.5">
+                                            <dt class="text-[0.68rem] font-semibold text-slate-500">Leçons</dt>
+                                            <dd class="m-0 text-base font-extrabold tabular-nums text-slate-900">@student.CompletedLessonsCount</dd>
+                                        </div>
+                                        <div class="min-w-[4.5rem] rounded-xl bg-slate-50 px-2 py-1.5">
+                                            <dt class="text-[0.68rem] font-semibold text-slate-500">Exercices</dt>
+                                            <dd class="m-0 text-base font-extrabold tabular-nums text-slate-900">@(studentProgress?.SolvedExerciseCount ?? 0)</dd>
+                                        </div>
+                                        <div class="min-w-[4.5rem] rounded-xl bg-slate-50 px-2 py-1.5">
+                                            <dt class="text-[0.68rem] font-semibold text-slate-500">Examens</dt>
+                                            <dd class="m-0 text-base font-extrabold tabular-nums text-slate-900">@(studentProgress is null ? "–" : $"{studentProgress.ExamsPassed}/{studentProgress.ExamsTaken}")</dd>
+                                        </div>
+                                        <div class="min-w-[4.5rem] rounded-xl bg-slate-50 px-2 py-1.5">
+                                            <dt class="text-[0.68rem] font-semibold text-slate-500">Score</dt>
+                                            <dd class="m-0 text-base font-extrabold tabular-nums" style="color:@(student.CombinedScorePercent.HasValue ? ScoreColorHelper.GetScoreColor(student.CombinedScorePercent.Value) : "#8a95a8")">@(student.CombinedScorePercent.HasValue ? $"{student.CombinedScorePercent} %" : "–")</dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                                @if (studentProgress is not null)
-                                {
-                                    <div class="mt-2.5 grid gap-2 text-center text-sm sm:grid-cols-3 lg:grid-cols-4">
-                                        <div class="rounded-xl bg-slate-50 p-2"><div class="text-base font-black text-slate-900">@studentProgress.SolvedExerciseCount</div><div class="text-[11px] text-slate-500">Exercices réussis</div></div>
-                                        <div class="rounded-xl bg-slate-50 p-2"><div class="text-base font-black text-slate-900">@studentProgress.ExamsPassed / @studentProgress.ExamsTaken</div><div class="text-[11px] text-slate-500">Examens réussis</div></div>
-                                        <div class="rounded-xl bg-slate-50 p-2"><div class="text-base font-black" style="color:@(student.CombinedScorePercent.HasValue ? ScoreColorHelper.GetScoreColor(student.CombinedScorePercent.Value) : "#0f172a")">@(student.CombinedScorePercent.HasValue ? $"{student.CombinedScorePercent} %" : "—")</div><div class="text-[11px] text-slate-500">Score exercices &amp; examens</div></div>
-                                    </div>
-                                    @if (studentProgress.LastActivityUtc is not null)
-                                    {
-                                        <p class="mt-2 text-xs text-slate-400">Dernière activité : @studentProgress.LastActivityUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-                                    }
-                                }
-                            </div>
-                        </article>
-                    }
-                </div>
-            </ChildContent>
-        </DataListPanel>
-    </section>
-}
+                            </li>
+                        }
+                    </ul>
+                </DataListPanel>
+            </div>
+        </Abschnitt>
+    }
+</div>

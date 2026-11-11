@@ -3,39 +3,17 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using SkoulouApp.WebApp.Components.Pages
 
-<PageTitle>Création leçon & examens</PageTitle>
+<PageTitle>Leçons et examens · SKOULOU</PageTitle>
 
-<section class="teacher-create-shell grid gap-6">
-    <div class="skoulou-hero rounded-[1.25rem] px-4 py-2.5 text-white shadow-xl sm:px-5">
-        <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
-        <h1 class="text-xl font-black">Création leçon &amp; examens</h1>
+<div class="mx-auto grid max-w-6xl gap-5">
+    <SeitenKopf Rubrik="Espace enseignant" Titel="Leçons et examens" IconName="pen"
+                Untertitel="@(activeMode == TeacherCreateMode.Lesson
+                    ? "Créez vos leçons avec leur contenu et leurs exercices, puis publiez-les pour vos classes."
+                    : "Préparez vos examens : exercices, publication pour les élèves, date limite et exports PDF.")" />
 
-        <div class="teacher-create-switch mt-2 grid gap-2 sm:inline-flex sm:grid-cols-2 sm:rounded-full sm:bg-white/10 sm:p-0.5 sm:ring-1 sm:ring-white/25">
-            <button type="button"
-                    class="teacher-create-switch-btn rounded-full px-4 py-1.5 text-sm font-semibold transition @(activeMode == TeacherCreateMode.Lesson ? "bg-white text-indigo-700" : "text-white hover:bg-white/15")"
-                    @onclick="() => SetMode(TeacherCreateMode.Lesson)">
-                Leçon + exercices
-            </button>
-            <button type="button"
-                    class="teacher-create-switch-btn rounded-full px-4 py-1.5 text-sm font-semibold transition @(activeMode == TeacherCreateMode.Exam ? "bg-white text-indigo-700" : "text-white hover:bg-white/15")"
-                    @onclick="() => SetMode(TeacherCreateMode.Exam)">
-                Examens
-            </button>
-        </div>
-    </div>
-
-    <div class="teacher-create-context rounded-3xl bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-5">
-        @if (activeMode == TeacherCreateMode.Lesson)
-        {
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Mode leçon</p>
-            <p class="mt-1 text-sm text-slate-600">Créez la leçon, ajoutez son contenu et, si nécessaire, ses exercices dans le même flux.</p>
-        }
-        else
-        {
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Mode examen</p>
-            <p class="mt-1 text-sm text-slate-600">Préparez un examen avec ses exercices, ses paramètres de publication et ses exports PDF.</p>
-        }
-    </div>
+    <Reiter Eintraege="ModusReiter" Aktiv="@(activeMode == TeacherCreateMode.Exam ? "exam" : "lesson")"
+            AktivChanged="ModusWechseln"
+            AriaLabel="Leçons ou examens" />
 
     <div class="min-h-[30rem] skoulou-tab-panel" @key="activeMode">
         @if (activeMode == TeacherCreateMode.Lesson)
@@ -47,4 +25,15 @@
             <TeacherExams Embedded="true" />
         }
     </div>
-</section>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<Reiter.Eintrag> ModusReiter =
+    [
+        new("lesson", "Leçons et exercices", "book-open"),
+        new("exam", "Examens", "exam")
+    ];
+
+    private void ModusWechseln(string schluessel)
+        => SetMode(schluessel == "exam" ? TeacherCreateMode.Exam : TeacherCreateMode.Lesson);
+}

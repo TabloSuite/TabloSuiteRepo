@@ -11,24 +11,15 @@
     <PageTitle>Exercices des leçons</PageTitle>
 }
 
-<section class="grid gap-6 @(Embedded ? "teacher-create-embedded" : string.Empty)">
+<section class="grid gap-5 @(Embedded ? "teacher-create-embedded" : "mx-auto max-w-6xl")">
     @if (!Embedded)
     {
-        <div class="skoulou-hero rounded-[1.25rem] px-5 py-4 text-white shadow-2xl sm:px-6 sm:py-5">
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-100">Espace enseignant</p>
-            <h1 class="mt-3 text-3xl font-black">Exercices des leçons</h1>
-            <p class="mt-3 max-w-3xl text-sm leading-7 text-indigo-50">Gérez les exercices de vos leçons avec la même structure que les examens.</p>
-        </div>
+        <SeitenKopf Rubrik="Espace enseignant" Titel="Leçons et exercices" IconName="book-open" Untertitel="Créez vos leçons avec leur contenu et leurs exercices, puis publiez-les pour vos classes." />
     }
 
     @if (isLoading)
     {
-        <div class="rounded-[2rem] bg-white p-8 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-            <div class="flex items-center gap-3 text-slate-600">
-                <ProgressRing Size="1.5rem" Label="Chargement des leçons" />
-                <p class="text-sm">Chargement...</p>
-            </div>
-        </div>
+        <div class="h-40 animate-pulse rounded-2xl bg-slate-200" role="status" aria-label="Chargement des leçons"></div>
     }
     else
     {
@@ -39,156 +30,163 @@
 
         @if (!editorOpen)
         {
-            <div class="flex justify-end">
-                <button type="button" class="skoulou-btn-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg transition" @onclick="OpenCreateAsync">
-                    + Nouvelle leçon + exercices
-                </button>
-            </div>
+            @if (pendingManualReviews.Count > 0)
+            {
+                <Abschnitt Titel="Corrections à faire" Untertitel="Réponses libres de vos élèves : attribuez les points et, si vous le souhaitez, un commentaire." IconName="clipboard-check">
+                    <Aktionen>
+                        <span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold tabular-nums text-amber-800">@VisiblePendingManualReviews.Count</span>
+                    </Aktionen>
+                    <ChildContent>
+                        <div class="mb-4 grid gap-3 sm:grid-cols-2">
+                            <ModernDropdown TValue="Guid?"
+                                            Label="École"
+                                            Value="pendingReviewSchoolFilterId"
+                                            ValueChanged="SetPendingReviewSchoolFilterAsync"
+                                            Options="PendingReviewSchoolFilterOptions" EinzigeOptionFest="true" />
+                            <ModernDropdown TValue="Guid?"
+                                            Label="Classe"
+                                            Value="pendingReviewKlasseFilterId"
+                                            ValueChanged="SetPendingReviewKlasseFilterAsync"
+                                            Options="PendingReviewKlasseFilterOptions" />
+                        </div>
 
-            <div class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <div class="mb-3 flex items-center justify-between gap-3">
-                    <h2 class="text-lg font-black text-slate-900">Corrections manuelles en attente</h2>
-                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">@VisiblePendingManualReviews.Count</span>
-                </div>
-
-                <div class="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 sm:grid-cols-2">
-                    <ModernDropdown TValue="Guid?"
-                                    Label="École"
-                                    Value="pendingReviewSchoolFilterId"
-                                    ValueChanged="SetPendingReviewSchoolFilterAsync"
-                                    Options="PendingReviewSchoolFilterOptions" EinzigeOptionFest="true" />
-                    <ModernDropdown TValue="Guid?"
-                                    Label="Classe"
-                                    Value="pendingReviewKlasseFilterId"
-                                    ValueChanged="SetPendingReviewKlasseFilterAsync"
-                                    Options="PendingReviewKlasseFilterOptions" />
-                </div>
-
-                @if (VisiblePendingManualReviews.Count == 0)
-                {
-                    <p class="text-sm text-slate-500">@PendingManualReviewEmptyMessage</p>
-                }
-                else
-                {
-                    <div class="space-y-3">
-                        @foreach (var review in VisiblePendingManualReviews)
+                        @if (VisiblePendingManualReviews.Count == 0)
                         {
-                            <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">@review.SchoolName · @review.CourseCode · @review.LessonTitle · @review.ExerciseTitle</p>
-                                <p class="mt-1 text-sm font-bold text-slate-900">@review.StudentName</p>
-                                <div class="mt-2">
-                                    <p class="mb-1 text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-500">Consigne de l'enseignant</p>
-                                    <div class="rich-content rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
-                                        <div class="ql-editor" style="padding:0;">
-                                            @((MarkupString)HtmlSanitizer.SanitizeMitBildern(review.Question))
-                                        </div>
-                                    </div>
-                                </div>
-                                <p class="mt-1 text-xs text-slate-500">Max points: @review.ExercisePoints</p>
-                                <div class="mt-2">
-                                    <p class="mb-1 text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-500">Réponse de l'élève</p>
-                                    <div class="rich-content rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
-                                        <div class="ql-editor" style="padding:0;">
-                                            @((MarkupString)HtmlSanitizer.SanitizeMitBildern(review.SubmittedTextAnswer ?? string.Empty))
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-3">
-                                    <label class="skoulou-label">Points attribués</label>
-                                    <input type="number"
-                                           class="skoulou-input"
-                                           min="0"
-                                           max="@review.ExercisePoints"
-                                           value="@GetManualPoints(review.AttemptId, review.ExercisePoints)"
-                                           @oninput="(ChangeEventArgs e) => OnManualPointsInput(review.AttemptId, review.ExercisePoints, e)" />
-                                </div>
-                                <div class="mt-3">
-                                    <label class="skoulou-label">Feedback (optionnel)</label>
-                                    <textarea class="skoulou-input min-h-16"
-                                              @oninput="(ChangeEventArgs e) => OnManualFeedbackInput(review.AttemptId, e)">@GetManualFeedback(review.AttemptId)</textarea>
-                                </div>
-                                <div class="mt-3 flex flex-wrap gap-2">
-                                    <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50" disabled="@isSavingManualReview" @onclick="() => GradeManualAsync(review.AttemptId)">Enregistrer la note</button>
-                                </div>
-                            </article>
+                            <p class="mb-0 text-sm text-slate-500">@PendingManualReviewEmptyMessage</p>
                         }
-                    </div>
-                }
-            </div>
-
-            <div class="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
-                <ModernDropdown TValue="Guid?"
-                                Label="École"
-                                Value="lessonListSchoolFilterId"
-                                ValueChanged="SetLessonListSchoolFilterAsync"
-                                Options="LessonListSchoolFilterOptions" EinzigeOptionFest="true" />
-                <ModernDropdown TValue="Guid?"
-                                Label="Classe"
-                                Value="lessonListKlasseFilterId"
-                                ValueChanged="SetLessonListKlasseFilterAsync"
-                                Options="LessonListKlasseFilterOptions" />
-            </div>
-
-            @if (VisibleLessons.Count == 0)
-            {
-                <div class="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 min-h-[9rem] flex items-center justify-center">
-                    <p class="text-sm text-slate-600">@(lessons.Count == 0 ? "Aucune leçon attribuée à vos classes." : "Aucune leçon ne correspond aux filtres sélectionnés.")</p>
-                </div>
-            }
-            else
-            {
-                <div class="grid gap-4">
-                    @foreach (var lesson in VisibleLessons)
-                    {
-                        <article class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                            <div class="flex flex-wrap items-start justify-between gap-4">
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">@lesson.CourseCode</span>
-                                        @if (!string.IsNullOrWhiteSpace(lesson.FachName))
-                                        {
-                                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@lesson.FachName</span>
-                                        }
-                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">@lesson.ExerciseCount exercice(s)</span>
-                                         @if (lesson.IsCurrentAssignmentVersionLocked)
-                                         {
-                                             <span class="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">Leçon verrouillée</span>
-                                         }
-                                         else if (lesson.HasSubmissionsInCurrentAssignmentVersion)
-                                         {
-                                             <span class="rounded-full border border-indigo-200 bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">Soumissions existantes (v@lesson.AssignmentVersion)</span>
-                                         }
-                                    </div>
-                                    <h2 class="mt-2 text-lg font-bold text-slate-900">@lesson.Title</h2>
-                                    <p class="mt-1 text-sm text-slate-500">@lesson.Summary</p>
-                                    <div class="mt-3 flex flex-wrap items-center gap-2">
-                                        @if (lesson.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc)
-                                        {
-                                            var isOpen = dueAtUtc > DateTime.UtcNow;
-                                            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ring-1 @(isOpen ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-rose-50 text-rose-800 ring-rose-200")">
-                                                <span class="h-2 w-2 rounded-full @(isOpen ? "bg-emerald-500" : "bg-rose-500")" aria-hidden="true"></span>
-                                                @(isOpen ? "Remise en cours" : "Date limite passée")
-                                            </span>
-                                            <span class="text-xs font-semibold text-slate-500">Jusqu'au @dueAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Aucune date limite</span>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="flex flex-wrap justify-end gap-2">
-                                    <a class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200" href="/teacher/lesson-exercises/@lesson.LessonId/view?from=teacher-create">Voir le contenu</a>
-                                    <a class="rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="/teacher/lesson-exercises/@lesson.LessonId/pdf-file" target="_blank">Exporter PDF</a>
-                                    <button type="button" class="rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-800 transition hover:bg-indigo-200" @onclick="() => OpenDueDateModalAsync(lesson)">Modifier la date limite</button>
-                                    <button type="button" class="rounded-full bg-violet-100 px-4 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenReassignFromListAsync(lesson.LessonId)">Modifier et réattribuer</button>
-                                    <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="() => OpenEditorAsync(lesson.LessonId)">Modifier la leçon</button>
-                                </div>
+                        else
+                        {
+                            <div class="grid gap-3">
+                                @foreach (var review in VisiblePendingManualReviews)
+                                {
+                                    <article class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4" @key="review.AttemptId">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <p class="mb-0 font-bold text-slate-900">@review.StudentName</p>
+                                            <span class="text-xs font-semibold text-slate-500">@review.CourseCode · @review.LessonTitle · @review.ExerciseTitle</span>
+                                        </div>
+                                        <div class="mt-3 grid gap-3 lg:grid-cols-2">
+                                            <div>
+                                                <p class="mb-1 text-xs font-semibold text-slate-500">Consigne</p>
+                                                <div class="rich-content rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                                                    <div class="ql-editor" style="padding:0;">
+                                                        @((MarkupString)HtmlSanitizer.SanitizeMitBildern(review.Question))
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p class="mb-1 text-xs font-semibold text-slate-500">Réponse de l'élève</p>
+                                                <div class="rich-content rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                                                    <div class="ql-editor" style="padding:0;">
+                                                        @((MarkupString)HtmlSanitizer.SanitizeMitBildern(review.SubmittedTextAnswer ?? string.Empty))
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end">
+                                            <div>
+                                                <label class="skoulou-label">Points (max. @review.ExercisePoints)</label>
+                                                <input type="number"
+                                                       class="skoulou-input"
+                                                       min="0"
+                                                       max="@review.ExercisePoints"
+                                                       value="@GetManualPoints(review.AttemptId, review.ExercisePoints)"
+                                                       @oninput="(ChangeEventArgs e) => OnManualPointsInput(review.AttemptId, review.ExercisePoints, e)" />
+                                            </div>
+                                            <div>
+                                                <label class="skoulou-label">Commentaire (facultatif)</label>
+                                                <textarea class="skoulou-input" rows="1" style="min-height: 2.75rem"
+                                                          @oninput="(ChangeEventArgs e) => OnManualFeedbackInput(review.AttemptId, e)">@GetManualFeedback(review.AttemptId)</textarea>
+                                            </div>
+                                            <button type="button" class="sk-btn sk-btn-primary min-h-[2.75rem]" disabled="@isSavingManualReview" @onclick="() => GradeManualAsync(review.AttemptId)"><Icon Name="check" Groesse="16" />Enregistrer la note</button>
+                                        </div>
+                                    </article>
+                                }
                             </div>
-                        </article>
-                    }
-                </div>
+                        }
+                    </ChildContent>
+                </Abschnitt>
             }
+
+            <Abschnitt Titel="Mes leçons" Untertitel="Vos leçons avec leurs exercices : modifiez-les, fixez la date limite, exportez-les en PDF." IconName="book-open">
+                <Aktionen>
+                    <button type="button" class="sk-btn sk-btn-primary" @onclick="OpenCreateAsync"><Icon Name="plus" Groesse="16" />Nouvelle leçon</button>
+                </Aktionen>
+                <ChildContent>
+                    <div class="mb-4 grid gap-3 sm:grid-cols-2">
+                        <ModernDropdown TValue="Guid?"
+                                        Label="École"
+                                        Value="lessonListSchoolFilterId"
+                                        ValueChanged="SetLessonListSchoolFilterAsync"
+                                        Options="LessonListSchoolFilterOptions" EinzigeOptionFest="true" />
+                        <ModernDropdown TValue="Guid?"
+                                        Label="Classe"
+                                        Value="lessonListKlasseFilterId"
+                                        ValueChanged="SetLessonListKlasseFilterAsync"
+                                        Options="LessonListKlasseFilterOptions" />
+                    </div>
+
+                    @if (VisibleLessons.Count == 0)
+                    {
+                        <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                            @(lessons.Count == 0 ? "Aucune leçon pour le moment. Créez la première avec « Nouvelle leçon » : contenu, exercices et date limite dans un seul formulaire." : "Aucune leçon ne correspond aux filtres sélectionnés.")
+                        </div>
+                    }
+                    else
+                    {
+                        <ul class="m-0 grid list-none gap-3 p-0">
+                            @foreach (var lesson in VisibleLessons)
+                            {
+                                <li class="rounded-2xl border border-slate-200 bg-white p-4" @key="lesson.LessonId">
+                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                                <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">@lesson.CourseCode</span>
+                                                @if (!string.IsNullOrWhiteSpace(lesson.FachName))
+                                                {
+                                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">@lesson.FachName</span>
+                                                }
+                                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">@lesson.ExerciseCount exercice(s)</span>
+                                                @if (lesson.IsCurrentAssignmentVersionLocked)
+                                                {
+                                                    <Badge Accent="amber">Leçon verrouillée</Badge>
+                                                }
+                                                else if (lesson.HasSubmissionsInCurrentAssignmentVersion)
+                                                {
+                                                    <Badge Accent="blue">Soumissions existantes (v@lesson.AssignmentVersion)</Badge>
+                                                }
+                                            </div>
+                                            <h3 class="mb-0 mt-2 text-base font-bold text-slate-900">@lesson.Title</h3>
+                                            @if (!string.IsNullOrWhiteSpace(lesson.Summary))
+                                            {
+                                                <p class="mb-0 mt-0.5 text-sm text-slate-500">@lesson.Summary</p>
+                                            }
+                                            <p class="mb-0 mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                                @if (lesson.ExerciseSubmissionDueAtUtc is DateTime dueAtUtc)
+                                                {
+                                                    var isOpen = dueAtUtc > DateTime.UtcNow;
+                                                    <Badge Accent="@(isOpen ? "emerald" : "rose")">@(isOpen ? "Remise en cours" : "Date limite passée")</Badge>
+                                                    <span class="font-semibold text-slate-500">Jusqu'au @dueAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="font-semibold text-slate-500">Aucune date limite</span>
+                                                }
+                                            </p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-primary" @onclick="() => OpenEditorAsync(lesson.LessonId)"><Icon Name="edit" Groesse="14" />Modifier</button>
+                                            <a class="sk-btn sk-btn-sm sk-btn-secondary" href="/teacher/lesson-exercises/@lesson.LessonId/view?from=teacher-create"><Icon Name="eye" Groesse="14" />Voir</a>
+                                            <a class="sk-btn sk-btn-sm sk-btn-secondary" href="/teacher/lesson-exercises/@lesson.LessonId/pdf-file" target="_blank" title="Exporter en PDF"><Icon Name="printer" Groesse="14" />PDF</a>
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" title="Modifier la date limite" @onclick="() => OpenDueDateModalAsync(lesson)"><Icon Name="clock" Groesse="14" />Date limite</button>
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" title="Modifier et réattribuer" @onclick="() => OpenReassignFromListAsync(lesson.LessonId)"><Icon Name="refresh" Groesse="14" />Réattribuer</button>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </ChildContent>
+            </Abschnitt>
         }
         else if (form is not null)
         {

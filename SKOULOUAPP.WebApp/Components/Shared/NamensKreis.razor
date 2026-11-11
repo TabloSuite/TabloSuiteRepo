@@ -1,0 +1,20 @@
+@* Runder Platzhalter mit Initialen (« Ama Mensah » → « AM ») für Personenlisten. *@
+<span class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-bold @Farbe" aria-hidden="true">@Initialen(Name)</span>
+
+@code {
+    [Parameter] public string? Name { get; set; }
+
+    /// <summary>Tailwind-Farbklassen für Hintergrund und Text.</summary>
+    [Parameter] public string Farbe { get; set; } = "bg-blue-50 text-blue-700";
+
+    public static string Initialen(string? name)
+    {
+        var teile = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length switch
+        {
+            0 => "?",
+            1 => teile[0][..1].ToUpperInvariant(),
+            _ => (teile[0][..1] + teile[^1][..1]).ToUpperInvariant()
+        };
+    }
+}

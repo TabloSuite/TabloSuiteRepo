@@ -2012,18 +2012,6 @@ public partial class SchulLeiter
         (4, "Enregistrez et chargez", "Format CSV UTF-8 (*.csv) ou Excel (*.xlsx), puis choisissez le fichier."),
     ];
 
-    /// <summary>Initialen für den runden Namensplatzhalter (« Ama Mensah » → « AM »).</summary>
-    private static string Initialen(string? name)
-    {
-        var teile = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return teile.Length switch
-        {
-            0 => "?",
-            1 => teile[0][..1].ToUpperInvariant(),
-            _ => (teile[0][..1] + teile[^1][..1]).ToUpperInvariant()
-        };
-    }
-
     /// <summary>Zweite Zeile einer Klassenkarte: Code, Referenzname und (falls gesetzt) Preis.</summary>
     private static string KlassenMeta(CourseFormModel klasse)
     {
