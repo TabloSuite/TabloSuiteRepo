@@ -73,7 +73,7 @@
                 <p>Du premier client du matin à la clôture du soir : encaisser par Mobile Money, accueillir les clients présents, connaître leurs habitudes, suivre le stock, l'équipe et les finances, et retrouver une caisse juste. Pour un salon, une boutique ou un petit cabinet.</p>
             </div>
             <div class="lp-film-rahmen">
-                <video src="@WerbeVideo" poster="videos/enote-presentation.jpg" controls preload="metadata" playsinline></video>
+                <video src="@WerbeVideo" poster="@WerbePoster" controls preload="metadata" playsinline></video>
             </div>
         </section>
     }
@@ -252,7 +252,7 @@
     <div class="lp-video-overlay" @onclick="() => videoOffen = false">
         <div class="lp-video-box" @onclick:stopPropagation="true">
             <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => videoOffen = false"><Icon Name="x" Groesse="20" /></button>
-            <video src="@WerbeVideo" controls autoplay playsinline poster="videos/enote-presentation.jpg"></video>
+            <video src="@WerbeVideo" controls autoplay playsinline poster="@WerbePoster"></video>
         </div>
     </div>
 }
@@ -266,6 +266,10 @@
 
     private string WerbeVideo => ENote.WebApp.Services.VideoKatalog.MitVersion("medien/videos/enote-presentation.mp4",
         Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", "enote-presentation.mp4"));
+
+    // Vorschaubild mit Versionsnummer: nach einem neuen Video zeigt kein Browser mehr das alte Bild.
+    private string WerbePoster => ENote.WebApp.Services.VideoKatalog.MitVersion("videos/enote-presentation.jpg",
+        Umgebung.WebRootFileProvider.GetFileInfo("videos/enote-presentation.jpg").PhysicalPath);
 
     private bool HatVideo => File.Exists(Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", "enote-presentation.mp4"));
 
