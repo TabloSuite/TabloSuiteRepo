@@ -95,6 +95,21 @@
         </AuthorizeView>
     </section>
 
+    @* ---------- Film (Werbevideo, öffentlich über /medien/videos) ---------- *@
+    @if (HatVideo)
+    {
+        <section id="video" class="scroll-mt-20 grid items-center gap-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-8" aria-label="Vidéo de présentation">
+            <div>
+                <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-700"><Icon Name="monitor" Groesse="14" /> En une minute</span>
+                <h2 class="mb-0 mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">SKOULOU en action</h2>
+                <p class="mb-0 mt-3 text-sm leading-7 text-slate-600 sm:text-base">La direction suit ses élèves, ses classes et les frais de scolarité. Les enseignants publient leurs leçons et leurs examens, les élèves apprennent à leur rythme, les bulletins se calculent tout seuls et les parents restent informés.</p>
+            </div>
+            <div class="overflow-hidden rounded-xl bg-slate-900 shadow-lg ring-1 ring-slate-900/10">
+                <video class="block aspect-video w-full" src="@WerbeVideo" poster="@WerbePoster" controls preload="metadata" playsinline></video>
+            </div>
+        </section>
+    }
+
     <section id="apropos" class="scroll-mt-20">
         <div class="max-w-2xl">
             <p class="mb-0 text-xs font-bold uppercase tracking-[0.16em] text-teal-700">Fonctionnalités</p>

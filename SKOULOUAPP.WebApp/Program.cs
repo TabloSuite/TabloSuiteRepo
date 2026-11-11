@@ -281,6 +281,25 @@ app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Videos: eigener Endpunkt statt wwwroot, damit Teilanfragen (Range) korrekt beantwortet werden –
+// der Browser lädt Videos stückweise. Werbevideo öffentlich, Lernvideos nur für die passenden Rollen.
+var videoOrdner = Path.Combine(app.Environment.ContentRootPath, "Medien", "videos");
+app.MapGet("/medien/videos/{datei}", (string datei, HttpContext http) =>
+{
+    if (!System.Text.RegularExpressions.Regex.IsMatch(datei, @"^[a-z0-9-]+\.mp4$"))
+        return Results.NotFound();
+    if (!VideoKatalog.DarfAbrufen(datei, http.User))
+        return http.User.Identity?.IsAuthenticated == true ? Results.StatusCode(StatusCodes.Status403Forbidden) : Results.Unauthorized();
+    var info = new FileInfo(Path.Combine(videoOrdner, datei));
+    if (!info.Exists)
+        return Results.NotFound();
+    var etag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"");
+    http.Response.Headers.CacheControl = string.Equals(datei, VideoKatalog.Werbung, StringComparison.OrdinalIgnoreCase)
+        ? "public, max-age=3600" : "private, max-age=3600";
+    return Results.File(info.FullName, "video/mp4", lastModified: info.LastWriteTimeUtc, entityTag: etag, enableRangeProcessing: true);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -20,6 +20,22 @@ public partial class Home
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
+    [Inject]
+    private IWebHostEnvironment Umgebung { get; set; } = default!;
+
+    // Werbevideo der Startseite: Datei in Medien/videos, Vorschaubild in wwwroot/videos (Versionsnummer gegen alte Zwischenspeicher).
+    private string WerbeVideoPfad => Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", Services.VideoKatalog.Werbung);
+    private bool HatVideo => File.Exists(WerbeVideoPfad);
+    private string WerbeVideo => Services.VideoKatalog.MitVersion("medien/videos/" + Services.VideoKatalog.Werbung, WerbeVideoPfad);
+    private string WerbePoster
+    {
+        get
+        {
+            var poster = "videos/" + Path.ChangeExtension(Services.VideoKatalog.Werbung, ".jpg");
+            return Services.VideoKatalog.MitVersion(poster, Umgebung.WebRootFileProvider.GetFileInfo(poster).PhysicalPath);
+        }
+    }
+
     private int? aktiveSchulenAnzahl;
     private int? aktiveSchuelerAnzahl;
 

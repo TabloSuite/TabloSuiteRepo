@@ -5,6 +5,8 @@
     <!-- Werkzeuge für die Tailwind-Erzeugung gehören nicht ins Veröffentlichungspaket. -->
     <Content Remove="package.json;package-lock.json" />
     <None Include="package.json;tailwind.config.js;Styles\tailwind.css" />
+    <!-- Videos liegen außerhalb von wwwroot und werden über /medien/videos mit Range-Unterstützung ausgeliefert -->
+    <None Update="Medien\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!--
