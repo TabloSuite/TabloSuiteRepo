@@ -122,25 +122,23 @@ public partial class DataListPanel<TItem> : ComponentBase
 
     private static string ChipClass(bool isActive, string accent)
     {
-        var baseClass = "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition duration-200 ";
+        var baseClass = "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition duration-200 ";
         if (!isActive)
         {
-            return baseClass + "bg-slate-100 text-slate-600 hover:bg-slate-200";
+            return baseClass + "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900";
         }
 
         return baseClass + accent switch
         {
-            "amber" => "bg-amber-600 text-white shadow-md shadow-amber-200",
-            "rose" => "bg-rose-600 text-white shadow-md shadow-rose-200",
-            "emerald" => "bg-emerald-600 text-white shadow-md shadow-emerald-200",
-            "blue" => "bg-blue-600 text-white shadow-md shadow-blue-200",
-            "indigo" => "bg-indigo-600 text-white shadow-md shadow-indigo-200",
-            _ => "bg-slate-900 text-white shadow-md shadow-slate-200"
+            "amber" => "border-amber-300 bg-amber-50 text-amber-900",
+            "rose" => "border-rose-300 bg-rose-50 text-rose-800",
+            "emerald" => "border-emerald-300 bg-emerald-50 text-emerald-800",
+            _ => "border-blue-200 bg-blue-50 text-blue-800"
         };
     }
 
     private static string ChipCountClass(bool isActive)
-        => "rounded-full px-2 py-0.5 text-xs font-bold " + (isActive ? "bg-white/25 text-white" : "bg-white text-slate-700");
+        => "rounded-full px-2 py-0.5 text-xs font-bold tabular-nums " + (isActive ? "bg-white text-slate-800" : "bg-slate-100 text-slate-700");
 
 
     private int FilteredCount => FilteredItems.Count;

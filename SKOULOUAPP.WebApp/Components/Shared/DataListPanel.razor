@@ -1,36 +1,34 @@
 ﻿@typeparam TItem
 
 <div class="grid gap-4">
-    <div class="grid gap-4">
+    <div class="grid gap-3">
     @HeaderContent
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="relative min-w-0 flex-1">
-            <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.34-4.34m0 0A7.5 7.5 0 1 0 6.66 6.66a7.5 7.5 0 0 0 9.99 9.99Z" />
-            </svg>
+    <div class="flex flex-wrap items-center gap-3">
+        <label class="relative m-0 min-w-[14rem] flex-1">
+            <span class="sr-only">@SearchPlaceholder</span>
+            <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><Icon Name="search" Groesse="18" /></span>
             <input type="search"
                    value="@searchText"
                    @oninput="OnSearchChanged"
                    placeholder="@SearchPlaceholder"
-                   class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm text-slate-800 shadow-sm outline-none transition duration-200 focus:border-cyan-400 focus:shadow-md focus:ring-2 focus:ring-cyan-100" />
-        </div>
-        <div class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors duration-200">
+                   class="skoulou-input"
+                   style="padding-left: 2.6rem" />
+        </label>
+        @if (SortOptions is { Count: > 0 })
+        {
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-slate-500">Trier par</span>
+                <ModernDropdown TValue="string"
+                                ContainerClass="w-60 max-w-full"
+                                Options="sortDropdownOptions"
+                                Value="@(activeSortKey ?? SortOptions[0].Key)"
+                                ValueChanged="OnSortValueChanged" />
+            </div>
+        }
+        <span class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold tabular-nums text-slate-700">
             @FilteredCount @(FilteredCount == 1 ? ResultLabelSingular : ResultLabelPlural)
-        </div>
+        </span>
     </div>
-
-    @if (SortOptions is { Count: > 0 })
-    {
-        <div class="flex items-center gap-2">
-            <label class="text-xs font-semibold text-slate-500">Trier par</label>
-            <ModernDropdown TValue="string"
-                            ContainerClass="w-72 max-w-full"
-                            ButtonClass="rounded-full py-2"
-                            Options="sortDropdownOptions"
-                            Value="@(activeSortKey ?? SortOptions[0].Key)"
-                            ValueChanged="OnSortValueChanged" />
-        </div>
-    }
 
     @if (Chips is { Count: > 0 })
     {
@@ -55,7 +53,7 @@
 
     @if (FilteredCount == 0)
     {
-        <div class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+        <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
             @EmptyText
         </div>
     }
@@ -71,13 +69,13 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button"
-                            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:border-cyan-300 enabled:hover:text-cyan-700 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+                            class="sk-btn sk-btn-sm sk-btn-secondary"
                             disabled="@(CurrentPage == 0)"
                             @onclick="PreviousPage">
                         Précédent
                     </button>
                     <button type="button"
-                            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:border-cyan-300 enabled:hover:text-cyan-700 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+                            class="sk-btn sk-btn-sm sk-btn-secondary"
                             disabled="@(CurrentPage >= PageCount - 1)"
                             @onclick="NextPage">
                         Suivant

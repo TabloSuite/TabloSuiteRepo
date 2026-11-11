@@ -11,726 +11,611 @@
 @using SkoulouApp.WebApp.Components.Shared
 @using Microsoft.AspNetCore.Components.Forms
 
-<PageTitle>@(isKoordinator ? "Espace coordinateur" : "Espace directeur")</PageTitle>
+<PageTitle>@(isKoordinator ? "Coordination" : "Direction") · SKOULOU</PageTitle>
 
-<section class="flex flex-col gap-3">
-	<div class="skoulou-hero relative overflow-hidden rounded-[1.25rem] px-5 py-3 text-white shadow-lg sm:px-6 sm:py-4">
-		<div class="pointer-events-none absolute -top-16 -right-12 h-32 w-32 rounded-full bg-cyan-400/25 blur-3xl"></div>
-		<div class="relative flex flex-wrap items-center justify-between gap-3 pr-14">
-			<div class="min-w-0">
-				<p class="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-cyan-200">@(isProduktOwner ? "Établissements suivis" : "Direction de l'établissement")</p>
-				<h1 class="mt-1 text-xl font-bold leading-tight xl:text-2xl">Gestion des élèves, des classes et des abonnements</h1>
-				<p class="mt-1 hidden max-w-2xl text-sm text-slate-300 md:block">Validez les inscriptions, activez les accès des élèves et pilotez les classes, supports et examens de votre établissement.</p>
-			</div>
-		</div>
-	</div>
-
-	<Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
-	<QuittungHinweis @bind-ZahlungID="letzteQuittungID" />
-	<Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
-
-	<div class="director-sticky-band">
-		<div class="flex flex-wrap items-center gap-x-4 gap-y-2 pr-14 sm:pr-16">
-			@if (HasMultipleSchools)
-			{
-				<div class="w-full min-w-[14rem] sm:w-72">
-					<ModernDropdown TValue="string" Value="schoolFilterName" ValueChanged="SelectSchoolFilterAsync" Options="SchoolFilterOptions" Placeholder="Choisir une école" />
-				</div>
-				@if (schoolFilterName is not null && SelectedSchoolForManagement is { } selectedSchool)
-				{
-					<button type="button"
-							class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
-							@onclick="() => OpenEditSchoolAsync(selectedSchool.SchoolId)">
-						<Icon Name="edit" Groesse="16" /> Modifier école
-					</button>
-				}
-			}
-			else
-			{
-				@foreach (var school in schools)
-				{
-					<span class="text-sm font-bold text-slate-900">@school.SchoolName <span class="font-normal text-slate-500">· @school.City</span></span>
-					<button type="button"
-							class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
-							@onclick="() => OpenEditSchoolAsync(school.SchoolId)">
-						<Icon Name="edit" Groesse="16" /> Modifier école
-					</button>
-				}
-			}
-			<div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-				<span class="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">@ActiveStudentCount élèves</span>
-				<span class="rounded-full bg-rose-50 px-3 py-1 text-rose-700">@ActivePendingCount en attente</span>
-				@if (HasMultipleSchools)
-				{
-					<span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">@schools.Count écoles</span>
-				}
-			</div>
-		</div>
-		<div class="mt-2">
-        <div class="school-page-tabs" role="tablist" aria-label="Navigation direction">
-            <button type="button"
-                    role="tab"
-                    aria-selected="@IsDirectorTabActive(DirectorTabSubjects)"
-                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabSubjects)"
-                    @onclick="() => SetDirectorTab(DirectorTabSubjects)">
-                Matières
-            </button>
-            <button type="button"
-                    role="tab"
-                    aria-selected="@IsDirectorTabActive(DirectorTabClasses)"
-                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabClasses)"
-                    @onclick="() => SetDirectorTab(DirectorTabClasses)">
-                Classes
-            </button>
-            <button type="button"
-                    role="tab"
-                    aria-selected="@IsDirectorTabActive(DirectorTabUsers)"
-                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabUsers)"
-                    @onclick="() => SetDirectorTab(DirectorTabUsers)">
-                Utilisateurs
-            </button>
-            <button type="button"
-                    role="tab"
-                    aria-selected="@IsDirectorTabActive(DirectorTabReassign)"
-                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabReassign)"
-                    @onclick="() => SetDirectorTab(DirectorTabReassign)">
-                Réattribution
-            </button>
-            <button type="button"
-                    role="tab"
-                    aria-selected="@IsDirectorTabActive(DirectorTabImport)"
-                    class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabImport)"
-                    @onclick="() => SetDirectorTab(DirectorTabImport)">
-                Import
-            </button>
-            @if (canViewSharedTeacherContent)
+<div class="mx-auto grid max-w-6xl gap-5">
+    <SeitenKopf Rubrik="@DirectorRubrik" Titel="Élèves, classes et équipe" IconName="school" Untertitel="@DirectorUntertitel">
+        @if (!HasMultipleSchools)
+        {
+            @foreach (var school in schools)
             {
-                <button type="button"
-                        role="tab"
-                        aria-selected="@IsDirectorTabActive(DirectorTabShared)"
-                        class="rounded-2xl border px-4 py-2 text-xs font-bold transition sm:text-sm @GetDirectorTabButtonClass(DirectorTabShared)"
-                        @onclick="() => SetDirectorTab(DirectorTabShared)">
-                    Contenus partagés
-                </button>
+                <button type="button" class="sk-btn sk-btn-hero" @onclick="() => OpenEditSchoolAsync(school.SchoolId)"><Icon Name="settings" Groesse="16" />Modifier l'établissement</button>
             }
-        </div>
-        </div>
-    </div>
+        }
+        else if (schoolFilterName is not null && SelectedSchoolForManagement is { } selectedSchool)
+        {
+            <button type="button" class="sk-btn sk-btn-hero" @onclick="() => OpenEditSchoolAsync(selectedSchool.SchoolId)"><Icon Name="settings" Groesse="16" />Modifier l'établissement</button>
+        }
+    </SeitenKopf>
 
-    @if (IsDirectorTabActive(DirectorTabSubjects))
+    <Toast Message="@message" MessageChanged="v => message = v" Kind="Toast.ToastKind.Success" />
+    <QuittungHinweis @bind-ZahlungID="letzteQuittungID" />
+    <Toast Message="@errorMessage" MessageChanged="v => errorMessage = v" Kind="Toast.ToastKind.Error" />
+    <Toast Message="@userStatusMessage" MessageChanged="v => userStatusMessage = v" Kind="Toast.ToastKind.Success" />
+    <Toast Message="@userErrorMessage" MessageChanged="v => userErrorMessage = v" Kind="Toast.ToastKind.Error" />
+    <Toast Message="@(klasseModalOpen ? null : klasseStatusMessage)" MessageChanged="v => klasseStatusMessage = v" Kind="Toast.ToastKind.Success" />
+    <Toast Message="@(klasseModalOpen ? null : klasseErrorMessage)" MessageChanged="v => klasseErrorMessage = v" Kind="Toast.ToastKind.Error" />
+
+    @if (HasMultipleSchools)
     {
-    <CollapsibleCard Title="Matières de l'école"
-                     Eyebrow="Gestion des matières"
-                     Subtitle="Gestion scolaire des matières. Elles seront disponibles dans le formulaire enseignant."
-                     Icon="book"
-                     Accent="indigo"
-                     Expanded="fachVerwaltungExpanded"
-                     ExpandedChanged="value => fachVerwaltungExpanded = value">
-        <ChildContent>
-
-        @if (!string.IsNullOrWhiteSpace(fachVerwaltungErrorMessage))
-        {
-            <div class="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">@fachVerwaltungErrorMessage</div>
-        }
-        @if (!string.IsNullOrWhiteSpace(fachVerwaltungStatusMessage))
-        {
-            <div class="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">@fachVerwaltungStatusMessage</div>
-        }
-
-        <div class="mt-3 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900 ring-1 ring-indigo-100">
-            @if (SelectedSchoolForManagement is null)
-            {
-                <span>Sélectionnez une école en haut de la page pour gérer les matières.</span>
-            }
-            else
-            {
-                <span>École active : @SelectedSchoolForManagement.SchoolName</span>
-            }
-        </div>
-
-        <div class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <div>
-                <label class="skoulou-label">Recherche matière</label>
-                <input @bind="fachSuchbegriff" @bind:event="oninput" class="skoulou-input" placeholder="Rechercher une matière" />
+        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div class="w-full sm:w-80">
+                <ModernDropdown TValue="string" Value="schoolFilterName" ValueChanged="SelectSchoolFilterAsync" Options="SchoolFilterOptions" Placeholder="Choisir une école" />
             </div>
-            <div>
-                <label class="skoulou-label">Nouvelle matière</label>
-                <input @bind="neueSchulFachBezeichnung" @bind:event="oninput" class="skoulou-input" disabled="@isDatabaseActionInProgress" />
-            </div>
-            <AsyncActionButton Class="rounded-full bg-indigo-700 px-4 py-2 text-sm font-semibold text-white"
-                               Disabled="@(!CanAddSchoolFach)"
-                               IsBusy="@isDatabaseActionInProgress"
-                               BusyLabel="Ajout..."
-                               OnClick="@(_ => AddSchoolFachAsync())">
-                Ajouter
-            </AsyncActionButton>
+            <span class="text-sm text-slate-500"><strong class="text-slate-800">@schools.Count</strong> écoles · <strong class="text-slate-800">@ActiveStudentCount</strong> élèves · <strong class="text-slate-800">@ActivePendingCount</strong> en attente</span>
         </div>
+    }
 
-        @if (SelectedSchoolForManagement is null)
+    <Reiter Eintraege="DirectorReiter" Aktiv="@activeDirectorTab" AktivChanged="SetDirectorTab" AriaLabel="Navigation direction" />
+
+    @if (IsDirectorTabActive(DirectorTabStudents))
+    {
+        @if (ActivePendingCount > 0)
         {
-            <p class="mt-4 text-xs text-slate-500">La liste des matières s'affiche après sélection d'une école.</p>
+            <p class="mb-0 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+                <Icon Name="bell" Groesse="18" /><span><strong>@ActivePendingCount inscription(s)</strong> attendent votre validation. Filtrez avec « À valider » ci-dessous, puis « Valider » ou « Supprimer l'inscription ».</span>
+            </p>
         }
-        else if (GefilterteSchoolFachOptions.Count == 0)
-        {
-            <p class="mt-4 text-xs text-slate-500">Aucune matière pour la sélection actuelle.</p>
-        }
-        else
-        {
-            <p class="mb-0 mt-4 text-xs text-slate-500">Le groupe sert aux bilans du bulletin (Bilan lettres, Bilan sciences, Bilan autres).</p>
-            <div class="mt-2 max-h-[22rem] overflow-y-auto">
-                <div class="grid gap-2 sm:grid-cols-2">
-                @foreach (var fach in GefilterteSchoolFachOptions)
-                {
-                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
-                        <span class="min-w-0 flex-1 text-sm font-semibold text-slate-700">@fach.Name</span>
-                        <ModernDropdown TValue="string" ContainerClass="w-36" ButtonClass="py-1.5 text-xs" Value="@(fach.Gruppe ?? "")" ValueChanged="g => FachGruppeAsync(fach, g)" Options="FachGruppenOptionen" />
-                        <button type="button"
-                                class="rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                disabled="@fach.IstLehrerZugewiesen"
-                                title="@(fach.IstLehrerZugewiesen ? "Attribuée à un enseignant" : $"Supprimer {fach.Name}")"
-                                @onclick="() => AskDeleteSchoolFach(fach)">
-                            Supprimer
-                        </button>
-                    </div>
-                }
+
+        <Abschnitt Titel="Élèves" Untertitel="Validez les inscriptions, gérez les accès, les classes et la scolarité de chaque élève." IconName="graduation">
+            <Aktionen>
+                <button type="button" class="sk-btn sk-btn-secondary" @onclick="() => SetDirectorTab(DirectorTabImport)"><Icon Name="upload" Groesse="16" />Importer</button>
+                <button type="button" class="sk-btn sk-btn-primary" @onclick="OpenNewStudentModalAsync"><Icon Name="user-plus" Groesse="16" />Ajouter un élève</button>
+            </Aktionen>
+            <ChildContent>
+                <div class="grid gap-4">
+                    @if (schoolKlassen.Count > 1)
+                    {
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <ModernDropdown TValue="Guid?" Label="Classe de référence" Value="studentKlassenStufeFilterId" ValueChanged="SetStudentKlassenStufeFilterAsync" Options="StudentKlassenStufeFilterOptions" />
+                            <ModernDropdown TValue="Guid?" Label="Classe" Value="studentKlasseFilterId" ValueChanged="SetStudentKlasseFilterAsync" Options="StudentKlasseFilterOptionsModern" />
+                        </div>
+                    }
+
+                    @if (ArchivableFilteredStudents.Count > 0)
+                    {
+                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+                            <label class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <input type="checkbox"
+                                       class="h-4 w-4 rounded border-slate-300"
+                                       checked="@AreAllFilteredStudentsSelectedForArchive"
+                                       @onchange="args => ToggleSelectAllFilteredStudentsForArchiveAsync(args.Value as bool? == true)" />
+                                Tout sélectionner pour l'archivage
+                                <span class="font-normal text-slate-500">(@ArchivableFilteredStudents.Count élève(s) sans classe active)</span>
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-semibold text-slate-500">@ArchiveSelectedCount sélectionné(s)</span>
+                                <AsyncActionButton Class="sk-btn sk-btn-sm sk-btn-secondary"
+                                                   IsBusy="@isDatabaseActionInProgress"
+                                                   BusyLabel="Archivage..."
+                                                   Disabled="@(!CanArchiveSelectedStudents)"
+                                                   OnClick="ArchiveSelectedStudentsAsync">
+                                    <Icon Name="package" Groesse="14" />Archiver la sélection
+                                </AsyncActionButton>
+                            </div>
+                        </div>
+                    }
+
+                    @if (FilteredStudents.Count == 0)
+                    {
+                        <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                            Aucun élève pour le moment. Ajoutez un élève ou importez une liste depuis Excel.
+                        </div>
+                    }
+                    else
+                    {
+                        <DataListPanel Items="FilteredStudents"
+                                       PageSize="10"
+                                       SearchPlaceholder="Rechercher un élève, une classe…"
+                                       EmptyText="Aucun élève trouvé."
+                                       ResultLabelSingular="élève"
+                                       ResultLabelPlural="élèves"
+                                       SortOptions="studentSortOptions"
+                                       Chips="studentChips"
+                                       Filter="@((StudentApprovalItem s, string term) => Contains(s.FullName, term) || Contains(s.Email, term) || Contains(s.SchoolName, term) || Contains(s.CurrentLevelCode, term) || Contains(s.CurrentKlasseName, term))">
+                            <ul class="m-0 grid list-none gap-2 p-0">
+                                @foreach (var student in context)
+                                {
+                                    var offen = expandedStudentId == student.UserId;
+                                    <li class="rounded-2xl border p-3 sm:p-4 @(student.IsBlocked ? "border-amber-200 bg-amber-50/50" : "border-slate-200 bg-white")" @key="student.UserId">
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            @if (IsStudentArchivable(student))
+                                            {
+                                                <input type="checkbox"
+                                                       class="h-4 w-4 shrink-0 rounded border-slate-300"
+                                                       aria-label="@($"Sélectionner {student.FullName} pour l'archivage")"
+                                                       title="Sélectionner pour l'archivage"
+                                                       checked="@IsStudentSelectedForArchive(student.UserId)"
+                                                       @onchange="args => ToggleArchiveStudentAsync(student.UserId, args.Value as bool? == true)" />
+                                            }
+                                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 text-sm font-bold text-blue-700" aria-hidden="true">@Initialen(student.FullName)</span>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <p class="mb-0 font-bold text-slate-900">@student.FullName</p>
+                                                    @if (student.IsBlocked)
+                                                    {
+                                                        <Badge Accent="amber">@(student.IsSelfRegistered ? "Inscription à valider" : "Accès bloqué")</Badge>
+                                                    }
+                                                    else if (!student.CurrentKlasseId.HasValue)
+                                                    {
+                                                        <Badge Accent="rose">Classe à attribuer</Badge>
+                                                    }
+                                                </div>
+                                                <p class="mb-0 mt-0.5 text-sm text-slate-500">
+                                                    @if (student.CurrentKlasseId.HasValue)
+                                                    {
+                                                        <span>Classe @student.CurrentLevelCode@if (!string.IsNullOrWhiteSpace(student.CurrentKlasseName) && student.CurrentKlasseName != student.CurrentLevelCode) { <text> · @student.CurrentKlasseName</text> }</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Sans classe active</span>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(student.Email))
+                                                    {
+                                                        <span> · @student.Email</span>
+                                                    }
+                                                    @if (HasMultipleSchools)
+                                                    {
+                                                        <span> · @student.SchoolName</span>
+                                                    }
+                                                </p>
+                                                <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                                                    @if (student.HasSchoolFeeInfo)
+                                                    {
+                                                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold @(student.IsSchoolFeeFullyPaid ? "bg-emerald-50 text-emerald-800" : student.SchoolFeePaidAmount > 0m ? "bg-blue-50 text-blue-800" : "bg-amber-50 text-amber-800")">
+                                                            <Icon Name="wallet" Groesse="14" />@GetSchoolFeeHeaderLabel(student.SchoolFeePaidAmount, student.SchoolFeeAmount, student.HasActiveSchoolFeeCycle)
+                                                        </span>
+                                                    }
+                                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+                                                        <Icon Name="chart" Groesse="14" />Exercices et examens :
+                                                        @if (student.CombinedScorePercent.HasValue)
+                                                        {
+                                                            <span class="font-extrabold" style="color:@ScoreColorHelper.GetScoreColor(student.CombinedScorePercent.Value)">@student.CombinedScorePercent %</span>
+                                                            <span class="font-normal text-slate-400">(@student.CombinedScoreCount)</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-slate-400">–</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                @if (student.IsBlocked)
+                                                {
+                                                    <button type="button" class="sk-btn sk-btn-sm sk-btn-success" @onclick="() => SetBlockedAsync(student.UserId, false)"><Icon Name="check" Groesse="14" />Valider</button>
+                                                    @if (student.IsSelfRegistered)
+                                                    {
+                                                        <button type="button" class="sk-btn sk-btn-sm sk-btn-danger" @onclick="() => DeletePendingStudentAsync(student.UserId)">Supprimer l'inscription</button>
+                                                    }
+                                                }
+                                                <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenEditStudentPersonalAsync(student.UserId)"><Icon Name="edit" Groesse="14" />Modifier</button>
+                                                <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" aria-expanded="@(offen ? "true" : "false")" @onclick="() => ToggleLevelPanelAsync(student.UserId)">
+                                                    Classes et abonnement<Icon Name="chevron-down" Groesse="14" CssClass="@(offen ? "rotate-180 transition-transform" : "transition-transform")" />
+                                                </button>
+                                                @if (!student.IsBlocked)
+                                                {
+                                                    <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" title="Bloquer l'accès de l'élève" @onclick="() => SetBlockedAsync(student.UserId, true)"><Icon Name="lock" Groesse="14" />Bloquer</button>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        @if (offen)
+                                        {
+                                            <div class="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+                                                @foreach (var level in levelEnrollments)
+                                                {
+                                                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-2.5 @(level.IsCurrentKlasse ? "bg-blue-50 ring-1 ring-inset ring-blue-100" : "bg-slate-50")">
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <span class="font-semibold text-slate-800">@level.CourseCode</span>
+                                                            <span class="text-sm text-slate-500">@level.CourseTitle</span>
+                                                            @if (level.IsCurrentKlasse)
+                                                            {
+                                                                <Badge Accent="blue">Classe actuelle</Badge>
+                                                            }
+                                                        </div>
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            @if (level.AutomatischeZyklusabrechnung)
+                                                            {
+                                                                <Badge Accent="cyan">Facturation automatique par cycle</Badge>
+                                                                <span class="text-xs text-slate-600">Aucun paiement individuel requis pour l'accès.</span>
+                                                            }
+                                                            else if (level.IsUnlocked)
+                                                            {
+                                                                <Badge Accent="cyan">Abonnement SKOULOU</Badge>
+                                                                <Badge Accent="slate">@level.AboPreis.ToString("N0", Fr) FCFA</Badge>
+                                                            }
+
+                                                            @if (!level.AutomatischeZyklusabrechnung && level.IsPaid)
+                                                            {
+                                                                <Badge Accent="emerald">Paiement effectué</Badge>
+                                                            }
+
+                                                            @if (level.IsCurrentKlasse && level.HasActiveClassCycle)
+                                                            {
+                                                                <Badge Accent="emerald">Cycle en cours</Badge>
+                                                            }
+                                                            else if (level.IsClassCycleClosed)
+                                                            {
+                                                                <Badge Accent="slate">Cycle clôturé</Badge>
+                                                            }
+                                                            else if (level.IsCurrentKlasse && !level.HasActiveClassCycle)
+                                                            {
+                                                                <Badge Accent="amber">Cycle non démarré</Badge>
+                                                            }
+
+                                                            @if (level.CanAssignOrUpgradeAbo)
+                                                            {
+                                                                <button type="button" class="sk-btn sk-btn-sm sk-btn-primary" @onclick="() => OpenAboModal(student, level)">Gérer l'abonnement</button>
+                                                            }
+
+                                                            @if (!level.AutomatischeZyklusabrechnung && !level.IsCurrentKlasse && !level.IsUnlocked)
+                                                            {
+                                                                <span class="text-xs font-medium text-slate-400">Aucun abonnement</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </DataListPanel>
+                    }
                 </div>
-            </div>
-        }
-        </ChildContent>
-    </CollapsibleCard>
+            </ChildContent>
+        </Abschnitt>
     }
 
     @if (IsDirectorTabActive(DirectorTabClasses))
     {
-    <CollapsibleCard Title="Classes de mon école"
-                      Eyebrow="Gestion des classes"
-                      Subtitle="Créez et gérez uniquement les classes propres à votre école."
-                     Icon="school"
-                     Accent="violet"
-                     Expanded="klassenExpanded"
-                     ExpandedChanged="value => klassenExpanded = value">
-        <HeaderRight>
-            <button type="button"
-                    class="skoulou-btn-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled="@(SelectedKlasseSchoolId is null)"
-                    @onclick="OpenNewKlasseModal">
-                <Icon Name="plus" Groesse="16" /> Nouvelle classe
-            </button>
-        </HeaderRight>
-        <ChildContent>
-            <Toast Message="@(klasseModalOpen ? null : klasseStatusMessage)" MessageChanged="v => klasseStatusMessage = v" Kind="Toast.ToastKind.Success" />
-            <Toast Message="@(klasseModalOpen ? null : klasseErrorMessage)" MessageChanged="v => klasseErrorMessage = v" Kind="Toast.ToastKind.Error" />
-            @if (!klasseModalOpen && !string.IsNullOrEmpty(klasseWarnMessage))
-            {
-                <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">@klasseWarnMessage</div>
-            }
-
-            @if (SelectedKlasseSchoolId is null)
-            {
-                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour gérer ses classes.</p>
-            }
-            else
-            {
-                <div class="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
-                    <h3 class="font-bold text-slate-900">Mentions de fin de cycle</h3>
-                    <p class="mt-1 text-sm text-slate-600">Définissez les mentions de l'école une seule fois. Les mentions déjà enregistrées pour les élèves restent inchangées si cette liste évolue.</p>
-                    @if (!string.IsNullOrWhiteSpace(mentionError)) { <p class="mt-2 text-sm text-rose-700">@mentionError</p> }
-                    @if (!string.IsNullOrWhiteSpace(mentionMessage)) { <p class="mt-2 text-sm text-emerald-700">@mentionMessage</p> }
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        <input class="skoulou-input min-w-0 flex-1" maxlength="80" aria-label="Texte de la mention" placeholder="Ex. Très bien" @bind="mentionText" />
-                        <button type="button" class="skoulou-btn-accent rounded-full px-4 py-2 text-sm font-semibold" @onclick="SaveMentionAsync">@(mentionEditId.HasValue ? "Modifier" : "Ajouter")</button>
-                        @if (mentionEditId.HasValue)
-                        {
-                            <button type="button" class="rounded-full bg-white px-4 py-2 text-sm font-semibold" @onclick="() => { mentionEditId = null; mentionText = string.Empty; }">Annuler</button>
-                        }
-                    </div>
-                    <ul class="mt-3 flex flex-wrap gap-2">
-                        @foreach (var mention in schulMentions)
-                        {
-                            <li class="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm ring-1 ring-slate-200" @key="mention.Id">
-                                <span>@mention.Text</span>
-                                <button type="button" class="px-2 font-semibold text-indigo-700" aria-label="Modifier @mention.Text" @onclick="() => EditMention(mention)">Modifier</button>
-                                <button type="button" class="px-2 font-semibold text-rose-700" aria-label="Supprimer @mention.Text" @onclick="() => DeleteMentionAsync(mention.Id)" @onclick:stopPropagation="true">Supprimer</button>
-                            </li>
-                        }
-                    </ul>
-                </div>
-                <div class="mb-5 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="font-bold text-slate-900">@schoolKlassen.Count classe(s)</p>
-                    </div>
-                </div>
-
-                @if (schoolKlassen.Count == 0)
+        <Abschnitt Titel="Classes" Untertitel="Créez vos classes, démarrez et clôturez les cycles, suivez l'occupation." IconName="layers">
+            <Aktionen>
+                <button type="button" class="sk-btn sk-btn-primary" disabled="@(SelectedKlasseSchoolId is null)" @onclick="OpenNewKlasseModal"><Icon Name="plus" Groesse="16" />Nouvelle classe</button>
+            </Aktionen>
+            <ChildContent>
+                @if (!klasseModalOpen && !string.IsNullOrEmpty(klasseWarnMessage))
                 {
-                    <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Aucune classe propre pour le moment.</p>
+                    <p class="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><Icon Name="alert" Groesse="18" /><span>@klasseWarnMessage</span></p>
+                }
+
+                @if (SelectedKlasseSchoolId is null)
+                {
+                    <p class="mb-0 rounded-xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour gérer ses classes.</p>
+                }
+                else if (schoolKlassen.Count == 0)
+                {
+                    <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                        Aucune classe pour le moment. Créez la première avec « Nouvelle classe ».
+                    </div>
                 }
                 else
                 {
-                    <div class="mb-5 grid gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 sm:grid-cols-2">
-                        <div>
-                            <ModernDropdown TValue="string" Label="Statut des cycles" Value="durchlaufStatusFilter" ValueChanged="SetDurchlaufStatusFilterAsync" Options="DurchlaufStatusOptions" />
-                        </div>
+                    <div class="mb-4 grid gap-3 sm:grid-cols-2">
+                        <ModernDropdown TValue="string" Label="Statut des cycles" Value="durchlaufStatusFilter" ValueChanged="SetDurchlaufStatusFilterAsync" Options="DurchlaufStatusOptions" />
                         <ModernDropdown TValue="Guid?" Label="Nom de référence" Value="klassenStufeFilterId" ValueChanged="SetKlassenStufeFilterAsync" Options="KlassenStufeFilterOptions" />
                     </div>
                     @if (GefilterteKlassen.Count == 0)
                     {
-                        <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Aucune classe ne correspond aux filtres sélectionnés.</p>
+                        <p class="mb-0 rounded-xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Aucune classe ne correspond aux filtres sélectionnés.</p>
                     }
                     else
                     {
-                    <div class="grid gap-3">
-                        @foreach (var klasse in GefilterteKlassen)
-                        {
-                            <article class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 p-4">
-                                <div>
-                                    <p class="font-bold text-slate-900">@klasse.Title</p>
-                                    <p class="mt-1 text-sm text-slate-500">
-                                        @klasse.Price FCFA
-                                        @if (!string.IsNullOrWhiteSpace(klasse.ReferenceName))
-                                        {
-                                            <span> · Réf. @klasse.ReferenceName</span>
-                                        }
-                                    </p>
-                                    <div class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
-                                            <span class="text-slate-600">Occupation</span>
-                                            @if (klasse.MaxPlaetze.HasValue)
+                        <div class="grid gap-3 lg:grid-cols-2">
+                            @foreach (var klasse in GefilterteKlassen)
+                            {
+                                SkoulouApp.Core.Services.DurchlaufUebersicht? durchlauf = null;
+                                var hatDurchlauf = klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out durchlauf);
+                                var zyklusAktiv = hatDurchlauf && durchlauf!.IstAktiv;
+                                <article class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4" @key="klasse.CourseId">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <p class="mb-0 text-base font-bold text-slate-900">@klasse.Title</p>
+                                            <p class="mb-0 mt-0.5 text-sm text-slate-500">@KlassenMeta(klasse)</p>
+                                        </div>
+                                        <div class="flex shrink-0 items-center gap-1">
+                                            @if (zyklusAktiv)
                                             {
-                                                <span class="@(IsKlasseOverbooked(klasse) ? "text-rose-700" : "text-slate-700")">@klasse.CurrentStudentCount / @klasse.MaxPlaetze.Value élève(s)</span>
+                                                <Badge Accent="emerald">Cycle en cours</Badge>
+                                            }
+                                            else if (hatDurchlauf)
+                                            {
+                                                <Badge Accent="slate">Cycle clôturé</Badge>
                                             }
                                             else
                                             {
-                                                <span class="text-slate-500">@klasse.CurrentStudentCount élève(s) · capacité libre</span>
+                                                <Badge Accent="amber">Aucun cycle</Badge>
+                                            }
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost px-2" aria-label="@($"Modifier la classe {klasse.Title}")" title="Modifier la classe" @onclick="() => OpenEditKlasseModal(klasse)"><Icon Name="edit" Groesse="16" /></button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+                                            <span class="text-slate-500">Occupation</span>
+                                            @if (klasse.MaxPlaetze.HasValue)
+                                            {
+                                                <span class="tabular-nums @(IsKlasseOverbooked(klasse) ? "text-rose-700" : "text-slate-700")">@klasse.CurrentStudentCount / @klasse.MaxPlaetze.Value élève(s)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-slate-700">@klasse.CurrentStudentCount élève(s) · capacité libre</span>
                                             }
                                         </div>
                                         @if (klasse.MaxPlaetze.HasValue)
                                         {
-                                            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                                                <div class="h-full @GetOccupancyBarClass(klasse)" style="@($"width:{GetOccupancyPercent(klasse)}%")"></div>
+                                            <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                                                <div class="h-full rounded-full @GetOccupancyBarClass(klasse)" style="@($"width:{GetOccupancyPercent(klasse)}%")"></div>
                                             </div>
                                             @if (IsKlasseOverbooked(klasse))
                                             {
-                                                <p class="mt-2 text-xs font-semibold text-rose-700">Sur-occupation autorisée : +@(klasse.CurrentStudentCount - klasse.MaxPlaetze.Value) élève(s) au-dessus de la capacité.</p>
+                                                <p class="mb-0 mt-1.5 text-xs font-semibold text-rose-700">Sur-occupation autorisée : +@(klasse.CurrentStudentCount - klasse.MaxPlaetze.Value) élève(s) au-dessus de la capacité.</p>
                                             }
                                             else if (GetRemainingPlaetze(klasse) is int reste)
                                             {
-                                                <p class="mt-2 text-xs text-slate-500">Places restantes : @reste</p>
+                                                <p class="mb-0 mt-1.5 text-xs text-slate-500">Places restantes : @reste</p>
                                             }
                                         }
                                     </div>
-                                    @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var durchlauf))
-                                    {
-                                        @if (durchlauf.IstAktiv)
-                                        {
-                                            <p class="mt-2 text-xs font-semibold text-emerald-700">Cycle actif depuis le @durchlauf.StartDatum.ToString("dd.MM.yyyy") · @durchlauf.NiveauPreis:N0 FCFA</p>
-                                        }
-                                        else
-                                        {
-                                            <p class="mt-2 text-xs font-semibold text-slate-500">Dernier cycle : @durchlauf.StartDatum.ToString("dd.MM.yyyy") – @durchlauf.EndDatum?.ToString("dd.MM.yyyy")</p>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <p class="mt-2 text-xs font-semibold text-amber-700">Aucun cycle démarré</p>
-                                    }
-                                </div>
 
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <button type="button" class="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700" @onclick="() => OpenNewStudentForKlasseAsync(klasse)">Ajouter élève</button>
-                                    @if (darfCycleZahlungenVerwalten && klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var aktuellerDurchlauf) && aktuellerDurchlauf.IstAktiv)
+                                    @if (hatDurchlauf)
                                     {
-                                        <button type="button" class="rounded-full bg-indigo-700 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-800" @onclick="() => OpenAbschlussNoten(aktuellerDurchlauf.DurchlaufID)">Définir les notes finales</button>
-                                        <button type="button" class="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700" @onclick="() => OpenDurchlaufEndeModal(aktuellerDurchlauf)">Clôturer le cycle</button>
+                                        <p class="mb-0 flex items-center gap-1.5 text-xs text-slate-600">
+                                            <Icon Name="calendar" Groesse="14" />
+                                            @if (zyklusAktiv)
+                                            {
+                                                <span>Depuis le @durchlauf!.StartDatum.ToString("dd.MM.yyyy") · <strong class="tabular-nums text-slate-800">@durchlauf.NiveauPreis.ToString("N0", Fr) FCFA</strong></span>
+                                            }
+                                            else
+                                            {
+                                                <span>Dernier cycle : @durchlauf!.StartDatum.ToString("dd.MM.yyyy") – @durchlauf.EndDatum?.ToString("dd.MM.yyyy")</span>
+                                            }
+                                        </p>
                                     }
-                                    else if (darfCycleZahlungenVerwalten && (!klasse.CourseId.HasValue || !durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var laufenderDurchlauf) || !laufenderDurchlauf.IstAktiv))
-                                    {
-                                        @if (klasse.CourseId.HasValue && durchlaeufeNachKlasse.TryGetValue(klasse.CourseId.Value, out var letzterDurchlauf))
+
+                                    <div class="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                                        <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenNewStudentForKlasseAsync(klasse)"><Icon Name="user-plus" Groesse="14" />Ajouter un élève</button>
+                                        @if (darfCycleZahlungenVerwalten && zyklusAktiv)
                                         {
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenAbschlussNoten(durchlauf!.DurchlaufID)"><Icon Name="clipboard-check" Groesse="14" />Notes finales</button>
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-danger" @onclick="() => OpenDurchlaufEndeModal(durchlauf!)">Clôturer le cycle</button>
                                         }
-                                        <button type="button" class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700" @onclick="() => OpenDurchlaufStartModalAsync(klasse)">Démarrer le cycle</button>
-                                    }
-                                    <button type="button" class="rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" @onclick="() => OpenEditKlasseModal(klasse)">Modifier</button>
-                                </div>
-                            </article>
-                        }
-                    </div>
+                                        else if (darfCycleZahlungenVerwalten)
+                                        {
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-success" @onclick="() => OpenDurchlaufStartModalAsync(klasse)"><Icon Name="calendar" Groesse="14" />Démarrer le cycle</button>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
                     }
                 }
-            }
-        </ChildContent>
-    </CollapsibleCard>
+            </ChildContent>
+        </Abschnitt>
+
+        @if (SelectedKlasseSchoolId is not null)
+        {
+            <Abschnitt Titel="Mentions de fin de cycle" Untertitel="Définissez les mentions de l'établissement une seule fois. Les mentions déjà attribuées aux élèves restent inchangées si la liste évolue." IconName="star">
+                @if (!string.IsNullOrWhiteSpace(mentionError)) { <p class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">@mentionError</p> }
+                @if (!string.IsNullOrWhiteSpace(mentionMessage)) { <p class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800">@mentionMessage</p> }
+                <div class="flex flex-wrap gap-2">
+                    <input class="skoulou-input min-w-0 flex-1" maxlength="80" aria-label="Texte de la mention" placeholder="Ex. Très bien" @bind="mentionText" />
+                    <button type="button" class="sk-btn sk-btn-primary min-h-[2.75rem]" @onclick="SaveMentionAsync">@(mentionEditId.HasValue ? "Enregistrer" : "Ajouter")</button>
+                    @if (mentionEditId.HasValue)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost min-h-[2.75rem]" @onclick="() => { mentionEditId = null; mentionText = string.Empty; }">Annuler</button>
+                    }
+                </div>
+                @if (schulMentions.Count == 0)
+                {
+                    <p class="mb-0 mt-3 text-sm text-slate-500">Aucune mention pour le moment. Exemples : Passable, Assez bien, Bien, Très bien.</p>
+                }
+                else
+                {
+                    <ul class="mb-0 mt-3 flex list-none flex-wrap gap-2 p-0">
+                        @foreach (var mention in schulMentions)
+                        {
+                            <li class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1 text-sm text-slate-800" @key="mention.Id">
+                                <span class="font-semibold">@mention.Text</span>
+                                <button type="button" class="rounded-full px-2 py-0.5 text-xs font-semibold text-blue-700 hover:bg-blue-50" aria-label="Modifier @mention.Text" @onclick="() => EditMention(mention)">Modifier</button>
+                                <button type="button" class="rounded-full px-2 py-0.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" aria-label="Supprimer @mention.Text" @onclick="() => DeleteMentionAsync(mention.Id)" @onclick:stopPropagation="true">Supprimer</button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </Abschnitt>
+        }
     }
 
     @if (IsDirectorTabActive(DirectorTabUsers))
     {
-    <CollapsibleCard Title="@SchoolUsersCardTitle"
-                 Eyebrow="Gestion des utilisateurs"
-                 Icon="users"
-                 Accent="cyan"
-                 Expanded="usersExpanded"
-                 ExpandedChanged="v => usersExpanded = v">
-    <HeaderRight>
-        <button type="button"
-                class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg"
-                @onclick="OpenNewUserModalAsync">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Nouvel utilisateur
-        </button>
-    </HeaderRight>
-    <ChildContent>
-    <Toast Message="@userStatusMessage" MessageChanged="v => userStatusMessage = v" Kind="Toast.ToastKind.Success" />
-    <Toast Message="@userErrorMessage" MessageChanged="v => userErrorMessage = v" Kind="Toast.ToastKind.Error" />
-
-    @if (FilteredSchoolUsersOhneSchueler.Count == 0)
-    {
-        <p class="mt-6 text-sm text-slate-600">@EmptySchoolUsersText</p>
-    }
-    else
-    {
-        <div class="mt-6">
-            <DataListPanel Items="FilteredSchoolUsersOhneSchueler"
-                           PageSize="10"
-                           SearchPlaceholder="Rechercher un utilisateur..."
-                           EmptyText="Aucun utilisateur trouvé."
-                           ResultLabelSingular="utilisateur"
-                           ResultLabelPlural="utilisateurs"
-                           Chips="schoolUserChips"
-                           Filter="@((SchoolUserItem u, string term) => Contains(u.FullName, term) || Contains(u.Email, term) || Contains(GetRoleLabel(u.RoleName), term))">
-                <div class="grid gap-4">
-                    @foreach (var user in context)
-                    {
-                        var studentInfo = user.RoleName == "Schüler"
-                            ? students.FirstOrDefault(s => s.UserId == user.UserId)
-                            : null;
-                        <article class="rounded-2xl border border-slate-200 @(user.RoleName == "Schüler" ? "p-3" : "p-5") transition duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md">
-                            <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <h3 class="text-lg font-bold text-slate-900">@user.FullName</h3>
-                                    <p class="mt-1 text-sm text-slate-500">@user.Email</p>
-                                    @if (studentInfo is not null)
-                                    {
-                                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
-                                            <span class="inline-flex items-center rounded-full bg-cyan-50 px-3 py-1 font-semibold text-cyan-800 ring-1 ring-cyan-100">
-                                                SKOULOU: @(studentInfo.HasPaidEnrollment ? "Actif" : "Inactif")
-                                            </span>
-                                            <span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-100">
-                                                @(studentInfo.IsSchoolFeeFullyPaid
-                                                    ? "Scolarité: tout payé"
-                                                    : studentInfo.SchoolFeeAmount.HasValue
-                                                        ? $"Scolarité: reste {(studentInfo.SchoolFeeAmount.Value - studentInfo.SchoolFeePaidAmount):N0} FCFA"
-                                                        : "Scolarité: non définie")
-                                            </span>
-                                            <span class="inline-flex items-center rounded-full bg-slate-50 px-3 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
-                                                Score: @(studentInfo.CombinedScorePercent.HasValue ? $"{studentInfo.CombinedScorePercent}%" : "non défini")
-                                            </span>
-                                        </div>
-                                    }
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <Badge Accent="slate">@GetRoleLabel(user.RoleName)</Badge>
-                                    <Badge Accent="@(user.IsBlocked ? "rose" : "emerald")">@(user.IsBlocked ? "Compte bloqué" : "Compte actif")</Badge>
-                                </div>
-                            </div>
-                            <p class="mt-3 text-sm text-slate-600">Écoles : @(user.Schools.Count == 0 ? "Aucune affectation" : string.Join(", ", user.Schools))</p>
-                            <div class="mt-3 flex flex-wrap gap-2">
-                                <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 @(user.RoleName == "Schüler" ? "text-xs" : "text-sm") font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md" @onclick="() => OpenEditUserAsync(user.UserId)">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                                    Modifier
-                                </button>
-                                @if (user.RoleName == "Lehrer")
-                                {
-                                    <button type="button" class="skoulou-btn-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-0.5 hover:shadow-md" @onclick="() => OpenZuordnungAsync(user.UserId, user.FullName)">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>
-                                         Classes
-                                    </button>
-                                }
-                                @if (user.IsBlocked)
-                                {
-                                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 @(user.RoleName == "Schüler" ? "text-xs" : "text-sm") font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, false)">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-                                        Activer
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button type="button" class="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 @(user.RoleName == "Schüler" ? "text-xs" : "text-sm") font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-md" @onclick="() => SetUserBlockedAsync(user.UserId, true)">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                        Bloquer
-                                    </button>
-                                }
-                            </div>
-                        </article>
-                    }
-                </div>
-            </DataListPanel>
-        </div>
-    }
-
-    <div class="mt-8 border-t border-slate-200 pt-8">
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Élèves</p>
-            <Badge Accent="slate">@FilteredStudents.Count élèves</Badge>
-        </div>
-
-        <div class="mb-4 grid gap-3 sm:grid-cols-2">
-            <ModernDropdown TValue="Guid?" Label="Classe de référence" Value="studentKlassenStufeFilterId" ValueChanged="SetStudentKlassenStufeFilterAsync" Options="StudentKlassenStufeFilterOptions" />
-            <ModernDropdown TValue="Guid?" Label="Classe" Value="studentKlasseFilterId" ValueChanged="SetStudentKlasseFilterAsync" Options="StudentKlasseFilterOptionsModern" />
-        </div>
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
-            <label class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <input type="checkbox"
-                       class="h-4 w-4 rounded border-slate-300"
-                       disabled="@(ArchivableFilteredStudents.Count == 0)"
-                       checked="@AreAllFilteredStudentsSelectedForArchive"
-                       @onchange="args => ToggleSelectAllFilteredStudentsForArchiveAsync(args.Value as bool? == true)" />
-                Tout sélectionner (@ArchivableFilteredStudents.Count)
-            </label>
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-indigo-700">Sélectionnés: @ArchiveSelectedCount</span>
-                <AsyncActionButton Class="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
-                                   IsBusy="@isDatabaseActionInProgress"
-                                   BusyLabel="Archivage..."
-                                   Disabled="@(!CanArchiveSelectedStudents)"
-                                   OnClick="ArchiveSelectedStudentsAsync">
-                    Archiver la sélection
-                </AsyncActionButton>
-            </div>
-        </div>
-        @if (FilteredStudents.Count == 0)
-        {
-            <div class="rounded-2xl bg-slate-50 px-5 py-4 text-sm text-slate-600 ring-1 ring-slate-100">
-                Aucun élève pour le moment.
-            </div>
-        }
-        else
-        {
-            <DataListPanel Items="FilteredStudents"
-                           PageSize="10"
-                           SearchPlaceholder="Rechercher un élève..."
-                           EmptyText="Aucun élève trouvé."
-                           ResultLabelSingular="élève"
-                           ResultLabelPlural="élèves"
-                           SortOptions="studentSortOptions"
-                            Filter="@((StudentApprovalItem s, string term) => Contains(s.FullName, term) || Contains(s.Email, term) || Contains(s.SchoolName, term) || Contains(s.CurrentLevelCode, term) || Contains(s.CurrentKlasseName, term))">
-                <div class="flex flex-col gap-3">
-                @foreach (var student in context)
+        <Abschnitt Titel="@SchoolUsersCardTitle" Untertitel="@SchoolUsersCardSubtitle" IconName="users">
+            <Aktionen>
+                <button type="button" class="sk-btn sk-btn-primary" @onclick="OpenNewUserModalAsync"><Icon Name="user-plus" Groesse="16" />Nouvel utilisateur</button>
+            </Aktionen>
+            <ChildContent>
+                @if (FilteredSchoolUsersOhneSchueler.Count == 0)
                 {
-                    <div class="rounded-2xl border border-slate-100 p-4 transition duration-200 hover:border-cyan-200 hover:shadow-md">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <label class="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
-                                    <input type="checkbox"
-                                           class="h-4 w-4 rounded border-slate-300"
-                                            disabled="@(!IsStudentArchivable(student))"
-                                           checked="@IsStudentSelectedForArchive(student.UserId)"
-                                           @onchange="args => ToggleArchiveStudentAsync(student.UserId, args.Value as bool? == true)" />
-                                    Sélectionner pour archivage
-                                </label>
-                                @if (!IsStudentArchivable(student))
-                                {
-                                    <p class="mb-2 text-xs font-medium text-slate-500">Archivage possible uniquement pour les élèves sans classe active.</p>
-                                }
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <div class="font-bold text-slate-900">@student.FullName</div>
-                                    @if (!student.IsBlocked)
-                                    {
-                                        <Badge Accent="cyan">@(student.CurrentKlasseId.HasValue ? "Accès scolaire validé" : "Classe à attribuer")</Badge>
-                                    }
-                                    @if (student.HasSchoolFeeInfo)
-                                    {
-                                        <Badge Accent="@(student.IsSchoolFeeFullyPaid ? "emerald" : student.SchoolFeePaidAmount > 0m ? "cyan" : "amber")">@GetSchoolFeeHeaderLabel(student.SchoolFeePaidAmount, student.SchoolFeeAmount, student.HasActiveSchoolFeeCycle)</Badge>
-                                    }
-                                </div>
-                                <div class="text-sm text-slate-500">@student.Email · @student.SchoolName</div>
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                     <div class="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-sm text-cyan-800 ring-1 ring-cyan-100">
-                                         <span aria-hidden="true"><Icon Name="school" Groesse="16" /> </span>
-                                          <span class="font-semibold">Classe active :</span>
-                                         <span>@student.CurrentLevelCode@if (!string.IsNullOrWhiteSpace(student.CurrentKlasseName) && student.CurrentKlasseName != student.CurrentLevelCode) { <text> · @student.CurrentKlasseName</text> }</span>
-                                     </div>
-                                    <div class="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200">
-                                        <span aria-hidden="true"><Icon Name="book" Groesse="16" /> </span>
-                                        <span class="text-slate-600">Score exercices &amp; examens :</span>
-                                        @if (student.CombinedScorePercent.HasValue)
+                    <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">@EmptySchoolUsersText</div>
+                }
+                else
+                {
+                    <DataListPanel Items="FilteredSchoolUsersOhneSchueler"
+                                   PageSize="10"
+                                   SearchPlaceholder="Rechercher un nom, un identifiant…"
+                                   EmptyText="Aucun utilisateur trouvé."
+                                   ResultLabelSingular="utilisateur"
+                                   ResultLabelPlural="utilisateurs"
+                                   Chips="schoolUserChips"
+                                   Filter="@((SchoolUserItem u, string term) => Contains(u.FullName, term) || Contains(u.Identifiant, term) || Contains(u.Email, term) || Contains(GetRoleLabel(u.RoleName), term))">
+                        <ul class="m-0 grid list-none gap-2 p-0">
+                            @foreach (var user in context)
+                            {
+                                <li class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4" @key="user.UserId">
+                                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-700" aria-hidden="true">@Initialen(user.FullName)</span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="mb-0 font-bold text-slate-900">@user.FullName</p>
+                                            <Badge Accent="blue">@GetRoleLabel(user.RoleName)</Badge>
+                                            @if (user.IsBlocked)
+                                            {
+                                                <Badge Accent="rose">Compte bloqué</Badge>
+                                            }
+                                        </div>
+                                        <p class="mb-0 mt-0.5 text-sm text-slate-500">
+                                            Identifiant <span class="font-semibold text-slate-700">@user.Identifiant</span>
+                                            @if (!string.IsNullOrWhiteSpace(user.Email))
+                                            {
+                                                <span> · @user.Email</span>
+                                            }
+                                            @if (isProduktOwner || HasMultipleSchools)
+                                            {
+                                                <span> · @(user.Schools.Count == 0 ? "Aucune affectation" : string.Join(", ", user.Schools))</span>
+                                            }
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenEditUserAsync(user.UserId)"><Icon Name="edit" Groesse="14" />Modifier</button>
+                                        @if (user.RoleName == "Lehrer")
                                         {
-                                            <span class="font-black" style="color:@ScoreColorHelper.GetScoreColor(student.CombinedScorePercent.Value)">@student.CombinedScorePercent %</span>
-                                            <span class="text-xs text-slate-400">(@student.CombinedScoreCount)</span>
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenZuordnungAsync(user.UserId, user.FullName)"><Icon Name="layers" Groesse="14" />Classes</button>
+                                        }
+                                        @if (user.IsBlocked)
+                                        {
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-success" @onclick="() => SetUserBlockedAsync(user.UserId, false)"><Icon Name="unlock" Groesse="14" />Activer</button>
                                         }
                                         else
                                         {
-                                            <span class="text-slate-400">–</span>
+                                            <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" @onclick="() => SetUserBlockedAsync(user.UserId, true)"><Icon Name="lock" Groesse="14" />Bloquer</button>
                                         }
                                     </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                @if (student.IsBlocked)
-                                {
-                                    <Badge Accent="rose">Enregistrement bloqué / en attente</Badge>
-                                    <button type="button"
-                                            class="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                                            @onclick="() => SetBlockedAsync(student.UserId, false)">
-                                        Valider
-                                    </button>
-                                     @if (student.IsSelfRegistered)
-                                     {
-                                         <button type="button"
-                                                 class="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
-                                                 @onclick="() => DeletePendingStudentAsync(student.UserId)">
-                                             Supprimer l'inscription
-                                         </button>
-                                     }
-                                }
-                                else
-                                {
-                                    <Badge Accent="emerald">Enregistrement validé</Badge>
-                                    <Badge Accent="cyan">@(student.CurrentKlasseId.HasValue ? "Supports publiés de la classe accessibles" : "Classe à attribuer")</Badge>
-                                        <button type="button"
-                                                class="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-300"
-                                                @onclick="() => SetBlockedAsync(student.UserId, true)">
-                                            Bloquer
-                                        </button>
-                                }
-                                <button type="button"
-                                        class="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                                        @onclick="() => OpenEditStudentPersonalAsync(student.UserId)">
-                                    Modifier
-                                </button>
-                                 <button type="button"
-                                        class="inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
-                                        @onclick="() => ToggleLevelPanelAsync(student.UserId)">
-                                    Classes et participation
-                                    <svg class="h-4 w-4 transition-transform duration-200 @(expandedStudentId == student.UserId ? "rotate-180" : "")" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        @if (expandedStudentId == student.UserId)
-                        {
-                            <div class="mt-4 grid gap-2">
-                                @foreach (var level in levelEnrollments)
-                                {
-                                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 @(level.IsCurrentKlasse ? "bg-cyan-50 ring-1 ring-cyan-200" : "bg-slate-50")">
-                                        <div>
-                                            <span class="font-semibold text-slate-800">@level.CourseCode</span>
-                                            <span class="text-sm text-slate-500">@level.CourseTitle</span>
-                                            @if (level.IsCurrentKlasse)
-                                            {
-                                                <Badge Accent="cyan">Classe actuelle</Badge>
-                                            }
-                                        </div>
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            @if (level.AutomatischeZyklusabrechnung)
-                                            {
-                                                <Badge Accent="cyan">Facturation automatique par cycle</Badge>
-                                                <span class="text-xs text-slate-600">Aucun paiement individuel requis pour l'accès.</span>
-                                            }
-                                            else if (level.IsUnlocked)
-                                            {
-                                                <Badge Accent="cyan">Abonnement SKOULOU</Badge>
-                                                <Badge Accent="slate">@level.AboPreis.ToString("N0") FCFA</Badge>
-                                            }
-
-                                            @if (!level.AutomatischeZyklusabrechnung && level.IsPaid)
-                                            {
-                                                <Badge Accent="emerald">Paiement effectué</Badge>
-                                            }
-
-                                            @if (level.IsCurrentKlasse && level.HasActiveClassCycle)
-                                            {
-                                                <Badge Accent="emerald">Cycle actif</Badge>
-                                            }
-                                            else if (level.IsClassCycleClosed)
-                                            {
-                                                <Badge Accent="slate">Cycle clôturé</Badge>
-                                            }
-                                            else if (level.IsCurrentKlasse && !level.HasActiveClassCycle)
-                                            {
-                                                <Badge Accent="amber">Cycle non démarré</Badge>
-                                            }
-
-                                            @if (level.CanAssignOrUpgradeAbo)
-                                            {
-                                                <button type="button"
-                                                        class="skoulou-btn-accent rounded-full px-3 py-1.5 text-xs font-semibold"
-                                                        @onclick="() => OpenAboModal(student, level)">
-                                                    Gérer l'abonnement
-                                                </button>
-                                            }
-
-                                            @if (!level.AutomatischeZyklusabrechnung && !level.IsCurrentKlasse && !level.IsUnlocked)
-                                            {
-                                                <span class="text-xs font-medium text-slate-400">Aucun abonnement</span>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </DataListPanel>
                 }
-            </div>
-            </DataListPanel>
-        }
-    </div>
+            </ChildContent>
+        </Abschnitt>
+    }
 
-    </ChildContent>
-</CollapsibleCard>
+    @if (IsDirectorTabActive(DirectorTabSubjects))
+    {
+        <Abschnitt Titel="Matières" Untertitel="Les matières de l'établissement : proposées dans le formulaire enseignant et regroupées pour les bilans du bulletin." IconName="book">
+            @if (!string.IsNullOrWhiteSpace(fachVerwaltungErrorMessage))
+            {
+                <p class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">@fachVerwaltungErrorMessage</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(fachVerwaltungStatusMessage))
+            {
+                <p class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800">@fachVerwaltungStatusMessage</p>
+            }
+            @if (HasMultipleSchools)
+            {
+                <p class="mb-3 rounded-xl bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-900">
+                    @(SelectedSchoolForManagement is null ? "Sélectionnez une école en haut de la page pour gérer les matières." : $"École active : {SelectedSchoolForManagement.SchoolName}")
+                </p>
+            }
+
+            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                <div>
+                    <label class="skoulou-label">Rechercher</label>
+                    <input @bind="fachSuchbegriff" @bind:event="oninput" class="skoulou-input" placeholder="Rechercher une matière" />
+                </div>
+                <div>
+                    <label class="skoulou-label">Nouvelle matière</label>
+                    <input @bind="neueSchulFachBezeichnung" @bind:event="oninput" class="skoulou-input" placeholder="Ex. Mathématiques" disabled="@isDatabaseActionInProgress" />
+                </div>
+                <AsyncActionButton Class="sk-btn sk-btn-primary min-h-[2.75rem]"
+                                   Disabled="@(!CanAddSchoolFach)"
+                                   IsBusy="@isDatabaseActionInProgress"
+                                   BusyLabel="Ajout..."
+                                   OnClick="@(_ => AddSchoolFachAsync())">
+                    <Icon Name="plus" Groesse="16" />Ajouter
+                </AsyncActionButton>
+            </div>
+
+            @if (SelectedSchoolForManagement is null)
+            {
+                <p class="mb-0 mt-4 text-sm text-slate-500">La liste des matières s'affiche après sélection d'une école.</p>
+            }
+            else if (GefilterteSchoolFachOptions.Count == 0)
+            {
+                <div class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                    @(string.IsNullOrWhiteSpace(fachSuchbegriff) ? "Aucune matière pour le moment. Ajoutez la première ci-dessus." : "Aucune matière ne correspond à la recherche.")
+                </div>
+            }
+            else
+            {
+                <p class="mb-0 mt-4 text-xs text-slate-500">Le groupe sert aux bilans du bulletin (Bilan lettres, Bilan sciences, Bilan autres).</p>
+                <ul class="mb-0 mt-2 grid max-h-[28rem] list-none gap-2 overflow-y-auto p-0 sm:grid-cols-2">
+                    @foreach (var fach in GefilterteSchoolFachOptions)
+                    {
+                        <li class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <span class="min-w-0 flex-1 text-sm font-semibold text-slate-800">@fach.Name</span>
+                            <ModernDropdown TValue="string" ContainerClass="w-36" ButtonClass="py-1.5 text-xs" Value="@(fach.Gruppe ?? "")" ValueChanged="g => FachGruppeAsync(fach, g)" Options="FachGruppenOptionen" />
+                            <button type="button"
+                                    class="sk-btn sk-btn-sm sk-btn-ghost"
+                                    disabled="@fach.IstLehrerZugewiesen"
+                                    aria-label="@($"Supprimer {fach.Name}")"
+                                    title="@(fach.IstLehrerZugewiesen ? "Attribuée à un enseignant" : $"Supprimer {fach.Name}")"
+                                    @onclick="() => AskDeleteSchoolFach(fach)">
+                                <Icon Name="trash" Groesse="15" />
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </Abschnitt>
     }
 
     @if (IsDirectorTabActive(DirectorTabReassign))
     {
-    <CollapsibleCard InitiallyExpanded="true" Title="Réassignation des élèves sans classe active"
-                     Eyebrow="Session de réattribution"
-                     Subtitle="À gauche: classe cible. À droite: élèves sans classe active avec recherche et sélection multiple."
-                     Icon="refresh"
-                     Accent="indigo">
-        <ChildContent>
+        <Abschnitt Titel="Réattribution" Untertitel="Placez les élèves sans classe active dans une classe : choisissez la classe à gauche, cochez les élèves à droite." IconName="refresh">
             @if (SelectedKlasseSchoolId is null)
             {
-                <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour réattribuer les élèves.</p>
+                <p class="mb-0 rounded-xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Sélectionnez une école pour réattribuer les élèves.</p>
             }
             else
             {
                 <div class="grid gap-4 lg:grid-cols-2">
-                    <article class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <h3 class="text-sm font-black uppercase tracking-[0.14em] text-slate-700">Classe cible</h3>
+                    <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <h3 class="mb-0 text-sm font-bold text-slate-900">1. Classe cible</h3>
                         <div class="mt-3">
                             <ModernDropdown TValue="Guid?" Label="Classe" Value="reassignTargetKlasseId" ValueChanged="SetReassignTargetKlasseAsync" Options="ReassignKlasseOptions" />
                         </div>
                         @if (ReassignTargetKlasse is not null)
                         {
-                            <div class="mt-4 rounded-2xl border border-indigo-100 bg-white p-3">
+                            <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                                 <div class="flex items-center justify-between gap-3">
-                                    <p class="text-sm font-bold text-slate-800">Élèves actuellement dans la classe</p>
-                                    <Badge Accent="indigo">@ReassignTargetKlasse.CurrentStudentCount</Badge>
+                                    <p class="mb-0 text-sm font-bold text-slate-800">Élèves déjà dans la classe</p>
+                                    <Badge Accent="blue">@ReassignTargetKlasse.CurrentStudentCount</Badge>
                                 </div>
                                 @if (ReassignTargetStudents.Count > 0)
                                 {
-                                    <div class="mt-3 max-h-48 overflow-auto rounded-xl border border-slate-100">
+                                    <ul class="mb-0 mt-3 max-h-48 list-none overflow-auto rounded-xl border border-slate-100 p-0">
                                         @foreach (var student in ReassignTargetStudents)
                                         {
-                                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">
+                                            <li class="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">
                                                 <div class="min-w-0">
-                                                    <p class="truncate text-sm font-semibold text-slate-900">@student.FullName</p>
-                                                    <p class="truncate text-xs text-slate-500">@student.Email</p>
+                                                    <p class="mb-0 truncate text-sm font-semibold text-slate-900">@student.FullName</p>
+                                                    @if (!string.IsNullOrWhiteSpace(student.Email))
+                                                    {
+                                                        <p class="mb-0 truncate text-xs text-slate-500">@student.Email</p>
+                                                    }
                                                 </div>
-                                                <button type="button" class="shrink-0 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" @onclick="() => OpenReassignRemoveConfirmation(student)">Retirer</button>
-                                            </div>
+                                                <button type="button" class="sk-btn sk-btn-sm sk-btn-danger" @onclick="() => OpenReassignRemoveConfirmation(student)">Retirer</button>
+                                            </li>
                                         }
-                                    </div>
+                                    </ul>
                                 }
                             </div>
                         }
-                        <p class="mt-3 text-xs text-slate-500">Astuce: utilisez le filtre de référence (CP1, CP2, etc.) au-dessus pour limiter la liste des classes.</p>
                     </article>
 
-                    <article class="rounded-2xl border border-slate-100 bg-white p-4">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-4">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 class="text-sm font-black uppercase tracking-[0.14em] text-slate-700">Élèves sans classe active</h3>
+                            <h3 class="mb-0 text-sm font-bold text-slate-900">2. Élèves sans classe active</h3>
                             <Badge Accent="slate">@FilteredStudentsWithoutActiveClass.Count</Badge>
                         </div>
                         <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -742,28 +627,31 @@
                                             Searchable="true"
                                             SearchPlaceholder="Rechercher une ancienne classe..." />
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-slate-600">Recherche</label>
-                                <input class="skoulou-input text-sm" placeholder="Nom, email, ancienne classe..." value="@reassignSearch" @oninput="SetReassignSearchAsync" />
+                                <label class="skoulou-label">Recherche</label>
+                                <input class="skoulou-input" placeholder="Nom, e-mail, ancienne classe…" value="@reassignSearch" @oninput="SetReassignSearchAsync" />
                             </div>
                         </div>
-                        <div class="mt-3 max-h-72 overflow-auto rounded-xl ring-1 ring-slate-100">
+                        <div class="mt-3 max-h-72 overflow-auto rounded-xl border border-slate-200">
                             @if (FilteredStudentsWithoutActiveClass.Count == 0)
                             {
-                                <p class="p-4 text-sm text-slate-500">Aucun élève sans classe active.</p>
+                                <p class="mb-0 p-4 text-sm text-slate-500">Aucun élève sans classe active.</p>
                             }
                             else
                             {
                                 @foreach (var student in FilteredStudentsWithoutActiveClass)
                                 {
-                                    <label class="flex items-start gap-3 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0">
+                                    <label class="m-0 flex cursor-pointer items-start gap-3 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 hover:bg-slate-50">
                                         <input type="checkbox"
                                                checked="@IsStudentSelectedForReassign(student.UserId)"
                                                @onchange="args => ToggleReassignStudentAsync(student.UserId, args.Value as bool? == true)"
                                                class="mt-1 h-4 w-4 rounded border-slate-300" />
                                         <span>
                                             <span class="block font-semibold text-slate-900">@student.FullName</span>
-                                            <span class="block text-xs text-slate-500">@student.Email</span>
-                                            <span class="block text-xs font-medium @(student.PreviousKlasseId.HasValue ? "text-indigo-700" : "text-emerald-700")">
+                                            @if (!string.IsNullOrWhiteSpace(student.Email))
+                                            {
+                                                <span class="block text-xs text-slate-500">@student.Email</span>
+                                            }
+                                            <span class="block text-xs font-medium @(student.PreviousKlasseId.HasValue ? "text-blue-700" : "text-emerald-700")">
                                                 @(student.PreviousKlasseId.HasValue ? $"Ancienne classe : {student.PreviousKlasseName}" : "Nouvel élève · aucune classe précédente")
                                             </span>
                                         </span>
@@ -772,8 +660,8 @@
                             }
                         </div>
                         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                            <p class="text-xs font-semibold text-indigo-700">Sélectionnés: @ReassignSelectedCount</p>
-                            <AsyncActionButton Class="skoulou-btn-accent rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                            <p class="mb-0 text-xs font-semibold text-slate-500">@ReassignSelectedCount sélectionné(s)</p>
+                            <AsyncActionButton Class="sk-btn sk-btn-primary"
                                                IsBusy="@isDatabaseActionInProgress"
                                                BusyLabel="Attribution..."
                                                Disabled="@(!CanSubmitReassign)"
@@ -784,9 +672,141 @@
                     </article>
                 </div>
             }
-        </ChildContent>
-    </CollapsibleCard>
+        </Abschnitt>
     }
+
+    @if (IsDirectorTabActive(DirectorTabImport))
+    {
+        <Abschnitt Titel="Import depuis Excel" Untertitel="Créez beaucoup d'enseignants ou d'élèves d'un coup. Champs obligatoires : Prénom, Nom, Classe." IconName="upload">
+            @if (SelectedKlasseSchoolId is null)
+            {
+                <p class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                    Sélectionnez d'abord une école précise. L'import n'est pas disponible dans la vue « Toutes les écoles ».
+                </p>
+            }
+
+            <ol class="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach (var (nr, titel, text) in ImportSchritte)
+                {
+                    <li class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <span class="grid h-7 w-7 place-items-center rounded-full bg-blue-700 text-xs font-bold text-white">@nr</span>
+                        <p class="mb-0 mt-2 text-sm font-bold text-slate-900">@titel</p>
+                        <p class="mb-0 mt-1 text-xs leading-5 text-slate-600">@text</p>
+                    </li>
+                }
+            </ol>
+            <p class="mb-0 mt-3 text-xs text-slate-500">Les classes doivent déjà exister dans l'établissement. Seule la première feuille Excel est lue. Taille maximale : 2 Mo par fichier. Chaque personne reçoit un mot de passe initial, affiché après l'import pour une transmission confidentielle.</p>
+
+            <div class="mt-5 grid gap-4">
+                <article class="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="mb-0 flex items-center gap-2 text-base font-bold text-slate-900"><Icon Name="users" Groesse="18" />Enseignants</h3>
+                            <p class="mb-0 mt-1 text-sm text-slate-600">Un enseignant peut avoir plusieurs classes : séparez-les par une virgule.</p>
+                        </div>
+                        <Badge Accent="slate">CSV / Excel</Badge>
+                    </div>
+                    <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-left text-xs text-slate-700">
+                            <thead class="bg-slate-50 font-bold text-slate-900">
+                                <tr><th class="px-3 py-2">Prénom <span class="text-rose-600">*</span></th><th class="px-3 py-2">Nom <span class="text-rose-600">*</span></th><th class="px-3 py-2">Classe <span class="text-rose-600">*</span></th><th class="px-3 py-2">E-mail</th><th class="px-3 py-2">Téléphone</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-t border-slate-100"><td class="px-3 py-2">Afi</td><td class="px-3 py-2">Kodjo</td><td class="px-3 py-2">CM2A, CM2B</td><td class="px-3 py-2">afi.kodjo@ecole.tg</td><td class="px-3 py-2">+22890112233</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 grid gap-3">
+                        <label class="m-0 flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50 @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
+                            <span class="flex items-center gap-3">
+                                <span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-blue-700 ring-1 ring-slate-200"><Icon Name="upload" Groesse="18" /></span>
+                                <span>
+                                    <span class="block text-sm font-bold text-slate-900">Choisir le fichier des enseignants</span>
+                                    <span class="block text-xs text-slate-500">.csv ou .xlsx (première feuille) · max. 2 Mo</span>
+                                </span>
+                            </span>
+                            <span class="sk-btn sk-btn-sm sk-btn-primary">Parcourir</span>
+                            <InputFile class="sr-only" OnChange="OnTeacherImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
+                        </label>
+                        @if (teacherImportPreview is not null)
+                        {
+                            <SchoolUserImportPreviewTable Preview="teacherImportPreview" />
+                            <AsyncActionButton Class="sk-btn sk-btn-primary justify-self-start" IsBusy="@isDatabaseActionInProgress" BusyLabel="Import..." OnClick="@(_ => CommitTeacherImportAsync())" Disabled="@(!teacherImportPreview.Succeeded || teacherImportPreview.ValidRowCount == 0)">
+                                Importer les enseignants (@teacherImportPreview.ValidRowCount)
+                            </AsyncActionButton>
+                        }
+                    </div>
+                </article>
+
+                <article class="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="mb-0 flex items-center gap-2 text-base font-bold text-slate-900"><Icon Name="graduation" Groesse="18" />Élèves</h3>
+                            <p class="mb-0 mt-1 text-sm text-slate-600">Chaque élève rejoint une classe existante. E-mail et téléphone sont facultatifs.</p>
+                        </div>
+                        <Badge Accent="slate">CSV / Excel</Badge>
+                    </div>
+                    <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-left text-xs text-slate-700">
+                            <thead class="bg-slate-50 font-bold text-slate-900">
+                                <tr><th class="px-3 py-2">Prénom <span class="text-rose-600">*</span></th><th class="px-3 py-2">Nom <span class="text-rose-600">*</span></th><th class="px-3 py-2">Classe <span class="text-rose-600">*</span></th><th class="px-3 py-2">E-mail</th><th class="px-3 py-2">Téléphone</th><th class="px-3 py-2">E-mail parent</th><th class="px-3 py-2">Téléphone parent</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-t border-slate-100"><td class="px-3 py-2">Dela</td><td class="px-3 py-2">Mensah</td><td class="px-3 py-2">CM1A</td><td class="px-3 py-2">dela.mensah@famille.tg</td><td class="px-3 py-2">+22898001122</td><td class="px-3 py-2">parent@famille.tg</td><td class="px-3 py-2">+22897001122</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 grid gap-3">
+                        <label class="m-0 flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50 @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
+                            <span class="flex items-center gap-3">
+                                <span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-blue-700 ring-1 ring-slate-200"><Icon Name="upload" Groesse="18" /></span>
+                                <span>
+                                    <span class="block text-sm font-bold text-slate-900">Choisir le fichier des élèves</span>
+                                    <span class="block text-xs text-slate-500">.csv ou .xlsx (première feuille) · max. 2 Mo</span>
+                                </span>
+                            </span>
+                            <span class="sk-btn sk-btn-sm sk-btn-primary">Parcourir</span>
+                            <InputFile class="sr-only" OnChange="OnStudentImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
+                        </label>
+                        @if (studentImportPreview is not null)
+                        {
+                            <SchoolUserImportPreviewTable Preview="studentImportPreview" />
+                            <AsyncActionButton Class="sk-btn sk-btn-primary justify-self-start" IsBusy="@isDatabaseActionInProgress" BusyLabel="Import..." OnClick="@(_ => CommitStudentImportAsync())" Disabled="@(!studentImportPreview.Succeeded || studentImportPreview.ValidRowCount == 0)">
+                                Importer les élèves (@studentImportPreview.ValidRowCount)
+                            </AsyncActionButton>
+                        }
+                    </div>
+                </article>
+            </div>
+        </Abschnitt>
+    }
+
+    @if (canViewSharedTeacherContent && IsDirectorTabActive(DirectorTabShared))
+    {
+        <Abschnitt Titel="Contenus partagés" Untertitel="Seuls les contenus que leurs auteurs ont explicitement partagés avec la direction apparaissent ici." IconName="book-open">
+            @if (FilteredSharedTeacherContent.Count == 0)
+            {
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">Aucun contenu partagé pour le moment.</div>
+            }
+            else
+            {
+                <ul class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                    @foreach (var item in FilteredSharedTeacherContent)
+                    {
+                        <li class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">@item.ContentType</span>
+                                <span class="text-slate-500">@item.CourseCode</span>
+                            </div>
+                            <p class="mb-0 mt-2 font-bold text-slate-900">@item.Title</p>
+                            <p class="mb-0 mt-0.5 text-sm text-slate-500">@item.AuthorName</p>
+                        </li>
+                    }
+                </ul>
+            }
+        </Abschnitt>
+    }
+</div>
 
 @if (neueZugangsdaten.Count > 0)
 {
@@ -796,7 +816,7 @@
         {
             <div class="my-3 break-all rounded-xl bg-slate-100 p-3"><span class="text-xs text-slate-500">Identifiant</span><br /><strong>@zugang.Identifiant</strong><br /><span class="text-xs text-slate-500">Mot de passe</span><br /><code>@zugang.Passwort</code></div>
         }
-        <button type="button" class="skoulou-button-primary" @onclick="() => neueZugangsdaten.Clear()">J'ai transmis les identifiants — fermer</button>
+        <button type="button" class="sk-btn sk-btn-primary" @onclick="() => neueZugangsdaten.Clear()">J'ai transmis les identifiants — fermer</button>
     </ModalDialog>
 }
 
@@ -814,8 +834,8 @@
             <p class="mt-2 text-xs">Une affectation avec abonnement actif ou payé ne peut pas être retirée ici.</p>
         </div>
         <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" class="rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" @onclick="CloseReassignRemoveConfirmation">Annuler</button>
-            <AsyncActionButton Class="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="CloseReassignRemoveConfirmation">Annuler</button>
+            <AsyncActionButton Class="sk-btn sk-btn-danger"
                                IsBusy="@isDatabaseActionInProgress"
                                BusyLabel="Retrait..."
                                OnClick="@(_ => RemoveReassignedStudentAsync())">
@@ -824,162 +844,6 @@
         </div>
     }
 </ModalDialog>
-
-    @if (IsDirectorTabActive(DirectorTabImport))
-    {
-    <CollapsibleCard Title="Import utilisateurs"
-                     Eyebrow="Création automatique"
-                     Subtitle="Ajoutez beaucoup d'enseignants ou d'élèves à partir d'un fichier CSV Excel. Champs obligatoires : Prénom, Nom, Classe."
-                     Icon="download"
-                     Accent="cyan"
-                     Expanded="userImportExpanded"
-                     ExpandedChanged="value => userImportExpanded = value">
-        <ChildContent>
-            @if (SelectedKlasseSchoolId is null)
-            {
-                <p class="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
-                    Sélectionnez d'abord une école précise. L'import n'est pas disponible dans la vue combinée « Toutes les écoles ».
-                </p>
-            }
-
-            <div class="grid gap-6">
-                <article class="rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-white p-6 shadow-sm sm:p-8">
-                    <div class="flex items-start gap-3">
-                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-600 text-lg font-black text-white">1</span>
-                        <div>
-                            <h3 class="text-lg font-black text-slate-900">Préparez votre fichier en 4 étapes</h3>
-                            <ol class="mt-3 grid gap-3 text-sm leading-6 text-slate-700 sm:grid-cols-2">
-                                <li><strong>1. Ouvrez Excel</strong> et créez un nouveau tableau.</li>
-                                <li><strong>2. Copiez les titres de colonnes</strong> indiqués dans l'exemple correspondant.</li>
-                                <li><strong>3. Ajoutez une personne par ligne.</strong> Les champs optionnels peuvent rester vides. Si l'e-mail est vide, il est créé automatiquement. Chaque personne reçoit un mot de passe initial individuel, affiché après l'import pour transmission confidentielle.</li>
-
-                                <li><strong>4. Enregistrez le fichier</strong> au format <strong>CSV UTF-8 (*.csv)</strong> ou <strong>Excel (*.xlsx)</strong>, puis chargez-le ci-dessous.</li>
-                            </ol>
-                            <p class="mt-3 text-xs font-medium text-cyan-900">Les classes doivent déjà exister dans l'école sélectionnée. Seule la première feuille Excel est lue. Taille maximale : 2 Mo par fichier.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="rounded-3xl border border-cyan-100 border-l-8 border-l-cyan-500 bg-white p-6 shadow-md sm:p-8">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h3 class="text-xl font-black text-slate-900">Ajouter des enseignants</h3>
-                            <p class="mt-1 text-sm text-slate-600">Un enseignant peut être attribué à une ou plusieurs classes. Séparez plusieurs classes par une virgule.</p>
-                        </div>
-                        <Badge Accent="cyan">CSV / Excel</Badge>
-                    </div>
-                    <div class="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-100">
-                        <p class="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Exemple dans Excel</p>
-                        <table class="w-full text-left text-xs text-slate-700">
-                            <thead class="bg-slate-50 font-black text-slate-900">
-                                <tr><th class="px-3 py-2 text-rose-600">Prénom *</th><th class="px-3 py-2 text-rose-600">Nom *</th><th class="px-3 py-2 text-rose-600">Classe *</th><th class="px-3 py-2">E-mail</th><th class="px-3 py-2">Téléphone</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr class="border-t border-slate-100"><td class="px-3 py-2">Afi</td><td class="px-3 py-2">Kodjo</td><td class="px-3 py-2">CM2A, CM2B</td><td class="px-3 py-2">afi.kodjo@ecole.tg</td><td class="px-3 py-2">+22890112233</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mt-4 grid gap-3">
-                        <label class="group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-cyan-200 bg-white px-4 py-3 shadow-sm transition hover:border-cyan-400 hover:bg-cyan-50/60 hover:shadow-md @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
-                            <span class="flex items-center gap-3">
-                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-100 text-xl text-cyan-700 transition group-hover:bg-cyan-600 group-hover:text-white"><Icon Name="log" Groesse="16" /> </span>
-                                <span>
-                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
-                                    <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
-                                </span>
-                            </span>
-                            <span class="rounded-full bg-cyan-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition group-hover:bg-cyan-700">Parcourir</span>
-                            <InputFile class="sr-only" OnChange="OnTeacherImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
-                        </label>
-                        @if (teacherImportPreview is not null)
-                        {
-                            <SchoolUserImportPreviewTable Preview="teacherImportPreview" />
-                            <AsyncActionButton Class="skoulou-btn-accent rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Import..." OnClick="@(_ => CommitTeacherImportAsync())" Disabled="@(!teacherImportPreview.Succeeded || teacherImportPreview.ValidRowCount == 0)">
-                                Importer les enseignants (@teacherImportPreview.ValidRowCount)
-                            </AsyncActionButton>
-                        }
-                    </div>
-                </article>
-
-                <article class="rounded-3xl border border-emerald-100 border-l-8 border-l-emerald-500 bg-white p-6 shadow-md sm:p-8">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h3 class="text-xl font-black text-slate-900">Ajouter des élèves</h3>
-                            <p class="mt-1 text-sm text-slate-600">Attribuez chaque élève à une classe existante. L'e-mail et le téléphone sont optionnels.</p>
-                        </div>
-                        <Badge Accent="emerald">CSV / Excel</Badge>
-                    </div>
-                    <div class="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-100">
-                        <p class="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Exemple dans Excel</p>
-                        <table class="w-full text-left text-xs text-slate-700">
-                            <thead class="bg-slate-50 font-black text-slate-900">
-                                <tr><th class="px-3 py-2 text-rose-600">Prénom *</th><th class="px-3 py-2 text-rose-600">Nom *</th><th class="px-3 py-2 text-rose-600">Classe *</th><th class="px-3 py-2">E-mail</th><th class="px-3 py-2">Téléphone</th><th class="px-3 py-2">E-mail parent</th><th class="px-3 py-2">Téléphone parent</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr class="border-t border-slate-100"><td class="px-3 py-2">Dela</td><td class="px-3 py-2">Mensah</td><td class="px-3 py-2">CM1A</td><td class="px-3 py-2">dela.mensah@famille.tg</td><td class="px-3 py-2">+22898001122</td><td class="px-3 py-2">parent@famille.tg</td><td class="px-3 py-2">+22897001122</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mt-4 grid gap-3">
-                        <label class="group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-emerald-200 bg-white px-4 py-3 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50/60 hover:shadow-md @(SelectedKlasseSchoolId is null || isDatabaseActionInProgress ? "pointer-events-none opacity-50" : null)">
-                            <span class="flex items-center gap-3">
-                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-xl text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white"><Icon Name="log" Groesse="16" /> </span>
-                                <span>
-                                    <span class="block text-sm font-black text-slate-900">Choisir un fichier CSV ou Excel</span>
-                                    <span class="block text-xs font-semibold text-slate-500">CSV ou Excel (.xlsx, première feuille) · max. 2 Mo</span>
-                                </span>
-                            </span>
-                            <span class="rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition group-hover:bg-emerald-700">Parcourir</span>
-                            <InputFile class="sr-only" OnChange="OnStudentImportFileSelectedAsync" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@(SelectedKlasseSchoolId is null || isDatabaseActionInProgress)" />
-                        </label>
-                        @if (studentImportPreview is not null)
-                        {
-                            <SchoolUserImportPreviewTable Preview="studentImportPreview" />
-                            <AsyncActionButton Class="skoulou-btn-accent rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50" IsBusy="@isDatabaseActionInProgress" BusyLabel="Import..." OnClick="@(_ => CommitStudentImportAsync())" Disabled="@(!studentImportPreview.Succeeded || studentImportPreview.ValidRowCount == 0)">
-                                Importer les élèves (@studentImportPreview.ValidRowCount)
-                            </AsyncActionButton>
-                        }
-                    </div>
-                </article>
-            </div>
-        </ChildContent>
-    </CollapsibleCard>
-    }
-
-    @if (canViewSharedTeacherContent && IsDirectorTabActive(DirectorTabShared))
-    {
-        <CollapsibleCard Title="Contenus partagés par les enseignants"
-                         Eyebrow="Consultation"
-                         Subtitle="Seuls les contenus que leurs auteurs ont explicitement partagés avec la direction sont affichés ici."
-                         Icon="book"
-                         Accent="violet"
-                         Expanded="sharedContentExpanded"
-                         ExpandedChanged="value => sharedContentExpanded = value">
-            <ChildContent>
-                @if (FilteredSharedTeacherContent.Count == 0)
-                {
-                    <p class="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Aucun contenu partagé pour le moment.</p>
-                }
-                else
-                {
-                    <div class="grid gap-3">
-                        @foreach (var item in FilteredSharedTeacherContent)
-                        {
-                            <article class="rounded-2xl border border-slate-200 p-4">
-                                <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-violet-700">
-                                    <span class="rounded-full bg-violet-50 px-3 py-1">@item.ContentType</span>
-                                    <span>@item.CourseCode</span>
-                                </div>
-                                <p class="mt-2 font-bold text-slate-900">@item.Title</p>
-                                <p class="mt-1 text-sm text-slate-500">@item.AuthorName</p>
-                            </article>
-                        }
-                    </div>
-                }
-            </ChildContent>
-        </CollapsibleCard>
-    }
-</section>
 
 <div class="mt-8">
 
@@ -1296,7 +1160,7 @@
                     Seul l'Administrateur peut intervenir après clarification avec la direction.
                 </div>
             <button type="button" class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-left transition hover:border-cyan-500 hover:bg-cyan-100" @onclick="() => SelectAboTyp(AboTyp.SkoulouApp)">
-                <span class="flex items-center justify-between gap-3 font-bold text-cyan-950"><span>SKOULOU</span><span>@PendingAboPreis?.ToString("N0") FCFA</span></span>
+                <span class="flex items-center justify-between gap-3 font-bold text-cyan-950"><span>SKOULOU</span><span>@PendingAboPreis?.ToString("N0", Fr) FCFA</span></span>
                 <span class="mt-1 block text-sm text-cyan-800">Abonnement unique pour l'accès aux contenus et évaluations de la classe.</span>
             </button>
         </div>
@@ -1306,7 +1170,7 @@
         <div class="rounded-2xl bg-cyan-50 p-4 text-sm leading-6 text-cyan-950">
             <div class="mb-3 rounded-xl bg-white/80 px-4 py-3 ring-1 ring-white/70">
                 <p class="text-xs font-bold uppercase tracking-[0.16em] opacity-70">Prix de l'abonnement</p>
-                <p class="mt-1 text-2xl font-black">@PendingAboPreis?.ToString("N0") FCFA</p>
+                <p class="mt-1 text-2xl font-black">@PendingAboPreis?.ToString("N0", Fr) FCFA</p>
                 <p class="mt-1 text-xs opacity-75">Prix spécifique à l'école de l'élève s'il existe, sinon prix général admin. Cette action valide directement l'abonnement comme payé.</p>
             </div>
             <p>L'abonnement est activé et marqué payé en un seul enregistrement.</p>
@@ -1433,9 +1297,9 @@
                 var selectedSchool = schools.FirstOrDefault(s => s.SchoolId == klasseSchoolId);
                 if (selectedSchool is not null)
                 {
-                    <p class="mt-1 text-xs text-cyan-700">Prix d'abonnement affich&eacute; pour cette &eacute;cole : <strong>@selectedSchool.EffectiveSubscriptionPrice.ToString("N0") FCFA</strong></p>
-                    <p class="mt-1 text-xs text-cyan-700">Part direction : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.SchoolLeaderCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0") FCFA</strong> (@selectedSchool.SchoolLeaderCommissionPercent.ToString("N2") %)</p>
-                    <p class="mt-1 text-xs text-cyan-700">Part enseignants : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.TeacherCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0") FCFA</strong> (@selectedSchool.TeacherCommissionPercent.ToString("N2") %)</p>
+                    <p class="mt-1 text-xs text-cyan-700">Prix d'abonnement affich&eacute; pour cette &eacute;cole : <strong>@selectedSchool.EffectiveSubscriptionPrice.ToString("N0", Fr) FCFA</strong></p>
+                    <p class="mt-1 text-xs text-cyan-700">Part direction : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.SchoolLeaderCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0", Fr) FCFA</strong> (@selectedSchool.SchoolLeaderCommissionPercent.ToString("N2", Fr) %)</p>
+                    <p class="mt-1 text-xs text-cyan-700">Part enseignants : <strong>@Math.Round(selectedSchool.EffectiveSubscriptionPrice * selectedSchool.TeacherCommissionPercent / 100m, 0, MidpointRounding.AwayFromZero).ToString("N0", Fr) FCFA</strong> (@selectedSchool.TeacherCommissionPercent.ToString("N2", Fr) %)</p>
                 }
             }
         </div>
@@ -1540,7 +1404,7 @@
                     <p class="text-[11px] font-bold uppercase tracking-wide @(zuBeendenderDurchlauf.SummeOffen > 0 ? "text-rose-700" : "text-emerald-700")">Frais de scolarité impayés</p>
                     @if (zuBeendenderDurchlauf.SummeOffen > 0)
                     {
-                        <p class="text-xl font-black text-rose-700">@zuBeendenderDurchlauf.SummeOffen.ToString("N0") FCFA</p>
+                        <p class="text-xl font-black text-rose-700">@zuBeendenderDurchlauf.SummeOffen.ToString("N0", Fr) FCFA</p>
                         <p class="mt-1 text-xs font-medium">Ce montant sera signalé comme perte dans le rapport financier.</p>
                     }
                     else
@@ -1597,7 +1461,7 @@
         }
         @if (zuBeendenderDurchlauf?.SummeOffen > 0)
         {
-            <p class="mt-2 font-semibold">La dette restante de @zuBeendenderDurchlauf.SummeOffen.ToString("N0") FCFA sera enregistrée comme perte.</p>
+            <p class="mt-2 font-semibold">La dette restante de @zuBeendenderDurchlauf.SummeOffen.ToString("N0", Fr) FCFA sera enregistrée comme perte.</p>
         }
     </div>
     <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -1639,7 +1503,7 @@
                                     class="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition @(zahlungStudentId == schueler.StudentId ? "bg-cyan-600 text-white" : "hover:bg-slate-50")"
                                     @onclick="() => WaehleZahlungSchueler(schueler.StudentId)">
                                 <span class="font-semibold">@schueler.Name</span>
-                                <span class="text-xs @(zahlungStudentId == schueler.StudentId ? "text-cyan-100" : "text-slate-500")">Ouvert : @schueler.Offen.ToString("N0") FCFA</span>
+                                <span class="text-xs @(zahlungStudentId == schueler.StudentId ? "text-cyan-100" : "text-slate-500")">Ouvert : @schueler.Offen.ToString("N0", Fr) FCFA</span>
                             </button>
                         }
                     }
@@ -1655,7 +1519,7 @@
                     <InputNumber @bind-Value="zahlungBetrag" disabled="@IstBarzahlung" class="skoulou-input" />
                     @if (IstBarzahlung)
                     {
-                        <p class="mt-2 text-xs leading-5 text-slate-500">Le paiement cash correspond obligatoirement au prix fixé du cycle : <strong>@zahlungDurchlauf.NiveauPreis.ToString("N0") FCFA</strong>.</p>
+                        <p class="mt-2 text-xs leading-5 text-slate-500">Le paiement cash correspond obligatoirement au prix fixé du cycle : <strong>@zahlungDurchlauf.NiveauPreis.ToString("N0", Fr) FCFA</strong>.</p>
                     }
                 </div>
                 <div class="mt-4">

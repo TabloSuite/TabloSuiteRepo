@@ -44,13 +44,13 @@ public partial class DirektionsCockpit
         if (cockpit is not null)
         {
             if (cockpit.AnmeldungenOffen > 0)
-                Aufgaben.Add(($"{cockpit.AnmeldungenOffen} inscription(s) d'élève attendent votre validation.", "schulleiter", "Valider"));
+                Aufgaben.Add(($"{cockpit.AnmeldungenOffen} inscription(s) d'élève attendent votre validation.", "schulleiter?onglet=eleves", "Valider"));
             if (cockpit.Schuljahr is null)
                 Aufgaben.Add(("Aucune année scolaire en cours : créez-la pour les notes, les bulletins et les présences.", "direction/enseignement", "Créer"));
             if (cockpit.Klassen == 0)
-                Aufgaben.Add(("Créez vos premières classes.", "schulleiter", "Classes"));
+                Aufgaben.Add(("Créez vos premières classes.", "schulleiter?onglet=classes", "Classes"));
             if (cockpit.Lehrkraefte == 0)
-                Aufgaben.Add(("Ajoutez vos enseignants (un par un ou par fichier).", "schulleiter", "Ajouter"));
+                Aufgaben.Add(("Ajoutez vos enseignants (un par un ou par fichier).", "schulleiter?onglet=equipe", "Ajouter"));
         }
 
         laedt = false;

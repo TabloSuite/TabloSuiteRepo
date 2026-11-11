@@ -290,3 +290,26 @@ body {
 .skoulou-hero { background-image: var(--sk-gradient) !important; }
 .app-content .skoulou-hero:not(.student-dashboard-hero) { box-shadow: var(--sk-shadow); }
 .skoulou-hero-badge { background-image: linear-gradient(135deg, rgb(var(--sk-p-700)) 0%, rgb(var(--sk-a-600)) 100%) !important; }
+
+/* --- Schaltflächen im neuen Design (Direktion, Lehrer, Schüler) ---
+   sk-btn + Variante: primary (Primärfarbe), secondary (Rahmen), ghost (ruhig), danger (rot umrandet), success (grün); sk-btn-sm kleiner. */
+.sk-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+    min-height: 2.5rem; padding: 0 1rem; border-radius: .75rem; border: 1px solid transparent;
+    font-size: .875rem; font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.sk-btn:disabled, .sk-btn[aria-disabled="true"] { cursor: not-allowed; opacity: .5; }
+.sk-btn-sm { min-height: 2.15rem; padding: 0 .8rem; font-size: .8rem; border-radius: .65rem; }
+.sk-btn-primary { background: rgb(var(--sk-p-700)); color: #fff; box-shadow: 0 1px 2px rgba(16, 26, 51, .12); }
+.sk-btn-primary:hover:not(:disabled) { background: rgb(var(--sk-p-800)); color: #fff; }
+.sk-btn-secondary { background: #fff; border-color: var(--sk-border-strong); color: var(--sk-text); }
+.sk-btn-secondary:hover:not(:disabled) { border-color: rgb(var(--sk-p-300)); color: rgb(var(--sk-p-800)); background: rgb(var(--sk-p-50)); }
+.sk-btn-ghost { background: transparent; color: var(--sk-text-muted); }
+.sk-btn-ghost:hover:not(:disabled) { background: var(--sk-surface-2); color: var(--sk-text); }
+.sk-btn-danger { background: #fff; border-color: #fecdd3; color: #be123c; }
+.sk-btn-danger:hover:not(:disabled) { background: #fff1f2; border-color: #fda4af; }
+.sk-btn-success { background: #059669; color: #fff; }
+.sk-btn-success:hover:not(:disabled) { background: #047857; color: #fff; }
+.sk-btn-hero { background: rgba(255, 255, 255, .15); color: #fff; }
+.sk-btn-hero:hover:not(:disabled) { background: rgba(255, 255, 255, .25); color: #fff; }

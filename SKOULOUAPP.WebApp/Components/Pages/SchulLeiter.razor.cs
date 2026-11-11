@@ -57,14 +57,25 @@ public partial class SchulLeiter
         if (result.Succeeded) schulMentions = await ExamService.GetAbschlussMentionsAsync(schoolId, currentUserId, ComponentToken);
     }
 
-    private const string DirectorTabSubjects = "subjects";
+    // Reiter-Schlüssel = Wert des Query-Parameters « onglet » (z. B. /schulleiter?onglet=classes aus dem Tableau de bord).
+    private const string DirectorTabStudents = "eleves";
+    private const string DirectorTabSubjects = "matieres";
     private const string DirectorTabClasses = "classes";
-    private const string DirectorTabUsers = "users";
-    private const string DirectorTabReassign = "reassign";
+    private const string DirectorTabUsers = "equipe";
+    private const string DirectorTabReassign = "reattribution";
     private const string DirectorTabImport = "import";
-    private const string DirectorTabShared = "shared";
+    private const string DirectorTabShared = "partages";
 
-    private string activeDirectorTab = DirectorTabSubjects;
+    /// <summary>Beträge wie im Tableau de bord: « 75 000 FCFA », unabhängig von der Serverkultur.</summary>
+    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+
+    private static readonly string[] DirectorTabs =
+        [DirectorTabStudents, DirectorTabClasses, DirectorTabUsers, DirectorTabSubjects, DirectorTabReassign, DirectorTabImport, DirectorTabShared];
+
+    [SupplyParameterFromQuery(Name = "onglet")]
+    public string? Onglet { get; set; }
+
+    private string activeDirectorTab = DirectorTabStudents;
 
     private bool IsDirectorTabActive(string tabKey)
         => string.Equals(activeDirectorTab, tabKey, StringComparison.Ordinal);
@@ -72,10 +83,51 @@ public partial class SchulLeiter
     private void SetDirectorTab(string tabKey)
         => activeDirectorTab = tabKey;
 
-    private string GetDirectorTabButtonClass(string tabKey)
-        => IsDirectorTabActive(tabKey)
-            ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
-            : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700";
+    private IReadOnlyList<Reiter.Eintrag> DirectorReiter =>
+    [
+        new(DirectorTabStudents, "Élèves", "graduation", ActiveStudentCount, ActivePendingCount, "Inscription(s) en attente de validation"),
+        new(DirectorTabClasses, "Classes", "layers", schoolKlassen.Count),
+        new(DirectorTabUsers, isProduktOwner ? "Directeurs" : "Équipe", "users", FilteredSchoolUsersOhneSchueler.Count),
+        new(DirectorTabSubjects, "Matières", "book", schoolFachOptions.Count),
+        new(DirectorTabReassign, "Réattribution", "refresh", null, StudentsWithoutActiveClass.Count, "Élève(s) sans classe active"),
+        new(DirectorTabImport, "Import", "upload"),
+        .. canViewSharedTeacherContent
+            ? new Reiter.Eintrag[] { new(DirectorTabShared, "Contenus partagés", "book-open", FilteredSharedTeacherContent.Count) }
+            : []
+    ];
+
+    private string DirectorRubrik => isProduktOwner ? "Établissements suivis" : isKoordinator ? "Coordination" : "Direction";
+
+    private string DirectorUntertitel
+    {
+        get
+        {
+            var schule = SelectedSchoolForManagement ?? (schools.Count == 1 ? schools[0] : null);
+            if (schule is null)
+            {
+                return $"{schools.Count} établissement(s) · {ActiveStudentCount} élève(s)";
+            }
+
+            return string.IsNullOrWhiteSpace(schule.City) ? schule.SchoolName : $"{schule.SchoolName} · {schule.City}";
+        }
+    }
+
+    /// <summary>Neues Konto mit vorausgewählter Rolle « Élève » (Reiter Élèves).</summary>
+    private async Task OpenNewStudentModalAsync()
+    {
+        await OpenNewUserModalAsync();
+        if (!AllowedSchoolUserRoles.Contains(Rollen.Schueler))
+        {
+            return;
+        }
+
+        userForm.RoleName = Rollen.Schueler;
+        if (SelectedKlasseSchoolId is Guid schoolId)
+        {
+            SelectedStudentSchoolId = schoolId;
+            await LoadUserFormKlassenAsync();
+        }
+    }
 
     private bool KannIdentifiantVorschlagen => !string.IsNullOrWhiteSpace(userForm.Vorname)
         && !string.IsNullOrWhiteSpace(userForm.Nachname);
@@ -353,17 +405,24 @@ public partial class SchulLeiter
 
     private string SchoolUsersCardTitle =>
         isProduktOwner
-            ? "Directeurs de mes écoles"
+            ? "Directeurs des établissements"
             : isKoordinator
-                ? "Enseignants et élèves de mes écoles"
-                : "Coordinateurs, enseignants et élèves de mes écoles";
+                ? "Enseignants de l'établissement"
+                : "Équipe de l'établissement";
+
+    private string SchoolUsersCardSubtitle =>
+        isProduktOwner
+            ? "Comptes de direction des établissements que vous suivez."
+            : isKoordinator
+                ? "Comptes des enseignants : classes attribuées, accès et blocage."
+                : "Coordinateurs et enseignants : classes attribuées, droits et accès.";
 
     private string EmptySchoolUsersText =>
         isProduktOwner
             ? "Aucun directeur pour le moment."
             : isKoordinator
-                ? "Aucun enseignant ou élève pour le moment."
-                : "Aucun coordinateur, enseignant ou élève pour le moment.";
+                ? "Aucun enseignant pour le moment."
+                : "Aucun coordinateur ni enseignant pour le moment. Créez un compte avec « Nouvel utilisateur » ou importez une liste.";
 
     private string SchoolAssignmentHintText =>
         isProduktOwner
@@ -794,8 +853,6 @@ public partial class SchulLeiter
     private Guid currentUserId;
     private Guid? expandedStudentId;
 
-    private bool usersExpanded = true;
-    private bool userImportExpanded = true;
 
     private Guid? reassignTargetKlasseId;
     private string reassignSearch = string.Empty;
@@ -929,7 +986,6 @@ public partial class SchulLeiter
     private string zuordnungLehrerName = string.Empty;
     private List<LehrerNiveauZuordnungItem> zuordnungItems = [];
     private List<FachOptionItem> schoolFachOptions = [];
-    private bool fachVerwaltungExpanded = true;
     private string fachSuchbegriff = string.Empty;
     private string neueSchulFachBezeichnung = string.Empty;
     private string? fachVerwaltungStatusMessage;
@@ -944,7 +1000,6 @@ public partial class SchulLeiter
                 || option.Name.Contains(fachSuchbegriff.Trim(), StringComparison.OrdinalIgnoreCase))
             .ToList();
     private IReadOnlyList<SharedTeacherContentItem> sharedTeacherContent = [];
-    private bool sharedContentExpanded = true;
     private bool canViewSharedTeacherContent;
 
     private TeacherSchoolOverview? SelectedSchoolForManagement
@@ -976,6 +1031,11 @@ public partial class SchulLeiter
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrWhiteSpace(Onglet) && DirectorTabs.Contains(Onglet.Trim().ToLowerInvariant()))
+        {
+            activeDirectorTab = Onglet.Trim().ToLowerInvariant();
+        }
+
         await LoadAsync();
     }
 
@@ -1052,7 +1112,7 @@ public partial class SchulLeiter
 
         if (!canViewSharedTeacherContent && IsDirectorTabActive(DirectorTabShared))
         {
-            activeDirectorTab = DirectorTabSubjects;
+            activeDirectorTab = DirectorTabStudents;
         }
 
         var userIdValue = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -1885,7 +1945,7 @@ public partial class SchulLeiter
             ? "Scolarité : cycle finance à démarrer"
             : totalAmount.Value <= 0m
                 ? "Scolarité : à définir"
-                : $"Scolarité : {paidAmount:N0} / {totalAmount.Value:N0} FCFA payé";
+                : $"Scolarité : {paidAmount.ToString("N0", Fr)} / {totalAmount.Value.ToString("N0", Fr)} FCFA payé";
 
     private static bool IsReferenceIncoherent(CourseFormModel klasse)
         => HasReferencePrefixMismatch(klasse.ReferenceName, klasse.Code, klasse.Title);
@@ -1933,7 +1993,60 @@ public partial class SchulLeiter
         return null;
     }
 
-    private IReadOnlyList<DataListChip<SchoolUserItem>> schoolUserChips =>
+    private IReadOnlyList<DataListChip<SchoolUserItem>> schoolUserChips => SchoolUserChipsAlle.Where(chip => chip.Count > 0).ToList();
+
+    /// <summary>Schnellfilter im Reiter Élèves; nur Filter mit Treffern werden angezeigt.</summary>
+    private IReadOnlyList<DataListChip<StudentApprovalItem>> studentChips =>
+        new DataListChip<StudentApprovalItem>[]
+        {
+            new() { Key = "attente", Label = "À valider", Accent = "amber", Predicate = s => s.IsBlocked, Count = FilteredStudents.Count(s => s.IsBlocked) },
+            new() { Key = "sansclasse", Label = "Sans classe", Accent = "rose", Predicate = s => !s.CurrentKlasseId.HasValue, Count = FilteredStudents.Count(s => !s.CurrentKlasseId.HasValue) },
+            new() { Key = "scolarite", Label = "Scolarité incomplète", Accent = "amber", Predicate = s => s.HasActiveSchoolFeeCycle && s.SchoolFeeAmount > 0m && !s.IsSchoolFeeFullyPaid, Count = FilteredStudents.Count(s => s.HasActiveSchoolFeeCycle && s.SchoolFeeAmount > 0m && !s.IsSchoolFeeFullyPaid) },
+        }.Where(chip => chip.Count > 0).ToList();
+
+    private static readonly (int Nr, string Titel, string Text)[] ImportSchritte =
+    [
+        (1, "Ouvrez Excel", "Créez un nouveau tableau."),
+        (2, "Copiez les titres", "Reprenez les titres de colonnes de l'exemple ci-dessous."),
+        (3, "Une personne par ligne", "Les champs facultatifs peuvent rester vides ; l'identifiant est créé automatiquement."),
+        (4, "Enregistrez et chargez", "Format CSV UTF-8 (*.csv) ou Excel (*.xlsx), puis choisissez le fichier."),
+    ];
+
+    /// <summary>Initialen für den runden Namensplatzhalter (« Ama Mensah » → « AM »).</summary>
+    private static string Initialen(string? name)
+    {
+        var teile = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length switch
+        {
+            0 => "?",
+            1 => teile[0][..1].ToUpperInvariant(),
+            _ => (teile[0][..1] + teile[^1][..1]).ToUpperInvariant()
+        };
+    }
+
+    /// <summary>Zweite Zeile einer Klassenkarte: Code, Referenzname und (falls gesetzt) Preis.</summary>
+    private static string KlassenMeta(CourseFormModel klasse)
+    {
+        var teile = new List<string>();
+        if (!string.IsNullOrWhiteSpace(klasse.Code) && klasse.Code != klasse.Title)
+        {
+            teile.Add($"Code {klasse.Code}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(klasse.ReferenceName))
+        {
+            teile.Add($"Réf. {klasse.ReferenceName}");
+        }
+
+        if (klasse.Price > 0m)
+        {
+            teile.Add($"{klasse.Price.ToString("N0", Fr)} FCFA");
+        }
+
+        return teile.Count == 0 ? "Classe de l'établissement" : string.Join(" · ", teile);
+    }
+
+    private IReadOnlyList<DataListChip<SchoolUserItem>> SchoolUserChipsAlle =>
     [
         new()
         {
@@ -1957,7 +2070,6 @@ public partial class SchulLeiter
     // Klassenverwaltung (schul-eigene Klassen)
     // ---------------------------------------------------------------------
 
-    private bool klassenExpanded = true;
     private IReadOnlyList<CourseFormModel> schoolKlassen = [];
     private bool darfCycleZahlungenVerwalten;
 
@@ -2510,7 +2622,7 @@ public partial class SchulLeiter
         }
 
         klasseStatusMessage = offeneSchuld > 0
-            ? $"Le cycle est clôturé. La dette restante de {offeneSchuld:N0} FCFA est indiquée comme perte."
+            ? $"Le cycle est clôturé. La dette restante de {offeneSchuld.ToString("N0", Fr)} FCFA est indiquée comme perte."
             : "Le cycle est clôturé.";
         if (beendenOhneNote > 0)
             klasseStatusMessage += $" {beendenOhneNote} élève(s) ont été clôturés sans note finale ou décision complète.";
