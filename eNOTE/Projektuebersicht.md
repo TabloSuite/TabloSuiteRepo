@@ -5,7 +5,7 @@
 ## Aktueller Stand (10.11.2026, abends)
 
 - **Code:** Lösungsbuild erfolgreich, `eNOTE.Tests` **270/270** grün, letzter Commit `2b0f40d`.
-- **Datenbank:** Migrationskette bis `20261111083955_KuendigungUndKontoLoeschung`; lokale `ENOTEDB` **und** Azure `ENote-Database` sind auf diesem Stand (Azure am 11.11.2026 mit OK nachgezogen). Der normale App-Start migriert und seedet nie.
+- **Datenbank:** Migrationskette bis `20261111105117_MobileMoneyKamerun`; lokale `ENOTEDB` **und** Azure `ENote-Database` sind auf diesem Stand (Azure am 11.11.2026 mit OK nachgezogen). Der normale App-Start migriert und seedet nie.
 - **Betrieb:** Azure App Service `enote` (Linux, .NET 10, Tarif B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und Sitzungsaffinität an, E-Mails über Postmark, Nutzer-Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
 - **Nächste Schritte:** Der Nutzer testet ab 11.11.2026 alles manuell und sammelt Fehler. Danach offen: Bondrucker und Scanner mit echter Hardware testen, Grundpreis auf Azure auf 3.600 F setzen (Administration → Tarifs), optional Treueprogramm.
 
