@@ -4,7 +4,7 @@
 @inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 @using SkoulouApp.Core.Models.Student
 
-<PageTitle>Épreuves</PageTitle>
+<PageTitle>Mes épreuves · SKOULOU</PageTitle>
 
 @if (exams is null)
 {
@@ -12,23 +12,24 @@
 }
 else
 {
-    <section class="student-exams-page grid gap-4 sm:gap-6">
-        <div class="rounded-[1.25rem] bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 px-4 py-3 text-white shadow-2xl shadow-orange-200/60 sm:px-6 sm:py-5 skoulou-hero">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100 sm:text-sm">Espace épreuves</p>
-            <h1 class="mt-2 text-2xl font-black sm:mt-3 sm:text-3xl">Mes épreuves</h1>
-            <p class="mt-2 max-w-2xl text-xs leading-6 text-amber-50 sm:mt-3 sm:text-sm sm:leading-7">Vous pouvez commencer une épreuve dès qu'elle est publiée. Le chronomètre continue même si vous quittez la page. Si une date limite commune est indiquée, vous devez aussi envoyer vos réponses avant cette date : commencer tard peut réduire votre temps disponible.</p>
-        </div>
+    <div class="student-exams-page grid gap-5">
+        <SeitenKopf Rubrik="Espace élève" Titel="Mes épreuves" IconName="exam"
+                    Untertitel="Commencez une épreuve dès qu'elle est publiée. Le chronomètre continue même si vous quittez la page." />
+
+        <p class="mb-0 flex items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <Icon Name="info" Groesse="18" /><span>Si une date limite commune est indiquée, vos réponses doivent aussi être envoyées avant cette date : commencer tard peut réduire votre temps disponible.</span>
+        </p>
 
         @if (exams.Count == 0)
         {
-            <div class="rounded-[2rem] bg-white p-8 text-center shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                    <h2 class="text-lg font-black text-slate-900">Aucune épreuve disponible</h2>
-                    <p class="mt-2 text-sm text-slate-600">Aucune épreuve n'est encore disponible pour votre classe actuelle.</p>
+            <div class="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <h2 class="mb-0 text-base font-bold text-slate-900">Aucune épreuve disponible</h2>
+                <p class="mb-0 mt-2 text-sm text-slate-600">Aucune épreuve n'est encore disponible pour votre classe.</p>
             </div>
         }
         else
         {
-            <div class="rounded-[2rem] bg-white p-4 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 sm:p-5">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                 <DataListPanel Items="exams"
                                PageSize="10"
                                SearchPlaceholder="Rechercher une épreuve..."
@@ -39,16 +40,16 @@ else
                     <div class="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
                         @foreach (var exam in context)
                         {
-                    <article class="card-stack-enter flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-md shadow-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-lg">
+                    <article class="card-stack-enter flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:border-blue-200 hover:shadow-md">
                         <div class="flex flex-wrap items-start justify-between gap-2">
                             <div>
-                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">@exam.CourseCode</p>
-                                <h2 class="mt-1 text-lg font-bold text-slate-900">@exam.Title</h2>
+                                <p class="mb-0 text-xs font-semibold text-slate-500">@exam.CourseCode</p>
+                                <h2 class="mb-0 mt-1 text-base font-bold text-slate-900">@exam.Title</h2>
                             </div>
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 @if (exam.CanDownloadPdf)
                                 {
-                                    <a class="inline-flex rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-800 no-underline hover:bg-cyan-200" href="/student/exams/@exam.ExamId/pdf-file" target="_blank">PDF sans solutions</a>
+                                    <a class="sk-btn sk-btn-sm sk-btn-secondary" href="/student/exams/@exam.ExamId/pdf-file" target="_blank" title="PDF sans solutions"><Icon Name="printer" Groesse="14" />PDF</a>
                                 }
                                 @if (exam.HasAttempt)
                                 {
@@ -60,7 +61,7 @@ else
                         </div>
                         @if (!string.IsNullOrWhiteSpace(exam.Description))
                         {
-                            <p class="line-clamp-2 text-sm text-slate-600">@exam.Description</p>
+                            <p class="mb-0 line-clamp-2 text-sm text-slate-600">@exam.Description</p>
                         }
 
                         <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-slate-600">
@@ -71,11 +72,11 @@ else
                         @if (!exam.IsSuperseded && exam.SubmissionDueAtUtc is DateTime dueAtUtc)
                         {
                             var fullDurationStartUtc = dueAtUtc.AddMinutes(-exam.DurationInMinutes);
-                            <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs leading-5 text-indigo-900">
-                                <p class="font-bold">Date limite pour commencer et envoyer : @dueAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                            <div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
+                                <p class="mb-0 font-bold">Date limite pour commencer et envoyer : @dueAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
                                 @if (exam.CanStart && !exam.HasActiveAttempt)
                                 {
-                                    <p class="mt-1 @(DateTime.UtcNow > fullDurationStartUtc ? "font-semibold text-rose-700" : "text-indigo-800")">
+                                    <p class="mb-0 mt-1 @(DateTime.UtcNow > fullDurationStartUtc ? "font-semibold text-rose-700" : "text-blue-800")">
                                         @(DateTime.UtcNow > fullDurationStartUtc
                                             ? $"Commencez dès maintenant : il reste moins de {exam.DurationInMinutes} min avant la date limite."
                                             : $"Pour disposer des {exam.DurationInMinutes} min complètes, commencez au plus tard le {fullDurationStartUtc.ToLocalTime():dd/MM/yyyy à HH:mm}.")
@@ -86,11 +87,11 @@ else
 
                         @if (exam.HasActiveAttempt)
                         {
-                            <p class="text-sm font-semibold @(exam.CanStart ? "text-amber-700" : "text-rose-700")">@GetRemainingTime(exam)</p>
+                            <p class="mb-0 text-sm font-semibold @(exam.CanStart ? "text-amber-700" : "text-rose-700")">@GetRemainingTime(exam)</p>
                         }
                         @if (!exam.CanStart)
                         {
-                            <p class="text-xs text-slate-600">@(exam.IsSuperseded
+                            <p class="mb-0 text-xs text-slate-600">@(exam.IsSuperseded
                                 ? "Cette session est terminée. Consultez vos résultats ou la nouvelle attribution."
                                 : exam.HasAttempt
                                     ? "Vous avez déjà envoyé cette épreuve. Pour recommencer, attendez une nouvelle attribution de votre enseignant."
@@ -100,7 +101,7 @@ else
                         }
 
                         <button type="button"
-                                class="inline-flex w-full items-center justify-center self-start rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                                class="sk-btn @(exam.HasAttempt ? "sk-btn-secondary" : "sk-btn-primary") mt-auto w-full self-start sm:w-auto"
                                 disabled="@(!exam.CanStart && !exam.HasAttempt)"
                                 @onclick="() => StartExam(exam.ExamId)">
                             @(exam.HasAttempt ? "Consulter la correction" : exam.CanStart ? exam.HasActiveAttempt ? "Reprendre l'épreuve" : "Commencer l'épreuve" : exam.IsSuperseded ? "Session précédente" : "Épreuve terminée")
@@ -111,5 +112,5 @@ else
                 </DataListPanel>
             </div>
         }
-    </section>
+    </div>
 }

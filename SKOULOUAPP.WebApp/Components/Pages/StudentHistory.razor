@@ -4,14 +4,11 @@
 @inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 @using SkoulouApp.Core.Models.TeacherLessons
 
-<PageTitle>Historique</PageTitle>
+<PageTitle>Mon historique · SKOULOU</PageTitle>
 
-<section class="student-exams-page grid gap-4 sm:gap-6">
-    <div class="rounded-[1.25rem] bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 px-4 py-3 text-white shadow-2xl shadow-slate-300/40 sm:px-6 sm:py-5 skoulou-hero">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 sm:text-sm">Suivi personnel</p>
-        <h1 class="mt-2 text-2xl font-black sm:mt-3 sm:text-3xl">Mon historique</h1>
-        <p class="mt-2 max-w-2xl text-xs leading-6 text-slate-100 sm:mt-3 sm:text-sm sm:leading-7">Retrouvez ici les supports publiés des classes précédentes avec filtres par enseignant et matière. Les épreuves assignées de votre classe active restent disponibles dans « Examens assignés ».</p>
-    </div>
+<div class="student-exams-page grid gap-5">
+    <SeitenKopf Rubrik="Espace élève" Titel="Mon historique" IconName="history"
+                Untertitel="Vos classes et leurs résultats, ainsi que les supports de cours des classes précédentes. Les épreuves de votre classe actuelle restent dans « Examens »." />
 
     @if (historyLessons is null)
     {
@@ -21,86 +18,97 @@
     {
         @if (classHistory.Count > 0)
         {
-            <div class="grid gap-3 sm:grid-cols-2">
+            <section class="grid gap-3 sm:grid-cols-2" aria-label="Mes classes">
                 @foreach (var cycle in classHistory)
                 {
-                    <article class="overflow-hidden rounded-3xl bg-white shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl" @key="cycle.DurchlaufId">
-                        <div class="h-1.5 bg-gradient-to-r @(cycle.IsBestanden == false ? "from-rose-400 to-orange-400" : "from-indigo-500 to-violet-500")"></div>
-                        <div class="p-5">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <h2 class="text-lg font-bold text-slate-900">@cycle.CourseCode · @cycle.CourseTitle</h2>
-                            <span class="rounded-full px-3 py-1 text-xs font-bold @(cycle.EndDatum.HasValue ? "bg-slate-100 text-slate-700" : "bg-emerald-100 text-emerald-800")">@(cycle.EndDatum.HasValue ? "Cycle clôturé" : "Cycle en cours")</span>
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" @key="cycle.DurchlaufId">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                                <h2 class="mb-0 text-base font-bold text-slate-900">@cycle.CourseCode · @cycle.CourseTitle</h2>
+                                <p class="mb-0 mt-0.5 text-sm text-slate-500">Du @cycle.StartDatum.ToLocalTime().ToString("dd/MM/yyyy") au @(cycle.EndDatum?.ToLocalTime().ToString("dd/MM/yyyy") ?? "aujourd'hui")</p>
+                            </div>
+                            <Badge Accent="@(cycle.EndDatum.HasValue ? "slate" : "emerald")">@(cycle.EndDatum.HasValue ? "Cycle clôturé" : "Cycle en cours")</Badge>
                         </div>
-                        <p class="mt-2 text-sm text-slate-600">Du @cycle.StartDatum.ToLocalTime().ToString("dd/MM/yyyy") au @(cycle.EndDatum?.ToLocalTime().ToString("dd/MM/yyyy") ?? "aujourd'hui")</p>
-                        <div class="mt-3 rounded-2xl p-3 text-sm @(cycle.IsBestanden == false ? "bg-rose-50 text-rose-800" : "bg-slate-50 text-slate-700")">
-                            <p>Score : @if (cycle.ScorePercent is int scorePercent)
+                        <dl class="m-0 mt-4 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-xl bg-slate-50 px-2 py-2">
+                                <dt class="text-xs font-semibold text-slate-500">Score</dt>
+                                <dd class="m-0 text-base font-extrabold tabular-nums" style="color:@(cycle.ScorePercent is int sp ? ScoreColorHelper.GetScoreColor(sp) : "#8a95a8")">@(cycle.ScorePercent is int s ? $"{s} %" : "–")</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-2 py-2">
+                                <dt class="text-xs font-semibold text-slate-500">Note finale</dt>
+                                <dd class="m-0 text-base font-extrabold text-slate-900">@(cycle.AbschlussNoteText ?? "–")</dd>
+                            </div>
+                            <div class="rounded-xl px-2 py-2 @(cycle.IsBestanden == false ? "bg-rose-50" : cycle.IsBestanden == true ? "bg-emerald-50" : "bg-slate-50")">
+                                <dt class="text-xs font-semibold text-slate-500">Décision</dt>
+                                <dd class="m-0 text-sm font-bold @(cycle.IsBestanden == false ? "text-rose-800" : cycle.IsBestanden == true ? "text-emerald-800" : "text-slate-700")">@(cycle.IsBestanden == true ? "Réussi" : cycle.IsBestanden == false ? "Non réussi" : "En attente")</dd>
+                            </div>
+                        </dl>
+                        @if (cycle.ScorePercent is not null || !string.IsNullOrWhiteSpace(cycle.MentionText))
+                        {
+                            <p class="mb-0 mt-3 text-sm text-slate-600">
+                                @if (cycle.ScorePercent is not null)
                                 {
-                                    <strong style="color:@ScoreColorHelper.GetScoreColor(scorePercent)">@scorePercent %</strong>
-                                    <span class="text-slate-500"> sur @cycle.ScoreCount épreuve@(cycle.ScoreCount > 1 ? "s" : "")</span>
+                                    <span>Score sur @cycle.ScoreCount épreuve@(cycle.ScoreCount > 1 ? "s" : "")</span>
                                 }
-                                else
+                                @if (!string.IsNullOrWhiteSpace(cycle.MentionText))
                                 {
-                                    <strong>Non disponible</strong>
+                                    <span> · Mention : <strong>@cycle.MentionText</strong></span>
                                 }
                             </p>
-                            <p class="mt-1">Note finale : <strong>@(cycle.AbschlussNoteText ?? "Non renseignée")</strong></p>
-                            <p class="mt-1">Décision : <strong>@(cycle.IsBestanden == true ? "Réussi" : cycle.IsBestanden == false ? "Non réussi" : "En attente")</strong></p>
-                            @if (!string.IsNullOrWhiteSpace(cycle.MentionText))
-                            {
-                                <p class="mt-1">Mention : <strong>@cycle.MentionText</strong></p>
-                            }
-                        </div>
-                        </div>
+                        }
                     </article>
                 }
-            </div>
+            </section>
         }
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-            <div class="grid gap-3 sm:grid-cols-2">
-                <ModernDropdown TValue="Guid?" Label="Filtrer par enseignant" Value="selectedTeacherId" ValueChanged="SetTeacherFilterAsync" Options="TeacherOptions" Searchable="true" SearchPlaceholder="Rechercher un enseignant..." />
-                <ModernDropdown TValue="Guid?" Label="Filtrer par matière" Value="selectedFachId" ValueChanged="SetFachFilterAsync" Options="FachOptions" Searchable="true" SearchPlaceholder="Rechercher une matière..." />
-            </div>
-        </div>
 
-        @if (FilteredHistoryLessons.Count == 0)
-        {
-            <div class="rounded-[2rem] bg-white p-8 text-left shadow-lg shadow-slate-200/70 ring-1 ring-slate-100">
-                <p class="text-sm font-bold text-slate-900">Aucun support historique ne correspond aux filtres.</p>
+        <Abschnitt Titel="Supports des classes précédentes" Untertitel="Relisez les leçons de vos anciennes classes et exportez-les en PDF." IconName="book">
+            <div class="mb-4 grid gap-3 sm:grid-cols-2">
+                <ModernDropdown TValue="Guid?" Label="Enseignant" Value="selectedTeacherId" ValueChanged="SetTeacherFilterAsync" Options="TeacherOptions" Searchable="true" SearchPlaceholder="Rechercher un enseignant..." />
+                <ModernDropdown TValue="Guid?" Label="Matière" Value="selectedFachId" ValueChanged="SetFachFilterAsync" Options="FachOptions" Searchable="true" SearchPlaceholder="Rechercher une matière..." />
             </div>
-        }
-        else
-        {
-            <div class="grid gap-4">
-                @foreach (var item in FilteredHistoryLessons)
-                {
-                    <article class="rounded-3xl bg-white p-5 shadow-lg shadow-slate-200/70 ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                        <button type="button" class="w-full text-left" @onclick="() => OpenLesson(item.Id)">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">@item.CourseCode</span>
-                                @if (!string.IsNullOrWhiteSpace(item.KlasseTitle))
+
+            @if (FilteredHistoryLessons.Count == 0)
+            {
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                    @(historyLessons.Count == 0 ? "Aucun support pour le moment : ils apparaissent ici après la fin d'une classe." : "Aucun support ne correspond aux filtres.")
+                </div>
+            }
+            else
+            {
+                <ul class="m-0 grid list-none gap-3 p-0">
+                    @foreach (var item in FilteredHistoryLessons)
+                    {
+                        <li class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <button type="button" class="w-full bg-transparent p-0 text-left" @onclick="() => OpenLesson(item.Id)">
+                                <span class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">@item.CourseCode</span>
+                                    @if (!string.IsNullOrWhiteSpace(item.KlasseTitle))
+                                    {
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">@item.KlasseTitle</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.FachName))
+                                    {
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">@item.FachName</span>
+                                    }
+                                    <span class="font-normal text-slate-500">@item.AuthorName · @item.PageCount page(s)</span>
+                                </span>
+                                <span class="mt-2 block text-base font-bold text-slate-900">@item.Title</span>
+                                @if (!string.IsNullOrWhiteSpace(item.Summary))
                                 {
-                                    <span class="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-700">@item.KlasseTitle</span>
+                                    <span class="mt-0.5 block text-sm text-slate-500">@item.Summary</span>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(item.FachName))
+                            </button>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" class="sk-btn sk-btn-sm sk-btn-primary" @onclick="() => OpenLesson(item.Id)"><Icon Name="book-open" Groesse="14" />Lire la leçon</button>
+                                @if (item.IsPdfExportEnabled)
                                 {
-                                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">@item.FachName</span>
+                                    <a class="sk-btn sk-btn-sm sk-btn-secondary" href="/student/lessons/support/@item.Id/pdf-file" target="_blank"><Icon Name="printer" Groesse="14" />PDF</a>
                                 }
-                                <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs text-indigo-700">@item.AuthorName</span>
-                                <span class="text-xs text-slate-400">@item.PageCount page(s)</span>
                             </div>
-                            <h2 class="mt-2 text-lg font-bold text-slate-900">@item.Title</h2>
-                            <p class="mt-1 text-sm text-slate-500">@item.Summary</p>
-                        </button>
-                        <div class="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                            <button type="button" class="inline-flex rounded-full bg-violet-100 px-4 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200" @onclick="() => OpenLesson(item.Id)">Lire la leçon</button>
-                            @if (item.IsPdfExportEnabled)
-                            {
-                                <a class="inline-flex rounded-full bg-cyan-100 px-4 py-2 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-200" href="/student/lessons/support/@item.Id/pdf-file" target="_blank">Exporter PDF</a>
-                            }
-                        </div>
-                    </article>
-                }
-            </div>
-        }
+                        </li>
+                    }
+                </ul>
+            }
+        </Abschnitt>
     }
-</section>
+</div>

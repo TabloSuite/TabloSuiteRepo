@@ -313,3 +313,6 @@ body {
 .sk-btn-success:hover:not(:disabled) { background: #047857; color: #fff; }
 .sk-btn-hero { background: rgba(255, 255, 255, .15); color: #fff; }
 .sk-btn-hero:hover:not(:disabled) { background: rgba(255, 255, 255, .25); color: #fff; }
+
+/* --- Schülerbereich: Inhalt auf großen Bildschirmen mittig begrenzt (Navigation unten, StudentBottomNav) --- */
+.app-content--student { width: 100%; max-width: 72rem; margin-inline: auto; }

@@ -107,12 +107,12 @@ public partial class Student
 
     private string ClassCycleHintAccentClass
         => dashboard is null
-            ? "bg-white/10 text-white/90 ring-white/20"
+            ? "border-slate-200 bg-white text-slate-700"
             : !dashboard.HasCurrentKlasseAssignment
-                ? "bg-rose-500/20 text-white ring-rose-200/40"
+                ? "border-rose-200 bg-rose-50 text-rose-800"
                 : !dashboard.IsCurrentClassUnlocked
-                    ? "bg-amber-500/20 text-white ring-amber-200/40"
-                    : "bg-emerald-500/20 text-white ring-emerald-200/40";
+                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800";
 
     private string ClassHistoryEmptyMessage
         => dashboard is null
