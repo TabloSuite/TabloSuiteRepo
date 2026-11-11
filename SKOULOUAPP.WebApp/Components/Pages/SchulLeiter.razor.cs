@@ -1747,6 +1747,45 @@ public partial class SchulLeiter
 
     private Task SaveUserAsync() => RunDatabaseActionAsync(SaveUserCoreAsync);
     private List<SchoolUserImportZugang> neueZugangsdaten = [];
+    private string zugangsdatenTitel = "Identifiants initiaux";
+
+    // Neues Passwort durch die Direktion (Schüler/Lehrkräfte ohne E-Mail)
+    [Inject] private KontoZugangService KontoZugang { get; set; } = default!;
+    private (Guid Id, string Name)? passwortZiel;
+
+    private void ZugangsdatenSchliessen()
+    {
+        neueZugangsdaten.Clear();
+        zugangsdatenTitel = "Identifiants initiaux";
+    }
+    private string? passwortFehler;
+
+    private void PasswortFragen(Guid benutzerId, string name)
+    {
+        passwortFehler = null;
+        passwortZiel = (benutzerId, name);
+    }
+
+    private async Task NeuesPasswortAsync()
+    {
+        if (passwortZiel is not { } ziel || isDatabaseActionInProgress) return;
+        isDatabaseActionInProgress = true;
+        try
+        {
+            var zugang = await KontoZugang.NeuesPasswortAsync(currentUserId, ziel.Id, ComponentToken);
+            passwortZiel = null;
+            zugangsdatenTitel = $"Nouveau mot de passe – {ziel.Name}";
+            neueZugangsdaten = [zugang];
+        }
+        catch (InvalidOperationException ex)
+        {
+            passwortFehler = ex.Message;
+        }
+        finally
+        {
+            isDatabaseActionInProgress = false;
+        }
+    }
 
     private async Task SaveUserCoreAsync()
     {

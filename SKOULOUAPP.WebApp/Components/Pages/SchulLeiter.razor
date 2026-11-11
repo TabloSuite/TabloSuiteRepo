@@ -190,6 +190,7 @@
                                                     }
                                                 }
                                                 <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenEditStudentPersonalAsync(student.UserId)"><Icon Name="edit" Groesse="14" />Modifier</button>
+                                                <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" title="Créer un nouveau mot de passe" @onclick="() => PasswortFragen(student.UserId, student.FullName)"><Icon Name="refresh" Groesse="14" />Mot de passe</button>
                                                 <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" aria-expanded="@(offen ? "true" : "false")" @onclick="() => ToggleLevelPanelAsync(student.UserId)">
                                                     Classes et abonnement<Icon Name="chevron-down" Groesse="14" CssClass="@(offen ? "rotate-180 transition-transform" : "transition-transform")" />
                                                 </button>
@@ -477,6 +478,7 @@
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenEditUserAsync(user.UserId)"><Icon Name="edit" Groesse="14" />Modifier</button>
+                                        <button type="button" class="sk-btn sk-btn-sm sk-btn-ghost" title="Créer un nouveau mot de passe" @onclick="() => PasswortFragen(user.UserId, user.FullName)"><Icon Name="refresh" Groesse="14" />Mot de passe</button>
                                         @if (user.RoleName == "Lehrer")
                                         {
                                             <button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => OpenZuordnungAsync(user.UserId, user.FullName)"><Icon Name="layers" Groesse="14" />Classes</button>
@@ -810,15 +812,26 @@
 
 @if (neueZugangsdaten.Count > 0)
 {
-    <ModalDialog Open="true" Title="Identifiants initiaux" CloseOnBackdrop="false">
+    <ModalDialog Open="true" Title="@zugangsdatenTitel" CloseOnBackdrop="false">
         <p>Transmettez ces identifiants individuellement et confidentiellement. Ils ne seront plus affichés après fermeture. Chaque personne peut modifier son mot de passe dans son profil.</p>
         @foreach (var zugang in neueZugangsdaten)
         {
             <div class="my-3 break-all rounded-xl bg-slate-100 p-3"><span class="text-xs text-slate-500">Identifiant</span><br /><strong>@zugang.Identifiant</strong><br /><span class="text-xs text-slate-500">Mot de passe</span><br /><code>@zugang.Passwort</code></div>
         }
-        <button type="button" class="sk-btn sk-btn-primary" @onclick="() => neueZugangsdaten.Clear()">J'ai transmis les identifiants — fermer</button>
+        <button type="button" class="sk-btn sk-btn-primary" @onclick="ZugangsdatenSchliessen">J'ai transmis les identifiants — fermer</button>
     </ModalDialog>
 }
+
+<ModalDialog Open="passwortZiel is not null" OpenChanged="v => { if (!v) passwortZiel = null; }" Title="Nouveau mot de passe" Eyebrow="@passwortZiel?.Name"
+             ErrorMessage="@passwortFehler" CloseOnBackdrop="false" MaxWidthClass="max-w-md">
+    <p class="mb-0 text-sm leading-6 text-slate-700">Un nouveau mot de passe sera créé et affiché une seule fois. L'ancien ne fonctionnera plus et les sessions ouvertes seront fermées.</p>
+    <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => passwortZiel = null">Annuler</button>
+        <AsyncActionButton Class="sk-btn sk-btn-primary" IsBusy="@isDatabaseActionInProgress" BusyLabel="Création..." OnClick="@(_ => NeuesPasswortAsync())">
+            <Icon Name="refresh" Groesse="16" />Créer le mot de passe
+        </AsyncActionButton>
+    </div>
+</ModalDialog>
 
 <ModalDialog @bind-Open="reassignRemoveConfirmOpen"
              Title="Retirer l'élève de la classe"
