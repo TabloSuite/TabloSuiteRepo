@@ -16,12 +16,12 @@ public class EmailTemplatesTests
 
         // Header
         Assert.Contains("SKOULOU", html);
-        Assert.Contains("https://skoulou.etsetech.com", html);
+        Assert.Contains("https://skoulou.tablosuite.com", html);
 
         // Footer
         Assert.Contains("APPRENDRE. PROGRESSER. RÉUSSIR.", html);
         Assert.Contains("CONTACT", html);
-        Assert.Contains("contact.skoulou@etsetech.com", html);
+        Assert.Contains("contact@tablosuite.com", html);
         Assert.Contains("+49 176 61221600", html);
         Assert.Contains("Lomé, Togo", html);
         Assert.Contains($"{DateTime.UtcNow.Year}", html);

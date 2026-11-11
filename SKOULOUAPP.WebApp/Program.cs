@@ -151,6 +151,8 @@ builder.Services.AddScoped<DatabaseActionGuard>();
 
 builder.Services.Configure<MediaStorageOptions>(builder.Configuration.GetSection(MediaStorageOptions.SectionName));
 builder.Services.Configure<AzureBlobStorageOptions>(builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName));
+// App Service lehnt den Präfix « AzureBlobStorage » ab – dort gelten « Storage__… » (z. B. Storage__ServiceUri, Storage__ContainerName).
+builder.Services.Configure<AzureBlobStorageOptions>(builder.Configuration.GetSection("Storage"));
 builder.Services.PostConfigure<AzureBlobStorageOptions>(options =>
 {
     if (string.IsNullOrWhiteSpace(options.BlobConnectionString))
@@ -295,7 +297,7 @@ app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration 
     var from = Value(root, "From");
     var to = Value(root, "To");
     var id = Value(root, "MessageID");
-    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(from) || !to.Contains("contact.skoulou@etsetech.com", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest();
+    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(from) || !to.Contains(SkoulouMarke.KontaktEmail, StringComparison.OrdinalIgnoreCase)) return Results.BadRequest();
     await mailbox.EmpfangenAsync(from, to, Value(root, "Subject"), Value(root, "HtmlBody") is { Length: > 0 } html ? html : System.Net.WebUtility.HtmlEncode(Value(root, "TextBody")), id, cancellationToken: cancellationToken);
     return Results.Ok();
 }).DisableAntiforgery();

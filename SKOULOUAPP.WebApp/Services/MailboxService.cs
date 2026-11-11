@@ -37,7 +37,7 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
 
             db.MailNachrichten.Add(new MailNachricht
             {
-                SchulID = criteria.SchoolId, GesendetVonID = adminId, Absender = "contact.skoulou@etsetech.com",
+                SchulID = criteria.SchoolId, GesendetVonID = adminId, Absender = SkoulouMarke.KontaktEmail,
                 Empfaenger = recipient.Email, Betreff = message.Subject, Inhalt = content
             });
             await db.SaveChangesAsync(cancellationToken);
@@ -145,7 +145,7 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
 
         db.MailNachrichten.Add(new MailNachricht
         {
-            SchulID = schulId, GesendetVonID = userId, Absender = "contact.skoulou@etsetech.com",
+            SchulID = schulId, GesendetVonID = userId, Absender = SkoulouMarke.KontaktEmail,
             Empfaenger = empfaenger.Trim(), Betreff = betreff.Trim(), Inhalt = HtmlSanitizer.Sanitize(inhalt)
         });
         await db.SaveChangesAsync(cancellationToken);

@@ -124,7 +124,7 @@ public class BewertungsServiceTests
         Assert.Equal(2, (await service.UebergabenAsync(d.Direktor, neuID)).Count);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.UebergabenAsync(schueler, neuID));
         QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["App:BaseUrl"] = "https://skoulou.etsetech.com" }).Build();
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["App:BaseUrl"] = "https://skoulou.tablosuite.com" }).Build();
         Assert.NotEmpty(new BulletinPdfService(config).Erzeugen(neu));
     }
 

@@ -616,7 +616,7 @@ public sealed class AzureBlobMediaLibraryService(
     }
 
     private BlobContainerClient GetContainerClient()
-        => new BlobContainerClient(storageOptions.BlobConnectionString, storageOptions.ContainerName);
+        => SkoulouBlobSpeicher.Container(storageOptions, storageOptions.ContainerName);
 
     private string GetLocalMediaRootPath()
     {
@@ -655,9 +655,9 @@ public sealed class AzureBlobMediaLibraryService(
 
     private void ValidateConfiguration()
     {
-        if (!storageOptions.Enabled || string.IsNullOrWhiteSpace(storageOptions.BlobConnectionString))
+        if (!storageOptions.Enabled || !SkoulouBlobSpeicher.IstKonfiguriert(storageOptions))
         {
-            throw new InvalidOperationException("Azure Blob Storage n'est pas configuré. En local : définissez AzureBlobStorage:BlobConnectionString dans les secrets utilisateur et redémarrez l'application. Dans Azure App Service : définissez AzureBlobStorage__BlobConnectionString dans Configuration > Paramètres de l'application, puis redémarrez le service.");
+            throw new InvalidOperationException("Azure Blob Storage n'est pas configuré. Dans Azure App Service : définissez Storage__ServiceUri (compte de stockage TabloSuite, identité managée) et Storage__ContainerName, puis redémarrez le service.");
         }
     }
 

@@ -38,9 +38,9 @@ public class MailboxServiceTests
         }
 
         var service = new MailboxService(factory, new FakeEmailService());
-        await service.EmpfangenAsync("student@example.org", "contact.skoulou@etsetech.com", "Sujet", "<p>Bonjour</p>", "msg-1");
-        await service.EmpfangenAsync("student@example.org", "contact.skoulou@etsetech.com", "Sujet", "<p>Bonjour</p>", "msg-1");
-        await service.EmpfangenAsync("unknown@example.org", "contact.skoulou@etsetech.com", "Autre", "Bonjour", "msg-2");
+        await service.EmpfangenAsync("student@example.org", "contact@tablosuite.com", "Sujet", "<p>Bonjour</p>", "msg-1");
+        await service.EmpfangenAsync("student@example.org", "contact@tablosuite.com", "Sujet", "<p>Bonjour</p>", "msg-1");
+        await service.EmpfangenAsync("unknown@example.org", "contact@tablosuite.com", "Autre", "Bonjour", "msg-2");
 
         Assert.Equal(2, (await service.LadeAsync(adminId, true, null)).Count);
         Assert.Empty(await service.LadeAsync(ownerId, false, null));

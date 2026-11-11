@@ -11,7 +11,7 @@ public sealed class AzureFinanzBelegStorage(IOptions<AzureBlobStorageOptions> op
 {
     private readonly AzureBlobStorageOptions settings = options.Value;
 
-    private BlobContainerClient Container => new(settings.BlobConnectionString, settings.FinanzBelegContainerName);
+    private BlobContainerClient Container => SkoulouBlobSpeicher.Container(settings, settings.FinanzBelegContainerName);
 
     public async Task<string> SpeichernAsync(Guid schulId, Guid belegId, Stream inhalt, string inhaltstyp, CancellationToken cancellationToken = default)
     {
@@ -86,7 +86,7 @@ public sealed class AzureFinanzBelegStorage(IOptions<AzureBlobStorageOptions> op
 
     private void ValidateConfiguration()
     {
-        if (string.IsNullOrWhiteSpace(settings.BlobConnectionString))
+        if (!SkoulouBlobSpeicher.IstKonfiguriert(settings))
             throw new InvalidOperationException("Le stockage privé des justificatifs n'est pas configuré.");
     }
 }

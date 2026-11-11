@@ -13,9 +13,9 @@ internal static class EmailTemplates
     private const string BrandName = "SKOULOU";
     private const string BrandClaim = "APPRENDRE. PROGRESSER. RÉUSSIR.";
     private const string BrandDescription = "L'espace d'apprentissage qui rapproche les écoles, les enseignants et les élèves.";
-    private const string SiteUrl = "https://skoulou.etsetech.com";
-    private const string SiteLabel = "skoulou.etsetech.com";
-    private const string SupportEmail = "contact.skoulou@etsetech.com";
+    private const string SiteUrl = SkoulouMarke.Website;
+    private const string SiteLabel = SkoulouMarke.Domain;
+    private const string SupportEmail = SkoulouMarke.KontaktEmail;
     private const string Phone = "+49 176 61221600";
     private const string Address = "Lomé, Togo";
 
