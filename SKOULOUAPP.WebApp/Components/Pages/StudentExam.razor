@@ -86,9 +86,9 @@ else if (session is null && result is null)
 else if (result is not null)
 {
     <section class="grid gap-6">
-        <div class="rounded-[2rem] @(result.IsPassed ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-rose-500 to-orange-600") p-8 text-white shadow-2xl">
+        <div class="rounded-2xl @(result.IsPassed ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-rose-500 to-orange-600") p-8 text-white shadow-2xl">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-white/80">Résultat</p>
-            <h1 class="mt-3 text-4xl font-black" style="color:@ScoreColorHelper.GetScoreColor(result.ScorePercent)">@result.ScorePercent %</h1>
+            <h1 class="mt-3 text-4xl font-black text-white">@result.ScorePercent %</h1>
             <p class="mt-2 text-lg font-semibold">@(result.IsPassed ? "Réussi" : "Échoué")</p>
             <p class="mt-3 text-sm text-white/90">@result.CorrectAnswers bonnes réponses sur @result.TotalQuestions · Seuil de réussite @result.PassingScore %</p>
             @if (result.TimedOut)

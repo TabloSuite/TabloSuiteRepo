@@ -28,9 +28,9 @@
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-semibold">@plan.Bezeichnung</h2>
                 <p>@plan.GueltigAb.ToString("dd/MM/yyyy") – @plan.GueltigBis.ToString("dd/MM/yyyy")</p>
-                <details class="mt-3 rounded border p-3"><summary>Copier ce planning</summary>
+                <details class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><summary>Copier ce planning</summary>
                     <p>Renseignez l'intitulé et les dates dans « Nouveau planning », puis créez une copie dans la même classe et la même année.</p>
-                    <button type="button" class="mt-2 rounded border p-2" disabled="@occupe" @onclick="KopierenAsync">Créer une copie brouillon</button>
+                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm mt-2" disabled="@occupe" @onclick="KopierenAsync">Créer une copie brouillon</button>
                 </details>
                 @foreach (var volume in stunden)
                 {
@@ -38,11 +38,11 @@
                 }
                 @if (!plan.IstVeroeffentlicht)
                 {
-                    <details class="mt-3 rounded border p-3"><summary>Grille de saisie des horaires</summary>
+                    <details class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><summary>Grille de saisie des horaires</summary>
                         <div class="grid gap-3 md:grid-cols-3">
-                            <label>Début de journée<input type="time" class="w-full rounded border p-2" @bind="rasterBeginn" /></label>
-                            <label>Fin de journée<input type="time" class="w-full rounded border p-2" @bind="rasterEnde" /></label>
-                            <label>Durée d'un créneau (minutes)<input type="number" min="5" max="180" class="w-full rounded border p-2" @bind="rasterMinuten" /></label>
+                            <label>Début de journée<input type="time" class="skoulou-input" @bind="rasterBeginn" /></label>
+                            <label>Fin de journée<input type="time" class="skoulou-input" @bind="rasterEnde" /></label>
+                            <label>Durée d'un créneau (minutes)<input type="number" min="5" max="180" class="skoulou-input" @bind="rasterMinuten" /></label>
                         </div>
                         <ModernDropdown TValue="int" Value="rasterIndex" ValueChanged="RasterWaehlen" Options="RasterOptionen" Label="Appliquer un créneau au cours" />
                     </details>

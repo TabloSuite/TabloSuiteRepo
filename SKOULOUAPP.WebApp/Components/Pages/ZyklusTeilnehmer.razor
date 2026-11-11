@@ -19,7 +19,7 @@
     {
         <section class="rounded-xl border p-4">
             <h2 class="font-semibold">@cycle.Label</h2>
-            <button type="button" class="mt-2 rounded border p-2" disabled="@busy" @onclick="() => LadenAsync(cycle.Id)">Afficher les participants</button>
+            <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm mt-2" disabled="@busy" @onclick="() => LadenAsync(cycle.Id)">Afficher les participants</button>
             @if (selected == cycle.Id)
             {
                 <p class="mt-3 font-semibold">@rows.Count(x => x.StorniertAmUtc == null) participant(s) · @rows.Where(x => x.StorniertAmUtc == null).Sum(x => x.Preis).ToString("N0") FCFA</p>
@@ -30,10 +30,10 @@
                         @if (p.StorniertAmUtc != null) { <p>Annulé : @p.StornoGrund</p> }
                         else if (!cycle.Closed)
                         {
-                            <button type="button" class="rounded border p-2" disabled="@busy" @onclick="() => Choisir(p.Id)">Signaler une affectation erronée</button>
+                            <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@busy" @onclick="() => Choisir(p.Id)">Signaler une affectation erronée</button>
                             @if (pending == p.Id)
                             {
-                                <label class="block">Motif obligatoire<input maxlength="300" class="w-full rounded border p-2" @bind="reason" /></label>
+                                <label class="block">Motif obligatoire<input maxlength="300" class="skoulou-input" @bind="reason" /></label>
                                 <button type="button" class="mt-2 rounded bg-red-700 p-2 text-white" disabled="@(busy || string.IsNullOrWhiteSpace(reason))" @onclick="StornierenAsync">Confirmer l'annulation financière</button>
                             }
                         }

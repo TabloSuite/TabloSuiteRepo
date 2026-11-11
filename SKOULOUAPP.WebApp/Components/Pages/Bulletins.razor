@@ -29,7 +29,7 @@
                     }
                     @if (vorlage.LogoAssetID.HasValue)
                     {
-                        <button type="button" class="mt-2 rounded border p-2" disabled="@occupe" @onclick="() => LogoWaehlen(null)">Retirer du modèle</button>
+                        <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm mt-2" disabled="@occupe" @onclick="() => LogoWaehlen(null)">Retirer du modèle</button>
                     }
                 </div>
                 <div class="md:col-span-2 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -58,8 +58,8 @@
                 <label class="md:col-span-2">Texte de bas de page<input class="skoulou-input" maxlength="300" @bind="vorlage.FussText" placeholder="ex. Aucun duplicata ne sera délivré." /></label>
             </div>
             <div class="mt-3 flex flex-wrap gap-2">
-                <button type="button" class="rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white disabled:opacity-60" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
-                <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-semibold text-slate-800 disabled:opacity-60" disabled="@occupe" @onclick="BeispielAsync"><Icon Name="eye" Groesse="16" />Aperçu avec des données d'exemple</button>
+                <button type="button" class="sk-btn sk-btn-primary" disabled="@occupe" @onclick="ModeleAsync">Enregistrer le modèle</button>
+                <button type="button" class="sk-btn sk-btn-secondary" disabled="@occupe" @onclick="BeispielAsync"><Icon Name="eye" Groesse="16" />Aperçu avec des données d'exemple</button>
             </div>
             @if (beispielPdf is not null)
             {
@@ -134,10 +134,10 @@
                 <p>@klassenPruefung.Bulletins.Count bulletin(s) complet(s). Ouvrez les aperçus et vérifiez les données avant de confirmer.</p>
                 @foreach (var b in klassenPruefung.Bulletins)
                 {
-                    <button type="button" class="m-1 rounded border p-2" @onclick="() => ZeigeAbschlussVorschau(b)">@b.Schueler · @b.Durchschnitt?.ToString("0.00") / 20 · Aperçu</button>
+                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm m-1" @onclick="() => ZeigeAbschlussVorschau(b)">@b.Schueler · @b.Durchschnitt?.ToString("0.00") / 20 · Aperçu</button>
                 }
                 <label class="flex items-start gap-2"><input type="checkbox" @bind="endgueltigBestaetigt" /><span>Je confirme avoir vérifié tous les bulletins. Après publication, aucune modification directe ni retrait n'est possible. Toute erreur exige un bulletin rectificatif.</span></label>
-                <button type="button" class="rounded-lg bg-red-700 p-3 text-white disabled:opacity-50" disabled="@(occupe || !endgueltigBestaetigt)" @onclick="KlassePublizierenAsync">Publier définitivement les bulletins de la classe</button>
+                <button type="button" class="sk-btn sk-btn-danger" disabled="@(occupe || !endgueltigBestaetigt)" @onclick="KlassePublizierenAsync">Publier définitivement les bulletins de la classe</button>
             }
             @if (SammelDownloadMoeglich)
             {
@@ -145,7 +145,7 @@
             }
             else
             {
-                <button type="button" class="rounded-lg bg-slate-200 p-3 text-slate-500" disabled>Télécharger les bulletins publiés (PDF)</button>
+                <button type="button" class="sk-btn sk-btn-secondary" disabled>Télécharger les bulletins publiés (PDF)</button>
                 <p class="text-sm">Sélectionnez une période et une classe pour activer le téléchargement.</p>
             }
             <p class="text-sm text-slate-600">Un seul PDF par classe et période, jusqu'à 200 bulletins. Chaque bulletin commence sur une nouvelle page et conserve sa propre numérotation.</p>
@@ -163,18 +163,18 @@
                     @if (stammdatenGeladen)
                     {
                         <div class="grid gap-3 md:grid-cols-2">
-                            <label>Nom complet<input maxlength="200" class="w-full rounded border p-2" @bind="stammdatenName" /></label>
-                            <label>Matricule<input maxlength="50" class="w-full rounded border p-2" @bind="stammdatenMatrikel" /></label>
-                            <label>Lieu de naissance<input maxlength="150" class="w-full rounded border p-2" @bind="stammdatenGeburtsort" /></label>
-                            <label>Date de naissance<input type="date" class="w-full rounded border p-2" @bind="stammdatenGeburtsdatum" /></label>
+                            <label>Nom complet<input maxlength="200" class="skoulou-input" @bind="stammdatenName" /></label>
+                            <label>Matricule<input maxlength="50" class="skoulou-input" @bind="stammdatenMatrikel" /></label>
+                            <label>Lieu de naissance<input maxlength="150" class="skoulou-input" @bind="stammdatenGeburtsort" /></label>
+                            <label>Date de naissance<input type="date" class="skoulou-input" @bind="stammdatenGeburtsdatum" /></label>
                         </div>
                         <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="StammdatenSpeichernAsync">Enregistrer l'identité dans le brouillon</button>
                         <p class="text-sm">Enregistrez vos modifications dans le brouillon avant de calculer les bulletins concernés. Les originaux ne sont pas modifiés.</p>
                     }
                 </section>
                 <ModernDropdown TValue="Guid" @bind-Value="korrekturNoteID" Options="BerichtigungsNoten" Label="Note à rectifier" Searchable="true" Disabled="occupe" />
-                <label class="block">Nouvelle note<input type="number" min="0" step="0.01" class="w-full rounded border p-2" @bind="korrekturPunkte" /></label>
-                <label class="block">Nouvelle appréciation<input maxlength="300" class="w-full rounded border p-2" @bind="korrekturBemerkung" /></label>
+                <label class="block">Nouvelle note<input type="number" min="0" step="0.01" class="skoulou-input" @bind="korrekturPunkte" /></label>
+                <label class="block">Nouvelle appréciation<input maxlength="300" class="skoulou-input" @bind="korrekturBemerkung" /></label>
                 <button type="button" class="rounded border p-3" disabled="@(occupe || korrekturNoteID == Guid.Empty)" @onclick="KorrekturSpeichernAsync">Enregistrer dans le brouillon</button>
                 <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="WirkungPruefenAsync">Calculer tous les bulletins concernés</button>
                 <button type="button" class="rounded border p-3" disabled="@occupe" @onclick="KorrekturAbbrechenAsync">Abandonner le brouillon</button>
@@ -183,7 +183,7 @@
                     <p class="font-semibold">@berichtigungsPruefung.Auswirkungen.Count bulletin(s) à remplacer, y compris les rangs et résultats des périodes suivantes concernés.</p>
                     @foreach (var w in berichtigungsPruefung.Auswirkungen)
                     {
-                        <article class="rounded border p-3"><p>@w.Schueler · @w.Periode · Moyenne @w.Alt → @w.Neu · Rang @w.AlterRang → @w.NeuerRang</p><p class="break-words text-sm">Identité proposée : @w.Vorschau.Schueler · Matricule : @w.Vorschau.Matrikelnummer · Naissance : @w.Vorschau.Geburtsdatum · @w.Vorschau.Geburtsort</p><button type="button" class="rounded border p-2" @onclick="() => ZeigeAbschlussVorschau(w.Vorschau)">Aperçu</button></article>
+                        <article class="rounded border p-3"><p>@w.Schueler · @w.Periode · Moyenne @w.Alt → @w.Neu · Rang @w.AlterRang → @w.NeuerRang</p><p class="break-words text-sm">Identité proposée : @w.Vorschau.Schueler · Matricule : @w.Vorschau.Matrikelnummer · Naissance : @w.Vorschau.Geburtsdatum · @w.Vorschau.Geburtsort</p><button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" @onclick="() => ZeigeAbschlussVorschau(w.Vorschau)">Aperçu</button></article>
                     }
                     <label class="flex items-start gap-2"><input type="checkbox" @bind="berichtigungBestaetigt" /><span>Je confirme tous les remplacements affichés. Les originaux restent archivés. J'informerai les familles et organiserai l'échange des exemplaires signés.</span></label>
                     <button type="button" class="rounded bg-red-700 p-3 text-white" disabled="@(occupe || !berichtigungBestaetigt)" @onclick="KorrekturFreigebenAsync">Publier définitivement les rectifications</button>
@@ -193,10 +193,10 @@
         <details class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><summary class="cursor-pointer text-lg font-semibold">Présences et retards</summary>
             <p class="my-3">Sélectionnez la période et l'élève ci-dessus. Une seule situation est enregistrée par jour et par période ; une nouvelle saisie remplace la précédente.</p>
             <div class="grid gap-4 md:grid-cols-2">
-                <label>Date<input type="date" class="w-full rounded border p-2" @bind="praesenzDatum" /></label>
+                <label>Date<input type="date" class="skoulou-input" @bind="praesenzDatum" /></label>
                 <ModernDropdown TValue="int" @bind-Value="praesenzStatus" Options="PraesenzOptionen" Label="Situation" />
                 <label><input type="checkbox" @bind="entschuldigt" /> Absence / retard justifié</label>
-                <label>Minutes de retard<input type="number" min="0" max="1440" class="w-full rounded border p-2" @bind="praesenzMinuten" /></label>
+                <label>Minutes de retard<input type="number" min="0" max="1440" class="skoulou-input" @bind="praesenzMinuten" /></label>
             </div>
             <button type="button" class="sk-btn sk-btn-primary mt-3" disabled="@(occupe || schuelerID == Guid.Empty || periodeID == Guid.Empty)" @onclick="PraesenzSpeichernAsync">Enregistrer</button>
             <button type="button" class="sk-btn sk-btn-secondary m-2" disabled="@(occupe || periodeID == Guid.Empty)" @onclick="PraesenzLadenAsync">Actualiser les présences de la période</button>
@@ -234,13 +234,13 @@
                 }
                 @if (verwalter)
                 {
-                    <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabenLadenAsync(bulletin.Id)">Contacts et remise</button>
+                    <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@occupe" @onclick="() => UebergabenLadenAsync(bulletin.Id)">Contacts et remise</button>
                     @if (uebergabeAusgabeID == bulletin.Id)
                     {
                         <div class="w-full space-y-2">
-                            <label>Destinataire et mode de contact / remise<input class="w-full rounded border p-2" maxlength="300" @bind="uebergabeVermerk" /></label>
-                            <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, false)">Consigner une notification effectuée</button>
-                            <button type="button" class="rounded border p-2" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, true)">Consigner la remise du document signé</button>
+                            <label>Destinataire et mode de contact / remise<input class="skoulou-input" maxlength="300" @bind="uebergabeVermerk" /></label>
+                            <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, false)">Consigner une notification effectuée</button>
+                            <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@occupe" @onclick="() => UebergabeAsync(bulletin.Id, true)">Consigner la remise du document signé</button>
                             <p class="text-sm">Ces actions enregistrent un suivi ; aucun message n'est envoyé automatiquement.</p>
                             @foreach (var u in uebergaben) { <p>@u.ErstelltAmUtc.ToString("dd/MM/yyyy HH:mm") UTC · @(u.IstAbholung ? "Remise" : "Notification") · @u.Vermerk</p> }
                         </div>

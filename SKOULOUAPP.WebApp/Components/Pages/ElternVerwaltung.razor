@@ -60,10 +60,10 @@
                         }
                     </div>
                     <div class="flex flex-wrap gap-2 lg:justify-end">
-                        <button type="button" class="inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl bg-blue-700 px-3 text-sm font-semibold text-white disabled:opacity-60" disabled="@laedt" @onclick="() => AnlegenOeffnenAsync(s)"><Icon Name="user-plus" Groesse="16" />Créer un accès</button>
+                        <button type="button" class="sk-btn sk-btn-primary" disabled="@laedt" @onclick="() => AnlegenOeffnenAsync(s)"><Icon Name="user-plus" Groesse="16" />Créer un accès</button>
                         @if (elternkonten.Count > 0)
                         {
-                            <button type="button" class="inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 disabled:opacity-60" disabled="@laedt" @onclick="() => VerknuepfenOeffnen(s)">Lier un parent existant</button>
+                            <button type="button" class="sk-btn sk-btn-secondary" disabled="@laedt" @onclick="() => VerknuepfenOeffnen(s)">Lier un parent existant</button>
                         }
                     </div>
                 </article>
@@ -90,7 +90,7 @@
     <p class="mb-0 mt-3 text-sm text-slate-500">Le mot de passe initial s'affiche une seule fois après la création. Un même compte peut ensuite être lié aux frères et sœurs.</p>
     <div class="mt-4 flex justify-end gap-2">
         <button type="button" class="rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700" @onclick="() => anlegenOffen = false">Annuler</button>
-        <button type="button" class="rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white disabled:opacity-60" disabled="@laedt" @onclick="AnlegenAsync">Créer et lier</button>
+        <button type="button" class="sk-btn sk-btn-primary" disabled="@laedt" @onclick="AnlegenAsync">Créer et lier</button>
     </div>
 </ModalDialog>
 
@@ -101,7 +101,7 @@
     </div>
     <div class="mt-4 flex justify-end gap-2">
         <button type="button" class="rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700" @onclick="() => verknuepfenOffen = false">Annuler</button>
-        <button type="button" class="rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white disabled:opacity-60" disabled="@(laedt || verknuepfenElternID == Guid.Empty)" @onclick="VerknuepfenAsync">Lier</button>
+        <button type="button" class="sk-btn sk-btn-primary" disabled="@(laedt || verknuepfenElternID == Guid.Empty)" @onclick="VerknuepfenAsync">Lier</button>
     </div>
 </ModalDialog>
 

@@ -6,7 +6,7 @@
     <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
         <ModernDropdown TValue="Guid" Value="periodeID" ValueChanged="PeriodeAsync" Options="PeriodenOptionen" Label="Période" Disabled="laedt" />
         <ModernDropdown TValue="Guid" Value="klasseID" ValueChanged="KlasseAsync" Options="KlassenOptionen" Label="Classe" Searchable="true" Disabled="laedt" />
-        <button type="button" class="min-h-[2.75rem] rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-800 disabled:opacity-50" disabled="@(laedt || periodeID == Guid.Empty || klasseID == Guid.Empty)" @onclick="LadenAsync">Afficher la classe</button>
+        <button type="button" class="sk-btn sk-btn-secondary min-h-[2.75rem]" disabled="@(laedt || periodeID == Guid.Empty || klasseID == Guid.Empty)" @onclick="LadenAsync">Afficher la classe</button>
     </div>
 
     @if (!string.IsNullOrEmpty(meldung))
@@ -44,7 +44,7 @@
             }
         </div>
         <div>
-            <button type="button" class="rounded-xl bg-blue-700 px-5 py-2.5 font-semibold text-white disabled:opacity-60" disabled="@laedt" @onclick="SpeichernAsync">Enregistrer les décisions du conseil</button>
+            <button type="button" class="sk-btn sk-btn-primary" disabled="@laedt" @onclick="SpeichernAsync">Enregistrer les décisions du conseil</button>
         </div>
     }
     else if (geladen)
