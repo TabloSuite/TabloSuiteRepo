@@ -3172,3 +3172,7 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .vh-gruppe-pourquoi .vh-text h3 { font-size: 1.4rem; }
 .vh-gruppe-pourquoi .vh-text p { font-size: 1rem; }
 @media (max-width: 760px) { .vh-gruppe-pourquoi .vh-karte { grid-template-columns: minmax(0, 1fr); } }
+
+/* Startseite: Hinweis zu angepassten Tarifen für große Läden */
+.lp-preis-hinweis { display: flex; align-items: flex-start; justify-content: center; gap: .5rem; max-width: 52rem; margin: 1.1rem auto 0; padding: .75rem 1rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); color: var(--enote-text-muted); font-size: .92rem; line-height: 1.5; text-align: left; }
+.lp-preis-hinweis .enote-icon { flex-shrink: 0; margin-top: .2rem; color: var(--enote-primary-text); }
