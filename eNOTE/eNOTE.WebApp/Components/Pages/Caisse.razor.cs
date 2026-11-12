@@ -585,13 +585,16 @@ public partial class Caisse(
             aktiverSalonName = z.Salon.Name;
             zone = ENote.Core.Services.Zeitzonen.Fuer(z.Salon.Land);
             var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
+            // Hinweis « Caisse encore ouverte » nur, wenn die Sitzung in diesem Browser noch nicht lief
+            // (neue Anmeldung, Schichtwechsel) – nicht bei jeder Rückkehr zur Kasse, z. B. aus « Clients présents ».
+            var schonHierOffen = anzeigeState.AktiveSitzungId == offene.Id;
             anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
                 aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
             await LadeKatalogAsync(offene.SalonId);
             wiederhergestelltKassierer = offene.Kassierer.FullName;
             wiederhergestelltSoll = aufstellung?.Soll;
             wiederhergestelltGestartet = offene.GestartetUtc;
-            wiederhergestelltModalOffen = true;
+            wiederhergestelltModalOffen = !schonHierOffen;
             return;
         }
 

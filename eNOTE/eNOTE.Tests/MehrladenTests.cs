@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Katalog;
 using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Services;
@@ -81,6 +81,11 @@ public class MehrladenTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.NewGuid(), SalonId = b.Id, Name = "Falsch" }));
         await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.NewGuid(), SalonId = b.Id, LeistungId = artikel.Id, Name = "Falsch" }));
         await using var kontrolle = await factory.CreateDbContextAsync(); Assert.Equal("Original", (await kontrolle.Leistungen.SingleAsync()).Name);
+
+        // Neue Remise (wie « Nouvelle remise » sie anlegt: Id leer) wird gespeichert und bekommt eine Id.
+        var neu = await katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.Empty, SalonId = a.Id, Name = "Rentrée scolaire", Wert = 10m });
+        Assert.NotEqual(Guid.Empty, neu.Id);
+        await using var kontrolle2 = await factory.CreateDbContextAsync(); Assert.Equal("Rentrée scolaire", (await kontrolle2.Rabatte.SingleAsync()).Name);
     }
 
     [Fact]

@@ -121,7 +121,9 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private void NeuAnlegen()
     {
         istNeueRemise = true;
-        bearbeitungsRabatt = new Rabatt { SalonId = salonId, IstAktiv = false, Art = RabattArt.Prozent };
+        // Id leer = neu anlegen (der Dienst legt nur mit Guid.Empty an; das Modell vergibt sonst schon eine Id
+        // und das Speichern liefe in den Aktualisierungszweig: « Rabatt nicht gefunden »)
+        bearbeitungsRabatt = new Rabatt { Id = Guid.Empty, SalonId = salonId, IstAktiv = false, Art = RabattArt.Prozent };
         ausgewaehlteLeistungId = string.Empty;
         hatGueltigkeit = false;
         gueltigVon = null;
