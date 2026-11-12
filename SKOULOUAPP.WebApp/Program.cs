@@ -22,6 +22,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 
+// Einheitliche Anzeige auf jedem Server (Azure läuft auf Englisch): « 150.000 FCFA », « 13,67 », « 12/11/2026 ».
+var skoulouKultur = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = skoulouKultur;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = skoulouKultur;
+System.Globalization.CultureInfo.CurrentCulture = skoulouKultur;
+System.Globalization.CultureInfo.CurrentUICulture = skoulouKultur;
+
 var builder = WebApplication.CreateBuilder(args);
 var applyMigrationsOnStartup = builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
 QuestPDF.Settings.License = LicenseType.Community;
@@ -257,7 +264,13 @@ using (var scope = app.Services.CreateScope())
         dbContext,
         roleManager,
         userManager,
+        app.Configuration,
         applyMigrations: applyMigrationsOnStartup);
+
+    if ((await userManager.GetUsersInRoleAsync(Rollen.SuperAdmin)).Count == 0)
+    {
+        startupLogger.LogWarning("Aucun compte SuperAdmin : définissez Seed__SuperAdminEmail et Seed__SuperAdminPasswort (secrets utilisateur ou paramètres de l'application), puis redémarrez.");
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -273,6 +286,14 @@ app.UseSerilogRequestLogging();
 app.UseMiddleware<RequestAbbruchMiddleware>();
 
 app.UseHttpsRedirection();
+// Jede Anfrage (auch die Blazor-Verbindung) in derselben Kultur, unabhängig von Browser und Server.
+app.UseRequestLocalization(optionen =>
+{
+    optionen.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(skoulouKultur);
+    optionen.SupportedCultures = [skoulouKultur];
+    optionen.SupportedUICultures = [skoulouKultur];
+    optionen.RequestCultureProviders.Clear();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

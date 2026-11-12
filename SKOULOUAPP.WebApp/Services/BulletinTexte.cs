@@ -6,7 +6,7 @@ namespace SkoulouApp.WebApp.Services;
 /// <summary>Texte und Regeln des allgemeinen Bulletins (Muster aus Côte d'Ivoire und Togo zusammengeführt).</summary>
 public static class BulletinTexte
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+    private static readonly CultureInfo Fr = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
 
     /// <summary>Appréciation nach üblicher Notenskala (/20), falls die Lehrkraft keine eigene eingetragen hat.</summary>
     public static string? Appreciation(decimal? note) => note switch

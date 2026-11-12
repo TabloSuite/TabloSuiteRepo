@@ -186,13 +186,13 @@ public sealed class LessonPdfDocument(TeacherLessonDetailViewModel lesson, bool 
 
         float? fontSize = null;
         var sizeClassMatch = Regex.Match(sanitized, "ql-size-(\\d+)px", RegexOptions.IgnoreCase);
-        if (sizeClassMatch.Success && float.TryParse(sizeClassMatch.Groups[1].Value, out var parsedSize))
+        if (sizeClassMatch.Success && float.TryParse(sizeClassMatch.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsedSize))
         {
             fontSize = parsedSize;
         }
 
         var styleSizeMatch = Regex.Match(sanitized, "font-size\\s*:\\s*(\\d+(?:\\.\\d+)?)px", RegexOptions.IgnoreCase);
-        if (styleSizeMatch.Success && float.TryParse(styleSizeMatch.Groups[1].Value, out parsedSize))
+        if (styleSizeMatch.Success && float.TryParse(styleSizeMatch.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out parsedSize))
         {
             fontSize = parsedSize;
         }

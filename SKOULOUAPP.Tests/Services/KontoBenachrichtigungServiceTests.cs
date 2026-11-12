@@ -104,7 +104,7 @@ public class KontoBenachrichtigungServiceTests
         await service.PaiementEnregistreAsync(zahlung.Id);
         var sent = Assert.Single(email.Gesendet);
         Assert.Equal(student.Email, sent.Recipient.Email);
-        Assert.Contains("2 500", sent.Message.HtmlBody.Replace("\u00a0", "\u202f"));
+        Assert.Contains("2.500 FCFA", sent.Message.HtmlBody);   // einheitlich wie eNOTE (SkoulouKultur)
         Assert.Contains("SKOULOU", sent.Message.HtmlBody);
         Assert.False(string.IsNullOrWhiteSpace(sent.Message.TextBody));
     }

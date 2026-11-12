@@ -53,7 +53,7 @@ public sealed class KontoBenachrichtigungService(
             .Select(item => new { item.Student.Email, item.Student.Vorname, item.Betrag, item.ZahlungsArt, item.Wirkungsdatum })
             .FirstOrDefaultAsync(cancellationToken);
         if (zahlung is null || zahlung.Betrag <= 0) return;
-        var betrag = System.Net.WebUtility.HtmlEncode(zahlung.Betrag.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")));
+        var betrag = System.Net.WebUtility.HtmlEncode(zahlung.Betrag.ToString("N0", SkoulouApp.Core.Services.SkoulouKultur.Instanz));
         var datum = System.Net.WebUtility.HtmlEncode(zahlung.Wirkungsdatum.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture));
         await SendenAsync(zahlung.Email, zahlung.Vorname, "Paiement scolaire enregistré – SKOULOU", "Confirmation de paiement",
             $"<p>Un paiement scolaire de <strong>{betrag} FCFA</strong> a été enregistré le {datum}.</p><p>Type de paiement : {(zahlung.ZahlungsArt == ZahlungsArt.Cash ? "paiement intégral" : "versement")}. Consultez votre établissement pour le suivi de votre solde.</p>", cancellationToken);
@@ -78,7 +78,7 @@ public sealed class KontoBenachrichtigungService(
             .AnyAsync(buchung => buchung.HerkunftReferenzID == abo.Id && buchung.Richtung == FinanzRichtung.Einnahme
                 && buchung.Kategorie.SystemCode == FinanzSystemCode.SkoulouAppAboZahlung, cancellationToken)) return;
 
-        var betrag = System.Net.WebUtility.HtmlEncode(abo.PriceAtEnrollment.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")));
+        var betrag = System.Net.WebUtility.HtmlEncode(abo.PriceAtEnrollment.ToString("N0", SkoulouApp.Core.Services.SkoulouKultur.Instanz));
         await SendenAsync(abo.Email, abo.Vorname, "Abonnement SKOULOU enregistré comme payé", "Confirmation d'abonnement",
             $"<p>L'abonnement SKOULOU de votre classe a été enregistré comme payé pour <strong>{betrag} FCFA</strong>.</p><p>Vous pouvez consulter vos contenus disponibles dans votre espace.</p>", cancellationToken);
     }

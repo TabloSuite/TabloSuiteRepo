@@ -10,7 +10,7 @@ namespace SkoulouApp.WebApp.Components.Pages;
 /// <summary>Espace parents: nur Daten der verknüpften Kinder (Prüfung im ElternService und in den PDF-Endpunkten).</summary>
 public partial class ElternBereich
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+    private static readonly CultureInfo Fr = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
 
     [Inject] private ElternService Eltern { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;

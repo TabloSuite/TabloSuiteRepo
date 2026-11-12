@@ -63,7 +63,7 @@ public sealed class AbrechnungBenachrichtigungService(
             return (0, 1);
         }
 
-        var amount = periode.Umsatz.ToString("N0", CultureInfo.GetCultureInfo("fr-FR"));
+        var amount = periode.Umsatz.ToString("N0", SkoulouApp.Core.Services.SkoulouKultur.Instanz);
         var school = WebUtility.HtmlEncode(periode.Name);
         var html = EmailTemplates.Wrap("Nouvelle facturation SKOULOU",
             $"<p>Bonjour,</p><p>Une facturation SKOULOU a été créée pour votre établissement <strong>{school}</strong>.</p>" +

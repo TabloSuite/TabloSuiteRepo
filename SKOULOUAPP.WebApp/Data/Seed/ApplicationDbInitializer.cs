@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ public static class ApplicationDbInitializer
         ApplicationDbContext dbContext,
         RoleManager<Role> roleManager,
         UserManager<AppUser> userManager,
+        IConfiguration configuration,
         bool applyMigrations = false)
     {
         if (applyMigrations)
@@ -17,7 +19,7 @@ public static class ApplicationDbInitializer
         }
 
         await SeedPermissionsAndRolesAsync(dbContext, roleManager);
-        await SeedSuperAdminAsync(userManager);
+        await SeedSuperAdminAsync(userManager, configuration);
     }
 
     private static async Task SeedPermissionsAndRolesAsync(ApplicationDbContext dbContext, RoleManager<Role> roleManager)
@@ -84,82 +86,62 @@ public static class ApplicationDbInitializer
         await dbContext.SaveChangesAsync();
     }
 
-    private static async Task SeedSuperAdminAsync(UserManager<AppUser> userManager)
+    /// <summary>
+    /// Einziger Seed-Benutzer. Zugangsdaten kommen aus der Konfiguration (User Secrets lokal,
+    /// App-Einstellungen auf Azure: Seed__SuperAdminEmail, Seed__SuperAdminPasswort, optional
+    /// Seed__SuperAdminIdentifiant und Seed__SuperAdminName) – niemals aus dem Repository.
+    /// Ohne Konfiguration wird kein Konto angelegt; ein bestehendes Konto bleibt unverändert
+    /// (kein Zurücksetzen des Passworts, keine automatische Rechteerweiterung).
+    /// </summary>
+    private static async Task SeedSuperAdminAsync(UserManager<AppUser> userManager, IConfiguration configuration)
     {
-        // Es werden bewusst keine Schulen und keine weiteren Benutzer angelegt.
-        // Der SuperAdmin ist der einzige Seed-Benutzer; Schulen, Schulleiter,
-        // Lehrer und Schueler werden ausschliesslich ueber die Anwendung erfasst.
-        await EnsureUserAsync(
-            userManager,
-            email: "dodji_etse@web.de",
-            fullName: "Dodji Etse",
-            password: "Admin123!",
-            isSelfRegistered: false,
-            isBlocked: false,
-            roles: [Rollen.SuperAdmin],
-            geburtsdatumUtc: new DateTime(1985, 5, 12, 0, 0, 0, DateTimeKind.Utc));
+        var email = configuration["Seed:SuperAdminEmail"]?.Trim();
+        var passwort = configuration["Seed:SuperAdminPasswort"];
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(passwort))
+        {
+            return;
+        }
+
+        // Identifiant (Benutzername) für die Anmeldung; ohne Angabe die E-Mail-Adresse.
+        var identifiant = configuration["Seed:SuperAdminIdentifiant"]?.Trim();
+        if (string.IsNullOrWhiteSpace(identifiant))
+        {
+            identifiant = email;
+        }
+
+        var vorhanden = await userManager.FindByNameAsync(identifiant);
+        if (vorhanden is not null)
+        {
+            if (!await userManager.IsInRoleAsync(vorhanden, Rollen.SuperAdmin))
+            {
+                throw new InvalidOperationException("Le compte d'initialisation configuré existe sans le rôle SuperAdmin. Aucune élévation automatique des droits.");
+            }
+
+            return;
+        }
+
+        var name = configuration["Seed:SuperAdminName"]?.Trim();
+        var admin = new AppUser
+        {
+            UserName = identifiant,
+            Email = email,
+            FullName = string.IsNullOrWhiteSpace(name) ? "Administrateur SKOULOU" : name,
+            EmailConfirmed = true,
+            IsSelfRegistered = false,
+            IsBlocked = false
+        };
+
+        PruefeErgebnis(await userManager.CreateAsync(admin, passwort), identifiant);
+        PruefeErgebnis(await userManager.AddToRoleAsync(admin, Rollen.SuperAdmin), identifiant);
     }
 
-    private static async Task<AppUser> EnsureUserAsync(
-        UserManager<AppUser> userManager,
-        string email,
-        string fullName,
-        string password,
-        bool isSelfRegistered,
-        bool isBlocked,
-        IReadOnlyCollection<string> roles,
-        DateTime? geburtsdatumUtc = null)
+    private static void PruefeErgebnis(IdentityResult ergebnis, string identifiant)
     {
-        // Identifiant des Start-Admins ist die konfigurierte Adresse (E-Mails sind nicht mehr eindeutig).
-        var user = await userManager.FindByNameAsync(email);
-        if (user is null)
+        if (!ergebnis.Succeeded)
         {
-            user = new AppUser
-            {
-                UserName = email,
-                Email = email,
-                FullName = fullName,
-                EmailConfirmed = true,
-                IsSelfRegistered = isSelfRegistered,
-                IsBlocked = isBlocked,
-                GeburtsdatumUtc = geburtsdatumUtc
-            };
-
-            var createResult = await userManager.CreateAsync(user, password);
-            if (!createResult.Succeeded)
-            {
-                throw new InvalidOperationException($"L'utilisateur d'initialisation '{email}' n'a pas pu être créé : {string.Join(", ", createResult.Errors.Select(x => x.Description))}");
-            }
+            // Nur Fehlercodes ausgeben – keine Zugangsdaten.
+            throw new InvalidOperationException($"L'utilisateur d'initialisation '{identifiant}' n'a pas pu être créé : {string.Join(", ", ergebnis.Errors.Select(x => x.Code))}");
         }
-        else
-        {
-            user.FullName = fullName;
-            user.UserName = email;
-            user.Email = email;
-            user.EmailConfirmed = true;
-            user.IsSelfRegistered = isSelfRegistered;
-            user.GeburtsdatumUtc ??= geburtsdatumUtc;
-            // IsBlocked wird bei bereits existierenden Nutzern bewusst NICHT überschrieben,
-            // damit manuelle Freigaben/Blockierungen durch Admins beim erneuten Seeding
-            // (z. B. bei jedem App-Start) nicht wieder zurückgesetzt werden.
-            user.UpdatedAtUtc = DateTime.UtcNow;
-            await userManager.UpdateAsync(user);
-        }
-
-        var currentRoles = await userManager.GetRolesAsync(user);
-        var rolesToRemove = currentRoles.Where(x => !roles.Contains(x)).ToArray();
-        if (rolesToRemove.Length > 0)
-        {
-            await userManager.RemoveFromRolesAsync(user, rolesToRemove);
-        }
-
-        var rolesToAdd = roles.Where(x => !currentRoles.Contains(x)).ToArray();
-        if (rolesToAdd.Length > 0)
-        {
-            await userManager.AddToRolesAsync(user, rolesToAdd);
-        }
-
-        return user;
     }
 
     private static List<Permission> CreatePermissions()

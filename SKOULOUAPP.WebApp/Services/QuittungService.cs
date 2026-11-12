@@ -22,7 +22,7 @@ public sealed record SchulgeldQuittung(string Nummer, string Schule, string? Adr
 /// </summary>
 public sealed class QuittungService(IDbContextFactory<ApplicationDbContext> factory)
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+    private static readonly CultureInfo Fr = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
 
     public async Task<SchulgeldQuittung?> LadenAsync(Guid zahlungID, Guid benutzerID, CancellationToken token = default)
     {

@@ -67,7 +67,7 @@ public partial class SchulLeiter
     private const string DirectorTabShared = "partages";
 
     /// <summary>Beträge wie im Tableau de bord: « 75 000 FCFA », unabhängig von der Serverkultur.</summary>
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+    private static readonly CultureInfo Fr = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
 
     private static readonly string[] DirectorTabs =
         [DirectorTabStudents, DirectorTabClasses, DirectorTabUsers, DirectorTabSubjects, DirectorTabReassign, DirectorTabImport, DirectorTabShared];

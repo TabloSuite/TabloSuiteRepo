@@ -10,7 +10,7 @@ namespace SkoulouApp.WebApp.Components.Pages;
 /// <summary>Tableau de bord der Direktion: Kennzahlen, Aufgaben und Schnellzugriffe der eigenen Schule.</summary>
 public partial class DirektionsCockpit
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+    private static readonly CultureInfo Fr = SkoulouApp.Core.Services.SkoulouKultur.Instanz;
 
     [Inject] private DirektionsCockpitService CockpitService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
