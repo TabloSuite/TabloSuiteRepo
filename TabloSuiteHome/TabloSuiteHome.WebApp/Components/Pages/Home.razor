@@ -1,0 +1,112 @@
+@page "/"
+@inject IOptions<TabloSuiteOptionen> Optionen
+
+<PageTitle>TabloSuite – Applications de gestion pour commerces et écoles</PageTitle>
+
+<section class="ts-held">
+    <div class="ts-breite ts-held-innen">
+        <div class="ts-held-text">
+            <p class="ts-kicker"><Zeichen Name="ort" Groesse="16" /> Conçu à Lomé, Togo</p>
+            <h1>Des applications simples pour gérer <em>votre activité</em> au quotidien.</h1>
+            <p class="ts-held-lead">
+                TabloSuite conçoit des logiciels en ligne pour les commerces, les salons, les cabinets et les écoles :
+                faciles à prendre en main, en français, sur téléphone, tablette et ordinateur.
+            </p>
+            <div class="ts-held-wege">
+                <a class="ts-btn ts-btn-hell" href="#applications">Découvrir nos applications <Zeichen Name="pfeil" Groesse="18" /></a>
+                <a class="ts-btn ts-btn-glas" href="#contact">Nous contacter</a>
+            </div>
+            <ul class="ts-held-chips" aria-label="Points forts">
+                <li><Zeichen Name="geld" Groesse="16" /> Espèces et Mobile Money</li>
+                <li><Zeichen Name="geraete" Groesse="16" /> Rien à installer</li>
+                <li><Zeichen Name="schild" Groesse="16" /> Données protégées</li>
+            </ul>
+        </div>
+        <div class="ts-held-bilder" aria-hidden="true">
+            @foreach (var (a, i) in Verfuegbar.Take(2).Select((a, i) => (a, i)))
+            {
+                <div class="ts-held-bild ts-held-bild-@i">
+                    <img src="@a.Bild" alt="" width="1280" height="800" />
+                    <span class="ts-held-app"><img src="@a.Logo" alt="" width="28" height="28" />@a.Name</span>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<section id="applications" class="ts-abschnitt">
+    <div class="ts-breite">
+        <header class="ts-abschnitt-kopf">
+            <p class="ts-kicker dunkel">Nos applications</p>
+            <h2>Une application pour chaque métier</h2>
+            <p>Chaque application de TabloSuite répond à un métier précis. Choisissez la vôtre : vous la retrouvez à son adresse, avec votre compte.</p>
+        </header>
+        <div class="ts-app-liste">
+            @foreach (var (a, i) in Optionen.Value.SortierteApps.Select((a, i) => (a, i)))
+            {
+                <AppKarte App="a" Gespiegelt="@(i % 2 == 1)" />
+            }
+        </div>
+        <p class="ts-weitere"><Zeichen Name="funken" Groesse="18" /> D'autres applications rejoindront bientôt TabloSuite.</p>
+    </div>
+</section>
+
+<section id="pourquoi" class="ts-abschnitt ts-abschnitt-weich">
+    <div class="ts-breite">
+        <header class="ts-abschnitt-kopf">
+            <p class="ts-kicker dunkel">Pourquoi TabloSuite</p>
+            <h2>Pensé pour votre quotidien</h2>
+        </header>
+        <div class="ts-werte">
+            @foreach (var (icon, titel, text) in Werte)
+            {
+                <article class="ts-wert">
+                    <span class="ts-wert-icon"><Zeichen Name="@icon" Groesse="24" /></span>
+                    <h3>@titel</h3>
+                    <p>@text</p>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+<section id="contact" class="ts-abschnitt">
+    <div class="ts-breite">
+        <div class="ts-kontakt">
+            <div>
+                <p class="ts-kicker">Contact</p>
+                <h2>Parlons de votre activité</h2>
+                <p>Une question, une démonstration, ou une application pour votre métier ? Écrivez-nous : nous vous répondons rapidement, en français.</p>
+            </div>
+            <div class="ts-kontakt-wege">
+                <a class="ts-kontakt-weg" href="mailto:@Optionen.Value.KontaktEmail">
+                    <span><Zeichen Name="mail" Groesse="22" /></span>
+                    <span><small>E-mail</small>@Optionen.Value.KontaktEmail</span>
+                </a>
+                @if (!string.IsNullOrWhiteSpace(Optionen.Value.Telefon))
+                {
+                    <a class="ts-kontakt-weg" href="tel:@Optionen.Value.Telefon.Replace(" ", "")">
+                        <span><Zeichen Name="telefon" Groesse="22" /></span>
+                        <span><small>Téléphone</small>@Optionen.Value.Telefon</span>
+                    </a>
+                }
+                <div class="ts-kontakt-weg">
+                    <span><Zeichen Name="ort" Groesse="22" /></span>
+                    <span><small>Adresse</small>@Optionen.Value.Ort</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private IEnumerable<TabloSuiteApp> Verfuegbar => Optionen.Value.SortierteApps.Where(a => a.IstVerfuegbar && !string.IsNullOrWhiteSpace(a.Bild));
+
+    private static readonly (string Icon, string Titel, string Text)[] Werte =
+    [
+        ("funken", "Simple dès le premier jour", "Des écrans clairs, des gestes simples et des vidéos d'aide pas à pas, même sans expérience des logiciels."),
+        ("geld", "Adapté à votre quotidien", "Espèces et Mobile Money, montants en francs CFA, reçus avec votre logo : vos habitudes, en mieux."),
+        ("geraete", "Partout avec vous", "Sur téléphone, tablette ou ordinateur, sans rien installer. Vos chiffres vous suivent, même à la maison."),
+        ("schild", "Vos données protégées", "Hébergement sécurisé dans le cloud Microsoft Azure, sauvegardes automatiques, accès par identifiant et code PIN."),
+    ];
+}

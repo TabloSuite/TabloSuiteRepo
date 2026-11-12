@@ -1,0 +1,10 @@
+@* TabloSuite-Zeichen (« T » im blauen Quadrat, wie in den TabloSuite-E-Mails) mit Schriftzug. *@
+<span class="ts-marke @(Hell ? "hell" : "")">
+    <span class="ts-marke-zeichen" aria-hidden="true">T</span>
+    <span class="ts-marke-wort">Tablo<strong>Suite</strong></span>
+</span>
+
+@code {
+    /// <summary>Weißer Schriftzug für dunkle Flächen.</summary>
+    [Parameter] public bool Hell { get; set; }
+}

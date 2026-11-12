@@ -1,0 +1,57 @@
+@* Eine App der TabloSuiteMappe: Bild, Logo, Zielgruppe, Beschreibung, Punkte, Wege in die App. *@
+<article id="@App.Id" class="ts-app @(Gespiegelt ? "gespiegelt" : "") @(App.IstVerfuegbar ? "" : "bald")" style="--app-farbe: @App.Farbe">
+    <div class="ts-app-bild">
+        @if (!string.IsNullOrWhiteSpace(App.Bild))
+        {
+            <div class="ts-geraet">
+                <div class="ts-geraet-leiste" aria-hidden="true"><i></i><i></i><i></i><span>@App.Domain</span></div>
+                <img src="@App.Bild" alt="@App.BildAlt" loading="lazy" width="1280" height="800" />
+            </div>
+        }
+    </div>
+    <div class="ts-app-text">
+        <div class="ts-app-kopf">
+            <img class="ts-app-logo" src="@App.Logo" alt="" width="56" height="56" />
+            <div>
+                <h3>@App.Name</h3>
+                <p class="ts-app-kategorie">@App.Kategorie</p>
+            </div>
+            <span class="ts-app-status">@(App.IstVerfuegbar ? "Disponible" : "Bientôt")</span>
+        </div>
+        <p class="ts-app-beschreibung">@App.Beschreibung</p>
+        @if (App.Punkte.Count > 0)
+        {
+            <ul class="ts-app-punkte">
+                @foreach (var p in App.Punkte)
+                {
+                    <li><span class="ts-haken"><Zeichen Name="check" Groesse="14" Strich="3" /></span>@p</li>
+                }
+            </ul>
+        }
+        @if (App.IstVerfuegbar)
+        {
+            <div class="ts-app-wege">
+                <a class="ts-btn ts-btn-app" href="@App.Url" rel="noopener">Découvrir @App.Name <Zeichen Name="pfeil" Groesse="18" /></a>
+                @if (App.RegistrierungUrl is { } reg)
+                {
+                    <a class="ts-btn ts-btn-rand" href="@reg" rel="noopener">@App.RegistrierungText</a>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(App.Hinweis))
+            {
+                <p class="ts-app-hinweis">@App.Hinweis</p>
+            }
+        }
+        else
+        {
+            <p class="ts-app-hinweis">Bientôt disponible – écrivez-nous pour être informé de son lancement.</p>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public TabloSuiteApp App { get; set; } = default!;
+
+    /// <summary>Bild rechts statt links (abwechselnd untereinander).</summary>
+    [Parameter] public bool Gespiegelt { get; set; }
+}

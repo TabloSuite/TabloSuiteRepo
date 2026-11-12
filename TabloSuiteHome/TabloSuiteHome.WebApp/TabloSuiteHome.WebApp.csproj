@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    TabloSuite – Firmenseite (tablosuite.com). Zeigt alle Apps der TabloSuiteMappe (Katalog in appsettings.json,
+    Abschnitt « TabloSuite:Apps ») und führt zu ihnen. Reines statisches Server-Rendering (keine Interaktivität,
+    keine Datenbank) – schnell auch bei schwachem Netz.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TabloSuiteHome.WebApp</RootNamespace>
+  </PropertyGroup>
+
+</Project>

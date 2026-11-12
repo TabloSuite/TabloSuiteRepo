@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+@inject IOptions<TabloSuiteOptionen> Optionen
+
+<a class="ts-skip" href="#inhalt">Aller au contenu</a>
+
+<header class="ts-kopf">
+    <div class="ts-breite ts-kopf-innen">
+        <a href="/" class="ts-kopf-marke" aria-label="TabloSuite – Accueil"><Marke /></a>
+        <nav class="ts-kopf-nav" aria-label="Navigation principale">
+            <a href="/#applications">Applications</a>
+            <a href="/#pourquoi">Pourquoi TabloSuite</a>
+            <a href="/#contact">Contact</a>
+        </nav>
+        <a href="/#applications" class="ts-btn ts-btn-primaer ts-kopf-cta">Nos applications</a>
+    </div>
+</header>
+
+<main id="inhalt">
+    @Body
+</main>
+
+<footer class="ts-fuss">
+    <div class="ts-breite ts-fuss-innen">
+        <div class="ts-fuss-marke">
+            <Marke Hell="true" />
+            <p>Des applications de gestion simples pour les commerces, les salons, les cabinets et les écoles.</p>
+        </div>
+        <nav class="ts-fuss-spalte" aria-label="Nos applications">
+            <h2>Applications</h2>
+            @foreach (var a in Optionen.Value.SortierteApps.Where(a => a.IstVerfuegbar))
+            {
+                <a href="@a.Url" rel="noopener">@a.Name <span>· @a.Domain</span></a>
+            }
+        </nav>
+        <div class="ts-fuss-spalte">
+            <h2>Contact</h2>
+            <a href="mailto:@Optionen.Value.KontaktEmail">@Optionen.Value.KontaktEmail</a>
+            @if (!string.IsNullOrWhiteSpace(Optionen.Value.Telefon))
+            {
+                <a href="tel:@Optionen.Value.Telefon.Replace(" ", "")">@Optionen.Value.Telefon</a>
+            }
+            <span>@Optionen.Value.Ort</span>
+        </div>
+    </div>
+    <div class="ts-breite ts-fuss-copy">© @DateTime.UtcNow.Year TabloSuite. Tous droits réservés.</div>
+</footer>
