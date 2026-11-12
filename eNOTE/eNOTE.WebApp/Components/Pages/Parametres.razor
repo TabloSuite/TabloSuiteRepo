@@ -90,6 +90,51 @@
                     }
                 </section>
 
+                <section class="enote-card st-karte" aria-labelledby="st-raeume-titel">
+                    <div class="st-karte-kopf">
+                        <span class="st-ico"><Icon Name="door" /></span>
+                        <div>
+                            <h2 id="st-raeume-titel">Salles et postes</h2>
+                            <p>Proposés en un geste dans « Nouvelle arrivée » (Clients présents). Les motifs, eux, viennent de vos prestations.</p>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(raumFehler))
+                    {
+                        <div class="alert alert-error" role="alert">@raumFehler</div>
+                    }
+
+                    @if (raeume.Count == 0)
+                    {
+                        <p class="enote-muted st-raeume-leer">Aucune salle définie : eNOTE propose les salles déjà saisies ces 90 derniers jours.</p>
+                    }
+                    else
+                    {
+                        <ul class="st-raeume">
+                            @for (var i = 0; i < raeume.Count; i++)
+                            {
+                                var r = raeume[i];
+                                var erster = i == 0;
+                                var letzter = i == raeume.Count - 1;
+                                <li @key="r.Id">
+                                    <Icon Name="door" Groesse="18" CssClass="st-raum-ico" />
+                                    <input class="enote-input" value="@r.Name" maxlength="@ENote.Core.Services.Kunden.KundenBesuchRegeln.RaumMax"
+                                           aria-label="@($"Nom de la salle {r.Name}")" @onchange="(ChangeEventArgs e) => RaumUmbenennenAsync(r, e.Value?.ToString())" />
+                                    <button type="button" class="enote-icon-btn" title="Monter" aria-label="@($"Monter {r.Name}")" disabled="@erster" @onclick="() => RaumVerschiebenAsync(r, -1)"><Icon Name="arrow-up" Groesse="16" /></button>
+                                    <button type="button" class="enote-icon-btn" title="Descendre" aria-label="@($"Descendre {r.Name}")" disabled="@letzter" @onclick="() => RaumVerschiebenAsync(r, 1)"><Icon Name="arrow-down" Groesse="16" /></button>
+                                    <button type="button" class="enote-icon-btn st-raum-weg" title="Supprimer" aria-label="@($"Supprimer {r.Name}")" @onclick="() => RaumLoeschenAsync(r)"><Icon Name="trash" Groesse="16" /></button>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <div class="st-raum-neu">
+                        <input class="enote-input" @bind="neuerRaum" @bind:event="oninput" maxlength="@ENote.Core.Services.Kunden.KundenBesuchRegeln.RaumMax"
+                               placeholder="ex. Salle 1, Bac, Cabine 2" aria-label="Nouvelle salle ou nouveau poste" @onkeydown="RaumTasteAsync" />
+                        <AsyncActionButton Text="Ajouter" OnClick="RaumHinzufuegenAsync" CssClass="enote-btn-primary" Disabled="string.IsNullOrWhiteSpace(neuerRaum)" />
+                    </div>
+                </section>
+
                 <section class="enote-card st-karte">
                     <div class="st-karte-kopf">
                         <span class="st-ico st-ico-lock"><Icon Name="lock" /></span>

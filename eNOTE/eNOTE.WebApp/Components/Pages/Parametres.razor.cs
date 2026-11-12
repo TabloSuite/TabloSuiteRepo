@@ -11,6 +11,7 @@ public partial class Parametres(
     MobileMoneyService mobileMoneyService,
     KatalogService katalogService,
     TeamService teamService,
+    KundenBesuchService besuchService,
     ToastService toast,
     AktiverSalonState aktiverSalon,
     AuthenticationStateProvider authStateProvider,
@@ -34,6 +35,11 @@ public partial class Parametres(
     private string? bonQrLink;
     private string? logoVorschau;
     private string? logoFehler;
+
+    // Salles et postes (Schnellauswahl « Nouvelle arrivée »)
+    private List<KundenBesuchService.Raum> raeume = [];
+    private string neuerRaum = string.Empty;
+    private string? raumFehler;
 
     private string neueBesitzerPin = string.Empty;
     private string? pinFehler;
@@ -114,9 +120,51 @@ public partial class Parametres(
         momoAuswahl = (await mobileMoneyService.GetAuswahlFuerLadenAsync(salonId))
             .Select(a => new MomoEintrag(a.Anbieter, a.Akzeptiert)).ToList();
 
+        await LadeRaeumeAsync();
         hatBesitzerPin = await salonService.HatBesitzerPinAsync(salonId, benutzerId);
         darfWeiterenLaden = await salonService.DarfWeiterenLadenAnlegenAsync(benutzerId);
     }
+
+    private async Task LadeRaeumeAsync()
+    {
+        try { raeume = await besuchService.GetRaeumeAsync(benutzerId, salonId); }
+        catch (UnauthorizedAccessException) { raeume = []; }
+    }
+
+    private async Task RaumAktionAsync(Func<Task> aktion)
+    {
+        raumFehler = null;
+        try { await aktion(); }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { raumFehler = ex.Message; }
+        await LadeRaeumeAsync();
+    }
+
+    private Task RaumHinzufuegenAsync() => RaumAktionAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(neuerRaum)) return;
+        var r = await besuchService.RaumAnlegenAsync(benutzerId, salonId, neuerRaum);
+        neuerRaum = string.Empty;
+        toast.ZeigeErfolg($"« {r.Name} » ajouté.");
+    });
+
+    private async Task RaumTasteAsync(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await RaumHinzufuegenAsync();
+    }
+
+    private Task RaumUmbenennenAsync(KundenBesuchService.Raum r, string? name) => RaumAktionAsync(async () =>
+    {
+        await besuchService.RaumUmbenennenAsync(benutzerId, r.Id, name ?? string.Empty);
+    });
+
+    private Task RaumVerschiebenAsync(KundenBesuchService.Raum r, int richtung)
+        => RaumAktionAsync(() => besuchService.RaumVerschiebenAsync(benutzerId, r.Id, richtung));
+
+    private Task RaumLoeschenAsync(KundenBesuchService.Raum r) => RaumAktionAsync(async () =>
+    {
+        await besuchService.RaumLoeschenAsync(benutzerId, r.Id);
+        toast.ZeigeInfo($"« {r.Name} » supprimé.");
+    });
 
     private void OeffneNeuerLadenDialog()
     {

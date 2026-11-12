@@ -1935,6 +1935,15 @@ button.enote-laedt { cursor: progress; }
 .st-ico { width: 2.6rem; height: 2.6rem; border-radius: .8rem; flex-shrink: 0; display: grid; place-items: center; background: var(--enote-primary-soft); color: var(--enote-primary-light); }
 .st-ico-momo { background: var(--enote-warning-soft); color: var(--enote-pay-momo); }
 .st-ico-lock { background: var(--enote-warning-soft); color: var(--enote-warning); }
+/* Salles et postes */
+.st-raeume { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .4rem; }
+.st-raeume li { display: flex; align-items: center; gap: .45rem; }
+.st-raeume .enote-input { flex: 1; min-width: 0; }
+.st-raum-ico { color: var(--enote-text-muted); flex: none; }
+.st-raum-weg { color: var(--enote-danger); }
+.st-raum-neu { display: flex; gap: .5rem; align-items: center; }
+.st-raum-neu .enote-input { flex: 1; min-width: 0; }
+.st-raeume-leer { margin: 0 0 .75rem; font-size: .9rem; }
 .st-karte .enote-form input { max-width: none; }
 .st-karte .enote-form > .enote-btn { justify-self: start; }
 .st-momo { display: grid; gap: .5rem; }

@@ -1,14 +1,24 @@
 @using ENote.Core.Services.Kunden
 @using ENote.WebApp.Services
 
-@* « Client présent pour … », salle facultative, première note facultative. Vorschläge = häufige Einträge des Ladens. *@
+@* « Client présent pour … », salle facultative, première note facultative. Knöpfe = Prestations des Katalogs bzw. Räume des Ladens
+   (Paramètres › Salles et postes); das Motiv-Feld vervollständigt alle Prestations des Katalogs. *@
 
 <div class="kv-ankunft">
     <label>
         Présent pour
         <input value="@Grund" @oninput="e => GrundGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.GrundMax"
-               placeholder="ex. coupe, consultation, pansement, retouche…" />
+               placeholder="ex. coupe, consultation, pansement, retouche…" list="@(Vorschlaege?.Katalog is { Count: > 0 } ? listeId : null)" autocomplete="off" />
     </label>
+    @if (Vorschlaege?.Katalog is { Count: > 0 } katalog)
+    {
+        <datalist id="@listeId">
+            @foreach (var k in katalog)
+            {
+                <option value="@k"></option>
+            }
+        </datalist>
+    }
     @if (Vorschlaege?.Gruende is { Count: > 0 } gruende)
     {
         <div class="kv-chips" aria-label="Motifs fréquents">
@@ -53,6 +63,8 @@
     [Parameter] public EventCallback<string> NotizChanged { get; set; }
     [Parameter] public bool MitNotiz { get; set; } = true;
     [Parameter] public KundenBesuchService.Vorschlaege? Vorschlaege { get; set; }
+
+    private readonly string listeId = "kv-motive-" + Guid.NewGuid().ToString("N")[..8];
 
     private Task GrundGeaendert(string? wert) { Grund = wert ?? ""; return GrundChanged.InvokeAsync(Grund); }
     private Task RaumGeaendert(string? wert)

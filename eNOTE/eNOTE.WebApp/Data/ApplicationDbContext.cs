@@ -29,6 +29,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
     public DbSet<KundenBesuch> KundenBesuche => Set<KundenBesuch>();
     public DbSet<KundenNotiz> KundenNotizen => Set<KundenNotiz>();
+    public DbSet<SalonRaum> SalonRaeume => Set<SalonRaum>();
     public DbSet<GeparktesTicket> GeparkteTickets => Set<GeparktesTicket>();
     public DbSet<GeparktesTicketPosition> GeparkteTicketPositionen => Set<GeparktesTicketPosition>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
@@ -249,6 +250,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             // Kein zweiter Kaskadenpfad (Kunde → Besuch → Notiz): Besuch ist nur ein Verweis.
             entity.HasOne<KundenBesuch>().WithMany().HasForeignKey(n => n.BesuchId).OnDelete(DeleteBehavior.NoAction);
             entity.HasIndex(n => new { n.KundeId, n.ErstelltUtc });
+        });
+
+        // Räume/Plätze des Ladens (Schnellauswahl « Salle / poste »); Laden löschen entfernt sie ausdrücklich (KuendigungService).
+        builder.Entity<SalonRaum>(entity =>
+        {
+            entity.Property(r => r.Name).HasMaxLength(KundenBesuchRegeln.RaumMax);
+            entity.HasOne<Salon>().WithMany().HasForeignKey(r => r.SalonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(r => new { r.SalonId, r.Reihenfolge });
         });
 
         // Tickets « en attente »: Laden-Löschung entfernt sie ausdrücklich (KuendigungService), Leistung löschen entfernt ihre Zeilen (KatalogService).

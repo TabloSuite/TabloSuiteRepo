@@ -8,6 +8,10 @@ public static partial class KundenBesuchRegeln
     public const int GrundMax = 120;
     public const int RaumMax = 40;
     public const int NotizMax = 1000;
+    /// <summary>Höchstzahl festgelegter Räume eines Ladens (Paramètres › Salles et postes).</summary>
+    public const int RaeumeMax = 30;
+    /// <summary>So viele Motive (aus dem Katalog) erscheinen als Schnellauswahl.</summary>
+    public const int MotiveMax = 8;
 
     /// <summary>Offene Besuche, die älter sind, gelten als vergessen (Hinweis in der Übersicht).</summary>
     public static readonly TimeSpan VergessenNach = TimeSpan.FromHours(12);
@@ -37,6 +41,15 @@ public static partial class KundenBesuchRegeln
         var r = Bereinige(raum).Replace('\n', ' ');
         if (r.Length > RaumMax) throw new ArgumentException($"Salle : {RaumMax} caractères au maximum.");
         return (g, r.Length == 0 ? null : r);
+    }
+
+    /// <summary>Name eines festgelegten Raums: eine Zeile, 1 bis <see cref="RaumMax"/> Zeichen.</summary>
+    public static string PruefeRaumName(string? name)
+    {
+        var n = Bereinige(name).Replace('\n', ' ');
+        if (n.Length == 0) throw new ArgumentException("Indiquez le nom de la salle ou du poste.");
+        if (n.Length > RaumMax) throw new ArgumentException($"Salle : {RaumMax} caractères au maximum.");
+        return n;
     }
 
     public static string PruefeNotiz(string? text)

@@ -26,7 +26,10 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
     public sealed record Fiche(Guid KundeId, string Name, string? Telefon, BesuchEintrag? Offen, int AnzahlBesuche,
         IReadOnlyList<VerlaufEintrag> Verlauf, bool IstBesitzer);
 
-    public sealed record Vorschlaege(IReadOnlyList<string> Gruende, IReadOnlyList<string> Raeume);
+    /// <summary>Gruende/Raeume = Knöpfe; Katalog = alle Prestations für die Autovervollständigung im Feld « Présent pour ».</summary>
+    public sealed record Vorschlaege(IReadOnlyList<string> Gruende, IReadOnlyList<string> Raeume, IReadOnlyList<string>? Katalog = null);
+
+    public sealed record Raum(Guid Id, string Name, int Reihenfolge);
 
     private DateTime Jetzt => zeit.GetUtcNow().UtcDateTime;
 
@@ -80,7 +83,13 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
         return await db.KundenBesuche.CountAsync(b => b.SalonId == salonId && b.EndeUtc == null, ct);
     }
 
-    /// <summary>Häufige Anlässe und Räume der letzten 90 Tage als Schnellauswahl.</summary>
+    /// <summary>
+    /// Schnellauswahl für « Nouvelle arrivée »:
+    /// Motive = Prestations des Katalogs (aktiv, ohne Produkte und « Divers »), Favoriten zuerst, dann die meistverkauften
+    /// der letzten 90 Tage, dann nach Name (höchstens <see cref="KundenBesuchRegeln.MotiveMax"/>);
+    /// Räume = vom Besitzer festgelegte Räume in ihrer Reihenfolge.
+    /// Ohne Prestations bzw. ohne festgelegte Räume: die häufigsten Einträge der letzten 90 Tage (wie bisher).
+    /// </summary>
     public async Task<Vorschlaege> GetVorschlaegeAsync(Guid user, Guid salonId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -95,7 +104,110 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
             .GroupBy(w => w, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
             .Take(n).Select(g => g.First()).ToList();
-        return new Vorschlaege(Haeufigste(letzte.Select(l => l.Grund), 6), Haeufigste(letzte.Select(l => l.Raum), 10));
+
+        var prestations = await db.Leistungen.AsNoTracking()
+            .Where(l => l.SalonId == salonId && l.IstAktiv && !l.IstStandardArtikel && l.Typ == ENote.Core.DataModels.Katalog.LeistungsTyp.Prestation)
+            .Select(l => new { l.Id, l.Name }).ToListAsync(ct);
+        List<string> motive;
+        if (prestations.Count == 0)
+        {
+            motive = Haeufigste(letzte.Select(l => l.Grund), 6);
+        }
+        else
+        {
+            var ids = prestations.Select(p => p.Id).ToList();
+            var favoriten = (await db.LeistungFavoriten.AsNoTracking().Where(f => f.SalonId == salonId).Select(f => f.LeistungId).ToListAsync(ct)).ToHashSet();
+            var verkauft = await db.VerkaufsPositionen.AsNoTracking()
+                .Where(p => ids.Contains(p.LeistungId) && p.Verkauf.SalonId == salonId && p.Verkauf.ZeitUtc >= seit)
+                .GroupBy(p => p.LeistungId).Select(g => new { g.Key, Menge = g.Sum(p => p.Menge) }).ToDictionaryAsync(x => x.Key, x => x.Menge, ct);
+            motive = prestations
+                .OrderByDescending(p => favoriten.Contains(p.Id))
+                .ThenByDescending(p => verkauft.GetValueOrDefault(p.Id))
+                .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(KundenBesuchRegeln.MotiveMax).Select(p => p.Name).ToList();
+        }
+
+        var festgelegt = await db.SalonRaeume.AsNoTracking().Where(r => r.SalonId == salonId)
+            .OrderBy(r => r.Reihenfolge).ThenBy(r => r.Name).Select(r => r.Name).ToListAsync(ct);
+        var raeume = festgelegt.Count > 0 ? festgelegt : Haeufigste(letzte.Select(l => l.Raum), 10);
+        var katalog = prestations.Select(p => p.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        return new Vorschlaege(motive, raeume, katalog);
+    }
+
+    // ------------------------------------------------------------------ Räume des Ladens (Paramètres › Salles et postes)
+
+    /// <summary>Festgelegte Räume in ihrer Reihenfolge (lesen: alle Mitarbeitenden).</summary>
+    public async Task<List<Raum>> GetRaeumeAsync(Guid user, Guid salonId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await PruefeZugangAsync(db, user, salonId, ct);
+        return await db.SalonRaeume.AsNoTracking().Where(r => r.SalonId == salonId)
+            .OrderBy(r => r.Reihenfolge).ThenBy(r => r.Name)
+            .Select(r => new Raum(r.Id, r.Name, r.Reihenfolge)).ToListAsync(ct);
+    }
+
+    private static async Task PruefeBesitzerAsync(ApplicationDbContext db, Guid user, Guid salonId, CancellationToken ct)
+    {
+        if (!(await PruefeZugangAsync(db, user, salonId, ct)).Besitzer)
+            throw new UnauthorizedAccessException("Seul le propriétaire peut modifier les salles.");
+    }
+
+    private static async Task PruefeEindeutigAsync(ApplicationDbContext db, Guid salonId, string name, Guid? ausser, CancellationToken ct)
+    {
+        var namen = await db.SalonRaeume.Where(r => r.SalonId == salonId && r.Id != ausser).Select(r => r.Name).ToListAsync(ct);
+        if (namen.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException($"« {name} » existe déjà.");
+    }
+
+    public async Task<Raum> RaumAnlegenAsync(Guid user, Guid salonId, string name, CancellationToken ct = default)
+    {
+        var n = KundenBesuchRegeln.PruefeRaumName(name);
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await PruefeBesitzerAsync(db, user, salonId, ct);
+        var vorhandene = await db.SalonRaeume.Where(r => r.SalonId == salonId).Select(r => r.Reihenfolge).ToListAsync(ct);
+        if (vorhandene.Count >= KundenBesuchRegeln.RaeumeMax) throw new ArgumentException($"{KundenBesuchRegeln.RaeumeMax} salles au maximum.");
+        await PruefeEindeutigAsync(db, salonId, n, null, ct);
+        var raum = new SalonRaum { SalonId = salonId, Name = n, Reihenfolge = vorhandene.Count == 0 ? 0 : vorhandene.Max() + 1, ErstelltUtc = Jetzt };
+        db.SalonRaeume.Add(raum);
+        await db.SaveChangesAsync(ct);
+        return new Raum(raum.Id, raum.Name, raum.Reihenfolge);
+    }
+
+    public async Task RaumUmbenennenAsync(Guid user, Guid raumId, string name, CancellationToken ct = default)
+    {
+        var n = KundenBesuchRegeln.PruefeRaumName(name);
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var raum = await db.SalonRaeume.FirstOrDefaultAsync(r => r.Id == raumId, ct) ?? throw new ArgumentException("Salle introuvable.");
+        await PruefeBesitzerAsync(db, user, raum.SalonId, ct);
+        if (raum.Name == n) return;
+        await PruefeEindeutigAsync(db, raum.SalonId, n, raum.Id, ct);
+        raum.Name = n;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Raum eine Stelle nach oben (richtung &lt; 0) oder unten (&gt; 0) schieben.</summary>
+    public async Task RaumVerschiebenAsync(Guid user, Guid raumId, int richtung, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var raum = await db.SalonRaeume.FirstOrDefaultAsync(r => r.Id == raumId, ct) ?? throw new ArgumentException("Salle introuvable.");
+        await PruefeBesitzerAsync(db, user, raum.SalonId, ct);
+        var liste = await db.SalonRaeume.Where(r => r.SalonId == raum.SalonId).OrderBy(r => r.Reihenfolge).ThenBy(r => r.Name).ToListAsync(ct);
+        var i = liste.FindIndex(r => r.Id == raumId);
+        var j = i + Math.Sign(richtung);
+        if (richtung == 0 || j < 0 || j >= liste.Count) return;
+        (liste[i], liste[j]) = (liste[j], liste[i]);
+        for (var k = 0; k < liste.Count; k++) liste[k].Reihenfolge = k;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task RaumLoeschenAsync(Guid user, Guid raumId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var raum = await db.SalonRaeume.FirstOrDefaultAsync(r => r.Id == raumId, ct);
+        if (raum is null) return;
+        await PruefeBesitzerAsync(db, user, raum.SalonId, ct);
+        db.SalonRaeume.Remove(raum);
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>« Client présent pour … » – optional mit Raum und erster Notiz.</summary>
