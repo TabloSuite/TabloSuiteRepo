@@ -1,4 +1,4 @@
-using ENote.WebApp.Services;
+﻿using ENote.WebApp.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using System.Security.Claims;
@@ -22,18 +22,24 @@ public partial class BesitzerPinGuard : IDisposable
     private string pin = string.Empty;
     private string? fehler;
     private Guid salonId;
-    private bool istGesperrt;
     private bool laedt = true;
+
+    // Sperre wird bei jedem Rendern neu ausgewertet: verriegelt der Besitzer die Zone (Seitenleiste),
+    // verschwindet die gerade offene Verwaltungsseite sofort hinter der PIN-Abfrage.
+    private bool ohneKonto;
+    private bool ausgenommen;
+    private bool hatBesitzerPin;
+    private bool istGesperrt => ohneKonto || (!ausgenommen && hatBesitzerPin && !PinState.VerwaltungFreigeschaltet);
 
     protected override async Task OnInitializedAsync()
     {
-        PinState.OnChange += StateHasChanged;
+        PinState.OnChange += BeiPinWechsel;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
         {
-            istGesperrt = true;
+            ohneKonto = true;
             laedt = false;
             return;
         }
@@ -49,7 +55,7 @@ public partial class BesitzerPinGuard : IDisposable
 
         if (istPlattformVerwalter)
         {
-            istGesperrt = false;
+            ausgenommen = true;
             laedt = false;
             return;
         }
@@ -64,13 +70,12 @@ public partial class BesitzerPinGuard : IDisposable
             && authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Kassierer)
             && !authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer))
         {
-            istGesperrt = false;
+            ausgenommen = true;
             laedt = false;
             return;
         }
 
-        var hatBesitzerPin = salonId != Guid.Empty && await KassenService.HatBesitzerPinAsync(salonId);
-        istGesperrt = hatBesitzerPin && !PinState.VerwaltungFreigeschaltet;
+        hatBesitzerPin = salonId != Guid.Empty && await KassenService.HatBesitzerPinAsync(salonId);
         laedt = false;
     }
 
@@ -114,5 +119,7 @@ public partial class BesitzerPinGuard : IDisposable
         _ => false
     };
 
-    public void Dispose() => PinState.OnChange -= StateHasChanged;
+    private void BeiPinWechsel() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => PinState.OnChange -= BeiPinWechsel;
 }
