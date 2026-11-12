@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.WebApp.Services;
 using Xunit;
@@ -36,7 +36,9 @@ public class VideoKatalogTests
     public void Abruf_Folgt_Der_Sichtbarkeit()
     {
         Assert.True(VideoKatalog.DarfAbrufen("skoulou-eleve-apprendre.mp4", Nutzer(Rollen.Schueler)));
-        Assert.False(VideoKatalog.DarfAbrufen("skoulou-direction-suivre.mp4", Nutzer(Rollen.Schueler)));
+        Assert.False(VideoKatalog.DarfAbrufen("skoulou-direction-notes.mp4", Nutzer(Rollen.Schueler)));
+        Assert.True(VideoKatalog.DarfAbrufen("skoulou-visite-guidee.mp4", Nutzer(Rollen.Eltern)));
+        Assert.False(VideoKatalog.DarfAbrufen("skoulou-direction-demarrer.mp4", Nutzer(Rollen.SuperAdmin)));   // abgelöst
         Assert.False(VideoKatalog.DarfAbrufen("skoulou-enseignant-cours.mp4", Nutzer(Rollen.Eltern)));
         Assert.False(VideoKatalog.DarfAbrufen("skoulou-pourquoi.mp4", Anonym));
         Assert.False(VideoKatalog.DarfAbrufen("unbekannt.mp4", Nutzer(Rollen.SuperAdmin)));
