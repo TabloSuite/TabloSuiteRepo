@@ -1,11 +1,11 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ENote.Core.DataModels.Identity;
 using ENote.WebApp.Services;
 using Xunit;
 
 namespace ENote.Tests;
 
-/// <summary>Lernvideos: « Pourquoi eNOTE ? » für alle, mehrere Videos je Rolle, eigene Rolle zuerst.</summary>
+/// <summary>Lernvideos: « Pour bien commencer » für alle, mehrere Videos je Rolle, eigene Rolle zuerst.</summary>
 public class VideoKatalogTests
 {
     private static ClaimsPrincipal Mit(string? rolle) => rolle is null
@@ -13,10 +13,10 @@ public class VideoKatalogTests
         : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, rolle)], "test"));
 
     [Theory]
-    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 13)]
-    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 12)]
-    [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 8)]
-    [InlineData(AppRollen.Kassierer, "Pour tous,Employé", 4)]
+    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 17)]
+    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 16)]
+    [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 12)]
+    [InlineData(AppRollen.Kassierer, "Pour tous,Employé", 7)]
     public void Gruppen_Je_Rolle_Eigene_Zuerst(string rolle, string gruppen, int anzahl)
     {
         var user = Mit(rolle);
@@ -32,16 +32,20 @@ public class VideoKatalogTests
     {
         Assert.False(VideoKatalog.DarfAbrufen("enote-admin-communication.mp4", Mit(AppRollen.ProduktOwner)));
         Assert.True(VideoKatalog.DarfAbrufen("enote-admin-communication.mp4", Mit(AppRollen.SuperAdmin)));
-        Assert.True(VideoKatalog.DarfAbrufen("enote-pourquoi.mp4", Mit(AppRollen.Kassierer)));
-        Assert.False(VideoKatalog.DarfAbrufen("enote-proprietaire-demarrer.mp4", Mit(AppRollen.Kassierer)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-premiers-pas.mp4", Mit(AppRollen.Kassierer)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-visite-guidee.mp4", Mit(AppRollen.Kassierer)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-proprietaire-catalogue.mp4", Mit(AppRollen.Kassierer)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-employe-attente.mp4", Mit(AppRollen.Kassierer)));
     }
 
     [Fact]
     public void Werbevideo_Oeffentlich_Lernvideos_Nicht()
     {
         Assert.True(VideoKatalog.DarfAbrufen(VideoKatalog.Werbung, Mit(null)));
-        Assert.False(VideoKatalog.DarfAbrufen("enote-pourquoi.mp4", Mit(null)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-premiers-pas.mp4", Mit(null)));
         Assert.False(VideoKatalog.DarfAbrufen("enote-caissier.mp4", Mit(AppRollen.SuperAdmin))); // alte Datei entfernt
+        Assert.False(VideoKatalog.DarfAbrufen("enote-pourquoi.mp4", Mit(AppRollen.SuperAdmin)));  // abgelöst durch das Werbevideo
+        Assert.False(VideoKatalog.DarfAbrufen("enote-proprietaire-demarrer.mp4", Mit(AppRollen.SuperAdmin)));
         Assert.False(VideoKatalog.DarfAbrufen("unbekannt.mp4", Mit(AppRollen.SuperAdmin)));
     }
 

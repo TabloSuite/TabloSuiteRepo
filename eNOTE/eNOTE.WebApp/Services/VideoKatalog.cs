@@ -4,7 +4,8 @@ using ENote.Core.DataModels.Identity;
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// Lernvideos: mehrere kurze Videos je Rolle (Anwendungsfälle) plus « Pourquoi eNOTE ? » für alle.
+/// Lernvideos: mehrere Videos je Rolle (Anwendungsfälle) plus « Pour bien commencer » für alle
+/// (Premiers pas, Visite guidée, « Pourquoi eNOTE ? » = Werbevideo der Startseite).
 /// Sichtbarkeit: Admin sieht alle, Responsable alles außer der Admin-Kommunikation, der Besitzer seine
 /// und die der Employés, der Employé nur seine. Das Werbevideo ist öffentlich (Startseite).
 /// Dateien liegen in <c>Medien/videos</c>, Vorschaubilder in <c>wwwroot/videos</c>.
@@ -31,24 +32,33 @@ public static class VideoKatalog
 
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
-        new("enote-pourquoi.mp4", "Pourquoi eNOTE ?",
-            "Ce que eNOTE change au quotidien pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "1:28"),
+        // Für alle (12.11.2026: neue Lernvideos mit Sprecherin, ausführlich für Einsteiger)
+        new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
+            "Se connecter, le menu, les boutons et les fenêtres, les messages, la zone du propriétaire.", Alle_, Alle, "2:03"),
+        new("enote-visite-guidee.mp4", "La visite guidée",
+            "Toutes les fonctions d'eNOTE, où les trouver et comment s'en servir au quotidien.", Alle_, Alle, "5:10"),
+        new(Werbung, "Pourquoi eNOTE ?",
+            "Ce que eNOTE change au quotidien pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "2:54"),
 
-        new("enote-employe-encaisser.mp4", "Encaisser une vente",
-            "Ouvrir la caisse, composer le ticket, ajouter le client, encaisser en espèces ou Mobile Money.", "Employé", Alle, "1:22"),
+        new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
+            "Ouvrir la caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "2:44"),
+        new("enote-employe-attente.mp4", "Mettre un ticket en attente",
+            "Garder un ticket pour plus tard, le retrouver et le reprendre, aussi pour un client présent.", "Employé", Alle, "1:21"),
         new("enote-employe-clients.mp4", "Accueillir les clients",
-            "Noter l'arrivée, le motif et la salle, consulter la fiche et ajouter des notes.", "Employé", Alle, "1:10"),
-        new("enote-employe-cloture.mp4", "Rembourser et clôturer",
-            "Retrouver une vente, rembourser, écran client, retrait et clôture du soir.", "Employé", Alle, "0:53"),
+            "Noter une arrivée, créer un nouveau client, la carte et la fiche, encaisser ou noter le départ.", "Employé", Alle, "2:04"),
+        new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
+            "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir.", "Employé", Alle, "1:44"),
 
-        new("enote-proprietaire-demarrer.mp4", "Bien démarrer",
-            "Zone propriétaire, prestations et catégories, stock, équipe et droits, reçu et Mobile Money.", "Propriétaire", AbBesitzer, "1:06"),
+        new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
+            "Catégories, nouvelle prestation, produit avec prix d'achat, stock et code-barres, remises.", "Propriétaire", AbBesitzer, "2:05"),
+        new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
+            "Ajouter un employé, ses droits, votre reçu, Mobile Money, salles et code PIN.", "Propriétaire", AbBesitzer, "1:46"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
-            "Accueil, finances par période, clôtures de caisse, dépenses avec justificatif, inventaire.", "Propriétaire", AbBesitzer, "0:54"),
-        new("enote-proprietaire-clients.mp4", "Fidéliser vos clients",
-            "Fiches clients, passages et notes de l'équipe, note privée, clients présents et remises.", "Propriétaire", AbBesitzer, "0:53"),
+            "Les chiffres du jour, les finances par période, noter une dépense, rapport PDF et inventaire.", "Propriétaire", AbBesitzer, "1:51"),
+        new("enote-proprietaire-clients.mp4", "Vos clients",
+            "Le fichier clients, la fiche avec note privée et notes de l'équipe, une remise de fidélité.", "Propriétaire", AbBesitzer, "1:27"),
         new("enote-proprietaire-compte.mp4", "Abonnement et compte",
-            "Formule, factures, résiliation ou suppression du compte, profil personnel.", "Propriétaire", AbBesitzer, "0:50"),
+            "Essai gratuit et formule, résiliation, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "1:02"),
 
         new("enote-responsable-etablissements.mp4", "Vos établissements",
             "Suivre ventes et commission de chaque établissement, inscrire un nouveau commerçant.", "Responsable", Plattform, "0:43"),
@@ -65,15 +75,15 @@ public static class VideoKatalog
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
-        (Alle_, "Pourquoi eNOTE ?", "En une minute, ce que eNOTE change au quotidien."),
-        ("Employé", "Employé", "Encaisser, accueillir les clients et clôturer la caisse."),
-        ("Propriétaire", "Propriétaire", "Préparer l'établissement, suivre l'activité, fidéliser les clients."),
+        (Alle_, "Pour bien commencer", "Les premiers pas, la visite guidée et pourquoi eNOTE."),
+        ("Employé", "Employé", "Encaisser, mettre un ticket en attente, accueillir les clients et clôturer la caisse."),
+        ("Propriétaire", "Propriétaire", "Préparer le catalogue et l'équipe, suivre l'activité, fidéliser les clients."),
         ("Responsable", "Responsable", "Accompagner vos établissements."),
         ("Administrateur", "Administrateur", "Piloter la plateforme."),
     ];
 
     /// <summary>
-    /// Sichtbare Videos gruppiert: « Pourquoi eNOTE ? » zuerst, dann die eigene Rolle, danach die übrigen.
+    /// Sichtbare Videos gruppiert: « Pour bien commencer » zuerst, dann die eigene Rolle, danach die übrigen.
     /// </summary>
     public static IReadOnlyList<Gruppe> FuerNutzer(ClaimsPrincipal user)
     {

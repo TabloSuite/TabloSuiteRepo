@@ -10,7 +10,7 @@
     <div class="enote-page-header">
         <div>
             <h1>Vidéos d'aide</h1>
-            <p>Des vidéos courtes, une situation à la fois. Commencez par celles de votre rôle.</p>
+            <p>Des vidéos pas à pas, une situation à la fois. Commencez par « Premiers pas », puis celles de votre rôle.</p>
         </div>
     </div>
 
@@ -23,7 +23,9 @@
         @foreach (var g in gruppen)
         {
             var istPourquoi = g.Fuer == VideoKatalog.Alle_;
-            <section class="vh-gruppe @(istPourquoi ? "vh-gruppe-pourquoi" : "")" aria-labelledby="vh-@Slug(g.Fuer)">
+            // Große Einzelkarte nur, wenn « Pour tous » genau ein Video hat; sonst normales Raster wie bei den Rollen
+            var gross = istPourquoi && g.Videos.Count == 1;
+            <section class="vh-gruppe @(gross ? "vh-gruppe-pourquoi" : "")" aria-labelledby="vh-@Slug(g.Fuer)">
                 <div class="vh-gruppe-kopf">
                     <h2 id="vh-@Slug(g.Fuer)">@g.Titel</h2>
                     <p>@g.Untertitel@(g.Videos.Count > 1 ? $" · {g.Videos.Count} vidéos · {Gesamt(g.Videos)}" : "")</p>
@@ -51,7 +53,7 @@
                                 <span class="vh-dauer">@v.Dauer</span>
                             </button>
                             <div class="vh-text">
-                                <span class="vh-fuer">@(istPourquoi ? "Pour tous" : $"{v.Fuer} · {nr}/{g.Videos.Count}")</span>
+                                <span class="vh-fuer">@(gross ? "Pour tous" : $"{v.Fuer} · {nr}/{g.Videos.Count}")</span>
                                 <h3>@v.Titel</h3>
                                 <p>@v.Beschreibung</p>
                                 @if (!vorhanden)
