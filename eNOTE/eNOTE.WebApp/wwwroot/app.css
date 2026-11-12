@@ -1291,9 +1291,9 @@ button.enote-laedt { cursor: progress; }
 /* --- Monats-Picker --- */
 .enote-month-row { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
 
-/* --- PIN-Feld mit Auge-Button --- */
-.enote-pin-feld { position: relative; display: flex; align-items: center; }
-.enote-pin-feld input { width: 100%; padding-right: 2.6rem; }
+/* --- PIN-Feld mit Auge-Button (Paramètres) – eigene Klasse: .enote-pin-feld ist das unsichtbare Eingabefeld der PIN-Tastatur --- */
+.enote-pin-zeile { position: relative; display: flex; align-items: center; }
+.enote-pin-zeile input { width: 100%; padding-right: 2.6rem; }
 .enote-pin-eye {
     position: absolute; right: .45rem; background: none; border: none; cursor: pointer;
     font-size: 1.05rem; padding: .3rem; line-height: 1; opacity: .7; transition: opacity .15s ease;
