@@ -208,6 +208,17 @@ body {
 .app-link-pill-accent { background: var(--sk-gradient); color: #fff; border-color: transparent; }
 .app-link-pill-accent:hover { color: #fff; filter: brightness(1.06); }
 
+/* Alte Kopfzeilen-Regeln aus app.css (vor dem Umbau) neutralisieren: dort wird die Kopfzeile auf dem Handy
+   zur umbrechenden Spalte, der Aktionsbereich volle Breite und « sticky » – « Se connecter » schwebte mittig. */
+.app-shell .app-header { flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; align-items: center; overflow: visible; }
+.app-shell .app-header-menu, .app-shell .app-header-brand { flex: none; }
+.app-shell .app-header-actions { position: static; top: auto; width: auto; flex: 0 1 auto; flex-wrap: nowrap; justify-content: flex-end; align-items: center; margin-left: auto; }
+.app-shell .app-header .app-link-pill { box-shadow: none; white-space: nowrap; max-width: none; }
+@media (max-width: 360px) {
+    .app-shell .app-header { gap: .5rem; padding: 0 .75rem; }
+    .app-shell .app-header-brand span { display: none; }
+}
+
 /* --- Fußzeile --- */
 .app-footer {
     display: flex;
