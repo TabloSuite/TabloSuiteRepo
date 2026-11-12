@@ -51,13 +51,13 @@ The conversion preserved the package versions already validated after the .NET 1
 ## Commands Run
 
 ```powershell
-dotnet build "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx"
-dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx" package --format json > "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\baseline-packages.json"
-dotnet build "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx"
-dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx" package --format json > "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\after-cpm-packages.json"
-dotnet test "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\SkoulouApp.Tests\SkoulouApp.Tests.csproj"
-dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx" package --outdated
-dotnet list "C:\ETSE\NETAPPS\SKOULOUAPPRepo\TabloSuiteMappe\TabloSuiteMappe.slnx" package --vulnerable --include-transitive
+dotnet build "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx"
+dotnet list "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx" package --format json > "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\baseline-packages.json"
+dotnet build "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx"
+dotnet list "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx" package --format json > "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\after-cpm-packages.json"
+dotnet test "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\SkoulouApp.Tests\SkoulouApp.Tests.csproj"
+dotnet list "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx" package --outdated
+dotnet list "C:\ETSE\NETAPPS\TabloSuiteData\TabloSuiteProjekt\TabloSuiteMappe.slnx" package --vulnerable --include-transitive
 ```
 
 ## Risk Assessment
