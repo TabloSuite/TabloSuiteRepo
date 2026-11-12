@@ -24,9 +24,15 @@ Kontakt (E-Mail, Telefon, Ort) steht ebenfalls in `appsettings.json` unter `Tabl
 
 `dotnet run --project TabloSuiteHome/TabloSuiteHome.WebApp` → https://localhost:7180
 
-## Veröffentlichen (noch offen, nur mit OK)
+## Veröffentlichen
 
-Eigene Azure-Web-App (z. B. im App-Service-Plan von eNOTE/Skoulou), Zip-Deploy wie bei eNOTE.
-Danach Domain: bei IONOS `tablosuite.com` (A-Record/CNAME + TXT `asuid`) auf die Web-App zeigen,
-in Azure die Domain hinzufügen und das kostenlose verwaltete Zertifikat binden; `www.tablosuite.com`
-leitet die Seite selbst auf `tablosuite.com` um.
+- Azure (seit 12.11.2026): Web-App « tablosuite-home » in TabloSuiteRGruppe, läuft auf dem Plan **Skoulou-AppServicePlan**
+  (B1 Linux, France Central, keine Zusatzkosten), .NET 10, HTTPS only, TLS 1.2, FTPS only, Always On.
+  Adresse ohne eigene Domain: https://tablosuite-home.azurewebsites.net
+- Deploy aus Visual Studio mit dem Profil « tablosuitehome - Zip Deploy » (lokal in Properties/PublishProfiles, nicht in Git).
+- Domain tablosuite.com (DNS bei IONOS, Zone tablosuite.com):
+  - A `@` → Eingangs-IP der Web-App, AAAA `@` löschen, TXT `asuid` → Verifizierungs-ID der Web-App;
+  - CNAME `www` → tablosuite-home.azurewebsites.net, TXT `asuid.www` → dieselbe ID;
+  - MX-Einträge (E-Mail contact@tablosuite.com) nicht ändern.
+  - Danach in Azure beide Hostnamen hinzufügen und je ein verwaltetes Zertifikat (SNI) binden.
+  `www.tablosuite.com` leitet die Seite selbst auf `tablosuite.com` um.
