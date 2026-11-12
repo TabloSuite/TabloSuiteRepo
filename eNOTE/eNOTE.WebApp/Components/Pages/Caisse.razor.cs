@@ -24,6 +24,7 @@ public partial class Caisse(
     FinanzService finanzService,
     KundenService kundenService,
     KundenBesuchService besuchService,
+    TicketParkService ticketParkService,
     AnwesenheitsSignal anwesenheitsSignal,
     IJSRuntime js) : IAsyncDisposable
 {
@@ -53,24 +54,199 @@ public partial class Caisse(
     private void AnwesenheitGeaendert(Guid salonId)
     {
         if (aktiveSitzung?.SalonId != salonId) return;
-        _ = InvokeAsync(async () => { await LadeAnwesendeAsync(); StateHasChanged(); });
+        _ = InvokeAsync(async () => { await LadeAnwesendeAsync(); await LadeWartendeAsync(); StateHasChanged(); });
     }
 
     private async Task UebernehmeKundeAusLinkAsync()
     {
         if (KundeAusLink is not Guid kundeId || aktiveSitzung is null) return;
         KundeAusLink = null;
-        var kunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kundeId);
-        if (kunde is null) return;
-        ticketKunde = kunde;
-        toast.ZeigeInfo($"« {kunde.Name} » est sur le ticket.");
+        await KundeAnsTicketAsync(kundeId);
     }
 
     private async Task AnwesendenAnsTicketAsync(KundenBesuchService.Anwesend a)
     {
-        if (aktiveSitzung is null) return;
-        ticketKunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, a.KundeId);
+        await KundeAnsTicketAsync(a.KundeId);
         anwesendeOffen = false;
+    }
+
+    /// <summary>
+    /// Anwesenden Kunden an die Kasse holen: wartet ein Ticket für ihn, wird es fortgesetzt (ein laufendes Ticket wird
+    /// vorher in die Warteliste gelegt). Sonst kommt der Kunde ans Ticket – mit der Leistung seines Anlasses
+    /// (« Présent pour Tresses africaines »), wenn sie im Katalog steht und noch nicht auf dem Ticket ist.
+    /// </summary>
+    private async Task KundeAnsTicketAsync(Guid kundeId)
+    {
+        if (aktiveSitzung is null) return;
+        if (wartende.Any(w => w.KundeId == kundeId))
+        {
+            if (ticket.Count > 0 && await ParkeAktuellesAsync(null) is { } fehler) { toast.ZeigeFehler(fehler); return; }
+            try
+            {
+                if (await ticketParkService.UebernehmeFuerKundeAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kundeId) is { } u)
+                {
+                    await WendeUebernahmeAnAsync(u);
+                    await LadeWartendeAsync();
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { toast.ZeigeFehler(ex.Message); return; }
+        }
+
+        var kunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kundeId);
+        if (kunde is null) return;
+        letzterVerkauf = null;
+        ticketKunde = kunde;
+        var anlass = anwesende.FirstOrDefault(a => a.KundeId == kundeId)?.Grund;
+        var neu = Core.Services.Kasse.TicketParkRegeln.PassendZumAnlass(anlass, leistungen.Where(l => !l.IstStandardArtikel), l => l.Name)
+            .Where(l => ticket.All(p => p.Leistung.Id != l.Id)).ToList();
+        foreach (var l in neu) FuegeHinzu(l);
+        toast.ZeigeInfo(neu.Count > 0
+            ? $"« {kunde.Name} » est sur le ticket avec « {string.Join(", ", neu.Select(l => l.Name))} »."
+            : $"« {kunde.Name} » est sur le ticket.");
+    }
+
+    // ================= Tickets « en attente » =================
+
+    private List<TicketParkService.Eintrag> wartende = [];
+    private bool wartendeOffen;
+    private string? wartendFehler;
+    private Guid? loeschKandidatId;
+    private bool parkDialogOffen;
+    private string? parkNotiz;
+    private string? parkFehler;
+
+    private async Task LadeWartendeAsync()
+    {
+        if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty) { wartende = []; return; }
+        try { wartende = await ticketParkService.GetAsync(aktuellerBenutzerId, aktiveSitzung.SalonId); }
+        catch (UnauthorizedAccessException) { wartende = []; }
+    }
+
+    private async Task OeffneWartendeAsync()
+    {
+        wartendFehler = null;
+        loeschKandidatId = null;
+        await LadeWartendeAsync();
+        wartendeOffen = true;
+    }
+
+    private string WarteSeit(TicketParkService.Eintrag w)
+    {
+        var ort = ENote.Core.Services.Zeitzonen.ImLaden(w.GeaendertUtc, zone);
+        var heute = ENote.Core.Services.Zeitzonen.ImLaden(DateTime.UtcNow, zone).Date;
+        var wann = ort.Date == heute ? $"depuis {ort:HH:mm}"
+            : ort.Date == heute.AddDays(-1) ? $"depuis hier {ort:HH:mm}"
+            : $"depuis le {ort:dd.MM} à {ort:HH:mm}";
+        return string.IsNullOrWhiteSpace(w.GeaendertVon) ? wann : $"{wann} · {w.GeaendertVon}";
+    }
+
+    private void OeffneParken()
+    {
+        if (ticket.Count == 0) return;
+        parkNotiz = null;
+        parkFehler = null;
+        parkDialogOffen = true;
+    }
+
+    private async Task BestaetigeParkenAsync()
+    {
+        parkFehler = null;
+        if (await ParkeAktuellesAsync(parkNotiz) is { } fehler) { parkFehler = fehler; return; }
+        parkDialogOffen = false;
+    }
+
+    private async Task ParkeVorAbschlussAsync()
+    {
+        abschlussFehler = await ParkeAktuellesAsync(null);
+    }
+
+    /// <summary>Legt das laufende Ticket in die Warteliste und leert es. Rückgabe: null = gelungen, sonst Fehlertext.</summary>
+    private async Task<string?> ParkeAktuellesAsync(string? notiz)
+    {
+        if (aktiveSitzung is null || ticket.Count == 0) return null;
+        try
+        {
+            var ergebnis = await ticketParkService.ParkeAsync(aktuellerBenutzerId, aktiveSitzung.SalonId,
+                ticket.Select(p => new TicketParkService.PositionInput(p.Leistung.Id, p.Menge, p.FreierBetrag)).ToList(),
+                ticketKunde?.Id, notiz, ausgewaehlterRabatt?.Id, bedingungBestaetigt);
+            var wer = ticketKunde?.Name;
+            SetzeTicketZurueck();
+            letzterVerkauf = null;
+            await LadeWartendeAsync();
+            _ = SendeTicketAnDisplayAsync();
+            toast.ZeigeInfo(ergebnis.Ergaenzt && wer is not null ? $"Ajouté au ticket en attente de « {wer} »." : "Ticket mis en attente.");
+            return null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            return ex.Message;
+        }
+    }
+
+    private async Task ReprendreAsync(Guid id)
+    {
+        if (aktiveSitzung is null) return;
+        wartendFehler = null;
+        if (ticket.Count > 0 && await ParkeAktuellesAsync(null) is { } fehler) { wartendFehler = fehler; return; }
+        try
+        {
+            var u = await ticketParkService.UebernehmeAsync(aktuellerBenutzerId, id);
+            await WendeUebernahmeAnAsync(u);
+            wartendeOffen = false;
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            wartendFehler = ex.Message;
+        }
+        await LadeWartendeAsync();
+    }
+
+    /// <summary>Übernommenes Ticket an die Kasse legen (Preise wie im Katalog, Remise erneut geprüft).</summary>
+    private async Task WendeUebernahmeAnAsync(TicketParkService.Uebernahme u)
+    {
+        SetzeTicketZurueck();
+        letzterVerkauf = null;
+        var fehlend = u.Ausgelassen;
+        foreach (var p in u.Positionen)
+        {
+            var l = leistungen.FirstOrDefault(x => x.Id == p.LeistungId);
+            if (l is null) { fehlend++; continue; }
+            ticket.Add(new TicketPosition { Leistung = l, Menge = p.Menge, FreierBetrag = p.FreierBetrag });
+        }
+
+        if (u.KundeId is Guid kid && aktiveSitzung is not null)
+        {
+            ticketKunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kid);
+        }
+
+        if (u.RabattId is Guid rid && rabatte.FirstOrDefault(r => r.Id == rid) is { } rabatt)
+        {
+            ausgewaehlterRabatt = rabatt;
+            rabattKandidat = rabatt;
+            bedingungBestaetigt = u.RabattBedingungBestaetigt;
+            PruefeRabattNochGueltig();
+        }
+
+        _ = SendeTicketAnDisplayAsync();
+        toast.ZeigeInfo(fehlend > 0
+            ? $"Ticket repris. {fehlend} prestation(s) ne sont plus en vente et ont été retirées."
+            : u.Notiz is { } n ? $"Ticket repris · « {n} »" : "Ticket repris.");
+    }
+
+    private async Task LoescheWartendesAsync(Guid id)
+    {
+        try
+        {
+            await ticketParkService.LoescheAsync(aktuellerBenutzerId, id);
+            toast.ZeigeInfo("Ticket en attente supprimé.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            wartendFehler = ex.Message;
+        }
+        loeschKandidatId = null;
+        await LadeWartendeAsync();
     }
 
     private async Task OeffneAnwesendeAsync()
@@ -518,7 +694,15 @@ public partial class Caisse(
         bildUrls = await katalogService.GetLeistungsBildUrlsAsync(salonId);
         mobileAnbieter = await mobileMoneyService.GetErlaubteAnbieterAsync(salonId);
         await LadeAnwesendeAsync();
+        await LadeWartendeAsync();
+        var ausLink = KundeAusLink is not null;
         await UebernehmeKundeAusLinkAsync();
+        if (!ausLink && wartende.Count > 0)
+        {
+            toast.ZeigeInfo(wartende.Count == 1
+                ? "1 ticket en attente : touchez « En attente » pour le reprendre."
+                : $"{wartende.Count} tickets en attente : touchez « En attente » pour les reprendre.");
+        }
     }
 
     // ================= Katalog-Bedienung =================

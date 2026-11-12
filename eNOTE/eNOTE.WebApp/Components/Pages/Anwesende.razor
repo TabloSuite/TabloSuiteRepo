@@ -6,6 +6,7 @@
 @using ENote.Core.Services.Kunden
 @using ENote.WebApp.Services
 @inject KundenBesuchService besuche
+@inject TicketParkService tickets
 @inject AnwesenheitsSignal signal
 @inject AktiverSalonState aktiverSalon
 @inject AuthenticationStateProvider authStateProvider
@@ -79,6 +80,10 @@
                     {
                         <p class="pz-notiz"><Icon Name="note" Groesse="14" /> <span>@notiz</span>@if (a.Notizen > 1) { <small> (+@(a.Notizen - 1))</small> }</p>
                     }
+                    @if (wartend.TryGetValue(a.KundeId, out var wt))
+                    {
+                        <p class="pz-wartend" title="@wt.Zeilen"><Icon Name="pause" Groesse="14" /> Ticket en attente · @wt.Artikel article(s) · @wt.Summe.ToString("N0") F</p>
+                    }
                     @if (a.Vergessen)
                     {
                         <p class="pz-hinweis"><Icon Name="alert" Groesse="14" /> Départ oublié ? Enregistrez-le pour garder la liste à jour.</p>
@@ -117,6 +122,8 @@
 @code {
     private Guid benutzer, salonId;
     private List<KundenBesuchService.Anwesend>? liste;
+    /// <summary>Tickets « en attente » je Kunde (für den Hinweis auf der Karte; « Encaisser » setzt sie fort).</summary>
+    private Dictionary<Guid, TicketParkService.Eintrag> wartend = [];
     private KundenBesuchService.Vorschlaege? vorschlaege;
     private string? fehler, neuFehler, raumFilter;
     private Guid? ficheKundeId;
@@ -156,6 +163,12 @@
         salonId = us.SalonId;
         try { liste = await besuche.GetAnwesendeAsync(benutzer, salonId); }
         catch (UnauthorizedAccessException) { fehler = "Accès refusé."; }
+        try
+        {
+            wartend = (await tickets.GetAsync(benutzer, salonId)).Where(t => t.KundeId is not null)
+                .GroupBy(t => t.KundeId!.Value).ToDictionary(g => g.Key, g => g.First());
+        }
+        catch (UnauthorizedAccessException) { wartend = []; }
         if (raumFilter is not null && !Raeume.Contains(raumFilter, StringComparer.OrdinalIgnoreCase)) raumFilter = null;
     }
 

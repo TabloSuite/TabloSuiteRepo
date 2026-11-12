@@ -1,7 +1,7 @@
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// Meldet Änderungen an den anwesenden Kunden eines Ladens an alle offenen Ansichten
+/// Meldet Änderungen an den anwesenden Kunden und an den Tickets « en attente » eines Ladens an alle offenen Ansichten
 /// (Empfang, Behandlungsraum, Kasse) im selben Serverprozess. Ergänzt durch periodisches Neuladen.
 /// </summary>
 public sealed class AnwesenheitsSignal

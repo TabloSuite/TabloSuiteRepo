@@ -3121,6 +3121,35 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
     position: absolute; top: .15rem; right: .5rem; min-width: 1.15rem; height: 1.15rem; padding: 0 .3rem; border-radius: 999px;
     background: var(--enote-success); color: var(--enote-surface); font-size: .68rem; font-weight: 800; line-height: 1.15rem; text-align: center;
 }
+/* Tickets « en attente » */
+.kx-aktion-wartend { position: relative; }
+.kx-badge.warte { background: var(--enote-warning); }
+.kx-fuss-links { display: flex; justify-content: center; flex-wrap: wrap; gap: .25rem .75rem; }
+.kx-wartend-hinweis {
+    margin-top: .35rem; display: inline-flex; align-items: center; gap: .4rem; min-height: 2.5rem; padding: .45rem .9rem; border-radius: var(--enote-radius);
+    border: 1px solid var(--enote-warning-border); background: var(--enote-warning-soft); color: var(--enote-warning-text); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+}
+.kx-wartend-hinweis:hover { filter: brightness(.98); }
+.kx-park { display: grid; gap: .9rem; }
+.kx-park-info { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .75rem .9rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+.kx-park-info strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.kx-park-info span { display: inline-flex; align-items: center; gap: .35rem; color: var(--enote-text-muted); font-weight: 600; }
+.kx-warte-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.kx-warte-liste li { display: flex; align-items: center; gap: .65rem; padding: .6rem .65rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+.kx-warte-ico { flex: none; width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; background: var(--enote-warning-soft); color: var(--enote-warning-text); font-size: .8rem; font-weight: 800; }
+.kx-warte-text { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+.kx-warte-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx-warte-zeilen { font-size: .86rem; color: var(--enote-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx-warte-text small { color: var(--enote-text-muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kx-warte-loeschen { display: inline-flex; gap: .35rem; }
+.kx-abschluss-ticket {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .65rem .8rem; border-radius: var(--enote-radius);
+    background: var(--enote-warning-soft); border: 1px solid var(--enote-warning-border); color: var(--enote-warning-text); font-size: .88rem; font-weight: 600;
+}
+.kx-abschluss-ticket span { display: inline-flex; align-items: center; gap: .4rem; }
+.pz-wartend { display: inline-flex; align-items: center; gap: .35rem; margin-top: .35rem; padding: .25rem .55rem; border-radius: var(--enote-radius-sm);
+    background: var(--enote-warning-soft); color: var(--enote-warning-text); font-size: .8rem; font-weight: 700; }
+
 .pz-kasse-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .pz-kasse-liste li { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); }
 .pz-kasse-text { display: grid; min-width: 0; flex: 1; }

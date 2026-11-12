@@ -93,6 +93,7 @@ else
             </div>
             <nav class="kx-kopf-aktionen" aria-label="Actions de caisse">
                 <button class="kx-aktion kx-aktion-praesenz" @onclick="OeffneAnwesendeAsync" title="Clients présents"><Icon Name="user-check" /><span>Présents</span>@if (anwesende.Count > 0) { <span class="kx-badge" aria-label="@($"{anwesende.Count} présents")">@anwesende.Count</span> }</button>
+                <button class="kx-aktion kx-aktion-wartend" @onclick="OeffneWartendeAsync" title="Tickets en attente (non encaissés)"><Icon Name="pause" /><span>En attente</span>@if (wartende.Count > 0) { <span class="kx-badge warte" aria-label="@($"{wartende.Count} en attente")">@wartende.Count</span> }</button>
                 <button class="kx-aktion" @onclick="OeffneHistorieAsync" title="Ventes récentes"><Icon Name="history" /><span>Ventes</span></button>
                 <button class="kx-aktion" @onclick="OeffneDisplayDialog" title="Écran client"><Icon Name="monitor" /><span>Écran client</span></button>
                 <button class="kx-aktion" @onclick="OeffneRetrait" title="Retrait du propriétaire (espèces ou marchandise)"><Icon Name="wallet" /><span>Retrait</span></button>
@@ -249,6 +250,12 @@ else
                             <div class="kx-ticket-leer">
                                 <Icon Name="tag" Groesse="30" Strich="1.5" />
                                 <p>Touchez une prestation pour l'ajouter au ticket.</p>
+                                @if (wartende.Count > 0)
+                                {
+                                    <button type="button" class="kx-wartend-hinweis" @onclick="OeffneWartendeAsync">
+                                        <Icon Name="pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente" : $"{wartende.Count} tickets en attente") · Reprendre
+                                    </button>
+                                }
                             </div>
                         }
                     }
@@ -311,7 +318,10 @@ else
                                 <Icon Name="card" Groesse="24" /><span>Carte</span>
                             </button>
                         </div>
-                        <button type="button" class="kx-mixte" @onclick="() => OeffneZahlung(ZahlModus.Mixte)"><Icon Name="split" Groesse="16" /> Paiement mixte</button>
+                        <div class="kx-fuss-links">
+                            <button type="button" class="kx-mixte" @onclick="OeffneParken" title="Garder ce ticket pour plus tard (client parti un instant, soins sur plusieurs jours…)"><Icon Name="pause" Groesse="16" /> Mettre en attente</button>
+                            <button type="button" class="kx-mixte" @onclick="() => OeffneZahlung(ZahlModus.Mixte)"><Icon Name="split" Groesse="16" /> Paiement mixte</button>
+                        </div>
                     </div>
                 }
             </aside>
@@ -532,6 +542,17 @@ else
                         <div class="kx-abschluss-neben"><span><Icon Name="momo" Groesse="16" /> @anbieter</span><span>@betrag.ToString("N0") F</span></div>
                     }
                 </div>
+                @if (ticket.Count > 0)
+                {
+                    <div class="kx-abschluss-ticket" role="alert">
+                        <span><Icon Name="alert" Groesse="16" /> Le ticket en cours (@AnzahlArtikel article(s), @gesamtSumme.ToString("N0") F) n'est pas encaissé.</span>
+                        <AsyncActionButton CssClass="enote-btn-sm" Text="Mettre en attente" OnClick="ParkeVorAbschlussAsync" />
+                    </div>
+                }
+                @if (wartende.Count > 0)
+                {
+                    <p class="kx-abschluss-notiz"><Icon Name="pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente reste disponible" : $"{wartende.Count} tickets en attente restent disponibles") pour la prochaine ouverture de caisse.</p>
+                }
                 <BetragEingabe @bind-Wert="endbestandGezaehlt" Label="Espèces comptées" Kompakt="true" Hervorheben="true" />
                 <div class="kx-ecart @(Ecart < 0 ? "minus" : Ecart > 0 ? "plus" : "null")">
                     <span>Écart</span>
@@ -761,6 +782,78 @@ else
                        OnClose="() => ficheKundeId = null" OnGeaendert="LadeAnwesendeAsync" />
 }
 
+@* --- Ticket mettre en attente --- *@
+<ModalDialog Open="parkDialogOffen" Title="Mettre le ticket en attente" ErrorMessage="@parkFehler" OnClose="() => parkDialogOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="kx-park">
+            <div class="kx-park-info">
+                <strong>@AnzahlArtikel article(s) · @gesamtSumme.ToString("N0") F</strong>
+                @if (ticketKunde is { } pk)
+                {
+                    <span><Icon Name="user" Groesse="16" /> @pk.Name</span>
+                }
+            </div>
+            <label class="kx-pay-ref">
+                <span>Note <small class="enote-muted">(facultatif)</small></span>
+                <input class="enote-input" @bind="parkNotiz" @bind:event="oninput" maxlength="@ENote.Core.Services.Kasse.TicketParkRegeln.NotizMax"
+                       placeholder="@(ticketKunde is null ? "ex. dame en robe bleue, revient dans 10 min" : "ex. revient demain, cabine 2")" />
+            </label>
+            <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Visible par toute l'équipe à la caisse, même après la clôture. Rien n'est encaissé ni retiré du stock.@(ticketKunde is null ? "" : " Si ce client a déjà un ticket en attente, les prestations s'y ajoutent.")</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => parkDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Mettre en attente" OnClick="BestaetigeParkenAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* --- Tickets en attente (alle Kassiererinnen des Ladens) --- *@
+<ModalDialog Open="wartendeOffen" Title="Tickets en attente" ErrorMessage="@wartendFehler" OnClose="() => wartendeOffen = false" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (wartende.Count == 0)
+        {
+            <p class="enote-muted">Aucun ticket en attente. Avec « Mettre en attente », gardez un ticket pour plus tard : le client revient, ou ses soins durent plusieurs jours.</p>
+        }
+        else
+        {
+            @if (ticket.Count > 0)
+            {
+                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Le ticket en cours sera mis en attente avant la reprise.</p>
+            }
+            <ul class="kx-warte-liste">
+                @foreach (var w in wartende)
+                {
+                    <li>
+                        <span class="kx-warte-ico">
+                            @if (w.KundeName is { } kn) { @Initialen(kn) } else { <Icon Name="receipt" Groesse="18" /> }
+                        </span>
+                        <span class="kx-warte-text">
+                            <strong>@(w.KundeName ?? w.Notiz ?? $"Ticket de {w.ErstelltUtc.ImLaden(zone):HH:mm}")</strong>
+                            <span class="kx-warte-zeilen">@w.Zeilen</span>
+                            <small>@w.Artikel article(s) · @w.Summe.ToString("N0") F · @WarteSeit(w)@(w.KundeName is not null && w.Notiz is { } wn ? $" · « {wn} »" : "")</small>
+                        </span>
+                        @if (loeschKandidatId == w.Id)
+                        {
+                            <span class="kx-warte-loeschen">
+                                <button type="button" class="enote-btn enote-btn-sm enote-btn-ghost" @onclick="() => loeschKandidatId = null">Garder</button>
+                                <AsyncActionButton CssClass="enote-btn-danger enote-btn-sm" Text="Supprimer" OnClick="() => LoescheWartendesAsync(w.Id)" />
+                            </span>
+                        }
+                        else
+                        {
+                            <button type="button" class="enote-icon-btn" title="Supprimer ce ticket en attente" aria-label="@($"Supprimer le ticket {w.KundeName ?? w.Notiz}")" @onclick="() => loeschKandidatId = w.Id"><Icon Name="trash" Groesse="16" /></button>
+                            <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="Reprendre" OnClick="() => ReprendreAsync(w.Id)" />
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => wartendeOffen = false">Fermer</button>
+    </Footer>
+</ModalDialog>
+
 <ModalDialog Open="anwesendeOffen" Title="Clients présents" OnClose="() => anwesendeOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
         @if (anwesende.Count == 0)
@@ -779,7 +872,7 @@ else
                             <small>@a.Grund@(a.Raum is { } r ? $" · {r}" : "") · @ENote.Core.Services.Kunden.KundenBesuchRegeln.Seit(a.AnkunftUtc, DateTime.UtcNow)</small>
                         </span>
                         <button type="button" class="enote-icon-btn" title="Fiche" aria-label="@($"Fiche de {a.Name}")" @onclick="() => { anwesendeOffen = false; ficheKundeId = a.KundeId; }"><Icon Name="note" Groesse="16" /></button>
-                        <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="Au ticket" OnClick="() => AnwesendenAnsTicketAsync(a)" />
+                        <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="@(wartende.Any(w => w.KundeId == a.KundeId) ? "Reprendre son ticket" : "Au ticket")" OnClick="() => AnwesendenAnsTicketAsync(a)" />
                     </li>
                 }
             </ul>

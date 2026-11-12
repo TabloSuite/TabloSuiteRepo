@@ -224,6 +224,9 @@ public class KuendigungService(
         var anderswo = await db.UserSalons.Where(us => kontoIds.Contains(us.AppUserId) && us.SalonId != salonId).Select(us => us.AppUserId).ToListAsync(ct);
         var zuAnonymisieren = kontoIds.Except(plattform).Except(anderswo).ToList();
 
+        // 0) Tickets « en attente » (verweisen auf Kunden und Leistungen)
+        await EntferneAsync(db, db.GeparkteTicketPositionen.Where(p => db.GeparkteTickets.Any(t => t.Id == p.TicketId && t.SalonId == salonId)), ct);
+        await EntferneAsync(db, db.GeparkteTickets.Where(t => t.SalonId == salonId), ct);
         // 1) Kunden und ihr Verlauf
         await EntferneAsync(db, db.KundenNotizen.Where(n => n.SalonId == salonId), ct);
         await EntferneAsync(db, db.KundenBesuche.Where(b => b.SalonId == salonId), ct);

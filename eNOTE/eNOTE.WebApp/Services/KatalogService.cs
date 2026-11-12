@@ -448,6 +448,15 @@ public class KatalogService(
         var leistung = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
         if (leistung is not null)
         {
+            // Tickets « en attente » verlieren diese Zeile; ein dadurch leeres Ticket verschwindet ganz.
+            var zeilen = await db.GeparkteTicketPositionen.Where(p => p.LeistungId == id).ToListAsync(cancellationToken);
+            if (zeilen.Count > 0)
+            {
+                var ticketIds = zeilen.Select(z => z.TicketId).Distinct().ToList();
+                db.GeparkteTicketPositionen.RemoveRange(zeilen);
+                var leer = await db.GeparkteTickets.Where(t => ticketIds.Contains(t.Id) && !t.Positionen.Any(p => p.LeistungId != id)).ToListAsync(cancellationToken);
+                db.GeparkteTickets.RemoveRange(leer);
+            }
             db.Leistungen.Remove(leistung);
             await db.SaveChangesAsync(cancellationToken);
         }

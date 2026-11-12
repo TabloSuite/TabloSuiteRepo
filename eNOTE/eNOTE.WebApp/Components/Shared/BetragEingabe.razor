@@ -1,4 +1,5 @@
-@* Betragseingabe für die Kasse (Francs ohne Nachkommastellen): Anzeige, Schnellbeträge, Ziffernblock. Tastatur funktioniert parallel. *@
+@* Betragseingabe für die Kasse (Francs ohne Nachkommastellen): Anzeige, Schnellbeträge, Ziffernblock. Tastatur funktioniert parallel
+   und wird bei jedem Zeichen übernommen (oninput) – Écart und Rückgeld rechnen sofort mit. *@
 <div class="enote-betrag @(Kompakt ? "kompakt" : "")">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
@@ -12,7 +13,7 @@
                aria-label="@(Label ?? "Montant")"
                value="@(Wert == 0 ? string.Empty : Wert.ToString("N0"))"
                placeholder="0"
-               @onchange="EingabeGeaendert"
+               @oninput="EingabeGeaendert"
                @onkeydown="TasteAsync" />
         <span class="enote-betrag-waehrung">F</span>
     </label>

@@ -29,6 +29,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Verkauf> Verkaeufe => Set<Verkauf>();
     public DbSet<KundenBesuch> KundenBesuche => Set<KundenBesuch>();
     public DbSet<KundenNotiz> KundenNotizen => Set<KundenNotiz>();
+    public DbSet<GeparktesTicket> GeparkteTickets => Set<GeparktesTicket>();
+    public DbSet<GeparktesTicketPosition> GeparkteTicketPositionen => Set<GeparktesTicketPosition>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
     public DbSet<VerkaufZahlung> VerkaufZahlungen => Set<VerkaufZahlung>();
     public DbSet<LagerAbgang> LagerAbgaenge => Set<LagerAbgang>();
@@ -247,6 +249,24 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             // Kein zweiter Kaskadenpfad (Kunde → Besuch → Notiz): Besuch ist nur ein Verweis.
             entity.HasOne<KundenBesuch>().WithMany().HasForeignKey(n => n.BesuchId).OnDelete(DeleteBehavior.NoAction);
             entity.HasIndex(n => new { n.KundeId, n.ErstelltUtc });
+        });
+
+        // Tickets « en attente »: Laden-Löschung entfernt sie ausdrücklich (KuendigungService), Leistung löschen entfernt ihre Zeilen (KatalogService).
+        builder.Entity<GeparktesTicket>(entity =>
+        {
+            entity.Property(t => t.Notiz).HasMaxLength(Core.Services.Kasse.TicketParkRegeln.NotizMax);
+            entity.Property(t => t.ErstelltVonName).HasMaxLength(200);
+            entity.Property(t => t.GeaendertVonName).HasMaxLength(200);
+            entity.HasOne<Salon>().WithMany().HasForeignKey(t => t.SalonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(t => t.Kunde).WithMany().HasForeignKey(t => t.KundeId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(t => new { t.SalonId, t.GeaendertUtc });
+            entity.HasIndex(t => t.KundeId);
+        });
+        builder.Entity<GeparktesTicketPosition>(entity =>
+        {
+            entity.Property(p => p.FreierBetrag).HasPrecision(18, 2);
+            entity.HasOne<GeparktesTicket>().WithMany(t => t.Positionen).HasForeignKey(p => p.TicketId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(p => p.Leistung).WithMany().HasForeignKey(p => p.LeistungId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Ankuendigung>(entity =>
