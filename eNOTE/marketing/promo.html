@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eNOTE Werbespot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#1e3a8a; --primary-dark:#172554; --primary-light:#2f4ec9; --accent:#0d9488;
+  --bg:#e8eef5; --text:#1b2640; --muted:#64748b;
+  --neu-out:14px 14px 30px #c3cedf,-10px -10px 24px #f6f9fc;
+  --neu-out-sm:6px 6px 14px #c9d3e2,-5px -5px 12px #f6f9fc;
+  --neu-in:inset 6px 6px 14px #cdd6e4,inset -6px -6px 14px #ffffff;
+  --grad:linear-gradient(135deg,#172554 0%,#1e3a8a 55%,#0d9488 130%);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b1430;overflow:hidden;height:100%}
+body{font-family:Inter,'Segoe UI',system-ui,sans-serif;color:var(--text)}
+#wrap{position:fixed;inset:0;display:grid;place-items:center}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:var(--bg);transform-origin:center}
+.scene{position:absolute;inset:0;opacity:0}
+.dark{background:var(--grad);color:#fff}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.logo{width:220px;height:220px;border-radius:52px;background:var(--primary);display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:118px;letter-spacing:-4px;box-shadow:0 30px 80px rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.15)}
+.brand{font-size:150px;font-weight:900;letter-spacing:-5px;margin-top:40px;line-height:1}
+.brand span{color:#5eead4}
+.tag{font-size:46px;font-weight:500;opacity:.9;margin-top:28px}
+.h1{font-size:84px;font-weight:800;letter-spacing:-2.5px;line-height:1.08}
+.h2{font-size:60px;font-weight:800;letter-spacing:-1.5px;line-height:1.1}
+.accent{color:var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:22px;padding:30px 50px;border-radius:999px;background:var(--bg);
+  box-shadow:var(--neu-out);font-size:44px;font-weight:600;position:relative}
+.chip .x{width:56px;height:56px;border-radius:50%;background:#fee2e2;color:#dc2626;display:grid;place-items:center;font-size:34px;font-weight:800}
+.chip .strike{position:absolute;left:40px;right:40px;top:50%;height:6px;border-radius:6px;background:#dc2626;transform-origin:left}
+/* Tablet */
+.tablet{position:absolute;left:150px;top:190px;width:1620px;height:820px;border-radius:56px;background:#111a33;padding:26px;
+  box-shadow:0 50px 120px rgba(23,37,84,.35)}
+.screen{width:100%;height:100%;border-radius:34px;background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.topbar{height:84px;display:flex;align-items:center;gap:20px;padding:0 36px;background:var(--grad);color:#fff}
+.mini-logo{width:48px;height:48px;border-radius:13px;background:#fff;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:24px}
+.pill{padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.16);font-size:22px;font-weight:600}
+.cbody{flex:1;display:flex;gap:30px;padding:30px}
+.tiles{flex:1.55;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:24px}
+.tile{border-radius:26px;background:var(--bg);box-shadow:var(--neu-out-sm);padding:24px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+.tile .ic{width:80px;height:80px;border-radius:22px;display:grid;place-items:center;font-size:44px}
+.tile .nm{font-size:28px;font-weight:700}
+.tile .pr{font-size:24px;color:var(--muted);font-weight:600}
+.ticket{flex:1;border-radius:30px;background:var(--bg);box-shadow:var(--neu-in);padding:30px;display:flex;flex-direction:column}
+.ticket h4{margin:0 0 18px;font-size:30px;display:flex;justify-content:space-between}
+.line{display:flex;justify-content:space-between;font-size:27px;padding:14px 0;border-bottom:2px dashed #cfd8e6;font-weight:600}
+.line small{color:var(--muted);font-weight:500}
+.total{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;font-weight:700}
+.total b{font-size:56px;color:var(--primary);font-weight:900;letter-spacing:-1px}
+.pay{display:flex;gap:18px;margin-top:22px}
+.btn{flex:1;text-align:center;padding:24px;border-radius:999px;font-size:28px;font-weight:700}
+.btn.cash{background:var(--accent);color:#fff;box-shadow:0 12px 26px rgba(13,148,136,.35)}
+.btn.card{background:var(--bg);box-shadow:var(--neu-out-sm);color:var(--primary)}
+.tap{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:rgba(47,78,201,.28);border:4px solid rgba(47,78,201,.6);pointer-events:none;opacity:0}
+.modal-bg{position:absolute;inset:0;background:rgba(15,23,42,.45);display:grid;place-items:center;opacity:0}
+.modal{width:640px;border-radius:36px;background:var(--bg);padding:44px;box-shadow:0 40px 90px rgba(0,0,0,.35)}
+.modal h3{margin:0 0 26px;font-size:40px}
+.mrow{display:flex;justify-content:space-between;font-size:32px;padding:16px 0;font-weight:600}
+.mrow.big{font-size:44px;font-weight:900;color:var(--accent);border-top:3px solid #cfd8e6;margin-top:10px;padding-top:24px}
+.ok{margin-top:26px;text-align:center;padding:24px;border-radius:999px;background:var(--primary);color:#fff;font-size:30px;font-weight:700}
+.caption{position:absolute;left:0;right:0;top:56px;text-align:center}
+/* Receipt */
+.printer{position:absolute;left:50%;top:150px;width:720px;height:120px;margin-left:-360px;border-radius:40px;background:#1f2937;box-shadow:0 30px 60px rgba(0,0,0,.25);z-index:2}
+.printer::after{content:"";position:absolute;left:110px;right:110px;bottom:30px;height:14px;border-radius:8px;background:#030712}
+.receipt-clip{position:absolute;left:50%;top:245px;width:520px;margin-left:-260px;height:820px;overflow:hidden;z-index:1}
+.receipt{width:500px;margin:0 auto;background:#fff;padding:40px 44px 50px;font-family:'DejaVu Sans Mono',ui-monospace,monospace;font-size:22px;color:#111;
+  box-shadow:0 20px 50px rgba(0,0,0,.15);clip-path:polygon(0 0,100% 0,100% 97%,95% 100%,90% 97%,85% 100%,80% 97%,75% 100%,70% 97%,65% 100%,60% 97%,55% 100%,50% 97%,45% 100%,40% 97%,35% 100%,30% 97%,25% 100%,20% 97%,15% 100%,10% 97%,5% 100%,0 97%)}
+.receipt .c{text-align:center}
+.receipt .r{display:flex;justify-content:space-between;margin:6px 0}
+.receipt hr{border:none;border-top:2px dashed #999;margin:16px 0}
+.side{position:absolute;width:600px;font-size:38px;font-weight:700;line-height:1.25}
+.side .s{display:flex;gap:20px;align-items:center;margin-bottom:34px}
+.side .dot{width:64px;height:64px;flex:none;border-radius:20px;background:var(--bg);box-shadow:var(--neu-out-sm);display:grid;place-items:center;font-size:32px}
+/* Features */
+.grid{position:absolute;left:150px;right:150px;top:330px;display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
+.feat{border-radius:40px;background:var(--bg);box-shadow:var(--neu-out);padding:44px;min-height:270px}
+.feat .ic{width:96px;height:96px;border-radius:26px;display:grid;place-items:center;font-size:54px;margin-bottom:24px;box-shadow:var(--neu-in)}
+.feat b{display:block;font-size:38px;letter-spacing:-.5px;margin-bottom:10px}
+.feat span{font-size:27px;color:var(--muted);font-weight:500;line-height:1.35}
+/* Finale */
+.kpi{border-radius:44px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.18);padding:50px 70px;width:1100px}
+.kpi .lbl{font-size:34px;opacity:.85;font-weight:600;display:flex;align-items:center;gap:16px}
+.live{width:18px;height:18px;border-radius:50%;background:#5eead4;box-shadow:0 0 0 8px rgba(94,234,212,.25)}
+.kpi .val{font-size:140px;font-weight:900;letter-spacing:-4px;line-height:1.1;margin-top:10px}
+.bars{display:flex;align-items:flex-end;gap:22px;height:190px;margin-top:30px}
+.bar{flex:1;border-radius:14px 14px 6px 6px;background:linear-gradient(180deg,#5eead4,#0d9488)}
+.cta{display:inline-block;margin-top:46px;padding:30px 70px;border-radius:999px;background:#fff;color:var(--primary);font-size:48px;font-weight:800;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.sub{font-size:36px;opacity:.85;margin-top:30px;font-weight:500}
+/* Controls (preview only) */
+#ctl{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;background:rgba(15,23,42,.8);color:#fff;
+  padding:10px 16px;border-radius:999px;font:500 14px Inter,system-ui,sans-serif;z-index:10}
+#ctl button{border:0;border-radius:999px;padding:8px 16px;background:#2f4ec9;color:#fff;font:inherit;cursor:pointer}
+#ctl input{width:min(50vw,420px)}
+body.capture #ctl{display:none}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+
+  <!-- 1. Intro -->
+  <section class="scene dark center" id="s1">
+    <div class="logo" id="s1logo">eN</div>
+    <div class="brand" id="s1brand">e<span>NOTE</span></div>
+    <div class="tag" id="s1tag">La caisse simple et moderne pour votre établissement.</div>
+  </section>
+
+  <!-- 2. Problème -->
+  <section class="scene center" id="s2">
+    <div class="h1" id="s2t">Encore le cahier et la calculatrice&nbsp;?</div>
+    <div style="display:flex;gap:40px;margin-top:80px" id="s2chips">
+      <div class="chip"><div class="x">✕</div>Erreurs de calcul<div class="strike"></div></div>
+      <div class="chip"><div class="x">✕</div>Argent manquant<div class="strike"></div></div>
+      <div class="chip"><div class="x">✕</div>Ventes invisibles<div class="strike"></div></div>
+    </div>
+    <div class="h2" style="margin-top:90px" id="s2b">Passez à <span class="accent">eNOTE</span>.</div>
+  </section>
+
+  <!-- 3. Caisse -->
+  <section class="scene" id="s3">
+    <div class="caption"><div class="h2" id="s3t">Encaissez en <span class="accent">quelques touches</span></div></div>
+    <div class="tablet" id="s3tab"><div class="screen">
+      <div class="topbar"><div class="mini-logo">eN</div><b style="font-size:28px">Salon Belle Allure</b>
+        <div style="flex:1"></div><div class="pill">👤 Afi · Caissière</div><div class="pill">● Caisse ouverte</div></div>
+      <div class="cbody">
+        <div class="tiles" id="tiles">
+          <div class="tile"><div class="ic" style="background:#dbeafe">✂️</div><div><div class="nm">Coupe homme</div><div class="pr">2 000 FCFA</div></div></div>
+          <div class="tile"><div class="ic" style="background:#ccfbf1">💇🏾‍♀️</div><div><div class="nm">Tresses</div><div class="pr">5 000 FCFA</div></div></div>
+          <div class="tile"><div class="ic" style="background:#fef3c7">🧴</div><div><div class="nm">Shampoing</div><div class="pr">1 500 FCFA</div></div></div>
+          <div class="tile"><div class="ic" style="background:#fce7f3">💅🏾</div><div><div class="nm">Manucure</div><div class="pr">3 000 FCFA</div></div></div>
+          <div class="tile"><div class="ic" style="background:#e0e7ff">🧖🏾‍♀️</div><div><div class="nm">Soin visage</div><div class="pr">4 000 FCFA</div></div></div>
+          <div class="tile"><div class="ic" style="background:#f1f5f9">➕</div><div><div class="nm">Divers</div><div class="pr">Montant libre</div></div></div>
+        </div>
+        <div class="ticket">
+          <h4><span>Ticket</span><span style="color:var(--muted);font-weight:500">#0247</span></h4>
+          <div id="lines"></div>
+          <div class="total"><span>Total</span><b id="tot">0 FCFA</b></div>
+          <div class="pay"><div class="btn cash" id="cashbtn">💵 Espèces</div><div class="btn card">💳 Carte</div></div>
+        </div>
+      </div>
+      <div class="modal-bg" id="modal"><div class="modal" id="modalbox">
+        <h3>💵 Paiement en espèces</h3>
+        <div class="mrow"><span>Total</span><span>8 500 FCFA</span></div>
+        <div class="mrow"><span>Reçu</span><span>10 000 FCFA</span></div>
+        <div class="mrow big"><span>À rendre</span><span>1 500 FCFA</span></div>
+        <div class="ok">✓ Valider la vente</div>
+      </div></div>
+    </div>
+    <div class="tap" id="tap"></div>
+    </div>
+  </section>
+
+  <!-- 4. Ticket -->
+  <section class="scene" id="s4">
+    <div class="printer"></div>
+    <div class="receipt-clip"><div class="receipt" id="receipt">
+      <div class="c" style="font-weight:700;font-size:28px">SALON BELLE ALLURE</div>
+      <div class="c">Beauté &amp; coiffure</div>
+      <div class="c">Lomé · +228 90 00 00 00</div>
+      <hr>
+      <div class="r"><span>Tresses</span><span>5 000</span></div>
+      <div class="r"><span>Shampoing</span><span>1 500</span></div>
+      <div class="r"><span>Coupe homme</span><span>2 000</span></div>
+      <hr>
+      <div class="r" style="font-weight:700;font-size:28px"><span>TOTAL</span><span>8 500 FCFA</span></div>
+      <div class="r"><span>Espèces</span><span>10 000</span></div>
+      <div class="r"><span>Rendu</span><span>1 500</span></div>
+      <hr>
+      <div class="c"><svg width="170" height="170" viewBox="0 0 21 21" shape-rendering="crispEdges" id="qr"></svg></div>
+      <div class="c" style="margin-top:8px">Merci et à bientôt !</div>
+    </div></div>
+    <div class="side" style="left:70px;top:360px" id="s4l">
+      <div class="s"><div class="dot">🧾</div>Ticket imprimé en un clic</div>
+      <div class="s"><div class="dot">📄</div>Ou envoyé en PDF</div>
+    </div>
+    <div class="side" style="right:20px;top:360px" id="s4r">
+      <div class="s"><div class="dot">🏷️</div>Votre logo &amp; vos infos</div>
+      <div class="s"><div class="dot">🔳</div>QR code inclus</div>
+    </div>
+  </section>
+
+  <!-- 5. Fonctions -->
+  <section class="scene" id="s5">
+    <div class="caption" style="top:110px"><div class="h1" id="s5t">Tout votre commerce, <span class="accent">un seul outil</span></div></div>
+    <div class="grid" id="feats">
+      <div class="feat"><div class="ic">📦</div><b>Stock &amp; alertes</b><span>Codes-barres, étiquettes et alerte de stock minimum.</span></div>
+      <div class="feat"><div class="ic">👥</div><b>Équipe avec PIN</b><span>Chaque caissier se connecte avec son propre code.</span></div>
+      <div class="feat"><div class="ic">📈</div><b>Finances en direct</b><span>Chiffre d'affaires, clôtures de caisse et écarts.</span></div>
+      <div class="feat"><div class="ic">🧾</div><b>Dépenses</b><span>Notez vos dépenses avec photo du justificatif.</span></div>
+      <div class="feat"><div class="ic">🏪</div><b>Plusieurs établissements</b><span>Passez d'un salon à l'autre en un geste.</span></div>
+      <div class="feat"><div class="ic">📱</div><b>Sur votre tablette</b><span>S'installe comme une app, sans matériel spécial.</span></div>
+    </div>
+  </section>
+
+  <!-- 6. Finale -->
+  <section class="scene dark center" id="s6">
+    <div class="kpi" id="kpi">
+      <div class="lbl"><span class="live"></span>Chiffre d'affaires du jour · en direct</div>
+      <div class="val" id="kval">0 FCFA</div>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div id="end" class="center" style="position:absolute;inset:0">
+      <div class="logo" style="width:170px;height:170px;font-size:92px;border-radius:42px">eN</div>
+      <div class="brand" style="font-size:120px;margin-top:30px">e<span>NOTE</span></div>
+      <div class="cta">3 mois d'essai gratuit</div>
+      <div class="sub">Salons · Boutiques · Ateliers — sur tablette et PC</div>
+    </div>
+  </section>
+
+</div></div>
+
+<div id="ctl"><button id="play">⏸ Pause</button><input type="range" id="seek" min="0" max="32" step="0.01" value="0"><span id="tm">0.0s</span></div>
+
+<script>
+const DURATION = 32;
+const $ = s => document.querySelector(s);
+const cl = x => Math.max(0, Math.min(1, x));
+const p = (t, a, b) => cl((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3);
+const eio = x => x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2;
+const back = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(x-1,3) + c1*Math.pow(x-1,2); };
+const fcfa = n => Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' FCFA';
+function rise(el, t, a, dur = .6, dy = 40) {
+  const k = eo(p(t, a, a + dur));
+  el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * dy}px)`;
+}
+function pop(el, t, a, dur = .6) {
+  const k = p(t, a, a + dur);
+  el.style.opacity = cl(k * 2); el.style.transform = `scale(${.6 + .4 * back(k)})`;
+}
+
+// Scene windows [start, end]
+const scenes = [['#s1',0,4.6],['#s2',4.6,9.4],['#s3',9.4,18.2],['#s4',18.2,22.6],['#s5',22.6,27.4],['#s6',27.4,DURATION+1]];
+const XF = .45;
+
+// QR pattern (decorative)
+(function(){
+  const svg = $('#qr'); let h = '<rect width="21" height="21" fill="#fff"/>';
+  const finder = (x,y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="#111"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#111"/>`;
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+    const inF = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12);
+    if (!inF && rnd() > .5) h += `<rect x="${x}" y="${y}" width="1" height="1" fill="#111"/>`;
+  }
+  svg.innerHTML = h + finder(0,0) + finder(14,0) + finder(0,14);
+})();
+
+// Bars
+const barVals = [.35,.5,.42,.68,.55,.8,.62,.9,.74,1];
+$('#bars').innerHTML = barVals.map(() => '<div class="bar"></div>').join('');
+
+// Cash register script: taps on tiles (index, time)
+const items = [
+  {tile:1, t:11.0, name:'Tresses', price:5000},
+  {tile:2, t:12.0, name:'Shampoing', price:1500},
+  {tile:0, t:13.0, name:'Coupe homme', price:2000},
+];
+const lines = $('#lines');
+lines.innerHTML = items.map(i => `<div class="line"><span>${i.name} <small>× 1</small></span><span>${fcfa(i.price)}</span></div>`).join('');
+const tiles = [...document.querySelectorAll('#tiles .tile')];
+
+function tileCenter(idx) {
+  const st = $('#s3tab').getBoundingClientRect(), r = tiles[idx].getBoundingClientRect(), sc = st.width / 1620;
+  return [(r.left - st.left) / sc + r.width / sc / 2 + 150, (r.top - st.top) / sc + r.height / sc / 2 + 190];
+}
+function elCenter(el) {
+  const st = $('#s3tab').getBoundingClientRect(), r = el.getBoundingClientRect(), sc = st.width / 1620;
+  return [(r.left - st.left) / sc + r.width / sc / 2 + 150, (r.top - st.top) / sc + r.height / sc / 2 + 190];
+}
+
+function render(t) {
+  // scene opacity
+  for (const [sel, a, b] of scenes) {
+    const el = $(sel);
+    const o = Math.min(p(t, a - XF/2, a + XF/2), 1 - p(t, b - XF/2, b + XF/2));
+    el.style.opacity = sel === '#s1' && t < .01 ? 1 : o;
+    el.style.visibility = o > 0 || (sel === '#s1' && t < .01) ? 'visible' : 'hidden';
+  }
+  if (t < XF/2) $('#s1').style.opacity = 1;
+
+  // S1
+  pop($('#s1logo'), t, .2, .8);
+  rise($('#s1brand'), t, .8, .7, 50);
+  rise($('#s1tag'), t, 1.6, .7, 30);
+  const s1z = 1 + .04 * p(t, 0, 4.6); $('#s1').style.transform = `scale(${s1z})`;
+
+  // S2
+  rise($('#s2t'), t, 4.9, .6);
+  const chips = [...document.querySelectorAll('#s2chips .chip')];
+  chips.forEach((c, i) => {
+    pop(c, t, 5.6 + i * .35, .55);
+    c.querySelector('.strike').style.transform = `scaleX(${eio(p(t, 7.0 + i * .2, 7.5 + i * .2))})`;
+    c.style.filter = `grayscale(${p(t, 7.0 + i*.2, 7.5 + i*.2)})`;
+    if (t > 7.0) c.style.opacity = 1 - .45 * p(t, 7.2 + i*.2, 7.8 + i*.2);
+  });
+  rise($('#s2b'), t, 8.0, .6);
+
+  // S3
+  rise($('#s3t'), t, 9.6, .6);
+  const tabK = eo(p(t, 9.5, 10.4));
+  $('#s3tab').style.opacity = tabK;
+  $('#s3tab').style.transform = `translateY(${(1 - tabK) * 120}px) scale(${.94 + .06 * tabK})`;
+  let total = 0;
+  const lineEls = [...lines.children];
+  items.forEach((it, i) => {
+    const k = eo(p(t, it.t + .12, it.t + .5));
+    lineEls[i].style.opacity = k;
+    lineEls[i].style.transform = `translateX(${(1 - k) * 40}px)`;
+    total += it.price * eo(p(t, it.t + .12, it.t + .6));
+    const press = Math.sin(Math.PI * p(t, it.t - .05, it.t + .25));
+    tiles[it.tile].style.transform = `scale(${1 - .05 * press})`;
+    tiles[it.tile].style.boxShadow = press > .3 ? 'var(--neu-in)' : '';
+  });
+  $('#tot').textContent = fcfa(total);
+  // tap indicator path
+  const tap = $('#tap');
+  const taps = [...items.map(i => ({t: i.t, pos: () => tileCenter(i.tile)})), {t: 14.1, pos: () => elCenter($('#cashbtn'))}, {t: 16.4, pos: () => elCenter($('#modalbox .ok'))}];
+  let shown = false;
+  for (const tp of taps) {
+    const k = p(t, tp.t - .25, tp.t + .45);
+    if (k > 0 && k < 1) {
+      const [x, y] = tp.pos();
+      tap.style.left = x + 'px'; tap.style.top = y + 'px';
+      tap.style.opacity = Math.sin(Math.PI * k);
+      tap.style.transform = `scale(${.6 + .6 * k})`;
+      shown = true;
+    }
+  }
+  if (!shown) tap.style.opacity = 0;
+  const cashPress = Math.sin(Math.PI * p(t, 14.05, 14.35));
+  $('#cashbtn').style.transform = `scale(${1 - .06 * cashPress})`;
+  const mk = eo(p(t, 14.4, 14.85)) * (1 - p(t, 16.75, 17.1));
+  $('#modal').style.opacity = mk;
+  $('#modalbox').style.transform = `translateY(${(1 - eo(p(t, 14.4, 14.9))) * 60}px)`;
+  $('#modalbox .ok').style.transform = `scale(${1 - .06 * Math.sin(Math.PI * p(t, 16.35, 16.65))})`;
+  if (t > 16.8) { // sale done -> ticket cleared
+    const k = p(t, 16.8, 17.2);
+    lineEls.forEach(l => l.style.opacity = 1 - k);
+    $('#tot').textContent = k < 1 ? fcfa(8500) : '0 FCFA';
+  }
+
+  // S4
+  const out = eio(p(t, 18.6, 21.0));
+  $('#receipt').style.transform = `translateY(${-830 + out * 830}px)`;
+  [...document.querySelectorAll('#s4l .s, #s4r .s')].forEach((el, i) => rise(el, t, 19.2 + i * .35, .6, 30));
+
+  // S5
+  rise($('#s5t'), t, 22.8, .6);
+  [...document.querySelectorAll('#feats .feat')].forEach((el, i) => pop(el, t, 23.3 + i * .22, .6));
+
+  // S6
+  const kIn = eo(p(t, 27.5, 28.1)), kOut = p(t, 30.0, 30.5);
+  $('#kpi').style.opacity = kIn * (1 - kOut);
+  $('#kpi').style.transform = `translateY(${(1 - kIn) * 50}px) scale(${1 - .08 * kOut})`;
+  $('#kval').textContent = fcfa(Math.round(248500 * eo(p(t, 27.8, 29.8)) / 500) * 500);
+  [...document.querySelectorAll('#bars .bar')].forEach((b, i) => {
+    b.style.height = (barVals[i] * 100 * eo(p(t, 28.0 + i * .12, 28.6 + i * .12))) + '%';
+  });
+  const end = $('#end');
+  end.style.opacity = p(t, 30.3, 30.8);
+  const ek = eo(p(t, 30.3, 31.0));
+  end.children[0].style.transform = `scale(${.7 + .3 * back(p(t, 30.3, 30.9))})`;
+  end.children[2].style.transform = `scale(${.85 + .15 * back(p(t, 30.7, 31.3))})`;
+  end.children[2].style.opacity = p(t, 30.6, 31.0);
+  end.children[3].style.opacity = p(t, 31.0, 31.5);
+  end.style.transform = `translateY(${(1 - ek) * 30}px)`;
+}
+
+// Fit stage to window
+function fit() {
+  if (document.body.classList.contains('capture')) { $('#stage').style.transform = 'none'; return; }
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $('#stage').style.transform = `scale(${s})`;
+}
+addEventListener('resize', fit);
+
+// Playback (preview)
+let playing = true, t0 = performance.now(), cur = 0;
+const seek = $('#seek'), tm = $('#tm'), playBtn = $('#play');
+function loop(now) {
+  if (window.__capture) return;
+  if (playing) { cur = ((now - t0) / 1000) % DURATION; seek.value = cur; }
+  render(cur); tm.textContent = cur.toFixed(1) + 's';
+  requestAnimationFrame(loop);
+}
+playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶ Lecture'; t0 = performance.now() - cur * 1000; };
+seek.oninput = () => { cur = +seek.value; t0 = performance.now() - cur * 1000; };
+window.setCapture = () => { window.__capture = true; document.body.classList.add('capture'); fit(); };
+window.render = render;
+fit();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
