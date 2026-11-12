@@ -61,16 +61,16 @@ public static class VideoKatalog
             "Essai gratuit et formule, résiliation, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "1:02"),
 
         new("enote-responsable-etablissements.mp4", "Vos établissements",
-            "Suivre ventes et commission de chaque établissement, inscrire un nouveau commerçant.", "Responsable", Plattform, "0:43"),
+            "Suivre vos établissements, leurs ventes et votre commission, inscrire un nouveau commerçant.", "Responsable", Plattform, "1:28"),
         new("enote-responsable-paiements.mp4", "Paiements et accompagnement",
-            "Abonnements à payer, paiements signalés, profil et vidéos à montrer aux commerçants.", "Responsable", Plattform, "0:37"),
+            "Abonnements à payer et paiements signalés, votre profil, les vidéos d'aide pour vos commerçants.", "Responsable", Plattform, "1:09"),
 
         new("enote-admin-etablissements.mp4", "Gérer les établissements",
-            "Valider les inscriptions, période d'essai, tarif personnalisé, nouveau propriétaire.", "Administrateur", Plattform, "0:48"),
+            "Vue d'ensemble, période d'essai, tarif personnalisé, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "1:38"),
         new("enote-admin-tarifs.mp4", "Tarifs et facturation",
-            "Tarif général, responsables et commissions, Mobile Money, confirmation des paiements.", "Administrateur", Plattform, "0:42"),
+            "Tarif général et historique, responsables et commissions, Mobile Money, confirmation des paiements.", "Administrateur", Plattform, "1:26"),
         new("enote-admin-communication.mp4", "Communiquer",
-            "E-mails aux propriétaires et responsables, envois automatiques, modèles, annonces, journaux.", "Administrateur", NurAdmin, "0:46"),
+            "E-mails aux propriétaires et responsables, envois automatiques, modèles, annonces, journaux d'erreurs.", "Administrateur", NurAdmin, "1:30"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
