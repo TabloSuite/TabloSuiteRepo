@@ -379,6 +379,9 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     display: flex; flex-direction: column;
 }
 .enote-main > * { width: 100%; max-width: 88rem; margin-inline: auto; min-width: 0; }
+/* Feststehende Ebenen gelten für das ganze Fenster – nicht auf die 88rem-Spalte begrenzen (sonst freie Streifen ab 1408 px Breite) */
+.enote-main > :is(.enote-modal-backdrop, .enote-sheet-backdrop, .enote-loading-overlay, .enote-global-loading,
+    .enote-toast, .enote-mini-caisse, .lp-video-overlay) { width: auto; max-width: none; margin: 0; }
 
 /* --- Öffentlicher Bereich (Landing) --- */
 .enote-public { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
