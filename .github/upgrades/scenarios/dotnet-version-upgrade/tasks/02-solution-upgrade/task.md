@@ -39,8 +39,8 @@ The assessment highlights package updates for EF Core 9.x packages to 10.x and f
 - `ProvisionsServiceTests.cs`: `Assert.Single(collection.Where(...))` auf `Assert.Single(collection, predicate)` umgestellt.
 
 ### Validation
-- `dotnet restore SKOULOUAPPMAPPE.slnx` erfolgreich.
-- `dotnet build SKOULOUAPPMAPPE.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
+- `dotnet restore TabloSuiteMappe.slnx` erfolgreich.
+- `dotnet build TabloSuiteMappe.slnx` erfolgreich mit 0 Fehlern und 0 Warnungen.
 - `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj` erfolgreich: 106 Tests bestanden, 0 fehlgeschlagen.
 
 ### Decisions Made

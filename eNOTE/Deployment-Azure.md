@@ -12,7 +12,7 @@ Dieser Abschnitt hat Vorrang vor älteren Aussagen weiter unten (die aus der Vor
 
 ## Status und Grenzen (Vorbereitungsphase, historisch)
 
-Die aktive Solution `SKOULOUAPPMAPPE.slnx` enthält **eNOTE.Core, eNOTE.WebApp und eNOTE.Tests**. Veröffentlicht werden soll die Kassen-/Geschäftsverwaltungs-App eNOTE, nicht die daneben im Repository vorhandene Schul-App SKOULOUAPP. Zieladresse ist `https://enote.tablosuite.com`.
+Die aktive Solution `TabloSuiteMappe.slnx` enthält **eNOTE.Core, eNOTE.WebApp und eNOTE.Tests**. Veröffentlicht werden soll die Kassen-/Geschäftsverwaltungs-App eNOTE, nicht die daneben im Repository vorhandene Schul-App SKOULOUAPP. Zieladresse ist `https://enote.tablosuite.com`.
 
 Die Infrastruktur ist im Quellcode umgesetzt. Dies ist **keine Freigabe zur Veröffentlichung**. Aktuelle lokale Prüfung im Hosting-Vorbereitungsauftrag:
 

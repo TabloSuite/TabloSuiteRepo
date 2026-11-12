@@ -6,7 +6,7 @@
 - Errors: 0
 - Warnings: 0
 - Projects built: none; prerequisite restore gate only
-- Restore: `dotnet restore SKOULOUAPPMAPPE.slnx` succeeded
+- Restore: `dotnet restore TabloSuiteMappe.slnx` succeeded
 
 ## Test Result
 - Tests run: 0

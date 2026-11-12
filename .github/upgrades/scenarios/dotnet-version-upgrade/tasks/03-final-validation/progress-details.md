@@ -8,8 +8,8 @@
 ## Build Result
 - Errors: 0
 - Warnings: 0
-- Projects built: `SKOULOUAPPMAPPE.slnx`
-- Command: `dotnet build SKOULOUAPPMAPPE.slnx`
+- Projects built: `TabloSuiteMappe.slnx`
+- Command: `dotnet build TabloSuiteMappe.slnx`
 
 ## Test Result
 - Tests run: 106
@@ -19,8 +19,8 @@
 - Command: `dotnet test SkoulouApp.Tests/SkoulouApp.Tests.csproj`
 
 ## Package Audit
-- Outdated packages: none reported by `dotnet list SKOULOUAPPMAPPE.slnx package --outdated` after final runner update.
-- Vulnerable packages: none reported by `dotnet list SKOULOUAPPMAPPE.slnx package --vulnerable --include-transitive`.
+- Outdated packages: none reported by `dotnet list TabloSuiteMappe.slnx package --outdated` after final runner update.
+- Vulnerable packages: none reported by `dotnet list TabloSuiteMappe.slnx package --vulnerable --include-transitive`.
 
 ## Changes Summary
 - Re-ran full build and test validation after the .NET 10 upgrade.

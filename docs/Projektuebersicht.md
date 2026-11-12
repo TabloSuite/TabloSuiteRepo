@@ -39,10 +39,10 @@ Die Azure-Produktionsverbindung gehört nicht in versionierte Dateien. `Database
 ### Lokaler Einstieg
 
 1. .NET-10-SDK und SQL Server bereitstellen. Prüfen, dass der in `SKOULOUAPP.WebApp/appsettings.Development.json` konfigurierte `DefaultConnection` erreichbar ist; Zugangsdaten für andere Umgebungen über User Secrets oder Umgebungsvariablen setzen.
-2. `dotnet restore SKOULOUAPPMAPPE.slnx` und `dotnet build SKOULOUAPPMAPPE.slnx` im Repository-Stamm ausführen.
+2. `dotnet restore TabloSuiteMappe.slnx` und `dotnet build TabloSuiteMappe.slnx` im Repository-Stamm ausführen.
 3. Ausstehende Migrationen prüfen und gezielt auf die lokale Development-Datenbank anwenden, z. B. `dotnet ef migrations list --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development` und danach `dotnet ef database update --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development`. Vor jeder Anwendung die Zielverbindung prüfen; nie eine Datenbank zurücksetzen.
 4. `dotnet run --project SKOULOUAPP.WebApp --launch-profile https` startet die App lokal laut `launchSettings.json` unter `https://localhost:7064`. Die Anmeldedaten des Seed-Admins stehen in `Data/Seed/ApplicationDbInitializer.cs`; nach dem ersten Start Zugangsdaten sichern/ändern und nicht in Dokumentationen übernehmen.
-5. `dotnet test SKOULOUAPPMAPPE.slnx` führt die automatisierten Tests aus. Browserabläufe werden zusätzlich manuell geprüft.
+5. `dotnet test TabloSuiteMappe.slnx` führt die automatisierten Tests aus. Browserabläufe werden zusätzlich manuell geprüft.
 
 ## Rollen und Zugriffsmodell
 

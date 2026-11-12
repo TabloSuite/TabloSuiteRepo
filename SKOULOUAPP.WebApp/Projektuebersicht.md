@@ -45,10 +45,10 @@ Die Azure-Produktionsverbindung gehört nicht in versionierte Dateien. `Database
 ### Lokaler Einstieg
 
 1. .NET-10-SDK und SQL Server bereitstellen. Prüfen, dass der in `SKOULOUAPP.WebApp/appsettings.Development.json` konfigurierte `DefaultConnection` erreichbar ist; Zugangsdaten für andere Umgebungen über User Secrets oder Umgebungsvariablen setzen.
-2. `dotnet restore SKOULOUAPPMAPPE.slnx` und `dotnet build SKOULOUAPPMAPPE.slnx` im Repository-Stamm ausführen.
+2. `dotnet restore TabloSuiteMappe.slnx` und `dotnet build TabloSuiteMappe.slnx` im Repository-Stamm ausführen.
 3. EF-CLI bereitstellen und ausstehende Migrationen prüfen, z. B. `dotnet ef migrations list --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development`. Erst nach Prüfung der tatsächlich aufgelösten Zielverbindung gezielt aktualisieren: `dotnet ef database update --project SKOULOUAPP.WebApp --startup-project SKOULOUAPP.WebApp --context ApplicationDbContext -- --environment Development`. Ein Reset ist keine Schemafehlerbehebung und benötigt eine ausdrückliche Freigabe für die konkrete Datenbank. Ein bereits ausgeführter lokaler Neuaufbau ist keine erneut auszuführende Startvoraussetzung und kein Nachweis für den Azure-Datenbankstand.
 4. `dotnet run --project SKOULOUAPP.WebApp --launch-profile https` startet die App lokal laut `launchSettings.json` unter `https://localhost:7064` und `http://localhost:5015`; das Profil `http` nutzt nur den HTTP-Port. Beide Profile setzen `Development`. Bei Bedarf das lokale HTTPS-Entwicklungszertifikat vertrauen. Seed-Verhalten steht in `Data/Seed/ApplicationDbInitializer.cs`; initiale Zugangsdaten nach der Einrichtung ändern und nicht in Dokumentationen übernehmen.
-5. `dotnet test SKOULOUAPPMAPPE.slnx` führt die automatisierten Tests aus. Browserabläufe werden zusätzlich manuell geprüft.
+5. `dotnet test TabloSuiteMappe.slnx` führt die automatisierten Tests aus. Browserabläufe werden zusätzlich manuell geprüft.
 
 ### Weitere Laufzeitkonfiguration
 
@@ -229,9 +229,9 @@ Wichtige Testbereiche sind:
 
 Die Tests verwenden fest `localhost` mit Windows-Authentifizierung und zufällig benannte `SKOULOUAPP_TEST_…`-Datenbanken. Sie wenden die vorhandene Migrationskette an und räumen ihre Testdatenbanken anschließend auf. Voraussetzungen sind ein erreichbarer lokaler SQL Server und Rechte zum Erstellen/Löschen dieser isolierten Datenbanken; weder die App-Datenbank `SKOULOUAPPDB` noch Azure sind Testziele.
 
-In PowerShell die Variable für den Testprozess setzen: `$env:SKOULOU_SQL_TESTS='1'`. Danach führt `dotnet test SKOULOUAPPMAPPE.slnx --filter "Category=SqlIntegration"` nur die SQL-Tests aus; ohne Filter wird die gesamte Suite einschließlich SQL ausgeführt. Anschließend die Variable mit `Remove-Item Env:SKOULOU_SQL_TESTS` wieder entfernen beziehungsweise einen zuvor vorhandenen Wert wiederherstellen.
+In PowerShell die Variable für den Testprozess setzen: `$env:SKOULOU_SQL_TESTS='1'`. Danach führt `dotnet test TabloSuiteMappe.slnx --filter "Category=SqlIntegration"` nur die SQL-Tests aus; ohne Filter wird die gesamte Suite einschließlich SQL ausgeführt. Anschließend die Variable mit `Remove-Item Env:SKOULOU_SQL_TESTS` wieder entfernen beziehungsweise einen zuvor vorhandenen Wert wiederherstellen.
 
-Für eine aktuelle Warnungserfassung ist `dotnet build SKOULOUAPPMAPPE.slnx --no-incremental` statt eines rein inkrementellen Builds zu verwenden. Historische TRX-Dateien unter `SKOULOUAPP.Tests/TestResults` sind Nachweise ihrer jeweiligen Läufe, keine automatisch aktuelle Validierung. Testzahlen und Datenbankstände müssen aus dem konkret ausgeführten Lauf stammen.
+Für eine aktuelle Warnungserfassung ist `dotnet build TabloSuiteMappe.slnx --no-incremental` statt eines rein inkrementellen Builds zu verwenden. Historische TRX-Dateien unter `SKOULOUAPP.Tests/TestResults` sind Nachweise ihrer jeweiligen Läufe, keine automatisch aktuelle Validierung. Testzahlen und Datenbankstände müssen aus dem konkret ausgeführten Lauf stammen.
 
 Die Tests prüfen vor allem fachliche Service-Logik; UI- und Browser-Interaktionen werden nicht als End-to-End-Browser-Tests abgedeckt.
 

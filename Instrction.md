@@ -1,8 +1,8 @@
-# SKOULOUAPPMAPPE – Übergabe für neuen Chat
+# TabloSuiteMappe – Übergabe für neuen Chat
 
 ## Projektkontext
 - Stack: Blazor (.NET 10)
-- Solution: `SKOULOUAPPMAPPE.slnx`
+- Solution: `TabloSuiteMappe.slnx`
 - Aktueller Branch: `upgrade-dotnet-10`
 
 ## Zuletzt behobene Abo-Regressionsfälle

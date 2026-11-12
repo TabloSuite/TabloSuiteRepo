@@ -3,7 +3,7 @@
   "parameters": "",
   "projects": [
     {
-      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/SKOULOUAPPMAPPE/SKOULOUAPP.Core/SKOULOUAPP.Core.csproj",
+      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/TabloSuiteMappe/SKOULOUAPP.Core/SKOULOUAPP.Core.csproj",
       "frameworks": [
         {
           "framework": "net10.0",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/SKOULOUAPPMAPPE/SKOULOUAPP.Tests/SKOULOUAPP.Tests.csproj",
+      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/TabloSuiteMappe/SKOULOUAPP.Tests/SKOULOUAPP.Tests.csproj",
       "frameworks": [
         {
           "framework": "net10.0",
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/SKOULOUAPPMAPPE/SKOULOUAPP.WebApp/SKOULOUAPP.WebApp.csproj",
+      "path": "C:/ETSE/NETAPPS/SKOULOUAPPRepo/TabloSuiteMappe/SKOULOUAPP.WebApp/SKOULOUAPP.WebApp.csproj",
       "frameworks": [
         {
           "framework": "net10.0",

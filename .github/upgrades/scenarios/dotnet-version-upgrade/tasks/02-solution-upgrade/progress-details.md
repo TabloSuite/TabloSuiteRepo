@@ -10,8 +10,8 @@
 ## Build Result
 - Errors: 0
 - Warnings: 0
-- Projects built: `SKOULOUAPPMAPPE.slnx`
-- Command: `dotnet build SKOULOUAPPMAPPE.slnx`
+- Projects built: `TabloSuiteMappe.slnx`
+- Command: `dotnet build TabloSuiteMappe.slnx`
 
 ## Test Result
 - Tests run: 106
@@ -26,5 +26,5 @@
 - Verified restore, full solution build, and test suite.
 
 ## Issues Encountered
-- `run_build` could not build the `.slnx` path from the IDE context, so `dotnet build SKOULOUAPPMAPPE.slnx` was used as the build gate.
+- `run_build` could not build the `.slnx` path from the IDE context, so `dotnet build TabloSuiteMappe.slnx` was used as the build gate.
 - `xunit.runner.visualstudio` supported version lookup returned `4.0.0-pre.5`; preview was avoided. Final package audit found stable `3.1.5`, which was applied and validated successfully.

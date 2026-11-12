@@ -13,7 +13,7 @@
 
 ## Technischer Einstieg
 - Die aktuelle Architektur, der Zweck der Anwendung, lokale Startschritte, Datenbank-/Migrationsabläufe und wichtige Einstiegspunkte stehen in [`SKOULOUAPP.WebApp/Projektuebersicht.md`](../SKOULOUAPP.WebApp/Projektuebersicht.md). Vor Änderungen an Geschäftsregeln den dort beschriebenen Schul-, Rollen- und Datenfluss mit dem tatsächlichen Code abgleichen; ältere Dokumente in `docs/` können historische Momentaufnahmen sein.
-- Solution: `SKOULOUAPPMAPPE.slnx` mit `SKOULOUAPP.WebApp` (Blazor Interactive Server, Identity, EF Core/SQL Server, Migrationen), `SKOULOUAPP.Core` (Modelle/Services) und `SKOULOUAPP.Tests` (xUnit). Zielplattform: .NET 10.
+- Solution: `TabloSuiteMappe.slnx` mit `SKOULOUAPP.WebApp` (Blazor Interactive Server, Identity, EF Core/SQL Server, Migrationen), `SKOULOUAPP.Core` (Modelle/Services) und `SKOULOUAPP.Tests` (xUnit). Zielplattform: .NET 10.
 - Pro Datenbankoperation in Blazor einen eigenen Context über `IDbContextFactory` verwenden; Schul- und Koordinatorberechtigungen auch im Service bzw. Endpunkt prüfen, nicht nur in Navigation oder Tabs. Bei Modelländerungen EF-Migration erstellen und den Stand der tatsächlich verwendeten Datenbank prüfen. Niemals vorhandene Entwicklungsdaten zurücksetzen, um Schemafehler zu verdecken.
 - Bei Arbeiten an SKOULOUAPP bestehende uncommittete Änderungen erhalten; technische Dokumentation am tatsächlichen Code ausrichten und historische Test-/Datenbankstände nicht als aktuelle Validierung ausgeben.
 - Für Änderungen relevante Tests und den Lösungsbuild ausführen. App-Texte bleiben französisch; Kommunikation und Entwicklerdokumentation dürfen deutsch sein. Bestehende fachliche Regeln unten werden durch diesen Wegweiser nicht ersetzt.

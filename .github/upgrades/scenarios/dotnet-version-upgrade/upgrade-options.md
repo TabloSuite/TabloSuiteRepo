@@ -1,4 +1,4 @@
-# Upgrade Options — SKOULOUAPPMAPPE
+# Upgrade Options — TabloSuiteMappe
 
 Assessment: 3 SDK-style Projekte auf net9.0; Ziel net10.0; 7 von 9 NuGet-Paketen benötigen ein Upgrade; 1 Paket ist inkompatibel/veraltet markiert; 10 API-Kompatibilitätshinweise in der Blazor-WebApp.
 

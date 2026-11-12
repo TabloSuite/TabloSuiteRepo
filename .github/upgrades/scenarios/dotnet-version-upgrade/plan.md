@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Target**: Upgrade der SKOULOUAPPMAPPE-Solution von .NET 9 auf .NET 10 LTS und Aktualisierung der NuGet-Pakete.
+**Target**: Upgrade der TabloSuiteMappe-Solution von .NET 9 auf .NET 10 LTS und Aktualisierung der NuGet-Pakete.
 **Scope**: 3 SDK-style Projekte mit Blazor-WebApp, Core-Bibliothek und Testprojekt; Assessment meldet 7 Paket-Upgrades und API-Kompatibilitätshinweise in der WebApp.
 
 ### Selected Strategy
@@ -13,7 +13,7 @@
 
 ### 01-prerequisites: Verify .NET 10 toolchain and workspace readiness
 
-Verify that the .NET 10 SDK is available to the build, the solution can be restored, and repository state is ready before changing project files. This covers `SKOULOUAPPMAPPE.slnx` and all three projects so the later atomic upgrade has a known baseline.
+Verify that the .NET 10 SDK is available to the build, the solution can be restored, and repository state is ready before changing project files. This covers `TabloSuiteMappe.slnx` and all three projects so the later atomic upgrade has a known baseline.
 
 **Done when**: .NET 10 SDK compatibility is confirmed, restore prerequisites are known, and no blocking workspace or global.json issue prevents upgrading to `net10.0`.
 
