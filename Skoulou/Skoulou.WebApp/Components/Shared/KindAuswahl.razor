@@ -1,0 +1,68 @@
+@* Auswahl des Kindes auf allen Elternseiten (?kind=…); wählt automatisch das erste Kind. *@
+@using Skoulou.WebApp.Services.Organisation
+@inject ElternKinderService ElternKinder
+@inject NavigationManager Navigation
+
+@if (kinder is null)
+{
+    <LadeIndikator />
+}
+else if (kinder.Count == 0)
+{
+    <Leerzustand Icon="famille" Titel="Aucun enfant lié à votre compte"
+                 Text="Demandez à la direction de l'établissement de lier votre compte à celui de votre enfant." />
+}
+else
+{
+    <div class="sk-kindauswahl">
+        @if (kinder.Count > 1)
+        {
+            <div class="sk-chips" role="group" aria-label="Choisir un enfant">
+                @foreach (var k in kinder)
+                {
+                    <button type="button" class="sk-chip @(k.SchuelerId == Gewaehlt ? "aktiv" : null)"
+                            aria-pressed="@(k.SchuelerId == Gewaehlt ? "true" : "false")" @onclick="() => WaehleAsync(k.SchuelerId)">
+                        <NamensKreis Name="@k.Name" Groesse="22" /> @k.Vorname
+                        @if (k.Klasse is not null)
+                        {
+                            <span class="sk-chip-zahl">@k.Klasse</span>
+                        }
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            var k = kinder[0];
+            <p class="sk-kindauswahl-eins"><NamensKreis Name="@k.Name" Groesse="28" /> <strong>@k.Name</strong>@(k.Klasse is null ? "" : $" · {k.Klasse}")</p>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Angemeldetes Elternkonto.</summary>
+    [Parameter, EditorRequired] public Guid KontoId { get; set; }
+
+    /// <summary>Gewähltes Kind (Schüler-Konto-Id).</summary>
+    [Parameter] public Guid? Gewaehlt { get; set; }
+    [Parameter] public EventCallback<Guid?> GewaehltChanged { get; set; }
+
+    /// <summary>Alle Kinder (für Seiten, die z. B. den Namen anzeigen).</summary>
+    public IReadOnlyList<KindEintrag> Kinder => kinder ?? [];
+
+    private IReadOnlyList<KindEintrag>? kinder;
+
+    protected override async Task OnInitializedAsync()
+    {
+        kinder = await ElternKinder.KinderAsync(KontoId);
+        if (kinder.Count > 0 && (Gewaehlt is null || kinder.All(k => k.SchuelerId != Gewaehlt)))
+            await WaehleAsync(kinder[0].SchuelerId);
+    }
+
+    private async Task WaehleAsync(Guid schuelerId)
+    {
+        Gewaehlt = schuelerId;
+        await GewaehltChanged.InvokeAsync(schuelerId);
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("kind", schuelerId), replace: true);
+    }
+}

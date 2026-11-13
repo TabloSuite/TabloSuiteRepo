@@ -295,3 +295,24 @@ Von mir entschieden (änderbar):
 23. « Rester connecté » bleibt; eine aktive Sitzung je Konto bleibt (Sicherheit bei geteilten PCs).
 24. Plattformrechnung als PDF; Erinnerung per Mail bei Fälligkeit und +7 Tage; unbezahlte Rechnungen sperren nichts automatisch (Admin kann die Schule suspendieren).
 25. Mobile Money: Kanal und Referenz erfassbar; automatische Anbindung später (Schnittstelle vorbereitet).
+
+---
+
+## 12. Zusammenarbeit der Bereiche (E2–E6 parallel)
+
+**Gemeinsam (aus E1, nur mit Absprache ändern):** `Program.cs`, `Data/SkoulouDbContext.cs`, `Components/Layout/*` (Navigation steht vollständig), `Components/Shared/*`, `wwwroot/app.css`, `Services/Infrastruktur/*` (u. a. `Zugriff`, `SchulAbfragen`, `NummernkreisService`, `AuditService`, Mail, Medien). Fehlt dort etwas Kleines, darf ein Bereich es **ergänzen** (neue Datei oder neue Methode), nie Bestehendes umbauen. Gemeinsame Abfragen (laufendes Schuljahr, aktuelle Klasse, Klassen eines Lehrers, Kinder der Eltern, Einschreibungen im Zeitraum) **immer** über `SchulAbfragen` – keine eigenen Varianten.
+
+**Eigene Dateien je Bereich:** `Services/<Bereich>/*` (inkl. `<Bereich>Registrierung.cs`), `Data/Konfiguration/<Bereich>Konfiguration.cs`, Entitäten des Bereichs in `Skoulou.Core/Entitaeten/<Bereich>/`, Rechner in `Skoulou.Core/<Bereich>/`, Stile in `wwwroot/css/<bereich>.css`, Tests in `Skoulou.Tests/<Bereich>/`, und diese Seiten:
+
+| Bereich | Seiten (Components/Pages/…) |
+|---|---|
+| E2 Plattform | `Admin/*` außer `Facturation`, `Tarifs`; `Responsable/ResponsableStart`, `Responsable/Messagerie`; `Auth/Inscription`; `Direction/EnAttente`; `Oeffentlich/Kontakt` (Responsable-Karte); `Aide/Guide`; Annonces-Banner im Layout (einzige erlaubte Layout-Änderung) |
+| E3 Organisation | `Direction/*` außer `Contenus`, `Passage`; `Unterricht/Presences`, `Unterricht/EmploiDuTemps`; `Eleve/EmploiDuTemps`; `Parents/ParentsStart`, `Parents/Presences`, `Parents/EmploiDuTemps`; Schülerkarten, Zugangsliste, Import |
+| E4 Pädagogik | `Unterricht/EnseignantStart`, `Lecons`, `Examens`, `Corrections`; `Direction/Contenus`; `Eleve/EleveStart`, `Lecons`, `Examens`, `Resultats`; Druckansichten `/druck/*` |
+| E5 Noten | `Unterricht/Notes`, `Unterricht/Bulletins`; `Direction/Passage` (Jahreswechsel); `Eleve/Bulletins`; `Parents/Notes`, `Parents/Bulletins`; `Oeffentlich/Verification` |
+| E6 Finanzen | `Finances/*`; `Admin/Facturation`, `Admin/Tarifs`; `Responsable/Facturation`, `Responsable/Parts`; `Eleve/Frais`; `Parents/Frais` |
+
+Elternseiten nutzen `<KindAuswahl>` (Shared) + `ElternKinderService`; jeder Dienst prüft zusätzlich `SchulAbfragen.IstKindAsync`.
+
+**Datenbank:** Entitäten/Konfiguration des eigenen Bereichs dürfen angepasst werden; **keine Migration einchecken**. Für Browser-Tests eine eigene lokale DB `SkoulouDB_<Bereich>` mit lokaler Migration verwenden; nach dem Zusammenführen erzeugt die Leitung eine gemeinsame Migration neu (keine Bestandsdaten).
+**Demo-Daten:** `DemoSeed` erweitert jeder Bereich nur in einer eigenen Datei `Data/Seed/DemoSeed<Bereich>.cs`, aufgerufen am Ende von `DemoSeed` (ein Aufruf je Bereich ist bereits vorgesehen bzw. wird ergänzt).

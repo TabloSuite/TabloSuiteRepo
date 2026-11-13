@@ -13,10 +13,10 @@ public interface ISchulgebunden
     Guid SchuleId { get; }
 }
 
-/// <summary>Basis aller Entitäten: Guid-Schlüssel (von EF sequenziell erzeugt) und Zeitstempel.</summary>
+/// <summary>Basis aller Entitäten: fortlaufender Guid-Schlüssel (schon beim Anlegen gesetzt) und Zeitstempel.</summary>
 public abstract class Entitaet : IZeitgestempelt
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = NeueId.Erzeuge();
     public DateTime ErstelltAmUtc { get; set; }
     public DateTime GeaendertAmUtc { get; set; }
 }

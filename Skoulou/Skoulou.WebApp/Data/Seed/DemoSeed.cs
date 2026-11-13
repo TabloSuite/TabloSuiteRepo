@@ -15,7 +15,7 @@ public sealed record DemoKonto(string Rolle, string Name, string Identifiant, st
 /// existiert die Schule, passiert nichts; vorhandene Konten werden wiederverwendet.
 /// Alle Namen sind erfunden, E-Mails nutzen die Fantasie-Domain « exemple.tg ».
 /// </summary>
-public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<SkoulouDbContext> dbFactory, ILogger<DemoSeed> logger)
+public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<SkoulouDbContext> dbFactory, ILogger<DemoSeed> logger, IServiceProvider dienste)
 {
     public const string SchulName = "Collège Démo Les Palmiers";
     public const string Domain = "exemple.tg";
@@ -132,6 +132,12 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
             new ElternKind { SchuleId = schule.Id, ElternId = vater.Id, SchuelerId = kinder["Adjo"].Id, Beziehung = "Père" },
             new ElternKind { SchuleId = schule.Id, ElternId = mutter.Id, SchuelerId = kinder["Dossou"].Id, Beziehung = "Mère" });
         await db.SaveChangesAsync(ct);
+
+        // Demo-Daten der Bereiche (je Bereich eine eigene Datei, siehe Bauplan §12).
+        foreach (var bereich in new Func<IServiceProvider, Guid, List<DemoKonto>, CancellationToken, Task>[]
+                 { DemoSeedPlattform.ErgaenzenAsync, DemoSeedOrganisation.ErgaenzenAsync, DemoSeedPaedagogik.ErgaenzenAsync,
+                   DemoSeedNoten.ErgaenzenAsync, DemoSeedFinanzen.ErgaenzenAsync })
+            await bereich(dienste, schule.Id, neu, ct);
 
         logger.LogInformation("Demo-Schule angelegt: {Konten} Konten, {Schueler} Schüler.", neu.Count, Schueler.Length);
         return neu;
