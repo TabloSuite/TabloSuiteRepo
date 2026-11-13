@@ -1,0 +1,154 @@
+@* Eine Frage im Editor: Typ, Punkte, Text (mit Bildern/Formeln) und die typabhängigen Teile. *@
+
+<div class="sk-frage-editor">
+    @if (Frage.HatAntworten)
+    {
+        <Hinweis Art="info">Des élèves ont déjà répondu à cette question. Si vous la modifiez, une nouvelle version (n° @(Frage.Revision + 1)) sera créée ; les réponses déjà données restent valables.</Hinweis>
+    }
+    <div class="sk-raster-2 sk-frage-editor-kopf">
+        <AuswahlFeld T="FragenTyp" Label="Type de question" Wert="Frage.Typ" WertChanged="TypAsync" Optionen="typen" MitSuche="false" />
+        <ZahlFeld Label="Points" Wert="Frage.Punkte" WertChanged="w => Aendern(() => Frage.Punkte = w ?? 1)" Min="0.25m" Max="100" />
+    </div>
+
+    @if (Frage.Typ == FragenTyp.TexteATrous)
+    {
+        <TextFeld Label="Texte avec les trous" Zeilen="4" Wert="@Frage.TextHtml" Sofort="true" WertChanged="w => Aendern(() => Frage.TextHtml = w ?? string.Empty)"
+                  Hinweis="Écrivez [[1]], [[2]]… à la place des mots à trouver." Platzhalter="Le chat [[1]] sur le [[2]]." />
+        <div class="sk-luecken-liste">
+            @for (var i = 0; i < Frage.Luecken.Count; i++)
+            {
+                var index = i;
+                <div class="sk-editor-zeile">
+                    <span class="sk-editor-marke">[[@(index + 1)]]</span>
+                    <input class="sk-eingabe" aria-label="@($"Réponses du trou {index + 1}")" placeholder="Réponse(s) acceptée(s), séparées par /"
+                           value="@string.Join(" / ", Frage.Luecken[index])" @onchange="e => Aendern(() => Frage.Luecken[index] = Teile(e.Value?.ToString(), '/'))" />
+                    <button type="button" class="sk-icon-knopf" aria-label="Supprimer le trou" disabled="@(Frage.Luecken.Count == 1)"
+                            @onclick="() => Aendern(() => Frage.Luecken.RemoveAt(index))"><Icon Name="trash" Groesse="16" /></button>
+                </div>
+            }
+            <button type="button" class="sk-link-knopf" @onclick="LueckeHinzufuegen"><Icon Name="plus" Groesse="15" /> Ajouter un trou</button>
+        </div>
+    }
+    else
+    {
+        <div class="sk-feld">
+            <span class="sk-feld-label">Énoncé</span>
+            <RichTextFeld Html="@Frage.TextHtml" HtmlChanged="h => Aendern(() => Frage.TextHtml = h)" Kompakt="true" Platzhalter="Écrivez la question…" />
+        </div>
+    }
+
+    @if (FragenTypen.IstAudio(Frage.Typ))
+    {
+        <div class="sk-raster-2">
+            <TextFeld Label="Texte lu à l'élève" Zeilen="2" Wert="@Frage.AudioText" WertChanged="w => Aendern(() => Frage.AudioText = w)"
+                      Hinweis="L'élève l'écoute (voix du téléphone) sans jamais le voir." />
+            <AuswahlFeld T="string" Label="Langue de lecture" Wert="Frage.Sprache" WertChanged="SpracheAsync"
+                         Optionen="sprachen" MitSuche="false" />
+        </div>
+    }
+
+    @if (FragenTypen.IstAuswahl(Frage.Typ))
+    {
+        <div class="sk-optionen-editor">
+            <span class="sk-feld-label">Réponses proposées <small class="sk-leise">(cochez @(FragenTypen.IstMehrfach(Frage.Typ) ? "les bonnes réponses" : "la bonne réponse"))</small></span>
+            @foreach (var o in Frage.Optionen)
+            {
+                var option = o;
+                <div class="sk-editor-zeile">
+                    <button type="button" class="sk-option-marke knopf @(FragenTypen.IstMehrfach(Frage.Typ) ? "eckig" : null) @(option.Richtig ? "an" : null)"
+                            role="@(FragenTypen.IstMehrfach(Frage.Typ) ? "checkbox" : "radio")" aria-checked="@(option.Richtig ? "true" : "false")"
+                            aria-label="Bonne réponse" @onclick="() => RichtigAsync(option)">@if (option.Richtig){<Icon Name="check" Groesse="14" Strich="3" />}</button>
+                    <input class="sk-eingabe" value="@option.Text" placeholder="Réponse" maxlength="1000" aria-label="Texte de la réponse"
+                           @onchange="e => Aendern(() => option.Text = e.Value?.ToString() ?? string.Empty)" />
+                    <button type="button" class="sk-icon-knopf" aria-label="Supprimer la réponse" disabled="@(Frage.Optionen.Count <= 2)"
+                            @onclick="() => Aendern(() => Frage.Optionen.Remove(option))"><Icon Name="trash" Groesse="16" /></button>
+                </div>
+            }
+            <button type="button" class="sk-link-knopf" disabled="@(Frage.Optionen.Count >= 12)" @onclick="() => Aendern(() => Frage.Optionen.Add(new OptionFormular()))">
+                <Icon Name="plus" Groesse="15" /> Ajouter une réponse
+            </button>
+        </div>
+    }
+
+    @if (FragenTypen.IstText(Frage.Typ))
+    {
+        <div class="sk-optionen-editor">
+            <span class="sk-feld-label">Réponses acceptées <small class="sk-leise">(laissez vide pour corriger vous-même)</small></span>
+            @for (var i = 0; i < Frage.Varianten.Count; i++)
+            {
+                var index = i;
+                <div class="sk-editor-zeile">
+                    <input class="sk-eingabe" value="@Frage.Varianten[index]" placeholder="Une réponse juste" maxlength="1000" aria-label="Réponse acceptée"
+                           @onchange="e => Aendern(() => Frage.Varianten[index] = e.Value?.ToString() ?? string.Empty)" />
+                    <button type="button" class="sk-icon-knopf" aria-label="Supprimer" @onclick="() => Aendern(() => Frage.Varianten.RemoveAt(index))"><Icon Name="trash" Groesse="16" /></button>
+                </div>
+            }
+            <button type="button" class="sk-link-knopf" @onclick="() => Aendern(() => Frage.Varianten.Add(string.Empty))"><Icon Name="plus" Groesse="15" /> Ajouter une variante</button>
+            <p class="sk-leise sk-klein">Majuscules, espaces et ponctuation finale ne comptent pas.</p>
+            <Schalter Wert="Frage.AkzenteBeachten" WertChanged="w => Aendern(() => Frage.AkzenteBeachten = w)" Label="Les accents comptent"
+                      Hinweis="Sinon « eleve » est accepté pour « élève »." />
+        </div>
+    }
+
+    @if (Frage.Typ == FragenTyp.ConstructionPhrase)
+    {
+        <div class="sk-feld">
+            <TextFeld Label="Mots proposés (banque de mots)" Wert="@string.Join(" ", Frage.Wortbank)"
+                      WertChanged="w => Aendern(() => Frage.Wortbank = Teile(w, ' '))" Hinweis="Séparés par des espaces ; ils seront mélangés pour l'élève. Vide = l'élève écrit la phrase." />
+            <button type="button" class="sk-link-knopf" disabled="@(Frage.Varianten.All(string.IsNullOrWhiteSpace))" @onclick="WortbankAusAntwort">
+                <Icon Name="refresh" Groesse="15" /> Reprendre les mots de la première réponse
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FrageFormular Frage { get; set; } = default!;
+    [Parameter] public EventCallback Geaendert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<FragenTyp>> typen =
+        FragenTypen.Alle.Select(t => new AuswahlOption<FragenTyp>(t, FragenTypen.Bezeichnung(t))).ToList();
+
+    private static readonly IReadOnlyList<AuswahlOption<string>> sprachen =
+        FragenTypen.Sprachen.Select(s => new AuswahlOption<string>(s.Code, s.Name)).ToList();
+
+    private Task Aendern(Action aenderung)
+    {
+        aenderung();
+        return Geaendert.InvokeAsync();
+    }
+
+    private Task SpracheAsync(string? sprache) => Aendern(() => Frage.Sprache = sprache ?? "fr-FR");
+
+    private Task TypAsync(FragenTyp typ) => Aendern(() =>
+    {
+        // Lückentext ist Klartext mit Markern, die anderen Typen haben formatierten Text.
+        if (typ == FragenTyp.TexteATrous && Frage.Typ != FragenTyp.TexteATrous)
+            Frage.TextHtml = AntwortVergleich.OhneHtml(Frage.TextHtml ?? string.Empty).Trim();
+        else if (typ != FragenTyp.TexteATrous && Frage.Typ == FragenTyp.TexteATrous)
+            Frage.TextHtml = Skoulou.WebApp.Services.Infrastruktur.HtmlBereiniger.TextAlsHtml(Frage.TextHtml);
+        Frage.Typ = typ;
+        Frage.TypVorbereiten();
+        if (!FragenTypen.IstMehrfach(typ) && Frage.Optionen.Count(o => o.Richtig) > 1)
+            foreach (var o in Frage.Optionen.Where(o => o.Richtig).Skip(1)) o.Richtig = false;
+    });
+
+    private Task RichtigAsync(OptionFormular option) => Aendern(() =>
+    {
+        if (FragenTypen.IstMehrfach(Frage.Typ)) option.Richtig = !option.Richtig;
+        else foreach (var o in Frage.Optionen) o.Richtig = ReferenceEquals(o, option);
+    });
+
+    private Task LueckeHinzufuegen() => Aendern(() =>
+    {
+        Frage.Luecken.Add([]);
+        var nr = Frage.Luecken.Count;
+        if (!LueckenText.Marker(Frage.TextHtml).Contains(nr)) Frage.TextHtml = $"{Frage.TextHtml?.TrimEnd()} [[{nr}]]".TrimStart();
+    });
+
+    private Task WortbankAusAntwort() => Aendern(() =>
+        Frage.Wortbank = Teile(Frage.Varianten.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)), ' '));
+
+    private static List<string> Teile(string? text, char trenner)
+        => (text ?? string.Empty).Split(trenner, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+}

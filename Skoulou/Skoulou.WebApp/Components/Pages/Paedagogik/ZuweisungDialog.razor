@@ -1,0 +1,135 @@
+@* Inhalt einer Klasse zuweisen: Klasse, Beginn, Frist; bei Leçons Versuchsregel und Lösungsanzeige, bei Examen feste Regeln. *@
+@inject ZuweisungService Zuweisungen
+@inject TimeProvider Uhr
+
+<ModalDialog Open="Open" Title="Attribuer à une classe" Oberzeile="@Titel" OnClose="OnClose" ErrorMessage="@fehler" SchliessenMitEscape="false">
+    <ChildContent>
+        @if (klassen is null)
+        {
+            <LadeIndikator />
+        }
+        else if (klassen.Count == 0)
+        {
+            <Hinweis Art="warn">Aucune classe de l'année choisie : l'enseignant n'enseigne cette matière dans aucune classe. La direction peut ajouter l'affectation.</Hinweis>
+        }
+        else
+        {
+            <div class="sk-formular">
+                <AuswahlFeld T="Guid?" Label="Classe" Pflicht="true" Wert="klasseId" WertChanged="w => klasseId = w" Optionen="klassenOptionen" />
+                <div class="sk-raster-2">
+                    <div class="sk-feld-paar">
+                        <DatumFeld Label="Début" Pflicht="true" Wert="abDatum" WertChanged="w => abDatum = w ?? Zeit.Heute" />
+                        <input type="time" class="sk-eingabe sk-zeit" aria-label="Heure de début" @bind="abZeit" />
+                    </div>
+                    <div class="sk-feld-paar">
+                        <DatumFeld Label="@(Art == InhaltsArt.Pruefung ? "Date limite" : "Date limite (facultatif)")" Pflicht="@(Art == InhaltsArt.Pruefung)"
+                                   Wert="fristDatum" WertChanged="w => fristDatum = w" Min="Zeit.Heute" />
+                        <input type="time" class="sk-eingabe sk-zeit" aria-label="Heure limite" @bind="fristZeit" disabled="@(fristDatum is null)" />
+                    </div>
+                </div>
+                @if (Art == InhaltsArt.Lecon)
+                {
+                    <RadioGruppe T="int" Label="Essais" Wert="versuche" WertChanged="w => versuche = w" Optionen="versuchsOptionen" />
+                    @if (versuche != 1)
+                    {
+                        <RadioGruppe T="VersuchsWertung" Label="Essai retenu" Wert="wertung" WertChanged="w => wertung = w" Optionen="wertungsOptionen" />
+                    }
+                    <RadioGruppe T="LoesungsSichtbarkeit" Label="Corrigé visible par l'élève" Wert="loesungen" WertChanged="w => loesungen = w" Optionen="loesungsOptionen"
+                                 Hinweis="@(loesungen == LoesungsSichtbarkeit.ApresFrist && fristDatum is null ? "Sans date limite, le corrigé s'affiche après la fin de chaque essai." : null)" />
+                }
+                else
+                {
+                    <Hinweis>Examen : un seul essai par élève, durée de @PruefungsZeit.DauerText(DauerMinuten), corrigé visible après la date limite. Les copies sont envoyées automatiquement à la fin du temps.</Hinweis>
+                }
+                <p class="sk-leise">Si ce contenu est déjà attribué à cette classe, l'ancienne attribution est archivée (ses résultats restent consultables).</p>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Attribuer" Icon="send" CssClass="sk-btn-primaer" Disabled="@(klassen is null || klassen.Count == 0)" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter, EditorRequired] public InhaltsArt Art { get; set; }
+    [Parameter, EditorRequired] public Guid InhaltId { get; set; }
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public Guid? SchuljahrId { get; set; }
+    [Parameter] public string? Titel { get; set; }
+    [Parameter] public int DauerMinuten { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private IReadOnlyList<KlassenOption>? klassen;
+    private IReadOnlyList<AuswahlOption<Guid?>> klassenOptionen = [];
+    private Guid? klasseId;
+    private DateOnly abDatum;
+    private TimeOnly abZeit;
+    private DateOnly? fristDatum;
+    private TimeOnly fristZeit = new(18, 0);
+    private int versuche;
+    private VersuchsWertung wertung = VersuchsWertung.Meilleur;
+    private LoesungsSichtbarkeit loesungen = LoesungsSichtbarkeit.Immediat;
+    private string? fehler;
+    private bool warOffen;
+
+    private SchulZeit Zeit => new(Uhr);
+
+    private static readonly IReadOnlyList<AuswahlOption<int>> versuchsOptionen =
+        [new(0, "Illimités"), new(1, "1 seul"), new(2, "2"), new(3, "3"), new(5, "5")];
+
+    private static readonly IReadOnlyList<AuswahlOption<VersuchsWertung>> wertungsOptionen =
+        [new(VersuchsWertung.Meilleur, "Le meilleur"), new(VersuchsWertung.Premier, "Le premier"), new(VersuchsWertung.Dernier, "Le dernier")];
+
+    private static readonly IReadOnlyList<AuswahlOption<LoesungsSichtbarkeit>> loesungsOptionen =
+        [new(LoesungsSichtbarkeit.Immediat, "Dès la réponse"), new(LoesungsSichtbarkeit.ApresFrist, "Après la date limite"), new(LoesungsSichtbarkeit.Jamais, "Jamais")];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            fehler = null;
+            klassen = null;
+            var jetzt = Zeit.JetztLokal;
+            abDatum = DateOnly.FromDateTime(jetzt);
+            abZeit = new TimeOnly(jetzt.Hour, jetzt.Minute);
+            fristDatum = Art == InhaltsArt.Pruefung ? abDatum.AddDays(1) : null;
+            try
+            {
+                klassen = await Zuweisungen.KlassenAsync(AkteurId, Art, InhaltId, SchuljahrId);
+                klassenOptionen = klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.GleicheStufe ? null : $"autre niveau ({k.Stufe})")).ToList();
+                klasseId = klassen.FirstOrDefault(k => k.GleicheStufe)?.Id ?? klassen.FirstOrDefault()?.Id;
+            }
+            catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+            {
+                fehler = ex.Message;
+                klassen = [];
+            }
+        }
+        warOffen = Open;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        var formular = new ZuweisungFormular
+        {
+            InhaltId = InhaltId, Art = Art, KlasseId = klasseId,
+            AbUtc = Zeit.ZuUtc(abDatum.ToDateTime(abZeit)),
+            FristUtc = fristDatum is { } f ? Zeit.ZuUtc(f.ToDateTime(fristZeit)) : null,
+            MaxVersuche = versuche == 0 ? null : versuche,
+            Wertung = versuche == 1 ? VersuchsWertung.Premier : wertung,
+            Loesungen = loesungen
+        };
+        try
+        {
+            await Zuweisungen.ZuweisenAsync(AkteurId, formular);
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

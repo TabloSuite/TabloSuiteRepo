@@ -1,0 +1,123 @@
+@page "/eleve/lecons/{ZuweisungId:guid}"
+@attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject LernService Lernen
+@inject TimeProvider Uhr
+
+<PageTitle>@(daten?.Titel ?? "Leçon") · SKOULOU</PageTitle>
+
+<div class="sk-leser">
+    <a class="sk-zurueck-link" href="/eleve/lecons"><Icon Name="arrow-left" Groesse="16" /> Mes leçons</a>
+    @if (daten is null)
+    {
+        @if (KeinZugriff || Fehlermeldung is not null)
+        {
+            <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+        }
+        else
+        {
+            <LadeIndikator />
+        }
+    }
+    else
+    {
+        <SeitenKopf Oberzeile="@($"{daten.Fach} · {daten.Lehrer}")" Titel="@daten.Titel" Untertitel="@daten.Zusammenfassung">
+            <Aktionen>
+                <div class="sk-stimme">
+                    <Schalter Wert="@(!daten.StimmeAus)" WertChanged="StimmeAsync" Label="@(daten.StimmeAus ? "Voix : non" : "Voix : oui")" />
+                </div>
+            </Aktionen>
+        </SeitenKopf>
+
+        <div class="sk-leser-infos">
+            <StatusBadge Text="@PaedagogikText.Frist(Zeit, daten.FristUtc)" Art="@(daten.FristUtc is { } f && f <= Zeit.JetztUtc ? "fehler" : "info")" Icon="clock" />
+            @if (daten.GewerteterProzent is { } p)
+            {
+                <span class="sk-badge @PaedagogikText.ScoreKlasse(p)">Résultat retenu : @PaedagogikText.Prozent(p)</span>
+            }
+            else if (daten.Abgeschlossen)
+            {
+                <StatusBadge Text="Leçon terminée" Art="erfolg" Icon="check" />
+            }
+            <Druckknopf Text="Imprimer" Href="@($"/druck/lecon/{daten.LeconId}?zuweisung={ZuweisungId}")" CssClass="sk-btn-klein" />
+        </div>
+
+        @if (daten.Sperrgrund is { } grund)
+        {
+            <Hinweis Art="warn">@grund</Hinweis>
+        }
+
+        @if (HatFragen && (daten.Seiten.Count > 0 || daten.VideoMediumId is not null))
+        {
+            <div class="sk-segment" role="tablist">
+                <button type="button" role="tab" aria-selected="@(!uebungen ? "true" : "false")" class="@(!uebungen ? "aktiv" : null)" @onclick="() => uebungen = false">
+                    <Icon Name="book-open" Groesse="16" /> Leçon
+                </button>
+                <button type="button" role="tab" aria-selected="@(uebungen ? "true" : "false")" class="@(uebungen ? "aktiv" : null)" @onclick="() => uebungen = true">
+                    <Icon Name="check-square" Groesse="16" /> Exercices (@AnzahlFragen)
+                </button>
+            </div>
+        }
+
+        @if (!uebungen || !HatFragen)
+        {
+            <LeconSeiten Seiten="daten.Seiten" VideoMediumId="daten.VideoMediumId" />
+            @if (HatFragen)
+            {
+                <div class="sk-leser-weiter">
+                    <button type="button" class="sk-btn sk-btn-primaer sk-btn-gross" @onclick="() => uebungen = true">
+                        <span>Passer aux exercices</span> <Icon Name="arrow-right" Groesse="18" />
+                    </button>
+                </div>
+            }
+            else if (!daten.Abgeschlossen && daten.Sperrgrund is null)
+            {
+                <div class="sk-leser-weiter">
+                    <AsyncKnopf Text="J'ai terminé la leçon" Icon="check" CssClass="sk-btn-primaer sk-btn-gross" OnClick="GelesenAsync" />
+                </div>
+            }
+        }
+        else
+        {
+            <UebungsFolge Daten="daten" SchuelerId="Ich.KontoId" StimmeAus="daten.StimmeAus" NeuLaden="LadenAsync" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ZuweisungId { get; set; }
+
+    private SchuelerLecon? daten;
+    private bool uebungen;
+
+    private SchulZeit Zeit => new(Uhr);
+    private int AnzahlFragen => daten?.Bloecke.Sum(b => b.Fragen.Count) ?? 0;
+    private bool HatFragen => AnzahlFragen > 0;
+
+    protected override async Task InitialisierenAsync()
+    {
+        await LadenAsync();
+        // Wer schon geantwortet hat, landet direkt bei den Übungen.
+        uebungen = daten is { Antworten.Count: > 0 } || (daten is not null && daten.Seiten.Count == 0 && daten.VideoMediumId is null);
+    }
+
+    private async Task LadenAsync()
+    {
+        daten = await Lernen.OeffnenAsync(Ich.KontoId, ZuweisungId);
+    }
+
+    private Task StimmeAsync(bool an) => AusfuehrenAsync(async () =>
+    {
+        await Lernen.StimmeSetzenAsync(Ich.KontoId, aus: !an);
+        daten = daten! with { StimmeAus = !an };
+    });
+
+    private Task GelesenAsync() => AusfuehrenAsync(async () =>
+    {
+        await Lernen.GelesenAsync(Ich.KontoId, ZuweisungId);
+        daten = daten! with { Abgeschlossen = true };
+    }, "Bravo, leçon terminée !");
+}

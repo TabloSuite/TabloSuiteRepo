@@ -1,0 +1,99 @@
+@* Versuch eines Schülers lesen (alle Antworten mit Lösung) und einzelne Antworten (nach-)korrigieren. *@
+@inject KorrekturService Korrektur
+@inject TimeProvider Uhr
+
+<ModalDialog Open="SchuelerId is not null" Title="@(detail?.Schueler ?? "Copie de l'élève")" Oberzeile="@detail?.Titel" Breite="sk-modal-lg" OnClose="OnClose" ErrorMessage="@fehler">
+    <ChildContent>
+        @if (versuche.Count > 1)
+        {
+            <div class="sk-chips sk-versuch-wahl">
+                @foreach (var v in versuche)
+                {
+                    <button type="button" class="sk-chip @(v.Id == detail?.VersuchId ? "aktiv" : null)" @onclick="() => LadenAsync(v.Id)">
+                        Essai @v.Nr · @PaedagogikText.Punkte(v.Punkte, v.MaxPunkte)
+                    </button>
+                }
+            </div>
+        }
+        @if (detail is null)
+        {
+            @if (fehler is null) { <LadeIndikator /> }
+        }
+        else
+        {
+            <p class="sk-leise">
+                Essai @detail.Nr · commencé le @PaedagogikText.Zeitpunkt(Zeit, detail.StartUtc)
+                @(detail.AbgabeUtc is { } a ? $" · rendu le {PaedagogikText.Zeitpunkt(Zeit, a)}" : " · en cours")
+                · <strong>@PaedagogikText.Punkte(detail.Punkte, detail.MaxPunkte) points</strong>
+            </p>
+            @foreach (var z in detail.Antworten)
+            {
+                <FrageVorschau Frage="z.Frage" Eingabe="z.Eingabe" MitLoesungen="true">
+                    <div class="sk-versuch-bewertung">
+                        <StatusBadge Text="@PaedagogikText.Ergebnis(z.Status)" Art="@PaedagogikText.ErgebnisArt(z.Status)" />
+                        <span>@(z.Punkte is { } p ? PaedagogikText.Punkte(p, z.Frage.Punkte) : "– / " + ScoreRechner.Punkte(z.Frage.Punkte)) pts</span>
+                        @if (z.ManuellKorrigiert)
+                        {
+                            <span class="sk-leise">corrigé par @z.KorrigiertVon</span>
+                        }
+                        @if (z.AntwortId is { } id && (detail.Status != VersuchsStatus.EnCours || z.Status == BewertungsStatus.Manuell))
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => korrektur = id"><Icon Name="pen" Groesse="15" /> <span>@(z.Status == BewertungsStatus.Manuell ? "Corriger" : "Modifier la note")</span></button>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(z.Feedback))
+                    {
+                        <p class="sk-feedback"><Icon Name="message" Groesse="15" /> @z.Feedback</p>
+                    }
+                </FrageVorschau>
+            }
+        }
+    </ChildContent>
+</ModalDialog>
+
+<KorrekturDialog AntwortId="korrektur" AkteurId="AkteurId" OnGespeichert="KorrigiertAsync" OnClose="() => korrektur = null" />
+
+@code {
+    [Parameter] public Guid? SchuelerId { get; set; }
+    [Parameter, EditorRequired] public Guid ZuweisungId { get; set; }
+    [Parameter] public Guid? VersuchId { get; set; }
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private IReadOnlyList<VersuchInfo> versuche = [];
+    private VersuchsDetail? detail;
+    private Guid? korrektur, geladenFuer;
+    private string? fehler;
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SchuelerId == geladenFuer) return;
+        geladenFuer = SchuelerId;
+        detail = null;
+        fehler = null;
+        versuche = [];
+        if (SchuelerId is not { } s) return;
+        try
+        {
+            versuche = await Korrektur.VersucheAsync(AkteurId, ZuweisungId, s);
+            if ((VersuchId ?? versuche.LastOrDefault()?.Id) is { } v) await LadenAsync(v);
+            else fehler = "Cet élève n'a pas encore commencé.";
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task LadenAsync(Guid versuchId) => detail = await Korrektur.VersuchAsync(AkteurId, versuchId);
+
+    private async Task KorrigiertAsync(bool _)
+    {
+        korrektur = null;
+        if (detail is not null) await LadenAsync(detail.VersuchId);
+        versuche = await Korrektur.VersucheAsync(AkteurId, ZuweisungId, SchuelerId!.Value);
+        await OnGeaendert.InvokeAsync();
+    }
+}

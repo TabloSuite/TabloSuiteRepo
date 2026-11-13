@@ -1,0 +1,117 @@
+@* Editor einer Leçon (Seiten, Video, Übungen) oder eines Examens (Dauer, Schwelle, Aufgaben); Speichern als Ganzes. *@
+@inherits SkoulouSeite
+
+<PageTitle>@(f?.Id is null ? (Art == InhaltsArt.Lecon ? "Nouvelle leçon" : "Nouvel examen") : f.Titel) · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="@Kopftitel" Oberzeile="@(Art == InhaltsArt.Lecon ? "Leçon" : "Examen")" Icon="@(Art == InhaltsArt.Lecon ? "book-open" : "check-square")"
+            Untertitel="@(f?.AutorName is { } a ? $"Contenu de {a}" : null)">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="@ZurueckHref"><Icon Name="arrow-left" Groesse="18" /> <span>Retour</span></a>
+    </Aktionen>
+</SeitenKopf>
+
+@if (f is null)
+{
+    @if (Fehlermeldung is not null) { <Hinweis Art="fehler">@Fehlermeldung</Hinweis> } else { <LadeIndikator /> }
+}
+else
+{
+    <CascadingValue Value="kontext" IsFixed="true">
+        @if (f.ErfasstVonName is { } erfasst)
+        {
+            <Hinweis Art="info" Titel="Saisi par la direction">@($"Ce contenu est saisi par {erfasst} pour {f.AutorName}.")</Hinweis>
+        }
+        @if (f.AnzahlZuweisungen > 0)
+        {
+            <Hinweis Art="warn">Ce contenu est déjà attribué (@f.AnzahlZuweisungen fois). Les questions auxquelles des élèves ont répondu ne sont pas modifiées : une nouvelle version les remplace pour les prochains essais.</Hinweis>
+        }
+
+        <Karte Titel="Informations" Icon="edit" CssClass="sk-oben-abstand">
+            <div class="sk-formular">
+                <TextFeld Label="Titre" Pflicht="true" MaxLaenge="200" Wert="@f.Titel" WertChanged="w => f.Titel = w ?? string.Empty"
+                          Fehler="@FeldFehler("Titel")" Platzhalter="@(Art == InhaltsArt.Lecon ? "Ex. : Les fractions" : "Ex. : Devoir n° 1 – Fractions")" />
+                <div class="sk-raster-2">
+                    <AuswahlFeld T="string" Label="Niveau et matière" Pflicht="true" Wert="@StufeFachSchluessel" WertChanged="StufeFachAsync"
+                                 Optionen="kombiOptionen" Fehler="@FeldFehler("StufeFach")" Platzhalter="Choisir…"
+                                 Hinweis="@(kombiOptionen.Count == 0 ? "Aucune affectation : la direction doit d'abord attribuer des cours à l'enseignant." : null)" />
+                    <RadioGruppe T="InhaltsStatus" Label="Statut" Wert="f.Status" WertChanged="s => f.Status = s" Optionen="statusOptionen"
+                                 Hinweis="Seuls les contenus « Prêts » peuvent être attribués à une classe." />
+                </div>
+                @if (Art == InhaltsArt.Lecon)
+                {
+                    <div class="sk-raster-2">
+                        <TextFeld Label="Résumé" Zeilen="2" MaxLaenge="1000" Wert="@f.Zusammenfassung" WertChanged="w => f.Zusammenfassung = w" />
+                        <TextFeld Label="Thème (facultatif)" MaxLaenge="200" Wert="@f.Thema" WertChanged="w => f.Thema = w" Platzhalter="Ex. : Nombres et calculs" />
+                    </div>
+                    <div class="sk-feld">
+                        <span class="sk-feld-label">Vidéo (facultatif)</span>
+                        <div class="sk-video-wahl">
+                            <Icon Name="video" Groesse="18" />
+                            <span>@(f.VideoName ?? "Aucune vidéo")</span>
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OeffneMedien(MedienArt.Video, null)">@(f.VideoMediumId is null ? "Choisir une vidéo" : "Changer")</button>
+                            @if (f.VideoMediumId is not null)
+                            {
+                                <button type="button" class="sk-link-knopf" @onclick="() => { f.VideoMediumId = null; f.VideoName = null; }">Retirer</button>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="sk-raster-2">
+                        <ZahlFeld Label="Durée" Einheit="min" Stellen="0" Min="1" Max="600" Wert="f.DauerMinuten" WertChanged="w => f.DauerMinuten = (int)(w ?? 60)" Fehler="@FeldFehler("Dauer")" />
+                        <ZahlFeld Label="Réussi à partir de" Einheit="%" Stellen="0" Min="0" Max="100" Wert="f.Bestehensgrenze" WertChanged="w => f.Bestehensgrenze = w ?? 50" />
+                    </div>
+                    <TextFeld Label="Consignes générales (facultatif)" Zeilen="3" MaxLaenge="2000" Wert="@f.Beschreibung" WertChanged="w => f.Beschreibung = w"
+                              Platzhalter="Ex. : Calculatrice interdite. Lisez bien chaque question." />
+                }
+            </div>
+        </Karte>
+
+        @if (Art == InhaltsArt.Lecon)
+        {
+            <Karte Titel="Pages de la leçon" Untertitel="Chaque page s'affiche comme une feuille A4 (texte, images, formules)." Icon="book-open" CssClass="sk-oben-abstand">
+                @for (var i = 0; i < f.Seiten.Count; i++)
+                {
+                    var index = i;
+                    var seite = f.Seiten[i];
+                    <div class="sk-seite-editor" @key="seite.Schluessel">
+                        <div class="sk-frage-editor-leiste">
+                            <span class="sk-frage-nr">Page @(index + 1)</span>
+                            <button type="button" class="sk-icon-knopf klein" aria-label="Supprimer la page" disabled="@(f.Seiten.Count == 1)"
+                                    @onclick="() => f.Seiten.RemoveAt(index)"><Icon Name="trash" Groesse="15" /></button>
+                        </div>
+                        <RichTextFeld Html="@seite.Html" HtmlChanged="h => seite.Html = h" A4="true" Platzhalter="Écrivez le cours ici…" />
+                    </div>
+                }
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" disabled="@(f.Seiten.Count >= InhaltService.MaxSeiten)" @onclick="() => f.Seiten.Add(new SeiteFormular())">
+                    <Icon Name="plus" Groesse="16" /> <span>Ajouter une page</span>
+                </button>
+            </Karte>
+        }
+
+        <Karte Titel="@(Art == InhaltsArt.Lecon ? "Exercices" : "Questions de l'examen")" Icon="check-square" CssClass="sk-oben-abstand"
+               Untertitel="@($"{f.Bloecke.Sum(b => b.Fragen.Count)} question(s) · {ScoreRechner.Punkte(f.Bloecke.Sum(b => b.Fragen.Sum(q => q.Punkte)))} points")">
+            @for (var i = 0; i < f.Bloecke.Count; i++)
+            {
+                var index = i;
+                var block = f.Bloecke[i];
+                <BlockEditor @key="block.Schluessel" Block="block" Nr="index + 1" KannHoch="index > 0" KannRunter="index < f.Bloecke.Count - 1"
+                             Geaendert="StateHasChanged" OnVerschieben="r => BlockVerschieben(index, r)" OnEntfernen="() => f.Bloecke.RemoveAt(index)" />
+            }
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="BlockHinzufuegen"><Icon Name="plus" Groesse="18" /> <span>Ajouter un exercice</span></button>
+        </Karte>
+
+        <div class="sk-editor-fuss">
+            @if (Fehlermeldung is not null)
+            {
+                <span class="sk-feld-fehler"><Icon Name="alert" Groesse="15" /> @Fehlermeldung</span>
+            }
+            <a class="sk-btn sk-btn-ghost" href="@ZurueckHref">Fermer</a>
+            <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        </div>
+    </CascadingValue>
+
+    <MedienDialog Open="medienOffen" Art="medienArt" AkteurId="Ich.KontoId" OnGewaehlt="MediumGewaehltAsync" OnClose="() => medienOffen = false" />
+    <FormelDialog Open="formelOffen" Anfang="@formelAnfang" AkteurId="Ich.KontoId" OnEinfuegen="FormelAsync" OnClose="() => formelOffen = false" />
+}

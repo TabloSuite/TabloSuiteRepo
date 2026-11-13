@@ -1,0 +1,58 @@
+@* Ein Aufgabenblock (« Exercice n ») mit Titel, Consigne und seinen Fragen (verschieben, entfernen, hinzufügen). *@
+
+<section class="sk-block-editor">
+    <div class="sk-block-editor-kopf">
+        <strong>Exercice @Nr</strong>
+        <div class="sk-knopfzeile">
+            <button type="button" class="sk-icon-knopf" aria-label="Monter l'exercice" disabled="@(!KannHoch)" @onclick="() => OnVerschieben.InvokeAsync(-1)"><Icon Name="chevron-down" Groesse="16" CssClass="sk-drehen" /></button>
+            <button type="button" class="sk-icon-knopf" aria-label="Descendre l'exercice" disabled="@(!KannRunter)" @onclick="() => OnVerschieben.InvokeAsync(1)"><Icon Name="chevron-down" Groesse="16" /></button>
+            <button type="button" class="sk-icon-knopf" aria-label="Supprimer l'exercice" @onclick="() => OnEntfernen.InvokeAsync()"><Icon Name="trash" Groesse="16" /></button>
+        </div>
+    </div>
+    <div class="sk-raster-2">
+        <TextFeld Label="Titre de l'exercice" Wert="@Block.Titel" WertChanged="w => Aendern(() => Block.Titel = w)" MaxLaenge="200" Platzhalter="@($"Exercice {Nr}")" />
+        <TextFeld Label="Consigne" Zeilen="2" Wert="@Block.Consigne" WertChanged="w => Aendern(() => Block.Consigne = w)" MaxLaenge="2000" Platzhalter="Lisez puis répondez…" />
+    </div>
+
+    @for (var i = 0; i < Block.Fragen.Count; i++)
+    {
+        var index = i;
+        var frage = Block.Fragen[i];
+        <div class="sk-frage-editor-rahmen" @key="frage.Schluessel">
+            <div class="sk-frage-editor-leiste">
+                <span class="sk-frage-nr">Question @(index + 1)</span>
+                <div class="sk-knopfzeile">
+                    <button type="button" class="sk-icon-knopf klein" aria-label="Monter la question" disabled="@(index == 0)" @onclick="() => Verschieben(index, -1)"><Icon Name="chevron-down" Groesse="15" CssClass="sk-drehen" /></button>
+                    <button type="button" class="sk-icon-knopf klein" aria-label="Descendre la question" disabled="@(index == Block.Fragen.Count - 1)" @onclick="() => Verschieben(index, 1)"><Icon Name="chevron-down" Groesse="15" /></button>
+                    <button type="button" class="sk-icon-knopf klein" aria-label="Supprimer la question" @onclick="() => Aendern(() => Block.Fragen.RemoveAt(index))"><Icon Name="trash" Groesse="15" /></button>
+                </div>
+            </div>
+            <FrageEditor Frage="frage" Geaendert="Geaendert" />
+        </div>
+    }
+    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aendern(() => Block.Fragen.Add(FrageFormular.Neu()))">
+        <Icon Name="plus" Groesse="16" /> <span>Ajouter une question</span>
+    </button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public BlockFormular Block { get; set; } = default!;
+    [Parameter] public int Nr { get; set; }
+    [Parameter] public bool KannHoch { get; set; }
+    [Parameter] public bool KannRunter { get; set; }
+    [Parameter] public EventCallback Geaendert { get; set; }
+    [Parameter] public EventCallback<int> OnVerschieben { get; set; }
+    [Parameter] public EventCallback OnEntfernen { get; set; }
+
+    private Task Aendern(Action aenderung)
+    {
+        aenderung();
+        return Geaendert.InvokeAsync();
+    }
+
+    private Task Verschieben(int index, int richtung) => Aendern(() =>
+    {
+        var ziel = index + richtung;
+        (Block.Fragen[index], Block.Fragen[ziel]) = (Block.Fragen[ziel], Block.Fragen[index]);
+    });
+}

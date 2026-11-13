@@ -1,5 +1,68 @@
 @page "/direction/contenus"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject InhaltService Inhalte
 
-<InVorbereitung Titel="Contenus" Icon="book-open" Etappe="E4 – Pédagogie"
-                Beschreibung="Leçons et examens des enseignants de l'établissement, saisie pour un enseignant." />
+<PageTitle>Contenus · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Contenus des enseignants" Icon="book-open"
+            Untertitel="Toutes les leçons et tous les examens de l'établissement. La direction peut saisir un contenu pour un enseignant qui n'a pas d'appareil.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => saisieOffen = true"><Icon Name="edit" Groesse="18" /> <span>Saisir pour un enseignant</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (optionen is not null)
+{
+    <div class="sk-filter-raster">
+        <RadioGruppe T="InhaltsArt" Wert="art" WertChanged="a => art = a" Optionen="artOptionen" />
+        <AuswahlFeld T="Guid?" Wert="autor" WertChanged="w => autor = w" Optionen="lehrkraftOptionen" Kompakt="true" Icon="user" Platzhalter="Tous les enseignants" />
+        <AuswahlFeld T="Guid?" Wert="fach" WertChanged="w => fach = w" Optionen="fachOptionen" Kompakt="true" Icon="book" Platzhalter="Toutes les matières" />
+        <AuswahlFeld T="Guid?" Wert="klasse" WertChanged="w => klasse = w" Optionen="klassenOptionen" Kompakt="true" Icon="users" Platzhalter="Toutes les classes" />
+    </div>
+
+    <InhaltListe Art="art" AkteurId="Ich.KontoId" AutorId="autor" FachId="fach" KlasseId="klasse" MitAutor="true" />
+}
+
+<ModalDialog Open="saisieOffen" Title="Saisir pour un enseignant" Breite="sk-modal-sm" OnClose="() => saisieOffen = false">
+    <ChildContent>
+        <div class="sk-formular">
+            <AuswahlFeld T="Guid?" Label="Enseignant" Pflicht="true" Wert="saisieFuer" WertChanged="w => saisieFuer = w" Optionen="lehrkraftAuswahl" />
+            <RadioGruppe T="InhaltsArt" Label="Type de contenu" Wert="saisieArt" WertChanged="a => saisieArt = a" Optionen="artOptionen" />
+            <p class="sk-leise">Le contenu appartiendra à l'enseignant choisi et portera la mention « Saisi par la direction ».</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => saisieOffen = false">Annuler</button>
+        <button type="button" class="sk-btn sk-btn-primaer" disabled="@(saisieFuer is null)" @onclick="SaisieStarten">Continuer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    private static readonly IReadOnlyList<AuswahlOption<InhaltsArt>> artOptionen =
+        [new(InhaltsArt.Lecon, "Leçons", Icon: "book-open"), new(InhaltsArt.Pruefung, "Examens", Icon: "check-square")];
+
+    private InhaltOptionen? optionen;
+    private IReadOnlyList<AuswahlOption<Guid?>> lehrkraftOptionen = [], lehrkraftAuswahl = [], fachOptionen = [], klassenOptionen = [];
+    private InhaltsArt art = InhaltsArt.Lecon, saisieArt = InhaltsArt.Lecon;
+    private Guid? autor, fach, klasse, saisieFuer;
+    private bool saisieOffen;
+
+    protected override async Task InitialisierenAsync()
+    {
+        optionen = await Inhalte.OptionenAsync(Ich.KontoId, schuljahrId: Kontext.SchuljahrId);
+        lehrkraftAuswahl = optionen.Lehrkraefte.Select(l => new AuswahlOption<Guid?>(l.Id, l.Name, Rollen.Bezeichnung(l.Rolle))).ToList();
+        lehrkraftOptionen = [new(null, "Tous les enseignants"), .. lehrkraftAuswahl];
+        fachOptionen = [new(null, "Toutes les matières"), .. optionen.Faecher.Select(f => new AuswahlOption<Guid?>(f.Id, f.Name))];
+        klassenOptionen = [new(null, "Toutes les classes"), .. optionen.Klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name))];
+    }
+
+    private void SaisieStarten()
+    {
+        if (saisieFuer is not { } id) return;
+        Navigation.NavigateTo(saisieArt == InhaltsArt.Lecon ? $"/enseignant/lecons/nouvelle?pour={id}" : $"/enseignant/examens/nouveau?pour={id}");
+    }
+}

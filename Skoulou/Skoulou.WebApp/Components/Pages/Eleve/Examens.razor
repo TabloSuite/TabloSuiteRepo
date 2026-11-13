@@ -1,5 +1,62 @@
 @page "/eleve/examens"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject PruefungsService Pruefungen
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Examens" Icon="check-square" Etappe="E4 – Pédagogie"
-                Beschreibung="Vos examens en ligne et leurs résultats." />
+<PageTitle>Examens · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes examens" Untertitel="Examens en ligne de votre classe : un seul essai, en temps limité." Icon="check-square" />
+
+@if (Laedt)
+{
+    <LadeIndikator />
+}
+else if (karten.Count == 0)
+{
+    <Leerzustand Icon="check-square" Titel="Aucun examen" Text="Vos enseignants n'ont pas encore programmé d'examen pour votre classe." />
+}
+else
+{
+    <div class="sk-karten-liste">
+        @foreach (var k in karten)
+        {
+            <a class="sk-lecon-karte" href="@($"/eleve/examens/{k.ZuweisungId}")">
+                <span class="sk-lecon-karte-icon @(k.Zustand is PruefungsZustand.Ouvert or PruefungsZustand.EnCours ? "offen" : null)"><Icon Name="clock" Groesse="20" /></span>
+                <span class="sk-lecon-karte-text">
+                    <span class="sk-oberzeile">@k.Fach · @k.Lehrer</span>
+                    <strong>@k.Titel</strong>
+                    <span class="sk-lecon-karte-meta">
+                        <span>Durée : @PruefungsZeit.DauerText(k.DauerMinuten)</span>
+                        @if (k.Zustand == PruefungsZustand.AVenir)
+                        {
+                            <span>Ouvre le @PaedagogikText.Zeitpunkt(Zeit, k.AbUtc)</span>
+                        }
+                        else if (k.Zustand is PruefungsZustand.Ouvert or PruefungsZustand.EnCours && k.FristUtc is { } f)
+                        {
+                            <span>Jusqu'au @PaedagogikText.Zeitpunkt(Zeit, f)</span>
+                        }
+                    </span>
+                </span>
+                <span class="sk-lecon-karte-ende">
+                    @if (k.Prozent is { } p && !k.KorrekturOffen)
+                    {
+                        <span class="sk-badge @PaedagogikText.ScoreKlasse(p)">@PaedagogikText.Prozent(p)</span>
+                    }
+                    <StatusBadge Text="@(k.KorrekturOffen ? "En correction" : PaedagogikText.Zustand(k.Zustand))" Art="@PaedagogikText.ZustandArt(k.Zustand)" />
+                    <Icon Name="chevron-right" Groesse="18" />
+                </span>
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PruefungsKarte> karten = [];
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync() => karten = await Pruefungen.ListeAsync(Ich.KontoId);
+}

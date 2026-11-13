@@ -1,2 +1,296 @@
 /* SKOULOU – Stile des Bereichs E4 Pädagogik (Leçons, Examens, Corrections, Élève).
    Nur bereichsspezifische Klassen; gemeinsame Bausteine stehen in app.css (Tokens --sk-* verwenden, keine festen Farben). */
+
+/* ---------------- Inhalts-HTML (Quill) und A4-Blatt ---------------- */
+.sk-inhalt-html { line-height: 1.6; overflow-wrap: anywhere; }
+.sk-inhalt-html > :first-child { margin-top: 0; }
+.sk-inhalt-html > :last-child { margin-bottom: 0; }
+.sk-inhalt-html p { margin: 0 0 .55rem; }
+.sk-inhalt-html h2 { margin: 1.1rem 0 .5rem; font-size: 1.3rem; color: var(--sk-ueberschrift); }
+.sk-inhalt-html h3 { margin: 1rem 0 .4rem; font-size: 1.1rem; color: var(--sk-ueberschrift); }
+.sk-inhalt-html img { max-width: 100%; height: auto; border-radius: .4rem; }
+.sk-inhalt-html a { color: var(--sk-primaer-text); }
+.sk-inhalt-html ol { margin: 0 0 .6rem; padding-left: 1.6rem; }
+.sk-inhalt-html li[data-list="bullet"] { list-style-type: disc; }
+.sk-inhalt-html li[data-list="ordered"] { list-style-type: decimal; }
+.sk-inhalt-html li > .ql-ui { display: none; }
+.sk-inhalt-html .ql-align-center { text-align: center; }
+.sk-inhalt-html .ql-align-right { text-align: right; }
+.sk-inhalt-html .ql-align-justify { text-align: justify; }
+.sk-inhalt-html .ql-indent-1 { margin-left: 2rem; }
+.sk-inhalt-html .ql-indent-2 { margin-left: 4rem; }
+.sk-inhalt-html .ql-formula { display: inline-block; padding: 0 .1rem; }
+
+.sk-a4-rahmen { display: flex; justify-content: center; }
+.sk-a4-seite { position: relative; width: 100%; max-width: 50rem; min-height: 26rem; padding: 2rem 2.2rem 2.6rem; background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: .5rem; box-shadow: var(--sk-schatten); font-size: 1.02rem; }
+.sk-a4-fuss { position: absolute; right: 1.2rem; bottom: .7rem; color: var(--sk-text-zart); font-size: .78rem; }
+.sk-blaettern { display: flex; align-items: center; justify-content: space-between; gap: .6rem; max-width: 50rem; margin: .9rem auto 0; }
+.sk-lecon-video { max-width: 50rem; margin: 0 auto 1rem; }
+.sk-lecon-video video { width: 100%; max-height: 70vh; border-radius: var(--sk-radius-gross); background: var(--sk-flaeche-3); }
+
+/* ---------------- Schüler: Listen, Leser ---------------- */
+.sk-leser { max-width: 56rem; margin: 0 auto; }
+.sk-zurueck-link { display: inline-flex; align-items: center; gap: .35rem; margin-bottom: .6rem; color: var(--sk-text-leise); font-weight: 700; font-size: .9rem; text-decoration: none; }
+.sk-zurueck-link:hover { color: var(--sk-primaer-text); }
+.sk-leser-infos { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0 0 1rem; }
+.sk-leser-weiter { display: flex; justify-content: center; margin: 1.4rem 0 .5rem; }
+.sk-stimme .sk-schalter-zeile { margin: 0; }
+.sk-segment { display: flex; gap: .3rem; padding: .3rem; margin: 0 0 1.1rem; background: var(--sk-flaeche-3); border-radius: 999px; }
+.sk-segment button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.6rem; border: 0; border-radius: 999px; background: transparent; color: var(--sk-text-leise); font: inherit; font-weight: 800; cursor: pointer; }
+.sk-segment button.aktiv { background: var(--sk-flaeche); color: var(--sk-primaer-text); box-shadow: var(--sk-schatten-klein); }
+
+.sk-karten-liste, .sk-liste-eintraege:has(> .sk-lecon-karte), .sk-liste-eintraege:has(> .sk-inhalt-zeile) { display: grid; gap: .6rem; }
+.sk-lecon-karte, .sk-inhalt-zeile { display: flex; align-items: center; gap: .85rem; width: 100%; padding: .85rem 1rem; background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); color: var(--sk-text); text-decoration: none; text-align: left; font: inherit; cursor: pointer; }
+.sk-lecon-karte:hover, .sk-inhalt-zeile:hover { border-color: var(--sk-rand-stark); box-shadow: var(--sk-schatten-klein); }
+.sk-lecon-karte-icon { flex: none; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: .8rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-text); }
+.sk-lecon-karte-icon.fertig { background: var(--sk-erfolg-zart); color: var(--sk-erfolg); }
+.sk-lecon-karte-icon.offen { background: var(--sk-akzent-zart); color: var(--sk-akzent-text); }
+.sk-lecon-karte-text { flex: 1; display: grid; gap: .1rem; min-width: 0; }
+.sk-lecon-karte-text .sk-oberzeile { margin: 0; }
+.sk-lecon-karte-text strong { font-size: 1rem; color: var(--sk-ueberschrift); }
+.sk-lecon-karte-text small { color: var(--sk-text-leise); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sk-lecon-karte-meta { display: flex; flex-wrap: wrap; gap: .25rem .9rem; color: var(--sk-text-leise); font-size: .82rem; }
+.sk-lecon-karte-ende { flex: none; display: flex; align-items: center; gap: .5rem; color: var(--sk-text-zart); }
+.sk-text-fehler { color: var(--sk-fehler-text) !important; }
+
+/* Score-Farben (Alt-App: < 50 rot, = 50 hellrot, 51–75 hellgrün, > 75 grün) */
+.sk-score-rot { background: var(--sk-fehler-zart); color: var(--sk-fehler-text); }
+.sk-score-hellrot { background: var(--sk-warn-zart); color: var(--sk-warn-text); }
+.sk-score-hellgruen { background: var(--sk-akzent-zart); color: var(--sk-akzent-text); }
+.sk-score-gruen { background: var(--sk-erfolg-zart); color: var(--sk-erfolg); }
+.sk-score-neutral { background: var(--sk-flaeche-3); color: var(--sk-text-leise); }
+td .sk-score-rot, td .sk-score-hellrot, td .sk-score-hellgruen, td .sk-score-gruen, td .sk-score-neutral,
+strong.sk-score-rot, strong.sk-score-hellrot, strong.sk-score-hellgruen, strong.sk-score-gruen, strong.sk-score-neutral { padding: .1rem .45rem; border-radius: .4rem; font-weight: 800; }
+
+.sk-ergebnis-karte { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 1.2rem; margin: 0 0 1rem; border-radius: var(--sk-radius-gross); }
+.sk-ergebnis-karte p { margin: .15rem 0 0; }
+.sk-ergebnis-karte > div { flex: 1; min-width: 12rem; }
+.sk-ergebnis-zahl { font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+/* ---------------- Übungen ---------------- */
+.sk-uebung-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; align-items: baseline; }
+.sk-uebung-kopf .sk-leise { margin: 0; }
+.sk-fortschritt { height: .5rem; margin: .5rem 0 .8rem; border-radius: 999px; background: var(--sk-flaeche-3); overflow: hidden; }
+.sk-fortschritt > span { display: block; height: 100%; border-radius: 999px; background: var(--sk-verlauf); transition: width .3s ease; }
+.sk-punkte-nav { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 1rem; }
+.sk-punkt-nav { min-width: 2.3rem; height: 2.3rem; padding: 0 .4rem; border: 1px solid var(--sk-rand); border-radius: 999px; background: var(--sk-flaeche); color: var(--sk-text-leise); font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
+.sk-punkt-nav.aktuell { border-color: var(--sk-primaer); color: var(--sk-primaer-text); box-shadow: var(--sk-fokus); }
+.sk-punkt-nav.s-erfolg { background: var(--sk-erfolg-zart); color: var(--sk-erfolg); border-color: var(--sk-erfolg-rand); }
+.sk-punkt-nav.s-fehler { background: var(--sk-fehler-zart); color: var(--sk-fehler-text); border-color: var(--sk-fehler-rand); }
+.sk-punkt-nav.s-warn { background: var(--sk-warn-zart); color: var(--sk-warn-text); border-color: var(--sk-warn-rand); }
+.sk-punkt-nav.s-info { background: var(--sk-primaer-zart); color: var(--sk-primaer-text); border-color: var(--sk-info-rand); }
+.sk-block-kopf { margin: 0 0 .6rem; }
+.sk-block-kopf p, .sk-consigne { margin: .25rem 0 .6rem; color: var(--sk-text-leise); font-style: italic; white-space: pre-line; }
+.sk-uebung-aktionen { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; margin: 1rem 0; }
+.sk-uebung-aktionen > :only-child { margin-left: auto; }
+.sk-uebung-ende { text-align: center; }
+
+/* ---------------- Frage (Eingabe und Lesen) ---------------- */
+.sk-frage { padding: 1.1rem 1.15rem; margin: 0 0 1rem; background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); }
+.sk-frage-kopf { display: flex; justify-content: space-between; gap: .6rem; margin: 0 0 .5rem; }
+.sk-frage-nr { color: var(--sk-primaer-text); font-size: .78rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sk-frage-punkte { color: var(--sk-text-zart); font-size: .8rem; font-weight: 700; }
+.sk-frage-text { font-size: 1.05rem; }
+.sk-frage-anleitung { margin: .35rem 0 .7rem; color: var(--sk-text-zart); font-size: .84rem; }
+.sk-audio-knoepfe { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 .8rem; }
+
+.sk-optionen { display: grid; gap: .5rem; }
+.sk-option { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 3rem; padding: .6rem .85rem; border: 2px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); color: var(--sk-text); font: inherit; text-align: left; cursor: pointer; }
+.sk-option:hover:not(:disabled) { border-color: var(--sk-rand-stark); }
+.sk-option.gewaehlt { border-color: var(--sk-primaer); background: var(--sk-primaer-zart); }
+.sk-option.richtig { border-color: var(--sk-erfolg); background: var(--sk-erfolg-zart); }
+.sk-option.falsch { border-color: var(--sk-fehler); background: var(--sk-fehler-zart); }
+.sk-option:disabled { cursor: default; opacity: 1; }
+.sk-option-marke { flex: none; display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border: 2px solid var(--sk-rand-stark); border-radius: 50%; background: var(--sk-flaeche); color: var(--sk-primaer); }
+.sk-option-marke.eckig { border-radius: .35rem; }
+.gewaehlt > .sk-option-marke, .sk-option-marke.an { border-color: var(--sk-primaer); background: var(--sk-primaer); color: #fff; }
+.richtig > .sk-option-marke { border-color: var(--sk-erfolg); background: var(--sk-erfolg); color: #fff; }
+.falsch > .sk-option-marke { border-color: var(--sk-fehler); background: var(--sk-fehler); color: #fff; }
+.sk-option-marke.knopf { width: 1.7rem; height: 1.7rem; cursor: pointer; padding: 0; }
+
+.sk-lueckentext { line-height: 2.4; font-size: 1.05rem; }
+.sk-luecke { display: inline-block; width: 8.5rem; max-width: 60vw; margin: 0 .2rem; padding: .25rem .5rem; border: 0; border-bottom: 2px solid var(--sk-primaer); border-radius: .35rem .35rem 0 0; background: var(--sk-primaer-zart); color: var(--sk-text); font: inherit; text-align: center; }
+.sk-luecke:focus { outline: none; box-shadow: var(--sk-fokus); }
+.sk-luecke.richtig, .sk-luecke-lesen.richtig { border-bottom-color: var(--sk-erfolg); background: var(--sk-erfolg-zart); }
+.sk-luecke.falsch, .sk-luecke-lesen.falsch { border-bottom-color: var(--sk-fehler); background: var(--sk-fehler-zart); }
+.sk-luecke-lesen { display: inline-block; min-width: 5rem; margin: 0 .2rem; padding: 0 .45rem; border-bottom: 2px solid var(--sk-rand-stark); font-weight: 700; text-align: center; }
+
+.sk-satz { display: flex; flex-wrap: wrap; gap: .4rem; min-height: 3.2rem; padding: .6rem; margin: 0 0 .6rem; border: 2px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); }
+.sk-satz.leer { align-items: center; }
+.sk-satz .sk-leise { margin: 0; }
+.sk-wortbank { display: flex; flex-wrap: wrap; gap: .4rem; }
+.sk-wort { min-height: 2.6rem; padding: .3rem .85rem; border: 1px solid var(--sk-rand-stark); border-radius: .6rem; background: var(--sk-flaeche-2); color: var(--sk-text); font: inherit; font-weight: 700; cursor: pointer; }
+.sk-wort.gesetzt { background: var(--sk-primaer-zart); border-color: var(--sk-info-rand); color: var(--sk-primaer-text); }
+.sk-wort:disabled { opacity: .35; cursor: default; }
+.sk-wort.gesetzt:disabled { opacity: 1; }
+.sk-antwort-text { width: 100%; resize: vertical; }
+
+.sk-rueckmeldung { margin: .9rem 0 0; padding: .75rem .9rem; border-radius: var(--sk-radius); border: 1px solid var(--sk-rand); background: var(--sk-flaeche-2); }
+.sk-rueckmeldung p { margin: .35rem 0 0; }
+.sk-rueckmeldung-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+.sk-rueckmeldung-erfolg { background: var(--sk-erfolg-zart); border-color: var(--sk-erfolg-rand); color: var(--sk-erfolg); }
+.sk-rueckmeldung-fehler { background: var(--sk-fehler-zart); border-color: var(--sk-fehler-rand); color: var(--sk-fehler-text); }
+.sk-rueckmeldung-warn { background: var(--sk-warn-zart); border-color: var(--sk-warn-rand); color: var(--sk-warn-text); }
+.sk-rueckmeldung-info { background: var(--sk-primaer-zart); border-color: var(--sk-info-rand); color: var(--sk-primaer-text); }
+.sk-rueckmeldung .sk-leise, .sk-rueckmeldung p { color: var(--sk-text); }
+.sk-loesung-luecken { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
+.sk-feedback { display: flex; gap: .4rem; align-items: flex-start; margin: .5rem 0 0; padding: .5rem .7rem; border-radius: .6rem; background: var(--sk-flaeche); color: var(--sk-text); }
+
+.sk-frage-vorschau { background: var(--sk-flaeche-2); }
+.sk-optionen-lesen { list-style: none; margin: .4rem 0; padding: 0; display: grid; gap: .3rem; }
+.sk-optionen-lesen li { display: flex; align-items: center; gap: .6rem; padding: .35rem .6rem; border-radius: .6rem; border: 1px solid transparent; }
+.sk-optionen-lesen li.richtig { border-color: var(--sk-erfolg-rand); background: var(--sk-erfolg-zart); }
+.sk-optionen-lesen li.falsch { border-color: var(--sk-fehler-rand); background: var(--sk-fehler-zart); }
+.sk-optionen-lesen li .sk-leise { margin: 0; }
+.sk-antwort-lesen { margin: .5rem 0; padding: .6rem .8rem; border-left: 3px solid var(--sk-primaer); background: var(--sk-flaeche); border-radius: 0 .5rem .5rem 0; white-space: pre-wrap; }
+.sk-loesung { margin: .5rem 0 0; }
+.sk-audio-text { display: flex; gap: .35rem; align-items: center; margin: .4rem 0; }
+.sk-audio-text .sk-leise { margin: 0; }
+.sk-schreiblinien { display: grid; gap: 1.6rem; margin: 1rem 0 .4rem; }
+.sk-schreiblinien span { border-bottom: 1px dotted var(--sk-rand-stark); }
+.sk-wortbank-lesen { margin: .5rem 0 0; }
+.sk-versuch-bewertung { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: .7rem 0 0; padding-top: .6rem; border-top: 1px solid var(--sk-rand); }
+.sk-versuch-bewertung .sk-leise { margin: 0; }
+.sk-versuch-wahl { margin: 0 0 .8rem; }
+
+/* ---------------- Examen ---------------- */
+.sk-pruefung-leiste { position: sticky; top: calc(var(--sk-kopf-h) + .4rem); z-index: 20; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .9rem; padding: .6rem 1rem; margin: 0 0 1rem; background: var(--sk-glas-stark); backdrop-filter: blur(8px); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); box-shadow: var(--sk-schatten); }
+.sk-pruefung-leiste .sk-leise { margin: 0; }
+.sk-uhr { min-width: 5.5rem; padding: .2rem .7rem; border-radius: .6rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-text); font-size: 1.45rem; font-weight: 900; font-variant-numeric: tabular-nums; text-align: center; }
+.sk-uhr.knapp { background: var(--sk-warn-zart); color: var(--sk-warn-text); }
+.sk-uhr.kritisch { background: var(--sk-fehler-zart); color: var(--sk-fehler-text); animation: sk-puls 1s ease-in-out infinite; }
+@keyframes sk-puls { 50% { opacity: .65; } }
+.sk-speicherstand { display: inline-flex; align-items: center; gap: .35rem; color: var(--sk-erfolg); font-size: .85rem; font-weight: 700; }
+.sk-speicherstand.fehler { color: var(--sk-fehler-text); }
+.sk-pruefung-block h2 { margin: 1.2rem 0 .3rem; font-size: 1.1rem; color: var(--sk-ueberschrift); }
+.sk-pruefung-ende { display: flex; justify-content: center; margin: 1.5rem 0 2rem; }
+.sk-pruefung-fakten { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .8rem; margin: 0 0 1rem; }
+.sk-pruefung-fakten > div { display: grid; gap: .1rem; padding: .7rem .85rem; border-radius: var(--sk-radius); background: var(--sk-flaeche-2); }
+.sk-pruefung-fakten .sk-leise { margin: 0; font-size: .78rem; }
+.sk-regeln { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .45rem; }
+.sk-regeln li { display: flex; gap: .55rem; align-items: center; }
+
+/* ---------------- Start- und Ergebnisseiten ---------------- */
+.sk-kennzahl-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: .8rem; }
+.sk-aufgaben { display: grid; gap: .5rem; }
+.sk-aufgabe { display: flex; align-items: center; gap: .75rem; padding: .65rem .8rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); color: var(--sk-text); text-decoration: none; }
+a.sk-aufgabe:hover { border-color: var(--sk-rand-stark); background: var(--sk-flaeche-2); }
+.sk-aufgabe-icon { flex: none; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .7rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-text); }
+.sk-aufgabe-icon.examen { background: var(--sk-akzent-zart); color: var(--sk-akzent-text); }
+.sk-aufgabe-text { flex: 1; display: grid; min-width: 0; }
+.sk-aufgabe-text small { color: var(--sk-text-leise); }
+.sk-fach-balken { display: grid; gap: .65rem; }
+.sk-fach-zeile { display: grid; grid-template-columns: minmax(7rem, 11rem) 1fr 4rem 3rem; align-items: center; gap: .7rem; }
+.sk-fach-zeile .sk-leise { margin: 0; }
+.sk-balken { height: .7rem; border-radius: 999px; background: var(--sk-flaeche-3); overflow: hidden; }
+.sk-balken > span { display: block; height: 100%; border-radius: 999px; }
+.sk-balken > .sk-score-rot { background: var(--sk-fehler); }
+.sk-balken > .sk-score-hellrot { background: var(--sk-warn); }
+.sk-balken > .sk-score-hellgruen { background: var(--sk-akzent); }
+.sk-balken > .sk-score-gruen { background: var(--sk-erfolg); }
+.sk-fach-wert { font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.sk-tabelle .zahl { text-align: right; white-space: nowrap; }
+
+/* ---------------- Lehrkraft: Detail, Zuweisungen, Korrektur ---------------- */
+.sk-detail-aktionen { margin: 0 0 1rem; }
+.sk-zuweisungen { display: grid; gap: .7rem; }
+.sk-zuweisung { display: grid; gap: .4rem; padding: .85rem 1rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.sk-zuweisung.archiviert { opacity: .7; background: var(--sk-flaeche-2); }
+.sk-zuweisung-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.sk-zuweisung-zahlen { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-size: .9rem; }
+.sk-feld-paar { display: grid; grid-template-columns: 1fr 7.5rem; gap: .5rem; align-items: end; }
+.sk-feld-paar .sk-feld { margin: 0; }
+.sk-zeit { min-height: 2.9rem; }
+.sk-korrektur-formular { display: grid; gap: .6rem; margin: 1rem 0 0; }
+.sk-punkte-schnell { margin-top: -.3rem; }
+.sk-verlauf { margin: 1rem 0 0; color: var(--sk-text-leise); font-size: .88rem; }
+.sk-verlauf summary { cursor: pointer; font-weight: 700; }
+.sk-filter-raster { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: 0 0 1rem; }
+.sk-filter-raster .sk-feld { margin: 0; min-width: 12rem; }
+
+/* ---------------- Editor ---------------- */
+.sk-rte .ql-toolbar.ql-snow { border: 1px solid var(--sk-rand); border-radius: var(--sk-radius) var(--sk-radius) 0 0; background: var(--sk-flaeche-2); font-family: inherit; position: sticky; top: var(--sk-kopf-h); z-index: 5; }
+.sk-rte .ql-container.ql-snow { border: 1px solid var(--sk-rand); border-top: 0; border-radius: 0 0 var(--sk-radius) var(--sk-radius); background: var(--sk-flaeche); font-family: inherit; font-size: 1rem; color: var(--sk-text); }
+.sk-rte .ql-editor { min-height: 6rem; line-height: 1.6; }
+.sk-rte.kompakt .ql-editor { min-height: 4.5rem; }
+.sk-rte.a4 .ql-editor { min-height: 22rem; padding: 1.6rem 1.8rem; }
+.sk-rte .ql-editor.ql-blank::before { color: var(--sk-text-zart); font-style: normal; }
+.sk-rte .ql-editor img { max-width: 100%; }
+.sk-rte .ql-snow .ql-tooltip { z-index: 30; border-radius: .6rem; color: var(--sk-text); background: var(--sk-flaeche); border-color: var(--sk-rand); box-shadow: var(--sk-schatten); }
+html[data-theme="dark"] .sk-rte .ql-snow .ql-stroke { stroke: var(--sk-text-leise); }
+html[data-theme="dark"] .sk-rte .ql-snow .ql-fill { fill: var(--sk-text-leise); }
+html[data-theme="dark"] .sk-rte .ql-snow .ql-picker { color: var(--sk-text-leise); }
+html[data-theme="dark"] .sk-rte .ql-snow .ql-picker-options { background: var(--sk-flaeche); }
+.sk-seite-editor { margin: 0 0 1rem; }
+.sk-video-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem .8rem; border: 1px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); }
+.sk-block-editor { padding: 1rem; margin: 0 0 1rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche-2); }
+.sk-block-editor-kopf, .sk-frage-editor-leiste { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin: 0 0 .6rem; }
+.sk-block-editor-kopf strong { color: var(--sk-ueberschrift); font-size: 1.05rem; }
+.sk-frage-editor-rahmen { padding: .9rem 1rem; margin: 0 0 .8rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); }
+.sk-frage-editor { display: grid; gap: .7rem; }
+.sk-frage-editor .sk-feld { margin: 0; }
+.sk-optionen-editor, .sk-luecken-liste { display: grid; gap: .45rem; }
+.sk-editor-zeile { display: flex; align-items: center; gap: .5rem; }
+.sk-editor-zeile .sk-eingabe { flex: 1; min-width: 0; }
+.sk-editor-marke { flex: none; padding: .2rem .45rem; border-radius: .4rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-text); font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.sk-klein { font-size: .82rem; }
+.sk-editor-fuss { position: sticky; bottom: .75rem; z-index: 10; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .6rem; padding: .7rem 1rem; margin: 1rem 0 0; background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); box-shadow: var(--sk-schatten-gross); }
+.sk-editor-fuss .sk-feld-fehler { margin-right: auto; }
+
+/* Mediathek und Formeln */
+.sk-medien-kopf { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
+.sk-medien-kopf .sk-suche { flex: 1; min-width: 12rem; }
+.sk-versteckt { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.sk-medien-hinweis { margin: .5rem 0 .8rem; }
+.sk-medien-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .7rem; }
+.sk-medium { display: grid; gap: .25rem; padding: .5rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); color: var(--sk-text); font: inherit; text-align: left; cursor: pointer; }
+.sk-medium:hover { border-color: var(--sk-primaer); box-shadow: var(--sk-fokus); }
+.sk-medium img, .sk-medium-video { width: 100%; height: 6.5rem; object-fit: cover; border-radius: .5rem; background: var(--sk-flaeche-3); }
+.sk-medium-video { display: grid; place-items: center; align-content: center; color: var(--sk-text-leise); }
+.sk-medium-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: .85rem; }
+.sk-medium small { margin: 0; font-size: .75rem; }
+.sk-formel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.2rem; }
+.sk-formel-eingabe { display: grid; gap: .5rem; align-content: start; }
+.sk-formel-text { font-family: Consolas, "Courier New", monospace; }
+.sk-formel-vorschau { min-height: 4.5rem; display: grid; place-items: center; padding: .6rem; border: 1px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); overflow-x: auto; }
+.sk-formel-speichern { display: flex; gap: .5rem; align-items: center; }
+.sk-formel-speichern .sk-eingabe { flex: 1; min-width: 0; }
+.sk-formel-vorlagen { max-height: 26rem; overflow-y: auto; }
+.sk-formel-vorlagen .sk-oberzeile { margin: .6rem 0 .3rem; }
+.sk-formel-knoepfe { display: flex; flex-wrap: wrap; gap: .3rem; }
+.sk-formel-knoepfe .sk-chip { min-height: 2rem; padding: .2rem .55rem; font-family: Consolas, "Courier New", monospace; font-weight: 600; font-size: .78rem; }
+.sk-formel-eigene { display: flex; flex-wrap: wrap; gap: .3rem .6rem; }
+.sk-formel-eigen { display: inline-flex; align-items: center; gap: .1rem; }
+
+/* ---------------- Druckansicht ---------------- */
+.sk-druck-kopf { display: flex; justify-content: space-between; gap: 1rem; padding: 0 0 .7rem; margin: 0 0 1rem; border-bottom: 2px solid #111; font-size: .9rem; }
+.sk-druck-kopf > div { display: grid; gap: .1rem; }
+.sk-druck-kopf-rechts { text-align: right; }
+.sk-druck-titel { margin: 0 0 .8rem; font-size: 1.5rem; text-align: center; color: #111; }
+.sk-druck-namenszeile { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; margin: 0 0 1rem; font-size: .9rem; }
+.sk-druck-abschnitt { margin: 0 0 .6rem; font-size: 1.25rem; color: #111; }
+.sk-druck-block h3 { margin: 1rem 0 .3rem; font-size: 1.05rem; color: #111; }
+.sk-druck-blatt .sk-frage { border: 0; padding: .5rem 0; margin: 0 0 .6rem; background: transparent; break-inside: avoid; }
+.sk-druck-blatt .sk-frage-nr { color: #111; }
+.sk-druck-blatt .sk-optionen-lesen li.richtig { background: transparent; border-color: #111; font-weight: 700; }
+.sk-druck-blatt .sk-inhalt-html, .sk-druck-blatt .sk-consigne { color: #111; }
+@media print {
+    .sk-druck-seite.neue-seite { break-before: page; }
+    .sk-druck-blatt .sk-frage { break-inside: avoid; }
+}
+
+/* ---------------- Handy ---------------- */
+@media (max-width: 640px) {
+    .sk-a4-seite { padding: 1.2rem 1.1rem 2.2rem; min-height: 0; font-size: 1rem; }
+    .sk-frage { padding: .9rem .85rem; }
+    .sk-lecon-karte, .sk-inhalt-zeile { flex-wrap: wrap; }
+    .sk-lecon-karte-ende { width: 100%; justify-content: flex-end; }
+    .sk-fach-zeile { grid-template-columns: minmax(5.5rem, 7rem) 1fr 3.4rem; }
+    .sk-fach-zeile small { display: none; }
+    .sk-formel { grid-template-columns: minmax(0, 1fr); }
+    .sk-uhr { font-size: 1.25rem; }
+    .sk-feld-paar { grid-template-columns: 1fr 6.5rem; }
+    .sk-rte.a4 .ql-editor { padding: 1rem; }
+    .sk-blaettern > .sk-leise { display: none; }
+    .sk-blaettern .sk-btn { padding-inline: .8rem; }
+}

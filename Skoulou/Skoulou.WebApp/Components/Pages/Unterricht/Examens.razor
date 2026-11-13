@@ -1,5 +1,16 @@
 @page "/enseignant/examens"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
 
-<InVorbereitung Titel="Examens" Icon="check-square" Etappe="E4 – Pédagogie"
-                Beschreibung="Examens en ligne avec durée, fenêtre de passage et correction automatique." />
+<PageTitle>Mes examens · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes examens" Untertitel="Examens en ligne : durée, date limite et correction automatique." Icon="check-square">
+    <Aktionen>
+        <a class="sk-btn sk-btn-primaer" href="/enseignant/examens/nouveau"><Icon Name="plus" Groesse="18" /> <span>Nouvel examen</span></a>
+    </Aktionen>
+</SeitenKopf>
+
+<InhaltListe Art="InhaltsArt.Pruefung" AkteurId="Ich.KontoId" AutorId="Ich.KontoId" />

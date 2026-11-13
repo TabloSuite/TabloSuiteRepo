@@ -1,0 +1,76 @@
+@page "/enseignant/attributions/{Id:guid}"
+@attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject KorrekturService Korrektur
+@inject TimeProvider Uhr
+
+<PageTitle>Résultats · SKOULOU</PageTitle>
+
+@if (daten is null)
+{
+    <a class="sk-zurueck-link" href="/enseignant"><Icon Name="arrow-left" Groesse="16" /> Retour</a>
+    @if (Fehlermeldung is not null) { <Hinweis Art="fehler">@Fehlermeldung</Hinweis> } else { <LadeIndikator /> }
+}
+else
+{
+    var k = daten.Kopf;
+    <a class="sk-zurueck-link" href="@($"/enseignant/{(k.Art == InhaltsArt.Lecon ? "lecons" : "examens")}/{k.InhaltId}")"><Icon Name="arrow-left" Groesse="16" /> @k.Titel</a>
+    <SeitenKopf Oberzeile="@($"{PaedagogikText.Art(k.Art)} · {k.Fach}")" Titel="@($"Résultats – {k.Klasse}")" Icon="bars"
+                Untertitel="@($"{k.Titel} · {PaedagogikText.Frist(Zeit, k.FristUtc)}" + (k.Art == InhaltsArt.Lecon ? $" · {VersuchsRegel.Bezeichnung(k.MaxVersuche, k.Wertung)}" : ""))" />
+
+    <div class="sk-kennzahl-raster">
+        <KennzahlKachel Bezeichnung="Élèves" Wert="@daten.Zeilen.Count(z => z.InKlasse).ToString()" Icon="users" />
+        <KennzahlKachel Bezeichnung="Terminé" Wert="@daten.Zeilen.Count(z => z.Fortschritt == SchuelerFortschritt.Termine).ToString()" Icon="check-circle" />
+        <KennzahlKachel Bezeichnung="À corriger" Wert="@daten.Zeilen.Count(z => z.Fortschritt == SchuelerFortschritt.ACorriger).ToString()" Icon="pen" Haupt="@daten.Zeilen.Any(z => z.Fortschritt == SchuelerFortschritt.ACorriger)" />
+        <KennzahlKachel Bezeichnung="Moyenne" Wert="@PaedagogikText.Prozent(Durchschnitt)" Icon="trend-up" Zusatz="@($"sur {ScoreRechner.Punkte(k.MaxPunkte)} points")" />
+    </div>
+
+    <Karte CssClass="sk-oben-abstand">
+        <div class="sk-tabelle-rahmen">
+            <table class="sk-tabelle">
+                <thead><tr><th>Élève</th><th>État</th><th class="zahl">Essais</th><th class="zahl">Points</th><th class="zahl">Score</th><th>Dernière activité</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var z in daten.Zeilen)
+                    {
+                        <tr>
+                            <td>@z.Name@if (!z.InKlasse){<small class="sk-leise"> (a quitté la classe)</small>}</td>
+                            <td><StatusBadge Text="@PaedagogikText.Fortschritt(z.Fortschritt)" Art="@PaedagogikText.FortschrittArt(z.Fortschritt)" /></td>
+                            <td class="zahl">@z.AnzahlVersuche</td>
+                            <td class="zahl">@(z.Prozent is null ? "–" : PaedagogikText.Punkte(z.Punkte, z.MaxPunkte))</td>
+                            <td class="zahl"><span class="@PaedagogikText.ScoreKlasse(z.Prozent)">@PaedagogikText.Prozent(z.Prozent)</span></td>
+                            <td>@(z.LetzteAktivitaetUtc is { } a ? PaedagogikText.Zeitpunkt(Zeit, a) : "–")</td>
+                            <td>
+                                @if (z.AnzahlVersuche > 0)
+                                {
+                                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => (schueler, versuch) = (z.SchuelerId, z.GewerteterVersuchId)">
+                                        <Icon Name="eye" Groesse="15" /> <span>Voir la copie</span>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Karte>
+
+    <VersuchDialog SchuelerId="schueler" VersuchId="versuch" ZuweisungId="Id" AkteurId="Ich.KontoId" OnGeaendert="LadenAsync" OnClose="() => schueler = null" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ZuweisungErgebnisse? daten;
+    private Guid? schueler, versuch;
+    private SchulZeit Zeit => new(Uhr);
+
+    private decimal? Durchschnitt => daten is null ? null
+        : ScoreRechner.Gesamt(daten.Zeilen.Where(z => z.Prozent is not null && z.Fortschritt != SchuelerFortschritt.ACorriger).Select(z => (z.Punkte, z.MaxPunkte)));
+
+    protected override Task InitialisierenAsync() => LadenAsync();
+
+    private async Task LadenAsync() => daten = await Korrektur.ErgebnisseAsync(Ich.KontoId, Id);
+}

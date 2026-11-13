@@ -1,0 +1,196 @@
+@* Eine Frage aus Schülersicht: Eingabe je Typ, danach Ergebnis, Rückmeldung und (wenn erlaubt) Lösung. *@
+
+<div class="sk-frage @(Stand is not null ? "beantwortet" : null)">
+    <div class="sk-frage-kopf">
+        <span class="sk-frage-nr">Question @Frage.Nr</span>
+        <span class="sk-frage-punkte">@ScoreRechner.Punkte(Frage.Punkte) pt@(Frage.Punkte > 1 ? "s" : null)</span>
+    </div>
+    @if (Frage.Typ != FragenTyp.TexteATrous)
+    {
+        <InhaltHtml Html="@Frage.TextHtml" CssClass="sk-frage-text" />
+    }
+    <p class="sk-frage-anleitung">@FragenTypen.Anleitung(Frage.Typ)</p>
+
+    @if (Frage.HatAudio)
+    {
+        <div class="sk-audio-knoepfe">
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OnVorlesen.InvokeAsync((Frage, false))"><Icon Name="play" Groesse="16" /> <span>Écouter</span></button>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OnVorlesen.InvokeAsync((Frage, true))"><Icon Name="clock" Groesse="16" /> <span>Plus lentement</span></button>
+        </div>
+    }
+
+    @if (FragenTypen.IstAuswahl(Frage.Typ))
+    {
+        <div class="sk-optionen" role="@(FragenTypen.IstMehrfach(Frage.Typ) ? "group" : "radiogroup")">
+            @foreach (var o in Frage.Optionen)
+            {
+                var gewaehlt = Eingabe.Optionen.Contains(o.Id);
+                <button type="button" class="sk-option @(gewaehlt ? "gewaehlt" : null) @OptionKlasse(o.Id, gewaehlt)" disabled="@Gesperrt"
+                        role="@(FragenTypen.IstMehrfach(Frage.Typ) ? "checkbox" : "radio")" aria-checked="@(gewaehlt ? "true" : "false")"
+                        @onclick="() => OptionAsync(o.Id)">
+                    <span class="sk-option-marke @(FragenTypen.IstMehrfach(Frage.Typ) ? "eckig" : null)">@if (gewaehlt){<Icon Name="check" Groesse="14" Strich="3" />}</span>
+                    <span>@o.Text</span>
+                </button>
+            }
+        </div>
+    }
+    else if (Frage.Typ == FragenTyp.TexteATrous)
+    {
+        <div class="sk-lueckentext">
+            @foreach (var teil in LueckenText.Zerlege(Frage.TextHtml))
+            {
+                if (teil.Nr is { } nr)
+                {
+                    var i = nr - 1;
+                    <input class="sk-luecke @LueckeKlasse(i)" aria-label="@($"Trou {nr}")" value="@Luecke(i)" disabled="@Gesperrt"
+                           autocomplete="off" autocapitalize="off" spellcheck="false" @oninput="e => LueckeAsync(i, e.Value?.ToString())" />
+                }
+                else
+                {
+                    @((MarkupString)teil.Html!)
+                }
+            }
+        </div>
+    }
+    else if (Frage.Typ == FragenTyp.ConstructionPhrase && Frage.Wortbank.Count > 0)
+    {
+        <div class="sk-satz @(gewaehlteWoerter.Count == 0 ? "leer" : null)" aria-label="Votre phrase">
+            @if (gewaehlteWoerter.Count == 0)
+            {
+                <span class="sk-leise">Touchez les mots ci-dessous…</span>
+            }
+            @foreach (var (index, pos) in gewaehlteWoerter.Select((w, p) => (w, p)))
+            {
+                <button type="button" class="sk-wort gesetzt" disabled="@Gesperrt" @onclick="() => WortEntfernenAsync(pos)">@Frage.Wortbank[index]</button>
+            }
+        </div>
+        <div class="sk-wortbank">
+            @for (var i = 0; i < Frage.Wortbank.Count; i++)
+            {
+                var index = i;
+                <button type="button" class="sk-wort" disabled="@(Gesperrt || gewaehlteWoerter.Contains(index))" @onclick="() => WortAsync(index)">@Frage.Wortbank[index]</button>
+            }
+        </div>
+    }
+    else
+    {
+        <textarea class="sk-eingabe sk-antwort-text" rows="@(Frage.Typ == FragenTyp.Texte ? 4 : 2)" maxlength="4000" disabled="@Gesperrt"
+                  placeholder="Votre réponse…" aria-label="Votre réponse" value="@Eingabe.Text" @oninput="e => TextAsync(e.Value?.ToString())"></textarea>
+    }
+
+    @if (Stand is { } s)
+    {
+        <div class="sk-rueckmeldung sk-rueckmeldung-@PaedagogikText.ErgebnisArt(s.Status)" role="status">
+            <div class="sk-rueckmeldung-kopf">
+                <strong>@PaedagogikText.Ergebnis(s.Status)</strong>
+                @if (s.Punkte is { } p)
+                {
+                    <span>@PaedagogikText.Punkte(p, s.MaxPunkte)</span>
+                }
+            </div>
+            @if (s.Status == BewertungsStatus.Manuell)
+            {
+                <p>Votre réponse a été enregistrée. Votre enseignant la corrigera.</p>
+            }
+            @if (s.Loesung is { } l)
+            {
+                @if (FragenTypen.IstText(Frage.Typ) && l.Antworten.Count > 0)
+                {
+                    <p><span class="sk-leise">Réponse attendue :</span> @string.Join(" · ", l.Antworten)</p>
+                }
+                @if (Frage.Typ == FragenTyp.TexteATrous)
+                {
+                    <p class="sk-loesung-luecken">
+                        @for (var i = 0; i < l.Luecken.Count; i++)
+                        {
+                            <span><span class="sk-leise">Trou @(i + 1) :</span> @string.Join(" / ", l.Luecken[i])</span>
+                        }
+                    </p>
+                }
+            }
+            @if (!string.IsNullOrWhiteSpace(s.Feedback))
+            {
+                <p class="sk-feedback"><Icon Name="message" Groesse="15" /> @s.Feedback</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SchuelerFrage Frage { get; set; } = default!;
+    [Parameter] public AntwortEingabe Eingabe { get; set; } = AntwortEingabe.Leer;
+    [Parameter] public EventCallback<AntwortEingabe> EingabeChanged { get; set; }
+    [Parameter] public bool Gesperrt { get; set; }
+    [Parameter] public AntwortStand? Stand { get; set; }
+    [Parameter] public EventCallback<(SchuelerFrage Frage, bool Langsam)> OnVorlesen { get; set; }
+
+    private List<int> gewaehlteWoerter = [];
+    private Guid? fuerFrage;
+
+    protected override void OnParametersSet()
+    {
+        if (fuerFrage == Frage.Id && (Eingabe.Text ?? "") == Satz()) return;
+        fuerFrage = Frage.Id;
+        // Satz aus gespeichertem Text wiederherstellen (Wörter der Reihe nach zuordnen).
+        gewaehlteWoerter = [];
+        if (Frage.Typ != FragenTyp.ConstructionPhrase || string.IsNullOrWhiteSpace(Eingabe.Text)) return;
+        foreach (var wort in Eingabe.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var index = Enumerable.Range(0, Frage.Wortbank.Count).FirstOrDefault(i => Frage.Wortbank[i] == wort && !gewaehlteWoerter.Contains(i), -1);
+            if (index >= 0) gewaehlteWoerter.Add(index);
+        }
+    }
+
+    private string Satz() => string.Join(' ', gewaehlteWoerter.Select(i => Frage.Wortbank[i]));
+
+    private string? Luecke(int i) => i < Eingabe.Luecken.Count ? Eingabe.Luecken[i] : null;
+
+    private Task SetzeAsync(AntwortEingabe neu)
+    {
+        Eingabe = neu;
+        return EingabeChanged.InvokeAsync(neu);
+    }
+
+    private Task OptionAsync(Guid id)
+    {
+        if (Gesperrt) return Task.CompletedTask;
+        var liste = FragenTypen.IstMehrfach(Frage.Typ)
+            ? (Eingabe.Optionen.Contains(id) ? Eingabe.Optionen.Where(x => x != id).ToList() : [.. Eingabe.Optionen, id])
+            : [id];
+        return SetzeAsync(Eingabe with { Optionen = liste });
+    }
+
+    private Task LueckeAsync(int i, string? wert)
+    {
+        var liste = Enumerable.Range(0, Math.Max(Frage.AnzahlLuecken, i + 1)).Select(Luecke).ToList();
+        liste[i] = wert;
+        return SetzeAsync(Eingabe with { Luecken = liste });
+    }
+
+    private Task TextAsync(string? text) => SetzeAsync(Eingabe with { Text = text });
+
+    private Task WortAsync(int index)
+    {
+        gewaehlteWoerter.Add(index);
+        return SetzeAsync(Eingabe with { Text = Satz() });
+    }
+
+    private Task WortEntfernenAsync(int pos)
+    {
+        gewaehlteWoerter.RemoveAt(pos);
+        return SetzeAsync(Eingabe with { Text = Satz() });
+    }
+
+    private string? OptionKlasse(Guid id, bool gewaehlt)
+    {
+        if (Stand?.Loesung is not { } l) return null;
+        if (l.RichtigeOptionen.Contains(id)) return "richtig";
+        return gewaehlt ? "falsch" : null;
+    }
+
+    private string? LueckeKlasse(int i)
+    {
+        if (Stand?.Loesung is not { } l || i >= l.Luecken.Count) return null;
+        return AntwortVergleich.Passt(Luecke(i), l.Luecken[i]) ? "richtig" : "falsch";
+    }
+}

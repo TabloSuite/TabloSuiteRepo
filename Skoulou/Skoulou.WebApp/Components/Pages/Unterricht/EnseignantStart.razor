@@ -1,4 +1,84 @@
 @page "/enseignant"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@implements IDisposable
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject UebersichtService Uebersicht
+@inject TimeProvider Uhr
 
-<RollenStart Untertitel="Vos classes, vos notes et vos contenus." />
+<RollenStart Untertitel="Vos classes, vos contenus et ce qui reste à corriger.">
+    <Aktionen>
+        <a class="sk-btn sk-btn-primaer" href="/enseignant/lecons/nouvelle"><Icon Name="plus" Groesse="18" /> <span>Nouvelle leçon</span></a>
+    </Aktionen>
+    <ChildContent>
+        @if (start is not null)
+        {
+            <div class="sk-kennzahl-raster sk-oben-abstand">
+                <KennzahlKachel Bezeichnung="À corriger" Wert="@start.OffeneKorrekturen.ToString()" Icon="pen" Haupt="@(start.OffeneKorrekturen > 0)" Href="/enseignant/corrections" />
+                <KennzahlKachel Bezeichnung="Leçons" Wert="@start.Lecons.ToString()" Icon="book-open" Href="/enseignant/lecons" />
+                <KennzahlKachel Bezeichnung="Examens" Wert="@start.Pruefungen.ToString()" Icon="check-square" Href="/enseignant/examens" />
+                <KennzahlKachel Bezeichnung="Classes" Wert="@start.Klassen.Count.ToString()" Icon="users" Zusatz="@($"{start.Klassen.Sum(k => k.Schueler)} élèves")" />
+            </div>
+
+            <div class="sk-raster-2 sk-oben-abstand">
+                <Karte Titel="Mes classes" Icon="users" Untertitel="D'après vos affectations de l'année choisie.">
+                    @if (start.Klassen.Count == 0)
+                    {
+                        <Leerzustand Icon="users" Titel="Aucune classe" Text="La direction ne vous a pas encore attribué de cours pour cette année." />
+                    }
+                    else
+                    {
+                        <div class="sk-aufgaben">
+                            @foreach (var k in start.Klassen)
+                            {
+                                <div class="sk-aufgabe">
+                                    <span class="sk-aufgabe-icon"><Icon Name="users" Groesse="18" /></span>
+                                    <span class="sk-aufgabe-text"><strong>@k.Klasse</strong><small>@string.Join(" · ", k.Faecher)</small></span>
+                                    <span class="sk-badge sk-badge-neutral">@k.Schueler élèves</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </Karte>
+                <Karte Titel="Dates limites" Icon="calendar" Untertitel="Vos attributions des prochaines semaines.">
+                    @if (start.Fristen.Count == 0)
+                    {
+                        <Leerzustand Icon="calendar" Titel="Rien de prévu" Text="Aucune date limite dans les trois prochaines semaines." />
+                    }
+                    else
+                    {
+                        <div class="sk-aufgaben">
+                            @foreach (var f in start.Fristen)
+                            {
+                                <a class="sk-aufgabe" href="@($"/enseignant/attributions/{f.ZuweisungId}")">
+                                    <span class="sk-aufgabe-icon @(f.Art == InhaltsArt.Pruefung ? "examen" : null)"><Icon Name="@(f.Art == InhaltsArt.Lecon ? "book-open" : "clock")" Groesse="18" /></span>
+                                    <span class="sk-aufgabe-text"><strong>@f.Titel</strong><small>@f.Klasse · @PaedagogikText.Frist(Zeit, f.FristUtc)</small></span>
+                                    <span class="sk-badge sk-badge-neutral">@f.Abgeschlossen / @f.Schueler</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Karte>
+            </div>
+        }
+    </ChildContent>
+</RollenStart>
+
+@code {
+    private LehrerStart? start;
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync()
+    {
+        Kontext.Geaendert += JahrGeaendert;
+        await LadenAsync();
+    }
+
+    private async Task LadenAsync() => start = await Uebersicht.LehrerStartAsync(Ich.KontoId, Kontext.SchuljahrId);
+
+    private void JahrGeaendert() => _ = InvokeAsync(async () => { await LadenAsync(); StateHasChanged(); });
+
+    public void Dispose() => Kontext.Geaendert -= JahrGeaendert;
+}

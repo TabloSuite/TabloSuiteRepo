@@ -1,5 +1,88 @@
 @page "/eleve/resultats"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject UebersichtService Uebersicht
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Résultats" Icon="trend-up" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Vos notes par matière et votre progression." />
+<PageTitle>Résultats · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes résultats" Untertitel="Score calculé sur les points obtenus : leçons et examens comptent selon leurs points." Icon="trend-up" />
+
+@if (Laedt)
+{
+    <LadeIndikator />
+}
+else if (daten is null || daten.Zeilen.Count == 0)
+{
+    <Leerzustand Icon="trend-up" Titel="Pas encore de résultats" Text="Vos résultats apparaîtront ici dès votre première leçon ou votre premier examen." />
+}
+else
+{
+    <div class="sk-ergebnis-karte @PaedagogikText.ScoreKlasse(daten.Gesamt)">
+        <span class="sk-ergebnis-zahl">@PaedagogikText.Prozent(daten.Gesamt)</span>
+        <div>
+            <strong>Score général</strong>
+            <p>@daten.Zeilen.Count(z => z.Abgeschlossen) terminé(s) sur @daten.Zeilen.Count. Un travail non rendu après la date limite compte zéro.</p>
+        </div>
+    </div>
+
+    <Karte Titel="Par matière" Icon="bars" CssClass="sk-oben-abstand">
+        <div class="sk-fach-balken">
+            @foreach (var f in daten.Faecher)
+            {
+                <div class="sk-fach-zeile">
+                    <span class="sk-fach-name">@f.Fach</span>
+                    <span class="sk-balken"><span class="@PaedagogikText.ScoreKlasse(f.Prozent)" style="width:@((int)Math.Clamp(f.Prozent ?? 0, 0, 100))%"></span></span>
+                    <span class="sk-fach-wert">@PaedagogikText.Prozent(f.Prozent)</span>
+                    <small class="sk-leise">@f.Abgeschlossen / @f.Gesamt</small>
+                </div>
+            }
+        </div>
+    </Karte>
+
+    <Karte Titel="Détail" Icon="clipboard" CssClass="sk-oben-abstand">
+        <div class="sk-tabelle-rahmen">
+            <table class="sk-tabelle">
+                <thead><tr><th>Travail</th><th>Matière</th><th>Date limite</th><th class="zahl">Points</th><th class="zahl">Score</th></tr></thead>
+                <tbody>
+                    @foreach (var z in daten.Zeilen)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@(z.Art == InhaltsArt.Lecon ? $"/eleve/lecons/{z.ZuweisungId}" : $"/eleve/examens/{z.ZuweisungId}")">@z.Titel</a>
+                                <small class="sk-leise"> · @PaedagogikText.Art(z.Art)@(z.AnzahlVersuche > 1 ? $" · {z.AnzahlVersuche} essais" : null)</small>
+                            </td>
+                            <td>@z.Fach</td>
+                            <td>@(z.FristUtc is { } f ? PaedagogikText.Zeitpunkt(Zeit, f) : "–")</td>
+                            <td class="zahl">@(z.Abgeschlossen || z.Ueberfaellig ? PaedagogikText.Punkte(z.Punkte, z.MaxPunkte) : "–")</td>
+                            <td class="zahl">
+                                @if (z.KorrekturOffen)
+                                {
+                                    <StatusBadge Text="En correction" Art="info" />
+                                }
+                                else if (z.Prozent is { } p)
+                                {
+                                    <span class="sk-badge @PaedagogikText.ScoreKlasse(p)">@PaedagogikText.Prozent(p)</span>
+                                }
+                                else
+                                {
+                                    <StatusBadge Text="À faire" Art="warn" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Karte>
+}
+
+@code {
+    private SchuelerErgebnisse? daten;
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync() => daten = await Uebersicht.ErgebnisseAsync(Ich.KontoId);
+}

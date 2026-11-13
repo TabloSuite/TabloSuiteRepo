@@ -1,0 +1,136 @@
+@* Mediathek der Schule (Bilder oder Videos): auswählen oder neu hochladen (in Teilen, mit Fortschritt). *@
+@implements IDisposable
+@inject MedienService Medien
+@inject PaedagogikModul Js
+
+<ModalDialog Open="Open" Title="@(Art == MedienArt.Video ? "Choisir une vidéo" : "Choisir une image")" Breite="sk-modal-lg" OnClose="OnClose"
+             ErrorMessage="@fehler" SchliessenMitEscape="!laedtHoch">
+    <ChildContent>
+        <div class="sk-medien-kopf">
+            <label class="sk-suche">
+                <Icon Name="search" Groesse="18" />
+                <input type="search" placeholder="Nom du fichier…" aria-label="Rechercher" @bind="suche" @bind:event="oninput" @bind:after="SucheAsync" />
+            </label>
+            <label class="sk-btn sk-btn-primaer @(laedtHoch ? "sk-laedt" : null)">
+                <Icon Name="plus" Groesse="18" /> <span>@(laedtHoch ? $"Envoi… {fortschritt} %" : Art == MedienArt.Video ? "Envoyer une vidéo" : "Envoyer une image")</span>
+                <input type="file" class="sk-versteckt" accept="@(Art == MedienArt.Video ? "video/mp4,video/quicktime,.mp4,.mov" : "image/png,image/jpeg,image/gif,image/webp")"
+                       disabled="@laedtHoch" @ref="datei" @onchange="HochladenAsync" />
+            </label>
+        </div>
+        <p class="sk-leise sk-medien-hinweis">
+            @(Art == MedienArt.Video ? "MP4 ou MOV, 300 Mo et 20 minutes au plus. Préférez des vidéos courtes : vos élèves ont souvent une connexion lente."
+                                      : "PNG, JPEG, GIF ou WebP, 5 Mo au plus.")
+        </p>
+        @if (laedtHoch)
+        {
+            <div class="sk-fortschritt"><span style="width:@fortschritt%"></span></div>
+        }
+        @if (eintraege is null)
+        {
+            <LadeIndikator />
+        }
+        else if (eintraege.Count == 0)
+        {
+            <Leerzustand Icon="@(Art == MedienArt.Video ? "video" : "image")" Titel="Médiathèque vide" Text="Envoyez un premier fichier." />
+        }
+        else
+        {
+            <div class="sk-medien-raster">
+                @foreach (var m in eintraege)
+                {
+                    <button type="button" class="sk-medium" @onclick="() => OnGewaehlt.InvokeAsync(m)" title="@m.Dateiname">
+                        @if (m.Art == MedienArt.Bild)
+                        {
+                            <img src="@m.Url" alt="@m.Dateiname" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span class="sk-medium-video"><Icon Name="video" Groesse="28" /><small>@Dauer(m.DauerSek)</small></span>
+                        }
+                        <span class="sk-medium-name">@m.Dateiname</span>
+                        <small class="sk-leise">@m.Besitzer · @Groesse(m.Bytes)</small>
+                    </button>
+                }
+            </div>
+            @if (mehr)
+            {
+                <div class="sk-liste-fuss"><AsyncKnopf Text="Afficher plus" CssClass="sk-btn-ghost sk-btn-klein" OnClick="MehrAsync" /></div>
+            }
+        }
+    </ChildContent>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public MedienArt Art { get; set; } = MedienArt.Bild;
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public EventCallback<MediumZeile> OnGewaehlt { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private List<MediumZeile>? eintraege;
+    private bool mehr, laedtHoch, warOffen;
+    private string? suche, fehler;
+    private int fortschritt;
+    private ElementReference datei;
+    private DotNetObjectReference<MedienDialog>? selbst;
+    private MedienArt geladeneArt;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && (!warOffen || geladeneArt != Art))
+        {
+            fehler = null;
+            geladeneArt = Art;
+            await SucheAsync();
+        }
+        warOffen = Open;
+    }
+
+    private async Task SucheAsync()
+    {
+        var (liste, weitere) = await Medien.BibliothekAsync(AkteurId, Art, suche);
+        eintraege = liste.ToList();
+        mehr = weitere;
+    }
+
+    private async Task MehrAsync()
+    {
+        var (liste, weitere) = await Medien.BibliothekAsync(AkteurId, Art, suche, eintraege?.Count ?? 0);
+        eintraege = [.. eintraege ?? [], .. liste];
+        mehr = weitere;
+    }
+
+    private async Task HochladenAsync()
+    {
+        fehler = null;
+        laedtHoch = true;
+        fortschritt = 0;
+        selbst ??= DotNetObjectReference.Create(this);
+        try
+        {
+            var neu = await Js.AufrufAsync<MediumZeile>("hochladen", datei, (int)Art, selbst);
+            if (neu is not null) await OnGewaehlt.InvokeAsync(neu);
+        }
+        catch (JSException ex)
+        {
+            fehler = ex.Message.Split('\n')[0];
+        }
+        finally
+        {
+            laedtHoch = false;
+        }
+    }
+
+    [JSInvokable]
+    public Task UploadFortschritt(int prozent)
+    {
+        fortschritt = prozent;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static string Groesse(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.#} Mo" : $"{Math.Max(1, bytes / 1024)} Ko";
+
+    private static string Dauer(int? sek) => sek is { } s ? $"{s / 60}:{s % 60:00}" : "";
+
+    public void Dispose() => selbst?.Dispose();
+}

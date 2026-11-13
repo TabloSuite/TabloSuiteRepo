@@ -1,4 +1,71 @@
 @page "/eleve"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject UebersichtService Uebersicht
+@inject LernService Lernen
+@inject TimeProvider Uhr
 
-<RollenStart Untertitel="Vos leçons, vos résultats et votre emploi du temps." />
+<RollenStart Untertitel="@(start?.Klasse is { } k ? $"Classe de {k} – voici ce qui vous attend." : "Vos leçons, vos résultats et votre emploi du temps.")">
+    <Aktionen>
+        @if (start is not null)
+        {
+            <div class="sk-stimme">
+                <Schalter Wert="@(!start.StimmeAus)" WertChanged="StimmeAsync" Label="@(start.StimmeAus ? "Voix : non" : "Voix : oui")"
+                          Hinweis="Félicitations lues à voix haute" />
+            </div>
+        }
+    </Aktionen>
+    <ChildContent>
+    @if (start is not null)
+    {
+        <div class="sk-kennzahl-raster sk-oben-abstand">
+            <KennzahlKachel Bezeichnung="À faire" Wert="@start.Ausstehend.ToString()" Icon="clipboard" Haupt="@(start.Ausstehend > 0)" Href="/eleve/lecons" />
+            <KennzahlKachel Bezeichnung="Score" Wert="@PaedagogikText.Prozent(start.Gesamt)" Icon="trend-up" Zusatz="Leçons et examens" Href="/eleve/resultats" />
+            <KennzahlKachel Bezeichnung="Terminés" Wert="@start.Abgeschlossen.ToString()" Icon="check-circle" Zusatz="Leçons et examens" />
+        </div>
+
+        <Karte Titel="À faire" Untertitel="Leçons et examens ouverts, le plus urgent en premier." Icon="clipboard" CssClass="sk-oben-abstand">
+                @if (start.Offen.Count == 0)
+                {
+                    <Leerzustand Icon="check-circle" Titel="Tout est fait" Text="Aucune leçon ni aucun examen en attente. Bravo !" />
+                }
+                else
+                {
+                    <div class="sk-aufgaben">
+                        @foreach (var a in start.Offen)
+                        {
+                            <a class="sk-aufgabe" href="@(a.Art == InhaltsArt.Lecon ? $"/eleve/lecons/{a.ZuweisungId}" : $"/eleve/examens/{a.ZuweisungId}")">
+                                <span class="sk-aufgabe-icon @(a.Art == InhaltsArt.Pruefung ? "examen" : null)"><Icon Name="@(a.Art == InhaltsArt.Lecon ? "book-open" : "clock")" Groesse="18" /></span>
+                                <span class="sk-aufgabe-text">
+                                    <strong>@a.Titel</strong>
+                                    <small>@PaedagogikText.Art(a.Art) · @a.Fach · @PaedagogikText.Frist(Zeit, a.FristUtc)</small>
+                                </span>
+                                @if (a.Begonnen)
+                                {
+                                    <StatusBadge Text="Commencé" Art="info" />
+                                }
+                                <Icon Name="chevron-right" Groesse="18" />
+                            </a>
+                        }
+                    </div>
+                }
+        </Karte>
+    }
+    </ChildContent>
+</RollenStart>
+
+@code {
+    private EleveUebersicht? start;
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync() => start = await Uebersicht.EleveStartAsync(Ich.KontoId);
+
+    private Task StimmeAsync(bool an) => AusfuehrenAsync(async () =>
+    {
+        await Lernen.StimmeSetzenAsync(Ich.KontoId, aus: !an);
+        start = start! with { StimmeAus = !an };
+    }, an ? "Voix activée." : "Voix désactivée.");
+}

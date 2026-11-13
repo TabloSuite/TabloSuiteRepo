@@ -39,6 +39,7 @@ public static class RechteMatrix
         [Faehigkeit.RechnungSkoulouBearbeiten] = [Ja, MitRecht(KoordinatorRechte.RechnungSkoulou), Nein, Nein, Nein, Lesen, Ja],
         [Faehigkeit.PlattformVerwalten] = [Nein, Nein, Nein, Nein, Nein, Nein, Ja],
         [Faehigkeit.SchulenBetreuen] = [Nein, Nein, Nein, Nein, Nein, Eigene, Ja],
+        [Faehigkeit.Lernen] = [Nein, Nein, Nein, Eigene, Nein, Nein, Nein],
     };
 
     private static int Spalte(string? rolle) => rolle switch

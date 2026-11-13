@@ -1,5 +1,74 @@
 @page "/eleve/lecons"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject LernService Lernen
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Leçons" Icon="book-open" Etappe="E4 – Pédagogie"
-                Beschreibung="Les leçons et exercices de votre classe, à votre rythme." />
+<PageTitle>Leçons · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes leçons" Untertitel="Les leçons et exercices de votre classe, par matière." Icon="book-open" />
+
+@if (!Laedt)
+{
+    <Liste T="LeconKarte" Laden="LadenAsync" Filter="chips" SuchPlatzhalter="Titre ou matière…" Scroll="false"
+           LeerIcon="book-open" LeerTitel="Aucune leçon pour le moment" LeerText="Vos enseignants n'ont pas encore attribué de leçon à votre classe.">
+        <Zeile Context="l">
+            <a class="sk-lecon-karte" href="@($"/eleve/lecons/{l.ZuweisungId}")">
+                <span class="sk-lecon-karte-icon @(l.Abgeschlossen ? "fertig" : null)"><Icon Name="@(l.Abgeschlossen ? "check" : l.HatVideo ? "video" : "book-open")" Groesse="20" /></span>
+                <span class="sk-lecon-karte-text">
+                    <span class="sk-oberzeile">@l.Fach · @l.Lehrer</span>
+                    <strong>@l.Titel</strong>
+                    @if (!string.IsNullOrWhiteSpace(l.Zusammenfassung))
+                    {
+                        <small>@l.Zusammenfassung</small>
+                    }
+                    <span class="sk-lecon-karte-meta">
+                        @if (l.AnzahlFragen > 0)
+                        {
+                            <span>@l.AnzahlFragen question@(l.AnzahlFragen > 1 ? "s" : null)</span>
+                        }
+                        <span class="@(l.FristUtc is { } f && f <= Zeit.JetztUtc ? "sk-text-fehler" : null)">@PaedagogikText.Frist(Zeit, l.FristUtc)</span>
+                    </span>
+                </span>
+                <span class="sk-lecon-karte-ende">
+                    @if (l.KorrekturOffen)
+                    {
+                        <StatusBadge Text="En correction" Art="info" />
+                    }
+                    else if (l.Prozent is { } p)
+                    {
+                        <span class="sk-badge @PaedagogikText.ScoreKlasse(p)">@PaedagogikText.Prozent(p)</span>
+                    }
+                    else if (l.Abgeschlossen)
+                    {
+                        <StatusBadge Text="Terminée" Art="erfolg" />
+                    }
+                    else
+                    {
+                        <StatusBadge Text="À faire" Art="warn" />
+                    }
+                    <Icon Name="chevron-right" Groesse="18" />
+                </span>
+            </a>
+        </Zeile>
+    </Liste>
+}
+
+@code {
+    private IReadOnlyList<FilterChip> chips = [];
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync()
+    {
+        var faecher = await Lernen.FaecherAsync(Ich.KontoId);
+        chips = faecher.Count > 1
+            ? [new FilterChip(null, "Toutes", faecher.Sum(f => f.Anzahl)), .. faecher.Select(f => new FilterChip(f.FachId.ToString(), f.Fach, f.Anzahl))]
+            : [];
+    }
+
+    private Task<(IReadOnlyList<LeconKarte> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Lernen.LeconsAsync(Ich.KontoId, a.Suche, Guid.TryParse(a.Filter, out var fach) ? fach : null, a.Ueberspringen, a.Anzahl, ct);
+}

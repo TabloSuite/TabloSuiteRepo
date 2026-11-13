@@ -1,0 +1,97 @@
+@* Eine Antwort korrigieren (auch erneut): Frage mit Lösung, Antwort des Schülers, Punkte, Kommentar, Verlauf. *@
+@inject KorrekturService Korrektur
+@inject TimeProvider Uhr
+
+<ModalDialog Open="AntwortId is not null" Title="Corriger la réponse" Oberzeile="@(detail is null ? null : $"{detail.Schueler} · {detail.Klasse} · {detail.Inhalt}")"
+             Breite="sk-modal-lg" OnClose="OnClose" ErrorMessage="@fehler" SchliessenMitEscape="false">
+    <ChildContent>
+        @if (detail is null)
+        {
+            <LadeIndikator />
+        }
+        else
+        {
+            <FrageVorschau Frage="detail.Frage" Eingabe="detail.Eingabe" MitLoesungen="true" />
+            <div class="sk-korrektur-formular">
+                <ZahlFeld Label="@($"Points (sur {ScoreRechner.Punkte(detail.Frage.Punkte)})")" Wert="punkte" WertChanged="w => punkte = w" Min="0" Max="detail.Frage.Punkte" />
+                <div class="sk-knopfzeile sk-punkte-schnell">
+                    <button type="button" class="sk-chip" @onclick="() => punkte = 0">0</button>
+                    <button type="button" class="sk-chip" @onclick="() => punkte = Math.Round(detail.Frage.Punkte / 2, 2)">Moitié</button>
+                    <button type="button" class="sk-chip" @onclick="() => punkte = detail.Frage.Punkte">Tout juste</button>
+                </div>
+                <TextFeld Label="Commentaire pour l'élève (facultatif)" Zeilen="3" MaxLaenge="2000" Wert="@feedback" WertChanged="w => feedback = w" Sofort="true" />
+            </div>
+            @if (detail.Verlauf.Count > 0)
+            {
+                <details class="sk-verlauf">
+                    <summary>Historique des corrections (@detail.Verlauf.Count)</summary>
+                    <ul>
+                        @foreach (var v in detail.Verlauf)
+                        {
+                            <li>@PaedagogikText.Zeitpunkt(Zeit, v.ZeitUtc) – @v.Von : @(v.AltePunkte is { } a ? ScoreRechner.Punkte(a) : "–") → <strong>@ScoreRechner.Punkte(v.NeuePunkte)</strong>@(v.Feedback is { } fb ? $" « {fb} »" : null)</li>
+                        }
+                    </ul>
+                </details>
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
+        @if (MitNaechster)
+        {
+            <AsyncKnopf Text="Enregistrer et suivante" CssClass="sk-btn-ghost" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(true)" />
+        }
+        <AsyncKnopf Text="Enregistrer la note" Icon="check" CssClass="sk-btn-primaer" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(false)" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public Guid? AntwortId { get; set; }
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public bool MitNaechster { get; set; }
+
+    /// <summary>Nach dem Speichern; true = nächste Antwort öffnen.</summary>
+    [Parameter] public EventCallback<bool> OnGespeichert { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private KorrekturDetail? detail;
+    private decimal? punkte;
+    private string? feedback, fehler;
+    private Guid? geladen;
+
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AntwortId == geladen) return;
+        geladen = AntwortId;
+        detail = null;
+        fehler = null;
+        if (AntwortId is not { } id) return;
+        try
+        {
+            detail = await Korrektur.DetailAsync(AkteurId, id);
+            punkte = detail.Punkte;
+            feedback = detail.Feedback;
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task SpeichernAsync(bool naechste)
+    {
+        if (detail is null || punkte is not { } p) return;
+        try
+        {
+            await Korrektur.KorrigierenAsync(AkteurId, detail.AntwortId, p, feedback);
+            geladen = null;
+            await OnGespeichert.InvokeAsync(naechste);
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

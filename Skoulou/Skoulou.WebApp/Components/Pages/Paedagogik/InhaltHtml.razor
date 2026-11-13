@@ -1,0 +1,19 @@
+@* Zeigt bereinigtes Inhalts-HTML (beim Speichern geprüft) und rendert darin enthaltene Formeln mit KaTeX. *@
+@inject PaedagogikModul Js
+
+<div class="sk-inhalt-html @CssClass" @ref="element">@((MarkupString)(Html ?? string.Empty))</div>
+
+@code {
+    [Parameter] public string? Html { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private ElementReference element;
+    private string? gerendert;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (gerendert == Html) return;
+        gerendert = Html;
+        if (Html?.Contains("ql-formula", StringComparison.Ordinal) == true) await Js.AufrufAsync("formelnRendern", element);
+    }
+}

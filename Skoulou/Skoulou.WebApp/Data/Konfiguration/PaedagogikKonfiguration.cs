@@ -59,8 +59,9 @@ internal sealed class AufgabenBlockKonfiguration : IEntityTypeConfiguration<Aufg
         b.Schulgebunden();
         b.Property(x => x.Titel).HasMaxLength(200);
         b.Property(x => x.Consigne).HasMaxLength(2000);
-        b.HasIndex(x => new { x.LeconId, x.Nr }).IsUnique().HasFilter("[LeconId] IS NOT NULL");
-        b.HasIndex(x => new { x.PruefungId, x.Nr }).IsUnique().HasFilter("[PruefungId] IS NOT NULL");
+        // Archivierte Blöcke (mit beantworteten Fragen) geben ihre Nummer frei.
+        b.HasIndex(x => new { x.LeconId, x.Nr }).IsUnique().HasFilter("[LeconId] IS NOT NULL AND [Archiviert] = 0");
+        b.HasIndex(x => new { x.PruefungId, x.Nr }).IsUnique().HasFilter("[PruefungId] IS NOT NULL AND [Archiviert] = 0");
         b.Fk<AufgabenBlock, Lecon>(x => x.LeconId);
         b.Fk<AufgabenBlock, Pruefung>(x => x.PruefungId);
         b.ToTable(t => t.HasCheckConstraint("CK_AufgabenBloecke_Inhalt",
@@ -120,6 +121,8 @@ internal sealed class VersuchKonfiguration : IEntityTypeConfiguration<Versuch>
         b.Property(x => x.MaxPunkte).HasPrecision(8, 2);
         b.HasIndex(x => new { x.ZuweisungId, x.SchuelerId, x.Nr }).IsUnique();
         b.HasIndex(x => new { x.Status, x.DeadlineUtc });
+        // Abgabe durch Schüler und Hintergrunddienst gleichzeitig: nur einer gewinnt (optimistische Sperre).
+        b.Property(x => x.Status).IsConcurrencyToken();
         b.Fk<Versuch, Zuweisung>(x => x.ZuweisungId);
         b.KontoFk(x => x.SchuelerId);
     }
@@ -145,6 +148,7 @@ internal sealed class LernStandKonfiguration : IEntityTypeConfiguration<LernStan
         b.ToTable("LernStaende");
         b.Schulgebunden();
         b.Property(x => x.BestePunkte).HasPrecision(8, 2);
+        b.Property(x => x.MaxPunkte).HasPrecision(8, 2);
         b.Property(x => x.Prozent).HasPrecision(5, 2);
         b.HasIndex(x => new { x.ZuweisungId, x.SchuelerId }).IsUnique();
         b.HasIndex(x => x.SchuelerId);
@@ -162,5 +166,21 @@ internal sealed class FormelFavoritKonfiguration : IEntityTypeConfiguration<Form
         b.Property(x => x.Bezeichnung).HasMaxLength(120);
         b.HasIndex(x => x.KontoId);
         b.KontoFk(x => x.KontoId);
+    }
+}
+
+internal sealed class KorrekturEintragKonfiguration : IEntityTypeConfiguration<KorrekturEintrag>
+{
+    public void Configure(EntityTypeBuilder<KorrekturEintrag> b)
+    {
+        b.ToTable("KorrekturEintraege");
+        b.Schulgebunden();
+        b.Property(x => x.AltePunkte).HasPrecision(6, 2);
+        b.Property(x => x.NeuePunkte).HasPrecision(6, 2);
+        b.Property(x => x.Feedback).HasMaxLength(2000);
+        b.HasIndex(x => x.AntwortId);
+        b.Fk<KorrekturEintrag, Antwort>(x => x.AntwortId);
+        b.Fk<KorrekturEintrag, Versuch>(x => x.VersuchId);
+        b.KontoFk(x => x.KorrigiertVonId);
     }
 }

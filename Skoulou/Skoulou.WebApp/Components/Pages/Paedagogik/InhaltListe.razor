@@ -1,0 +1,68 @@
+@* Inhaltsliste (Leçons oder Examens) mit Suche, Status-Chips und Server-Paging; Direktion zusätzlich mit Filtern. *@
+@inject InhaltService Inhalte
+@inject TimeProvider Uhr
+
+<Liste @ref="liste" T="InhaltZeile" Laden="LadenAsync" Filter="chips" AnfangsFilter="aktiv" SuchPlatzhalter="Titre ou thème…" Scroll="false"
+       LeerIcon="@(Art == InhaltsArt.Lecon ? "book-open" : "check-square")"
+       LeerTitel="@(Art == InhaltsArt.Lecon ? "Aucune leçon" : "Aucun examen")"
+       LeerText="@(Art == InhaltsArt.Lecon ? "Créez votre première leçon : des pages de cours et des exercices corrigés automatiquement." : "Créez votre premier examen en ligne, avec une durée et une date limite.")">
+    <Werkzeuge>@Werkzeuge</Werkzeuge>
+    <Zeile Context="z">
+        <a class="sk-inhalt-zeile" href="@($"{(z.Art == InhaltsArt.Lecon ? "/enseignant/lecons" : "/enseignant/examens")}/{z.Id}")">
+            <span class="sk-lecon-karte-icon"><Icon Name="@(z.Art == InhaltsArt.Lecon ? "book-open" : "check-square")" Groesse="20" /></span>
+            <span class="sk-lecon-karte-text">
+                <span class="sk-oberzeile">@z.Stufe · @z.Fach@(MitAutor ? $" · {z.AutorName}" : null)</span>
+                <strong>@z.Titel</strong>
+                <span class="sk-lecon-karte-meta">
+                    <span>@z.AnzahlFragen question@(z.AnzahlFragen > 1 ? "s" : null)</span>
+                    <span>@(z.AnzahlZuweisungen == 0 ? "Non attribué" : $"Attribué à {z.AnzahlZuweisungen} classe{(z.AnzahlZuweisungen > 1 ? "s" : null)}")</span>
+                    <span>Modifié le @SkoulouKultur.Datum(DateOnly.FromDateTime(new SchulZeit(Uhr).ZuLokal(z.GeaendertAmUtc)))</span>
+                </span>
+            </span>
+            <span class="sk-lecon-karte-ende">
+                @if (z.SaisiParDirection)
+                {
+                    <StatusBadge Text="Saisi par la direction" Art="info" />
+                }
+                <StatusBadge Text="@PaedagogikText.Status(z.Status)" Art="@PaedagogikText.StatusArt(z.Status)" />
+                <Icon Name="chevron-right" Groesse="18" />
+            </span>
+        </a>
+    </Zeile>
+</Liste>
+
+@code {
+    [Parameter, EditorRequired] public InhaltsArt Art { get; set; }
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+
+    /// <summary>Nur Inhalte dieser Lehrkraft (null = alle der Schule, nur Direktion).</summary>
+    [Parameter] public Guid? AutorId { get; set; }
+    [Parameter] public Guid? FachId { get; set; }
+    [Parameter] public Guid? KlasseId { get; set; }
+    [Parameter] public bool MitAutor { get; set; }
+    [Parameter] public RenderFragment? Werkzeuge { get; set; }
+
+    private Liste<InhaltZeile>? liste;
+    private const string aktiv = "aktiv";
+
+    private static readonly IReadOnlyList<FilterChip> chips =
+    [
+        new(aktiv, "En cours"), new(nameof(InhaltsStatus.Brouillon), "Brouillons"), new(nameof(InhaltsStatus.Prete), "Prêts"),
+        new(nameof(InhaltsStatus.Archive), "Archivés")
+    ];
+
+    private (InhaltsArt, Guid?, Guid?, Guid?)? letzteFilter;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var filter = (Art, AutorId, FachId, KlasseId);
+        if (letzteFilter is not null && letzteFilter != filter && liste is not null) await liste.NeuLadenAsync();
+        letzteFilter = filter;
+    }
+
+    private Task<(IReadOnlyList<InhaltZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+    {
+        InhaltsStatus? status = Enum.TryParse<InhaltsStatus>(a.Filter, out var s) ? s : null;
+        return Inhalte.SucheAsync(AkteurId, new InhaltFilter(Art, a.Suche, status, AutorId, FachId, null, KlasseId), a.Ueberspringen, a.Anzahl, ct);
+    }
+}

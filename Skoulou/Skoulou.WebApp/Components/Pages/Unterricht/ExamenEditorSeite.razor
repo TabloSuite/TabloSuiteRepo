@@ -1,0 +1,14 @@
+@page "/enseignant/examens/nouveau"
+@page "/enseignant/examens/{Id:guid}/modifier"
+@attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+
+<InhaltEditor Art="InhaltsArt.Pruefung" Id="Id" Pour="Pour" />
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "pour")] public Guid? Pour { get; set; }
+}

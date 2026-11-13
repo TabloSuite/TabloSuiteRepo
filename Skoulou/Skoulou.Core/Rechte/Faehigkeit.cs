@@ -23,7 +23,10 @@ public enum Faehigkeit
     GebuehrenVerwalten,
     RechnungSkoulouBearbeiten,
     PlattformVerwalten,
-    SchulenBetreuen
+    SchulenBetreuen,
+
+    /// <summary>Zugewiesene Leçons und Examens bearbeiten (nur Schüler, nur eigene Klasse).</summary>
+    Lernen
 }
 
 /// <summary>Zusatzrechte eines Koordinators (Flags am Konto, gesetzt vom Direktor).</summary>

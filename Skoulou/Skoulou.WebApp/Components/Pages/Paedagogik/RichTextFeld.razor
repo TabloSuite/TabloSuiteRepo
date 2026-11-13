@@ -1,0 +1,55 @@
+@* Quill-Editor (selbst gehostet) für Seiten und Fragetexte; Bilder/Formeln über die Dialoge des Editors (EditorKontext). *@
+@implements IAsyncDisposable
+@inject PaedagogikModul Js
+
+<div class="sk-rte @(Kompakt ? "kompakt" : null) @(A4 ? "a4" : null)">
+    <div @ref="element"></div>
+</div>
+
+@code {
+    [Parameter] public string? Html { get; set; }
+    [Parameter] public EventCallback<string> HtmlChanged { get; set; }
+    [Parameter] public bool Kompakt { get; set; }
+    [Parameter] public bool A4 { get; set; }
+    [Parameter] public string? Platzhalter { get; set; }
+    [CascadingParameter] public EditorKontext? Kontext { get; set; }
+
+    private ElementReference element;
+    private DotNetObjectReference<RichTextFeld>? selbst;
+    private string? id;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        selbst = DotNetObjectReference.Create(this);
+        id = await Js.AufrufAsync<string>("editorErstellen", element, selbst, Html ?? string.Empty, Kompakt, Platzhalter);
+        if (id is not null) Kontext?.Anmelden(this);
+    }
+
+    [JSInvokable]
+    public Task HtmlGeaendert(string html)
+    {
+        Html = html;
+        return HtmlChanged.InvokeAsync(html);
+    }
+
+    [JSInvokable]
+    public Task BildWaehlen() => Kontext?.BildWaehlen?.Invoke(this) ?? Task.CompletedTask;
+
+    [JSInvokable]
+    public Task FormelOeffnen(string? latex) => Kontext?.FormelOeffnen?.Invoke(this, latex) ?? Task.CompletedTask;
+
+    public Task BildEinfuegenAsync(string url) => Js.AufrufAsync("bildEinfuegen", id, url);
+
+    public Task FormelEinfuegenAsync(string latex) => Js.AufrufAsync("formelEinfuegen", id, latex);
+
+    /// <summary>Ausstehende Änderungen sofort übernehmen (vor dem Speichern).</summary>
+    public Task SichernAsync() => id is null ? Task.CompletedTask : Js.AufrufAsync("editorSichern", id);
+
+    public async ValueTask DisposeAsync()
+    {
+        Kontext?.Abmelden(this);
+        if (id is not null) await Js.AufrufAsync("editorEntfernen", id);
+        selbst?.Dispose();
+    }
+}
