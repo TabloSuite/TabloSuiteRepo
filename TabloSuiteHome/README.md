@@ -18,6 +18,9 @@ Hauptseite der Firma TabloSuite: stellt alle Apps der TabloSuiteMappe vor und f�
 3. `dotnet test TabloSuiteHome/TabloSuiteHome.Tests` – prüft den Katalog (Pflichtfelder, https, doppelte Ids, Bilder vorhanden).
    Beim Start prüft die Seite den Katalog ebenfalls und startet bei Fehlern nicht.
 
+Regel für jede App der TabloSuiteMappe: Zugangsdaten des Start-Admins (Seed) kommen **nur** aus
+Umgebungsvariablen der jeweiligen App (`Seed__SuperAdmin…`), nie aus dem Code oder dem Repository.
+
 Kontakt (E-Mail, Telefon, Ort) steht ebenfalls in `appsettings.json` unter `TabloSuite`.
 
 ## Lokal starten

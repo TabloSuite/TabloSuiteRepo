@@ -54,18 +54,20 @@ public static class ApplicationDbInitializer
 
     private static async Task SeedSuperAdminAsync(UserManager<AppUser> userManager, IConfiguration configuration)
     {
-        // Einziger Seed-Benutzer. Zugangsdaten kommen aus Konfiguration/User Secrets,
+        // Einziger Seed-Benutzer. Alle Zugangsdaten kommen aus Umgebungsvariablen der App
+        // (Seed__SuperAdminEmail, Seed__SuperAdminPasswort, Seed__SuperAdminBenutzername),
         // niemals aus dem Repository. Ohne Konfiguration wird kein Admin angelegt.
-        var email = configuration["Seed:SuperAdminEmail"];
+        var email = configuration["Seed:SuperAdminEmail"]?.Trim();
         var passwort = configuration["Seed:SuperAdminPasswort"];
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(passwort))
         {
             return;
         }
 
-        // Login erfolgt über das Pseudonym. Standard ist "DodjiEtse", sofern kein
-        // Benutzername konfiguriert ist; die Kontakt-E-Mail kommt aus der Konfiguration.
-        var benutzername = configuration["Seed:SuperAdminBenutzername"] ?? "DodjiEtse";
+        // Login erfolgt über das Pseudonym – ohne festen Standardnamen im Code.
+        var benutzername = configuration["Seed:SuperAdminBenutzername"]?.Trim();
+        if (string.IsNullOrWhiteSpace(benutzername))
+            throw new InvalidOperationException("Seed:SuperAdminBenutzername fehlt (Umgebungsvariable Seed__SuperAdminBenutzername). Kein Admin angelegt.");
 
         // 1) Konto mit Ziel-Pseudonym bereits vorhanden?
         var vorhanden = await userManager.FindByNameAsync(benutzername);

@@ -227,7 +227,7 @@ public class AnkuendigungService(IDbContextFactory<ApplicationDbContext> factory
         if (e.PerMail && nachrichten is not null)
         {
             var empfaenger = await nachrichten.ErmittleAsync(bearbeiter, NachrichtenService.Gruppe.AlleBesitzer, [], [], ct);
-            var appUrl = mails?.AppUrl ?? BonQr.Standard;
+            var appUrl = mails?.AppUrl ?? BonQr.AppSeite;
             var knopfUrl = link is null ? appUrl : link.StartsWith('/') ? appUrl + link : link;
             if (empfaenger.Count > 0)
             {

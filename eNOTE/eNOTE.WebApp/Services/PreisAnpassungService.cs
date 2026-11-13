@@ -266,7 +266,7 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
                 && db.UserRoles.Any(ur => ur.UserId == us.AppUserId && besitzerRolle.Contains(ur.RoleId)))
             .Select(us => new { us.SalonId, us.AppUser.Vorname, Email = us.AppUser.Email! })
             .ToListAsync(ct);
-        var aboUrl = (mails?.AppUrl ?? BonQr.Standard) + "/abonnement";
+        var aboUrl = (mails?.AppUrl ?? BonQr.AppSeite) + "/abonnement";
         var anzahl = 0;
         foreach (var e in empfaenger)
         {
