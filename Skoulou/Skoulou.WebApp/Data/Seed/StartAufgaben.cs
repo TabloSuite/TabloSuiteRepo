@@ -47,7 +47,10 @@ public static class StartAufgaben
         var konten = await dienste.GetRequiredService<DemoSeed>().AusfuehrenAsync();
         if (konten.Count > 0)
         {
-            var datei = Path.Combine(Path.GetTempPath(), "skoulou-neu", "demo-konten.json");
+            // Eigene Datei je Arbeitskopie möglich (Demo:KontenDatei), sonst Temp/skoulou-neu/demo-konten.json.
+            var datei = app.Configuration["Demo:KontenDatei"] is { Length: > 0 } eigene
+                ? eigene
+                : Path.Combine(Path.GetTempPath(), "skoulou-neu", "demo-konten.json");
             Directory.CreateDirectory(Path.GetDirectoryName(datei)!);
             await File.WriteAllTextAsync(datei, JsonSerializer.Serialize(konten, new JsonSerializerOptions { WriteIndented = true }));
             logger.LogInformation("{Anzahl} Demo-Konten angelegt; Zugänge in der lokalen Datei demo-konten.json (Temp-Ordner).", konten.Count);
