@@ -67,7 +67,8 @@ Um ~20:30 haben **drei Hintergrund-Agenten das 5-Stunden-Nutzungslimit** erreich
 ## 4. eNOTE und Live-Betrieb
 
 - Alles von heute ist committet und gepusht (u. a. Listen seitenweise/durchsuchbar in eNOTE 4bf5156/2fa3f5c/0277bf3 und SKOULOU-alt c651544, Start-Admin-Seed eNOTE, öffentliches Kontaktformular, Dialoge schließen nicht beim Klick daneben, PIN-Einrichtung, Responsable-Rechte, Mail-Routing über contact@tablosuite.com mit [eNOTE]/[SKOULOU] im Betreff).
-- **Falls noch nicht geschehen: eNOTE und SKOULOU (alt) deployen** (VS, neues eNOTE-Profil), damit die Listen-Änderungen live sind. Keine Migration nötig.
+- **NEU 13.11. abends (f794f4f): eNOTE « Enregistrer sans encaisser »** – Leistungen anwesender Kunden (Praxis mit Übernachtung) fest erfassen, am Ende alles zusammen kassieren; Details in eNOTE/Projektuebersicht.md, Bilder Pictures/eNOTE-Prestations-a-payer-2026-11-13. **Neue Migration 20261113221524_AufenthaltsPositionen nur LOKAL** → vor dem nächsten eNOTE-Deploy auf Azure einspielen (**nur mit OK**), sonst stürzt der Verkauf ab (neue Spalte VerkaufsPositionen.ErbrachtAm).
+- **SKOULOU (alt) deployen**, falls noch nicht geschehen (Listen-Änderungen). eNOTE erst nach der Azure-Migration oben deployen.
 - Azure: Hauptkonto web.de, Ressourcengruppe TabloSuiteRGruppe (enote, skoulou, tablosuite-home, SQL tablosuite-sqlserver). Admin-Konto überall DodjiEtse (Passwort ändert der Nutzer in der App; `Seed__SuperAdminPasswort` bleibt als Notfall-Startpasswort).
 
 ---
