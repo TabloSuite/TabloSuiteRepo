@@ -100,8 +100,7 @@ export async function editorErstellen(host, dotnet, html, kompakt, platzhalter) 
                     image: () => { eintrag.bereich = quill.getSelection(true); dotnet.invokeMethodAsync('BildWaehlen').catch(() => { }); },
                     formula: () => { eintrag.bereich = quill.getSelection(true); eintrag.ersetzen = null; dotnet.invokeMethodAsync('FormelOeffnen', null).catch(() => { }); }
                 }
-            },
-            formula: true
+            }
         }
     });
     // Eingefügte Bilder nur aus der eigenen Mediathek (keine externen Bilder, keine Daten-URLs).

@@ -59,7 +59,7 @@
         {
             <div class="sk-antwort-lesen">@(string.IsNullOrWhiteSpace(Eingabe.Text) ? "— (sans réponse)" : Eingabe.Text)</div>
         }
-        else if (Druck)
+        else if (Druck && !MitLoesungen)
         {
             <div class="sk-schreiblinien"><span></span><span></span>@if (Frage.Typ == FragenTyp.Texte){<span></span><span></span>}</div>
         }

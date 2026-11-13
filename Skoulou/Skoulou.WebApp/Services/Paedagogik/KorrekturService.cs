@@ -96,11 +96,12 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
                 Inhalt = x.z.LeconId != null
                     ? db.Lecons.Where(l => l.Id == x.z.LeconId).Select(l => l.Titel).FirstOrDefault()
                     : db.Pruefungen.Where(p => p.Id == x.z.PruefungId).Select(p => p.Titel).FirstOrDefault(),
-                IstLecon = x.z.LeconId != null, x.f.Nr, x.f.TextHtml, Abgabe = x.v.AbgabeUtc ?? x.a.ErstelltAmUtc,
+                IstLecon = x.z.LeconId != null, BlockNr = db.AufgabenBloecke.Where(b => b.Id == x.f.BlockId).Select(b => b.Nr).FirstOrDefault(),
+                x.f.Nr, x.f.TextHtml, Abgabe = x.v.AbgabeUtc ?? x.a.ErstelltAmUtc,
                 x.a.Punkte, Max = x.f.Punkte, x.a.KorrigiertAmUtc
             }).ToListAsync(ct);
         var zeilen = roh.Take(anzahl).Select(x => new KorrekturZeile(x.Id, x.VersuchId, x.ZuweisungId, x.Schueler, x.Klasse, x.Inhalt ?? "",
-            x.IstLecon ? InhaltsArt.Lecon : InhaltsArt.Pruefung, x.Nr, InhaltBereiniger.Kurztext(x.TextHtml), x.Abgabe, x.Punkte, x.Max,
+            x.IstLecon ? InhaltsArt.Lecon : InhaltsArt.Pruefung, x.BlockNr, x.Nr, InhaltBereiniger.Kurztext(x.TextHtml), x.Abgabe, x.Punkte, x.Max,
             x.KorrigiertAmUtc)).ToList();
         return (zeilen, roh.Count > anzahl);
     }
@@ -115,7 +116,7 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
         var z = await db.Zuweisungen.AsNoTracking().FirstAsync(x => x.Id == v.ZuweisungId, ct);
         PruefeZuweisung(akteur, z);
         var f = await db.Fragen.AsNoTracking().Include(x => x.Optionen).FirstAsync(x => x.Id == a.FrageId, ct);
-        var nr = Math.Max(1, v.FragenIds.IndexOf(f.Id) + 1);
+        var blockNr = await db.AufgabenBloecke.Where(b => b.Id == f.BlockId).Select(b => b.Nr).FirstOrDefaultAsync(ct);
         var schueler = await db.Users.Where(k => k.Id == v.SchuelerId).Select(k => k.Vorname + " " + k.Nachname).FirstAsync(ct);
         var klasse = await db.Klassen.Where(k => k.Id == z.KlasseId).Select(k => k.Name).FirstOrDefaultAsync(ct) ?? "";
         var titel = z.LeconId != null
@@ -127,7 +128,7 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
                              select new KorrekturVerlauf(e.ZeitUtc,
                                  db.Users.Where(k => k.Id == e.KorrigiertVonId).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefault() ?? "",
                                  e.AltePunkte, e.NeuePunkte, e.Feedback)).ToListAsync(ct);
-        return new KorrekturDetail(a.Id, schueler, klasse, titel, FragenAbbildung.Ansicht(f, nr), AntwortEingabe.AusJson(a.AntwortJson),
+        return new KorrekturDetail(a.Id, schueler, klasse, $"{titel} · exercice {blockNr}", FragenAbbildung.Ansicht(f, f.Nr), AntwortEingabe.AusJson(a.AntwortJson),
             a.Punkte, a.Feedback, verlauf);
     }
 

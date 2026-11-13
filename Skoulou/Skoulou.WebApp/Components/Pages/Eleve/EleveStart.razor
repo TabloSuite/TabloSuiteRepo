@@ -9,6 +9,16 @@
 @inject TimeProvider Uhr
 
 <RollenStart Untertitel="@(start?.Klasse is { } k ? $"Classe de {k} – voici ce qui vous attend." : "Vos leçons, vos résultats et votre emploi du temps.")">
+    <Aktionen>
+        @if (start is not null)
+        {
+            <div class="sk-stimme">
+                <Schalter Wert="@(!start.StimmeAus)" WertChanged="StimmeAsync" Label="@(start.StimmeAus ? "Voix : non" : "Voix : oui")"
+                          Hinweis="Félicitations lues à voix haute" />
+            </div>
+        }
+    </Aktionen>
+    <ChildContent>
     @if (start is not null)
     {
         <div class="sk-kennzahl-raster sk-oben-abstand">
@@ -18,10 +28,6 @@
         </div>
 
         <Karte Titel="À faire" Untertitel="Leçons et examens ouverts, le plus urgent en premier." Icon="clipboard" CssClass="sk-oben-abstand">
-            <Aktionen>
-                <Schalter Wert="@(!start.StimmeAus)" WertChanged="StimmeAsync" Label="@(start.StimmeAus ? "Voix : non" : "Voix : oui")" />
-            </Aktionen>
-            <ChildContent>
                 @if (start.Offen.Count == 0)
                 {
                     <Leerzustand Icon="check-circle" Titel="Tout est fait" Text="Aucune leçon ni aucun examen en attente. Bravo !" />
@@ -46,9 +52,9 @@
                         }
                     </div>
                 }
-            </ChildContent>
         </Karte>
     }
+    </ChildContent>
 </RollenStart>
 
 @code {
