@@ -1,0 +1,21 @@
+@* Vollflächiges Layout für Anmeldung, Passwort und Registrierung (Werbespalte links, Formular rechts). *@
+@inherits LayoutComponentBase
+
+<LadeIndikator />
+<div class="sk-auth">
+    <aside class="sk-auth-hero">
+        <a href="/" class="sk-auth-logo" aria-label="SKOULOU – Accueil"><Logo Groesse="44" /></a>
+        <h1>Votre établissement, simplement organisé.</h1>
+        <p>Élèves, classes, notes, bulletins et frais de scolarité réunis dans un seul espace, sur ordinateur, tablette et téléphone.</p>
+        <ul class="sk-auth-punkte">
+            <li><span><Icon Name="check" Groesse="14" Strich="3" /></span> Un identifiant par personne, même sans e-mail</li>
+            <li><span><Icon Name="check" Groesse="14" Strich="3" /></span> Bulletins vérifiables par QR code</li>
+            <li><span><Icon Name="check" Groesse="14" Strich="3" /></span> Données séparées pour chaque établissement</li>
+        </ul>
+    </aside>
+    <main class="sk-auth-panel">
+        <a class="sk-auth-zurueck" href="/"><Icon Name="arrow-left" Groesse="16" /> Accueil</a>
+        @Body
+    </main>
+</div>
+<Toast />

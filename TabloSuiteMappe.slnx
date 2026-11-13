@@ -13,4 +13,9 @@
     <Project Path="SKOULOUAPP.Tests/SKOULOUAPP.Tests.csproj" />
     <Project Path="SKOULOUAPP.WebApp/SKOULOUAPP.WebApp.csproj" />
   </Folder>
+  <Folder Name="/Skoulou (neu)/">
+    <Project Path="Skoulou/Skoulou.Core/Skoulou.Core.csproj" />
+    <Project Path="Skoulou/Skoulou.Tests/Skoulou.Tests.csproj" />
+    <Project Path="Skoulou/Skoulou.WebApp/Skoulou.WebApp.csproj" />
+  </Folder>
 </Solution>

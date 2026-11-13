@@ -1,0 +1,18 @@
+@* Fußzeile des öffentlichen Bereichs: Marke, Kontakt, Firmenseite. *@
+<footer class="sk-fuss">
+    <div class="sk-fuss-innen">
+        <div class="sk-fuss-marke">
+            <Logo />
+            <p>La gestion scolaire qui rapproche la direction, les enseignants, les élèves et les parents.</p>
+        </div>
+        <address class="sk-fuss-kontakte">
+            <a href="@SkoulouMarke.Website"><Icon Name="globe" Groesse="18" /><span><small>Site</small>@SkoulouMarke.Domain</span></a>
+            <a href="mailto:@SkoulouMarke.KontaktEmail"><Icon Name="mail" Groesse="18" /><span><small>E-mail</small>@SkoulouMarke.KontaktEmail</span></a>
+            <span class="sk-fuss-ort"><Icon Name="map-pin" Groesse="18" /><span><small>Adresse</small>@SkoulouMarke.Ort</span></span>
+        </address>
+    </div>
+    <div class="sk-fuss-unten">
+        <span>© @DateTime.UtcNow.Year SKOULOU, une application <a href="@SkoulouMarke.FirmenSeite">TabloSuite</a></span>
+        <span><a href="/conditions">Conditions d'utilisation</a> · <a href="/contact">Contact</a></span>
+    </div>
+</footer>

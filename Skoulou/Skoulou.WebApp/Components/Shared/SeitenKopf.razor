@@ -1,0 +1,32 @@
+@* Seitenkopf: Icon, Titel (h1), Untertitel und Aktionen rechts. *@
+<header class="sk-seitenkopf">
+    <div class="sk-seitenkopf-text">
+        @if (Icon is not null)
+        {
+            <span class="sk-seitenkopf-icon"><Icon Name="@Icon" Groesse="22" /></span>
+        }
+        <div>
+            @if (Oberzeile is not null)
+            {
+                <p class="sk-oberzeile">@Oberzeile</p>
+            }
+            <h1>@Titel</h1>
+            @if (Untertitel is not null)
+            {
+                <p class="sk-untertitel">@Untertitel</p>
+            }
+        </div>
+    </div>
+    @if (Aktionen is not null)
+    {
+        <div class="sk-seitenkopf-aktionen">@Aktionen</div>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired] public string Titel { get; set; } = string.Empty;
+    [Parameter] public string? Untertitel { get; set; }
+    [Parameter] public string? Oberzeile { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? Aktionen { get; set; }
+}

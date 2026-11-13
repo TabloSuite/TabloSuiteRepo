@@ -1,0 +1,59 @@
+@page "/auth/reinitialiser"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject IJSRuntime JS
+
+<PageTitle>Nouveau mot de passe · SKOULOU</PageTitle>
+
+<div class="sk-auth-karte">
+    <h1>Nouveau mot de passe</h1>
+
+    @if (Id is null || string.IsNullOrWhiteSpace(Token))
+    {
+        <Hinweis Art="fehler">@PasswortService.MeldungUnvollstaendig</Hinweis>
+        <div class="sk-auth-links"><a href="/auth/mot-de-passe-oublie">Demander un nouveau lien</a></div>
+    }
+    else
+    {
+        <p class="sk-auth-unter">Choisissez un mot de passe personnel. Les autres appareils connectés seront déconnectés.</p>
+        @if (fehler is not null)
+        {
+            <Hinweis Art="fehler">@fehler</Hinweis>
+        }
+        <form id="@formId" method="post" action="/auth/reinitialiser/envoyer" class="sk-formular" @onsubmit="SendenAsync" @onsubmit:preventDefault>
+            <AntiforgeryToken />
+            <input type="hidden" name="id" value="@Id" />
+            <input type="hidden" name="token" value="@Token" />
+            <PasswortFeld Label="Nouveau mot de passe" Name="nouveau" @bind-Wert="neu" Autocomplete="new-password" Hinweis="@PasswortRegel.Hinweis" Pflicht="true" />
+            <PasswortFeld Label="Confirmez le mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
+            <AsyncKnopf Text="Enregistrer le mot de passe" BusyText="Enregistrement…" CssClass="sk-btn-primaer sk-btn-breit" OnClick="SendenAsync" />
+        </form>
+        <div class="sk-auth-links">
+            <a href="/auth/connexion"><Icon Name="arrow-left" Groesse="14" /> Aller à la connexion</a>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
+    [SupplyParameterFromQuery(Name = "erreur")] public string? Erreur { get; set; }
+
+    private readonly string formId = Feld.NeueId("reset");
+    private string? neu, bestaetigung, fehler;
+
+    protected override void OnInitialized()
+        => fehler = Erreur switch
+        {
+            "lien" => PasswortService.MeldungUngueltigerLink,
+            "saisie" => "Le mot de passe n'a pas pu être enregistré. Vérifiez vos saisies.",
+            null => null,
+            var code => AnmeldeRegeln.Meldung(code)
+        };
+
+    private async Task SendenAsync()
+    {
+        fehler = PasswortService.PruefeNeues(neu, bestaetigung);
+        if (fehler is null) await JS.InvokeVoidAsync("skFormularSenden", formId);
+    }
+}

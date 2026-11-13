@@ -22,5 +22,7 @@
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
     <PackageVersion Include="ZXing.Net" Version="0.16.11" />
     <PackageVersion Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.17" />
+    <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.10" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,92 @@
+@* Seitenleiste je Rolle (Desktop; Tablet als schmale Icon-Leiste) und untere Leiste mit « Plus »-Blatt am Handy. *@
+@implements IDisposable
+@inject SchulKontext Kontext
+@inject NavigationManager Nav
+
+<aside class="sk-seitenleiste" aria-label="Navigation principale">
+    <a class="sk-seitenleiste-marke" href="@Rollen.Startseite(Kontext.Rolle)" aria-label="SKOULOU – Accueil">
+        <Logo Unterzeile="@(Kontext.SchulName ?? Kontext.RollenBezeichnung)" />
+    </a>
+    <nav class="sk-seitenleiste-nav">
+        @foreach (var gruppe in Gruppen)
+        {
+            @if (gruppe.Titel is not null)
+            {
+                <div class="sk-nav-gruppe">@gruppe.Titel</div>
+            }
+            @foreach (var e in gruppe.Eintraege)
+            {
+                <NavLink href="@e.Href" Match="@e.Match" class="sk-nav-link" title="@e.Label">
+                    <Icon Name="@e.Icon" Groesse="20" />
+                    <span class="sk-nav-text">@e.Label</span>
+                </NavLink>
+            }
+        }
+    </nav>
+</aside>
+
+<nav class="sk-nav-mobil" aria-label="Navigation">
+    @foreach (var e in Mobil)
+    {
+        <NavLink href="@e.Href" Match="@e.Match" class="sk-mnav-link">
+            <Icon Name="@e.Icon" Groesse="22" />
+            <span>@e.KurzLabel</span>
+        </NavLink>
+    }
+    <button type="button" class="sk-mnav-link @(mehrOffen ? "active" : null)" aria-expanded="@(mehrOffen ? "true" : "false")" @onclick="() => mehrOffen = !mehrOffen">
+        <Icon Name="grid" Groesse="22" />
+        <span>Plus</span>
+    </button>
+</nav>
+
+@if (mehrOffen)
+{
+    <div class="sk-blatt-hintergrund" @onclick="() => mehrOffen = false"></div>
+    <div class="sk-blatt" role="dialog" aria-label="Toutes les rubriques">
+        <div class="sk-blatt-griff" aria-hidden="true"></div>
+        @foreach (var gruppe in Gruppen)
+        {
+            @if (gruppe.Titel is not null)
+            {
+                <div class="sk-nav-gruppe">@gruppe.Titel</div>
+            }
+            <div class="sk-blatt-raster">
+                @foreach (var e in gruppe.Eintraege)
+                {
+                    <NavLink href="@e.Href" Match="@e.Match" class="sk-blatt-link" @onclick="() => mehrOffen = false">
+                        <span class="sk-blatt-icon"><Icon Name="@e.Icon" Groesse="22" /></span>
+                        <span>@e.Label</span>
+                    </NavLink>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool mehrOffen;
+
+    private IReadOnlyList<NavGruppe> Gruppen => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht);
+    private IReadOnlyList<NavEintrag> Mobil => NavKarte.Mobil(Kontext.Rolle, Kontext.HatRecht);
+
+    protected override void OnInitialized()
+    {
+        Kontext.Geaendert += Aktualisieren;
+        Nav.LocationChanged += Navigiert;
+    }
+
+    private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
+
+    private void Navigiert(object? sender, LocationChangedEventArgs e)
+    {
+        if (!mehrOffen) return;
+        mehrOffen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Kontext.Geaendert -= Aktualisieren;
+        Nav.LocationChanged -= Navigiert;
+    }
+}

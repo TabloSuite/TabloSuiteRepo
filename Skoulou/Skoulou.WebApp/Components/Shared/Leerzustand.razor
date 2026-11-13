@@ -1,0 +1,21 @@
+@* Leerer Zustand einer Liste oder Seite: Icon, Titel, Erklärung, optionale Aktion. *@
+<div class="sk-leer @CssClass">
+    <span class="sk-leer-icon"><Icon Name="@Icon" Groesse="26" /></span>
+    <strong>@Titel</strong>
+    @if (Text is not null)
+    {
+        <p>@Text</p>
+    }
+    @if (ChildContent is not null)
+    {
+        <div class="sk-leer-aktionen">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "inbox";
+    [Parameter] public string Titel { get; set; } = "Rien à afficher";
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

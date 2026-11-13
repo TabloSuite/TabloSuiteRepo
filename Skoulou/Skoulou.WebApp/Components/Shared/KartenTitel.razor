@@ -1,0 +1,20 @@
+@* Titelzeile einer Karte (Icon, h2, Untertitel). *@
+<div class="sk-karte-titel">
+    @if (Icon is not null)
+    {
+        <span class="sk-karte-icon"><Icon Name="@Icon" Groesse="18" /></span>
+    }
+    <div>
+        <h2>@Titel</h2>
+        @if (Untertitel is not null)
+        {
+            <p>@Untertitel</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titel { get; set; } = string.Empty;
+    [Parameter] public string? Untertitel { get; set; }
+    [Parameter] public string? Icon { get; set; }
+}

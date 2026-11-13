@@ -1,0 +1,33 @@
+@* Kennzahl-Kachel (Bezeichnung, Wert, Zusatz); « Haupt » hebt sie farbig hervor, mit Href als Link. *@
+@if (Href is not null)
+{
+    <a class="sk-kennzahl @(Haupt ? "haupt" : null)" href="@Href">@Inhalt</a>
+}
+else
+{
+    <div class="sk-kennzahl @(Haupt ? "haupt" : null)">@Inhalt</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Bezeichnung { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Wert { get; set; } = string.Empty;
+    [Parameter] public string? Zusatz { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool Haupt { get; set; }
+    [Parameter] public string? Href { get; set; }
+
+    private RenderFragment Inhalt => @<text>
+        <span class="sk-kennzahl-kopf">
+            <span class="sk-kennzahl-label">@Bezeichnung</span>
+            @if (Icon is not null)
+            {
+                <span class="sk-kennzahl-icon"><Icon Name="@Icon" Groesse="18" /></span>
+            }
+        </span>
+        <strong class="sk-kennzahl-wert">@Wert</strong>
+        @if (Zusatz is not null)
+        {
+            <span class="sk-kennzahl-zusatz">@Zusatz</span>
+        }
+    </text>;
+}

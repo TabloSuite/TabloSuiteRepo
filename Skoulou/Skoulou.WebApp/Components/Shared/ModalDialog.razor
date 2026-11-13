@@ -1,0 +1,73 @@
+@* Modaler Dialog: schließt NICHT bei Klick daneben; Esc nur, wenn erlaubt; Fokus wandert in den Dialog. *@
+@if (Open)
+{
+    <div class="sk-modal-hintergrund" @onkeydown="TasteAsync">
+        <div class="sk-modal @Breite" role="dialog" aria-modal="true" aria-labelledby="@titelId" tabindex="-1" @ref="dialog">
+            <div class="sk-modal-kopf">
+                <div>
+                    @if (Oberzeile is not null)
+                    {
+                        <p class="sk-oberzeile">@Oberzeile</p>
+                    }
+                    <h2 id="@titelId">@Title</h2>
+                </div>
+                @if (Schliessbar)
+                {
+                    <button type="button" class="sk-icon-knopf" aria-label="Fermer" @onclick="SchliessenAsync"><Icon Name="x" Groesse="20" /></button>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="sk-modal-fehler"><Hinweis Art="fehler">@ErrorMessage</Hinweis></div>
+            }
+            <div class="sk-modal-inhalt">@ChildContent</div>
+            @if (Footer is not null)
+            {
+                <div class="sk-modal-fuss">@Footer</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Oberzeile { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    /// <summary>Breite: « sk-modal-sm », « sk-modal-md » (Standard), « sk-modal-lg ».</summary>
+    [Parameter] public string Breite { get; set; } = "sk-modal-md";
+
+    /// <summary>Kreuz oben rechts anzeigen (Pflichtdialoge ohne).</summary>
+    [Parameter] public bool Schliessbar { get; set; } = true;
+
+    /// <summary>Esc schließt (bei Formularen mit Eingaben besser aus).</summary>
+    [Parameter] public bool SchliessenMitEscape { get; set; } = true;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private readonly string titelId = "dlg-" + Guid.NewGuid().ToString("N")[..8];
+    private ElementReference dialog;
+    private bool warOffen;
+
+    private Task SchliessenAsync() => OnClose.InvokeAsync();
+
+    private Task TasteAsync(KeyboardEventArgs e)
+        => e.Key == "Escape" && Schliessbar && SchliessenMitEscape ? SchliessenAsync() : Task.CompletedTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            try { await dialog.FocusAsync(preventScroll: true); }
+            catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { }
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+}

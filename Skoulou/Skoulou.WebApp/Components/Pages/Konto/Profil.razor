@@ -1,0 +1,144 @@
+@page "/profil"
+@attribute [Authorize]
+@inherits SkoulouSeite
+@inject KontoService Konten
+@inject IJSRuntime JS
+
+<PageTitle>Mon profil · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mon profil" Icon="user" Untertitel="Vos informations personnelles, l'apparence de l'application et votre mot de passe." />
+
+@if (profil is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else
+{
+    <div class="sk-raster-profil">
+        <div>
+        <Karte Titel="Identité" Icon="user">
+            <div class="sk-profil-kopf">
+                <NamensKreis Name="@($"{profil.Vorname} {profil.Nachname}")" Groesse="56" />
+                <div>
+                    <strong>@profil.Vorname @profil.Nachname</strong>
+                    <StatusBadge Text="@profil.Rolle" Art="info" />
+                </div>
+            </div>
+            <dl class="sk-daten">
+                <dt>Identifiant</dt><dd><code>@profil.Identifiant</code></dd>
+                <dt>Adresse e-mail</dt><dd>@(profil.Email ?? "Aucune")</dd>
+                @if (profil.Schule is not null)
+                {
+                    <dt>Établissement</dt><dd>@profil.Schule</dd>
+                }
+                @if (profil.Klasse is not null)
+                {
+                    <dt>Classe</dt><dd>@profil.Klasse</dd>
+                }
+                @if (profil.ElternTelefon is not null)
+                {
+                    <dt>Téléphone d'un parent</dt><dd>@profil.ElternTelefon</dd>
+                }
+                @if (profil.LetzteAnmeldungUtc is { } letzte)
+                {
+                    <dt>Dernière connexion</dt><dd>@zeit.AlsText(letzte)</dd>
+                }
+            </dl>
+            <p class="sk-leise">L'identifiant et l'adresse e-mail sont gérés par votre établissement.</p>
+        </Karte>
+
+        <Karte Titel="Apparence" Icon="sun" Untertitel="S'applique à cet appareil.">
+            <RadioGruppe T="string" Wert="thema" WertChanged="ThemaAsync" Optionen="ThemaOptionen" />
+        </Karte>
+        </div>
+        <div>
+        <Karte Titel="Mes informations" Icon="edit">
+            <div class="sk-formular">
+                <div class="sk-raster-2">
+                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Autocomplete="given-name" />
+                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Autocomplete="family-name" />
+                </div>
+                <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Autocomplete="tel" Platzhalter="+228 …" />
+                <RadioGruppe T="Geschlecht" Label="Genre" @bind-Wert="geschlecht" Optionen="GeschlechtOptionen" />
+                @if (Fehlermeldung is not null && !KeinZugriff)
+                {
+                    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+                }
+                <div class="sk-formular-fuss">
+                    <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" Icon="check" OnClick="SpeichernAsync" />
+                </div>
+            </div>
+        </Karte>
+
+        <Karte Titel="Changer le mot de passe" Icon="key">
+            @if (mdpFehler is not null)
+            {
+                <Hinweis Art="fehler">@mdpFehler</Hinweis>
+            }
+            <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" @onsubmit="PasswortAsync" @onsubmit:preventDefault>
+                <AntiforgeryToken />
+                <input type="hidden" name="retour" value="/profil" />
+                <PasswortFeld Label="Mot de passe actuel" Name="actuel" @bind-Wert="aktuell" Pflicht="true" />
+                <PasswortFeld Label="Nouveau mot de passe" Name="nouveau" @bind-Wert="neu" Autocomplete="new-password" Hinweis="@PasswortRegel.Hinweis" Pflicht="true" />
+                <PasswortFeld Label="Confirmez le nouveau mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
+                <p class="sk-leise">Après le changement, les autres appareils connectés à votre compte sont déconnectés.</p>
+                <div class="sk-formular-fuss">
+                    <AsyncKnopf Text="Changer le mot de passe" BusyText="Enregistrement…" CssClass="sk-btn-primaer" OnClick="PasswortAsync" />
+                </div>
+            </form>
+        </Karte>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private TimeProvider Uhr { get; set; } = default!;
+
+    private static readonly IReadOnlyList<AuswahlOption<Geschlecht>> GeschlechtOptionen =
+        [new(Geschlecht.Weiblich, "Féminin"), new(Geschlecht.Maennlich, "Masculin"), new(Geschlecht.Divers, "Non précisé")];
+
+    private static readonly IReadOnlyList<AuswahlOption<string>> ThemaOptionen =
+        [new("light", "Clair", Icon: "sun"), new("dark", "Sombre", Icon: "moon"), new("auto", "Automatique", Icon: "auto")];
+
+    private readonly string formId = Feld.NeueId("profil-mdp");
+    private ProfilDaten? profil;
+    private SchulZeit zeit = default!;
+    private string? vorname, nachname, telefon, aktuell, neu, bestaetigung, mdpFehler;
+    private Geschlecht geschlecht;
+    private string thema = "auto";
+
+    protected override async Task InitialisierenAsync()
+    {
+        zeit = new SchulZeit(Uhr);
+        profil = await Konten.LadeProfilAsync(Ich.KontoId);
+        (vorname, nachname, telefon, geschlecht) = (profil.Vorname, profil.Nachname, profil.Telefon, profil.Geschlecht);
+        if (Navigation.Uri.Contains("erreur-mdp=", StringComparison.Ordinal))
+            mdpFehler = "Le mot de passe n'a pas pu être modifié. Vérifiez vos saisies.";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { thema = await JS.InvokeAsync<string>("skLeseTheme"); StateHasChanged(); }
+        catch (JSException) { }
+    }
+
+    private Task SpeichernAsync() => AusfuehrenAsync(async () =>
+    {
+        await Konten.SpeichereProfilAsync(Ich.KontoId, new ProfilEingabe(vorname ?? string.Empty, nachname ?? string.Empty, telefon, geschlecht));
+        await Kontext.LadeAsync(Ich.KontoId, erzwingen: true);
+    }, "Vos informations ont été enregistrées.");
+
+    private async Task ThemaAsync(string? wert)
+    {
+        thema = wert ?? "auto";
+        try { await JS.InvokeVoidAsync("skSetzeTheme", thema); }
+        catch (JSException) { }
+    }
+
+    private async Task PasswortAsync()
+    {
+        mdpFehler = await Konten.PruefePasswortWechselAsync(Ich.KontoId, aktuell, neu, bestaetigung);
+        if (mdpFehler is null) await JS.InvokeVoidAsync("skFormularSenden", formId);
+    }
+}

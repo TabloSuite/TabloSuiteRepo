@@ -1,0 +1,20 @@
+@* Nicht angemeldet → Anmeldung (mit Rückweg); angemeldet ohne Recht → « Accès refusé ». *@
+@inject NavigationManager Nav
+
+<LadeIndikator Sichtbar="true" />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthZustand is null ? null : (await AuthZustand).User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo("/acces-refuse", replace: true);
+            return;
+        }
+        var pfad = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+        Nav.NavigateTo("/auth/connexion?returnUrl=" + Uri.EscapeDataString(pfad), forceLoad: true);
+    }
+}

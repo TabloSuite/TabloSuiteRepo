@@ -1,0 +1,36 @@
+@* Auswahl aus wenigen Optionen als Pillen-Gruppe (Tastatur: Pfeiltasten über die Knöpfe). *@
+@typeparam T
+<Feld Label="@Label" Hinweis="@Hinweis" Fehler="@Fehler" CssClass="@CssClass">
+    <div class="sk-radio-gruppe" role="radiogroup" aria-label="@Label">
+        @foreach (var o in Optionen)
+        {
+            var aktiv = EqualityComparer<T>.Default.Equals(o.Wert, Wert);
+            <button type="button" class="sk-radio @(aktiv ? "aktiv" : null)" role="radio" aria-checked="@(aktiv ? "true" : "false")"
+                    disabled="@Deaktiviert" @onclick="() => WaehleAsync(o.Wert)">
+                @if (o.Icon is not null)
+                {
+                    <Icon Name="@o.Icon" Groesse="16" />
+                }
+                @o.Label
+            </button>
+        }
+    </div>
+</Feld>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public T? Wert { get; set; }
+    [Parameter] public EventCallback<T?> WertChanged { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlOption<T>> Optionen { get; set; } = [];
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public bool Deaktiviert { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private async Task WaehleAsync(T wert)
+    {
+        if (Deaktiviert) return;
+        Wert = wert;
+        await WertChanged.InvokeAsync(wert);
+    }
+}

@@ -1,0 +1,30 @@
+@* Kurzmeldung oben rechts (Handy: oben mittig); Fehler bleiben länger stehen. *@
+@implements IDisposable
+@inject ToastService ToastService
+
+@if (ToastService.Sichtbar && !string.IsNullOrWhiteSpace(ToastService.Nachricht))
+{
+    <div class="sk-toast sk-toast-@ArtKlasse" role="status" aria-live="polite">
+        <span class="sk-toast-icon">
+            <Icon Name="@(ArtKlasse switch { "erfolg" => "check", "fehler" => "alert", _ => "info" })" Groesse="16" Strich="2.5" />
+        </span>
+        <span>@ToastService.Nachricht</span>
+        <button type="button" class="sk-toast-zu" aria-label="Fermer" @onclick="ToastService.Verbergen"><Icon Name="x" Groesse="16" /></button>
+    </div>
+}
+
+@code {
+    private string ArtKlasse => ToastService.Art switch
+    {
+        ToastArt.Erfolg => "erfolg",
+        ToastArt.Fehler => "fehler",
+        _ => "info"
+    };
+
+    protected override void OnInitialized() => ToastService.OnChange += Aktualisieren;
+
+    // Das Ausblenden kommt von einem Timer – daher über den Renderer-Kontext.
+    private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ToastService.OnChange -= Aktualisieren;
+}

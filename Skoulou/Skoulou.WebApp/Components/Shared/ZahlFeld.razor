@@ -1,0 +1,56 @@
+@* Zahlenfeld (Dezimalkomma wie in Frankreich, Punkt wird ebenfalls angenommen). *@
+<Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@(eigenerFehler ?? Fehler)" Pflicht="@Pflicht" CssClass="@CssClass">
+    <div class="sk-eingabe-mit-einheit">
+        <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name" value="@Anzeige"
+               placeholder="@Platzhalter" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        @if (Einheit is not null)
+        {
+            <span class="sk-einheit">@Einheit</span>
+        }
+    </div>
+</Feld>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public decimal? Wert { get; set; }
+    [Parameter] public EventCallback<decimal?> WertChanged { get; set; }
+    [Parameter] public decimal? Min { get; set; }
+    [Parameter] public decimal? Max { get; set; }
+    [Parameter] public int Stellen { get; set; } = 2;
+    [Parameter] public string? Einheit { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Platzhalter { get; set; }
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public bool Pflicht { get; set; }
+    [Parameter] public bool Deaktiviert { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private readonly string id = Feld.NeueId("zahl");
+    private string? eigenerFehler;
+
+    private string Anzeige => Wert is null ? string.Empty : Wert.Value.ToString("0.##", SkoulouKultur.Kultur);
+
+    private async Task AendernAsync(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString()?.Trim().Replace(" ", string.Empty).Replace('.', ',') ?? string.Empty;
+        eigenerFehler = null;
+        decimal? wert = null;
+        if (text.Length > 0)
+        {
+            if (!decimal.TryParse(text, System.Globalization.NumberStyles.Number, SkoulouKultur.Kultur, out var z))
+            {
+                eigenerFehler = "Saisissez un nombre valide.";
+                return;
+            }
+            wert = Math.Round(z, Stellen, MidpointRounding.AwayFromZero);
+            if ((Min is not null && wert < Min) || (Max is not null && wert > Max))
+            {
+                eigenerFehler = $"La valeur doit être comprise entre {Min?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"} et {Max?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"}.";
+                return;
+            }
+        }
+        Wert = wert;
+        await WertChanged.InvokeAsync(wert);
+    }
+}

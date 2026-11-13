@@ -1,0 +1,59 @@
+@* Mehrfachauswahl als Chips mit Haken und Suche; « Tout » / « Aucun » für schnelle Auswahl. *@
+@typeparam T
+<Feld Label="@Label" Hinweis="@Hinweis" Fehler="@Fehler" CssClass="@CssClass">
+    <div class="sk-mehrfach">
+        <div class="sk-mehrfach-kopf">
+            @if (Optionen.Count >= 8)
+            {
+                <input class="sk-eingabe sk-mehrfach-suche" placeholder="Rechercher…" aria-label="Rechercher" @bind="suche" @bind:event="oninput" />
+            }
+            <span class="sk-mehrfach-zahl">@Werte.Count / @Optionen.Count</span>
+            <button type="button" class="sk-link-knopf" @onclick="AlleAsync">Tout</button>
+            <button type="button" class="sk-link-knopf" @onclick="KeineAsync">Aucun</button>
+        </div>
+        <div class="sk-chips">
+            @foreach (var o in Gefiltert)
+            {
+                var an = Werte.Contains(o.Wert);
+                <button type="button" class="sk-chip @(an ? "aktiv" : null)" aria-pressed="@(an ? "true" : "false")" @onclick="() => UmschaltenAsync(o.Wert)">
+                    @if (an)
+                    {
+                        <Icon Name="check" Groesse="14" Strich="2.5" />
+                    }
+                    @o.Label
+                </button>
+            }
+        </div>
+    </div>
+</Feld>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public IReadOnlyCollection<T> Werte { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyCollection<T>> WerteChanged { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlOption<T>> Optionen { get; set; } = [];
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private string suche = string.Empty;
+
+    private IEnumerable<AuswahlOption<T>> Gefiltert => string.IsNullOrWhiteSpace(suche)
+        ? Optionen : Optionen.Where(o => o.Label.Contains(suche, StringComparison.OrdinalIgnoreCase));
+
+    private Task UmschaltenAsync(T wert)
+    {
+        var neu = Werte.ToList();
+        if (!neu.Remove(wert)) neu.Add(wert);
+        return SetzeAsync(neu);
+    }
+
+    private Task AlleAsync() => SetzeAsync(Werte.Union(Gefiltert.Select(o => o.Wert)).ToList());
+    private Task KeineAsync() => SetzeAsync([]);
+
+    private Task SetzeAsync(IReadOnlyCollection<T> neu)
+    {
+        Werte = neu;
+        return WerteChanged.InvokeAsync(neu);
+    }
+}

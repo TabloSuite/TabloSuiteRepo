@@ -1,0 +1,42 @@
+@* Eigenes Dropdown mit Suche (ab 8 Optionen automatisch); schließt bei Klick außerhalb. *@
+@typeparam T
+<Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@Fehler" Pflicht="@Pflicht" CssClass="@CssClass">
+    <div class="sk-auswahl @(offen ? "offen" : null) @(Kompakt ? "kompakt" : null)" data-sk-closer="@id">
+        <button type="button" id="@id" class="sk-auswahl-knopf" disabled="@Deaktiviert" aria-haspopup="listbox"
+                aria-expanded="@(offen ? "true" : "false")" @onclick="UmschaltenAsync">
+            @if (Icon is not null)
+            {
+                <Icon Name="@Icon" Groesse="16" />
+            }
+            <span class="sk-auswahl-text @(gewaehlt is null ? "leer" : null)">@(gewaehlt?.Label ?? Platzhalter)</span>
+            <Icon Name="chevron-down" Groesse="16" CssClass="sk-auswahl-pfeil" />
+        </button>
+        @if (offen)
+        {
+            <div class="sk-auswahl-popup">
+                @if (SucheAktiv)
+                {
+                    <input class="sk-auswahl-suche" placeholder="Rechercher…" aria-label="Rechercher" @bind="suche" @bind:event="oninput" />
+                }
+                <div class="sk-auswahl-liste" role="listbox">
+                    @foreach (var o in Gefiltert)
+                    {
+                        var aktiv = EqualityComparer<T>.Default.Equals(o.Wert, Wert);
+                        <button type="button" class="sk-auswahl-option @(aktiv ? "aktiv" : null)" role="option" aria-selected="@(aktiv ? "true" : "false")"
+                                @onmousedown:preventDefault @onclick="() => WaehleAsync(o.Wert)">
+                            <span>@o.Label</span>
+                            @if (o.Zusatz is not null)
+                            {
+                                <small>@o.Zusatz</small>
+                            }
+                        </button>
+                    }
+                    @if (!Gefiltert.Any())
+                    {
+                        <div class="sk-auswahl-leer">Aucun résultat</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</Feld>

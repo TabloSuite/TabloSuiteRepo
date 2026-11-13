@@ -1,0 +1,47 @@
+@* Betrag in ganzen FCFA: Anzeige mit Tausenderpunkt (« 150.000 »), Eingabe nur Ziffern. *@
+<Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@(eigenerFehler ?? Fehler)" Pflicht="@Pflicht" CssClass="@CssClass">
+    <div class="sk-eingabe-mit-einheit">
+        <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="numeric" name="@Name" value="@Anzeige"
+               placeholder="0" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        <span class="sk-einheit">FCFA</span>
+    </div>
+</Feld>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public long? Wert { get; set; }
+    [Parameter] public EventCallback<long?> WertChanged { get; set; }
+    [Parameter] public long Min { get; set; }
+    [Parameter] public long Max { get; set; } = 1_000_000_000;
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public bool Pflicht { get; set; }
+    [Parameter] public bool Deaktiviert { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private readonly string id = Feld.NeueId("betrag");
+    private string? eigenerFehler;
+
+    private string Anzeige => Wert is null ? string.Empty : SkoulouKultur.Zahl(Wert.Value);
+
+    private async Task AendernAsync(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? string.Empty;
+        eigenerFehler = null;
+        if (text.Any(c => !(char.IsDigit(c) || c is '.' or ' ' or ' ' or ' ')))
+        {
+            eigenerFehler = "Saisissez un montant entier en FCFA (sans centimes).";
+            return;
+        }
+        var ziffern = new string(text.Where(char.IsDigit).ToArray());
+        long? wert = ziffern.Length == 0 ? null : long.TryParse(ziffern, out var z) ? z : null;
+        if (ziffern.Length > 0 && (wert is null || wert < Min || wert > Max))
+        {
+            eigenerFehler = $"Le montant doit être compris entre {SkoulouKultur.Fcfa(Min)} et {SkoulouKultur.Fcfa(Max)}.";
+            return;
+        }
+        Wert = wert;
+        await WertChanged.InvokeAsync(wert);
+    }
+}

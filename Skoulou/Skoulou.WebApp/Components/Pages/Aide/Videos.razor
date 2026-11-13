@@ -1,0 +1,69 @@
+@page "/aide/videos"
+@attribute [Authorize]
+@inject IWebHostEnvironment Umgebung
+
+<PageTitle>Vidéos d'aide · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Vidéos d'aide" Icon="video" Untertitel="@Untertitel" />
+
+@if (gruppen.Count == 0)
+{
+    <Leerzustand Icon="video" Titel="Aucune vidéo pour votre rôle pour le moment." />
+}
+@foreach (var gruppe in gruppen)
+{
+    <Abschnitt Titel="@gruppe.Titel" Beschreibung="@gruppe.Untertitel" CssClass="sk-video-gruppe">
+        <div class="sk-video-raster">
+            @foreach (var video in gruppe.Videos)
+            {
+                <button type="button" class="sk-video-karte" @onclick="() => aktuell = video">
+                    <span class="sk-video-bild">
+                        <img src="@Poster(video)" alt="" loading="lazy" />
+                        <span class="sk-video-play"><Icon Name="play" Groesse="34" Strich="1.6" /></span>
+                        <span class="sk-video-dauer">@video.Dauer</span>
+                    </span>
+                    <span class="sk-video-text">
+                        <strong>@video.Titel</strong>
+                        <small>@video.Beschreibung</small>
+                    </span>
+                </button>
+            }
+        </div>
+    </Abschnitt>
+}
+
+<ModalDialog Open="aktuell is not null" Title="@(aktuell?.Titel ?? string.Empty)" Breite="sk-modal-lg" OnClose="() => aktuell = null">
+    @if (aktuell is not null)
+    {
+        <video class="sk-video-spieler" src="@Quelle(aktuell)" poster="@Poster(aktuell)" controls autoplay playsinline preload="metadata"></video>
+        <p class="sk-leise">@aktuell.Beschreibung</p>
+    }
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
+    private VideoKatalog.LernVideo? aktuell;
+
+    private string Untertitel
+    {
+        get
+        {
+            var videos = gruppen.SelectMany(g => g.Videos).ToList();
+            var sekunden = videos.Sum(v => v.Dauer.Split(':') is [var m, var s] ? int.Parse(m) * 60 + int.Parse(s) : 0);
+            return $"{videos.Count} vidéos courtes · {sekunden / 60} min au total. Commencez par la visite guidée.";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthZustand is not null) gruppen = VideoKatalog.FuerNutzer((await AuthZustand).User);
+    }
+
+    private string Quelle(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion(v.Url, Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private string Poster(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion("/" + v.Poster, Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).PhysicalPath);
+}

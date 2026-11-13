@@ -1,0 +1,10 @@
+@* Schlichtes Layout für Druckansichten (/druck/…): weißes Blatt, Druckknopf nur am Bildschirm. *@
+@inherits LayoutComponentBase
+
+<div class="sk-druck">
+    <div class="sk-druck-leiste sk-nicht-drucken">
+        <Logo />
+        <Druckknopf />
+    </div>
+    <article class="sk-druck-blatt">@Body</article>
+</div>

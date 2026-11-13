@@ -1,0 +1,32 @@
+@* Ein/Aus-Schalter (bool) mit Beschriftung und optionaler Erklärung. *@
+<div class="sk-schalter-zeile">
+    <button type="button" class="sk-schalter @(Wert ? "an" : null)" role="switch" aria-checked="@(Wert ? "true" : "false")"
+            aria-label="@Label" disabled="@Deaktiviert" @onclick="UmschaltenAsync">
+        <span class="sk-schalter-knopf"></span>
+    </button>
+    @if (Label is not null)
+    {
+        <span class="sk-schalter-text" @onclick="UmschaltenAsync">
+            <span>@Label</span>
+            @if (Hinweis is not null)
+            {
+                <small>@Hinweis</small>
+            }
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter] public bool Wert { get; set; }
+    [Parameter] public EventCallback<bool> WertChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public bool Deaktiviert { get; set; }
+
+    private async Task UmschaltenAsync()
+    {
+        if (Deaktiviert) return;
+        Wert = !Wert;
+        await WertChanged.InvokeAsync(Wert);
+    }
+}

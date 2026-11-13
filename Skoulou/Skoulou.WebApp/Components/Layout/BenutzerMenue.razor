@@ -1,0 +1,109 @@
+@* Benutzermenü in der Kopfzeile: Profil, Thema (clair/sombre/auto), Vidéos d'aide, Contact, Déconnexion. *@
+@implements IAsyncDisposable
+@inject SchulKontext Kontext
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<div class="sk-benutzermenue" data-sk-closer="benutzermenue">
+    <button type="button" class="sk-avatar-knopf" aria-label="Mon compte" aria-expanded="@(offen ? "true" : "false")" @onclick="UmschaltenAsync">
+        <NamensKreis Name="@Kontext.Name" Groesse="36" />
+        <span class="sk-avatar-text">
+            <strong>@Kontext.Vorname</strong>
+            <small>@Kontext.RollenBezeichnung</small>
+        </span>
+        <Icon Name="chevron-down" Groesse="16" CssClass="sk-avatar-pfeil" />
+    </button>
+    @if (offen)
+    {
+        <div class="sk-benutzermenue-popup" role="menu">
+            <div class="sk-benutzermenue-kopf">
+                <NamensKreis Name="@Kontext.Name" Groesse="40" />
+                <div>
+                    <strong>@Kontext.Name</strong>
+                    <small>@Kontext.RollenBezeichnung@(Kontext.SchulName is { } s ? " · " + s : null)</small>
+                </div>
+            </div>
+            <a class="sk-menue-link" role="menuitem" href="/profil" @onclick="Schliessen"><Icon Name="user" Groesse="18" /> Mon profil</a>
+            <div class="sk-thema-wahl" role="radiogroup" aria-label="Thème">
+                <span class="sk-thema-titel">Thème</span>
+                <div class="sk-thema-optionen">
+                    @foreach (var (wert, text, icon) in Themen)
+                    {
+                        <button type="button" role="radio" aria-checked="@(thema == wert ? "true" : "false")" class="@(thema == wert ? "aktiv" : null)"
+                                @onclick="() => ThemaAsync(wert)"><Icon Name="@icon" Groesse="15" /> @text</button>
+                    }
+                </div>
+            </div>
+            <a class="sk-menue-link" role="menuitem" href="/aide/videos" @onclick="Schliessen"><Icon Name="video" Groesse="18" /> Vidéos d'aide</a>
+            <a class="sk-menue-link" role="menuitem" href="/contact" @onclick="Schliessen"><Icon Name="mail" Groesse="18" /> Contact</a>
+            <form method="post" action="/auth/deconnexion" data-ladeanzeige="Déconnexion…">
+                <AntiforgeryToken />
+                <button type="submit" class="sk-menue-link gefahr" role="menuitem"><Icon Name="logout" Groesse="18" /> Déconnexion</button>
+            </form>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly (string Wert, string Text, string Icon)[] Themen =
+        [("light", "Clair", "sun"), ("dark", "Sombre", "moon"), ("auto", "Auto", "auto")];
+
+    private bool offen;
+    private string thema = "auto";
+    private DotNetObjectReference<BenutzerMenue>? selbst;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += Navigiert;
+        Kontext.Geaendert += Aktualisieren;
+    }
+
+    private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
+
+    private void Navigiert(object? sender, LocationChangedEventArgs e)
+    {
+        if (!offen) return;
+        offen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UmschaltenAsync()
+    {
+        offen = !offen;
+        if (!offen) return;
+        try
+        {
+            thema = await JS.InvokeAsync<string>("skLeseTheme");
+            selbst ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("skCloserRegistrieren", selbst, "benutzermenue");
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException) { }
+    }
+
+    private void Schliessen() => offen = false;
+
+    [JSInvokable]
+    public void SchliesseVonAussen()
+    {
+        if (!offen) return;
+        offen = false;
+        StateHasChanged();
+    }
+
+    private async Task ThemaAsync(string wert)
+    {
+        thema = wert;
+        try { await JS.InvokeVoidAsync("skSetzeTheme", wert); }
+        catch (JSException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Nav.LocationChanged -= Navigiert;
+        Kontext.Geaendert -= Aktualisieren;
+        if (selbst is null) return;
+        try { await JS.InvokeVoidAsync("skCloserEntfernen", "benutzermenue"); }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException) { }
+        selbst.Dispose();
+    }
+}

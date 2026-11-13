@@ -1,0 +1,46 @@
+@* Pflichtdialog beim ersten Login: Startpasswort durch ein eigenes ersetzen (Formular erneuert das Anmelde-Cookie). *@
+@inject KontoService Konten
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<ModalDialog Open="true" Title="Choisissez votre mot de passe" Oberzeile="Première connexion" Schliessbar="false" Breite="sk-modal-sm" ErrorMessage="@fehler">
+    <ChildContent>
+        <p class="sk-leise">Pour protéger votre compte, remplacez le mot de passe reçu par un mot de passe personnel que vous seul connaissez.</p>
+        <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" @onsubmit="SpeichernAsync" @onsubmit:preventDefault>
+            <AntiforgeryToken />
+            <input type="hidden" name="retour" value="@Rueckweg" />
+            <PasswortFeld Label="Mot de passe reçu" Name="actuel" @bind-Wert="aktuell" Autocomplete="current-password" Pflicht="true" />
+            <PasswortFeld Label="Nouveau mot de passe" Name="nouveau" @bind-Wert="neu" Autocomplete="new-password" Hinweis="@PasswortRegel.Hinweis" Pflicht="true" />
+            <PasswortFeld Label="Confirmez le nouveau mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
+        </form>
+    </ChildContent>
+    <Footer>
+        <form method="post" action="/auth/deconnexion">
+            <AntiforgeryToken />
+            <button type="submit" class="sk-btn sk-btn-ghost">Se déconnecter</button>
+        </form>
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    private readonly string formId = Feld.NeueId("mdp");
+    private string? aktuell, neu, bestaetigung, fehler;
+
+    private string Rueckweg => "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0];
+
+    protected override void OnInitialized()
+    {
+        if (Nav.Uri.Contains("erreur-mdp=", StringComparison.Ordinal))
+            fehler = "Le mot de passe n'a pas pu être modifié. Vérifiez vos saisies.";
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (AuthZustand is null || (await AuthZustand).User.KontoId() is not { } id) return;
+        fehler = await Konten.PruefePasswortWechselAsync(id, aktuell, neu, bestaetigung);
+        if (fehler is null) await JS.InvokeVoidAsync("skFormularSenden", formId);
+    }
+}

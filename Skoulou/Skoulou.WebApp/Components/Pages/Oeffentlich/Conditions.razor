@@ -1,0 +1,22 @@
+@page "/conditions"
+@attribute [AllowAnonymous]
+
+<PageTitle>Conditions d'utilisation · SKOULOU</PageTitle>
+
+<div class="sk-seite-schmal">
+    <SeitenKopf Titel="Conditions d'utilisation" Icon="shield" Untertitel="Les règles de SKOULOU pour chaque rôle. Chaque compte les accepte lors de sa première connexion." />
+    <Karte>
+        <nav class="sk-chips sk-agb-sprung" aria-label="Rôles">
+            @foreach (var a in AgbTexte.Alle)
+            {
+                <a class="sk-chip" href="/conditions#@a.Id">@a.Titel</a>
+            }
+        </nav>
+        <div class="sk-agb-text">
+            @foreach (var a in AgbTexte.Alle)
+            {
+                <AgbAbschnittAnzeige Abschnitt="@a" />
+            }
+        </div>
+    </Karte>
+</div>

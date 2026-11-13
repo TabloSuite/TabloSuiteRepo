@@ -1,0 +1,16 @@
+@* Kleines farbiges Etikett für Zustände (erfolg, warn, fehler, info, neutral). *@
+<span class="sk-badge sk-badge-@Art">
+    @if (Icon is not null)
+    {
+        <Icon Name="@Icon" Groesse="13" Strich="2.5" />
+    }
+    @Text
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    /// <summary>« erfolg », « warn », « fehler », « info » oder « neutral ».</summary>
+    [Parameter] public string Art { get; set; } = "neutral";
+    [Parameter] public string? Icon { get; set; }
+}

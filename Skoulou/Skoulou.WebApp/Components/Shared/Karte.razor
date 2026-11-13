@@ -1,0 +1,42 @@
+@* Karte mit optionalem Kopf (Titel, Untertitel, Icon, Aktionen); auf Wunsch einklappbar. *@
+<section class="sk-karte @CssClass">
+    @if (Titel is not null)
+    {
+        <div class="sk-karte-kopf">
+            @if (Klappbar)
+            {
+                <button type="button" class="sk-karte-klapp" aria-expanded="@(offen ? "true" : "false")" @onclick="() => offen = !offen">
+                    <KartenTitel Titel="@Titel" Untertitel="@Untertitel" Icon="@Icon" />
+                    <Icon Name="chevron-down" Groesse="18" CssClass="@(offen ? "sk-drehen" : null)" />
+                </button>
+            }
+            else
+            {
+                <KartenTitel Titel="@Titel" Untertitel="@Untertitel" Icon="@Icon" />
+                @if (Aktionen is not null)
+                {
+                    <div class="sk-karte-aktionen">@Aktionen</div>
+                }
+            }
+        </div>
+    }
+    @if (!Klappbar || offen)
+    {
+        <div class="sk-karte-inhalt">@ChildContent</div>
+    }
+</section>
+
+@code {
+    [Parameter] public string? Titel { get; set; }
+    [Parameter] public string? Untertitel { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? Aktionen { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public bool Klappbar { get; set; }
+    [Parameter] public bool AnfangsOffen { get; set; } = true;
+
+    private bool offen;
+
+    protected override void OnInitialized() => offen = AnfangsOffen;
+}

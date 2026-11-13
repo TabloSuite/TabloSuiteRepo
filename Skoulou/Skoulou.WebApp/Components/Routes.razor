@@ -1,0 +1,13 @@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.Oeffentlich.NichtGefunden)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <ZugriffUmleitung />
+            </NotAuthorized>
+            <Authorizing>
+                <LadeIndikator Sichtbar="true" />
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

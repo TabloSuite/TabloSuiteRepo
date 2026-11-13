@@ -1,0 +1,97 @@
+@* Hauptlayout: angemeldet Seitenleiste + Kopfzeile (Schule, Schuljahr, Benutzermenü), sonst öffentlicher Rahmen. *@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject SchulKontext Kontext
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<LadeIndikator />
+<AuthorizeView>
+    <Authorized>
+        <div class="sk-shell">
+            <NavMenu />
+            <div class="sk-inhalt">
+                <header class="sk-topbar">
+                    <a class="sk-topbar-marke" href="@Rollen.Startseite(Kontext.Rolle)" aria-label="SKOULOU – Accueil"><Logo MitText="false" Groesse="34" /></a>
+                    @if (Kontext.SchulName is not null)
+                    {
+                        <div class="sk-topbar-schule" title="@Kontext.SchulName">
+                            <Icon Name="school" Groesse="18" />
+                            <span>@Kontext.SchulName</span>
+                        </div>
+                    }
+                    <div class="sk-topbar-luecke"></div>
+                    @if (Kontext.MitSchuljahrAuswahl && Kontext.Schuljahre.Count > 0)
+                    {
+                        <div class="sk-topbar-jahr">
+                            <AuswahlFeld T="Guid?" Kompakt="true" Icon="calendar" Wert="Kontext.SchuljahrId" WertChanged="Kontext.WaehleSchuljahr"
+                                         Optionen="SchuljahrOptionen" MitSuche="false" Platzhalter="Année scolaire" />
+                        </div>
+                    }
+                    <BenutzerMenue />
+                </header>
+                <main class="sk-main" id="inhalt">
+                    <ErrorBoundary @ref="grenze">
+                        <ChildContent>@Body</ChildContent>
+                        <ErrorContent Context="fehlerKontext">
+                            <Hinweis Art="fehler" Titel="Une erreur inattendue s'est produite.">
+                                L'erreur a été enregistrée. Rechargez la page ou revenez à l'accueil.
+                            </Hinweis>
+                        </ErrorContent>
+                    </ErrorBoundary>
+                </main>
+            </div>
+        </div>
+        <KontoWaechter />
+    </Authorized>
+    <NotAuthorized>
+        <div class="sk-oeffentlich">
+            <header class="sk-oeffentlich-kopf">
+                <a href="/" aria-label="SKOULOU – Accueil"><Logo /></a>
+                <nav class="sk-oeffentlich-nav" aria-label="Sections">
+                    <a href="/#fonctions">Fonctionnalités</a>
+                    <a href="/#video">Vidéo</a>
+                    <a href="/#etapes">Démarrer</a>
+                    <a href="/contact">Contact</a>
+                </nav>
+                <div class="sk-oeffentlich-aktionen">
+                    <a class="sk-btn sk-btn-ghost" href="/auth/connexion"><Icon Name="login" Groesse="18" /> <span>Connexion</span></a>
+                    <a class="sk-btn sk-btn-primaer sk-nur-breit" href="/auth/inscription">Inscrire mon établissement</a>
+                </div>
+            </header>
+            <main class="sk-oeffentlich-main">@Body</main>
+            <AppFusszeile />
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+<Toast />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    private ErrorBoundary? grenze;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> SchuljahrOptionen => Kontext.Schuljahre
+        .Select(j => new AuswahlOption<Guid?>(j.Id, j.Bezeichnung, j.Status == SchuljahrStatus.Laufend ? "en cours" : null))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Kontext.Geaendert += Aktualisieren;
+        if (AuthZustand is not null && (await AuthZustand).User.KontoId() is { } id) await Kontext.LadeAsync(id);
+        ZeigeHinweisAusAdresse();
+    }
+
+    protected override void OnParametersSet() => grenze?.Recover();
+
+    private void ZeigeHinweisAusAdresse()
+    {
+        var abfrage = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+        if (abfrage.TryGetValue("info", out var info) && info == "mot-de-passe-modifie")
+            Toast.ZeigeErfolg("Votre mot de passe a été modifié.");
+    }
+
+    private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Kontext.Geaendert -= Aktualisieren;
+}

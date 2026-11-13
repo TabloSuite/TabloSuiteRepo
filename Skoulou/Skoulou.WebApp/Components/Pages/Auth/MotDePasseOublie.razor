@@ -1,0 +1,37 @@
+@page "/auth/mot-de-passe-oublie"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+
+<PageTitle>Mot de passe oublié · SKOULOU</PageTitle>
+
+<div class="sk-auth-karte">
+    <h1>Mot de passe oublié</h1>
+    <p class="sk-auth-unter">Indiquez votre identifiant ou l'adresse e-mail de votre compte. Vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+
+    @if (Envoye is not null)
+    {
+        <Hinweis Art="erfolg" Titel="Demande enregistrée">Si un compte correspond, un e-mail de réinitialisation a été envoyé à l'adresse enregistrée. Pensez à vérifier vos courriers indésirables.</Hinweis>
+    }
+    @if (AnmeldeRegeln.Meldung(Erreur) is { } fehler)
+    {
+        <Hinweis Art="fehler">@fehler</Hinweis>
+    }
+
+    <form method="post" action="/auth/mot-de-passe-oublie/envoyer" class="sk-formular" data-ladeanzeige="Envoi…">
+        <AntiforgeryToken />
+        <TextFeld Label="Identifiant ou adresse e-mail" Name="saisie" Autocomplete="username" Pflicht="true" MaxLaenge="256"
+                  autocapitalize="none" spellcheck="false" />
+        <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit">Recevoir le lien</button>
+    </form>
+
+    <Hinweis Art="info" CssClass="sk-oben-abstand">Votre compte n'a pas d'adresse e-mail ? Demandez à la direction de votre établissement de vous attribuer un nouveau mot de passe.</Hinweis>
+
+    <div class="sk-auth-links">
+        <a href="/auth/connexion"><Icon Name="arrow-left" Groesse="14" /> Retour à la connexion</a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "envoye")] public string? Envoye { get; set; }
+    [SupplyParameterFromQuery(Name = "erreur")] public string? Erreur { get; set; }
+}

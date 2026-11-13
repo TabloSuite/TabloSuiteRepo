@@ -1,0 +1,22 @@
+@* Ein Abschnitt der Nutzungsbedingungen (Titel, Absätze, Stichpunkte). *@
+<section class="sk-agb-abschnitt @(Hervorgehoben ? "hervor" : null)" id="@Abschnitt.Id">
+    <h3>@Abschnitt.Titel</h3>
+    @foreach (var absatz in Abschnitt.Absaetze)
+    {
+        <p>@absatz</p>
+    }
+    @if (Abschnitt.Punkte.Count > 0)
+    {
+        <ul>
+            @foreach (var punkt in Abschnitt.Punkte)
+            {
+                <li>@punkt</li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AgbAbschnitt Abschnitt { get; set; } = default!;
+    [Parameter] public bool Hervorgehoben { get; set; }
+}

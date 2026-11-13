@@ -1,0 +1,30 @@
+@* Einfache Tabelle für kleine, vollständig geladene Listen (große Listen: Liste<T>). *@
+@typeparam T
+@if (!Eintraege.Any())
+{
+    <Leerzustand Icon="@LeerIcon" Titel="@LeerTitel" Text="@LeerText" />
+}
+else
+{
+    <div class="sk-tabelle-rahmen @(Scroll ? "sk-liste-scroll" : null)">
+        <table class="sk-tabelle">
+            <thead><tr>@Kopf</tr></thead>
+            <tbody>
+                @foreach (var e in Eintraege)
+                {
+                    <tr>@Zeile(e)</tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<T> Eintraege { get; set; } = [];
+    [Parameter, EditorRequired] public RenderFragment Kopf { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<T> Zeile { get; set; } = default!;
+    [Parameter] public bool Scroll { get; set; }
+    [Parameter] public string LeerIcon { get; set; } = "inbox";
+    [Parameter] public string LeerTitel { get; set; } = "Aucune donnée";
+    [Parameter] public string? LeerText { get; set; }
+}

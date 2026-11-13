@@ -1,0 +1,21 @@
+@* Markenzeichen SKOULOU (Logo « S » im Verlauf + Schriftzug). *@
+<span class="sk-marke @CssClass">
+    <img class="sk-logo" src="@Assets["img/skoulou-logo.svg"]" alt="" width="@Groesse" height="@Groesse" />
+    @if (MitText)
+    {
+        <span class="sk-marke-text">
+            <span class="sk-marke-name">SKOULOU</span>
+            @if (Unterzeile is not null)
+            {
+                <span class="sk-marke-unter" title="@Unterzeile">@Unterzeile</span>
+            }
+        </span>
+    }
+</span>
+
+@code {
+    [Parameter] public bool MitText { get; set; } = true;
+    [Parameter] public string? Unterzeile { get; set; }
+    [Parameter] public int Groesse { get; set; } = 36;
+    [Parameter] public string? CssClass { get; set; }
+}

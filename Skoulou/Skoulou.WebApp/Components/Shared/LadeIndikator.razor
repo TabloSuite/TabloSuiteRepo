@@ -1,0 +1,18 @@
+@* Dünner Ladebalken oben (globaler Ladezustand oder ausdrücklich sichtbar). *@
+@implements IDisposable
+@inject LadeZustand LadeZustand
+
+@if (Sichtbar || LadeZustand.Laedt)
+{
+    <div class="sk-ladebalken" role="progressbar" aria-label="Chargement"></div>
+}
+
+@code {
+    [Parameter] public bool Sichtbar { get; set; }
+
+    protected override void OnInitialized() => LadeZustand.OnChange += Aktualisieren;
+
+    private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => LadeZustand.OnChange -= Aktualisieren;
+}

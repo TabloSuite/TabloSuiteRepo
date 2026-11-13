@@ -1,0 +1,11 @@
+@page "/verification/{Token}"
+@attribute [AllowAnonymous]
+
+<div class="sk-seite-schmal">
+    <InVorbereitung Titel="Vérification d'un bulletin" Icon="qr" Etappe="E5 – Notes et bulletins"
+                    Beschreibung="Le QR code imprimé sur chaque bulletin mène ici : la page confirmera l'authenticité du document (numéro, établissement, période), sans afficher de données personnelles." />
+</div>
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+}

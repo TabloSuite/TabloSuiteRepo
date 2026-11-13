@@ -1,0 +1,21 @@
+@* Icon aus dem SVG-Sprite (img/icons.svg, 24er Raster, Strich, currentColor) – gecacht, ohne CDN. *@
+<svg class="sk-icon @CssClass" width="@Groesse" height="@Groesse" viewBox="0 0 24 24" fill="none"
+     stroke="currentColor" stroke-width="@Strich.ToString(System.Globalization.CultureInfo.InvariantCulture)" stroke-linecap="round" stroke-linejoin="round"
+     aria-hidden="@(Titel is null ? "true" : null)" role="@(Titel is null ? null : "img")" focusable="false">
+    @if (Titel is not null)
+    {
+        <title>@Titel</title>
+    }
+    <use href="@($"{Assets["img/icons.svg"]}#{Name}")" />
+</svg>
+
+@code {
+    /// <summary>Name des Symbols im Sprite (z. B. « home », « school »).</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = "dot";
+    [Parameter] public int Groesse { get; set; } = 20;
+    [Parameter] public double Strich { get; set; } = 2;
+    [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>Barrierefreier Titel; ohne Titel ist das Icon dekorativ.</summary>
+    [Parameter] public string? Titel { get; set; }
+}

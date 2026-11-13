@@ -1,0 +1,25 @@
+@* Routenbasierte Reiter (Segment-Tabs): jeder Reiter ist ein Link, der aktive folgt der Adresse. *@
+<nav class="sk-reiter" aria-label="@Beschriftung">
+    @foreach (var r in Eintraege)
+    {
+        <NavLink href="@r.Href" Match="@r.Match" class="sk-reiter-link" ActiveClass="aktiv">
+            @if (r.Icon is not null)
+            {
+                <Icon Name="@r.Icon" Groesse="16" />
+            }
+            <span>@r.Label</span>
+            @if (r.Anzahl is not null)
+            {
+                <span class="sk-reiter-zahl">@r.Anzahl</span>
+            }
+        </NavLink>
+    }
+</nav>
+
+@code {
+    /// <summary>Ein Reiter: Ziel, Beschriftung, optional Icon und Zähler.</summary>
+    public sealed record Eintrag(string Href, string Label, string? Icon = null, int? Anzahl = null, NavLinkMatch Match = NavLinkMatch.All);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Eintrag> Eintraege { get; set; } = [];
+    [Parameter] public string Beschriftung { get; set; } = "Sections";
+}

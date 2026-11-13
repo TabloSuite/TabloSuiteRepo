@@ -267,7 +267,7 @@ E2–E6 bauen parallel auf E1 auf, jeder Bereich in seinem Ordner (`Services/<Be
 ## 11. Entscheidungen zu offenen Fragen der Fachkonzepte
 
 Vom Nutzer entschieden (13.11.): alles pro Schuljahr; Plattformrechnung pro Periode (Sessions für Kurzschulen); Gebührenarten + Raten + Ermäßigungen; DB neu (nur Testdaten); alle Funktionen, neu durchdacht.
-**Noch offen beim Nutzer:** Vergütung des Responsable (Empfehlung: % der bezahlten Rechnungen seiner Schulen, Auszahlung manuell markieren). Bis zur Antwort: Modell vorsehen, UI nicht bauen.
+**Vergütung des Responsable (vom Nutzer bestätigt 13.11.):** Prozentsatz (Standard aus `PlattformEinstellung.ResponsableProzentStandard`, je Schule überschreibbar `Schule.ResponsableProzent`) der **bestätigt bezahlten** Plattformrechnungen seiner Schulen. Beim Bestätigen einer Rechnung entsteht ein `ResponsableAnteil` (Prozent und Betrag eingefroren, ganze FCFA, abgerundet). Der Responsable sieht « Mes parts » (offen/ausgezahlt, je Schule und Periode); der SuperAdmin markiert Auszahlungen (einzeln oder gesammelt, mit Datum und Referenz). Wird eine bestätigte Rechnung nachträglich storniert, entsteht ein negativer Ausgleichsanteil.
 
 Von mir entschieden (änderbar):
 1. Eine E-Mail darf zu mehreren Konten gehören (kein Unique-Index).

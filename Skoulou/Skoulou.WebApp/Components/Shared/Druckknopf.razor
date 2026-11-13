@@ -1,0 +1,23 @@
+@* Druckknopf: öffnet eine Druckansicht (Href) in neuem Tab oder druckt die aktuelle Seite. *@
+@inject IJSRuntime JS
+
+@if (Href is not null)
+{
+    <a class="sk-btn sk-btn-ghost @CssClass" href="@Href" target="_blank" rel="noopener"><Icon Name="printer" Groesse="18" /> <span>@Text</span></a>
+}
+else
+{
+    <button type="button" class="sk-btn sk-btn-ghost @CssClass" @onclick="DruckenAsync"><Icon Name="printer" Groesse="18" /> <span>@Text</span></button>
+}
+
+@code {
+    [Parameter] public string Text { get; set; } = "Imprimer";
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private async Task DruckenAsync()
+    {
+        try { await JS.InvokeVoidAsync("print"); }
+        catch (JSException) { }
+    }
+}

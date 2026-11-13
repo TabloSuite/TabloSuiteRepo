@@ -1,0 +1,34 @@
+@* Rückfrage vor einer Aktion (« Annuler » / Bestätigen); bei Gefahr roter Knopf. *@
+<ModalDialog Open="Open" Title="@Titel" Breite="sk-modal-sm" OnClose="AbbrechenAsync" ErrorMessage="@Fehler">
+    <ChildContent>
+        <div class="sk-bestaetigung">
+            <span class="sk-bestaetigung-icon @(Gefahr ? "gefahr" : null)"><Icon Name="@(Gefahr ? "alert" : "help")" Groesse="22" /></span>
+            <div>
+                @if (Text is not null)
+                {
+                    <p>@Text</p>
+                }
+                @ChildContent
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="AbbrechenAsync">Annuler</button>
+        <AsyncKnopf Text="@BestaetigenText" CssClass="@(Gefahr ? "sk-btn-gefahr" : "sk-btn-primaer")" OnClick="BestaetigenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Titel { get; set; } = "Confirmer";
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string BestaetigenText { get; set; } = "Confirmer";
+    [Parameter] public bool Gefahr { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnBestaetigen { get; set; }
+    [Parameter] public EventCallback OnAbbrechen { get; set; }
+
+    private Task BestaetigenAsync() => OnBestaetigen.InvokeAsync();
+    private Task AbbrechenAsync() => OnAbbrechen.InvokeAsync();
+}

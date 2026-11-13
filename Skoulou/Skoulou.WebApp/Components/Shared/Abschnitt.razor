@@ -1,0 +1,33 @@
+@* Abschnitt innerhalb einer Seite oder Karte (h2/h3 + Beschreibung + Inhalt). *@
+<section class="sk-abschnitt @CssClass">
+    <div class="sk-abschnitt-kopf">
+        <div>
+            @if (Ebene == 3)
+            {
+                <h3>@Titel</h3>
+            }
+            else
+            {
+                <h2>@Titel</h2>
+            }
+            @if (Beschreibung is not null)
+            {
+                <p>@Beschreibung</p>
+            }
+        </div>
+        @if (Aktionen is not null)
+        {
+            <div class="sk-abschnitt-aktionen">@Aktionen</div>
+        }
+    </div>
+    @ChildContent
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Titel { get; set; } = string.Empty;
+    [Parameter] public string? Beschreibung { get; set; }
+    [Parameter] public int Ebene { get; set; } = 2;
+    [Parameter] public RenderFragment? Aktionen { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+}

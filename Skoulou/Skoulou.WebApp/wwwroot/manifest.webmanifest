@@ -1,0 +1,14 @@
+{
+  "name": "SKOULOU – Gestion scolaire",
+  "short_name": "SKOULOU",
+  "description": "Élèves, classes, notes, bulletins et frais de scolarité dans un seul espace.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#1d4ed8",
+  "lang": "fr-FR",
+  "icons": [
+    { "src": "img/skoulou-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+  ]
+}

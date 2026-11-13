@@ -1,0 +1,46 @@
+@* Startseite einer Rolle: Begrüßung mit Datum und Schule, Kacheln zu allen Bereichen der Rolle. *@
+@inherits SkoulouSeite
+@inject TimeProvider Uhr
+
+<PageTitle>Accueil · SKOULOU</PageTitle>
+
+<div class="sk-start">
+    <SeitenKopf Oberzeile="@HeuteText" Titel="@($"Bonjour, {Kontext.Vorname}")" Untertitel="@Untertitel" Aktionen="Aktionen" />
+
+    @ChildContent
+
+    <div class="sk-kachel-raster">
+        @foreach (var e in Ziele)
+        {
+            <a class="sk-kachel" href="@e.Href">
+                <span class="sk-kachel-icon"><Icon Name="@e.Icon" Groesse="22" /></span>
+                <strong>@e.Label</strong>
+                @if (e.Beschreibung is not null)
+                {
+                    <small>@e.Beschreibung</small>
+                }
+                <Icon Name="arrow-right" Groesse="16" CssClass="sk-kachel-pfeil" />
+            </a>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Untertitel { get; set; }
+    [Parameter] public RenderFragment? Aktionen { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string HeuteText
+    {
+        get
+        {
+            var text = SkoulouKultur.DatumLang(new SchulZeit(Uhr).Heute);
+            return char.ToUpper(text[0], SkoulouKultur.Kultur) + text[1..];
+        }
+    }
+
+    private IEnumerable<NavEintrag> Ziele => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht)
+        .Where(g => g.Titel != "Aide")
+        .SelectMany(g => g.Eintraege)
+        .Where(e => e.Href != Rollen.Startseite(Kontext.Rolle));
+}

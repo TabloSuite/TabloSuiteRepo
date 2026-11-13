@@ -1,0 +1,153 @@
+@page "/"
+@attribute [AllowAnonymous]
+@inject StartseitenStatistik Statistik
+@inject IWebHostEnvironment Umgebung
+@inject NavigationManager Nav
+
+<PageTitle>SKOULOU · Gestion scolaire</PageTitle>
+
+<div class="lp">
+    <section class="lp-hero" id="haut">
+        <div class="lp-hero-text">
+            <span class="lp-etikett"><Icon Name="school" Groesse="14" /> Plateforme de gestion scolaire</span>
+            <h1>Votre établissement, <span class="lp-verlauf">simplement organisé.</span></h1>
+            <p>Élèves, classes, enseignants, emplois du temps, notes, bulletins et frais de scolarité : SKOULOU réunit la gestion de votre école, de votre collège, de votre lycée ou de votre centre de formation dans un seul espace, sur ordinateur, tablette et téléphone.</p>
+            <div class="lp-knoepfe">
+                <a class="sk-btn sk-btn-primaer sk-btn-gross" href="/auth/inscription"><Icon Name="user-plus" Groesse="18" /> Inscrire mon établissement</a>
+                <a class="sk-btn sk-btn-ghost sk-btn-gross" href="/auth/connexion">Se connecter</a>
+            </div>
+            @if (zahlen is { Schulen: > 0 } z)
+            {
+                <p class="lp-zahlen">
+                    <span><Icon Name="school" Groesse="16" /><strong>@SkoulouKultur.Zahl(z.Schulen)</strong> établissement@(z.Schulen > 1 ? "s" : null) actif@(z.Schulen > 1 ? "s" : null)</span>
+                    <span><Icon Name="graduation" Groesse="16" /><strong>@SkoulouKultur.Zahl(z.Schueler)</strong> élève@(z.Schueler > 1 ? "s" : null) inscrit@(z.Schueler > 1 ? "s" : null)</span>
+                </p>
+            }
+        </div>
+        <StartseitenVorschau />
+    </section>
+
+    @if (HatVideo)
+    {
+        <section class="lp-video" id="video" aria-label="Vidéo de présentation">
+            <div class="lp-video-text">
+                <span class="lp-etikett"><Icon Name="video" Groesse="14" /> En une minute</span>
+                <h2>SKOULOU en action</h2>
+                <p>La direction suit ses élèves, ses classes et les frais de scolarité. Les enseignants publient leurs leçons et leurs examens, les élèves apprennent à leur rythme, les bulletins se calculent tout seuls et les parents restent informés.</p>
+            </div>
+            <div class="lp-video-rahmen">
+                <video src="@WerbeVideo" poster="@WerbePoster" controls preload="metadata" playsinline></video>
+            </div>
+        </section>
+    }
+
+    <section class="lp-abschnitt" id="fonctions">
+        <div class="lp-abschnitt-kopf">
+            <p class="sk-oberzeile">Fonctionnalités</p>
+            <h2>Tout ce dont votre établissement a besoin</h2>
+            <p>Pour les écoles, collèges, lycées et centres de formation. Chaque établissement gère ses propres données, en toute séparation.</p>
+        </div>
+        <div class="lp-funktionen">
+            @foreach (var (icon, titel, text) in Funktionen)
+            {
+                <article class="lp-funktion">
+                    <span class="lp-funktion-icon"><Icon Name="@icon" Groesse="22" /></span>
+                    <h3>@titel</h3>
+                    <p>@text</p>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="lp-abschnitt" id="roles">
+        <div class="lp-abschnitt-kopf">
+            <p class="sk-oberzeile">Pour chacun</p>
+            <h2>Un espace clair pour chaque rôle</h2>
+        </div>
+        <div class="lp-rollen">
+            @foreach (var (icon, rolle, punkte) in RollenKarten)
+            {
+                <article class="lp-rolle">
+                    <div class="lp-rolle-kopf"><span><Icon Name="@icon" Groesse="20" /></span><h3>@rolle</h3></div>
+                    <ul>
+                        @foreach (var punkt in punkte)
+                        {
+                            <li><Icon Name="check" Groesse="16" Strich="2.5" /> <span>@punkt</span></li>
+                        }
+                    </ul>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="lp-schritte" id="etapes">
+        <div>
+            <p class="sk-oberzeile">Démarrer</p>
+            <h2>Votre établissement en ligne en trois étapes</h2>
+            <ol>
+                @foreach (var (nr, schritt, text) in Schritte)
+                {
+                    <li><span class="lp-schritt-nr">@nr</span><strong>@schritt</strong><span>@text</span></li>
+                }
+            </ol>
+        </div>
+        <div class="lp-schritte-knoepfe">
+            <a class="sk-btn sk-btn-hell sk-btn-gross" href="/auth/inscription">Inscrire mon établissement</a>
+            <a class="sk-btn sk-btn-umriss-hell sk-btn-gross" href="/auth/inscription?type=eleve">Je suis élève</a>
+        </div>
+    </section>
+
+    <section class="lp-vertrauen">
+        <div><span><Icon Name="lock" Groesse="18" /></span><div><strong>Données séparées</strong><p>Chaque établissement ne voit que ses propres élèves, notes et paiements.</p></div></div>
+        <div><span><Icon Name="phone" Groesse="18" /></span><div><strong>Partout</strong><p>Sur ordinateur, tablette et téléphone, sans installation, même avec une connexion lente.</p></div></div>
+        <div><span><Icon Name="mail" Groesse="18" /></span><div><strong>Une question ?</strong><p><a href="/contact">Contactez-nous</a> — nous vous aidons à démarrer.</p></div></div>
+    </section>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    private StartseitenStatistik.Zahlen? zahlen;
+
+    private static readonly (string, string, string)[] Funktionen =
+    [
+        ("graduation", "Élèves et classes", "Inscriptions, matricules, changements de classe et accès des élèves, même sans adresse e-mail."),
+        ("timetable", "Équipe et emplois du temps", "Matières, coefficients, affectations des enseignants et emplois du temps publiés pour toute l'école."),
+        ("report", "Notes et bulletins", "Saisie rapide des notes, moyennes et rangs calculés, bulletins PDF avec QR code de vérification."),
+        ("wallet", "Frais de scolarité", "Frais par niveau, tranches, réductions, paiements et reçus, suivi des impayés."),
+        ("book-open", "Leçons et examens", "Leçons, exercices et examens en ligne corrigés automatiquement, avec la progression de chaque élève."),
+        ("bars", "Caisse et rapports", "Recettes et dépenses de l'établissement, solde de caisse et rapports financiers clairs."),
+    ];
+
+    private static readonly (string, string, string[])[] RollenKarten =
+    [
+        ("school", "Direction", ["Vue d'ensemble de l'établissement", "Comptes des enseignants, élèves et parents", "Bulletins et finances sous contrôle"]),
+        ("pen", "Enseignants", ["Notes et appréciations par classe", "Leçons, exercices et examens", "Appel et emploi du temps"]),
+        ("graduation", "Élèves", ["Cours et exercices de la classe", "Résultats et bulletins en ligne", "Progression visible à tout moment"]),
+        ("famille", "Parents", ["Bulletins publiés", "Absences et retards", "Frais de scolarité et reçus"]),
+    ];
+
+    private static readonly (int, string, string)[] Schritte =
+    [
+        (1, "Inscription", "Créez le compte de direction et votre établissement."),
+        (2, "Validation", "SKOULOU vérifie et active votre établissement."),
+        (3, "Équipe et élèves", "Ajoutez enseignants, élèves et parents, un par un ou par fichier."),
+    ];
+
+    private string WerbeVideoPfad => Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", VideoKatalog.Werbung);
+    private bool HatVideo => File.Exists(WerbeVideoPfad);
+    private string WerbeVideo => VideoKatalog.MitVersion("/medien/videos/" + VideoKatalog.Werbung, WerbeVideoPfad);
+    private string WerbePoster => VideoKatalog.MitVersion("/videos/" + Path.ChangeExtension(VideoKatalog.Werbung, ".jpg"),
+        Umgebung.WebRootFileProvider.GetFileInfo("videos/" + Path.ChangeExtension(VideoKatalog.Werbung, ".jpg")).PhysicalPath);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthZustand is null ? null : (await AuthZustand).User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo(Rollen.Startseite(user.Rolle()), replace: true);
+            return;
+        }
+        zahlen = await Statistik.LadeAsync();
+    }
+}

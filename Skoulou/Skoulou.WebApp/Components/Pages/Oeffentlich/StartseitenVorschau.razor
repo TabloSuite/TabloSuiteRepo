@@ -1,0 +1,32 @@
+@* Beispiel-Oberfläche der Direktion auf der Startseite (feste Beispielwerte, kein Foto). *@
+<div class="lp-vorschau" aria-label="Aperçu de l'espace direction (exemple)">
+    <div class="lp-vorschau-band"></div>
+    <div class="lp-vorschau-inhalt">
+        <div class="lp-vorschau-kopf">
+            <span class="lp-vorschau-logo"><Icon Name="school" Groesse="18" /></span>
+            <div><strong>Collège Les Palmiers</strong><small>Année scolaire 2026-2027</small></div>
+            <span class="sk-badge sk-badge-info">Exemple</span>
+        </div>
+        <div class="lp-vorschau-kacheln">
+            <div><small>Élèves</small><strong>482</strong></div>
+            <div><small>Classes</small><strong>18</strong></div>
+            <div><small>Frais encaissés</small><strong>74 %</strong><span class="lp-balken"><span style="width:74%"></span></span></div>
+            <div><small>Absences du jour</small><strong>6</strong></div>
+        </div>
+        <div class="lp-vorschau-liste">
+            <div class="lp-vorschau-zeile kopf"><span>Bulletins · 1er trimestre</span><span class="sk-badge sk-badge-warn">En préparation</span></div>
+            @foreach (var (klasse, stand) in Stand)
+            {
+                <div class="lp-vorschau-zeile">
+                    <span>@klasse</span>
+                    <span class="lp-balken"><span style="width:@(stand)%"></span></span>
+                    <span class="lp-prozent">@stand %</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly (string, int)[] Stand = [("6e A", 100), ("5e B", 82), ("4e A", 64)];
+}

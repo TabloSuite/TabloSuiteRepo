@@ -1,0 +1,45 @@
+@* Datumsfeld mit eigenem Kalender (Montag zuerst, französisch), Anzeige « 12/11/2026 ». *@
+<Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@Fehler" Pflicht="@Pflicht" CssClass="@CssClass">
+    <div class="sk-datum @(offen ? "offen" : null)" data-sk-closer="@id">
+        <button type="button" id="@id" class="sk-auswahl-knopf" disabled="@Deaktiviert" aria-haspopup="dialog"
+                aria-expanded="@(offen ? "true" : "false")" @onclick="UmschaltenAsync">
+            <Icon Name="calendar" Groesse="16" />
+            <span class="sk-auswahl-text @(Wert is null ? "leer" : null)">@(Wert is { } w ? SkoulouKultur.Datum(w) : Platzhalter)</span>
+        </button>
+        @if (offen)
+        {
+            <div class="sk-datum-popup" role="dialog" aria-label="Choisir une date">
+                <div class="sk-datum-kopf">
+                    <button type="button" class="sk-icon-knopf klein" aria-label="Mois précédent" @onclick="() => Monat(-1)"><Icon Name="chevron-left" Groesse="16" /></button>
+                    <strong>@MonatsTitel</strong>
+                    <button type="button" class="sk-icon-knopf klein" aria-label="Mois suivant" @onclick="() => Monat(1)"><Icon Name="chevron-right" Groesse="16" /></button>
+                </div>
+                <div class="sk-datum-raster">
+                    @foreach (var tag in Wochentage)
+                    {
+                        <span class="sk-datum-wt">@tag</span>
+                    }
+                    @foreach (var zelle in Zellen())
+                    {
+                        if (zelle is not { } tag)
+                        {
+                            <span></span>
+                        }
+                        else
+                        {
+                            <button type="button" class="sk-datum-tag @(tag == Heute ? "heute" : null) @(tag == Wert ? "gewaehlt" : null)"
+                                    disabled="@(!Erlaubt(tag))" @onclick="() => WaehleAsync(tag)">@tag.Day</button>
+                        }
+                    }
+                </div>
+                <div class="sk-datum-fuss">
+                    @if (!Pflicht)
+                    {
+                        <button type="button" class="sk-link-knopf" @onclick="() => WaehleAsync(null)">Effacer</button>
+                    }
+                    <button type="button" class="sk-link-knopf" disabled="@(!Erlaubt(Heute))" @onclick="() => WaehleAsync(Heute)">Aujourd'hui</button>
+                </div>
+            </div>
+        }
+    </div>
+</Feld>

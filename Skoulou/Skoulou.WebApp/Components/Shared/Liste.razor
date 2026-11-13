@@ -1,0 +1,85 @@
+@* Wachsende Liste: Suche (350 ms), Filter-Chips, Server-Paging mit « Afficher plus », Scrollbereich, Leer- und Ladezustand. *@
+@typeparam T
+<div class="sk-liste @CssClass">
+    @if (MitSuche || Filter.Count > 0 || Werkzeuge is not null)
+    {
+        <div class="sk-filterleiste">
+            @if (MitSuche)
+            {
+                <label class="sk-suche">
+                    <Icon Name="search" Groesse="18" />
+                    <input type="search" placeholder="@SuchPlatzhalter" aria-label="@SuchPlatzhalter" value="@suche" @oninput="SucheGeaendert" />
+                </label>
+            }
+            @if (Filter.Count > 0)
+            {
+                <div class="sk-chips" role="group" aria-label="Filtres">
+                    @foreach (var f in Filter)
+                    {
+                        <button type="button" class="sk-chip @(f.Wert == filter ? "aktiv" : null)" aria-pressed="@(f.Wert == filter ? "true" : "false")"
+                                @onclick="() => FilterWaehlenAsync(f.Wert)">
+                            @f.Label
+                            @if (f.Anzahl is not null)
+                            {
+                                <span class="sk-chip-zahl">@f.Anzahl</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+            @Werkzeuge
+        </div>
+    }
+
+    @if (fehler is not null)
+    {
+        <Hinweis Art="fehler">@fehler</Hinweis>
+    }
+    else if (eintraege is null)
+    {
+        <div class="sk-skelett" aria-busy="true" aria-label="Chargement">
+            @for (var i = 0; i < 4; i++)
+            {
+                <div></div>
+            }
+        </div>
+    }
+    else if (eintraege.Count == 0)
+    {
+        <Leerzustand Icon="@LeerIcon" Titel="@(HatSuche ? "Aucun résultat" : LeerTitel)"
+                     Text="@(HatSuche ? "Modifiez la recherche ou le filtre." : LeerText)">@LeerAktion</Leerzustand>
+    }
+    else
+    {
+        <div class="@(Scroll ? "sk-liste-scroll" : null)" style="@(Scroll ? $"max-height:{ScrollHoehe}" : null)">
+            @if (TabellenKopf is not null)
+            {
+                <table class="sk-tabelle">
+                    <thead><tr>@TabellenKopf</tr></thead>
+                    <tbody>
+                        @foreach (var e in eintraege)
+                        {
+                            <tr>@Zeile(e)</tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="sk-liste-eintraege">
+                    @foreach (var e in eintraege)
+                    {
+                        @Zeile(e)
+                    }
+                </div>
+            }
+        </div>
+        <div class="sk-liste-fuss">
+            <span>@eintraege.Count affiché@(eintraege.Count > 1 ? "s" : null)@(mehr ? " – il y en a d'autres" : null)</span>
+            @if (mehr)
+            {
+                <AsyncKnopf Text="Afficher plus" BusyText="Chargement…" Icon="chevron-down" CssClass="sk-btn-ghost sk-btn-klein" OnClick="MehrLadenAsync" />
+            }
+        </div>
+    }
+</div>

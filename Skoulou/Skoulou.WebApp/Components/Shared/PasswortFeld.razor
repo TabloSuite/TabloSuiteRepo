@@ -1,0 +1,34 @@
+@* Passwortfeld mit Auge zum Ein-/Ausblenden (ohne JavaScript). *@
+<Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@Fehler" Pflicht="@Pflicht" CssClass="@CssClass">
+    <div class="sk-passwort">
+        <input id="@id" class="sk-eingabe" type="@(sichtbar ? "text" : "password")" name="@Name" autocomplete="@Autocomplete"
+               required="@Pflicht" value="@Wert" aria-invalid="@(Fehler is not null ? "true" : null)" spellcheck="false"
+               @oninput="EingabeAsync" @attributes="WeitereAttribute" />
+        <button type="button" class="sk-passwort-auge" tabindex="-1" aria-label="@(sichtbar ? "Masquer le mot de passe" : "Afficher le mot de passe")"
+                @onclick="() => sichtbar = !sichtbar">
+            <Icon Name="@(sichtbar ? "eye-off" : "eye")" Groesse="18" />
+        </button>
+    </div>
+</Feld>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Wert { get; set; }
+    [Parameter] public EventCallback<string?> WertChanged { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string Autocomplete { get; set; } = "current-password";
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public bool Pflicht { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? WeitereAttribute { get; set; }
+
+    private readonly string id = Feld.NeueId("pw");
+    private bool sichtbar;
+
+    private Task EingabeAsync(ChangeEventArgs e)
+    {
+        Wert = e.Value?.ToString();
+        return WertChanged.InvokeAsync(Wert);
+    }
+}

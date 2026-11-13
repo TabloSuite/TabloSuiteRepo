@@ -1,0 +1,21 @@
+@* Hinweisbox: info, warn, fehler oder erfolg – mit Icon und optionalem Titel. *@
+<div class="sk-hinweis sk-hinweis-@Art @CssClass" role="@(Art == "fehler" ? "alert" : "status")">
+    <span class="sk-hinweis-icon"><Icon Name="@IconName" Groesse="18" /></span>
+    <div class="sk-hinweis-text">
+        @if (Titel is not null)
+        {
+            <strong>@Titel</strong>
+        }
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>« info », « warn », « fehler » oder « erfolg ».</summary>
+    [Parameter] public string Art { get; set; } = "info";
+    [Parameter] public string? Titel { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string IconName => Art switch { "fehler" => "alert", "warn" => "alert", "erfolg" => "check-circle", _ => "info" };
+}

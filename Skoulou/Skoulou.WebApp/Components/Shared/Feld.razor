@@ -1,0 +1,32 @@
+@* Rahmen eines Formularfelds: Beschriftung, Pflichtsternchen, Hinweis und Fehlermeldung am Feld. *@
+<div class="sk-feld @(Fehler is not null ? "hat-fehler" : null) @CssClass">
+    @if (Label is not null)
+    {
+        <label for="@Id" class="sk-feld-label">@Label@if (Pflicht)
+            {
+                <span class="sk-pflicht" aria-hidden="true"> *</span>
+            }</label>
+    }
+    @ChildContent
+    @if (Fehler is not null)
+    {
+        <span class="sk-feld-fehler" id="@(Id)-fehler" role="alert"><Icon Name="alert" Groesse="14" /> @Fehler</span>
+    }
+    else if (Hinweis is not null)
+    {
+        <span class="sk-feld-hinweis" id="@(Id)-hinweis">@Hinweis</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Hinweis { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public bool Pflicht { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Neue eindeutige Feld-Id.</summary>
+    public static string NeueId(string praefix = "f") => praefix + "-" + Guid.NewGuid().ToString("N")[..8];
+}

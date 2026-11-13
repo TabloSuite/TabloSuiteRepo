@@ -1,0 +1,21 @@
+@* Avatar mit Initialen; Farbe stabil aus dem Namen abgeleitet. *@
+<span class="sk-namenskreis sk-farbe-@Farbe" style="--sk-kreis: @(Groesse)px" title="@(MitTitel ? Name : null)" aria-hidden="@(MitTitel ? null : "true")">@Initialen</span>
+
+@code {
+    [Parameter, EditorRequired] public string? Name { get; set; }
+    [Parameter] public int Groesse { get; set; } = 36;
+    [Parameter] public bool MitTitel { get; set; }
+
+    private string Initialen => Kuerzel(Name);
+    private int Farbe => string.IsNullOrEmpty(Name) ? 0 : (int)((uint)Name.Aggregate(17, (h, c) => h * 31 + c) % 6);
+
+    /// <summary>« Koffi Agbéko » → « KA »; ein Wort → zwei Buchstaben.</summary>
+    public static string Kuerzel(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var teile = name.Split([' ', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length == 1
+            ? teile[0][..Math.Min(2, teile[0].Length)].ToUpperInvariant()
+            : string.Concat(teile[0][0], teile[^1][0]).ToUpperInvariant();
+    }
+}

@@ -1,0 +1,67 @@
+@page "/auth/connexion"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject NavigationManager Nav
+
+<PageTitle>Connexion · SKOULOU</PageTitle>
+
+<div class="sk-auth-karte">
+    <h1>Connexion</h1>
+    <p class="sk-auth-unter">Connectez-vous avec l'identifiant reçu de votre établissement.</p>
+
+    @if (info is not null)
+    {
+        <Hinweis Art="erfolg">@info</Hinweis>
+    }
+    @if (fehler is not null)
+    {
+        <Hinweis Art="fehler">@fehler</Hinweis>
+    }
+
+    <form method="post" action="/auth/connexion/envoyer" class="sk-formular" data-ladeanzeige="Connexion…">
+        <AntiforgeryToken />
+        <input type="hidden" name="retour" value="@ReturnUrl" />
+        <TextFeld Label="Identifiant" Name="identifiant" @bind-Wert="identifiant" Autocomplete="username" Platzhalter="ex. ama.mensah"
+                  Pflicht="true" autocapitalize="none" spellcheck="false" autofocus />
+        <PasswortFeld Label="Mot de passe" Name="motdepasse" Autocomplete="current-password" Pflicht="true" />
+        <label class="sk-ankreuzen">
+            <input type="checkbox" name="rester" value="true" />
+            <span>Rester connecté sur cet appareil</span>
+        </label>
+        <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit">Se connecter</button>
+    </form>
+
+    <div class="sk-auth-links">
+        <a href="/auth/mot-de-passe-oublie">Mot de passe oublié ?</a>
+        <span>Nouveau ? <a href="/auth/inscription">Inscrire mon établissement ou m'inscrire comme élève</a></span>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "erreur")] public string? Erreur { get; set; }
+    [SupplyParameterFromQuery(Name = "info")] public string? Info { get; set; }
+    [SupplyParameterFromQuery(Name = "identifiant")] public string? Identifiant { get; set; }
+
+    private string? identifiant, fehler, info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthZustand is null ? null : (await AuthZustand).User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo(AuthEndpunkte.LokalesZiel(ReturnUrl) ?? Rollen.Startseite(user.Rolle()), replace: true);
+            return;
+        }
+        identifiant = Identifiant;
+        fehler = AnmeldeRegeln.Meldung(Erreur);
+        info = Info switch
+        {
+            "deconnecte" => "Vous êtes déconnecté. À bientôt !",
+            "mot-de-passe-reinitialise" => $"Votre mot de passe a été réinitialisé. Connectez-vous avec l'identifiant « {Identifiant} ».",
+            "mot-de-passe-modifie" => "Votre mot de passe a été modifié. Veuillez vous reconnecter.",
+            _ => null
+        };
+    }
+}

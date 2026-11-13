@@ -1,0 +1,33 @@
+@* Platzhalter für Seiten späterer Etappen: deutlich als « bientôt » markiert. *@
+<PageTitle>@Titel · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="@Titel" Untertitel="@Beschreibung" Icon="@Icon" />
+
+<div class="sk-bald">
+    <span class="sk-bald-icon"><Icon Name="@Icon" Groesse="30" /></span>
+    <span class="sk-badge sk-badge-info"><Icon Name="clock" Groesse="13" Strich="2.5" /> Cette page arrive bientôt</span>
+    @if (Untertitel is not null)
+    {
+        <p>@Untertitel</p>
+    }
+    @if (Punkte.Count > 0)
+    {
+        <ul class="sk-bald-punkte">
+            @foreach (var punkt in Punkte)
+            {
+                <li><Icon Name="check" Groesse="16" /> <span>@punkt</span></li>
+            }
+        </ul>
+    }
+    <p class="sk-bald-etappe">Prévu dans l'étape @Etappe.</p>
+    <a class="sk-btn sk-btn-ghost" href="/"><Icon Name="arrow-left" Groesse="18" /> <span>Retour à l'accueil</span></a>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Titel { get; set; } = string.Empty;
+    [Parameter] public string? Untertitel { get; set; }
+    [Parameter] public string Icon { get; set; } = "sparkles";
+    [Parameter] public string Beschreibung { get; set; } = string.Empty;
+    [Parameter] public string Etappe { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> Punkte { get; set; } = [];
+}
