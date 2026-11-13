@@ -50,15 +50,17 @@ public class ProbezeitUebergangTests
         // Admin wählt im Datumsfeld den 31.01.2027 → Probezeit bis einschließlich 31.01.
         var factory = TestDbContextFactory.Create();
         var salon = new Salon { Name = "A", IstAktiv = true, IstFreigegeben = true };
+        Guid adminId;
         await using (var db = await factory.CreateDbContextAsync())
         {
             db.Salons.Add(salon);
             db.PlattformPreise.Add(new PlattformPreis { Intervall = AboIntervall.Monatlich, Preis = 5000, IstAktuell = true, GueltigAbUtc = new DateTime(2026, 1, 1) });
+            adminId = LadenRechteTests.LegeKontoAn(db, "admin", ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
             await db.SaveChangesAsync();
         }
 
         var admin = new AdminService(factory, null!, Microsoft.Extensions.Logging.Abstractions.NullLogger<AdminService>.Instance, null!);
-        await admin.SetzeProbezeitAsync(salon.Id, new DateTime(2027, 1, 31));
+        await admin.SetzeProbezeitAsync(adminId, salon.Id, new DateTime(2027, 1, 31));
 
         var service = new VertragsService(factory, new Uhr(new DateTime(2027, 2, 1, 0, 30, 0, DateTimeKind.Utc)));
         await service.SynchronisiereAsync(salon.Id);

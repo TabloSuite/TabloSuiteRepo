@@ -132,6 +132,9 @@ public class DashboardService(
         var admin = await userManager.IsInRoleAsync(actor, Rollen.SuperAdmin);
         if (!admin && !await userManager.IsInRoleAsync(actor, Rollen.ProduktOwner))
             return (false, "Accès refusé.");
+        // Sperren (abschalten) ist kritisch: nur der Administrator. Ein Responsable darf Konten nur freischalten.
+        if (!admin && blocked)
+            return (false, "Le blocage d'un compte est réservé à l'administrateur.");
         if (!admin)
         {
             var schoolIds = await GetPlatformSchoolIdsAsync(actorId, cancellationToken);

@@ -76,7 +76,14 @@
                             <p class="enote-item-desc">Inscrit le @s.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
                             <div class="enote-item-actions">
                                 <AsyncActionButton Text="Valider" OnClick="() => SetzeFreigabeAsync(s.SalonId, true)" CssClass="enote-btn-primary" />
-                                <AsyncActionButton Text="Refuser" OnClick="() => SetzeAktivAsync(s.SalonId, false)" CssClass="enote-btn-ghost enote-danger" />
+                                @if (istSuperAdmin)
+                                {
+                                    <AsyncActionButton Text="Refuser" OnClick="() => SetzeAktivAsync(s.SalonId, false)" CssClass="enote-btn-ghost enote-danger" />
+                                }
+                                else
+                                {
+                                    <button class="enote-btn enote-btn-ghost" @onclick="() => OeffneAnfrageDialog(s.SalonId, s.Name, AnfrageRefus)">Demander le refus</button>
+                                }
                             </div>
                         </div>
                     }
@@ -125,14 +132,22 @@
                                     <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="Valider" BusyText="Validation…" OnClick="() => SetzeFreigabeAsync(s.SalonId, true)" />
                                 }
                                 <button class="enote-btn enote-btn-ghost enote-btn-sm" title="Période d'essai" @onclick="() => OeffneProbeDialogAsync(s.SalonId, s.Name)"><Icon Name="clock" Groesse="15" /> Essai</button>
-                                <LadenTarifVerwaltung SalonId="@s.SalonId" OnOeffnen="OeffneTarifDialogAsync" />
-                                @if (s.IstAktiv)
+                                @if (!istSuperAdmin)
                                 {
-                                    <AsyncActionButton BasisKlasse="enote-icon-btn" CssClass="rm-loeschen" title="Désactiver l'établissement" aria-label="@($"Désactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, false)"><Icon Name="lock" Groesse="17" /></AsyncActionButton>
+                                    @* Responsable: kritische Aktionen nur als Anfrage an den Admin *@
+                                    <button class="enote-btn enote-btn-ghost enote-btn-sm" title="Demande à l'administrateur" @onclick="() => OeffneAnfrageDialog(s.SalonId, s.Name)"><Icon Name="mail" Groesse="15" /> Demande</button>
                                 }
                                 else
                                 {
-                                    <AsyncActionButton BasisKlasse="enote-icon-btn" title="Réactiver l'établissement" aria-label="@($"Réactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, true)"><Icon Name="unlock" Groesse="17" /></AsyncActionButton>
+                                    <LadenTarifVerwaltung SalonId="@s.SalonId" OnOeffnen="OeffneTarifDialogAsync" />
+                                    if (s.IstAktiv)
+                                    {
+                                        <AsyncActionButton BasisKlasse="enote-icon-btn" CssClass="rm-loeschen" title="Désactiver l'établissement" aria-label="@($"Désactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, false)"><Icon Name="lock" Groesse="17" /></AsyncActionButton>
+                                    }
+                                    else
+                                    {
+                                        <AsyncActionButton BasisKlasse="enote-icon-btn" title="Réactiver l'établissement" aria-label="@($"Réactiver {s.Name}")" OnClick="() => SetzeAktivAsync(s.SalonId, true)"><Icon Name="unlock" Groesse="17" /></AsyncActionButton>
+                                    }
                                 }
                             </div>
                         </div>
@@ -379,10 +394,21 @@
 </ModalDialog>
 
 @* Probezeit eines Ladens ändern (Admin/PO) *@
-<ModalDialog Open="probeDialogOffen" Title="@ProbeDialogTitel" OnClose="() => probeDialogOffen = false">
+<ModalDialog Open="probeDialogOffen" Title="@ProbeDialogTitel" ErrorMessage="@probeFehler" OnClose="() => probeDialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">Fin de l'essai gratuit pour « @probeSalonName ». Laissez vide pour supprimer l'essai (facturation immédiate).</p>
+            @if (istSuperAdmin)
+            {
+                <p class="enote-muted">Fin de l'essai gratuit pour « @probeSalonName ». Laissez vide pour supprimer l'essai (facturation immédiate).</p>
+            }
+            else if (probeBisher is null)
+            {
+                <p class="enote-muted">« @probeSalonName » n'a pas d'essai gratuit. Seul l'administrateur peut en accorder un : envoyez-lui une demande.</p>
+            }
+            else
+            {
+                <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(DateTime.UtcNow).ToString("dd.MM.yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
+            }
             <label>Date de fin d'essai</label>
             <EnoteDatePicker @bind-Value="probeBisDatum" />
             <p class="enote-muted enote-probe-anzeige">
@@ -396,14 +422,37 @@
                 }
             </p>
             <div class="enote-item-actions">
-                <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeStandard">Par défaut (3 mois, ce mois inclus)</button>
-                <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="EntferneProbe">Supprimer l'essai</button>
+                @if (istSuperAdmin)
+                {
+                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeStandard">Par défaut (3 mois, ce mois inclus)</button>
+                    <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="EntferneProbe">Supprimer l'essai</button>
+                }
+                else if (probeBisher is not null)
+                {
+                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeMaximal">Prolonger au maximum (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours)</button>
+                }
             </div>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => probeDialogOffen = false">Annuler</button>
         <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProbeAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Anfrage eines Responsables an den Admin (Deaktivieren, Probezeit kürzen …) *@
+<ModalDialog Open="anfrageDialogOffen" Title="@AnfrageDialogTitel" ErrorMessage="@anfrageFehler" OnClose="() => anfrageDialogOffen = false">
+    <ChildContent>
+        <div class="enote-form">
+            <p class="enote-muted">Pour protéger les établissements, les actions importantes (désactiver, retirer l'essai, changer le tarif…) sont faites par l'administrateur. Il reçoit votre demande par e-mail.</p>
+            <label>Objet de la demande</label>
+            <EnoteSelect TValue="string" @bind-Value="anfrageAnliegen" Options="anfrageOptionen" Placeholder="Choisir…" />
+            <label>Message (facultatif) <textarea rows="3" maxlength="500" @bind="anfrageGrund" placeholder="ex. Le propriétaire a fermé sa boutique."></textarea></label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => anfrageDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Envoyer la demande" BusyText="Envoi…" OnClick="SendeAnfrageAsync" CssClass="enote-btn-primary" />
     </Footer>
 </ModalDialog>
 

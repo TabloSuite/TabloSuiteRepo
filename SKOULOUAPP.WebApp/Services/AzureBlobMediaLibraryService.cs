@@ -421,7 +421,8 @@ public sealed class AzureBlobMediaLibraryService(
             throw new InvalidOperationException("Image introuvable ou non autorisée.");
         }
 
-        var isPrivileged = roles.Any(role => role is Rollen.SuperAdmin or Rollen.ProduktOwner or Rollen.SchulLeiter or Rollen.Koordinator);
+        // Ein Responsable produit löscht nur eigene Uploads (Schutz bei gestohlenen Zugangsdaten).
+        var isPrivileged = roles.Any(role => role is Rollen.SuperAdmin or Rollen.SchulLeiter or Rollen.Koordinator);
         var canDelete = isPrivileged || asset.OwnerId == userId;
         if (!canDelete)
         {
@@ -579,9 +580,16 @@ public sealed class AzureBlobMediaLibraryService(
         IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken)
     {
-        if (roles.Contains(Rollen.SuperAdmin) || roles.Contains(Rollen.ProduktOwner))
+        if (roles.Contains(Rollen.SuperAdmin))
         {
             return query.Where(asset => asset.SchoolId != null);
+        }
+
+        // Responsable produit: nur die eigenen (zugewiesenen) Schulen – nie die ganze Plattform.
+        if (roles.Contains(Rollen.ProduktOwner))
+        {
+            var eigeneSchulen = dbContext.UserSchools.Where(link => link.AppUserId == userId).Select(link => link.SchoolId);
+            return query.Where(asset => asset.SchoolId.HasValue && eigeneSchulen.Contains(asset.SchoolId.Value));
         }
 
         var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
@@ -605,9 +613,14 @@ public sealed class AzureBlobMediaLibraryService(
 
     private async Task<bool> CanUploadToSchoolAsync(Guid userId, IReadOnlyCollection<string> roles, Guid schoolId, CancellationToken cancellationToken)
     {
-        if (roles.Contains(Rollen.SuperAdmin) || roles.Contains(Rollen.ProduktOwner))
+        if (roles.Contains(Rollen.SuperAdmin))
         {
             return await dbContext.Schools.AnyAsync(school => school.Id == schoolId, cancellationToken);
+        }
+
+        if (roles.Contains(Rollen.ProduktOwner))
+        {
+            return await dbContext.UserSchools.AnyAsync(link => link.AppUserId == userId && link.SchoolId == schoolId, cancellationToken);
         }
 
         return await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schoolId, cancellationToken)

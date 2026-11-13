@@ -133,9 +133,45 @@ public class AdminService(
             poNamen.FirstOrDefault(x => x.Key == s.Id)?.Name)).ToList();
     }
 
-    public async Task<bool> SetzeFreigabeAsync(Guid salonId, bool freigegeben, CancellationToken cancellationToken = default)
+    /// <summary>So viele Tage ab heute darf ein Responsable eine laufende Probezeit höchstens verlängern.</summary>
+    public const int PoProbeMaxTage = 30;
+
+    public const string NurAdminMeldung = "Cette action est réservée à l'administrateur. Envoyez-lui une demande.";
+
+    /// <summary>Wer handelt? SuperAdmin oder Responsable (ProduktOwner) mit aktiver Zuweisung für diesen Laden.</summary>
+    public sealed record Bearbeiter(bool IstAdmin, string Name);
+
+    /// <summary>
+    /// Serverseitige Prüfung jeder Ladenaktion: SuperAdmin darf alles, ein Responsable nur bei aktiv
+    /// zugewiesenen Läden (abgelaufene Zuweisungen zählen nicht), alle anderen nichts.
+    /// </summary>
+    public static async Task<Bearbeiter> PruefeBearbeiterAsync(ApplicationDbContext db, Guid bearbeiter, Guid salonId, CancellationToken ct)
+    {
+        var konto = await db.Users.AsNoTracking()
+            .Where(u => u.Id == bearbeiter && !u.IsBlocked)
+            .Select(u => new
+            {
+                u.FullName,
+                Admin = db.UserRoles.Any(ur => ur.UserId == u.Id && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.SuperAdmin)),
+                Po = db.UserRoles.Any(ur => ur.UserId == u.Id && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.ProduktOwner))
+            })
+            .FirstOrDefaultAsync(ct);
+        if (konto?.Admin == true)
+            return new Bearbeiter(true, konto.FullName ?? "");
+        if (konto?.Po == true && await db.ProduktOwnerSalons.AnyAsync(
+                p => p.ProduktOwnerId == bearbeiter && p.SalonId == salonId && p.GueltigBisUtc == null, ct))
+            return new Bearbeiter(false, konto.FullName ?? "");
+        throw new UnauthorizedAccessException("Vous ne disposez pas des droits nécessaires pour cet établissement.");
+    }
+
+    /// <summary>Freigabe setzen. Ein Responsable darf nur freigeben (nie entziehen); der Admin wird informiert.</summary>
+    public async Task<bool> SetzeFreigabeAsync(Guid bearbeiter, Guid salonId, bool freigegeben, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var wer = await PruefeBearbeiterAsync(db, bearbeiter, salonId, cancellationToken);
+        if (!wer.IstAdmin && !freigegeben)
+            throw new UnauthorizedAccessException(NurAdminMeldung);
+
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)
         {
@@ -162,7 +198,7 @@ public class AdminService(
                     await emailService.SendeAsync(
                         besitzer.Email,
                         "Ton inscription a été validée",
-                        Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", MailDienst?.AppUrl ?? "https://enote.tablosuite.com"),
+                        Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", MailDienst?.AppUrl ?? BonQr.AppSeite),
                         "inscription-validee",
                         cancellationToken);
                 }
@@ -171,13 +207,20 @@ public class AdminService(
             {
                 logger.LogWarning(ex, "Validierungs-Mail für Salon {SalonId} fehlgeschlagen.", salonId);
             }
+
+            if (!wer.IstAdmin && MailDienst is { } m)
+                await m.ResponsableMeldungAsync(wer.Name, salon.Name, "Établissement validé par un responsable", null, cancellationToken);
         }
         return true;
     }
 
-    public async Task<bool> SetzeAktivAsync(Guid salonId, bool aktiv, CancellationToken cancellationToken = default)
+    /// <summary>Laden abschalten/einschalten – nur der SuperAdmin (kritisch, auch bei gestohlenen Responsable-Zugangsdaten).</summary>
+    public async Task<bool> SetzeAktivAsync(Guid bearbeiter, Guid salonId, bool aktiv, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!(await PruefeBearbeiterAsync(db, bearbeiter, salonId, cancellationToken)).IstAdmin)
+            throw new UnauthorizedAccessException(NurAdminMeldung);
+
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)
         {
@@ -193,10 +236,15 @@ public class AdminService(
         return true;
     }
 
-    /// <summary>Admin/PO ändert die Probezeit eines Ladens (verlängern/anpassen/entfernen).</summary>
-    public async Task<bool> SetzeProbezeitAsync(Guid salonId, DateTime? probeBisUtc, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Probezeit ändern. Admin: frei (verlängern, kürzen, entfernen). Responsable: nur eine bestehende
+    /// Probezeit verlängern, höchstens <see cref="PoProbeMaxTage"/> Tage ab heute – nie kürzen oder entfernen;
+    /// der Admin wird informiert.
+    /// </summary>
+    public async Task<bool> SetzeProbezeitAsync(Guid bearbeiter, Guid salonId, DateTime? probeBisUtc, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var wer = await PruefeBearbeiterAsync(db, bearbeiter, salonId, cancellationToken);
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)
         {
@@ -204,12 +252,51 @@ public class AdminService(
         }
 
         // Datum aus dem Datumsfeld gilt einschließlich des Tages (wie bei der Registrierung: Tagesende).
-        salon.ProbeBisUtc = probeBisUtc is DateTime tag && tag.TimeOfDay == TimeSpan.Zero
+        var neu = probeBisUtc is DateTime tag && tag.TimeOfDay == TimeSpan.Zero
             ? ENote.Core.Services.VertragsRegeln.ProbeEndeEinschliesslich(tag)
             : probeBisUtc;
+
+        if (!wer.IstAdmin)
+        {
+            if (salon.ProbeBisUtc is not DateTime bisher || neu is not DateTime gewuenscht)
+                throw new UnauthorizedAccessException(NurAdminMeldung);
+            if (gewuenscht < bisher)
+                throw new UnauthorizedAccessException("Un responsable peut seulement prolonger l'essai, pas le raccourcir.");
+            if (gewuenscht > PoProbeGrenze(DateTime.UtcNow))
+                throw new UnauthorizedAccessException($"Un responsable peut prolonger l'essai de {PoProbeMaxTage} jours au plus à partir d'aujourd'hui.");
+        }
+
+        salon.ProbeBisUtc = neu;
         salon.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
+
+        if (!wer.IstAdmin && MailDienst is { } m)
+            await m.ResponsableMeldungAsync(wer.Name, salon.Name, "Essai prolongé par un responsable",
+                $"Nouvelle fin d'essai : {neu:dd.MM.yyyy}", cancellationToken);
         return true;
+    }
+
+    /// <summary>Spätestes Probezeit-Ende, das ein Responsable setzen darf (Tagesende, <see cref="PoProbeMaxTage"/> Tage ab heute).</summary>
+    public static DateTime PoProbeGrenze(DateTime jetztUtc)
+        => ENote.Core.Services.VertragsRegeln.ProbeEndeEinschliesslich(jetztUtc.Date.AddDays(PoProbeMaxTage));
+
+    /// <summary>
+    /// Anfrage eines Responsables an den Admin (z. B. Laden deaktivieren oder Probezeit kürzen):
+    /// kritische Aktionen führt nur der Admin aus, der Responsable meldet sie per Mail.
+    /// </summary>
+    public async Task MeldeAnfrageAsync(Guid bearbeiter, Guid salonId, string anliegen, string? grund, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(anliegen))
+            throw new ArgumentException("Veuillez choisir l'objet de la demande.");
+        if (grund?.Length > 500)
+            throw new ArgumentException("Le message est trop long (500 caractères au plus).");
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var wer = await PruefeBearbeiterAsync(db, bearbeiter, salonId, cancellationToken);
+        var salonName = await db.Salons.AsNoTracking().Where(s => s.Id == salonId).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Établissement introuvable.");
+        if (MailDienst is not { } m)
+            throw new InvalidOperationException("L'envoi d'e-mails n'est pas disponible.");
+        await m.ResponsableMeldungAsync(wer.Name, salonName, "Demande d'un responsable : " + anliegen.Trim(), grund?.Trim(), cancellationToken);
     }
 
     /// <summary>Aktuelle Probezeit eines Ladens lesen.</summary>
@@ -515,7 +602,7 @@ public class AdminService(
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var verwaltet = await db.ProduktOwnerSalons
             .AsNoTracking()
-            .Where(p => p.ProduktOwnerId == userId)
+            .Where(p => p.ProduktOwnerId == userId && p.GueltigBisUtc == null)
             .Select(p => p.SalonId)
             .ToListAsync(cancellationToken);
 

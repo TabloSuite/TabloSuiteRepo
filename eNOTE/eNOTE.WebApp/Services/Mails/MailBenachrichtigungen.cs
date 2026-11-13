@@ -54,6 +54,11 @@ public class MailBenachrichtigungen(
         => SicherAsync("inscription-admin", () => email.SendeAsync(AdminEmpfaenger, $"Nouvel établissement à valider : {salonName}",
             TabloSuiteMails.NeueRegistrierungAdmin(salonName, besitzerName, besitzerEmail, telefon, land, AppUrl + "/admin"), "inscription-admin", ct));
 
+    /// <summary>Aktion oder Anfrage eines Responsables an das TabloSuite-Team melden.</summary>
+    public Task ResponsableMeldungAsync(string responsable, string salonName, string titel, string? detail, CancellationToken ct = default)
+        => SicherAsync("responsable-meldung", () => email.SendeAsync(AdminEmpfaenger, $"{titel} : {salonName}",
+            TabloSuiteMails.ResponsableMeldungAdmin(titel, responsable, salonName, detail, AppUrl + "/admin"), "responsable-meldung", ct));
+
     public Task ZahlungGemeldetAsync(Guid aboId, CancellationToken ct = default)
         => SicherAsync("paiement-signale", async () =>
         {

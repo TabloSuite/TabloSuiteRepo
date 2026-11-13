@@ -132,6 +132,14 @@ public static class TabloSuiteMails
                        ("Téléphone", telefon ?? "—"), ("Pays", land ?? "—")])
             + Knopf("Ouvrir l'administration", adminUrl));
 
+    /// <summary>Info an das TabloSuite-Team: Aktion oder Anfrage eines Responsables (Kontrolle bei gestohlenen Zugangsdaten).</summary>
+    public static string ResponsableMeldungAdmin(string titel, string responsable, string salonName, string? detail, string adminUrl)
+        => Wrap(titel, $"{salonName} · {responsable}.",
+            P($"{H(titel)} :")
+            + Tabelle([("Responsable", responsable), ("Établissement", salonName), ("Détails", string.IsNullOrWhiteSpace(detail) ? "—" : detail)])
+            + P("Si vous ne reconnaissez pas cette action, bloquez le compte du responsable dans l'administration.")
+            + Knopf("Ouvrir l'administration", adminUrl));
+
     /// <summary>Info an das TabloSuite-Team: Besitzer hat eine Zahlung gemeldet.</summary>
     public static string ZahlungGemeldetAdmin(string salonName, string formel, decimal betrag, string? notiz, string adminUrl)
         => Wrap("Paiement signalé à confirmer", $"{salonName} : {Betrag(betrag)}.",

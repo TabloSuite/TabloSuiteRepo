@@ -129,30 +129,37 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task SetPlatformUserBlockedAsync_ProductOwnerKannNurEigeneSchulnutzerBlockieren()
+    public async Task SetPlatformUserBlockedAsync_ProductOwnerDarfNichtSperrenNurEigeneFreischalten()
     {
         using var db = TestDbContext.CreateInMemory();
         var owner = new AppUser { Id = Guid.NewGuid(), UserName = "owner", Email = "owner@test.local" };
-        var own = new AppUser { Id = Guid.NewGuid(), UserName = "own", Email = "own@test.local" };
-        var foreign = new AppUser { Id = Guid.NewGuid(), UserName = "foreign", Email = "foreign@test.local" };
+        var own = new AppUser { Id = Guid.NewGuid(), UserName = "own", Email = "own@test.local", IsBlocked = true };
+        var foreign = new AppUser { Id = Guid.NewGuid(), UserName = "foreign", Email = "foreign@test.local", IsBlocked = true };
+        var aktiv = new AppUser { Id = Guid.NewGuid(), UserName = "aktiv", Email = "aktiv@test.local" };
         var school = new School { Id = Guid.NewGuid(), Name = "École A" };
         var other = new School { Id = Guid.NewGuid(), Name = "École B" };
-        db.Users.AddRange(owner, own, foreign);
+        db.Users.AddRange(owner, own, foreign, aktiv);
         db.Schools.AddRange(school, other);
         db.UserSchools.AddRange(new UserSchool { AppUserId = owner.Id, SchoolId = school.Id },
             new UserSchool { AppUserId = own.Id, SchoolId = school.Id },
-            new UserSchool { AppUserId = foreign.Id, SchoolId = other.Id });
+            new UserSchool { AppUserId = foreign.Id, SchoolId = other.Id },
+            new UserSchool { AppUserId = aktiv.Id, SchoolId = school.Id });
         await db.SaveChangesAsync();
-        var manager = TestUserManager.Create([owner, own, foreign]);
+        var manager = TestUserManager.Create([owner, own, foreign, aktiv]);
         manager.SeedRole(owner, Rollen.ProduktOwner);
         manager.SeedRole(own, Rollen.Lehrer);
         manager.SeedRole(foreign, Rollen.Lehrer);
+        manager.SeedRole(aktiv, Rollen.SchulLeiter);
         var service = new DashboardService(db, manager, new FakeMediaStorageService());
 
-        Assert.False((await service.SetPlatformUserBlockedAsync(owner.Id, foreign.Id, true)).Succeeded);
-        Assert.True((await service.SetPlatformUserBlockedAsync(owner.Id, own.Id, true)).Succeeded);
-        Assert.True(own.IsBlocked);
-        Assert.False(foreign.IsBlocked);
+        // Sperren ist dem Administrator vorbehalten – auch in der eigenen Schule.
+        Assert.False((await service.SetPlatformUserBlockedAsync(owner.Id, aktiv.Id, true)).Succeeded);
+        Assert.False(aktiv.IsBlocked);
+        // Freischalten: nur Nutzer der eigenen Schulen.
+        Assert.False((await service.SetPlatformUserBlockedAsync(owner.Id, foreign.Id, false)).Succeeded);
+        Assert.True((await service.SetPlatformUserBlockedAsync(owner.Id, own.Id, false)).Succeeded);
+        Assert.False(own.IsBlocked);
+        Assert.True(foreign.IsBlocked);
         Assert.DoesNotContain(await service.GetPlatformUsersAsync(owner.Id), user => user.UserId == foreign.Id);
     }
 

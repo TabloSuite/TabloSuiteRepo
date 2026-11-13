@@ -155,7 +155,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         var istPo = await db.Users.AnyAsync(u => u.Id == benutzerId && !u.IsBlocked && db.UserRoles.Any(ur => ur.UserId == benutzerId
             && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == ENote.Core.DataModels.Identity.AppRollen.ProduktOwner)), ct);
         return istPo
-            ? db.NutzungsAbos.AsNoTracking().Where(a => db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == benutzerId && p.SalonId == a.SalonId))
+            ? db.NutzungsAbos.AsNoTracking().Where(a => db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == benutzerId && p.SalonId == a.SalonId && p.GueltigBisUtc == null))
             : db.NutzungsAbos.AsNoTracking().Where(_ => false);
     }
 

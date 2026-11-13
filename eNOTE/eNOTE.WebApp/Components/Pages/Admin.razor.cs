@@ -220,16 +220,70 @@ public partial class Admin(
 
     private async Task SetzeFreigabeAsync(Guid salonId, bool freigegeben)
     {
-        await adminService.SetzeFreigabeAsync(salonId, freigegeben);
-        toast.ZeigeErfolg(freigegeben ? "Salon validé." : "Validation retirée.");
+        try
+        {
+            await adminService.SetzeFreigabeAsync(aktuellerBenutzerId, salonId, freigegeben);
+            toast.ZeigeErfolg(freigegeben ? "Salon validé." : "Validation retirée.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
         await LadeAsync();
     }
 
     private async Task SetzeAktivAsync(Guid salonId, bool aktiv)
     {
-        await adminService.SetzeAktivAsync(salonId, aktiv);
-        toast.ZeigeInfo(aktiv ? "Salon réactivé." : "Salon désactivé.");
+        try
+        {
+            await adminService.SetzeAktivAsync(aktuellerBenutzerId, salonId, aktiv);
+            toast.ZeigeInfo(aktiv ? "Salon réactivé." : "Salon désactivé.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
         await LadeAsync();
+    }
+
+    // Anfrage eines Responsables an den Admin (kritische Aktionen führt nur der Admin aus).
+    private bool anfrageDialogOffen;
+    private Guid anfrageSalonId;
+    private string anfrageSalonName = string.Empty;
+    private string? anfrageAnliegen;
+    private string? anfrageGrund;
+    private string? anfrageFehler;
+    private const string AnfrageRefus = "Refuser l'inscription";
+    private string AnfrageDialogTitel => "Demande à l'administrateur – " + anfrageSalonName;
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> anfrageOptionen =
+        new[] { "Désactiver l'établissement", "Réactiver l'établissement", "Refuser l'inscription", "Raccourcir ou retirer l'essai", "Modifier le tarif", "Autre demande" }
+            .Select(a => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = a, Label = a })
+            .ToList();
+
+    private void OeffneAnfrageDialog(Guid salonId, string salonName, string? anliegen = null)
+    {
+        anfrageSalonId = salonId;
+        anfrageSalonName = salonName;
+        anfrageAnliegen = anliegen;
+        anfrageGrund = null;
+        anfrageFehler = null;
+        anfrageDialogOffen = true;
+    }
+
+    private async Task SendeAnfrageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(anfrageAnliegen)) { anfrageFehler = "Veuillez choisir l'objet de la demande."; return; }
+        try
+        {
+            await adminService.MeldeAnfrageAsync(aktuellerBenutzerId, anfrageSalonId, anfrageAnliegen, anfrageGrund);
+            anfrageDialogOffen = false;
+            toast.ZeigeErfolg("Demande envoyée à l'administrateur.");
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            anfrageFehler = ex.Message;
+        }
     }
 
 
@@ -383,12 +437,25 @@ public partial class Admin(
         probeSalonId = salonId;
         probeSalonName = salonName;
         probeBisDatum = await adminService.GetProbezeitAsync(salonId);
+        probeBisher = probeBisDatum;
+        probeFehler = null;
         probeDialogOffen = true;
     }
 
+    private string? probeFehler;
+    private DateTime? probeBisher;
+
     private async Task SpeichereProbeAsync()
     {
-        await adminService.SetzeProbezeitAsync(probeSalonId, probeBisDatum);
+        try
+        {
+            await adminService.SetzeProbezeitAsync(aktuellerBenutzerId, probeSalonId, probeBisDatum);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            probeFehler = ex.Message;
+            return;
+        }
         probeDialogOffen = false;
         toast.ZeigeErfolg("Essai mis à jour.");
         await LadeAsync();
@@ -396,6 +463,10 @@ public partial class Admin(
 
     private void SetzeProbeStandard()
         => probeBisDatum = AuthService.BerechneProbeEnde(DateTime.UtcNow);
+
+    /// <summary>Responsable: Probezeit bis zur erlaubten Grenze verlängern (höchstens 30 Tage ab heute).</summary>
+    private void SetzeProbeMaximal()
+        => probeBisDatum = AdminService.PoProbeGrenze(DateTime.UtcNow).Date;
 
     private void EntferneProbe() => probeBisDatum = null;
 

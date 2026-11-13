@@ -66,7 +66,7 @@ public class PoAbrechnungService(IDbContextFactory<ApplicationDbContext> factory
         await using var db = await factory.CreateDbContextAsync(ct);
         var admin = await PruefeAsync(db, user, user, ct);
         return await db.NutzungsAbos.AsNoTracking().Where(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet
-            && (admin || db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == user && p.SalonId == a.SalonId)))
+            && (admin || db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == user && p.SalonId == a.SalonId && p.GueltigBisUtc == null)))
             .OrderBy(a => a.ZahlungGemeldetUtc).Select(a => new OffeneMeldung(a.Id, a.Salon.Name, a.PreisSnapshot, a.ZahlungsNotiz)).ToListAsync(ct);
     }
 
@@ -75,7 +75,7 @@ public class PoAbrechnungService(IDbContextFactory<ApplicationDbContext> factory
         {
             if (!await Rolle(db, user, AppRollen.ProduktOwner, ct)) throw new UnauthorizedAccessException();
             var abo = await db.NutzungsAbos.Include(a => a.Salon).SingleAsync(a => a.Id == aboId, ct);
-            var zuordnung = await db.ProduktOwnerSalons.SingleOrDefaultAsync(p => p.ProduktOwnerId == user && p.SalonId == abo.SalonId, ct)
+            var zuordnung = await db.ProduktOwnerSalons.SingleOrDefaultAsync(p => p.ProduktOwnerId == user && p.SalonId == abo.SalonId && p.GueltigBisUtc == null, ct)
                 ?? throw new UnauthorizedAccessException();
             if (await db.PoZahlungseingaenge.AnyAsync(e => e.NutzungsAboId == aboId && e.ProduktOwnerId == user, ct)) return;
             if (abo.ZahlungStatus != AboZahlungStatus.Gemeldet || abo.PreisSnapshot <= 0) throw new InvalidOperationException("Ce paiement n'est plus en attente.");

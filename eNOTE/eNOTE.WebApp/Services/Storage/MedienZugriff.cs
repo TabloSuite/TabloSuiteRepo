@@ -43,7 +43,7 @@ public class MedienZugriff(IDbContextFactory<ApplicationDbContext> factory)
         if (rollen.Contains(AppRollen.SuperAdmin)) return true;
         if (rollen.Contains(AppRollen.ProduktOwner)
             && await db.ProduktOwnerSalons.AnyAsync(p => p.ProduktOwnerId == userId && p.SalonId == salonId
-                && (!finanzen || p.KannLadenUmsatzSehen), ct)) return true;
+                && p.GueltigBisUtc == null && (!finanzen || p.KannLadenUmsatzSehen), ct)) return true;
         return await db.UserSalons.AnyAsync(us => us.AppUserId == userId && us.SalonId == salonId
             && (!finanzen || us.KannFinanzenSehen || rollen.Contains(AppRollen.Besitzer)), ct);
     }
