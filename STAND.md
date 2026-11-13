@@ -11,6 +11,11 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 |---|---|---|
 | **eNOTE-Lernvideo v3.1 – Pilot « encaisser »** | `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\` | Nutzer 13.11.: « Stil ist gut ». v3.0 (7:04) liegt als Render vor. **Agent läuft:** Text kürzen (Ziel ≈ 5–5:30 min), neu aufnehmen mit Zeiger synchron zur Stimme (−0,4…+0,3 s), Klick-Schilder dürfen keine Nachbarinhalte verdecken. Ergebnis: `renders/enote-encaisser.mp4` (alt: `…-v3.0.mp4`), Bilder `Pictures\eNOTE-Videos-v3-Pilot\v3.1\`. Danach dem Nutzer zeigen, dann alle eNOTE-Videos im v3-Stil. Falls unterbrochen: neuen Agenten mit dieser Zeile + `AUFTRAG-Pilot.md` starten. |
 
+| **SKOULOU E5 Noten & Bulletins** | Worktree `.claude\worktreesgent-a62dd2b10313c8194`, Branch `worktree-agent-a62dd2b10313c8194` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E5-Noten.md` |
+| **SKOULOU E6 Finanzen** | Worktree `.claude\worktreesgent-a14228940cb0da92e`, Branch `worktree-agent-a14228940cb0da92e` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E6-Finanzen.md` |
+
+Danach: E2 mit `Skoulou/docs/auftraege/E2-Plattform.md` (eigener Worktree vom dann aktuellen Hauptbranch). Bei Unterbrechung: je neuen Agenten mit der Auftragsdatei + « Continue in the existing worktree … » starten.
+
 **Wichtig zum Limit:** höchstens 2–3 große Agenten gleichzeitig. Esc/„Stopp“ während Agenten laufen bricht sie ab (dann nur Neustart möglich); normale Nachrichten stören nicht.
 
 ---
@@ -84,7 +89,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 6. Nächste Schritte (Reihenfolge)
 
 1. Video-Pilot v3.1 abwarten (§1) → Nutzer zeigen → bei OK alle eNOTE-Videos im v3-Stil, Einbau, Deploy durch den Nutzer.
-2. SKOULOU: Aufträge E2 (Plattform), E5 (Noten & Bulletins + Jahreswechsel), E6 (Finanzen) nach dem Muster `Skoulou/docs/auftraege/E3-Organisation.md` schreiben (Bauplan §12 Dateizuständigkeit) und je in eigenem Worktree starten (max. 2–3 parallel); danach mergen, Migration « Fundament » neu erzeugen, Tests + SQL-Tests, Rundgang, push.
+2. SKOULOU: E5 + E6 laufen (§1) → nach Fertigmeldung je prüfen, mergen, Migration « Fundament » neu erzeugen, Tests + SQL-Tests, Rundgang, push; dann E2 starten (Auftrag liegt bereit).
 3. **Lokale `SkoulouDB` hat noch das alte E1-Schema.** Löschen/Neuaufbau wurde vom Auto-Modus gesperrt → Nutzer fragen (oder er macht `dotnet ef database drop` selbst); bis dahin Test-DBs `SkoulouDB_Gesamt` (aktuell, mit Demo-Daten), `SkoulouDB_E3`, `SkoulouDB_E4`, `SkoulouDB_Merge` (veraltet, können weg).
 4. eNOTE: Azure-Migration `AufenthaltsPositionen` nur mit OK, vor dem nächsten eNOTE-Deploy (§4).
 5. E7 Simulation + Browser-Rundgang; E8 Umstellung (Azure nur mit OK); danach SKOULOU-Videos auf der neuen Oberfläche.
