@@ -34,6 +34,12 @@ public static class SchulAbfragen
         => GueltigeEinschreibungen(db)
             .Where(e => e.SchuljahrId == schuljahrId && e.Von <= bis && (e.Bis == null || e.Bis >= von));
 
+    /// <summary>Gültige Einschreibungen eines Schülers, die [von, bis] schneiden (jahresübergreifend, neueste zuerst).</summary>
+    public static IQueryable<Einschreibung> EinschreibungenDesSchuelersImZeitraum(SkoulouDbContext db, Guid schuelerId, DateOnly von, DateOnly bis)
+        => GueltigeEinschreibungen(db)
+            .Where(e => e.SchuelerId == schuelerId && e.Von <= bis && (e.Bis == null || e.Bis >= von))
+            .OrderByDescending(e => e.Von);
+
     /// <summary>Aktuelle Einschreibung eines Schülers (aktiv, neueste zuerst); null = ohne Klasse.</summary>
     public static Task<Einschreibung?> AktuelleEinschreibungAsync(SkoulouDbContext db, Guid schuelerId, CancellationToken ct = default)
         => AktiveEinschreibungen(db).AsNoTracking()

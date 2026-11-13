@@ -38,6 +38,10 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
+    <!-- Organisation (E3): PDFs (Zugangsliste, Karten, Stundenplan), QR, XLSX-Import. -->
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 
   <ItemGroup>

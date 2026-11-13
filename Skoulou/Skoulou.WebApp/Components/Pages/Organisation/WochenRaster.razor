@@ -1,0 +1,103 @@
+@* Wochenraster eines Stundenplans: PC = Zeitraster, Handy = Liste je Tag; optional klickbar (Bearbeiten). *@
+@using Skoulou.Core.Organisation
+@using Skoulou.WebApp.Services.Organisation
+
+<div class="org-edt @(Klickbar ? "org-edt-bearbeitbar" : null)">
+    <div class="org-edt-raster" style="--org-edt-tage:@tage.Count">
+        <div class="org-edt-zeitachse" aria-hidden="true">
+            <div class="org-edt-kopf"></div>
+            <div class="org-edt-spalte" style="height:@(Hoehe)px">
+                @for (var h = ersteStunde; h < letzteStunde; h++)
+                {
+                    <span class="org-edt-zeit" style="@SlotLage(h)">@($"{h:00}:00")</span>
+                }
+            </div>
+        </div>
+        @foreach (var tag in tage)
+        {
+            <div class="org-edt-tag @(IstHeute(tag) ? "heute" : null)">
+                <div class="org-edt-kopf">
+                    <strong>@Wochentage.Name(tag)</strong>
+                    @if (Datum(tag) is { } d)
+                    {
+                        <small>@d</small>
+                    }
+                </div>
+                <div class="org-edt-spalte" style="height:@(Hoehe)px">
+                    @for (var h = ersteStunde; h < letzteStunde; h++)
+                    {
+                        var stunde = h;
+                        if (MitPlaetzen)
+                        {
+                            <button type="button" class="org-edt-slot" style="@SlotLage(stunde)" title="Ajouter un cours le @Wochentage.Name(tag).ToLowerInvariant() à @($"{stunde:00}:00")"
+                                    aria-label="Ajouter un cours le @Wochentage.Name(tag).ToLowerInvariant() à @($"{stunde:00}:00")" @onclick="() => PlatzAsync(tag, stunde)">
+                                <Icon Name="plus" Groesse="14" />
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="org-edt-linie" style="@SlotLage(stunde)"></span>
+                        }
+                    }
+                    @foreach (var b in bloecke[tag])
+                    {
+                        var s = b.Stunde;
+                        var klassen = $"org-edt-block sk-farbe-{Farbe(s.Fach)} {(s.Konflikt is not null ? "org-edt-konflikt" : null)}";
+                        @if (Klickbar)
+                        {
+                            <button type="button" class="@klassen" style="@Lage(s, b.Spur, b.Spuren)" title="@(s.Konflikt ?? $"{s.Fach} · {Zeit(s)}")" @onclick="() => StundeAsync(s)">
+                                @BlockInhalt(s)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="@klassen" style="@Lage(s, b.Spur, b.Spuren)" title="@($"{s.Fach} · {Zeit(s)}")">@BlockInhalt(s)</div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="org-edt-liste">
+        @foreach (var tag in tage.Where(t => bloecke[t].Count > 0))
+        {
+            <section class="org-edt-listentag @(IstHeute(tag) ? "heute" : null)">
+                <h3>@Wochentage.Name(tag)@(Datum(tag) is { } d ? $" {d}" : null)</h3>
+                @foreach (var b in bloecke[tag])
+                {
+                    var s = b.Stunde;
+                    var klassen = $"org-edt-listenzeile sk-farbe-{Farbe(s.Fach)} {(s.Konflikt is not null ? "org-edt-konflikt" : null)}";
+                    @if (Klickbar)
+                    {
+                        <button type="button" class="@klassen" @onclick="() => StundeAsync(s)">@ZeilenInhalt(s)</button>
+                    }
+                    else
+                    {
+                        <div class="@klassen">@ZeilenInhalt(s)</div>
+                    }
+                }
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private RenderFragment BlockInhalt(StundeZeile s) => @<text>
+        <strong class="org-edt-fach">@if (s.Konflikt is not null) {<Icon Name="alert" Groesse="13" />} @s.Fach</strong>
+        <span class="org-edt-info">@Zeit(s)</span>
+        <span class="org-edt-info">@Person(s)@(string.IsNullOrWhiteSpace(s.Raum) ? null : $" · {s.Raum}")</span>
+    </text>;
+
+    private RenderFragment ZeilenInhalt(StundeZeile s) => @<text>
+        <span class="org-edt-listenzeit">@SkoulouZeit(s.Beginn)<small>@SkoulouZeit(s.Ende)</small></span>
+        <span class="org-edt-listentext">
+            <strong>@s.Fach</strong>
+            <small>@Person(s)@(string.IsNullOrWhiteSpace(s.Raum) ? null : $" · {Skoulou.WebApp.Services.Organisation.Druck.StundenplanPdf.RaumText(s.Raum)}")</small>
+            @if (s.Konflikt is not null)
+            {
+                <small class="org-edt-konflikt-text"><Icon Name="alert" Groesse="13" /> @s.Konflikt</small>
+            }
+        </span>
+    </text>;
+}

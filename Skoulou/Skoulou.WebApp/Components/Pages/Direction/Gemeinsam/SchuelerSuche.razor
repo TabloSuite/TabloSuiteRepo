@@ -1,0 +1,88 @@
+@* Schüler serverseitig suchen und auswählen (Name, Identifiant oder Matricule). *@
+@implements IDisposable
+@inject SchuelerService Schueler
+
+<div class="sk-feld org-suche-feld">
+    @if (Label is not null)
+    {
+        <span class="sk-feld-label">@Label</span>
+    }
+    @if (Gewaehlt is not null)
+    {
+        <div class="org-gewaehlt">
+            <NamensKreis Name="@Gewaehlt.Name" Groesse="30" />
+            <span><strong>@Gewaehlt.Name</strong>@if (Gewaehlt.Zusatz is not null) {<small class="sk-leise"> · @Gewaehlt.Zusatz</small>}</span>
+            <button type="button" class="sk-link-knopf" @onclick="ZuruecksetzenAsync">Changer</button>
+        </div>
+    }
+    else
+    {
+        <label class="sk-suche">
+            <Icon Name="search" Groesse="18" />
+            <input type="search" placeholder="Nom, identifiant ou matricule…" aria-label="Rechercher un élève" value="@suche" @oninput="SucheAsync" />
+        </label>
+        @if (treffer is { Count: > 0 })
+        {
+            <div class="org-treffer" role="listbox">
+                @foreach (var t in treffer)
+                {
+                    <button type="button" class="sk-auswahl-option" role="option" aria-selected="false" @onclick="() => WaehleAsync(t)">
+                        <span>@t.Name</span>
+                        @if (t.Zusatz is not null)
+                        {
+                            <small>@t.Zusatz</small>
+                        }
+                    </button>
+                }
+            </div>
+        }
+        else if (treffer is not null)
+        {
+            <span class="sk-feld-hinweis">Aucun élève trouvé.</span>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public AuswahlEintrag? Gewaehlt { get; set; }
+    [Parameter] public EventCallback<AuswahlEintrag?> GewaehltChanged { get; set; }
+
+    private string? suche;
+    private List<AuswahlEintrag>? treffer;
+    private CancellationTokenSource? abbruch;
+
+    private async Task SucheAsync(ChangeEventArgs e)
+    {
+        suche = e.Value?.ToString();
+        abbruch?.Cancel();
+        abbruch = new CancellationTokenSource();
+        var token = abbruch.Token;
+        try
+        {
+            await Task.Delay(300, token);
+            if (string.IsNullOrWhiteSpace(suche) || suche.Trim().Length < 2) { treffer = null; return; }
+            treffer = (await Schueler.AuswahlAsync(AkteurId, suche, token)).ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            // überholt
+        }
+    }
+
+    private async Task WaehleAsync(AuswahlEintrag t)
+    {
+        treffer = null;
+        suche = null;
+        await GewaehltChanged.InvokeAsync(t);
+    }
+
+    private Task ZuruecksetzenAsync() => GewaehltChanged.InvokeAsync(null);
+
+    public void Dispose()
+    {
+        abbruch?.Cancel();
+        abbruch?.Dispose();
+    }
+}

@@ -1,0 +1,24 @@
+@* Zustand eines Kontos als Etikett (aktiv wird nur auf Wunsch angezeigt). *@
+@switch (Status)
+{
+    case KontoStatus.EnAttente:
+        <StatusBadge Text="Inscription à valider" Art="warn" Icon="clock" />
+        break;
+    case KontoStatus.Bloque:
+        <StatusBadge Text="Bloqué" Art="fehler" Icon="lock" />
+        break;
+    case KontoStatus.Archive:
+        <StatusBadge Text="Archivé" Art="neutral" />
+        break;
+    default:
+        if (AktivZeigen)
+        {
+            <StatusBadge Text="Actif" Art="erfolg" />
+        }
+        break;
+}
+
+@code {
+    [Parameter] public KontoStatus Status { get; set; }
+    [Parameter] public bool AktivZeigen { get; set; }
+}

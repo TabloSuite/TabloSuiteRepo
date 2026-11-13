@@ -1,0 +1,123 @@
+@* Schuljahr anlegen, ändern (Name/Daten) oder Periodenstruktur neu erzeugen. *@
+@inherits SkoulouSeite
+@inject SchuljahrService Schuljahre
+
+<ModalDialog Open="Open" Title="@Titel" Oberzeile="Année scolaire" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+    <div class="sk-formular">
+        @if (Modus != JahrDialogModus.Struktur)
+        {
+            <TextFeld Label="Nom de l'année" @bind-Wert="bezeichnung" MaxLaenge="80" Pflicht="true" Platzhalter="2026-2027" Fehler="@FeldFehler("bezeichnung")" />
+            <div class="sk-raster-2">
+                <DatumFeld Label="Début" @bind-Wert="beginn" Pflicht="true" Fehler="@FeldFehler("beginn")" />
+                <DatumFeld Label="Fin" @bind-Wert="ende" Pflicht="true" Min="beginn" Fehler="@FeldFehler("ende")" />
+            </div>
+        }
+        @if (Modus != JahrDialogModus.Aendern)
+        {
+            <RadioGruppe T="PeriodenArt" Label="Découpage de l'année" @bind-Wert="art" Optionen="ArtOptionen" />
+            @if (PeriodenPlan.AnzahlFrei(art))
+            {
+                <ZahlFeld Label="Nombre de périodes" Wert="anzahl" WertChanged="v => anzahl = v ?? 1" Min="1" Max="PeriodenPlan.MaxPerioden" Stellen="0" />
+            }
+            <p class="sk-leise">
+                Les périodes sont créées à intervalles égaux ; vous ajusterez ensuite leurs dates (vacances) et pourrez ajouter des examens blancs.
+                @if (Modus == JahrDialogModus.Struktur)
+                {
+                    <strong>Les périodes actuelles seront remplacées.</strong>
+                }
+            </p>
+        }
+    </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(Modus == JahrDialogModus.Neu ? "Créer l'année" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public JahrDialogModus Modus { get; set; }
+    [Parameter] public SchuljahrZeile? Jahr { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Guid> OnGespeichert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<PeriodenArt>> ArtOptionen =
+    [
+        new(PeriodenArt.Trimestre, "3 trimestres"), new(PeriodenArt.Semestre, "2 semestres"),
+        new(PeriodenArt.Session, "Sessions"), new(PeriodenArt.Libre, "Périodes libres"),
+    ];
+
+    private string? bezeichnung;
+    private DateOnly? beginn, ende;
+    private PeriodenArt art = PeriodenArt.Trimestre;
+    private decimal anzahl = 3;
+    private string? feld;
+    private bool warOffen;
+
+    private string Titel => Modus switch
+    {
+        JahrDialogModus.Neu => "Nouvelle année scolaire",
+        JahrDialogModus.Struktur => $"Découpage de l'année {Jahr?.Bezeichnung}",
+        _ => $"Modifier l'année {Jahr?.Bezeichnung}"
+    };
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            Fehlermeldung = null;
+            feld = null;
+            if (Modus == JahrDialogModus.Neu)
+            {
+                var v = await Schuljahre.VorschlagAsync(Ich.KontoId);
+                (bezeichnung, beginn, ende, art, anzahl) = (v.Bezeichnung, v.Beginn, v.Ende, v.PeriodenArt, v.AnzahlPerioden);
+            }
+            else if (Jahr is { } j)
+            {
+                (bezeichnung, beginn, ende, art) = (j.Bezeichnung, j.Beginn, j.Ende, j.PeriodenArt);
+                anzahl = Math.Max(1, j.Perioden.Count(p => p.ZaehltFuerJahr));
+            }
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        try
+        {
+            Guid id;
+            switch (Modus)
+            {
+                case JahrDialogModus.Neu:
+                    id = await Schuljahre.JahrAnlegenAsync(Ich.KontoId, new SchuljahrEingabe(bezeichnung, beginn, ende, art, (int)anzahl));
+                    Toast.ZeigeErfolg($"L'année {bezeichnung} est créée avec ses périodes.");
+                    break;
+                case JahrDialogModus.Struktur:
+                    id = Jahr!.Id;
+                    await Schuljahre.StrukturNeuAsync(Ich.KontoId, id, art, (int)anzahl);
+                    Toast.ZeigeErfolg("Les périodes ont été recréées.");
+                    break;
+                default:
+                    id = Jahr!.Id;
+                    await Schuljahre.JahrAendernAsync(Ich.KontoId, id, bezeichnung, beginn, ende);
+                    Toast.ZeigeErfolg("L'année est enregistrée.");
+                    break;
+            }
+            await OnGespeichert.InvokeAsync(id);
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            feld = f.Feld;
+            Fehlermeldung = f.Message;
+        }
+    }
+}

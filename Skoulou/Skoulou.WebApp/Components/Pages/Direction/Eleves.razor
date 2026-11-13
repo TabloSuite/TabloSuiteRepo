@@ -1,5 +1,96 @@
 @page "/direction/eleves"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits JahrSeite
+@inject SchuelerService Schueler
+@inject KlassenService Klassen
+@using Skoulou.WebApp.Components.Pages.Direction.SchuelerTeile
 
-<InVorbereitung Titel="Élèves" Icon="graduation" Etappe="E3 – Organisation"
-                Beschreibung="Inscrire les élèves, changer de classe, gérer les comptes et imprimer la liste des accès." />
+<PageTitle>Élèves · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Élèves" Icon="graduation" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="Inscriptions, classes, changements de classe, départs et accès des élèves.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => import = true"><Icon Name="download" Groesse="18" /> <span>Importer</span></button>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Bearbeiten(null)"><Icon Name="user-plus" Groesse="18" /> <span>Nouvel élève</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zaehler is not null)
+{
+    @if (zaehler.AValider > 0 && filter != SchuelerService.FilterAValider)
+    {
+        <Hinweis Art="warn" Titel="@($"{zaehler.AValider} inscription{(zaehler.AValider > 1 ? "s attendent" : " attend")} votre validation")">
+            Des élèves se sont inscrits en ligne. <button type="button" class="sk-link-knopf" @onclick="() => FilterAsync(SchuelerService.FilterAValider)">Afficher les inscriptions à valider</button>
+        </Hinweis>
+    }
+    @if (auswahl.Count > 0)
+    {
+        <div class="org-auswahlleiste" role="region" aria-label="Sélection">
+            <strong>@auswahl.Count sélectionné@(auswahl.Count > 1 ? "s" : "")</strong>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="SammelEinschreiben"><Icon Name="layers" Groesse="16" /> <span>Inscrire dans une classe</span></button>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="SammelPasswort"><Icon Name="key" Groesse="16" /> <span>Nouveaux mots de passe et liste des accès</span></button>
+            <button type="button" class="sk-link-knopf" @onclick="() => auswahl.Clear()">Vider la sélection</button>
+        </div>
+    }
+    <Liste T="SchuelerZeile" @ref="liste" @key="listenSchluessel" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@filter" SuchPlatzhalter="Nom, identifiant ou matricule…"
+           LeerIcon="graduation" LeerTitel="Aucun élève" LeerText="Ajoutez les élèves un par un ou importez-les depuis Excel avec leur classe.">
+        <Werkzeuge>
+            <AuswahlFeld T="Guid?" Wert="klasseFilter" WertChanged="KlasseFilterAsync" Optionen="KlassenFilterOptionen" Platzhalter="Toutes les classes" Kompakt="true" Icon="layers" />
+        </Werkzeuge>
+        <Zeile Context="s">
+            <div class="org-zeile @(s.Status == KontoStatus.Archive ? "org-inaktiv" : null)">
+                <input type="checkbox" class="org-haken" aria-label="Sélectionner @s.Name" checked="@auswahl.ContainsKey(s.KontoId)" @onchange="e => Waehlen(s, e)" />
+                <NamensKreis Name="@s.Name" Groesse="40" />
+                <div class="org-zeile-haupt">
+                    <button type="button" class="org-name-knopf" @onclick="() => akteId = s.KontoId">@s.Name</button>
+                    <span class="org-zeile-meta">
+                        @if (s.Matrikel is not null) {<span>@s.Matrikel</span>}
+                        <code>@s.Identifiant</code>
+                        @if (s.Eltern > 0) {<span><Icon Name="famille" Groesse="14" /> @s.Eltern</span>}
+                    </span>
+                </div>
+                <div class="org-zeile-info">
+                    @if (s.Klasse is not null)
+                    {
+                        <StatusBadge Text="@s.Klasse" Art="info" />
+                        @if (s.Jahr is not null && s.Jahr != Jahr?.Bezeichnung) {<small class="sk-leise">@s.Jahr</small>}
+                        @if (s.Wiederholer) {<StatusBadge Text="Redoublant(e)" Art="neutral" />}
+                    }
+                    else if (s.Status == KontoStatus.Actif)
+                    {
+                        <StatusBadge Text="Sans classe" Art="warn" />
+                    }
+                    <KontoStatusBadge Status="s.Status" />
+                </div>
+                <div class="org-zeile-aktionen">
+                    @if (s.Status == KontoStatus.EnAttente)
+                    {
+                        <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => Validieren(s, false)"><Icon Name="check" Groesse="16" /> <span>Valider</span></button>
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Validieren(s, true)">Refuser</button>
+                    }
+                    else
+                    {
+                        @if (s.Klasse is null && s.Status == KontoStatus.Actif)
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => einschreibung = new(EinschreibungsAktion.Einschreiben, [s.KontoId], [s.Name])">Inscrire</button>
+                        }
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => akteId = s.KontoId"><Icon Name="user" Groesse="16" /> <span>Dossier</span></button>
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<SchuelerAkte SchuelerId="akteId" Version="version" OnClose="() => akteId = null" OnBearbeiten="id => Bearbeiten(id)"
+              OnEinschreibung="a => einschreibung = a" OnKontoAktion="a => aktion = a" OnGeaendert="ListeLadenAsync" />
+<SchuelerDialog Open="dialog" SchuelerId="bearbeitet" Klassen="klassen" VorgabeKlasse="klasseFilter" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<EinschreibungDialog Anfrage="einschreibung" Klassen="klassen" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" OnClose="() => einschreibung = null" OnErledigt="ErledigtAsync" />
+<ValidierenDialog Kandidat="kandidat" Ablehnen="ablehnen" Klassen="klassen" OnClose="() => kandidat = null" OnErledigt="ErledigtAsync" />
+<KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="AktionErledigtAsync" />
+<ZugangsDialog Stapel="zugaenge" OnClose="() => zugaenge = null" />
+<ImportDialog Open="import" Art="ImportArt.Eleves" JahrId="JahrId" OnClose="() => import = false" OnImportiert="ImportiertAsync" />

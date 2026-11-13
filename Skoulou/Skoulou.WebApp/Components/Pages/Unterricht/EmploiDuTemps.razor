@@ -1,5 +1,72 @@
 @page "/enseignant/emploi-du-temps"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Organisation
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Organisation
+@inject StundenplanService Plaene
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Mon emploi du temps" Icon="timetable" Etappe="E3 – Organisation"
-                Beschreibung="Vos heures de cours de la semaine, par classe et par salle." />
+<PageTitle>Mon emploi du temps · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mon emploi du temps" Icon="timetable" Untertitel="Vos cours publiés de la semaine, avec la classe et la salle.">
+    <Aktionen>
+        <Druckknopf Text="PDF de la semaine" Href="@($"/enseignant/emploi-du-temps/pdf?tag={montag:yyyy-MM-dd}")" />
+    </Aktionen>
+</SeitenKopf>
+
+<WochenWahl Montag="montag" Heute="heute" OnWoche="WocheAsync" />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (woche is null)
+{
+    <LadeIndikator />
+}
+else if (woche.Stunden.Count == 0)
+{
+    <Karte>
+        <Leerzustand Icon="timetable" Titel="Aucun cours cette semaine" Text="@(woche.Hinweis ?? "La direction n'a pas encore publié d'emploi du temps pour vos classes.")" />
+    </Karte>
+}
+else
+{
+    <Karte Titel="@WochenTitel" Untertitel="@Zusammenfassung" Icon="clock">
+        <WochenRaster Stunden="woche.Stunden" MitKlasse="true" Montag="montag" Heute="heute" />
+    </Karte>
+}
+
+@code {
+    private WochenAnsicht? woche;
+    private DateOnly heute;
+    private DateOnly montag;
+
+    private string WochenTitel => $"Semaine du {SkoulouKultur.Datum(montag)}";
+
+    private string Zusammenfassung
+    {
+        get
+        {
+            var stunden = woche!.Stunden.Sum(s => (s.Ende - s.Beginn).TotalMinutes) / 60;
+            var klassen = woche.Stunden.Select(s => s.Klasse).Distinct().Count();
+            return $"{woche.Stunden.Count} cours · {SkoulouKultur.Zahl((decimal)stunden, 1)} h · {klassen} classe{(klassen > 1 ? "s" : "")}";
+        }
+    }
+
+    protected override async Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Uhr).Heute;
+        montag = Wochentage.Montag(heute);
+        await LadenAsync();
+    }
+
+    private async Task WocheAsync(DateOnly neuerMontag)
+    {
+        montag = neuerMontag;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync() => woche = await Plaene.LehrerWocheAsync(Ich.KontoId, montag);
+}

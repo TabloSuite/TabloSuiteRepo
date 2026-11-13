@@ -1,5 +1,54 @@
 @page "/parents/presences"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Organisation
+@inject AnwesenheitService Anwesenheit
 
-<InVorbereitung Titel="Présences" Icon="user-check" Etappe="E3 – Organisation"
-                Beschreibung="Absences et retards de vos enfants." />
+<PageTitle>Présences · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Présences" Icon="user-check" Untertitel="Les absences et retards de votre enfant pendant l'année scolaire en cours." />
+
+@if (!Laedt)
+{
+    <KindAuswahl KontoId="Ich.KontoId" Gewaehlt="kind" GewaehltChanged="KindAsync" />
+}
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (kind is not null)
+{
+    @if (daten is null)
+    {
+        <div class="sk-skelett"><div></div><div></div></div>
+    }
+    else
+    {
+        <Karte Titel="@daten.Name" Untertitel="@(daten.Jahr is null ? null : $"Année scolaire {daten.Jahr}")" Icon="calendar">
+            <AnwesenheitVerlauf Daten="daten" />
+        </Karte>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "kind")] public Guid? KindAusAdresse { get; set; }
+
+    private Guid? kind;
+    private SchuelerAnwesenheit? daten;
+
+    protected override void OnInitialized() => kind = KindAusAdresse;
+
+    protected override async Task InitialisierenAsync()
+    {
+        if (kind is { } k) daten = await Anwesenheit.SchuelerAsync(Ich.KontoId, k);
+    }
+
+    private async Task KindAsync(Guid? id)
+    {
+        if (id == kind && daten is not null) return;
+        (kind, daten) = (id, null);
+        if (id is { } k) await AusfuehrenAsync(async () => daten = await Anwesenheit.SchuelerAsync(Ich.KontoId, k));
+    }
+}

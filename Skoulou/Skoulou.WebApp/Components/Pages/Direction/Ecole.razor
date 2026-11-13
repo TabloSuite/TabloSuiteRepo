@@ -1,5 +1,41 @@
 @page "/direction/ecole"
 @attribute [Authorize(Policy = Richtlinien.Direktor)]
+@inherits SkoulouSeite
+@inject SchulService Schule
+@using Skoulou.WebApp.Components.Pages.Direction.Etablissement
 
-<InVorbereitung Titel="Établissement" Icon="school" Etappe="E3 – Organisation"
-                Beschreibung="Données officielles de l'établissement pour les documents, logo et droits des coordinateurs." />
+<PageTitle>Établissement · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Établissement" Icon="school" Untertitel="Les données de votre école, l'en-tête des documents (bulletins, reçus, cartes), le logo et les droits des coordinateurs." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (daten is null)
+{
+    <div class="sk-skelett"><div></div><div></div><div></div></div>
+}
+else
+{
+    <div class="org-raster">
+        <div class="org-spalte">
+            <StammdatenKarte Daten="daten" OnGespeichert="NeuLadenAsync" />
+            <LogoKarte LogoMediumId="daten.LogoMediumId" SchulName="@daten.Name" />
+            <EinstellungenKarte Daten="daten" />
+        </div>
+        <div class="org-spalte">
+            <DokumentKarte Daten="daten" />
+            <KoordinatorRechteKarte />
+        </div>
+    </div>
+}
+
+@code {
+    private SchulDaten? daten;
+
+    protected override async Task InitialisierenAsync() => daten = await Schule.LadeAsync(Ich.KontoId);
+
+    /// <summary>Nur die Kopfzeile (Schulname) aktualisieren; die Karten behalten ihre Eingaben.</summary>
+    private Task NeuLadenAsync() => Kontext.LadeAsync(Ich.KontoId, erzwingen: true);
+}

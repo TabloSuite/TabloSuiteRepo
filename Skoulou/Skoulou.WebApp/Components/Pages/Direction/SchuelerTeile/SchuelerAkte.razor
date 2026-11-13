@@ -1,0 +1,170 @@
+@* Dossier eines Schülers: Scolarité (Einschreibungen mit Aktionen), Eltern, Foto/Karte, Konto. *@
+@inherits SkoulouSeite
+@inject SchuelerService Schueler
+@inject EinschreibungService Einschreibungen
+
+<ModalDialog Open="SchuelerId is not null" Title="@(akte?.Name ?? "Dossier de l'élève")" Oberzeile="Dossier de l'élève" Breite="sk-modal-lg" OnClose="OnClose">
+    <ChildContent>
+        @if (akte is null)
+        {
+            <div class="sk-skelett"><div></div><div></div><div></div></div>
+        }
+        else
+        {
+            <div class="org-akte-kopf">
+                @if (akte.FotoMediumId is { } foto)
+                {
+                    <img class="org-foto" src="@($"/medien/{foto}")" alt="Photo de @akte.Name" />
+                }
+                else
+                {
+                    <NamensKreis Name="@akte.Name" Groesse="64" />
+                }
+                <div>
+                    <strong>@akte.Name</strong> <KontoStatusBadge Status="akte.Status" AktivZeigen="true" />
+                    <dl class="sk-daten">
+                        <dt>Matricule</dt><dd>@(akte.Daten.Matrikel ?? "–")</dd>
+                        <dt>Identifiant</dt><dd><code>@akte.Identifiant</code></dd>
+                        @if (akte.Daten.Geburtsdatum is { } g)
+                        {
+                            <dt>Né(e) le</dt><dd>@SkoulouKultur.Datum(g)@(akte.Daten.Geburtsort is { } ort ? $" à {ort}" : "")</dd>
+                        }
+                        <dt>Contact parent</dt><dd>@(string.Join(" · ", new[] { akte.Daten.ElternTelefon, akte.Daten.ElternEmail }.Where(x => x is not null)) is { Length: > 0 } c ? c : "–")</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <Abschnitt Titel="Scolarité" Ebene="3">
+                <Aktionen>
+                    @if (akte.Aktive is null && akte.Status == KontoStatus.Actif)
+                    {
+                        <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => Einschreibung(EinschreibungsAktion.Einschreiben)"><Icon Name="plus" Groesse="16" /> <span>Inscrire dans une classe</span></button>
+                    }
+                    @if (akte.Aktive is { } aktiv)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Einschreibung(EinschreibungsAktion.Wechsel, aktiv)"><Icon Name="refresh" Groesse="16" /> <span>Changer de classe</span></button>
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Einschreibung(EinschreibungsAktion.Austritt, aktiv)"><Icon Name="logout" Groesse="16" /> <span>Départ de l'élève</span></button>
+                    }
+                </Aktionen>
+                <ChildContent>
+                    @if (akte.Einschreibungen.Count == 0)
+                    {
+                        <p class="sk-leise">Aucune inscription en classe pour l'instant.</p>
+                    }
+                    else
+                    {
+                        <div class="sk-tabelle-rahmen">
+                            <table class="sk-tabelle">
+                                <thead><tr><th>Année</th><th>Classe</th><th>Période</th><th>État</th><th></th></tr></thead>
+                                <tbody>
+                                    @foreach (var e in akte.Einschreibungen)
+                                    {
+                                        <tr class="@(e.Storniert ? "org-inaktiv" : null)" @key="e.Id">
+                                            <td>@e.Jahr</td>
+                                            <td><strong>@e.Klasse</strong>@if (e.Wiederholer) {<StatusBadge Text="Redoublant(e)" Art="info" />}</td>
+                                            <td>@SkoulouKultur.Datum(e.Von) – @(e.Bis is { } bis ? SkoulouKultur.Datum(bis) : "…")</td>
+                                            <td>
+                                                <StatusBadge Text="@StatusText(e)" Art="@(e.Storniert ? "neutral" : e.Status == EinschreibungsStatus.Active ? "erfolg" : "neutral")" />
+                                                @if ((e.StornoGrund ?? e.Austrittsgrund) is { } grund)
+                                                {
+                                                    <br /><small class="sk-leise">@grund</small>
+                                                }
+                                            </td>
+                                            <td class="org-aktionen">
+                                                @if (!e.Storniert && e.Status == EinschreibungsStatus.Active)
+                                                {
+                                                    <AsyncKnopf Text="@(e.Wiederholer ? "Pas redoublant" : "Redoublant")" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => WiederholerAsync(e)" />
+                                                }
+                                                @if (!e.Storniert)
+                                                {
+                                                    <button type="button" class="sk-icon-knopf" title="Annuler cette inscription (erreur)" aria-label="Annuler l'inscription en @e.Klasse"
+                                                            @onclick="() => Einschreibung(EinschreibungsAktion.Stornieren, e)"><Icon Name="x" Groesse="16" /></button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </ChildContent>
+            </Abschnitt>
+
+            <Abschnitt Titel="Parents" Ebene="3">
+                <Aktionen>
+                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="/direction/parents"><Icon Name="famille" Groesse="16" /> <span>Gérer les parents</span></a>
+                </Aktionen>
+                <ChildContent>
+                    @if (akte.Eltern.Count == 0)
+                    {
+                        <p class="sk-leise">Aucun parent lié. Créez un accès parent depuis la page Parents.</p>
+                    }
+                    else
+                    {
+                        <ul class="org-eltern-liste">
+                            @foreach (var p in akte.Eltern)
+                            {
+                                <li><strong>@p.Name</strong> · @p.Beziehung · <code>@p.Identifiant</code>@(p.Telefon is null ? "" : $" · {p.Telefon}") <KontoStatusBadge Status="p.Status" /></li>
+                            }
+                        </ul>
+                    }
+                </ChildContent>
+            </Abschnitt>
+
+            <SchuelerKontoTeil Akte="akte" OnBearbeiten="OnBearbeiten" OnKontoAktion="OnKontoAktion" OnGeaendert="NeuLadenAsync" />
+        }
+    </ChildContent>
+</ModalDialog>
+
+@code {
+    [Parameter] public Guid? SchuelerId { get; set; }
+    /// <summary>Erhöht die Seite nach jeder Änderung → Dossier neu laden.</summary>
+    [Parameter] public int Version { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Guid> OnBearbeiten { get; set; }
+    [Parameter] public EventCallback<EinschreibungsAnfrage> OnEinschreibung { get; set; }
+    [Parameter] public EventCallback<KontoAktionAnfrage> OnKontoAktion { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private SchuelerDetail? akte;
+    private (Guid? Id, int Version) geladen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SchuelerId is { } id && geladen != (id, Version))
+        {
+            if (geladen.Id != id) akte = null;
+            geladen = (id, Version);
+            await AusfuehrenAsync(async () => akte = await Schueler.DetailAsync(Ich.KontoId, id));
+        }
+        else if (SchuelerId is null)
+        {
+            (akte, geladen) = (null, default);
+        }
+    }
+
+    private async Task NeuLadenAsync()
+    {
+        if (SchuelerId is { } id) await AusfuehrenAsync(async () => akte = await Schueler.DetailAsync(Ich.KontoId, id));
+        await OnGeaendert.InvokeAsync();
+    }
+
+    private static string StatusText(EinschreibungZeile e) => e.Storniert ? "Annulée" : e.Status switch
+    {
+        EinschreibungsStatus.Active => "En cours",
+        EinschreibungsStatus.Changee => "Changement de classe",
+        EinschreibungsStatus.Partie => "Départ",
+        _ => "Terminée"
+    };
+
+    private Task Einschreibung(EinschreibungsAktion art, EinschreibungZeile? e = null)
+        => akte is null ? Task.CompletedTask : OnEinschreibung.InvokeAsync(new EinschreibungsAnfrage(art, [akte.KontoId], [akte.Name], e?.Id,
+            art == EinschreibungsAktion.Wechsel ? e?.Klasse : null, art == EinschreibungsAktion.Wechsel ? e?.Von : null));
+
+    private async Task WiederholerAsync(EinschreibungZeile e)
+    {
+        if (await AusfuehrenAsync(() => Einschreibungen.WiederholerSetzenAsync(Ich.KontoId, e.Id, !e.Wiederholer),
+                e.Wiederholer ? "L'élève n'est plus marqué(e) redoublant(e)." : "L'élève est marqué(e) redoublant(e)."))
+            await NeuLadenAsync();
+    }
+}

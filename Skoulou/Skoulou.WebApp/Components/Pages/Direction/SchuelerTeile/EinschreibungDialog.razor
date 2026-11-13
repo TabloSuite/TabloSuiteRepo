@@ -1,0 +1,157 @@
+@* Einschreiben (einzeln oder mehrere), « Changer de classe », « Départ de l'élève », Einschreibung annulieren. *@
+@inherits SkoulouSeite
+@inject EinschreibungService Einschreibungen
+@inject TimeProvider Uhr
+
+<ModalDialog Open="Anfrage is not null" Title="@Titel" Oberzeile="@Oberzeile" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (Anfrage is { } a)
+        {
+            <div class="sk-formular">
+                @if (a.Art == EinschreibungsAktion.Sammel)
+                {
+                    <p class="sk-leise">@string.Join(", ", a.Namen.Take(12))@(a.Namen.Count > 12 ? $" et {a.Namen.Count - 12} autres" : "")</p>
+                }
+                @if (a.AktuelleKlasse is not null)
+                {
+                    <p class="sk-leise">Classe actuelle : <strong>@a.AktuelleKlasse</strong>@(a.AktivSeit is { } seit ? $" depuis le {SkoulouKultur.Datum(seit)}" : "")</p>
+                }
+                @if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Wechsel or EinschreibungsAktion.Sammel)
+                {
+                    <AuswahlFeld T="Guid?" Label="@(a.Art == EinschreibungsAktion.Wechsel ? "Nouvelle classe" : "Classe")" @bind-Wert="klasseId" Optionen="KlassenOptionen" Pflicht="true" />
+                }
+                @if (a.Art != EinschreibungsAktion.Stornieren)
+                {
+                    <DatumFeld Label="@DatumLabel" @bind-Wert="datum" Pflicht="true" Min="JahrBeginn" Max="JahrEnde" Fehler="@(feld == "datum" ? Fehlermeldung : null)"
+                               Hinweis="@(a.Art == EinschreibungsAktion.Wechsel ? "L'ancienne inscription se termine la veille ; les notes déjà saisies restent attachées à l'ancienne classe." : null)" />
+                }
+                @if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel)
+                {
+                    <Schalter @bind-Wert="wiederholer" Label="Redoublant(e)" />
+                }
+                @if (a.Art is EinschreibungsAktion.Austritt or EinschreibungsAktion.Stornieren)
+                {
+                    <TextFeld Label="@(a.Art == EinschreibungsAktion.Austritt ? "Motif du départ" : "Motif de l'annulation")" @bind-Wert="grund" Zeilen="2" MaxLaenge="300" Pflicht="true"
+                              Platzhalter="@(a.Art == EinschreibungsAktion.Austritt ? "Déménagement, changement d'école…" : "Erreur de classe…")" Fehler="@(feld == "grund" ? Fehlermeldung : null)" />
+                }
+                @if (a.Art == EinschreibungsAktion.Austritt)
+                {
+                    <Schalter @bind-Wert="archivieren" Label="Archiver aussi le compte de l'élève" Hinweis="Il ne pourra plus se connecter ; vous pourrez le réintégrer plus tard." />
+                }
+                @if (a.Art == EinschreibungsAktion.Stornieren)
+                {
+                    <Hinweis Art="warn">L'inscription est annulée comme si elle n'avait jamais existé (elle ne compte plus, même pour la facturation) ; ses présences sont supprimées. Impossible si des notes ou des bulletins existent.</Hinweis>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@Knopf" Icon="check" CssClass="@(Anfrage?.Art is EinschreibungsAktion.Stornieren or EinschreibungsAktion.Austritt ? "sk-btn-gefahr" : "sk-btn-primaer")" OnClick="AusfuehrenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public EinschreibungsAnfrage? Anfrage { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
+    [Parameter] public DateOnly? JahrBeginn { get; set; }
+    [Parameter] public DateOnly? JahrEnde { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnErledigt { get; set; }
+
+    private Guid? klasseId;
+    private DateOnly? datum;
+    private bool wiederholer, archivieren;
+    private string? grund, feld;
+    private EinschreibungsAnfrage? geladen;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => Klassen.Where(k => k.Name != Anfrage?.AktuelleKlasse)
+        .Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();
+
+    private string Name => Anfrage is { Namen.Count: 1 } a ? a.Namen[0] : $"{Anfrage?.Namen.Count} élèves";
+    private string Oberzeile => Anfrage?.Art == EinschreibungsAktion.Sammel ? "Inscription en classe" : Name;
+
+    private string Titel => Anfrage?.Art switch
+    {
+        EinschreibungsAktion.Wechsel => "Changer de classe",
+        EinschreibungsAktion.Austritt => "Départ de l'élève",
+        EinschreibungsAktion.Stornieren => "Annuler l'inscription",
+        EinschreibungsAktion.Sammel => $"Inscrire {Name} dans une classe",
+        _ => "Inscrire dans une classe"
+    };
+
+    private string DatumLabel => Anfrage?.Art switch
+    {
+        EinschreibungsAktion.Wechsel => "Dans la nouvelle classe à partir du",
+        EinschreibungsAktion.Austritt => "Dernier jour dans l'établissement",
+        _ => "Inscrit(e) à partir du"
+    };
+
+    private string Knopf => Anfrage?.Art switch
+    {
+        EinschreibungsAktion.Wechsel => "Changer de classe",
+        EinschreibungsAktion.Austritt => "Enregistrer le départ",
+        EinschreibungsAktion.Stornieren => "Annuler l'inscription",
+        _ => "Inscrire"
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Anfrage is not null && !ReferenceEquals(Anfrage, geladen))
+        {
+            geladen = Anfrage;
+            var heute = new SchulZeit(Uhr).Heute;
+            if (JahrBeginn is { } b && heute < b) heute = b;
+            if (JahrEnde is { } e && heute > e) heute = e;
+            (klasseId, datum, wiederholer, archivieren, grund, feld, Fehlermeldung) = (null, heute, false, false, null, null, null);
+        }
+        else if (Anfrage is null)
+        {
+            geladen = null;
+        }
+    }
+
+    private async Task AusfuehrenAsync()
+    {
+        if (Anfrage is not { } a) return;
+        feld = null;
+        try
+        {
+            switch (a.Art)
+            {
+                case EinschreibungsAktion.Einschreiben:
+                    await Einschreibungen.EinschreibenAsync(Ich.KontoId, a.SchuelerIds[0], Pflicht(klasseId), Pflicht(datum), wiederholer);
+                    Toast.ZeigeErfolg($"{Name} est inscrit(e).");
+                    break;
+                case EinschreibungsAktion.Wechsel:
+                    await Einschreibungen.KlasseWechselnAsync(Ich.KontoId, a.SchuelerIds[0], Pflicht(klasseId), Pflicht(datum));
+                    Toast.ZeigeErfolg($"{Name} change de classe.");
+                    break;
+                case EinschreibungsAktion.Austritt:
+                    await Einschreibungen.AustrittAsync(Ich.KontoId, a.SchuelerIds[0], Pflicht(datum), grund, archivieren);
+                    Toast.ZeigeErfolg($"Le départ de {Name} est enregistré.");
+                    break;
+                case EinschreibungsAktion.Stornieren:
+                    await Einschreibungen.StornierenAsync(Ich.KontoId, a.EinschreibungId!.Value, grund);
+                    Toast.ZeigeErfolg("L'inscription est annulée.");
+                    break;
+                default:
+                    var r = await Einschreibungen.MehrereEinschreibenAsync(Ich.KontoId, Pflicht(klasseId), a.SchuelerIds, Pflicht(datum), wiederholer);
+                    Toast.ZeigeErfolg($"{r.Eingeschrieben} élève(s) inscrit(s)" + (r.Uebersprungen.Count > 0 ? $" ; ignorés : {string.Join(", ", r.Uebersprungen)}." : "."));
+                    break;
+            }
+            await OnErledigt.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (feld, Fehlermeldung) = (f.Feld, f.Message);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            Fehlermeldung = k.Message;
+        }
+    }
+
+    private static T Pflicht<T>(T? wert) where T : struct
+        => wert ?? throw new Skoulou.Core.Fehler.FachFehler(typeof(T) == typeof(Guid) ? "Choisissez une classe." : "Indiquez la date.");
+}

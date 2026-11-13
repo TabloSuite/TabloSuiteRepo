@@ -1,5 +1,83 @@
 @page "/parents/emploi-du-temps"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Organisation
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Organisation
+@inject StundenplanService Plaene
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Emploi du temps" Icon="timetable" Etappe="E3 – Organisation"
-                Beschreibung="Les cours de la semaine de vos enfants." />
+<PageTitle>Emploi du temps · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Emploi du temps" Icon="timetable" Untertitel="Les cours de la semaine de votre enfant.">
+    <Aktionen>
+        @if (woche?.PlanId is { } planId)
+        {
+            <Druckknopf Text="PDF" Href="@($"/emplois-du-temps/{planId}/pdf")" />
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (!Laedt)
+{
+    <KindAuswahl KontoId="Ich.KontoId" @bind-Gewaehlt="Kind" @bind-Gewaehlt:after="KindGewechseltAsync" />
+}
+
+@if (Kind is not null)
+{
+    <WochenWahl Montag="montag" Heute="heute" OnWoche="WocheAsync" />
+
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (woche is null)
+    {
+        <LadeIndikator />
+    }
+    else if (woche.Stunden.Count == 0)
+    {
+        <Karte>
+            <Leerzustand Icon="timetable" Titel="Pas d'emploi du temps cette semaine" Text="@(woche.Hinweis ?? "Aucun cours n'est prévu cette semaine.")" />
+        </Karte>
+    }
+    else
+    {
+        <Karte Titel="@woche.Titel" Untertitel="@($"{woche.Stunden.Count} cours cette semaine")" Icon="clock">
+            <WochenRaster Stunden="woche.Stunden" Montag="montag" Heute="heute" />
+        </Karte>
+    }
+}
+
+@code {
+    /// <summary>Gewähltes Kind (?kind=…, sonst das erste).</summary>
+    [SupplyParameterFromQuery(Name = "kind")] public Guid? Kind { get; set; }
+
+    private WochenAnsicht? woche;
+    private DateOnly heute;
+    private DateOnly montag;
+
+    protected override Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Uhr).Heute;
+        montag = Wochentage.Montag(heute);
+        return Task.CompletedTask;
+    }
+
+    private async Task KindGewechseltAsync()
+    {
+        woche = null;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task WocheAsync(DateOnly neuerMontag)
+    {
+        montag = neuerMontag;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync()
+    {
+        if (Kind is { } kind) woche = await Plaene.SchuelerWocheAsync(Ich.KontoId, kind, montag);
+    }
+}

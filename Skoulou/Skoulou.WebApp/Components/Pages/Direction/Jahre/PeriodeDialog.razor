@@ -1,0 +1,82 @@
+@* Periode anlegen oder ändern (Titel, Daten, Gewicht, « compte pour l'année » oder Examen blanc). *@
+@inherits SkoulouSeite
+@inject SchuljahrService Schuljahre
+
+<ModalDialog Open="Open" Title="@(Periode is null ? "Nouvelle période" : $"Modifier « {Periode.Titel} »")" Oberzeile="@Jahr?.Bezeichnung"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+    <div class="sk-formular">
+        <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Platzhalter="1er trimestre, Examen blanc…" Fehler="@FeldFehler("titel")" />
+        <div class="sk-raster-2">
+            <DatumFeld Label="Début" @bind-Wert="beginn" Pflicht="true" Min="Jahr?.Beginn" Max="Jahr?.Ende" Fehler="@FeldFehler("beginn")" />
+            <DatumFeld Label="Fin" @bind-Wert="ende" Pflicht="true" Min="beginn ?? Jahr?.Beginn" Max="Jahr?.Ende" Fehler="@FeldFehler("ende")" />
+        </div>
+        <Schalter @bind-Wert="zaehlt" Label="Compte pour la moyenne annuelle"
+                  Hinweis="Désactivé = « examen blanc » : notes à part, ni moyenne annuelle ni facturation SKOULOU." />
+        @if (zaehlt)
+        {
+            <ZahlFeld Label="Poids dans la moyenne annuelle" @bind-Wert="gewicht" Min="0.01m" Max="100" Hinweis="1 = même poids que les autres périodes." Fehler="@FeldFehler("gewicht")" />
+        }
+        @if (Jahr?.Status == SchuljahrStatus.Laufend)
+        {
+            <Hinweis Art="info">L'année est en cours : seules les dates et les titres changent ; on peut ajouter des examens blancs.</Hinweis>
+        }
+    </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public SchuljahrZeile? Jahr { get; set; }
+    [Parameter] public PeriodeZeile? Periode { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? titel;
+    private DateOnly? beginn, ende;
+    private bool zaehlt = true;
+    private decimal? gewicht = 1;
+    private string? feld;
+    private bool warOffen;
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            Fehlermeldung = null;
+            feld = null;
+            if (Periode is { } p) (titel, beginn, ende, zaehlt, gewicht) = (p.Titel, p.Beginn, p.Ende, p.ZaehltFuerJahr, p.ZaehltFuerJahr ? p.Jahresgewicht : 1);
+            else (titel, beginn, ende, zaehlt, gewicht) = (Jahr?.Status == SchuljahrStatus.Vorbereitung ? null : "Examen blanc", null, null, Jahr?.Status == SchuljahrStatus.Vorbereitung, 1);
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Jahr is null) return;
+        feld = null;
+        try
+        {
+            var e = new PeriodeEingabe(titel, beginn, ende, gewicht ?? 0, zaehlt);
+            if (Periode is null) await Schuljahre.PeriodeHinzufuegenAsync(Ich.KontoId, Jahr.Id, e);
+            else await Schuljahre.PeriodeAendernAsync(Ich.KontoId, Periode.Id, e);
+            Toast.ZeigeErfolg("La période est enregistrée.");
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            feld = f.Feld;
+            Fehlermeldung = f.Message;
+        }
+    }
+}

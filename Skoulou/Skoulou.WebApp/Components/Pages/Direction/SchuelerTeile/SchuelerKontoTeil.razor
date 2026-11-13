@@ -1,0 +1,104 @@
+@* Teil des Dossiers: Foto (für die Karte), Karte erneuern, Kontoaktionen (Daten, Passwort, Sperre, Archiv). *@
+@inherits SkoulouSeite
+@inject SchuelerService Schueler
+
+<Abschnitt Titel="Photo, carte et compte" Ebene="3">
+    <div class="org-konto-teil">
+        <div class="sk-knopfzeile">
+            <label class="sk-btn sk-btn-ghost sk-btn-klein org-datei-knopf">
+                <Icon Name="image" Groesse="16" /> <span>@(laedt ? "Envoi…" : Akte.FotoMediumId is null ? "Ajouter une photo" : "Changer la photo")</span>
+                <InputFile OnChange="FotoAsync" accept="image/png,image/jpeg,image/webp" disabled="@laedt" />
+            </label>
+            @if (Akte.FotoMediumId is not null)
+            {
+                <AsyncKnopf Text="Retirer la photo" CssClass="sk-btn-ghost sk-btn-klein" OnClick="FotoEntfernenAsync" />
+            }
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" title="L'ancienne carte (QR) ne sera plus valide" @onclick="() => karteFrage = true"><Icon Name="qr" Groesse="16" /> <span>Renouveler la carte</span></button>
+        </div>
+        <div class="sk-knopfzeile">
+            @if (Akte.Status != KontoStatus.Archive)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OnBearbeiten.InvokeAsync(Akte.KontoId)"><Icon Name="edit" Groesse="16" /> <span>Modifier les données</span></button>
+            }
+            @if (Akte.Status is KontoStatus.Actif or KontoStatus.Bloque)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Passwort)"><Icon Name="key" Groesse="16" /> <span>Nouveau mot de passe</span></button>
+            }
+            @switch (Akte.Status)
+            {
+                case KontoStatus.Actif:
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Sperren)"><Icon Name="lock" Groesse="16" /> <span>Bloquer</span></button>
+                    if (Akte.Aktive is null)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Archivieren)"><Icon Name="history" Groesse="16" /> <span>Archiver</span></button>
+                    }
+                    break;
+                case KontoStatus.Bloque:
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Entsperren)">Débloquer</button>
+                    break;
+                case KontoStatus.Archive:
+                    <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => Aktion(KontoAktion.Reintegrieren)">Réintégrer</button>
+                    break;
+            }
+        </div>
+        @if (Akte.Aktive is not null && Akte.Status == KontoStatus.Actif)
+        {
+            <p class="sk-leise">Pour archiver un élève encore inscrit, enregistrez d'abord son départ (vous pourrez archiver en même temps).</p>
+        }
+        @if (Akte.LetzteAnmeldungUtc is null)
+        {
+            <p class="sk-leise">Cet élève ne s'est encore jamais connecté.</p>
+        }
+    </div>
+</Abschnitt>
+
+<BestaetigungsDialog Open="karteFrage" Titel="Renouveler la carte d'élève ?" BestaetigenText="Renouveler" Gefahr="true"
+                     Text="Un nouveau code QR est créé : l'ancienne carte (perdue ou volée) n'est plus reconnue comme valide. Imprimez ensuite une nouvelle carte depuis la page Classes."
+                     OnBestaetigen="KarteAsync" OnAbbrechen="() => karteFrage = false" />
+
+@code {
+    [Parameter, EditorRequired] public SchuelerDetail Akte { get; set; } = default!;
+    [Parameter] public EventCallback<Guid> OnBearbeiten { get; set; }
+    [Parameter] public EventCallback<KontoAktionAnfrage> OnKontoAktion { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private bool laedt, karteFrage;
+
+    private Task Aktion(KontoAktion art) => OnKontoAktion.InvokeAsync(KontoAktionAnfrage.Eins(art, Akte.KontoId, Akte.Name));
+
+    private async Task FotoAsync(InputFileChangeEventArgs e)
+    {
+        laedt = true;
+        try
+        {
+            var ok = await AusfuehrenAsync(async () =>
+            {
+                try
+                {
+                    await using var strom = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                    await Schueler.FotoHochladenAsync(Ich.KontoId, Akte.KontoId, strom, e.File.Name);
+                }
+                catch (IOException)
+                {
+                    throw new Skoulou.Core.Fehler.FachFehler("L'image est trop lourde (5 Mo au maximum).");
+                }
+            }, "La photo est enregistrée.");
+            if (ok) await OnGeaendert.InvokeAsync();
+        }
+        finally
+        {
+            laedt = false;
+        }
+    }
+
+    private async Task FotoEntfernenAsync()
+    {
+        if (await AusfuehrenAsync(() => Schueler.FotoEntfernenAsync(Ich.KontoId, Akte.KontoId), "La photo est retirée.")) await OnGeaendert.InvokeAsync();
+    }
+
+    private async Task KarteAsync()
+    {
+        if (await AusfuehrenAsync(() => Schueler.KartenCodeErneuernAsync(Ich.KontoId, Akte.KontoId), "Nouvelle carte créée : l'ancienne n'est plus valide."))
+            karteFrage = false;
+    }
+}

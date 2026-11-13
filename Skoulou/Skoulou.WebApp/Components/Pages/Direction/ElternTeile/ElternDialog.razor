@@ -1,0 +1,117 @@
+@* Elternkonto anlegen (optional gleich mit einem Kind) oder Daten ändern. *@
+@inherits SkoulouSeite
+@inject ElternService Eltern
+@inject KontoVerwaltungService Konten
+
+<ModalDialog Open="Open" Title="@(ElternId is null ? "Nouvel accès parent" : $"Modifier {vorname} {nachname}")" Oberzeile="Parents"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            @if (ElternId is null)
+            {
+                <SchuelerSuche AkteurId="Ich.KontoId" Label="Enfant (facultatif)" Gewaehlt="kind" GewaehltChanged="KindGewaehltAsync" />
+                @if (kind is not null)
+                {
+                    <RadioGruppe T="string" Label="Lien de parenté" @bind-Wert="beziehung" Optionen="BeziehungsOptionen" />
+                }
+            }
+            <div class="sk-raster-2">
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("vorname")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nachname")" />
+            </div>
+            <div class="org-identifiant">
+                <TextFeld Label="Identifiant de connexion" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")" Hinweis="Vide = prenom.nom" />
+                <AsyncKnopf Text="Proposer" CssClass="sk-btn-ghost" OnClick="VorschlagAsync" />
+            </div>
+            <div class="sk-raster-2">
+                <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Fehler="@FeldFehler("telefon")" />
+                <TextFeld Label="E-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Fehler="@FeldFehler("email")" Hinweis="Facultatif : reçoit un message de bienvenue." />
+            </div>
+            <RadioGruppe T="Geschlecht" Label="Genre" @bind-Wert="geschlecht" Optionen="PersonalTeile.PersonalDialog.GeschlechtOptionen" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(ElternId is null ? "Créer l'accès" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid? ElternId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<ZugangsStapel?> OnGespeichert { get; set; }
+
+    public static IReadOnlyList<AuswahlOption<string>> BeziehungsOptionen { get; } = ElternService.Beziehungen.Select(b => new AuswahlOption<string>(b, b)).ToList();
+
+    private string? vorname, nachname, identifiant, email, telefon, feld;
+    private string beziehung = "Mère";
+    private Geschlecht geschlecht;
+    private AuswahlEintrag? kind;
+    private bool warOffen;
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            (Fehlermeldung, feld, kind, beziehung) = (null, null, null, "Mère");
+            (vorname, nachname, identifiant, email, telefon, geschlecht) = (null, null, null, null, null, Geschlecht.Divers);
+            if (ElternId is { } id)
+                await AusfuehrenAsync(async () =>
+                {
+                    var d = await Eltern.DetailAsync(Ich.KontoId, id);
+                    (vorname, nachname, identifiant, email, telefon) = (d.Vorname, d.Nachname, d.Identifiant, d.Email, d.Telefon);
+                });
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    /// <summary>Kind gewählt: Nachname und Elternkontakt aus dem Schülerprofil vorschlagen (nur leere Felder).</summary>
+    private async Task KindGewaehltAsync(AuswahlEintrag? k)
+    {
+        kind = k;
+        if (k is null) return;
+        await AusfuehrenAsync(async () =>
+        {
+            var v = await Eltern.VorbelegungAsync(Ich.KontoId, k.Id);
+            nachname ??= v.Nachname;
+            telefon ??= v.Telefon;
+            email ??= v.Email;
+        });
+    }
+
+    private Task VorschlagAsync() => AusfuehrenAsync(async () => identifiant = await Konten.IdentifiantVorschlagAsync(Ich.KontoId, vorname, nachname));
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        var e = new ElternEingabe(vorname, nachname, identifiant, email, telefon, geschlecht);
+        try
+        {
+            if (ElternId is { } id)
+            {
+                await Eltern.AendernAsync(Ich.KontoId, id, e);
+                Toast.ZeigeErfolg("Les données du parent sont enregistrées.");
+                await OnGespeichert.InvokeAsync(null);
+            }
+            else
+            {
+                await OnGespeichert.InvokeAsync(await Eltern.AnlegenAsync(Ich.KontoId, e, kind?.Id, kind is null ? null : beziehung));
+            }
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (feld, Fehlermeldung) = (f.Feld, f.Message);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            Fehlermeldung = k.Message;
+        }
+    }
+}

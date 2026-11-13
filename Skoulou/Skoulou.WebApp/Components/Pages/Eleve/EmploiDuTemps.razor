@@ -1,5 +1,63 @@
 @page "/eleve/emploi-du-temps"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Organisation
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Organisation
+@inject StundenplanService Plaene
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Emploi du temps" Icon="timetable" Etappe="E3 – Organisation"
-                Beschreibung="Les cours de votre classe pour la semaine." />
+<PageTitle>Emploi du temps · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Emploi du temps" Icon="timetable" Untertitel="Les cours de votre classe pour la semaine.">
+    <Aktionen>
+        @if (woche?.PlanId is { } planId)
+        {
+            <Druckknopf Text="PDF" Href="@($"/emplois-du-temps/{planId}/pdf")" />
+        }
+    </Aktionen>
+</SeitenKopf>
+
+<WochenWahl Montag="montag" Heute="heute" OnWoche="WocheAsync" />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (woche is null)
+{
+    <LadeIndikator />
+}
+else if (woche.Stunden.Count == 0)
+{
+    <Karte>
+        <Leerzustand Icon="timetable" Titel="Pas d'emploi du temps cette semaine" Text="@(woche.Hinweis ?? "Aucun cours n'est prévu cette semaine.")" />
+    </Karte>
+}
+else
+{
+    <Karte Titel="@woche.Titel" Untertitel="@($"{woche.Stunden.Count} cours cette semaine")" Icon="clock">
+        <WochenRaster Stunden="woche.Stunden" Montag="montag" Heute="heute" />
+    </Karte>
+}
+
+@code {
+    private WochenAnsicht? woche;
+    private DateOnly heute;
+    private DateOnly montag;
+
+    protected override async Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Uhr).Heute;
+        montag = Wochentage.Montag(heute);
+        await LadenAsync();
+    }
+
+    private async Task WocheAsync(DateOnly neuerMontag)
+    {
+        montag = neuerMontag;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync() => woche = await Plaene.SchuelerWocheAsync(Ich.KontoId, Ich.KontoId, montag);
+}

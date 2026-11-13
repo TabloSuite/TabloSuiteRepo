@@ -1,4 +1,50 @@
 @page "/parents"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Organisation
+@inject ElternKinderService ElternKinder
 
-<RollenStart Untertitel="Le suivi de la scolarité de vos enfants." />
+<RollenStart Untertitel="Le suivi de la scolarité de vos enfants.">
+    @if (kinder is not null)
+    {
+        @if (kinder.Count == 0)
+        {
+            <Hinweis Art="info" Titel="Aucun enfant lié à votre compte">L'établissement lie votre compte à vos enfants. Contactez la direction si un enfant manque.</Hinweis>
+        }
+        else
+        {
+            <div class="org-kinder">
+                @foreach (var k in kinder)
+                {
+                    <article class="org-kind" @key="k.SchuelerId">
+                        <div class="org-kind-kopf">
+                            <NamensKreis Name="@k.Name" Groesse="48" />
+                            <div>
+                                <h2>@k.Name</h2>
+                                <small class="sk-leise">@(k.Klasse is null ? "Pas encore de classe" : $"Classe : {k.Klasse}") · @k.Beziehung</small>
+                            </div>
+                        </div>
+                        <nav class="org-kind-links" aria-label="Suivi de @k.Vorname">
+                            @foreach (var (href, text, icon) in Links)
+                            {
+                                <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"{href}?kind={k.SchuelerId}")"><Icon Name="@icon" Groesse="16" /> <span>@text</span></a>
+                            }
+                        </nav>
+                    </article>
+                }
+            </div>
+        }
+    }
+</RollenStart>
+
+@code {
+    private static readonly (string Href, string Text, string Icon)[] Links =
+    [
+        ("/parents/notes", "Notes", "clipboard"), ("/parents/bulletins", "Bulletins", "report"), ("/parents/presences", "Présences", "user-check"),
+        ("/parents/emploi-du-temps", "Emploi du temps", "timetable"), ("/parents/frais", "Frais et reçus", "wallet"),
+    ];
+
+    private IReadOnlyList<KindEintrag>? kinder;
+
+    protected override async Task InitialisierenAsync() => kinder = await ElternKinder.KinderAsync(Ich.KontoId);
+}

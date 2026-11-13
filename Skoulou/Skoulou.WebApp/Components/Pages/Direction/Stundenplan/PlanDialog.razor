@@ -1,0 +1,59 @@
+@* Neues Emploi du temps (Gültigkeit, optional als Kopie) bzw. Gültigkeit eines Entwurfs ändern. *@
+
+<ModalDialog Open="Open" Title="@Titel" Oberzeile="@Klasse" ErrorMessage="@Fehler" SchliessenMitEscape="false" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <p class="sk-leise">Laissez les dates vides pour toute l'année scolaire (ou la session de la classe). Un emploi du temps limité sert par exemple pour la période des examens.</p>
+            <div class="sk-raster-2">
+                <DatumFeld Label="Valable à partir du" @bind-Wert="ab" Pflicht="@(!Neu)" />
+                <DatumFeld Label="Jusqu'au" @bind-Wert="bis" Hinweis="Vide = jusqu'à la fin de l'année." />
+            </div>
+            @if (Neu)
+            {
+                <AuswahlFeld T="Guid?" Label="Reprendre les cours de" Optionen="vorlagenOptionen" @bind-Wert="vorlageId"
+                             Hinweis="Copie les cours d'un autre emploi du temps de l'année ; pour une autre classe, les matières sans affectation sont ignorées." />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(Neu ? "Créer le brouillon" : "Enregistrer")" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    /// <summary>Gültigkeit und Kopiervorlage eines Plans.</summary>
+    public sealed record Eingabe(DateOnly? Ab, DateOnly? Bis, Guid? VorlageId);
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public bool Neu { get; set; } = true;
+    [Parameter] public string? Klasse { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public DateOnly? Ab { get; set; }
+    [Parameter] public DateOnly? Bis { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Vorlagen { get; set; } = [];
+    [Parameter] public EventCallback<Eingabe> OnSpeichern { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string Titel => Neu ? "Nouvel emploi du temps" : "Période de validité";
+    private IReadOnlyList<AuswahlOption<Guid?>> vorlagenOptionen = [];
+    private DateOnly? ab;
+    private DateOnly? bis;
+    private Guid? vorlageId;
+    private bool warOffen;
+
+    protected override void OnParametersSet()
+    {
+        vorlagenOptionen = [new AuswahlOption<Guid?>(null, "Ne rien copier (emploi du temps vide)"),
+            .. Vorlagen.Select(v => new AuswahlOption<Guid?>(v.Id, v.Name, v.Zusatz))];
+        if (Open && !warOffen)
+        {
+            ab = Ab;
+            bis = Bis;
+            vorlageId = null;
+        }
+        warOffen = Open;
+    }
+
+    private Task SpeichernAsync() => OnSpeichern.InvokeAsync(new Eingabe(ab, bis, vorlageId));
+}

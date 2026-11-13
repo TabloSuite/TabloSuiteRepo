@@ -1,0 +1,43 @@
+@* Einmalige Anzeige neuer Zugangsdaten (Anlage, Import, neues Passwort) mit « Liste des accès » als PDF. *@
+
+<ModalDialog Open="Stapel is not null" Title="@Titel" Oberzeile="Accès à transmettre" Breite="sk-modal-lg" SchliessenMitEscape="false" OnClose="OnClose">
+    <ChildContent>
+    @if (Stapel is not null)
+    {
+        <Hinweis Art="warn" Titel="Ces mots de passe ne seront plus affichés.">
+            Imprimez la liste des accès ou notez-les maintenant, puis remettez-les à chaque personne individuellement et confidentiellement.
+            À la première connexion, chacun choisit son propre mot de passe.
+        </Hinweis>
+        <div class="sk-tabelle-rahmen sk-liste-scroll org-zugaenge">
+            <table class="sk-tabelle">
+                <thead><tr><th>Nom</th><th>Rôle</th><th>Identifiant</th><th>Mot de passe de départ</th></tr></thead>
+                <tbody>
+                    @foreach (var z in Stapel.Zugaenge)
+                    {
+                        <tr>
+                            <td><strong>@z.Name</strong>@if (z.Zusatz is not null) {<br /><small class="sk-leise">@z.Zusatz</small>}</td>
+                            <td>@Rollen.Bezeichnung(z.Rolle)</td>
+                            <td><code>@z.Identifiant</code></td>
+                            <td><code class="org-passwort">@z.Passwort</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    </ChildContent>
+    <Footer>
+        @if (Stapel is not null)
+        {
+            <Druckknopf Text="Imprimer la liste des accès" Href="@($"/direction/acces/{Stapel.Id}")" />
+        }
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose"><Icon Name="check" Groesse="18" /> <span>J'ai transmis ou imprimé les accès</span></button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public ZugangsStapel? Stapel { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string Titel => Stapel is { Zugaenge.Count: > 1 } s ? $"{s.Zugaenge.Count} accès créés" : "Identifiants de connexion";
+}

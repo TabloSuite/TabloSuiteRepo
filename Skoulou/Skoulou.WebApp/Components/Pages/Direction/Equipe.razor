@@ -1,5 +1,155 @@
 @page "/direction/equipe"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits JahrSeite
+@inject PersonalService Personal
+@using Skoulou.WebApp.Components.Pages.Direction.PersonalTeile
 
-<InVorbereitung Titel="Équipe" Icon="users" Etappe="E3 – Organisation"
-                Beschreibung="Enseignants et coordination : comptes, affectations par classe et matière." />
+<PageTitle>Équipe · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Équipe" Icon="users" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="Enseignants et coordination : comptes, accès et affectations (classe · matière · heures). La direction peut aussi enseigner.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => import = true"><Icon Name="download" Groesse="18" /> <span>Importer</span></button>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Oeffnen(null)"><Icon Name="user-plus" Groesse="18" /> <span>Nouveau compte</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zaehler is not null)
+{
+    @if (zaehler.SansAffectation > 0 && JahrId is not null)
+    {
+        <Hinweis Art="warn">@zaehler.SansAffectation enseignant@(zaehler.SansAffectation > 1 ? "s n'ont" : " n'a") aucune affectation en @Jahr?.Bezeichnung : sans affectation, un enseignant ne voit aucune classe.</Hinweis>
+    }
+    <Liste T="PersonalZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom, identifiant, e-mail ou téléphone…"
+           LeerIcon="users" LeerTitel="Aucun membre de l'équipe" LeerText="Créez les comptes des enseignants un par un ou importez-les depuis Excel.">
+        <Zeile Context="p">
+            <div class="org-zeile @(p.Status == KontoStatus.Archive ? "org-inaktiv" : null)">
+                <NamensKreis Name="@p.Name" Groesse="40" />
+                <div class="org-zeile-haupt">
+                    <strong>@p.Name</strong>
+                    <span class="org-zeile-meta">
+                        <StatusBadge Text="@Rollen.Bezeichnung(p.Rolle)" Art="@(p.Rolle == Rollen.Lehrer ? "neutral" : "info")" />
+                        <code>@p.Identifiant</code>
+                        @if (p.Telefon is not null) {<span>@p.Telefon</span>}
+                        @if (p.Email is not null) {<span>@p.Email</span>}
+                    </span>
+                </div>
+                <div class="org-zeile-info">
+                    @if (p.Auftraege > 0)
+                    {
+                        <span>@p.Auftraege affectation@(p.Auftraege > 1 ? "s" : "") · @SkoulouKultur.Zahl(p.Wochenstunden, 1) h</span>
+                    }
+                    else if (p.Rolle == Rollen.Lehrer && p.Status == KontoStatus.Actif)
+                    {
+                        <StatusBadge Text="Sans affectation" Art="warn" />
+                    }
+                    <KontoStatusBadge Status="p.Status" />
+                    @if (p.MussPasswortAendern && p.Status == KontoStatus.Actif)
+                    {
+                        <small class="sk-leise" title="La personne ne s'est pas encore connectée avec son propre mot de passe.">Mot de passe de départ</small>
+                    }
+                </div>
+                <div class="org-zeile-aktionen">
+                    @if (p.Status != KontoStatus.Archive)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => auftraegeFuer = p"><Icon Name="book" Groesse="16" /> <span>Affectations</span></button>
+                    }
+                    @if (DarfVerwalten(p))
+                    {
+                        <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier @p.Name" @onclick="() => Oeffnen(p.KontoId)"><Icon Name="edit" Groesse="16" /></button>
+                        @if (p.Status is KontoStatus.Actif or KontoStatus.Bloque)
+                        {
+                            <button type="button" class="sk-icon-knopf" title="Nouveau mot de passe" aria-label="Nouveau mot de passe pour @p.Name" @onclick="() => Aktion(KontoAktion.Passwort, p)"><Icon Name="key" Groesse="16" /></button>
+                        }
+                        @switch (p.Status)
+                        {
+                            case KontoStatus.Actif:
+                                <button type="button" class="sk-icon-knopf" title="Bloquer" aria-label="Bloquer @p.Name" @onclick="() => Aktion(KontoAktion.Sperren, p)"><Icon Name="lock" Groesse="16" /></button>
+                                <button type="button" class="sk-icon-knopf" title="Archiver" aria-label="Archiver @p.Name" @onclick="() => Aktion(KontoAktion.Archivieren, p)"><Icon Name="history" Groesse="16" /></button>
+                                break;
+                            case KontoStatus.Bloque:
+                                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Entsperren, p)">Débloquer</button>
+                                break;
+                            case KontoStatus.Archive:
+                                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Reintegrieren, p)">Réintégrer</button>
+                                break;
+                        }
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<PersonalDialog Open="dialog" KontoId="bearbeitet" DarfKoordinatoren="@(Ich.Rolle == Rollen.Direktor)" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<AuftraegeDialog Person="auftraegeFuer" JahrId="JahrId" JahrText="@Jahr?.Bezeichnung" Offen="@(Jahr is { Status: not SchuljahrStatus.Abgeschlossen })"
+                 OnClose="() => auftraegeFuer = null" OnGeaendert="NeuLadenAsync" />
+<KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="AktionErledigtAsync" />
+<ZugangsDialog Stapel="zugaenge" OnClose="() => zugaenge = null" />
+<ImportDialog Open="import" Art="ImportArt.Enseignants" OnClose="() => import = false" OnImportiert="ImportiertAsync" />
+
+@code {
+    private Liste<PersonalZeile>? liste;
+    private PersonalZaehler? zaehler;
+    private bool dialog, import;
+    private Guid? bearbeitet;
+    private PersonalZeile? auftraegeFuer;
+    private KontoAktionAnfrage? aktion;
+    private ZugangsStapel? zugaenge;
+
+    private IReadOnlyList<FilterChip> Chips => zaehler is not { } z ? [] :
+    [
+        new(null, "Tous", z.Alle), new(PersonalService.FilterEnseignants, "Enseignants", z.Enseignants),
+        new(PersonalService.FilterCoordination, "Direction et coordination", z.Coordination),
+        new(PersonalService.FilterSansAffectation, "Sans affectation", z.SansAffectation),
+        new(PersonalService.FilterBloques, "Bloqués", z.Bloques), new(PersonalService.FilterArchives, "Archivés", z.Archives),
+    ];
+
+    protected override async Task JahrLadenAsync()
+    {
+        zaehler = await Personal.ZaehlerAsync(Ich.KontoId, JahrId);
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task<(IReadOnlyList<PersonalZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Personal.SucheAsync(Ich.KontoId, JahrId, a.Filter, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    /// <summary>Den Direktor verwaltet niemand hier; Koordinatoren nur der Direktor; sich selbst über « Mon profil ».</summary>
+    private bool DarfVerwalten(PersonalZeile p)
+        => p.KontoId != Ich.KontoId && p.Rolle != Rollen.Direktor && (p.Rolle != Rollen.Koordinator || Ich.Rolle == Rollen.Direktor);
+
+    private void Oeffnen(Guid? id) => (bearbeitet, dialog) = (id, true);
+
+    private void Aktion(KontoAktion art, PersonalZeile p) => aktion = KontoAktionAnfrage.Eins(art, p.KontoId, p.Name);
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => zaehler = await Personal.ZaehlerAsync(Ich.KontoId, JahrId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task GespeichertAsync(ZugangsStapel? stapel)
+    {
+        dialog = false;
+        zugaenge = stapel;
+        await NeuLadenAsync();
+    }
+
+    private async Task AktionErledigtAsync(ZugangsStapel? stapel)
+    {
+        aktion = null;
+        zugaenge = stapel;
+        await NeuLadenAsync();
+    }
+
+    private async Task ImportiertAsync(ZugangsStapel stapel)
+    {
+        import = false;
+        zugaenge = stapel;
+        await NeuLadenAsync();
+    }
+}

@@ -1,0 +1,42 @@
+@* Abwesenheiten und Verspätungen eines Schülers im Schuljahr (Direktion, Lehrkraft, Eltern). *@
+@using Skoulou.WebApp.Services.Organisation
+
+<div class="org-kennzahlen">
+    <KennzahlKachel Bezeichnung="Absences" Wert="@Daten.Summe.Absences.ToString()" Zusatz="@($"dont {Daten.Summe.AbsencesJustifiees} justifiée{(Daten.Summe.AbsencesJustifiees > 1 ? "s" : "")}")" Icon="user-check" />
+    <KennzahlKachel Bezeichnung="Non justifiées" Wert="@Daten.Summe.NonJustifiees.ToString()" Icon="alert" Haupt="@(Daten.Summe.NonJustifiees > 0)" />
+    <KennzahlKachel Bezeichnung="Retards" Wert="@Daten.Summe.Retards.ToString()" Zusatz="@($"{Daten.Summe.RetardMinuten} min au total")" Icon="clock" />
+</div>
+@if (Daten.Eintraege.Count == 0)
+{
+    <Leerzustand Icon="check-circle" Titel="Aucune absence ni aucun retard" Text="@(Daten.Jahr is null ? "Aucune année scolaire en cours." : $"Année scolaire {Daten.Jahr}.")" />
+}
+else
+{
+    <ul class="org-verlauf">
+        @foreach (var e in Daten.Eintraege)
+        {
+            <li>
+                <span class="org-verlauf-datum">@SkoulouKultur.DatumLang(e.Datum)</span>
+                <span>
+                    @if (e.Status == AnwesenheitsStatus.Absent)
+                    {
+                        <StatusBadge Text="@(e.Entschuldigt ? "Absence justifiée" : "Absence")" Art="@(e.Entschuldigt ? "neutral" : "fehler")" />
+                    }
+                    else
+                    {
+                        <StatusBadge Text="@($"Retard de {e.Minuten} min{(e.Entschuldigt ? " (justifié)" : "")}")" Art="warn" />
+                    }
+                    <small class="sk-leise">@e.Klasse</small>
+                </span>
+                @if (e.Bemerkung is not null)
+                {
+                    <small class="org-verlauf-bemerkung">« @e.Bemerkung »</small>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public SchuelerAnwesenheit Daten { get; set; } = default!;
+}

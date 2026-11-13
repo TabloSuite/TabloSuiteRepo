@@ -1,0 +1,121 @@
+@* Lehraufträge einer Lehrkraft im gewählten Schuljahr: Klasse · Fach mit Wochenstunden zuweisen oder entfernen. *@
+@inherits SkoulouSeite
+@inject UnterrichtService Unterricht
+
+<ModalDialog Open="Person is not null" Title="@($"Affectations de {Person?.Name}")" Oberzeile="@JahrText" Breite="sk-modal-lg"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="SchliessenAsync">
+    <ChildContent>
+        @if (auftraege is null)
+        {
+            <div class="sk-skelett"><div></div><div></div></div>
+        }
+        else
+        {
+            @if (Offen)
+            {
+                <div class="org-kf-werkzeuge">
+                    <AuswahlFeld T="Guid?" Label="Classe et matière" @bind-Wert="klassenfach" Optionen="Optionen" Platzhalter="Choisir…" />
+                    <ZahlFeld Label="Heures par semaine" @bind-Wert="stunden" Min="0.5m" Max="40" Stellen="1" Einheit="h" />
+                    <AsyncKnopf Text="Affecter" Icon="plus" CssClass="sk-btn-primaer" Disabled="@(klassenfach is null)" OnClick="ZuweisenAsync" />
+                </div>
+                <p class="sk-leise">Seules les matières déjà ajoutées aux classes apparaissent (page Classes).</p>
+            }
+            @if (auftraege.Count == 0)
+            {
+                <Leerzustand Icon="book" Titel="Aucune affectation" Text="Sans affectation, l'enseignant ne voit aucune classe ni aucun élève." />
+            }
+            else
+            {
+                <div class="sk-tabelle-rahmen">
+                    <table class="sk-tabelle">
+                        <thead><tr><th>Classe</th><th>Matière</th><th>Heures / semaine</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var a in auftraege)
+                            {
+                                <tr @key="a.Id">
+                                    <td><strong>@a.Klasse</strong></td>
+                                    <td>@a.Fach</td>
+                                    <td>@SkoulouKultur.Zahl(a.Wochenstunden, 1) h</td>
+                                    <td class="org-aktionen">
+                                        @if (Offen)
+                                        {
+                                            <AsyncKnopf Text="" Icon="trash" CssClass="sk-icon-knopf" title="Retirer" aria-label="@($"Retirer {a.Klasse} {a.Fach}")" OnClick="() => EntfernenAsync(a)" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="sk-leise">Total : @SkoulouKultur.Zahl(auftraege.Sum(a => a.Wochenstunden), 1) h par semaine dans @auftraege.Select(a => a.KlasseId).Distinct().Count() classe(s).</p>
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="SchliessenAsync">Terminé</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public PersonalZeile? Person { get; set; }
+    [Parameter] public Guid? JahrId { get; set; }
+    [Parameter] public string? JahrText { get; set; }
+    [Parameter] public bool Offen { get; set; } = true;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private List<LehrauftragZeile>? auftraege;
+    private List<AuswahlEintrag> klassenfaecher = [];
+    private Guid? klassenfach, geladenFuer;
+    private decimal? stunden = 2;
+    private bool geaendert;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> Optionen =>
+        klassenfaecher.Where(k => (auftraege ?? []).All(a => a.KlassenfachId != k.Id)).Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Person is { } p && geladenFuer != p.KontoId)
+        {
+            geladenFuer = p.KontoId;
+            (auftraege, klassenfach, geaendert) = (null, null, false);
+            if (JahrId is not { } jahr) { auftraege = []; return; }
+            await AusfuehrenAsync(async () =>
+            {
+                klassenfaecher = (await Unterricht.KlassenfaecherDesJahresAsync(Ich.KontoId, jahr)).ToList();
+                await LadenAsync();
+            });
+        }
+        else if (Person is null)
+        {
+            geladenFuer = null;
+        }
+    }
+
+    private async Task LadenAsync()
+    {
+        if (Person is null || JahrId is not { } jahr) return;
+        auftraege = (await Unterricht.AuftraegeDesLehrersAsync(Ich.KontoId, Person.KontoId, jahr)).ToList();
+    }
+
+    private async Task ZuweisenAsync()
+    {
+        if (klassenfach is not { } kf || Person is null) return;
+        if (!await AusfuehrenAsync(() => Unterricht.LehrauftragSetzenAsync(Ich.KontoId, kf, Person.KontoId, stunden ?? 1), "Affectation enregistrée.")) return;
+        (klassenfach, geaendert) = (null, true);
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task EntfernenAsync(LehrauftragZeile a)
+    {
+        if (!await AusfuehrenAsync(() => Unterricht.LehrauftragEntfernenAsync(Ich.KontoId, a.Id), $"Affectation {a.Klasse} · {a.Fach} retirée.")) return;
+        geaendert = true;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task SchliessenAsync()
+    {
+        if (geaendert) await OnGeaendert.InvokeAsync();
+        await OnClose.InvokeAsync();
+    }
+}

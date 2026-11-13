@@ -1,0 +1,73 @@
+@* Rückfrage und Ausführung einer Kontoaktion (neues Passwort, sperren, entsperren, archivieren, réintégrer). *@
+@inherits SkoulouSeite
+@inject KontoVerwaltungService Konten
+
+<BestaetigungsDialog Open="Anfrage is not null" Titel="@Titel" Text="@Text" BestaetigenText="@Knopf" Gefahr="@(Anfrage?.Art is KontoAktion.Sperren or KontoAktion.Archivieren)"
+                     Fehler="@Fehlermeldung" OnBestaetigen="AusfuehrenAsync" OnAbbrechen="AbbrechenAsync" />
+
+@code {
+    [Parameter] public KontoAktionAnfrage? Anfrage { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Erledigt; bei neuen Passwörtern mit dem Zugangsstapel.</summary>
+    [Parameter] public EventCallback<ZugangsStapel?> OnErledigt { get; set; }
+
+    private string Namen => Anfrage is null ? string.Empty : Anfrage.Namen.Count == 1 ? Anfrage.Namen[0] : $"{Anfrage.Namen.Count} comptes";
+
+    private string Titel => Anfrage?.Art switch
+    {
+        KontoAktion.Passwort => $"Nouveau mot de passe pour {Namen} ?",
+        KontoAktion.Sperren => $"Bloquer {Namen} ?",
+        KontoAktion.Entsperren => $"Débloquer {Namen} ?",
+        KontoAktion.Archivieren => $"Archiver {Namen} ?",
+        _ => $"Réintégrer {Namen} ?"
+    };
+
+    private string Text => Anfrage?.Art switch
+    {
+        KontoAktion.Passwort => "Un mot de passe de départ est créé et affiché une seule fois ; l'ancien ne fonctionne plus et les sessions ouvertes sont fermées. À la connexion, la personne choisit son propre mot de passe. L'action est journalisée.",
+        KontoAktion.Sperren => "La personne ne peut plus se connecter jusqu'au déblocage. Ses données restent intactes.",
+        KontoAktion.Entsperren => "La personne peut de nouveau se connecter avec son mot de passe actuel.",
+        KontoAktion.Archivieren => "Le compte disparaît des listes et ne peut plus se connecter. Vous pourrez le réintégrer plus tard.",
+        _ => "Le compte redevient actif et réapparaît dans les listes."
+    };
+
+    private string Knopf => Anfrage?.Art switch
+    {
+        KontoAktion.Passwort => "Créer le mot de passe",
+        KontoAktion.Sperren => "Bloquer",
+        KontoAktion.Entsperren => "Débloquer",
+        KontoAktion.Archivieren => "Archiver",
+        _ => "Réintégrer"
+    };
+
+    private async Task AusfuehrenAsync()
+    {
+        if (Anfrage is not { } a) return;
+        ZugangsStapel? stapel = null;
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            switch (a.Art)
+            {
+                case KontoAktion.Passwort: stapel = await Konten.PasswortZuruecksetzenAsync(Ich.KontoId, a.KontoIds); break;
+                case KontoAktion.Sperren: await Konten.SperrenAsync(Ich.KontoId, a.KontoIds[0]); break;
+                case KontoAktion.Entsperren: await Konten.EntsperrenAsync(Ich.KontoId, a.KontoIds[0]); break;
+                case KontoAktion.Archivieren: await Konten.ArchivierenAsync(Ich.KontoId, a.KontoIds[0]); break;
+                default: await Konten.ReintegrierenAsync(Ich.KontoId, a.KontoIds[0]); break;
+            }
+        }, a.Art switch
+        {
+            KontoAktion.Passwort => null,
+            KontoAktion.Sperren => $"{Namen} est bloqué(e).",
+            KontoAktion.Entsperren => $"{Namen} est débloqué(e).",
+            KontoAktion.Archivieren => $"{Namen} est archivé(e).",
+            _ => $"{Namen} est réintégré(e)."
+        });
+        if (ok) await OnErledigt.InvokeAsync(stapel);
+    }
+
+    private async Task AbbrechenAsync()
+    {
+        Fehlermeldung = null;
+        await OnClose.InvokeAsync();
+    }
+}

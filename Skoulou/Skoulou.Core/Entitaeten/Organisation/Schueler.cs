@@ -21,6 +21,9 @@ public class SchuelerProfil : Entitaet, ISchulgebunden
 
     /// <summary>Annahme einer Selbstregistrierung durch die Schule.</summary>
     public DateTime? AufnahmeBestaetigtAmUtc { get; set; }
+
+    /// <summary>Zufälliger Code im QR der Schülerkarte (Prüfseite ohne Personendaten); neu erzeugt bei Verlust.</summary>
+    public string? KartenToken { get; set; }
 }
 
 /// <summary>

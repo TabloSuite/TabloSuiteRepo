@@ -1,0 +1,20 @@
+@* Wochenwahl: vorige/nächste Woche, « Cette semaine », Anzeige des Zeitraums. *@
+<div class="org-edt-woche" role="group" aria-label="Choisir la semaine">
+    <button type="button" class="sk-icon-knopf" aria-label="Semaine précédente" @onclick="() => WaehleAsync(Montag.AddDays(-7))"><Icon Name="chevron-left" Groesse="18" /></button>
+    <span class="org-edt-woche-text">Semaine du <strong>@SkoulouKultur.Datum(Montag)</strong> au @SkoulouKultur.Datum(Montag.AddDays(5))</span>
+    <button type="button" class="sk-icon-knopf" aria-label="Semaine suivante" @onclick="() => WaehleAsync(Montag.AddDays(7))"><Icon Name="chevron-right" Groesse="18" /></button>
+    @if (Montag != DieseWoche)
+    {
+        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => WaehleAsync(DieseWoche)">Cette semaine</button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DateOnly Montag { get; set; }
+    [Parameter, EditorRequired] public DateOnly Heute { get; set; }
+    [Parameter] public EventCallback<DateOnly> OnWoche { get; set; }
+
+    private DateOnly DieseWoche => Skoulou.Core.Organisation.Wochentage.Montag(Heute);
+
+    private Task WaehleAsync(DateOnly montag) => OnWoche.InvokeAsync(montag);
+}
