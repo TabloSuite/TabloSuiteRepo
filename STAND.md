@@ -11,8 +11,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 |---|---|---|
 | **eNOTE-Lernvideo v3.1 – Pilot « encaisser »** | `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\` | Nutzer 13.11.: « Stil ist gut ». v3.0 (7:04) liegt als Render vor. **Agent läuft:** Text kürzen (Ziel ≈ 5–5:30 min), neu aufnehmen mit Zeiger synchron zur Stimme (−0,4…+0,3 s), Klick-Schilder dürfen keine Nachbarinhalte verdecken. Ergebnis: `renders/enote-encaisser.mp4` (alt: `…-v3.0.mp4`), Bilder `Pictures\eNOTE-Videos-v3-Pilot\v3.1\`. Danach dem Nutzer zeigen, dann alle eNOTE-Videos im v3-Stil. Falls unterbrochen: neuen Agenten mit dieser Zeile + `AUFTRAG-Pilot.md` starten. |
 
-| **SKOULOU E5 Noten & Bulletins** | Worktree `.claude\worktreesgent-a62dd2b10313c8194`, Branch `worktree-agent-a62dd2b10313c8194` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E5-Noten.md` |
-| **SKOULOU E6 Finanzen** | Worktree `.claude\worktreesgent-a14228940cb0da92e`, Branch `worktree-agent-a14228940cb0da92e` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E6-Finanzen.md` |
+| **SKOULOU E5 Noten & Bulletins** | Worktree `.claude/worktrees/agent-a62dd2b10313c8194`, Branch `worktree-agent-a62dd2b10313c8194` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E5-Noten.md` |
+| **SKOULOU E6 Finanzen** | Worktree `.claude/worktrees/agent-a14228940cb0da92e`, Branch `worktree-agent-a14228940cb0da92e` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E6-Finanzen.md` |
 
 Danach: E2 mit `Skoulou/docs/auftraege/E2-Plattform.md` (eigener Worktree vom dann aktuellen Hauptbranch). Bei Unterbrechung: je neuen Agenten mit der Auftragsdatei + « Continue in the existing worktree … » starten.
 
