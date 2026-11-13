@@ -1,19 +1,15 @@
-# TabloSuite – Arbeitsstand 13.11.2026, 22:50
+# TabloSuite – Arbeitsstand 14.11.2026, ~00:10
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 1. Was gerade unterbrochen ist (sofort fortsetzen)
+## 1. Was gerade läuft
 
-Um ~20:30 haben **drei Hintergrund-Agenten das 5-Stunden-Nutzungslimit** erreicht (zurückgesetzt 22:50). Ihre Arbeit liegt auf der Festplatte, ist aber **nicht fertig und nicht committet**. In einem neuen Chat lassen sie sich nicht „fortsetzen“ – stattdessen je einen **neuen Agenten mit dem gespeicherten Auftrag** starten und ihm sagen, dass er im vorhandenen Ordner weitermacht.
-
-| Arbeit | Ort | Stand | Auftrag zum Neustart |
-|---|---|---|---|
-| **eNOTE-Lernvideo v3 – Pilot « encaisser »** | `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\` | Text, Stimme und alle 7 Aufnahmen fertig (inkl. Klick-Beschriftungen + Fenster-Erkennung). **Offen:** bau.py v3, Render, Standbilder | `lernen-v3\AUFTRAG-Pilot.md` |
-| **SKOULOU E3 Organisation** | Worktree `.claude\worktrees\agent-a0e4dd2880c598ed0`, Branch `worktree-agent-a0e4dd2880c598ed0` | ~23 Dateien (v. a. Services/Organisation), keine Seiten | `Skoulou/docs/auftraege/E3-Organisation.md` |
-| **SKOULOU E4 Pädagogik** | Worktree `.claude\worktrees\agent-a4f88e23ab997f232`, Branch `worktree-agent-a4f88e23ab997f232` | ~21 Dateien (Bewertungs-Engine, Services/Paedagogik), keine Seiten | `Skoulou/docs/auftraege/E4-Paedagogik.md` |
+| Arbeit | Ort | Stand |
+|---|---|---|
+| **eNOTE-Lernvideo v3.1 – Pilot « encaisser »** | `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\` | Nutzer 13.11.: « Stil ist gut ». v3.0 (7:04) liegt als Render vor. **Agent läuft:** Text kürzen (Ziel ≈ 5–5:30 min), neu aufnehmen mit Zeiger synchron zur Stimme (−0,4…+0,3 s), Klick-Schilder dürfen keine Nachbarinhalte verdecken. Ergebnis: `renders/enote-encaisser.mp4` (alt: `…-v3.0.mp4`), Bilder `Pictures\eNOTE-Videos-v3-Pilot\v3.1\`. Danach dem Nutzer zeigen, dann alle eNOTE-Videos im v3-Stil. Falls unterbrochen: neuen Agenten mit dieser Zeile + `AUFTRAG-Pilot.md` starten. |
 
 **Wichtig zum Limit:** höchstens 2–3 große Agenten gleichzeitig. Esc/„Stopp“ während Agenten laufen bricht sie ab (dann nur Neustart möglich); normale Nachrichten stören nicht.
 
@@ -41,8 +37,8 @@ Um ~20:30 haben **drei Hintergrund-Agenten das 5-Stunden-Nutzungslimit** erreich
 | E1 Fundament (Projekte, 57 Entitäten, Login, Rechte, Mail, Speicher, Design-System, Navigation aller Rollen, Startseite, Demo-Seed) | ✅ committet + gepusht (4feab54), 143 Tests grün |
 | Gemeinsame Vorbereitung (SchulAbfragen, IDs beim Anlegen, KindAuswahl, Stil-Dateien + Demo-Seed je Bereich, Bauplan §12 Zuständigkeiten, Demo:KontenDatei) | ✅ ff5ee74 (gepusht), f25b464 |
 | E2 Plattform (Registrierung/Validierung, Admin, Responsables, Annonces, Messagerie, Journal, Guide) | ⏳ noch nicht gestartet – Auftrag analog E3 schreiben |
-| E3 Organisation | ⏸ unterbrochen (siehe §1) |
-| E4 Pädagogik | ⏸ unterbrochen (siehe §1) |
+| E3 Organisation | ✅ zusammengeführt (736399e → b15c8ec) |
+| E4 Pädagogik | ✅ zusammengeführt (7268bd1 → 08c1556); Migration « Fundament » neu (8f00a3f), 373 Tests grün inkl. SQL, Rundgang 25 Seiten ohne Fehler (Bilder `Pictures\SKOULOU-Neubau-E3E4-Rundgang`) |
 | E5 Noten & Bulletins (+ Jahreswechsel-Assistent `/direction/annee/passage`) | ⏳ noch nicht gestartet |
 | E6 Finanzen (Gebühren, Zahlungen, Journal, Plattformrechnung je Periode, Responsable-Anteile, Tarife) | ⏳ noch nicht gestartet |
 | E7 Simulation (≥ 20 Schulen, 3 Jahre, Sprachschule mit Sessions) + Browser-Rundgang | ⏳ |
@@ -87,8 +83,8 @@ Um ~20:30 haben **drei Hintergrund-Agenten das 5-Stunden-Nutzungslimit** erreich
 
 ## 6. Nächste Schritte (Reihenfolge)
 
-1. Video-Pilot mit `lernen-v3\AUFTRAG-Pilot.md` neu starten (Aufnahmen sind fertig) → Ergebnis dem Nutzer zeigen.
-2. E3 und E4 mit ihren Auftragsdateien neu starten (im vorhandenen Worktree weiterarbeiten).
-3. Danach mergen + Migration neu erzeugen; dann E2, E5, E6 (Aufträge nach dem Muster von E3/E4 schreiben, Bauplan §12 für Dateizuständigkeit).
-4. E7 Simulation + Browser-Rundgang; E8 Umstellung (Azure nur mit OK); danach SKOULOU-Videos auf der neuen Oberfläche.
-5. Bei OK zum Pilot: alle eNOTE-Videos im v3-Stil, Einbau, Deploy durch den Nutzer.
+1. Video-Pilot v3.1 abwarten (§1) → Nutzer zeigen → bei OK alle eNOTE-Videos im v3-Stil, Einbau, Deploy durch den Nutzer.
+2. SKOULOU: Aufträge E2 (Plattform), E5 (Noten & Bulletins + Jahreswechsel), E6 (Finanzen) nach dem Muster `Skoulou/docs/auftraege/E3-Organisation.md` schreiben (Bauplan §12 Dateizuständigkeit) und je in eigenem Worktree starten (max. 2–3 parallel); danach mergen, Migration « Fundament » neu erzeugen, Tests + SQL-Tests, Rundgang, push.
+3. **Lokale `SkoulouDB` hat noch das alte E1-Schema.** Löschen/Neuaufbau wurde vom Auto-Modus gesperrt → Nutzer fragen (oder er macht `dotnet ef database drop` selbst); bis dahin Test-DBs `SkoulouDB_Gesamt` (aktuell, mit Demo-Daten), `SkoulouDB_E3`, `SkoulouDB_E4`, `SkoulouDB_Merge` (veraltet, können weg).
+4. eNOTE: Azure-Migration `AufenthaltsPositionen` nur mit OK, vor dem nächsten eNOTE-Deploy (§4).
+5. E7 Simulation + Browser-Rundgang; E8 Umstellung (Azure nur mit OK); danach SKOULOU-Videos auf der neuen Oberfläche.
