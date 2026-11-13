@@ -71,7 +71,8 @@
 
 @if (offen is { } aktiv)
 {
-    <div class="lp-video-overlay" @onclick="() => offen = null">
+    @* Schließen nur über den Knopf – ein Fehlklick neben das Video beendet es nicht. *@
+    <div class="lp-video-overlay">
         <div class="lp-video-box" @onclick:stopPropagation="true">
             <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => offen = null"><Icon Name="x" Groesse="20" /></button>
             <video src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline></video>

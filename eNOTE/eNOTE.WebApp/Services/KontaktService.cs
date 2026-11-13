@@ -61,6 +61,66 @@ public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mai
             .FirstOrDefaultAsync(ct);
     }
 
+    // Schutz des öffentlichen Formulars: höchstens so viele Nachrichten pro Stunde insgesamt bzw. pro E-Mail-Adresse.
+    public const int OeffentlichMaxProStunde = 20;
+    public const int OeffentlichMaxProAdresseProStunde = 3;
+    private static readonly object Sperre = new();
+    private static readonly List<(DateTime Zeit, string Adresse)> Verlauf = [];
+
+    /// <summary>
+    /// Öffentliches Kontaktformular (ohne Anmeldung): Nachricht direkt in den eNOTE-Posteingang plus Hinweis-Mail
+    /// an contact@tablosuite.com. <paramref name="falle"/> ist ein unsichtbares Feld – füllt ein Bot es aus,
+    /// wird still verworfen. Liefert eine Fehlermeldung oder null bei Erfolg.
+    /// </summary>
+    public async Task<string?> SendeOeffentlichAsync(string? name, string? email, string? telefon, string? thema, string? nachricht,
+        string? falle, CancellationToken ct = default, DateTime? jetztUtc = null)
+    {
+        if (!string.IsNullOrEmpty(falle)) return null;
+        var n = (name ?? "").Trim();
+        var e = (email ?? "").Trim();
+        var t = (telefon ?? "").Trim();
+        var betreff = (thema ?? "").Trim();
+        var text = (nachricht ?? "").Trim();
+        if (n.Length is < 2 or > 80) return "Veuillez saisir votre nom.";
+        if (e.Length > 200 || !System.Net.Mail.MailAddress.TryCreate(e, out var adresse) || !e.Contains('.'))
+            return "Veuillez saisir une adresse e-mail valide : nous vous répondons par e-mail.";
+        if (t.Length > 30) return "Le numéro de téléphone est trop long.";
+        if (!Themen.Contains(betreff)) return "Veuillez choisir le sujet de votre message.";
+        if (text.Length < NachrichtMin) return $"Le message doit contenir au moins {NachrichtMin} caractères.";
+        if (text.Length > NachrichtMax) return $"Le message est trop long ({NachrichtMax} caractères au plus).";
+
+        var jetzt = jetztUtc ?? DateTime.UtcNow;
+        lock (Sperre)
+        {
+            Verlauf.RemoveAll(v => v.Zeit < jetzt.AddHours(-1));
+            if (Verlauf.Count >= OeffentlichMaxProStunde
+                || Verlauf.Count(v => string.Equals(v.Adresse, adresse.Address, StringComparison.OrdinalIgnoreCase)) >= OeffentlichMaxProAdresseProStunde)
+                return "Trop de messages pour le moment. Réessayez dans une heure ou écrivez à contact@tablosuite.com.";
+            Verlauf.Add((jetzt, adresse.Address));
+        }
+
+        await using (var db = await factory.CreateDbContextAsync(ct))
+        {
+            db.EingangsMails.Add(new ENote.Core.DataModels.Infrastruktur.EingangsMail
+            {
+                Absender = new System.Net.Mail.MailAddress(adresse.Address, n).ToString(),
+                Empfaenger = "contact@tablosuite.com",
+                Betreff = "[eNOTE] Contact : " + betreff,
+                Text = text + "\n\n— Visiteur sans compte" + (t.Length > 0 ? " · Téléphone : " + t : "")
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        var ok = mails is not null && await mails.KontaktAnfrageAsync(betreff, text, n, "Visiteur (sans compte)", adresse.Address,
+            t.Length > 0 ? t : null, null, ct);
+        if (!ok)
+            logger?.LogWarning("Hinweis-Mail zur öffentlichen Kontaktnachricht nicht versendet (Nachricht liegt im Posteingang).");
+        return null;
+    }
+
+    /// <summary>Nur für Tests: Zähler des öffentlichen Formulars zurücksetzen.</summary>
+    internal static void SetzeZaehlerZurueck() { lock (Sperre) Verlauf.Clear(); }
+
     /// <summary>Nachricht an TabloSuite (contact@tablosuite.com). Liefert eine Fehlermeldung oder null bei Erfolg.</summary>
     public async Task<string?> SendeAnTabloSuiteAsync(Guid userId, Guid? salonId, string? thema, string? nachricht, CancellationToken ct = default)
     {

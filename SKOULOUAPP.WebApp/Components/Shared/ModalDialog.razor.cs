@@ -22,8 +22,12 @@ public partial class ModalDialog
     [Parameter]
     public string MaxWidthClass { get; set; } = "max-w-3xl";
 
+    /// <summary>
+    /// Schließt der Dialog bei Klick neben das Fenster? Standard: nein – sonst gehen Eingaben
+    /// (z. B. eine halb geschriebene Antwort) durch einen Fehlklick verloren. Schließen nur per Knopf/Escape.
+    /// </summary>
     [Parameter]
-    public bool CloseOnBackdrop { get; set; } = true;
+    public bool CloseOnBackdrop { get; set; }
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }

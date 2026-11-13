@@ -1,5 +1,5 @@
 @page "/contact"
-@attribute [Authorize]
+@attribute [AllowAnonymous]
 @using System.Security.Claims
 @using ENote.Core.DataModels.Identity
 @using ENote.WebApp.Services
@@ -16,12 +16,49 @@
     <div class="enote-page-header">
         <div>
             <h1>Aide &amp; contact</h1>
-            <p>Une question ? Regardez d'abord les vidéos d'aide, puis contactez la bonne personne.</p>
+            <p>@(angemeldet || laedt ? "Une question ? Regardez d'abord les vidéos d'aide, puis contactez la bonne personne." : "Une question sur eNOTE ? Écrivez-nous, nous vous répondons rapidement.")</p>
         </div>
     </div>
 
     @if (laedt)
     {
+    }
+    else if (!angemeldet)
+    {
+        @* Öffentliches Formular für Besucher ohne Konto (wie SKOULOU /contact) *@
+        <section class="enote-card kt-formular" aria-label="Écrire à TabloSuite">
+            <h2>Écrire à TabloSuite</h2>
+            <p class="enote-muted">Une question sur eNOTE, un tarif, une démonstration ? Écrivez-nous : nous vous répondons par e-mail.
+                Vous avez déjà un compte ? <a href="/auth/login?returnUrl=%2Fcontact">Connectez-vous</a> pour voir votre responsable.</p>
+
+            @if (gesendet)
+            {
+                <div class="alert alert-success" role="status">Message envoyé. Merci ! Nous vous répondons rapidement par e-mail.</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(fehler))
+            {
+                <div class="alert alert-error" role="alert">@fehler</div>
+            }
+
+            <div class="enote-form">
+                <div class="kt-zwei">
+                    <label>Votre nom <input @bind="oName" maxlength="80" autocomplete="name" /></label>
+                    <label>Votre e-mail <input type="email" @bind="oEmail" maxlength="200" autocomplete="email" /></label>
+                </div>
+                <label>Téléphone / WhatsApp <small class="enote-muted">(facultatif)</small>
+                    <input type="tel" inputmode="tel" @bind="oTelefon" maxlength="30" autocomplete="tel" placeholder="+228 90 00 00 00" /></label>
+                @* Fangfeld für Bots: für Menschen unsichtbar, bleibt leer *@
+                <input class="kt-falle" type="text" name="site_web" tabindex="-1" autocomplete="off" aria-hidden="true" @bind="falle" />
+                <label>Sujet</label>
+                <EnoteSelect TValue="string" @bind-Value="thema" Options="themenOptionen" Placeholder="Choisir le sujet…" />
+                <label>
+                    Votre message
+                    <textarea rows="6" maxlength="@KontaktService.NachrichtMax" @bind="nachricht" @bind:event="oninput"
+                              placeholder="Expliquez simplement votre question."></textarea>
+                </label>
+                <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenOeffentlichAsync" CssClass="enote-btn-primary" />
+            </div>
+        </section>
     }
     else
     {
@@ -114,6 +151,25 @@
     private string? nachricht;
     private string? fehler;
 
+    // Öffentliches Formular (ohne Anmeldung)
+    private bool angemeldet;
+    private string? oName;
+    private string? oEmail;
+    private string? oTelefon;
+    private string? falle;
+
+    private async Task SendenOeffentlichAsync()
+    {
+        fehler = null;
+        gesendet = false;
+        fehler = await KontaktService.SendeOeffentlichAsync(oName, oEmail, oTelefon, thema, nachricht, falle);
+        if (fehler is null)
+        {
+            gesendet = true;
+            thema = nachricht = null;
+        }
+    }
+
     private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> themenOptionen =
         KontaktService.Themen.Select(t => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = t, Label = t }).ToList();
 
@@ -123,6 +179,7 @@
         {
             var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzerId)) return;
+            angemeldet = true;
             eigeneEmail = user.FindFirstValue(ClaimTypes.Email);
             istBesitzer = user.IsInRole(AppRollen.Besitzer);
             if (await KatalogService.GetUserSalonAsync(benutzerId) is { } zuordnung)

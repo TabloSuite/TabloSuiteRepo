@@ -3252,3 +3252,9 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .em-eingang-text { white-space: pre-wrap; overflow-wrap: anywhere; padding: .9rem 1.1rem; margin: 0 0 .6rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); font-size: .92rem; line-height: 1.5; max-height: 22rem; overflow: auto; }
 .em-antwort { margin-bottom: 1rem; }
 .em-antwort textarea { max-width: none; }
+
+/* Öffentliches Kontaktformular (/contact ohne Anmeldung) */
+.kt-zwei { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+@media (max-width: 640px) { .kt-zwei { grid-template-columns: minmax(0, 1fr); } }
+.kt-falle { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.enote-public-main .kt-seite { margin: 0 auto; padding: 2rem 1rem 3rem; }
