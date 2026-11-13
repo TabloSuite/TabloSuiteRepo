@@ -1,0 +1,55 @@
+@* Eine Zeile des Klassenappells: Présent / Absent / En retard (+ Minuten), justifié, Bemerkung. *@
+@using Skoulou.WebApp.Services.Organisation
+
+<div class="org-appell-zeile org-appell-@Zeile.Status.ToString().ToLowerInvariant()">
+    <div class="org-appell-name">
+        <strong>@Zeile.Name</strong>
+        @if (Zeile.Matrikel is not null)
+        {
+            <small class="sk-leise">@Zeile.Matrikel</small>
+        }
+    </div>
+    <div class="sk-radio-gruppe org-appell-wahl" role="radiogroup" aria-label="Présence de @Zeile.Name">
+        @foreach (var (status, text) in Optionen)
+        {
+            <button type="button" class="sk-radio @(Zeile.Status == status ? "aktiv" : null)" role="radio" aria-checked="@(Zeile.Status == status ? "true" : "false")"
+                    disabled="@Gesperrt" @onclick="() => Setze(status)">@text</button>
+        }
+    </div>
+    @if (Zeile.Status != AnwesenheitsStatus.Present)
+    {
+        <div class="org-appell-details">
+            @if (Zeile.Status == AnwesenheitsStatus.Retard)
+            {
+                <label class="org-minuten">
+                    <input type="number" class="sk-eingabe" min="1" max="1440" inputmode="numeric" aria-label="Minutes de retard" disabled="@Gesperrt"
+                           value="@Zeile.Minuten" @onchange="e => Zeile.Minuten = int.TryParse(e.Value?.ToString(), out var m) ? m : null" />
+                    <span>min</span>
+                </label>
+            }
+            <label class="sk-ankreuzen">
+                <input type="checkbox" checked="@Zeile.Entschuldigt" disabled="@Gesperrt" @onchange="e => Zeile.Entschuldigt = e.Value is true" />
+                <span>Justifié@(Zeile.Status == AnwesenheitsStatus.Absent ? "e" : "")</span>
+            </label>
+            <input type="text" class="sk-eingabe org-bemerkung" maxlength="300" placeholder="Remarque (facultatif)" aria-label="Remarque" disabled="@Gesperrt"
+                   value="@Zeile.Bemerkung" @onchange="e => Zeile.Bemerkung = e.Value?.ToString()" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AppellEintrag Zeile { get; set; } = default!;
+    [Parameter] public bool Gesperrt { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private static readonly (AnwesenheitsStatus, string)[] Optionen =
+        [(AnwesenheitsStatus.Present, "Présent"), (AnwesenheitsStatus.Absent, "Absent"), (AnwesenheitsStatus.Retard, "En retard")];
+
+    private async Task Setze(AnwesenheitsStatus status)
+    {
+        Zeile.Status = status;
+        if (status == AnwesenheitsStatus.Present) (Zeile.Minuten, Zeile.Entschuldigt) = (null, false);
+        if (status == AnwesenheitsStatus.Retard && Zeile.Minuten is null) Zeile.Minuten = 10;
+        await OnGeaendert.InvokeAsync();
+    }
+}

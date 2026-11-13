@@ -1,2 +1,225 @@
 /* SKOULOU – Stile des Bereichs E3 Organisation (Direction, Classes, Élèves, Équipe, Emplois du temps, Présences, Parents).
    Nur bereichsspezifische Klassen; gemeinsame Bausteine stehen in app.css (Tokens --sk-* verwenden, keine festen Farben). */
+
+/* ===== Emplois du temps (org-edt-*) und Schülerkarten-Prüfung (org-karte-*) ===== */
+.org-edt-auswahl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .9rem 1.2rem; margin-bottom: 1rem; }
+.org-edt-auswahl .org-edt-klasse { min-width: 15rem; flex: 0 1 20rem; margin: 0; }
+.org-edt-plaene { display: flex; flex-wrap: wrap; gap: .5rem; padding-bottom: .15rem; }
+.org-edt-aktionen { margin-bottom: .9rem; }
+.org-edt-aktionen .sk-btn-ghost:last-child { margin-left: auto; }
+.org-edt-links { margin-right: auto; }
+.org-edt-woche { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.org-edt-woche-text { color: var(--sk-text-leise); font-size: .92rem; }
+.org-edt-woche-text strong { color: var(--sk-text); }
+
+.org-edt { margin-top: .9rem; }
+.org-edt-raster { display: grid; grid-template-columns: 3.4rem repeat(var(--org-edt-tage, 6), minmax(0, 1fr)); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); overflow: hidden; background: var(--sk-flaeche); }
+.org-edt-zeitachse, .org-edt-tag { min-width: 0; }
+.org-edt-tag { border-left: 1px solid var(--sk-rand); }
+.org-edt-kopf { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 3rem; padding: .4rem .3rem; background: var(--sk-flaeche-2); border-bottom: 1px solid var(--sk-rand); font-size: .86rem; }
+.org-edt-kopf small { color: var(--sk-text-leise); font-size: .74rem; font-variant-numeric: tabular-nums; }
+.org-edt-tag.heute .org-edt-kopf { background: var(--sk-primaer-zart); color: var(--sk-primaer-text); }
+.org-edt-spalte { position: relative; }
+.org-edt-zeit { position: absolute; left: 0; right: 0; padding: .15rem .35rem 0 0; text-align: right; color: var(--sk-text-zart); font-size: .72rem; font-variant-numeric: tabular-nums; border-top: 1px solid var(--sk-rand); }
+.org-edt-linie, .org-edt-slot { position: absolute; left: 0; right: 0; border-top: 1px solid var(--sk-rand); }
+.org-edt-slot { display: flex; align-items: center; justify-content: center; background: transparent; border-left: 0; border-right: 0; border-bottom: 0; color: transparent; cursor: pointer; }
+.org-edt-slot:hover, .org-edt-slot:focus-visible { background: var(--sk-primaer-zart); color: var(--sk-primaer-text); outline: none; }
+.org-edt-block { position: absolute; z-index: 1; display: flex; flex-direction: column; gap: .05rem; overflow: hidden; padding: .3rem .45rem; border: 0; border-left: 3px solid currentColor; border-radius: var(--sk-radius-klein); font: inherit; font-size: .76rem; line-height: 1.25; text-align: left; box-shadow: var(--sk-schatten-klein); }
+button.org-edt-block { cursor: pointer; }
+button.org-edt-block:hover, button.org-edt-block:focus-visible { box-shadow: var(--sk-fokus); outline: none; }
+.org-edt-fach { display: flex; align-items: center; gap: .25rem; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-edt-info { color: var(--sk-text-leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-edt-konflikt { outline: 2px solid var(--sk-fehler); outline-offset: -2px; }
+.org-edt-konflikt .org-edt-fach, .org-edt-konflikt-text { color: var(--sk-fehler-text); }
+.org-edt-liste { display: none; }
+.org-edt-listentag + .org-edt-listentag { margin-top: 1rem; }
+.org-edt-listentag h3 { margin: 0 0 .45rem; font-size: .95rem; color: var(--sk-ueberschrift); }
+.org-edt-listentag.heute h3 { color: var(--sk-primaer-text); }
+.org-edt-listenzeile { display: flex; align-items: flex-start; gap: .75rem; width: 100%; margin-bottom: .45rem; padding: .6rem .75rem; border: 0; border-left: 3px solid currentColor; border-radius: var(--sk-radius-klein); font: inherit; text-align: left; }
+button.org-edt-listenzeile { cursor: pointer; }
+.org-edt-listenzeit { display: flex; flex-direction: column; min-width: 3.2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.org-edt-listenzeit small { color: var(--sk-text-leise); font-weight: 600; }
+.org-edt-listentext { display: flex; flex-direction: column; gap: .1rem; color: var(--sk-text); }
+.org-edt-listentext small { color: var(--sk-text-leise); }
+.org-edt-abweichung { display: inline-flex; align-items: center; gap: .25rem; color: var(--sk-warn-text); font-weight: 700; }
+.org-edt-passt { display: inline-flex; align-items: center; gap: .25rem; color: var(--sk-erfolg); }
+.org-zahl { text-align: right; white-space: nowrap; }
+@media (max-width: 760px) {
+    .org-edt-raster { display: none; }
+    .org-edt-liste { display: block; }
+    .org-edt-aktionen .sk-btn-ghost:last-child { margin-left: 0; }
+}
+
+.org-karte-pruefung { display: flex; align-items: flex-start; gap: 1rem; padding: .5rem .25rem; }
+.org-karte-pruefung strong { display: block; font-size: 1.15rem; margin-bottom: .25rem; }
+.org-karte-pruefung p { margin: .2rem 0; }
+.org-karte-pruefung-icon { display: inline-flex; flex: none; padding: .7rem; border-radius: 999px; }
+.org-karte-pruefung.gueltig .org-karte-pruefung-icon { background: var(--sk-erfolg-zart); color: var(--sk-erfolg); }
+.org-karte-pruefung.gueltig strong { color: var(--sk-erfolg); }
+.org-karte-pruefung.ungueltig .org-karte-pruefung-icon { background: var(--sk-fehler-zart); color: var(--sk-fehler); }
+.org-karte-pruefung.ungueltig strong { color: var(--sk-fehler-text); }
+/* ===== Ende Emplois du temps / cartes ===== */
+
+/* ---------- Seiten der Direktion (École, Année, Classes, Équipe, Élèves, Parents), Présences, Cockpit ---------- */
+.org-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
+.org-spalte { display: grid; gap: 1.25rem; min-width: 0; }
+@media (max-width: 960px) { .org-raster { grid-template-columns: minmax(0, 1fr); } }
+.org-oben { margin-top: .75rem; }
+.org-inaktiv { opacity: .62; }
+.org-aktionen { white-space: nowrap; text-align: right; }
+.org-aktionen > * { vertical-align: middle; }
+.sk-tabelle td.org-aktionen > * { display: inline-flex; margin-left: .25rem; }
+.org-hoch svg, svg.org-hoch { transform: rotate(180deg); }
+
+/* Listenzeilen (Équipe, Élèves, Parents) */
+.org-zeile { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: .75rem 1rem; padding: .8rem .9rem; border-bottom: 1px solid var(--sk-rand); }
+.org-zeile:not(:has(.org-haken)) { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.org-zeile:last-child { border-bottom: 0; }
+.org-zeile-haupt { display: grid; gap: .2rem; min-width: 0; }
+.org-zeile-haupt > strong, .org-name-knopf { font-weight: 700; color: var(--sk-text); overflow-wrap: anywhere; }
+.org-zeile-meta { display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .84rem; color: var(--sk-text-leise); align-items: center; }
+.org-zeile-meta code, .org-zeile code { font-size: .82rem; }
+.org-zeile-info { display: flex; flex-wrap: wrap; gap: .35rem .5rem; align-items: center; justify-content: flex-end; font-size: .86rem; color: var(--sk-text-leise); }
+.org-zeile-aktionen { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; justify-content: flex-end; }
+.org-name-knopf { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.org-name-knopf:hover { color: var(--sk-primaer-text); text-decoration: underline; }
+.org-haken { width: 1.15rem; height: 1.15rem; accent-color: var(--sk-primaer); }
+@media (max-width: 760px) {
+    .org-zeile { grid-template-columns: auto auto minmax(0, 1fr); gap: .5rem .7rem; }
+    .org-zeile:not(:has(.org-haken)) { grid-template-columns: auto minmax(0, 1fr); }
+    .org-zeile-info, .org-zeile-aktionen { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (max-width: 640px) { .org-kennzahlen, .org-import-zahlen { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; } .org-kennzahlen .sk-kennzahl, .org-import-zahlen .sk-kennzahl { padding: .7rem .75rem; } }
+.org-auswahlleiste { position: sticky; top: calc(var(--sk-kopf-h) + .5rem); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: .75rem;
+    padding: .6rem .9rem; border-radius: var(--sk-radius); background: var(--sk-primaer-zart); border: 1px solid var(--sk-info-rand); box-shadow: var(--sk-schatten-klein); }
+.org-kinder-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }
+.org-kinder-chips .sk-chip, .org-lehrer-chip { min-height: 1.9rem; padding: .2rem .65rem; font-weight: 600; cursor: default; }
+.org-chip-x { display: inline-flex; border: 0; background: none; padding: .1rem; margin-left: .1rem; color: var(--sk-text-leise); cursor: pointer; border-radius: 999px; }
+.org-chip-x:hover { color: var(--sk-fehler); background: var(--sk-fehler-zart); }
+
+/* Zugangsdaten, Import */
+.org-zugaenge { max-height: 22rem; margin-top: 1rem; }
+.org-passwort { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.05rem; font-weight: 700; letter-spacing: .08em; color: var(--sk-ueberschrift); }
+.org-schritte { display: grid; gap: .8rem; margin: 0 0 1rem; padding-left: 1.3rem; }
+.org-schritte li { padding-left: .2rem; }
+.org-schritte .sk-link-knopf { margin-left: .4rem; }
+.org-datei { display: flex; align-items: center; gap: .6rem; margin-top: .5rem; flex-wrap: wrap; }
+.org-datei-knopf { position: relative; overflow: hidden; cursor: pointer; }
+.org-datei-knopf input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.org-import-zahlen, .org-kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .9rem; margin: .5rem 0 1rem; }
+.org-fehlerliste { max-height: 14rem; margin: 0; padding: .5rem .75rem; list-style: none; display: grid; gap: .35rem; border: 1px solid var(--sk-fehler-rand);
+    border-radius: var(--sk-radius); background: var(--sk-fehler-zart); color: var(--sk-fehler-text); font-size: .88rem; }
+.org-zeile-nr { display: inline-block; min-width: 4.2rem; font-weight: 700; }
+.org-vorschau { max-height: 18rem; }
+.org-zeile-fehler td { background: var(--sk-fehler-zart); }
+
+/* Suche nach Schülern */
+.org-suche-feld .sk-suche { width: 100%; }
+.org-treffer { display: grid; margin-top: .35rem; max-height: 14rem; overflow: auto; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); }
+.org-gewaehlt { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); }
+.org-identifiant { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; align-items: start; }
+.org-identifiant > .sk-btn { margin-top: 1.75rem; }
+
+/* École */
+.org-logo { display: flex; gap: 1.1rem; align-items: center; flex-wrap: wrap; }
+.org-logo-bild { width: 6rem; height: 6rem; display: grid; place-items: center; border: 1px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); overflow: hidden; }
+.org-logo-bild img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.org-logo-text { display: grid; gap: .5rem; justify-items: start; flex: 1; min-width: 12rem; }
+.org-kopf-vorschau { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: .9rem 1rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); font-size: .82rem; }
+.org-kopf-vorschau > div { display: grid; gap: .15rem; align-content: start; text-align: center; }
+.org-kopf-vorschau strong { color: var(--sk-ueberschrift); }
+.org-kopf-vorschau small { color: var(--sk-text-leise); }
+.org-kopf-schule em { color: var(--sk-akzent-text); }
+.org-rechte { display: grid; gap: 1rem; }
+.org-rechte-zeile { display: grid; gap: .75rem; padding: .9rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.org-person { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.org-person > div { display: grid; }
+.org-rechte-schalter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1rem; }
+@media (max-width: 640px) { .org-rechte-schalter, .org-kopf-vorschau { grid-template-columns: minmax(0, 1fr); } }
+
+/* Année scolaire */
+.org-jahre { display: grid; gap: 1.25rem; }
+.org-jahr-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem 1rem; align-items: flex-start; margin-bottom: 1rem; }
+.org-jahr-kopf h2 { display: flex; align-items: center; gap: .6rem; margin: 0 0 .3rem; font-size: 1.25rem; color: var(--sk-ueberschrift); }
+.org-jahr-kopf p { margin: .1rem 0; }
+.org-jahr-laufend { border-color: var(--sk-erfolg-rand); }
+.org-perioden td .sk-badge { margin-left: .4rem; }
+
+/* Classes */
+.org-klassen { display: grid; grid-template-columns: repeat(auto-fill, minmax(18.5rem, 1fr)); gap: 1rem; }
+.org-klasse { display: grid; gap: .75rem; align-content: start; padding: 1.1rem 1.15rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); box-shadow: var(--sk-schatten-klein); }
+.org-klasse-kopf { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.org-klasse-kopf h2 { margin: 0 .2rem 0 0; font-size: 1.2rem; color: var(--sk-ueberschrift); }
+.org-belegung { display: grid; gap: .3rem; font-size: .88rem; font-weight: 600; color: var(--sk-text-leise); }
+.org-balken { display: block; height: .45rem; border-radius: 999px; background: var(--sk-flaeche-3); overflow: hidden; }
+.org-balken > span { display: block; height: 100%; border-radius: inherit; background: var(--sk-erfolg); }
+.org-belegung.fast .org-balken > span { background: var(--sk-warn); }
+.org-belegung.voll .org-balken > span { background: var(--sk-fehler); }
+.org-belegung.voll { color: var(--sk-fehler-text); }
+.org-klasse-daten { font-size: .86rem; grid-template-columns: minmax(7rem, auto) 1fr; }
+.org-stufe-form { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+@media (max-width: 760px) { .org-stufe-form { grid-template-columns: minmax(0, 1fr); } }
+.org-kf-werkzeuge, .org-kf-kopie { display: grid; grid-template-columns: minmax(0, 2fr) minmax(7rem, 1fr) auto; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+.org-kf-kopie { grid-template-columns: minmax(0, 2fr) auto auto; margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--sk-rand); }
+.org-kf-liste { display: grid; gap: .5rem; }
+.org-kf { display: grid; grid-template-columns: minmax(9rem, 1.2fr) 6.5rem minmax(0, 2.5fr) auto; gap: .75rem; align-items: center; padding: .65rem .75rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.org-kf-fach { display: grid; }
+.org-kf-koeff .sk-feld-label { font-size: .75rem; }
+.org-kf-lehrer { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.org-kf-neu { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.org-kf-neu .sk-auswahl { min-width: 12rem; }
+.org-kf-neu .sk-feld { width: 9rem; }
+@media (max-width: 760px) {
+    .org-kf, .org-kf-werkzeuge, .org-kf-kopie { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Élèves: Dossier */
+.org-akte-kopf { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; }
+.org-akte-kopf > div { display: grid; gap: .5rem; flex: 1; min-width: 14rem; justify-items: start; }
+.org-akte-kopf .sk-daten { justify-self: stretch; }
+.org-foto { width: 4rem; height: 4rem; border-radius: 50%; object-fit: cover; border: 2px solid var(--sk-rand); }
+.org-eltern-liste { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; font-size: .92rem; }
+.org-konto-teil { display: grid; gap: .6rem; }
+
+/* Présences */
+.org-appell-werkzeuge { display: flex; flex-wrap: wrap; gap: .9rem; align-items: flex-end; }
+.org-appell-werkzeuge > * { flex: 1 1 13rem; min-width: 0; }
+.org-appell-werkzeuge > .org-appell-ansicht { flex: 0 0 auto; }
+.org-appell-kopf { margin-bottom: 1rem; }
+.org-appell-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; align-items: flex-start; margin-bottom: .75rem; }
+.org-appell-status h2 { margin: 0; font-size: 1.1rem; color: var(--sk-ueberschrift); }
+.org-appell { display: grid; }
+.org-appell-zeile { display: grid; grid-template-columns: minmax(10rem, 1fr) auto; gap: .5rem 1rem; align-items: center; padding: .65rem .25rem; border-bottom: 1px solid var(--sk-rand); }
+.org-appell-zeile:last-child { border-bottom: 0; }
+.org-appell-name { display: grid; }
+.org-appell-wahl .sk-radio { min-height: 2.3rem; }
+.org-appell-absent .org-appell-wahl .sk-radio.aktiv { background: var(--sk-fehler-zart); color: var(--sk-fehler-text); border-color: var(--sk-fehler-rand); }
+.org-appell-retard .org-appell-wahl .sk-radio.aktiv { background: var(--sk-warn-zart); color: var(--sk-warn-text); border-color: var(--sk-warn-rand); }
+.org-appell-details { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; }
+.org-minuten { display: inline-flex; align-items: center; gap: .35rem; }
+.org-minuten .sk-eingabe { width: 5.5rem; }
+.org-bemerkung { flex: 1; min-width: 12rem; }
+.org-appell-fuss { position: sticky; bottom: 0; padding: .75rem 0 .25rem; background: var(--sk-flaeche); }
+@media (max-width: 640px) { .org-appell-zeile { grid-template-columns: minmax(0, 1fr); } }
+.org-rueckblick-werkzeuge { display: grid; grid-template-columns: repeat(2, minmax(9rem, 14rem)); gap: .9rem; margin-bottom: .5rem; }
+.org-verlauf { list-style: none; margin: 0; padding: 0; display: grid; }
+.org-verlauf li { display: grid; grid-template-columns: minmax(12rem, auto) 1fr; gap: .25rem 1rem; align-items: center; padding: .6rem 0; border-bottom: 1px solid var(--sk-rand); }
+.org-verlauf li:last-child { border-bottom: 0; }
+.org-verlauf-datum { font-weight: 600; text-transform: capitalize; }
+.org-verlauf-bemerkung { grid-column: 2; color: var(--sk-text-leise); }
+@media (max-width: 640px) { .org-verlauf li { grid-template-columns: minmax(0, 1fr); } .org-verlauf-bemerkung { grid-column: 1; } }
+
+/* Cockpit und Elternstart */
+.org-cockpit { display: grid; gap: 1.25rem; margin-bottom: 1.5rem; }
+.org-schrittliste { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.org-schrittliste li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .8rem; align-items: center; padding: .7rem .8rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.org-schrittliste li > div { display: grid; }
+.org-schritt-haken { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--sk-flaeche-3); color: var(--sk-text-leise); }
+.org-schrittliste li.erledigt { background: var(--sk-flaeche-2); }
+.org-schrittliste li.erledigt .org-schritt-haken { background: var(--sk-erfolg-zart); color: var(--sk-erfolg); }
+.org-schrittliste li.erledigt strong { color: var(--sk-text-leise); }
+.org-kinder { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.org-kind { display: grid; gap: .9rem; padding: 1.1rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); box-shadow: var(--sk-schatten-klein); }
+.org-kind-kopf { display: flex; gap: .8rem; align-items: center; }
+.org-kind-kopf h2 { margin: 0; font-size: 1.1rem; color: var(--sk-ueberschrift); }
+.org-kind-links { display: flex; flex-wrap: wrap; gap: .4rem; }

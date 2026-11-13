@@ -1,0 +1,79 @@
+@* Selbstregistrierung annehmen (Klasse wählen, in EINEM Schritt) oder ablehnen (mit Grund). *@
+@inherits SkoulouSeite
+@inject SchuelerService Schueler
+
+<ModalDialog Open="Kandidat is not null" Title="@(Ablehnen ? "Refuser l'inscription" : "Valider l'inscription")" Oberzeile="@Kandidat?.Name"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (Kandidat is { } s)
+        {
+            <div class="sk-formular">
+                <p class="sk-leise">Inscription en ligne du @SkoulouKultur.Datum(DateOnly.FromDateTime(s.ErstelltAmUtc)) · identifiant <code>@s.Identifiant</code></p>
+                @if (Ablehnen)
+                {
+                    <TextFeld Label="Motif (facultatif, envoyé par e-mail si l'élève a une adresse)" @bind-Wert="grund" Zeilen="2" MaxLaenge="300" />
+                    <Hinweis Art="warn">Le compte est supprimé (ou archivé s'il a déjà des données). L'élève devra s'inscrire à nouveau.</Hinweis>
+                }
+                else
+                {
+                    <AuswahlFeld T="Guid?" Label="Classe" @bind-Wert="klasseId" Optionen="KlassenOptionen" Pflicht="true" />
+                    <Schalter @bind-Wert="wiederholer" Label="Redoublant(e)" />
+                    <p class="sk-leise">Le compte est activé, l'élève est inscrit(e) dans la classe et reçoit un e-mail de confirmation s'il a une adresse.</p>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        @if (Ablehnen)
+        {
+            <AsyncKnopf Text="Refuser l'inscription" Icon="x" CssClass="sk-btn-gefahr" OnClick="AblehnenAsync" />
+        }
+        else
+        {
+            <AsyncKnopf Text="Valider et inscrire" Icon="check" CssClass="sk-btn-primaer" Disabled="@(klasseId is null)" OnClick="ValidierenAsync" />
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    /// <summary>Selbst registrierter Schüler (Status « En attente »).</summary>
+    [Parameter] public SchuelerZeile? Kandidat { get; set; }
+    [Parameter] public bool Ablehnen { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnErledigt { get; set; }
+
+    private Guid? klasseId, geladenFuer;
+    private bool wiederholer;
+    private string? grund;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => Klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();
+
+    protected override void OnParametersSet()
+    {
+        if (Kandidat is { } s && geladenFuer != s.KontoId)
+        {
+            geladenFuer = s.KontoId;
+            (klasseId, wiederholer, grund, Fehlermeldung) = (null, false, null, null);
+        }
+        else if (Kandidat is null)
+        {
+            geladenFuer = null;
+        }
+    }
+
+    private async Task ValidierenAsync()
+    {
+        if (Kandidat is not { } s || klasseId is not { } k) return;
+        if (await AusfuehrenAsync(() => Schueler.ValidierenAsync(Ich.KontoId, s.KontoId, k, wiederholer), $"L'inscription de {s.Name} est validée."))
+            await OnErledigt.InvokeAsync();
+    }
+
+    private async Task AblehnenAsync()
+    {
+        if (Kandidat is not { } s) return;
+        if (await AusfuehrenAsync(() => Schueler.AblehnenAsync(Ich.KontoId, s.KontoId, grund), $"L'inscription de {s.Name} est refusée."))
+            await OnErledigt.InvokeAsync();
+    }
+}

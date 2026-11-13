@@ -1,0 +1,126 @@
+@* Lehrkraft oder (nur Direktor) Koordinator anlegen bzw. Daten ändern – Rolle und Status bleiben beim Ändern unverändert. *@
+@inherits SkoulouSeite
+@inject PersonalService Personal
+@inject KontoVerwaltungService Konten
+
+<ModalDialog Open="Open" Title="@(KontoId is null ? "Nouveau compte de l'équipe" : $"Modifier {vorname} {nachname}")" Oberzeile="Équipe"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (laedt)
+        {
+            <div class="sk-skelett"><div></div><div></div></div>
+        }
+        else
+        {
+            <div class="sk-formular">
+                @if (KontoId is null)
+                {
+                    <RadioGruppe T="string" Label="Rôle" @bind-Wert="rolle" Optionen="RollenOptionen"
+                                 Hinweis="@(rolle == Rollen.Koordinator ? "Le coordinateur gère les élèves, classes et notes ; les finances seulement avec les droits que vous lui donnez (page Établissement)." : null)" />
+                }
+                <div class="sk-raster-2">
+                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("vorname")" />
+                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nachname")" />
+                </div>
+                <div class="org-identifiant">
+                    <TextFeld Label="Identifiant de connexion" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")"
+                              Hinweis="Vide = proposé automatiquement (prenom.nom)." />
+                    <AsyncKnopf Text="Proposer" CssClass="sk-btn-ghost" OnClick="VorschlagAsync" />
+                </div>
+                <div class="sk-raster-2">
+                    <TextFeld Label="E-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Fehler="@FeldFehler("email")" Hinweis="Facultatif : reçoit un message de bienvenue." />
+                    <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Fehler="@FeldFehler("telefon")" />
+                </div>
+                <RadioGruppe T="Geschlecht" Label="Genre" @bind-Wert="geschlecht" Optionen="GeschlechtOptionen" />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(KontoId is null ? "Créer le compte" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    /// <summary>null = neues Konto.</summary>
+    [Parameter] public Guid? KontoId { get; set; }
+    [Parameter] public bool DarfKoordinatoren { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Gespeichert; bei Neuanlage mit den Zugangsdaten.</summary>
+    [Parameter] public EventCallback<ZugangsStapel?> OnGespeichert { get; set; }
+
+    public static readonly IReadOnlyList<AuswahlOption<Geschlecht>> GeschlechtOptionen =
+        [new(Geschlecht.Weiblich, "Femme"), new(Geschlecht.Maennlich, "Homme"), new(Geschlecht.Divers, "Non précisé")];
+
+    private string rolle = Rollen.Lehrer;
+    private string? vorname, nachname, identifiant, email, telefon, feld;
+    private Geschlecht geschlecht;
+    private bool warOffen, laedt;
+
+    private IReadOnlyList<AuswahlOption<string>> RollenOptionen => DarfKoordinatoren
+        ? [new(Rollen.Lehrer, "Enseignant"), new(Rollen.Koordinator, "Coordinateur")]
+        : [new(Rollen.Lehrer, "Enseignant")];
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            (Fehlermeldung, feld) = (null, null);
+            if (KontoId is { } id)
+            {
+                laedt = true;
+                await AusfuehrenAsync(async () =>
+                {
+                    var d = await Personal.DetailAsync(Ich.KontoId, id);
+                    (rolle, vorname, nachname, identifiant, email, telefon, geschlecht) = (d.Rolle, d.Vorname, d.Nachname, d.Identifiant, d.Email, d.Telefon, d.Geschlecht);
+                });
+                laedt = false;
+            }
+            else
+            {
+                (rolle, vorname, nachname, identifiant, email, telefon, geschlecht) = (Rollen.Lehrer, null, null, null, null, null, Geschlecht.Divers);
+            }
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private async Task VorschlagAsync()
+    {
+        await AusfuehrenAsync(async () => identifiant = await Konten.IdentifiantVorschlagAsync(Ich.KontoId, vorname, nachname));
+    }
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        var eingabe = new PersonalEingabe(rolle, vorname, nachname, identifiant, email, telefon, geschlecht);
+        try
+        {
+            if (KontoId is { } id)
+            {
+                await Personal.AendernAsync(Ich.KontoId, id, eingabe);
+                Toast.ZeigeErfolg("Les données sont enregistrées.");
+                await OnGespeichert.InvokeAsync(null);
+            }
+            else
+            {
+                var stapel = await Personal.AnlegenAsync(Ich.KontoId, eingabe);
+                await OnGespeichert.InvokeAsync(stapel);
+            }
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (feld, Fehlermeldung) = (f.Feld, f.Message);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            Fehlermeldung = k.Message;
+        }
+    }
+}

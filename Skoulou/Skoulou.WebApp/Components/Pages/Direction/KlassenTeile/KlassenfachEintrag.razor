@@ -1,0 +1,81 @@
+@* Ein Fach einer Klasse: Koeffizient (speichert beim Verlassen), Lehrkräfte mit Wochenstunden, Entfernen. *@
+@inherits SkoulouSeite
+@inject UnterrichtService Unterricht
+
+<div class="org-kf">
+    <div class="org-kf-fach">
+        <strong>@Fach.Fach</strong>
+        <small class="sk-leise">@(Fach.Kuerzel ?? "") @FaecherService.GruppenText(Fach.Gruppe)</small>
+    </div>
+    <div class="org-kf-koeff">
+        <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen)" />
+    </div>
+    <div class="org-kf-lehrer">
+        @foreach (var l in Fach.Lehrer)
+        {
+            <span class="sk-chip org-lehrer-chip">
+                @l.Lehrer · @SkoulouKultur.Zahl(l.Wochenstunden, 1) h
+                @if (Offen)
+                {
+                    <button type="button" class="org-chip-x" aria-label="Retirer @l.Lehrer" title="Retirer l'affectation" @onclick="() => EntfernenAsync(l)"><Icon Name="x" Groesse="14" /></button>
+                }
+            </span>
+        }
+        @if (Offen)
+        {
+            @if (neu)
+            {
+                <div class="org-kf-neu">
+                    <AuswahlFeld T="Guid?" @bind-Wert="lehrerId" Optionen="LehrerOptionen" Platzhalter="Enseignant…" Kompakt="true" />
+                    <ZahlFeld @bind-Wert="stunden" Min="0.5m" Max="40" Stellen="1" Einheit="h/sem." />
+                    <AsyncKnopf Text="Affecter" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(lehrerId is null)" OnClick="ZuweisenAsync" />
+                    <button type="button" class="sk-link-knopf" @onclick="() => neu = false">Annuler</button>
+                </div>
+            }
+            else
+            {
+                <button type="button" class="sk-link-knopf" @onclick="() => neu = true"><Icon Name="user-plus" Groesse="16" /> @(Fach.Lehrer.Count == 0 ? "Affecter un enseignant" : "Ajouter")</button>
+            }
+        }
+    </div>
+    @if (Offen)
+    {
+        <button type="button" class="sk-icon-knopf" title="Retirer la matière de la classe" aria-label="Retirer @Fach.Fach" @onclick="() => OnEntfernen.InvokeAsync(Fach)"><Icon Name="trash" Groesse="16" /></button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public KlassenfachZeile Fach { get; set; } = default!;
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Lehrkraefte { get; set; } = [];
+    [Parameter] public bool Offen { get; set; } = true;
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+    [Parameter] public EventCallback<KlassenfachZeile> OnEntfernen { get; set; }
+
+    private bool neu;
+    private Guid? lehrerId;
+    private decimal? stunden;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> LehrerOptionen =>
+        Lehrkraefte.Where(l => Fach.Lehrer.All(x => x.LehrerId != l.Id)).Select(l => new AuswahlOption<Guid?>(l.Id, l.Name, l.Zusatz)).ToList();
+
+    private async Task KoeffizientAsync(decimal? wert)
+    {
+        if (wert is not { } k || k == Fach.Koeffizient) return;
+        if (await AusfuehrenAsync(() => Unterricht.KoeffizientSetzenAsync(Ich.KontoId, Fach.Id, k), $"Coefficient de {Fach.Fach} : {SkoulouKultur.Zahl(k)}."))
+            await OnGeaendert.InvokeAsync();
+    }
+
+    private async Task ZuweisenAsync()
+    {
+        if (lehrerId is not { } id) return;
+        if (!await AusfuehrenAsync(() => Unterricht.LehrauftragSetzenAsync(Ich.KontoId, Fach.Id, id, stunden ?? 1), "L'enseignant est affecté.")) return;
+        (neu, lehrerId, stunden) = (false, null, null);
+        await OnGeaendert.InvokeAsync();
+    }
+
+    private async Task EntfernenAsync(LehrauftragKurz l)
+    {
+        if (await AusfuehrenAsync(() => Unterricht.LehrauftragEntfernenAsync(Ich.KontoId, l.Id), $"{l.Lehrer} n'enseigne plus {Fach.Fach} dans cette classe."))
+            await OnGeaendert.InvokeAsync();
+    }
+}

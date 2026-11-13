@@ -1,0 +1,72 @@
+@* Finanzrechte der Koordinatoren (nur der Direktor, mit Audit). *@
+@inherits SkoulouSeite
+@inject SchulService Schule
+
+<Karte Titel="Droits des coordinateurs" Icon="shield" Untertitel="Sans droit, un coordinateur ne voit pas les finances. Chaque changement est journalisé.">
+    @if (zeilen is null)
+    {
+        <div class="sk-skelett"><div></div></div>
+    }
+    else if (zeilen.Count == 0)
+    {
+        <Leerzustand Icon="users" Titel="Aucun coordinateur" Text="Créez un compte « Coordinateur » dans la page Équipe.">
+            <a class="sk-btn sk-btn-ghost" href="/direction/equipe">Ouvrir l'équipe</a>
+        </Leerzustand>
+    }
+    else
+    {
+        <div class="org-rechte">
+            @foreach (var z in zeilen)
+            {
+                <div class="org-rechte-zeile">
+                    <div class="org-person">
+                        <NamensKreis Name="@z.Name" Groesse="36" />
+                        <div><strong>@z.Name</strong><small class="sk-leise">@z.Identifiant</small></div>
+                        <KontoStatusBadge Status="z.Status" />
+                    </div>
+                    <div class="org-rechte-schalter">
+                        @foreach (var (recht, text, hinweis) in RechteListe)
+                        {
+                            <Schalter Wert="@Hat(z.KontoId, recht)" WertChanged="@(an => Setze(z.KontoId, recht, an))" Label="@text" Hinweis="@hinweis" />
+                        }
+                    </div>
+                    <div class="sk-formular-fuss">
+                        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-ghost sk-btn-klein" Disabled="@(!Geaendert(z))" OnClick="() => SpeichernAsync(z)" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</Karte>
+
+@code {
+    private static readonly (KoordinatorRechte Recht, string Text, string Hinweis)[] RechteListe =
+    [
+        (KoordinatorRechte.FinanzenEinsehen, "Voir les finances", "Vue d'ensemble, impayés et rapport financier."),
+        (KoordinatorRechte.ZahlungenErfassen, "Encaisser les paiements", "Paiements, reçus, frais de scolarité."),
+        (KoordinatorRechte.BuchhaltungErfassen, "Tenir le journal de caisse", "Recettes et dépenses."),
+        (KoordinatorRechte.RechnungSkoulou, "Facturation SKOULOU", "Déclarer le paiement des factures de la plateforme."),
+    ];
+
+    private List<KoordinatorZeile>? zeilen;
+    private readonly Dictionary<Guid, KoordinatorRechte> entwurf = [];
+
+    protected override async Task InitialisierenAsync()
+    {
+        zeilen = (await Schule.KoordinatorenAsync(Ich.KontoId)).ToList();
+        foreach (var z in zeilen) entwurf[z.KontoId] = z.Rechte;
+    }
+
+    private bool Hat(Guid id, KoordinatorRechte r) => entwurf.TryGetValue(id, out var w) && w.HasFlag(r);
+
+    private void Setze(Guid id, KoordinatorRechte r, bool an) => entwurf[id] = an ? entwurf[id] | r : entwurf[id] & ~r;
+
+    private bool Geaendert(KoordinatorZeile z) => entwurf[z.KontoId] != z.Rechte;
+
+    private async Task SpeichernAsync(KoordinatorZeile z)
+    {
+        var neu = entwurf[z.KontoId];
+        if (await AusfuehrenAsync(() => Schule.KoordinatorRechteSetzenAsync(Ich.KontoId, z.KontoId, neu), $"Droits de {z.Name} enregistrés."))
+            zeilen![zeilen.IndexOf(z)] = z with { Rechte = neu };
+    }
+}

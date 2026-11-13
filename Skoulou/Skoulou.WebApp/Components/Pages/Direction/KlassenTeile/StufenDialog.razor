@@ -1,0 +1,150 @@
+@* Niveaus (« 6e », « CP1 »…): anlegen, ändern, Reihenfolge, Nachfolger (Passage), löschen bzw. deaktivieren. *@
+@inherits SkoulouSeite
+@inject KlassenService Klassen
+
+<ModalDialog Open="Open" Title="Niveaux" Oberzeile="Classes" Breite="sk-modal-lg" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="SchliessenAsync">
+    <ChildContent>
+        <p class="sk-leise">Un niveau regroupe les classes parallèles (6e A, 6e B…). Le « niveau suivant » sert de proposition au passage d'année.</p>
+        <div class="org-stufe-form">
+            <TextFeld Label="@(bearbeitet is null ? "Nouveau niveau" : $"Modifier « {bearbeitet.Name} »")" @bind-Wert="name" MaxLaenge="60" Platzhalter="6e, CP1, Terminale D…" />
+            <AuswahlFeld T="Zyklus?" Label="Cycle" @bind-Wert="zyklus" Optionen="ZyklusOptionen" Platzhalter="—" />
+            <AuswahlFeld T="Guid?" Label="Niveau suivant" @bind-Wert="nachfolger" Optionen="NachfolgerOptionen" Platzhalter="Aucun" />
+            <div class="sk-knopfzeile">
+                <AsyncKnopf Text="@(bearbeitet is null ? "Ajouter" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+                @if (bearbeitet is not null)
+                {
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick="Leeren">Annuler</button>
+                }
+            </div>
+        </div>
+        @if (stufen is { Count: > 0 })
+        {
+            <div class="sk-tabelle-rahmen">
+                <table class="sk-tabelle">
+                    <thead><tr><th>Ordre</th><th>Niveau</th><th>Cycle</th><th>Niveau suivant</th><th>Classes</th><th><span class="sk-leise">Actions</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var (s, i) in stufen.Select((s, i) => (s, i)))
+                        {
+                            <tr class="@(s.Aktiv ? null : "org-inaktiv")">
+                                <td class="org-aktionen">
+                                    <button type="button" class="sk-icon-knopf" aria-label="Monter" disabled="@(i == 0)" @onclick="() => VerschiebenAsync(i, -1)"><Icon Name="chevron-down" Groesse="16" CssClass="org-hoch" /></button>
+                                    <button type="button" class="sk-icon-knopf" aria-label="Descendre" disabled="@(i == stufen.Count - 1)" @onclick="() => VerschiebenAsync(i, 1)"><Icon Name="chevron-down" Groesse="16" /></button>
+                                </td>
+                                <td><strong>@s.Name</strong>@if (!s.Aktiv) {<StatusBadge Text="Désactivé" Art="neutral" />}</td>
+                                <td>@ZyklusText(s.Zyklus)</td>
+                                <td>@(s.NachfolgerName ?? "–")</td>
+                                <td>@s.AnzahlKlassen</td>
+                                <td class="org-aktionen">
+                                    <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier @s.Name" @onclick="() => Bearbeiten(s)"><Icon Name="edit" Groesse="16" /></button>
+                                    @if (s.Aktiv)
+                                    {
+                                        <AsyncKnopf Text="" Icon="trash" CssClass="sk-icon-knopf" title="Supprimer" aria-label="@($"Supprimer {s.Name}")" OnClick="() => LoeschenAsync(s)" />
+                                    }
+                                    else
+                                    {
+                                        <AsyncKnopf Text="Réactiver" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => AktivierenAsync(s)" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="SchliessenAsync">Terminé</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Die Niveaus haben sich geändert (Klassenliste neu laden).</summary>
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<Zyklus?>> ZyklusOptionen =
+        [new(null, "—"), new(Zyklus.Primaire, "Primaire"), new(Zyklus.College, "Collège"), new(Zyklus.Lycee, "Lycée"), new(Zyklus.Formation, "Formation")];
+
+    private List<StufeZeile>? stufen;
+    private StufeZeile? bearbeitet;
+    private string? name;
+    private Zyklus? zyklus;
+    private Guid? nachfolger;
+    private bool warOffen, geaendert;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> NachfolgerOptionen =>
+        [new(null, "Aucun"), .. (stufen ?? []).Where(s => s.Aktiv && s.Id != bearbeitet?.Id).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name))];
+
+    public static string ZyklusText(Zyklus? z) => z switch
+    {
+        Zyklus.Primaire => "Primaire", Zyklus.College => "Collège", Zyklus.Lycee => "Lycée", Zyklus.Formation => "Formation", _ => "–"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            geaendert = false;
+            Leeren();
+            await AusfuehrenAsync(LadenAsync);
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private async Task LadenAsync() => stufen = (await Klassen.StufenAsync(Ich.KontoId)).ToList();
+
+    private void Leeren() => (bearbeitet, name, zyklus, nachfolger) = (null, null, null, null);
+
+    private void Bearbeiten(StufeZeile s) => (bearbeitet, name, zyklus, nachfolger) = (s, s.Name, s.Zyklus, s.NachfolgerId);
+
+    private async Task SpeichernAsync()
+    {
+        if (await AusfuehrenAsync(() => Klassen.StufeSpeichernAsync(Ich.KontoId, bearbeitet?.Id, new StufeEingabe(name, zyklus, nachfolger)), "Le niveau est enregistré."))
+        {
+            Leeren();
+            geaendert = true;
+            await AusfuehrenAsync(LadenAsync);
+        }
+    }
+
+    private async Task VerschiebenAsync(int i, int richtung)
+    {
+        if (stufen is null) return;
+        var liste = stufen.Select(s => s.Id).ToList();
+        (liste[i], liste[i + richtung]) = (liste[i + richtung], liste[i]);
+        if (await AusfuehrenAsync(() => Klassen.StufenReihenfolgeAsync(Ich.KontoId, liste)))
+        {
+            geaendert = true;
+            await AusfuehrenAsync(LadenAsync);
+        }
+    }
+
+    private async Task LoeschenAsync(StufeZeile s)
+    {
+        LoeschErgebnis ergebnis = default;
+        if (!await AusfuehrenAsync(async () => ergebnis = await Klassen.StufeLoeschenAsync(Ich.KontoId, s.Id))) return;
+        Toast.ZeigeErfolg(ergebnis == LoeschErgebnis.Geloescht ? $"Le niveau {s.Name} est supprimé." : $"Le niveau {s.Name} est utilisé : il est désactivé.");
+        geaendert = true;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task AktivierenAsync(StufeZeile s)
+    {
+        if (await AusfuehrenAsync(() => Klassen.StufeAktivierenAsync(Ich.KontoId, s.Id), $"Le niveau {s.Name} est réactivé."))
+        {
+            geaendert = true;
+            await AusfuehrenAsync(LadenAsync);
+        }
+    }
+
+    private async Task SchliessenAsync()
+    {
+        if (geaendert) await OnGeaendert.InvokeAsync();
+        await OnClose.InvokeAsync();
+    }
+}

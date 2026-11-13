@@ -1,5 +1,138 @@
 @page "/direction/matieres"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits SkoulouSeite
+@inject FaecherService Faecher
 
-<InVorbereitung Titel="Matières" Icon="book" Etappe="E3 – Organisation"
-                Beschreibung="Matières de l'établissement, groupes du bulletin et coefficients par classe." />
+<PageTitle>Matières · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Matières" Icon="book" Untertitel="Les matières de l'établissement, leur groupe et leur ordre sur le bulletin. Les coefficients se règlent par classe.">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="/direction/classes"><Icon Name="layers" Groesse="18" /> <span>Coefficients par classe</span></a>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Oeffnen(null)"><Icon Name="plus" Groesse="18" /> <span>Nouvelle matière</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (faecher is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (faecher.Count == 0)
+{
+    <Leerzustand Icon="book" Titel="Aucune matière" Text="Créez les matières enseignées (Français, Mathématiques…), puis ajoutez-les aux classes avec leur coefficient.">
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Oeffnen(null)"><Icon Name="plus" Groesse="18" /> <span>Nouvelle matière</span></button>
+    </Leerzustand>
+}
+else
+{
+    <Karte>
+        <div class="sk-tabelle-rahmen">
+            <table class="sk-tabelle org-faecher">
+                <thead><tr><th>Ordre</th><th>Matière</th><th>Abrév.</th><th>Groupe</th><th>Classes</th><th><span class="sk-leise">Actions</span></th></tr></thead>
+                <tbody>
+                    @foreach (var (f, i) in faecher.Select((f, i) => (f, i)))
+                    {
+                        <tr class="@(f.Aktiv ? null : "org-inaktiv")" @key="f.Id">
+                            <td class="org-aktionen">
+                                <AsyncKnopf Text="" Icon="chevron-down" CssClass="sk-icon-knopf org-hoch" aria-label="@($"Monter {f.Name}")" Disabled="@(i == 0)" OnClick="() => VerschiebenAsync(f, -1)" />
+                                <AsyncKnopf Text="" Icon="chevron-down" CssClass="sk-icon-knopf" aria-label="@($"Descendre {f.Name}")" Disabled="@(i == faecher.Count - 1)" OnClick="() => VerschiebenAsync(f, 1)" />
+                            </td>
+                            <td><strong>@f.Name</strong>@if (!f.Aktiv) {<StatusBadge Text="Désactivée" Art="neutral" />}</td>
+                            <td>@(f.Kuerzel ?? "–")</td>
+                            <td><StatusBadge Text="@FaecherService.GruppenText(f.Gruppe)" Art="@(f.Gruppe == FachGruppe.Aucune ? "neutral" : "info")" /></td>
+                            <td>@f.AnzahlKlassen</td>
+                            <td class="org-aktionen">
+                                <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier @f.Name" @onclick="() => Oeffnen(f)"><Icon Name="edit" Groesse="16" /></button>
+                                @if (f.Aktiv)
+                                {
+                                    <button type="button" class="sk-icon-knopf" title="Supprimer" aria-label="Supprimer @f.Name" @onclick="() => loeschen = f"><Icon Name="trash" Groesse="16" /></button>
+                                }
+                                else
+                                {
+                                    <AsyncKnopf Text="Réactiver" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => AktivierenAsync(f)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="sk-leise">L'ordre ci-dessus est celui des matières sur le bulletin (à l'intérieur de chaque groupe).</p>
+    </Karte>
+}
+
+<ModalDialog Open="dialog" Title="@(bearbeitet is null ? "Nouvelle matière" : $"Modifier « {bearbeitet.Name} »")" Oberzeile="Matières"
+             SchliessenMitEscape="false" ErrorMessage="@dialogFehler" OnClose="() => dialog = false">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <TextFeld Label="Nom de la matière" @bind-Wert="name" MaxLaenge="120" Pflicht="true" Platzhalter="Mathématiques" />
+                <TextFeld Label="Abréviation" @bind-Wert="kuerzel" MaxLaenge="12" Platzhalter="MATH" Hinweis="Pour l'emploi du temps." />
+            </div>
+            <RadioGruppe T="FachGruppe" Label="Groupe sur le bulletin" @bind-Wert="gruppe" Optionen="GruppenOptionen" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => dialog = false">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+<BestaetigungsDialog Open="loeschen is not null" Titel="@($"Supprimer « {loeschen?.Name} » ?")" BestaetigenText="Supprimer" Gefahr="true"
+                     Text="Une matière jamais utilisée est supprimée. Si elle figure déjà dans une classe ou un contenu, elle est seulement désactivée (elle reste sur les anciens bulletins)."
+                     OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+@code {
+    private static readonly IReadOnlyList<AuswahlOption<FachGruppe>> GruppenOptionen =
+        [new(FachGruppe.Lettres, "Lettres"), new(FachGruppe.Sciences, "Sciences"), new(FachGruppe.Autres, "Autres"), new(FachGruppe.Aucune, "Sans groupe")];
+
+    private List<FachZeile>? faecher;
+    private bool dialog;
+    private FachZeile? bearbeitet, loeschen;
+    private string? name, kuerzel, dialogFehler;
+    private FachGruppe gruppe;
+
+    protected override Task InitialisierenAsync() => LadenAsync();
+
+    private async Task LadenAsync() => faecher = (await Faecher.FaecherAsync(Ich.KontoId)).ToList();
+
+    private void Oeffnen(FachZeile? f)
+    {
+        (bearbeitet, name, kuerzel, gruppe, dialogFehler) = (f, f?.Name, f?.Kuerzel, f?.Gruppe ?? FachGruppe.Aucune, null);
+        dialog = true;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (!await AusfuehrenAsync(() => Faecher.FachSpeichernAsync(Ich.KontoId, bearbeitet?.Id, new FachEingabe(name, kuerzel, gruppe)), "La matière est enregistrée."))
+        {
+            dialogFehler = Fehlermeldung;
+            return;
+        }
+        dialog = false;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task VerschiebenAsync(FachZeile f, int richtung)
+    {
+        if (await AusfuehrenAsync(() => Faecher.VerschiebenAsync(Ich.KontoId, f.Id, richtung))) await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } f) return;
+        LoeschErgebnis ergebnis = default;
+        if (!await AusfuehrenAsync(async () => ergebnis = await Faecher.FachLoeschenAsync(Ich.KontoId, f.Id))) return;
+        Toast.ZeigeErfolg(ergebnis == LoeschErgebnis.Geloescht ? $"« {f.Name} » est supprimée." : $"« {f.Name} » est utilisée : elle est désactivée.");
+        loeschen = null;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task AktivierenAsync(FachZeile f)
+    {
+        if (await AusfuehrenAsync(() => Faecher.FachAktivierenAsync(Ich.KontoId, f.Id), $"« {f.Name} » est réactivée.")) await AusfuehrenAsync(LadenAsync);
+    }
+}

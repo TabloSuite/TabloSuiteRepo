@@ -1,5 +1,186 @@
 @page "/direction/classes"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits JahrSeite
+@inject KlassenService Klassen
+@inject SchuljahrService Schuljahre
+@using Skoulou.WebApp.Components.Pages.Direction.KlassenTeile
 
-<InVorbereitung Titel="Classes" Icon="layers" Etappe="E3 – Organisation"
-                Beschreibung="Niveaux, classes de l'année, professeur principal et capacité." />
+<PageTitle>Classes · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Classes" Icon="layers" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="Les classes de l'année, leurs matières avec coefficients, leurs enseignants et le professeur principal.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => stufenDialog = true"><Icon Name="layers" Groesse="18" /> <span>Niveaux</span></button>
+        @if (JahrOffen)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Bearbeiten(null)"><Icon Name="plus" Groesse="18" /> <span>Nouvelle classe</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (JahrId is null)
+{
+    <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Les classes appartiennent à une année scolaire : créez-la d'abord.">
+        <a class="sk-btn sk-btn-primaer" href="/direction/annee">Créer l'année scolaire</a>
+    </Leerzustand>
+}
+else if (klassen is null)
+{
+    <div class="sk-skelett"><div></div><div></div><div></div></div>
+}
+else if (klassen.Count == 0)
+{
+    <Leerzustand Icon="layers" Titel="Aucune classe pour cette année" Text="Créez les niveaux (6e, 5e…) puis les classes (6e A, 6e B…).">
+        @if (JahrOffen)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Bearbeiten(null)"><Icon Name="plus" Groesse="18" /> <span>Nouvelle classe</span></button>
+        }
+    </Leerzustand>
+}
+else
+{
+    @if (!JahrOffen)
+    {
+        <Hinweis Art="info">L'année @Jahr?.Bezeichnung est clôturée : les classes sont en lecture seule.</Hinweis>
+    }
+    <div class="org-klassen">
+        @foreach (var k in Sichtbar)
+        {
+            <article class="org-klasse @(k.Aktiv ? null : "org-inaktiv")" @key="k.Id">
+                <div class="org-klasse-kopf">
+                    <h2>@k.Name</h2>
+                    @if (k.StufeName is not null)
+                    {
+                        <StatusBadge Text="@k.StufeName" Art="info" />
+                    }
+                    @if (!k.Aktiv)
+                    {
+                        <StatusBadge Text="Désactivée" Art="neutral" />
+                    }
+                </div>
+                <div class="org-belegung @BelegungsKlasse(k)">
+                    <span>@k.Effectif élève@(k.Effectif > 1 ? "s" : "")@(k.Kapazitaet is { } kap ? $" / {kap}" : "")</span>
+                    @if (k.Kapazitaet is { } kapazitaet)
+                    {
+                        <span class="org-balken" aria-hidden="true"><span style="width:@(Math.Min(100, k.Effectif * 100 / Math.Max(1, kapazitaet)))%"></span></span>
+                    }
+                </div>
+                <dl class="sk-daten org-klasse-daten">
+                    <dt>Prof. principal</dt><dd>@(k.KlassenlehrerName ?? "–")</dd>
+                    <dt>Salle</dt><dd>@(k.Raum ?? "–")</dd>
+                    @if (k.PeriodeTitel is not null)
+                    {
+                        <dt>Session</dt><dd>@k.PeriodeTitel</dd>
+                    }
+                    <dt>Matières</dt>
+                    <dd>
+                        @k.AnzahlFaecher
+                        @if (k.FaecherOhneLehrer > 0)
+                        {
+                            <StatusBadge Text="@($"{k.FaecherOhneLehrer} sans enseignant")" Art="warn" />
+                        }
+                    </dd>
+                </dl>
+                <div class="sk-knopfzeile">
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => faecherKlasse = k"><Icon Name="book" Groesse="16" /> <span>Matières et enseignants</span></button>
+                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/direction/eleves?classe={k.Id}")"><Icon Name="graduation" Groesse="16" /> <span>Élèves</span></a>
+                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/direction/cartes/{k.Id}")" target="_blank" rel="noopener"><Icon Name="qr" Groesse="16" /> <span>Cartes</span></a>
+                    @if (JahrOffen)
+                    {
+                        <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier @k.Name" @onclick="() => Bearbeiten(k)"><Icon Name="edit" Groesse="16" /></button>
+                        @if (k.Aktiv)
+                        {
+                            <button type="button" class="sk-icon-knopf" title="Supprimer" aria-label="Supprimer @k.Name" @onclick="() => loeschen = k"><Icon Name="trash" Groesse="16" /></button>
+                        }
+                        else
+                        {
+                            <AsyncKnopf Text="Réactiver" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => AktivierenAsync(k)" />
+                        }
+                    }
+                </div>
+            </article>
+        }
+    </div>
+    @if (klassen.Any(k => !k.Aktiv))
+    {
+        <button type="button" class="sk-link-knopf org-oben" @onclick="() => mitInaktiven = !mitInaktiven">@(mitInaktiven ? "Masquer les classes désactivées" : $"Afficher les classes désactivées ({klassen.Count(k => !k.Aktiv)})")</button>
+    }
+}
+
+@if (JahrId is { } jahrId)
+{
+    <KlasseDialog Open="klasseDialog" JahrId="jahrId" JahrText="@Jahr?.Bezeichnung" Klasse="bearbeitet" Stufen="stufen" Lehrkraefte="lehrkraefte" Perioden="perioden"
+                  OnClose="() => klasseDialog = false" OnGespeichert="GespeichertAsync" />
+}
+<StufenDialog Open="stufenDialog" OnClose="() => stufenDialog = false" OnGeaendert="NachStufenAsync" />
+<KlassenfaecherDialog Klasse="faecherKlasse" AlleKlassen="klassen ?? []" Lehrkraefte="lehrkraefte" Offen="JahrOffen" OnClose="() => faecherKlasse = null" OnGeaendert="KlassenLadenAsync" />
+<BestaetigungsDialog Open="loeschen is not null" Titel="@($"Supprimer la classe {loeschen?.Name} ?")" BestaetigenText="Supprimer" Gefahr="true"
+                     Text="Une classe encore vide est supprimée. Si elle a déjà des élèves, un emploi du temps, des notes ou des frais, elle est seulement désactivée."
+                     OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+@code {
+    private List<KlasseZeile>? klassen;
+    private List<StufeZeile> stufen = [];
+    private List<AuswahlEintrag> lehrkraefte = [];
+    private List<PeriodeZeile> perioden = [];
+    private bool klasseDialog, stufenDialog, mitInaktiven;
+    private KlasseZeile? bearbeitet, faecherKlasse, loeschen;
+
+    private bool JahrOffen => Jahr is { Status: not SchuljahrStatus.Abgeschlossen };
+    private IEnumerable<KlasseZeile> Sichtbar => (klassen ?? []).Where(k => k.Aktiv || mitInaktiven);
+
+    protected override async Task JahrLadenAsync()
+    {
+        klassen = null;
+        if (JahrId is not { } id) return;
+        await KlassenLadenAsync();
+        stufen = (await Klassen.StufenAsync(Ich.KontoId)).ToList();
+        lehrkraefte = (await Klassen.LehrkraefteAsync(Ich.KontoId)).ToList();
+        perioden = (await Schuljahre.JahreAsync(Ich.KontoId)).FirstOrDefault(j => j.Id == id)?.Perioden.ToList() ?? [];
+    }
+
+    private async Task KlassenLadenAsync()
+    {
+        if (JahrId is { } id) klassen = (await Klassen.KlassenAsync(Ich.KontoId, id)).ToList();
+    }
+
+    private static string? BelegungsKlasse(KlasseZeile k)
+        => k.Kapazitaet is not { } kap ? null : k.Effectif > kap ? "voll" : k.Effectif * 100 >= kap * 85 ? "fast" : null;
+
+    private void Bearbeiten(KlasseZeile? k) => (bearbeitet, klasseDialog) = (k, true);
+
+    private async Task GespeichertAsync(Guid id)
+    {
+        klasseDialog = false;
+        await AusfuehrenAsync(KlassenLadenAsync);
+    }
+
+    private async Task NachStufenAsync()
+    {
+        await AusfuehrenAsync(async () =>
+        {
+            stufen = (await Klassen.StufenAsync(Ich.KontoId)).ToList();
+            await KlassenLadenAsync();
+        });
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } k) return;
+        LoeschErgebnis ergebnis = default;
+        if (!await AusfuehrenAsync(async () => ergebnis = await Klassen.KlasseLoeschenAsync(Ich.KontoId, k.Id))) return;
+        Toast.ZeigeErfolg(ergebnis == LoeschErgebnis.Geloescht ? $"La classe {k.Name} est supprimée." : $"La classe {k.Name} est utilisée : elle est désactivée.");
+        loeschen = null;
+        await AusfuehrenAsync(KlassenLadenAsync);
+    }
+
+    private async Task AktivierenAsync(KlasseZeile k)
+    {
+        if (await AusfuehrenAsync(() => Klassen.KlasseAktivierenAsync(Ich.KontoId, k.Id), $"La classe {k.Name} est réactivée."))
+            await AusfuehrenAsync(KlassenLadenAsync);
+    }
+}

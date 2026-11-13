@@ -1,4 +1,61 @@
 @page "/direction"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits SkoulouSeite
+@inject CockpitService Cockpit
 
-<RollenStart Untertitel="Votre espace de direction : tout l'établissement en un coup d'œil." />
+<RollenStart Untertitel="@Untertitel">
+    @if (daten is not null)
+    {
+        <div class="org-cockpit">
+            <div class="org-kennzahlen">
+                <KennzahlKachel Bezeichnung="Élèves actifs" Wert="@SkoulouKultur.Zahl(daten.SchuelerAktiv)" Icon="graduation" Href="/direction/eleves"
+                                Zusatz="@(daten.OhneKlasse > 0 ? $"dont {daten.OhneKlasse} sans classe" : $"{daten.ElevesEnClasseHeute} inscrits en classe")" />
+                @if (daten.AValider > 0)
+                {
+                    <KennzahlKachel Bezeichnung="Inscriptions à valider" Wert="@daten.AValider.ToString()" Icon="clock" Haupt="true" Href="/direction/eleves?filtre=a-valider"
+                                    Zusatz="Inscriptions en ligne en attente" />
+                }
+                <KennzahlKachel Bezeichnung="Classes" Wert="@daten.Klassen.ToString()" Icon="layers" Href="/direction/classes" Zusatz="@daten.Jahr" />
+                <KennzahlKachel Bezeichnung="Enseignants" Wert="@daten.Lehrer.ToString()" Icon="users" Href="/direction/equipe"
+                                Zusatz="@(daten.LehrerOhneAuftrag > 0 ? $"{daten.LehrerOhneAuftrag} sans affectation" : "Tous affectés")" />
+                <KennzahlKachel Bezeichnung="Absences aujourd'hui" Wert="@daten.AbsencesHeute.ToString()" Icon="user-check" Href="/presences"
+                                Zusatz="@(daten.KlassenMitAppellHeute == 0 ? "Aucun appel saisi aujourd'hui" : $"{daten.RetardsHeute} retard(s) · appel fait dans {daten.KlassenMitAppellHeute} classe(s)")" />
+            </div>
+            @if (!daten.EinrichtungFertig)
+            {
+                <Karte Titel="Prochaines étapes" Icon="check-square" Untertitel="Pour bien démarrer, suivez ces étapes dans l'ordre.">
+                    <ol class="org-schrittliste">
+                        @foreach (var s in daten.Schritte)
+                        {
+                            <li class="@(s.Erledigt ? "erledigt" : null)">
+                                <span class="org-schritt-haken" aria-hidden="true"><Icon Name="@(s.Erledigt ? "check" : "dot")" Groesse="16" /></span>
+                                <div>
+                                    <strong>@s.Titel</strong>
+                                    <small class="sk-leise">@s.Text</small>
+                                </div>
+                                @if (!s.Erledigt)
+                                {
+                                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@s.Href">Ouvrir <Icon Name="arrow-right" Groesse="14" /></a>
+                                }
+                                else
+                                {
+                                    <span class="sk-leise">Fait</span>
+                                }
+                            </li>
+                        }
+                    </ol>
+                </Karte>
+            }
+        </div>
+    }
+</RollenStart>
+
+@code {
+    private CockpitDaten? daten;
+
+    private string Untertitel => daten?.Jahr is { } j
+        ? $"Votre établissement en un coup d'œil · année {j}{(daten.JahrStatus == SchuljahrStatus.Laufend ? " en cours" : " en préparation")}."
+        : "Votre espace de direction : commencez par créer l'année scolaire.";
+
+    protected override async Task InitialisierenAsync() => daten = await Cockpit.LadeAsync(Ich.KontoId);
+}

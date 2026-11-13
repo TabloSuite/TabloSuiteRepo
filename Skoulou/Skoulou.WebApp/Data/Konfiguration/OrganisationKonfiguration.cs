@@ -112,6 +112,8 @@ internal sealed class SchuelerProfilKonfiguration : IEntityTypeConfiguration<Sch
         b.Property(x => x.ElternEmail).HasMaxLength(256);
         b.HasIndex(x => x.KontoId).IsUnique();
         b.HasIndex(x => new { x.SchuleId, x.Matrikel }).IsUnique().HasFilter("[Matrikel] IS NOT NULL");
+        b.Property(x => x.KartenToken).HasMaxLength(32).IsUnicode(false);
+        b.HasIndex(x => x.KartenToken).IsUnique().HasFilter("[KartenToken] IS NOT NULL");
         b.KontoFk(x => x.KontoId);
     }
 }

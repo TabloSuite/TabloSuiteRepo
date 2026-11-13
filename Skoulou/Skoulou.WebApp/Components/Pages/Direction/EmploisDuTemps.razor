@@ -1,5 +1,83 @@
 @page "/direction/emplois-du-temps"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits JahrSeite
+@using Skoulou.WebApp.Components.Pages.Direction.Stundenplan
 
-<InVorbereitung Titel="Emplois du temps" Icon="timetable" Etappe="E3 – Organisation"
-                Beschreibung="Emplois du temps des classes avec contrôle des conflits d'enseignants et de salles." />
+<PageTitle>Emplois du temps · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Emplois du temps" Icon="timetable" Untertitel="Les cours de chaque classe, avec contrôle des conflits d'enseignants, de salles et de classes.">
+    <Aktionen>
+        @if (klasseId is not null && JahrOffen)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="NeuOeffnenAsync"><Icon Name="plus" Groesse="18" /> <span>Nouvel emploi du temps</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (Laedt)
+{
+    <LadeIndikator />
+}
+else if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (JahrId is null)
+{
+    <Karte>
+        <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Créez d'abord l'année scolaire et ses classes.">
+            <a class="sk-btn sk-btn-primaer" href="/direction/annee"><Icon Name="calendar" Groesse="18" /> <span>Année scolaire</span></a>
+        </Leerzustand>
+    </Karte>
+}
+else if (klassen is { Count: 0 })
+{
+    <Karte>
+        <Leerzustand Icon="layers" Titel="@($"Aucune classe en {Jahr?.Bezeichnung}")" Text="Créez les classes de l'année et affectez leurs matières aux enseignants.">
+            <a class="sk-btn sk-btn-primaer" href="/direction/classes"><Icon Name="layers" Groesse="18" /> <span>Classes</span></a>
+        </Leerzustand>
+    </Karte>
+}
+else if (klassen is not null)
+{
+    <div class="org-edt-auswahl">
+        <AuswahlFeld T="Guid?" Label="Classe" Optionen="klassenOptionen" Wert="klasseId" WertChanged="KlasseGewaehltAsync" Icon="layers" CssClass="org-edt-klasse" />
+        @if (plaene is { Count: > 0 })
+        {
+            <div class="org-edt-plaene" role="group" aria-label="Emplois du temps de la classe">
+                @foreach (var p in plaene)
+                {
+                    <button type="button" class="sk-chip @(p.Id == planId ? "aktiv" : null)" aria-pressed="@(p.Id == planId ? "true" : "false")" @onclick="() => planId = p.Id">
+                        <Icon Name="@(p.Veroeffentlicht ? "check-circle" : "edit")" Groesse="15" />
+                        @p.Label
+                        <span class="sk-chip-zahl">@(p.Veroeffentlicht ? "publié" : "brouillon")</span>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    @if (plaene is null)
+    {
+        <LadeIndikator />
+    }
+    else if (planId is { } id)
+    {
+        <PlanEditor @key="id" PlanId="id" Vorlagen="vorlagen" OnGeaendert="PlanGeaendertAsync" OnGeloescht="PlanGeloeschtAsync" />
+    }
+    else
+    {
+        <Karte>
+            <Leerzustand Icon="timetable" Titel="Pas encore d'emploi du temps pour cette classe"
+                         Text="Créez un brouillon, placez les cours dans la grille, puis publiez-le pour les enseignants, les élèves et les parents.">
+                @if (JahrOffen)
+                {
+                    <button type="button" class="sk-btn sk-btn-primaer" @onclick="NeuOeffnenAsync"><Icon Name="plus" Groesse="18" /> <span>Créer l'emploi du temps</span></button>
+                }
+            </Leerzustand>
+        </Karte>
+    }
+
+    <PlanDialog Open="neuOffen" Neu="true" Klasse="@KlassenName" Vorlagen="vorlagen" Fehler="@(neuOffen ? Fehlermeldung : null)"
+                OnSpeichern="AnlegenAsync" OnClose="() => neuOffen = false" />
+}

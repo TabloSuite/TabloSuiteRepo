@@ -1,0 +1,52 @@
+@page "/verification/carte/{Token}"
+@attribute [AllowAnonymous]
+@using Skoulou.WebApp.Services.Organisation
+@inject KartenService Karten
+
+<PageTitle>Vérification d'une carte d'élève · SKOULOU</PageTitle>
+
+<div class="sk-seite-schmal">
+    <SeitenKopf Titel="Vérification d'une carte d'élève" Icon="qr" Untertitel="Le QR code imprimé sur la carte mène à cette page. Par respect de la vie privée, aucune donnée personnelle n'est affichée." />
+    <Karte>
+        @if (pruefung is null)
+        {
+            <LadeIndikator />
+        }
+        else if (pruefung.Gueltig)
+        {
+            <div class="org-karte-pruefung gueltig" role="status">
+                <span class="org-karte-pruefung-icon"><Icon Name="check-circle" Groesse="34" /></span>
+                <div>
+                    <strong>Carte valable</strong>
+                    <p>Cette carte a été délivrée par <b>@pruefung.Schule</b> à un élève inscrit pour l'année scolaire <b>@pruefung.Jahr</b>.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="org-karte-pruefung ungueltig" role="status">
+                <span class="org-karte-pruefung-icon"><Icon Name="alert" Groesse="34" /></span>
+                <div>
+                    <strong>Carte non valable</strong>
+                    @if (pruefung.Schule is not null)
+                    {
+                        <p>Cette carte a été délivrée par <b>@pruefung.Schule</b>, mais elle n'est plus valable (élève parti, carte remplacée ou année terminée).</p>
+                    }
+                    else
+                    {
+                        <p>Ce code ne correspond à aucune carte d'élève en cours de validité. La carte a peut-être été remplacée.</p>
+                    }
+                    <p class="sk-leise">En cas de doute, contactez directement l'établissement.</p>
+                </div>
+            </div>
+        }
+    </Karte>
+</div>
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+
+    private KartenPruefung? pruefung;
+
+    protected override async Task OnParametersSetAsync() => pruefung = await Karten.PruefeKarteAsync(Token);
+}

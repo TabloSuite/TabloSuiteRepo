@@ -1,0 +1,144 @@
+@* Import depuis Excel: Vorlage laden, Datei prüfen (vollständige Fehlerliste), gültige Zeilen importieren. *@
+@inherits SkoulouSeite
+@inject ImportService Import
+
+<ModalDialog Open="Open" Title="@($"Importer des {ImportVorlageText} depuis Excel")" Oberzeile="Import" Breite="sk-modal-lg" SchliessenMitEscape="false"
+             ErrorMessage="@fehler" OnClose="SchliessenAsync">
+    <ChildContent>
+    <ol class="org-schritte">
+        <li>
+            <strong>Téléchargez le modèle</strong> et remplissez une ligne par personne (les colonnes en bleu sont obligatoires).
+            <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@VorlageHref" download><Icon Name="download" Groesse="16" /> <span>Modèle Excel</span></a>
+        </li>
+        <li>
+            <strong>Chargez le fichier</strong> (.xlsx, 2 Mo et 2 000 lignes au maximum) : rien n'est encore créé, vous voyez d'abord l'aperçu.
+            <div class="org-datei">
+                <label class="sk-btn sk-btn-ghost org-datei-knopf">
+                    <Icon Name="download" Groesse="18" CssClass="org-hoch" /> <span>Choisir le fichier Excel</span>
+                    <InputFile OnChange="DateiAsync" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled="@laedt" />
+                </label>
+                @if (dateiName is not null && !laedt)
+                {
+                    <span class="sk-leise">@dateiName</span>
+                }
+                @if (laedt)
+                {
+                    <span class="sk-spinner" aria-hidden="true"></span> <span class="sk-leise">Vérification…</span>
+                }
+            </div>
+        </li>
+        <li><strong>Importez les lignes valides.</strong> Les lignes en erreur sont écartées : corrigez-les dans le fichier et importez-les ensuite.</li>
+    </ol>
+
+    @if (vorschau is not null)
+    {
+        <div class="org-import-zahlen">
+            <KennzahlKachel Bezeichnung="Lignes lues" Wert="@vorschau.Zeilen.Count.ToString()" Icon="grid" />
+            <KennzahlKachel Bezeichnung="Prêtes à importer" Wert="@vorschau.Gueltig.ToString()" Icon="check-circle" Haupt="true" />
+            <KennzahlKachel Bezeichnung="En erreur" Wert="@vorschau.Ungueltig.ToString()" Icon="alert" />
+        </div>
+        @if (vorschau.Fehler.Count > 0)
+        {
+            <Abschnitt Titel="@($"Erreurs ({vorschau.Fehler.Count})")" Ebene="3">
+                <ChildContent>
+                
+                <ul class="org-fehlerliste sk-liste-scroll">
+                    @foreach (var f in vorschau.Fehler)
+                    {
+                        <li><span class="org-zeile-nr">Ligne @f.Zeile</span> <strong>@f.Person</strong> – @f.Meldung</li>
+                    }
+                </ul>
+                </ChildContent>
+                <Aktionen>
+                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/direction/import/erreurs/{vorschau.Id}")" download><Icon Name="download" Groesse="16" /> <span>Télécharger la liste</span></a>
+                </Aktionen>
+</Abschnitt>
+        }
+        <Abschnitt Titel="Aperçu" Ebene="3">
+            <div class="sk-tabelle-rahmen sk-liste-scroll org-vorschau">
+                <table class="sk-tabelle">
+                    <thead><tr><th>Ligne</th><th>Nom</th><th>Identifiant</th><th>@ZusatzTitel</th><th>État</th></tr></thead>
+                    <tbody>
+                        @foreach (var z in vorschau.Zeilen)
+                        {
+                            <tr class="@(z.Gueltig ? null : "org-zeile-fehler")">
+                                <td>@z.Nr</td>
+                                <td>@z.Name</td>
+                                <td><code>@z.Identifiant</code>@if (z.Vorgeschlagen) {<small class="sk-leise"> (proposé)</small>}</td>
+                                <td>@(z.Zusatz ?? "–")</td>
+                                <td>@if (z.Gueltig) {<StatusBadge Text="Prêt" Art="erfolg" />} else {<StatusBadge Text="Erreur" Art="fehler" />}</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </Abschnitt>
+    }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="SchliessenAsync">Fermer</button>
+        <AsyncKnopf Text="@($"Importer {vorschau?.Gueltig ?? 0} ligne{((vorschau?.Gueltig ?? 0) > 1 ? "s" : "")}")" BusyText="Import en cours…" Icon="check"
+                    CssClass="sk-btn-primaer" Disabled="@(vorschau is not { Gueltig: > 0 })" OnClick="ImportierenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public ImportArt Art { get; set; }
+    [Parameter] public Guid? JahrId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Nach dem Import: Zugangsstapel zur Anzeige.</summary>
+    [Parameter] public EventCallback<ZugangsStapel> OnImportiert { get; set; }
+
+    private ImportVorschau? vorschau;
+    private string? fehler;
+    private bool laedt;
+    private string? dateiName;
+
+    private string ImportVorlageText => Art switch { ImportArt.Eleves => "élèves", ImportArt.Enseignants => "enseignants", _ => "parents" };
+    private string ZusatzTitel => Art switch { ImportArt.Eleves => "Classe", ImportArt.Parents => "Enfants", _ => "–" };
+    private string VorlageHref => $"/direction/import/modele/{Art.ToString().ToLowerInvariant()}{(JahrId is { } j ? $"?annee={j}" : "")}";
+
+    private async Task DateiAsync(InputFileChangeEventArgs e)
+    {
+        laedt = true;
+        fehler = null;
+        vorschau = null;
+        dateiName = e.File.Name;
+        try
+        {
+            await using var strom = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            vorschau = await Import.VorschauAsync(Ich.KontoId, Art, JahrId, strom, e.File.Name);
+        }
+        catch (IOException)
+        {
+            fehler = "Le fichier est trop lourd (2 Mo au maximum).";
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+        finally
+        {
+            laedt = false;
+        }
+    }
+
+    private async Task ImportierenAsync()
+    {
+        if (vorschau is null) return;
+        ImportErgebnis? ergebnis = null;
+        if (!await AusfuehrenAsync(async () => ergebnis = await Import.ImportierenAsync(Ich.KontoId, vorschau.Id))) { fehler = Fehlermeldung; return; }
+        Toast.ZeigeErfolg($"{ergebnis!.Angelegt} compte{(ergebnis.Angelegt > 1 ? "s" : "")} créé{(ergebnis.Angelegt > 1 ? "s" : "")}" +
+                          (ergebnis.Ausgelassen > 0 ? $", {ergebnis.Ausgelassen} ligne(s) écartée(s)." : "."));
+        vorschau = null;
+        await OnImportiert.InvokeAsync(ergebnis.Zugaenge);
+    }
+
+    private async Task SchliessenAsync()
+    {
+        vorschau = null;
+        fehler = null;
+        await OnClose.InvokeAsync();
+    }
+}

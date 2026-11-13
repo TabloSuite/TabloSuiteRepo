@@ -1,0 +1,68 @@
+@* Logo der Schule (PNG/JPEG/WebP bis 5 Mo; Typ wird serverseitig an den ersten Bytes geprüft). *@
+@inherits SkoulouSeite
+@inject SchulService Schule
+
+<Karte Titel="Logo" Icon="image" Untertitel="Imprimé sur les bulletins, reçus et cartes d'élève.">
+    <div class="org-logo">
+        <div class="org-logo-bild">
+            @if (logoId is { } id)
+            {
+                <img src="@($"/medien/{id}")" alt="Logo de @SchulName" />
+            }
+            else
+            {
+                <NamensKreis Name="@SchulName" Groesse="72" />
+            }
+        </div>
+        <div class="org-logo-text">
+            <label class="sk-btn sk-btn-ghost org-datei-knopf">
+                <Icon Name="image" Groesse="18" /> <span>@(laedt ? "Envoi…" : logoId is null ? "Choisir un logo" : "Remplacer le logo")</span>
+                <InputFile OnChange="HochladenAsync" accept="image/png,image/jpeg,image/webp" disabled="@laedt" />
+            </label>
+            @if (logoId is not null)
+            {
+                <AsyncKnopf Text="Retirer" Icon="trash" CssClass="sk-btn-ghost" OnClick="EntfernenAsync" />
+            }
+            <p class="sk-leise">PNG, JPEG ou WebP, 5 Mo au maximum. Un logo carré sur fond clair rend le mieux.</p>
+        </div>
+    </div>
+</Karte>
+
+@code {
+    [Parameter] public Guid? LogoMediumId { get; set; }
+    [Parameter] public string SchulName { get; set; } = string.Empty;
+
+    private bool laedt;
+    private Guid? logoId;
+
+    protected override void OnInitialized() => logoId = LogoMediumId;
+
+    private async Task HochladenAsync(InputFileChangeEventArgs e)
+    {
+        laedt = true;
+        try
+        {
+            await AusfuehrenAsync(async () =>
+            {
+                try
+                {
+                    await using var strom = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                    logoId = await Schule.LogoHochladenAsync(Ich.KontoId, strom, e.File.Name);
+                }
+                catch (IOException)
+                {
+                    throw new Skoulou.Core.Fehler.FachFehler("L'image est trop lourde (5 Mo au maximum).");
+                }
+            }, "Le logo est enregistré.");
+        }
+        finally
+        {
+            laedt = false;
+        }
+    }
+
+    private async Task EntfernenAsync()
+    {
+        if (await AusfuehrenAsync(() => Schule.LogoEntfernenAsync(Ich.KontoId), "Le logo est retiré.")) logoId = null;
+    }
+}

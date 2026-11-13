@@ -1,0 +1,30 @@
+@* Heures prévues (affectation) et placées (emploi du temps) par matière – orange en cas d'écart. *@
+
+<Tabelle T="LehrauftragOption" Eintraege="Auftraege" LeerIcon="users" LeerTitel="Aucune affectation"
+         LeerText="Affectez les matières de la classe à des enseignants (page « Classes »).">
+    <Kopf>
+        <th>Matière</th>
+        <th>Enseignant</th>
+        <th class="org-zahl">Prévu</th>
+        <th class="org-zahl">Placé</th>
+    </Kopf>
+    <Zeile Context="a">
+        <td><strong>@a.Fach</strong></td>
+        <td>@a.Lehrer</td>
+        <td class="org-zahl">@SkoulouKultur.Zahl(a.Soll, 1) h</td>
+        <td class="org-zahl">
+            @if (Math.Abs(a.Soll - a.Ist) > 0.01m)
+            {
+                <span class="org-edt-abweichung" title="Écart avec les heures prévues"><Icon Name="alert" Groesse="13" /> @SkoulouKultur.Zahl(a.Ist, 1) h</span>
+            }
+            else
+            {
+                <span class="org-edt-passt"><Icon Name="check" Groesse="13" /> @SkoulouKultur.Zahl(a.Ist, 1) h</span>
+            }
+        </td>
+    </Zeile>
+</Tabelle>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<LehrauftragOption> Auftraege { get; set; } = [];
+}

@@ -1,0 +1,54 @@
+@* Name, Ort, Land der Schule (nur der Direktor). *@
+@inherits SkoulouSeite
+@inject SchulService Schule
+
+<Karte Titel="Identité de l'établissement" Icon="school">
+    <div class="sk-formular">
+        <TextFeld Label="Nom de l'établissement" @bind-Wert="name" MaxLaenge="200" Pflicht="true" Fehler="@FeldFehler("name")" />
+        <div class="sk-raster-2">
+            <TextFeld Label="Ville" @bind-Wert="ort" MaxLaenge="120" Pflicht="true" Fehler="@FeldFehler("ort")" />
+            <TextFeld Label="Pays" @bind-Wert="land" MaxLaenge="120" />
+        </div>
+        <p class="sk-leise">Statut : <StatusBadge Text="@StatusText" Art="@(Daten.Status == SchulStatus.Active ? "erfolg" : "warn")" /> – géré par l'équipe SKOULOU.</p>
+        <div class="sk-formular-fuss">
+            <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        </div>
+    </div>
+</Karte>
+
+@code {
+    [Parameter, EditorRequired] public SchulDaten Daten { get; set; } = default!;
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? name, ort, land;
+    private string? feld;
+
+    protected override void OnInitialized() => (name, ort, land) = (Daten.Name, Daten.Ort, Daten.Land);
+
+    private string StatusText => Daten.Status switch
+    {
+        SchulStatus.Active => "Active",
+        SchulStatus.Suspendue => "Suspendue",
+        SchulStatus.Refusee => "Refusée",
+        _ => "En attente de validation"
+    };
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        try
+        {
+            await Schule.StammdatenSpeichernAsync(Ich.KontoId, new SchulStammEingabe(name, ort, land));
+            Toast.ZeigeErfolg("Les données de l'établissement sont enregistrées.");
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            feld = f.Feld;
+            Fehlermeldung = f.Message;
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+}

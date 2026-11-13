@@ -1,0 +1,104 @@
+@* Ein Emploi du temps einer Klasse: Wochenraster (im Entwurf bearbeitbar), Konflikte, Soll/Ist, Veröffentlichung. *@
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Components.Pages.Organisation
+
+@if (plan is null)
+{
+    @if (KeinZugriff || Fehlermeldung is not null)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else
+    {
+        <LadeIndikator />
+    }
+}
+else
+{
+    <Karte Titel="@plan.Label" Untertitel="@($"{plan.Klasse} · {plan.Jahr} · {plan.Stunden.Count} cours")" Icon="timetable">
+        <Aktionen>
+            @if (plan.Veroeffentlicht)
+            {
+                <StatusBadge Text="Publié" Art="erfolg" Icon="check" />
+            }
+            else
+            {
+                <StatusBadge Text="Brouillon" Art="warn" Icon="edit" />
+            }
+        </Aktionen>
+        <ChildContent>
+            <div class="sk-knopfzeile org-edt-aktionen">
+                @if (Bearbeitbar)
+                {
+                    <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => NeueStunde(null)"><Icon Name="plus" Groesse="18" /> <span>Ajouter un cours</span></button>
+                    <AsyncKnopf Text="Publier" BusyText="Publication…" Icon="send" CssClass="sk-btn-ghost" OnClick="VeroeffentlichenAsync" />
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick="DatenOeffnen"><Icon Name="calendar" Groesse="18" /> <span>Validité</span></button>
+                    @if (VorlagenOptionen.Count > 0)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost" @onclick="KopieOeffnen"><Icon Name="refresh" Groesse="18" /> <span>Reprendre un autre emploi du temps</span></button>
+                    }
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => loeschenFragen = true"><Icon Name="trash" Groesse="18" /> <span>Supprimer le brouillon</span></button>
+                }
+                else if (plan.Veroeffentlicht && plan.JahrOffen)
+                {
+                    <AsyncKnopf Text="Retirer la publication pour modifier" BusyText="Retrait…" Icon="edit" CssClass="sk-btn-ghost" OnClick="ZurueckziehenAsync" />
+                }
+                <Druckknopf Text="PDF" Href="@($"/emplois-du-temps/{plan.Id}/pdf")" />
+            </div>
+
+            @if (plan.Veroeffentlicht)
+            {
+                <Hinweis Art="erfolg">Publié : les enseignants, les élèves et les parents de la classe voient cet emploi du temps.</Hinweis>
+            }
+            else if (!plan.JahrOffen)
+            {
+                <Hinweis Art="info">L'année scolaire est clôturée : cet emploi du temps ne peut plus être modifié.</Hinweis>
+            }
+            else
+            {
+                <Hinweis Art="info">Brouillon, visible seulement par la direction. Cliquez sur une heure libre pour ajouter un cours, sur un cours pour le modifier, puis publiez.</Hinweis>
+            }
+            @if (plan.Konflikte > 0)
+            {
+                <Hinweis Art="warn" Titel="@($"{plan.Konflikte} cours en conflit")">
+                    Un enseignant, une salle ou la classe est déjà occupé(e) à la même heure dans un emploi du temps publié. Modifiez les cours signalés avant de publier.
+                </Hinweis>
+            }
+
+            @if (Bearbeitbar)
+            {
+                <WochenRaster Stunden="plan.Stunden" ImmerSamstag="true" OnStunde="StundeBearbeiten" OnFreierPlatz="FreierPlatzGewaehlt" />
+            }
+            else
+            {
+                <WochenRaster Stunden="plan.Stunden" />
+            }
+        </ChildContent>
+    </Karte>
+
+    <Karte Titel="Heures par matière" Untertitel="Heures prévues dans les affectations et heures placées dans cet emploi du temps." Icon="clock" Klappbar="true">
+        <SollIstTabelle Auftraege="plan.Lehrauftraege" />
+    </Karte>
+
+    <StundeDialog Open="stundeOffen" Bearbeiten="bearbeitetId is not null" Oberzeile="@plan.Klasse" Fehler="@(stundeOffen ? Fehlermeldung : null)"
+                  Optionen="plan.Lehrauftraege" Vorlage="vorlage" OnSpeichern="StundeSpeichernAsync" OnLoeschen="StundeLoeschenAsync" OnClose="() => stundeOffen = false" />
+
+    <PlanDialog Open="datenOffen" Neu="false" Klasse="@plan.Klasse" Ab="plan.GueltigAb" Bis="plan.GueltigBis" Fehler="@(datenOffen ? Fehlermeldung : null)"
+                OnSpeichern="DatenSpeichernAsync" OnClose="() => datenOffen = false" />
+
+    <ModalDialog Open="kopieOffen" Title="Reprendre un autre emploi du temps" Oberzeile="@plan.Klasse" ErrorMessage="@(kopieOffen ? Fehlermeldung : null)"
+                 SchliessenMitEscape="false" OnClose="() => kopieOffen = false">
+        <ChildContent>
+            <Hinweis Art="warn">Les cours actuels de ce brouillon sont remplacés par ceux de l'emploi du temps choisi.</Hinweis>
+            <AuswahlFeld T="Guid?" Label="Emploi du temps à reprendre" Pflicht="true" Optionen="VorlagenOptionen" @bind-Wert="kopieVon" />
+        </ChildContent>
+        <Footer>
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => kopieOffen = false">Annuler</button>
+            <AsyncKnopf Text="Reprendre les cours" BusyText="Copie…" Icon="check" CssClass="sk-btn-primaer" Disabled="kopieVon is null" OnClick="KopierenAsync" />
+        </Footer>
+    </ModalDialog>
+
+    <BestaetigungsDialog Open="loeschenFragen" Titel="Supprimer ce brouillon ?" Gefahr="true" BestaetigenText="Supprimer"
+                         Text="@($"Le brouillon « {plan.Label} » et ses {plan.Stunden.Count} cours seront supprimés.")" Fehler="@(loeschenFragen ? Fehlermeldung : null)"
+                         OnBestaetigen="PlanLoeschenAsync" OnAbbrechen="() => loeschenFragen = false" />
+}

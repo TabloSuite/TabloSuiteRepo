@@ -1,0 +1,66 @@
+@* Récapitulatif einer Klasse im Zeitraum; Klick auf einen Schüler zeigt seinen Verlauf. *@
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Organisation
+@inject AnwesenheitService Anwesenheit
+
+<div class="org-rueckblick-werkzeuge">
+    <DatumFeld Label="Du" Wert="von" WertChanged="v => ZeitraumAsync(v, bis)" Max="bis" />
+    <DatumFeld Label="Au" Wert="bis" WertChanged="v => ZeitraumAsync(von, v)" Min="von" />
+</div>
+@if (daten is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else
+{
+    <p class="sk-leise">@daten.TageMitAppell jour@(daten.TageMitAppell > 1 ? "s" : "") d'appel entre le @SkoulouKultur.Datum(daten.Von) et le @SkoulouKultur.Datum(daten.Bis).</p>
+    <Tabelle T="KlassenUebersichtZeile" Eintraege="daten.Zeilen" LeerIcon="users" LeerTitel="Aucun élève dans cette classe sur la période">
+        <Kopf><th>Élève</th><th>Absences</th><th>dont justifiées</th><th>Retards</th><th>Minutes</th></Kopf>
+        <Zeile Context="z">
+            <td><button type="button" class="org-name-knopf" @onclick="() => DetailAsync(z)">@z.Name</button></td>
+            <td class="org-zahl">@z.Summe.Absences</td>
+            <td class="org-zahl">@z.Summe.AbsencesJustifiees</td>
+            <td class="org-zahl">@z.Summe.Retards</td>
+            <td class="org-zahl">@z.Summe.RetardMinuten</td>
+        </Zeile>
+    </Tabelle>
+}
+
+<ModalDialog Open="detail is not null" Title="@(detail?.Name ?? "")" Oberzeile="Absences et retards" Breite="sk-modal-lg" OnClose="() => detail = null">
+    @if (detail is not null)
+    {
+        <AnwesenheitVerlauf Daten="detail" />
+    }
+</ModalDialog>
+
+@code {
+    [Parameter, EditorRequired] public Guid KlasseId { get; set; }
+    [Parameter] public DateOnly Standardbeginn { get; set; }
+    [Parameter] public DateOnly Standardende { get; set; }
+    [Parameter] public Guid? JahrId { get; set; }
+
+    private DateOnly? von, bis;
+    private KlassenUebersicht? daten;
+    private SchuelerAnwesenheit? detail;
+    private Guid geladenFuer;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (geladenFuer == KlasseId) return;
+        geladenFuer = KlasseId;
+        (von, bis) = (von ?? Standardbeginn, bis ?? Standardende);
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync() => daten = await Anwesenheit.KlassenUebersichtAsync(Ich.KontoId, KlasseId, von ?? Standardbeginn, bis ?? Standardende);
+
+    private async Task ZeitraumAsync(DateOnly? neuVon, DateOnly? neuBis)
+    {
+        (von, bis) = (neuVon ?? Standardbeginn, neuBis ?? Standardende);
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private Task DetailAsync(KlassenUebersichtZeile z)
+        => AusfuehrenAsync(async () => detail = await Anwesenheit.SchuelerAsync(Ich.KontoId, z.SchuelerId, JahrId));
+}

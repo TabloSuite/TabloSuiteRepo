@@ -1,5 +1,158 @@
 @page "/direction/parents"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits SkoulouSeite
+@inject ElternService Eltern
+@using Skoulou.WebApp.Components.Pages.Direction.ElternTeile
 
-<InVorbereitung Titel="Parents" Icon="famille" Etappe="E3 – Organisation"
-                Beschreibung="Comptes des parents et des tuteurs, et enfants liés à chaque compte." />
+<PageTitle>Parents · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Parents" Icon="famille" Untertitel="Les accès des parents et les enfants qu'ils suivent : notes publiées, présences, emploi du temps et frais.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => import = true"><Icon Name="download" Groesse="18" /> <span>Importer</span></button>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Oeffnen(null)"><Icon Name="user-plus" Groesse="18" /> <span>Nouvel accès parent</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zaehler is not null)
+{
+    @if (zaehler.SchuelerOhneEltern > 0)
+    {
+        <Hinweis Art="info">@zaehler.SchuelerOhneEltern élève@(zaehler.SchuelerOhneEltern > 1 ? "s actifs n'ont" : " actif n'a") encore aucun parent lié.</Hinweis>
+    }
+    <Liste T="ElternZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom du parent ou de l'enfant, matricule, téléphone…"
+           LeerIcon="famille" LeerTitel="Aucun accès parent" LeerText="Créez un accès pour chaque parent et liez-le à ses enfants, ou importez la liste depuis Excel.">
+        <Zeile Context="p">
+            <div class="org-zeile @(p.Status == KontoStatus.Archive ? "org-inaktiv" : null)">
+                <NamensKreis Name="@p.Name" Groesse="40" />
+                <div class="org-zeile-haupt">
+                    <strong>@p.Name</strong>
+                    <span class="org-zeile-meta">
+                        <code>@p.Identifiant</code>
+                        @if (p.Telefon is not null) {<span>@p.Telefon</span>}
+                        @if (p.Email is not null) {<span>@p.Email</span>}
+                    </span>
+                    <span class="org-kinder-chips">
+                        @foreach (var k in p.Kinder)
+                        {
+                            <span class="sk-chip">
+                                @k.Name@(k.Klasse is null ? "" : $" · {k.Klasse}") · @k.Beziehung
+                                @if (p.Status != KontoStatus.Archive)
+                                {
+                                    <button type="button" class="org-chip-x" title="Retirer le lien" aria-label="Retirer le lien avec @k.Name" @onclick="() => trennen = (p, k)"><Icon Name="x" Groesse="14" /></button>
+                                }
+                            </span>
+                        }
+                        @if (p.Kinder.Count == 0)
+                        {
+                            <StatusBadge Text="Aucun enfant lié" Art="warn" />
+                        }
+                    </span>
+                </div>
+                <div class="org-zeile-info"><KontoStatusBadge Status="p.Status" /></div>
+                <div class="org-zeile-aktionen">
+                    @if (p.Status != KontoStatus.Archive)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => verknuepfen = p"><Icon Name="plus" Groesse="16" /> <span>Lier un enfant</span></button>
+                        <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier @p.Name" @onclick="() => Oeffnen(p.KontoId)"><Icon Name="edit" Groesse="16" /></button>
+                    }
+                    @if (p.Status is KontoStatus.Actif or KontoStatus.Bloque)
+                    {
+                        <button type="button" class="sk-icon-knopf" title="Nouveau mot de passe" aria-label="Nouveau mot de passe pour @p.Name" @onclick="() => Aktion(KontoAktion.Passwort, p)"><Icon Name="key" Groesse="16" /></button>
+                    }
+                    @switch (p.Status)
+                    {
+                        case KontoStatus.Actif:
+                            <button type="button" class="sk-icon-knopf" title="Bloquer" aria-label="Bloquer @p.Name" @onclick="() => Aktion(KontoAktion.Sperren, p)"><Icon Name="lock" Groesse="16" /></button>
+                            <button type="button" class="sk-icon-knopf" title="Archiver" aria-label="Archiver @p.Name" @onclick="() => Aktion(KontoAktion.Archivieren, p)"><Icon Name="history" Groesse="16" /></button>
+                            break;
+                        case KontoStatus.Bloque:
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Entsperren, p)">Débloquer</button>
+                            break;
+                        case KontoStatus.Archive:
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Aktion(KontoAktion.Reintegrieren, p)">Réintégrer</button>
+                            break;
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<ElternDialog Open="dialog" ElternId="bearbeitet" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<KindVerknuepfenDialog ElternTeil="verknuepfen" OnClose="() => verknuepfen = null" OnErledigt="VerknuepftAsync" />
+<KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="AktionErledigtAsync" />
+<ZugangsDialog Stapel="zugaenge" OnClose="() => zugaenge = null" />
+<ImportDialog Open="import" Art="ImportArt.Parents" OnClose="() => import = false" OnImportiert="ImportiertAsync" />
+<BestaetigungsDialog Open="trennen is not null" Titel="Retirer le lien ?" BestaetigenText="Retirer le lien"
+                     Text="@($"{trennen?.Eltern.Name} ne verra plus la scolarité de {trennen?.Kind.Name}. Le compte du parent reste actif.")"
+                     OnBestaetigen="TrennenAsync" OnAbbrechen="() => trennen = null" />
+
+@code {
+    private Liste<ElternZeile>? liste;
+    private ElternZaehler? zaehler;
+    private bool dialog, import;
+    private Guid? bearbeitet;
+    private ElternZeile? verknuepfen;
+    private (ElternZeile Eltern, KindKurz Kind)? trennen;
+    private KontoAktionAnfrage? aktion;
+    private ZugangsStapel? zugaenge;
+
+    private IReadOnlyList<FilterChip> Chips => zaehler is not { } z ? [] :
+    [
+        new(null, "Tous", z.Alle), new(ElternService.FilterOhneKind, "Sans enfant lié", z.OhneKind),
+        new(ElternService.FilterBloques, "Bloqués", z.Bloques), new(ElternService.FilterArchives, "Archivés", z.Archives),
+    ];
+
+    protected override async Task InitialisierenAsync() => zaehler = await Eltern.ZaehlerAsync(Ich.KontoId);
+
+    private async Task<(IReadOnlyList<ElternZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Eltern.SucheAsync(Ich.KontoId, a.Filter, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private void Oeffnen(Guid? id) => (bearbeitet, dialog) = (id, true);
+
+    private void Aktion(KontoAktion art, ElternZeile p) => aktion = KontoAktionAnfrage.Eins(art, p.KontoId, p.Name);
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => zaehler = await Eltern.ZaehlerAsync(Ich.KontoId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task GespeichertAsync(ZugangsStapel? stapel)
+    {
+        (dialog, zugaenge) = (false, stapel);
+        await NeuLadenAsync();
+    }
+
+    private async Task VerknuepftAsync()
+    {
+        verknuepfen = null;
+        await NeuLadenAsync();
+    }
+
+    private async Task AktionErledigtAsync(ZugangsStapel? stapel)
+    {
+        (aktion, zugaenge) = (null, stapel);
+        await NeuLadenAsync();
+    }
+
+    private async Task ImportiertAsync(ZugangsStapel stapel)
+    {
+        (import, zugaenge) = (false, stapel);
+        await NeuLadenAsync();
+    }
+
+    private async Task TrennenAsync()
+    {
+        if (trennen is not { } t) return;
+        if (await AusfuehrenAsync(() => Eltern.TrennenAsync(Ich.KontoId, t.Eltern.KontoId, t.Kind.SchuelerId), "Le lien est retiré."))
+        {
+            trennen = null;
+            await NeuLadenAsync();
+        }
+    }
+}

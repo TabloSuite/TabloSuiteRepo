@@ -1,5 +1,163 @@
 @page "/presences"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits JahrSeite
+@using Skoulou.WebApp.Services.Organisation
+@using Skoulou.WebApp.Components.Pages.Direction.Gemeinsam
+@using Skoulou.WebApp.Components.Pages.Unterricht.AppellTeile
+@inject AnwesenheitService Anwesenheit
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Présences" Icon="user-check" Etappe="E3 – Organisation"
-                Beschreibung="Appel de la classe en un geste : présent par défaut, absences et retards." />
+<PageTitle>Présences · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Présences" Icon="user-check" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="@(Ich.Rolle == Rollen.Lehrer ? "L'appel de vos classes : tout le monde est présent par défaut, signalez seulement les absents et les retards." : "L'appel de chaque classe et le récapitulatif des absences et retards.")" />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (klassen is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (klassen.Count == 0)
+{
+    <Leerzustand Icon="users" Titel="Aucune classe" Text="@(Ich.Rolle == Rollen.Lehrer ? "Vous n'avez encore aucune affectation cette année : la direction vous attribue vos classes." : "Créez d'abord les classes de l'année.")" />
+}
+else
+{
+    <Karte CssClass="org-appell-kopf">
+        <div class="org-appell-werkzeuge">
+            <AuswahlFeld T="Guid?" Label="Classe" Wert="klasseId" WertChanged="KlasseAsync" Optionen="KlassenOptionen" />
+            @if (ansicht == Ansicht.Appel)
+            {
+                <DatumFeld Label="Date" Wert="datum" WertChanged="DatumAsync" Max="heute" />
+            }
+            <div class="org-appell-ansicht"><RadioGruppe T="Ansicht" Label="Affichage" Wert="ansicht" WertChanged="a => ansicht = a" Optionen="AnsichtOptionen" /></div>
+        </div>
+    </Karte>
+
+    @if (klasseId is { } kid)
+    {
+        @if (ansicht == Ansicht.Recap)
+        {
+            <Karte Titel="Récapitulatif" Icon="bars">
+                <KlassenRueckblick @key="kid" KlasseId="kid" JahrId="JahrId" Standardbeginn="RueckblickBeginn" Standardende="heute" />
+            </Karte>
+        }
+        else if (appell is null)
+        {
+            <div class="sk-skelett"><div></div><div></div><div></div></div>
+        }
+        else
+        {
+            <Karte>
+                <div class="org-appell-status">
+                    <div>
+                        <h2>@appell.Klasse · @SkoulouKultur.DatumLang(appell.Datum)</h2>
+                        <p class="sk-leise">
+                            @(appell.Periode ?? "Hors période")
+                            · @zeilen.Count élève@(zeilen.Count > 1 ? "s" : "")
+                            · @(zeilen.Count(z => z.Status == AnwesenheitsStatus.Absent)) absent(s), @(zeilen.Count(z => z.Status == AnwesenheitsStatus.Retard)) en retard
+                        </p>
+                    </div>
+                    @if (appell.Erfasst)
+                    {
+                        <StatusBadge Text="@($"Appel enregistré{(appell.ErfasstVon is null ? "" : $" par {appell.ErfasstVon}")}")" Art="erfolg" Icon="check" />
+                    }
+                    else
+                    {
+                        <StatusBadge Text="Appel pas encore fait" Art="warn" />
+                    }
+                </div>
+                @if (appell.Sperre is not null)
+                {
+                    <Hinweis Art="info">@appell.Sperre</Hinweis>
+                }
+                @if (zeilen.Count == 0)
+                {
+                    <Leerzustand Icon="users" Titel="Aucun élève inscrit dans cette classe à cette date" />
+                }
+                else
+                {
+                    <div class="org-appell">
+                        @foreach (var z in zeilen)
+                        {
+                            <AppellZeileEditor @key="z.EinschreibungId" Zeile="z" Gesperrt="@(appell.Sperre is not null)" />
+                        }
+                    </div>
+                    @if (appell.Sperre is null)
+                    {
+                        <div class="sk-formular-fuss org-appell-fuss">
+                            <button type="button" class="sk-btn sk-btn-ghost" @onclick="AllePresent">Tous présents</button>
+                            <AsyncKnopf Text="Enregistrer l'appel" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+                        </div>
+                    }
+                }
+            </Karte>
+        }
+    }
+}
+
+@code {
+    private enum Ansicht { Appel, Recap }
+
+    private static readonly IReadOnlyList<AuswahlOption<Ansicht>> AnsichtOptionen = [new(Ansicht.Appel, "Appel du jour"), new(Ansicht.Recap, "Récapitulatif")];
+
+    private List<AuswahlEintrag>? klassen;
+    private Guid? klasseId;
+    private DateOnly? datum;
+    private DateOnly heute;
+    private Ansicht ansicht;
+    private Appell? appell;
+    private List<AppellEintrag> zeilen = [];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => (klassen ?? []).Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();
+
+    /// <summary>Standardzeitraum des Rückblicks: die letzten 30 Tage.</summary>
+    private DateOnly RueckblickBeginn => heute.AddDays(-30);
+
+    protected override async Task JahrLadenAsync()
+    {
+        heute = new SchulZeit(Uhr).Heute;
+        datum ??= heute;
+        appell = null;
+        klassen = JahrId is { } id ? (await Anwesenheit.KlassenAsync(Ich.KontoId, id)).ToList() : [];
+        if (klasseId is null || klassen.All(k => k.Id != klasseId)) klasseId = klassen.FirstOrDefault()?.Id;
+        await AppellLadenAsync();
+    }
+
+    private async Task AppellLadenAsync()
+    {
+        if (klasseId is not { } k || datum is not { } d) return;
+        appell = await Anwesenheit.AppellAsync(Ich.KontoId, k, d);
+        zeilen = appell.Zeilen.Select(z => new AppellEintrag(z)).ToList();
+    }
+
+    private async Task KlasseAsync(Guid? id)
+    {
+        (klasseId, appell) = (id, null);
+        await AusfuehrenAsync(AppellLadenAsync);
+    }
+
+    private async Task DatumAsync(DateOnly? d)
+    {
+        (datum, appell) = (d ?? heute, null);
+        await AusfuehrenAsync(AppellLadenAsync);
+    }
+
+    private void AllePresent()
+    {
+        foreach (var z in zeilen) (z.Status, z.Minuten, z.Entschuldigt) = (AnwesenheitsStatus.Present, null, false);
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (klasseId is not { } k || datum is not { } d) return;
+        var anzahl = 0;
+        if (!await AusfuehrenAsync(async () => anzahl = await Anwesenheit.AppellSpeichernAsync(Ich.KontoId, k, d, zeilen.Select(z => z.AlsEingabe()).ToList()))) return;
+        var abwesend = zeilen.Count(z => z.Status == AnwesenheitsStatus.Absent);
+        Toast.ZeigeErfolg($"Appel enregistré : {anzahl - abwesend} présent(s), {abwesend} absent(s).");
+        await AusfuehrenAsync(AppellLadenAsync);
+    }
+}

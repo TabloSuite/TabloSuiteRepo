@@ -1,0 +1,91 @@
+@* Kurs im Stundenplan anlegen oder ändern: Fach · Lehrkraft (Lehrauftrag), Tag, Beginn, Ende, Raum. *@
+
+<ModalDialog Open="Open" Title="@(Bearbeiten ? "Modifier le cours" : "Ajouter un cours")" Oberzeile="@Oberzeile" ErrorMessage="@Fehler"
+             SchliessenMitEscape="false" OnClose="OnClose">
+    <ChildContent>
+        @if (Optionen.Count == 0)
+        {
+            <Hinweis Art="warn" Titel="Aucune affectation dans cette classe">
+                Affectez d'abord les matières de la classe à des enseignants (page « Classes »), puis revenez ici.
+            </Hinweis>
+        }
+        else
+        {
+            <div class="sk-formular">
+                <AuswahlFeld T="Guid?" Label="Matière et enseignant" Pflicht="true" Optionen="lehrauftragOptionen" @bind-Wert="lehrauftragId"
+                             Hinweis="Heures prévues par semaine entre parenthèses (déjà placées / prévues)." />
+                <RadioGruppe T="DayOfWeek" Label="Jour" Optionen="tagOptionen" @bind-Wert="tag" />
+                <div class="sk-raster-2">
+                    <Feld Label="Début" Id="@beginnId" Pflicht="true">
+                        <input id="@beginnId" class="sk-eingabe" type="time" step="300" min="06:00" max="22:00" value="@Text(beginn)" @onchange="e => beginn = Zeit(e)" />
+                    </Feld>
+                    <Feld Label="Fin" Id="@endeId" Pflicht="true" Hinweis="@Dauer">
+                        <input id="@endeId" class="sk-eingabe" type="time" step="300" min="06:00" max="22:00" value="@Text(ende)" @onchange="e => ende = Zeit(e)" />
+                    </Feld>
+                </div>
+                <TextFeld Label="Salle" @bind-Wert="raum" MaxLaenge="80" Platzhalter="ex. Salle 3" Hinweis="Facultatif ; sert au contrôle des conflits de salle." />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (Bearbeiten)
+        {
+            <button type="button" class="sk-btn sk-btn-ghost org-edt-links" @onclick="OnLoeschen"><Icon Name="trash" Groesse="18" /> <span>Retirer ce cours</span></button>
+        }
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" Disabled="Optionen.Count == 0" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public bool Bearbeiten { get; set; }
+    [Parameter] public string? Oberzeile { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+    [Parameter] public IReadOnlyList<LehrauftragOption> Optionen { get; set; } = [];
+
+    /// <summary>Anfangswerte beim Öffnen.</summary>
+    [Parameter] public StundeEingabe? Vorlage { get; set; }
+
+    [Parameter] public EventCallback<StundeEingabe> OnSpeichern { get; set; }
+    [Parameter] public EventCallback OnLoeschen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<DayOfWeek>> tagOptionen =
+        Skoulou.Core.Organisation.Wochentage.Schulwoche.Select(t => new AuswahlOption<DayOfWeek>(t, Skoulou.Core.Organisation.Wochentage.Name(t))).ToList();
+
+    private readonly string beginnId = Feld.NeueId("beginn");
+    private readonly string endeId = Feld.NeueId("ende");
+    private IReadOnlyList<AuswahlOption<Guid?>> lehrauftragOptionen = [];
+    private Guid? lehrauftragId;
+    private DayOfWeek tag = DayOfWeek.Monday;
+    private TimeOnly? beginn;
+    private TimeOnly? ende;
+    private string? raum;
+    private bool warOffen;
+
+    private string? Dauer => beginn is { } b && ende is { } e && e > b ? $"Durée : {(int)(e - b).TotalMinutes} min" : null;
+
+    protected override void OnParametersSet()
+    {
+        lehrauftragOptionen = Optionen.Select(o => new AuswahlOption<Guid?>(o.Id, $"{o.Fach} · {o.Lehrer}",
+            $"{SkoulouKultur.Zahl(o.Ist, 1)} h / {SkoulouKultur.Zahl(o.Soll, 1)} h")).ToList();
+        if (Open && !warOffen && Vorlage is { } v)
+        {
+            lehrauftragId = Optionen.Any(o => o.Id == v.LehrauftragId) ? v.LehrauftragId : Optionen.FirstOrDefault()?.Id;
+            tag = v.Wochentag;
+            beginn = v.Beginn;
+            ende = v.Ende;
+            raum = v.Raum;
+        }
+        warOffen = Open;
+    }
+
+    private static string? Text(TimeOnly? t) => t?.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static TimeOnly? Zeit(ChangeEventArgs e)
+        => TimeOnly.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
+
+    private Task SpeichernAsync()
+        => OnSpeichern.InvokeAsync(new StundeEingabe(lehrauftragId ?? Guid.Empty, tag, beginn, ende, raum));
+}

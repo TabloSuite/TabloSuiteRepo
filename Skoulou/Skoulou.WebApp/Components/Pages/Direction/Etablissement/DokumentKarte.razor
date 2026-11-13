@@ -1,0 +1,84 @@
+@* Dokumentdaten (Kopf von Bulletin, Quittung, Karten) mit kleiner Vorschau. *@
+@inherits SkoulouSeite
+@inject SchulService Schule
+
+<Karte Titel="En-tête des documents" Icon="report" Untertitel="Ces informations apparaissent en haut des bulletins et des reçus.">
+    <div class="org-kopf-vorschau" aria-label="Aperçu de l'en-tête">
+        <div>
+            <strong>@(republik ?? "RÉPUBLIQUE …")</strong>
+            <small>@(motto ?? "Devise nationale")</small>
+            <small>@(ministerium ?? "Ministère")</small>
+            @if (direction is not null)
+            {
+                <small>@direction</small>
+            }
+        </div>
+        <div class="org-kopf-schule">
+            <strong>@(bezeichnung ?? Daten.Name)</strong>
+            @if (slogan is not null)
+            {
+                <em>« @slogan »</em>
+            }
+            <small>@string.Join(" · ", new[] { adresse, telefon, email }.Where(x => !string.IsNullOrWhiteSpace(x)))</small>
+        </div>
+    </div>
+    <div class="sk-formular">
+        <div class="sk-raster-2">
+            <TextFeld Label="Ligne « République »" @bind-Wert="republik" MaxLaenge="300" Platzhalter="RÉPUBLIQUE TOGOLAISE" Sofort="true" />
+            <TextFeld Label="Devise nationale" @bind-Wert="motto" MaxLaenge="300" Platzhalter="Travail – Liberté – Patrie" Sofort="true" />
+        </div>
+        <TextFeld Label="Ministère" @bind-Wert="ministerium" MaxLaenge="300" Sofort="true" />
+        <TextFeld Label="Direction régionale" @bind-Wert="direction" MaxLaenge="200" Sofort="true" />
+        <div class="sk-raster-2">
+            <TextFeld Label="Dénomination officielle" @bind-Wert="bezeichnung" MaxLaenge="200" Hinweis="Vide = nom de l'établissement." Sofort="true" />
+            <TextFeld Label="Devise de l'établissement" @bind-Wert="slogan" MaxLaenge="200" Sofort="true" />
+        </div>
+        <TextFeld Label="Adresse" @bind-Wert="adresse" MaxLaenge="300" Sofort="true" />
+        <div class="sk-raster-2">
+            <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Sofort="true" Fehler="@FeldFehler("telefon")" />
+            <TextFeld Label="E-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Sofort="true" Fehler="@FeldFehler("email")" />
+        </div>
+        <div class="sk-raster-2">
+            <TextFeld Label="N° d'autorisation" @bind-Wert="zulassung" MaxLaenge="100" />
+            <TextFeld Label="Statut" @bind-Wert="statut" MaxLaenge="60" Platzhalter="Privé laïc, Public…" />
+        </div>
+        <div class="sk-formular-fuss">
+            <AsyncKnopf Text="Enregistrer l'en-tête" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        </div>
+    </div>
+</Karte>
+
+@code {
+    [Parameter, EditorRequired] public SchulDaten Daten { get; set; } = default!;
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? republik, motto, ministerium, direction, bezeichnung, slogan, adresse, telefon, email, zulassung, statut;
+    private string? feld;
+
+    protected override void OnInitialized()
+    {
+        (republik, motto, ministerium, direction) = (Daten.RepublikZeile, Daten.StaatsMotto, Daten.Ministerium, Daten.DirectionRegionale);
+        (bezeichnung, slogan, adresse, telefon, email) = (Daten.OffizielleBezeichnung, Daten.Slogan, Daten.Adresse, Daten.Telefon, Daten.Email);
+        (zulassung, statut) = (Daten.Zulassungsnummer, Daten.Statut);
+    }
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        try
+        {
+            await Schule.DokumenteSpeichernAsync(Ich.KontoId,
+                new DokumentEingabe(bezeichnung, slogan, adresse, telefon, email, zulassung, ministerium, republik, motto, direction, statut));
+            Toast.ZeigeErfolg("L'en-tête des documents est enregistré.");
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            feld = f.Feld;
+            Fehlermeldung = f.Message;
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+}

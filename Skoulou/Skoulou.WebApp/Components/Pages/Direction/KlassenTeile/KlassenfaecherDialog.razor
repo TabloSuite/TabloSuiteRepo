@@ -1,0 +1,166 @@
+@* Fächer, Koeffizienten und Lehraufträge einer Klasse; Koeffizienten kopieren bzw. auf das Niveau übertragen. *@
+@inherits SkoulouSeite
+@inject UnterrichtService Unterricht
+@inject FaecherService Faecher
+
+<ModalDialog Open="Klasse is not null" Title="@($"Matières et enseignants · {Klasse?.Name}")" Oberzeile="@Klasse?.StufeName" Breite="sk-modal-lg"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="SchliessenAsync">
+    <ChildContent>
+        @if (faecher is null)
+        {
+            <div class="sk-skelett"><div></div><div></div></div>
+        }
+        else
+        {
+            @if (Offen)
+            {
+                <div class="org-kf-werkzeuge">
+                    <AuswahlFeld T="Guid?" Label="Ajouter une matière" @bind-Wert="neuesFach" Optionen="FachOptionen" Platzhalter="Choisir…" />
+                    <ZahlFeld Label="Coefficient" @bind-Wert="neuerKoeff" Min="0.01m" Max="100" Stellen="2" />
+                    <div class="sk-knopfzeile">
+                        <AsyncKnopf Text="Ajouter" Icon="plus" CssClass="sk-btn-primaer" Disabled="@(neuesFach is null)" OnClick="FachHinzufuegenAsync" />
+                        @if (FachOptionen.Count > 1)
+                        {
+                            <AsyncKnopf Text="Toutes les matières" CssClass="sk-btn-ghost" OnClick="AlleHinzufuegenAsync" />
+                        }
+                    </div>
+                </div>
+            }
+            @if (faecher.Count == 0)
+            {
+                <Leerzustand Icon="book" Titel="Aucune matière dans cette classe" Text="Ajoutez les matières une à une, toutes d'un coup, ou copiez-les d'une autre classe." />
+            }
+            else
+            {
+                <div class="org-kf-liste">
+                    @foreach (var f in faecher)
+                    {
+                        <KlassenfachEintrag @key="f.Id" Fach="f" Lehrkraefte="Lehrkraefte" Offen="Offen" OnGeaendert="GeaendertAsync" OnEntfernen="FachEntfernenAsync" />
+                    }
+                </div>
+                <p class="sk-leise">Total : @faecher.Count matière@(faecher.Count > 1 ? "s" : ""), coefficients @SkoulouKultur.Zahl(faecher.Sum(f => f.Koeffizient)), @SkoulouKultur.Zahl(faecher.Sum(f => f.Lehrer.Sum(l => l.Wochenstunden)), 1) h par semaine.</p>
+            }
+            @if (Offen)
+            {
+                <div class="org-kf-kopie">
+                    <AuswahlFeld T="Guid?" Label="Copier matières et coefficients depuis" @bind-Wert="quelle" Optionen="QuellOptionen" Platzhalter="Autre classe…" />
+                    <AsyncKnopf Text="Copier" Icon="layers" CssClass="sk-btn-ghost" Disabled="@(quelle is null)" OnClick="KopierenAsync" />
+                    @if (Klasse?.StufeId is not null && faecher.Count > 0)
+                    {
+                        <AsyncKnopf Text="@($"Appliquer à toutes les classes de {Klasse.StufeName}")" CssClass="sk-btn-ghost" OnClick="AufStufeAsync" />
+                    }
+                </div>
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="SchliessenAsync">Terminé</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public KlasseZeile? Klasse { get; set; }
+    [Parameter] public IReadOnlyList<KlasseZeile> AlleKlassen { get; set; } = [];
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Lehrkraefte { get; set; } = [];
+    [Parameter] public bool Offen { get; set; } = true;
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Etwas wurde geändert (Klassenliste beim Schließen neu laden).</summary>
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private List<KlassenfachZeile>? faecher;
+    private List<FachZeile> alleFaecher = [];
+    private Guid? neuesFach, quelle, geladenFuer;
+    private decimal? neuerKoeff = 1;
+    private bool geaendert;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> FachOptionen =>
+        alleFaecher.Where(f => f.Aktiv && (faecher ?? []).All(k => k.FachId != f.Id))
+            .Select(f => new AuswahlOption<Guid?>(f.Id, f.Name, FaecherService.GruppenText(f.Gruppe))).ToList();
+
+    private IReadOnlyList<AuswahlOption<Guid?>> QuellOptionen =>
+        AlleKlassen.Where(k => k.Id != Klasse?.Id && k.AnzahlFaecher > 0)
+            .Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, $"{k.AnzahlFaecher} matière{(k.AnzahlFaecher > 1 ? "s" : "")}")).ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Klasse is { } k && geladenFuer != k.Id)
+        {
+            geladenFuer = k.Id;
+            (faecher, quelle, neuesFach, neuerKoeff, geaendert) = (null, null, null, 1, false);
+            await AusfuehrenAsync(async () =>
+            {
+                alleFaecher = (await Faecher.FaecherAsync(Ich.KontoId, mitInaktiven: false)).ToList();
+                await LadenAsync();
+            });
+        }
+        else if (Klasse is null)
+        {
+            geladenFuer = null;
+        }
+    }
+
+    private async Task LadenAsync()
+    {
+        if (Klasse is null) return;
+        faecher = (await Unterricht.KlassenfaecherAsync(Ich.KontoId, Klasse.Id)).ToList();
+    }
+
+    /// <summary>Nach einer Änderung: neu laden und beim Schließen die Klassenliste aktualisieren.</summary>
+    private async Task GeaendertAsync()
+    {
+        geaendert = true;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task FachHinzufuegenAsync()
+    {
+        if (neuesFach is not { } id || Klasse is null) return;
+        if (await AusfuehrenAsync(() => Unterricht.FaecherHinzufuegenAsync(Ich.KontoId, Klasse.Id, [id], neuerKoeff ?? 1), "La matière est ajoutée."))
+        {
+            neuesFach = null;
+            await GeaendertAsync();
+        }
+    }
+
+    private async Task AlleHinzufuegenAsync()
+    {
+        if (Klasse is null) return;
+        var ids = FachOptionen.Select(o => o.Wert!.Value).ToList();
+        if (await AusfuehrenAsync(() => Unterricht.FaecherHinzufuegenAsync(Ich.KontoId, Klasse.Id, ids, neuerKoeff ?? 1), $"{ids.Count} matières ajoutées."))
+            await GeaendertAsync();
+    }
+
+    private async Task FachEntfernenAsync(KlassenfachZeile f)
+    {
+        if (await AusfuehrenAsync(() => Unterricht.KlassenfachEntfernenAsync(Ich.KontoId, f.Id), $"{f.Fach} est retirée de la classe."))
+            await GeaendertAsync();
+    }
+
+    private async Task KopierenAsync()
+    {
+        if (quelle is not { } q || Klasse is null) return;
+        var name = AlleKlassen.FirstOrDefault(k => k.Id == q)?.Name;
+        if (await AusfuehrenAsync(() => Unterricht.KoeffizientenKopierenAsync(Ich.KontoId, q, Klasse.Id), $"Matières et coefficients copiés depuis {name}."))
+        {
+            quelle = null;
+            await GeaendertAsync();
+        }
+    }
+
+    private async Task AufStufeAsync()
+    {
+        if (Klasse is null) return;
+        var anzahl = 0;
+        if (await AusfuehrenAsync(async () => anzahl = await Unterricht.KoeffizientenAufStufeAsync(Ich.KontoId, Klasse.Id)))
+        {
+            Toast.ZeigeErfolg(anzahl == 0 ? "Aucune autre classe active dans ce niveau." : $"Coefficients appliqués à {anzahl} autre{(anzahl > 1 ? "s" : "")} classe{(anzahl > 1 ? "s" : "")}.");
+            geaendert = true;
+        }
+    }
+
+    private async Task SchliessenAsync()
+    {
+        if (geaendert) await OnGeaendert.InvokeAsync();
+        await OnClose.InvokeAsync();
+    }
+}

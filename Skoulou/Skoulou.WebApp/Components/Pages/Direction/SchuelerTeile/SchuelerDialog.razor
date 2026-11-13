@@ -1,0 +1,146 @@
+@* Schüler anlegen (optional gleich in eine Klasse) oder Daten ändern – der Kontostatus bleibt beim Ändern unverändert. *@
+@inherits SkoulouSeite
+@inject SchuelerService Schueler
+@inject KontoVerwaltungService Konten
+
+<ModalDialog Open="Open" Title="@(SchuelerId is null ? "Nouvel élève" : $"Modifier {vorname} {nachname}")" Oberzeile="Élèves" Breite="sk-modal-lg"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (laedt)
+        {
+            <div class="sk-skelett"><div></div><div></div><div></div></div>
+        }
+        else
+        {
+            <div class="sk-formular">
+                <div class="sk-raster-2">
+                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("vorname")" />
+                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nachname")" />
+                </div>
+                <div class="sk-raster-2">
+                    <RadioGruppe T="Geschlecht" Label="Sexe" @bind-Wert="geschlecht" Optionen="GeschlechtOptionen" />
+                    <DatumFeld Label="Date de naissance" @bind-Wert="geburtsdatum" Fehler="@FeldFehler("geburtsdatum")" />
+                </div>
+                <div class="sk-raster-2">
+                    <TextFeld Label="Lieu de naissance" @bind-Wert="geburtsort" MaxLaenge="150" />
+                    <TextFeld Label="Nationalité" @bind-Wert="nationalitaet" MaxLaenge="80" Platzhalter="Togolaise" />
+                </div>
+                <div class="sk-raster-2">
+                    <Schalter @bind-Wert="interne" Label="Interne" Hinweis="Imprimé sur le bulletin." />
+                    <Schalter @bind-Wert="affecte" Label="Affecté(e) par l'État" Hinweis="Imprimé sur le bulletin." />
+                </div>
+                <div class="sk-raster-2">
+                    <TextFeld Label="Matricule" @bind-Wert="matrikel" MaxLaenge="60" Fehler="@FeldFehler("matrikel")"
+                              Hinweis="@(SchuelerId is null ? "Vide = attribué automatiquement." : "Unique dans l'établissement.")" />
+                    <div class="org-identifiant">
+                        <TextFeld Label="Identifiant de connexion" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")" Hinweis="Vide = prenom.nom" />
+                        <AsyncKnopf Text="Proposer" CssClass="sk-btn-ghost" OnClick="VorschlagAsync" />
+                    </div>
+                </div>
+                <div class="sk-raster-2">
+                    <TextFeld Label="Téléphone d'un parent" Typ="tel" @bind-Wert="elternTelefon" MaxLaenge="50" Fehler="@FeldFehler("elternTelefon")" />
+                    <TextFeld Label="E-mail d'un parent" Typ="email" @bind-Wert="elternEmail" MaxLaenge="256" Fehler="@FeldFehler("elternEmail")" />
+                </div>
+                <div class="sk-raster-2">
+                    <TextFeld Label="E-mail de l'élève" Typ="email" @bind-Wert="email" MaxLaenge="256" Fehler="@FeldFehler("email")" Hinweis="Facultatif." />
+                    <TextFeld Label="Téléphone de l'élève" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Fehler="@FeldFehler("telefon")" />
+                </div>
+                @if (SchuelerId is null)
+                {
+                    <div class="sk-raster-2">
+                        <AuswahlFeld T="Guid?" Label="Classe" @bind-Wert="klasseId" Optionen="KlassenOptionen" Platzhalter="À attribuer plus tard"
+                                     Hinweis="@(KlassenOptionen.Count <= 1 ? "Aucune classe dans l'année choisie." : null)" />
+                        <Schalter @bind-Wert="wiederholer" Label="Redoublant(e)" />
+                    </div>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(SchuelerId is null ? "Créer l'élève" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid? SchuelerId { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
+    [Parameter] public Guid? VorgabeKlasse { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<ZugangsStapel?> OnGespeichert { get; set; }
+
+    public static readonly IReadOnlyList<AuswahlOption<Geschlecht>> GeschlechtOptionen =
+        [new(Geschlecht.Weiblich, "Fille"), new(Geschlecht.Maennlich, "Garçon"), new(Geschlecht.Divers, "Non précisé")];
+
+    private string? vorname, nachname, geburtsort, nationalitaet, matrikel, identifiant, elternTelefon, elternEmail, email, telefon, feld;
+    private Geschlecht geschlecht;
+    private DateOnly? geburtsdatum;
+    private bool interne, affecte, wiederholer, warOffen, laedt;
+    private Guid? klasseId;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen =>
+        [new(null, "À attribuer plus tard"), .. Klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz))];
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            (Fehlermeldung, feld, klasseId, wiederholer) = (null, null, VorgabeKlasse, false);
+            if (SchuelerId is { } id)
+            {
+                laedt = true;
+                await AusfuehrenAsync(async () => Uebernehmen((await Schueler.DetailAsync(Ich.KontoId, id)).Daten));
+                laedt = false;
+            }
+            else
+            {
+                Uebernehmen(new SchuelerEingabe(null, null, Geschlecht.Divers, null, null, null, false, false, null, null, null, null, null, null));
+            }
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private void Uebernehmen(SchuelerEingabe d)
+    {
+        (vorname, nachname, geschlecht, geburtsdatum, geburtsort, nationalitaet) = (d.Vorname, d.Nachname, d.Geschlecht, d.Geburtsdatum, d.Geburtsort, d.Nationalitaet);
+        (interne, affecte, elternTelefon, elternEmail, email, telefon) = (d.IstInterne, d.IstAffecte, d.ElternTelefon, d.ElternEmail, d.Email, d.Telefon);
+        (identifiant, matrikel) = (d.Identifiant, d.Matrikel);
+    }
+
+    private Task VorschlagAsync() => AusfuehrenAsync(async () => identifiant = await Konten.IdentifiantVorschlagAsync(Ich.KontoId, vorname, nachname));
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        var e = new SchuelerEingabe(vorname, nachname, geschlecht, geburtsdatum, geburtsort, nationalitaet, interne, affecte,
+            elternTelefon, elternEmail, email, telefon, identifiant, matrikel);
+        try
+        {
+            if (SchuelerId is { } id)
+            {
+                await Schueler.AendernAsync(Ich.KontoId, id, e);
+                Toast.ZeigeErfolg("Les données de l'élève sont enregistrées.");
+                await OnGespeichert.InvokeAsync(null);
+            }
+            else
+            {
+                await OnGespeichert.InvokeAsync(await Schueler.AnlegenAsync(Ich.KontoId, e, klasseId, wiederholer));
+            }
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (feld, Fehlermeldung) = (f.Feld, f.Message);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            Fehlermeldung = k.Message;
+        }
+    }
+}

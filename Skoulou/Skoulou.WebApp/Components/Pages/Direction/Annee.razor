@@ -1,5 +1,82 @@
 @page "/direction/annee"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits SkoulouSeite
+@inject SchuljahrService Schuljahre
+@using Skoulou.WebApp.Components.Pages.Direction.Jahre
 
-<InVorbereitung Titel="Année scolaire" Icon="calendar" Etappe="E3 – Organisation"
-                Beschreibung="Année scolaire, trimestres ou semestres, composantes des notes et passage à l'année suivante." />
+<PageTitle>Année scolaire · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Année scolaire" Icon="calendar"
+            Untertitel="Créez l'année, découpez-la en périodes (trimestres, semestres, sessions), démarrez-la, puis clôturez-la par le passage d'année.">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="/direction/annee/passage"><Icon Name="arrow-right" Groesse="18" /> <span>Passage d'année</span></a>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="NeuOeffnen"><Icon Name="plus" Groesse="18" /> <span>Nouvelle année</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (jahre is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (jahre.Count == 0)
+{
+    <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Commencez par créer l'année : ses dates et son découpage en périodes. Vous pourrez ensuite créer les classes.">
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="NeuOeffnen"><Icon Name="plus" Groesse="18" /> <span>Créer l'année scolaire</span></button>
+    </Leerzustand>
+}
+else
+{
+    @if (!jahre.Any(j => j.Status == SchuljahrStatus.Laufend))
+    {
+        <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève est alors figé pour l'année.</Hinweis>
+    }
+    <div class="org-jahre">
+        @foreach (var j in jahre)
+        {
+            <JahrKarte @key="j.Id" Jahr="j" IstDirektor="@(Ich.Rolle == Rollen.Direktor)" OnGeaendert="NeuLadenAsync"
+                       OnBearbeiten="m => Bearbeiten(j, m)" OnPeriode="p => PeriodeOeffnen(j, p)" />
+        }
+    </div>
+}
+
+<JahrDialog Open="jahrDialog" Modus="modus" Jahr="gewaehlt" OnClose="() => jahrDialog = false" OnGespeichert="JahrGespeichertAsync" />
+<PeriodeDialog Open="periodeDialog" Jahr="gewaehlt" Periode="periode" OnClose="() => periodeDialog = false" OnGespeichert="PeriodeGespeichertAsync" />
+
+@code {
+    private List<SchuljahrZeile>? jahre;
+    private bool jahrDialog, periodeDialog;
+    private JahrDialogModus modus;
+    private SchuljahrZeile? gewaehlt;
+    private PeriodeZeile? periode;
+
+    protected override async Task InitialisierenAsync() => jahre = (await Schuljahre.JahreAsync(Ich.KontoId)).ToList();
+
+    private void NeuOeffnen() => (gewaehlt, modus, jahrDialog) = (null, JahrDialogModus.Neu, true);
+
+    private void Bearbeiten(SchuljahrZeile j, JahrDialogModus m) => (gewaehlt, modus, jahrDialog) = (j, m, true);
+
+    private void PeriodeOeffnen(SchuljahrZeile j, PeriodeZeile? p) => (gewaehlt, periode, periodeDialog) = (j, p, true);
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => jahre = (await Schuljahre.JahreAsync(Ich.KontoId)).ToList());
+        await Kontext.LadeAsync(Ich.KontoId, erzwingen: true);
+    }
+
+    private async Task JahrGespeichertAsync(Guid id)
+    {
+        jahrDialog = false;
+        await NeuLadenAsync();
+        if (modus == JahrDialogModus.Neu && Kontext.SchuljahrId is null) Kontext.WaehleSchuljahr(id);
+    }
+
+    private async Task PeriodeGespeichertAsync()
+    {
+        periodeDialog = false;
+        await NeuLadenAsync();
+    }
+}

@@ -1,0 +1,94 @@
+@* Klasse anlegen oder ändern (Name, Niveau, Session, Kapazität, Professeur principal, Salle). *@
+@inherits SkoulouSeite
+@inject KlassenService Klassen
+
+<ModalDialog Open="Open" Title="@(Klasse is null ? "Nouvelle classe" : $"Modifier la classe {Klasse.Name}")" Oberzeile="@JahrText"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <TextFeld Label="Nom de la classe" @bind-Wert="name" MaxLaenge="60" Pflicht="true" Platzhalter="6e A" Fehler="@FeldFehler("name")" />
+                <AuswahlFeld T="Guid?" Label="Niveau" @bind-Wert="stufeId" Optionen="StufenOptionen" Platzhalter="Sans niveau" Fehler="@FeldFehler("stufe")"
+                             Hinweis="Sert au passage d'année et aux coefficients communs." />
+            </div>
+            <div class="sk-raster-2">
+                <AuswahlFeld T="Guid?" Label="Professeur principal" @bind-Wert="lehrerId" Optionen="LehrerOptionen" Platzhalter="Aucun" Fehler="@FeldFehler("klassenlehrer")" />
+                <TextFeld Label="Salle" @bind-Wert="raum" MaxLaenge="80" Platzhalter="Salle 1" />
+            </div>
+            <div class="sk-raster-2">
+                <ZahlFeld Label="Capacité (élèves)" @bind-Wert="kapazitaet" Min="1" Max="10000" Stellen="0" Hinweis="Indicative : un dépassement est signalé, pas bloqué." Fehler="@FeldFehler("kapazitaet")" />
+                @if (Perioden.Count > 0)
+                {
+                    <AuswahlFeld T="Guid?" Label="Classe d'une seule session" @bind-Wert="periodeId" Optionen="PeriodenOptionen" Platzhalter="Toute l'année"
+                                 Hinweis="Pour les écoles de langues : la classe n'existe que pendant cette période." Fehler="@FeldFehler("periode")" />
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(Klasse is null ? "Créer la classe" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid JahrId { get; set; }
+    [Parameter] public string? JahrText { get; set; }
+    [Parameter] public KlasseZeile? Klasse { get; set; }
+    [Parameter] public IReadOnlyList<StufeZeile> Stufen { get; set; } = [];
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Lehrkraefte { get; set; } = [];
+    [Parameter] public IReadOnlyList<PeriodeZeile> Perioden { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Guid> OnGespeichert { get; set; }
+
+    private string? name, raum;
+    private Guid? stufeId, lehrerId, periodeId;
+    private decimal? kapazitaet;
+    private string? feld;
+    private bool warOffen;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> StufenOptionen =>
+        [new(null, "Sans niveau"), .. Stufen.Where(s => s.Aktiv || s.Id == stufeId).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name))];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> LehrerOptionen =>
+        [new(null, "Aucun"), .. Lehrkraefte.Select(l => new AuswahlOption<Guid?>(l.Id, l.Name, l.Zusatz))];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> PeriodenOptionen =>
+        [new(null, "Toute l'année"), .. Perioden.Select(p => new AuswahlOption<Guid?>(p.Id, p.Titel, $"{SkoulouKultur.Datum(p.Beginn)} – {SkoulouKultur.Datum(p.Ende)}"))];
+
+    private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            Fehlermeldung = null;
+            feld = null;
+            if (Klasse is { } k) (name, raum, stufeId, lehrerId, periodeId, kapazitaet) = (k.Name, k.Raum, k.StufeId, k.KlassenlehrerId, k.PeriodeId, k.Kapazitaet);
+            else (name, raum, stufeId, lehrerId, periodeId, kapazitaet) = (null, null, null, null, null, null);
+        }
+        else if (!Open)
+        {
+            warOffen = false;
+        }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        feld = null;
+        try
+        {
+            var id = await Klassen.KlasseSpeichernAsync(Ich.KontoId, JahrId, Klasse?.Id,
+                new KlasseEingabe(name, stufeId, periodeId, kapazitaet is { } k ? (int)k : null, lehrerId, raum));
+            Toast.ZeigeErfolg(Klasse is null ? $"La classe {name} est créée." : "La classe est enregistrée.");
+            await OnGespeichert.InvokeAsync(id);
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            feld = f.Feld;
+            Fehlermeldung = f.Message;
+        }
+    }
+}
