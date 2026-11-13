@@ -823,6 +823,55 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("BlobMediaAssets");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.EingangsMail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Absender")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("AnbieterId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("BeantwortetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Betreff")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Empfaenger")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("EmpfangenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstGelesen")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnbieterId")
+                        .IsUnique()
+                        .HasFilter("[AnbieterId] IS NOT NULL");
+
+                    b.HasIndex("IstGelesen", "EmpfangenUtc");
+
+                    b.ToTable("EingangsMails");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.ExceptionLog", b =>
                 {
                     b.Property<Guid>("Id")

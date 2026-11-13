@@ -126,6 +126,7 @@ if (administration is null)
     builder.Services.AddScoped<TeamService>();
     builder.Services.AddScoped<BesitzerPinHilfe>();
     builder.Services.AddScoped<KontaktService>();
+    builder.Services.AddScoped<ENote.WebApp.Services.Mails.PostEingangService>();
     builder.Services.AddScoped<AdminService>();
     builder.Services.AddScoped<ProduktOwnerService>();
     builder.Services.AddScoped<SalonService>();
@@ -325,6 +326,29 @@ app.MapGet("/etiketten", async (
     httpContext.Response.Headers.CacheControl = "private, no-store";
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"etiquettes-{leistung.Id.ToString()[..8]}.pdf");
 }).RequireAuthorization();
+
+// Eingehende Mails (Postmark-Inbound-JSON) für eNOTE. Alle Apps teilen contact@tablosuite.com: Postmark liefert an
+// SKOULOU, das Mails mit « eNOTE » im Betreff hierher weiterleitet. Schutz per Basic-Auth « enote:<Geheimnis> ».
+app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration config,
+    ENote.WebApp.Services.Mails.PostEingangService posteingang, CancellationToken cancellationToken) =>
+{
+    var geheimnis = config["Postmark:InboundWebhookSecret"];
+    var erwartet = "Basic " + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("enote:" + geheimnis));
+    if (string.IsNullOrWhiteSpace(geheimnis) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            System.Text.Encoding.UTF8.GetBytes(erwartet), System.Text.Encoding.UTF8.GetBytes(request.Headers.Authorization.ToString())))
+        return Results.Unauthorized();
+
+    using var dokument = await System.Text.Json.JsonDocument.ParseAsync(request.Body, cancellationToken: cancellationToken);
+    var wurzel = dokument.RootElement;
+    static string Wert(System.Text.Json.JsonElement e, string k)
+        => e.TryGetProperty(k, out var w) && w.ValueKind == System.Text.Json.JsonValueKind.String ? w.GetString() ?? "" : "";
+    var von = Wert(wurzel, "From");
+    var id = Wert(wurzel, "MessageID");
+    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(von)) return Results.BadRequest();
+    var text = Wert(wurzel, "TextBody") is { Length: > 0 } t ? t : ENote.WebApp.Services.Mails.EmailService.AlsText(Wert(wurzel, "HtmlBody"));
+    await posteingang.EmpfangenAsync(von, Wert(wurzel, "To"), Wert(wurzel, "Subject"), text, id, cancellationToken);
+    return Results.Ok();
+}).DisableAntiforgery();
 
 // Kassenbon als HTML-Druckansicht: öffnet sofort den Druck-Dialog (window.print()).
 app.MapGet("/bon/{verkaufId:guid}/druck", async (

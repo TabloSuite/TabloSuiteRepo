@@ -3244,3 +3244,11 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .kt-formular p { margin: 0; }
 .kt-formular label { display: grid; gap: .35rem; width: 100%; }
 .kt-formular textarea { width: 100%; max-width: none; box-sizing: border-box; resize: vertical; min-height: 8rem; }
+
+/* ============================================================ E-mails › Boîte de réception */
+.em-eingang-kopf { display: grid; gap: .1rem; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.em-eingang-kopf strong, .em-eingang-kopf small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-eingang.offen { background: var(--enote-surface-2); }
+.em-eingang-text { white-space: pre-wrap; overflow-wrap: anywhere; padding: .9rem 1.1rem; margin: 0 0 .6rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); font-size: .92rem; line-height: 1.5; max-height: 22rem; overflow: auto; }
+.em-antwort { margin-bottom: 1rem; }
+.em-antwort textarea { max-width: none; }

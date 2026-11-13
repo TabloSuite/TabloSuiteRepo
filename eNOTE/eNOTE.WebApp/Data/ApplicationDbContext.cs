@@ -55,6 +55,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
+    public DbSet<EingangsMail> EingangsMails => Set<EingangsMail>();
     public DbSet<Kunde> Kunden => Set<Kunde>();
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<AnkuendigungGelesen> AnkuendigungenGelesen => Set<AnkuendigungGelesen>();
@@ -304,6 +305,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(r => r.Kategorie);
             entity.Property(r => r.Kategorie).HasMaxLength(50);
+        });
+
+        builder.Entity<EingangsMail>(entity =>
+        {
+            entity.Property(m => m.Absender).HasMaxLength(320);
+            entity.Property(m => m.Empfaenger).HasMaxLength(1000);
+            entity.Property(m => m.Betreff).HasMaxLength(500);
+            entity.Property(m => m.AnbieterId).HasMaxLength(100);
+            entity.HasIndex(m => m.AnbieterId).IsUnique().HasFilter("[AnbieterId] IS NOT NULL");
+            entity.HasIndex(m => new { m.IstGelesen, m.EmpfangenUtc });
         });
 
         builder.Entity<MailNachricht>(entity =>

@@ -109,6 +109,13 @@ public class EmailService(
         return await db.MailNachrichten.CountAsync(m => m.IstGesendet && m.GesendetUtc >= anfang, ct);
     }
 
+    /// <summary>App-Kennung im Betreff: alle Apps teilen contact@tablosuite.com, Antworten werden daran zugeordnet.</summary>
+    public const string AppKennung = "[eNOTE]";
+
+    /// <summary>Setzt « [eNOTE] » vor den Betreff (nicht doppelt, auch nicht bei « Re: [eNOTE] … »).</summary>
+    public static string MitAppName(string betreff)
+        => betreff.Contains(AppKennung, StringComparison.OrdinalIgnoreCase) ? betreff : $"{AppKennung} {betreff}".TrimEnd();
+
     /// <summary>Stellt eine E-Mail in die Queue und versucht den sofortigen Versand.</summary>
     public async Task SendeAsync(string empfaenger, string betreff, string htmlInhalt, CancellationToken cancellationToken = default)
         => await SendeAsync(empfaenger, betreff, htmlInhalt, kategorie: null, cancellationToken);
@@ -116,6 +123,7 @@ public class EmailService(
     /// <summary>Wie <see cref="SendeAsync(string,string,string,CancellationToken)"/>, mit Kategorie (Postmark-Tag).</summary>
     public async Task<bool> SendeAsync(string empfaenger, string betreff, string htmlInhalt, string? kategorie, CancellationToken cancellationToken = default)
     {
+        betreff = MitAppName(betreff);
         if (string.IsNullOrWhiteSpace(empfaenger) || !MailAddress.TryCreate(empfaenger.Trim(), out _))
         {
             logger.LogWarning("E-Mail ohne gültigen Empfänger verworfen: {Betreff}", betreff);

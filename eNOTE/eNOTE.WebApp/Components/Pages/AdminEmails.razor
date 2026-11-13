@@ -59,6 +59,7 @@
         <button class="enote-tab @(tab == "auto" ? "aktiv" : "")" @onclick='() => tab = "auto"'><Icon Name="refresh" Groesse="16" /> Envois automatiques</button>
         <button class="enote-tab @(tab == "modeles" ? "aktiv" : "")" @onclick='() => tab = "modeles"'><Icon Name="eye" Groesse="16" /> Modèles</button>
         <button class="enote-tab @(tab == "historique" ? "aktiv" : "")" @onclick="ZeigeHistorieAsync"><Icon Name="history" Groesse="16" /> Historique</button>
+        <button class="enote-tab @(tab == "eingang" ? "aktiv" : "")" @onclick="ZeigeEingangAsync"><Icon Name="bell" Groesse="16" /> Boîte de réception@(ungelesen > 0 ? $" ({ungelesen})" : "")</button>
     </div>
 
     @if (tab == "message")
@@ -231,7 +232,7 @@
             </div>
         </section>
     }
-    else
+    else if (tab == "historique")
     {
         <section class="enote-card em-karte">
             <div class="em-kopf">
@@ -268,6 +269,47 @@
             }
         </section>
     }
+    else if (tab == "eingang")
+    {
+        <section class="enote-card em-karte">
+            <h2>Boîte de réception</h2>
+            <p class="enote-muted em-klein">Réponses et demandes envoyées à contact@tablosuite.com qui concernent eNOTE (« [eNOTE] » ou « eNOTE » dans l'objet). Tous les e-mails d'eNOTE portent « [eNOTE] » dans l'objet : les réponses arrivent donc ici.</p>
+            @if (eingang.Count == 0)
+            {
+                <p class="enote-empty" role="status">Aucun message reçu pour le moment.</p>
+            }
+            else
+            {
+                <div class="em-verlauf">
+                    @foreach (var m in eingang)
+                    {
+                        <div class="em-zeile em-eingang @(offeneMail == m.Id ? "offen" : "")">
+                            <span class="em-punkt @(m.BeantwortetUtc is not null ? "ok" : m.IstGelesen ? "" : "warte")"></span>
+                            <button type="button" class="em-zeile-info em-eingang-kopf" @onclick="() => OeffneEingangAsync(m)">
+                                <strong>@m.Betreff</strong>
+                                <small>@m.Absender · @m.EmpfangenUtc.ToLocalTime().ToString("dd.MM HH:mm")</small>
+                            </button>
+                            <span class="em-tag @(m.BeantwortetUtc is not null ? "ok" : "warte")">@(m.BeantwortetUtc is not null ? "Répondu" : m.IstGelesen ? "Lu" : "Nouveau")</span>
+                        </div>
+                        @if (offeneMail == m.Id)
+                        {
+                            <div class="em-eingang-text">@m.Text</div>
+                            <div class="enote-form em-antwort">
+                                <label>Votre réponse (envoyée à @m.Absender)
+                                    <textarea rows="5" maxlength="@PostEingangService.AntwortMax" @bind="antwortText" @bind:event="oninput"></textarea>
+                                </label>
+                                @if (!string.IsNullOrWhiteSpace(antwortFehler))
+                                {
+                                    <div class="alert alert-error" role="alert">@antwortFehler</div>
+                                }
+                                <div><AsyncActionButton Text="Envoyer la réponse" BusyText="Envoi…" OnClick="() => AntwortenAsync(m.Id)" CssClass="enote-btn-primary" /></div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </section>
+    }
 </div>
 
 <ModalDialog Open="bestaetigungOffen" Title="Envoyer le message ?" OnClose="() => bestaetigungOffen = false" MaxWidthClass="enote-modal-sm">
@@ -291,6 +333,14 @@
     [Inject] private IConfiguration configuration { get; set; } = default!;
     [Inject] private ToastService toast { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider auth { get; set; } = default!;
+    [Inject] private PostEingangService posteingang { get; set; } = default!;
+
+    // Posteingang (contact@tablosuite.com, Betreff mit « eNOTE »)
+    private List<ENote.Core.DataModels.Infrastruktur.EingangsMail> eingang = [];
+    private int ungelesen;
+    private Guid? offeneMail;
+    private string? antwortText;
+    private string? antwortFehler;
 
     private Guid benutzerId;
     private string tab = "message";
@@ -355,6 +405,44 @@
         Guid.TryParse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out benutzerId);
         schalter = await email.GetSchalterAsync();
         gesendetImMonat = await email.GesendetImMonatAsync();
+        await LadeEingangAsync();
+    }
+
+    private async Task LadeEingangAsync()
+    {
+        eingang = await posteingang.LadeAsync(benutzerId);
+        ungelesen = eingang.Count(m => !m.IstGelesen);
+    }
+
+    private async Task ZeigeEingangAsync()
+    {
+        tab = "eingang";
+        await LadeEingangAsync();
+    }
+
+    private async Task OeffneEingangAsync(ENote.Core.DataModels.Infrastruktur.EingangsMail m)
+    {
+        if (offeneMail == m.Id) { offeneMail = null; return; }
+        offeneMail = m.Id;
+        antwortText = null;
+        antwortFehler = null;
+        if (!m.IstGelesen)
+        {
+            await posteingang.MarkiereGelesenAsync(benutzerId, m.Id);
+            await LadeEingangAsync();
+        }
+    }
+
+    private async Task AntwortenAsync(Guid mailId)
+    {
+        antwortFehler = await posteingang.AntwortenAsync(benutzerId, mailId, antwortText);
+        if (antwortFehler is null)
+        {
+            toast.ZeigeErfolg("Réponse envoyée.");
+            antwortText = null;
+            offeneMail = null;
+            await LadeEingangAsync();
+        }
     }
 
     private async Task LadeAsync()
