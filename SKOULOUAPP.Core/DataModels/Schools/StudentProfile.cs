@@ -49,6 +49,9 @@ public class StudentProfile : AuditableModel
     public bool IstInterne { get; set; }
     /// <summary>Affecté(e) par l'État – im Bulletin « Affecté(e) : Oui/Non ».</summary>
     public bool IstAffecte { get; set; }
+
+    /// <summary>Schüler hat die gesprochene Rückmeldung bei Übungen ausgeschaltet.</summary>
+    public bool AntwortTonAus { get; set; }
 }
 
 

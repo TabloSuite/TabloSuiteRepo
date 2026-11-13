@@ -30,6 +30,10 @@ public partial class DirectionExamReader
     [SupplyParameterFromQuery(Name = "scope")]
     public string? Scope { get; set; }
 
+    /// <summary>Lehrer, für den die Direktion erfasst (Rücksprung in die Erfassungsansicht).</summary>
+    [SupplyParameterFromQuery(Name = "lehrer")]
+    public Guid? LehrerQuery { get; set; }
+
     private ExamPdfViewModel? exam;
     private bool notFound;
     private bool ShowSolutions => IncludeSolutionsQuery ?? false;
@@ -67,7 +71,7 @@ public partial class DirectionExamReader
 
         if (string.Equals(FromPage, "teacher-exams", StringComparison.OrdinalIgnoreCase))
         {
-            Navigation.NavigateTo("/teacher-exams");
+            Navigation.NavigateTo(LehrerQuery is Guid lehrerId ? $"/teacher-exams?lehrer={lehrerId}" : "/teacher-exams");
             return;
         }
 

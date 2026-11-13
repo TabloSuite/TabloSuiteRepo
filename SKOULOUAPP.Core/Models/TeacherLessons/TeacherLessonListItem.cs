@@ -25,4 +25,7 @@ public class TeacherLessonListItem
     public bool IsExerciseLesson { get; set; }
     public bool HasVideo { get; set; }
     public string? VideoDisplayName { get; set; }
+
+    /// <summary>Von der Direktion im Namen des Lehrers erfasst (« Saisi par la direction »).</summary>
+    public bool IstVonDirektionErfasst { get; set; }
 }

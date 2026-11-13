@@ -104,6 +104,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<StudentProfile>().Property(x => x.ElternTelefonNummer).HasMaxLength(50);
         modelBuilder.Entity<StudentProfile>().Property(x => x.ElternEmail).HasMaxLength(256);
         modelBuilder.Entity<StudentProfile>().Property(x => x.IsArchived).HasDefaultValue(false);
+        modelBuilder.Entity<StudentProfile>().Property(x => x.AntwortTonAus).HasDefaultValue(false);
         modelBuilder.Entity<Klasse>().Property(x => x.Code).HasMaxLength(20);
         modelBuilder.Entity<KlassenStufe>().Property(x => x.Name).HasMaxLength(100);
 
@@ -142,6 +143,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<Lesson>()
             .HasIndex(x => x.CreatedByTeacherId);
+        // Erfassung durch die Direktion im Namen eines Lehrers (« Saisi par la direction »).
+        // Restrict statt SetNull: CreatedByTeacher nutzt bereits SetNull, ein zweiter
+        // Kaskadenpfad von AppUser auf Lessons wäre in SQL Server nicht zulässig.
+        modelBuilder.Entity<Lesson>()
+            .HasOne(x => x.ErfasstVon)
+            .WithMany()
+            .HasForeignKey(x => x.ErfasstVonId)
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<LehrerFachZuordnung>()
             .HasOne(x => x.Lehrer)
             .WithMany(x => x.LehrerFachZuordnungen)
@@ -338,6 +347,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         modelBuilder.Entity<Exam>().Property(x => x.Title).HasMaxLength(200);
         modelBuilder.Entity<Exam>().Property(x => x.ExamType).HasConversion<int>();
+        modelBuilder.Entity<Exam>()
+            .HasOne(x => x.ErfasstVon)
+            .WithMany()
+            .HasForeignKey(x => x.ErfasstVonId)
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<ExamQuestion>().Property(x => x.Prompt).HasMaxLength(1000);
         modelBuilder.Entity<ExamQuestionOption>().Property(x => x.Text).HasMaxLength(500);
 
@@ -534,6 +548,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasOne(x => x.Author)
             .WithMany()
             .HasForeignKey(x => x.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TeacherLesson>()
+            .HasOne(x => x.ErfasstVon)
+            .WithMany()
+            .HasForeignKey(x => x.ErfasstVonId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<TeacherLesson>()

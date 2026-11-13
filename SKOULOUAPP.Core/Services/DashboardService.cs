@@ -2163,6 +2163,7 @@ public class DashboardService(
             VideoDisplayName = await GetLessonVideoDisplayNameAsync(lesson, cancellationToken),
             VideoDuration = await GetLessonVideoDurationAsync(lesson, cancellationToken),
             VideoUrl = BuildLessonVideoUrl(lesson),
+            IstVonDirektionErfasst = lesson.ErfasstVonId.HasValue,
             Exercises = lesson.Exercises
                 .OrderBy(x => x.Order)
                 .Select(exercise =>
@@ -2201,15 +2202,39 @@ public class DashboardService(
         };
     }
 
+    /// <summary>
+    /// Speichert Lektion + Übungen. Mit <paramref name="handelnderId"/> ≠
+    /// <paramref name="currentTeacherId"/> erfasst die Direktion im Namen des Lehrers:
+    /// Berechtigung und Klassenzuordnung des Lehrers werden geprüft und
+    /// <see cref="Lesson.ErfasstVonId"/> wird gesetzt. Bearbeitet der Lehrer selbst,
+    /// bleibt eine vorhandene Kennzeichnung erhalten.
+    /// </summary>
     public async Task<(bool Succeeded, string Message)> SaveLessonAsync(
         LessonFormModel model,
         Guid? currentTeacherId = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
         var courseExists = await dbContext.Klassen.AnyAsync(x => x.Id == model.CourseId, cancellationToken);
         if (!courseExists)
         {
             return (false, "Le cours associé est introuvable.");
+        }
+
+        Guid? erfasstVonId = null;
+        if (handelnderId is Guid handelnder && currentTeacherId is Guid lehrerId && handelnder != lehrerId)
+        {
+            if (!await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(handelnder, lehrerId, cancellationToken))
+            {
+                return (false, DirektionsErfassungService.KeineBerechtigungHinweis);
+            }
+
+            if (!await IstKlasseDesLehrersAsync(lehrerId, model.CourseId, cancellationToken))
+            {
+                return (false, "Cette classe n'est pas attribuée à cet enseignant.");
+            }
+
+            erfasstVonId = handelnder;
         }
 
         Lesson lesson;
@@ -2223,6 +2248,11 @@ public class DashboardService(
             if (lesson.Id == Guid.Empty)
             {
                 return (false, "La leçon est introuvable.");
+            }
+
+            if (erfasstVonId.HasValue && !await IstKlasseDesLehrersAsync(currentTeacherId!.Value, lesson.KlasseId, cancellationToken))
+            {
+                return (false, "Cette leçon n'appartient pas aux classes de cet enseignant.");
             }
 
             var lessonExerciseIds = lesson.Exercises.Select(ex => ex.Id).ToList();
@@ -2277,6 +2307,20 @@ public class DashboardService(
             lesson.CreatedByTeacherId = currentTeacherId.Value;
         }
 
+        if (erfasstVonId.HasValue)
+        {
+            lesson.ErfasstVonId = erfasstVonId;
+        }
+        else if (!model.LessonId.HasValue && model.QuellLessonId is Guid quellLessonId)
+        {
+            // « Modifier et réattribuer »: Kennzeichnung der Quelllektion übernehmen.
+            lesson.ErfasstVonId = await dbContext.Lessons
+                .AsNoTracking()
+                .Where(x => x.Id == quellLessonId)
+                .Select(x => x.ErfasstVonId)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         lesson.GeaendertAmUtc = DateTime.UtcNow;
 
         await SyncLessonVideoMediaAsync(lesson, model, cancellationToken);
@@ -2287,9 +2331,20 @@ public class DashboardService(
         return (true, model.LessonId.HasValue ? "La leçon a été mise à jour." : "La leçon a été créée.");
     }
 
+    private Task<bool> IstKlasseDesLehrersAsync(Guid lehrerId, Guid klasseId, CancellationToken cancellationToken)
+        => dbContext.LehrerNiveauZuordnungen
+            .AsNoTracking()
+            .AnyAsync(link => link.LehrerID == lehrerId && link.KlasseId == klasseId, cancellationToken);
+
     public async Task<(bool Succeeded, string Message)> ChangeLessonSubmissionDueAsync(
-        Guid lessonId, DateTime? dueAtUtc, Guid teacherId, CancellationToken cancellationToken = default)
+        Guid lessonId, DateTime? dueAtUtc, Guid teacherId, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        if (handelnderId is Guid handelnder && handelnder != teacherId
+            && !await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(handelnder, teacherId, cancellationToken))
+        {
+            return (false, DirektionsErfassungService.KeineBerechtigungHinweis);
+        }
+
         var lesson = await dbContext.Lessons
             .Include(x => x.Exercises)
             .FirstOrDefaultAsync(x => x.Id == lessonId, cancellationToken);

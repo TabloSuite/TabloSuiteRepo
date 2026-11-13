@@ -25,4 +25,7 @@ public class ExamManagementItem
     public ExamReleaseTarget ReleaseTarget { get; set; }
     public bool IsSharedWithSchool { get; set; }
     public bool IsPublishedToStudents { get; set; }
+
+    /// <summary>Von der Direktion im Namen des Lehrers erfasst (« Saisi par la direction »).</summary>
+    public bool IstVonDirektionErfasst { get; set; }
 }

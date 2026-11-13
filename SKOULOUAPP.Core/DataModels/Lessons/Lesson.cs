@@ -41,6 +41,14 @@ public class Lesson : AuditableModel
     public Guid? CreatedByTeacherId { get; set; }
     public AppUser? CreatedByTeacher { get; set; }
 
+    /// <summary>
+    /// Konto der Direktion (Schulleitung/Koordination), das Lektion und Übungen im
+    /// Namen des Lehrers erfasst hat. <c>null</c> = vom Lehrer selbst erfasst. Bleibt
+    /// erhalten, wenn der Lehrer die Lektion später selbst bearbeitet (« Saisi par la direction »).
+    /// </summary>
+    public Guid? ErfasstVonId { get; set; }
+    public AppUser? ErfasstVon { get; set; }
+
     public ICollection<LessonMedia> MediaItems { get; set; } = new List<LessonMedia>();
     public ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
 }

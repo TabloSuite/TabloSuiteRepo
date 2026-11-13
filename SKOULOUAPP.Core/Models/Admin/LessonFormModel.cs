@@ -30,6 +30,18 @@ public class LessonFormModel
     public TimeSpan? VideoDuration { get; set; }
     public string? VideoUrl { get; set; }
 
+    /// <summary>
+    /// Nur zur Anzeige (« Saisi par la direction »): wird beim Laden gesetzt und beim
+    /// Speichern ignoriert – die Kennzeichnung bestimmt ausschließlich der Server.
+    /// </summary>
+    public bool IstVonDirektionErfasst { get; set; }
+
+    /// <summary>
+    /// Quelle bei « Modifier et réattribuer »: die neue Lektion übernimmt die
+    /// Direktions-Kennzeichnung der Quelllektion (serverseitig nachgeladen).
+    /// </summary>
+    public Guid? QuellLessonId { get; set; }
+
     public List<LessonExerciseFormModel> Exercises { get; set; } = [];
 }
 

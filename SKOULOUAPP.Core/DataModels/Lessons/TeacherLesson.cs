@@ -21,6 +21,14 @@ public class TeacherLesson : AuditableModel
     public Guid? AuthorId { get; set; }
     public AppUser? Author { get; set; }
 
+    /// <summary>
+    /// Konto der Direktion (Schulleitung/Koordination), das das Skript im Namen des
+    /// Autors erfasst hat. <c>null</c> = vom Lehrer selbst erfasst. Bleibt erhalten,
+    /// wenn der Lehrer den Inhalt später selbst bearbeitet (« Saisi par la direction »).
+    /// </summary>
+    public Guid? ErfasstVonId { get; set; }
+    public AppUser? ErfasstVon { get; set; }
+
     /// <summary>Titel des Skripts, z. B. "Grammatik: Die Artikel".</summary>
     public string Title { get; set; } = string.Empty;
 

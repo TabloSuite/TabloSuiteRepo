@@ -208,6 +208,7 @@ builder.Services.AddTransient<IBenutzerArbeitsvorgang, BenutzerArbeitsvorgang>()
 builder.Services.AddTransient<LearningService>();
 builder.Services.AddTransient<LessonExerciseA4PdfService>();
 builder.Services.AddTransient<TeacherLessonService>();
+builder.Services.AddTransient<DirektionsErfassungService>();
 builder.Services.AddTransient<ExamService>();
 builder.Services.AddTransient<FormelFavoritService>();
 builder.Services.AddTransient<AboService>();

@@ -24,6 +24,10 @@ public partial class DirectionLessonExerciseReader
     [SupplyParameterFromQuery(Name = "from")]
     public string? FromPage { get; set; }
 
+    /// <summary>Lehrer, für den die Direktion erfasst (Rücksprung in die Erfassungsansicht).</summary>
+    [SupplyParameterFromQuery(Name = "lehrer")]
+    public Guid? LehrerQuery { get; set; }
+
     private LessonDetailViewModel? lesson;
     private bool notFound;
 
@@ -53,6 +57,12 @@ public partial class DirectionLessonExerciseReader
         if (string.Equals(FromPage, "teacher-create", StringComparison.OrdinalIgnoreCase))
         {
             Navigation.NavigateTo("/teacher/create");
+            return;
+        }
+
+        if (string.Equals(FromPage, "lesson-exercises", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(LehrerQuery is Guid lehrerId ? $"/teacher/lesson-exercises?lehrer={lehrerId}" : "/teacher/lesson-exercises");
             return;
         }
 

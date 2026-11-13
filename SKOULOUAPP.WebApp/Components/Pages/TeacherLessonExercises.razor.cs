@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using SkoulouApp.Core.DataModels.Identity;
 using SkoulouApp.Core.Interfaces;
 using SkoulouApp.Core.Models.Admin;
 using SkoulouApp.Core.Models.TeacherLessons;
@@ -40,6 +41,36 @@ public partial class TeacherLessonExercises
 
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
+    private DirektionsErfassungService DirektionsErfassung { get; set; } = default!;
+
+    /// <summary>Vorauswahl « Saisir pour l'enseignant » (Links zwischen den Erfassungsseiten).</summary>
+    [SupplyParameterFromQuery(Name = "lehrer")]
+    public Guid? LehrerQuery { get; set; }
+
+    // Direktion erfasst im Namen eines Lehrers ohne Gerät. Ohne Auswahl bleibt die
+    // gewohnte Direktionsansicht; mit Auswahl verhält sich die Seite wie die des Lehrers.
+    private bool istDirektion;
+    private IReadOnlyList<LehrerAuswahlItem> lehrerAuswahl = [];
+    private Guid? fuerLehrerId;
+
+    /// <summary>Lehrer, in dessen Namen gelesen und gespeichert wird.</summary>
+    private Guid LehrerId => fuerLehrerId ?? currentTeacherId;
+
+    /// <summary>Handelnder für die serverseitige Prüfung, nur wenn für einen Lehrer erfasst wird.</summary>
+    private Guid? HandelnderId => fuerLehrerId.HasValue ? currentTeacherId : null;
+
+    private bool ErfasstFuerAnderenLehrer => fuerLehrerId.HasValue && fuerLehrerId.Value != currentTeacherId;
+
+    private string FuerLehrerName => lehrerAuswahl.FirstOrDefault(lehrer => lehrer.Id == fuerLehrerId)?.Name ?? "l'enseignant";
+
+    private string FuerLehrerHref(string pfad) => $"{pfad}?lehrer={fuerLehrerId}";
+
+    private string GetLessonViewHref(Guid lessonId)
+        => fuerLehrerId.HasValue
+            ? $"/teacher/lesson-exercises/{lessonId}/view?from=lesson-exercises&lehrer={fuerLehrerId}"
+            : $"/teacher/lesson-exercises/{lessonId}/view?from=teacher-create";
 
     private ElementReference editorScrollContainer;
 
@@ -318,6 +349,7 @@ public partial class TeacherLessonExercises
         public int AssignmentVersion { get; set; }
         public bool HasSubmissionsInCurrentAssignmentVersion { get; set; }
         public bool IsCurrentAssignmentVersionLocked { get; set; }
+        public bool IstVonDirektionErfasst { get; set; }
     }
 
     private sealed class LessonExerciseBlockEditorModel
@@ -549,6 +581,18 @@ public partial class TeacherLessonExercises
             }
 
             currentRoles = authState.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            istDirektion = currentRoles.Contains(Rollen.SchulLeiter, StringComparer.OrdinalIgnoreCase)
+                || currentRoles.Contains(Rollen.Koordinator, StringComparer.OrdinalIgnoreCase);
+
+            if (istDirektion)
+            {
+                lehrerAuswahl = await DirektionsErfassung.GetLehrerFuerDirektionAsync(currentTeacherId, ComponentToken);
+                if (LehrerQuery is Guid gewuenschterLehrer
+                    && await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentTeacherId, gewuenschterLehrer, ComponentToken))
+                {
+                    fuerLehrerId = gewuenschterLehrer;
+                }
+            }
 
             await LoadAsync();
         }
@@ -557,13 +601,41 @@ public partial class TeacherLessonExercises
         }
     }
 
+    /// <summary>
+    /// Wechselt die Erfassung « Saisir pour l'enseignant ». Die Auswahl stammt vom Client
+    /// und wird deshalb serverseitig geprüft, bevor Daten des Lehrers geladen werden.
+    /// </summary>
+    private async Task SetFuerLehrerAsync(Guid? lehrerId)
+    {
+        if (!istDirektion || lehrerId == fuerLehrerId)
+        {
+            return;
+        }
+
+        if (lehrerId is Guid id && !await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentTeacherId, id, ComponentToken))
+        {
+            errorMessage = DirektionsErfassungService.KeineBerechtigungHinweis;
+            return;
+        }
+
+        CloseEditor();
+        dueDateModalOpen = false;
+        fuerLehrerId = lehrerId;
+        statusMessage = null;
+        lessonListSchoolFilterId = null;
+        lessonListKlasseFilterId = null;
+        pendingReviewSchoolFilterId = null;
+        pendingReviewKlasseFilterId = null;
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
         isLoading = true;
         errorMessage = null;
 
-        var isSchoolDirectionUser = currentRoles.Contains("SchulLeiter", StringComparer.OrdinalIgnoreCase)
-            || currentRoles.Contains("Koordinator", StringComparer.OrdinalIgnoreCase);
+        // Ohne Lehrerauswahl bleibt die gewohnte Direktionsansicht (alle Klassen der Schule).
+        var isSchoolDirectionUser = istDirektion && !fuerLehrerId.HasValue;
 
         if (isSchoolDirectionUser)
         {
@@ -589,7 +661,7 @@ public partial class TeacherLessonExercises
         {
             allowedCourseIds = await DbContext.LehrerNiveauZuordnungen
                 .AsNoTracking()
-                .Where(x => x.LehrerID == currentTeacherId)
+                .Where(x => x.LehrerID == LehrerId)
                 .Select(x => x.KlasseId)
                 .Distinct()
                 .ToHashSetAsync(ComponentToken);
@@ -637,7 +709,7 @@ public partial class TeacherLessonExercises
 
         var teacherFachIds = DbContext.LehrerFachZuordnungen
             .AsNoTracking()
-            .Where(assignment => assignment.LehrerId == currentTeacherId)
+            .Where(assignment => assignment.LehrerId == LehrerId)
             .Select(assignment => assignment.FachId)
             .Distinct();
 
@@ -688,11 +760,16 @@ public partial class TeacherLessonExercises
                     && lesson.ExerciseSubmissionDueAtUtc.Value >= DateTime.UtcNow
                     && DbContext.ExerciseAttempts.Any(attempt =>
                         attempt.AssignmentVersion == lesson.AssignmentVersion
-                        && attempt.Exercise.LessonId == lesson.Id)
+                        && attempt.Exercise.LessonId == lesson.Id),
+                IstVonDirektionErfasst = lesson.ErfasstVonId != null
             })
             .ToListAsync(ComponentToken);
 
-        pendingManualReviews = (await LearningService.GetPendingManualExerciseReviewsForTeacherAsync(currentTeacherId, ComponentToken)).ToList();
+        // Korrekturen bleiben Sache des Lehrers: bei der Erfassung für einen anderen
+        // Lehrer werden keine offenen Schülerantworten geladen.
+        pendingManualReviews = ErfasstFuerAnderenLehrer
+            ? []
+            : (await LearningService.GetPendingManualExerciseReviewsForTeacherAsync(currentTeacherId, ComponentToken)).ToList();
         manualFeedbackByAttempt = pendingManualReviews.ToDictionary(x => x.AttemptId, _ => string.Empty);
         manualPointsByAttempt = pendingManualReviews.ToDictionary(x => x.AttemptId, x => x.ExercisePoints);
 
@@ -770,7 +847,9 @@ public partial class TeacherLessonExercises
             ?? Guid.Empty;
         if (firstCourseId == Guid.Empty)
         {
-            errorMessage = "Aucune classe n'est attribuée à votre profil.";
+            errorMessage = ErfasstFuerAnderenLehrer
+                ? $"Aucune classe n'est attribuée à {FuerLehrerName}. Attribuez-lui d'abord ses classes."
+                : "Aucune classe n'est attribuée à votre profil.";
             return;
         }
 
@@ -864,7 +943,7 @@ public partial class TeacherLessonExercises
                 dueDateUtc = DateTime.SpecifyKind(dueDateModalValue.Value, DateTimeKind.Local).ToUniversalTime();
             }
 
-            var result = await DashboardService.ChangeLessonSubmissionDueAsync(dueDateLessonId, dueDateUtc, currentTeacherId, ComponentToken);
+            var result = await DashboardService.ChangeLessonSubmissionDueAsync(dueDateLessonId, dueDateUtc, LehrerId, ComponentToken, HandelnderId);
             if (!result.Succeeded)
             {
                 errorMessage = result.Message;
@@ -902,6 +981,7 @@ public partial class TeacherLessonExercises
         selectedSchoolId = klasseSchoolById.TryGetValue(form.CourseId, out var schoolId)
             ? schoolId
             : selectedSchoolId;
+        form.QuellLessonId = lessonId;
         form.LessonId = null;
         form.HasSubmissionsInCurrentAssignmentVersion = false;
         form.IsCurrentAssignmentVersionLocked = false;
@@ -1254,7 +1334,7 @@ public partial class TeacherLessonExercises
                 form.ExerciseSubmissionDueAtUtc = DateTime.SpecifyKind(form.ExerciseSubmissionDueAtUtc.Value, DateTimeKind.Local).ToUniversalTime();
             }
 
-            var result = await DashboardService.SaveLessonAsync(form, currentTeacherId, ComponentToken);
+            var result = await DashboardService.SaveLessonAsync(form, LehrerId, ComponentToken, HandelnderId);
             if (!result.Succeeded)
             {
                 errorMessage = result.Message;
@@ -1265,6 +1345,11 @@ public partial class TeacherLessonExercises
             if (isReassignCreationMode)
             {
                 statusMessage = "Nouvelle leçon + exercices créés et publiés.";
+            }
+
+            if (ErfasstFuerAnderenLehrer)
+            {
+                statusMessage += $" (pour {FuerLehrerName})";
             }
             editorOpen = false;
             form = null;

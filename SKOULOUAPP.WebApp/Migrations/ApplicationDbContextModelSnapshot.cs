@@ -354,6 +354,9 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<int>("DurationInMinutes")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -392,6 +395,8 @@ namespace SkoulouApp.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("ErfasstVonId");
 
                     b.HasIndex("KlasseId");
 
@@ -1453,6 +1458,9 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<Guid?>("CreatedByTeacherId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -1487,6 +1495,8 @@ namespace SkoulouApp.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByTeacherId");
+
+                    b.HasIndex("ErfasstVonId");
 
                     b.HasIndex("FachId");
 
@@ -1589,6 +1599,9 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -1629,6 +1642,8 @@ namespace SkoulouApp.WebApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("ErfasstVonId");
 
                     b.HasIndex("FachId");
 
@@ -2168,6 +2183,11 @@ namespace SkoulouApp.WebApp.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AntwortTonAus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid>("AppUserId")
                         .HasColumnType("uniqueidentifier");
@@ -3285,6 +3305,11 @@ namespace SkoulouApp.WebApp.Migrations
                         .WithMany()
                         .HasForeignKey("AuthorId");
 
+                    b.HasOne("SkoulouApp.Core.DataModels.Identity.AppUser", "ErfasstVon")
+                        .WithMany()
+                        .HasForeignKey("ErfasstVonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SkoulouApp.Core.DataModels.Courses.Klasse", "Klasse")
                         .WithMany("Exams")
                         .HasForeignKey("KlasseId")
@@ -3292,6 +3317,8 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Author");
+
+                    b.Navigation("ErfasstVon");
 
                     b.Navigation("Klasse");
                 });
@@ -3641,6 +3668,11 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasForeignKey("CreatedByTeacherId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SkoulouApp.Core.DataModels.Identity.AppUser", "ErfasstVon")
+                        .WithMany()
+                        .HasForeignKey("ErfasstVonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SkoulouApp.Core.DataModels.Schools.Fach", "Fach")
                         .WithMany("Lessons")
                         .HasForeignKey("FachId");
@@ -3652,6 +3684,8 @@ namespace SkoulouApp.WebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedByTeacher");
+
+                    b.Navigation("ErfasstVon");
 
                     b.Navigation("Fach");
 
@@ -3695,6 +3729,11 @@ namespace SkoulouApp.WebApp.Migrations
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SkoulouApp.Core.DataModels.Identity.AppUser", "ErfasstVon")
+                        .WithMany()
+                        .HasForeignKey("ErfasstVonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SkoulouApp.Core.DataModels.Schools.Fach", "Fach")
                         .WithMany("TeacherLessons")
                         .HasForeignKey("FachId")
@@ -3712,6 +3751,8 @@ namespace SkoulouApp.WebApp.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Author");
+
+                    b.Navigation("ErfasstVon");
 
                     b.Navigation("Fach");
 

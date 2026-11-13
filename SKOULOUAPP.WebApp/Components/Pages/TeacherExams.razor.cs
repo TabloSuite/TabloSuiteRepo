@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using SkoulouApp.Core.DataModels.Exams;
 using SkoulouApp.Core.Models.Admin;
+using SkoulouApp.Core.Models.TeacherLessons;
 using SkoulouApp.Core.Interfaces;
 using SkoulouApp.Core.Services;
 using SkoulouApp.WebApp.Components.Shared;
@@ -30,6 +31,34 @@ public partial class TeacherExams
 
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
+    private DirektionsErfassungService DirektionsErfassung { get; set; } = default!;
+
+    /// <summary>Vorauswahl « Saisir pour l'enseignant » (Links zwischen den Erfassungsseiten).</summary>
+    [SupplyParameterFromQuery(Name = "lehrer")]
+    public Guid? LehrerQuery { get; set; }
+
+    // Direktion erfasst im Namen eines Lehrers ohne Gerät. Ohne Auswahl bleibt der
+    // gewohnte Direktionsmodus (PDF-Prüfungen); mit Auswahl verhalten sich die Prüfungen
+    // genau wie eigene Prüfungen des Lehrers.
+    private IReadOnlyList<LehrerAuswahlItem> lehrerAuswahl = [];
+    private Guid? fuerLehrerId;
+
+    /// <summary>Direktion ohne Lehrerauswahl: Prüfungen nur für die Direktion (PDF).</summary>
+    private bool IstDirektionsPdfModus => isSchoolDirectionUser && !fuerLehrerId.HasValue;
+
+    /// <summary>Autor aller Lese-/Schreibaufrufe: der ausgewählte Lehrer oder der angemeldete Nutzer.</summary>
+    private Guid AutorId => fuerLehrerId ?? currentTeacherId;
+
+    /// <summary>Handelnder für die serverseitige Prüfung, nur wenn für einen Lehrer erfasst wird.</summary>
+    private Guid? HandelnderId => fuerLehrerId.HasValue ? currentTeacherId : null;
+
+    private bool ErfasstFuerAnderenLehrer => fuerLehrerId.HasValue && fuerLehrerId.Value != currentTeacherId;
+
+    private string FuerLehrerName => lehrerAuswahl.FirstOrDefault(lehrer => lehrer.Id == fuerLehrerId)?.Name ?? "l'enseignant";
+
+    private string FuerLehrerHref(string pfad) => $"{pfad}?lehrer={fuerLehrerId}";
 
     private ElementReference editorScrollContainer;
 
@@ -236,6 +265,16 @@ public partial class TeacherExams
 
             Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentTeacherId);
             isSchoolDirectionUser = state.User.IsInRole("SchulLeiter") || state.User.IsInRole("Koordinator");
+            if (isSchoolDirectionUser)
+            {
+                lehrerAuswahl = await DirektionsErfassung.GetLehrerFuerDirektionAsync(currentTeacherId, ComponentToken);
+                if (LehrerQuery is Guid gewuenschterLehrer
+                    && await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentTeacherId, gewuenschterLehrer, ComponentToken))
+                {
+                    fuerLehrerId = gewuenschterLehrer;
+                }
+            }
+
             await LoadAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
@@ -244,13 +283,39 @@ public partial class TeacherExams
         }
     }
 
+    /// <summary>
+    /// Wechselt die Erfassung « Saisir pour l'enseignant ». Die Auswahl stammt vom Client
+    /// und wird deshalb serverseitig geprüft, bevor Daten des Lehrers geladen werden.
+    /// </summary>
+    private async Task SetFuerLehrerAsync(Guid? lehrerId)
+    {
+        if (!isSchoolDirectionUser || lehrerId == fuerLehrerId)
+        {
+            return;
+        }
+
+        if (lehrerId is Guid id && !await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentTeacherId, id, ComponentToken))
+        {
+            formError = DirektionsErfassungService.KeineBerechtigungHinweis;
+            return;
+        }
+
+        CloseEditor();
+        fuerLehrerId = lehrerId;
+        statusMessage = null;
+        formError = null;
+        selectedSchoolFilterId = null;
+        selectedKlasseFilterId = null;
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
-        exams = (await ExamService.GetTeacherExamsAsync(currentTeacherId, ComponentToken)).ToList();
+        exams = (await ExamService.GetTeacherExamsAsync(AutorId, ComponentToken)).ToList();
 
         List<Guid> zugeordneteKlassenIds;
         List<(Guid SchoolId, string SchoolName)> direktionSchulen = [];
-        if (isSchoolDirectionUser)
+        if (IstDirektionsPdfModus)
         {
             var schoolIds = await DbContext.UserSchools
                 .AsNoTracking()
@@ -280,7 +345,7 @@ public partial class TeacherExams
         {
             zugeordneteKlassenIds = await DbContext.LehrerNiveauZuordnungen
                 .AsNoTracking()
-                .Where(z => z.LehrerID == currentTeacherId)
+                .Where(z => z.LehrerID == AutorId)
                 .Select(z => z.KlasseId)
                 .Distinct()
                 .ToListAsync(ComponentToken);
@@ -325,14 +390,14 @@ public partial class TeacherExams
         }
         else
         {
-            form = await ExamService.GetExamForEditAsync(currentTeacherId, examId.Value, ComponentToken) ?? new ExamFormModel();
+            form = await ExamService.GetExamForEditAsync(AutorId, examId.Value, ComponentToken, HandelnderId) ?? new ExamFormModel();
             if (form.Exercises.Count == 0)
             {
                 AddExercise();
             }
         }
 
-        if (isSchoolDirectionUser && form is not null)
+        if (IstDirektionsPdfModus && form is not null)
         {
             form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
             form.ShareWithSchoolDirection = true;
@@ -391,7 +456,8 @@ public partial class TeacherExams
     private string GetExamPreviewHref(Guid examId, bool includeSolutions)
     {
         var from = Embedded ? "teacher-create" : "teacher-exams";
-        return $"/teacher-exams/{examId}/view?solutions={(includeSolutions ? "true" : "false")}&from={from}&scope=owner";
+        var lehrer = fuerLehrerId.HasValue ? $"&lehrer={fuerLehrerId}" : string.Empty;
+        return $"/teacher-exams/{examId}/view?solutions={(includeSolutions ? "true" : "false")}&from={from}&scope=owner{lehrer}";
     }
 
     private static string GetAudienceLabel(ExamManagementItem exam)
@@ -500,7 +566,7 @@ public partial class TeacherExams
         isSavingExam = true;
         try
         {
-            if (isSchoolDirectionUser)
+            if (IstDirektionsPdfModus)
             {
                 form.ReleaseTarget = ExamReleaseTarget.SchoolLeader;
                 form.ShareWithSchoolDirection = true;
@@ -522,18 +588,20 @@ public partial class TeacherExams
 
             if (isReassigning && sourceExamId is Guid previousId)
             {
-                await ExamService.ReassignExamAsync(currentTeacherId, previousId, form, ComponentToken);
+                await ExamService.ReassignExamAsync(AutorId, previousId, form, ComponentToken, HandelnderId);
                 statusMessage = "Une nouvelle attribution a été créée. Les résultats précédents restent disponibles.";
             }
             else
             {
-                await ExamService.SaveExamAsync(currentTeacherId, form, ComponentToken);
-                statusMessage = "L'examen a été enregistré.";
+                await ExamService.SaveExamAsync(AutorId, form, ComponentToken, HandelnderId);
+                statusMessage = ErfasstFuerAnderenLehrer
+                    ? $"L'examen a été enregistré pour {FuerLehrerName}."
+                    : "L'examen a été enregistré.";
             }
             CloseEditor();
             await LoadAsync();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
         {
             formError = ex.Message;
         }
@@ -545,7 +613,7 @@ public partial class TeacherExams
 
     private async Task DeleteExam(Guid examId)
     {
-        var (succeeded, message) = await ExamService.DeleteExamAsync(currentTeacherId, examId, ComponentToken);
+        var (succeeded, message) = await ExamService.DeleteExamAsync(AutorId, examId, ComponentToken, HandelnderId);
         statusMessage = message;
         if (succeeded)
         {

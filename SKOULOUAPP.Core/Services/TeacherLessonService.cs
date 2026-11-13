@@ -39,7 +39,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
                 ContentType = "Support de cours",
                 Title = lesson.Title,
                 CourseCode = lesson.Klasse.Code,
-                AuthorName = lesson.Author!.FullName
+                AuthorName = lesson.Author!.FullName,
+                IstVonDirektionErfasst = lesson.ErfasstVonId != null
             })
             .ToListAsync(cancellationToken);
 
@@ -58,7 +59,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
                 ContentType = "Examen",
                 Title = exam.Title,
                 CourseCode = exam.Klasse.Code,
-                AuthorName = exam.Author!.FullName
+                AuthorName = exam.Author!.FullName,
+                IstVonDirektionErfasst = exam.ErfasstVonId != null
             })
             .ToListAsync(cancellationToken);
 
@@ -385,7 +387,13 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
                 .AsNoTracking()
                 .AnyAsync(link => link.AppUserId == userId && link.SchoolId == lesson.Klasse.SchoolId.Value, cancellationToken);
 
-        if (!isAuthor && !canViewAsDirection)
+        // Die Direktion, die im Namen des Autors erfassen darf, sieht dessen Skripte
+        // wie der Autor selbst (Vorschau/PDF in der Erfassungsansicht).
+        var canActForAuthor = !isAuthor && !canViewAsDirection
+            && lesson.AuthorId is Guid autorId
+            && await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(userId, autorId, cancellationToken);
+
+        if (!isAuthor && !canViewAsDirection && !canActForAuthor)
         {
             return null;
         }
@@ -439,12 +447,23 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         detail.VideoUrl = null;
     }
 
-    /// <summary>Lädt ein Kursskript als bearbeitbares Formularmodell.</summary>
+    /// <summary>
+    /// Lädt ein Kursskript als bearbeitbares Formularmodell. Mit
+    /// <paramref name="handelnderId"/> lädt die Direktion das Skript des Lehrers
+    /// <paramref name="authorId"/> (Berechtigung wird geprüft).
+    /// </summary>
     public async Task<TeacherLessonFormModel?> GetLessonForEditAsync(
         Guid lessonId,
         Guid authorId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
+        if (handelnderId is Guid handelnder && handelnder != authorId
+            && !await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(handelnder, authorId, cancellationToken))
+        {
+            return null;
+        }
+
         var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var lesson = await dbContext.TeacherLessons
             .AsNoTracking()
@@ -475,6 +494,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             VideoDisplayName = lesson.VideoAsset?.DisplayName,
             VideoDuration = lesson.VideoAsset?.VideoDuration,
             VideoUrl = lesson.VideoAssetId.HasValue ? $"/media-library/videos/{lesson.VideoAssetId.Value}" : null,
+            IstVonDirektionErfasst = lesson.ErfasstVonId.HasValue,
             Pages = lesson.Pages
                 .OrderBy(p => p.PageNumber)
                 .Select(p => new TeacherLessonPageFormModel
@@ -487,12 +507,25 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         };
     }
 
-    /// <summary>Erstellt oder aktualisiert ein Kursskript inkl. seiner Seiten.</summary>
+    /// <summary>
+    /// Erstellt oder aktualisiert ein Kursskript inkl. seiner Seiten. Mit
+    /// <paramref name="handelnderId"/> ≠ <paramref name="authorId"/> erfasst die Direktion
+    /// im Namen des Lehrers: Berechtigung und Klassenzuordnung des Lehrers werden geprüft,
+    /// <see cref="TeacherLesson.ErfasstVonId"/> wird gesetzt. Bearbeitet der Lehrer selbst,
+    /// bleibt eine vorhandene Kennzeichnung erhalten.
+    /// </summary>
     public async Task<Guid> SaveLessonAsync(
         TeacherLessonFormModel model,
         Guid authorId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
+        var erfasstVonId = await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
+        if (erfasstVonId.HasValue)
+        {
+            await PruefeKlasseDesLehrersAsync(authorId, model.KlasseId, cancellationToken);
+        }
+
         var klasse = await dbContext.Klassen
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == model.KlasseId, cancellationToken)
@@ -523,6 +556,11 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
                 AuthorId = authorId
             };
             await dbContext.TeacherLessons.AddAsync(lesson, cancellationToken);
+        }
+
+        if (erfasstVonId.HasValue)
+        {
+            lesson.ErfasstVonId = erfasstVonId;
         }
 
         lesson.KlasseId = model.KlasseId;
@@ -585,13 +623,24 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             .ToList();
     }
 
+    /// <summary>
+    /// Ermittelt bzw. legt das Fach an und ordnet es dem Lehrer zu. Mit
+    /// <paramref name="handelnderId"/> ≠ <paramref name="teacherId"/> handelt die Direktion
+    /// (Berechtigung und Klassenzuordnung des Lehrers werden geprüft).
+    /// </summary>
     public async Task<Guid?> ResolveTeacherFachAsync(
         Guid teacherId,
         Guid klasseId,
         Guid? fachId,
         string? neueFachBezeichnung,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? handelnderId = null)
     {
+        if (await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, teacherId, cancellationToken) is not null)
+        {
+            await PruefeKlasseDesLehrersAsync(teacherId, klasseId, cancellationToken);
+        }
+
         var schoolId = await dbContext.Klassen
             .AsNoTracking()
             .Where(klasse => klasse.Id == klasseId)
@@ -669,13 +718,16 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>Setzt den Veröffentlichungsstatus eines Kursskripts.</summary>
+    /// <summary>Setzt den Veröffentlichungsstatus eines Kursskripts (optional durch die Direktion im Namen des Autors).</summary>
     public async Task SetPublishedAsync(
         Guid lessonId,
         Guid authorId,
         bool isPublished,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
+        await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
+
         var lesson = await dbContext.TeacherLessons
             .Include(x => x.Klasse)
             .FirstOrDefaultAsync(x => x.Id == lessonId && x.AuthorId == authorId, cancellationToken)
@@ -692,14 +744,25 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>Kopiert eine eigene Lehrerlektion als neuen Entwurf in eine andere Klasse.</summary>
+    /// <summary>
+    /// Kopiert eine eigene Lehrerlektion als neuen Entwurf in eine andere Klasse
+    /// (optional durch die Direktion im Namen des Autors). Die Kopie übernimmt die
+    /// Kennzeichnung « Saisi par la direction » der Quelle.
+    /// </summary>
     public async Task<Guid> CopyLessonToKlasseAsync(
         Guid lessonId,
         Guid authorId,
         Guid targetKlasseId,
         bool publishDirectly = false,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
+        var erfasstVonId = await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
+        if (erfasstVonId.HasValue)
+        {
+            await PruefeKlasseDesLehrersAsync(authorId, targetKlasseId, cancellationToken);
+        }
+
         var source = await dbContext.TeacherLessons
             .AsNoTracking()
             .Include(x => x.Klasse)
@@ -742,6 +805,7 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         {
             KlasseId = targetKlasseId,
             AuthorId = authorId,
+            ErfasstVonId = erfasstVonId ?? source.ErfasstVonId,
             FachId = fachId,
             Title = $"{source.Title} (copie)",
             Summary = source.Summary,
@@ -766,12 +830,15 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         return copy.Id;
     }
 
-    /// <summary>Löscht ein Kursskript inkl. aller Seiten.</summary>
+    /// <summary>Löscht ein Kursskript inkl. aller Seiten (optional durch die Direktion im Namen des Autors).</summary>
     public async Task DeleteLessonAsync(
         Guid lessonId,
         Guid authorId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? handelnderId = null)
     {
+        await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
+
         var lesson = await dbContext.TeacherLessons
             .Include(x => x.Klasse)
             .Include(x => x.Pages)
@@ -792,6 +859,21 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         dbContext.TeacherLessonPages.RemoveRange(lesson.Pages);
         dbContext.TeacherLessons.Remove(lesson);
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Erfasst die Direktion im Namen eines Lehrers, darf sie nur Klassen verwenden,
+    /// die diesem Lehrer zugeordnet sind.
+    /// </summary>
+    private async Task PruefeKlasseDesLehrersAsync(Guid lehrerId, Guid klasseId, CancellationToken cancellationToken)
+    {
+        var zugeordnet = await dbContext.LehrerNiveauZuordnungen
+            .AsNoTracking()
+            .AnyAsync(link => link.LehrerID == lehrerId && link.KlasseId == klasseId, cancellationToken);
+        if (!zugeordnet)
+        {
+            throw new InvalidOperationException("Cette classe n'est pas attribuée à cet enseignant.");
+        }
     }
 
     private static void SyncPages(TeacherLesson lesson, List<TeacherLessonPageFormModel> pages)
@@ -853,7 +935,8 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         IsPdfExportEnabled = lesson.IsPdfExportEnabled,
         IsSharedWithSchool = lesson.IsSharedWithSchool,
         HasVideo = lesson.VideoAssetId.HasValue,
-        VideoDisplayName = lesson.VideoAsset?.DisplayName
+        VideoDisplayName = lesson.VideoAsset?.DisplayName,
+        IstVonDirektionErfasst = lesson.ErfasstVonId.HasValue
     };
 
     private static TeacherLessonDetailViewModel MapToDetailViewModel(TeacherLesson lesson) => new()

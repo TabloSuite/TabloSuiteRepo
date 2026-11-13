@@ -602,10 +602,14 @@ public class ExamService(ISkoulouAppDbContext dbContext)
 
     /// <summary>
     /// Legt eine neue Prüfung an oder aktualisiert eine bestehende inklusive
-    /// Aufgabenblöcken (ExamExercise) und Aufgaben (ExamQuestion).
+    /// Aufgabenblöcken (ExamExercise) und Aufgaben (ExamQuestion). Mit
+    /// <paramref name="handelnderId"/> ≠ <paramref name="authorId"/> erfasst die Direktion
+    /// im Namen des Lehrers (Berechtigung wird geprüft, <see cref="Exam.ErfasstVonId"/>
+    /// wird gesetzt); die Prüfung verhält sich genau wie eine eigene Prüfung des Lehrers.
     /// </summary>
-    public async Task<Guid> SaveExamAsync(Guid authorId, ExamFormModel model, CancellationToken cancellationToken = default)
+    public async Task<Guid> SaveExamAsync(Guid authorId, ExamFormModel model, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        var erfasstVonId = await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
         ValidateExamForm(model);
 
         if ((model.AssignToClassStudents || model.ReleaseTarget == ExamReleaseTarget.ClassStudents)
@@ -680,6 +684,11 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         {
             exam = new Exam { AuthorId = authorId };
             await dbContext.Exams.AddAsync(exam, cancellationToken);
+        }
+
+        if (erfasstVonId.HasValue)
+        {
+            exam.ErfasstVonId = erfasstVonId;
         }
 
         exam.KlasseId = klasse.Id;
@@ -758,8 +767,9 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         return exam.Id;
     }
 
-    public async Task ChangeSubmissionDueAsync(Guid authorId, Guid examId, DateTime dueAtUtc, CancellationToken cancellationToken = default)
+    public async Task ChangeSubmissionDueAsync(Guid authorId, Guid examId, DateTime dueAtUtc, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
         var exam = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == examId && e.AuthorId == authorId, cancellationToken)
             ?? throw new InvalidOperationException("L'examen est introuvable.");
         await PruefeKlassenSchulzugangAsync(exam.KlasseId, cancellationToken);
@@ -786,8 +796,13 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Guid> ReassignExamAsync(Guid authorId, Guid sourceExamId, ExamFormModel model, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Neue Attribution einer abgelaufenen Prüfung (optional durch die Direktion im Namen
+    /// des Autors). Die neue Prüfung übernimmt die Kennzeichnung « Saisi par la direction ».
+    /// </summary>
+    public async Task<Guid> ReassignExamAsync(Guid authorId, Guid sourceExamId, ExamFormModel model, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        await new DirektionsErfassungService(dbContext).PruefeUndErmittleErfasserAsync(handelnderId, authorId, cancellationToken);
         var source = await dbContext.Exams.FirstOrDefaultAsync(e => e.Id == sourceExamId && e.AuthorId == authorId, cancellationToken)
             ?? throw new InvalidOperationException("L'examen est introuvable.");
         await PruefeKlassenSchulzugangAsync(source.KlasseId, cancellationToken);
@@ -821,7 +836,13 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         model.ExamId = null;
         model.AssignToClassStudents = true;
         model.ReleaseTarget = ExamReleaseTarget.ClassStudents;
-        var newExamId = await SaveExamAsync(authorId, model, cancellationToken);
+        var newExamId = await SaveExamAsync(authorId, model, cancellationToken, handelnderId);
+        if (source.ErfasstVonId.HasValue)
+        {
+            var newExam = await dbContext.Exams.FirstAsync(e => e.Id == newExamId, cancellationToken);
+            newExam.ErfasstVonId ??= source.ErfasstVonId;
+        }
+
         source.IsSuperseded = true;
         source.GeaendertAmUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -864,6 +885,7 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 ExamType = exam.ExamType,
                 IsPublishedToStudents = exam.IsPublishedToStudents,
                 IsSharedWithSchool = exam.IsSharedWithSchool,
+                IstVonDirektionErfasst = exam.ErfasstVonId.HasValue,
                 ReleaseTarget = exam.IsPublishedToStudents
                     ? ExamReleaseTarget.ClassStudents
                     : exam.IsSharedWithSchool
@@ -887,8 +909,14 @@ public class ExamService(ISkoulouAppDbContext dbContext)
         return schulID is null || await new SchulZugangService(dbContext).IstSchuleFreigegebenAsync(schulID.Value, token);
     }
 
-    public async Task<ExamFormModel?> GetExamForEditAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default)
+    public async Task<ExamFormModel?> GetExamForEditAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        if (handelnderId is Guid handelnder && handelnder != authorId
+            && !await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(handelnder, authorId, cancellationToken))
+        {
+            return null;
+        }
+
         var exam = await dbContext.Exams
             .AsNoTracking()
             .Include(x => x.Klasse)
@@ -924,13 +952,20 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                     ? ExamReleaseTarget.SchoolLeader
                     : ExamReleaseTarget.PrivateAuthor,
             IsPdfExportEnabled = exam.IsPdfExportEnabled,
+            IstVonDirektionErfasst = exam.ErfasstVonId.HasValue,
             Exercises = BuildExerciseFormModels(exam)
         };
     }
 
     /// <summary>Löscht eine Prüfung samt Blöcken, Fragen und Versuchen.</summary>
-    public async Task<(bool Succeeded, string Message)> DeleteExamAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default)
+    public async Task<(bool Succeeded, string Message)> DeleteExamAsync(Guid authorId, Guid examId, CancellationToken cancellationToken = default, Guid? handelnderId = null)
     {
+        if (handelnderId is Guid handelnder && handelnder != authorId
+            && !await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(handelnder, authorId, cancellationToken))
+        {
+            return (false, DirektionsErfassungService.KeineBerechtigungHinweis);
+        }
+
         var exam = await dbContext.Exams
             .Include(x => x.Klasse)
             .Include(x => x.Exercises)
@@ -993,7 +1028,13 @@ public class ExamService(ISkoulouAppDbContext dbContext)
                 .AsNoTracking()
                 .AnyAsync(link => link.AppUserId == userId && link.SchoolId == exam.Klasse.SchoolId.Value, cancellationToken);
 
-        if (!isAuthor && !canViewAsDirection)
+        // Die Direktion, die im Namen des Autors erfassen darf, sieht dessen Prüfungen
+        // wie der Autor selbst (Vorschau/PDF in der Erfassungsansicht).
+        var canActForAuthor = !isAuthor && !canViewAsDirection
+            && exam.AuthorId is Guid autorId
+            && await new DirektionsErfassungService(dbContext).DarfFuerLehrerHandelnAsync(userId, autorId, cancellationToken);
+
+        if (!isAuthor && !canViewAsDirection && !canActForAuthor)
         {
             return null;
         }

@@ -35,6 +35,32 @@ public partial class TeacherLessons
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private DirektionsErfassungService DirektionsErfassung { get; set; } = default!;
+
+    /// <summary>Vorauswahl « Saisir pour l'enseignant » (Links zwischen den Erfassungsseiten).</summary>
+    [SupplyParameterFromQuery(Name = "lehrer")]
+    public Guid? LehrerQuery { get; set; }
+
+    // Direktion erfasst im Namen eines Lehrers ohne Gerät. Ohne Auswahl bleibt die
+    // gewohnte Direktionsübersicht; mit Auswahl verhält sich die Seite wie die des Lehrers.
+    private bool istDirektion;
+    private IReadOnlyList<LehrerAuswahlItem> lehrerAuswahl = [];
+    private Guid? fuerLehrerId;
+    private string? fehlerMeldung;
+
+    private bool IstDirektionsUebersicht => istDirektion && !fuerLehrerId.HasValue;
+
+    /// <summary>Autor aller Lese-/Schreibaufrufe: der ausgewählte Lehrer oder der angemeldete Nutzer.</summary>
+    private Guid AutorId => fuerLehrerId ?? currentUserId;
+
+    /// <summary>Handelnder für die serverseitige Prüfung, nur wenn für einen Lehrer erfasst wird.</summary>
+    private Guid? HandelnderId => fuerLehrerId.HasValue ? currentUserId : null;
+
+    private bool ErfasstFuerAnderenLehrer => fuerLehrerId.HasValue && fuerLehrerId.Value != currentUserId;
+
+    private string FuerLehrerName => lehrerAuswahl.FirstOrDefault(lehrer => lehrer.Id == fuerLehrerId)?.Name ?? "l'enseignant";
+
     private IReadOnlyList<TeacherLessonListItem>? lessons;
     private List<KlasseOption> klasses = [];
     private Guid? selectedSchoolId;
@@ -42,8 +68,7 @@ public partial class TeacherLessons
     private List<FachOptionItem> fachOptions = [];
     private List<FachOptionItem> filteredFachOptions = [];
     private Guid currentUserId;
-    private bool canViewSharedDirectionLessons;
-    private bool canManageLessons = true;
+    private bool canManageLessons => !istDirektion || fuerLehrerId.HasValue;
     private Guid? directionSchoolFilterId;
     private Guid? directionKlasseFilterId;
     private string? directionTeacherFilter;
@@ -621,131 +646,20 @@ public partial class TeacherLessons
             var userIdValue = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             Guid.TryParse(userIdValue, out currentUserId);
             currentRoles = authState.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray();
-            canViewSharedDirectionLessons = authState.User.IsInRole(Rollen.SchulLeiter)
+            istDirektion = authState.User.IsInRole(Rollen.SchulLeiter)
                 || authState.User.IsInRole(Rollen.Koordinator);
-            canManageLessons = !authState.User.IsInRole(Rollen.SchulLeiter)
-                && !authState.User.IsInRole(Rollen.Koordinator);
 
-            var klassenQuery = DbContext.Klassen
-                .AsNoTracking()
-                .Where(x => !x.IstSystemNiveau)
-                .AsQueryable();
-
-            var canLoadKlasses = true;
-
-            if (!canManageLessons)
+            if (istDirektion)
             {
-                var managedSchoolIds = await DbContext.UserSchools
-                    .AsNoTracking()
-                    .Where(link => link.AppUserId == currentUserId)
-                    .Select(link => link.SchoolId)
-                    .Distinct()
-                    .ToListAsync(ComponentToken);
-
-                directionSchulen = (await DbContext.Schools
-                        .AsNoTracking()
-                        .Where(s => managedSchoolIds.Contains(s.Id))
-                        .Select(s => new { s.Id, s.Name })
-                        .ToListAsync(ComponentToken))
-                    .Select(s => (s.Id, s.Name))
-                    .ToList();
-
-                if (managedSchoolIds.Count == 0)
+                lehrerAuswahl = await DirektionsErfassung.GetLehrerFuerDirektionAsync(currentUserId, ComponentToken);
+                if (LehrerQuery is Guid gewuenschterLehrer
+                    && await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentUserId, gewuenschterLehrer, ComponentToken))
                 {
-                    klasses = [];
-                    canLoadKlasses = false;
-                }
-                else
-                {
-                    klassenQuery = klassenQuery.Where(x => x.SchoolId.HasValue && managedSchoolIds.Contains(x.SchoolId.Value));
+                    fuerLehrerId = gewuenschterLehrer;
                 }
             }
 
-            if (canLoadKlasses)
-            {
-                klasses = await klassenQuery
-                    .OrderBy(x => x.Code)
-                    .Select(x => new KlasseOption(
-                        x.Id,
-                        x.SchoolId,
-                        x.School != null ? x.School.Name : string.Empty,
-                        x.Code,
-                        x.Title))
-                    .ToListAsync(ComponentToken);
-            }
-
-            selectedSchoolId = canManageLessons
-                ? klasses.Where(klasse => klasse.SchoolId.HasValue).Select(klasse => klasse.SchoolId).FirstOrDefault()
-                : null;
-
-            directionSchoolFilterId = null;
-
-            klasseSchoolById = klasses.ToDictionary(x => x.Id, x => x.SchoolId);
-
-            fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(currentUserId, ComponentToken)).ToList();
-
-            if (!canManageLessons && canViewSharedDirectionLessons)
-            {
-                var allowedKlasseIds = klasses.Select(k => k.Id).ToHashSet();
-                classTeacherNamesByKlasseId = (await DbContext.LehrerNiveauZuordnungen
-                        .AsNoTracking()
-                        .Where(link => allowedKlasseIds.Contains(link.KlasseId))
-                        .Select(link => new { link.KlasseId, TeacherName = link.Lehrer.FullName })
-                        .ToListAsync(ComponentToken))
-                    .Where(item => !string.IsNullOrWhiteSpace(item.TeacherName))
-                    .GroupBy(item => item.KlasseId)
-                    .ToDictionary(
-                        group => group.Key,
-                        group => group.Select(item => item.TeacherName).Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase));
-
-                var klassesById = klasses.ToDictionary(k => k.Id, k => k);
-                directionExerciseLessons = await DbContext.Lessons
-                    .AsNoTracking()
-                    .Where(lesson => lesson.IsPublished && klassesById.Keys.Contains(lesson.KlasseId))
-                    .OrderBy(lesson => lesson.Order)
-                    .ThenBy(lesson => lesson.Title)
-                    .Select(lesson => new TeacherLessonListItem
-                    {
-                        Id = lesson.Id,
-                        Title = lesson.Title,
-                        Summary = lesson.Summary,
-                        CourseCode = lesson.Klasse.Code,
-                        KlasseId = lesson.KlasseId,
-                        KlasseTitle = lesson.Klasse.Title,
-                        Order = lesson.Order,
-                        IsPublished = true,
-                        AuthorName = string.Empty,
-                        AuthorId = null,
-                        IsPdfExportEnabled = true,
-                        IsSharedWithSchool = true,
-                        IsExerciseLesson = true,
-                        PageCount = lesson.Exercises.Count
-                    })
-                    .ToListAsync(ComponentToken);
-
-                var sharedContent = await TeacherLessonService.GetSharedContentForSchoolLeaderAsync(currentUserId, ComponentToken);
-                sharedDirectionLessons = sharedContent
-                    .Where(item => string.Equals(item.ContentType, "Support de cours", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(item => item.AuthorName)
-                    .ThenBy(item => item.CourseCode)
-                    .ThenBy(item => item.Title)
-                    .ToList();
-                sharedDirectionExams = sharedContent
-                    .Where(item => string.Equals(item.ContentType, "Examen", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(item => item.AuthorName)
-                    .ThenBy(item => item.CourseCode)
-                    .ThenBy(item => item.Title)
-                    .ToList();
-            }
-            else
-            {
-                classTeacherNamesByKlasseId = [];
-                directionExerciseLessons = [];
-                sharedDirectionLessons = [];
-                sharedDirectionExams = [];
-            }
-
-            await ReloadLessonsAsync();
+            await LadeAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -753,22 +667,194 @@ public partial class TeacherLessons
         }
     }
 
+    /// <summary>
+    /// Wechselt die Erfassung « Saisir pour l'enseignant ». Die Auswahl stammt vom Client
+    /// und wird deshalb serverseitig geprüft, bevor Daten des Lehrers geladen werden.
+    /// </summary>
+    private async Task SetFuerLehrerAsync(Guid? lehrerId)
+    {
+        if (!istDirektion || lehrerId == fuerLehrerId)
+        {
+            return;
+        }
+
+        if (lehrerId is Guid id && !await DirektionsErfassung.DarfFuerLehrerHandelnAsync(currentUserId, id, ComponentToken))
+        {
+            fehlerMeldung = DirektionsErfassungService.KeineBerechtigungHinweis;
+            return;
+        }
+
+        CancelEdit();
+        OnCopyModalOpenChanged(false);
+        fuerLehrerId = lehrerId;
+        statusMessage = null;
+        fehlerMeldung = null;
+        activeDirectionTab = DirectionTabLessons;
+        directionKlasseFilterId = null;
+        directionTeacherFilter = null;
+        await LadeAsync();
+    }
+
+    private string FuerLehrerHref(string pfad) => $"{pfad}?lehrer={fuerLehrerId}";
+
+    private async Task LadeAsync()
+    {
+        lessons = null;
+
+        var klassenQuery = DbContext.Klassen
+            .AsNoTracking()
+            .Where(x => !x.IstSystemNiveau)
+            .AsQueryable();
+
+        var canLoadKlasses = true;
+
+        if (fuerLehrerId is Guid lehrerId)
+        {
+            // Wie die Seite des Lehrers: nur seine zugeordneten Klassen.
+            var lehrerKlassenIds = DbContext.LehrerNiveauZuordnungen
+                .AsNoTracking()
+                .Where(link => link.LehrerID == lehrerId)
+                .Select(link => link.KlasseId);
+            klassenQuery = klassenQuery.Where(x => lehrerKlassenIds.Contains(x.Id));
+        }
+        else if (!canManageLessons)
+        {
+            var managedSchoolIds = await DbContext.UserSchools
+                .AsNoTracking()
+                .Where(link => link.AppUserId == currentUserId)
+                .Select(link => link.SchoolId)
+                .Distinct()
+                .ToListAsync(ComponentToken);
+
+            directionSchulen = (await DbContext.Schools
+                    .AsNoTracking()
+                    .Where(s => managedSchoolIds.Contains(s.Id))
+                    .Select(s => new { s.Id, s.Name })
+                    .ToListAsync(ComponentToken))
+                .Select(s => (s.Id, s.Name))
+                .ToList();
+
+            if (managedSchoolIds.Count == 0)
+            {
+                klasses = [];
+                canLoadKlasses = false;
+            }
+            else
+            {
+                klassenQuery = klassenQuery.Where(x => x.SchoolId.HasValue && managedSchoolIds.Contains(x.SchoolId.Value));
+            }
+        }
+
+        if (canLoadKlasses)
+        {
+            klasses = await klassenQuery
+                .OrderBy(x => x.Code)
+                .Select(x => new KlasseOption(
+                    x.Id,
+                    x.SchoolId,
+                    x.School != null ? x.School.Name : string.Empty,
+                    x.Code,
+                    x.Title))
+                .ToListAsync(ComponentToken);
+        }
+
+        selectedSchoolId = canManageLessons
+            ? klasses.Where(klasse => klasse.SchoolId.HasValue).Select(klasse => klasse.SchoolId).FirstOrDefault()
+            : null;
+
+        directionSchoolFilterId = null;
+
+        klasseSchoolById = klasses.ToDictionary(x => x.Id, x => x.SchoolId);
+
+        fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(AutorId, ComponentToken)).ToList();
+
+        if (IstDirektionsUebersicht)
+        {
+            var allowedKlasseIds = klasses.Select(k => k.Id).ToHashSet();
+            classTeacherNamesByKlasseId = (await DbContext.LehrerNiveauZuordnungen
+                    .AsNoTracking()
+                    .Where(link => allowedKlasseIds.Contains(link.KlasseId))
+                    .Select(link => new { link.KlasseId, TeacherName = link.Lehrer.FullName })
+                    .ToListAsync(ComponentToken))
+                .Where(item => !string.IsNullOrWhiteSpace(item.TeacherName))
+                .GroupBy(item => item.KlasseId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(item => item.TeacherName).Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+            var klassesById = klasses.ToDictionary(k => k.Id, k => k);
+            directionExerciseLessons = await DbContext.Lessons
+                .AsNoTracking()
+                .Where(lesson => lesson.IsPublished && klassesById.Keys.Contains(lesson.KlasseId))
+                .OrderBy(lesson => lesson.Order)
+                .ThenBy(lesson => lesson.Title)
+                .Select(lesson => new TeacherLessonListItem
+                {
+                    Id = lesson.Id,
+                    Title = lesson.Title,
+                    Summary = lesson.Summary,
+                    CourseCode = lesson.Klasse.Code,
+                    KlasseId = lesson.KlasseId,
+                    KlasseTitle = lesson.Klasse.Title,
+                    Order = lesson.Order,
+                    IsPublished = true,
+                    AuthorName = string.Empty,
+                    AuthorId = null,
+                    IsPdfExportEnabled = true,
+                    IsSharedWithSchool = true,
+                    IsExerciseLesson = true,
+                    PageCount = lesson.Exercises.Count,
+                    IstVonDirektionErfasst = lesson.ErfasstVonId != null
+                })
+                .ToListAsync(ComponentToken);
+
+            var sharedContent = await TeacherLessonService.GetSharedContentForSchoolLeaderAsync(currentUserId, ComponentToken);
+            sharedDirectionLessons = sharedContent
+                .Where(item => string.Equals(item.ContentType, "Support de cours", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(item => item.AuthorName)
+                .ThenBy(item => item.CourseCode)
+                .ThenBy(item => item.Title)
+                .ToList();
+            sharedDirectionExams = sharedContent
+                .Where(item => string.Equals(item.ContentType, "Examen", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(item => item.AuthorName)
+                .ThenBy(item => item.CourseCode)
+                .ThenBy(item => item.Title)
+                .ToList();
+        }
+        else
+        {
+            classTeacherNamesByKlasseId = [];
+            directionExerciseLessons = [];
+            sharedDirectionLessons = [];
+            sharedDirectionExams = [];
+        }
+
+        await ReloadLessonsAsync();
+    }
+
     private async Task ReloadLessonsAsync()
     {
         lessons = await TeacherLessonService.GetLessonsForTeacherOrSchoolDirectionAsync(
-            currentUserId,
-            canViewSharedDirectionLessons,
+            AutorId,
+            IstDirektionsUebersicht,
             cancellationToken: ComponentToken);
         StateHasChanged();
     }
 
-    private bool IsOwnLesson(TeacherLessonListItem item) => item.AuthorId == currentUserId;
+    private bool IsOwnLesson(TeacherLessonListItem item) => item.AuthorId == AutorId;
 
     private void StartCreate()
     {
         if (!canManageLessons)
         {
-            statusMessage = "La direction consulte les contenus pédagogiques ici. La création de leçons est réservée aux enseignants.";
+            statusMessage = "La direction consulte les contenus pédagogiques ici. Choisissez « Saisir pour l'enseignant » pour créer un cours à sa place.";
+            return;
+        }
+
+        if (fuerLehrerId.HasValue && klasses.Count == 0)
+        {
+            fehlerMeldung = $"Aucune classe n'est attribuée à {FuerLehrerName}. Attribuez-lui d'abord ses classes.";
             return;
         }
 
@@ -798,9 +884,14 @@ public partial class TeacherLessons
             return;
         }
 
-        var loaded = await TeacherLessonService.GetLessonForEditAsync(lessonId, currentUserId, ComponentToken);
+        var loaded = await TeacherLessonService.GetLessonForEditAsync(lessonId, AutorId, ComponentToken, HandelnderId);
         if (loaded is null)
         {
+            if (fuerLehrerId.HasValue)
+            {
+                fehlerMeldung = "Ce cours est introuvable ou vous n'êtes plus autorisé à le modifier.";
+            }
+
             return;
         }
 
@@ -871,10 +962,11 @@ public partial class TeacherLessons
             var publishDirectly = copyPublishDirectly;
             await TeacherLessonService.CopyLessonToKlasseAsync(
                 copySourceLessonId,
-                currentUserId,
+                AutorId,
                 targetKlasseId,
                 publishDirectly,
-                ComponentToken);
+                ComponentToken,
+                HandelnderId);
             copyModalOpen = false;
             copySourceLessonId = Guid.Empty;
             copyTargetKlasseId = null;
@@ -924,18 +1016,22 @@ public partial class TeacherLessons
         isAddingFach = true;
         try
         {
-            var fachId = await TeacherLessonService.ResolveTeacherFachAsync(currentUserId, form.KlasseId, null, newFachName.Trim(), ComponentToken);
+            var fachId = await TeacherLessonService.ResolveTeacherFachAsync(AutorId, form.KlasseId, null, newFachName.Trim(), ComponentToken, HandelnderId);
             if (!fachId.HasValue)
             {
                 statusMessage = "La matière n'a pas pu être ajoutée.";
                 return;
             }
 
-            fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(currentUserId, ComponentToken)).ToList();
+            fachOptions = (await TeacherLessonService.GetTeacherFachOptionsAsync(AutorId, ComponentToken)).ToList();
             FilterFachOptionsForCurrentKlasse();
             form.FachId = fachId.Value;
             newFachName = string.Empty;
             statusMessage = "La matière a été ajoutée.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            fehlerMeldung = ex.Message;
         }
         finally
         {
@@ -1186,10 +1282,17 @@ public partial class TeacherLessons
         try
         {
             form.Pages = await BuildPagesFromEditorAsync();
-            var id = await TeacherLessonService.SaveLessonAsync(form, currentUserId);
+            var id = await TeacherLessonService.SaveLessonAsync(form, AutorId, handelnderId: HandelnderId);
             form.Id = id;
-            statusMessage = "Le cours a été enregistré.";
+            form.IstVonDirektionErfasst |= ErfasstFuerAnderenLehrer;
+            statusMessage = ErfasstFuerAnderenLehrer
+                ? $"Le cours a été enregistré pour {FuerLehrerName}."
+                : "Le cours a été enregistré.";
             await ReloadLessonsAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            fehlerMeldung = ex.Message;
         }
         finally
         {
@@ -1233,7 +1336,16 @@ public partial class TeacherLessons
             return;
         }
 
-        await TeacherLessonService.SetPublishedAsync(item.Id, currentUserId, !item.IsPublished, ComponentToken);
+        try
+        {
+            await TeacherLessonService.SetPublishedAsync(item.Id, AutorId, !item.IsPublished, ComponentToken, HandelnderId);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            fehlerMeldung = ex.Message;
+            return;
+        }
+
         await ReloadLessonsAsync();
     }
 
@@ -1245,7 +1357,16 @@ public partial class TeacherLessons
             return;
         }
 
-        await TeacherLessonService.DeleteLessonAsync(lessonId, currentUserId, ComponentToken);
+        try
+        {
+            await TeacherLessonService.DeleteLessonAsync(lessonId, AutorId, ComponentToken, HandelnderId);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
+        {
+            fehlerMeldung = ex.Message;
+            return;
+        }
+
         if (form?.Id == lessonId)
         {
             CancelEdit();

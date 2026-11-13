@@ -40,6 +40,12 @@ public class TeacherLessonFormModel
     public TimeSpan? VideoDuration { get; set; }
     public string? VideoUrl { get; set; }
 
+    /// <summary>
+    /// Nur zur Anzeige (« Saisi par la direction »): wird beim Laden gesetzt und beim
+    /// Speichern ignoriert – die Kennzeichnung bestimmt ausschließlich der Server.
+    /// </summary>
+    public bool IstVonDirektionErfasst { get; set; }
+
     public List<TeacherLessonPageFormModel> Pages { get; set; } = [];
 }
 

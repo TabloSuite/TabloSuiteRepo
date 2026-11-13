@@ -16,15 +16,27 @@
     @if (!Embedded)
     {
         <SeitenKopf Rubrik="@(isSchoolDirectionUser ? "Direction" : "Espace enseignant")" Titel="Examens" IconName="exam"
-                    Untertitel="@(isSchoolDirectionUser ? "Créez des examens destinés à la direction pour impression PDF." : "Créez et gérez les examens de vos classes : exercices, publication, date limite et PDF.")" />
+                    Untertitel="@(IstDirektionsPdfModus
+                        ? "Créez des examens destinés à la direction pour impression PDF."
+                        : ErfasstFuerAnderenLehrer
+                            ? $"Créez et gérez les examens de {FuerLehrerName} : exercices, publication, date limite et PDF."
+                            : "Créez et gérez les examens de vos classes : exercices, publication, date limite et PDF.")" />
     }
 
     <Toast Message="@statusMessage" MessageChanged="v => statusMessage = v" Kind="Toast.ToastKind.Success" />
     <Toast Message="@formError" MessageChanged="v => formError = v" Kind="Toast.ToastKind.Error" />
 
-    <Abschnitt Titel="Mes examens" Untertitel="Aperçu avec ou sans solutions, publication pour les élèves et nouvelle attribution après la session." IconName="exam">
+    @if (isSchoolDirectionUser && !editorOpen)
+    {
+        <LehrerFuerDirektionAuswahl Lehrer="lehrerAuswahl" Value="fuerLehrerId" ValueChanged="SetFuerLehrerAsync">
+            <a class="sk-btn sk-btn-primary sk-btn-sm" href="@FuerLehrerHref("/teacher/lesson-exercises")"><Icon Name="book-open" Groesse="14" />Leçons et exercices de @FuerLehrerName</a>
+            <a class="sk-btn sk-btn-secondary sk-btn-sm" href="@FuerLehrerHref("/teacher/lessons")"><Icon Name="book" Groesse="14" />Supports de cours de @FuerLehrerName</a>
+        </LehrerFuerDirektionAuswahl>
+    }
+
+    <Abschnitt Titel="@(ErfasstFuerAnderenLehrer ? $"Examens de {FuerLehrerName}" : "Mes examens")" Untertitel="Aperçu avec ou sans solutions, publication pour les élèves et nouvelle attribution après la session." IconName="exam">
         <Aktionen>
-            <button type="button" class="sk-btn sk-btn-primary" @onclick="() => OpenEditor(null)"><Icon Name="plus" Groesse="16" />@(isSchoolDirectionUser ? "Nouvel examen (PDF)" : "Nouvel examen")</button>
+            <button type="button" class="sk-btn sk-btn-primary" @onclick="() => OpenEditor(null)"><Icon Name="plus" Groesse="16" />@(IstDirektionsPdfModus ? "Nouvel examen (PDF)" : "Nouvel examen")</button>
         </Aktionen>
         <ChildContent>
             <div class="mb-4 grid gap-3 sm:grid-cols-2">
@@ -74,6 +86,10 @@
                                         {
                                             <Badge Accent="blue">Épreuve ouverte · aucune date limite commune</Badge>
                                         }
+                                        @if (exam.IstVonDirektionErfasst)
+                                        {
+                                            <DirektionErfasstMarke />
+                                        }
                                     </div>
                                     <h3 class="mb-0 mt-2 text-base font-bold text-slate-900">@exam.Title</h3>
                                     <p class="mb-0 mt-0.5 text-sm text-slate-500">@GetAudienceLabel(exam) · @exam.ExerciseCount exercice(s) · @exam.QuestionCount question(s) · @exam.DurationInMinutes min · @exam.AttemptCount tentative(s)</p>
@@ -116,7 +132,19 @@
     <div class="fixed inset-0 z-[2200] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm sm:p-5">
         <div class="skoulou-modal-surface my-auto flex h-full w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-200">
             <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
-                <h2 class="mb-0 text-lg font-bold text-slate-900">@(isReassigning ? "Modifier et réattribuer l'épreuve" : form.ExamId is null ? "Nouvel examen" : "Modifier l'examen")</h2>
+                <div>
+                    @if (ErfasstFuerAnderenLehrer)
+                    {
+                        <p class="mb-0 text-xs font-semibold text-slate-500">Saisie pour @FuerLehrerName</p>
+                    }
+                    <h2 class="mb-0 flex flex-wrap items-center gap-2 text-lg font-bold text-slate-900">
+                        @(isReassigning ? "Modifier et réattribuer l'épreuve" : form.ExamId is null ? "Nouvel examen" : "Modifier l'examen")
+                        @if (ErfasstFuerAnderenLehrer || form.IstVonDirektionErfasst)
+                        {
+                            <DirektionErfasstMarke />
+                        }
+                    </h2>
+                </div>
                 <button type="button" class="grid h-9 w-9 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" aria-label="Fermer" @onclick="CloseEditor"><Icon Name="x" Groesse="18" /></button>
             </div>
             @if (!string.IsNullOrWhiteSpace(formError))
@@ -140,7 +168,7 @@
                     <div class="sm:col-span-2">
                         <ModernDropdown TValue="Guid?" Label="Classe" Value="form.KlasseId" ValueChanged="SetKlasseAsync" Options="KlasseOptions" Disabled="@(!editorSchoolId.HasValue)" />
                     </div>
-                    @if (isSchoolDirectionUser)
+                    @if (IstDirektionsPdfModus)
                     {
                         <div class="sm:col-span-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
                             Cet examen est créé pour la direction et restera en mode impression PDF.

@@ -11,4 +11,7 @@ public class SharedTeacherContentItem
     public string Title { get; set; } = string.Empty;
     public string CourseCode { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
+
+    /// <summary>Von der Direktion im Namen des Lehrers erfasst (« Saisi par la direction »).</summary>
+    public bool IstVonDirektionErfasst { get; set; }
 }
