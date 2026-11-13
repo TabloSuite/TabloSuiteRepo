@@ -1,4 +1,0 @@
-/* Eingabe für wwwroot/css/tailwind.css (npm run css). Eigene Stile gehören in wwwroot/app.css. */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
