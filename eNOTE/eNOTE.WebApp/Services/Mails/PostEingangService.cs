@@ -19,6 +19,15 @@ public class PostEingangService(IDbContextFactory<ApplicationDbContext> factory,
     public static bool BetrifftEnote(string? betreff)
         => betreff?.Contains("enote", StringComparison.OrdinalIgnoreCase) == true;
 
+    /// <summary>Von den Apps selbst verschickte Mails (Absender = eigene Adresse) nicht als Eingang speichern.</summary>
+    public static bool IstEigeneAbsenderAdresse(string? von, params string?[] eigeneAdressen)
+    {
+        if (string.IsNullOrWhiteSpace(von) || !MailAddress.TryCreate(von.Trim(), out var adresse))
+            return false;
+        return eigeneAdressen.Any(eigene => !string.IsNullOrWhiteSpace(eigene)
+            && string.Equals(adresse.Address, eigene.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Speichert eine eingehende Mail (doppelte Zustellung wird ignoriert). true = neu gespeichert.</summary>
     public async Task<bool> EmpfangenAsync(string absender, string empfaenger, string betreff, string text, string? anbieterId, CancellationToken ct = default)
     {

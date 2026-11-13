@@ -344,6 +344,9 @@ app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration 
     var to = Value(root, "To");
     var id = Value(root, "MessageID");
     if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(from) || !to.Contains(SkoulouMarke.KontaktEmail, StringComparison.OrdinalIgnoreCase)) return Results.BadRequest();
+    // Eigene Mails der Apps (z. B. Kopie des Kontaktformulars) nicht erneut einlesen – sonst Doppel.
+    if (MailWeiterleitung.IstEigeneAbsenderAdresse(from, config["Postmark:FromEmail"], SkoulouMarke.KontaktEmail))
+        return Results.Ok();
     // Gemeinsame Adresse: Mails zu eNOTE an eNOTE weiterleiten (bei Fehler bleiben sie hier).
     if (MailWeiterleitung.GehoertZuEnote(Value(root, "Subject")) && await weiterleitung.AnEnoteAsync(root.GetRawText(), cancellationToken))
         return Results.Ok();

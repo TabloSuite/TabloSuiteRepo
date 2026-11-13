@@ -84,6 +84,29 @@ public class KontaktServiceTests
         Assert.Null(new KontaktService.Responsable("A", null, null).TelefonLink);
     }
 
+    [Fact]
+    public async Task Nachricht_landet_direkt_im_Posteingang_mit_echter_Absenderadresse()
+    {
+        var w = await BaueAsync();
+
+        Assert.Null(await w.Dienst.SendeAnTabloSuiteAsync(w.Besitzer, w.SalonId, "Problème technique", "La caisse ne s'ouvre plus depuis ce matin."));
+
+        await using var db = await w.Factory.CreateDbContextAsync();
+        var mail = Assert.Single(db.EingangsMails);
+        Assert.Equal("[eNOTE] Contact : Problème technique", mail.Betreff);
+        Assert.Contains("proprio@example.test", mail.Absender);
+        Assert.True(System.Net.Mail.MailAddress.TryCreate(mail.Absender, out _));
+        Assert.Contains("Boutique", mail.Text);
+    }
+
+    [Theory]
+    [InlineData("TabloSuite <contact@tablosuite.com>", true)]
+    [InlineData("CONTACT@tablosuite.com", true)]
+    [InlineData("Ama <ama@example.test>", false)]
+    [InlineData("kein-mail", false)]
+    public void Eigene_Mails_der_Apps_werden_nicht_erneut_eingelesen(string von, bool erwartet)
+        => Assert.Equal(erwartet, ENote.WebApp.Services.Mails.PostEingangService.IstEigeneAbsenderAdresse(von, "contact@tablosuite.com"));
+
     [Theory]
     [InlineData(null, "Bonjour, j'ai une question.", "sujet")]
     [InlineData("Autre demande", "court", "au moins")]

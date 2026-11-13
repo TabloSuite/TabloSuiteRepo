@@ -19,6 +19,13 @@ public class MailWeiterleitungTests
         => Assert.Equal(erwartet, MailWeiterleitung.GehoertZuEnote(betreff));
 
     [Theory]
+    [InlineData("TabloSuite <contact@tablosuite.com>", true)]
+    [InlineData("Afi <afi@example.test>", false)]
+    [InlineData("", false)]
+    public void Eigene_Mails_der_Apps_kommen_nicht_doppelt_in_den_Posteingang(string von, bool erwartet)
+        => Assert.Equal(erwartet, MailWeiterleitung.IstEigeneAbsenderAdresse(von, "contact@tablosuite.com", null));
+
+    [Theory]
     [InlineData("Bulletin", "[SKOULOU] Bulletin")]
     [InlineData("Re: [SKOULOU] Bulletin", "Re: [SKOULOU] Bulletin")]
     public void Betreff_traegt_einmal_den_App_Namen(string betreff, string erwartet)

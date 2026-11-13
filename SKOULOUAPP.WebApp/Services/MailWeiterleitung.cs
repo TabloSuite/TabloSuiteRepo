@@ -20,6 +20,19 @@ public sealed class MailWeiterleitung(IHttpClientFactory httpClientFactory, ICon
             && !betreff.Contains(SkoulouEmailService.AppKennung, StringComparison.OrdinalIgnoreCase)
             && betreff.Contains("enote", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Von den Apps selbst verschickte Mails (Kopie des Kontaktformulars, Hinweise an contact@) kommen über die
+    /// gemeinsame Adresse zurück. Sie werden nicht erneut eingelesen (sonst Doppel und « Répondre » an sich selbst);
+    /// im IONOS-Postfach bleiben sie trotzdem.
+    /// </summary>
+    public static bool IstEigeneAbsenderAdresse(string? von, params string?[] eigeneAdressen)
+    {
+        if (string.IsNullOrWhiteSpace(von) || !System.Net.Mail.MailAddress.TryCreate(von.Trim(), out var adresse))
+            return false;
+        return eigeneAdressen.Any(eigene => !string.IsNullOrWhiteSpace(eigene)
+            && string.Equals(adresse.Address, eigene.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Leitet das Postmark-JSON an eNOTE weiter. true = eNOTE hat es angenommen.</summary>
     public async Task<bool> AnEnoteAsync(string postmarkJson, CancellationToken cancellationToken = default)
     {

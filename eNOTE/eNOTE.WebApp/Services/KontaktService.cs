@@ -8,7 +8,8 @@ namespace ENote.WebApp.Services;
 /// « Aide &amp; contact »: Der Besitzer sieht seinen Responsable (Name, E-Mail, Telefon falls eingetragen).
 /// Ohne Responsable schreibt er TabloSuite über das Kontaktformular (Mail an contact@tablosuite.com).
 /// </summary>
-public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mails.MailBenachrichtigungen? mails = null)
+public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mails.MailBenachrichtigungen? mails = null,
+    ILogger<KontaktService>? logger = null)
 {
     public const int BetreffMax = 120;
     public const int NachrichtMin = 10;
@@ -69,7 +70,6 @@ public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mai
         if (betreff.Length > BetreffMax) return "Le sujet est trop long.";
         if (text.Length < NachrichtMin) return $"Le message doit contenir au moins {NachrichtMin} caractères.";
         if (text.Length > NachrichtMax) return $"Le message est trop long ({NachrichtMax} caractères au plus).";
-        if (mails is null) return "L'envoi d'e-mails n'est pas disponible. Écrivez-nous à contact@tablosuite.com.";
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var absender = await db.Users.AsNoTracking().Where(u => u.Id == userId)
@@ -79,8 +79,23 @@ public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mai
             ? await db.Salons.AsNoTracking().Where(s => s.Id == id).Select(s => s.Name).FirstOrDefaultAsync(ct)
             : null;
 
-        var ok = await mails.KontaktAnfrageAsync(betreff, text, absender.FullName ?? absender.UserName ?? "", absender.UserName ?? "",
+        // Direkt in den eNOTE-Posteingang (mit echter Absenderadresse, damit « Répondre » beim Kunden ankommt) …
+        var name = absender.FullName ?? absender.UserName ?? "";
+        db.EingangsMails.Add(new ENote.Core.DataModels.Infrastruktur.EingangsMail
+        {
+            Absender = System.Net.Mail.MailAddress.TryCreate(absender.Email?.Trim(), name, out var adresse) ? adresse.ToString() : name,
+            Empfaenger = "contact@tablosuite.com",
+            Betreff = "[eNOTE] Contact : " + betreff,
+            Text = text + "\n\n— Compte : " + (absender.UserName ?? "") + (laden is null ? "" : " · Établissement : " + laden)
+                + (string.IsNullOrWhiteSpace(absender.TelefonNummer) ? "" : " · Téléphone : " + absender.TelefonNummer)
+        });
+        await db.SaveChangesAsync(ct);
+
+        // … und als Hinweis-Mail an contact@tablosuite.com (kommt nicht erneut in den Posteingang).
+        var ok = mails is not null && await mails.KontaktAnfrageAsync(betreff, text, name, absender.UserName ?? "",
             absender.Email, absender.TelefonNummer, laden, ct);
-        return ok ? null : "L'envoi a échoué. Réessayez plus tard ou écrivez-nous à contact@tablosuite.com.";
+        if (!ok)
+            logger?.LogWarning("Hinweis-Mail zur Kontaktnachricht nicht versendet (Nachricht liegt im Posteingang).");
+        return null;
     }
 }

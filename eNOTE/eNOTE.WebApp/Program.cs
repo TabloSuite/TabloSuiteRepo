@@ -345,6 +345,9 @@ app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration 
     var von = Wert(wurzel, "From");
     var id = Wert(wurzel, "MessageID");
     if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(von)) return Results.BadRequest();
+    // Eigene Mails der Apps (Hinweise an contact@) nicht erneut einlesen – Kontaktnachrichten legt eNOTE direkt ab.
+    if (ENote.WebApp.Services.Mails.PostEingangService.IstEigeneAbsenderAdresse(von, config["Mail:Absender"], "contact@tablosuite.com"))
+        return Results.Ok();
     var text = Wert(wurzel, "TextBody") is { Length: > 0 } t ? t : ENote.WebApp.Services.Mails.EmailService.AlsText(Wert(wurzel, "HtmlBody"));
     await posteingang.EmpfangenAsync(von, Wert(wurzel, "To"), Wert(wurzel, "Subject"), text, id, cancellationToken);
     return Results.Ok();
