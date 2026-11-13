@@ -1072,8 +1072,19 @@ public partial class Caisse(
         }
 
         historieLaedt = true;
-        historieVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(aktiveSitzung.SalonId, 50);
+        (historieVerkaeufe, historieMehr) = await finanzService.SucheVerkaeufeAsync(aktiveSitzung.SalonId, null, null, null, null, 0);
         historieLaedt = false;
+    }
+
+    private bool historieMehr;
+
+    /// <summary>Weitere 50 Verkäufe nachladen (für Nachdruck/Erstattung älterer Bons).</summary>
+    private async Task MehrHistorieAsync()
+    {
+        if (aktiveSitzung is null) return;
+        var (neu, mehr) = await finanzService.SucheVerkaeufeAsync(aktiveSitzung.SalonId, null, null, null, null, historieVerkaeufe.Count);
+        historieVerkaeufe.AddRange(neu);
+        historieMehr = mehr;
     }
 
     /// <summary>Öffnet den Kunden-Display-Dialog mit QR-Code und Link auf die laufende Sitzung.</summary>

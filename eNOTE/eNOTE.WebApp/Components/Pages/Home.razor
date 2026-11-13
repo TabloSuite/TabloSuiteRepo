@@ -54,6 +54,7 @@
                             <strong><Icon Name="bell" Groesse="18" /> @ungeleseneHinweise.Count notification@(ungeleseneHinweise.Count > 1 ? "s" : "")</strong>
                             <AsyncActionButton CssClass="enote-btn-sm" Text="Tout marquer comme lu" OnClick="MarkiereAlleGelesenAsync" />
                         </div>
+                        <div class="enote-liste-scroll db-meldungen-liste">
                         @foreach (var h in ungeleseneHinweise)
                         {
                             <div class="db-meldung">
@@ -62,6 +63,7 @@
                                 <AsyncActionButton BasisKlasse="db-meldung-ok" title="Marquer comme lu" aria-label="Marquer comme lu" OnClick="() => MarkiereGelesenAsync(h.Id)"><Icon Name="check" Groesse="16" /></AsyncActionButton>
                             </div>
                         }
+                        </div>
                     </section>
                 }
 

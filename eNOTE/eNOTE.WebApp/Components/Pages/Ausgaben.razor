@@ -100,7 +100,7 @@
         }
         else
         {
-            <div class="dp-liste">
+            <div class="dp-liste enote-liste-scroll">
                 @foreach (var tag in gefiltert.GroupBy(a => a.DatumUtc.Date).OrderByDescending(g => g.Key))
                 {
                     <div class="dp-tag">

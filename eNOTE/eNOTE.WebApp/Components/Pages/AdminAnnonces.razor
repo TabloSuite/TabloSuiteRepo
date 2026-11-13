@@ -132,6 +132,7 @@
             }
             else
             {
+                <div class="enote-liste-scroll an-liste">
                 @foreach (var a in liste)
                 {
                     var laeuft = a.IstAktiv && (a.SichtbarBisUtc is null || a.SichtbarBisUtc > DateTime.UtcNow);
@@ -160,6 +161,11 @@
                         </div>
                     </article>
                 }
+                @if (mehr)
+                {
+                    <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrLadenAsync">Afficher plus</AsyncActionButton>
+                }
+                </div>
             }
         </section>
     </div>
@@ -246,7 +252,23 @@
         await LadeAsync();
     }
 
-    private async Task LadeAsync() => liste = await ankuendigungen.GetAlleAsync(bearbeiter);
+    private const int SeitenGroesse = 50;
+    private bool mehr;
+
+    private async Task LadeAsync()
+    {
+        var seite = await ankuendigungen.GetSeiteAsync(bearbeiter, 0, SeitenGroesse + 1);
+        mehr = seite.Count > SeitenGroesse;
+        liste = seite.Take(SeitenGroesse).ToList();
+    }
+
+    private async Task MehrLadenAsync()
+    {
+        if (liste is null) return;
+        var seite = await ankuendigungen.GetSeiteAsync(bearbeiter, liste.Count, SeitenGroesse + 1);
+        mehr = seite.Count > SeitenGroesse;
+        liste.AddRange(seite.Take(SeitenGroesse));
+    }
 
     private async Task VeroeffentlicheAsync()
     {

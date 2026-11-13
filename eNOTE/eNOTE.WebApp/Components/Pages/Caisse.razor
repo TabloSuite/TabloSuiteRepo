@@ -498,6 +498,10 @@ else
                         </div>
                     </div>
                 }
+                @if (historieMehr)
+                {
+                    <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrHistorieAsync">Afficher plus</AsyncActionButton>
+                }
             </div>
         }
     </ChildContent>

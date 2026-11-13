@@ -104,8 +104,12 @@
                 else if (gruppe is NachrichtenService.Gruppe.BesitzerVonLaeden or NachrichtenService.Gruppe.TeamVonLaeden)
                 {
                     <p class="enote-muted em-klein">Choisissez un ou plusieurs établissements :</p>
-                    <div class="em-laeden">
-                        @foreach (var l in laeden)
+                    <div class="enote-suchleiste">
+                        <Icon Name="search" Groesse="16" />
+                        <input type="search" placeholder="Rechercher un établissement…" @bind="ladenSuche" @bind:event="oninput" aria-label="Rechercher un établissement" />
+                    </div>
+                    <div class="em-laeden enote-liste-scroll">
+                        @foreach (var l in GefilterteLaeden)
                         {
                             <button type="button" class="enote-chip @(ladenAuswahl.Contains(l.Id) ? "enote-chip-aktiv" : "")" @onclick="() => LadenUmschaltenAsync(l.Id)">@l.Name@(l.Aktiv ? "" : " (désactivé)")</button>
                         }
@@ -424,6 +428,10 @@
     private List<NachrichtenService.Empfaenger> ausgewaehlt = [];
     private List<NachrichtenService.Empfaenger> empfaenger = [];
     private List<NachrichtenService.LadenOption> laeden = [];
+    private string? ladenSuche;
+    private IEnumerable<NachrichtenService.LadenOption> GefilterteLaeden => string.IsNullOrWhiteSpace(ladenSuche)
+        ? laeden
+        : laeden.Where(l => ladenAuswahl.Contains(l.Id) || l.Name.Contains(ladenSuche.Trim(), StringComparison.OrdinalIgnoreCase));
     private HashSet<Guid> ladenAuswahl = [];
     private bool empfaengerAlle;
     private string betreff = string.Empty;

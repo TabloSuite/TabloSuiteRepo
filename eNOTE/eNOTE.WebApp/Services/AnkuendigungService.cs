@@ -154,12 +154,16 @@ public class AnkuendigungService(IDbContextFactory<ApplicationDbContext> factory
     // ------------------------------------------------------------------ Administration
 
     public async Task<List<Eintrag>> GetAlleAsync(Guid bearbeiter, CancellationToken ct = default)
+        => await GetSeiteAsync(bearbeiter, 0, 50, ct);
+
+    /// <summary>Annonces seitenweise (neueste zuerst) – nie alle auf einmal.</summary>
+    public async Task<List<Eintrag>> GetSeiteAsync(Guid bearbeiter, int ueberspringen, int anzahl, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
         return await db.Ankuendigungen.AsNoTracking()
             .OrderByDescending(a => a.ErstelltUtc).ThenByDescending(a => a.SichtbarAbUtc)
-            .Take(50)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl)
             .Select(a => new Eintrag(a.Id, a.Art, a.Ziel, a.Titel, a.Text, a.LinkUrl, a.LinkText, a.ErstelltUtc,
                 a.SichtbarAbUtc, a.SichtbarBisUtc, a.IstAktiv,
                 db.AnkuendigungenGelesen.Count(g => g.AnkuendigungId == a.Id), a.MailsGesendet, a.WartungVonUtc, a.WartungBisUtc))
