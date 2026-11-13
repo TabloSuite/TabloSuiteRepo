@@ -1,0 +1,149 @@
+@* Detail eines Inhalts: Aktionen, Zuweisungen mit Kennzahlen und Vorschau mit Lösungen. *@
+@inherits SkoulouSeite
+@inject InhaltService Inhalte
+@inject InhaltLeseService Lesen
+@inject ZuweisungService Zuweisungen
+@inject TimeProvider Uhr
+
+<PageTitle>@(ansicht?.Kopf.Titel ?? "Contenu") · SKOULOU</PageTitle>
+
+@if (ansicht is null)
+{
+    <a class="sk-zurueck-link" href="@ListeHref"><Icon Name="arrow-left" Groesse="16" /> Retour</a>
+    @if (Fehlermeldung is not null) { <Hinweis Art="fehler">@Fehlermeldung</Hinweis> } else { <LadeIndikator /> }
+}
+else
+{
+    var k = ansicht.Kopf;
+    <a class="sk-zurueck-link" href="@ListeHref"><Icon Name="arrow-left" Groesse="16" /> @(Kontext.Rolle is Rollen.Direktor or Rollen.Koordinator && k.AutorId != Ich.KontoId ? "Contenus de l'établissement" : Art == InhaltsArt.Lecon ? "Mes leçons" : "Mes examens")</a>
+    <SeitenKopf Oberzeile="@($"{PaedagogikText.Art(Art)} · {k.Stufe} · {k.Fach}")" Titel="@k.Titel"
+                Untertitel="@($"Par {k.AutorName}" + (k.ErfasstVonName is { } e ? $" · saisi par {e} (direction)" : ""))">
+        <Aktionen>
+            @if (k.DarfBearbeiten)
+            {
+                <a class="sk-btn sk-btn-ghost" href="@($"{Basis}/{Id}/modifier")"><Icon Name="edit" Groesse="18" /> <span>Modifier</span></a>
+                <button type="button" class="sk-btn sk-btn-primaer" disabled="@(k.Status != InhaltsStatus.Prete)" title="@(k.Status != InhaltsStatus.Prete ? "Marquez d'abord le contenu comme prêt." : null)"
+                        @onclick="() => zuweisenOffen = true"><Icon Name="send" Groesse="18" /> <span>Attribuer</span></button>
+            }
+        </Aktionen>
+    </SeitenKopf>
+
+    <div class="sk-leser-infos">
+        <StatusBadge Text="@PaedagogikText.Status(k.Status)" Art="@PaedagogikText.StatusArt(k.Status)" />
+        <span class="sk-badge sk-badge-neutral">@k.AnzahlFragen question@(k.AnzahlFragen > 1 ? "s" : null) · @ScoreRechner.Punkte(k.MaxPunkte) pts</span>
+        @if (Art == InhaltsArt.Pruefung)
+        {
+            <span class="sk-badge sk-badge-neutral">@PruefungsZeit.DauerText(k.DauerMinuten) · réussi à @PaedagogikText.Prozent(k.Bestehensgrenze)</span>
+        }
+        <Druckknopf Text="Imprimer" Href="@($"/druck/{(Art == InhaltsArt.Lecon ? "lecon" : "examen")}/{Id}")" CssClass="sk-btn-klein" />
+        <Druckknopf Text="Corrigé" Href="@($"/druck/{(Art == InhaltsArt.Lecon ? "lecon" : "examen")}/{Id}?solutions=1")" CssClass="sk-btn-klein" />
+    </div>
+
+    @if (k.DarfBearbeiten)
+    {
+        <div class="sk-knopfzeile sk-detail-aktionen">
+            <AsyncKnopf Text="Réutiliser (copie)" Icon="refresh" CssClass="sk-btn-ghost sk-btn-klein" OnClick="DuplizierenAsync" />
+            @if (k.Status == InhaltsStatus.Brouillon)
+            {
+                <AsyncKnopf Text="Marquer comme prêt" Icon="check" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => StatusAsync(InhaltsStatus.Prete)" />
+            }
+            else if (k.Status == InhaltsStatus.Prete)
+            {
+                <AsyncKnopf Text="Archiver" Icon="inbox" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => StatusAsync(InhaltsStatus.Archive)" />
+            }
+            else
+            {
+                <AsyncKnopf Text="Restaurer" Icon="refresh" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => StatusAsync(InhaltsStatus.Prete)" />
+            }
+            @if (Kontext.Rolle is Rollen.Direktor or Rollen.Koordinator)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => uebertragenOffen = true"><Icon Name="users" Groesse="16" /> <span>Transférer</span></button>
+            }
+            @if (zuweisungen.Count == 0)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein sk-text-fehler" @onclick="() => loeschenOffen = true"><Icon Name="trash" Groesse="16" /> <span>Supprimer</span></button>
+            }
+        </div>
+    }
+
+    <ZuweisungListe Zeilen="zuweisungen" DarfAendern="k.DarfBearbeiten" Art="Art" Geaendert="ZuweisungenLadenAsync" />
+
+    <Karte Titel="Aperçu avec corrigé" Icon="eye" CssClass="sk-oben-abstand" Klappbar="true">
+        @if (Art == InhaltsArt.Lecon)
+        {
+            <LeconSeiten Seiten="ansicht.Seiten" VideoMediumId="ansicht.VideoMediumId" />
+        }
+        else if (!string.IsNullOrWhiteSpace(ansicht.Beschreibung))
+        {
+            <p class="sk-consigne">@ansicht.Beschreibung</p>
+        }
+        @foreach (var b in ansicht.Bloecke)
+        {
+            <section class="sk-pruefung-block">
+                <h2>Exercice @b.Nr@(b.Titel is { Length: > 0 } t ? $" – {t}" : null)</h2>
+                @if (!string.IsNullOrWhiteSpace(b.Consigne)) { <p class="sk-consigne">@b.Consigne</p> }
+                @foreach (var frage in b.Fragen) { <FrageVorschau Frage="frage" MitLoesungen="true" /> }
+            </section>
+        }
+    </Karte>
+
+    <ZuweisungDialog Open="zuweisenOffen" Art="Art" InhaltId="Id" AkteurId="Ich.KontoId" SchuljahrId="Kontext.SchuljahrId" Titel="@k.Titel"
+                     DauerMinuten="k.DauerMinuten" OnGespeichert="ZugewiesenAsync" OnClose="() => zuweisenOffen = false" />
+    <UebertragenDialog Open="uebertragenOffen" Art="Art" InhaltId="Id" AutorId="k.AutorId" OnGespeichert="UebertragenAsync" OnClose="() => uebertragenOffen = false" />
+    <BestaetigungsDialog Open="loeschenOffen" Titel="Supprimer ce contenu ?" Gefahr="true" BestaetigenText="Supprimer"
+                         Text="Le contenu et ses questions seront supprimés définitivement." OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschenOffen = false" />
+}
+
+@code {
+    [Parameter, EditorRequired] public InhaltsArt Art { get; set; }
+    [Parameter, EditorRequired] public Guid Id { get; set; }
+
+    private InhaltAnsicht? ansicht;
+    private IReadOnlyList<ZuweisungZeile> zuweisungen = [];
+    private bool zuweisenOffen, uebertragenOffen, loeschenOffen;
+
+    private string Basis => Art == InhaltsArt.Lecon ? "/enseignant/lecons" : "/enseignant/examens";
+    private string ListeHref => Kontext.Rolle is Rollen.Direktor or Rollen.Koordinator && ansicht?.Kopf.AutorId != Ich.KontoId ? "/direction/contenus" : Basis;
+
+    protected override async Task InitialisierenAsync()
+    {
+        ansicht = await Lesen.AnsichtAsync(Ich.KontoId, Art, Id);
+        await ZuweisungenLadenAsync();
+    }
+
+    private async Task ZuweisungenLadenAsync() => zuweisungen = await Zuweisungen.ListeAsync(Ich.KontoId, Art, Id);
+
+    private async Task ZugewiesenAsync()
+    {
+        zuweisenOffen = false;
+        Toast.ZeigeErfolg("Le contenu est attribué à la classe.");
+        await ZuweisungenLadenAsync();
+    }
+
+    private Task StatusAsync(InhaltsStatus status) => AusfuehrenAsync(async () =>
+    {
+        await Inhalte.StatusSetzenAsync(Ich.KontoId, Art, Id, status);
+        ansicht = ansicht! with { Kopf = ansicht.Kopf with { Status = status } };
+    }, status == InhaltsStatus.Archive ? "Contenu archivé." : "Statut mis à jour.");
+
+    private Task DuplizierenAsync() => AusfuehrenAsync(async () =>
+    {
+        var neu = await Inhalte.DuplizierenAsync(Ich.KontoId, Art, Id);
+        Navigation.NavigateTo($"{Basis}/{neu}/modifier");
+    }, "Copie créée : vous pouvez l'adapter.");
+
+    private async Task UebertragenAsync()
+    {
+        uebertragenOffen = false;
+        ansicht = await Lesen.AnsichtAsync(Ich.KontoId, Art, Id);
+        await ZuweisungenLadenAsync();
+        Toast.ZeigeErfolg("Le contenu a été transféré.");
+    }
+
+    private Task LoeschenAsync() => AusfuehrenAsync(async () =>
+    {
+        loeschenOffen = false;
+        await Inhalte.LoeschenAsync(Ich.KontoId, Art, Id);
+        Navigation.NavigateTo(ListeHref);
+    }, "Contenu supprimé.");
+}

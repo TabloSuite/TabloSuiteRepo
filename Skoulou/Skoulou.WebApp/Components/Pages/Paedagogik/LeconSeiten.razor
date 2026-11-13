@@ -1,0 +1,42 @@
+@* Seiten einer Leçon im A4-Look (eine Seite nach der anderen) und optional das Video. *@
+
+@if (VideoMediumId is { } video)
+{
+    <div class="sk-lecon-video">
+        <video controls preload="metadata" playsinline src="@($"/medien/{video}")">Votre navigateur ne lit pas cette vidéo.</video>
+    </div>
+}
+@if (Seiten.Count > 0)
+{
+    <div class="sk-a4-rahmen">
+        <article class="sk-a4-seite" aria-label="@($"Page {seite + 1} sur {Seiten.Count}")">
+            <InhaltHtml Html="@Seiten[seite]" />
+            <footer class="sk-a4-fuss">Page @(seite + 1) / @Seiten.Count</footer>
+        </article>
+    </div>
+    @if (Seiten.Count > 1)
+    {
+        <div class="sk-blaettern">
+            <button type="button" class="sk-btn sk-btn-ghost" disabled="@(seite == 0)" @onclick="() => Gehe(seite - 1)">
+                <Icon Name="chevron-left" Groesse="18" /> <span>Page précédente</span>
+            </button>
+            <span class="sk-leise">@(seite + 1) / @Seiten.Count</span>
+            <button type="button" class="sk-btn sk-btn-ghost" disabled="@(seite == Seiten.Count - 1)" @onclick="() => Gehe(seite + 1)">
+                <span>Page suivante</span> <Icon Name="chevron-right" Groesse="18" />
+            </button>
+        </div>
+    }
+}
+else if (VideoMediumId is null)
+{
+    <Leerzustand Icon="book-open" Titel="Pas de pages" Text="Cette leçon contient seulement des exercices." />
+}
+
+@code {
+    [Parameter] public IReadOnlyList<string> Seiten { get; set; } = [];
+    [Parameter] public Guid? VideoMediumId { get; set; }
+
+    private int seite;
+
+    private void Gehe(int neu) => seite = Math.Clamp(neu, 0, Math.Max(0, Seiten.Count - 1));
+}

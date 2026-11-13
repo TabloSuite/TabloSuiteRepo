@@ -1,0 +1,184 @@
+@* Übungen einer Leçon: eine Frage nach der anderen, sofortige Rückmeldung (Text, Ton, Stimme), Versuche nach Regel. *@
+@inject LernService Lernen
+@inject PaedagogikModul Js
+@inject ToastService Toast
+
+@if (fragen.Count == 0)
+{
+    <Leerzustand Icon="check-square" Titel="Pas d'exercices" Text="Cette leçon ne contient pas d'exercices." />
+}
+else
+{
+    <div class="sk-uebung-kopf">
+        <div>
+            <strong>@(versuch is null ? "Exercices" : $"Essai {versuch.Nr}")</strong>
+            <span class="sk-leise"> · @staende.Count / @fragen.Count réponse@(staende.Count > 1 ? "s" : null)</span>
+        </div>
+        <span class="sk-leise">@Daten.Versuchsregel</span>
+    </div>
+    <div class="sk-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@fragen.Count" aria-valuenow="@staende.Count">
+        <span style="width:@(staende.Count * 100 / fragen.Count)%"></span>
+    </div>
+    <div class="sk-punkte-nav" aria-label="Questions">
+        @for (var i = 0; i < fragen.Count; i++)
+        {
+            var nr = i;
+            staende.TryGetValue(fragen[i].Frage.Id, out var st);
+            <button type="button" class="sk-punkt-nav @(nr == index ? "aktuell" : null) @(st is null ? null : "s-" + PaedagogikText.ErgebnisArt(st.Status))"
+                    aria-label="@($"Question {nr + 1}")" @onclick="() => index = nr">@(nr + 1)</button>
+        }
+    </div>
+
+    @if (Abgeschlossen)
+    {
+        <div class="sk-ergebnis-karte @PaedagogikText.ScoreKlasse(Prozent)">
+            <span class="sk-ergebnis-zahl">@PaedagogikText.Prozent(Prozent)</span>
+            <div>
+                <strong>Essai terminé</strong>
+                <p>@PaedagogikText.Punkte(versuch!.Punkte, versuch.MaxPunkte) points@(versuch.Status == VersuchsStatus.ACorriger ? " – une réponse attend encore la correction." : ".")</p>
+            </div>
+            @if (DarfNeu)
+            {
+                <AsyncKnopf Text="Nouvel essai" Icon="refresh" CssClass="sk-btn-primaer" OnClick="NeuerVersuchAsync" />
+            }
+        </div>
+    }
+
+    var (block, frage) = fragen[index];
+    <section class="sk-block-kopf">
+        <strong>Exercice @block.Nr@(block.Titel is { Length: > 0 } t ? $" – {t}" : null)</strong>
+        @if (!string.IsNullOrWhiteSpace(block.Consigne))
+        {
+            <p>@block.Consigne</p>
+        }
+    </section>
+    staende.TryGetValue(frage.Id, out var stand);
+    <FrageEingabe @key="frage.Id" Frage="frage" Eingabe="@Eingabe(frage.Id)" EingabeChanged="e => eingaben[frage.Id] = e"
+                  Gesperrt="@(stand is not null || Gesperrt)" Stand="stand" OnVorlesen="VorlesenAsync" />
+
+    <div class="sk-uebung-aktionen">
+        @if (stand is null && !Gesperrt)
+        {
+            <AsyncKnopf Text="@(frage.AutomatischBewertet ? "Vérifier la réponse" : "Envoyer la réponse")" Icon="check"
+                        CssClass="sk-btn-primaer sk-btn-gross" OnClick="() => AntwortenAsync(frage)" />
+        }
+        @if (index < fragen.Count - 1)
+        {
+            <button type="button" class="sk-btn @(stand is null ? "sk-btn-ghost" : "sk-btn-primaer")" @onclick="() => index++">
+                <span>Question suivante</span> <Icon Name="arrow-right" Groesse="18" />
+            </button>
+        }
+    </div>
+    @if (versuch is { Status: VersuchsStatus.EnCours } && staende.Count > 0 && staende.Count < fragen.Count && !Gesperrt)
+    {
+        <p class="sk-uebung-ende"><button type="button" class="sk-link-knopf" @onclick="() => beendenFragen = true">Terminer cet essai maintenant</button></p>
+    }
+}
+
+<BestaetigungsDialog Open="beendenFragen" Titel="Terminer l'essai ?" BestaetigenText="Terminer l'essai"
+                     Text="Les questions sans réponse compteront zéro point." OnBestaetigen="BeendenAsync" OnAbbrechen="() => beendenFragen = false" />
+
+@code {
+    [Parameter, EditorRequired] public SchuelerLecon Daten { get; set; } = default!;
+    [Parameter, EditorRequired] public Guid SchuelerId { get; set; }
+    [Parameter] public bool StimmeAus { get; set; }
+    [Parameter] public EventCallback NeuLaden { get; set; }
+
+    private List<(SchuelerBlock Block, SchuelerFrage Frage)> fragen = [];
+    private readonly Dictionary<Guid, AntwortEingabe> eingaben = [];
+    private Dictionary<Guid, AntwortStand> staende = [];
+    private VersuchInfo? versuch;
+    private int index;
+    private bool beendenFragen;
+    private SchuelerLecon? geladen;
+
+    private bool Gesperrt => Daten.Sperrgrund is not null || versuch is { Status: not VersuchsStatus.EnCours };
+    private bool Abgeschlossen => versuch is { Status: not VersuchsStatus.EnCours };
+    private decimal? Prozent => versuch is null ? null : ScoreRechner.Prozent(versuch.Punkte, versuch.MaxPunkte);
+    private bool DarfNeu => Daten.Sperrgrund is null && (Daten.VerbleibendeVersuche is null || Daten.VerbleibendeVersuche > 0);
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(geladen, Daten)) return;
+        geladen = Daten;
+        fragen = Daten.Bloecke.SelectMany(b => b.Fragen.Select(f => (b, f))).ToList();
+        staende = Daten.Antworten.ToDictionary(a => a.FrageId);
+        eingaben.Clear();
+        foreach (var a in Daten.Antworten) eingaben[a.FrageId] = a.Eingabe;
+        versuch = Daten.AktuellerVersuch;
+        index = Math.Max(0, fragen.FindIndex(f => !staende.ContainsKey(f.Frage.Id)));
+    }
+
+    private AntwortEingabe Eingabe(Guid id) => eingaben.TryGetValue(id, out var e) ? e : AntwortEingabe.Leer;
+
+    private async Task AntwortenAsync(SchuelerFrage frage)
+    {
+        await Js.AufrufAsync("feedbackVorbereiten");
+        try
+        {
+            var r = await Lernen.AntwortenAsync(SchuelerId, Daten.ZuweisungId, frage.Id, Eingabe(frage.Id));
+            staende[frage.Id] = r.Stand;
+            versuch = r.Versuch;
+            StateHasChanged();
+            var art = r.Stand.Status switch
+            {
+                BewertungsStatus.Richtig => "richtig",
+                BewertungsStatus.Manuell => "gesendet",
+                BewertungsStatus.Teilweise => "teilweise",
+                _ => "falsch"
+            };
+            var weiter = r.HatNaechste && index < fragen.Count - 1;
+            await Js.AufrufAsync("feedback", art, !StimmeAus, weiter && art == "richtig");
+            if (art is "richtig" or "gesendet" && weiter)
+            {
+                await Task.Delay(1600);
+                index = fragen.FindIndex(index, f => !staende.ContainsKey(f.Frage.Id)) is var n and >= 0 ? n : Math.Min(index + 1, fragen.Count - 1);
+            }
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+
+    private async Task NeuerVersuchAsync()
+    {
+        try
+        {
+            await Lernen.NeuerVersuchAsync(SchuelerId, Daten.ZuweisungId);
+            await NeuLaden.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+
+    private async Task BeendenAsync()
+    {
+        beendenFragen = false;
+        try
+        {
+            versuch = await Lernen.VersuchBeendenAsync(SchuelerId, Daten.ZuweisungId);
+            await NeuLaden.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+
+    private async Task VorlesenAsync((SchuelerFrage Frage, bool Langsam) a)
+    {
+        try
+        {
+            var (text, sprache) = await Lernen.AudioTextAsync(SchuelerId, Daten.ZuweisungId, a.Frage.Id);
+            if (!await Js.AufrufAsync<bool>("vorlesen", text, sprache, a.Langsam))
+                Toast.ZeigeFehler("La lecture audio n'est pas disponible sur cet appareil.");
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+}

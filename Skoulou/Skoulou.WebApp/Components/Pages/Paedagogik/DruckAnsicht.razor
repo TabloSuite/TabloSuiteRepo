@@ -1,0 +1,68 @@
+@* Druckansicht einer Leçon oder eines Examens (Kopf: Schule, Klasse, Lehrkraft, Titel; Formeln gerendert; optional mit Corrigé). *@
+@inherits SkoulouSeite
+@inject InhaltLeseService Lesen
+
+<PageTitle>@(daten?.Titel ?? "Impression") · SKOULOU</PageTitle>
+
+@if (daten is null)
+{
+    @if (Fehlermeldung is not null) { <Hinweis Art="fehler">@Fehlermeldung</Hinweis> } else { <LadeIndikator /> }
+}
+else
+{
+    <header class="sk-druck-kopf">
+        <div>
+            <strong>@daten.Schule</strong>
+            <span>@(daten.Klasse is { } k ? $"Classe : {k}" : $"Niveau : {daten.Stufe}") · @daten.Fach</span>
+            <span>Enseignant : @daten.Lehrer</span>
+        </div>
+        <div class="sk-druck-kopf-rechts">
+            <span>@PaedagogikText.Art(daten.Art)@(daten.MitLoesungen ? " – corrigé" : null)</span>
+            @if (daten.Art == InhaltsArt.Pruefung)
+            {
+                <span>Durée : @PruefungsZeit.DauerText(daten.DauerMinuten) · @ScoreRechner.Punkte(daten.MaxPunkte) points</span>
+            }
+        </div>
+    </header>
+    <h1 class="sk-druck-titel">@daten.Titel</h1>
+    @if (daten.Art == InhaltsArt.Pruefung && !daten.MitLoesungen)
+    {
+        <div class="sk-druck-namenszeile"><span>Nom et prénom : ............................................</span><span>Date : ..................</span><span>Note : ...... / @ScoreRechner.Punkte(daten.MaxPunkte)</span></div>
+    }
+    @if (!string.IsNullOrWhiteSpace(daten.Beschreibung))
+    {
+        <p class="sk-consigne">@daten.Beschreibung</p>
+    }
+    @foreach (var (seite, i) in daten.Seiten.Select((s, i) => (s, i)))
+    {
+        <section class="sk-druck-seite @(i > 0 ? "neue-seite" : null)"><InhaltHtml Html="@seite" /></section>
+    }
+    @if (daten.Bloecke.Count > 0)
+    {
+        <section class="@(daten.Seiten.Count > 0 ? "sk-druck-seite neue-seite" : "sk-druck-seite")">
+            @if (daten.Art == InhaltsArt.Lecon)
+            {
+                <h2 class="sk-druck-abschnitt">Exercices</h2>
+            }
+            @foreach (var b in daten.Bloecke)
+            {
+                <div class="sk-druck-block">
+                    <h3>Exercice @b.Nr@(b.Titel is { Length: > 0 } t ? $" – {t}" : null)</h3>
+                    @if (!string.IsNullOrWhiteSpace(b.Consigne)) { <p class="sk-consigne">@b.Consigne</p> }
+                    @foreach (var frage in b.Fragen) { <FrageVorschau Frage="frage" MitLoesungen="daten.MitLoesungen" Druck="true" /> }
+                </div>
+            }
+        </section>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public InhaltsArt Art { get; set; }
+    [Parameter, EditorRequired] public Guid Id { get; set; }
+    [Parameter] public bool MitLoesungen { get; set; }
+    [Parameter] public Guid? ZuweisungId { get; set; }
+
+    private DruckDaten? daten;
+
+    protected override async Task InitialisierenAsync() => daten = await Lesen.DruckAsync(Ich.KontoId, Art, Id, MitLoesungen, ZuweisungId);
+}

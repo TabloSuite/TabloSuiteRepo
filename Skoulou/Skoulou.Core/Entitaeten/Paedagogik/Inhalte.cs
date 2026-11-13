@@ -54,6 +54,9 @@ public class AufgabenBlock : Entitaet, ISchulgebunden
     public int Nr { get; set; }
     public string? Titel { get; set; }
     public string? Consigne { get; set; }
+
+    /// <summary>Entfernt, aber mit beantworteten Fragen (bleibt für alte Versuche erhalten).</summary>
+    public bool Archiviert { get; set; }
 }
 
 /// <summary>
@@ -76,6 +79,10 @@ public class Frage : Entitaet, ISchulgebunden
     public string? LueckenJson { get; set; }
 
     public List<string> Wortbank { get; set; } = [];
+
+    /// <summary>Akzente beim Textvergleich beachten (Standard: « é » = « e »).</summary>
+    public bool AkzenteBeachten { get; set; }
+
     public int Revision { get; set; } = 1;
     public Guid? VorgaengerId { get; set; }
     public bool Archiviert { get; set; }

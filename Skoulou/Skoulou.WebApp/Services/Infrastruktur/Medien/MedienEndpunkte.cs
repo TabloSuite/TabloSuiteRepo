@@ -15,7 +15,7 @@ public static class MedienEndpunkte
     public static IEndpointRouteBuilder MapMedienEndpunkte(this IEndpointRouteBuilder app)
     {
         app.MapGet("/medien/{id:guid}", async (Guid id, HttpContext http, IDbContextFactory<SkoulouDbContext> dbFactory,
-            IMedienSpeicher speicher, CancellationToken ct) =>
+            IMedienSpeicher speicher, IEnumerable<IMedienFreigabe> freigaben, CancellationToken ct) =>
         {
             var kontoId = http.User.KontoId();
             if (kontoId is null) return Results.Unauthorized();
@@ -26,8 +26,14 @@ public static class MedienEndpunkte
 
             var konto = await db.Users.AsNoTracking().Where(k => k.Id == kontoId)
                 .Select(k => new { k.Rolle, k.SchuleId, k.Status }).FirstOrDefaultAsync(ct);
-            if (konto is null || konto.Status != KontoStatus.Actif || !DarfSehen(konto.Rolle, konto.SchuleId, kontoId.Value, medium))
-                return Results.NotFound();
+            if (konto is null || konto.Status != KontoStatus.Actif) return Results.NotFound();
+            if (!DarfSehen(konto.Rolle, konto.SchuleId, kontoId.Value, medium))
+            {
+                var erlaubt = false;
+                foreach (var freigabe in freigaben)
+                    if (erlaubt = await freigabe.DarfSehenAsync(db, kontoId.Value, konto.Rolle, konto.SchuleId, medium, ct)) break;
+                if (!erlaubt) return Results.NotFound();
+            }
 
             var strom = await speicher.OeffnenAsync(medium.BlobName, ct);
             if (strom is null) return Results.NotFound();

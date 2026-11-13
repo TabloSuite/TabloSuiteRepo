@@ -1,5 +1,92 @@
 @page "/enseignant/corrections"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject KorrekturService Korrektur
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Corrections" Icon="pen" Etappe="E4 – Pédagogie"
-                Beschreibung="Réponses ouvertes à corriger et retours aux élèves." />
+<PageTitle>Corrections · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Corrections" Icon="pen"
+            Untertitel="@(Kontext.Rolle is Rollen.Direktor or Rollen.Koordinator ? "Réponses ouvertes de tout l'établissement (exercices et examens) : la direction peut corriger pour un enseignant." : "Réponses ouvertes de vos élèves (exercices et examens), sans attendre la date limite.")" />
+
+@if (!Laedt)
+{
+    <Liste @ref="liste" T="KorrekturZeile" Laden="LadenAsync" Filter="chips" AnfangsFilter="offen" SuchPlatzhalter="Élève ou contenu…"
+           LeerIcon="check-circle" LeerTitel="Rien à corriger" LeerText="Toutes les réponses ouvertes sont corrigées.">
+        <Werkzeuge>
+            @if (klassen.Count > 1)
+            {
+                <AuswahlFeld T="Guid?" Wert="klasseId" WertChanged="KlasseAsync" Optionen="klassen" Kompakt="true" Icon="users" Platzhalter="Toutes les classes" />
+            }
+        </Werkzeuge>
+        <Zeile Context="z">
+            <button type="button" class="sk-inhalt-zeile" @onclick="() => Oeffnen(z)">
+                <span class="sk-lecon-karte-icon"><Icon Name="@(z.Art == InhaltsArt.Lecon ? "book-open" : "check-square")" Groesse="20" /></span>
+                <span class="sk-lecon-karte-text">
+                    <span class="sk-oberzeile">@z.Klasse · @z.Inhalt · question @z.FrageNr</span>
+                    <strong>@z.Schueler</strong>
+                    <small>@z.FrageText</small>
+                </span>
+                <span class="sk-lecon-karte-ende">
+                    @if (z.Punkte is { } p)
+                    {
+                        <span class="sk-badge sk-badge-erfolg">@PaedagogikText.Punkte(p, z.MaxPunkte)</span>
+                    }
+                    else
+                    {
+                        <span class="sk-leise">@(z.AbgegebenUtc is { } a ? PaedagogikText.Zeitpunkt(Zeit, a) : null)</span>
+                    }
+                    <Icon Name="chevron-right" Groesse="18" />
+                </span>
+            </button>
+        </Zeile>
+    </Liste>
+}
+
+<KorrekturDialog AntwortId="offen" AkteurId="Ich.KontoId" MitNaechster="@(filter == "offen")" OnGespeichert="GespeichertAsync" OnClose="() => offen = null" />
+
+@code {
+    private static readonly IReadOnlyList<FilterChip> chips = [new("offen", "À corriger"), new("fait", "Déjà corrigées")];
+
+    private Liste<KorrekturZeile>? liste;
+    private IReadOnlyList<AuswahlOption<Guid?>> klassen = [];
+    private Guid? klasseId, offen;
+    private string? filter = "offen";
+    private List<KorrekturZeile> sichtbar = [];
+    private SchulZeit Zeit => new(Uhr);
+
+    protected override async Task InitialisierenAsync()
+    {
+        var k = await Korrektur.KlassenAsync(Ich.KontoId);
+        klassen = [new AuswahlOption<Guid?>(null, "Toutes les classes"), .. k.Select(x => new AuswahlOption<Guid?>(x.Id, x.Name))];
+    }
+
+    private async Task<(IReadOnlyList<KorrekturZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+    {
+        filter = a.Filter;
+        var ergebnis = await Korrektur.SucheAsync(Ich.KontoId, new KorrekturFilter(a.Filter != "fait", klasseId, a.Suche), a.Ueberspringen, a.Anzahl, ct);
+        sichtbar = a.Ueberspringen == 0 ? ergebnis.Eintraege.ToList() : [.. sichtbar, .. ergebnis.Eintraege];
+        return ergebnis;
+    }
+
+    private void Oeffnen(KorrekturZeile z) => offen = z.AntwortId;
+
+    private async Task KlasseAsync(Guid? id)
+    {
+        klasseId = id;
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task GespeichertAsync(bool naechste)
+    {
+        var aktuell = offen;
+        Toast.ZeigeErfolg("Note enregistrée.");
+        var index = sichtbar.FindIndex(z => z.AntwortId == aktuell);
+        var folgende = index >= 0 && index + 1 < sichtbar.Count ? sichtbar[index + 1].AntwortId : (Guid?)null;
+        offen = naechste ? folgende : null;
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

@@ -1,5 +1,16 @@
 @page "/enseignant/lecons"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
 
-<InVorbereitung Titel="Leçons" Icon="book-open" Etappe="E4 – Pédagogie"
-                Beschreibung="Leçons avec pages, exercices et médias, attribuées à vos classes." />
+<PageTitle>Mes leçons · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes leçons" Untertitel="Pages de cours et exercices, réutilisables d'une année à l'autre." Icon="book-open">
+    <Aktionen>
+        <a class="sk-btn sk-btn-primaer" href="/enseignant/lecons/nouvelle"><Icon Name="plus" Groesse="18" /> <span>Nouvelle leçon</span></a>
+    </Aktionen>
+</SeitenKopf>
+
+<InhaltListe Art="InhaltsArt.Lecon" AkteurId="Ich.KontoId" AutorId="Ich.KontoId" />

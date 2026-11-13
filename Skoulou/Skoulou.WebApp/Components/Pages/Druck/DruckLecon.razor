@@ -1,0 +1,13 @@
+@page "/druck/lecon/{Id:guid}"
+@layout DruckLayout
+@attribute [Authorize]
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+
+<DruckAnsicht Art="InhaltsArt.Lecon" Id="Id" MitLoesungen="@(Solutions == 1)" ZuweisungId="Zuweisung" />
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [SupplyParameterFromQuery(Name = "solutions")] public int? Solutions { get; set; }
+    [SupplyParameterFromQuery(Name = "zuweisung")] public Guid? Zuweisung { get; set; }
+}

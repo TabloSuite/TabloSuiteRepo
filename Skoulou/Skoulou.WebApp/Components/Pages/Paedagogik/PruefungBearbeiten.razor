@@ -1,0 +1,185 @@
+@* Laufendes Examen: Uhr (serverseitige Zeit), alle Fragen, laufendes Speichern, Abgabe (auch automatisch bei 0). *@
+@implements IAsyncDisposable
+@inject PruefungsService Pruefungen
+@inject LernService Lernen
+@inject PaedagogikModul Js
+@inject ToastService Toast
+
+<div class="sk-pruefung-leiste">
+    <span class="sk-uhr" @ref="uhr" aria-live="off" title="Temps restant"></span>
+    <span class="sk-speicherstand @(speicherFehler ? "fehler" : null)">
+        @if (speichert)
+        {
+            <span class="sk-spinner" aria-hidden="true"></span> <span>Enregistrement…</span>
+        }
+        else if (speicherFehler)
+        {
+            <Icon Name="alert" Groesse="15" /> <span>Non enregistré – vérifiez la connexion</span>
+        }
+        else
+        {
+            <Icon Name="check" Groesse="15" /> <span>@(gespeichert ? "Réponses enregistrées" : "Vos réponses sont enregistrées au fur et à mesure")</span>
+        }
+    </span>
+    <span class="sk-leise">@Beantwortet / @AnzahlFragen</span>
+</div>
+
+@foreach (var block in Sitzung.Bloecke)
+{
+    <section class="sk-pruefung-block">
+        <h2>Exercice @block.Nr@(block.Titel is { Length: > 0 } t ? $" – {t}" : null)</h2>
+        @if (!string.IsNullOrWhiteSpace(block.Consigne))
+        {
+            <p class="sk-consigne">@block.Consigne</p>
+        }
+        @foreach (var frage in block.Fragen)
+        {
+            <FrageEingabe @key="frage.Id" Frage="frage" Eingabe="@Eingabe(frage.Id)" Gesperrt="abgegeben"
+                          EingabeChanged="e => Geaendert(frage.Id, e)" OnVorlesen="VorlesenAsync" />
+        }
+    </section>
+}
+
+<div class="sk-pruefung-ende">
+    <AsyncKnopf Text="Envoyer ma copie" Icon="send" CssClass="sk-btn-primaer sk-btn-gross" Disabled="abgegeben" OnClick="() => { bestaetigen = true; return Task.CompletedTask; }" />
+</div>
+
+<BestaetigungsDialog Open="bestaetigen" Titel="Envoyer votre copie ?" BestaetigenText="Envoyer" OnBestaetigen="AbgebenAsync" OnAbbrechen="() => bestaetigen = false"
+                     Text="@(AnzahlFragen - Beantwortet > 0 ? $"{AnzahlFragen - Beantwortet} question(s) sans réponse. Après l'envoi, vous ne pourrez plus rien modifier." : "Après l'envoi, vous ne pourrez plus rien modifier.")" />
+
+@code {
+    [Parameter, EditorRequired] public PruefungsSitzung Sitzung { get; set; } = default!;
+    [Parameter, EditorRequired] public Guid SchuelerId { get; set; }
+    [Parameter] public EventCallback Abgegeben { get; set; }
+
+    private readonly Dictionary<Guid, AntwortEingabe> eingaben = [];
+    private readonly Dictionary<Guid, AntwortEingabe> ausstehend = [];
+    private readonly SemaphoreSlim sperre = new(1, 1);
+    private CancellationTokenSource? verzoegerung;
+    private DotNetObjectReference<PruefungBearbeiten>? selbst;
+    private ElementReference uhr;
+    private bool speichert, gespeichert, speicherFehler, abgegeben, bestaetigen;
+
+    private int AnzahlFragen => Sitzung.Bloecke.Sum(b => b.Fragen.Count);
+    private int Beantwortet => eingaben.Values.Count(e => !e.IstLeer);
+
+    protected override void OnInitialized()
+    {
+        foreach (var a in Sitzung.Antworten) eingaben[a.FrageId] = a.Eingabe;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        selbst = DotNetObjectReference.Create(this);
+        await Js.AufrufAsync("uhrStarten", uhr, Sitzung.RestSekunden, selbst);
+    }
+
+    private AntwortEingabe Eingabe(Guid id) => eingaben.TryGetValue(id, out var e) ? e : AntwortEingabe.Leer;
+
+    private void Geaendert(Guid id, AntwortEingabe e)
+    {
+        eingaben[id] = e;
+        ausstehend[id] = e;
+        verzoegerung?.Cancel();
+        verzoegerung = new CancellationTokenSource();
+        _ = SpaeterSpeichernAsync(verzoegerung.Token);
+    }
+
+    private async Task SpaeterSpeichernAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(900, ct); }
+        catch (TaskCanceledException) { return; }
+        await SpeichernAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Speichert alle ausstehenden Antworten (nacheinander, nie parallel).</summary>
+    private async Task SpeichernAsync()
+    {
+        await sperre.WaitAsync();
+        try
+        {
+            while (ausstehend.Count > 0 && !abgegeben)
+            {
+                var (id, e) = ausstehend.First();
+                speichert = true;
+                await InvokeAsync(StateHasChanged);
+                try
+                {
+                    await Pruefungen.AntwortSpeichernAsync(SchuelerId, Sitzung.Versuch!.Id, id, e);
+                    if (ausstehend.TryGetValue(id, out var neu) && ReferenceEquals(neu, e)) ausstehend.Remove(id);
+                    gespeichert = true;
+                    speicherFehler = false;
+                }
+                catch (Skoulou.Core.Fehler.FachFehler f)
+                {
+                    ausstehend.Clear();
+                    Toast.ZeigeFehler(f.Message);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    speicherFehler = true;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            speichert = false;
+            sperre.Release();
+        }
+    }
+
+    [JSInvokable]
+    public async Task ZeitAbgelaufen()
+    {
+        if (abgegeben) return;
+        Toast.ZeigeFehler("Le temps est écoulé : votre copie est envoyée.");
+        await AbgebenAsync();
+    }
+
+    private async Task AbgebenAsync()
+    {
+        bestaetigen = false;
+        verzoegerung?.Cancel();
+        await SpeichernAsync();
+        try
+        {
+            await Pruefungen.AbgebenAsync(SchuelerId, Sitzung.Versuch!.Id);
+            abgegeben = true;
+            await Js.AufrufAsync("uhrStoppen", uhr);
+            await Abgegeben.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+
+    private async Task VorlesenAsync((SchuelerFrage Frage, bool Langsam) a)
+    {
+        try
+        {
+            var (text, sprache) = await Lernen.AudioTextAsync(SchuelerId, Sitzung.Karte.ZuweisungId, a.Frage.Id);
+            if (!await Js.AufrufAsync<bool>("vorlesen", text, sprache, a.Langsam))
+                Toast.ZeigeFehler("La lecture audio n'est pas disponible sur cet appareil.");
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            Toast.ZeigeFehler(f.Message);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        verzoegerung?.Cancel();
+        if (ausstehend.Count > 0 && !abgegeben)
+        {
+            try { await SpeichernAsync(); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { }
+        }
+        await Js.AufrufAsync("uhrStoppen", uhr);
+        selbst?.Dispose();
+    }
+}

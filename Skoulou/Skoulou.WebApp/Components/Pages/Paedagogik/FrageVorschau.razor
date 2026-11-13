@@ -1,0 +1,108 @@
+@* Frage zum Lesen (Lehrkraft, Korrektur, Druck): optional mit Lösungen und mit der Antwort eines Schülers. *@
+
+<div class="sk-frage sk-frage-vorschau">
+    <div class="sk-frage-kopf">
+        <span class="sk-frage-nr">Question @Frage.Nr · @FragenTypen.Bezeichnung(Frage.Typ)</span>
+        <span class="sk-frage-punkte">@ScoreRechner.Punkte(Frage.Punkte) pt@(Frage.Punkte > 1 ? "s" : null)</span>
+    </div>
+    @if (Frage.Typ == FragenTyp.TexteATrous)
+    {
+        <div class="sk-lueckentext">
+            @foreach (var teil in LueckenText.Zerlege(Frage.TextHtml))
+            {
+                if (teil.Nr is { } nr)
+                {
+                    var i = nr - 1;
+                    var wert = Eingabe is not null && i < Eingabe.Luecken.Count ? Eingabe.Luecken[i] : null;
+                    <span class="sk-luecke-lesen @LueckeKlasse(i, wert)">@(Eingabe is not null ? (string.IsNullOrWhiteSpace(wert) ? "—" : wert) : MitLoesungen && i < Frage.Luecken.Count ? string.Join(" / ", Frage.Luecken[i]) : "________")</span>
+                }
+                else
+                {
+                    @((MarkupString)teil.Html!)
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <InhaltHtml Html="@Frage.TextHtml" CssClass="sk-frage-text" />
+    }
+    @if (MitLoesungen && FragenTypen.IstAudio(Frage.Typ) && !string.IsNullOrWhiteSpace(Frage.AudioText))
+    {
+        <p class="sk-audio-text"><Icon Name="play" Groesse="14" /> <span class="sk-leise">Texte lu (@Frage.Sprache) :</span> @Frage.AudioText</p>
+    }
+    else if (FragenTypen.IstAudio(Frage.Typ))
+    {
+        <p class="sk-leise"><Icon Name="play" Groesse="14" /> Question audio (écoutée sur l'appareil de l'élève).</p>
+    }
+
+    @if (FragenTypen.IstAuswahl(Frage.Typ))
+    {
+        <ul class="sk-optionen-lesen">
+            @foreach (var o in Frage.Optionen)
+            {
+                var gewaehlt = Eingabe?.Optionen.Contains(o.Id) == true;
+                <li class="@(MitLoesungen && o.Richtig ? "richtig" : null) @(gewaehlt ? "gewaehlt" : null) @(gewaehlt && MitLoesungen && !o.Richtig ? "falsch" : null)">
+                    <span class="sk-option-marke @(FragenTypen.IstMehrfach(Frage.Typ) ? "eckig" : null)">@if (gewaehlt || (MitLoesungen && o.Richtig && Eingabe is null)){<Icon Name="check" Groesse="13" Strich="3" />}</span>
+                    <span>@o.Text</span>
+                    @if (MitLoesungen && o.Richtig)
+                    {
+                        <span class="sk-leise">(bonne réponse)</span>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    else if (Frage.Typ != FragenTyp.TexteATrous)
+    {
+        @if (Eingabe is not null)
+        {
+            <div class="sk-antwort-lesen">@(string.IsNullOrWhiteSpace(Eingabe.Text) ? "— (sans réponse)" : Eingabe.Text)</div>
+        }
+        else if (Druck)
+        {
+            <div class="sk-schreiblinien"><span></span><span></span>@if (Frage.Typ == FragenTyp.Texte){<span></span><span></span>}</div>
+        }
+        @if (Frage.Typ == FragenTyp.ConstructionPhrase && Frage.Wortbank.Count > 0 && (Druck || Eingabe is null))
+        {
+            <p class="sk-wortbank-lesen"><span class="sk-leise">Mots :</span> @string.Join(" · ", FragenAbbildung.Gemischt(Frage.Wortbank, Frage.Id))</p>
+        }
+        @if (MitLoesungen)
+        {
+            <p class="sk-loesung">
+                @if (Frage.Varianten.Count > 0)
+                {
+                    <span><span class="sk-leise">Réponses acceptées :</span> @string.Join(" · ", Frage.Varianten)</span>
+                }
+                else
+                {
+                    <span class="sk-leise">Pas de réponse modèle : correction par l'enseignant.</span>
+                }
+            </p>
+        }
+    }
+    @if (MitLoesungen && Frage.Typ == FragenTyp.TexteATrous && Eingabe is not null)
+    {
+        <p class="sk-loesung-luecken">
+            @for (var i = 0; i < Frage.Luecken.Count; i++)
+            {
+                <span><span class="sk-leise">Trou @(i + 1) :</span> @string.Join(" / ", Frage.Luecken[i])</span>
+            }
+        </p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AnsichtFrage Frage { get; set; } = default!;
+    [Parameter] public bool MitLoesungen { get; set; } = true;
+    [Parameter] public AntwortEingabe? Eingabe { get; set; }
+    [Parameter] public bool Druck { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string? LueckeKlasse(int i, string? wert)
+    {
+        if (Eingabe is null || !MitLoesungen || i >= Frage.Luecken.Count) return null;
+        return AntwortVergleich.Passt(wert, Frage.Luecken[i]) ? "richtig" : "falsch";
+    }
+}

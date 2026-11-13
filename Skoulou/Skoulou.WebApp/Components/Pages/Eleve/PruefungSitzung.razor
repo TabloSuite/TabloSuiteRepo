@@ -1,0 +1,137 @@
+@page "/eleve/examens/{ZuweisungId:guid}"
+@attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.Core.Paedagogik
+@using Skoulou.WebApp.Services.Paedagogik
+@using Skoulou.WebApp.Components.Pages.Paedagogik
+@inject PruefungsService Pruefungen
+@inject TimeProvider Uhr
+
+<PageTitle>@(sitzung?.Karte.Titel ?? "Examen") · SKOULOU</PageTitle>
+
+<div class="sk-leser">
+    <a class="sk-zurueck-link" href="/eleve/examens"><Icon Name="arrow-left" Groesse="16" /> Mes examens</a>
+    @if (sitzung is null)
+    {
+        @if (Fehlermeldung is not null)
+        {
+            <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+        }
+        else
+        {
+            <LadeIndikator />
+        }
+    }
+    else
+    {
+        var k = sitzung.Karte;
+        <SeitenKopf Oberzeile="@($"{k.Fach} · {k.Lehrer}")" Titel="@k.Titel">
+            <Aktionen><StatusBadge Text="@PaedagogikText.Zustand(k.Zustand)" Art="@PaedagogikText.ZustandArt(k.Zustand)" /></Aktionen>
+        </SeitenKopf>
+
+        @switch (k.Zustand)
+        {
+            case PruefungsZustand.EnCours when sitzung.Versuch is not null:
+                <PruefungBearbeiten Sitzung="sitzung" SchuelerId="Ich.KontoId" Abgegeben="LadenAsync" />
+                break;
+
+            case PruefungsZustand.Ouvert:
+            case PruefungsZustand.AVenir:
+                <Karte CssClass="sk-pruefung-start">
+                    <div class="sk-pruefung-fakten">
+                        <div><span class="sk-leise">Durée</span><strong>@PruefungsZeit.DauerText(k.DauerMinuten)</strong></div>
+                        <div><span class="sk-leise">Points</span><strong>@ScoreRechner.Punkte(k.MaxPunkte)</strong></div>
+                        <div><span class="sk-leise">Réussite à partir de</span><strong>@PaedagogikText.Prozent(sitzung.Bestehensgrenze)</strong></div>
+                        @if (k.FristUtc is { } frist)
+                        {
+                            <div><span class="sk-leise">Ouvert jusqu'au</span><strong>@PaedagogikText.Zeitpunkt(Zeit, frist)</strong></div>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(sitzung.Beschreibung))
+                    {
+                        <p class="sk-consigne">@sitzung.Beschreibung</p>
+                    }
+                    <ul class="sk-regeln">
+                        <li><Icon Name="clock" Groesse="16" /> Le temps démarre dès que vous commencez et ne s'arrête pas.</li>
+                        <li><Icon Name="check" Groesse="16" /> Vos réponses sont enregistrées automatiquement.</li>
+                        <li><Icon Name="send" Groesse="16" /> À la fin du temps, votre copie est envoyée automatiquement.</li>
+                        <li><Icon Name="lock" Groesse="16" /> Un seul essai. Le corrigé sera visible après la date limite.</li>
+                    </ul>
+                    @if (SpaetStart is { } spaet)
+                    {
+                        <Hinweis Art="warn">Attention : l'examen ferme bientôt. Si vous commencez maintenant, vous n'aurez que @spaet.</Hinweis>
+                    }
+                    @if (k.Zustand == PruefungsZustand.AVenir)
+                    {
+                        <Hinweis>L'examen ouvrira le @PaedagogikText.Zeitpunkt(Zeit, k.AbUtc).</Hinweis>
+                    }
+                    else
+                    {
+                        <div class="sk-leser-weiter">
+                            <button type="button" class="sk-btn sk-btn-primaer sk-btn-gross" @onclick="() => startFragen = true"><Icon Name="play" Groesse="18" /> <span>Commencer l'examen</span></button>
+                        </div>
+                    }
+                </Karte>
+                break;
+
+            case PruefungsZustand.Manque:
+                <Leerzustand Icon="clock" Titel="Examen non passé" Text="La date limite est dépassée : cet examen ne peut plus être commencé." />
+                break;
+
+            default:
+                <div class="sk-ergebnis-karte @(k.KorrekturOffen ? "sk-score-neutral" : PaedagogikText.ScoreKlasse(k.Prozent))">
+                    <span class="sk-ergebnis-zahl">@(k.KorrekturOffen ? "…" : PaedagogikText.Prozent(k.Prozent))</span>
+                    <div>
+                        <strong>@(k.KorrekturOffen ? "Copie envoyée – correction en cours" : k.Bestanden == true ? "Examen réussi" : k.Bestanden == false ? "Examen non réussi" : "Copie envoyée")</strong>
+                        @if (k.Punkte is { } p)
+                        {
+                            <p>@PaedagogikText.Punkte(p, k.MaxPunkte) points@(k.KorrekturOffen ? " (avant la correction de votre enseignant)" : null)</p>
+                        }
+                    </div>
+                </div>
+                @if (!sitzung.LoesungenSichtbar && k.FristUtc is { } fr)
+                {
+                    <Hinweis>Le corrigé sera visible après la date limite, le @PaedagogikText.Zeitpunkt(Zeit, fr).</Hinweis>
+                }
+                @foreach (var block in sitzung.Bloecke)
+                {
+                    <section class="sk-pruefung-block">
+                        <h2>Exercice @block.Nr@(block.Titel is { Length: > 0 } t ? $" – {t}" : null)</h2>
+                        @foreach (var frage in block.Fragen)
+                        {
+                            var stand = sitzung.Antworten.FirstOrDefault(a => a.FrageId == frage.Id);
+                            <FrageEingabe Frage="frage" Eingabe="@(stand?.Eingabe ?? AntwortEingabe.Leer)" Gesperrt="true" Stand="stand" />
+                        }
+                    </section>
+                }
+                break;
+        }
+    }
+</div>
+
+<BestaetigungsDialog Open="startFragen" Titel="Commencer l'examen ?" BestaetigenText="Commencer" OnBestaetigen="StartenAsync" OnAbbrechen="() => startFragen = false"
+                     Text="@($"Vous aurez {PruefungsZeit.DauerText(sitzung?.Karte.DauerMinuten ?? 0)}. Le temps démarre tout de suite et un seul essai est possible.")" />
+
+@code {
+    [Parameter] public Guid ZuweisungId { get; set; }
+
+    private PruefungsSitzung? sitzung;
+    private bool startFragen;
+    private SchulZeit Zeit => new(Uhr);
+
+    /// <summary>Restzeit bis zur Frist, wenn sie kürzer als die Dauer ist.</summary>
+    private string? SpaetStart => sitzung?.Karte is { Zustand: PruefungsZustand.Ouvert, FristUtc: { } f } k
+                                  && f - Zeit.JetztUtc < TimeSpan.FromMinutes(k.DauerMinuten)
+        ? PruefungsZeit.DauerText(Math.Max(1, (int)(f - Zeit.JetztUtc).TotalMinutes)) : null;
+
+    protected override Task InitialisierenAsync() => LadenAsync();
+
+    private async Task LadenAsync() => sitzung = await Pruefungen.OeffnenAsync(Ich.KontoId, ZuweisungId);
+
+    private Task StartenAsync() => AusfuehrenAsync(async () =>
+    {
+        startFragen = false;
+        await Pruefungen.StartenAsync(Ich.KontoId, ZuweisungId);
+        await LadenAsync();
+    });
+}

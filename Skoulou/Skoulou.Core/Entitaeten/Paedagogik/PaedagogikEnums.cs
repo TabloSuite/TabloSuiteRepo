@@ -4,7 +4,10 @@ namespace Skoulou.Core.Entitaeten;
 public enum InhaltsStatus
 {
     Brouillon = 0,
-    Prete = 1
+    Prete = 1,
+
+    /// <summary>Aus den Listen genommen (Zuweisungen und Versuche bleiben erhalten).</summary>
+    Archive = 2
 }
 
 /// <summary>Fragetypen der Bewertungs-Engine.</summary>

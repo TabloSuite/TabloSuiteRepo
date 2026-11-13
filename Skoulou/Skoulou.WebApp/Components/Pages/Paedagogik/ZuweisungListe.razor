@@ -1,0 +1,131 @@
+@* Zuweisungen eines Inhalts: Klasse, Zeitraum, Regel, Kennzahlen; Frist ändern, archivieren, Ergebnisse öffnen. *@
+@inject ZuweisungService Zuweisungen
+@inject ToastService Toast
+@inject TimeProvider Uhr
+@inject NavigationManager Navigation
+@inject SchulKontext Kontext
+
+<Karte Titel="Attributions" Icon="users" CssClass="sk-oben-abstand" Untertitel="Classes qui ont reçu ce contenu, avec l'avancement des élèves.">
+    @if (Zeilen.Count == 0)
+    {
+        <Leerzustand Icon="send" Titel="Pas encore attribué" Text="Attribuez ce contenu à une classe pour que vos élèves le voient." />
+    }
+    else
+    {
+        <div class="sk-zuweisungen">
+            @foreach (var z in Zeilen)
+            {
+                <div class="sk-zuweisung @(z.Status == ZuweisungsStatus.Archivee ? "archiviert" : null)">
+                    <div class="sk-zuweisung-kopf">
+                        <strong>@z.Klasse</strong> <span class="sk-leise">@z.Schuljahr</span>
+                        @if (z.Status == ZuweisungsStatus.Archivee)
+                        {
+                            <StatusBadge Text="Archivée" />
+                        }
+                        @if (z.OffeneKorrekturen > 0)
+                        {
+                            <StatusBadge Text="@($"{z.OffeneKorrekturen} à corriger")" Art="warn" />
+                        }
+                    </div>
+                    <div class="sk-lecon-karte-meta">
+                        <span>Depuis le @PaedagogikText.Zeitpunkt(Zeit, z.AbUtc)</span>
+                        <span>@PaedagogikText.Frist(Zeit, z.FristUtc)</span>
+                        @if (Art == InhaltsArt.Lecon)
+                        {
+                            <span>@VersuchsRegel.Bezeichnung(z.MaxVersuche, z.Wertung) · @LoesungsRegel.Bezeichnung(z.Loesungen)</span>
+                        }
+                    </div>
+                    <div class="sk-zuweisung-zahlen">
+                        <span><strong>@z.Abgeschlossen</strong> / @z.Schueler élèves ont terminé</span>
+                        <span>Moyenne : <strong class="@PaedagogikText.ScoreKlasse(z.Durchschnitt)">@PaedagogikText.Prozent(z.Durchschnitt)</strong></span>
+                    </div>
+                    <div class="sk-knopfzeile">
+                        <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/enseignant/attributions/{z.Id}")"><Icon Name="bars" Groesse="16" /> <span>Résultats</span></a>
+                        @if (DarfAendern && z.Status == ZuweisungsStatus.Active)
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => FristOeffnen(z)"><Icon Name="calendar" Groesse="16" /> <span>Date limite</span></button>
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => archivieren = z"><Icon Name="inbox" Groesse="16" /> <span>Archiver</span></button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</Karte>
+
+<ModalDialog Open="frist is not null" Title="Modifier la date limite" Oberzeile="@frist?.Klasse" Breite="sk-modal-sm" OnClose="() => frist = null" ErrorMessage="@fehler">
+    <ChildContent>
+        <div class="sk-feld-paar">
+            <DatumFeld Label="Date limite" Wert="fristDatum" WertChanged="w => fristDatum = w" Min="Zeit.Heute" Pflicht="@(Art == InhaltsArt.Pruefung)" />
+            <input type="time" class="sk-eingabe sk-zeit" aria-label="Heure limite" @bind="fristZeit" disabled="@(fristDatum is null)" />
+        </div>
+        <p class="sk-leise">Les essais en cours reçoivent la nouvelle limite@(Art == InhaltsArt.Pruefung ? " (sans dépasser la durée de l'examen)" : null).</p>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => frist = null">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" OnClick="FristSpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+<BestaetigungsDialog Open="archivieren is not null" Titel="Archiver l'attribution ?" BestaetigenText="Archiver" OnBestaetigen="ArchivierenAsync" OnAbbrechen="() => archivieren = null"
+                     Text="Les élèves ne verront plus ce contenu dans leur liste. Les résultats restent consultables." />
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ZuweisungZeile> Zeilen { get; set; } = [];
+    [Parameter] public InhaltsArt Art { get; set; }
+    [Parameter] public bool DarfAendern { get; set; }
+    [Parameter] public EventCallback Geaendert { get; set; }
+
+    private ZuweisungZeile? frist, archivieren;
+    private DateOnly? fristDatum;
+    private TimeOnly fristZeit = new(18, 0);
+    private string? fehler;
+
+    private SchulZeit Zeit => new(Uhr);
+
+    private void FristOeffnen(ZuweisungZeile z)
+    {
+        fehler = null;
+        frist = z;
+        if (z.FristUtc is { } f)
+        {
+            var lokal = Zeit.ZuLokal(f);
+            fristDatum = DateOnly.FromDateTime(lokal);
+            fristZeit = TimeOnly.FromDateTime(lokal);
+        }
+        else
+        {
+            fristDatum = null;
+        }
+    }
+
+    private async Task FristSpeichernAsync()
+    {
+        try
+        {
+            await Zuweisungen.FristAendernAsync(Kontext.KontoId, frist!.Id, fristDatum is { } d ? Zeit.ZuUtc(d.ToDateTime(fristZeit)) : null);
+            frist = null;
+            Toast.ZeigeErfolg("La date limite est modifiée.");
+            await Geaendert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task ArchivierenAsync()
+    {
+        try
+        {
+            await Zuweisungen.ArchivierenAsync(Kontext.KontoId, archivieren!.Id);
+            Toast.ZeigeErfolg("L'attribution est archivée.");
+            await Geaendert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            Toast.ZeigeFehler(ex.Message);
+        }
+        archivieren = null;
+    }
+}

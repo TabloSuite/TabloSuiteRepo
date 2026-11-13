@@ -1,0 +1,54 @@
+@* Direktion: Inhalt einer anderen Lehrkraft übertragen (aktive Zuweisungen gehen mit, Eintrag im Journal). *@
+@inject InhaltService Inhalte
+@inject SchulKontext Kontext
+
+<ModalDialog Open="Open" Title="Transférer à un autre enseignant" Breite="sk-modal-sm" OnClose="OnClose" ErrorMessage="@fehler">
+    <ChildContent>
+        <AuswahlFeld T="Guid?" Label="Nouvel enseignant" Wert="neu" WertChanged="w => neu = w" Optionen="optionen" Pflicht="true" />
+        <p class="sk-leise">Les attributions en cours passent au nouvel enseignant. Le transfert est noté dans le journal de l'établissement.</p>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Transférer" CssClass="sk-btn-primaer" Disabled="@(neu is null)" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter, EditorRequired] public InhaltsArt Art { get; set; }
+    [Parameter, EditorRequired] public Guid InhaltId { get; set; }
+    [Parameter] public Guid AutorId { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private IReadOnlyList<AuswahlOption<Guid?>> optionen = [];
+    private Guid? neu;
+    private string? fehler;
+    private bool warOffen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            fehler = null;
+            neu = null;
+            var o = await Inhalte.OptionenAsync(Kontext.KontoId);
+            optionen = o.Lehrkraefte.Where(l => l.Id != AutorId)
+                .Select(l => new AuswahlOption<Guid?>(l.Id, l.Name, Rollen.Bezeichnung(l.Rolle))).ToList();
+        }
+        warOffen = Open;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        try
+        {
+            await Inhalte.UebertragenAsync(Kontext.KontoId, Art, InhaltId, neu!.Value);
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

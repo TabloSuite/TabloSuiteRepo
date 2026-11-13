@@ -1,0 +1,162 @@
+@* Formel einfügen/bearbeiten: LaTeX mit Live-Vorschau (KaTeX), Vorlagen und persönliche Formeln (« Mes formules »). *@
+@inject FormelService Formeln
+@inject PaedagogikModul Js
+
+<ModalDialog Open="Open" Title="@(Bearbeiten ? "Modifier la formule" : "Insérer une formule")" Breite="sk-modal-lg" OnClose="OnClose"
+             ErrorMessage="@fehler" SchliessenMitEscape="false">
+    <ChildContent>
+        <div class="sk-formel">
+            <div class="sk-formel-eingabe">
+                <label class="sk-feld-label" for="formel-latex">Formule (LaTeX)</label>
+                <textarea id="formel-latex" class="sk-eingabe sk-formel-text" rows="3" maxlength="1000" spellcheck="false"
+                          @bind="latex" @bind:event="oninput" @bind:after="VorschauAsync" placeholder="Exemple : \frac{a}{b} ou x^{2}"></textarea>
+                <div class="sk-formel-vorschau" aria-label="Aperçu"><div @ref="vorschau"></div></div>
+                @if (syntaxFehler is not null)
+                {
+                    <span class="sk-feld-fehler"><Icon Name="alert" Groesse="14" /> @syntaxFehler</span>
+                }
+                <div class="sk-formel-speichern">
+                    <input class="sk-eingabe" placeholder="Nom (facultatif)" maxlength="200" @bind="bezeichnung" aria-label="Nom de la formule" />
+                    <AsyncKnopf Text="Ajouter à mes formules" Icon="star" CssClass="sk-btn-ghost sk-btn-klein" OnClick="MerkenAsync" Disabled="@string.IsNullOrWhiteSpace(latex)" />
+                </div>
+            </div>
+            <div class="sk-formel-vorlagen">
+                @foreach (var gruppe in Vorlagen)
+                {
+                    <p class="sk-oberzeile">@gruppe.Titel</p>
+                    <div class="sk-formel-knoepfe">
+                        @foreach (var v in gruppe.Eintraege)
+                        {
+                            <button type="button" class="sk-chip" title="@v" @onclick="() => AnhaengenAsync(v)">@v</button>
+                        }
+                    </div>
+                }
+                <p class="sk-oberzeile">Mes formules</p>
+                @if (eigene.Count == 0)
+                {
+                    <p class="sk-leise">Vos formules enregistrées apparaîtront ici.</p>
+                }
+                else
+                {
+                    <div class="sk-formel-eigene">
+                        @foreach (var f in eigene)
+                        {
+                            <span class="sk-formel-eigen">
+                                <button type="button" class="sk-link-knopf" title="@f.LaTeX" @onclick="() => WaehlenAsync(f.LaTeX)">@f.Bezeichnung</button>
+                                <button type="button" class="sk-icon-knopf klein" aria-label="Supprimer" @onclick="() => LoeschenAsync(f)"><Icon Name="x" Groesse="14" /></button>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <button type="button" class="sk-btn sk-btn-primaer" disabled="@(string.IsNullOrWhiteSpace(latex) || syntaxFehler is not null)" @onclick="EinfuegenAsync">
+            <Icon Name="check" Groesse="18" /> <span>@(Bearbeiten ? "Mettre à jour" : "Insérer")</span>
+        </button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string? Anfang { get; set; }
+    [Parameter, EditorRequired] public Guid AkteurId { get; set; }
+    [Parameter] public EventCallback<string> OnEinfuegen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private sealed record Gruppe(string Titel, string[] Eintraege);
+
+    private static readonly Gruppe[] Vorlagen =
+    [
+        new("Nombres et puissances", [@"\frac{a}{b}", "x^{2}", "x_{n}", @"\sqrt{x}", @"\sqrt[3]{x}", @"10^{-3}", @"\pi", @"\infty"]),
+        new("Opérations et relations", [@"\times", @"\div", @"\pm", @"\neq", @"\leq", @"\geq", @"\approx", @"\equiv"]),
+        new("Équations", ["ax^{2}+bx+c=0", @"\Delta=b^{2}-4ac", @"x=\frac{-b\pm\sqrt{\Delta}}{2a}", @"\begin{cases} x+y=5 \\ x-y=1 \end{cases}"]),
+        new("Ensembles et logique", [@"\in", @"\notin", @"\subset", @"\cup", @"\cap", @"\emptyset", @"\mathbb{R}", @"\mathbb{N}", @"\Rightarrow", @"\Leftrightarrow"]),
+        new("Analyse", [@"\lim_{x \to +\infty} f(x)", @"\sum_{i=1}^{n} i", @"\int_{a}^{b} f(x)\,dx", "f'(x)", @"\left| x \right|"]),
+        new("Géométrie", [@"\widehat{ABC}", @"\overrightarrow{AB}", @"(AB) \parallel (CD)", @"(AB) \perp (CD)", @"90^{\circ}", @"\alpha", @"\beta", @"\theta"]),
+        new("Physique et chimie", [@"\mathrm{H_{2}O}", @"\mathrm{CO_{2}}", @"\rightarrow", @"\rightleftharpoons", @"v=\frac{d}{t}", @"\mathrm{m\cdot s^{-1}}"])
+    ];
+
+    private string? latex, bezeichnung, fehler, syntaxFehler;
+    private IReadOnlyList<FormelZeile> eigene = [];
+    private ElementReference vorschau;
+    private bool warOffen, neuZeichnen;
+
+    private bool Bearbeiten => !string.IsNullOrEmpty(Anfang);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            latex = Anfang;
+            bezeichnung = null;
+            fehler = syntaxFehler = null;
+            neuZeichnen = true;
+            try { eigene = await Formeln.ListeAsync(AkteurId); }
+            catch (Skoulou.Core.Fehler.FachFehler f) { fehler = f.Message; }
+        }
+        warOffen = Open;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!neuZeichnen || !Open) return;
+        neuZeichnen = false;
+        await VorschauAsync();
+        StateHasChanged();
+    }
+
+    private async Task VorschauAsync() => syntaxFehler = await Js.AufrufAsync<string?>("formelVorschau", vorschau, latex ?? string.Empty);
+
+    private Task AnhaengenAsync(string vorlage)
+    {
+        latex = string.IsNullOrWhiteSpace(latex) ? vorlage : $"{latex.TrimEnd()} {vorlage}";
+        return VorschauAsync();
+    }
+
+    private Task WaehlenAsync(string wert)
+    {
+        latex = wert;
+        return VorschauAsync();
+    }
+
+    private async Task MerkenAsync()
+    {
+        try
+        {
+            await Formeln.SpeichernAsync(AkteurId, latex, bezeichnung);
+            eigene = await Formeln.ListeAsync(AkteurId);
+            fehler = null;
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            fehler = f.Message;
+        }
+    }
+
+    private async Task LoeschenAsync(FormelZeile f)
+    {
+        try
+        {
+            await Formeln.LoeschenAsync(AkteurId, f.Id);
+            eigene = eigene.Where(x => x.Id != f.Id).ToList();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler ex)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private Task EinfuegenAsync()
+    {
+        var wert = latex?.Trim() ?? string.Empty;
+        if (wert.Contains('<') || wert.Contains('>'))
+        {
+            fehler = "Utilisez \\lt et \\gt au lieu de < et >.";
+            return Task.CompletedTask;
+        }
+        return OnEinfuegen.InvokeAsync(wert);
+    }
+}
