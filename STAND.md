@@ -68,8 +68,8 @@ Danach: E2 mit `Skoulou/docs/auftraege/E2-Plattform.md` (eigener Worktree vom da
 ## 4. eNOTE und Live-Betrieb
 
 - Alles von heute ist committet und gepusht (u. a. Listen seitenweise/durchsuchbar in eNOTE 4bf5156/2fa3f5c/0277bf3 und SKOULOU-alt c651544, Start-Admin-Seed eNOTE, öffentliches Kontaktformular, Dialoge schließen nicht beim Klick daneben, PIN-Einrichtung, Responsable-Rechte, Mail-Routing über contact@tablosuite.com mit [eNOTE]/[SKOULOU] im Betreff).
-- **NEU 13.11. abends (f794f4f): eNOTE « Enregistrer sans encaisser »** – Leistungen anwesender Kunden (Praxis mit Übernachtung) fest erfassen, am Ende alles zusammen kassieren; Details in eNOTE/Projektuebersicht.md, Bilder Pictures/eNOTE-Prestations-a-payer-2026-11-13. **Neue Migration 20261113221524_AufenthaltsPositionen nur LOKAL** → vor dem nächsten eNOTE-Deploy auf Azure einspielen (**nur mit OK**), sonst stürzt der Verkauf ab (neue Spalte VerkaufsPositionen.ErbrachtAm).
-- **SKOULOU (alt) deployen**, falls noch nicht geschehen (Listen-Änderungen). eNOTE erst nach der Azure-Migration oben deployen.
+- **NEU 13.11. abends (f794f4f): eNOTE « Enregistrer sans encaisser »** – Leistungen anwesender Kunden (Praxis mit Übernachtung) fest erfassen, am Ende alles zusammen kassieren; Details in eNOTE/Projektuebersicht.md, Bilder Pictures/eNOTE-Prestations-a-payer-2026-11-13. Migration 20261113221524_AufenthaltsPositionen am 14.11. auch auf Azure eingespielt (Azure = lokal) → eNOTE kann deployt werden.
+- **SKOULOU (alt) und eNOTE deployen** (Nutzer, VS). Neu 14.11.: zusätzliche Azure-DB **Skoulou-Neu-Database** (Basic, tablosuite-sqlserver) mit Schema « Fundament » + DB-User [skoulou] (Managed Identity); alte App bleibt auf Skoulou-Database. Nach jedem Neu-Erzeugen der Migration die neue DB leeren und neu einspielen (keine Daten).
 - Azure: Hauptkonto web.de, Ressourcengruppe TabloSuiteRGruppe (enote, skoulou, tablosuite-home, SQL tablosuite-sqlserver). Admin-Konto überall DodjiEtse (Passwort ändert der Nutzer in der App; `Seed__SuperAdminPasswort` bleibt als Notfall-Startpasswort).
 
 ---
@@ -90,6 +90,6 @@ Danach: E2 mit `Skoulou/docs/auftraege/E2-Plattform.md` (eigener Worktree vom da
 
 1. Video-Pilot v3.1 abwarten (§1) → Nutzer zeigen → bei OK alle eNOTE-Videos im v3-Stil, Einbau, Deploy durch den Nutzer.
 2. SKOULOU: E5 + E6 laufen (§1) → nach Fertigmeldung je prüfen, mergen, Migration « Fundament » neu erzeugen, Tests + SQL-Tests, Rundgang, push; dann E2 starten (Auftrag liegt bereit).
-3. **Lokale `SkoulouDB` hat noch das alte E1-Schema.** Löschen/Neuaufbau wurde vom Auto-Modus gesperrt → Nutzer fragen (oder er macht `dotnet ef database drop` selbst); bis dahin Test-DBs `SkoulouDB_Gesamt` (aktuell, mit Demo-Daten), `SkoulouDB_E3`, `SkoulouDB_E4`, `SkoulouDB_Merge` (veraltet, können weg).
-4. eNOTE: Azure-Migration `AufenthaltsPositionen` nur mit OK, vor dem nächsten eNOTE-Deploy (§4).
+3. Lokale `SkoulouDB` am 14.11. neu aufgebaut (aktuelles Schema, Demo-Seed); alte Test-DBs gelöscht.
+4. Agenten Video v3.1, E5, E6 am 14.11. ~00:50 vom Nutzungslimit gestoppt (Arbeit gespeichert) → nach 3:50 fortsetzen; künftig höchstens 1–2 Agenten gleichzeitig (Nutzer: Limit zu schnell erreicht).
 5. E7 Simulation + Browser-Rundgang; E8 Umstellung (Azure nur mit OK); danach SKOULOU-Videos auf der neuen Oberfläche.
