@@ -236,34 +236,47 @@
     {
         <section class="enote-card em-karte">
             <div class="em-kopf">
-                <h2>Derniers envois</h2>
+                <h2>E-mails envoyés</h2>
                 <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="LadeAsync"><Icon Name="refresh" Groesse="16" /> Actualiser</button>
+            </div>
+            <div class="em-suche">
+                <Icon Name="search" Groesse="16" />
+                <input type="search" placeholder="Rechercher un objet ou une adresse…" @bind="verlaufSuche" @bind:event="oninput" @bind:after="SucheVerlaufVerzoegertAsync" aria-label="Rechercher dans les e-mails envoyés" />
             </div>
             @if (verlauf.Count == 0)
             {
-                <p class="enote-empty">Aucun e-mail pour le moment.</p>
+                <p class="enote-empty">@(string.IsNullOrWhiteSpace(verlaufSuche) ? "Aucun e-mail pour le moment." : "Aucun e-mail ne correspond à la recherche.")</p>
             }
             else
             {
-                <div class="em-verlauf">
+                <div class="em-verlauf em-scroll">
                     @foreach (var m in verlauf)
                     {
-                        <div class="em-zeile">
+                        <div class="em-zeile @(offenerVerlauf == m.Id ? "offen" : "")">
                             <span class="em-punkt @(m.IstGesendet ? "ok" : m.Versuche >= EmailService.MaxVersuche ? "fehler" : "warte")"></span>
-                            <div class="em-zeile-info">
+                            <button type="button" class="em-zeile-info em-eingang-kopf" @onclick="() => OeffneVerlaufAsync(m.Id)" aria-expanded="@(offenerVerlauf == m.Id ? "true" : "false")">
                                 <strong>@m.Betreff</strong>
                                 <small>@m.Empfaenger · @m.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm")@(m.Kategorie is null ? "" : " · " + (MailArten.Finde(m.Kategorie)?.Name ?? m.Kategorie))@(m.Versuche > 1 ? $" · {m.Versuche} essais" : "")</small>
                                 @if (!m.IstGesendet && !string.IsNullOrWhiteSpace(m.LetzterFehler))
                                 {
                                     <small class="em-fehler">@m.LetzterFehler</small>
                                 }
-                            </div>
+                            </button>
                             <span class="em-tag @(m.IstGesendet ? "ok" : "warte")">@(m.IstGesendet ? "Envoyé" : "En attente")</span>
                             @if (!m.IstGesendet && email.IstKonfiguriert)
                             {
                                 <AsyncActionButton CssClass="enote-btn-ghost enote-btn-sm" BusyText="Envoi…" OnClick="() => ErneutAsync(m.Id)"><Icon Name="refresh" Groesse="15" /> Renvoyer</AsyncActionButton>
                             }
                         </div>
+                        @if (offenerVerlauf == m.Id)
+                        {
+                            @* Inhalt der Mail, isoliert dargestellt (sandbox: keine Skripte, keine Formulare) *@
+                            <iframe class="em-inhalt" title="Contenu de l'e-mail" srcdoc="@offenerInhalt" sandbox=""></iframe>
+                        }
+                    }
+                    @if (verlaufMehr)
+                    {
+                        <AsyncActionButton CssClass="enote-btn-ghost em-mehr" BusyText="Chargement…" OnClick="MehrVerlaufAsync">Afficher plus</AsyncActionButton>
                     }
                 </div>
             }
@@ -274,13 +287,17 @@
         <section class="enote-card em-karte">
             <h2>Boîte de réception</h2>
             <p class="enote-muted em-klein">Réponses et demandes envoyées à contact@tablosuite.com qui concernent eNOTE (« [eNOTE] » ou « eNOTE » dans l'objet). Tous les e-mails d'eNOTE portent « [eNOTE] » dans l'objet : les réponses arrivent donc ici.</p>
+            <div class="em-suche">
+                <Icon Name="search" Groesse="16" />
+                <input type="search" placeholder="Rechercher un objet, un expéditeur ou un texte…" @bind="eingangSuche" @bind:event="oninput" @bind:after="SucheEingangVerzoegertAsync" aria-label="Rechercher dans la boîte de réception" />
+            </div>
             @if (eingang.Count == 0)
             {
-                <p class="enote-empty" role="status">Aucun message reçu pour le moment.</p>
+                <p class="enote-empty" role="status">@(string.IsNullOrWhiteSpace(eingangSuche) ? "Aucun message reçu pour le moment." : "Aucun message ne correspond à la recherche.")</p>
             }
             else
             {
-                <div class="em-verlauf">
+                <div class="em-verlauf em-scroll">
                     @foreach (var m in eingang)
                     {
                         <div class="em-zeile em-eingang @(offeneMail == m.Id ? "offen" : "")">
@@ -305,6 +322,10 @@
                                 <div><AsyncActionButton Text="Envoyer la réponse" BusyText="Envoi…" OnClick="() => AntwortenAsync(m.Id)" CssClass="enote-btn-primary" /></div>
                             </div>
                         }
+                    }
+                    @if (eingangMehr)
+                    {
+                        <AsyncActionButton CssClass="enote-btn-ghost em-mehr" BusyText="Chargement…" OnClick="MehrEingangAsync">Afficher plus</AsyncActionButton>
                     }
                 </div>
             }
@@ -341,6 +362,49 @@
     private Guid? offeneMail;
     private string? antwortText;
     private string? antwortFehler;
+    private string? eingangSuche;
+    private bool eingangMehr;
+
+    // Historique: seitenweise, durchsuchbar, Inhalt erst beim Öffnen
+    private string? verlaufSuche;
+    private bool verlaufMehr;
+    private Guid? offenerVerlauf;
+    private string? offenerInhalt;
+    private CancellationTokenSource? suchVerzoegerung;
+
+    /// <summary>Suche erst nach kurzer Tipp-Pause ausführen (nicht bei jedem Buchstaben eine Abfrage).</summary>
+    private async Task VerzoegertAsync(Func<Task> aktion)
+    {
+        suchVerzoegerung?.Cancel();
+        var cts = suchVerzoegerung = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await aktion();
+    }
+
+    private Task SucheVerlaufVerzoegertAsync() => VerzoegertAsync(LadeAsync);
+    private Task SucheEingangVerzoegertAsync() => VerzoegertAsync(LadeEingangAsync);
+
+    private async Task MehrVerlaufAsync()
+    {
+        var (neu, mehr) = await email.SucheVerlaufAsync(verlaufSuche, verlauf.Count);
+        verlauf.AddRange(neu);
+        verlaufMehr = mehr;
+    }
+
+    private async Task OeffneVerlaufAsync(Guid id)
+    {
+        if (offenerVerlauf == id) { offenerVerlauf = null; offenerInhalt = null; return; }
+        offenerVerlauf = id;
+        offenerInhalt = await email.GetInhaltAsync(id) ?? "";
+    }
+
+    private async Task MehrEingangAsync()
+    {
+        var (neu, mehr) = await posteingang.SucheAsync(benutzerId, eingangSuche, eingang.Count);
+        eingang.AddRange(neu);
+        eingangMehr = mehr;
+    }
 
     private Guid benutzerId;
     private string tab = "message";
@@ -410,8 +474,8 @@
 
     private async Task LadeEingangAsync()
     {
-        eingang = await posteingang.LadeAsync(benutzerId);
-        ungelesen = eingang.Count(m => !m.IstGelesen);
+        (eingang, eingangMehr) = await posteingang.SucheAsync(benutzerId, eingangSuche, 0);
+        ungelesen = await posteingang.UngeleseneAsync(benutzerId);
     }
 
     private async Task ZeigeEingangAsync()
@@ -447,7 +511,9 @@
 
     private async Task LadeAsync()
     {
-        verlauf = await email.GetVerlaufAsync(50);
+        (verlauf, verlaufMehr) = await email.SucheVerlaufAsync(verlaufSuche, 0);
+        offenerVerlauf = null;
+        offenerInhalt = null;
         gesendetImMonat = await email.GesendetImMonatAsync();
     }
 

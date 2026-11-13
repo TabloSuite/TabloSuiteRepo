@@ -26,6 +26,38 @@ public class PostEingangTests
         => Assert.Equal(erwartet, PostEingangService.BetrifftEnote(betreff));
 
     [Fact]
+    public async Task Historique_laedt_seitenweise_sucht_in_der_Datenbank_und_liefert_Inhalt_erst_beim_Oeffnen()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            for (var i = 0; i < 120; i++)
+                db.MailNachrichten.Add(new ENote.Core.DataModels.Infrastruktur.MailNachricht
+                {
+                    Empfaenger = i == 3 ? "kofi@example.test" : $"kunde{i}@example.test",
+                    Betreff = $"Facture {i}", HtmlInhalt = $"<p>Inhalt {i}</p>", CreatedAtUtc = start.AddMinutes(i)
+                });
+            await db.SaveChangesAsync();
+        }
+        var email = new EmailService(new ConfigurationBuilder().Build(), factory, NullLogger<EmailService>.Instance);
+
+        var (seite1, mehr1) = await email.SucheVerlaufAsync(null, 0);
+        Assert.Equal(50, seite1.Count);
+        Assert.True(mehr1);
+        Assert.Equal("Facture 119", seite1[0].Betreff);           // neueste zuerst
+        Assert.All(seite1, m => Assert.Equal("", m.HtmlInhalt));   // Inhalt nicht mitgeladen
+
+        var (seite3, mehr3) = await email.SucheVerlaufAsync(null, 100);
+        Assert.Equal(20, seite3.Count);
+        Assert.False(mehr3);
+
+        var (treffer, _) = await email.SucheVerlaufAsync("kofi@", 0);
+        var kofi = Assert.Single(treffer);
+        Assert.Equal("<p>Inhalt 3</p>", await email.GetInhaltAsync(kofi.Id));
+    }
+
+    [Fact]
     public async Task Versendete_Mails_tragen_den_App_Namen_im_Betreff()
     {
         var factory = TestDbContextFactory.Create();

@@ -199,6 +199,44 @@ public class EmailService(
         return await db.MailNachrichten.AsNoTracking().OrderByDescending(m => m.CreatedAtUtc).Take(anzahl).ToListAsync(ct);
     }
 
+    /// <summary>
+    /// Verlauf seitenweise und durchsuchbar (Betreff oder Empfänger) – auch nach Jahren wird nie alles geladen.
+    /// Der Inhalt (HTML) wird nicht mitgeladen, sondern erst beim Öffnen (<see cref="GetInhaltAsync"/>).
+    /// </summary>
+    public async Task<(List<MailNachricht> Eintraege, bool Mehr)> SucheVerlaufAsync(
+        string? suche, int ueberspringen, int anzahl = 50, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var abfrage = db.MailNachrichten.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(m => m.Betreff.Contains(s) || m.Empfaenger.Contains(s));
+        }
+
+        var liste = await abfrage
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .Skip(Math.Max(0, ueberspringen))
+            .Take(anzahl + 1)
+            .Select(m => new MailNachricht
+            {
+                Id = m.Id, Empfaenger = m.Empfaenger, Betreff = m.Betreff, IstGesendet = m.IstGesendet,
+                CreatedAtUtc = m.CreatedAtUtc, GesendetUtc = m.GesendetUtc, Kategorie = m.Kategorie,
+                Versuche = m.Versuche, LetzterFehler = m.LetzterFehler
+            })
+            .ToListAsync(ct);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
+    /// <summary>HTML-Inhalt einer versendeten Mail (für die Ansicht in der Administration).</summary>
+    public async Task<string?> GetInhaltAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        return await db.MailNachrichten.AsNoTracking().Where(m => m.Id == id).Select(m => m.HtmlInhalt).FirstOrDefaultAsync(ct);
+    }
+
     /// <summary>Sendet eine (fehlgeschlagene) Nachricht sofort erneut.</summary>
     public async Task<bool> ErneutSendenAsync(Guid id, CancellationToken ct = default)
     {

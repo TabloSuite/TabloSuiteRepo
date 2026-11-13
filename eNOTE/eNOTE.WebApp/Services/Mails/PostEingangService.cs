@@ -54,6 +54,33 @@ public class PostEingangService(IDbContextFactory<ApplicationDbContext> factory,
         return await db.EingangsMails.AsNoTracking().OrderByDescending(m => m.EmpfangenUtc).Take(200).ToListAsync(ct);
     }
 
+    /// <summary>Posteingang seitenweise und durchsuchbar (Betreff, Absender, Text) – nie alles auf einmal.</summary>
+    public async Task<(List<EingangsMail> Eintraege, bool Mehr)> SucheAsync(
+        Guid admin, string? suche, int ueberspringen, int anzahl = 50, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await AdminKontenService.PruefeAsync(db, admin, false, ct);
+        var abfrage = db.EingangsMails.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(m => m.Betreff.Contains(s) || m.Absender.Contains(s) || m.Text.Contains(s));
+        }
+        var liste = await abfrage.OrderByDescending(m => m.EmpfangenUtc)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1).ToListAsync(ct);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
+    /// <summary>Anzahl ungelesener Nachrichten (für den Reiter).</summary>
+    public async Task<int> UngeleseneAsync(Guid admin, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await AdminKontenService.PruefeAsync(db, admin, false, ct);
+        return await db.EingangsMails.CountAsync(m => !m.IstGelesen, ct);
+    }
+
     public async Task MarkiereGelesenAsync(Guid admin, Guid mailId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
