@@ -240,7 +240,9 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
         await PruefeZugangAsync(db, user, k.SalonId, true, ct);
+        if (await AufenthaltService.OffenHinweisAsync(db, k.SalonId, k.Id, ct) is { } offen) throw new ArgumentException(offen);
         foreach (var v in await db.Verkaeufe.Where(v => v.KundeId == k.Id).ToListAsync(ct)) v.KundeId = null;
+        db.AufenthaltsPositionen.RemoveRange(await db.AufenthaltsPositionen.Where(a => a.KundeId == k.Id).ToListAsync(ct));
         db.KundenNotizen.RemoveRange(await db.KundenNotizen.Where(n => n.KundeId == k.Id).ToListAsync(ct));
         db.KundenBesuche.RemoveRange(await db.KundenBesuche.Where(b => b.KundeId == k.Id).ToListAsync(ct));
         db.Kunden.Remove(k);

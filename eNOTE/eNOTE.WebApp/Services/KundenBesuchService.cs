@@ -12,8 +12,9 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory, TimeProvider zeit, AnwesenheitsSignal signal)
 {
+    /// <summary>Anwesender Kunde; <paramref name="Offen"/> = schon erfasste, noch nicht bezahlte Leistungen (« à payer »).</summary>
     public sealed record Anwesend(Guid BesuchId, Guid KundeId, string Name, string Grund, string? Raum, DateTime AnkunftUtc,
-        string ErfasstVon, string? LetzteNotiz, int Notizen, bool Vergessen);
+        string ErfasstVon, string? LetzteNotiz, int Notizen, bool Vergessen, AufenthaltService.Stand? Offen = null);
 
     public sealed record NotizEintrag(Guid Id, string Text, DateTime ErstelltUtc, string Von, bool DarfLoeschen);
 
@@ -67,11 +68,14 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
             .Where(n => n.BesuchId != null && ids.Contains(n.BesuchId.Value))
             .Select(n => new { BesuchId = n.BesuchId!.Value, n.Text, n.ErstelltUtc })
             .ToListAsync(ct);
+        var staende = await AufenthaltService.StaendeAsync(db, salonId, ct);
         return offen.Select(o =>
         {
             var eigene = notizen.Where(n => n.BesuchId == o.Id).OrderByDescending(n => n.ErstelltUtc).ToList();
+            var stand = staende.GetValueOrDefault(o.KundeId);
+            // Mit erfassten Leistungen ist ein langer Aufenthalt gewollt (z. B. mehrere Tage in der Praxis) – kein « départ oublié ».
             return new Anwesend(o.Id, o.KundeId, o.Name, o.Grund, o.Raum, o.AnkunftUtc, o.ErfasstVonName,
-                eigene.FirstOrDefault()?.Text, eigene.Count, jetzt - o.AnkunftUtc > KundenBesuchRegeln.VergessenNach);
+                eigene.FirstOrDefault()?.Text, eigene.Count, stand is null && jetzt - o.AnkunftUtc > KundenBesuchRegeln.VergessenNach, stand);
         }).ToList();
     }
 
@@ -263,6 +267,7 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
         var besuch = await db.KundenBesuche.FirstOrDefaultAsync(b => b.Id == besuchId, ct) ?? throw new ArgumentException("Passage introuvable.");
         await PruefeZugangAsync(db, user, besuch.SalonId, ct);
         if (besuch.EndeUtc is not null) return;
+        if (await AufenthaltService.OffenHinweisAsync(db, besuch.SalonId, besuch.KundeId, ct) is { } offen) throw new ArgumentException(offen);
         besuch.EndeUtc = Jetzt;
         await db.SaveChangesAsync(ct);
         signal.Melde(besuch.SalonId);
@@ -277,6 +282,8 @@ public class KundenBesuchService(IDbContextFactory<ApplicationDbContext> factory
         if (besuch.EndeUtc is not null) throw new ArgumentException("Ce passage est déjà terminé.");
         if (!rolle.Besitzer && besuch.ErfasstVonId != user)
             throw new UnauthorizedAccessException("Seule la personne qui a enregistré l'arrivée (ou le propriétaire) peut l'annuler.");
+        if (await db.AufenthaltsPositionen.AnyAsync(a => a.BesuchId == besuch.Id, ct))
+            throw new ArgumentException("Des prestations ont été enregistrées pendant ce passage : il ne peut plus être annulé. Encaissez-les puis enregistrez le départ.");
         foreach (var n in await db.KundenNotizen.Where(n => n.BesuchId == besuch.Id).ToListAsync(ct)) n.BesuchId = null;
         db.KundenBesuche.Remove(besuch);
         await db.SaveChangesAsync(ct);

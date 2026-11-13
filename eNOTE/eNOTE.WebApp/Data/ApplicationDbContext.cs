@@ -32,6 +32,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<SalonRaum> SalonRaeume => Set<SalonRaum>();
     public DbSet<GeparktesTicket> GeparkteTickets => Set<GeparktesTicket>();
     public DbSet<GeparktesTicketPosition> GeparkteTicketPositionen => Set<GeparktesTicketPosition>();
+    public DbSet<AufenthaltsPosition> AufenthaltsPositionen => Set<AufenthaltsPosition>();
     public DbSet<VerkaufsPosition> VerkaufsPositionen => Set<VerkaufsPosition>();
     public DbSet<VerkaufZahlung> VerkaufZahlungen => Set<VerkaufZahlung>();
     public DbSet<LagerAbgang> LagerAbgaenge => Set<LagerAbgang>();
@@ -277,6 +278,27 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(p => p.FreierBetrag).HasPrecision(18, 2);
             entity.HasOne<GeparktesTicket>().WithMany(t => t.Positionen).HasForeignKey(p => p.TicketId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(p => p.Leistung).WithMany().HasForeignKey(p => p.LeistungId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Schon erfasste, noch nicht bezahlte Leistungen anwesender Kunden (« Enregistrer sans encaisser »).
+        // Laden-Löschung entfernt sie ausdrücklich (KuendigungService); Besuch weg → Zeilen weg; Leistung löschen nur ohne offene Zeilen.
+        builder.Entity<AufenthaltsPosition>(entity =>
+        {
+            entity.Property(a => a.LeistungName).HasMaxLength(200);
+            entity.Property(a => a.EinzelPreis).HasPrecision(18, 2);
+            entity.Property(a => a.LagerMenge).HasPrecision(18, 3);
+            entity.Property(a => a.ErfasstVonName).HasMaxLength(200);
+            entity.Property(a => a.ZurueckgenommenVonName).HasMaxLength(200);
+            entity.Property(a => a.RuecknahmeGrund).HasMaxLength(Core.Services.Kasse.AufenthaltRegeln.GrundMax);
+            entity.Property(a => a.VerkaufId).IsConcurrencyToken();
+            entity.Property(a => a.ZurueckgenommenUtc).IsConcurrencyToken();
+            entity.Ignore(a => a.Summe);
+            entity.Ignore(a => a.IstOffen);
+            entity.HasOne<Salon>().WithMany().HasForeignKey(a => a.SalonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<KundenBesuch>().WithMany().HasForeignKey(a => a.BesuchId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Leistung>().WithMany().HasForeignKey(a => a.LeistungId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasIndex(a => new { a.SalonId, a.KundeId, a.VerkaufId });
+            entity.HasIndex(a => a.BesuchId);
         });
 
         builder.Entity<Ankuendigung>(entity =>

@@ -19,7 +19,7 @@
     <div class="enote-page-header">
         <div>
             <h1>Clients présents</h1>
-            <p>Qui est là, pour quoi et dans quelle salle. Le départ s'enregistre à l'encaissement ou avec « Départ ».</p>
+            <p>Qui est là, pour quoi et dans quelle salle. Un client reste plusieurs jours ? À la caisse, « Enregistrer sans encaisser » garde ses prestations jusqu'au paiement.</p>
         </div>
         @if (salonId != Guid.Empty)
         {
@@ -80,6 +80,15 @@
                     {
                         <p class="pz-notiz"><Icon Name="note" Groesse="14" /> <span>@notiz</span>@if (a.Notizen > 1) { <small> (+@(a.Notizen - 1))</small> }</p>
                     }
+                    @if (a.Offen is { } offen)
+                    {
+                        <button type="button" class="pz-offen" @onclick="() => kontoKundeId = a.KundeId" title="Voir les prestations enregistrées, jour par jour">
+                            <Icon Name="receipt" Groesse="16" />
+                            <span>À payer : @offen.Anzahl prestation@(offen.Anzahl > 1 ? "s" : "")</span>
+                            <strong>@offen.Summe.ToString("N0") F</strong>
+                            <Icon Name="chevron-right" Groesse="16" />
+                        </button>
+                    }
                     @if (wartend.TryGetValue(a.KundeId, out var wt))
                     {
                         <p class="pz-wartend" title="@wt.Zeilen"><Icon Name="pause" Groesse="14" /> Ticket en attente · @wt.Artikel article(s) · @wt.Summe.ToString("N0") F</p>
@@ -90,14 +99,27 @@
                     }
                     <div class="pz-aktionen">
                         <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => OeffneFiche(a.KundeId)"><Icon Name="note" Groesse="16" /> Fiche</button>
-                        <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => nav.NavigateTo(KasseLink(a.KundeId))"><Icon Name="caisse" Groesse="16" /> Encaisser</button>
-                        <AsyncActionButton Text="Départ" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="() => BeendeAsync(a)" />
+                        @if (a.Offen is null)
+                        {
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => nav.NavigateTo(KasseLink(a.KundeId))"
+                                    title="Ouvrir la caisse avec ce client : enregistrer ses prestations ou encaisser"><Icon Name="caisse" Groesse="16" /> À la caisse</button>
+                            <AsyncActionButton Text="Départ" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="() => BeendeAsync(a)" />
+                        }
+                        else
+                        {
+                            @* Prestations à payer: le départ s'enregistre avec le paiement à la caisse. *@
+                            <button type="button" class="enote-btn enote-btn-primary enote-btn-sm" @onclick="() => nav.NavigateTo(KasseLink(a.KundeId))"
+                                    title="Ajouter des prestations ou encaisser : le départ s'enregistre avec le paiement"><Icon Name="caisse" Groesse="16" /> À la caisse</button>
+                        }
                     </div>
                 </li>
             }
         </ul>
     }
 </div>
+
+<AufenthaltKontoDialog Open="kontoKundeId is not null" SalonId="salonId" KundeId="kontoKundeId ?? Guid.Empty" BenutzerId="benutzer" Zone="aktiverSalon.Zeitzone"
+                       KasseLink="@(kontoKundeId is Guid kk ? KasseLink(kk) : null)" OnClose="() => kontoKundeId = null" OnGeaendert="LadeAsync" />
 
 <KundenFicheDialog Open="ficheKundeId is not null" KundeId="ficheKundeId ?? Guid.Empty" SalonId="salonId" BenutzerId="benutzer" Zone="aktiverSalon.Zeitzone"
                    OnClose="() => ficheKundeId = null" OnGeaendert="LadeAsync" />
@@ -126,7 +148,7 @@
     private Dictionary<Guid, TicketParkService.Eintrag> wartend = [];
     private KundenBesuchService.Vorschlaege? vorschlaege;
     private string? fehler, neuFehler, raumFilter;
-    private Guid? ficheKundeId;
+    private Guid? ficheKundeId, kontoKundeId;
     private bool neuOffen;
     private KundenService.Kurz? neuKunde;
     private string neuGrund = "", neuRaum = "", neuNotiz = "";

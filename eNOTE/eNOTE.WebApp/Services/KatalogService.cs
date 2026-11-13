@@ -448,6 +448,14 @@ public class KatalogService(
         var leistung = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
         if (leistung is not null)
         {
+            // Für einen anwesenden Kunden erfasst und noch nicht bezahlt → erst kassieren oder zurücknehmen.
+            var erfasst = await db.AufenthaltsPositionen.Where(a => a.LeistungId == id).ToListAsync(cancellationToken);
+            if (erfasst.Any(a => a.VerkaufId == null && a.ZurueckgenommenUtc == null))
+            {
+                throw new ArgumentException("Cette prestation est enregistrée pour un client présent et pas encore payée : encaissez-la ou retirez-la d'abord.");
+            }
+            foreach (var a in erfasst) a.LeistungId = null;
+
             // Tickets « en attente » verlieren diese Zeile; ein dadurch leeres Ticket verschwindet ganz.
             var zeilen = await db.GeparkteTicketPositionen.Where(p => p.LeistungId == id).ToListAsync(cancellationToken);
             if (zeilen.Count > 0)

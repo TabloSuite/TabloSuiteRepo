@@ -23,10 +23,11 @@ public static class BonDruckHtml
         }
 
         var pos = new StringBuilder();
-        foreach (var p in verkauf.Positionen)
+        foreach (var p in verkauf.Positionen.OrderBy(p => p.ErbrachtAm is null).ThenBy(p => p.ErbrachtAm))
         {
             var rabatt = p.RabattBetrag > 0 ? $" <span class=\"rabatt\">(-{p.RabattBetrag:N0} F)</span>" : string.Empty;
-            pos.AppendLine($"<tr><td>{p.Menge}× {E(p.LeistungName)}{rabatt}</td><td class=\"r\">{p.ZeilenSumme:N0} F</td></tr>");
+            var tag = p.ErbrachtAm is DateOnly t ? $" · {ENote.Core.Services.Kasse.AufenthaltRegeln.Tag(t)}" : string.Empty;
+            pos.AppendLine($"<tr><td>{p.Menge}× {E(p.LeistungName)}{tag}{rabatt}</td><td class=\"r\">{p.ZeilenSumme:N0} F</td></tr>");
         }
 
         var remise = verkauf.RabattSumme > 0

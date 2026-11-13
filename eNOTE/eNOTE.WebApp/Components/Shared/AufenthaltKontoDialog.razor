@@ -1,0 +1,191 @@
+@using ENote.Core.Services.Kasse
+@using ENote.WebApp.Services
+@inject AufenthaltService aufenthalt
+@inject ToastService toast
+
+@* Prestations déjà enregistrées d'un client présent (« Enregistrer sans encaisser »), jour par jour, avec retrait d'une ligne. *@
+
+<ModalDialog Open="Open" Title="@Titel" OnClose="SchliesseAsync" ErrorMessage="@fehler" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (konto is null)
+        {
+            <p class="enote-muted" role="status">Chargement…</p>
+        }
+        else if (rueckZeile is { } rz)
+        {
+            <div class="enote-form pk-retrait">
+                <p class="pk-retrait-zeile"><strong>@rz.Menge× @rz.Name</strong> · @AufenthaltRegeln.Tag(rz.ErbrachtAm) · @rz.Summe.ToString("N0") F</p>
+                <label class="kx-pay-ref">
+                    <span>Motif du retrait</span>
+                    <input class="enote-input" @bind="rueckGrund" @bind:event="oninput" maxlength="@AufenthaltRegeln.GrundMax" placeholder="Pourquoi retirer cette ligne ?" />
+                </label>
+                <div class="enote-betrag-schnell">
+                    @foreach (var g in AufenthaltRegeln.GruendeVorschlaege)
+                    {
+                        <button type="button" class="enote-chip @(rueckGrund == g ? "enote-chip-aktiv" : "")" @onclick="() => WaehleGrund(g)">@g</button>
+                    }
+                </div>
+                @if (rz.HatLager)
+                {
+                    <label class="enote-check-row"><EnoteCheckbox @bind-Value="rueckInsLager" Label="Remettre en stock (produit non utilisé)" /></label>
+                }
+                @if (!rz.DarfSofortZuruecknehmen && konto.BrauchtPin)
+                {
+                    <div class="kx-retrait-pin">
+                        <span class="enote-betrag-label">Code PIN du propriétaire</span>
+                        <PinEingabe @bind-Wert="rueckPin" OnBestaetigt="NimmZurueckAsync" />
+                    </div>
+                }
+                else if (!rz.DarfSofortZuruecknehmen && !konto.IstBesitzer)
+                {
+                    <p class="kx-pay-hinweis"><Icon Name="lock" Groesse="16" /> Seul le propriétaire peut retirer cette ligne.</p>
+                }
+                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> La ligne reste visible, barrée, avec le motif. Le propriétaire est informé.</p>
+            </div>
+        }
+        else
+        {
+            <div class="pk">
+                <div class="pk-kopf">
+                    <span>@(konto.AnkunftUtc is DateTime an ? $"Présent depuis le {an.ImLaden(Zone):dd'/'MM} à {an.ImLaden(Zone):HH':'mm}" : "Plus enregistré comme présent")</span>
+                    <strong>@konto.Summe.ToString("N0") F</strong>
+                </div>
+                @if (konto.Zeilen.Count == 0)
+                {
+                    <p class="enote-muted">Aucune prestation enregistrée. À la caisse, choisissez les prestations de ce client puis touchez « Enregistrer sans encaisser ».</p>
+                }
+                else
+                {
+                    <div class="pk-tage enote-liste-scroll">
+                        @foreach (var tag in konto.Zeilen.GroupBy(z => z.ErbrachtAm).OrderBy(g => g.Key))
+                        {
+                            <section class="pk-tag">
+                                <h3><span>@AufenthaltRegeln.TagUeberschrift(tag.Key, konto.Heute)</span><small>@tag.Where(z => z.Offen).Sum(z => z.Summe).ToString("N0") F</small></h3>
+                                <ul>
+                                    @foreach (var z in tag)
+                                    {
+                                        <li class="@(z.Offen ? "" : "retiree")">
+                                            <div class="pk-text">
+                                                <strong>@(z.Menge > 1 ? $"{z.Menge}× " : "")@z.Name</strong>
+                                                <small>@z.ErfasstUtc.ImLaden(Zone).ToString("HH':'mm")@(string.IsNullOrWhiteSpace(z.ErfasstVon) ? "" : $" · {z.ErfasstVon}")</small>
+                                                @if (!z.Offen)
+                                                {
+                                                    <small class="pk-grund">Retiré@(z.ZurueckgenommenVon is { Length: > 0 } wer ? $" par {wer}" : "") : @z.Grund</small>
+                                                }
+                                            </div>
+                                            <span class="pk-summe">@z.Summe.ToString("N0") F</span>
+                                            @if (z.Offen)
+                                            {
+                                                <button type="button" class="enote-icon-btn" title="Retirer cette ligne" aria-label="@($"Retirer {z.Name}")" @onclick="() => OeffneRuecknahme(z)"><Icon Name="undo" Groesse="16" /></button>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </section>
+                        }
+                    </div>
+                }
+                <p class="kx-pay-hinweis"><Icon Name="info" Groesse="16" /> Le stock baisse dès l'enregistrement. Le paiement se fait à la caisse, en une fois, au départ du client.</p>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (rueckZeile is not null)
+        {
+            <button class="enote-btn enote-btn-ghost" @onclick="() => rueckZeile = null">Retour</button>
+            <AsyncActionButton Text="Retirer la ligne" CssClass="enote-btn-danger" OnClick="NimmZurueckAsync"
+                               Disabled="@(string.IsNullOrWhiteSpace(rueckGrund) || (!rueckZeile.DarfSofortZuruecknehmen && !(konto?.BrauchtPin ?? false) && !(konto?.IstBesitzer ?? false)))" />
+        }
+        else
+        {
+            <button class="enote-btn enote-btn-ghost" @onclick="SchliesseAsync">Fermer</button>
+            @if (KasseLink is not null && konto is { } k && k.Summe > 0)
+            {
+                <a class="enote-btn enote-btn-primary" href="@KasseLink"><Icon Name="caisse" Groesse="18" /> Encaisser @k.Summe.ToString("N0") F</a>
+            }
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid SalonId { get; set; }
+    [Parameter] public Guid KundeId { get; set; }
+    [Parameter] public Guid BenutzerId { get; set; }
+    [Parameter] public TimeZoneInfo Zone { get; set; } = ENote.Core.Services.Zeitzonen.Standard;
+    /// <summary>Optional: Link zur Kasse mit diesem Kunden (aus « Clients présents »).</summary>
+    [Parameter] public string? KasseLink { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Nach einer Rücknahme (Liste/Ticket neu laden).</summary>
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private AufenthaltService.Konto? konto;
+    private AufenthaltService.Zeile? rueckZeile;
+    private string? fehler, rueckGrund;
+    private string rueckPin = string.Empty;
+    private bool rueckInsLager = true;
+    private Guid geladenFuer;
+    private bool warOffen;
+
+    private string Titel => rueckZeile is not null ? "Retirer une prestation" : konto is null ? "Prestations à payer" : $"Prestations à payer · {konto.KundeName}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && (!warOffen || geladenFuer != KundeId))
+        {
+            rueckZeile = null;
+            fehler = null;
+            konto = null;
+            geladenFuer = KundeId;
+            await LadeAsync();
+        }
+        warOffen = Open;
+    }
+
+    private async Task LadeAsync()
+    {
+        try { konto = await aufenthalt.GetKontoAsync(BenutzerId, SalonId, KundeId); }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException) { fehler = ex.Message; }
+    }
+
+    private void OeffneRuecknahme(AufenthaltService.Zeile z)
+    {
+        fehler = null;
+        rueckZeile = z;
+        rueckGrund = null;
+        rueckPin = string.Empty;
+        rueckInsLager = true;
+    }
+
+    private void WaehleGrund(string g)
+    {
+        rueckGrund = g;
+        // Ohne Zahlung gegangen: Ware ist meist verbraucht.
+        if (g == AufenthaltRegeln.GruendeVorschlaege[^1]) rueckInsLager = false;
+    }
+
+    private async Task NimmZurueckAsync()
+    {
+        if (rueckZeile is not { } z) return;
+        fehler = null;
+        try
+        {
+            await aufenthalt.NimmZurueckAsync(BenutzerId, z.Id, rueckGrund, rueckInsLager, rueckPin);
+            toast.ZeigeInfo($"« {z.Name} » retiré des prestations à payer.");
+            rueckZeile = null;
+            await LadeAsync();
+            await OnGeaendert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            fehler = ex.Message;
+            rueckPin = string.Empty;
+        }
+    }
+
+    private async Task SchliesseAsync()
+    {
+        rueckZeile = null;
+        await OnClose.InvokeAsync();
+    }
+}

@@ -74,13 +74,17 @@ public static class BonPdfService
 
                     col.Item().PaddingTop(4).LineHorizontal(0.5f);
 
-                    foreach (var pos in verkauf.Positionen)
+                    foreach (var pos in verkauf.Positionen.OrderBy(p => p.ErbrachtAm is null).ThenBy(p => p.ErbrachtAm))
                     {
                         col.Item().Row(row =>
                         {
                             row.RelativeItem().Text(text =>
                             {
                                 text.Span($"{pos.Menge}× {pos.LeistungName}");
+                                if (pos.ErbrachtAm is DateOnly tag)
+                                {
+                                    text.Span($" · {ENote.Core.Services.Kasse.AufenthaltRegeln.Tag(tag)}").FontColor(Colors.Grey.Darken1);
+                                }
                                 if (pos.RabattBetrag > 0)
                                 {
                                     text.Span($"  (-{pos.RabattBetrag:N0} F)").FontColor(Colors.Green.Medium);

@@ -295,7 +295,15 @@ public class KassenService(
         return new(true, null, sitzung, 0);
     }
 
-    public record VerkaufsPositionInput(Guid LeistungId, int Menge, Guid? RabattId, bool BedingungBestaetigt, decimal? FreierBetrag = null);
+    /// <summary>
+    /// Eine Ticketzeile. Mit <paramref name="AufenthaltsPositionId"/>: schon erfasste Leistung eines anwesenden Kunden –
+    /// Name, Preis, Menge und Tag kommen dann aus der Erfassung (LeistungId/Menge/FreierBetrag werden ignoriert), kein zweiter Lagerabzug.
+    /// </summary>
+    public record VerkaufsPositionInput(Guid LeistungId, int Menge, Guid? RabattId, bool BedingungBestaetigt, decimal? FreierBetrag = null,
+        Guid? AufenthaltsPositionId = null);
+
+    /// <summary>Fehlertext, wenn die erfassten Leistungen des Kunden nicht mehr zum Ticket passen (Kasse lädt sie dann neu).</summary>
+    public const string AufenthaltGeaendertFehler = "Les prestations enregistrées de ce client ont changé entre-temps. Le ticket a été actualisé : vérifiez-le puis encaissez.";
 
     /// <summary>
     /// Ein Zahlungsanteil der Kasse. <c>Betrag</c> = <c>null</c> heißt „Restbetrag“
@@ -353,7 +361,7 @@ public class KassenService(
             return (false, sperre, null, warnungen);
         }
 
-        var leistungIds = positionen.Select(p => p.LeistungId).Distinct().ToList();
+        var leistungIds = positionen.Where(p => p.AufenthaltsPositionId is null).Select(p => p.LeistungId).Distinct().ToList();
         var leistungen = await db.Leistungen
             .Where(l => leistungIds.Contains(l.Id) && l.SalonId == sitzung.SalonId && l.IstAktiv)
             .ToListAsync(cancellationToken);
@@ -379,6 +387,23 @@ public class KassenService(
             return (false, "Le client choisi est introuvable.", null, warnungen);
         }
 
+        // Schon erfasste Leistungen eines anwesenden Kunden: alle offenen und nur diese gehören auf den Bon.
+        var aufenthaltIds = positionen.Where(p => p.AufenthaltsPositionId is not null).Select(p => p.AufenthaltsPositionId!.Value).ToList();
+        var aufenthalt = new Dictionary<Guid, AufenthaltsPosition>();
+        if (kundeId is Guid kundeMitKonto)
+        {
+            var offen = await AufenthaltService.Offene(db, sitzung.SalonId, kundeMitKonto).ToListAsync(cancellationToken);
+            if (aufenthaltIds.Distinct().Count() != aufenthaltIds.Count || offen.Count != aufenthaltIds.Count || offen.Any(o => !aufenthaltIds.Contains(o.Id)))
+            {
+                return (false, AufenthaltGeaendertFehler, null, warnungen);
+            }
+            aufenthalt = offen.ToDictionary(o => o.Id);
+        }
+        else if (aufenthaltIds.Count > 0)
+        {
+            return (false, AufenthaltGeaendertFehler, null, warnungen);
+        }
+
         var verkauf = new Verkauf
         {
             KassenSitzungId = sitzung.Id,
@@ -391,8 +416,67 @@ public class KassenService(
         decimal zwischensumme = 0m;
         decimal rabattSumme = 0m;
 
+        // Remise einer Zeile prüfen und berechnen: (Fehler, Remise, Betrag).
+        (string? Fehler, Rabatt? Rabatt, decimal Betrag) PruefeRabatt(VerkaufsPositionInput pos, Guid leistungId, string name, decimal zeilenBetrag)
+        {
+            if (pos.RabattId is not Guid rabattId)
+            {
+                return (null, null, 0m);
+            }
+
+            var rabatt = rabatte.FirstOrDefault(r => r.Id == rabattId);
+            var gueltig = rabatt is not null && rabatt.IstAktiv
+                && (rabatt.GueltigVonUtc is null || jetzt >= rabatt.GueltigVonUtc)
+                && (rabatt.GueltigBisUtc is null || jetzt <= rabatt.GueltigBisUtc)
+                && (rabatt.LeistungId is null || rabatt.LeistungId == leistungId);
+            if (!gueltig)
+            {
+                return ($"La remise choisie pour « {name} » n'est pas valide.", null, 0m);
+            }
+
+            // Bedingung (z. B. client fidèle) muss vom Kassierer bestätigt worden sein.
+            if (!string.IsNullOrWhiteSpace(rabatt!.Bedingung) && !pos.BedingungBestaetigt)
+            {
+                return ($"Veuillez confirmer la condition de la remise « {rabatt.Name} ».", null, 0m);
+            }
+
+            return (null, rabatt, zeilenBetrag - KassenRechner.WendeRabattAn(zeilenBetrag, rabatt.Art, rabatt.Wert));
+        }
+
         foreach (var pos in positionen)
         {
+            if (pos.AufenthaltsPositionId is Guid aufenthaltId)
+            {
+                // Schon erfasst: Kopie von Name/Preis/Tag, Lager wurde bei der Erfassung gemindert.
+                var erfasst = aufenthalt[aufenthaltId];
+                if (erfasst.LeistungId is not Guid erfassteLeistung)
+                {
+                    return (false, "Une prestation enregistrée est introuvable.", null, warnungen);
+                }
+
+                var (eFehler, eRabatt, eRabattBetrag) = PruefeRabatt(pos, erfassteLeistung, erfasst.LeistungName, erfasst.Summe);
+                if (eFehler is not null)
+                {
+                    return (false, eFehler, null, warnungen);
+                }
+
+                zwischensumme += erfasst.Summe;
+                rabattSumme += eRabattBetrag;
+                verkauf.Positionen.Add(new VerkaufsPosition
+                {
+                    LeistungId = erfassteLeistung,
+                    LeistungName = erfasst.LeistungName,
+                    EinzelPreis = erfasst.EinzelPreis,
+                    Menge = erfasst.Menge,
+                    RabattId = eRabatt?.Id,
+                    RabattBetrag = eRabattBetrag,
+                    ZeilenSumme = erfasst.Summe - eRabattBetrag,
+                    ErbrachtAm = erfasst.ErbrachtAm
+                });
+                erfasst.VerkaufId = verkauf.Id;
+                continue;
+            }
+
             var leistung = leistungen.FirstOrDefault(l => l.Id == pos.LeistungId);
             if (leistung is null)
             {
@@ -427,30 +511,10 @@ public class KassenService(
             }
 
             var zeilenBetrag = einzelPreis * pos.Menge;
-            decimal rabattBetrag = 0m;
-            Rabatt? rabatt = null;
-
-            if (pos.RabattId is Guid rabattId)
+            var (rabattFehler, rabatt, rabattBetrag) = PruefeRabatt(pos, leistung.Id, leistung.Name, zeilenBetrag);
+            if (rabattFehler is not null)
             {
-                rabatt = rabatte.FirstOrDefault(r => r.Id == rabattId);
-                var gueltig = rabatt is not null && rabatt.IstAktiv
-                    && (rabatt.GueltigVonUtc is null || jetzt >= rabatt.GueltigVonUtc)
-                    && (rabatt.GueltigBisUtc is null || jetzt <= rabatt.GueltigBisUtc)
-                    && (rabatt.LeistungId is null || rabatt.LeistungId == leistung.Id);
-
-                if (!gueltig)
-                {
-                    return (false, $"La remise choisie pour « {leistung.Name} » n'est pas valide.", null, warnungen);
-                }
-
-                // Bedingung (z. B. client fidèle) muss vom Kassierer bestätigt worden sein.
-                if (!string.IsNullOrWhiteSpace(rabatt!.Bedingung) && !pos.BedingungBestaetigt)
-                {
-                    return (false, $"Veuillez confirmer la condition de la remise « {rabatt.Name} ».", null, warnungen);
-                }
-
-                var nachRabatt = KassenRechner.WendeRabattAn(zeilenBetrag, rabatt.Art, rabatt.Wert);
-                rabattBetrag = zeilenBetrag - nachRabatt;
+                return (false, rabattFehler, null, warnungen);
             }
 
             zwischensumme += zeilenBetrag;
@@ -505,8 +569,15 @@ public class KassenService(
         var beendeteBesuche = kundeId is Guid anwesenderKunde
             ? await KundenBesuchService.BeendeOffeneAsync(db, sitzung.SalonId, anwesenderKunde, verkauf.Id, verkauf.ZeitUtc, cancellationToken)
             : 0;
-        await db.SaveChangesAsync(cancellationToken);
-        if (beendeteBesuche > 0) anwesenheit?.Melde(sitzung.SalonId);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException) when (aufenthalt.Count > 0)
+        {
+            return (false, AufenthaltGeaendertFehler, null, warnungen);
+        }
+        if (beendeteBesuche > 0 || aufenthalt.Count > 0) anwesenheit?.Melde(sitzung.SalonId);
 
         // Live-Update an abonnierte Besitzer-Ansichten desselben Salons.
         try

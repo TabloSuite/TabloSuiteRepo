@@ -975,6 +975,90 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("MailRegeln");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.AufenthaltsPosition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BesuchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("EinzelPreis")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly>("ErbrachtAm")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("ErfasstUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ErfasstVonName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("FreierBetrag")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("InsLagerZurueck")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("KundeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LagerLeistungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("LagerMenge")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid?>("LeistungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LeistungName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Menge")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RuecknahmeGrund")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("SalonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("VerkaufId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ZurueckgenommenUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ZurueckgenommenVonName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BesuchId");
+
+                    b.HasIndex("LeistungId");
+
+                    b.HasIndex("SalonId", "KundeId", "VerkaufId");
+
+                    b.ToTable("AufenthaltsPositionen");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.BesitzerHinweis", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1664,6 +1748,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<decimal>("EinzelPreis")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly?>("ErbrachtAm")
+                        .HasColumnType("date");
 
                     b.Property<Guid>("LeistungId")
                         .HasColumnType("uniqueidentifier");
@@ -2427,6 +2514,25 @@ namespace ENote.WebApp.Migrations
                         .WithMany()
                         .HasForeignKey("AnkuendigungId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Kasse.AufenthaltsPosition", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Kasse.KundenBesuch", null)
+                        .WithMany()
+                        .HasForeignKey("BesuchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ENote.Core.DataModels.Katalog.Leistung", null)
+                        .WithMany()
+                        .HasForeignKey("LeistungId");
+
+                    b.HasOne("ENote.Core.DataModels.Salons.Salon", null)
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

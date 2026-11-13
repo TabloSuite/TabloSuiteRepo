@@ -228,6 +228,7 @@ public class KuendigungService(
         await EntferneAsync(db, db.SalonRaeume.Where(r => r.SalonId == salonId), ct);
         await EntferneAsync(db, db.GeparkteTicketPositionen.Where(p => db.GeparkteTickets.Any(t => t.Id == p.TicketId && t.SalonId == salonId)), ct);
         await EntferneAsync(db, db.GeparkteTickets.Where(t => t.SalonId == salonId), ct);
+        await EntferneAsync(db, db.AufenthaltsPositionen.Where(a => a.SalonId == salonId), ct);
         // 1) Kunden und ihr Verlauf
         await EntferneAsync(db, db.KundenNotizen.Where(n => n.SalonId == salonId), ct);
         await EntferneAsync(db, db.KundenBesuche.Where(b => b.SalonId == salonId), ct);

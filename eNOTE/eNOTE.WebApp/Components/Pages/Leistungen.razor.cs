@@ -513,8 +513,15 @@ public partial class Leistungen(
     {
         if (zuLoeschendeLeistung is not null)
         {
-            await katalogService.LoescheLeistungAsync(zuLoeschendeLeistung.Id);
-            toast.ZeigeErfolg("Prestation supprimée.");
+            try
+            {
+                await katalogService.LoescheLeistungAsync(zuLoeschendeLeistung.Id);
+                toast.ZeigeErfolg("Prestation supprimée.");
+            }
+            catch (ArgumentException ex)
+            {
+                toast.ZeigeFehler(ex.Message);
+            }
         }
 
         loeschDialogOffen = false;

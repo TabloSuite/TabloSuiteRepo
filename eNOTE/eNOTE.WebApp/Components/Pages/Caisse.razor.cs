@@ -54,7 +54,14 @@ public partial class Caisse(
     private void AnwesenheitGeaendert(Guid salonId)
     {
         if (aktiveSitzung?.SalonId != salonId) return;
-        _ = InvokeAsync(async () => { await LadeAnwesendeAsync(); await LadeWartendeAsync(); StateHasChanged(); });
+        _ = InvokeAsync(async () =>
+        {
+            await LadeAnwesendeAsync();
+            await LadeWartendeAsync();
+            // Anderes Gerät hat für den Kunden am Ticket etwas erfasst oder zurückgenommen.
+            if (ticketKunde is not null && !zahlDialogOffen) await LadeErfassteAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task UebernehmeKundeAusLinkAsync()
@@ -97,6 +104,14 @@ public partial class Caisse(
         if (kunde is null) return;
         letzterVerkauf = null;
         ticketKunde = kunde;
+        var konto = await LadeErfassteAsync();
+        if (konto > 0)
+        {
+            toast.ZeigeInfo(HatErfassteZeilen
+                ? $"« {kunde.Name} » est sur le ticket avec ses prestations déjà enregistrées ({ErfassteZeilen.Sum(p => p.EffektivPreis * p.Menge):N0} F)."
+                : $"« {kunde.Name} » est sur le ticket.");
+            return;
+        }
         var anlass = anwesende.FirstOrDefault(a => a.KundeId == kundeId)?.Grund;
         var neu = Core.Services.Kasse.TicketParkRegeln.PassendZumAnlass(anlass, leistungen.Where(l => !l.IstStandardArtikel), l => l.Name)
             .Where(l => ticket.All(p => p.Leistung.Id != l.Id)).ToList();
@@ -165,10 +180,17 @@ public partial class Caisse(
     private async Task<string?> ParkeAktuellesAsync(string? notiz)
     {
         if (aktiveSitzung is null || ticket.Count == 0) return null;
+        if (!HatNeueZeilen)
+        {
+            // Nur schon erfasste Leistungen: sie bleiben im Konto des Kunden, das Ticket wird einfach frei.
+            SetzeTicketZurueck();
+            _ = SendeTicketAnDisplayAsync();
+            return null;
+        }
         try
         {
             var ergebnis = await ticketParkService.ParkeAsync(aktuellerBenutzerId, aktiveSitzung.SalonId,
-                ticket.Select(p => new TicketParkService.PositionInput(p.Leistung.Id, p.Menge, p.FreierBetrag)).ToList(),
+                NeueZeilen.Select(p => new TicketParkService.PositionInput(p.Leistung.Id, p.Menge, p.FreierBetrag)).ToList(),
                 ticketKunde?.Id, notiz, ausgewaehlterRabatt?.Id, bedingungBestaetigt);
             var wer = ticketKunde?.Name;
             SetzeTicketZurueck();
@@ -218,6 +240,7 @@ public partial class Caisse(
         if (u.KundeId is Guid kid && aktiveSitzung is not null)
         {
             ticketKunde = await kundenService.GetKurzAsync(aktuellerBenutzerId, aktiveSitzung.SalonId, kid);
+            await LadeErfassteAsync();
         }
 
         if (u.RabattId is Guid rid && rabatte.FirstOrDefault(r => r.Id == rid) is { } rabatt)
@@ -733,7 +756,7 @@ public partial class Caisse(
     // Gewählte Farbe der Kategorie, sonst Hauptkategorie, sonst automatisch (wie im Katalog).
     private string KategorieFarbe(Guid? kategorieId) => ENote.Core.Services.Katalog.KategorieFarben.Ermittle(kategorien, kategorieId);
 
-    private int MengeImTicket(Guid leistungId) => ticket.Where(p => p.Leistung.Id == leistungId).Sum(p => p.Menge);
+    private int MengeImTicket(Guid leistungId) => NeueZeilen.Where(p => p.Leistung.Id == leistungId).Sum(p => p.Menge);
 
     /// <summary>Standard-Artikel öffnet den Betrag-Dialog; normale Leistungen werden direkt hinzugefügt.</summary>
     private void WaehleLeistung(Leistung leistung)
@@ -754,7 +777,7 @@ public partial class Caisse(
     private void FuegeHinzu(Leistung leistung)
     {
         letzterVerkauf = null;
-        var vorhanden = ticket.FirstOrDefault(p => p.Leistung.Id == leistung.Id && p.FreierBetrag is null);
+        var vorhanden = ticket.FirstOrDefault(p => p.Leistung.Id == leistung.Id && p.FreierBetrag is null && p.AufenthaltsPositionId is null);
         if (vorhanden is not null)
         {
             vorhanden.Menge++;
@@ -954,7 +977,7 @@ public partial class Caisse(
             return;
         }
 
-        var positionen = ticket.Select(p => new DisplayPosition(p.Leistung.Name, p.Menge, ZeilenSumme(p))).ToList();
+        var positionen = ticket.Select(p => new DisplayPosition(p.DisplayName, p.Menge, ZeilenSumme(p))).ToList();
         var ticketDto = new DisplayTicket(positionen, zwischensumme, rabattSumme, gesamtSumme, Abgeschlossen: false, Rueckgeld: null);
         try
         {
@@ -1028,12 +1051,18 @@ public partial class Caisse(
             p.Menge,
             rabatt is not null && (rabatt.LeistungId is null || rabatt.LeistungId == p.Leistung.Id) ? rabatt.Id : null,
             bedingungBestaetigt,
-            p.FreierBetrag)).ToList();
+            p.FreierBetrag,
+            p.AufenthaltsPositionId)).ToList();
 
         var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen, kundeId: ticketKunde?.Id);
         if (!erfolg || verkauf is null)
         {
             verkaufFehler = fehler;
+            if (fehler == KassenService.AufenthaltGeaendertFehler)
+            {
+                await LadeErfassteAsync();
+                gegeben = gesamtSumme;
+            }
             return;
         }
 
@@ -1201,6 +1230,15 @@ public partial class Caisse(
         /// <summary>Freier Betrag beim Standard-Artikel „Divers“ (ersetzt den Preis).</summary>
         public decimal? FreierBetrag { get; set; }
 
-        public decimal EffektivPreis => FreierBetrag ?? Leistung.Preis;
+        /// <summary>Schon erfasste Leistung eines anwesenden Kunden (gesperrt, wird beim Encaissement mitbezahlt).</summary>
+        public Guid? AufenthaltsPositionId { get; set; }
+        /// <summary>Bei erfassten Leistungen: Preis und Name vom Tag der Erfassung.</summary>
+        public decimal? FesterPreis { get; set; }
+        public string? FesterName { get; set; }
+        public DateOnly? ErbrachtAm { get; set; }
+
+        public decimal EffektivPreis => FesterPreis ?? FreierBetrag ?? Leistung.Preis;
+        public string Anzeige => FesterName ?? Leistung.Name;
+        public string DisplayName => ErbrachtAm is DateOnly t ? $"{Anzeige} ({Core.Services.Kasse.AufenthaltRegeln.Tag(t)})" : Anzeige;
     }
 }

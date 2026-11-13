@@ -139,6 +139,7 @@ if (administration is null)
     builder.Services.AddScoped<KundenService>();
     builder.Services.AddScoped<KundenBesuchService>();
     builder.Services.AddScoped<TicketParkService>();
+    builder.Services.AddScoped<AufenthaltService>();
     builder.Services.AddSingleton<AnwesenheitsSignal>();
     builder.Services.AddScoped<AnkuendigungService>();
     builder.Services.AddScoped<PreisAnpassungService>();

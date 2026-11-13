@@ -222,7 +222,7 @@ else
 
                 @if (aktiveSitzung is not null)
                 {
-                    <KundenAuswahl SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" @bind-Kunde="ticketKunde"
+                    <KundenAuswahl SalonId="aktiveSitzung.SalonId" BenutzerId="aktuellerBenutzerId" Kunde="ticketKunde" KundeChanged="TicketKundeGewechseltAsync"
                                    Hinweis="@TicketKundeHinweis" OnFiche="() => ficheKundeId = ticketKunde?.Id" />
                 }
 
@@ -261,11 +261,33 @@ else
                     }
                     else
                     {
-                        @foreach (var pos in ticket)
+                        @if (HatErfassteZeilen)
+                        {
+                            <div class="kx-erfasst-kopf">
+                                <span><Icon Name="lock" Groesse="14" /> Déjà enregistré · à payer</span>
+                                <button type="button" @onclick="OeffneKonto">Détail</button>
+                            </div>
+                            @foreach (var pos in ErfassteZeilen)
+                            {
+                                <div class="kx-pos kx-pos-erfasst">
+                                    <div class="kx-pos-text">
+                                        <span class="kx-pos-name">@pos.Anzeige</span>
+                                        <span class="kx-pos-einzel">@ErfasstText(pos)</span>
+                                    </div>
+                                    <span class="kx-pos-schloss" title="Déjà enregistré : se retire avec « Détail »"><Icon Name="lock" Groesse="14" /></span>
+                                    <strong class="kx-pos-summe">@ZeilenSumme(pos).ToString("N0") F</strong>
+                                </div>
+                            }
+                            @if (HatNeueZeilen)
+                            {
+                                <div class="kx-erfasst-kopf neu"><span><Icon Name="plus" Groesse="14" /> Nouvelles prestations</span></div>
+                            }
+                        }
+                        @foreach (var pos in NeueZeilen)
                         {
                             <div class="kx-pos">
                                 <div class="kx-pos-text">
-                                    <span class="kx-pos-name">@pos.Leistung.Name</span>
+                                    <span class="kx-pos-name">@pos.Anzeige</span>
                                     <span class="kx-pos-einzel">@pos.EffektivPreis.ToString("N0") F</span>
                                 </div>
                                 <div class="kx-pos-menge">
@@ -304,6 +326,14 @@ else
                             <div class="kx-total"><span>Total</span><strong>@gesamtSumme.ToString("N0") F</strong></div>
                         </div>
 
+                        @if (KundeIstAnwesend && HatNeueZeilen)
+                        {
+                            <AsyncActionButton BasisKlasse="kx-erfassen" OnClick="ErfasseOhneKassierenAsync" BusyText="Enregistrement…"
+                                               title="Le client reste : les prestations sont gardées et payées en une fois à son départ">
+                                <Icon Name="check" Groesse="18" /><span>Enregistrer sans encaisser</span>
+                            </AsyncActionButton>
+                        }
+
                         <div class="kx-zahlen @(mobileAnbieter.Count > 0 ? "drei" : "")">
                             <button type="button" class="kx-zahl kx-zahl-bar" @onclick="() => OeffneZahlung(ZahlModus.Bar)">
                                 <Icon Name="banknote" Groesse="24" /><span>Espèces</span>
@@ -319,7 +349,10 @@ else
                             </button>
                         </div>
                         <div class="kx-fuss-links">
-                            <button type="button" class="kx-mixte" @onclick="OeffneParken" title="Garder ce ticket pour plus tard (client parti un instant, soins sur plusieurs jours…)"><Icon Name="pause" Groesse="16" /> Mettre en attente</button>
+                            @if (!KundeIstAnwesend)
+                            {
+                                <button type="button" class="kx-mixte" @onclick="OeffneParken" title="Garder ce ticket pour plus tard (client parti un instant…)"><Icon Name="pause" Groesse="16" /> Mettre en attente</button>
+                            }
                             <button type="button" class="kx-mixte" @onclick="() => OeffneZahlung(ZahlModus.Mixte)"><Icon Name="split" Groesse="16" /> Paiement mixte</button>
                         </div>
                     </div>
@@ -786,6 +819,13 @@ else
                        OnClose="() => ficheKundeId = null" OnGeaendert="LadeAnwesendeAsync" />
 }
 
+@* --- Prestations déjà enregistrées du client au ticket --- *@
+@if (aktiveSitzung is not null && ticketKunde is not null)
+{
+    <AufenthaltKontoDialog Open="kontoDialogOffen" SalonId="aktiveSitzung.SalonId" KundeId="ticketKunde.Id" BenutzerId="aktuellerBenutzerId" Zone="zone"
+                           OnClose="() => kontoDialogOffen = false" OnGeaendert="KontoGeaendertAsync" />
+}
+
 @* --- Ticket mettre en attente --- *@
 <ModalDialog Open="parkDialogOffen" Title="Mettre le ticket en attente" ErrorMessage="@parkFehler" OnClose="() => parkDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
@@ -816,7 +856,7 @@ else
     <ChildContent>
         @if (wartende.Count == 0)
         {
-            <p class="enote-muted">Aucun ticket en attente. Avec « Mettre en attente », gardez un ticket pour plus tard : le client revient, ou ses soins durent plusieurs jours.</p>
+            <p class="enote-muted">Aucun ticket en attente. Avec « Mettre en attente », gardez un ticket pour plus tard quand le client revient. Pour un client présent (soins sur plusieurs jours…), utilisez plutôt « Enregistrer sans encaisser ».</p>
         }
         else
         {

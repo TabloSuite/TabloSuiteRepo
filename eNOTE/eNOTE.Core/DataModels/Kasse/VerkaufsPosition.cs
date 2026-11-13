@@ -28,4 +28,7 @@ public class VerkaufsPosition
 
     /// <summary>Bei Rückerstattung: die erstattete Originalposition (Menge/Summe hier negativ).</summary>
     public Guid? StornoVonPositionId { get; set; }
+
+    /// <summary>Tag der Leistung, wenn sie während der Anwesenheit schon erfasst war (« Enregistrer sans encaisser »); erscheint auf dem Bon.</summary>
+    public DateOnly? ErbrachtAm { get; set; }
 }
