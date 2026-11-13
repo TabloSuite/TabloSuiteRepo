@@ -1,5 +1,25 @@
 window.skoulouStudentExerciseFeedback = (() => {
+    // Gesprochene Rückmeldung: feste Sätze, EINMAL mit Azure (Stimme Vivienne) erzeugt und als MP3 in
+    // wwwroot/audio/antworten/ abgelegt (Werkzeuge/AntwortTon/erzeuge.py). Abgespielt wird über den
+    // freigeschalteten AudioContext (zuverlässig auch auf iPhone); nur falls die Dateien fehlen,
+    // springt die Browser-Stimme ein. Ohne Vornamen – dieselben Dateien für alle Schüler.
+    const SAETZE = {
+        richtig: ['richtig-1', 'richtig-2', 'richtig-3', 'richtig-4', 'richtig-5', 'richtig-6'],
+        falsch: ['falsch-1', 'falsch-2', 'falsch-3', 'falsch-4', 'falsch-5', 'falsch-6'],
+        weiter: ['weiter'],
+        gesendet: ['gesendet']
+    };
+    const ERSATZ_TEXT = {
+        richtig: 'Bravo, très bien !',
+        falsch: 'Oups, essaie encore !',
+        weiter: 'Exercice suivant !',
+        gesendet: 'Réponse envoyée !'
+    };
+
     let audioContext;
+    const puffer = new Map();      // Name → AudioBuffer
+    let laden = null;              // Promise des Vorladens
+    const zuletzt = {};            // Gruppe → zuletzt gespielter Name (keine direkte Wiederholung)
 
     function getAudioContext() {
         audioContext ??= window.SKOULOUAPPAudio?.getAudioContext?.();
@@ -16,6 +36,49 @@ window.skoulouStudentExerciseFeedback = (() => {
         }
 
         return audioContext;
+    }
+
+    function dateiUrl(name) {
+        return new URL(`audio/antworten/${name}.mp3`, document.baseURI).toString();
+    }
+
+    function vorladen() {
+        if (laden) {
+            return laden;
+        }
+
+        const context = getAudioContext();
+        if (!context) {
+            laden = Promise.resolve();
+            return laden;
+        }
+
+        const namen = Object.values(SAETZE).flat();
+        laden = Promise.all(namen.map(async name => {
+            try {
+                const antwort = await fetch(dateiUrl(name), { cache: 'force-cache' });
+                if (!antwort.ok) {
+                    return;
+                }
+                const daten = await antwort.arrayBuffer();
+                const buffer = await new Promise((ok, fehler) => context.decodeAudioData(daten, ok, fehler));
+                puffer.set(name, buffer);
+            } catch {
+                // Fehlende Datei: Ersatz über die Browser-Stimme.
+            }
+        }));
+        return laden;
+    }
+
+    function waehle(gruppe) {
+        const namen = SAETZE[gruppe].filter(name => puffer.has(name));
+        if (namen.length === 0) {
+            return null;
+        }
+        const auswahl = namen.length > 1 ? namen.filter(name => name !== zuletzt[gruppe]) : namen;
+        const name = auswahl[Math.floor(Math.random() * auswahl.length)];
+        zuletzt[gruppe] = name;
+        return puffer.get(name);
     }
 
     function playTone(frequency, start, duration, type = 'sine', gainValue = 0.06) {
@@ -37,17 +100,29 @@ window.skoulouStudentExerciseFeedback = (() => {
         oscillator.stop(context.currentTime + start + duration + 0.03);
     }
 
-    function speak(text, rate = 1.08, pitch = 1.15, delay = 260) {
+    /** Spielt einen Satz der Gruppe ab Sekunde „start“; liefert das Ende (Sekunden ab jetzt). */
+    function spieleSatz(gruppe, start) {
+        const context = getAudioContext();
+        const buffer = context ? waehle(gruppe) : null;
+        if (!buffer) {
+            sprich(ERSATZ_TEXT[gruppe], start);
+            return start + 1.4;
+        }
+
+        const quelle = context.createBufferSource();
+        const gain = context.createGain();
+        gain.gain.value = 0.95;
+        quelle.buffer = buffer;
+        quelle.connect(gain);
+        gain.connect(context.destination);
+        quelle.start(context.currentTime + start);
+        return start + buffer.duration;
+    }
+
+    function sprich(text, start) {
         if (!('speechSynthesis' in window)) {
             return;
         }
-
-        // iOS/Safari verlangt, dass speechSynthesis.speak() synchron innerhalb
-        // der Nutzergeste (Tap) aufgerufen wird. Ein "await" davor lässt die
-        // Erlaubnis zur Wiedergabe (User Activation) verfallen, wodurch die
-        // Sprachausgabe stumm bleibt. Deshalb wird unlock() im Hintergrund
-        // gestartet, ohne die Wiedergabe zu blockieren.
-        window.SKOULOUAPPAudio?.unlock?.();
 
         window.setTimeout(() => {
             if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
@@ -56,31 +131,29 @@ window.skoulouStudentExerciseFeedback = (() => {
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'fr-FR';
-            utterance.rate = rate;
-            utterance.pitch = pitch;
+            utterance.rate = 1.04;
             utterance.volume = 0.85;
             window.speechSynthesis.speak(utterance);
-        }, delay);
+        }, Math.round(start * 1000));
     }
 
-    function buildMessage(baseMessage, name, hasNextExercise) {
-        const trimmedName = typeof name === 'string' ? name.trim() : '';
-        const namePart = trimmedName ? ` ${trimmedName}` : '';
-        const nextPart = hasNextExercise ? ' Prochain exercice !' : '';
-        return `${baseMessage}${namePart} !${nextPart}`;
-    }
+    /**
+     * Rückmeldung nach « Vérifier la réponse ». studentName wird nicht mehr gesprochen (feste Sätze);
+     * tonAus = Schüler hat die Rückmeldung im Konto ausgeschaltet → nichts abspielen.
+     */
+    function play(percent, isCorrect, requiresManualGrading, studentName, hasNextExercise, tonAus) {
+        if (tonAus) {
+            return;
+        }
 
-    function play(percent, isCorrect, requiresManualGrading, studentName, hasNextExercise) {
         try {
-            // Nicht "await" davor: playTone()/speak() müssen synchron innerhalb
-            // der Nutzergeste (Klick auf "Vérifier la réponse") ausgeführt werden,
-            // sonst verliert iOS/Safari die User-Activation und bleibt stumm.
             window.SKOULOUAPPAudio?.unlock?.();
+            vorladen();
 
             if (requiresManualGrading) {
                 playTone(440, 0, 0.12, 'triangle', 0.045);
                 playTone(554, 0.14, 0.12, 'triangle', 0.045);
-                speak(buildMessage('Réponse envoyée', studentName, false), 1.02, 1.05, 320);
+                spieleSatz('gesendet', 0.32);
                 return;
             }
 
@@ -88,17 +161,20 @@ window.skoulouStudentExerciseFeedback = (() => {
                 playTone(523, 0, 0.11, 'sine', 0.07);
                 playTone(659, 0.12, 0.11, 'sine', 0.07);
                 playTone(784, 0.24, 0.16, 'sine', 0.08);
-                speak(buildMessage('Bravo, parfait', studentName, hasNextExercise), 1.04, 1.12, 430);
+                const ende = spieleSatz('richtig', 0.45);
+                if (hasNextExercise) {
+                    spieleSatz('weiter', ende + 0.15);
+                }
                 return;
             }
 
             playTone(220, 0, 0.12, 'sawtooth', 0.035);
             playTone(196, 0.16, 0.18, 'sawtooth', 0.03);
-            speak(buildMessage('Oups, essaie encore', studentName, false), 0.96, 0.95, 360);
+            spieleSatz('falsch', 0.38);
         } catch {
             // Audio feedback must never block the exercise flow.
         }
     }
 
-    return { play };
+    return { play, vorladen };
 })();

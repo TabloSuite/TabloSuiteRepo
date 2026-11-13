@@ -27,7 +27,8 @@ public class SkoulouEmailServiceTests
         Assert.Contains("SKOULOUAPP-EMAIL-LAYOUT", sent.HtmlBody);
         Assert.Contains("<p>Contenu du message</p>", sent.HtmlBody);
         Assert.Contains("Bonjour &amp; bienvenue", sent.HtmlBody);
-        Assert.Equal(original.Subject, sent.Subject);
+        // Gemeinsame Adresse contact@tablosuite.com: der App-Name steht immer im Betreff.
+        Assert.Equal("[SKOULOU] Bonjour & bienvenue", sent.Subject);
         Assert.Equal(original.TextBody, sent.TextBody);
         Assert.Equal(original.ReplyTo, sent.ReplyTo);
         Assert.Equal("<p>Contenu du message</p>", original.HtmlBody);
@@ -43,7 +44,9 @@ public class SkoulouEmailServiceTests
 
         await service.SendAsync(new EmailRecipient("user@example.org"), original);
 
-        Assert.Same(original, Assert.Single(transport.Gesendet).Message);
+        var gesendet = Assert.Single(transport.Gesendet).Message;
+        Assert.Same(original.HtmlBody, gesendet.HtmlBody);          // Layout nicht erneut eingefasst
+        Assert.Equal("[SKOULOU] Bienvenue", gesendet.Subject);       // nur der App-Name kommt dazu
         Assert.Equal(1, html.Split("SKOULOUAPP-EMAIL-LAYOUT").Length - 1);
     }
 

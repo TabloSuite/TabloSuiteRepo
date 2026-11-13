@@ -189,6 +189,9 @@ builder.Services.AddScoped<IEmailService>(services => new SkoulouEmailService(se
 builder.Services.AddScoped<BroadcastEmailService>();
 builder.Services.AddTransient<MailboxService>();
 builder.Services.AddTransient<ResponsableKontaktService>();
+builder.Services.AddHttpClient(MailWeiterleitung.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddSingleton<MailWeiterleitung>();
+builder.Services.AddScoped<SkoulouApp.Core.Services.AntwortTonService>();
 builder.Services.AddTransient<KontoBenachrichtigungService>();
 builder.Services.AddTransient<AbrechnungBenachrichtigungService>();
 
@@ -326,7 +329,7 @@ app.MapGet("/medien/videos/{datei}", (string datei, HttpContext http) =>
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration config, MailboxService mailbox, CancellationToken cancellationToken) =>
+app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration config, MailboxService mailbox, MailWeiterleitung weiterleitung, CancellationToken cancellationToken) =>
 {
     var secret = config["Postmark:InboundWebhookSecret"];
     var authorization = request.Headers.Authorization.ToString();
@@ -341,6 +344,9 @@ app.MapPost("/api/postmark/inbound", async (HttpRequest request, IConfiguration 
     var to = Value(root, "To");
     var id = Value(root, "MessageID");
     if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(from) || !to.Contains(SkoulouMarke.KontaktEmail, StringComparison.OrdinalIgnoreCase)) return Results.BadRequest();
+    // Gemeinsame Adresse: Mails zu eNOTE an eNOTE weiterleiten (bei Fehler bleiben sie hier).
+    if (MailWeiterleitung.GehoertZuEnote(Value(root, "Subject")) && await weiterleitung.AnEnoteAsync(root.GetRawText(), cancellationToken))
+        return Results.Ok();
     await mailbox.EmpfangenAsync(from, to, Value(root, "Subject"), Value(root, "HtmlBody") is { Length: > 0 } html ? html : System.Net.WebUtility.HtmlEncode(Value(root, "TextBody")), id, cancellationToken: cancellationToken);
     return Results.Ok();
 }).DisableAntiforgery();

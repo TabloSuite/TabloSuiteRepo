@@ -40,6 +40,12 @@ public partial class StudentLesson
     private bool notFound;
     private Guid studentId;
     private string studentFirstName = string.Empty;
+
+    [Inject]
+    private AntwortTonService AntwortTon { get; set; } = default!;
+
+    /// <summary>Schüler hat die gesprochene Rückmeldung im Konto ausgeschaltet.</summary>
+    private bool antwortTonAus;
     private int correctCount;
     private bool exerciseStarted;
     private bool audioActivated;
@@ -132,6 +138,8 @@ public partial class StudentLesson
                 .Where(user => user.Id == studentId)
                 .Select(user => user.Vorname)
                 .FirstOrDefaultAsync(ComponentToken) ?? string.Empty;
+
+            antwortTonAus = await AntwortTon.IstAusAsync(studentId, ComponentToken);
 
             lesson = await LearningService.GetLessonDetailAsync(LessonId, studentId, ComponentToken);
             if (lesson is null)
@@ -269,6 +277,35 @@ public partial class StudentLesson
         }
     }
 
+    /// <summary>Schalter « Voix » (pro Schülerkonto gespeichert).</summary>
+    private async Task UmschaltenAntwortTonAsync()
+    {
+        var neu = !antwortTonAus;
+        if (await AntwortTon.SetzeAsync(studentId, neu, ComponentToken))
+        {
+            antwortTonAus = neu;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            // Gesprochene Rückmeldungen (MP3, einmal mit Azure erzeugt) schon vorladen,
+            // damit bereits die erste Antwort mit der Stimme kommt.
+            await JsRuntime.InvokeVoidAsync("skoulouStudentExerciseFeedback.vorladen");
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException)
+        {
+            // Optional – ohne Vorladen greift die Browser-Stimme.
+        }
+    }
+
     private async Task PlayExerciseFeedbackAsync(bool isCorrect, bool requiresManualGrading)
     {
         try
@@ -279,7 +316,8 @@ public partial class StudentLesson
                 isCorrect,
                 requiresManualGrading,
                 string.IsNullOrWhiteSpace(studentFirstName) ? null : studentFirstName,
-                !IsLastExercise);
+                !IsLastExercise,
+                antwortTonAus);
         }
         catch (JSException)
         {
