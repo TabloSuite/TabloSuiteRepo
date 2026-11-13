@@ -2173,7 +2173,23 @@ public partial class SchulLeiter
     private IReadOnlyList<CourseFormModel> GefilterteKlassen => schoolKlassen
         .Where(klasse => !klassenStufeFilterId.HasValue
                          || klasse.KlassenStufeId == klassenStufeFilterId)
+        .Where(klasse => string.IsNullOrWhiteSpace(klassenSuche)
+                         || klasse.Code.Contains(klassenSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                         || (klasse.Title ?? string.Empty).Contains(klassenSuche.Trim(), StringComparison.CurrentCultureIgnoreCase))
         .ToList();
+
+    // Suche in der Klassenliste und in den geteilten Inhalten; geteilte Inhalte in Schritten („Afficher plus“).
+    private const int GeteiltAnzeigeSchritt = 50;
+    private string klassenSuche = string.Empty;
+    private string geteiltSuche = string.Empty;
+    private int geteiltAnzeigeLimit = GeteiltAnzeigeSchritt;
+
+    private IReadOnlyList<SharedTeacherContentItem> GesuchteGeteilteInhalte => string.IsNullOrWhiteSpace(geteiltSuche)
+        ? FilteredSharedTeacherContent
+        : FilteredSharedTeacherContent.Where(item => item.Title.Contains(geteiltSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || item.AuthorName.Contains(geteiltSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || item.CourseCode.Contains(geteiltSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || item.ContentType.Contains(geteiltSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
 
     private CourseFormModel? ExistingKlasseFromForm
         => klasseForm.CourseId is Guid klasseId

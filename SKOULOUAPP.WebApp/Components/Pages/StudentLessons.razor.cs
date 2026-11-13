@@ -85,30 +85,40 @@ public partial class StudentLessons
             .OrderBy(x => x)
             .ToList() ?? [];
 
+    // Gefiltert wird VOR dem Seitenumbruch der Liste (früher filterte die Listenansicht erst die
+    // bereits geblätterte Seite, wodurch Seiten leer oder unvollständig waren).
     private List<LessonListItem> VisibleLessons
-        => OrderedLessons.Where(PassesSearchAndFilters).ToList();
+        => FiltereLektionen(lessons, searchTerm, selectedFach, selectedTeacherId, selectedStatus);
 
     private int VisibleCount => VisibleLessons.Count;
 
     private bool CanJumpToLesson
         => lessonJumpNumber >= 1 && lessonJumpNumber <= OrderedLessons.Count;
 
-    private bool PassesSearchAndFilters(LessonListItem lesson)
+    /// <summary>Filtert und sortiert die Lektionen (Suche, Matière, Enseignant, Statut) – Grundlage für Parcours und Liste.</summary>
+    internal static List<LessonListItem> FiltereLektionen(IEnumerable<LessonListItem>? lessons, string? searchTerm, string? fach, Guid? lehrerId, string? status)
+        => (lessons ?? [])
+            .Where(lesson => PasstZuFiltern(lesson, searchTerm, fach, lehrerId, status))
+            .OrderBy(x => x.CourseCode)
+            .ThenBy(x => x.Order)
+            .ToList();
+
+    private static bool PasstZuFiltern(LessonListItem lesson, string? searchTerm, string? fach, Guid? lehrerId, string? status)
     {
-        if (!MatchesSearch(lesson)) return false;
+        if (!PasstZurSuche(lesson, searchTerm)) return false;
 
-        if (!string.IsNullOrWhiteSpace(selectedFach)
-            && !string.Equals(lesson.FachName, selectedFach, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(fach)
+            && !string.Equals(lesson.FachName, fach, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        if (selectedTeacherId.HasValue && !lesson.FilterTeacherIds.Contains(selectedTeacherId.Value))
+        if (lehrerId.HasValue && !lesson.FilterTeacherIds.Contains(lehrerId.Value))
         {
             return false;
         }
 
-        return selectedStatus switch
+        return status switch
         {
             "completed" => lesson.IsCompleted,
             "inprogress" => !lesson.IsCompleted,
@@ -116,7 +126,9 @@ public partial class StudentLessons
         };
     }
 
-    private bool MatchesSearch(LessonListItem lesson)
+    private bool MatchesSearch(LessonListItem lesson) => PasstZurSuche(lesson, searchTerm);
+
+    private static bool PasstZurSuche(LessonListItem lesson, string? searchTerm)
     {
         if (string.IsNullOrWhiteSpace(searchTerm)) return true;
         var term = searchTerm.Trim();

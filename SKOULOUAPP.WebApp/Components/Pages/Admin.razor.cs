@@ -100,9 +100,9 @@ public partial class Admin
     private IReadOnlyList<SchoolManagementViewModel> schoolManagementItems = [];
     private IReadOnlyList<TeacherAssignmentOption> schoolOptions = [];
     private IReadOnlyList<CourseFormModel> userFormClassOptions = [];
-    private IReadOnlyList<UserManagementItem> userManagementItems = [];
+    private List<UserManagementItem> userManagementItems = [];
     private IReadOnlyList<CourseManagementViewModel> courseManagementItems = [];
-    private IReadOnlyList<MediaLibraryItem> mediaLibraryItems = [];
+    private List<MediaLibraryItem> mediaLibraryItems = [];
     private IReadOnlyList<LessonManagementItem> lessonOptions = [];
     private SchoolFormModel schoolForm = new();
     private UserFormModel userForm = new();
@@ -137,20 +137,25 @@ public partial class Admin
     private UserManagementItem? viewedUser;
 
     // Filter der Nutzerliste auf eine bestimmte Schule (null = alle Schulen).
-    private string? userSchoolFilter;
+    private Guid? userSchoolFilter;
+
+    // Nutzerliste serverseitig: Suche, Rolle, Schule und „Afficher plus“ (nie alle Konten laden).
+    private const int NutzerSeite = 50;
+    private bool nutzerMehr;
+    private string nutzerSuche = string.Empty;
+    private string? nutzerRolle;
+    private IReadOnlyDictionary<string, int> nutzerRollenAnzahl = new Dictionary<string, int>();
+    private int NutzerGesamt => nutzerRollenAnzahl.GetValueOrDefault(nutzerRolle ?? string.Empty);
     private Guid? schoolDirectorFilter;
     private string courseScopeFilter = "all";
     private Guid? courseSchoolFilter;
     private Guid? mediaSchoolFilter;
 
-    private IReadOnlyList<ModernDropdownOption<string?>> UserSchoolFilterOptions =>
+    private IReadOnlyList<ModernDropdownOption<Guid?>> UserSchoolFilterOptions =>
     [
         new(null, "Toutes les écoles"),
-        .. SchoolFilterNames.Select(name => new ModernDropdownOption<string?>(name, name))
+        .. schoolManagementItems.OrderBy(s => s.Name).Select(s => new ModernDropdownOption<Guid?>(s.SchoolId, s.Name))
     ];
-
-    private IReadOnlyList<string> SchoolFilterNames =>
-        schoolManagementItems.Select(s => s.Name).OrderBy(n => n).ToList();
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> SchoolDirectorFilterOptions =>
     [
@@ -167,10 +172,6 @@ public partial class Admin
             ? schoolManagementItems.Where(school => school.DirectorAssignments.Any(director => director.TeacherId == schoolDirectorFilter.Value)).ToList()
             : schoolManagementItems;
 
-    private IReadOnlyList<UserManagementItem> FilteredUserManagementItems =>
-        userSchoolFilter is null
-            ? userManagementItems
-            : userManagementItems.Where(u => u.Schools.Contains(userSchoolFilter)).ToList();
 
     private IReadOnlyList<CourseManagementViewModel> FilteredCourseManagementItems => courseManagementItems
         .Where(course => courseScopeFilter switch
@@ -185,29 +186,43 @@ public partial class Admin
         .ThenBy(course => course.Code)
         .ToList();
 
-    private IReadOnlyList<MediaLibraryItem> FilteredMediaLibraryItems => mediaLibraryItems
-        .Where(media => !mediaSchoolFilter.HasValue || media.SchoolId == mediaSchoolFilter.Value)
-        .OrderBy(media => media.SchoolName)
-        .ThenBy(media => string.IsNullOrWhiteSpace(media.DisplayName) ? media.OriginalFileName : media.DisplayName)
-        .ToList();
-
-    private long TotalMediaBytes => mediaLibraryItems.Sum(media => media.Length);
-    private long FilteredMediaBytes => FilteredMediaLibraryItems.Sum(media => media.Length);
+    // Medienbibliothek serverseitig: Suche, Schulfilter, „Afficher plus“; Summen per COUNT/SUM.
+    private const int MedienSeite = 48;
+    private bool mediaMehr;
+    private string mediaSuche = string.Empty;
+    private (int Anzahl, long Bytes) mediaGesamt;
+    private (int Anzahl, long Bytes) mediaGefiltert;
+    private IReadOnlyList<MediaLibrarySchule> mediaSchulen = [];
 
     private IReadOnlyList<ModernDropdownOption<Guid?>> MediaSchoolFilterOptions =>
     [
         new(null, "Toutes les écoles"),
-        .. mediaLibraryItems
-            .Where(media => media.SchoolId.HasValue)
-            .GroupBy(media => new { media.SchoolId, media.SchoolName })
-            .OrderBy(group => group.Key.SchoolName)
-            .Select(group => new ModernDropdownOption<Guid?>(group.Key.SchoolId, group.Key.SchoolName ?? "École sans nom", FormatFileSize(group.Sum(media => media.Length)), $"{group.Count()} média(s)"))
+        .. mediaSchulen.Select(schule => new ModernDropdownOption<Guid?>(schule.SchoolId, schule.SchoolName, FormatFileSize(schule.Bytes), $"{schule.Anzahl} média(s)"))
     ];
 
-    private Task SetMediaSchoolFilterAsync(Guid? schoolId)
+    private async Task SetMediaSchoolFilterAsync(Guid? schoolId)
     {
         mediaSchoolFilter = schoolId;
-        return Task.CompletedTask;
+        await LadeMedienAsync();
+    }
+
+    private Task SucheMedienAsync(string suche)
+    {
+        mediaSuche = suche;
+        return LadeMedienAsync();
+    }
+
+    private async Task LadeMedienAsync()
+    {
+        (mediaLibraryItems, mediaMehr) = await DashboardService.SucheMediaLibraryAsync(currentUserId, mediaSchoolFilter, mediaSuche, 0, MedienSeite, ComponentToken);
+        mediaGefiltert = await DashboardService.ZaehleMediaLibraryAsync(currentUserId, mediaSchoolFilter, mediaSuche, ComponentToken);
+    }
+
+    private async Task MehrMedienAsync()
+    {
+        var (neu, mehr) = await DashboardService.SucheMediaLibraryAsync(currentUserId, mediaSchoolFilter, mediaSuche, mediaLibraryItems.Count, MedienSeite, ComponentToken);
+        mediaLibraryItems.AddRange(neu);
+        mediaMehr = mehr;
     }
 
     private static string FormatFileSize(long bytes)
@@ -312,7 +327,42 @@ public partial class Admin
         ? "audio/mpeg,audio/mp4,.mp3,.m4a"
         : "image/png,image/jpeg,image/gif,image/webp";
 
-    private void SetUserSchoolFilter(string? schoolName) => userSchoolFilter = schoolName;
+    private async Task SetUserSchoolFilter(Guid? schoolId)
+    {
+        userSchoolFilter = schoolId;
+        await LadeNutzerAsync();
+    }
+
+    /// <summary>Lädt die erste Seite der Nutzerliste (bzw. so viele wie bereits angezeigt) und die Rollenzahlen.</summary>
+    private async Task LadeNutzerAsync(bool angezeigteBehalten = false)
+    {
+        var anzahl = angezeigteBehalten ? Math.Max(NutzerSeite, userManagementItems.Count) : NutzerSeite;
+        var (eintraege, mehr) = await DashboardService.SuchePlatformUsersAsync(
+            currentUserId, nutzerSuche, nutzerRolle, userSchoolFilter, 0, anzahl, ComponentToken);
+        userManagementItems = eintraege;
+        nutzerMehr = mehr;
+        nutzerRollenAnzahl = await DashboardService.ZaehlePlatformUsersNachRolleAsync(currentUserId, nutzerSuche, userSchoolFilter, ComponentToken);
+    }
+
+    private async Task MehrNutzerAsync()
+    {
+        var (neu, mehr) = await DashboardService.SuchePlatformUsersAsync(
+            currentUserId, nutzerSuche, nutzerRolle, userSchoolFilter, userManagementItems.Count, NutzerSeite, ComponentToken);
+        userManagementItems.AddRange(neu.Where(user => userManagementItems.All(vorhanden => vorhanden.UserId != user.UserId)));
+        nutzerMehr = mehr;
+    }
+
+    private Task SucheNutzerAsync(string suche)
+    {
+        nutzerSuche = suche;
+        return LadeNutzerAsync();
+    }
+
+    private Task FiltereNutzerRolleAsync(string? rolle)
+    {
+        nutzerRolle = rolle;
+        return LadeNutzerAsync();
+    }
 
     private Task SetSchoolDirectorFilterAsync(Guid? directorId)
     {
@@ -574,16 +624,26 @@ public partial class Admin
         var allowedSchools = await DashboardService.GetPlatformSchoolIdsAsync(currentUserId, ComponentToken);
         schoolOptions = (await DashboardService.GetSchoolOptionsAsync(userForm.UserId))
             .Where(option => allowedSchools.Contains(option.TeacherId)).ToList();
-        // Plattformansicht auf Basis bereinigter Schülerkennzahlen laden.
-        userManagementItems = (await DashboardService.GetPlatformUsersAsync(currentUserId, ComponentToken))
-            .OrderBy(u => GetRoleRank(u.RoleName))
-            .ThenBy(u => u.FullName)
-            .ToList();
-        courseManagementItems = isProduktOwner ? [] : await DashboardService.GetCourseManagementAsync();
-        mediaLibraryItems = (await DashboardService.GetMediaLibraryAsync())
-            .Where(media => !isProduktOwner || media.SchoolId.HasValue && allowedSchools.Contains(media.SchoolId.Value)).ToList();
-        lessonOptions = isProduktOwner ? [] : await DashboardService.GetLessonOptionsAsync();
+        // Nutzerliste serverseitig seitenweise (bereits nach Rolle und Name sortiert).
+        if (userSchoolFilter.HasValue && !schoolManagementItems.Any(school => school.SchoolId == userSchoolFilter.Value))
+        {
+            userSchoolFilter = null;
+        }
+        await LadeNutzerAsync(angezeigteBehalten: true);
+        // Der Klassen-/Niveau-Block ist ausgeblendet (div.hidden): seine Daten (alle Klassen mit Lektionen)
+        // werden nur geladen, wenn er wieder sichtbar geschaltet wird.
+        courseManagementItems = isProduktOwner || !KlassenVerwaltungSichtbar ? [] : await DashboardService.GetCourseManagementAsync();
+        lessonOptions = isProduktOwner || !KlassenVerwaltungSichtbar ? [] : await DashboardService.GetLessonOptionsAsync();
+        mediaSchulen = await DashboardService.GetMediaLibrarySchulenAsync(currentUserId, ComponentToken);
+        if (mediaSchoolFilter.HasValue && !mediaSchulen.Any(schule => schule.SchoolId == mediaSchoolFilter.Value))
+        {
+            mediaSchoolFilter = null;
+        }
+        mediaGesamt = await DashboardService.ZaehleMediaLibraryAsync(currentUserId, null, null, ComponentToken);
+        await LadeMedienAsync();
     }
+
+    private const bool KlassenVerwaltungSichtbar = false;
 
     private Task SaveSchoolAsync() => RunDatabaseActionAsync(SaveSchoolCoreAsync);
 
@@ -1250,7 +1310,7 @@ public partial class Admin
             Label = "Directeurs",
             Accent = "indigo",
             Predicate = u => u.RoleName == "SchulLeiter",
-            Count = FilteredUserManagementItems.Count(u => u.RoleName == "SchulLeiter")
+            Count = nutzerRollenAnzahl.GetValueOrDefault("SchulLeiter")
         },
         new()
         {
@@ -1258,7 +1318,7 @@ public partial class Admin
             Label = "Responsables produit",
             Accent = "violet",
             Predicate = u => u.RoleName == "ProduktOwner",
-            Count = FilteredUserManagementItems.Count(u => u.RoleName == "ProduktOwner")
+            Count = nutzerRollenAnzahl.GetValueOrDefault("ProduktOwner")
         },
         new()
         {
@@ -1266,7 +1326,7 @@ public partial class Admin
             Label = "Coordinateurs",
             Accent = "cyan",
             Predicate = u => u.RoleName == "Koordinator",
-            Count = FilteredUserManagementItems.Count(u => u.RoleName == "Koordinator")
+            Count = nutzerRollenAnzahl.GetValueOrDefault("Koordinator")
         },
         new()
         {
@@ -1274,7 +1334,7 @@ public partial class Admin
             Label = "Enseignants",
             Accent = "blue",
             Predicate = u => u.RoleName == "Lehrer",
-            Count = FilteredUserManagementItems.Count(u => u.RoleName == "Lehrer")
+            Count = nutzerRollenAnzahl.GetValueOrDefault("Lehrer")
         },
         new()
         {
@@ -1282,7 +1342,7 @@ public partial class Admin
             Label = "\u00c9l\u00e8ves",
             Accent = "emerald",
             Predicate = u => u.RoleName == "Sch\u00fcler",
-            Count = FilteredUserManagementItems.Count(u => u.RoleName == "Sch\u00fcler")
+            Count = nutzerRollenAnzahl.GetValueOrDefault("Sch\u00fcler")
         }
     ];
 
@@ -1310,17 +1370,6 @@ public partial class Admin
             : totalAmount.Value <= 0m
                 ? "Scolarit\u00e9 : \u00e0 d\u00e9finir"
                 : $"Scolarit\u00e9 : {paidAmount:N0} / {totalAmount.Value:N0} FCFA pay\u00e9";
-
-    private static int GetRoleRank(string roleName) => roleName switch
-    {
-        "SuperAdmin" => 0,
-        "ProduktOwner" => 1,
-        "SchulLeiter" => 2,
-        "Koordinator" => 3,
-        "Lehrer" => 4,
-        "Sch\u00fcler" => 5,
-        _ => 6
-    };
 
     private static string GetRoleSectionTitle(string roleName) => roleName switch
     {

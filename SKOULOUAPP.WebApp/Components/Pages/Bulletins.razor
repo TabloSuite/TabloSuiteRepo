@@ -222,7 +222,16 @@
         }
     }
     <section class="space-y-3">
-        <h2 class="text-base font-bold text-slate-900">Éditions enregistrées</h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-bold text-slate-900">Éditions enregistrées</h2>
+            <input type="search" class="skoulou-input min-w-0 flex-1 sm:max-w-sm" placeholder="Rechercher un élève ou une période..." aria-label="Rechercher dans les éditions enregistrées"
+                   @bind="listeSuche" @bind:event="oninput" @bind:after="ListeSuchenAsync" />
+        </div>
+        @if (verwalter)
+        {
+            <p class="text-sm text-slate-500">Affiche les éditions de l'année scolaire@(periodeID != Guid.Empty ? ", de la période" : "")@(sammelKlasseID != Guid.Empty ? " et de la classe" : "") sélectionnée(s) ci-dessus.</p>
+        }
+        <div class="sk-liste-scroll space-y-3 p-1">
         @foreach (var bulletin in liste)
         {
             <article class="flex flex-wrap justify-between gap-3 rounded-xl border bg-white p-4">
@@ -248,6 +257,11 @@
                 }
             </article>
         }
-        @if (liste.Count == 0) { <p>Aucun bulletin publié disponible.</p> }
+        </div>
+        @if (listeMehr)
+        {
+            <div class="sk-liste-mehr"><button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" disabled="@occupe" @onclick="MehrListeAsync">Afficher plus</button></div>
+        }
+        @if (liste.Count == 0) { <p>@(string.IsNullOrWhiteSpace(listeSuche) ? "Aucun bulletin publié disponible." : "Aucune édition ne correspond à la recherche.")</p> }
     </section>
 </div>

@@ -9,7 +9,7 @@ using Microsoft.JSInterop;
 
 namespace SkoulouApp.WebApp.Components.Pages;
 
-public partial class ExceptionLogs
+public partial class ExceptionLogs : IDisposable
 {
     [Inject] private IDbContextFactory<ApplicationDbContext> DbContextFactory { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -78,48 +78,60 @@ public partial class ExceptionLogs
         toDate = DateTime.Today;
         schoolId = null;
         onlyUnhandled = false;
+        search = string.Empty;
         await ApplyFiltersAsync();
     }
 
-    private async Task LoadLogsAsync()
+    // Serverseitig seitenweise (Filter + Suche), „Afficher plus“ statt fester 500er-Grenze.
+    private const int Seite = 50;
+    private bool hasMore;
+    private bool loadingMore;
+    private string search = string.Empty;
+    private readonly SuchVerzoegerung suchVerzoegerung = new();
+
+    private ExceptionLogFilter Filter => new(fromDate, toDate, schoolId, onlyUnhandled, search);
+
+    /// <summary>Lädt die erste Seite (bzw. so viele wie bereits angezeigt, z. B. nach „Traiter“/„Supprimer“).</summary>
+    private async Task LoadLogsAsync() => await LoadLogsCoreAsync(angezeigteBehalten: false);
+
+    private async Task LoadLogsCoreAsync(bool angezeigteBehalten)
     {
-        isLoading = true;
+        isLoading = !angezeigteBehalten;
         try
         {
             await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var query = dbContext.ExceptionLogs
-                .Include(log => log.School)
-                .AsNoTracking()
-                .AsQueryable();
-
-            if (fromDate.HasValue)
-            {
-                query = query.Where(log => log.OccurredAtUtc >= fromDate.Value.Date);
-            }
-
-            if (toDate.HasValue)
-            {
-                query = query.Where(log => log.OccurredAtUtc < toDate.Value.Date.AddDays(1));
-            }
-
-            if (schoolId.HasValue)
-            {
-                query = query.Where(log => log.SchoolId == schoolId);
-            }
-
-            if (onlyUnhandled)
-            {
-                query = query.Where(log => !log.IsHandled);
-            }
-
+            var anzahl = angezeigteBehalten ? Math.Max(Seite, logs.Count) : Seite;
+            var (eintraege, mehr) = await ExceptionLogSuche.SucheAsync(dbContext, Filter, 0, anzahl);
             logs.Clear();
-            logs.AddRange(await query.OrderByDescending(log => log.OccurredAtUtc).Take(500).ToListAsync());
+            logs.AddRange(eintraege);
+            hasMore = mehr;
         }
         finally
         {
             isLoading = false;
         }
     }
+
+    private async Task LoadMoreAsync()
+    {
+        if (loadingMore) return;
+        loadingMore = true;
+        try
+        {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var (eintraege, mehr) = await ExceptionLogSuche.SucheAsync(dbContext, Filter, logs.Count, Seite);
+            logs.AddRange(eintraege.Where(neu => logs.All(vorhanden => vorhanden.Id != neu.Id)));
+            hasMore = mehr;
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+
+    private Task SearchChangedAsync() => suchVerzoegerung.AusfuehrenAsync(LoadLogsAsync);
+
+    public void Dispose() => suchVerzoegerung.Dispose();
 
     private async Task MarkHandledAsync(Guid logId)
     {
@@ -232,7 +244,7 @@ public partial class ExceptionLogs
             {
                 await using var dbContext = await DbContextFactory.CreateDbContextAsync();
                 await action(dbContext);
-                await LoadLogsAsync();
+                await LoadLogsCoreAsync(angezeigteBehalten: true);
             });
         }
         finally

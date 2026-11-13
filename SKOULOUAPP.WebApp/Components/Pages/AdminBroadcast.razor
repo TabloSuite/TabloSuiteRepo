@@ -21,12 +21,20 @@
         <label class="block"><span class="skoulou-label">Expiration (heure locale)</span><input type="datetime-local" class="skoulou-input" @bind="announcement.ExpiresAtLocal" @bind:format="yyyy-MM-ddTHH:mm" /></label>
         <AsyncActionButton Class="skoulou-btn-accent rounded-full px-5 py-2.5 text-sm font-semibold" IsBusy="@isSavingAnnouncement" BusyLabel="Publication..." OnClick="PublishAnnouncementAsync">Publier l'annonce</AsyncActionButton>
     </div>
+    <input type="search" class="skoulou-input mt-6" placeholder="Rechercher une annonce par titre..." aria-label="Rechercher une annonce"
+           @bind="announcementSuche" @bind:event="oninput" @bind:after="AnkuendigungenSuchenAsync" />
+    <div class="sk-liste-scroll mt-2 p-1">
     @foreach (var item in announcements)
     {
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4" @key="item.Id">
-            <div><strong class="text-slate-900">@item.Titel</strong><p class="text-xs text-slate-600">Expire le @item.AblaufAmUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4" @key="item.Id">
+            <div><strong class="text-slate-900">@item.Titel</strong><p class="text-xs text-slate-600">@(item.AblaufAmUtc > DateTime.UtcNow ? "Expire le" : "Expirée le") @item.AblaufAmUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p></div>
             <AsyncActionButton Class="sk-btn sk-btn-danger" IsBusy="@isSavingAnnouncement" BusyLabel="Suppression..." OnClick="@(_ => DeleteAnnouncementAsync(item.Id))">Supprimer</AsyncActionButton>
         </div>
+    }
+    </div>
+    @if (announcementsMehr)
+    {
+        <div class="sk-liste-mehr"><button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="MehrAnkuendigungenAsync">Afficher plus</button></div>
     }
 </section>
 }

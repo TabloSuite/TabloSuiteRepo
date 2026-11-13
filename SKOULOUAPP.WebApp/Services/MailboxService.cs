@@ -9,6 +9,9 @@ namespace SkoulouApp.WebApp.Services;
 
 public sealed record MailEmpfaenger(Guid Id, string Name, string Email, bool IstDirektion, bool IstLehrer, bool IstSchueler);
 
+/// <summary>Listenzeile der Messagerie (ohne Mailtext).</summary>
+public sealed record MailListenZeile(Guid Id, Guid? SchulID, string Absender, string Empfaenger, string Betreff, bool IstEingehend, DateTime ErstelltAmUtc);
+
 public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbContextFactory, IEmailService emailService)
 {
     public async Task<EmailBatchResult> SendenAnGruppeAsync(Guid adminId, BroadcastCriteria criteria, EmailMessage message, CancellationToken cancellationToken = default)
@@ -49,8 +52,52 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
     public async Task<IReadOnlyList<MailNachricht>> LadeAsync(Guid userId, bool istAdmin, Guid? produktOwnerFilter, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        istAdmin = await IstAdminAsync(db, userId, cancellationToken);
-        if (!istAdmin && !await IstOwnerAsync(db, userId, cancellationToken)) return [];
+        var query = await SichtbareMailsAsync(db, userId, produktOwnerFilter, cancellationToken);
+        if (query is null) return [];
+        return await query.OrderByDescending(mail => mail.ErstelltAmUtc).Take(200).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Serverseitige Suche im Posteingang bzw. in den gesendeten Mails (Objet, Absender, Empfänger, Text),
+    /// neueste zuerst, Skip/Take. Für die Liste ohne Mailtext (wird erst beim Öffnen geladen).
+    /// </summary>
+    public async Task<(List<MailListenZeile> Eintraege, bool Mehr)> SucheAsync(Guid userId, Guid? produktOwnerFilter, bool eingehend,
+        string? suche, int ueberspringen, int anzahl = 50, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = await SichtbareMailsAsync(db, userId, produktOwnerFilter, cancellationToken);
+        if (query is null) return ([], false);
+        query = query.Where(mail => mail.IstEingehend == eingehend);
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            query = query.Where(mail => mail.Betreff.Contains(s) || mail.Absender.Contains(s) || mail.Empfaenger.Contains(s) || mail.Inhalt.Contains(s));
+        }
+
+        anzahl = Math.Clamp(anzahl, 1, 200);
+        var liste = await query.OrderByDescending(mail => mail.ErstelltAmUtc).ThenBy(mail => mail.Id)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1)
+            .Select(mail => new MailListenZeile(mail.Id, mail.SchulID, mail.Absender, mail.Empfaenger, mail.Betreff, mail.IstEingehend, mail.ErstelltAmUtc))
+            .ToListAsync(cancellationToken);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
+    /// <summary>Mailtext (HTML, bereinigt gespeichert) einer für den Nutzer sichtbaren Mail; null = nicht sichtbar.</summary>
+    public async Task<string?> InhaltAsync(Guid userId, Guid mailId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = await SichtbareMailsAsync(db, userId, null, cancellationToken);
+        if (query is null) return null;
+        return await query.Where(mail => mail.Id == mailId).Select(mail => mail.Inhalt).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>Mails, die der Nutzer sehen darf (Admin: alle bzw. die eines Responsables; Responsable: seine Schulen). Null = kein Zugriff.</summary>
+    private static async Task<IQueryable<MailNachricht>?> SichtbareMailsAsync(ApplicationDbContext db, Guid userId, Guid? produktOwnerFilter, CancellationToken cancellationToken)
+    {
+        var istAdmin = await IstAdminAsync(db, userId, cancellationToken);
+        if (!istAdmin && !await IstOwnerAsync(db, userId, cancellationToken)) return null;
         var query = db.MailNachrichten.AsNoTracking().AsQueryable();
         if (!istAdmin)
         {
@@ -67,7 +114,7 @@ public sealed class MailboxService(IDbContextFactory<ApplicationDbContext> dbCon
             query = query.Where(mail => mail.SchulID.HasValue && schulIds.Contains(mail.SchulID.Value));
         }
 
-        return await query.OrderByDescending(mail => mail.ErstelltAmUtc).Take(200).ToListAsync(cancellationToken);
+        return query;
     }
 
     public async Task<IReadOnlyList<(Guid Id, string Name)>> SchulenAsync(Guid userId, bool istAdmin, CancellationToken cancellationToken = default)

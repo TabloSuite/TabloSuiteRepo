@@ -2,16 +2,43 @@
 
 namespace SkoulouApp.WebApp.Components.Shared;
 
-public partial class DataListPanel<TItem> : ComponentBase
+/// <summary>
+/// Einheitliche Listenansicht: Suche, Chips, Sortierung, Seiten und Scrollbox (.sk-liste-scroll).
+/// Standard: Filter und Seiten im Speicher (für Daten, die pro Schule begrenzt sind).
+/// <see cref="ServerPaging"/>: Suche und Chips gehen (verzögert) an die Seite, die serverseitig filtert
+/// und mit „Afficher plus“ nachlädt (für Daten, die unbegrenzt wachsen).
+/// </summary>
+public partial class DataListPanel<TItem> : ComponentBase, IDisposable
 {
     private string searchText = string.Empty;
     private int currentPage;
     private string? activeSortKey;
+    private bool mehrLaedt;
+    private readonly SuchVerzoegerung suchVerzoegerung = new();
 
     [Parameter, EditorRequired]
     public IReadOnlyList<TItem> Items { get; set; } = Array.Empty<TItem>();
 
-    [Parameter] public bool StickyToolbar { get; set; }
+    /// <summary>Einträge in einer Scrollbox (.sk-liste-scroll) anzeigen. Standard: an.</summary>
+    [Parameter] public bool Scroll { get; set; } = true;
+
+    /// <summary>
+    /// Serverseitige Suche/Seiten: <see cref="Items"/> wird unverändert angezeigt, die Suche (verzögert)
+    /// und die Chip-Auswahl werden über <see cref="SearchChanged"/>/<see cref="ChipChanged"/> gemeldet,
+    /// statt Précédent/Suivant gibt es „Afficher plus“ (<see cref="LoadMore"/>).
+    /// </summary>
+    [Parameter] public bool ServerPaging { get; set; }
+
+    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+
+    [Parameter] public EventCallback<string?> ChipChanged { get; set; }
+
+    /// <summary>Gesamtzahl der Treffer auf dem Server (nur Anzeige im Server-Modus).</summary>
+    [Parameter] public int? TotalCount { get; set; }
+
+    [Parameter] public bool HasMore { get; set; }
+
+    [Parameter] public EventCallback LoadMore { get; set; }
 
     [Parameter] public RenderFragment? HeaderContent { get; set; }
 
@@ -68,6 +95,12 @@ public partial class DataListPanel<TItem> : ComponentBase
     {
         get
         {
+            // Server-Modus: Die Seite liefert bereits gefilterte, sortierte Einträge.
+            if (ServerPaging)
+            {
+                return Items;
+            }
+
             var term = searchText?.Trim() ?? string.Empty;
             var chip = ActiveChip;
             var sort = ActiveSort;
@@ -114,10 +147,14 @@ public partial class DataListPanel<TItem> : ComponentBase
         }
     }
 
-    private void SelectChip(string key)
+    private async Task SelectChip(string key)
     {
         activeChipKey = activeChipKey == key ? null : key;
         currentPage = 0;
+        if (ServerPaging && ChipChanged.HasDelegate)
+        {
+            await ChipChanged.InvokeAsync(activeChipKey);
+        }
     }
 
     private static string ChipClass(bool isActive, string accent)
@@ -143,6 +180,12 @@ public partial class DataListPanel<TItem> : ComponentBase
 
     private int FilteredCount => FilteredItems.Count;
 
+    private int DisplayCount => ServerPaging ? TotalCount ?? Items.Count : FilteredCount;
+
+    private string AnzeigeAnzahl => ServerPaging && TotalCount is null && HasMore
+        ? $"{Items.Count:N0}+"
+        : DisplayCount.ToString("N0");
+
     private int PageCount => Math.Max(1, (int)Math.Ceiling(FilteredCount / (double)Math.Max(1, PageSize)));
 
     private IReadOnlyList<TItem> PageItems
@@ -150,6 +193,11 @@ public partial class DataListPanel<TItem> : ComponentBase
         get
         {
             var filtered = FilteredItems;
+            if (ServerPaging)
+            {
+                return filtered;
+            }
+
             var page = Math.Clamp(currentPage, 0, PageCount - 1);
             return filtered
                 .Skip(page * PageSize)
@@ -158,10 +206,33 @@ public partial class DataListPanel<TItem> : ComponentBase
         }
     }
 
-    private void OnSearchChanged(ChangeEventArgs args)
+    private async Task OnSearchChanged(ChangeEventArgs args)
     {
         searchText = args.Value?.ToString() ?? string.Empty;
         currentPage = 0;
+        if (ServerPaging && SearchChanged.HasDelegate)
+        {
+            var suche = searchText;
+            await suchVerzoegerung.AusfuehrenAsync(() => SearchChanged.InvokeAsync(suche));
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (mehrLaedt || !LoadMore.HasDelegate)
+        {
+            return;
+        }
+
+        mehrLaedt = true;
+        try
+        {
+            await LoadMore.InvokeAsync();
+        }
+        finally
+        {
+            mehrLaedt = false;
+        }
     }
 
     private void PreviousPage()
@@ -179,4 +250,6 @@ public partial class DataListPanel<TItem> : ComponentBase
             currentPage++;
         }
     }
+
+    public void Dispose() => suchVerzoegerung.Dispose();
 }

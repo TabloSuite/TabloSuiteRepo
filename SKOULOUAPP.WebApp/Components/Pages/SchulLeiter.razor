@@ -296,6 +296,7 @@
                     <div class="mb-4 grid gap-3 sm:grid-cols-2">
                         <ModernDropdown TValue="string" Label="Statut des cycles" Value="durchlaufStatusFilter" ValueChanged="SetDurchlaufStatusFilterAsync" Options="DurchlaufStatusOptions" />
                         <ModernDropdown TValue="Guid?" Label="Nom de référence" Value="klassenStufeFilterId" ValueChanged="SetKlassenStufeFilterAsync" Options="KlassenStufeFilterOptions" />
+                        <input type="search" class="skoulou-input sm:col-span-2" placeholder="Rechercher une classe..." aria-label="Rechercher une classe" @bind="klassenSuche" @bind:event="oninput" />
                     </div>
                     @if (GefilterteKlassen.Count == 0)
                     {
@@ -303,7 +304,7 @@
                     }
                     else
                     {
-                        <div class="grid gap-3 lg:grid-cols-2">
+                        <div class="sk-liste-scroll grid gap-3 p-1 lg:grid-cols-2">
                             @foreach (var klasse in GefilterteKlassen)
                             {
                                 SkoulouApp.Core.Services.DurchlaufUebersicht? durchlauf = null;
@@ -792,8 +793,14 @@
             }
             else
             {
-                <ul class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
-                    @foreach (var item in FilteredSharedTeacherContent)
+                <input type="search" class="skoulou-input mb-3" placeholder="Rechercher un titre, une classe ou un enseignant..." aria-label="Rechercher un contenu partagé"
+                       @bind="geteiltSuche" @bind:event="oninput" @bind:after="() => geteiltAnzeigeLimit = GeteiltAnzeigeSchritt" />
+                @if (GesuchteGeteilteInhalte.Count == 0)
+                {
+                    <p class="mb-0 rounded-xl bg-slate-50 px-4 py-5 text-sm text-slate-600">Aucun contenu ne correspond à la recherche.</p>
+                }
+                <ul class="sk-liste-scroll m-0 grid list-none gap-2 p-1 sm:grid-cols-2">
+                    @foreach (var item in GesuchteGeteilteInhalte.Take(geteiltAnzeigeLimit))
                     {
                         <li class="rounded-2xl border border-slate-200 bg-white p-4">
                             <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
@@ -805,6 +812,10 @@
                         </li>
                     }
                 </ul>
+                @if (GesuchteGeteilteInhalte.Count > geteiltAnzeigeLimit)
+                {
+                    <div class="sk-liste-mehr"><button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" @onclick="() => geteiltAnzeigeLimit += GeteiltAnzeigeSchritt">Afficher plus</button></div>
+                }
             }
         </Abschnitt>
     }

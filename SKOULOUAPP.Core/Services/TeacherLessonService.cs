@@ -80,11 +80,6 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
         var freieSchulen = new SchulZugangService(dbContext).FreigegebeneSchulen();
         var query = dbContext.TeacherLessons
             .AsNoTracking()
-            .Include(x => x.Klasse)
-            .Include(x => x.Author)
-            .Include(x => x.Pages)
-            .Include(x => x.Fach)
-            .Include(x => x.VideoAsset)
             .Where(x => x.AuthorId == teacherId && !x.Klasse.IstSystemNiveau
                 && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value))
             .AsQueryable();
@@ -94,13 +89,36 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             query = query.Where(x => x.KlasseId == klasseId.Value);
         }
 
-        var lessons = await query
+        // Leichte Projektion: Seitenzahl per COUNT, ohne die Seiteninhalte (HTML) aller Kurse zu laden.
+        return await query
             .OrderBy(x => x.Klasse.Code)
             .ThenBy(x => x.Order)
+            .Select(ListItemProjektion)
             .ToListAsync(cancellationToken);
-
-        return lessons.Select(MapToListItem).ToList();
     }
+
+    private static readonly System.Linq.Expressions.Expression<Func<TeacherLesson, TeacherLessonListItem>> ListItemProjektion = lesson => new TeacherLessonListItem
+    {
+        Id = lesson.Id,
+        Title = lesson.Title,
+        Summary = lesson.Summary,
+        FachId = lesson.FachId,
+        FachName = lesson.Fach != null ? lesson.Fach.Name : null,
+        CourseTheme = lesson.CourseTheme,
+        CourseCode = lesson.Klasse != null ? lesson.Klasse.Code : string.Empty,
+        KlasseId = lesson.KlasseId,
+        KlasseTitle = lesson.Klasse != null ? lesson.Klasse.Title : null,
+        Order = lesson.Order,
+        IsPublished = lesson.IsPublished,
+        PageCount = lesson.Pages.Count,
+        AuthorName = lesson.Author != null ? lesson.Author.FullName : string.Empty,
+        AuthorId = lesson.AuthorId,
+        IsPdfExportEnabled = lesson.IsPdfExportEnabled,
+        IsSharedWithSchool = lesson.IsSharedWithSchool,
+        HasVideo = lesson.VideoAssetId.HasValue,
+        VideoDisplayName = lesson.VideoAsset != null ? lesson.VideoAsset.DisplayName : null,
+        IstVonDirektionErfasst = lesson.ErfasstVonId.HasValue
+    };
 
     /// <summary>
     /// Liefert eigene Kursskripte sowie für die Direktion alle veröffentlichten
@@ -128,11 +146,6 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
 
         var query = dbContext.TeacherLessons
             .AsNoTracking()
-            .Include(x => x.Klasse)
-            .Include(x => x.Author)
-            .Include(x => x.Pages)
-            .Include(x => x.Fach)
-            .Include(x => x.VideoAsset)
             .Where(x => !x.Klasse.IstSystemNiveau && x.Klasse.SchoolId.HasValue && freieSchulen.Contains(x.Klasse.SchoolId.Value)
                 && (x.AuthorId == userId
                     || (x.AuthorId.HasValue
@@ -145,13 +158,12 @@ public class TeacherLessonService(ISkoulouAppDbContext dbContext)
             query = query.Where(x => x.KlasseId == klasseId.Value);
         }
 
-        var lessons = await query
+        return await query
             .OrderBy(x => x.Klasse.Code)
             .ThenBy(x => x.Order)
             .ThenBy(x => x.Title)
+            .Select(ListItemProjektion)
             .ToListAsync(cancellationToken);
-
-        return lessons.Select(MapToListItem).ToList();
     }
 
     /// <summary>

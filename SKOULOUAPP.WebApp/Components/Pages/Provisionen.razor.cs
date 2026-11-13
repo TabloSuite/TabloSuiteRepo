@@ -18,6 +18,13 @@ public partial class Provisionen
     private bool isSuperAdmin;
     private bool isProduktOwner;
     private IReadOnlyList<AdminSchoolOverview> schools = [];
+    private string schoolSearchTerm = string.Empty;
+
+    private IReadOnlyList<AdminSchoolOverview> GefilterteSchulen => string.IsNullOrWhiteSpace(schoolSearchTerm)
+        ? schools
+        : schools.Where(school => school.Name.Contains(schoolSearchTerm.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || school.City.Contains(schoolSearchTerm.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || school.Country.Contains(schoolSearchTerm.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
     private Guid? selectedSchoolId;
     private ProvisionsUebersicht? offeneUebersicht;
     private IReadOnlyList<ProvisionsUebersicht> periodenUebersichten = [];

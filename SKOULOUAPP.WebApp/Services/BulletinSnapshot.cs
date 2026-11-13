@@ -35,3 +35,6 @@ public sealed record BulletinSnapshot(string Schule, string? Slogan, string? Adr
 
 public sealed record BulletinListenZeile(Guid Id, Guid SchulID, string Titel, string Schueler, int Version, bool IstVeroeffentlicht,
     bool IstEndgueltig = false, Guid? ErsetztDurchID = null);
+
+/// <summary>Filter der gespeicherten Bulletin-Ausgaben (null = nicht einschränken).</summary>
+public sealed record BulletinListenFilter(Guid? SchuljahrID = null, Guid? PeriodeID = null, Guid? KlasseID = null, string? Suche = null);

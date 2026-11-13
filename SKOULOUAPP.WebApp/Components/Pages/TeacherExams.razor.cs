@@ -156,9 +156,21 @@ public partial class TeacherExams
                 query = query.Where(x => x.KlasseId == selectedKlasseFilterId.Value);
             }
 
+            if (!string.IsNullOrWhiteSpace(examSuche))
+            {
+                var s = examSuche.Trim();
+                query = query.Where(x => x.Title.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || x.NiveauCode.Contains(s, StringComparison.CurrentCultureIgnoreCase));
+            }
+
             return query.ToList();
         }
     }
+
+    // Suche und Anzeige in Schritten („Afficher plus“).
+    private const int AnzeigeSchritt = 50;
+    private string examSuche = string.Empty;
+    private int examAnzeigeLimit = AnzeigeSchritt;
 
     private IReadOnlyList<ModernDropdownOption<string?>> NiveauOptions =>
     [

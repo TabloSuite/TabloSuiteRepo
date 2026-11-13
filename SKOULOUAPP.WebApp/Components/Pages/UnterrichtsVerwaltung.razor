@@ -70,8 +70,12 @@
             </div>
             <label class="mt-4 block"><input type="checkbox" @bind="wiederholer" /> Redoublant pour cette année scolaire</label>
             <button type="button" class="sk-btn sk-btn-primary mt-3" disabled="@(occupe || schuljahrID == Guid.Empty || jahresSchuelerID == Guid.Empty || jahresKlasseID == Guid.Empty)" @onclick="SpeichereJahresSchuelerAsync">Enregistrer l'inscription</button>
-            <ul class="mt-4 space-y-2">
-                @foreach (var inscription in jahresSchueler)
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+                <input type="search" class="skoulou-input min-w-0 flex-1 sm:max-w-sm" placeholder="Rechercher un élève ou une classe..." aria-label="Rechercher une inscription" @bind="jahresSuche" @bind:event="oninput" />
+                <span class="text-xs font-semibold text-slate-500">@GefilterteJahresSchueler.Count / @jahresSchueler.Count inscription(s)</span>
+            </div>
+            <ul class="sk-liste-scroll mt-3 space-y-2">
+                @foreach (var inscription in GefilterteJahresSchueler)
                 {
                     <li>@inscription.Name · @inscription.Klasse · @(inscription.IstWiederholer ? "Redoublant" : "Non redoublant")</li>
                 }
@@ -101,14 +105,19 @@
             <p class="mt-2 text-sm text-slate-500">Une affectation existante est mise à jour sans créer de doublon.</p>
         </section>
         <section class="space-y-3">
-            <h2 class="text-base font-bold text-slate-900">Enseignements de l'année sélectionnée</h2>
-            @foreach (var zeile in uebersicht.Unterricht.Where(x => x.SchuljahrID == schuljahrID))
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-base font-bold text-slate-900">Enseignements de l'année sélectionnée</h2>
+                <input type="search" class="skoulou-input min-w-0 flex-1 sm:max-w-sm" placeholder="Rechercher une classe, une matière ou un enseignant..." aria-label="Rechercher un enseignement" @bind="unterrichtSuche" @bind:event="oninput" />
+            </div>
+            <div class="sk-liste-scroll space-y-3 p-1">
+            @foreach (var zeile in GefilterterUnterricht)
             {
                 <article @key="zeile.Id" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
                     <div class="min-w-0 break-words"><h3 class="font-semibold">@zeile.Klasse · @zeile.Fach</h3><p>@zeile.Lehrer</p><p class="text-sm text-slate-600">@zeile.Wochenstunden h / semaine</p></div>
                     <button type="button" class="sk-btn sk-btn-danger" disabled="@occupe" @onclick="() => EntferneAsync(zeile.Id)">Retirer</button>
                 </article>
             }
+            </div>
             @if (!uebersicht.Unterricht.Any(x => x.SchuljahrID == schuljahrID))
             {
                 <p class="rounded-xl bg-slate-50 p-4">Aucune affectation pour cette année scolaire.</p>

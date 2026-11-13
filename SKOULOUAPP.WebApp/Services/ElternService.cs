@@ -67,8 +67,9 @@ public sealed class ElternService(IDbContextFactory<ApplicationDbContext> factor
             .ToListAsync(token);
         var links = await db.Set<ElternKind>().AsNoTracking().Where(x => x.SchulID == schulID)
             .Select(x => new { x.SchuelerID, x.ElternID, x.Eltern.FullName, x.Eltern.UserName, x.Beziehung, x.Eltern.IsBlocked }).ToListAsync(token);
+        var linksJeSchueler = links.ToLookup(l => l.SchuelerID);
         return schueler.Select(s => new SchuelerMitEltern(s.AppUserId, s.FullName, s.Klasse, s.ElternTelefonNummer, s.ElternEmail,
-            links.Where(l => l.SchuelerID == s.AppUserId).Select(l => new ElternVerknuepfung(l.ElternID, l.FullName, l.UserName ?? "", l.Beziehung, l.IsBlocked)).ToList())).ToList();
+            linksJeSchueler[s.AppUserId].Select(l => new ElternVerknuepfung(l.ElternID, l.FullName, l.UserName ?? "", l.Beziehung, l.IsBlocked)).ToList())).ToList();
     }
 
     public async Task<List<ElternKonto>> ElternkontenAsync(Guid direktorID, CancellationToken token = default)

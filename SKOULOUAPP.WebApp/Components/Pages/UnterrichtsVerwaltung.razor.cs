@@ -26,6 +26,19 @@ public partial class UnterrichtsVerwaltung
     });
     private List<JahresSchuelerZeile> jahresSchueler = [];
     private Guid jahresSchuelerID, jahresKlasseID;
+    private string jahresSuche = "";
+    private string unterrichtSuche = "";
+
+    private List<JahresSchuelerZeile> GefilterteJahresSchueler => string.IsNullOrWhiteSpace(jahresSuche)
+        ? jahresSchueler
+        : jahresSchueler.Where(x => x.Name.Contains(jahresSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || x.Klasse.Contains(jahresSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
+
+    private IEnumerable<UnterrichtsZeile> GefilterterUnterricht => (uebersicht?.Unterricht ?? [])
+        .Where(x => x.SchuljahrID == schuljahrID && (string.IsNullOrWhiteSpace(unterrichtSuche)
+            || x.Klasse.Contains(unterrichtSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || x.Fach.Contains(unterrichtSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || x.Lehrer.Contains(unterrichtSuche.Trim(), StringComparison.CurrentCultureIgnoreCase)));
     private bool wiederholer, abschlussBestaetigt;
 
     private Task WaehleJahrAsync(Guid id) => AktionAsync(async () =>

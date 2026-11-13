@@ -49,6 +49,34 @@ public partial class AdminBroadcast
     private bool isSavingAnnouncement;
     private string? announcementMessage;
     private List<Ankuendigung> announcements = [];
+
+    // Ankündigungen serverseitig: Suche im Titel (verzögert), „Afficher plus“.
+    private const int AnkuendigungenSeite = 50;
+    private bool announcementsMehr;
+    private string announcementSuche = string.Empty;
+    private readonly SuchVerzoegerung announcementSuchVerzoegerung = new();
+
+    private async Task AnkuendigungenLadenAsync()
+        => (announcements, announcementsMehr) = await AnkuendigungService.SucheAsync(announcementSuche, 0, Math.Max(AnkuendigungenSeite, announcements.Count), ComponentToken);
+
+    private Task AnkuendigungenSuchenAsync() => announcementSuchVerzoegerung.AusfuehrenAsync(async () =>
+    {
+        try { (announcements, announcementsMehr) = await AnkuendigungService.SucheAsync(announcementSuche, 0, AnkuendigungenSeite, ComponentToken); }
+        catch (Exception ex) when (IstAbbruch(ex)) { }
+    });
+
+    private async Task MehrAnkuendigungenAsync()
+    {
+        var (neu, mehr) = await AnkuendigungService.SucheAsync(announcementSuche, announcements.Count, AnkuendigungenSeite, ComponentToken);
+        announcements.AddRange(neu);
+        announcementsMehr = mehr;
+    }
+
+    public override void Dispose()
+    {
+        announcementSuchVerzoegerung.Dispose();
+        base.Dispose();
+    }
     private AnnouncementInput announcement = new();
 
     private IReadOnlyList<ModernDropdownOption<BroadcastAudience?>> AudienceOptions =>
@@ -87,7 +115,7 @@ public partial class AdminBroadcast
         try
         {
             schools = await HomePageService.GetSchoolsAsync(ComponentToken);
-            if (ShowAnnouncements) announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+            if (ShowAnnouncements) await AnkuendigungenLadenAsync();
         }
         catch (Exception ex) when (IstAbbruch(ex))
         {
@@ -118,7 +146,7 @@ public partial class AdminBroadcast
                 if (result.Succeeded)
                 {
                     announcement = new();
-                    announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+                    await AnkuendigungenLadenAsync();
                 }
             });
         }
@@ -136,7 +164,7 @@ public partial class AdminBroadcast
                 if (await AnkuendigungService.LoeschenAsync(id, ComponentToken))
                 {
                     announcementMessage = "Annonce supprimée.";
-                    announcements = await AnkuendigungService.GetAlleAsync(ComponentToken);
+                    await AnkuendigungenLadenAsync();
                 }
             });
         }

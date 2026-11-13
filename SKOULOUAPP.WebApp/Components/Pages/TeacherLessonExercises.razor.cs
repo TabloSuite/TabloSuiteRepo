@@ -200,9 +200,25 @@ public partial class TeacherLessonExercises
                 query = query.Where(review => review.KlasseId == pendingReviewKlasseFilterId.Value);
             }
 
+            if (!string.IsNullOrWhiteSpace(pendingReviewSuche))
+            {
+                var s = pendingReviewSuche.Trim();
+                query = query.Where(review => review.StudentName.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || review.LessonTitle.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || review.ExerciseTitle.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || review.CourseCode.Contains(s, StringComparison.CurrentCultureIgnoreCase));
+            }
+
             return query.ToList();
         }
     }
+
+    // Suche und Anzeige in Schritten („Afficher plus“) für Korrekturen und Lektionsliste.
+    private const int AnzeigeSchritt = 50;
+    private string pendingReviewSuche = string.Empty;
+    private string lessonListSuche = string.Empty;
+    private int pendingReviewAnzeigeLimit = AnzeigeSchritt;
+    private int lessonAnzeigeLimit = AnzeigeSchritt;
 
     private Task SetPendingReviewSchoolFilterAsync(Guid? schoolId)
     {
@@ -442,6 +458,15 @@ public partial class TeacherLessonExercises
             if (lessonListKlasseFilterId is Guid klasseId)
             {
                 query = query.Where(lesson => lesson.KlasseId == klasseId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(lessonListSuche))
+            {
+                var s = lessonListSuche.Trim();
+                query = query.Where(lesson => lesson.Title.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || (lesson.Summary ?? string.Empty).Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || lesson.CourseCode.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || (lesson.FachName ?? string.Empty).Contains(s, StringComparison.CurrentCultureIgnoreCase));
             }
 
             return query.ToList();

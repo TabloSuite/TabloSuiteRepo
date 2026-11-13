@@ -44,15 +44,17 @@ public class DashboardService(
         if (actor is null) return new DashboardSummary();
         if (await userManager.IsInRoleAsync(actor, Rollen.SuperAdmin)) return await GetAdminSummaryAsync(cancellationToken);
         var schools = await GetPlatformSchoolIdsAsync(actorId, cancellationToken);
-        var users = await GetPlatformUsersAsync(actorId, cancellationToken);
+        // Kennzahlen per COUNT in der Datenbank (nicht alle Konten laden).
+        var users = await PlattformNutzerAbfrageAsync(actorId, null, null, cancellationToken);
+        if (users is null) return new DashboardSummary();
         return new DashboardSummary
         {
             SchoolCount = schools.Count,
             ActiveSchoolCount = await dbContext.Schools.CountAsync(school => schools.Contains(school.Id) && school.IsActive, cancellationToken),
-            TeacherCount = users.Count(user => user.RoleName == Rollen.Lehrer),
-            StudentCount = users.Count(user => user.RoleName == Rollen.Schueler),
-            BlockedStudentCount = users.Count(user => user.RoleName == Rollen.Schueler && user.IsBlocked),
-            BlockedAccountCount = users.Count(user => user.IsBlocked),
+            TeacherCount = await users.CountAsync(user => user.RoleName == Rollen.Lehrer, cancellationToken),
+            StudentCount = await users.CountAsync(user => user.RoleName == Rollen.Schueler, cancellationToken),
+            BlockedStudentCount = await users.CountAsync(user => user.RoleName == Rollen.Schueler && user.IsBlocked, cancellationToken),
+            BlockedAccountCount = await users.CountAsync(user => user.IsBlocked, cancellationToken),
             CourseCount = await dbContext.Klassen.CountAsync(klasse => klasse.SchoolId.HasValue && schools.Contains(klasse.SchoolId.Value), cancellationToken)
         };
     }
@@ -311,15 +313,177 @@ public class DashboardService(
             });
         }
 
+        await AnreichernNutzerAsync(results, cancellationToken);
+        return results;
+    }
+
+    /// <summary>Zeile der serverseitigen Nutzersuche (Hauptrolle = höchste Rolle des Kontos).</summary>
+    private sealed class PlattformNutzerZeile
+    {
+        public Guid Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string? UserName { get; set; }
+        public string? Email { get; set; }
+        public bool IsBlocked { get; set; }
+        public bool IsSelfRegistered { get; set; }
+        public string RoleName { get; set; } = string.Empty;
+    }
+
+    private static readonly (string Rolle, string Bezeichnung)[] RollenBezeichnungen =
+    [
+        (Rollen.SuperAdmin, "Administrateur"), (Rollen.ProduktOwner, "Responsable produit"), (Rollen.SchulLeiter, "Directeur"),
+        (Rollen.Koordinator, "Coordinateur"), (Rollen.Lehrer, "Enseignant"), (Rollen.Schueler, "Élève")
+    ];
+
+    /// <summary>
+    /// Abfrage der für den Akteur sichtbaren Konten (Admin: alle; Responsable: Konten seiner Schulen ohne
+    /// Administratoren/Responsables), gefiltert nach Suchtext und Schule. Null = kein Zugriff.
+    /// </summary>
+    private async Task<IQueryable<PlattformNutzerZeile>?> PlattformNutzerAbfrageAsync(
+        Guid actorId, string? suche, Guid? schulId, CancellationToken cancellationToken)
+    {
+        var actor = await userManager.FindByIdAsync(actorId.ToString());
+        if (actor is null) return null;
+        var admin = await userManager.IsInRoleAsync(actor, Rollen.SuperAdmin);
+        if (!admin && !await userManager.IsInRoleAsync(actor, Rollen.ProduktOwner)) return null;
+
+        var nutzer = dbContext.Users.AsNoTracking().AsQueryable();
+        if (!admin)
+        {
+            var schoolIds = await GetPlatformSchoolIdsAsync(actorId, cancellationToken);
+            nutzer = nutzer.Where(user => user.UserSchools.Any(link => schoolIds.Contains(link.SchoolId))
+                && !user.UserRoles.Any(role => role.Role.Name == Rollen.SuperAdmin || role.Role.Name == Rollen.ProduktOwner));
+        }
+
+        if (schulId.HasValue)
+        {
+            nutzer = nutzer.Where(user => user.UserSchools.Any(link => link.SchoolId == schulId.Value));
+        }
+
+        var abfrage = nutzer.Select(user => new PlattformNutzerZeile
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            UserName = user.UserName,
+            Email = user.Email,
+            IsBlocked = user.IsBlocked,
+            IsSelfRegistered = user.IsSelfRegistered,
+            // Hauptrolle: die höchste Rolle (Direktoren haben zusätzlich die Rolle Lehrer).
+            RoleName = user.UserRoles
+                .OrderBy(role => role.Role.Name == Rollen.SuperAdmin ? 0
+                    : role.Role.Name == Rollen.ProduktOwner ? 1
+                    : role.Role.Name == Rollen.SchulLeiter ? 2
+                    : role.Role.Name == Rollen.Koordinator ? 3
+                    : role.Role.Name == Rollen.Lehrer ? 4
+                    : role.Role.Name == Rollen.Schueler ? 5 : 6)
+                .Select(role => role.Role.Name)
+                .FirstOrDefault() ?? "Utilisateur"
+        });
+
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            var passendeRollen = RollenBezeichnungen
+                .Where(rolle => rolle.Bezeichnung.Contains(s, StringComparison.OrdinalIgnoreCase))
+                .Select(rolle => rolle.Rolle).ToList();
+            abfrage = abfrage.Where(user => user.FullName.Contains(s)
+                || (user.Email != null && user.Email.Contains(s))
+                || (user.UserName != null && user.UserName.Contains(s))
+                || passendeRollen.Contains(user.RoleName));
+        }
+
+        return abfrage;
+    }
+
+    /// <summary>
+    /// Serverseitige Nutzersuche der Plattformverwaltung (Admin/Responsable): Filter (Suchtext, Rolle, Schule),
+    /// Sortierung nach Rolle und Name, Seiten per Skip/Take. Zusatzdaten (Abo, Scolarité, Score) nur für die Seite.
+    /// </summary>
+    public async Task<(List<UserManagementItem> Eintraege, bool Mehr)> SuchePlatformUsersAsync(
+        Guid actorId, string? suche, string? rolle, Guid? schulId, int ueberspringen, int anzahl = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var abfrage = await PlattformNutzerAbfrageAsync(actorId, suche, schulId, cancellationToken);
+        if (abfrage is null) return ([], false);
+        if (!string.IsNullOrWhiteSpace(rolle))
+        {
+            abfrage = abfrage.Where(user => user.RoleName == rolle);
+        }
+
+        anzahl = Math.Clamp(anzahl, 1, 500);
+        var zeilen = await abfrage
+            .OrderBy(user => user.RoleName == Rollen.SuperAdmin ? 0
+                : user.RoleName == Rollen.ProduktOwner ? 1
+                : user.RoleName == Rollen.SchulLeiter ? 2
+                : user.RoleName == Rollen.Koordinator ? 3
+                : user.RoleName == Rollen.Lehrer ? 4
+                : user.RoleName == Rollen.Schueler ? 5 : 6)
+            .ThenBy(user => user.FullName)
+            .ThenBy(user => user.Id)
+            .Skip(Math.Max(0, ueberspringen))
+            .Take(anzahl + 1)
+            .ToListAsync(cancellationToken);
+        var mehr = zeilen.Count > anzahl;
+        if (mehr) zeilen.RemoveAt(zeilen.Count - 1);
+
+        var ids = zeilen.Select(zeile => zeile.Id).ToList();
+        var actor = await userManager.FindByIdAsync(actorId.ToString());
+        var admin = actor is not null && await userManager.IsInRoleAsync(actor, Rollen.SuperAdmin);
+        var erlaubteSchulen = admin ? null : await GetPlatformSchoolIdsAsync(actorId, cancellationToken);
+        var schulen = await dbContext.UserSchools.AsNoTracking()
+            .Where(link => ids.Contains(link.AppUserId) && (erlaubteSchulen == null || erlaubteSchulen.Contains(link.SchoolId)))
+            .Select(link => new { link.AppUserId, link.School.Name })
+            .ToListAsync(cancellationToken);
+        var schulenJeNutzer = schulen.GroupBy(link => link.AppUserId)
+            .ToDictionary(group => group.Key, group => group.Select(link => link.Name).OrderBy(name => name).ToList());
+
+        var results = zeilen.Select(zeile => new UserManagementItem
+        {
+            UserId = zeile.Id,
+            FullName = zeile.FullName,
+            Identifiant = zeile.UserName ?? string.Empty,
+            Email = zeile.Email ?? string.Empty,
+            RoleName = zeile.RoleName,
+            IsBlocked = zeile.IsBlocked,
+            IsSelfRegistered = zeile.IsSelfRegistered,
+            Schools = schulenJeNutzer.TryGetValue(zeile.Id, out var namen) ? namen : []
+        }).ToList();
+
+        if (admin)
+        {
+            await AnreichernNutzerAsync(results, cancellationToken);
+        }
+
+        return (results, mehr);
+    }
+
+    /// <summary>Anzahl der sichtbaren Konten je Hauptrolle (für die Rollen-Chips) bei gleichem Such-/Schulfilter.</summary>
+    public async Task<IReadOnlyDictionary<string, int>> ZaehlePlatformUsersNachRolleAsync(
+        Guid actorId, string? suche, Guid? schulId, CancellationToken cancellationToken = default)
+    {
+        var ergebnis = new Dictionary<string, int>();
+        var abfrage = await PlattformNutzerAbfrageAsync(actorId, suche, schulId, cancellationToken);
+        if (abfrage is null) return ergebnis;
+        foreach (var (rolle, _) in RollenBezeichnungen)
+        {
+            ergebnis[rolle] = await abfrage.CountAsync(user => user.RoleName == rolle, cancellationToken);
+        }
+
+        ergebnis[string.Empty] = await abfrage.CountAsync(cancellationToken);
+        return ergebnis;
+    }
+
+    private async Task AnreichernNutzerAsync(List<UserManagementItem> results, CancellationToken cancellationToken)
+    {
         var userIds = results
             .Where(x => x.RoleName == "Schüler")
             .Select(x => x.UserId)
             .ToList();
-        var levelLookup = await dbContext.StudentProfiles
-            .AsNoTracking()
-            .Where(x => userIds.Contains(x.AppUserId))
-            .Select(x => new { x.AppUserId, x.CurrentLevelCode, x.CurrentKlasseId })
-            .ToDictionaryAsync(x => x.AppUserId, x => x.CurrentLevelCode, cancellationToken);
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
         var classLookup = await dbContext.StudentProfiles
             .AsNoTracking()
             .Where(x => userIds.Contains(x.AppUserId))
@@ -358,10 +522,7 @@ public class DashboardService(
                 item.CombinedScorePercent = combined.AverageScorePercent;
                 item.CombinedScoreCount = combined.Count;
             }
-
         }
-
-        return results;
     }
 
     /// <summary>
@@ -672,6 +833,99 @@ public class DashboardService(
             .ToListAsync(cancellationToken);
 
         return blobMedia;
+    }
+
+    /// <summary>Medien, die der Akteur sehen darf: Admin alle, Responsable nur die seiner Schulen. Null = kein Zugriff.</summary>
+    private async Task<IQueryable<BlobMediaAsset>?> SichtbareMedienAsync(Guid actorId, Guid? schulId, string? suche, CancellationToken cancellationToken)
+    {
+        var actor = await userManager.FindByIdAsync(actorId.ToString());
+        if (actor is null) return null;
+        var abfrage = dbContext.BlobMediaAssets.AsNoTracking().AsQueryable();
+        if (!await userManager.IsInRoleAsync(actor, Rollen.SuperAdmin))
+        {
+            if (!await userManager.IsInRoleAsync(actor, Rollen.ProduktOwner)) return null;
+            var schulen = await GetPlatformSchoolIdsAsync(actorId, cancellationToken);
+            abfrage = abfrage.Where(asset => asset.SchoolId.HasValue && schulen.Contains(asset.SchoolId.Value));
+        }
+
+        if (schulId.HasValue)
+        {
+            abfrage = abfrage.Where(asset => asset.SchoolId == schulId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(asset => asset.DisplayName.Contains(s) || asset.OriginalFileName.Contains(s)
+                || asset.BlobName.Contains(s) || asset.ContentType.Contains(s) || asset.AltText.Contains(s)
+                || (asset.School != null && asset.School.Name.Contains(s))
+                || (asset.Klasse != null && asset.Klasse.Code.Contains(s)));
+        }
+
+        return abfrage;
+    }
+
+    /// <summary>Medienbibliothek serverseitig: Suche, Schulfilter, Seiten per Skip/Take (sortiert nach Schule und Name).</summary>
+    public async Task<(List<MediaLibraryItem> Eintraege, bool Mehr)> SucheMediaLibraryAsync(
+        Guid actorId, Guid? schulId, string? suche, int ueberspringen, int anzahl = 48, CancellationToken cancellationToken = default)
+    {
+        var abfrage = await SichtbareMedienAsync(actorId, schulId, suche, cancellationToken);
+        if (abfrage is null) return ([], false);
+        anzahl = Math.Clamp(anzahl, 1, 500);
+        var liste = await abfrage
+            .OrderBy(x => x.School != null ? x.School.Name : string.Empty)
+            .ThenBy(x => x.DisplayName != "" ? x.DisplayName : x.OriginalFileName)
+            .ThenBy(x => x.Id)
+            .Skip(Math.Max(0, ueberspringen))
+            .Take(anzahl + 1)
+            .Select(asset => new MediaLibraryItem
+            {
+                MediaId = asset.Id,
+                SchoolId = asset.SchoolId,
+                SchoolName = asset.School != null ? asset.School.Name : string.Empty,
+                MediaType = asset.ContentType,
+                RelativePath = asset.BlobName,
+                DisplayName = asset.DisplayName,
+                OriginalFileName = asset.OriginalFileName,
+                ContentType = asset.ContentType,
+                Length = asset.Length,
+                AltText = asset.AltText,
+                LessonTitle = string.Empty,
+                CourseCode = asset.Klasse != null ? asset.Klasse.Code : string.Empty,
+                KlasseCode = asset.Klasse != null ? asset.Klasse.Code : string.Empty,
+                StorageHint = "Médiathèque sécurisée"
+            })
+            .ToListAsync(cancellationToken);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
+    /// <summary>Anzahl und Gesamtgröße der Medien bei gleichem Filter (COUNT/SUM in der Datenbank).</summary>
+    public async Task<(int Anzahl, long Bytes)> ZaehleMediaLibraryAsync(
+        Guid actorId, Guid? schulId, string? suche, CancellationToken cancellationToken = default)
+    {
+        var abfrage = await SichtbareMedienAsync(actorId, schulId, suche, cancellationToken);
+        if (abfrage is null) return (0, 0);
+        return (await abfrage.CountAsync(cancellationToken), await abfrage.SumAsync(asset => (long?)asset.Length, cancellationToken) ?? 0);
+    }
+
+    /// <summary>Schulen mit Medien (Anzahl, Größe) für den Schulfilter der Medienbibliothek.</summary>
+    public async Task<IReadOnlyList<MediaLibrarySchule>> GetMediaLibrarySchulenAsync(Guid actorId, CancellationToken cancellationToken = default)
+    {
+        var abfrage = await SichtbareMedienAsync(actorId, null, null, cancellationToken);
+        if (abfrage is null) return [];
+        var gruppen = await abfrage.Where(asset => asset.SchoolId.HasValue)
+            .GroupBy(asset => asset.SchoolId!.Value)
+            .Select(group => new { SchoolId = group.Key, Anzahl = group.Count(), Bytes = group.Sum(asset => asset.Length) })
+            .ToListAsync(cancellationToken);
+        var ids = gruppen.Select(group => group.SchoolId).ToList();
+        var namen = await dbContext.Schools.AsNoTracking().Where(school => ids.Contains(school.Id))
+            .ToDictionaryAsync(school => school.Id, school => school.Name, cancellationToken);
+        return gruppen
+            .Select(group => new MediaLibrarySchule(group.SchoolId, namen.GetValueOrDefault(group.SchoolId, "École sans nom"), group.Anzahl, group.Bytes))
+            .OrderBy(schule => schule.SchoolName)
+            .ToList();
     }
 
     public async Task<StudentDashboardViewModel?> GetStudentDashboardAsync(Guid userId, CancellationToken cancellationToken = default)

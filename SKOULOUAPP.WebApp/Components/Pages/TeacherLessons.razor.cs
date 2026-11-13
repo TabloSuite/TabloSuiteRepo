@@ -366,6 +366,16 @@ public partial class TeacherLessons
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(lessonSuche))
+            {
+                var s = lessonSuche.Trim();
+                query = query.Where(item => item.Title.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || (item.Summary ?? string.Empty).Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || item.CourseCode.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || (item.FachName ?? string.Empty).Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || item.AuthorName.Contains(s, StringComparison.CurrentCultureIgnoreCase));
+            }
+
             return query
                 .GroupBy(item => item.Id)
                 .Select(group => group.First())
@@ -373,6 +383,18 @@ public partial class TeacherLessons
                 .ThenBy(item => item.Title)
                 .ToList();
         }
+    }
+
+    // Suche und Anzeige in Schritten („Afficher plus“) für die Kursliste und die geteilten Examens.
+    private const int AnzeigeSchritt = 50;
+    private string lessonSuche = string.Empty;
+    private int lessonAnzeigeLimit = AnzeigeSchritt;
+    private int examAnzeigeLimit = AnzeigeSchritt;
+
+    private void LessonSucheGeaendert()
+    {
+        lessonAnzeigeLimit = AnzeigeSchritt;
+        examAnzeigeLimit = AnzeigeSchritt;
     }
 
     private IReadOnlyList<SharedTeacherContentItem> VisibleSharedDirectionExams
@@ -399,6 +421,14 @@ public partial class TeacherLessons
             if (!string.IsNullOrWhiteSpace(directionTeacherFilter))
             {
                 query = query.Where(item => string.Equals(item.AuthorName, directionTeacherFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(lessonSuche))
+            {
+                var s = lessonSuche.Trim();
+                query = query.Where(item => item.Title.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || item.CourseCode.Contains(s, StringComparison.CurrentCultureIgnoreCase)
+                    || item.AuthorName.Contains(s, StringComparison.CurrentCultureIgnoreCase));
             }
 
             return query

@@ -92,7 +92,7 @@ public partial class Bulletins
     private BulletinSnapshot? vorschau;
     private string? vorschauPdf;
     private void VorschauVerwerfen() { vorschau = null; vorschauPdf = null; }
-    private void PeriodeWaehlen(Guid id) { AbschlussVerwerfen(); periodeID = id; praesenz = []; VorschauVerwerfen(); }
+    private async Task PeriodeWaehlen(Guid id) { AbschlussVerwerfen(); periodeID = id; praesenz = []; VorschauVerwerfen(); await ListeLadenSicherAsync(); }
     private void SchuelerWaehlen(Guid id) { schuelerID = id; bemerkung = ""; grund = ""; VorschauVerwerfen(); }
     private static string BlockTitel(string block) => block switch { "Schueler" => "Identité de l'élève", "Noten" => "Tableau des notes",
         "Ergebnisse" => "Résultats et rang", "Bemerkung" => "Observation", _ => "Signatures" };
@@ -129,12 +129,11 @@ public partial class Bulletins
         if (schulID != Guid.Empty) await LadenAsync();
     });
     private Task EcoleAsync(Guid id) => AktionAsync(async () => { vorlagenKlassen.Clear(); vorlagenErsetzen = false; klassenSuche = ""; schulID = id; jahrID = periodeID = schuelerID = sammelKlasseID = Guid.Empty; vorlage = new(); logoVorschau = null; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await LadenAsync(); });
-    private Task JahrAsync(Guid id) => AktionAsync(async () => { jahrID = id; periodeID = schuelerID = Guid.Empty; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await BewertungenLadenAsync(); });
+    private Task JahrAsync(Guid id) => AktionAsync(async () => { jahrID = id; periodeID = schuelerID = Guid.Empty; praesenz = []; bemerkung = grund = ""; VorschauVerwerfen(); await BewertungenLadenAsync(); await ListeLadenAsync(); });
     private async Task LadenAsync()
     {
         AbschlussVerwerfen(); uebergaben = []; uebergabeAusgabeID = Guid.Empty; uebergabeVermerk = "";
-        liste = await Service.ListeAsync(userID, schulID, ComponentToken);
-        if (!verwalter) return;
+        if (!verwalter) { await ListeLadenAsync(); return; }
         berichtigungen = await Service.BerichtigungenAsync(userID, schulID, ComponentToken);
         if (!berichtigungen.Any(x => x.Id == berichtigungID)) berichtigungID = Guid.Empty;
         unterricht = await Verwaltung.LadenAsync(userID, schulID, ComponentToken);
@@ -146,6 +145,41 @@ public partial class Bulletins
         BildOptionen.Insert(0, new(null, "Sans image"));
         if (!unterricht.Schuljahre.Any(x => x.Id == jahrID)) jahrID = unterricht.Schuljahre.FirstOrDefault()?.Id ?? Guid.Empty;
         await BewertungenLadenAsync();
+        await ListeLadenAsync();
+    }
+
+    // Gespeicherte Ausgaben: gefiltert nach Année scolaire, Période, Classe und Suchtext; seitenweise („Afficher plus“).
+    private const int ListenSeite = 50;
+    private bool listeMehr;
+    private string listeSuche = "";
+    private readonly SuchVerzoegerung listenSuchVerzoegerung = new();
+    private BulletinListenFilter ListenFilter => new(
+        verwalter && jahrID != Guid.Empty ? jahrID : null,
+        verwalter && periodeID != Guid.Empty ? periodeID : null,
+        verwalter && sammelKlasseID != Guid.Empty ? sammelKlasseID : null,
+        listeSuche);
+    private async Task ListeLadenAsync()
+    {
+        if (schulID == Guid.Empty) { liste = []; listeMehr = false; return; }
+        (liste, listeMehr) = await Service.SucheListeAsync(userID, schulID, ListenFilter, 0, ListenSeite, ComponentToken);
+    }
+    private async Task ListeLadenSicherAsync()
+    {
+        try { await ListeLadenAsync(); }
+        catch (Exception ex) when (IstAbbruch(ex)) { }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException) { message = ex.Message; }
+    }
+    private Task ListeSuchenAsync() => listenSuchVerzoegerung.AusfuehrenAsync(ListeLadenSicherAsync);
+    private Task MehrListeAsync() => AktionAsync(async () =>
+    {
+        var (neu, mehr) = await Service.SucheListeAsync(userID, schulID, ListenFilter, liste.Count, ListenSeite, ComponentToken);
+        liste.AddRange(neu);
+        listeMehr = mehr;
+    });
+    public override void Dispose()
+    {
+        listenSuchVerzoegerung.Dispose();
+        base.Dispose();
     }
     private async Task BewertungenLadenAsync()
     {

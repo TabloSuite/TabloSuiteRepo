@@ -1,4 +1,6 @@
 @page "/lektionen"
+@* Listet Titel und Zusammenfassungen aller Lektionen der Plattform (auch von Lehrkräften erstellte): nur für den Administrator. *@
+@attribute [Authorize(Roles = "SuperAdmin")]
 @inherits SkoulouApp.WebApp.Components.CancelableComponentBase
 
 <PageTitle>Mes leçons</PageTitle>
@@ -24,7 +26,7 @@ else if (_lektionen.Count == 0)
 }
 else
 {
-    <div class="grid gap-4 xl:grid-cols-2">
+    <div class="sk-liste-scroll grid gap-4 p-1 xl:grid-cols-2">
         @foreach (var lektion in _lektionen)
         {
             <article class="group min-w-0 overflow-hidden rounded-[1.75rem] border border-cyan-100 bg-white p-5 shadow-lg shadow-slate-200/70 transition duration-300 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-2xl hover:shadow-cyan-100">

@@ -15,9 +15,19 @@
     <h1 class="text-2xl font-bold">Participants facturables des cycles</h1>
     <p>Une sortie de classe ou un compte bloqué n'annule pas la participation. Seule une affectation erronée peut être annulée ici, avec un motif obligatoire, avant la clôture. Les inscriptions annulées restent dans l'historique. Aucune modification du compte ni des droits d'accès n'est effectuée.</p>
     @if (!string.IsNullOrEmpty(message)) { <p role="status" class="rounded border p-3">@message</p> }
+    <div class="flex flex-wrap items-center gap-3">
+        <input type="search" class="skoulou-input min-w-0 flex-1" placeholder="Rechercher une école ou une classe..." aria-label="Rechercher un cycle"
+               @bind="suche" @bind:event="oninput" @bind:after="SucheVerzoegertAsync" />
+        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked="@nurLaufende" @onchange="NurLaufendeAsync" /> Cycles en cours uniquement</label>
+    </div>
+    @if (cycles.Count == 0)
+    {
+        <p class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Aucun cycle ne correspond à la sélection.</p>
+    }
+    <div class="sk-liste-scroll space-y-4 p-1">
     @foreach (var cycle in cycles)
     {
-        <section class="rounded-xl border p-4">
+        <section class="rounded-xl border p-4" @key="cycle.Id">
             <h2 class="font-semibold">@cycle.Label</h2>
             <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm mt-2" disabled="@busy" @onclick="() => LadenAsync(cycle.Id)">Afficher les participants</button>
             @if (selected == cycle.Id)
@@ -28,7 +38,7 @@
                     <div class="mt-3 break-words rounded border p-3">
                         <p>@p.Name · @p.Preis.ToString("N0") FCFA</p>
                         @if (p.StorniertAmUtc != null) { <p>Annulé : @p.StornoGrund</p> }
-                        else if (!cycle.Closed)
+                        else if (!cycle.Geschlossen)
                         {
                             <button type="button" class="sk-btn sk-btn-secondary sk-btn-sm" disabled="@busy" @onclick="() => Choisir(p.Id)">Signaler une affectation erronée</button>
                             @if (pending == p.Id)
@@ -42,25 +52,60 @@
             }
         </section>
     }
+    </div>
+    @if (mehr)
+    {
+        <div class="sk-liste-mehr"><button type="button" class="sk-btn sk-btn-sm sk-btn-secondary" disabled="@busy" @onclick="MehrAsync">Afficher plus</button></div>
+    }
 </div>
 
 @code {
-    private List<CycleRow> cycles = [];
+    // Zyklen serverseitig: Suche (verzögert), „nur laufende“, „Afficher plus“ – nie alle Zyklen aller Schulen laden.
+    private const int Seite = 50;
+    private List<ZyklusAuswahlZeile> cycles = [];
     private List<ZyklusTeilnehmerZeile> rows = [];
     private Guid userID, selected, pending;
-    private string reason = "", message = "";
-    private bool busy;
-    private sealed record CycleRow(Guid Id, string Label, bool Closed);
+    private string reason = "", message = "", suche = "";
+    private bool busy, mehr, nurLaufende;
+    private readonly SkoulouApp.WebApp.Components.Shared.SuchVerzoegerung suchVerzoegerung = new();
     protected override async Task OnInitializedAsync()
     {
         var state = await Auth.GetAuthenticationStateAsync();
         if (!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier), out userID)) return;
-        await using var db = await Factory.CreateDbContextAsync(ComponentToken);
-        var admin = await db.Users.AnyAsync(u => u.Id == userID && !u.IsBlocked && db.UserRoles.Any(x => x.UserId == userID && db.Roles.Any(r => r.Id == x.RoleId && r.Name == "SuperAdmin")), ComponentToken);
-        if (!admin) return;
-        cycles = await db.KursNiveauDurchlaeufe.AsNoTracking().Where(x => x.PlattformPreisProSchueler != null)
-            .OrderBy(x => x.Schule.Name).ThenByDescending(x => x.StartDatum)
-            .Select(x => new CycleRow(x.Id, x.Schule.Name + " · " + x.Klasse.Code + " · " + (x.EndDatum == null ? "En cours" : "Clôturé"), x.EndDatum != null)).ToListAsync(ComponentToken);
+        await ZyklenLadenAsync();
+    }
+    private async Task ZyklenLadenAsync()
+    {
+        try
+        {
+            await using var db = await Factory.CreateDbContextAsync(ComponentToken);
+            (cycles, mehr) = await new ZyklusTeilnahmeService(db).SucheZyklenAsync(userID, suche, nurLaufende, 0, Seite, ComponentToken);
+        }
+        catch (OperationCanceledException) when (ComponentToken.IsCancellationRequested) { }
+    }
+    private async Task MehrAsync()
+    {
+        busy = true;
+        try
+        {
+            await using var db = await Factory.CreateDbContextAsync(ComponentToken);
+            var (neu, weitere) = await new ZyklusTeilnahmeService(db).SucheZyklenAsync(userID, suche, nurLaufende, cycles.Count, Seite, ComponentToken);
+            cycles.AddRange(neu);
+            mehr = weitere;
+        }
+        catch (OperationCanceledException) when (ComponentToken.IsCancellationRequested) { }
+        finally { busy = false; }
+    }
+    private Task SucheVerzoegertAsync() => suchVerzoegerung.AusfuehrenAsync(ZyklenLadenAsync);
+    private async Task NurLaufendeAsync(ChangeEventArgs e)
+    {
+        nurLaufende = e.Value is true;
+        await ZyklenLadenAsync();
+    }
+    public override void Dispose()
+    {
+        suchVerzoegerung.Dispose();
+        base.Dispose();
     }
     private void Choisir(Guid id) { pending = id; reason = ""; }
     private async Task LadenAsync(Guid id)

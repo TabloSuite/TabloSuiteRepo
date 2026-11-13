@@ -206,13 +206,48 @@ public sealed partial class BulletinService(IDbContextFactory<ApplicationDbConte
     public async Task<List<BulletinListenZeile>> ListeAsync(Guid user, Guid schule, CancellationToken token = default)
     {
         await using var db = await factory.CreateDbContextAsync(token);
+        var abfrage = await SichtbareAusgabenAsync(db, user, schule, new BulletinListenFilter(), token);
+        return await abfrage.OrderByDescending(x => x.ErstelltAmUtc).Select(x => new BulletinListenZeile(x.Id, x.SchulID, x.Periode.Titel,
+            x.JahresZuordnung.Schueler.FullName, x.Version, x.IstVeroeffentlicht, x.IstEndgueltig, x.ErsetztDurchID)).ToListAsync(token);
+    }
+
+    /// <summary>
+    /// Gespeicherte Bulletin-Ausgaben seitenweise: berücksichtigt die gewählte Année scolaire, Période und Classe
+    /// sowie einen Suchtext (Élève, Période); neueste zuerst, Skip/Take.
+    /// </summary>
+    public async Task<(List<BulletinListenZeile> Eintraege, bool Mehr)> SucheListeAsync(Guid user, Guid schule, BulletinListenFilter filter,
+        int ueberspringen, int anzahl = 50, CancellationToken token = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(token);
+        var abfrage = await SichtbareAusgabenAsync(db, user, schule, filter, token);
+        anzahl = Math.Clamp(anzahl, 1, 200);
+        var liste = await abfrage.OrderByDescending(x => x.ErstelltAmUtc).ThenBy(x => x.Id)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1)
+            .Select(x => new BulletinListenZeile(x.Id, x.SchulID, x.Periode.Titel,
+                x.JahresZuordnung.Schueler.FullName, x.Version, x.IstVeroeffentlicht, x.IstEndgueltig, x.ErsetztDurchID)).ToListAsync(token);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
+    private async Task<IQueryable<BulletinAusgabe>> SichtbareAusgabenAsync(ApplicationDbContext db, Guid user, Guid schule,
+        BulletinListenFilter filter, CancellationToken token)
+    {
         await MitgliedAsync(db, user, schule, token);
         var direktion = await IstDirektionAsync(db, user, token);
         var schueler = await db.UserRoles.AnyAsync(x => x.UserId == user && db.Roles.Any(r => r.Id == x.RoleId && r.Name == Rollen.Schueler), token);
-        return await db.Set<BulletinAusgabe>().AsNoTracking().Where(x => x.SchulID == schule && (direktion
-            || (schueler && (x.IstVeroeffentlicht || x.ErsetztDurchID != null) && x.JahresZuordnung.SchuelerID == user)))
-            .OrderByDescending(x => x.ErstelltAmUtc).Select(x => new BulletinListenZeile(x.Id, x.SchulID, x.Periode.Titel,
-                x.JahresZuordnung.Schueler.FullName, x.Version, x.IstVeroeffentlicht, x.IstEndgueltig, x.ErsetztDurchID)).ToListAsync(token);
+        var abfrage = db.Set<BulletinAusgabe>().AsNoTracking().Where(x => x.SchulID == schule && (direktion
+            || (schueler && (x.IstVeroeffentlicht || x.ErsetztDurchID != null) && x.JahresZuordnung.SchuelerID == user)));
+        if (filter.SchuljahrID is Guid jahr) abfrage = abfrage.Where(x => x.JahresZuordnung.SchuljahrID == jahr);
+        if (filter.PeriodeID is Guid periode) abfrage = abfrage.Where(x => x.PeriodeID == periode);
+        if (filter.KlasseID is Guid klasse) abfrage = abfrage.Where(x => x.JahresZuordnung.KlasseID == klasse);
+        if (!string.IsNullOrWhiteSpace(filter.Suche))
+        {
+            var s = filter.Suche.Trim();
+            abfrage = abfrage.Where(x => x.JahresZuordnung.Schueler.FullName.Contains(s) || x.Periode.Titel.Contains(s));
+        }
+
+        return abfrage;
     }
 
     public async Task<BulletinSnapshot?> LesenAsync(Guid user, Guid ausgabeID, CancellationToken token = default)

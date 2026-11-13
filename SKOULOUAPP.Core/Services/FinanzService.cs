@@ -1209,6 +1209,10 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             query = query.Where(x => x.KategorieID == filter.KategorieID);
         }
 
+        // Gefilterte Buchungs-IDs als Unterabfrage: Belege und Zahlungen nur für diese Buchungen laden
+        // (früher wurden alle Belege der Schule aller Jahre geladen).
+        var gefilterteIds = query.Select(x => x.Id);
+
         query = filter.Sortierung switch
         {
             FinanzSortierung.WirkungsdatumAufsteigend => query.OrderBy(x => x.Wirkungsdatum),
@@ -1220,12 +1224,12 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
 
         var buchungen = await query.ToListAsync(cancellationToken);
         var belegDateien = (await dbContext.FinanzBelege.AsNoTracking()
-            .Where(x => filter.SchulID == null || x.SchulID == filter.SchulID)
+            .Where(x => gefilterteIds.Contains(x.BuchungID))
             .Select(x => new { x.BuchungID, x.Dateiname }).ToListAsync(cancellationToken))
-            .ToDictionary(x => x.BuchungID, x => x.Dateiname);
-        var buchungIDs = buchungen.Select(x => x.Id).ToList();
+            .GroupBy(x => x.BuchungID)
+            .ToDictionary(x => x.Key, x => x.First().Dateiname);
         var zahlungen = (await dbContext.RatenZahlungen.AsNoTracking()
-            .Where(z => z.FinanzBuchungID != null && buchungIDs.Contains(z.FinanzBuchungID.Value))
+            .Where(z => z.FinanzBuchungID != null && gefilterteIds.Contains(z.FinanzBuchungID.Value))
             .Select(z => new { z.Id, z.FinanzBuchungID }).ToListAsync(cancellationToken))
             .GroupBy(z => z.FinanzBuchungID!.Value).ToDictionary(g => g.Key, g => g.First().Id);
 
@@ -1445,14 +1449,58 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .Where(x => x.SchulID == schulId)
             .OrderByDescending(x => x.StartDatum)
             .ToListAsync(cancellationToken);
-
-        var result = new List<DurchlaufUebersicht>();
-        foreach (var d in durchlaeufe)
+        if (durchlaeufe.Count == 0)
         {
-            result.Add(await BaueDurchlaufUebersichtAsync(d, cancellationToken));
+            return [];
         }
 
-        return result;
+        // Teilnehmer gebündelt ermitteln (wenige Abfragen für alle Durchläufe statt mehrerer je Durchlauf);
+        // gleiche Regeln wie GetDurchlaufTeilnehmerIdsAsync.
+        var aktiveKlassen = durchlaeufe.Where(d => d.EndDatum is null).Select(d => d.KlasseId).Distinct().ToList();
+        var aktuelleSchueler = (await dbContext.StudentProfiles.AsNoTracking()
+                .Where(profile => profile.SchoolId == schulId && profile.CurrentKlasseId.HasValue && aktiveKlassen.Contains(profile.CurrentKlasseId.Value))
+                .Select(profile => new { profile.AppUserId, KlasseId = profile.CurrentKlasseId!.Value })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.KlasseId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.AppUserId).Distinct().ToList());
+
+        var beendeteIds = durchlaeufe.Where(d => d.EndDatum is not null).Select(d => d.Id).ToList();
+        var entschiedene = (await dbContext.KlassenAbschlussEntscheidungen.AsNoTracking()
+                .Where(entscheidung => beendeteIds.Contains(entscheidung.DurchlaufId))
+                .Select(entscheidung => new { entscheidung.DurchlaufId, entscheidung.StudentId })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.DurchlaufId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.StudentId).Distinct().ToList());
+
+        var klassenOhneEntscheidung = durchlaeufe
+            .Where(d => d.EndDatum is not null && !entschiedene.ContainsKey(d.Id))
+            .Select(d => d.KlasseId).Distinct().ToList();
+        var eingeschriebene = (await (
+                from enrollment in dbContext.LevelEnrollments.AsNoTracking()
+                join profile in dbContext.StudentProfiles.AsNoTracking() on enrollment.StudentId equals profile.AppUserId
+                where klassenOhneEntscheidung.Contains(enrollment.KlasseId) && profile.SchoolId == schulId
+                select new { enrollment.KlasseId, enrollment.StudentId })
+                .Distinct()
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.KlasseId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.StudentId).Distinct().ToList());
+
+        List<Guid> TeilnehmerVon(KursNiveauDurchlauf d)
+            => d.EndDatum is null
+                ? aktuelleSchueler.GetValueOrDefault(d.KlasseId) ?? []
+                : entschiedene.GetValueOrDefault(d.Id) ?? eingeschriebene.GetValueOrDefault(d.KlasseId) ?? [];
+
+        var alleIds = durchlaeufe.SelectMany(TeilnehmerVon).Distinct().ToList();
+        var namen = await dbContext.Users.AsNoTracking()
+            .Where(user => alleIds.Contains(user.Id))
+            .Select(user => new { user.Id, user.FullName })
+            .ToDictionaryAsync(user => user.Id, user => user.FullName, cancellationToken);
+
+        return durchlaeufe
+            .Select(d => BaueDurchlaufUebersicht(d, TeilnehmerVon(d)
+                .Where(namen.ContainsKey)
+                .Select(id => (id, namen[id]))))
+            .ToList();
     }
 
     /// <summary>Baut die Zahlungsstand-Übersicht für einen einzelnen Durchlauf.</summary>
@@ -1531,10 +1579,17 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
         FinanzFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        var finanzUebersicht = await GetUebersichtAsync(new FinanzFilter
+        // Summen je Kategorie-Code und Richtung direkt in der Datenbank (statt alle Buchungen aller Jahre zu laden).
+        var finanzUebersicht = new FinanzUebersicht
         {
-            SchulID = schulId
-        }, cancellationToken);
+            Zeilen = (await dbContext.FinanzBuchungen.AsNoTracking()
+                    .Where(x => x.SchulID == schulId)
+                    .GroupBy(x => new { x.Kategorie.SystemCode, x.Richtung })
+                    .Select(g => new { g.Key.SystemCode, g.Key.Richtung, Betrag = g.Sum(x => x.Betrag) })
+                    .ToListAsync(cancellationToken))
+                .Select(summe => new FinanzUebersichtZeile { KategorieSystemCode = summe.SystemCode, Richtung = summe.Richtung, Betrag = summe.Betrag })
+                .ToList()
+        };
 
         var schulgebuehrenEingenommen = finanzUebersicht.Zeilen
             .Where(zeile => zeile.KategorieSystemCode == FinanzSystemCode.KursNiveauZahlung
@@ -1666,6 +1721,11 @@ public class FinanzService(ISkoulouAppDbContext dbContext, IFinanzBelegStorage? 
             .Select(user => new { user.Id, user.FullName })
             .ToListAsync(cancellationToken);
 
+        return BaueDurchlaufUebersicht(durchlauf, schueler.Select(s => (s.Id, s.FullName)));
+    }
+
+    private static DurchlaufUebersicht BaueDurchlaufUebersicht(KursNiveauDurchlauf durchlauf, IEnumerable<(Guid Id, string FullName)> schueler)
+    {
         var zahlungenProSchueler = durchlauf.RatenZahlungen
             .GroupBy(x => x.StudentId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Betrag));

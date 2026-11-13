@@ -55,7 +55,8 @@ public partial class Finanzen
     private IReadOnlyList<Abrechnungsperiode> offeneSkoulouAppAbrechnungen = [];
     private DirektorKontostandUebersicht? direktorKontostand;
     private FinanzAbgleich? finanzAbgleich;
-    private FinanzFilter filter = new();
+    // Standardzeitraum: laufendes Schuljahr (ab 1. September), damit nicht alle Buchungen aller Jahre geladen werden.
+    private FinanzFilter filter = new() { Von = SchuljahrBeginn(DateTime.Today) };
     private FinanzFilter angewendeterFilter = new();
     private bool mitSkoulouAbos;
     private List<FinanzKategorie> alleKategorien = new();
@@ -71,7 +72,7 @@ public partial class Finanzen
     // ---- Durchläufe ----
     private List<DurchlaufUebersicht> durchlaeufe = new();
     private DurchlaufFormModel durchlaufForm = new();
-    private string durchlaufStatusFilter = "all";
+    private string durchlaufStatusFilter = "active";
     private Guid? durchlaufKlasseFilterId;
     private string schuelerSuche = string.Empty;
     private readonly Dictionary<Guid, (string Status, Guid? KlasseId)> durchlaufFilterProSchule = new();
@@ -99,6 +100,10 @@ public partial class Finanzen
     private bool beendenEndgueltigOffen;
     private int beendenOffeneSkoulouAppAbos;
     private decimal beendenOffenerSkoulouAppUmsatz;
+
+    /// <summary>Beginn des laufenden Schuljahres (1. September; vor September: 1. September des Vorjahres).</summary>
+    internal static DateTime SchuljahrBeginn(DateTime heute)
+        => new(heute.Month >= 9 ? heute.Year : heute.Year - 1, 9, 1);
 
     private static DateTime ToInclusiveUtcDayEnd(DateTime date)
     {

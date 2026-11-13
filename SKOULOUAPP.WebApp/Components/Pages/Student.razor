@@ -123,7 +123,7 @@ else
                     {
                         <div>
                             <p class="mb-2 text-sm font-semibold text-slate-700">Supports de cours de vos enseignants</p>
-                            <ul class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                            <ul class="sk-liste-scroll m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
                                 @foreach (var lesson in CurrentClassHistory.TeacherLessons)
                                 {
                                     <li>
@@ -154,7 +154,7 @@ else
         <Abschnitt Titel="Mes classes précédentes" Untertitel="Score, note finale et supports de cours de vos anciennes classes." IconName="history">
             @if (OtherClasses.Count > 0)
             {
-                <div class="grid gap-3 lg:grid-cols-2">
+                <div class="sk-liste-scroll grid gap-3 p-1 lg:grid-cols-2">
                     @foreach (var course in OtherClasses)
                     {
                         <article class="rounded-2xl border border-slate-200 p-4">
@@ -183,7 +183,7 @@ else
                             }
                             @if (course.TeacherLessons.Count > 0)
                             {
-                                <ul class="mb-0 mt-3 grid list-none gap-2 p-0">
+                                <ul class="mb-0 mt-3 grid max-h-64 list-none gap-2 overflow-y-auto p-0">
                                     @foreach (var lesson in course.TeacherLessons)
                                     {
                                         <li>

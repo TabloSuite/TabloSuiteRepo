@@ -50,7 +50,14 @@ public partial class StudentHistory
     private IReadOnlyList<TeacherLessonListItem> FilteredHistoryLessons => (historyLessons ?? [])
         .Where(item => !selectedTeacherId.HasValue || item.AuthorId == selectedTeacherId)
         .Where(item => !selectedFachId.HasValue || item.FachId == selectedFachId)
+        .Where(item => string.IsNullOrWhiteSpace(historySuche)
+            || item.Title.Contains(historySuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || item.CourseCode.Contains(historySuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || (item.KlasseTitle ?? string.Empty).Contains(historySuche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || (item.Summary ?? string.Empty).Contains(historySuche.Trim(), StringComparison.CurrentCultureIgnoreCase))
         .ToList();
+
+    private string historySuche = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {

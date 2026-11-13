@@ -26,7 +26,7 @@ public partial class Bulletins
         klassenPruefung = null; berichtigungsPruefung = null;
         endgueltigBestaetigt = berichtigungBestaetigt = false;
     }
-    private void AbschlussKlasse(Guid id) { sammelKlasseID = id; AbschlussVerwerfen(); }
+    private async Task AbschlussKlasse(Guid id) { sammelKlasseID = id; AbschlussVerwerfen(); await ListeLadenSicherAsync(); }
     private Task KlassePruefenAsync() => AktionAsync(async () =>
     {
         AbschlussVerwerfen();

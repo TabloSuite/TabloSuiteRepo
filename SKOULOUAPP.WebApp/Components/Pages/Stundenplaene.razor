@@ -64,6 +64,7 @@
     {
         <a class="sk-btn sk-btn-secondary" href="@($"/emplois-du-temps/{schulID}/pdf")" target="_blank" rel="noopener">Télécharger le PDF</a>
     }
+    <div class="sk-liste-scroll space-y-4 p-1">
     @foreach (var tag in Gefiltert.GroupBy(x => x.Wochentag).OrderBy(x => ((int)x.Key + 6) % 7))
     {
         <section class="space-y-2">
@@ -80,5 +81,6 @@
             }
         </section>
     }
+    </div>
     @if (!Gefiltert.Any() && !occupe) { <p>Aucun cours accessible pour cette sélection.</p> }
 </div>

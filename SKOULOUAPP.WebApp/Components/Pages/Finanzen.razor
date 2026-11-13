@@ -342,7 +342,7 @@
                                         }
                                     </div>
                                 }
-                                <div class="max-h-[28rem] overflow-auto rounded-2xl border border-slate-100 print:border-slate-300">
+                                <div class="sk-liste-scroll overflow-x-auto rounded-2xl border border-slate-100 print:border-slate-300">
                                     <table class="min-w-full text-left text-sm">
                                         <thead>
                                             <tr class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-xs uppercase text-slate-500 backdrop-blur">
@@ -503,9 +503,10 @@
                 </div>
             </div>
 
+            <div class="sk-liste-scroll grid gap-4 p-1">
             @foreach (var d in GefilterteDurchlaeufe)
             {
-                <div class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100">
+                <div class="rounded-2xl bg-white p-5 shadow ring-1 ring-slate-100" @key="d.DurchlaufID">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <p class="text-base font-bold text-slate-800">
@@ -609,6 +610,7 @@
                     </div>
                 </div>
             }
+            </div>
             @if (GefilterteDurchlaeufe.Count == 0)
             {
                 <div class="rounded-2xl bg-slate-50 px-5 py-4 text-sm text-slate-600 ring-1 ring-slate-100">Aucun cycle ne correspond aux filtres sélectionnés.</div>

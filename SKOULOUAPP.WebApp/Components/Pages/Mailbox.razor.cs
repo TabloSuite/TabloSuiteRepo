@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 namespace SkoulouApp.WebApp.Components.Pages;
 
-public partial class Mailbox
+public partial class Mailbox : IDisposable
 {
     [Inject] private MailboxService MailboxService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
@@ -30,7 +30,14 @@ public partial class Mailbox
     private string body = string.Empty;
     private string? message;
     private string? composeErrorMessage;
-    private IReadOnlyList<MailNachricht> mails = [];
+    // Liste serverseitig: Ordner, Suche (verzögert), „Afficher plus“; Mailtext erst beim Öffnen.
+    private const int Seite = 50;
+    private List<MailListenZeile> mails = [];
+    private bool mailsMehr;
+    private bool mehrLaedt;
+    private Guid? offeneMail;
+    private string? offenerInhalt;
+    private readonly SuchVerzoegerung suchVerzoegerung = new();
     private IReadOnlyList<(Guid Id, string Name)> schools = [];
     private IReadOnlyList<(Guid Id, string Name)> owners = [];
     private IReadOnlyList<MailEmpfaenger> schoolRecipients = [];
@@ -65,13 +72,6 @@ public partial class Mailbox
         new(null, "Administration uniquement"),
         .. schools.Select(school => new ModernDropdownOption<Guid?>(school.Id, school.Name))
     ];
-    private IReadOnlyList<MailNachricht> VisibleMails => mails
-        .Where(mail => mail.IstEingehend != showSent && (string.IsNullOrWhiteSpace(search)
-            || mail.Betreff.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)
-            || mail.Absender.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)
-            || mail.Empfaenger.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)
-            || HtmlSanitizer.ToPlainText(mail.Inhalt).Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)))
-        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,10 +83,59 @@ public partial class Mailbox
         await ReloadAsync();
     }
 
-    private async Task ReloadAsync()
+    /// <summary>Lädt die erste Seite (bzw. so viele wie bereits angezeigt, z. B. nach einer Zuordnung).</summary>
+    private async Task ReloadAsync(bool angezeigteBehalten = false)
     {
-        if (userId != Guid.Empty) mails = await MailboxService.LadeAsync(userId, isAdmin, ownerFilter);
+        if (userId == Guid.Empty) return;
+        var anzahl = angezeigteBehalten ? Math.Max(Seite, mails.Count) : Seite;
+        (mails, mailsMehr) = await MailboxService.SucheAsync(userId, ownerFilter, !showSent, search, 0, anzahl);
+        if (offeneMail is Guid offen && mails.All(mail => mail.Id != offen))
+        {
+            offeneMail = null;
+            offenerInhalt = null;
+        }
     }
+
+    private async Task MehrAsync()
+    {
+        if (mehrLaedt) return;
+        mehrLaedt = true;
+        try
+        {
+            var (neu, mehr) = await MailboxService.SucheAsync(userId, ownerFilter, !showSent, search, mails.Count, Seite);
+            mails.AddRange(neu);
+            mailsMehr = mehr;
+        }
+        finally
+        {
+            mehrLaedt = false;
+        }
+    }
+
+    private Task SucheVerzoegertAsync() => suchVerzoegerung.AusfuehrenAsync(() => ReloadAsync());
+
+    private async Task SetOrdnerAsync(bool gesendet)
+    {
+        if (showSent == gesendet) return;
+        showSent = gesendet;
+        await ReloadAsync();
+    }
+
+    private async Task OeffneAsync(Guid mailId)
+    {
+        if (offeneMail == mailId)
+        {
+            offeneMail = null;
+            offenerInhalt = null;
+            return;
+        }
+
+        offeneMail = mailId;
+        offenerInhalt = null;
+        offenerInhalt = await MailboxService.InhaltAsync(userId, mailId) ?? string.Empty;
+    }
+
+    public void Dispose() => suchVerzoegerung.Dispose();
 
     private async Task SetOwnerFilterAsync(Guid? id)
     {
@@ -147,7 +196,7 @@ public partial class Mailbox
         }
     }
 
-    private async Task Reply(MailNachricht mail)
+    private async Task Reply(MailListenZeile mail)
     {
         broadcastMode = false;
         await SetSchoolAsync(mail.SchulID);
@@ -165,6 +214,6 @@ public partial class Mailbox
 
     private async Task AssignAsync(Guid mailId, Guid? school)
     {
-        if (await MailboxService.ZuordnenAsync(userId, mailId, school)) await ReloadAsync();
+        if (await MailboxService.ZuordnenAsync(userId, mailId, school)) await ReloadAsync(angezeigteBehalten: true);
     }
 }

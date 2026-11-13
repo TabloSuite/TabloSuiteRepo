@@ -8,6 +8,12 @@ namespace SkoulouApp.Core.Services;
 
 public sealed record ZyklusTeilnehmerZeile(Guid Id, string Name, decimal Preis, DateTime? StorniertAmUtc, string? StornoGrund);
 
+/// <summary>Zyklus in der Auswahl der abrechnungspflichtigen Teilnehmer (Administration).</summary>
+public sealed record ZyklusAuswahlZeile(Guid Id, string SchulName, string KlasseCode, DateTime StartDatum, bool Geschlossen)
+{
+    public string Label => $"{SchulName} · {KlasseCode} · {(Geschlossen ? "Clôturé" : "En cours")}";
+}
+
 /// <summary>
 /// Gemeinsamer Teilnehmerpfad für Zyklusstart, Annahme, Import und Klassenzuweisung.
 /// Erfasst Verpflichtungen, niemals einen behaupteten Zahlungseingang.
@@ -49,6 +55,32 @@ public sealed class ZyklusTeilnahmeService(ISkoulouAppDbContext db)
         return await db.LevelEnrollments.AsNoTracking().Where(x => x.DurchlaufId == zyklusID)
             .OrderBy(x => x.Student.FullName).ThenBy(x => x.Id)
             .Select(x => new ZyklusTeilnehmerZeile(x.Id, x.Student.FullName, x.PriceAtEnrollment, x.StorniertAmUtc, x.StornoGrund)).ToListAsync(token);
+    }
+
+    /// <summary>
+    /// Abrechnungspflichtige Zyklen aller Schulen für den Administrator, serverseitig gefiltert
+    /// (Suchtext: Schule/Klasse; optional nur laufende) und seitenweise (Skip/Take).
+    /// </summary>
+    public async Task<(List<ZyklusAuswahlZeile> Eintraege, bool Mehr)> SucheZyklenAsync(Guid userID, string? suche, bool nurLaufende,
+        int ueberspringen, int anzahl = 50, CancellationToken token = default)
+    {
+        if (!await IstAdminAsync(userID, token)) return ([], false);
+        var abfrage = db.KursNiveauDurchlaeufe.AsNoTracking().Where(x => x.PlattformPreisProSchueler != null);
+        if (nurLaufende) abfrage = abfrage.Where(x => x.EndDatum == null);
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(x => x.Schule.Name.Contains(s) || x.Klasse.Code.Contains(s) || x.Klasse.Title.Contains(s));
+        }
+
+        anzahl = Math.Clamp(anzahl, 1, 200);
+        var liste = await abfrage.OrderBy(x => x.Schule.Name).ThenByDescending(x => x.StartDatum).ThenBy(x => x.Id)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1)
+            .Select(x => new ZyklusAuswahlZeile(x.Id, x.Schule.Name, x.Klasse.Code, x.StartDatum, x.EndDatum != null))
+            .ToListAsync(token);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
     }
 
     private Task<bool> IstAdminAsync(Guid userID, CancellationToken token)

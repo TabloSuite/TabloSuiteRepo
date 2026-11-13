@@ -18,6 +18,9 @@ public partial class ElternVerwaltung
     private bool laedt = true, fehler;
     private string? meldung, formFehler;
     private string suche = "";
+    // Liste in der Scrollbox; angezeigt werden zunächst 50 Einträge („Afficher plus“).
+    private const int AnzeigeSchritt = 50;
+    private int anzeigeLimit = AnzeigeSchritt;
     private List<SchuelerMitEltern> schueler = [];
     private List<ElternKonto> elternkonten = [];
     private SchuelerMitEltern? ausgewaehlt;

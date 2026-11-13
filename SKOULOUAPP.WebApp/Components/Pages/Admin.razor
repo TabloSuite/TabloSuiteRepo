@@ -42,7 +42,7 @@ else
 
         <div class="director-sticky-band">
             <div class="flex flex-wrap items-center gap-3 pr-14 sm:pr-16">
-                <ModernDropdown TValue="string?" Value="userSchoolFilter" ValueChanged="v => SetUserSchoolFilter(v)" Options="UserSchoolFilterOptions" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
+                <ModernDropdown TValue="Guid?" Value="userSchoolFilter" ValueChanged="SetUserSchoolFilter" Options="UserSchoolFilterOptions" Searchable="true" SearchPlaceholder="Rechercher une école..." ContainerClass="w-full sm:w-72" />
                 <span class="text-xs font-medium text-slate-500">Filtrez la liste des utilisateurs par école.</span>
             </div>
         </div>
@@ -226,7 +226,7 @@ else
                     <div class="mt-8 border-t border-slate-200 pt-8">
                         <div class="mb-4 flex items-center justify-between gap-3">
                             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Gestion des utilisateurs</p>
-                            <Badge Accent="slate">@FilteredUserManagementItems.Count utilisateurs</Badge>
+                            <Badge Accent="slate">@NutzerGesamt.ToString("N0") utilisateurs</Badge>
                         </div>
                 <Toast Message="@userStatusMessage" MessageChanged="v => userStatusMessage = v" Kind="Toast.ToastKind.Success" />
                 <Toast Message="@userErrorMessage" MessageChanged="v => userErrorMessage = v" Kind="Toast.ToastKind.Error" />
@@ -396,33 +396,19 @@ else
                 </ModalDialog>
 
                 <div class="mt-6">
-                    @if (SchoolFilterNames.Count > 1)
-                    {
-                        <div class="mb-4 flex flex-wrap items-center gap-2">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">École :</span>
-                            <button type="button"
-                                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter is null ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
-                                    @onclick="() => SetUserSchoolFilter(null)">
-                                Toutes
-                            </button>
-                            @foreach (var name in SchoolFilterNames)
-                            {
-                                <button type="button"
-                                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition @(userSchoolFilter == name ? "skoulou-btn-accent" : "bg-slate-100 text-slate-700 hover:bg-slate-200")"
-                                        @onclick="() => SetUserSchoolFilter(name)">
-                                    @name
-                                </button>
-                            }
-                        </div>
-                    }
-                    <DataListPanel Items="FilteredUserManagementItems"
-                                   PageSize="10"
-                                   SearchPlaceholder="Rechercher un utilisateur..."
+                    @* Schulfilter: durchsuchbare Auswahl im Band oben (früher zusätzlich eine Chip-Reihe mit einer Schaltfläche je Schule). *@
+                    <DataListPanel Items="userManagementItems"
+                                   ServerPaging="true"
+                                   SearchChanged="SucheNutzerAsync"
+                                   ChipChanged="FiltereNutzerRolleAsync"
+                                   TotalCount="NutzerGesamt"
+                                   HasMore="nutzerMehr"
+                                   LoadMore="MehrNutzerAsync"
+                                   SearchPlaceholder="Rechercher un nom, un e-mail, un identifiant ou un rôle..."
                                    EmptyText="Aucun utilisateur trouvé."
                                    ResultLabelSingular="utilisateur"
                                    ResultLabelPlural="utilisateurs"
-                                   Chips="userRoleChips"
-                                   Filter="@((UserManagementItem u, string term) => Contains(u.FullName, term) || Contains(u.Email, term) || Contains(GetRoleLabel(u.RoleName), term))">
+                                   Chips="userRoleChips">
                         <div class="grid gap-4">
                             @{
                                 string? currentRoleSection = null;
@@ -594,40 +580,43 @@ else
                  Expanded="mediaExpanded"
                  ExpandedChanged="v => mediaExpanded = v">
             <HeaderRight>
-                <Badge Accent="amber">@FilteredMediaLibraryItems.Count / @mediaLibraryItems.Count médias · @FormatFileSize(FilteredMediaBytes)</Badge>
+                <Badge Accent="amber">@mediaGefiltert.Anzahl.ToString("N0") / @mediaGesamt.Anzahl.ToString("N0") médias · @FormatFileSize(mediaGefiltert.Bytes)</Badge>
             </HeaderRight>
             <ChildContent>
             <div class="mt-6 grid gap-4 rounded-3xl bg-amber-50/60 p-4 lg:grid-cols-[1fr_auto]">
                 <div class="grid gap-3 sm:grid-cols-3">
                     <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-amber-100">
                         <p class="text-xs font-black uppercase tracking-wide text-amber-700">Total médias</p>
-                        <p class="mt-2 text-2xl font-black text-slate-900">@mediaLibraryItems.Count</p>
-                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(TotalMediaBytes)</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@mediaGesamt.Anzahl.ToString("N0")</p>
+                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(mediaGesamt.Bytes)</p>
                     </div>
                     <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-cyan-100">
                         <p class="text-xs font-black uppercase tracking-wide text-cyan-700">Filtre actuel</p>
-                        <p class="mt-2 text-2xl font-black text-slate-900">@FilteredMediaLibraryItems.Count</p>
-                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(FilteredMediaBytes)</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@mediaGefiltert.Anzahl.ToString("N0")</p>
+                        <p class="text-xs font-semibold text-slate-500">@FormatFileSize(mediaGefiltert.Bytes)</p>
                     </div>
                     <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                         <p class="text-xs font-black uppercase tracking-wide text-slate-500">Écoles</p>
-                        <p class="mt-2 text-2xl font-black text-slate-900">@MediaSchoolFilterOptions.Count(option => option.Value.HasValue)</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@mediaSchulen.Count</p>
                         <p class="text-xs font-semibold text-slate-500">avec médias enregistrés</p>
                     </div>
                 </div>
                 <div class="min-w-72">
-                    <ModernDropdown TValue="Guid?" Label="Filtrer par école" Value="mediaSchoolFilter" ValueChanged="SetMediaSchoolFilterAsync" Options="MediaSchoolFilterOptions" />
+                    <ModernDropdown TValue="Guid?" Label="Filtrer par école" Value="mediaSchoolFilter" ValueChanged="SetMediaSchoolFilterAsync" Options="MediaSchoolFilterOptions" Searchable="true" SearchPlaceholder="Rechercher une école..." />
                 </div>
             </div>
 
             <div class="mt-6">
-                <DataListPanel Items="FilteredMediaLibraryItems"
-                               PageSize="12"
+                <DataListPanel Items="mediaLibraryItems"
+                               ServerPaging="true"
+                               SearchChanged="SucheMedienAsync"
+                               TotalCount="mediaGefiltert.Anzahl"
+                               HasMore="mediaMehr"
+                               LoadMore="MehrMedienAsync"
                                SearchPlaceholder="Rechercher un média, une école, une classe..."
                                EmptyText="Aucun média trouvé."
                                ResultLabelSingular="média"
-                               ResultLabelPlural="médias"
-                               Filter="@((MediaLibraryItem m, string term) => Contains(m.DisplayName, term) || Contains(m.OriginalFileName, term) || Contains(m.RelativePath, term) || Contains(m.SchoolName, term) || Contains(m.KlasseCode, term) || Contains(m.ContentType, term) || Contains(m.AltText, term))">
+                               ResultLabelPlural="médias">
                     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         @foreach (var media in context)
                         {
@@ -965,7 +954,7 @@ else
                             <div class="rounded-xl bg-sky-50 p-2.5"><div class="font-bold text-sky-900">@course.StudentCount</div><div class="text-sky-600">Élèves inscrits</div></div>
                         </div>
 
-                        <div class="mt-4 grid gap-3">
+                        <div class="sk-liste-scroll mt-4 grid gap-3">
                             @foreach (var lesson in course.Lessons)
                             {
                                 <div class="rounded-2xl bg-slate-50 p-4">

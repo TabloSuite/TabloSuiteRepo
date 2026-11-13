@@ -32,6 +32,12 @@
                 <AsyncActionButton Class="sk-btn sk-btn-primary w-full sm:w-auto" IsBusy="@isLoading" BusyLabel="Filtrage..." OnClick="ApplyFiltersAsync">Filtrer</AsyncActionButton>
                 <button type="button" class="sk-btn sk-btn-secondary w-full sm:w-auto" @onclick="ResetFiltersAsync">Réinitialiser</button>
             </div>
+            <label class="relative m-0 md:col-span-2 xl:col-span-12">
+                <span class="sr-only">Rechercher dans les erreurs</span>
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><Icon Name="search" Groesse="18" /></span>
+                <input type="search" class="skoulou-input" style="padding-left: 2.6rem" placeholder="Rechercher un message, un type d'exception ou une adresse..."
+                       @bind="search" @bind:event="oninput" @bind:after="SearchChangedAsync" />
+            </label>
         </div>
     </div>
 
@@ -45,10 +51,11 @@
     }
     else
     {
-        <div class="grid gap-4">
+        <p class="text-sm font-semibold text-slate-500">@logs.Count@(hasMore ? "+" : "") erreur(s) affichée(s)</p>
+        <div class="sk-liste-scroll grid gap-4 p-1">
             @foreach (var log in logs)
             {
-                <CollapsibleCard Title="@GetHeaderTitle(log)"
+                <CollapsibleCard @key="log.Id" Title="@GetHeaderTitle(log)"
                                  Subtitle="@($"{log.OccurredAtUtc.ToLocalTime():dd.MM.yyyy HH:mm:ss} • {(log.School?.Name ?? "École non attribuée")}")"
                                  Eyebrow="Journal des erreurs"
                                  Icon="alert"
@@ -105,5 +112,11 @@
                 </CollapsibleCard>
             }
         </div>
+        @if (hasMore)
+        {
+            <div class="sk-liste-mehr">
+                <AsyncActionButton Class="sk-btn sk-btn-sm sk-btn-secondary" IsBusy="loadingMore" BusyLabel="Chargement..." OnClick="LoadMoreAsync">Afficher plus</AsyncActionButton>
+            </div>
+        }
     }
 </section>

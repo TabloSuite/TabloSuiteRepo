@@ -99,7 +99,7 @@ else
             @if (IsPathView)
             {
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-                    <div class="lesson-path">
+                    <div class="lesson-path sk-liste-scroll">
                         @foreach (var lesson in VisibleLessons)
                         {
                             var status = GetPathNodeStatus(lesson);
@@ -179,7 +179,8 @@ else
             else
             {
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-                <DataListPanel Items="lessons"
+                @* Erst filtern (Suche, Matière, Enseignant, Statut), dann blättern. *@
+                <DataListPanel Items="VisibleLessons"
                                PageSize="10"
                                SearchPlaceholder="Rechercher une leçon..."
                                EmptyText="Aucune leçon correspondante."
@@ -187,7 +188,7 @@ else
                                ResultLabelPlural="leçons"
                                Filter="@((LessonListItem l, string term) => Contains(l.Title, term) || Contains(l.CourseCode, term) || Contains(l.Summary, term))">
                     <div class="grid gap-4 xl:grid-cols-2">
-                        @foreach (var lesson in context.Where(PassesSearchAndFilters))
+                        @foreach (var lesson in context)
                         {
                     <article class="card-stack-enter flex flex-col rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:border-blue-200 hover:shadow-md">
                         <div class="flex flex-wrap items-start justify-between gap-3">
