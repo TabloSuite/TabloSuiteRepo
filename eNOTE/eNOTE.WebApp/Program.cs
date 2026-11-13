@@ -185,6 +185,23 @@ if (administration is not null)
     return;
 }
 
+// Start-Admin wie bei SKOULOU aus den Umgebungsvariablen der App (Seed__…): nur anlegen, falls er fehlt.
+// Keine Migrationen, kein Ändern bestehender Konten. Ein Fehler hier darf den Start nicht verhindern.
+await using (var startScope = app.Services.CreateAsyncScope())
+{
+    try
+    {
+        await ApplicationDbInitializer.SeedSuperAdminBeimStartAsync(
+            startScope.ServiceProvider.GetRequiredService<RoleManager<Role>>(),
+            startScope.ServiceProvider.GetRequiredService<UserManager<AppUser>>(),
+            app.Configuration, app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Start-Admin konnte nicht geprüft oder angelegt werden.");
+    }
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);

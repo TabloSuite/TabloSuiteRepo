@@ -91,7 +91,7 @@ Folgende Einstellungen erst nach Behebung der Build-/Modellblockaden setzen bzw.
 
 Zusätzlich vor Freigabe am bestehenden App Service prüfen: .NET-10-Linux-Runtime, **Always On**, funktionsfähige WebSocket-Verbindungen für Blazor/SignalR, eine Instanz und HTTPS Only. Bei späterer Skalierung sind Circuits, Sitzungsaﬃnität und gemeinsamer Schlüsselring neu zu planen. `AllowedHosts` auf die eigene Domain und den **tatsächlich bestätigten** Azure-Standardhostname begrenzen; keinen unbestätigten Standardhostname raten. Keine dieser Einstellungen wird durch das lokale Publish-Profil in Azure gesetzt.
 
-Keine `Seed__SuperAdminPasswort`-Konfiguration für den dauerhaften Webbetrieb hinterlegen. Administrative Seed-Zugangsdaten nur im getrennten Einmalprozess bereitstellen.
+Start-Admin (seit 13.11.2026 wie SKOULOU): `Seed__SuperAdminEmail`, `Seed__SuperAdminPasswort` und `Seed__SuperAdminBenutzername` stehen in den App-Einstellungen. Beim Start legt die App den Admin nur an, wenn kein Konto mit diesem Benutzernamen existiert; ein vorhandenes Konto wird nie geändert (kein Passwort-Reset, keine Rechteerweiterung). Migrationen laufen weiterhin nie beim Start.
 
 ### Connection String
 

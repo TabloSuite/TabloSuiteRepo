@@ -3,6 +3,7 @@ using ENote.Core.DataModels.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ENote.WebApp.Data.Seed;
 
@@ -17,6 +18,57 @@ public static class ApplicationDbInitializer
         await SeedRollenAsync(roleManager);
         await SeedSuperAdminAsync(userManager, configuration);
         await SeedPlattformPreiseAsync(dbContext);
+    }
+
+    /// <summary>
+    /// Beim normalen App-Start (wie SKOULOU): Fehlt der Start-Admin, wird er aus den Umgebungsvariablen der App
+    /// angelegt (Seed__SuperAdminEmail, Seed__SuperAdminPasswort, Seed__SuperAdminBenutzername). Ein vorhandenes
+    /// Konto bleibt unverändert – kein Passwort-Reset, keine Umbenennung, keine Rechteerweiterung.
+    /// Ohne vollständige Konfiguration passiert nichts. Liefert true, wenn ein Konto angelegt wurde.
+    /// </summary>
+    public static async Task<bool> SeedSuperAdminBeimStartAsync(
+        RoleManager<Role> roleManager,
+        UserManager<AppUser> userManager,
+        IConfiguration configuration,
+        ILogger? logger = null)
+    {
+        var email = configuration["Seed:SuperAdminEmail"]?.Trim();
+        var passwort = configuration["Seed:SuperAdminPasswort"];
+        var benutzername = configuration["Seed:SuperAdminBenutzername"]?.Trim();
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(passwort) || string.IsNullOrWhiteSpace(benutzername))
+            return false;
+
+        var vorhanden = await userManager.FindByNameAsync(benutzername);
+        if (vorhanden is not null)
+        {
+            if (!await userManager.IsInRoleAsync(vorhanden, AppRollen.SuperAdmin))
+                logger?.LogWarning("Seed-Konto existiert ohne SuperAdmin-Rolle – keine automatische Rechteerweiterung.");
+            return false;
+        }
+
+        if (!await roleManager.RoleExistsAsync(AppRollen.SuperAdmin))
+        {
+            PruefeErgebnis(await roleManager.CreateAsync(new Role
+            {
+                Name = AppRollen.SuperAdmin,
+                NormalizedName = AppRollen.SuperAdmin.ToUpperInvariant(),
+                Description = "Globale Verwaltung der Plattform."
+            }));
+        }
+
+        var admin = new AppUser
+        {
+            UserName = benutzername,
+            Email = email,
+            Vorname = "Super",
+            Nachname = "Admin",
+            FullName = "Super Admin",
+            EmailConfirmed = true
+        };
+        PruefeErgebnis(await userManager.CreateAsync(admin, passwort));
+        PruefeErgebnis(await userManager.AddToRoleAsync(admin, AppRollen.SuperAdmin));
+        logger?.LogInformation("Start-Admin {Benutzer} aus der App-Konfiguration angelegt.", benutzername);
+        return true;
     }
 
     private static async Task SeedRollenAsync(RoleManager<Role> roleManager)

@@ -77,4 +77,67 @@ public class SuperAdminSeedTests
         Assert.Equal("AdminTest", admin.UserName);
         Assert.True(await userManager.IsInRoleAsync(admin, AppRollen.SuperAdmin));
     }
+
+    // ------------------------------------------------ Beim App-Start (wie SKOULOU)
+
+    private static async Task<bool> StartSeedAsync(ServiceProvider sp, IConfiguration konfiguration)
+    {
+        using var scope = sp.CreateScope();
+        return await ApplicationDbInitializer.SeedSuperAdminBeimStartAsync(
+            scope.ServiceProvider.GetRequiredService<RoleManager<Role>>(),
+            scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>(),
+            konfiguration);
+    }
+
+    [Fact]
+    public async Task Beim_Start_wird_ein_fehlender_Admin_aus_der_App_Konfiguration_angelegt()
+    {
+        await using var sp = Dienste();
+        var konfiguration = Konfiguration(
+            ("Seed:SuperAdminEmail", "admin@example.test"),
+            ("Seed:SuperAdminPasswort", TestPasswort),
+            ("Seed:SuperAdminBenutzername", "AdminTest"));
+
+        Assert.True(await StartSeedAsync(sp, konfiguration));
+        Assert.False(await StartSeedAsync(sp, konfiguration));   // zweiter Start: nichts mehr zu tun
+
+        using var scope = sp.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var admin = Assert.Single(userManager.Users);
+        Assert.True(await userManager.IsInRoleAsync(admin, AppRollen.SuperAdmin));
+        Assert.True(await userManager.CheckPasswordAsync(admin, TestPasswort));
+    }
+
+    [Fact]
+    public async Task Beim_Start_bleibt_ein_vorhandenes_Konto_unveraendert()
+    {
+        await using var sp = Dienste();
+        await StartSeedAsync(sp, Konfiguration(
+            ("Seed:SuperAdminEmail", "admin@example.test"),
+            ("Seed:SuperAdminPasswort", TestPasswort),
+            ("Seed:SuperAdminBenutzername", "AdminTest")));
+
+        // Andere Werte in der Konfiguration ändern nichts am bestehenden Konto (kein Passwort-Reset)
+        Assert.False(await StartSeedAsync(sp, Konfiguration(
+            ("Seed:SuperAdminEmail", "andere@example.test"),
+            ("Seed:SuperAdminPasswort", "Anderes-Passwort-9!"),
+            ("Seed:SuperAdminBenutzername", "AdminTest"))));
+
+        using var scope = sp.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var admin = Assert.Single(userManager.Users);
+        Assert.Equal("admin@example.test", admin.Email);
+        Assert.True(await userManager.CheckPasswordAsync(admin, TestPasswort));
+    }
+
+    [Fact]
+    public async Task Beim_Start_ohne_vollstaendige_Konfiguration_passiert_nichts()
+    {
+        await using var sp = Dienste();
+
+        Assert.False(await StartSeedAsync(sp, Konfiguration(("Seed:SuperAdminEmail", "admin@example.test"), ("Seed:SuperAdminPasswort", TestPasswort))));
+
+        using var scope = sp.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>().Users);
+    }
 }
