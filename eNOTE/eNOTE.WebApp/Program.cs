@@ -296,6 +296,36 @@ app.MapGet("/bon/{verkaufId:guid}", async (
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"recu-{verkauf.Id.ToString()[..8]}.pdf");
 }).RequireAuthorization();
 
+// Artikel-Etiketten als PDF (A4-Bogen oder Einzel-Etiketten 62×29 mm). Lange Codes (Hersteller-QR) als QR-Code.
+app.MapGet("/etiketten", async (
+    Guid salonId,
+    Guid leistungId,
+    int? anzahl,
+    string? format,
+    HttpContext httpContext,
+    IDbContextFactory<ApplicationDbContext> dbContextFactory,
+    MedienZugriff zugriff,
+    CancellationToken cancellationToken) =>
+{
+    if (!await zugriff.HatSalonZugangAsync(httpContext.User, salonId, false, cancellationToken))
+        return Results.NotFound();
+
+    await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+    var leistung = await db.Leistungen.AsNoTracking()
+        .FirstOrDefaultAsync(l => l.Id == leistungId && l.SalonId == salonId, cancellationToken);
+    if (leistung is null || string.IsNullOrWhiteSpace(leistung.StrichCode))
+        return Results.NotFound();
+
+    var etikett = new EtikettPdfService.Etikett(leistung.StrichCode, leistung.Name,
+        leistung.Preis.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + " F");
+    var stueck = Math.Clamp(anzahl ?? 1, 1, 48);
+    var pdf = format == "einzel"
+        ? EtikettPdfService.ErzeugeEinzelEtikett(etikett, stueck)
+        : EtikettPdfService.ErzeugeA4Bogen(Enumerable.Repeat(etikett, stueck).ToList());
+    httpContext.Response.Headers.CacheControl = "private, no-store";
+    return InlinePdfResponse.Create(httpContext.Response, pdf, $"etiquettes-{leistung.Id.ToString()[..8]}.pdf");
+}).RequireAuthorization();
+
 // Kassenbon als HTML-Druckansicht: öffnet sofort den Druck-Dialog (window.print()).
 app.MapGet("/bon/{verkaufId:guid}/druck", async (
     Guid verkaufId,

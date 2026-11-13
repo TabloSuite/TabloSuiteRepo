@@ -267,7 +267,7 @@
             <div class="pr-barcode">
                 <div class="pr-barcode-feld">
                     <Icon Name="scan" Groesse="18" CssClass="pr-barcode-ico" />
-                    <input id="pr-barcode" class="enote-input" inputmode="text" autocomplete="off" maxlength="40"
+                    <input id="pr-barcode" class="enote-input" inputmode="text" autocomplete="off" maxlength="@Core.Services.Katalog.BarcodeRegeln.MaxLaenge"
                            placeholder="Scannez ou saisissez le code du fabricant…"
                            @bind="bearbeitungsLeistung.StrichCode" @bind:after="PruefeBarcodeAsync" />
                 </div>
@@ -503,7 +503,7 @@
 <ModalDialog Open="etikettDialogOffen" Title="@EtikettDialogTitel" OnClose="() => etikettDialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">Code-barres : <strong>@etikettLeistung?.StrichCode</strong></p>
+            <p class="enote-muted" style="overflow-wrap: anywhere;">Code-barres : <strong>@etikettLeistung?.StrichCode</strong></p>
             <label>Nombre d'étiquettes (1–48) <input type="number" min="1" max="48" @bind="etikettAnzahl" /></label>
             <label>Format</label>
             <EnoteRadioGroup TValue="string" @bind-Value="etikettFormat" Options="etikettFormatOptionen" />

@@ -224,7 +224,7 @@ public partial class Leistungen(
         {
             var s = leistungsSuche.Trim();
             q = q.Where(l => l.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(l.StrichCode, s, StringComparison.OrdinalIgnoreCase));
+                || Core.Services.Katalog.BarcodeRegeln.Gleich(l.StrichCode, s));
         }
         else if (Guid.TryParse(kategorieFilter, out var filterId))
         {

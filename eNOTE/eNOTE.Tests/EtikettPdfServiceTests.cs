@@ -51,4 +51,14 @@ public class EtikettPdfServiceTests
         Assert.True(pdf.Length > 500);
         Assert.Equal(0x25, pdf[0]);
     }
+
+    [Fact]
+    public void Einzel_Etiketten_mehrfach_und_mit_Hersteller_QR()
+    {
+        var etikett = new EtikettPdfService.Etikett("HTTPS://ID.GS1.ORG/01/09506000134352/10/ABC123?17=271231", "Huile", "1 500 F");
+        var einmal = EtikettPdfService.ErzeugeEinzelEtikett(etikett);
+        var dreimal = EtikettPdfService.ErzeugeEinzelEtikett(etikett, 3);
+        Assert.Equal(0x25, dreimal[0]);
+        Assert.True(dreimal.Length > einmal.Length);
+    }
 }

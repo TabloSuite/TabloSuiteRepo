@@ -25,9 +25,52 @@ public class BarcodeTests
     [Theory]
     [InlineData("12")]
     [InlineData("ÉTÉ2026")]
-    [InlineData("A&B#1234")]
+    [InlineData("CAFÉ-NOIR")]
     public void Ungueltige_Eingaben_Sind_Fehler(string eingabe)
         => Assert.True(BarcodeRegeln.Pruefe(eingabe).Fehler);
+
+    [Theory]
+    [InlineData("https://id.gs1.org/01/09506000134352/10/ABC123?17=271231")] // GS1 Digital Link
+    [InlineData("http://example.tg/p?id=42&lot=7")]
+    [InlineData("A&B#1234")]
+    public void Original_QR_Codes_der_Hersteller_werden_angenommen(string inhalt)
+    {
+        var p = BarcodeRegeln.Pruefe(inhalt);
+        Assert.False(p.Fehler);
+        Assert.Equal(BarcodeRegeln.Art.Frei, p.Art);
+    }
+
+    [Fact]
+    public void Lange_QR_Inhalte_bis_500_Zeichen()
+    {
+        var lang = "https://beispiel.tg/" + new string('a', BarcodeRegeln.MaxLaenge - 20);
+        Assert.False(BarcodeRegeln.Pruefe(lang).Fehler);
+        Assert.Contains("QR", BarcodeRegeln.Pruefe(lang).Hinweis);
+        Assert.True(BarcodeRegeln.Pruefe(lang + "b").Fehler);
+    }
+
+    [Theory]
+    [InlineData("ABC123", "abc-123")]                              // Bindestrich und Kleinschreibung beim Scannen
+    [InlineData("4006381333931", " 4006381333931 ")]
+    [InlineData("HTTPS://ID.GS1.ORG/01/09506000134352", "https://id.gs1.org/01/09506000134352")]
+    public void Kasse_findet_gespeicherten_Code_auch_bei_anderer_Schreibweise(string gespeichert, string gescannt)
+        => Assert.True(BarcodeRegeln.Gleich(gespeichert, gescannt));
+
+    [Fact]
+    public void Leere_Codes_sind_nie_gleich()
+        => Assert.False(BarcodeRegeln.Gleich(null, null));
+
+    [Fact]
+    public void Etikett_druckt_lange_Inhalte_als_QR_Code()
+    {
+        var kurz = EtikettPdfService.ErzeugeCode128("TISSU-A3");
+        var lang = EtikettPdfService.ErzeugeCode128("HTTPS://ID.GS1.ORG/01/09506000134352/10/ABC123?17=271231");
+        Assert.NotNull(kurz);
+        Assert.NotNull(lang);
+        // Code 128 ist breit (300×60), der QR-Code quadratisch (120×120).
+        Assert.Contains("viewBox=\"0 0 300 60\"", kurz);
+        Assert.Contains("viewBox=\"0 0 120 120\"", lang);
+    }
 
     [Fact]
     public void Interne_Codes_Sind_Gueltige_Ean13_Mit_Praefix_2()

@@ -509,7 +509,7 @@ public partial class Caisse(
             if (suche.Length > 0)
             {
                 q = q.Where(l => l.Name.Contains(suche, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(l.StrichCode, suche, StringComparison.OrdinalIgnoreCase));
+                    || Core.Services.Katalog.BarcodeRegeln.Gleich(l.StrichCode, suche));
             }
             else if (nurFavoriten)
             {
@@ -801,11 +801,14 @@ public partial class Caisse(
     public Task ScanErkannt(string code) => InvokeAsync(() =>
     {
         if (aktiveSitzung is null || string.IsNullOrWhiteSpace(code)) return;
-        var treffer = leistungen.FirstOrDefault(l => string.Equals(l.StrichCode, code.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (treffer is null) toast.ZeigeFehler($"Code-barres inconnu : « {code.Trim()} ».");
+        var treffer = leistungen.FirstOrDefault(l => Core.Services.Katalog.BarcodeRegeln.Gleich(l.StrichCode, code));
+        if (treffer is null) toast.ZeigeFehler($"Code-barres inconnu : « {Kurz(code.Trim())} ».");
         else FuegeHinzu(treffer);
         StateHasChanged();
     });
+
+    /// <summary>Lange QR-Inhalte in Meldungen kürzen.</summary>
+    private static string Kurz(string text) => text.Length > 40 ? text[..40] + "…" : text;
 
     private void HandleSuchTaste(KeyboardEventArgs e)
     {
@@ -815,7 +818,7 @@ public partial class Caisse(
         }
 
         var code = suchtext.Trim();
-        var treffer = leistungen.FirstOrDefault(l => string.Equals(l.StrichCode, code, StringComparison.OrdinalIgnoreCase));
+        var treffer = leistungen.FirstOrDefault(l => Core.Services.Katalog.BarcodeRegeln.Gleich(l.StrichCode, code));
         var sichtbar = SichtbareLeistungen.Where(l => !l.IstStandardArtikel).Take(2).ToList();
         treffer ??= sichtbar.Count == 1 ? sichtbar[0] : null;
 

@@ -62,21 +62,24 @@ public static class EtikettPdfService
         return dokument.GeneratePdf();
     }
 
-    /// <summary>Einzel-Etikett 62×29 mm (für Thermo-Etikettendrucker).</summary>
-    public static byte[] ErzeugeEinzelEtikett(Etikett etikett)
+    /// <summary>Einzel-Etikett 62×29 mm (für Thermo-Etikettendrucker), auf Wunsch mehrfach (eine Seite je Etikett).</summary>
+    public static byte[] ErzeugeEinzelEtikett(Etikett etikett, int anzahl = 1)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
         var dokument = Document.Create(container =>
         {
-            container.Page(page =>
+            for (var i = 0; i < Math.Max(1, anzahl); i++)
             {
-                page.Size(62, 29, Unit.Millimetre);
-                page.Margin(1, Unit.Millimetre);
-                page.DefaultTextStyle(x => x.FontSize(7));
-                page.Content().Width(60, Unit.Millimetre).Height(27, Unit.Millimetre)
-                    .Element(c => EtikettZelle(c, etikett));
-            });
+                container.Page(page =>
+                {
+                    page.Size(62, 29, Unit.Millimetre);
+                    page.Margin(1, Unit.Millimetre);
+                    page.DefaultTextStyle(x => x.FontSize(7));
+                    page.Content().Width(60, Unit.Millimetre).Height(27, Unit.Millimetre)
+                        .Element(c => EtikettZelle(c, etikett));
+                });
+            }
         });
 
         return dokument.GeneratePdf();
@@ -103,7 +106,7 @@ public static class EtikettPdfService
                     col.Item().AlignCenter().MaxHeight(12, Unit.Millimetre).Svg(barcode).FitArea();
                 }
 
-                col.Item().AlignCenter().Text(etikett.Code).FontSize(5.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().AlignCenter().Text(etikett.Code.Length > 32 ? etikett.Code[..32] + "…" : etikett.Code).FontSize(5.5f).FontColor(Colors.Grey.Darken1);
             });
     }
 
@@ -117,10 +120,14 @@ public static class EtikettPdfService
 
         try
         {
+            // Lange Inhalte (Hersteller-QR, Web-Adressen) als QR-Code – Code 128 würde zu breit.
+            var qr = inhalt.Length > ENote.Core.Services.Katalog.BarcodeRegeln.QrAbLaenge;
             var writer = new BarcodeWriterSvg
             {
-                Format = BarcodeFormat.CODE_128,
-                Options = new EncodingOptions { Height = 60, Width = 300, Margin = 2, PureBarcode = true }
+                Format = qr ? BarcodeFormat.QR_CODE : BarcodeFormat.CODE_128,
+                Options = qr
+                    ? new EncodingOptions { Height = 120, Width = 120, Margin = 0, PureBarcode = true }
+                    : new EncodingOptions { Height = 60, Width = 300, Margin = 2, PureBarcode = true }
             };
             return writer.Write(inhalt).Content;
         }
