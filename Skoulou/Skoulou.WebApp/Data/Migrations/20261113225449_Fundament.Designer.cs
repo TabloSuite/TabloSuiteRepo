@@ -12,7 +12,7 @@ using Skoulou.WebApp.Data;
 namespace Skoulou.WebApp.Data.Migrations
 {
     [DbContext(typeof(SkoulouDbContext))]
-    [Migration("20261113181017_Fundament")]
+    [Migration("20261113225449_Fundament")]
     partial class Fundament
     {
         /// <inheritdoc />
@@ -204,6 +204,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<int>("Korrektur")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("KorrigiertAmUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid?>("KorrigiertVonId")
                         .HasColumnType("uniqueidentifier");
 
@@ -331,6 +334,9 @@ namespace Skoulou.WebApp.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("Archiviert")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Consigne")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -363,11 +369,11 @@ namespace Skoulou.WebApp.Data.Migrations
 
                     b.HasIndex("LeconId", "Nr")
                         .IsUnique()
-                        .HasFilter("[LeconId] IS NOT NULL");
+                        .HasFilter("[LeconId] IS NOT NULL AND [Archiviert] = 0");
 
                     b.HasIndex("PruefungId", "Nr")
                         .IsUnique()
-                        .HasFilter("[PruefungId] IS NOT NULL");
+                        .HasFilter("[PruefungId] IS NOT NULL AND [Archiviert] = 0");
 
                     b.ToTable("AufgabenBloecke", null, t =>
                         {
@@ -1088,6 +1094,9 @@ namespace Skoulou.WebApp.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AkzenteBeachten")
+                        .HasColumnType("bit");
+
                     b.PrimitiveCollection<string>("AkzeptierteAntworten")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1697,6 +1706,58 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.ToTable("Konten", (string)null);
                 });
 
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.KorrekturEintrag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("AltePunkte")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<Guid>("AntwortId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("KorrigiertVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("NeuePunkte")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<Guid>("SchuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("VersuchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ZeitUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AntwortId");
+
+                    b.HasIndex("KorrigiertVonId");
+
+                    b.HasIndex("SchuleId");
+
+                    b.HasIndex("VersuchId");
+
+                    b.ToTable("KorrekturEintraege", (string)null);
+                });
+
             modelBuilder.Entity("Skoulou.Core.Entitaeten.Lecon", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1836,6 +1897,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<bool>("Abgeschlossen")
                         .HasColumnType("bit");
 
+                    b.Property<int>("AnzahlVersuche")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("BestePunkte")
                         .HasPrecision(8, 2)
                         .HasColumnType("decimal(8,2)");
@@ -1846,8 +1910,15 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("KorrekturOffen")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("LetzteAktivitaetUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("MaxPunkte")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)");
 
                     b.Property<decimal>("Prozent")
                         .HasPrecision(5, 2)
@@ -2688,6 +2759,11 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<bool>("IstInterne")
                         .HasColumnType("bit");
 
+                    b.Property<string>("KartenToken")
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<Guid>("KontoId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2706,6 +2782,10 @@ namespace Skoulou.WebApp.Data.Migrations
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KartenToken")
+                        .IsUnique()
+                        .HasFilter("[KartenToken] IS NOT NULL");
 
                     b.HasIndex("KontoId")
                         .IsUnique();
@@ -3036,6 +3116,10 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.PrimitiveCollection<string>("FragenIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
@@ -3060,6 +3144,7 @@ namespace Skoulou.WebApp.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("int");
 
                     b.Property<Guid>("ZuweisungId")
@@ -3863,6 +3948,33 @@ namespace Skoulou.WebApp.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Schule");
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.KorrekturEintrag", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.Antwort", null)
+                        .WithMany()
+                        .HasForeignKey("AntwortId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("KorrigiertVonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Schule", null)
+                        .WithMany()
+                        .HasForeignKey("SchuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Versuch", null)
+                        .WithMany()
+                        .HasForeignKey("VersuchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Skoulou.Core.Entitaeten.Lecon", b =>

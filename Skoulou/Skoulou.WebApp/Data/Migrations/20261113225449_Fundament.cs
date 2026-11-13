@@ -167,6 +167,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     Punkte = table.Column<decimal>(type: "decimal(6,2)", precision: 6, scale: 2, nullable: true),
                     Korrektur = table.Column<int>(type: "int", nullable: false),
                     KorrigiertVonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    KorrigiertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Feedback = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -208,6 +209,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     Nr = table.Column<int>(type: "int", nullable: false),
                     Titel = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Consigne = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    Archiviert = table.Column<bool>(type: "bit", nullable: false),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -508,6 +510,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     AkzeptierteAntworten = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LueckenJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Wortbank = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AkzenteBeachten = table.Column<bool>(type: "bit", nullable: false),
                     Revision = table.Column<int>(type: "int", nullable: false),
                     VorgaengerId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     Archiviert = table.Column<bool>(type: "bit", nullable: false),
@@ -878,6 +881,39 @@ namespace Skoulou.WebApp.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "KorrekturEintraege",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SchuleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AntwortId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    VersuchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AltePunkte = table.Column<decimal>(type: "decimal(6,2)", precision: 6, scale: 2, nullable: true),
+                    NeuePunkte = table.Column<decimal>(type: "decimal(6,2)", precision: 6, scale: 2, nullable: false),
+                    Feedback = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    KorrigiertVonId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ZeitUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_KorrekturEintraege", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_KorrekturEintraege_Antworten_AntwortId",
+                        column: x => x.AntwortId,
+                        principalTable: "Antworten",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_KorrekturEintraege_Konten_KorrigiertVonId",
+                        column: x => x.KorrigiertVonId,
+                        principalTable: "Konten",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Lecons",
                 columns: table => new
                 {
@@ -978,8 +1014,11 @@ namespace Skoulou.WebApp.Data.Migrations
                     SchuelerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ZuweisungId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     BestePunkte = table.Column<decimal>(type: "decimal(8,2)", precision: 8, scale: 2, nullable: false),
+                    MaxPunkte = table.Column<decimal>(type: "decimal(8,2)", precision: 8, scale: 2, nullable: false),
                     Prozent = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
                     Abgeschlossen = table.Column<bool>(type: "bit", nullable: false),
+                    AnzahlVersuche = table.Column<int>(type: "int", nullable: false),
+                    KorrekturOffen = table.Column<bool>(type: "bit", nullable: false),
                     LetzteAktivitaetUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -1221,6 +1260,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     ElternEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     StimmeAus = table.Column<bool>(type: "bit", nullable: false),
                     AufnahmeBestaetigtAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    KartenToken = table.Column<string>(type: "varchar(32)", unicode: false, maxLength: 32, nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -1847,6 +1887,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     Punkte = table.Column<decimal>(type: "decimal(8,2)", precision: 8, scale: 2, nullable: false),
                     MaxPunkte = table.Column<decimal>(type: "decimal(8,2)", precision: 8, scale: 2, nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
+                    FragenIds = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -1940,14 +1981,14 @@ namespace Skoulou.WebApp.Data.Migrations
                 table: "AufgabenBloecke",
                 columns: new[] { "LeconId", "Nr" },
                 unique: true,
-                filter: "[LeconId] IS NOT NULL");
+                filter: "[LeconId] IS NOT NULL AND [Archiviert] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AufgabenBloecke_PruefungId_Nr",
                 table: "AufgabenBloecke",
                 columns: new[] { "PruefungId", "Nr" },
                 unique: true,
-                filter: "[PruefungId] IS NOT NULL");
+                filter: "[PruefungId] IS NOT NULL AND [Archiviert] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AufgabenBloecke_SchuleId",
@@ -2393,6 +2434,26 @@ namespace Skoulou.WebApp.Data.Migrations
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_KorrekturEintraege_AntwortId",
+                table: "KorrekturEintraege",
+                column: "AntwortId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KorrekturEintraege_KorrigiertVonId",
+                table: "KorrekturEintraege",
+                column: "KorrigiertVonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KorrekturEintraege_SchuleId",
+                table: "KorrekturEintraege",
+                column: "SchuleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KorrekturEintraege_VersuchId",
+                table: "KorrekturEintraege",
+                column: "VersuchId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Lecons_AutorId",
                 table: "Lecons",
                 column: "AutorId");
@@ -2707,6 +2768,13 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "IX_RollenClaims_RoleId",
                 table: "RollenClaims",
                 column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SchuelerProfile_KartenToken",
+                table: "SchuelerProfile",
+                column: "KartenToken",
+                unique: true,
+                filter: "[KartenToken] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SchuelerProfile_KontoId",
@@ -3436,6 +3504,22 @@ namespace Skoulou.WebApp.Data.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
+                name: "FK_KorrekturEintraege_Schulen_SchuleId",
+                table: "KorrekturEintraege",
+                column: "SchuleId",
+                principalTable: "Schulen",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_KorrekturEintraege_Versuche_VersuchId",
+                table: "KorrekturEintraege",
+                column: "VersuchId",
+                principalTable: "Versuche",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
                 name: "FK_Lecons_Medien_VideoMediumId",
                 table: "Lecons",
                 column: "VideoMediumId",
@@ -3511,9 +3595,6 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "Ankuendigungen");
 
             migrationBuilder.DropTable(
-                name: "Antworten");
-
-            migrationBuilder.DropTable(
                 name: "Anwesenheiten");
 
             migrationBuilder.DropTable(
@@ -3568,6 +3649,9 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "KontoTokens");
 
             migrationBuilder.DropTable(
+                name: "KorrekturEintraege");
+
+            migrationBuilder.DropTable(
                 name: "LeconSeiten");
 
             migrationBuilder.DropTable(
@@ -3613,16 +3697,13 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "Zahlungsmeldungen");
 
             migrationBuilder.DropTable(
-                name: "Versuche");
-
-            migrationBuilder.DropTable(
                 name: "Bulletins");
 
             migrationBuilder.DropTable(
-                name: "Fragen");
+                name: "GebuehrenPosten");
 
             migrationBuilder.DropTable(
-                name: "GebuehrenPosten");
+                name: "Antworten");
 
             migrationBuilder.DropTable(
                 name: "Noten");
@@ -3643,10 +3724,10 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "Plattformrechnungen");
 
             migrationBuilder.DropTable(
-                name: "Zuweisungen");
+                name: "Fragen");
 
             migrationBuilder.DropTable(
-                name: "AufgabenBloecke");
+                name: "Versuche");
 
             migrationBuilder.DropTable(
                 name: "Bewertungen");
@@ -3658,10 +3739,10 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "Kategorien");
 
             migrationBuilder.DropTable(
-                name: "Lecons");
+                name: "AufgabenBloecke");
 
             migrationBuilder.DropTable(
-                name: "Pruefungen");
+                name: "Zuweisungen");
 
             migrationBuilder.DropTable(
                 name: "Klassenfaecher");
@@ -3670,10 +3751,16 @@ namespace Skoulou.WebApp.Data.Migrations
                 name: "PeriodenKomponenten");
 
             migrationBuilder.DropTable(
-                name: "Faecher");
+                name: "Lecons");
+
+            migrationBuilder.DropTable(
+                name: "Pruefungen");
 
             migrationBuilder.DropTable(
                 name: "Klassen");
+
+            migrationBuilder.DropTable(
+                name: "Faecher");
 
             migrationBuilder.DropTable(
                 name: "Perioden");
