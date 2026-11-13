@@ -169,6 +169,39 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
             .ToListAsync(cancellationToken);
     }
 
+    public sealed record FacturationKennzahlen(decimal ZuZahlen, decimal EingenommenDiesenMonat, int Rechnungen);
+
+    /// <summary>Kennzahlen der Facturation über ALLE sichtbaren Abos (per Datenbank-Summe, nicht nur die angezeigten).</summary>
+    public async Task<FacturationKennzahlen> GetKennzahlenAsync(Guid benutzerId, DateTime monatsAnfangUtc, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var abos = await SichtbareAbosAsync(db, benutzerId, cancellationToken);
+        var zuZahlen = await abos.Where(a => a.ZahlungStatus == AboZahlungStatus.Offen).SumAsync(a => (decimal?)a.PreisSnapshot, cancellationToken) ?? 0m;
+        var eingenommen = await abos.Where(a => a.ZahlungStatus == AboZahlungStatus.Bestaetigt && a.ZahlungBestaetigtUtc >= monatsAnfangUtc)
+            .SumAsync(a => (decimal?)a.PreisSnapshot, cancellationToken) ?? 0m;
+        var anzahl = await abos.CountAsync(cancellationToken);
+        return new FacturationKennzahlen(zuZahlen, eingenommen, anzahl);
+    }
+
+    /// <summary>Sichtbare Abos seitenweise (neueste zuerst) mit Suche nach Laden und Status-Filter – in der Datenbank.</summary>
+    public async Task<(List<NutzungsAbo> Eintraege, bool Mehr)> SucheAbosAsync(Guid benutzerId, string? suche, AboZahlungStatus? status,
+        int ueberspringen, int anzahl = 50, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var abfrage = (await SichtbareAbosAsync(db, benutzerId, cancellationToken)).Include(a => a.Salon).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(a => a.Salon.Name.Contains(s));
+        }
+        if (status is { } st) abfrage = abfrage.Where(a => a.ZahlungStatus == st);
+        var liste = await abfrage.OrderByDescending(a => a.CreatedAtUtc)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1).ToListAsync(cancellationToken);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
     /// <summary>Sichtbare Abos (neueste zuerst) für die Facturation-Übersicht.</summary>
     public async Task<List<NutzungsAbo>> GetAlleAbosAsync(Guid benutzerId, CancellationToken cancellationToken = default)
     {

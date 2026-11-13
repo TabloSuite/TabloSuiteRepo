@@ -141,8 +141,16 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         return new Kennzahlen(kunden, neu, wiederkehrend, alle == 0 ? 0 : (int)Math.Round(100.0 * mit / alle));
     }
 
-    /// <summary>Kundenliste mit Besuchen und Umsatz (Rückerstattungen abgezogen), zuletzt gesehene zuerst.</summary>
+    /// <summary>Kundenliste (erste Seite) – siehe <see cref="SucheListeAsync"/>.</summary>
     public async Task<List<Zeile>> GetListeAsync(Guid user, Guid salonId, string? suche, CancellationToken ct = default)
+        => (await SucheListeAsync(user, salonId, suche, 0, 50, ct)).Eintraege;
+
+    /// <summary>
+    /// Kundenliste mit Besuchen und Umsatz (Rückerstattungen abgezogen), zuletzt gesehene zuerst – seitenweise
+    /// direkt aus der Datenbank (Suche nach Name oder Telefon), damit auch nach Jahren nie alle Kunden geladen werden.
+    /// </summary>
+    public async Task<(List<Zeile> Eintraege, bool Mehr)> SucheListeAsync(Guid user, Guid salonId, string? suche,
+        int ueberspringen, int anzahl = 50, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         await PruefeZugangAsync(db, user, salonId, true, ct);
@@ -153,7 +161,18 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
             var z = Ziffern(suche);
             q = q.Where(k => k.Name.ToLower().Contains(s) || (z != null && z.Length >= 3 && k.TelefonZiffern != null && k.TelefonZiffern.Contains(z)));
         }
-        var kunden = await q.Select(k => new { k.Id, k.Name, k.Telefon, k.ErstelltUtc, HatNotiz = k.Notiz != null && k.Notiz != "" }).ToListAsync(ct);
+        var kunden = await q
+            .Select(k => new
+            {
+                k.Id, k.Name, k.Telefon, k.ErstelltUtc, HatNotiz = k.Notiz != null && k.Notiz != "",
+                Letzter = db.Verkaeufe.Where(v => v.SalonId == salonId && v.KundeId == k.Id && v.StornoVonVerkaufId == null)
+                    .Max(v => (DateTime?)v.ZeitUtc)
+            })
+            .OrderByDescending(k => k.Letzter ?? k.ErstelltUtc).ThenBy(k => k.Name)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1)
+            .ToListAsync(ct);
+        var mehr = kunden.Count > anzahl;
+        if (mehr) kunden.RemoveAt(kunden.Count - 1);
         var ids = kunden.Select(k => k.Id).ToList();
         var stat = await VerkaeufeVon(db, salonId).Where(v => ids.Contains(v.KundeId!.Value))
             .GroupBy(v => v.KundeId!.Value)
@@ -164,13 +183,12 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
                 Umsatz = g.Sum(v => v.GesamtSumme),
                 Letzter = g.Where(v => v.StornoVonVerkaufId == null).Max(v => (DateTime?)v.ZeitUtc)
             }).ToDictionaryAsync(x => x.Id, ct);
-        return kunden.Select(k =>
+        var zeilen = kunden.Select(k =>
             {
                 var st = stat.GetValueOrDefault(k.Id);
                 return new Zeile(k.Id, k.Name, k.Telefon, st?.Besuche ?? 0, st?.Umsatz ?? 0, st?.Letzter, k.ErstelltUtc, k.HatNotiz);
-            })
-            .OrderByDescending(z => z.LetzterBesuchUtc ?? z.ErstelltUtc).ThenBy(z => z.Name)
-            .Take(300).ToList();
+            }).ToList();
+        return (zeilen, mehr);
     }
 
     public async Task<Detail> GetDetailAsync(Guid user, Guid kundeId, CancellationToken ct = default)
@@ -178,18 +196,22 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.AsNoTracking().FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
         await PruefeZugangAsync(db, user, k.SalonId, true, ct);
-        var verkaeufe = await db.Verkaeufe.AsNoTracking().Include(v => v.Positionen)
-            .Where(v => v.SalonId == k.SalonId && v.KundeId == k.Id).OrderByDescending(v => v.ZeitUtc).ToListAsync(ct);
-        var echte = verkaeufe.Where(v => v.StornoVonVerkaufId == null).ToList();
-        var umsatz = verkaeufe.Sum(v => v.GesamtSumme);
-        var lieblinge = verkaeufe.SelectMany(v => v.Positionen)
-            .GroupBy(p => p.LeistungName).Select(g => (Leistung: g.Key, Menge: g.Sum(p => p.Menge)))
-            .Where(x => x.Menge > 0).OrderByDescending(x => x.Menge).Take(3).ToList();
-        var letzte = verkaeufe.Take(10).Select(v => new Besuch(v.Id, v.ZeitUtc, v.GesamtSumme,
+        // Kennzahlen und Lieblinge per Datenbank-Aggregat; geladen werden nur die letzten 10 Käufe mit Positionen.
+        var alle = db.Verkaeufe.AsNoTracking().Where(v => v.SalonId == k.SalonId && v.KundeId == k.Id);
+        var echteAnzahl = await alle.CountAsync(v => v.StornoVonVerkaufId == null, ct);
+        var umsatz = await alle.SumAsync(v => (decimal?)v.GesamtSumme, ct) ?? 0m;
+        var ersterKauf = await alle.Where(v => v.StornoVonVerkaufId == null).MinAsync(v => (DateTime?)v.ZeitUtc, ct);
+        var letzterKauf = await alle.Where(v => v.StornoVonVerkaufId == null).MaxAsync(v => (DateTime?)v.ZeitUtc, ct);
+        var lieblingeRoh = await alle.SelectMany(v => v.Positionen)
+            .GroupBy(p => p.LeistungName).Select(g => new { Leistung = g.Key, Menge = g.Sum(p => p.Menge) })
+            .Where(x => x.Menge > 0).OrderByDescending(x => x.Menge).Take(3).ToListAsync(ct);
+        var lieblinge = lieblingeRoh.Select(x => (Leistung: x.Leistung, Menge: x.Menge)).ToList();
+        var letzteVerkaeufe = await alle.Include(v => v.Positionen).OrderByDescending(v => v.ZeitUtc).Take(10).ToListAsync(ct);
+        var letzte = letzteVerkaeufe.Select(v => new Besuch(v.Id, v.ZeitUtc, v.GesamtSumme,
             string.Join(", ", v.Positionen.Select(p => (Math.Abs(p.Menge) == 1 ? "" : $"{Math.Abs(p.Menge)}× ") + p.LeistungName)),
             v.StornoVonVerkaufId != null)).ToList();
-        return new Detail(k.Id, k.Name, k.Telefon, k.Notiz, k.ErstelltUtc, echte.Count, umsatz,
-            echte.Count == 0 ? 0 : Math.Round(umsatz / echte.Count, 0), echte.LastOrDefault()?.ZeitUtc, echte.FirstOrDefault()?.ZeitUtc,
+        return new Detail(k.Id, k.Name, k.Telefon, k.Notiz, k.ErstelltUtc, echteAnzahl, umsatz,
+            echteAnzahl == 0 ? 0 : Math.Round(umsatz / echteAnzahl, 0), ersterKauf, letzterKauf,
             lieblinge, letzte);
     }
 

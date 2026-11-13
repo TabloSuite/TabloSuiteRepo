@@ -19,12 +19,11 @@
     }
     else
     {
-        var monatsAnfang = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         <div class="ad-kpis">
             <div class="ad-kpi"><span>À confirmer</span><strong class="@(gemeldete.Count > 0 ? "warn" : "")">@gemeldete.Count</strong></div>
-            <div class="ad-kpi"><span>À payer</span><strong>@alle.Where(a => a.ZahlungStatus == AboZahlungStatus.Offen).Sum(a => a.PreisSnapshot).ToString("N0") F</strong></div>
-            <div class="ad-kpi"><span>Encaissé ce mois</span><strong>@alle.Where(a => a.ZahlungStatus == AboZahlungStatus.Bestaetigt && a.ZahlungBestaetigtUtc >= monatsAnfang).Sum(a => a.PreisSnapshot).ToString("N0") F</strong></div>
-            <div class="ad-kpi"><span>Factures</span><strong>@alle.Count</strong></div>
+            <div class="ad-kpi"><span>À payer</span><strong>@kennzahlen.ZuZahlen.ToString("N0") F</strong></div>
+            <div class="ad-kpi"><span>Encaissé ce mois</span><strong>@kennzahlen.EingenommenDiesenMonat.ToString("N0") F</strong></div>
+            <div class="ad-kpi"><span>Factures</span><strong>@kennzahlen.Rechnungen</strong></div>
         </div>
         @if (gemeldete.Count > 0)
         {
@@ -60,15 +59,15 @@
 
 
         <h2 class="enote-section-title">Abonnements récents</h2>
-        @if (alle.Count == 0)
+        @if (kennzahlen.Rechnungen == 0)
         {
             <p class="enote-empty">Aucun abonnement pour le moment.</p>
         }
         else
         {
             <div class="enote-filter-leiste">
-                <input class="enote-filter-suche" placeholder="Rechercher un établissement…" @bind="aboSuche" @bind:event="oninput" />
-                <EnoteSelect TValue="string" @bind-Value="aboStatusFilter" Options="aboStatusOptionen" />
+                <input class="enote-filter-suche" placeholder="Rechercher un établissement…" @bind="aboSuche" @bind:event="oninput" @bind:after="SucheVerzoegertAsync" />
+                <EnoteSelect TValue="string" @bind-Value="aboStatusFilter" @bind-Value:after="LadeAbosAsync" Options="aboStatusOptionen" />
             </div>
             @if (!GefilterteAbos().Any())
             {
@@ -90,6 +89,10 @@
                         }
                     </tbody>
                 </table></div>
+                @if (alleMehr)
+                {
+                    <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrAbosAsync">Afficher plus</AsyncActionButton>
+                }
             </div>
         }
     }

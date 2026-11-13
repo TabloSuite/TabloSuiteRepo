@@ -24,14 +24,14 @@
     </div>
 
     <div class="enote-filter-leiste">
-        <input class="enote-filter-suche" placeholder="Rechercher (message, chemin)…" @bind="logSuche" @bind:event="oninput" />
+        <input class="enote-filter-suche" placeholder="Rechercher (message, chemin)…" @bind="logSuche" @bind:event="oninput" @bind:after="SucheVerzoegertAsync" />
     </div>
 
     @if (isLoading)
     {
         <p>Chargement…</p>
     }
-    else if (logs.Count == 0)
+    else if (logs.Count == 0 && string.IsNullOrWhiteSpace(logSuche))
     {
         <p class="enote-empty">Aucune erreur journalisée. Tout va bien.</p>
     }
@@ -41,7 +41,7 @@
     }
     else
     {
-        <div class="enote-log-list">
+        <div class="enote-log-list enote-liste-scroll">
             @foreach (var log in GefilterteLogs())
             {
                 <div class="enote-log-item @(log.IstBehandelt ? "behandelt" : "")">
@@ -67,6 +67,10 @@
                         <AsyncActionButton CssClass="enote-btn-ghost enote-danger" Text="Supprimer" BusyText="Suppression…" OnClick="() => LoescheAsync(log.Id)" />
                     </div>
                 </div>
+            }
+            @if (mehr)
+            {
+                <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrLadenAsync">Afficher plus</AsyncActionButton>
             }
         </div>
     }

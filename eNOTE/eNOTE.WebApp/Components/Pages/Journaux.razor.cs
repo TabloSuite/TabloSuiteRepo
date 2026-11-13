@@ -16,17 +16,25 @@ public partial class Journaux(ExceptionLogService logService, ToastService toast
     // Suche
     private string logSuche = string.Empty;
 
-    private IEnumerable<ExceptionLog> GefilterteLogs()
-    {
-        if (string.IsNullOrWhiteSpace(logSuche))
-        {
-            return logs;
-        }
+    // Suche läuft in der Datenbank (alle Einträge, nicht nur die geladenen); geladen wird seitenweise.
+    private IEnumerable<ExceptionLog> GefilterteLogs() => logs;
+    private bool mehr;
+    private CancellationTokenSource? suchVerzoegerung;
 
-        var s = logSuche.Trim();
-        return logs.Where(l =>
-            l.Nachricht.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || (l.Pfad?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+    private async Task SucheVerzoegertAsync()
+    {
+        suchVerzoegerung?.Cancel();
+        var cts = suchVerzoegerung = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await LadeAsync();
+    }
+
+    private async Task MehrLadenAsync()
+    {
+        var (neu, weitere) = await logService.SucheLogsAsync(vonDatum, bisDatum?.AddDays(1).AddTicks(-1), nurUnbehandelt, logSuche, logs.Count);
+        logs.AddRange(neu);
+        mehr = weitere;
     }
 
     protected override async Task OnInitializedAsync()
@@ -38,11 +46,12 @@ public partial class Journaux(ExceptionLogService logService, ToastService toast
     private async Task LadeAsync()
     {
         isLoading = true;
-        logs = await logService.GetLogsAsync(
+        (logs, mehr) = await logService.SucheLogsAsync(
             vonDatum,
             bisDatum?.AddDays(1).AddTicks(-1),
-            salonId: null,
-            nurUnbehandelt: nurUnbehandelt);
+            nurUnbehandelt,
+            logSuche,
+            0);
         isLoading = false;
     }
 

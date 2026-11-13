@@ -85,6 +85,12 @@ public class AdminService(
             .Take(limit)
             .ToListAsync(cancellationToken);
 
+        return await AnreichernAsync(db, salons, cancellationToken);
+    }
+
+    /// <summary>Ergänzt Läden um Teamgröße, Umsatz, Besitzer und Responsable – nur für die übergebene (kleine) Seite.</summary>
+    private static async Task<List<SalonUebersicht>> AnreichernAsync(ApplicationDbContext db, List<Salon> salons, CancellationToken cancellationToken)
+    {
         var ids = salons.Select(s => s.Id).ToList();
         var mitglieder = await db.UserSalons.AsNoTracking()
             .Where(us => ids.Contains(us.SalonId))
@@ -131,6 +137,60 @@ public class AdminService(
             besitzerInfos.FirstOrDefault(x => x.Key == s.Id)?.Name,
             besitzerInfos.FirstOrDefault(x => x.Key == s.Id)?.Email,
             poNamen.FirstOrDefault(x => x.Key == s.Id)?.Name)).ToList();
+    }
+
+    public sealed record SalonKennzahlen(int Gesamt, int Wartend, int Probe, int Zahlend, int Deaktiviert);
+
+    /// <summary>Für SuperAdmin alle Läden, für Responsables nur aktiv zugewiesene.</summary>
+    private static IQueryable<Salon> SichtbareSalons(ApplicationDbContext db, Guid userId, bool istSuperAdmin)
+        => istSuperAdmin
+            ? db.Salons.AsNoTracking()
+            : db.Salons.AsNoTracking().Where(s => db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == userId && p.SalonId == s.Id && p.GueltigBisUtc == null));
+
+    /// <summary>Kennzahlen über ALLE sichtbaren Läden (per Datenbank gezählt, nicht nur die angezeigte Seite).</summary>
+    public async Task<SalonKennzahlen> GetSalonKennzahlenAsync(Guid userId, bool istSuperAdmin, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var basis = SichtbareSalons(db, userId, istSuperAdmin);
+        var jetzt = DateTime.UtcNow;
+        return new SalonKennzahlen(
+            await basis.CountAsync(cancellationToken),
+            await basis.CountAsync(s => !s.IstFreigegeben && s.IstAktiv, cancellationToken),
+            await basis.CountAsync(s => s.IstAktiv && s.ProbeBisUtc != null && s.ProbeBisUtc > jetzt, cancellationToken),
+            await basis.CountAsync(s => s.IstAktiv && (s.ProbeBisUtc == null || s.ProbeBisUtc <= jetzt), cancellationToken),
+            await basis.CountAsync(s => !s.IstAktiv, cancellationToken));
+    }
+
+    /// <summary>
+    /// Läden seitenweise mit Suche (Name, Ort, Besitzer: Name oder E-Mail), Status ("validé"/"attente") und Land –
+    /// alles in der Datenbank, damit auch bei tausenden Läden nur die angezeigte Seite geladen wird.
+    /// </summary>
+    public async Task<(List<SalonUebersicht> Eintraege, bool Mehr)> SucheSalonsAsync(
+        Guid userId, bool istSuperAdmin, string? suche, string? status, string? land, int ueberspringen, int anzahl = 50,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var abfrage = SichtbareSalons(db, userId, istSuperAdmin);
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var q = suche.Trim();
+            abfrage = abfrage.Where(x => x.Name.Contains(q) || (x.Standort != null && x.Standort.Contains(q))
+                || db.UserSalons.Any(us => us.SalonId == x.Id && ((us.AppUser.FullName != null && us.AppUser.FullName.Contains(q))
+                    || (us.AppUser.Email != null && us.AppUser.Email.Contains(q)))));
+        }
+        abfrage = status switch
+        {
+            "validé" => abfrage.Where(x => x.IstFreigegeben),
+            "attente" => abfrage.Where(x => !x.IstFreigegeben && x.IstAktiv),
+            _ => abfrage
+        };
+        if (!string.IsNullOrWhiteSpace(land)) abfrage = abfrage.Where(x => x.Land == land);
+
+        var salons = await abfrage.OrderByDescending(x => x.CreatedAtUtc)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1).ToListAsync(cancellationToken);
+        var mehr = salons.Count > anzahl;
+        if (mehr) salons.RemoveAt(salons.Count - 1);
+        return (await AnreichernAsync(db, salons, cancellationToken), mehr);
     }
 
     /// <summary>So viele Tage ab heute darf ein Responsable eine laufende Probezeit höchstens verlängern.</summary>

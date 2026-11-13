@@ -45,17 +45,16 @@
         @if (aktiverTab == "etablissements")
         {
             <div class="ad-kpis">
-                <div class="ad-kpi"><span>Établissements</span><strong>@salons.Count</strong></div>
-                <div class="ad-kpi"><span>En attente</span><strong class="@(ausstehende.Count > 0 ? "warn" : "")">@ausstehende.Count</strong></div>
-                <div class="ad-kpi"><span>En essai</span><strong>@salons.Count(x => x.IstAktiv && x.HatProbezeit)</strong></div>
-                <div class="ad-kpi"><span>Payants</span><strong>@salons.Count(x => x.IstAktiv && !x.HatProbezeit)</strong></div>
-                <div class="ad-kpi"><span>Désactivés</span><strong>@salons.Count(x => !x.IstAktiv)</strong></div>
+                <div class="ad-kpi"><span>Établissements</span><strong>@kennzahlen.Gesamt</strong></div>
+                <div class="ad-kpi"><span>En attente</span><strong class="@(kennzahlen.Wartend > 0 ? "warn" : "")">@kennzahlen.Wartend</strong></div>
+                <div class="ad-kpi"><span>En essai</span><strong>@kennzahlen.Probe</strong></div>
+                <div class="ad-kpi"><span>Payants</span><strong>@kennzahlen.Zahlend</strong></div>
+                <div class="ad-kpi"><span>Désactivés</span><strong>@kennzahlen.Deaktiviert</strong></div>
             </div>
             <div class="enote-filter-leiste">
-                <input class="enote-filter-suche" placeholder="Rechercher (nom, ville)…" @bind="salonSuche" @bind:event="oninput" />
-                <EnoteSelect TValue="string" @bind-Value="salonStatusFilter" Options="statusFilterOptionen" />
-                <EnoteSelect TValue="string" @bind-Value="salonLandFilter" Options="landFilterOptionen" MitSuche="true" Placeholder="Pays (tous)" />
-                <EnoteSelect TValue="string" @bind-Value="salonBesitzerFilter" Options="besitzerFilterOptionen" MitSuche="true" Placeholder="Propriétaire (tous)" />
+                <input class="enote-filter-suche" placeholder="Rechercher (nom, ville, propriétaire, e-mail)…" @bind="salonSuche" @bind:event="oninput" @bind:after="SucheSalonsVerzoegertAsync" />
+                <EnoteSelect TValue="string" @bind-Value="salonStatusFilter" @bind-Value:after="LadeSalonsAsync" Options="statusFilterOptionen" />
+                <EnoteSelect TValue="string" @bind-Value="salonLandFilter" @bind-Value:after="LadeSalonsAsync" Options="landFilterOptionen" MitSuche="true" Placeholder="Pays (tous)" />
             </div>
 
             @if (ausstehende.Count > 0)
@@ -91,14 +90,14 @@
             }
 
             var gefiltert = GefilterteSalons().ToList();
-            <h2 class="enote-section-title">Tous les établissements <small class="enote-muted">(@gefiltert.Count / @salons.Count)</small></h2>
+            <h2 class="enote-section-title">Tous les établissements <small class="enote-muted">(@kennzahlen.Gesamt)</small></h2>
             @if (gefiltert.Count == 0)
             {
-                <p class="enote-empty" role="status">@(salons.Count == 0 ? "Aucun établissement pour le moment." : "Aucun établissement ne correspond à votre recherche ou aux filtres sélectionnés.")</p>
+                <p class="enote-empty" role="status">@(kennzahlen.Gesamt == 0 ? "Aucun établissement pour le moment." : "Aucun établissement ne correspond à votre recherche ou aux filtres sélectionnés.")</p>
             }
             else
             {
-                <div class="ad-liste">
+                <div class="ad-liste enote-liste-scroll">
                     <div class="ad-kopfzeile" aria-hidden="true">
                         <span>Établissement</span><span>Propriétaire</span><span>Pays · équipe</span><span class="r">Ventes totales</span><span></span>
                     </div>
@@ -152,6 +151,10 @@
                             </div>
                         </div>
                     }
+                    @if (salonsMehr)
+                    {
+                        <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrSalonsAsync">Afficher plus</AsyncActionButton>
+                    }
                 </div>
             }
         }
@@ -200,7 +203,7 @@
                                     <div class="enote-po-salons-items">
                                         @foreach (var z in GefilterteVerwalteteLaeden())
                                         {
-                                            var salon = salons.FirstOrDefault(s => s.SalonId == z.SalonId);
+                                            var salon = poSalons.FirstOrDefault(s => s.SalonId == z.SalonId) ?? salons.FirstOrDefault(s => s.SalonId == z.SalonId);
                                             <div class="enote-po-salon-item">
                                                 <div class="enote-po-salon-info">
                                                     <span class="enote-po-salon-name">@z.SalonName</span>
@@ -224,16 +227,16 @@
                                 <h3>établissements de @ausgewaehlterPoName</h3>
                                 <p class="enote-muted">Cochez les établissements qu'il gére. Par défaut il voit le chiffre d'affaires de l'établissement.</p>
                                 <div class="enote-filter-row">
-                                    <input class="enote-filter-suche" placeholder="Rechercher (nom, ville)…" @bind="verfuegbareLaedenSuche" @bind:event="oninput" />
+                                    <input class="enote-filter-suche" placeholder="Rechercher (nom, ville, propriétaire)…" @bind="verfuegbareLaedenSuche" @bind:event="oninput" @bind:after="SuchePoSalonsVerzoegertAsync" />
                                     <div class="enote-filter-chips">
-                                        <button class="enote-chip @(verfuegbareLaedenFilter == "alle" ? "enote-chip-aktiv" : "")" @onclick='() => verfuegbareLaedenFilter = "alle"'>Tous (@salons.Count)</button>
+                                        <button class="enote-chip @(verfuegbareLaedenFilter == "alle" ? "enote-chip-aktiv" : "")" @onclick='() => verfuegbareLaedenFilter = "alle"'>Tous (@kennzahlen.Gesamt)</button>
                                         <button class="enote-chip @(verfuegbareLaedenFilter == "gérés" ? "enote-chip-aktiv" : "")" @onclick='() => verfuegbareLaedenFilter = "gérés"'>Gérés (@zuweisungen.Count)</button>
-                                        <button class="enote-chip @(verfuegbareLaedenFilter == "non gérés" ? "enote-chip-aktiv" : "")" @onclick='() => verfuegbareLaedenFilter = "non gérés"'>Non gérés (@(salons.Count - zuweisungen.Count))</button>
+                                        <button class="enote-chip @(verfuegbareLaedenFilter == "non gérés" ? "enote-chip-aktiv" : "")" @onclick='() => verfuegbareLaedenFilter = "non gérés"'>Non gérés (@(Math.Max(0, kennzahlen.Gesamt - zuweisungen.Count)))</button>
                                     </div>
                                 </div>
-                                @if (salons.Count == 0)
+                                @if (poSalons.Count == 0)
                                 {
-                                    <p class="enote-empty" role="status">Aucun établissement disponible pour une affectation.</p>
+                                    <p class="enote-empty" role="status">@(string.IsNullOrWhiteSpace(verfuegbareLaedenSuche) ? "Aucun établissement disponible pour une affectation." : "Aucun établissement ne correspond à la recherche.")</p>
                                 }
                                 @foreach (var s in GefilterteVerfuegbareLaeden())
                                 {
@@ -249,6 +252,10 @@
                                             </div>
                                         }
                                     </div>
+                                }
+                                @if (poSalonsMehr)
+                                {
+                                    <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrPoSalonsAsync">Afficher plus</AsyncActionButton>
                                 }
                             </div>
                         }

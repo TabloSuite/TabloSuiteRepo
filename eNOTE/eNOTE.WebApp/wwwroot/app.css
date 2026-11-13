@@ -3266,3 +3266,10 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .em-zeile.offen { background: var(--enote-surface-2); }
 .em-inhalt { width: 100%; height: 26rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: #fff; margin: 0 0 .5rem; }
 .em-mehr { justify-self: center; margin: .4rem 0; }
+
+/* ============================================================ Einheitlich für wachsende Listen
+   Scrollbereich ab einer gewissen Länge + « Afficher plus » (Daten werden seitenweise geladen) */
+.enote-liste-scroll { max-height: min(65vh, 40rem); overflow-y: auto; overscroll-behavior: contain; }
+.enote-mehr { display: block; margin: .6rem auto; }
+.enote-suchleiste { display: flex; align-items: center; gap: .5rem; padding: .55rem .8rem; margin: 0 0 .7rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius); background: var(--enote-surface); color: var(--enote-text-muted); }
+.enote-suchleiste input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--enote-text); font: inherit; }

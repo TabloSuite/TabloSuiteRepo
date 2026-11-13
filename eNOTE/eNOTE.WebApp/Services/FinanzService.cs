@@ -169,18 +169,39 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
 
     /// <summary>Die letzten Verkäufe eines Salons (für die Live-Ansicht des Besitzers).</summary>
     public async Task<List<VerkaufEintrag>> GetLetzteVerkaeufeAsync(Guid salonId, int anzahl = 25, CancellationToken cancellationToken = default)
+        => (await SucheVerkaeufeAsync(salonId, null, null, null, null, 0, anzahl, cancellationToken)).Eintraege;
+
+    /// <summary>
+    /// Verkäufe seitenweise: optional im Zeitraum, mit Suche (Artikel oder Kassierer) und Zahlungsart-Filter –
+    /// alles in der Datenbank, damit auch nach Jahren nur die angezeigte Seite geladen wird.
+    /// </summary>
+    public async Task<(List<VerkaufEintrag> Eintraege, bool Mehr)> SucheVerkaeufeAsync(
+        Guid salonId, DateTime? vonUtc, DateTime? bisUtc, string? suche, ZahlungsArt? zahlungsArt,
+        int ueberspringen, int anzahl = 50, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var verkaeufe = await db.Verkaeufe
-            .AsNoTracking()
+        var abfrage = db.Verkaeufe.AsNoTracking().Where(v => v.SalonId == salonId);
+        if (vonUtc is not null) abfrage = abfrage.Where(v => v.ZeitUtc >= vonUtc);
+        if (bisUtc is not null) abfrage = abfrage.Where(v => v.ZeitUtc <= bisUtc);
+        if (zahlungsArt is { } art) abfrage = abfrage.Where(v => v.Zahlungen.Any(z => z.Art == art));
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            abfrage = abfrage.Where(v => v.Positionen.Any(p => p.LeistungName.Contains(s))
+                || (v.KassenSitzung.Kassierer.FullName != null && v.KassenSitzung.Kassierer.FullName.Contains(s)));
+        }
+
+        var verkaeufe = await abfrage
             .Include(v => v.Positionen)
             .Include(v => v.Zahlungen)
             .Include(v => v.KassenSitzung).ThenInclude(k => k.Kassierer)
-            .Where(v => v.SalonId == salonId)
             .OrderByDescending(v => v.ZeitUtc)
-            .Take(anzahl)
+            .Skip(Math.Max(0, ueberspringen))
+            .Take(anzahl + 1)
             .ToListAsync(cancellationToken);
+        var mehr = verkaeufe.Count > anzahl;
+        if (mehr) verkaeufe.RemoveAt(verkaeufe.Count - 1);
 
         var ids = verkaeufe.Select(v => v.Id).ToList();
         var erstattet = await db.Verkaeufe.AsNoTracking()
@@ -189,7 +210,7 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             .Select(g => new { g.Key, Summe = g.Sum(v => v.GesamtSumme) })
             .ToDictionaryAsync(x => x.Key, x => -x.Summe, cancellationToken);
 
-        return verkaeufe.Select(v => new VerkaufEintrag(
+        return (verkaeufe.Select(v => new VerkaufEintrag(
             v.Id,
             v.ZeitUtc,
             v.KassenSitzung.Kassierer.FullName,
@@ -199,7 +220,7 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             KassenRechner.Anteile(v),
             v.IstStorno,
             v.StornoGrund,
-            erstattet.GetValueOrDefault(v.Id))).ToList();
+            erstattet.GetValueOrDefault(v.Id))).ToList(), mehr);
     }
 
     /// <summary>Die letzten Kassenabschlüsse eines Salons.</summary>

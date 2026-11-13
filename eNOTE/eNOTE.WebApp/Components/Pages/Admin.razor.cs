@@ -64,14 +64,8 @@ public partial class Admin(
 
     private IEnumerable<AdminService.SalonUebersicht> GefilterteVerfuegbareLaeden()
     {
-        IEnumerable<AdminService.SalonUebersicht> q = salons;
-
-        if (!string.IsNullOrWhiteSpace(verfuegbareLaedenSuche))
-        {
-            var s = verfuegbareLaedenSuche.Trim();
-            q = q.Where(x => x.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
-                || (x.Standort?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
-        }
+        // Suche läuft in der Datenbank (poSalons), die Chips filtern die geladene Seite.
+        IEnumerable<AdminService.SalonUebersicht> q = poSalons;
 
         q = verfuegbareLaedenFilter switch
         {
@@ -102,8 +96,45 @@ public partial class Admin(
     private DateTime? probeBisDatum;
     private string ProbeDialogTitel => "Essai gratuit – " + probeSalonName;
 
-    private List<AdminService.SalonUebersicht> ausstehende =>
-        salons.Where(s => !s.IstFreigegeben && s.IstAktiv).ToList();
+    // Seitenweise geladen (nie alle Läden), Kennzahlen per Datenbank über alle Läden.
+    private List<AdminService.SalonUebersicht> ausstehende = [];
+    private AdminService.SalonKennzahlen kennzahlen = new(0, 0, 0, 0, 0);
+    private bool salonsMehr;
+    private List<AdminService.SalonUebersicht> poSalons = [];
+    private bool poSalonsMehr;
+    private CancellationTokenSource? suchVerzoegerung;
+
+    private async Task VerzoegertAsync(Func<Task> aktion)
+    {
+        suchVerzoegerung?.Cancel();
+        var cts = suchVerzoegerung = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await aktion();
+    }
+
+    private Task SucheSalonsVerzoegertAsync() => VerzoegertAsync(LadeSalonsAsync);
+    private Task SuchePoSalonsVerzoegertAsync() => VerzoegertAsync(LadePoSalonsAsync);
+
+    private async Task LadeSalonsAsync()
+        => (salons, salonsMehr) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, salonSuche, salonStatusFilter, salonLandFilter, 0);
+
+    private async Task MehrSalonsAsync()
+    {
+        var (neu, mehr) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, salonSuche, salonStatusFilter, salonLandFilter, salons.Count);
+        salons.AddRange(neu);
+        salonsMehr = mehr;
+    }
+
+    private async Task LadePoSalonsAsync()
+        => (poSalons, poSalonsMehr) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, verfuegbareLaedenSuche, null, null, 0);
+
+    private async Task MehrPoSalonsAsync()
+    {
+        var (neu, mehr) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, verfuegbareLaedenSuche, null, null, poSalons.Count);
+        poSalons.AddRange(neu);
+        poSalonsMehr = mehr;
+    }
 
     // Tabs
     private string aktiverTab = "etablissements";
@@ -112,47 +143,11 @@ public partial class Admin(
     private string salonSuche = string.Empty;
     private string salonStatusFilter = "alle"; // alle | validé | attente
     private string? salonLandFilter;
-    private string? salonBesitzerFilter;
 
-    private IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> besitzerFilterOptionen =>
-        salons.Where(s => !string.IsNullOrWhiteSpace(s.BesitzerName))
-            .Select(s => s.BesitzerName!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(n => n)
-            .Select(n => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = n, Label = n })
-            .ToList();
 
-    private IEnumerable<AdminService.SalonUebersicht> GefilterteSalons()
-    {
-        IEnumerable<AdminService.SalonUebersicht> q = salons;
+    // Suche, Status und Land laufen in der Datenbank (SucheSalonsAsync).
+    private IEnumerable<AdminService.SalonUebersicht> GefilterteSalons() => salons;
 
-        if (!string.IsNullOrWhiteSpace(salonSuche))
-        {
-            var s = salonSuche.Trim();
-            q = q.Where(x =>
-                x.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
-                || (x.Standort?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
-        }
-
-        q = salonStatusFilter switch
-        {
-            "validé" => q.Where(x => x.IstFreigegeben),
-            "attente" => q.Where(x => !x.IstFreigegeben && x.IstAktiv),
-            _ => q
-        };
-
-        if (!string.IsNullOrWhiteSpace(salonLandFilter))
-        {
-            q = q.Where(x => string.Equals(x.Land, salonLandFilter, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (!string.IsNullOrWhiteSpace(salonBesitzerFilter))
-        {
-            q = q.Where(x => string.Equals(x.BesitzerName, salonBesitzerFilter, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return q;
-    }
 
     private void WechsleTab(string tab) => aktiverTab = tab;
 
@@ -208,7 +203,9 @@ public partial class Admin(
     private async Task LadeAsync()
     {
         isLoading = true;
-        salons = await adminService.GetSalonUebersichtFuerAsync(aktuellerBenutzerId, istSuperAdmin);
+        kennzahlen = await adminService.GetSalonKennzahlenAsync(aktuellerBenutzerId, istSuperAdmin);
+        await LadeSalonsAsync();
+        (ausstehende, _) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, null, "attente", null, 0);
         plattformPreise = await adminService.GetPlattformPreiseAsync();
         globalerMonatsPreis = await adminService.GetGlobalenMonatsPreisAsync();
         if (istSuperAdmin)
@@ -364,6 +361,7 @@ public partial class Admin(
         ausgewaehlterPoId = poId;
         ausgewaehlterPoName = name;
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);
+        await LadePoSalonsAsync();
     }
 
     private async Task ToggleZuweisungAsync(Guid salonId, bool zugewiesen)

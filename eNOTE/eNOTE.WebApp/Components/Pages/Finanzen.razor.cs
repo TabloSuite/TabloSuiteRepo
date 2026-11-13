@@ -57,27 +57,48 @@ public partial class Finanzen(
         new() { Value = "mobile", Label = "Mobile Money" }
     ];
 
-    private IEnumerable<FinanzService.VerkaufEintrag> GefilterteVerkaeufe()
+    // Suche, Zahlungsart und Zeitraum laufen in der Datenbank; geladen wird seitenweise (« Afficher plus »).
+    private IEnumerable<FinanzService.VerkaufEintrag> GefilterteVerkaeufe() => letzteVerkaeufe;
+    private bool verkaeufeMehr;
+    private CancellationTokenSource? verkaufSuchVerzoegerung;
+
+    private Core.DataModels.Kasse.ZahlungsArt? GewaehlteZahlungsArt => zahlungsArtFilter switch
     {
-        IEnumerable<FinanzService.VerkaufEintrag> q = letzteVerkaeufe;
+        "bar" => Core.DataModels.Kasse.ZahlungsArt.Bar,
+        "karte" => Core.DataModels.Kasse.ZahlungsArt.Karte,
+        "mobile" => Core.DataModels.Kasse.ZahlungsArt.MobileMoney,
+        _ => null
+    };
 
-        if (!string.IsNullOrWhiteSpace(verkaufsSuche))
-        {
-            var s = verkaufsSuche.Trim();
-            q = q.Where(v =>
-                v.PositionenText.Contains(s, StringComparison.OrdinalIgnoreCase)
-                || v.KassiererName.Contains(s, StringComparison.OrdinalIgnoreCase));
-        }
+    /// <summary>Zeitraum der Verkaufsliste: der gewählte Filter, sonst ohne Grenze (neueste zuerst).</summary>
+    private (DateTime? Von, DateTime? Bis) VerkaufsZeitraum()
+    {
+        if (!filterAktiv) return (null, null);
+        var (vonUtc, bisEnde) = ENote.Core.Services.Zeitzonen.TageInUtc(filterVon ?? Heute, filterBis ?? Heute, Zone);
+        return (vonUtc, bisEnde);
+    }
 
-        q = zahlungsArtFilter switch
-        {
-            "bar" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.Bar)),
-            "karte" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.Karte)),
-            "mobile" => q.Where(v => v.Zahlungen.Any(z => z.Art == Core.DataModels.Kasse.ZahlungsArt.MobileMoney)),
-            _ => q
-        };
+    private async Task LadeVerkaeufeAsync()
+    {
+        var (von, bis) = VerkaufsZeitraum();
+        (letzteVerkaeufe, verkaeufeMehr) = await finanzService.SucheVerkaeufeAsync(salonId, von, bis, verkaufsSuche, GewaehlteZahlungsArt, 0);
+    }
 
-        return q;
+    private async Task MehrVerkaeufeAsync()
+    {
+        var (von, bis) = VerkaufsZeitraum();
+        var (neu, mehr) = await finanzService.SucheVerkaeufeAsync(salonId, von, bis, verkaufsSuche, GewaehlteZahlungsArt, letzteVerkaeufe.Count);
+        letzteVerkaeufe.AddRange(neu);
+        verkaeufeMehr = mehr;
+    }
+
+    private async Task SucheVerkaeufeVerzoegertAsync()
+    {
+        verkaufSuchVerzoegerung?.Cancel();
+        var cts = verkaufSuchVerzoegerung = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await LadeVerkaeufeAsync();
     }
 
     private string ZeitraumTitel => filterAktiv
@@ -153,7 +174,7 @@ public partial class Finanzen(
     {
         isLoading = true;
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeAsync(salonId, versatz: Versatz);
-        letzteVerkaeufe = await finanzService.GetLetzteVerkaeufeAsync(salonId);
+        await LadeVerkaeufeAsync();
         abschluesse = await finanzService.GetAbschluesseAsync(salonId);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
         bewegungen = await bestandsService.GetBewegungenAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
@@ -206,6 +227,7 @@ public partial class Finanzen(
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, vonUtc, bisEnde, versatz: Versatz);
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, vonUtc, bisEnde);
         bewegungen = await bestandsService.GetBewegungenAsync(salonId, vonUtc, bisEnde);
+        await LadeVerkaeufeAsync();
     }
 
     // --- Mouvements: Einlagen/Hilfen, Entnahmen, Warenabgänge ---

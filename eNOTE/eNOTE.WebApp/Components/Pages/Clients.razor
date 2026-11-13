@@ -56,7 +56,7 @@
         }
         else
         {
-            <div class="enote-card ku-liste">
+            <div class="enote-card ku-liste enote-liste-scroll">
                 @foreach (var k in liste)
                 {
                     <button type="button" class="ku-zeile" @onclick="() => OeffneDetailAsync(k.Id)">
@@ -70,6 +70,10 @@
                         <span class="ku-zahl ku-letzter"><strong>@Wann(k.LetzterBesuchUtc)</strong><small>dernier achat</small></span>
                         <Icon Name="chevron-right" Groesse="18" CssClass="ku-pfeil" />
                     </button>
+                }
+                @if (mehr)
+                {
+                    <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrLadenAsync">Afficher plus</AsyncActionButton>
                 }
             </div>
         }
@@ -203,7 +207,7 @@
         try
         {
             zahlen = await kunden.GetKennzahlenAsync(benutzer, salonId);
-            liste = await kunden.GetListeAsync(benutzer, salonId, suche);
+            (liste, mehr) = await kunden.SucheListeAsync(benutzer, salonId, suche, 0);
         }
         catch (UnauthorizedAccessException) { fehler = "Seul le propriétaire peut consulter la liste des clients."; }
     }
@@ -212,8 +216,18 @@
     {
         suche = e.Value?.ToString() ?? "";
         var meine = ++abfrage;
-        var ergebnis = await kunden.GetListeAsync(benutzer, salonId, suche);
-        if (meine == abfrage) liste = ergebnis;
+        var (ergebnis, weitere) = await kunden.SucheListeAsync(benutzer, salonId, suche, 0);
+        if (meine == abfrage) { liste = ergebnis; mehr = weitere; }
+    }
+
+    /// <summary>Nächste 50 Kunden nachladen (nie alle auf einmal).</summary>
+    private bool mehr;
+    private async Task MehrLadenAsync()
+    {
+        if (liste is null) return;
+        var (neu, weitere) = await kunden.SucheListeAsync(benutzer, salonId, suche, liste.Count);
+        liste.AddRange(neu);
+        mehr = weitere;
     }
 
     private static string Initialen(string n)

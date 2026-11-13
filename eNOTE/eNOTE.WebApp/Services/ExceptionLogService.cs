@@ -26,6 +26,29 @@ public class ExceptionLogService(IDbContextFactory<ApplicationDbContext> dbConte
         return await query.OrderByDescending(l => l.ZeitUtc).Take(anzahl).ToListAsync(cancellationToken);
     }
 
+    /// <summary>Protokoll seitenweise mit Suche in Nachricht/Pfad direkt in der Datenbank (nie alles auf einmal).</summary>
+    public async Task<(List<ExceptionLog> Eintraege, bool Mehr)> SucheLogsAsync(
+        DateTime? von, DateTime? bis, bool nurUnbehandelt, string? suche, int ueberspringen, int anzahl = 50,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var query = db.ExceptionLogs.AsNoTracking().AsQueryable();
+        if (von is not null) query = query.Where(l => l.ZeitUtc >= von);
+        if (bis is not null) query = query.Where(l => l.ZeitUtc <= bis);
+        if (nurUnbehandelt) query = query.Where(l => !l.IstBehandelt);
+        if (!string.IsNullOrWhiteSpace(suche))
+        {
+            var s = suche.Trim();
+            query = query.Where(l => (l.Nachricht != null && l.Nachricht.Contains(s)) || (l.Pfad != null && l.Pfad.Contains(s)));
+        }
+
+        var liste = await query.OrderByDescending(l => l.ZeitUtc)
+            .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1).ToListAsync(cancellationToken);
+        var mehr = liste.Count > anzahl;
+        if (mehr) liste.RemoveAt(liste.Count - 1);
+        return (liste, mehr);
+    }
+
     public async Task<bool> MarkiereBehandeltAsync(Guid id, bool behandelt, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);

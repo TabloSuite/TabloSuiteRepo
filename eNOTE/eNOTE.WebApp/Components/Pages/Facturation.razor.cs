@@ -34,22 +34,33 @@ public partial class Facturation(
         new() { Value = "Abgelehnt", Label = "Refusé" }
     ];
 
-    private IEnumerable<NutzungsAbo> GefilterteAbos()
+    // Suche und Status laufen in der Datenbank, geladen wird seitenweise; Kennzahlen über ALLE Abos.
+    private IEnumerable<NutzungsAbo> GefilterteAbos() => alle;
+    private bool alleMehr;
+    private AboService.FacturationKennzahlen kennzahlen = new(0, 0, 0);
+    private CancellationTokenSource? suchVerzoegerung;
+    private static DateTime MonatsAnfangUtc => new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    private AboZahlungStatus? GewaehlterStatus
+        => aboStatusFilter != "alle" && Enum.TryParse<AboZahlungStatus>(aboStatusFilter, out var status) ? status : null;
+
+    private async Task LadeAbosAsync()
+        => (alle, alleMehr) = await aboService.SucheAbosAsync(benutzerId, aboSuche, GewaehlterStatus, 0);
+
+    private async Task MehrAbosAsync()
     {
-        IEnumerable<NutzungsAbo> q = alle;
+        var (neu, mehr) = await aboService.SucheAbosAsync(benutzerId, aboSuche, GewaehlterStatus, alle.Count);
+        alle.AddRange(neu);
+        alleMehr = mehr;
+    }
 
-        if (!string.IsNullOrWhiteSpace(aboSuche))
-        {
-            var s = aboSuche.Trim();
-            q = q.Where(a => a.Salon.Name.Contains(s, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (aboStatusFilter != "alle" && Enum.TryParse<AboZahlungStatus>(aboStatusFilter, out var status))
-        {
-            q = q.Where(a => a.ZahlungStatus == status);
-        }
-
-        return q;
+    private async Task SucheVerzoegertAsync()
+    {
+        suchVerzoegerung?.Cancel();
+        var cts = suchVerzoegerung = new CancellationTokenSource();
+        try { await Task.Delay(350, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await LadeAbosAsync();
     }
 
     protected override async Task OnInitializedAsync()
@@ -67,7 +78,8 @@ public partial class Facturation(
         // Fällige Perioden aller Läden erzeugen, damit die Übersicht aktuell ist.
         await vertragsService.SynchronisiereAlleAsync();
         gemeldete = await aboService.GetGemeldeteZahlungenAsync(benutzerId);
-        alle = await aboService.GetAlleAbosAsync(benutzerId);
+        kennzahlen = await aboService.GetKennzahlenAsync(benutzerId, MonatsAnfangUtc);
+        await LadeAbosAsync();
         isLoading = false;
     }
 

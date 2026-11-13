@@ -180,14 +180,14 @@
         {
             <section class="fi-ventes">
                 <div class="enote-filter-leiste">
-                    <input class="enote-filter-suche" placeholder="Rechercher (article, employé)…" @bind="verkaufsSuche" @bind:event="oninput" />
-                    <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" Options="zahlungsArtOptionen" />
+                    <input class="enote-filter-suche" placeholder="Rechercher (article, employé)…" @bind="verkaufsSuche" @bind:event="oninput" @bind:after="SucheVerkaeufeVerzoegertAsync" />
+                    <EnoteSelect TValue="string" @bind-Value="zahlungsArtFilter" @bind-Value:after="LadeVerkaeufeAsync" Options="zahlungsArtOptionen" />
                 </div>
                 @if (!GefilterteVerkaeufe().Any())
                 {
                     <p class="enote-empty" role="status">Aucune vente ne correspond à votre recherche.</p>
                 }
-                <div class="enote-feed">
+                <div class="enote-feed enote-liste-scroll">
                     @foreach (var v in GefilterteVerkaeufe())
                     {
                         <div class="enote-feed-item fi-verkauf @(v.IstStorno ? "storno" : "")">
@@ -217,6 +217,10 @@
                             <a class="enote-btn enote-btn-sm" href="/bon/@v.VerkaufId" target="_blank"><Icon Name="receipt" Groesse="16" /> Reçu</a>
                         </div>
                     }
+                    @if (verkaeufeMehr)
+                    {
+                        <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrVerkaeufeAsync">Afficher plus</AsyncActionButton>
+                    }
                 </div>
             </section>
         }
@@ -229,7 +233,7 @@
                 }
                 else
                 {
-                    <div class="fi-bewegungen">
+                    <div class="fi-bewegungen enote-liste-scroll">
                         @foreach (var g in bewegungen.Geld)
                         {
                             var einlage = g.Art == ENote.Core.DataModels.Finanzen.GeldBewegungArt.Einlage;
