@@ -184,7 +184,8 @@
             }
 
             // Für alle angemeldeten Rollen: Erklärvideos (Inhalt je Rolle, siehe VideoKatalog)
-            gruppen.Add(new("Aide", [new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos")]));
+            gruppen.Add(new("Aide", [new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos"),
+                new("/contact", "Aide & contact", "help", Kurz: "Contact")]));
 
             return gruppen;
         }

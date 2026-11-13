@@ -22,7 +22,7 @@ public class EmailTemplatesTests
         Assert.Contains("APPRENDRE. PROGRESSER. RÉUSSIR.", html);
         Assert.Contains("CONTACT", html);
         Assert.Contains("contact@tablosuite.com", html);
-        Assert.Contains("+49 176 61221600", html);
+        Assert.DoesNotContain("+49", html); // keine private Telefonnummer in Mails
         Assert.Contains("Lomé, Togo", html);
         Assert.Contains($"{DateTime.UtcNow.Year}", html);
     }

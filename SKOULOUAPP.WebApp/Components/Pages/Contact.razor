@@ -6,6 +6,28 @@
 
 <div class="mx-auto grid w-full max-w-2xl gap-5">
 <SeitenKopf Rubrik="Contact" Titel="Écrivez-nous" IconName="mail" Untertitel="Une question, une remarque ou besoin d'aide ? Remplissez le formulaire et nous vous répondrons par e-mail." />
+@if (responsable is not null)
+{
+    <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-label="Votre responsable">
+        <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Votre responsable SKOULOU</p>
+        <p class="mt-2 text-lg font-bold text-slate-900">@responsable.Name</p>
+        <p class="text-sm text-slate-600">Il accompagne votre école : questions, formation, abonnement. Contactez-le en premier.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+            @if (responsable.TelefonLink is { } tel)
+            {
+                <a class="sk-btn sk-btn-primary" href="@tel"><Icon Name="phone" Groesse="16" /> Appeler · @responsable.Telefon</a>
+            }
+            @if (responsable.WhatsAppLink is { } wa)
+            {
+                <a class="sk-btn sk-btn-secondary" href="@wa" target="_blank" rel="noopener noreferrer"><Icon Name="message" Groesse="16" /> WhatsApp</a>
+            }
+            @if (!string.IsNullOrWhiteSpace(responsable.Email))
+            {
+                <a class="sk-btn sk-btn-secondary" href="mailto:@responsable.Email"><Icon Name="mail" Groesse="16" /> @responsable.Email</a>
+            }
+        </div>
+    </section>
+}
 <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
     <div class="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <span class="mt-0.5 shrink-0"><Icon Name="info" Groesse="18" /></span>

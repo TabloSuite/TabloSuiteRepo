@@ -16,7 +16,6 @@ internal static class EmailTemplates
     private const string SiteUrl = SkoulouMarke.Website;
     private const string SiteLabel = SkoulouMarke.Domain;
     private const string SupportEmail = SkoulouMarke.KontaktEmail;
-    private const string Phone = "+49 176 61221600";
     private const string Address = "Lomé, Togo";
 
     // Markenfarben aus der Website-Navigation bzw. dem Footer.
@@ -123,7 +122,6 @@ internal static class EmailTemplates
                                     <div style="margin-top:10px;font-family:{FontStack};font-size:13px;line-height:1.9;color:#e2eefc;">
                                         <a href="{SiteUrl}" style="color:#e2eefc;text-decoration:none;">{SiteLabel}</a><br/>
                                         <a href="mailto:{SupportEmail}" style="color:#e2eefc;text-decoration:none;">{SupportEmail}</a><br/>
-                                        {Phone}<br/>
                                         {Address}
                                     </div>
 

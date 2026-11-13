@@ -101,6 +101,10 @@
                             <span>Téléphone <span class="enote-muted pf-optional">(facultatif)</span></span>
                             <input @bind="telefon" @bind:event="oninput" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="+228 90 00 00 00" />
                         </label>
+                        @if (rollen.Contains(ENote.Core.DataModels.Identity.AppRollen.ProduktOwner))
+                        {
+                            <small class="enote-muted">Votre téléphone et votre e-mail sont visibles par les propriétaires que vous accompagnez (« Aide &amp; contact »). Indiquez le numéro avec l'indicatif (+228…) pour WhatsApp.</small>
+                        }
                         @if (!string.IsNullOrWhiteSpace(datenFehler))
                         {
                             <div class="alert alert-error" role="alert">@datenFehler</div>

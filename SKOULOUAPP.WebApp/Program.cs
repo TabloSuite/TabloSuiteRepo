@@ -188,6 +188,7 @@ builder.Services.AddScoped<PostmarkEmailService>();
 builder.Services.AddScoped<IEmailService>(services => new SkoulouEmailService(services.GetRequiredService<PostmarkEmailService>()));
 builder.Services.AddScoped<BroadcastEmailService>();
 builder.Services.AddTransient<MailboxService>();
+builder.Services.AddTransient<ResponsableKontaktService>();
 builder.Services.AddTransient<KontoBenachrichtigungService>();
 builder.Services.AddTransient<AbrechnungBenachrichtigungService>();
 

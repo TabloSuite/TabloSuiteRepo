@@ -1,0 +1,161 @@
+@page "/contact"
+@attribute [Authorize]
+@using System.Security.Claims
+@using ENote.Core.DataModels.Identity
+@using ENote.WebApp.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject KatalogService KatalogService
+@inject KontaktService KontaktService
+@inject ToastService Toast
+
+@* « Aide & contact »: Besitzer sehen ihren Responsable (Name, E-Mail, Telefon falls eingetragen).
+   Ohne Responsable schreiben sie TabloSuite über das Formular (Mail an contact@tablosuite.com). *@
+<PageTitle>Aide &amp; contact</PageTitle>
+
+<div class="enote-page kt-seite">
+    <div class="enote-page-header">
+        <div>
+            <h1>Aide &amp; contact</h1>
+            <p>Une question ? Regardez d'abord les vidéos d'aide, puis contactez la bonne personne.</p>
+        </div>
+    </div>
+
+    @if (laedt)
+    {
+    }
+    else
+    {
+        <a class="enote-card kt-videos" href="/aide/videos">
+            <span class="kt-ico"><Icon Name="monitor" Groesse="22" /></span>
+            <span><strong>Vidéos d'aide</strong><small>Des vidéos pas à pas pour chaque situation.</small></span>
+            <Icon Name="chevron-right" Groesse="18" />
+        </a>
+
+        @if (responsable is not null)
+        {
+            <section class="enote-card kt-responsable" aria-label="Votre responsable">
+                <span class="kt-label">Votre responsable</span>
+                <div class="kt-person">
+                    <span class="kt-avatar" aria-hidden="true">@Initialen(responsable.Name)</span>
+                    <div>
+                        <strong>@responsable.Name</strong>
+                        <small>Il vous accompagne pour eNOTE : questions, formation, abonnement.</small>
+                    </div>
+                </div>
+                <div class="kt-wege">
+                    @if (responsable.TelefonLink is { } tel)
+                    {
+                        <a class="enote-btn enote-btn-primary" href="@tel"><Icon Name="phone" Groesse="18" /> Appeler · @responsable.Telefon</a>
+                    }
+                    @if (responsable.WhatsAppLink is { } wa)
+                    {
+                        <a class="enote-btn enote-btn-ghost" href="@wa" target="_blank" rel="noopener noreferrer"><Icon Name="message" Groesse="18" /> WhatsApp</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(responsable.Email))
+                    {
+                        <a class="enote-btn enote-btn-ghost" href="mailto:@responsable.Email"><Icon Name="mail" Groesse="18" /> @responsable.Email</a>
+                    }
+                </div>
+                @if (!formularOffen)
+                {
+                    <button type="button" class="kt-link" @onclick="() => formularOffen = true">Votre responsable ne répond pas ? Écrire à TabloSuite</button>
+                }
+            </section>
+        }
+        else if (!istBesitzer)
+        {
+            <section class="enote-card kt-hinweis">
+                <Icon Name="info" Groesse="20" />
+                <p>Pour toute question sur votre établissement, adressez-vous d'abord au propriétaire. Vous pouvez aussi écrire à TabloSuite ci-dessous.</p>
+            </section>
+        }
+
+        @if (responsable is null || formularOffen)
+        {
+            <section class="enote-card kt-formular" aria-label="Écrire à TabloSuite">
+                <h2>Écrire à TabloSuite</h2>
+                <p class="enote-muted">Votre message arrive à l'équipe TabloSuite (contact@tablosuite.com). Nous vous répondons par e-mail@(string.IsNullOrWhiteSpace(eigeneEmail) ? "" : $" à {eigeneEmail}").</p>
+
+                @if (gesendet)
+                {
+                    <div class="alert alert-success" role="status">Message envoyé. Merci ! Nous vous répondons rapidement.</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(fehler))
+                {
+                    <div class="alert alert-error" role="alert">@fehler</div>
+                }
+
+                <div class="enote-form">
+                    <label>Sujet</label>
+                    <EnoteSelect TValue="string" @bind-Value="thema" Options="themenOptionen" Placeholder="Choisir le sujet…" />
+                    <label>
+                        Votre message
+                        <textarea rows="6" maxlength="@KontaktService.NachrichtMax" @bind="nachricht" @bind:event="oninput"
+                                  placeholder="Expliquez simplement votre question ou votre problème."></textarea>
+                    </label>
+                    <small class="enote-muted">@((nachricht ?? "").Length) / @KontaktService.NachrichtMax caractères</small>
+                    <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenAsync" CssClass="enote-btn-primary" />
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private bool laedt = true;
+    private bool istBesitzer;
+    private bool formularOffen;
+    private bool gesendet;
+    private Guid benutzerId;
+    private Guid? salonId;
+    private string? eigeneEmail;
+    private KontaktService.Responsable? responsable;
+    private string? thema;
+    private string? nachricht;
+    private string? fehler;
+
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> themenOptionen =
+        KontaktService.Themen.Select(t => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = t, Label = t }).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzerId)) return;
+            eigeneEmail = user.FindFirstValue(ClaimTypes.Email);
+            istBesitzer = user.IsInRole(AppRollen.Besitzer);
+            if (await KatalogService.GetUserSalonAsync(benutzerId) is { } zuordnung)
+            {
+                salonId = zuordnung.SalonId;
+                if (istBesitzer)
+                    responsable = await KontaktService.GetResponsableAsync(benutzerId, zuordnung.SalonId);
+            }
+        }
+        finally
+        {
+            laedt = false;
+        }
+    }
+
+    private async Task SendenAsync()
+    {
+        fehler = null;
+        gesendet = false;
+        fehler = await KontaktService.SendeAnTabloSuiteAsync(benutzerId, salonId, thema, nachricht);
+        if (fehler is null)
+        {
+            gesendet = true;
+            thema = null;
+            nachricht = null;
+            Toast.ZeigeErfolg("Message envoyé à TabloSuite.");
+        }
+    }
+
+    private static string Initialen(string name)
+    {
+        var teile = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return teile.Length >= 2 ? string.Concat(teile[0][0], teile[1][0]).ToUpperInvariant()
+            : name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+}

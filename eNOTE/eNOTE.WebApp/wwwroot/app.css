@@ -3220,3 +3220,27 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 /* Startseite: Hinweis zu angepassten Tarifen für große Läden */
 .lp-preis-hinweis { display: flex; align-items: flex-start; justify-content: center; gap: .5rem; max-width: 52rem; margin: 1.1rem auto 0; padding: .75rem 1rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); color: var(--enote-text-muted); font-size: .92rem; line-height: 1.5; text-align: left; }
 .lp-preis-hinweis .enote-icon { flex-shrink: 0; margin-top: .2rem; color: var(--enote-primary-text); }
+
+/* ============================================================ Aide & contact (/contact) */
+.kt-seite { display: grid; gap: 1rem; max-width: 46rem; }
+.kt-videos { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .9rem; padding: .9rem 1.1rem; color: inherit; text-decoration: none; }
+.kt-videos span:nth-child(2) { display: grid; gap: .1rem; }
+.kt-videos small { color: var(--enote-text-muted); }
+.kt-ico { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: var(--enote-radius); background: var(--enote-primary-soft); color: var(--enote-primary-text); }
+.kt-responsable { display: grid; gap: .9rem; padding: 1.2rem 1.3rem; }
+.kt-label { font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--enote-primary-text); }
+.kt-person { display: flex; align-items: center; gap: .9rem; }
+.kt-person div { display: grid; gap: .15rem; }
+.kt-person strong { font-size: 1.15rem; }
+.kt-person small { color: var(--enote-text-muted); }
+.kt-avatar { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--enote-primary-soft); color: var(--enote-primary-text); font-weight: 800; }
+.kt-wege { display: flex; flex-wrap: wrap; gap: .6rem; }
+.kt-wege .enote-btn { display: inline-flex; align-items: center; gap: .45rem; }
+.kt-link { justify-self: start; padding: 0; border: 0; background: none; color: var(--enote-text-muted); font-size: .88rem; text-decoration: underline; cursor: pointer; }
+.kt-hinweis { display: flex; gap: .7rem; align-items: flex-start; padding: 1rem 1.1rem; color: var(--enote-text-muted); }
+.kt-hinweis p { margin: 0; }
+.kt-formular { display: grid; gap: .6rem; padding: 1.2rem 1.3rem; }
+.kt-formular h2 { margin: 0; font-size: 1.15rem; }
+.kt-formular p { margin: 0; }
+.kt-formular label { display: grid; gap: .35rem; width: 100%; }
+.kt-formular textarea { width: 100%; max-width: none; box-sizing: border-box; resize: vertical; min-height: 8rem; }

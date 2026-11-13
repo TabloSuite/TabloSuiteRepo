@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using SkoulouApp.WebApp.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace SkoulouApp.WebApp.Components.Pages;
 
@@ -14,6 +16,23 @@ public partial class Contact
 
     [Inject]
     private DatabaseActionGuard DatabaseActionGuard { get; set; } = default!;
+
+    [Inject]
+    private ResponsableKontaktService ResponsableKontakt { get; set; } = default!;
+
+    [Inject]
+    private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
+    /// <summary>Responsable produit der Schule – nur für die Direktion sichtbar.</summary>
+    private ResponsableKontaktService.Responsable? responsable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
+        responsable = await ResponsableKontakt.GetFuerDirektionAsync(userId);
+        if (string.IsNullOrWhiteSpace(Model.Email)) Model.Email = user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+    }
 
     private ContactInput? model;
 

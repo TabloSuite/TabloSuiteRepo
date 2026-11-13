@@ -54,6 +54,22 @@ public class MailBenachrichtigungen(
         => SicherAsync("inscription-admin", () => email.SendeAsync(AdminEmpfaenger, $"Nouvel établissement à valider : {salonName}",
             TabloSuiteMails.NeueRegistrierungAdmin(salonName, besitzerName, besitzerEmail, telefon, land, AppUrl + "/admin"), "inscription-admin", ct));
 
+    /// <summary>Nachricht aus « Aide &amp; contact » an TabloSuite. Liefert false, wenn sie nicht versendet werden konnte.</summary>
+    public async Task<bool> KontaktAnfrageAsync(string thema, string nachricht, string name, string pseudonym, string? absenderEmail,
+        string? telefon, string? laden, CancellationToken ct = default)
+    {
+        try
+        {
+            return await email.SendeAsync(AdminEmpfaenger, $"Contact : {thema}",
+                TabloSuiteMails.KontaktAnfrageAdmin(thema, nachricht, name, pseudonym, absenderEmail, telefon, laden), "contact", ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Kontaktnachricht konnte nicht versendet werden.");
+            return false;
+        }
+    }
+
     /// <summary>Aktion oder Anfrage eines Responsables an das TabloSuite-Team melden.</summary>
     public Task ResponsableMeldungAsync(string responsable, string salonName, string titel, string? detail, CancellationToken ct = default)
         => SicherAsync("responsable-meldung", () => email.SendeAsync(AdminEmpfaenger, $"{titel} : {salonName}",

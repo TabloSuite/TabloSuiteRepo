@@ -148,6 +148,14 @@ public static class TabloSuiteMails
             + P("Si vous ne reconnaissez pas cette action, bloquez le compte du responsable dans l'administration.")
             + Knopf("Ouvrir l'administration", adminUrl));
 
+    /// <summary>Nachricht aus « Aide &amp; contact » an das TabloSuite-Team (Text bleibt Text, Zeilenumbrüche erhalten).</summary>
+    public static string KontaktAnfrageAdmin(string thema, string nachricht, string name, string pseudonym, string? email, string? telefon, string? laden)
+        => Wrap("Message depuis eNOTE", $"{thema} · {name}.",
+            P($"Nouveau message de <strong>{H(name)}</strong> depuis « Aide &amp; contact » :")
+            + Tabelle([("Sujet", thema), ("Compte", pseudonym), ("Établissement", laden ?? "—"), ("E-mail", email ?? "—"), ("Téléphone", telefon ?? "—")])
+            + P(H(nachricht).Replace("\r\n", "\n").Replace("\n", "<br/>"))
+            + (string.IsNullOrWhiteSpace(email) ? "" : Knopf("Répondre par e-mail", "mailto:" + email.Trim())));
+
     /// <summary>Info an das TabloSuite-Team: Besitzer hat eine Zahlung gemeldet.</summary>
     public static string ZahlungGemeldetAdmin(string salonName, string formel, decimal betrag, string? notiz, string adminUrl)
         => Wrap("Paiement signalé à confirmer", $"{salonName} : {Betrag(betrag)}.",

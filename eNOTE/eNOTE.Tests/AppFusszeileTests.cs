@@ -36,11 +36,11 @@ public class AppFusszeileTests
         var html = await RenderAsync();
         Assert.Contains("href=\"https://tablosuite.com\" target=\"_blank\" rel=\"noopener noreferrer\"", html);
         Assert.Contains("href=\"mailto:contact@tablosuite.com\"", html);
-        Assert.Contains("href=\"tel:+4917661221600\"", html);
         Assert.Contains("Tablosuite.com", html);
         Assert.Contains("contact@tablosuite.com", html);
-        Assert.Contains("+49 176 61221600", html);
         Assert.Contains("Nous écrire", html);
-        Assert.Contains("Nous appeler", html);
+        // Keine private Telefonnummer mehr in der Fußzeile.
+        Assert.DoesNotContain("tel:", html);
+        Assert.DoesNotContain("Nous appeler", html);
     }
 }

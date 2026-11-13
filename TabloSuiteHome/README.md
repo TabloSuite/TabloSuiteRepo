@@ -21,7 +21,7 @@ Hauptseite der Firma TabloSuite: stellt alle Apps der TabloSuiteMappe vor und f�
 Regel für jede App der TabloSuiteMappe: Zugangsdaten des Start-Admins (Seed) kommen **nur** aus
 Umgebungsvariablen der jeweiligen App (`Seed__SuperAdmin…`), nie aus dem Code oder dem Repository.
 
-Kontakt (E-Mail, Telefon, Ort) steht ebenfalls in `appsettings.json` unter `TabloSuite`.
+Kontakt (E-Mail, Ort; optional `Telefon` – derzeit bewusst leer) steht ebenfalls in `appsettings.json` unter `TabloSuite`.
 
 ## Lokal starten
 
