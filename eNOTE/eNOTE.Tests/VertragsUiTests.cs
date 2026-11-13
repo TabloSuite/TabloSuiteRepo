@@ -66,6 +66,7 @@ public class VertragsUiTests
         services.AddSingleton<AktiverSalonState>();
         services.AddSingleton<ToastService>();
         services.AddSingleton<BesitzerPinState>();
+        services.AddSingleton(new BesitzerPinHilfe(null!, factory));
         services.AddSingleton<LadeZustand>();
         services.AddSingleton(new KatalogService(factory, null!, null!));
         services.AddSingleton(new KassenService(factory, new FakeUmsatzBenachrichtigungService()));

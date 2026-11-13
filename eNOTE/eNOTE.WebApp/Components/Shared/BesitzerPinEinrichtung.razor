@@ -1,0 +1,130 @@
+@using System.Security.Claims
+@using ENote.Core.DataModels.Identity
+@inject ENote.WebApp.Services.KatalogService KatalogService
+@inject ENote.WebApp.Services.SalonService SalonService
+@inject ENote.WebApp.Services.TeamService TeamService
+@inject ENote.WebApp.Services.BesitzerPinState PinState
+@inject ENote.WebApp.Services.ToastService Toast
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+@* Pflicht beim ersten Login: Ein Besitzer ohne Besitzer-PIN legt sie zuerst fest – sonst wäre die
+   Verwaltung (Finanzen, Team, Einstellungen) am gemeinsamen Tablet für jeden offen.
+   Die PIN wird nie per Mail verschickt. *@
+@if (laedt)
+{
+}
+else if (!mussEinrichten)
+{
+    @ChildContent
+}
+else
+{
+    <div class="enote-pin-sperre">
+        <div class="enote-pin-sperre-card">
+            <span class="enote-pin-dialog-ico"><Icon Name="lock" Groesse="26" /></span>
+            @if (schritt == 1)
+            {
+                <h2>Protégez votre gestion</h2>
+                <p class="enote-muted">Choisissez un <strong>code PIN propriétaire</strong> de 4 à 6 chiffres. Il protège vos finances, votre équipe et vos réglages sur la tablette partagée.</p>
+                <p class="enote-muted">Gardez-le pour vous : eNOTE ne l'envoie jamais par e-mail.</p>
+            }
+            else
+            {
+                <h2>Confirmez votre code</h2>
+                <p class="enote-muted">Saisissez le même code PIN une deuxième fois.</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(fehler))
+            {
+                <div class="alert alert-error" role="alert">@fehler</div>
+            }
+
+            @if (schritt == 1)
+            {
+                <PinEingabe @bind-Wert="pin" OnBestaetigt="WeiterAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(fehler))" AriaLabel="Nouveau code PIN" />
+                <AsyncActionButton Text="Continuer" OnClick="WeiterAsync" CssClass="enote-btn-primary enote-btn-lg enote-btn-block" />
+            }
+            else
+            {
+                <PinEingabe @bind-Wert="wiederholung" OnBestaetigt="SpeichernAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(fehler))" AriaLabel="Confirmer le code PIN" />
+                <AsyncActionButton Text="Enregistrer mon code PIN" BusyText="Enregistrement…" OnClick="SpeichernAsync" CssClass="enote-btn-primary enote-btn-lg enote-btn-block" />
+                <button type="button" class="enote-btn enote-btn-ghost enote-btn-block" @onclick="Zurueck">Recommencer</button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool laedt = true;
+    private bool mussEinrichten;
+    private int schritt = 1;
+    private string pin = string.Empty;
+    private string wiederholung = string.Empty;
+    private string? fehler;
+    private Guid zuordnungId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+            if (user.IsInRole(AppRollen.Besitzer) && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                && await KatalogService.GetUserSalonAsync(userId) is { } zuordnung)
+            {
+                zuordnungId = zuordnung.Id;
+                mussEinrichten = !await SalonService.HatBesitzerPinAsync(zuordnung.SalonId, userId);
+            }
+        }
+        finally
+        {
+            laedt = false;
+        }
+    }
+
+    private Task WeiterAsync()
+    {
+        fehler = null;
+        if (!ENote.Core.Services.Kasse.KassenPinService.IstGueltigesPinFormat(pin))
+        {
+            fehler = "Le code PIN doit contenir 4 à 6 chiffres.";
+            pin = string.Empty;
+            return Task.CompletedTask;
+        }
+        schritt = 2;
+        return Task.CompletedTask;
+    }
+
+    private void Zurueck()
+    {
+        schritt = 1;
+        pin = wiederholung = string.Empty;
+        fehler = null;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        fehler = null;
+        if (wiederholung != pin)
+        {
+            Zurueck();
+            fehler = "Les deux codes ne sont pas identiques. Recommencez.";
+            return;
+        }
+
+        var (erfolg, meldung) = await TeamService.SetzeBesitzerPinAsync(zuordnungId, pin);
+        if (!erfolg)
+        {
+            Zurueck();
+            fehler = meldung;
+            return;
+        }
+
+        pin = wiederholung = string.Empty;
+        mussEinrichten = false;
+        // Der Besitzer hat die PIN gerade selbst gewählt: Verwaltung bleibt für ihn offen.
+        PinState.Freischalten();
+        Toast.ZeigeErfolg("Code PIN enregistré. Gardez-le pour vous.");
+    }
+}

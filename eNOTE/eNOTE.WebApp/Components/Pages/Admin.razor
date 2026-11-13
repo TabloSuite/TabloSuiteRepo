@@ -405,38 +405,48 @@
             {
                 <p class="enote-muted">« @probeSalonName » n'a pas d'essai gratuit. Seul l'administrateur peut en accorder un : envoyez-lui une demande.</p>
             }
+            else if (!PoDarfVerlaengern)
+            {
+                <p class="enote-muted">L'essai de « @probeSalonName » dure déjà jusqu'au <strong>@probeBisher?.ToString("dd.MM.yyyy")</strong> : vous ne pouvez pas le prolonger davantage. Pour toute autre modification, envoyez une demande à l'administrateur.</p>
+            }
             else
             {
                 <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(DateTime.UtcNow).ToString("dd.MM.yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
             }
-            <label>Date de fin d'essai</label>
-            <EnoteDatePicker @bind-Value="probeBisDatum" />
-            <p class="enote-muted enote-probe-anzeige">
-                @if (probeBisDatum is not null)
-                {
-                    <text>Fin actuelle : <strong>@probeBisDatum.Value.ToString("MMMM yyyy", new System.Globalization.CultureInfo("fr-FR"))</strong></text>
-                }
-                else
-                {
-                    <text>Aucun essai actif – facturation immédiate.</text>
-                }
-            </p>
-            <div class="enote-item-actions">
-                @if (istSuperAdmin)
-                {
-                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeStandard">Par défaut (3 mois, ce mois inclus)</button>
-                    <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="EntferneProbe">Supprimer l'essai</button>
-                }
-                else if (probeBisher is not null)
-                {
-                    <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeMaximal">Prolonger au maximum (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours)</button>
-                }
-            </div>
+            @if (ZeigeProbeFormular)
+            {
+                <label>Date de fin d'essai</label>
+                <EnoteDatePicker @bind-Value="probeBisDatum" />
+                <p class="enote-muted enote-probe-anzeige">
+                    @if (probeBisDatum is not null)
+                    {
+                        <text>Fin actuelle : <strong>@probeBisDatum.Value.ToString("MMMM yyyy", new System.Globalization.CultureInfo("fr-FR"))</strong></text>
+                    }
+                    else
+                    {
+                        <text>Aucun essai actif – facturation immédiate.</text>
+                    }
+                </p>
+                <div class="enote-item-actions">
+                    @if (istSuperAdmin)
+                    {
+                        <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeStandard">Par défaut (3 mois, ce mois inclus)</button>
+                        <button class="enote-btn enote-btn-ghost enote-btn-sm enote-danger" @onclick="EntferneProbe">Supprimer l'essai</button>
+                    }
+                    else
+                    {
+                        <button class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="SetzeProbeMaximal">Prolonger au maximum (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours)</button>
+                    }
+                </div>
+            }
         </div>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => probeDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProbeAsync" CssClass="enote-btn-primary" />
+        <button class="enote-btn enote-btn-ghost" @onclick="() => probeDialogOffen = false">@(ZeigeProbeFormular ? "Annuler" : "Fermer")</button>
+        @if (ZeigeProbeFormular)
+        {
+            <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProbeAsync" CssClass="enote-btn-primary" />
+        }
     </Footer>
 </ModalDialog>
 

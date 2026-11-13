@@ -29,6 +29,15 @@ public partial class BesitzerPinGuard : IDisposable
     private bool ohneKonto;
     private bool ausgenommen;
     private bool hatBesitzerPin;
+
+    // PIN vergessen: Besitzer entsperrt mit dem Passwort seines Kontos (PIN geht nie per Mail).
+    [Inject] private BesitzerPinHilfe PinHilfe { get; set; } = default!;
+    [Inject] private IServiceProvider Dienste { get; set; } = default!;
+    private bool istBesitzer;
+    private bool vergessenOffen;
+    private string? vergessenFehler;
+    private string? passwort;
+    private Guid benutzerId;
     private bool istGesperrt => ohneKonto || (!ausgenommen && hatBesitzerPin && !PinState.VerwaltungFreigeschaltet);
 
     protected override async Task OnInitializedAsync()
@@ -60,6 +69,8 @@ public partial class BesitzerPinGuard : IDisposable
             return;
         }
 
+        benutzerId = userId;
+        istBesitzer = authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer);
         var zuordnung = await KatalogService.GetUserSalonAsync(userId);
         salonId = zuordnung?.SalonId ?? Guid.Empty;
 
@@ -101,6 +112,23 @@ public partial class BesitzerPinGuard : IDisposable
             fehler = fehlerText;
             pin = string.Empty;
         }
+    }
+
+    private async Task MitPasswortAsync()
+    {
+        vergessenFehler = null;
+        var (erfolg, fehlerText) = await PinHilfe.PruefePasswortAsync(benutzerId, salonId, passwort ?? string.Empty);
+        passwort = null;
+        if (!erfolg)
+        {
+            vergessenFehler = fehlerText;
+            return;
+        }
+
+        vergessenOffen = false;
+        PinState.Freischalten();
+        Toast.ZeigeInfo("Zone déverrouillée. Choisissez maintenant un nouveau code PIN.");
+        Dienste.GetService<NavigationManager>()?.NavigateTo("/parametres");
     }
 
     private async Task HandleTaste(KeyboardEventArgs e)

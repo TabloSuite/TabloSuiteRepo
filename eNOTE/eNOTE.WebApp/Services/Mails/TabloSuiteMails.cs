@@ -36,8 +36,15 @@ public static class TabloSuiteMails
                 "Ajoutez vos prestations et articles (avec prix et stock).",
                 "Créez vos employés et leur code PIN dans « Équipe ».",
                 "Ajoutez votre logo et votre slogan dans « Paramètres » pour vos reçus."])
+            + PinHinweis()
             + Knopf("Se connecter", appUrl)
             + Gruss());
+
+    /// <summary>Hinweis auf die Besitzer-PIN – die PIN selbst steht nie in einer Mail.</summary>
+    private static string PinHinweis()
+        => Box("info", "Votre code PIN propriétaire",
+            "À votre première connexion, eNOTE vous demande de choisir un code PIN de 4 à 6 chiffres. "
+            + "Il protège vos finances, votre équipe et vos réglages. Gardez-le pour vous : nous ne l'envoyons jamais par e-mail.");
 
     /// <summary>Passwort-Zurücksetzen-Mail mit Link.</summary>
     public static string Reinitialisation(string pseudonym, string resetUrl)
@@ -110,6 +117,7 @@ public static class TabloSuiteMails
                 : P("Pour commencer, choisissez votre mot de passe personnel :")
                   + Knopf("Choisir mon mot de passe", passwortLink)
                   + LinkHinweis(passwortLink))
+            + PinHinweis()
             + Gruss());
 
     /// <summary>Willkommen für einen neuen Kassierer (ohne Passwort – das gibt der Besitzer weiter).</summary>

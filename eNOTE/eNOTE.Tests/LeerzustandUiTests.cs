@@ -72,6 +72,7 @@ public class LeerzustandUiTests
         services.AddIdentityCore<AppUser>().AddRoles<Role>().AddEntityFrameworkStores<ApplicationDbContext>();
         services.AddSingleton<ToastService>();
         services.AddSingleton<BesitzerPinState>();
+        services.AddSingleton(new BesitzerPinHilfe(null!, factory));
         services.AddSingleton(new KatalogService(factory, null!, null!));
         services.AddSingleton(new KassenService(factory, new FakeUmsatzBenachrichtigungService()));
         services.AddSingleton(_ => new EmailService(new ConfigurationBuilder().Build(), factory, NullLogger<EmailService>.Instance));

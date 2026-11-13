@@ -29,6 +29,30 @@ else
             <PinEingabe @bind-Wert="pin" OnBestaetigt="PruefeAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(fehler))" />
 
             <AsyncActionButton Text="Déverrouiller" OnClick="PruefeAsync" CssClass="enote-btn-primary enote-btn-lg enote-btn-block" />
+
+            @if (istBesitzer)
+            {
+                @if (!vergessenOffen)
+                {
+                    <button type="button" class="enote-btn enote-btn-ghost enote-btn-block" @onclick="() => { vergessenOffen = true; vergessenFehler = null; }">Code PIN oublié ?</button>
+                }
+                else
+                {
+                    <div class="enote-form enote-pin-vergessen">
+                        <p class="enote-muted">Saisissez le mot de passe de votre compte propriétaire. Vous pourrez ensuite choisir un nouveau code PIN dans « Paramètres ».</p>
+                        @if (!string.IsNullOrWhiteSpace(vergessenFehler))
+                        {
+                            <div class="alert alert-error" role="alert">@vergessenFehler</div>
+                        }
+                        <PasswordInput @bind-Value="passwort" placeholder="Mot de passe" Autocomplete="current-password" />
+                        <AsyncActionButton Text="Débloquer avec mon mot de passe" BusyText="Vérification…" OnClick="MitPasswortAsync" CssClass="enote-btn-ghost enote-btn-block" />
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="enote-muted enote-pin-hinweis">Code oublié ? Seul le propriétaire peut le changer.</p>
+            }
         </div>
     </div>
 }

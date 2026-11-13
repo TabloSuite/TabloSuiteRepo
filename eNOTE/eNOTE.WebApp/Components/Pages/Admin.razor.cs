@@ -445,6 +445,10 @@ public partial class Admin(
     private string? probeFehler;
     private DateTime? probeBisher;
 
+    /// <summary>Responsable darf nur eine laufende Probezeit verlängern, die noch vor seiner Grenze (30 Tage ab heute) endet.</summary>
+    private bool PoDarfVerlaengern => !istSuperAdmin && probeBisher is DateTime bisher && bisher < AdminService.PoProbeGrenze(DateTime.UtcNow);
+    private bool ZeigeProbeFormular => istSuperAdmin || PoDarfVerlaengern;
+
     private async Task SpeichereProbeAsync()
     {
         try

@@ -124,6 +124,7 @@ if (administration is null)
     builder.Services.AddScoped<KassenZugangService>();
     builder.Services.AddHostedService<VertragsSynchronisierungsDienst>();
     builder.Services.AddScoped<TeamService>();
+    builder.Services.AddScoped<BesitzerPinHilfe>();
     builder.Services.AddScoped<AdminService>();
     builder.Services.AddScoped<ProduktOwnerService>();
     builder.Services.AddScoped<SalonService>();
