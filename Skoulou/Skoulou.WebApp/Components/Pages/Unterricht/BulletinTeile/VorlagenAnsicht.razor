@@ -1,0 +1,57 @@
+@* Bulletin-Vorlagen der Schule: Standard + je Niveau; Bearbeiten im Dialog, Vorschau mit Beispieldaten. *@
+@inherits SkoulouSeite
+@inject VorlagenService Vorlagen
+@inject KlassenService Klassen
+
+<Karte Titel="Modèles de bulletin" Untertitel="Un modèle standard pour toute l'école, et si besoin un modèle par niveau. Les changements valent pour les prochains bulletins." Icon="settings">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="/bulletins/modeles/apercu" target="_blank"><Icon Name="eye" Groesse="18" /> <span>Aperçu standard</span></a>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => OeffnenAsync(null)"><Icon Name="plus" Groesse="18" /> <span>Nouveau modèle</span></button>
+    </Aktionen>
+    <ChildContent>
+        @if (liste is null)
+        {
+            <LadeIndikator />
+        }
+        else if (liste.Count == 0)
+        {
+            <Leerzustand Icon="report" Titel="Aucun modèle enregistré" Text="Les bulletins utilisent la présentation standard (bleu SKOULOU, coefficients, rangs, appréciations, conseil, QR code). Créez un modèle pour l'adapter." />
+        }
+        else
+        {
+            <div class="nt-vorlagen">
+                @foreach (var v in liste)
+                {
+                    <div class="nt-vorlage" @key="v.Id">
+                        <span class="nt-farbe" style="background:@v.Farbe"></span>
+                        <div><strong>@v.Name</strong><small>@v.Geltung</small></div>
+                        <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/bulletins/modeles/apercu?vorlage={v.Id}")" target="_blank"><Icon Name="eye" Groesse="16" /> Aperçu</a>
+                        <button type="button" class="sk-btn sk-btn-klein" @onclick="() => OeffnenAsync(v.Id)"><Icon Name="edit" Groesse="16" /> Modifier</button>
+                    </div>
+                }
+            </div>
+        }
+    </ChildContent>
+</Karte>
+
+<VorlageDialog Vorlage="bearbeiten" Stufen="stufen" OnClose="() => bearbeiten = null" OnGespeichert="GespeichertAsync" />
+
+@code {
+    private IReadOnlyList<VorlageZeile>? liste;
+    private IReadOnlyList<AuswahlEintrag> stufen = [];
+    private BulletinVorlage? bearbeiten;
+
+    protected override async Task InitialisierenAsync()
+    {
+        liste = await Vorlagen.VorlagenAsync(Ich.KontoId);
+        stufen = (await Klassen.StufenAsync(Ich.KontoId)).Where(s => s.Aktiv).Select(s => new AuswahlEintrag(s.Id, s.Name)).ToList();
+    }
+
+    private async Task OeffnenAsync(Guid? id) => await AusfuehrenAsync(async () => bearbeiten = await Vorlagen.VorlageAsync(Ich.KontoId, id));
+
+    private async Task GespeichertAsync()
+    {
+        bearbeiten = null;
+        await AusfuehrenAsync(async () => liste = await Vorlagen.VorlagenAsync(Ich.KontoId));
+    }
+}

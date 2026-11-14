@@ -1,5 +1,25 @@
 @page "/eleve/bulletins"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Noten
+@using Skoulou.WebApp.Components.Pages.Noten
+@inject BulletinLeseService Lesen
 
-<InVorbereitung Titel="Bulletins" Icon="report" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Vos bulletins publiés, à télécharger en PDF." />
+<PageTitle>Bulletins · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Bulletins" Icon="report" Untertitel="Vos bulletins publiés par l'établissement, à consulter et télécharger en PDF." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <BulletinKacheln Liste="liste" />
+}
+
+@code {
+    private IReadOnlyList<EigenesBulletin>? liste;
+
+    protected override async Task InitialisierenAsync() => liste = await Lesen.EigeneAsync(Ich.KontoId, Ich.KontoId);
+}

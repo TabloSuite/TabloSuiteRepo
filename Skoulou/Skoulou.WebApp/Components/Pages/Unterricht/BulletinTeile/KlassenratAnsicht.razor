@@ -1,0 +1,153 @@
+@* Conseil de classe einer Klasse in einer Periode: Ergebnisse, fehlende Noten, Beschlüsse, Veröffentlichung/Rectification. *@
+@inherits SkoulouSeite
+@inject KlassenratService Conseil
+@inject TimeProvider Uhr
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (u is null)
+{
+    <div class="sk-skelett"><div></div><div></div><div></div></div>
+}
+else
+{
+    <div class="nt-kennzahlen">
+        <KennzahlKachel Bezeichnung="Effectif" Wert="@u.Effectif.ToString()" Icon="users" Zusatz="@($"{u.Effectif - u.NonClasses} classé(s)")" />
+        <KennzahlKachel Bezeichnung="Moyenne de la classe" Wert="@(u.Statistik.Mittel is { } m ? NotenTexte.Zahl(m) : "—")" Icon="bars" Haupt="true"
+                        Zusatz="@(u.Statistik.Min is { } mi ? $"de {NotenTexte.Zahl(mi)} à {NotenTexte.Zahl(u.Statistik.Max!.Value)}" : null)" />
+        <KennzahlKachel Bezeichnung="Moyenne ≥ 10" Wert="@(u.Statistik.ProzentUeber10 is { } pr ? $"{NotenTexte.Zahl(pr)} %" : "—")" Icon="trend-up" />
+        <KennzahlKachel Bezeichnung="Notes manquantes" Wert="@u.Fehlend.Count.ToString()" Icon="alert" Zusatz="@(u.Fehlend.Count == 0 ? "classe complète" : "à compléter")" />
+    </div>
+
+    <Karte>
+        <div class="nt-kopf">
+            <div>
+                <h2>@u.Klasse · @u.Periode</h2>
+                <p class="sk-leise">@StatusText</p>
+            </div>
+            <div class="sk-knopfzeile">
+                @if (u.Status is not null)
+                {
+                    <a class="sk-btn sk-btn-ghost" href="@($"/bulletins/klasse/{u.KlasseId}/{u.PeriodeId}/pdf")" target="_blank"><Icon Name="printer" Groesse="18" /> <span>PDF de la classe</span></a>
+                }
+                @if (u.Direktion && u.Status is null)
+                {
+                    <button type="button" class="sk-btn sk-btn-primaer" disabled="@(u.Effectif == 0)" @onclick="() => veroeffentlichen = true"><Icon Name="send" Groesse="18" /> <span>Publier les bulletins</span></button>
+                }
+                @if (u.Direktion && u.Status is not null)
+                {
+                    <button type="button" class="sk-btn @(u.Status == VeroeffentlichungsStatus.EnRectification ? "sk-btn-primaer" : "sk-btn-ghost")" @onclick="() => rectification = true">
+                        <Icon Name="edit" Groesse="18" /> <span>@(u.Status == VeroeffentlichungsStatus.EnRectification ? "Terminer la rectification" : "Rectifier")</span>
+                    </button>
+                }
+            </div>
+        </div>
+        @if (u.Status == VeroeffentlichungsStatus.EnRectification)
+        {
+            <Hinweis Art="warn" Titel="Rectification en cours">Motif : @u.RectificationGrund. Les notes et le conseil de cette période sont rouverts ; publiez ensuite les bulletins rectifiés.</Hinweis>
+        }
+        else if (u.ConseilSperre is not null)
+        {
+            <Hinweis Art="info">@u.ConseilSperre</Hinweis>
+        }
+        @if (u.Fehlend.Count > 0)
+        {
+            <details class="nt-fehlend">
+                <summary><Icon Name="alert" Groesse="16" /> @u.Fehlend.Count note(s) manquante(s) – @u.NonClasses élève(s) non classé(s)</summary>
+                <ul>
+                    @foreach (var f in u.Fehlend.Take(200))
+                    {
+                        <li><strong>@f.Schueler</strong> · @f.Fach · @f.Bewertung@(f.Datum is { } d ? $" ({SkoulouKultur.Datum(d)})" : "")</li>
+                    }
+                </ul>
+                <a class="sk-link-knopf" href="@($"/notes?classe={u.KlasseId}&periode={u.PeriodeId}")">Ouvrir la saisie des notes</a>
+            </details>
+        }
+        @if (u.Zeilen.Count == 0)
+        {
+            <Leerzustand Icon="users" Titel="Aucun élève dans la classe à la fin de la période" />
+        }
+        else
+        {
+            <div class="sk-tabelle-rahmen sk-liste-scroll">
+                <table class="sk-tabelle nt-conseil">
+                    <thead>
+                        <tr>
+                            <th>Élève</th><th>Moyenne</th><th>Rang</th><th>Distinction</th><th>Sanctions</th>
+                            @if (u.IstLetztePeriode)
+                            {
+                                <th>Décision</th>
+                            }
+                            <th>Bulletin</th><th><span class="sk-honigtopf">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var z in u.Zeilen)
+                        {
+                            <tr @key="z.EinschreibungId">
+                                <td><strong>@z.Name</strong>@if (z.Fehlend > 0)
+                                    {
+                                        <small class="nt-warn"> · @z.Fehlend manquante(s)</small>
+                                    }</td>
+                                <td class="nt-zahl">@NotenTexte.MittelKurz(z.Moyenne)</td>
+                                <td>@z.Rang.Text</td>
+                                <td>@(z.Wirksam == Distinktion.Keine ? "—" : NotenTexte.DistinktionText(z.Wirksam))@if (z.Distinktion is null && z.Vorschlag != Distinktion.Keine)
+                                    {
+                                        <small class="sk-leise"> (selon la moyenne)</small>
+                                    }</td>
+                                <td>@(z.Sanktionen == Sanktionen.Keine ? "—" : string.Join(", ", NotenTexte.SanktionenTexte(z.Sanktionen)))</td>
+                                @if (u.IstLetztePeriode)
+                                {
+                                    <td><StatusBadge Text="@NotenTexte.EntscheidungKurz(z.Entscheidung)" Art="@(z.Entscheidung == JahresEntscheidungsArt.Offen ? "warn" : "neutral")" /></td>
+                                }
+                                <td>
+                                    @if (z.BulletinId is { } bid)
+                                    {
+                                        <a href="@($"/bulletins/{bid}/pdf")" target="_blank" class="sk-link-knopf">@z.BulletinNummer</a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@($"/bulletins/apercu/{u.KlasseId}/{u.PeriodeId}/{z.EinschreibungId}")" target="_blank" class="sk-link-knopf">Aperçu</a>
+                                    }
+                                </td>
+                                <td><button type="button" class="sk-icon-knopf klein" title="Conseil de classe pour cet élève" @onclick="() => bearbeiten = z"><Icon Name="edit" Groesse="16" /></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </Karte>
+
+    <KlassenratDialog Zeile="bearbeiten" Uebersicht="u" OnClose="() => bearbeiten = null" OnGespeichert="GespeichertAsync" />
+    <VeroeffentlichenDialog Open="veroeffentlichen" Uebersicht="u" OnClose="() => veroeffentlichen = false" OnGespeichert="GespeichertAsync" />
+    <RectificationDialog Open="rectification" Uebersicht="u" OnClose="() => rectification = false" OnGespeichert="GespeichertAsync" />
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid KlasseId { get; set; }
+    [Parameter, EditorRequired] public Guid PeriodeId { get; set; }
+
+    private KlassenratUebersicht? u;
+    private KlassenratZeile? bearbeiten;
+    private bool veroeffentlichen, rectification;
+
+    private string StatusText => u?.Status switch
+    {
+        VeroeffentlichungsStatus.Publiee => $"Bulletins publiés le {new SchulZeit(Uhr).AlsText(u.VeroeffentlichtAmUtc!.Value)}.",
+        VeroeffentlichungsStatus.EnRectification => "Rectification en cours.",
+        _ => u?.Direktion == true ? "Pas encore publiés : vérifiez les moyennes et le conseil, puis publiez." : "Pas encore publiés par la direction."
+    };
+
+    protected override Task InitialisierenAsync() => LadenAsync();
+
+    private async Task LadenAsync() => await AusfuehrenAsync(async () => u = await Conseil.UebersichtAsync(Ich.KontoId, KlasseId, PeriodeId));
+
+    private async Task GespeichertAsync()
+    {
+        (bearbeiten, veroeffentlichen, rectification) = (null, false, false);
+        await LadenAsync();
+    }
+}

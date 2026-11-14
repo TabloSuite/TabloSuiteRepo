@@ -1,0 +1,94 @@
+@* Bulletin-Vorlage bearbeiten: Geltung (Schule/Niveau), Farbe, Schalter wie in der Alt-App, Schrift, Ränder, Fußtext. *@
+@inherits SkoulouSeite
+@inject VorlagenService Vorlagen
+
+<ModalDialog Open="Vorlage is not null" Title="Modèle de bulletin" Breite="sk-modal-lg" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (Vorlage is { } v)
+        {
+            <div class="sk-formular">
+                <div class="sk-raster-2">
+                    <TextFeld Label="Nom du modèle" @bind-Wert="v.Name" MaxLaenge="120" Pflicht="true" />
+                    <AuswahlFeld T="Guid?" Label="S'applique à" @bind-Wert="v.StufeId" Optionen="StufenOptionen" />
+                </div>
+                <div class="nt-vorlage-reihe">
+                    <label class="sk-feld nt-farbwahl"><span class="sk-feld-label">Couleur</span>
+                        <input type="color" value="@v.Farbe" @onchange="e => v.Farbe = e.Value?.ToString() ?? v.Farbe" />
+                    </label>
+                    <ZahlFeld Label="Taille du texte" Wert="v.SchriftGroesse" WertChanged="w => v.SchriftGroesse = (int)(w ?? 10)" Min="8" Max="12" Stellen="0" />
+                    <ZahlFeld Label="Marges (mm)" Wert="v.SeitenRand" WertChanged="w => v.SeitenRand = (int)(w ?? 25)" Min="15" Max="50" Stellen="0" />
+                </div>
+                <div class="nt-schalter-gruppen">
+                    <div>
+                        <p class="sk-feld-label">Tableau des notes</p>
+                        <Schalter @bind-Wert="v.ZeigeKoeffizienten" Label="Coefficients" />
+                        <Schalter @bind-Wert="v.ZeigePunkte" Label="Moyenne × coefficient et totaux" />
+                        <Schalter @bind-Wert="v.ZeigeFachRang" Label="Rang par matière" />
+                        <Schalter @bind-Wert="v.ZeigeTeilnoten" Label="Notes de chaque évaluation" />
+                        <Schalter @bind-Wert="v.ZeigeLehrkraefte" Label="Nom des enseignants" />
+                        <Schalter @bind-Wert="v.ZeigeAppreciation" Label="Appréciations" />
+                        <Schalter @bind-Wert="v.ZeigeFachGruppen" Label="Bilan par groupe (lettres, sciences…)" />
+                        <Schalter @bind-Wert="v.ZeigeSignaturSpalte" Label="Colonne signature" />
+                    </div>
+                    <div>
+                        <p class="sk-feld-label">Résultats et décisions</p>
+                        <Schalter @bind-Wert="v.ZeigeRang" Label="Rang dans la classe" />
+                        <Schalter @bind-Wert="v.ZeigeNoteInWorten" Label="Moyenne en toutes lettres" />
+                        <Schalter @bind-Wert="v.ZeigeVorperioden" Label="Moyennes des périodes précédentes" />
+                        <Schalter @bind-Wert="v.ZeigeKlassenStatistik" Label="Résultats de la classe" />
+                        <Schalter @bind-Wert="v.ZeigeAnwesenheit" Label="Assiduité (absences, retards)" />
+                        <Schalter @bind-Wert="v.ZeigeMentionen" Label="Mentions du conseil" />
+                        <Schalter @bind-Wert="v.ZeigeJahresBilanz" Label="Bilan de fin d'année" />
+                        <Schalter @bind-Wert="v.ZeigeUnterschriften" Label="Visa et signatures" />
+                        <Schalter @bind-Wert="v.ZeigeFoto" Label="Photo de l'élève" />
+                    </div>
+                </div>
+                <TextFeld Label="Texte de bas de page" @bind-Wert="v.Fusstext" MaxLaenge="300" Platzhalter="Ce bulletin doit être conservé précieusement. Aucun duplicata ne sera délivré." />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (vorhanden)
+        {
+            <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
+        }
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public BulletinVorlage? Vorlage { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Stufen { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private BulletinVorlage? geoeffnet;
+    private bool vorhanden;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> StufenOptionen
+        => [new(null, "Toute l'école (modèle standard)"), .. Stufen.Select(s => new AuswahlOption<Guid?>(s.Id, $"Niveau {s.Name}"))];
+
+    protected override void OnParametersSet()
+    {
+        if (Vorlage is not null && !ReferenceEquals(Vorlage, geoeffnet))
+        {
+            geoeffnet = Vorlage;
+            Fehlermeldung = null;
+            vorhanden = Vorlage.ErstelltAmUtc != default;
+        }
+        else if (Vorlage is null) geoeffnet = null;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Vorlage is { } v && await AusfuehrenAsync(() => Vorlagen.SpeichernAsync(Ich.KontoId, v), "Le modèle est enregistré."))
+            await OnGespeichert.InvokeAsync();
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (Vorlage is { } v && await AusfuehrenAsync(() => Vorlagen.LoeschenAsync(Ich.KontoId, v.Id), "Le modèle est supprimé."))
+            await OnGespeichert.InvokeAsync();
+    }
+}

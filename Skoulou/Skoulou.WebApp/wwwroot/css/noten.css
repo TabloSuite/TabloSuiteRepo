@@ -1,2 +1,150 @@
 /* SKOULOU – Stile des Bereichs E5 Noten & Bulletins (Notes, Conseil, Bulletins, Passage).
    Nur bereichsspezifische Klassen; gemeinsame Bausteine stehen in app.css (Tokens --sk-* verwenden, keine festen Farben). */
+
+/* ---------- Auswahl (Klasse, Fach, Periode) ---------- */
+.nt-auswahl .sk-karte-inhalt { display: grid; gap: .9rem; }
+.nt-auswahl-zeile { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .9rem; }
+.nt-perioden .sk-chip.aktiv, .nt-chips .sk-chip.aktiv { background: var(--sk-primaer); border-color: var(--sk-primaer); color: #fff; }
+
+/* ---------- Kopf des Rasters ---------- */
+.nt-kopf { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: space-between; margin-bottom: .9rem; }
+.nt-kopf h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--sk-ueberschrift); }
+.nt-kopf .sk-leise { margin: .1rem 0 0; }
+.nt-fortschritt { display: grid; gap: .3rem; min-width: 11rem; font-size: .86rem; color: var(--sk-text-leise); }
+.nt-fortschritt strong { color: var(--sk-text); font-variant-numeric: tabular-nums; }
+.nt-balken { display: block; height: .45rem; border-radius: 999px; background: var(--sk-flaeche-3); overflow: hidden; }
+.nt-balken > span { display: block; height: 100%; border-radius: inherit; background: var(--sk-verlauf); transition: width .3s ease; }
+
+/* ---------- Notenraster ---------- */
+.nt-raster-rahmen { overflow: auto; max-height: min(70vh, 46rem); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); }
+.nt-raster { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: .92rem; }
+.nt-raster th, .nt-raster td { padding: .3rem .35rem; border-bottom: 1px solid var(--sk-rand); text-align: center; vertical-align: middle; }
+.nt-raster thead th { position: sticky; top: 0; z-index: 2; background: var(--sk-flaeche-2); font-size: .8rem; color: var(--sk-text-leise); font-weight: 700; }
+.nt-raster .nt-name { position: sticky; left: 0; z-index: 1; background: var(--sk-flaeche); text-align: left; min-width: 10.5rem; max-width: 14rem; padding-left: .75rem; border-right: 1px solid var(--sk-rand); }
+.nt-raster thead .nt-ecke { z-index: 3; background: var(--sk-flaeche-2); }
+.nt-name-text { display: block; font-weight: 700; color: var(--sk-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-hinweis { display: block; font-size: .72rem; font-weight: 600; color: var(--sk-warn-text); }
+.nt-raster tr.aktiv .nt-name { background: var(--sk-primaer-zart); }
+.nt-spalte { min-width: 4.8rem; }
+.nt-spalte-knopf { display: grid; gap: .05rem; width: 100%; padding: .2rem .25rem; border: none; border-radius: .5rem; background: none; color: var(--sk-text); cursor: pointer; font: inherit; }
+.nt-spalte-knopf:hover:not(:disabled) { background: var(--sk-flaeche-3); }
+.nt-spalte-knopf:disabled { cursor: default; }
+.nt-spalte-titel { font-weight: 800; font-size: .8rem; max-width: 7.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-inline: auto; }
+.nt-spalte-knopf small { font-size: .7rem; color: var(--sk-text-leise); font-weight: 600; }
+.nt-zelle {
+    width: 4.2rem; height: 2.45rem; padding: 0 .2rem; border: 1px solid var(--sk-rand-stark); border-radius: .55rem; background: var(--sk-flaeche);
+    color: var(--sk-text); font: inherit; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; transition: border-color .15s, background .15s;
+}
+.nt-zelle:focus { outline: none; border-color: var(--sk-primaer-hell); box-shadow: var(--sk-fokus); background: var(--sk-flaeche); }
+.nt-zelle[readonly] { background: var(--sk-flaeche-2); border-color: var(--sk-rand); color: var(--sk-text-leise); }
+.nt-zelle.status { color: var(--sk-warn-text); text-transform: lowercase; }
+.nt-zelle.ok { border-color: var(--sk-erfolg); background: var(--sk-erfolg-zart); }
+.nt-zelle.fehler { border-color: var(--sk-fehler); background: var(--sk-fehler-zart); }
+.nt-zelle.laeuft { opacity: .6; }
+.nt-zelle.fremd { border-style: dashed; background: var(--sk-flaeche-3); }
+.nt-mittel-kopf, .nt-mittel { min-width: 4.4rem; }
+.nt-mittel { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--sk-ueberschrift); }
+.nt-mittel.incomplet { font-size: .76rem; font-weight: 700; color: var(--sk-warn-text); }
+.nt-bem-kopf, .nt-bem { min-width: 9rem; text-align: left !important; }
+.nt-bem-knopf { display: inline-flex; align-items: center; gap: .35rem; max-width: 14rem; padding: .35rem .55rem; border: 1px solid var(--sk-rand); border-radius: .55rem; background: var(--sk-flaeche); color: var(--sk-text); font: inherit; font-size: .8rem; cursor: pointer; }
+.nt-bem-knopf span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-bem-knopf.leer { color: var(--sk-text-zart); border-style: dashed; }
+.nt-bem-knopf:disabled { cursor: default; }
+.nt-statusleiste { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; padding: .55rem .7rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-glas-stark); box-shadow: var(--sk-schatten); }
+.nt-statusleiste-text { font-size: .86rem; color: var(--sk-text-leise); }
+.nt-statusleiste-knoepfe { display: flex; gap: .35rem; flex-wrap: wrap; }
+.nt-historie { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.nt-historie li { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-klein); }
+.nt-historie-wert { display: inline-flex; align-items: center; gap: .4rem; font-variant-numeric: tabular-nums; }
+.nt-historie small { color: var(--sk-text-leise); }
+.nt-links { margin-right: auto; }
+
+@media (max-width: 640px) {
+    .nt-raster { font-size: .84rem; }
+    .nt-raster .nt-name { min-width: 7.4rem; max-width: 8.4rem; padding-left: .5rem; }
+    .nt-name-text { font-size: .8rem; }
+    .nt-spalte { min-width: 3.7rem; }
+    .nt-spalte-titel { white-space: normal; max-width: 4.4rem; line-height: 1.15; overflow-wrap: anywhere; hyphens: auto; }
+    .nt-zelle { width: 3.5rem; height: 2.6rem; font-size: 1rem; }
+    .nt-mittel.incomplet { font-size: .66rem; }
+    .nt-bem-kopf, .nt-bem { min-width: 3.2rem; }
+    .nt-bem-knopf span, .nt-nur-breit { display: none; }
+    .nt-raster-rahmen { scroll-padding-bottom: 4rem; }
+    .nt-statusleiste { position: fixed; left: .5rem; right: .5rem; bottom: calc(4.6rem + env(safe-area-inset-bottom)); padding: .4rem .5rem; margin: 0; flex-wrap: nowrap; }
+    .nt-statusleiste-text { min-width: 0; font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nt-statusleiste-knoepfe { flex-wrap: nowrap; gap: .25rem; }
+    .nt-statusleiste .sk-btn-klein { min-height: 2.3rem; padding: .3rem .55rem; }
+}
+
+/* ---------- Bulletins, Conseil ---------- */
+.nt-ansicht { margin-bottom: 1rem; }
+.nt-kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: .9rem; margin-bottom: 1.1rem; }
+.nt-zahl { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.nt-warn { color: var(--sk-warn-text); font-weight: 700; }
+.nt-conseil td { vertical-align: middle; }
+.nt-conseil small { font-size: .74rem; }
+.nt-conseil-kopf { margin: 0; color: var(--sk-text-leise); }
+.nt-conseil-kopf strong { color: var(--sk-ueberschrift); }
+.nt-fehlend { margin: 0 0 1rem; padding: .7rem .9rem; border: 1px solid var(--sk-warn-rand); border-radius: var(--sk-radius); background: var(--sk-warn-zart); }
+.nt-fehlend summary { display: flex; align-items: center; gap: .45rem; cursor: pointer; font-weight: 700; color: var(--sk-warn-text); }
+.nt-fehlend ul { margin: .6rem 0; padding-left: 1.2rem; max-height: 14rem; overflow: auto; font-size: .88rem; }
+.nt-sanktionen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem 1rem; }
+.nt-pruefliste { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.nt-pruefliste li { display: flex; align-items: flex-start; gap: .55rem; padding: .55rem .7rem; border-radius: var(--sk-radius-klein); background: var(--sk-flaeche-2); }
+.nt-pruefliste li.ok .sk-icon { color: var(--sk-erfolg); }
+.nt-pruefliste li.warn { background: var(--sk-warn-zart); }
+.nt-pruefliste li.warn .sk-icon { color: var(--sk-warn); }
+.nt-pruefliste li.info .sk-icon { color: var(--sk-primaer-hell); }
+.nt-liste-filter { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: .8rem; }
+.nt-liste-filter .sk-feld { min-width: 13rem; }
+.nt-aktionen { white-space: nowrap; text-align: right; }
+.nt-vorlagen { display: grid; gap: .6rem; }
+.nt-vorlage { display: flex; align-items: center; gap: .8rem; padding: .7rem .9rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.nt-vorlage > div { flex: 1; display: grid; min-width: 0; }
+.nt-vorlage small { color: var(--sk-text-leise); }
+.nt-farbe { width: 1.6rem; height: 1.6rem; border-radius: .5rem; flex-shrink: 0; border: 1px solid var(--sk-rand); }
+.nt-vorlage-reihe { display: grid; grid-template-columns: 8rem repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: end; }
+.nt-farbwahl input { width: 100%; height: 2.75rem; padding: .2rem; border: 1px solid var(--sk-rand-stark); border-radius: var(--sk-radius-klein); background: var(--sk-flaeche); }
+.nt-schalter-gruppen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+.nt-schalter-gruppen > div { display: grid; gap: .45rem; align-content: start; }
+
+/* ---------- Schüler/Eltern ---------- */
+.nt-kacheln { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
+.nt-kachel { display: grid; gap: .8rem; padding: 1.1rem 1.2rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); box-shadow: var(--sk-schatten-klein); }
+.nt-kachel-kopf { display: flex; justify-content: space-between; gap: .6rem; align-items: flex-start; }
+.nt-kachel-kopf h3 { margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--sk-ueberschrift); }
+.nt-kachel-werte { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.nt-kachel-werte > div { display: grid; padding: .55rem .7rem; border-radius: var(--sk-radius-klein); background: var(--sk-primaer-zart); }
+.nt-kachel-werte small { font-size: .74rem; font-weight: 700; color: var(--sk-text-leise); text-transform: uppercase; letter-spacing: .04em; }
+.nt-kachel-werte strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; color: var(--sk-primaer-text); }
+.nt-kachel-mention { display: flex; align-items: center; gap: .4rem; margin: 0; font-weight: 700; color: var(--sk-akzent-text); }
+.nt-kachel-fuss { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.nt-kachel-fuss small { color: var(--sk-text-leise); }
+.nt-live { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .9rem; }
+.nt-live-fach { padding: .8rem .9rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); display: grid; gap: .35rem; }
+.nt-live-fach header { display: flex; justify-content: space-between; gap: .5rem; padding-bottom: .35rem; border-bottom: 1px solid var(--sk-rand); }
+.nt-live-note { display: flex; justify-content: space-between; gap: .5rem; font-size: .9rem; }
+.nt-live-note small { color: var(--sk-text-leise); font-weight: 600; }
+.nt-pruefung { display: grid; gap: .5rem; margin: 1rem 0 .6rem; }
+.nt-pruefung > div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: .8rem; padding: .5rem 0; border-bottom: 1px solid var(--sk-rand); }
+.nt-pruefung dt { color: var(--sk-text-leise); font-weight: 600; }
+.nt-pruefung dd { margin: 0; font-weight: 700; }
+
+/* ---------- Passage, Composantes ---------- */
+.nt-optionen { display: grid; gap: .6rem; margin-top: .9rem; }
+.nt-passage td { vertical-align: middle; }
+.nt-passage .sk-feld { min-width: 9rem; }
+.nt-passage-zahlen { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.nt-komponenten { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .9rem; }
+.nt-komponenten-periode { display: grid; gap: .4rem; align-content: start; padding: .8rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.nt-komponenten-periode header { display: flex; align-items: center; gap: .5rem; }
+.nt-komponenten-periode header strong { flex: 1; }
+.nt-komponente { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .6rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-klein); background: var(--sk-flaeche-2); color: var(--sk-text); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+.nt-komponente:hover { border-color: var(--sk-primaer-hell); }
+.nt-komponente small { color: var(--sk-text-leise); font-weight: 600; }
+
+@media (max-width: 640px) {
+    .nt-vorlage-reihe, .nt-schalter-gruppen, .nt-sanktionen { grid-template-columns: minmax(0, 1fr); }
+    .nt-pruefung > div { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+    .nt-vorlage { flex-wrap: wrap; }
+}

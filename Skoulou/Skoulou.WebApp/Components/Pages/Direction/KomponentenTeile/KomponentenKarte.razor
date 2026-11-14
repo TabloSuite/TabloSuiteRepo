@@ -1,0 +1,138 @@
+@* Composantes je Periode des in der Kopfzeile gewählten Jahres (Vorlage für die Évaluations der Lehrkräfte). *@
+@inherits SkoulouSeite
+@implements IDisposable
+@using Skoulou.Core.Noten
+@using Skoulou.WebApp.Services.Noten
+@inject BewertungService Bewertungen
+
+@if (!KeinZugriff && perioden is not null && Kontext.SchuljahrId is not null)
+{
+    <Karte Titel="@($"Composantes des moyennes · {Kontext.Schuljahre.FirstOrDefault(j => j.Id == Kontext.SchuljahrId)?.Bezeichnung}")" Icon="layers"
+           Untertitel="Proposées aux enseignants quand ils créent leurs évaluations (interrogation, devoir, composition…). Chaque enseignant peut en ajouter d'autres."
+           Klappbar="true" AnfangsOffen="@(perioden.All(p => p.Komponenten.Count == 0))">
+        @if (perioden.All(p => p.Komponenten.Count == 0))
+        {
+            <Leerzustand Icon="layers" Titel="Aucune composante" Text="Commencez par le modèle courant : interrogation (×1), devoir (×1) et composition (×2), notées sur 20, pour toutes les périodes.">
+                <AsyncKnopf Text="Utiliser le modèle courant" Icon="sparkles" CssClass="sk-btn-primaer" OnClick="() => VerteilenAsync(null)" />
+            </Leerzustand>
+        }
+        else
+        {
+            <div class="nt-komponenten">
+                @foreach (var p in perioden)
+                {
+                    <section class="nt-komponenten-periode" @key="p.PeriodeId">
+                        <header>
+                            <strong>@p.Titel</strong>
+                            @if (!p.ZaehltFuerJahr)
+                            {
+                                <StatusBadge Text="examen blanc" Art="neutral" />
+                            }
+                            <button type="button" class="sk-icon-knopf klein" title="Ajouter une composante" @onclick="() => Oeffnen(p.PeriodeId, null)"><Icon Name="plus" Groesse="16" /></button>
+                        </header>
+                        @if (p.Komponenten.Count == 0)
+                        {
+                            <p class="sk-leise">Aucune composante.</p>
+                            <button type="button" class="sk-link-knopf" @onclick="() => VerteilenAsync(perioden.First(x => x.Komponenten.Count > 0).PeriodeId)">Reprendre celles de « @perioden.First(x => x.Komponenten.Count > 0).Titel »</button>
+                        }
+                        @foreach (var k in p.Komponenten)
+                        {
+                            <button type="button" class="nt-komponente" @onclick="() => Oeffnen(p.PeriodeId, k)">
+                                <span>@k.Titel</span><small>/@k.Bareme.ToString("0.##", SkoulouKultur.Kultur) · ×@k.Gewicht.ToString("0.##", SkoulouKultur.Kultur)@(k.Nutzung > 0 ? $" · {k.Nutzung} éval." : "")</small>
+                            </button>
+                        }
+                    </section>
+                }
+            </div>
+        }
+    </Karte>
+}
+
+<ModalDialog Open="periodeId is not null" Title="@(komponente is null ? "Nouvelle composante" : "Modifier la composante")" Breite="sk-modal-sm"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="() => periodeId = null">
+    <ChildContent>
+        <div class="sk-formular">
+            <TextFeld Label="Intitulé" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Platzhalter="Interrogation, Devoir, Composition…" />
+            <AuswahlFeld T="BewertungsArt" Label="Type" @bind-Wert="art" Optionen="ArtOptionen" />
+            <div class="sk-raster-2">
+                <ZahlFeld Label="Barème" @bind-Wert="bareme" Min="0.01m" Max="1000" />
+                <ZahlFeld Label="Poids" @bind-Wert="gewicht" Min="0.01m" Max="100" />
+            </div>
+            @if (komponente?.Nutzung > 0)
+            {
+                <Hinweis Art="info">Déjà utilisée par @komponente.Nutzung évaluation(s) : elles gardent leurs valeurs.</Hinweis>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (komponente is not null)
+        {
+            <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
+        }
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => periodeId = null">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private static readonly IReadOnlyList<AuswahlOption<BewertungsArt>> ArtOptionen =
+        Enum.GetValues<BewertungsArt>().Select(a => new AuswahlOption<BewertungsArt>(a, NotenTexte.Art(a))).ToList();
+
+    private IReadOnlyList<PeriodeMitKomponenten>? perioden;
+    private Guid? geladenFuer, periodeId;
+    private KomponenteZeile? komponente;
+    private string? titel;
+    private BewertungsArt art;
+    private decimal? bareme, gewicht;
+
+    protected override async Task InitialisierenAsync()
+    {
+        Kontext.Geaendert += KontextGeaendert;
+        await LadenAsync();
+    }
+
+    private async Task LadenAsync()
+    {
+        geladenFuer = Kontext.SchuljahrId;
+        perioden = geladenFuer is { } id ? await Bewertungen.KomponentenAsync(Ich.KontoId, id) : [];
+    }
+
+    private void KontextGeaendert()
+    {
+        if (geladenFuer == Kontext.SchuljahrId) return;
+        _ = InvokeAsync(async () => { await AusfuehrenAsync(LadenAsync); StateHasChanged(); });
+    }
+
+    private void Oeffnen(Guid periode, KomponenteZeile? k)
+    {
+        (periodeId, komponente, Fehlermeldung) = (periode, k, null);
+        (titel, art, bareme, gewicht) = k is null ? (null, BewertungsArt.Interrogation, 20m, 1m) : (k.Titel, k.Art, k.Bareme, k.Gewicht);
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (periodeId is not { } p) return;
+        var e = new KomponenteEingabe(titel, art, gewicht ?? 0, bareme ?? 0);
+        if (await AusfuehrenAsync(async () =>
+            {
+                if (komponente is null) await Bewertungen.KomponenteAnlegenAsync(Ich.KontoId, p, e);
+                else await Bewertungen.KomponenteAendernAsync(Ich.KontoId, komponente.Id, e);
+                await LadenAsync();
+            }, "La composante est enregistrée.")) periodeId = null;
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (komponente is null) return;
+        if (await AusfuehrenAsync(async () => { await Bewertungen.KomponenteLoeschenAsync(Ich.KontoId, komponente.Id); await LadenAsync(); }, "La composante est supprimée."))
+            periodeId = null;
+    }
+
+    private async Task VerteilenAsync(Guid? vorlage)
+    {
+        if (Kontext.SchuljahrId is not { } jahr) return;
+        await AusfuehrenAsync(async () => { await Bewertungen.KomponentenVerteilenAsync(Ich.KontoId, jahr, vorlage); await LadenAsync(); }, "Les composantes sont créées.");
+    }
+
+    public void Dispose() => Kontext.Geaendert -= KontextGeaendert;
+}

@@ -1,0 +1,56 @@
+@* Veröffentlichung einer Klasse: Zusammenfassung, Bestätigung, optional mit nicht klassierten Schülern. *@
+@inherits SkoulouSeite
+@inject BulletinService Bulletins
+
+<ModalDialog Open="Open" Title="Publier les bulletins" Oberzeile="@($"{Uebersicht?.Klasse} · {Uebersicht?.Periode}")" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (Uebersicht is { } u)
+        {
+            <div class="sk-formular">
+                <ul class="nt-pruefliste">
+                    <li class="ok"><Icon Name="check-circle" Groesse="18" /> @u.Effectif bulletin(s), numérotés à la suite (BUL-…) avec un QR code de vérification.</li>
+                    <li class="@(u.NonClasses == 0 ? "ok" : "warn")"><Icon Name="@(u.NonClasses == 0 ? "check-circle" : "alert")" Groesse="18" />
+                        @(u.NonClasses == 0 ? "Toutes les notes sont saisies." : $"{u.NonClasses} élève(s) avec des notes manquantes : ils seront « non classés ».")</li>
+                    <li class="ok"><Icon Name="mail" Groesse="18" /> Les familles qui ont une adresse e-mail sont prévenues automatiquement.</li>
+                    <li class="info"><Icon Name="lock" Groesse="18" /> Ensuite, les notes, présences et le conseil de la période sont verrouillés pour cette classe (rectification possible, motivée).</li>
+                </ul>
+                @if (u.NonClasses > 0)
+                {
+                    <Schalter @bind-Wert="trotz" Label="Publier quand même avec des élèves non classés" Hinweis="Sinon, complétez d'abord les notes manquantes (ou saisissez abs, aj, disp)." />
+                }
+                <Schalter @bind-Wert="bestaetigt" Label="Je confirme avoir vérifié les moyennes, les rangs et le conseil de classe." />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Publier" BusyText="Publication…" Icon="send" CssClass="sk-btn-primaer" Disabled="@(!bestaetigt || (Uebersicht?.NonClasses > 0 && !trotz))" OnClick="VeroeffentlichenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public KlassenratUebersicht? Uebersicht { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private bool bestaetigt, trotz, warOffen;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen) (warOffen, bestaetigt, trotz, Fehlermeldung) = (true, false, false, null);
+        else if (!Open) warOffen = false;
+    }
+
+    private async Task VeroeffentlichenAsync()
+    {
+        if (Uebersicht is not { } u) return;
+        VeroeffentlichungsErgebnis? e = null;
+        if (await AusfuehrenAsync(async () => e = await Bulletins.VeroeffentlichenAsync(Ich.KontoId, u.KlasseId, u.PeriodeId, u.KlassenHash, trotz)))
+        {
+            Toast.ZeigeErfolg($"{e!.Bulletins} bulletin(s) publié(s), {e.Mails} famille(s) prévenue(s) par e-mail.");
+            await OnGespeichert.InvokeAsync();
+        }
+    }
+}

@@ -1,0 +1,101 @@
+@* Bewertung anlegen/ändern/löschen; Vorschläge aus den Komponenten der Periode. *@
+@inherits SkoulouSeite
+@inject BewertungService Bewertungen
+
+<ModalDialog Open="Open" Title="@(Spalte is null ? "Nouvelle évaluation" : "Modifier l'évaluation")" Oberzeile="@Oberzeile" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            @if (Spalte is null && Komponenten.Count > 0)
+            {
+                <div>
+                    <p class="sk-feld-label">Composantes de la période</p>
+                    <div class="sk-chips" role="group" aria-label="Composantes">
+                        @foreach (var k in Komponenten)
+                        {
+                            <button type="button" class="sk-chip @(komponente == k.Id ? "aktiv" : null)" @onclick="() => Uebernehmen(k)">
+                                @k.Titel <span class="sk-chip-zahl">/@k.Bareme.ToString("0.##", SkoulouKultur.Kultur) ×@k.Gewicht.ToString("0.##", SkoulouKultur.Kultur)</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+            <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="120" Pflicht="true" Platzhalter="Interrogation 1, Devoir surveillé…" />
+            <div class="sk-raster-2">
+                <AuswahlFeld T="BewertungsArt" Label="Type" @bind-Wert="art" Optionen="ArtOptionen" />
+                <DatumFeld Label="Date (facultatif)" @bind-Wert="datum" Hinweis="Sert à savoir quels élèves étaient inscrits." />
+            </div>
+            <div class="sk-raster-2">
+                <ZahlFeld Label="Barème (noté sur)" @bind-Wert="bareme" Min="0.01m" Max="1000" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true" />
+                <ZahlFeld Label="Poids dans la moyenne" @bind-Wert="gewicht" Min="0.01m" Max="100" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true"
+                          Hinweis="2 = compte double (ex. composition)." />
+            </div>
+            @if (Spalte?.AnzahlNoten > 0)
+            {
+                <Hinweis Art="info">@Spalte.AnzahlNoten note(s) déjà saisie(s) : le barème et le poids ne changent plus ; le titre, le type et la date oui.</Hinweis>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (Spalte is not null && Spalte.AnzahlNoten == 0)
+        {
+            <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
+        }
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private static readonly IReadOnlyList<AuswahlOption<BewertungsArt>> ArtOptionen =
+        Enum.GetValues<BewertungsArt>().Select(a => new AuswahlOption<BewertungsArt>(a, NotenTexte.Art(a))).ToList();
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string? Oberzeile { get; set; }
+    [Parameter] public Guid KlassenfachId { get; set; }
+    [Parameter] public Guid PeriodeId { get; set; }
+    [Parameter] public RasterSpalte? Spalte { get; set; }
+    [Parameter] public IReadOnlyList<KomponenteZeile> Komponenten { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? titel;
+    private BewertungsArt art;
+    private DateOnly? datum;
+    private decimal? bareme = 20, gewicht = 1;
+    private Guid? komponente;
+    private bool warOffen;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen)
+        {
+            warOffen = true;
+            Fehlermeldung = null;
+            komponente = Spalte?.KomponenteId;
+            if (Spalte is { } s) (titel, art, datum, bareme, gewicht) = (s.Titel, s.Art, s.Datum, s.Bareme, s.Gewicht);
+            else (titel, art, datum, bareme, gewicht) = (null, BewertungsArt.Interrogation, null, 20, 1);
+        }
+        else if (!Open) warOffen = false;
+    }
+
+    private void Uebernehmen(KomponenteZeile k) => (komponente, titel, art, bareme, gewicht) = (k.Id, k.Titel, k.Art, k.Bareme, k.Gewicht);
+
+    private async Task SpeichernAsync()
+    {
+        var e = new BewertungEingabe(titel, art, datum, bareme ?? 0, gewicht ?? 0, komponente);
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            if (Spalte is null) await Bewertungen.AnlegenAsync(Ich.KontoId, KlassenfachId, PeriodeId, e);
+            else await Bewertungen.AendernAsync(Ich.KontoId, Spalte.BewertungId, e);
+        }, "L'évaluation est enregistrée.");
+        if (ok) await OnGespeichert.InvokeAsync();
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (Spalte is null) return;
+        if (await AusfuehrenAsync(() => Bewertungen.LoeschenAsync(Ich.KontoId, Spalte.BewertungId), "L'évaluation est supprimée."))
+            await OnGespeichert.InvokeAsync();
+    }
+}

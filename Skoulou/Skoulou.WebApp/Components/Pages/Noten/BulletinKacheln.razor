@@ -1,0 +1,47 @@
+@* Gültige Bulletins eines Schülers als Kacheln (Schüler- und Elternseiten), mit PDF. *@
+@inject TimeProvider Uhr
+
+@if (Liste is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (Liste.Count == 0)
+{
+    <Leerzustand Icon="report" Titel="Aucun bulletin publié pour le moment" Text="Les bulletins apparaissent ici dès que l'établissement les publie." />
+}
+else
+{
+    <div class="nt-kacheln">
+        @foreach (var b in Liste)
+        {
+            <article class="nt-kachel" @key="b.Id">
+                <div class="nt-kachel-kopf">
+                    <div>
+                        <p class="sk-oberzeile">@b.Jahr · @b.Klasse</p>
+                        <h3>@b.Periode</h3>
+                    </div>
+                    @if (b.IstRectificatif)
+                    {
+                        <StatusBadge Text="Rectifié" Art="info" />
+                    }
+                </div>
+                <div class="nt-kachel-werte">
+                    <div><small>Moyenne</small><strong>@b.Moyenne</strong></div>
+                    <div><small>Rang</small><strong>@b.Rang</strong></div>
+                </div>
+                @if (b.Distinktion != "Aucune")
+                {
+                    <p class="nt-kachel-mention"><Icon Name="award" Groesse="16" /> @b.Distinktion</p>
+                }
+                <div class="nt-kachel-fuss">
+                    <small>N° @b.Nummer · @(new SchulZeit(Uhr).AlsText(b.VeroeffentlichtAmUtc))</small>
+                    <a class="sk-btn sk-btn-primaer sk-btn-klein" href="@($"/bulletins/{b.Id}/pdf")" target="_blank"><Icon Name="download" Groesse="16" /> PDF</a>
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<EigenesBulletin>? Liste { get; set; }
+}

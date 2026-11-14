@@ -1,5 +1,96 @@
 @page "/parents/notes"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Noten
+@using Skoulou.WebApp.Components.Pages.Noten
+@inject BulletinLeseService Lesen
 
-<InVorbereitung Titel="Notes" Icon="clipboard" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Les notes de vos enfants, selon les règles de l'établissement." />
+<PageTitle>Notes · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Notes" Icon="clipboard" Untertitel="Les résultats de votre enfant, selon ce que l'établissement communique : notes au fil de l'eau ou bulletins publiés." />
+
+@if (!Laedt)
+{
+    <KindAuswahl KontoId="Ich.KontoId" Gewaehlt="kind" GewaehltChanged="KindAsync" />
+}
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (kind is not null)
+{
+    @if (live is null)
+    {
+        <div class="sk-skelett"><div></div><div></div></div>
+    }
+    else if (!live.Erlaubt)
+    {
+        <Hinweis Art="info" Titel="Notes communiquées avec les bulletins">L'établissement publie les notes avec les bulletins de chaque période. Voici les bulletins disponibles.</Hinweis>
+        <BulletinKacheln Liste="bulletins" />
+    }
+    else
+    {
+        <div class="sk-chips nt-chips nt-perioden" role="group" aria-label="Période">
+            @foreach (var p in live.Perioden)
+            {
+                <button type="button" class="sk-chip @(p.Id == live.PeriodeId ? "aktiv" : null)" @onclick="() => PeriodeAsync(p.Id)">@p.Titel</button>
+            }
+        </div>
+        <Karte Titel="@($"Moyenne : {live.Moyenne ?? "—"}")" Untertitel="@(live.Klasse is null ? null : $"Classe {live.Klasse} · notes provisoires tant que le bulletin n'est pas publié")" Icon="trend-up">
+            @if (live.Faecher.Count == 0)
+            {
+                <Leerzustand Icon="clipboard" Titel="Pas encore de notes pour cette période" />
+            }
+            else
+            {
+                <div class="nt-live">
+                    @foreach (var f in live.Faecher)
+                    {
+                        <section class="nt-live-fach">
+                            <header><strong>@f.Fach</strong><span class="nt-zahl">@f.Mittel</span></header>
+                            @if (f.Noten.Count == 0)
+                            {
+                                <p class="sk-leise">Aucune évaluation.</p>
+                            }
+                            @foreach (var n in f.Noten)
+                            {
+                                <div class="nt-live-note"><span>@n.Titel@(n.Datum is { } d ? $" · {SkoulouKultur.Datum(d)}" : "")</span><strong>@n.Note<small>/@n.Bareme.ToString("0.##", SkoulouKultur.Kultur)</small></strong></div>
+                            }
+                        </section>
+                    }
+                </div>
+            }
+        </Karte>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "kind")] public Guid? KindAusAdresse { get; set; }
+
+    private Guid? kind;
+    private LiveNoten? live;
+    private IReadOnlyList<EigenesBulletin>? bulletins;
+
+    protected override void OnInitialized() => kind = KindAusAdresse;
+
+    protected override Task InitialisierenAsync() => kind is { } k ? LadenAsync(k, null) : Task.CompletedTask;
+
+    private async Task LadenAsync(Guid k, Guid? periode)
+    {
+        live = await Lesen.LiveNotenAsync(Ich.KontoId, k, periode);
+        if (!live.Erlaubt) bulletins = await Lesen.EigeneAsync(Ich.KontoId, k);
+    }
+
+    private async Task KindAsync(Guid? id)
+    {
+        if (id == kind && live is not null) return;
+        (kind, live, bulletins) = (id, null, null);
+        if (id is { } k) await AusfuehrenAsync(() => LadenAsync(k, null));
+    }
+
+    private async Task PeriodeAsync(Guid periode)
+    {
+        if (kind is { } k) await AusfuehrenAsync(() => LadenAsync(k, periode));
+    }
+}

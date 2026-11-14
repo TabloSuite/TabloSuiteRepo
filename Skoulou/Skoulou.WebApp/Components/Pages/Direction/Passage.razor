@@ -1,5 +1,165 @@
 @page "/direction/annee/passage"
 @attribute [Authorize(Policy = Richtlinien.Direction)]
+@inherits JahrSeite
+@using Skoulou.Core.Noten
+@using Skoulou.WebApp.Services.Noten
+@inject JahreswechselService Wechsel
 
-<InVorbereitung Titel="Passage à l'année suivante" Icon="calendar" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Préparer la nouvelle année scolaire : classes, enseignements, passages, redoublements et départs, en une seule étape vérifiée." />
+<PageTitle>Passage à l'année suivante · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Passage à l'année suivante" Icon="calendar" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="Selon les décisions de fin d'année : les admis passent au niveau suivant, les redoublants restent au même niveau, les autres quittent l'établissement. Tout se fait en une seule étape, vérifiée avant.">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="/direction/annee"><Icon Name="arrow-left" Groesse="18" /> <span>Année scolaire</span></a>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (JahrId is null)
+{
+    <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Créez d'abord l'année scolaire." />
+}
+else if (v is null || plan is null)
+{
+    <div class="sk-skelett"><div></div><div></div><div></div></div>
+}
+else if (ergebnis is not null || v.BereitsAusgefuehrt)
+{
+    <Hinweis Art="erfolg" Titel="Passage effectué">
+        @if (ergebnis is not null)
+        {
+            <text>@ergebnis.Einschreibungen élève(s) inscrit(s) en @ergebnis.NeuesJahr, @ergebnis.NeueKlassen classe(s) créée(s), @ergebnis.Sortants départ(s). </text>
+        }
+        L'année @v.AltesJahr est clôturée. Démarrez la nouvelle année dans « Année scolaire » le jour de la rentrée, puis inscrivez les nouveaux élèves.
+    </Hinweis>
+    <a class="sk-btn sk-btn-primaer" href="/direction/annee"><Icon Name="calendar" Groesse="18" /> <span>Aller à l'année scolaire</span></a>
+}
+else
+{
+    <div class="nt-kennzahlen">
+        <KennzahlKachel Bezeichnung="Passent ou redoublent" Wert="@v.Eingeschrieben.ToString()" Icon="graduation" Haupt="true" Zusatz="@($"inscrits en {v.NeuesJahr}")" />
+        <KennzahlKachel Bezeichnung="Quittent l'établissement" Wert="@v.Sortants.ToString()" Icon="logout" Zusatz="exclus, orientés, départs, fin de cycle" />
+        <KennzahlKachel Bezeichnung="Décisions à prendre" Wert="@v.Offen.ToString()" Icon="alert" Zusatz="@(v.Offen == 0 ? "tout est décidé" : "à renseigner d'abord")" />
+    </div>
+
+    @foreach (var w in v.Warnungen)
+    {
+        <Hinweis Art="warn">@w</Hinweis>
+    }
+
+    <Karte Titel="@($"1. Année {v.NeuesJahr}")" Icon="calendar"
+           Untertitel="@(v.NeuesJahrId is null ? $"Créée en préparation avec les {v.NeuePerioden} périodes de {v.AltesJahr} (dates décalées d'un an)." : $"L'année {v.NeuesJahr} existe déjà ({v.NeuePerioden} périodes) : elle sera utilisée.")">
+        @if (v.NeuesJahrId is null)
+        {
+            <div class="nt-auswahl-zeile">
+                <TextFeld Label="Nom" Wert="@plan.Bezeichnung" WertChanged="t => AendernAsync(() => plan.Bezeichnung = t)" MaxLaenge="80" />
+                <DatumFeld Label="Début" Wert="plan.Beginn" WertChanged="d => AendernAsync(() => plan.Beginn = d)" />
+                <DatumFeld Label="Fin" Wert="plan.Ende" WertChanged="d => AendernAsync(() => plan.Ende = d)" />
+            </div>
+        }
+        <div class="nt-optionen">
+            <Schalter Wert="plan.LehrauftraegeKopieren" WertChanged="b => plan.LehrauftraegeKopieren = b" Label="Reprendre les enseignants de chaque matière"
+                      Hinweis="Les matières et coefficients sont toujours repris." />
+            <Schalter Wert="plan.KomponentenKopieren" WertChanged="b => plan.KomponentenKopieren = b" Label="Reprendre les composantes des périodes" />
+        </div>
+    </Karte>
+
+    <Karte Titel="2. Classes et passages" Icon="layers" Untertitel="Chaque classe est recréée dans la nouvelle année (nom modifiable) et accueille ses redoublants ; choisissez où vont les admis.">
+        <div class="sk-tabelle-rahmen">
+            <table class="sk-tabelle nt-passage">
+                <thead><tr><th>Classe @v.AltesJahr</th><th>Élèves</th><th>Nouvelle classe</th><th>Les admis vont en</th></tr></thead>
+                <tbody>
+                    @foreach (var k in v.Klassen)
+                    {
+                        <tr @key="k.KlasseId">
+                            <td><strong>@k.Klasse</strong>@if (k.Stufe is not null)
+                                {
+                                    <small class="sk-leise"> · @k.Stufe</small>
+                                }</td>
+                            <td>
+                                <span class="nt-passage-zahlen">
+                                    <StatusBadge Text="@($"{k.Anzahl(JahresEntscheidungsArt.Admis)} admis")" Art="erfolg" />
+                                    <StatusBadge Text="@($"{k.Anzahl(JahresEntscheidungsArt.Redouble)} redoublent")" Art="info" />
+                                    @if (k.Sortants > 0)
+                                    {
+                                        <StatusBadge Text="@($"{k.Sortants} départ(s)")" Art="neutral" />
+                                    }
+                                    @if (k.Anzahl(JahresEntscheidungsArt.Offen) is > 0 and var offen)
+                                    {
+                                        <StatusBadge Text="@($"{offen} à décider")" Art="warn" />
+                                        <AsyncKnopf Text="Admis pour ces élèves" CssClass="sk-btn-klein sk-btn-ghost" OnClick="() => AdmisAsync(k.KlasseId)" />
+                                    }
+                                </span>
+                            </td>
+                            <td><TextFeld Wert="@k.NeuerName" WertChanged="t => AendernAsync(() => plan.Namen[k.KlasseId] = t ?? string.Empty)" MaxLaenge="60" aria-label="@($"Nom de la nouvelle classe pour {k.Klasse}")" /></td>
+                            <td>
+                                @if (k.ZielOptionen.Count == 0)
+                                {
+                                    <span class="sk-leise">Fin de cycle : quittent l'établissement</span>
+                                }
+                                else
+                                {
+                                    <AuswahlFeld T="Guid?" Wert="k.ZielAdmis" WertChanged="z => AendernAsync(() => plan.ZielAdmis[k.KlasseId] = z)" Kompakt="true"
+                                                 Optionen="@([new AuswahlOption<Guid?>(null, "Quittent l'établissement"), .. k.ZielOptionen.Select(o => new AuswahlOption<Guid?>(o.Id, o.Name))])" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Karte>
+
+    <div class="sk-formular-fuss">
+        <button type="button" class="sk-btn sk-btn-primaer sk-btn-gross" disabled="@(!v.Bereit)" @onclick="() => bestaetigen = true">
+            <Icon Name="arrow-right" Groesse="18" /> <span>Effectuer le passage</span>
+        </button>
+    </div>
+}
+
+<BestaetigungsDialog Open="bestaetigen" Titel="Effectuer le passage ?" BestaetigenText="Effectuer le passage" Fehler="@Fehlermeldung"
+                     OnAbbrechen="() => bestaetigen = false" OnBestaetigen="PassageAsync">
+    <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement. L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
+</BestaetigungsDialog>
+
+@code {
+    private PassagePlan? plan;
+    private PassageVorschau? v;
+    private PassageErgebnis? ergebnis;
+    private bool bestaetigen;
+
+    protected override async Task JahrLadenAsync()
+    {
+        (plan, v, ergebnis) = (null, null, null);
+        if (JahrId is not { } id) return;
+        plan = await Wechsel.PlanAsync(Ich.KontoId, id);
+        v = await Wechsel.VorschauAsync(Ich.KontoId, id, plan);
+    }
+
+    private async Task AendernAsync(Action aenderung)
+    {
+        if (plan is null || JahrId is not { } id) return;
+        aenderung();
+        await AusfuehrenAsync(async () => v = await Wechsel.VorschauAsync(Ich.KontoId, id, plan));
+    }
+
+    private async Task AdmisAsync(Guid klasseId)
+    {
+        if (JahrId is not { } id || plan is null) return;
+        if (await AusfuehrenAsync(async () => await Wechsel.OffeneEntscheidenAsync(Ich.KontoId, klasseId, JahresEntscheidungsArt.Admis), "Décisions enregistrées."))
+            v = await Wechsel.VorschauAsync(Ich.KontoId, id, plan);
+    }
+
+    private async Task PassageAsync()
+    {
+        if (JahrId is not { } id || plan is null) return;
+        if (await AusfuehrenAsync(async () => ergebnis = await Wechsel.AusfuehrenAsync(Ich.KontoId, id, plan), "Le passage est effectué."))
+        {
+            bestaetigen = false;
+            await Kontext.LadeAsync(Ich.KontoId, erzwingen: true);
+        }
+    }
+}

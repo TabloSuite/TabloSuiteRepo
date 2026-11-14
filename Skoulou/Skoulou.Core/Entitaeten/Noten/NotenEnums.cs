@@ -17,7 +17,10 @@ public enum NotenStatus
     Notee = 0,
     AbsentJustifie = 1,
     Absent = 2,
-    Dispense = 3
+    Dispense = 3,
+
+    /// <summary>Note entfernt (zählt wie fehlend); die Zeile bleibt wegen der Historie bestehen.</summary>
+    Leer = 4
 }
 
 /// <summary>Auszeichnung des Klassenrats.</summary>
