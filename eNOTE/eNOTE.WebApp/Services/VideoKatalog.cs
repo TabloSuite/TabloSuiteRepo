@@ -33,7 +33,7 @@ public static class VideoKatalog
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
         // Für alle (12.11.2026: Lernvideos mit Sprecherin; ab 14.11.2026 nach und nach im v3-Stil ohne Sprecherin:
-        // Premiers pas, Encaisser, Attente – die übrigen folgen paketweise)
+        // Premiers pas + alle Employé-Videos (Paket A) – die übrigen folgen paketweise)
         new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
             "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:14"),
         new("enote-visite-guidee.mp4", "La visite guidée",
@@ -46,9 +46,9 @@ public static class VideoKatalog
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
             "Garder un ticket pour plus tard, le reprendre ou le supprimer ; pour un client présent : « Enregistrer sans encaisser ».", "Employé", Alle, "3:07"),
         new("enote-employe-clients.mp4", "Accueillir les clients",
-            "Noter une arrivée, créer un nouveau client, la carte et la fiche, encaisser ou noter le départ.", "Employé", Alle, "2:04"),
+            "Noter une arrivée, créer un client, la carte et la fiche, enregistrer sans encaisser, encaisser au départ ou noter le départ.", "Employé", Alle, "4:38"),
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
-            "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir.", "Employé", Alle, "1:44"),
+            "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
 
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
             "Catégories, nouvelle prestation, produit avec prix d'achat, stock et code-barres, remises.", "Propriétaire", AbBesitzer, "2:05"),
