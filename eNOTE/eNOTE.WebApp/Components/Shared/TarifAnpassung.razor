@@ -27,7 +27,7 @@
                     · @(geplant.MailsGesendet > 0 ? $"{geplant.MailsGesendet} e-mail(s) envoyé(s)" : "annonce dans l'app")
                 </span>
             </div>
-            <AsyncActionButton Text="Annuler" BusyText="Annulation…" OnClick="() => AufhebenAsync(geplant.Id)" CssClass="enote-btn-ghost enote-btn-sm" />
+            <AsyncActionButton Text="Annuler" BusyText="Chargement…" OnClick="() => OeffneAufhebenAsync(geplant.Id)" CssClass="enote-btn-ghost enote-btn-sm" />
         </div>
     }
 
@@ -55,12 +55,20 @@
             {
                 var hoch = p.NeuerStandard > p.AlterStandard;
                 var kommend = p.GueltigAbUtc > DateTime.UtcNow;
-                <div class="ta-verlauf-zeile">
+                <div class="ta-verlauf-zeile @(p.IstAufgehoben ? "aufgehoben" : "")">
                     <span class="ta-verlauf-datum">@PreisAnpassungService.DatumText(p.GueltigAbUtc)</span>
                     <span class="ta-verlauf-preis"><s>@p.AlterStandard.ToString("N0") F</s> <Icon Name="arrow-right" Groesse="14" /> <strong>@p.NeuerStandard.ToString("N0") F</strong></span>
                     <span class="ta-verlauf-diff @(hoch ? "hoch" : "runter")">@(hoch ? "+" : "−")@Math.Abs(p.NeuerStandard - p.AlterStandard).ToString("N0") F</span>
-                    <span class="enote-muted">@(p.AngepassteLaeden > 0 ? $"{p.AngepassteLaeden} tarif(s) perso." : "—") · @(p.MailsGesendet > 0 ? $"{p.MailsGesendet} e-mail(s)" : "app")</span>
-                    <span class="ta-verlauf-status @(kommend ? "kommend" : "")">@(kommend ? "Planifié" : "En vigueur")</span>
+                    @if (p.IstAufgehoben)
+                    {
+                        <span class="enote-muted">@(p.AufgehobenUtc is DateTime am ? $"Annulé le {am:dd.MM.yyyy}" : "Annulé") · @(p.EntwarnungAnkuendigungId is null ? "sans avis" : p.EntwarnungMails > 0 ? $"avis : app + {p.EntwarnungMails} e-mail(s)" : "avis dans l'app")</span>
+                        <span class="ta-verlauf-status annule">Annulé</span>
+                    }
+                    else
+                    {
+                        <span class="enote-muted">@(p.AngepassteLaeden > 0 ? $"{p.AngepassteLaeden} tarif(s) perso." : "—") · @(p.MailsGesendet > 0 ? $"{p.MailsGesendet} e-mail(s)" : "app")</span>
+                        <span class="ta-verlauf-status @(kommend ? "kommend" : "")">@(kommend ? "Planifié" : "En vigueur")</span>
+                    }
                 </div>
             }
         </div>
@@ -167,6 +175,79 @@
         <button class="enote-btn enote-btn-ghost" @onclick="() => offen = false">Annuler</button>
         <AsyncActionButton Text="@(abWahl == Sofort ? "Appliquer maintenant" : "Planifier le changement")" BusyText="Enregistrement…"
                            OnClick="SpeichernAsync" CssClass="enote-btn-primary" Disabled="@(vorschau is null || vorschau.Differenz == 0)" />
+    </Footer>
+</ModalDialog>
+
+@* Geplante Änderung aufheben: Entwarnung an die Besitzer, die die Ankündigung bekamen (Banner wie die Ankündigung, optional Mail). *@
+<ModalDialog Open="aufhebenOffen" Title="Annuler le changement de tarif" ErrorMessage="@aufhebenFehler" OnClose="() => aufhebenOffen = false" MaxWidthClass="enote-modal-lg">
+    <ChildContent>
+        @if (aufhebung is { } a)
+        {
+            var p = a.Anpassung;
+            var hoch = p.NeuerStandard > p.AlterStandard;
+            <div class="enote-form ta-form">
+                <div class="ta-vorschau @(hoch ? "hoch" : "runter")">
+                    <div class="ta-vorschau-kopf">
+                        <span>@p.NeuerStandard.ToString("N0") F</span>
+                        <Icon Name="arrow-right" Groesse="18" />
+                        <strong>@p.AlterStandard.ToString("N0") F</strong>
+                        <em>reste en vigueur</em>
+                    </div>
+                    <p>
+                        Le changement prévu au @PreisAnpassungService.DatumText(p.GueltigAbUtc) est supprimé : les tarifs (personnalisés compris) restent tels qu'aujourd'hui.
+                        L'annonce @(a.AnkuendigungPerMail ? $"envoyée par e-mail à {a.AnkuendigungsMails} propriétaire(s)" : "parue dans l'app") disparaît.
+                    </p>
+                </div>
+
+                <div class="ta-text">
+                    <span class="ta-liste-titel">Message aux propriétaires</span>
+                    <label>Titre <input @bind="entwarnTitel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
+                    <label>Message <textarea rows="5" @bind="entwarnText" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
+                    <small class="enote-muted ta-platzhalter">
+                        Remplacés automatiquement (valeurs de l'annonce) :
+                        @foreach (var (platzhalter, bedeutung) in PreisAnpassungService.Platzhalter)
+                        {
+                            <span><code>@platzhalter</code> @bedeutung</span>
+                        }
+                    </small>
+                    <span class="an-vorschau-titel">Aperçu dans l'app</span>
+                    <div class="an-banner an-tarif an-vorschau">
+                        <span class="an-symbol"><Icon Name="tag" Groesse="20" /></span>
+                        <div class="an-inhalt">
+                            <div class="an-kopf"><span class="an-art">Tarif</span><strong>@PreisAnpassungService.FuelleFuer(entwarnTitel, p)</strong></div>
+                            <p class="offen">@PreisAnpassungService.FuelleFuer(entwarnText, p)</p>
+                        </div>
+                        <div class="an-aktionen"><span class="enote-btn enote-btn-sm an-link">Voir mon abonnement</span></div>
+                    </div>
+                </div>
+
+                <EnoteCheckbox @bind-Value="entwarnPerMail" Label="Envoyer aussi par e-mail" />
+                <small class="enote-muted">
+                    @if (!entwarnPerMail)
+                    {
+                        <text>Aucun e-mail : le message apparaît seulement dans l'app.</text>
+                    }
+                    else if (a.AnkuendigungPerMail)
+                    {
+                        <text>@a.MailEmpfaenger e-mail(s), aux mêmes adresses que l'annonce.</text>
+                    }
+                    else
+                    {
+                        <text>L'annonce n'était pas partie par e-mail : @a.MailEmpfaenger propriétaire(s) des établissements concernés recevront ce message.</text>
+                    }
+                    Le message apparaît aussi dans l'app pour les propriétaires qui ont pu voir l'annonce.
+                </small>
+            </div>
+        }
+        else
+        {
+            <p class="enote-muted" role="status">Chargement…</p>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => aufhebenOffen = false">Retour</button>
+        <AsyncActionButton Text="Annuler le changement et prévenir" BusyText="Annulation…" OnClick="AufhebenAsync" CssClass="enote-btn-primary"
+                           Disabled="@(aufhebung is null || string.IsNullOrWhiteSpace(entwarnTitel) || string.IsNullOrWhiteSpace(entwarnText))" />
     </Footer>
 </ModalDialog>
 
@@ -294,18 +375,44 @@
         }
     }
 
-    private async Task AufhebenAsync(Guid id)
+    // --- Aufheben mit Entwarnung ---
+    private bool aufhebenOffen, entwarnPerMail;
+    private string? aufhebenFehler;
+    private PreisAnpassungService.AufhebungsVorschau? aufhebung;
+    private string entwarnTitel = "", entwarnText = "";
+
+    private async Task OeffneAufhebenAsync(Guid id)
     {
         try
         {
-            await preise.AufhebenAsync(BearbeiterId, id);
-            toast.ZeigeInfo("Changement de tarif annulé.");
+            aufhebenFehler = null;
+            aufhebung = await preise.GetAufhebungsVorschauAsync(BearbeiterId, id);
+            entwarnTitel = aufhebung.Vorlage.Titel;
+            entwarnText = aufhebung.Vorlage.Text;
+            entwarnPerMail = aufhebung.AnkuendigungPerMail;
+            aufhebenOffen = true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
+    }
+
+    private async Task AufhebenAsync()
+    {
+        if (aufhebung is null) return;
+        try
+        {
+            var ergebnis = await preise.AufhebenAsync(BearbeiterId, aufhebung.Anpassung.Id,
+                new PreisAnpassungService.EntwarnungsText(entwarnTitel, entwarnText, entwarnPerMail));
+            aufhebenOffen = false;
+            toast.ZeigeErfolg("Changement de tarif annulé · propriétaires prévenus" + (ergebnis.Mails > 0 ? $" ({ergebnis.Mails} e-mail(s))." : " dans l'app."));
             await LadeAsync();
             await OnGeaendert.InvokeAsync();
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            toast.ZeigeFehler(ex.Message);
+            aufhebenFehler = ex.Message;
         }
     }
 }

@@ -2888,6 +2888,8 @@ html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe)
 .ta-verlauf-diff.runter { background: var(--enote-success-soft); color: var(--enote-success); }
 .ta-verlauf-status { font-size: .75rem; font-weight: 800; padding: .12rem .55rem; border-radius: var(--enote-radius-pill); background: var(--enote-surface-2); color: var(--enote-text-muted); justify-self: end; }
 .ta-verlauf-status.kommend { background: var(--enote-accent-soft); color: var(--enote-accent-text); }
+.ta-verlauf-status.annule { background: var(--enote-danger-soft); color: var(--enote-danger); }
+.ta-verlauf-zeile.aufgehoben .ta-verlauf-preis, .ta-verlauf-zeile.aufgehoben .ta-verlauf-diff { opacity: .6; }
 @media (max-width: 760px) {
     .ta-verlauf-zeile { grid-template-columns: 1fr auto; }
     .ta-verlauf-zeile > .enote-muted { grid-column: 1 / -1; }

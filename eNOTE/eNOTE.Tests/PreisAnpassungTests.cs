@@ -6,6 +6,7 @@ using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using ENote.WebApp.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -140,11 +141,139 @@ public class PreisAnpassungTests
         var ergebnis = await service.PlaneAsync(w.Admin, 4100, Dezember, false);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.PlaneAsync(w.Admin, 4600, Dezember.AddMonths(1), false));
 
-        await service.AufhebenAsync(w.Admin, ergebnis.Id);
+        var aufhebung = await service.AufhebenAsync(w.Admin, ergebnis.Id);
         await using var db = await w.F.CreateDbContextAsync();
         Assert.False(await db.MonatsPreisStaende.AnyAsync(p => p.PreisAnpassungId == ergebnis.Id));
-        Assert.False((await db.Ankuendigungen.SingleAsync()).IstAktiv);
+        var anpassung = await db.PreisAnpassungen.SingleAsync();
+        Assert.False((await db.Ankuendigungen.SingleAsync(a => a.Id == anpassung.AnkuendigungId)).IstAktiv);
+        // Entwarnung statt nur Banner ausblenden (W1): neues Tarif-Banner, ohne Mail, weil die Ankündigung keine hatte.
+        var entwarnung = await db.Ankuendigungen.SingleAsync(a => a.Id == aufhebung.EntwarnungId);
+        Assert.True(entwarnung.IstAktiv);
+        Assert.Equal(PreisAnpassungService.EntwarnungErhoehung.Titel, entwarnung.Titel);
+        Assert.Equal(0, aufhebung.Mails);
+        Assert.Equal((true, Heute, (Guid?)w.Admin), (anpassung.IstAufgehoben, anpassung.AufgehobenUtc!.Value, anpassung.AufgehobenVonId));
         Assert.Null(await PreisAnpassungService.KommenderPreisAsync(db, w.Eigener.Id, Heute, default));
+        var stand = await service.GetStandAsync(w.Admin);
+        Assert.Null(stand.Geplant);
+        Assert.True(Assert.Single(stand.Verlauf).IstAufgehoben); // Journal: aufgehobene Änderung bleibt im Verlauf sichtbar
+    }
+
+    /// <summary>
+    /// W1: Wird eine angekündigte Erhöhung aufgehoben, bekommen genau die Besitzer, die die Ankündigung per Mail
+    /// bekamen, eine Entwarnung (bearbeitbarer Text, « vous »); das Banner sehen nur Konten, die es damals schon gab.
+    /// </summary>
+    [Fact]
+    public async Task Aufheben_Gibt_Entwarnung_An_Die_Empfaenger_Der_Ankuendigung()
+    {
+        var w = await BasisAsync();
+        var uhr = new Uhr(Heute);
+        var besitzerRolle = new Role { Name = AppRollen.Besitzer, NormalizedName = "BESITZER" };
+        AppUser Besitzer(string vorname, string mail) => new() { Id = Guid.NewGuid(), Vorname = vorname, FullName = vorname, UserName = vorname.ToLowerInvariant(), Email = mail, CreatedAtUtc = Heute.AddMonths(-1) };
+        var ama = Besitzer("Ama", "ama@exemple.com");
+        var kofi = Besitzer("Kofi", "kofi@exemple.com");
+        var gesperrt = Besitzer("Esi", "esi@exemple.com");
+        gesperrt.IsBlocked = true;
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            db.Roles.Add(besitzerRolle);
+            db.Users.AddRange(ama, kofi, gesperrt);
+            foreach (var (konto, salon) in new[] { (ama, w.Standard), (kofi, w.Eigener), (gesperrt, w.Alt) })
+            {
+                db.UserRoles.Add(new AppUserRole { UserId = konto.Id, RoleId = besitzerRolle.Id });
+                db.UserSalons.Add(new UserSalon { AppUserId = konto.Id, SalonId = salon.Id });
+            }
+            foreach (var s in await db.Salons.ToListAsync()) s.CreatedAtUtc = Heute.AddMonths(-1);
+            await db.SaveChangesAsync();
+        }
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new ENote.WebApp.Services.Mails.EmailService(config, w.F, NullLogger<ENote.WebApp.Services.Mails.EmailService>.Instance);
+        var service = new PreisAnpassungService(w.F, uhr, email);
+        var geplant = await service.PlaneAsync(w.Admin, 4100, Dezember, perMail: true);
+
+        // Nach der Ankündigung kommt ein neuer Laden dazu – sein Besitzer bekam keine Ankündigung.
+        uhr.Jetzt = Heute.AddDays(2);
+        var neu = Besitzer("Yao", "yao@exemple.com");
+        neu.CreatedAtUtc = uhr.Jetzt;
+        var neuerLaden = new Salon { Name = "D Neu", IstAktiv = true, IstFreigegeben = true, CreatedAtUtc = uhr.Jetzt };
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            db.Users.Add(neu);
+            db.Salons.Add(neuerLaden);
+            db.UserRoles.Add(new AppUserRole { UserId = neu.Id, RoleId = besitzerRolle.Id });
+            db.UserSalons.Add(new UserSalon { AppUserId = neu.Id, SalonId = neuerLaden.Id });
+            await db.SaveChangesAsync();
+        }
+
+        var vorschau = await service.GetAufhebungsVorschauAsync(w.Admin, geplant.Id);
+        Assert.True(vorschau.AnkuendigungPerMail);
+        Assert.Equal((2, 2), (vorschau.AnkuendigungsMails, vorschau.MailEmpfaenger)); // Ama + Kofi, nicht der gesperrte Esi
+        Assert.Contains("n'aura pas lieu", vorschau.Vorlage.Titel);
+
+        uhr.Jetzt = Heute.AddDays(3);
+        var ergebnis = await service.AufhebenAsync(w.Admin, geplant.Id,
+            new PreisAnpassungService.EntwarnungsText(vorschau.Vorlage.Titel, "Bonne nouvelle : {nouveau} n'aura pas lieu, vous restez à {ancien}.", PerMail: true));
+
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            var entwarnungen = await db.MailNachrichten.Where(m => m.Kategorie == PreisAnpassungService.KategorieEntwarnung).ToListAsync();
+            Assert.Equal(new[] { "ama@exemple.com", "kofi@exemple.com" }, entwarnungen.Select(m => m.Empfaenger).Order().ToArray());
+            Assert.All(entwarnungen, m => Assert.Contains("n'aura pas lieu", m.Betreff));
+            Assert.Contains("Bonjour Ama", entwarnungen.Single(m => m.Empfaenger == "ama@exemple.com").HtmlInhalt);
+            var banner = await db.Ankuendigungen.SingleAsync(a => a.Id == ergebnis.EntwarnungId);
+            Assert.Equal((AnkuendigungArt.Tarif, AnkuendigungZiel.Proprietaires, true), (banner.Art, banner.Ziel, banner.IstAktiv));
+            Assert.Equal("Bonne nouvelle : 4 100 F n'aura pas lieu, vous restez à 3 600 F.", banner.Text.Replace(" ", " ").Replace(" ", " "));
+            Assert.Equal(Dezember, banner.SichtbarBisUtc);
+        }
+
+        // Banner: Ama sieht die Entwarnung (nicht mehr die Ankündigung), ein danach angelegtes Konto nicht.
+        var ankuendigungen = new AnkuendigungService(w.F, uhr);
+        static ClaimsPrincipal Rolle() => new(new ClaimsIdentity([new Claim(ClaimTypes.Role, AppRollen.Besitzer)], "test"));
+        Assert.Equal(ergebnis.EntwarnungId, Assert.Single(await ankuendigungen.GetFuerNutzerAsync(ama.Id, Rolle())).Id);
+        var spaeter = Besitzer("Afi", "afi@exemple.com");
+        spaeter.CreatedAtUtc = Heute.AddDays(4);
+        await using (var db = await w.F.CreateDbContextAsync()) { db.Users.Add(spaeter); await db.SaveChangesAsync(); }
+        Assert.Empty(await ankuendigungen.GetFuerNutzerAsync(spaeter.Id, Rolle()));
+
+        // Zweites Aufheben ist harmlos, nichts doppelt.
+        await service.AufhebenAsync(w.Admin, geplant.Id);
+        await using (var db = await w.F.CreateDbContextAsync())
+            Assert.Equal(2, await db.MailNachrichten.CountAsync(m => m.Kategorie == PreisAnpassungService.KategorieEntwarnung));
+    }
+
+    [Fact]
+    public async Task Aufheben_Einer_Ankuendigung_Ohne_Mail_Schreibt_Nur_Auf_Wunsch_Und_Nur_Alten_Laeden()
+    {
+        var w = await BasisAsync();
+        var uhr = new Uhr(Heute);
+        var rolle = new Role { Name = AppRollen.Besitzer, NormalizedName = "BESITZER" };
+        var ama = new AppUser { Id = Guid.NewGuid(), Vorname = "Ama", FullName = "Ama", UserName = "ama", Email = "ama@exemple.com" };
+        var yao = new AppUser { Id = Guid.NewGuid(), Vorname = "Yao", FullName = "Yao", UserName = "yao", Email = "yao@exemple.com" };
+        var neuerLaden = new Salon { Name = "D Neu", IstAktiv = true, IstFreigegeben = true, CreatedAtUtc = Heute.AddDays(1) };
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            db.Roles.Add(rolle);
+            db.Users.AddRange(ama, yao);
+            db.Salons.Add(neuerLaden);
+            db.UserRoles.AddRange(new AppUserRole { UserId = ama.Id, RoleId = rolle.Id }, new AppUserRole { UserId = yao.Id, RoleId = rolle.Id });
+            db.UserSalons.AddRange(new UserSalon { AppUserId = ama.Id, SalonId = w.Standard.Id }, new UserSalon { AppUserId = yao.Id, SalonId = neuerLaden.Id });
+            (await db.Salons.SingleAsync(s => s.Id == w.Standard.Id)).CreatedAtUtc = Heute.AddMonths(-1);
+            await db.SaveChangesAsync();
+        }
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new ENote.WebApp.Services.Mails.EmailService(config, w.F, NullLogger<ENote.WebApp.Services.Mails.EmailService>.Instance);
+        var service = new PreisAnpassungService(w.F, uhr, email);
+        var geplant = await service.PlaneAsync(w.Admin, 4100, Dezember, perMail: false);
+
+        var vorschau = await service.GetAufhebungsVorschauAsync(w.Admin, geplant.Id);
+        Assert.False(vorschau.AnkuendigungPerMail);   // Schalter im Dialog standardmäßig aus
+        Assert.Equal(1, vorschau.MailEmpfaenger);       // nur Ama: Laden D entstand nach der Ankündigung
+
+        uhr.Jetzt = Heute.AddDays(2);
+        await service.AufhebenAsync(w.Admin, geplant.Id, new PreisAnpassungService.EntwarnungsText("Hausse annulée", "Le tarif reste à {ancien}.", PerMail: true));
+        await using var pruef = await w.F.CreateDbContextAsync();
+        Assert.Equal("ama@exemple.com", (await pruef.MailNachrichten.SingleAsync()).Empfaenger);
+        var sofort = await service.PlaneAsync(w.Admin, 3000, null, false); // Senkung sofort ist schon in Kraft
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AufhebenAsync(w.Admin, sofort.Id));
     }
 
     [Fact]

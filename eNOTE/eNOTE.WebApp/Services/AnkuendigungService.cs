@@ -133,7 +133,10 @@ public class AnkuendigungService(IDbContextFactory<ApplicationDbContext> factory
         return await db.Ankuendigungen.AsNoTracking()
             .Where(a => a.IstAktiv && a.SichtbarAbUtc <= jetzt && (a.SichtbarBisUtc == null || a.SichtbarBisUtc > jetzt)
                 && ziele.Contains(a.Ziel)
-                && !db.AnkuendigungenGelesen.Any(g => g.AnkuendigungId == a.Id && g.UserId == userId))
+                && !db.AnkuendigungenGelesen.Any(g => g.AnkuendigungId == a.Id && g.UserId == userId)
+                // Entwarnung einer aufgehobenen Tarifänderung nur für Konten, die die Ankündigung sehen konnten.
+                && (!db.PreisAnpassungen.Any(p => p.EntwarnungAnkuendigungId == a.Id)
+                    || db.Users.Any(u => u.Id == userId && u.CreatedAtUtc <= a.ErstelltUtc)))
             .OrderByDescending(a => a.SichtbarAbUtc)
             .Take(10)
             .Select(a => new Banner(a.Id, a.Art, a.Titel, a.Text, a.LinkUrl, a.LinkText, a.SichtbarAbUtc, a.WartungVonUtc, a.WartungBisUtc))

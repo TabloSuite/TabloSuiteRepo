@@ -18,6 +18,13 @@ public class PreisAnpassung
     public int MailsGesendet { get; set; }
     public Guid? AnkuendigungId { get; set; }
     public bool IstAufgehoben { get; set; }
+    /// <summary>Wann und von wem die geplante Änderung aufgehoben wurde (Verlauf in Administration › Tarifs).</summary>
+    public DateTime? AufgehobenUtc { get; set; }
+    public Guid? AufgehobenVonId { get; set; }
+    /// <summary>Entwarnung an die Besitzer („la hausse annoncée n'aura pas lieu“): Banner in der App.</summary>
+    public Guid? EntwarnungAnkuendigungId { get; set; }
+    /// <summary>Anzahl der Entwarnungs-Mails (0 = nur in der App).</summary>
+    public int EntwarnungMails { get; set; }
     /// <summary>Salon-Felder (IndividuellerMonatsPreis) sind auf den neuen Stand gebracht.</summary>
     public bool IstAngewendet { get; set; }
 }

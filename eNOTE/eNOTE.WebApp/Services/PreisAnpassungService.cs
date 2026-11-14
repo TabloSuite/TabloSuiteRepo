@@ -37,6 +37,22 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
 
     public sealed record Ergebnis(Guid Id, DateTime AbUtc, int AngepassteLaeden, int Mails);
 
+    /// <summary>Text der Entwarnung (Titel/Text dürfen Platzhalter enthalten) und ob sie auch per E-Mail geht.</summary>
+    public sealed record EntwarnungsText(string Titel, string Text, bool PerMail);
+
+    /// <summary>
+    /// Für den Dialog « Annuler le changement de tarif »: wie viele Ankündigungsmails es gab, wie viele Mails eine
+    /// Entwarnung erzeugen würde, und die ausgefüllte Vorlage.
+    /// </summary>
+    public sealed record AufhebungsVorschau(PreisAnpassung Anpassung, int AnkuendigungsMails, int MailEmpfaenger, TextVorlage Vorlage)
+    {
+        public bool AnkuendigungPerMail => AnkuendigungsMails > 0;
+    }
+
+    public sealed record AufhebungsErgebnis(Guid? EntwarnungId, int Mails);
+
+    public const string KategorieAnkuendigung = "changement-tarif", KategorieEntwarnung = "tarif-annule";
+
     /// <summary>Fertige Textvorlage für Banner und E-Mail; Platzhalter werden beim Speichern ersetzt.</summary>
     public sealed record TextVorlage(string Name, string Titel, string Text);
 
@@ -68,6 +84,20 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
     ];
 
     public static IReadOnlyList<TextVorlage> Vorlagen(bool erhoehung) => erhoehung ? VorlagenErhoehung : VorlagenSenkung;
+
+    /// <summary>Entwarnung, wenn eine angekündigte Änderung aufgehoben wird (gleiche Platzhalter, Werte der Ankündigung).</summary>
+    public static readonly TextVorlage EntwarnungErhoehung = new("Entwarnung",
+        "Bonne nouvelle : la hausse de tarif annoncée n'aura pas lieu",
+        "Nous vous avions annoncé que le tarif mensuel de base d'eNOTE passerait de {ancien} à {nouveau} {quand}. Cette hausse est annulée : le tarif reste à {ancien}.\n\nVous n'avez rien à faire. Votre tarif exact figure dans « Abonnement ».");
+
+    public static readonly TextVorlage EntwarnungSenkung = new("Annulation",
+        "Le changement de tarif annoncé est annulé",
+        "Le changement de tarif annoncé ({ancien} → {nouveau} {quand}) n'aura pas lieu : le tarif mensuel de base reste à {ancien}.\n\nVotre tarif exact figure dans « Abonnement ».");
+
+    public static TextVorlage Entwarnung(PreisAnpassung p) => p.NeuerStandard > p.AlterStandard ? EntwarnungErhoehung : EntwarnungSenkung;
+
+    /// <summary>Platzhalter mit den Werten der aufgehobenen Ankündigung.</summary>
+    public static string FuelleFuer(string vorlage, PreisAnpassung p) => Fuelle(vorlage, p.AlterStandard, p.NeuerStandard, p.GueltigAbUtc);
 
     /// <summary>Ersetzt die Platzhalter; der erste Buchstabe wird großgeschrieben (z. B. „{quand}, …“ am Satzanfang).</summary>
     public static string Fuelle(string vorlage, decimal alt, decimal neu, DateTime? abUtc)
@@ -140,9 +170,12 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
         await using var db = await factory.CreateDbContextAsync(ct);
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
-        var verlauf = await db.PreisAnpassungen.AsNoTracking().Where(p => !p.IstAufgehoben)
-            .OrderByDescending(p => p.GueltigAbUtc).Take(6).ToListAsync(ct);
-        return new Stand(await StandardAmAsync(db, jetzt, ct), verlauf.FirstOrDefault(p => p.GueltigAbUtc > jetzt), verlauf);
+        // Verlauf mit aufgehobenen Änderungen (Journal: wann aufgehoben, Entwarnung per App/Mail), neueste zuerst.
+        var verlauf = await db.PreisAnpassungen.AsNoTracking()
+            .OrderByDescending(p => p.ErstelltUtc).ThenByDescending(p => p.GueltigAbUtc).Take(8).ToListAsync(ct);
+        var geplant = await db.PreisAnpassungen.AsNoTracking().Where(p => !p.IstAufgehoben && p.GueltigAbUtc > jetzt)
+            .OrderBy(p => p.GueltigAbUtc).FirstOrDefaultAsync(ct);
+        return new Stand(await StandardAmAsync(db, jetzt, ct), geplant, verlauf);
     }
 
     /// <summary>Was würde sich für jeden aktiven Laden ändern?</summary>
@@ -272,28 +305,129 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
         {
             var laden = laeden.First(l => l.SalonId == e.SalonId);
             var html = TabloSuiteMails.ChangementTarif(e.Vorname, laden.Laden, titel, text, laden.Alt, laden.Neu, anpassung.GueltigAbUtc, aboUrl);
-            if (await email.SendeAsync(e.Email, titel, html, "changement-tarif", ct))
+            if (await email.SendeAsync(e.Email, titel, html, KategorieAnkuendigung, ct))
                 anzahl++;
         }
         return anzahl;
     }
 
-    /// <summary>Hebt eine noch nicht wirksame Änderung auf (Preisstände und Banner werden entfernt).</summary>
-    public async Task AufhebenAsync(Guid bearbeiter, Guid id, CancellationToken ct = default)
+    /// <summary>Vorschau für den Dialog « Annuler le changement de tarif ».</summary>
+    public async Task<AufhebungsVorschau> GetAufhebungsVorschauAsync(Guid bearbeiter, Guid id, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
-        var anpassung = await db.PreisAnpassungen.FirstOrDefaultAsync(p => p.Id == id, ct)
+        var anpassung = await db.PreisAnpassungen.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new ArgumentException("Changement introuvable.");
-        if (anpassung.IstAufgehoben) return;
-        if (anpassung.GueltigAbUtc <= zeit.GetUtcNow().UtcDateTime)
-            throw new InvalidOperationException("Ce tarif est déjà en vigueur : planifiez un nouveau changement.");
-        db.MonatsPreisStaende.RemoveRange(await db.MonatsPreisStaende.Where(p => p.PreisAnpassungId == id).ToListAsync(ct));
-        if (anpassung.AnkuendigungId is Guid bannerId
-            && await db.Ankuendigungen.FirstOrDefaultAsync(a => a.Id == bannerId, ct) is { } banner)
-            banner.IstAktiv = false;
-        anpassung.IstAufgehoben = true;
-        await db.SaveChangesAsync(ct);
+        var angekuendigt = await AnkuendigungsMailsAsync(db, anpassung, ct);
+        var empfaenger = angekuendigt.Count > 0 ? angekuendigt.Count : (await BesitzerBeiAnkuendigungAsync(db, anpassung, ct)).Count;
+        return new AufhebungsVorschau(anpassung, angekuendigt.Count, empfaenger, Entwarnung(anpassung));
+    }
+
+    /// <summary>
+    /// Hebt eine noch nicht wirksame Änderung auf (Preisstände und Tarif-Banner werden entfernt) und gibt Entwarnung:
+    /// Tarif-Banner für die Besitzer wie bei der Ankündigung und – falls gewünscht – je eine E-Mail an genau die
+    /// Adressen, die die Ankündigung per E-Mail bekamen (ging sie nur in die App: an die Besitzer der Läden, die es
+    /// damals gab). Ohne <paramref name="entwarnung"/>: Vorlage, E-Mail nur, wenn auch die Ankündigung per E-Mail ging.
+    /// Aufhebung und Entwarnung stehen im Verlauf (Administration › Tarifs, Annonces).
+    /// </summary>
+    public async Task<AufhebungsErgebnis> AufhebenAsync(Guid bearbeiter, Guid id, EntwarnungsText? entwarnung = null, CancellationToken ct = default)
+    {
+        var jetzt = zeit.GetUtcNow().UtcDateTime;
+        Ankuendigung banner;
+        List<Empfaenger> empfaenger;
+        await using (var db = await factory.CreateDbContextAsync(ct))
+        {
+            await AdminKontenService.PruefeAsync(db, bearbeiter, false, ct);
+            var anpassung = await db.PreisAnpassungen.FirstOrDefaultAsync(p => p.Id == id, ct)
+                ?? throw new ArgumentException("Changement introuvable.");
+            if (anpassung.IstAufgehoben) return new AufhebungsErgebnis(anpassung.EntwarnungAnkuendigungId, anpassung.EntwarnungMails);
+            if (anpassung.GueltigAbUtc <= jetzt)
+                throw new InvalidOperationException("Ce tarif est déjà en vigueur : planifiez un nouveau changement.");
+
+            var vorlage = Entwarnung(anpassung);
+            var titel = FuelleFuer(string.IsNullOrWhiteSpace(entwarnung?.Titel) ? vorlage.Titel : entwarnung.Titel, anpassung);
+            var text = FuelleFuer(string.IsNullOrWhiteSpace(entwarnung?.Text) ? vorlage.Text : entwarnung.Text, anpassung);
+            if (titel.Length > AnkuendigungService.TitelMax) throw new ArgumentException($"Titre : {AnkuendigungService.TitelMax} caractères au maximum.");
+            if (text.Length > AnkuendigungService.TextMax) throw new ArgumentException($"Message : {AnkuendigungService.TextMax} caractères au maximum.");
+
+            var angekuendigt = await AnkuendigungsMailsAsync(db, anpassung, ct);
+            var perMail = entwarnung?.PerMail ?? angekuendigt.Count > 0;
+            empfaenger = !perMail ? [] : angekuendigt.Count > 0 ? angekuendigt : await BesitzerBeiAnkuendigungAsync(db, anpassung, ct);
+
+            db.MonatsPreisStaende.RemoveRange(await db.MonatsPreisStaende.Where(p => p.PreisAnpassungId == id).ToListAsync(ct));
+            if (anpassung.AnkuendigungId is Guid bannerId
+                && await db.Ankuendigungen.FirstOrDefaultAsync(a => a.Id == bannerId, ct) is { } alt)
+                alt.IstAktiv = false;
+            // Wie die Ankündigung: Tarif-Banner für die Besitzer, sichtbar bis zum angekündigten Datum (mindestens 7 Tage).
+            var bis = anpassung.GueltigAbUtc > jetzt.AddDays(7) ? anpassung.GueltigAbUtc : jetzt.AddDays(7);
+            banner = AnkuendigungService.Erzeuge(db, AnkuendigungArt.Tarif, AnkuendigungZiel.Proprietaires,
+                titel, text, "/abonnement", "Voir mon abonnement", jetzt, bis, bearbeiter);
+            anpassung.IstAufgehoben = true;
+            anpassung.AufgehobenUtc = jetzt;
+            anpassung.AufgehobenVonId = bearbeiter;
+            anpassung.EntwarnungAnkuendigungId = banner.Id;
+            await db.SaveChangesAsync(ct);
+        }
+
+        var anzahl = 0;
+        if (email is not null && empfaenger.Count > 0)
+        {
+            var aboUrl = (mails?.AppUrl ?? BonQr.AppSeite) + "/abonnement";
+            foreach (var e in empfaenger)
+            {
+                var html = TabloSuiteMails.TarifAnnule(e.Vorname, banner.Titel, banner.Text, aboUrl);
+                if (await email.SendeAsync(e.Email, banner.Titel, html, KategorieEntwarnung, ct)) anzahl++;
+            }
+            if (anzahl > 0)
+            {
+                await using var db = await factory.CreateDbContextAsync(ct);
+                (await db.PreisAnpassungen.FirstAsync(p => p.Id == id, ct)).EntwarnungMails = anzahl;
+                (await db.Ankuendigungen.FirstAsync(a => a.Id == banner.Id, ct)).MailsGesendet = anzahl;
+                await db.SaveChangesAsync(ct);
+            }
+        }
+        return new AufhebungsErgebnis(banner.Id, anzahl);
+    }
+
+    private sealed record Empfaenger(string Email, string? Vorname);
+
+    /// <summary>
+    /// Ankündigungsmails dieser Änderung aus der Mail-Warteschlange (eine Zeile je Mail, auch ohne konfigurierten
+    /// Mailweg). Der Vorname kommt vom Besitzerkonto mit dieser Adresse, wenn er eindeutig ist.
+    /// </summary>
+    private static async Task<List<Empfaenger>> AnkuendigungsMailsAsync(ApplicationDbContext db, PreisAnpassung anpassung, CancellationToken ct)
+    {
+        var titel = await db.Ankuendigungen.AsNoTracking().Where(a => a.Id == anpassung.AnkuendigungId).Select(a => a.Titel).FirstOrDefaultAsync(ct);
+        if (titel is null) return [];
+        var betreff = EmailService.MitAppName(titel);
+        var ab = anpassung.ErstelltUtc.AddMinutes(-5);
+        var adressen = await db.MailNachrichten.AsNoTracking()
+            .Where(m => m.Kategorie == KategorieAnkuendigung && m.Betreff == betreff && m.CreatedAtUtc >= ab)
+            .OrderBy(m => m.CreatedAtUtc).ThenBy(m => m.Id).Select(m => m.Empfaenger).ToListAsync(ct);
+        if (adressen.Count == 0) return [];
+        var besitzerRolle = db.Roles.Where(r => r.Name == AppRollen.Besitzer).Select(r => r.Id);
+        var namen = await db.Users.AsNoTracking()
+            .Where(u => u.Email != null && adressen.Contains(u.Email) && db.UserRoles.Any(ur => ur.UserId == u.Id && besitzerRolle.Contains(ur.RoleId)))
+            .Select(u => new { u.Email, u.Vorname }).ToListAsync(ct);
+        string? Vorname(string adresse)
+        {
+            var passend = namen.Where(n => string.Equals(n.Email, adresse, StringComparison.OrdinalIgnoreCase)).Select(n => n.Vorname).Distinct().ToList();
+            return passend.Count == 1 ? passend[0] : null;
+        }
+        return adressen.Select(a => new Empfaenger(a, Vorname(a))).ToList();
+    }
+
+    /// <summary>Ankündigung ohne Mail: Besitzer (nicht gesperrt, mit Adresse) der aktiven Läden, die es bei der Ankündigung schon gab.</summary>
+    private static async Task<List<Empfaenger>> BesitzerBeiAnkuendigungAsync(ApplicationDbContext db, PreisAnpassung anpassung, CancellationToken ct)
+    {
+        var besitzerRolle = db.Roles.Where(r => r.Name == AppRollen.Besitzer).Select(r => r.Id);
+        return await db.UserSalons.AsNoTracking()
+            .Where(us => us.Salon.IstAktiv && us.Salon.CreatedAtUtc <= anpassung.ErstelltUtc
+                && !us.AppUser.IsBlocked && us.AppUser.Email != null && us.AppUser.Email != ""
+                && db.UserRoles.Any(ur => ur.UserId == us.AppUserId && besitzerRolle.Contains(ur.RoleId)))
+            .OrderBy(us => us.Salon.Name).ThenBy(us => us.AppUserId)
+            .Select(us => new Empfaenger(us.AppUser.Email!, us.AppUser.Vorname))
+            .ToListAsync(ct);
     }
 
     /// <summary>

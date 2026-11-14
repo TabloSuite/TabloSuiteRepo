@@ -19,6 +19,7 @@ public static class MailArten
         new("caisse-suspendue", "Caisse suspendue", "Propriétaire", "Le jour de la suspension pour impayé", true, true),
         new("paiement-refuse", "Paiement non retrouvé", "Propriétaire", "Quand l'admin refuse un paiement signalé", true, true),
         new("changement-tarif", "Changement de tarif", "Propriétaire", "Quand l'admin modifie le tarif général (si coché)", true, true),
+        new("tarif-annule", "Changement de tarif annulé", "Propriétaire", "Quand l'admin annule un changement de tarif annoncé (si coché)", true, true),
         new("suppression-compte", "Suppression du compte programmée", "Propriétaire", "Quand le propriétaire demande la suppression (sécurité)", true, true),
         new("responsable-meldung", "Action ou demande d'un responsable", "Équipe TabloSuite", "Quand un responsable valide, prolonge un essai ou envoie une demande (sécurité)", true, true),
         new("contact", "Message « Aide & contact »", "Équipe TabloSuite", "Quand un propriétaire écrit à TabloSuite", true, true),

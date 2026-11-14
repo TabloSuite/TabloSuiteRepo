@@ -338,6 +338,18 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid?>("AnkuendigungId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("AufgehobenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("AufgehobenVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("EntwarnungAnkuendigungId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("EntwarnungMails")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ErstelltUtc")
                         .HasColumnType("datetime2");
 

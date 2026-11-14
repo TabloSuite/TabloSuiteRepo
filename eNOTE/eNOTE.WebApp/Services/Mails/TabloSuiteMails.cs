@@ -275,6 +275,18 @@ public static class TabloSuiteMails
             + Gruss());
     }
 
+    /// <summary>Entwarnung: eine angekündigte Tarifänderung wurde aufgehoben (Text vom Admin, Absätze wie bei der Ankündigung).</summary>
+    public static string TarifAnnule(string? vorname, string titel, string text, string aboUrl)
+    {
+        var absaetze = text.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(a => P(H(a).Replace("\n", "<br/>")));
+        return Wrap(titel, "Le changement de tarif annoncé n'aura pas lieu.",
+            Anrede(vorname)
+            + string.Concat(absaetze)
+            + Knopf("Voir mon abonnement", aboUrl)
+            + Gruss());
+    }
+
     // ------------------------------------------------------------------ Bausteine
 
     private static string Anrede(string? vorname)
