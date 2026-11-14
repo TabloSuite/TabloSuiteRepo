@@ -21,6 +21,7 @@ internal sealed class PlattformUmgebung : IAsyncDisposable
     public RegistrierungService Registrierung { get; }
     public SchulVerwaltungService Schulen { get; }
     public KontenVerwaltungService Konten { get; }
+    public AdministratorenService Admins { get; }
     public AnkuendigungService Annonces { get; }
     public MessagerieService Messagerie { get; }
     public ProtokollService Journal { get; }
@@ -37,6 +38,7 @@ internal sealed class PlattformUmgebung : IAsyncDisposable
         Registrierung = Neu<RegistrierungService>(fabrik, mails, Bremse);
         Schulen = Neu<SchulVerwaltungService>(mails);
         Konten = Neu<KontenVerwaltungService>(fabrik, mails);
+        Admins = Neu<AdministratorenService>(fabrik);
         Annonces = new AnkuendigungService(Basis.Db, sp.GetRequiredService<Zugriff>(), sp.GetRequiredService<IMemoryCache>(), Basis.Zeit);
         Messagerie = Neu<MessagerieService>(mails);
         Journal = Neu<ProtokollService>();

@@ -73,6 +73,7 @@ public static class PlattformRegistrierung
         services.AddScoped<RegistrierungService>();
         services.AddScoped<SchulVerwaltungService>();
         services.AddScoped<KontenVerwaltungService>();
+        services.AddScoped<AdministratorenService>();
         services.AddSingleton<AnkuendigungService>();
         services.AddScoped<MessagerieService>();
         services.AddScoped<ProtokollService>();

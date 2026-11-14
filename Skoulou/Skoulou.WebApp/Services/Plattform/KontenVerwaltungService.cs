@@ -117,6 +117,7 @@ public sealed class KontenVerwaltungService(
                 throw new FachFehler(konto.Rolle == Rollen.Direktor
                     ? "Ce compte sera activé avec la validation de l'établissement."
                     : "Cette inscription doit être validée par la direction de l'établissement.");
+            await PruefeAdminZielAsync(db, akteur, konto, ct);
             if (konto.Status != KontoStatus.Bloque) throw new FachFehler("Ce compte n'est pas bloqué.");
             konto.Status = KontoStatus.Actif;
             konto.AccessFailedCount = 0;
@@ -137,6 +138,7 @@ public sealed class KontenVerwaltungService(
         {
             var konto = await db.Users.FirstOrDefaultAsync(k => k.Id == kontoId, ct) ?? throw new FachFehler("Ce compte est introuvable.");
             if (konto.Status == KontoStatus.Archive) throw new FachFehler("Ce compte est archivé.");
+            await PruefeAdminZielAsync(db, akteur, konto, ct);
             var passwort = konten.Basis.NeuesStartpasswort(konto);
             audit.Erfasse(db, akteur.Id, konto.SchuleId, AuditAktionen.PasswortZurueckgesetzt, nameof(Konto), konto.Id,
                 $"Nouveau mot de passe de départ pour {konto.VollerName} ({Rollen.Bezeichnung(konto.Rolle)}).");
@@ -145,6 +147,19 @@ public sealed class KontenVerwaltungService(
         }, ct);
         sitzungen.Vergessen(kontoId);
         return zugang;
+    }
+
+    /// <summary>
+    /// Andere Administratoren verwaltet nur der Hauptadministrator (Seite « Administrateurs »); den Hauptadministrator
+    /// selbst kann niemand entsperren oder zurücksetzen.
+    /// </summary>
+    private static async Task PruefeAdminZielAsync(SkoulouDbContext db, Akteur akteur, Konto konto, CancellationToken ct)
+    {
+        if (konto.Rolle != Rollen.SuperAdmin) return;
+        if (konto.IstHauptAdmin) throw new FachFehler(AdministratorenService.MeldungZiel);
+        await AdministratorenService.SichereHauptAdminAsync(db, ct);
+        if (!await db.Users.AnyAsync(k => k.Id == akteur.Id && k.IstHauptAdmin, ct))
+            throw new KeinZugriffFehler(AdministratorenService.MeldungNurHauptAdmin);
     }
 
     // ---------- Responsables ----------

@@ -39,6 +39,7 @@ public class StartSeedTests
             Assert.Equal("AdminTest", admin.UserName);
             Assert.Equal(Rollen.SuperAdmin, admin.Rolle);
             Assert.Equal("Administrateur", admin.Vorname);
+            Assert.True(admin.IstHauptAdmin); // E7b: Start-Admin = Hauptadministrator
             hashVorher = admin.PasswordHash;
         }
 

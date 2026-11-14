@@ -39,7 +39,7 @@
         }
     }
 
-    private IEnumerable<NavEintrag> Ziele => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht)
+    private IEnumerable<NavEintrag> Ziele => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin)
         .Where(g => g.Titel != "Aide")
         .SelectMany(g => g.Eintraege)
         .Where(e => e.Href != Rollen.Startseite(Kontext.Rolle));

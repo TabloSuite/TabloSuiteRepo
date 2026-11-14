@@ -1,0 +1,173 @@
+@page "/admin/administrateurs"
+@attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject AdministratorenService Admins
+@using Skoulou.Core.Fehler
+
+@* Administratoren verwalten wie eNOTE: nur der Hauptadministrator – anlegen, ändern, sperren, löschen (archivieren). *@
+
+<PageTitle>Administrateurs · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Administrateurs" Icon="shield" Untertitel="Vous êtes l'administrateur principal : vous seul pouvez ajouter, modifier, bloquer ou supprimer les autres administrateurs. Ils ont tous les autres droits de l'administration.">
+    <Aktionen>
+        @if (!KeinZugriff)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="Neu"><Icon Name="user-plus" Groesse="18" /> <span>Ajouter un administrateur</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (Laedt)
+{
+    <LadeIndikator />
+}
+else
+{
+    <Karte>
+        <div class="pl-admin-liste">
+            @foreach (var a in liste)
+            {
+                <div class="pl-zeile @(a.Status == KontoStatus.Bloque ? "pl-zeile-gesperrt" : "")">
+                    <NamensKreis Name="@a.Name" Groesse="40" />
+                    <div class="pl-zeile-haupt">
+                        <span class="pl-zeile-titel">@a.Name</span>
+                        <span class="pl-zeile-meta">
+                            <code>@a.Identifiant</code>
+                            @if (a.Email is not null)
+                            {
+                                <a href="mailto:@a.Email">@a.Email</a>
+                            }
+                        </span>
+                        <span class="pl-zeile-meta">@(a.LetzteAnmeldungUtc is { } z ? $"Dernière connexion : {Zeit(z)}" : "Jamais connecté")</span>
+                    </div>
+                    <div class="pl-zeile-info">
+                        @if (a.IstHauptAdmin)
+                        {
+                            <StatusBadge Text="Administrateur principal" Art="info" Icon="shield" />
+                        }
+                        else if (a.Status == KontoStatus.Bloque)
+                        {
+                            <StatusBadge Text="Bloqué" Art="fehler" Icon="lock" />
+                        }
+                        else
+                        {
+                            <StatusBadge Text="Actif" Art="erfolg" />
+                        }
+                    </div>
+                    <div class="pl-zeile-aktionen">
+                        @if (!a.IstHauptAdmin && a.Id != Ich.KontoId)
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Bearbeiten(a)"><Icon Name="edit" Groesse="16" /> <span>Modifier</span></button>
+                            <AsyncKnopf Text="@(a.Status == KontoStatus.Bloque ? "Débloquer" : "Bloquer")" Icon="lock" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => SperrenAsync(a)" />
+                            <button type="button" class="sk-icon-knopf" title="Supprimer" aria-label="Supprimer @a.Name" @onclick="() => loeschen = a"><Icon Name="trash" Groesse="16" /></button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </Karte>
+    <p class="sk-leise"><Icon Name="info" Groesse="14" /> Un administrateur bloqué est déconnecté tout de suite et ne peut plus se connecter jusqu'au déblocage. Supprimer archive le compte : son historique reste dans l'audit.</p>
+}
+
+<ModalDialog Open="offen" Title="@(ziel is null ? "Ajouter un administrateur" : "Modifier l'administrateur")" Oberzeile="Administration SKOULOU" Breite="sk-modal-md"
+             ErrorMessage="@(feld is null ? dialogFehler : null)" OnClose="() => offen = false">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("prenom")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nom")" />
+            </div>
+            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("email")"
+                      Hinweis="Pour les messages de la plateforme et le mot de passe oublié." />
+            @if (ziel is null)
+            {
+                <TextFeld Label="Pseudonyme (identifiant de connexion, facultatif)" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")"
+                          Hinweis="Vide : proposé automatiquement (prenom.nom). Un mot de passe de départ est créé et affiché une seule fois." />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => offen = false">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+<BestaetigungsDialog Open="loeschen is not null" Titel="Supprimer l'administrateur ?" BestaetigenText="Supprimer" Gefahr="true" Fehler="@loeschFehler"
+                     Text="@($"Le compte de {loeschen?.Name} sera supprimé (archivé) : la personne ne pourra plus se connecter. Pour une interruption temporaire, préférez « Bloquer ».")"
+                     OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+<ZugangDialog Zugang="zugang" OnClose="() => zugang = null" />
+
+@code {
+    private IReadOnlyList<AdminZeile> liste = [];
+    private bool offen;
+    private Guid? ziel;
+    private AdminZeile? loeschen;
+    private string? vorname, nachname, email, identifiant, dialogFehler, feld, loeschFehler;
+    private Skoulou.WebApp.Services.Organisation.Zugang? zugang;
+
+    protected override async Task InitialisierenAsync() => liste = await Admins.ListeAsync(Ich.KontoId);
+
+    private string? FeldFehler(string name) => feld == name ? dialogFehler : null;
+
+    private void Neu()
+    {
+        (ziel, vorname, nachname, email, identifiant, dialogFehler, feld) = (null, null, null, null, null, null, null);
+        offen = true;
+    }
+
+    private void Bearbeiten(AdminZeile a)
+    {
+        (ziel, vorname, nachname, email, identifiant, dialogFehler, feld) = (a.Id, a.Vorname, a.Nachname, a.Email, null, null, null);
+        offen = true;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        try
+        {
+            var eingabe = new AdminEingabe(vorname, nachname, email, identifiant);
+            if (ziel is { } id)
+            {
+                await Admins.BearbeitenAsync(Ich.KontoId, id, eingabe);
+                Toast.ZeigeErfolg("Modifications enregistrées.");
+            }
+            else
+            {
+                zugang = await Admins.AnlegenAsync(Ich.KontoId, eingabe);
+                Toast.ZeigeErfolg("Administrateur ajouté. Transmettez-lui son identifiant et son mot de passe de départ.");
+            }
+            offen = false;
+            liste = await Admins.ListeAsync(Ich.KontoId);
+        }
+        catch (FachFehler f) { (dialogFehler, feld) = (f.Message, f.Feld); }
+        catch (KeinZugriffFehler k) { (dialogFehler, feld) = (k.Message, null); }
+    }
+
+    private async Task SperrenAsync(AdminZeile a)
+    {
+        var sperren = a.Status != KontoStatus.Bloque;
+        if (await AusfuehrenAsync(() => Admins.SperrenAsync(Ich.KontoId, a.Id, sperren),
+                sperren ? $"{a.Name} est bloqué et déconnecté." : $"{a.Name} est débloqué."))
+            liste = await Admins.ListeAsync(Ich.KontoId);
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } a) return;
+        try
+        {
+            await Admins.LoeschenAsync(Ich.KontoId, a.Id);
+            loeschen = null;
+            loeschFehler = null;
+            Toast.ZeigeErfolg("Administrateur supprimé.");
+            liste = await Admins.ListeAsync(Ich.KontoId);
+        }
+        catch (FachFehler f) { loeschFehler = f.Message; }
+        catch (KeinZugriffFehler k) { loeschFehler = k.Message; }
+    }
+}

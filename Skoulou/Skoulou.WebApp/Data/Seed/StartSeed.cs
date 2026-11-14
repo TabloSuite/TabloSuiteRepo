@@ -27,6 +27,9 @@ public sealed class StartSeed(
         await RollenAsync();
         await EinstellungenAsync(ct);
         await AdminAsync();
+        // Hauptadministrator (verwaltet die anderen Administratoren): fehlt er, das älteste aktive Admin-Konto.
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await Services.Plattform.AdministratorenService.SichereHauptAdminAsync(db, ct);
     }
 
     private async Task RollenAsync()

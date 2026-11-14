@@ -23,6 +23,8 @@ public sealed class SchulKontext(IDbContextFactory<SkoulouDbContext> dbFactory)
     public string? SchulName { get; private set; }
     public SchulStatus? SchulStatus { get; private set; }
     public KoordinatorRechte Rechte { get; private set; }
+    /// <summary>Hauptadministrator (Seite « Administrateurs »).</summary>
+    public bool IstHauptAdmin { get; private set; }
     public IReadOnlyList<SchuljahrEintrag> Schuljahre { get; private set; } = [];
     public Guid? SchuljahrId { get; private set; }
 
@@ -41,7 +43,7 @@ public sealed class SchulKontext(IDbContextFactory<SkoulouDbContext> dbFactory)
         var k = await db.Users.AsNoTracking().Where(x => x.Id == kontoId)
             .Select(x => new
             {
-                x.Rolle, x.Vorname, x.Nachname, x.SchuleId, x.KoordinatorRechte,
+                x.Rolle, x.Vorname, x.Nachname, x.SchuleId, x.KoordinatorRechte, x.IstHauptAdmin,
                 SchulName = x.Schule != null ? x.Schule.Name : null,
                 SchulStatus = x.Schule != null ? (SchulStatus?)x.Schule.Status : null
             })
@@ -56,6 +58,7 @@ public sealed class SchulKontext(IDbContextFactory<SkoulouDbContext> dbFactory)
         SchulName = k.SchulName;
         SchulStatus = k.SchulStatus;
         Rechte = k.KoordinatorRechte;
+        IstHauptAdmin = k.Rolle == Rollen.SuperAdmin && k.IstHauptAdmin;
         Schuljahre = k.SchuleId is { } schuleId
             ? await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schuleId)
                 .OrderByDescending(j => j.Beginn)

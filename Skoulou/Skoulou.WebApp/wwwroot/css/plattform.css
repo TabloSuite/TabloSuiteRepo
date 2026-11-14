@@ -105,3 +105,7 @@ button.pl-zeile-titel:hover { color: var(--sk-primaer-text); text-decoration: un
 .pl-zugang { display: grid; gap: .5rem; padding: .9rem 1rem; border: 1px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); }
 .pl-zugang code { font-size: 1.05rem; font-weight: 700; letter-spacing: .03em; }
 .pl-rechts { text-align: right; }
+
+/* Administrateurs (E7b) */
+.pl-admin-liste { display: grid; gap: .55rem; }
+.pl-zeile-gesperrt { opacity: .72; }

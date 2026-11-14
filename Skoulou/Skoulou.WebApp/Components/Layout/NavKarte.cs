@@ -26,9 +26,10 @@ public static class NavKarte
         new("/contact", "Contact", "mail", "Écrire à l'équipe SKOULOU."),
     ]);
 
-    public static IReadOnlyList<NavGruppe> Fuer(string rolle, Func<KoordinatorRechte, bool> hatRecht) => rolle switch
+    /// <param name="hauptAdmin">Hauptadministrator: zusätzlich « Administrateurs » (nur er verwaltet die anderen Administratoren).</param>
+    public static IReadOnlyList<NavGruppe> Fuer(string rolle, Func<KoordinatorRechte, bool> hatRecht, bool hauptAdmin = false) => rolle switch
     {
-        Rollen.SuperAdmin => Admin,
+        Rollen.SuperAdmin => hauptAdmin ? AdminMitVerwaltung : Admin,
         Rollen.Responsable => Responsable,
         Rollen.Direktor or Rollen.Koordinator => Direktion(rolle == Rollen.Direktor, hatRecht),
         Rollen.Lehrer => Lehrer,
@@ -54,33 +55,42 @@ public static class NavKarte
         return wahl.Select(h => alle.FirstOrDefault(e => e.Href == h)).OfType<NavEintrag>().ToList();
     }
 
-    private static readonly IReadOnlyList<NavGruppe> Admin =
-    [
-        new(null, [new("/admin", "Tableau de bord", "home", Kurz: "Accueil", Match: NavLinkMatch.All)]),
-        new("Plateforme",
-        [
+    private static readonly IReadOnlyList<NavGruppe> Admin = AdminGruppen(false);
+    private static readonly IReadOnlyList<NavGruppe> AdminMitVerwaltung = AdminGruppen(true);
+
+    private static IReadOnlyList<NavGruppe> AdminGruppen(bool mitVerwaltung)
+    {
+        var plattform = new List<NavEintrag>
+        {
             new("/admin/ecoles", "Écoles", "school", "Valider, suspendre, tarif et responsable."),
             new("/admin/comptes", "Comptes", "users", "Tous les comptes de la plateforme."),
             new("/admin/responsables", "Responsables", "briefcase", "Responsables SKOULOU et leurs écoles."),
-        ]),
-        new("Facturation",
+        };
+        if (mitVerwaltung)
+            plattform.Add(new("/admin/administrateurs", "Administrateurs", "shield", "Ajouter, bloquer ou supprimer les autres administrateurs.", "Admins"));
+        return
         [
-            new("/admin/facturation", "Facturation", "receipt", "Factures SKOULOU de toutes les écoles."),
-            new("/admin/tarifs", "Tarifs", "tag", "Prix annuel par élève et délai de paiement."),
-        ]),
-        new("Communication",
-        [
-            new("/admin/annonces", "Annonces", "megaphone", "Messages dans l'application."),
-            new("/admin/messagerie", "Messagerie", "inbox", "E-mails reçus et envoyés.", "Messages"),
-        ]),
-        new("Surveillance",
-        [
-            new("/admin/journal", "Journal des erreurs", "alert", "Erreurs techniques récentes.", "Erreurs"),
-            new("/admin/audit", "Audit", "shield", "Actions sensibles de toutes les écoles."),
-            new("/admin/medias", "Médias", "image", "Fichiers stockés par école."),
-        ]),
-        Hilfe,
-    ];
+            new(null, [new("/admin", "Tableau de bord", "home", Kurz: "Accueil", Match: NavLinkMatch.All)]),
+            new("Plateforme", plattform),
+            new("Facturation",
+            [
+                new("/admin/facturation", "Facturation", "receipt", "Factures SKOULOU de toutes les écoles."),
+                new("/admin/tarifs", "Tarifs", "tag", "Prix annuel par élève et délai de paiement."),
+            ]),
+            new("Communication",
+            [
+                new("/admin/annonces", "Annonces", "megaphone", "Messages dans l'application."),
+                new("/admin/messagerie", "Messagerie", "inbox", "E-mails reçus et envoyés.", "Messages"),
+            ]),
+            new("Surveillance",
+            [
+                new("/admin/journal", "Journal des erreurs", "alert", "Erreurs techniques récentes.", "Erreurs"),
+                new("/admin/audit", "Audit", "shield", "Actions sensibles de toutes les écoles."),
+                new("/admin/medias", "Médias", "image", "Fichiers stockés par école."),
+            ]),
+            Hilfe,
+        ];
+    }
 
     private static readonly IReadOnlyList<NavGruppe> Responsable =
     [
