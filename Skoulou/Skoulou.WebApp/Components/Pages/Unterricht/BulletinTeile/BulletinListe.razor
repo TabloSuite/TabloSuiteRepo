@@ -1,0 +1,134 @@
+@* Veröffentlichte Bulletins (serverseitig gesucht/geblättert): PDF, Übergabeprotokoll, Rückzug (Direktion). *@
+@inherits SkoulouSeite
+@inject BulletinLeseService Lesen
+@inject BulletinService Bulletins
+@inject TimeProvider Uhr
+
+<Karte>
+    <div class="nt-liste-filter">
+        <AuswahlFeld T="Guid?" Label="Classe" Wert="klasseId" WertChanged="KlasseAsync" Optionen="KlassenOptionen" Kompakt="true" />
+        <AuswahlFeld T="Guid?" Label="Période" Wert="periodeId" WertChanged="PeriodeAsync" Optionen="PeriodenOptionen" Kompakt="true" />
+    </div>
+    <Liste @ref="liste" T="BulletinZeile" Laden="LadenAsync" Filter="Filter" SuchPlatzhalter="Rechercher un élève ou un numéro…"
+           LeerIcon="report" LeerTitel="Aucun bulletin" LeerText="Les bulletins apparaissent ici dès qu'une classe est publiée.">
+        <TabellenKopf>
+            <th>Élève</th><th>Classe · période</th><th>N°</th><th>Moyenne</th><th>Rang</th><th>État</th><th><span class="sk-honigtopf">Actions</span></th>
+        </TabellenKopf>
+        <Zeile Context="b">
+            <td><strong>@b.Schueler</strong></td>
+            <td>@b.Klasse · @b.Periode</td>
+            <td><a class="sk-link-knopf" href="@($"/bulletins/{b.Id}/pdf")" target="_blank">@b.Nummer</a></td>
+            <td class="nt-zahl">@b.Moyenne</td>
+            <td>@b.Rang</td>
+            <td>
+                <StatusBadge Text="@StatusText(b)" Art="@(b.Status == BulletinStatus.Publie ? "erfolg" : b.Status == BulletinStatus.Remplace ? "neutral" : "fehler")" />
+                @if (b.Uebergaben > 0)
+                {
+                    <small class="sk-leise"> · @b.Uebergaben suivi(s)</small>
+                }
+            </td>
+            <td class="nt-aktionen">
+                @if (Direktion)
+                {
+                    <button type="button" class="sk-icon-knopf klein" title="Contacts et remise" @onclick="() => UebergabeOeffnenAsync(b)"><Icon Name="send" Groesse="16" /></button>
+                    @if (b.Status == BulletinStatus.Publie)
+                    {
+                        <button type="button" class="sk-icon-knopf klein" title="Retirer ce bulletin" @onclick="() => (rueckzug, grund) = (b, null)"><Icon Name="trash" Groesse="16" /></button>
+                    }
+                }
+            </td>
+        </Zeile>
+    </Liste>
+</Karte>
+
+<ModalDialog Open="uebergabe is not null" Title="Contacts et remise" Oberzeile="@($"{uebergabe?.Schueler} · n° {uebergabe?.Nummer}")" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="() => uebergabe = null">
+    <ChildContent>
+        <div class="sk-formular">
+            @if (protokoll is { Count: > 0 })
+            {
+                <ol class="nt-historie">
+                    @foreach (var p in protokoll)
+                    {
+                        <li><strong>@(p.Art == UebergabeArt.Remise ? "Remise du document" : "Notification")</strong> @p.Vermerk <small>@(new SchulZeit(Uhr).AlsText(p.ZeitUtc)) · @p.Von</small></li>
+                    }
+                </ol>
+            }
+            <RadioGruppe T="UebergabeArt" Label="Consigner" @bind-Wert="art" Optionen="ArtOptionen" />
+            <TextFeld Label="À qui et comment" @bind-Wert="vermerk" MaxLaenge="300" Pflicht="true" Platzhalter="Remis au père en main propre, appel à la mère…" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => uebergabe = null">Fermer</button>
+        <AsyncKnopf Text="Consigner" Icon="check" CssClass="sk-btn-primaer" OnClick="UebergabeSpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+<BestaetigungsDialog Open="rueckzug is not null" Titel="Retirer ce bulletin ?" Gefahr="true" BestaetigenText="Retirer" Fehler="@Fehlermeldung"
+                     OnAbbrechen="() => rueckzug = null" OnBestaetigen="ZurueckziehenAsync">
+    <p>Le bulletin n° <strong>@rueckzug?.Nummer</strong> de <strong>@rueckzug?.Schueler</strong> ne sera plus valable ; son QR code l'indiquera. Une rectification de la classe permet d'en publier un nouveau.</p>
+    <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="300" Pflicht="true" />
+</BestaetigungsDialog>
+
+@code {
+    private static readonly IReadOnlyList<FilterChip> Filter =
+        [new(null, "Valides"), new("rectificatif", "Rectificatifs"), new("remplace", "Remplacés"), new("retire", "Retirés")];
+
+    private static readonly IReadOnlyList<AuswahlOption<UebergabeArt>> ArtOptionen =
+        [new(UebergabeArt.Remise, "Remise du document"), new(UebergabeArt.Notification, "Notification")];
+
+    [Parameter, EditorRequired] public Guid JahrId { get; set; }
+    [Parameter] public bool Direktion { get; set; }
+    [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
+    [Parameter] public IReadOnlyList<PeriodeAuswahl> Perioden { get; set; } = [];
+
+    private Liste<BulletinZeile>? liste;
+    private Guid? klasseId, periodeId;
+    private BulletinZeile? uebergabe, rueckzug;
+    private IReadOnlyList<UebergabeZeile>? protokoll;
+    private UebergabeArt art = UebergabeArt.Remise;
+    private string? vermerk, grund;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => [new(null, "Toutes les classes"), .. Klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name))];
+    private IReadOnlyList<AuswahlOption<Guid?>> PeriodenOptionen => [new(null, "Toutes les périodes"), .. Perioden.Select(p => new AuswahlOption<Guid?>(p.Id, p.Titel))];
+
+    private Task<(IReadOnlyList<BulletinZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Lesen.SucheAsync(Ich.KontoId, JahrId, klasseId, periodeId, a.Suche, a.Filter, a.Ueberspringen, a.Anzahl, ct);
+
+    private static string StatusText(BulletinZeile b) => b.Status switch
+    {
+        BulletinStatus.Remplace => "Remplacé",
+        BulletinStatus.Retire => "Retiré",
+        _ => b.IstRectificatif ? "Valide · rectificatif" : "Valide"
+    };
+
+    private async Task KlasseAsync(Guid? id) { klasseId = id; if (liste is not null) await liste.NeuLadenAsync(); }
+
+    private async Task PeriodeAsync(Guid? id) { periodeId = id; if (liste is not null) await liste.NeuLadenAsync(); }
+
+    private async Task UebergabeOeffnenAsync(BulletinZeile b)
+    {
+        (uebergabe, vermerk, art, Fehlermeldung, protokoll) = (b, null, UebergabeArt.Remise, null, null);
+        await AusfuehrenAsync(async () => protokoll = await Bulletins.UebergabenAsync(Ich.KontoId, b.Id));
+    }
+
+    private async Task UebergabeSpeichernAsync()
+    {
+        if (uebergabe is null) return;
+        if (await AusfuehrenAsync(() => Bulletins.UebergabeErfassenAsync(Ich.KontoId, uebergabe.Id, art, vermerk), "C'est consigné."))
+        {
+            uebergabe = null;
+            if (liste is not null) await liste.NeuLadenAsync();
+        }
+    }
+
+    private async Task ZurueckziehenAsync()
+    {
+        if (rueckzug is null) return;
+        if (await AusfuehrenAsync(() => Bulletins.ZurueckziehenAsync(Ich.KontoId, rueckzug.Id, grund), "Le bulletin est retiré."))
+        {
+            rueckzug = null;
+            if (liste is not null) await liste.NeuLadenAsync();
+        }
+    }
+}

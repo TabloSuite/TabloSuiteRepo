@@ -1,0 +1,77 @@
+@* Notenraster Schüler × Bewertungen: Eingabe je Zelle (Autosave beim Verlassen), Tastatur, Status-Kürzel, Fachmittel, Appréciation. *@
+@inherits SkoulouSeite
+
+<div class="nt-raster-rahmen" @ref="tabelle">
+    <table class="nt-raster">
+        <thead>
+            <tr>
+                <th class="nt-name nt-ecke" scope="col">Élève</th>
+                @for (var s = 0; s < Raster.Spalten.Count; s++)
+                {
+                    var sp = Raster.Spalten[s];
+                    <th scope="col" class="nt-spalte">
+                        <button type="button" class="nt-spalte-knopf" disabled="@(!SpaltenBearbeitbar)" title="@($"{sp.Titel} – modifier l'évaluation")" @onclick="() => OnSpalte.InvokeAsync(sp)">
+                            <span class="nt-spalte-titel">@sp.Titel</span>
+                            <small>@(sp.Datum is { } d ? SkoulouKultur.Datum(d)[..5] : NotenTexte.Art(sp.Art)) · /@sp.Bareme.ToString("0.##", SkoulouKultur.Kultur)@(sp.Gewicht != 1 ? $" ×{sp.Gewicht.ToString("0.##", SkoulouKultur.Kultur)}" : "")</small>
+                        </button>
+                    </th>
+                }
+                <th scope="col" class="nt-mittel-kopf">Moy.</th>
+                <th scope="col" class="nt-bem-kopf">Appréciation</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var z = 0; z < Raster.Zeilen.Count; z++)
+            {
+                var zeile = Raster.Zeilen[z];
+                var zi = z;
+                <tr @key="zeile.EinschreibungId" class="@(aktiv?.Zeile == z ? "aktiv" : null)">
+                    <th scope="row" class="nt-name">
+                        <span class="nt-name-text">@zeile.Name</span>
+                        @if (zeile.Hinweis is not null)
+                        {
+                            <small class="nt-hinweis">@zeile.Hinweis</small>
+                        }
+                    </th>
+                    @for (var s = 0; s < Raster.Spalten.Count; s++)
+                    {
+                        var sp = Raster.Spalten[s];
+                        var si = s;
+                        var zelle = Zelle(sp.BewertungId, zeile.EinschreibungId);
+                        <td>
+                            <input class="nt-zelle @zelle.Klasse" value="@zelle.Text" data-z="@z" data-s="@s" inputmode="decimal" autocomplete="off" enterkeyhint="next"
+                                   readonly="@(!Raster.Bearbeitbar)" title="@(zelle.Fehler ?? (zelle.Erwartet ? null : "Évaluation hors de la période d'inscription de l'élève"))"
+                                   aria-label="@($"{zeile.Name} – {sp.Titel}")" aria-invalid="@(zelle.Fehler is null ? null : "true")"
+                                   @onfocus="() => aktiv = (zi, si)" @onchange="e => SpeichernAsync(zeile, sp, e.Value?.ToString())" />
+                        </td>
+                    }
+                    <td class="nt-mittel @(MittelVon(zeile).Status == MittelStatus.Incomplet ? "incomplet" : null)">@NotenTexte.MittelKurz(MittelVon(zeile))</td>
+                    <td class="nt-bem">
+                        <button type="button" class="nt-bem-knopf @(Bemerkung(zeile) is null ? "leer" : null)" disabled="@(!Raster.Bearbeitbar && Bemerkung(zeile) is null)"
+                                title="@(Bemerkung(zeile) ?? "Ajouter une appréciation")" @onclick="() => bemerkungFuer = zeile">
+                            <Icon Name="message" Groesse="16" /> <span>@(Bemerkung(zeile) ?? "Ajouter")</span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Raster.Bearbeitbar && aktiv is { } a && a.Zeile < Raster.Zeilen.Count && a.Spalte < Raster.Spalten.Count)
+{
+    <div class="nt-statusleiste" role="toolbar" aria-label="Statut de la note">
+        <span class="nt-statusleiste-text"><strong>@Raster.Zeilen[a.Zeile].Name</strong> · @Raster.Spalten[a.Spalte].Titel</span>
+        <div class="nt-statusleiste-knoepfe">
+            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("abs")' title="Absent(e) – compte 0 si l'établissement l'a choisi">abs</button>
+            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("aj")' title="Absence justifiée – ne compte pas">aj</button>
+            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("disp")' title="Dispensé(e) – ne compte pas">disp</button>
+            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("")' title="Retirer la note" aria-label="Effacer la note"><Icon Name="x" Groesse="14" /> <span class="nt-nur-breit">Effacer</span></button>
+            <button type="button" class="sk-btn sk-btn-klein sk-btn-ghost" @onclick="HistorieAsync" title="Historique de la note" aria-label="Historique de la note"><Icon Name="history" Groesse="14" /> <span class="nt-nur-breit">Historique</span></button>
+        </div>
+    </div>
+}
+
+<BemerkungDialog Zeile="bemerkungFuer" KlassenfachId="Raster.KlassenfachId" PeriodeId="Raster.PeriodeId" Bearbeitbar="Raster.Bearbeitbar"
+                 Fach="@Raster.Fach" OnClose="() => bemerkungFuer = null" OnGespeichert="BemerkungGespeichert" />
+<HistorieDialog Open="historie is not null" Titel="@historieTitel" Eintraege="historie" OnClose="() => historie = null" />

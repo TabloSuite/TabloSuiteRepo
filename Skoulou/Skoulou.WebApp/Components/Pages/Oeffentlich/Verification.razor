@@ -1,11 +1,72 @@
 @page "/verification/{Token}"
 @attribute [AllowAnonymous]
+@using Skoulou.WebApp.Services.Noten
+@inject BulletinLeseService Lesen
+
+<PageTitle>Vérification d'un bulletin · SKOULOU</PageTitle>
+<HeadContent><meta name="robots" content="noindex, nofollow" /></HeadContent>
 
 <div class="sk-seite-schmal">
-    <InVorbereitung Titel="Vérification d'un bulletin" Icon="qr" Etappe="E5 – Notes et bulletins"
-                    Beschreibung="Le QR code imprimé sur chaque bulletin mène ici : la page confirmera l'authenticité du document (numéro, établissement, période), sans afficher de données personnelles." />
+    <SeitenKopf Titel="Vérification d'un bulletin" Icon="qr" Untertitel="Le QR code imprimé sur chaque bulletin mène à cette page : elle confirme que le document a bien été délivré par l'établissement." />
+    <Karte>
+        @if (!geladen)
+        {
+            <LadeIndikator />
+        }
+        else if (pruefung is null)
+        {
+            <div class="org-karte-pruefung ungueltig" role="status">
+                <span class="org-karte-pruefung-icon"><Icon Name="alert" Groesse="34" /></span>
+                <div>
+                    <strong>Bulletin introuvable</strong>
+                    <p>Ce code ne correspond à aucun bulletin délivré avec SKOULOU. Vérifiez qu'il a été scanné en entier, ou contactez l'établissement.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="org-karte-pruefung @(pruefung.Status == BulletinStatus.Publie ? "gueltig" : "ungueltig")" role="status">
+                <span class="org-karte-pruefung-icon"><Icon Name="@(pruefung.Status == BulletinStatus.Publie ? "check-circle" : "alert")" Groesse="34" /></span>
+                <div>
+                    <strong>@StatusTitel</strong>
+                    <p>@StatusText</p>
+                </div>
+            </div>
+            <dl class="nt-pruefung">
+                <div><dt>Établissement</dt><dd>@pruefung.Schule</dd></div>
+                <div><dt>Élève</dt><dd>@pruefung.Schueler</dd></div>
+                <div><dt>Classe</dt><dd>@pruefung.Klasse</dd></div>
+                <div><dt>Période</dt><dd>@pruefung.Periode</dd></div>
+                <div><dt>Moyenne</dt><dd>@pruefung.Moyenne</dd></div>
+            </dl>
+            <p class="sk-leise">Comparez ces informations avec le document papier. En cas de doute, contactez directement l'établissement.</p>
+        }
+    </Karte>
 </div>
 
 @code {
     [Parameter] public string Token { get; set; } = string.Empty;
+
+    private BulletinPruefung? pruefung;
+    private bool geladen;
+
+    private string StatusTitel => pruefung?.Status switch
+    {
+        BulletinStatus.Publie => "Bulletin valable",
+        BulletinStatus.Remplace => "Bulletin remplacé",
+        _ => "Bulletin retiré"
+    };
+
+    private string StatusText => pruefung?.Status switch
+    {
+        BulletinStatus.Publie => "Ce bulletin a été publié par l'établissement et il est toujours valable.",
+        BulletinStatus.Remplace => "Ce bulletin a été remplacé par un bulletin rectifié : il n'est plus valable. Demandez la version rectifiée.",
+        _ => "Ce bulletin a été retiré par l'établissement : il n'est plus valable."
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        pruefung = await Lesen.PruefenAsync(Token);
+        geladen = true;
+    }
 }

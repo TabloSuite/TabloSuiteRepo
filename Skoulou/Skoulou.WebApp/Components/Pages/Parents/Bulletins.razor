@@ -1,5 +1,45 @@
 @page "/parents/bulletins"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Noten
+@using Skoulou.WebApp.Components.Pages.Noten
+@inject BulletinLeseService Lesen
 
-<InVorbereitung Titel="Bulletins" Icon="report" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Les bulletins publiés de vos enfants." />
+<PageTitle>Bulletins · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Bulletins" Icon="report" Untertitel="Les bulletins publiés de votre enfant, à consulter et télécharger en PDF." />
+
+@if (!Laedt)
+{
+    <KindAuswahl KontoId="Ich.KontoId" Gewaehlt="kind" GewaehltChanged="KindAsync" />
+}
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (kind is not null)
+{
+    <BulletinKacheln Liste="liste" />
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "kind")] public Guid? KindAusAdresse { get; set; }
+
+    private Guid? kind;
+    private IReadOnlyList<EigenesBulletin>? liste;
+
+    protected override void OnInitialized() => kind = KindAusAdresse;
+
+    protected override async Task InitialisierenAsync()
+    {
+        if (kind is { } k) liste = await Lesen.EigeneAsync(Ich.KontoId, k);
+    }
+
+    private async Task KindAsync(Guid? id)
+    {
+        if (id == kind && liste is not null) return;
+        (kind, liste) = (id, null);
+        if (id is { } k) await AusfuehrenAsync(async () => liste = await Lesen.EigeneAsync(Ich.KontoId, k));
+    }
+}

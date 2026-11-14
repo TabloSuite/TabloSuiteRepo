@@ -1,5 +1,86 @@
 @page "/bulletins"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits JahrSeite
+@using Skoulou.WebApp.Services.Noten
+@using Skoulou.WebApp.Components.Pages.Direction.Gemeinsam
+@using Skoulou.WebApp.Components.Pages.Unterricht.BulletinTeile
+@inject KlassenratService Conseil
 
-<InVorbereitung Titel="Bulletins" Icon="report" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Conseil de classe, publication et rectification des bulletins avec QR code de vérification." />
+<PageTitle>Bulletins · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Bulletins" Icon="report" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="@(auswahl?.Direktion == false ? "Préparez le conseil de votre classe (mentions, sanctions, appréciations) et consultez ses bulletins." : "Conseil de classe, publication en un clic avec numéro et QR code, rectification motivée et suivi de la remise aux familles.")" />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (auswahl is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (auswahl.Klassen.Count == 0)
+{
+    <Leerzustand Icon="report" Titel="Aucune classe"
+                 Text="@(auswahl.Direktion ? "Créez d'abord les classes de l'année." : "Vous n'êtes professeur principal d'aucune classe cette année.")" />
+}
+else
+{
+    <div class="sk-chips nt-chips nt-ansicht" role="tablist" aria-label="Affichage">
+        @foreach (var (wert, text, icon) in Ansichten)
+        {
+            <button type="button" role="tab" class="sk-chip @(ansicht == wert ? "aktiv" : null)" aria-selected="@(ansicht == wert ? "true" : "false")" @onclick="() => ansicht = wert">
+                <Icon Name="@icon" Groesse="15" /> @text
+            </button>
+        }
+    </div>
+
+    @if (ansicht == "conseil")
+    {
+        <Karte CssClass="nt-auswahl">
+            <div class="nt-auswahl-zeile">
+                <AuswahlFeld T="Guid?" Label="Classe" Wert="klasseId" WertChanged="k => klasseId = k" Optionen="KlassenOptionen" Icon="layers" />
+            </div>
+            <div class="sk-chips nt-perioden" role="group" aria-label="Période">
+                @foreach (var p in auswahl.Perioden)
+                {
+                    <button type="button" class="sk-chip @(p.Id == periodeId ? "aktiv" : null)" aria-pressed="@(p.Id == periodeId ? "true" : "false")" @onclick="() => periodeId = p.Id">@p.Titel</button>
+                }
+            </div>
+        </Karte>
+        @if (klasseId is { } k && periodeId is { } p)
+        {
+            <KlassenratAnsicht @key="(k, p)" KlasseId="k" PeriodeId="p" />
+        }
+    }
+    else if (ansicht == "publies" && JahrId is { } jahr)
+    {
+        <BulletinListe @key="jahr" JahrId="jahr" Direktion="auswahl.Direktion" Klassen="auswahl.Klassen" Perioden="auswahl.Perioden" />
+    }
+    else if (ansicht == "modeles")
+    {
+        <VorlagenAnsicht />
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "vue")] public string? VueAusAdresse { get; set; }
+
+    private BulletinAuswahl? auswahl;
+    private Guid? klasseId, periodeId;
+    private string ansicht = "conseil";
+
+    private IReadOnlyList<(string Wert, string Text, string Icon)> Ansichten => auswahl?.Direktion == true
+        ? [("conseil", "Conseil de classe", "users"), ("publies", "Bulletins publiés", "report"), ("modeles", "Modèles", "settings")]
+        : [("conseil", "Conseil de classe", "users"), ("publies", "Bulletins de la classe", "report")];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => (auswahl?.Klassen ?? []).Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();
+
+    protected override async Task JahrLadenAsync()
+    {
+        auswahl = JahrId is { } id ? await Conseil.AuswahlAsync(Ich.KontoId, id) : new BulletinAuswahl([], [], Ich.Rolle != Rollen.Lehrer);
+        if (Ansichten.Any(a => a.Wert == VueAusAdresse)) ansicht = VueAusAdresse!;
+        if (auswahl.Klassen.All(k => k.Id != klasseId)) klasseId = auswahl.Klassen.FirstOrDefault()?.Id;
+        if (auswahl.Perioden.All(p => p.Id != periodeId)) periodeId = auswahl.Perioden.FirstOrDefault(p => p.Aktuell)?.Id ?? auswahl.Perioden.FirstOrDefault()?.Id;
+    }
+}

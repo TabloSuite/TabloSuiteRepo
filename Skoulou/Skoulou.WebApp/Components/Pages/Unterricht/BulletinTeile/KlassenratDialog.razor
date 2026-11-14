@@ -1,0 +1,98 @@
+@* Beschluss des Conseil de classe für einen Schüler: Distinktion, Sanktionen, Appréciation, in der letzten Periode die Jahresentscheidung. *@
+@inherits SkoulouSeite
+@inject KlassenratService Conseil
+
+<ModalDialog Open="Zeile is not null" Title="@(Zeile?.Name ?? "")" Oberzeile="@($"Conseil de classe · {Uebersicht?.Periode}")" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (Zeile is { } z && Uebersicht is { } u)
+        {
+            <div class="sk-formular">
+                <p class="nt-conseil-kopf">Moyenne <strong>@NotenTexte.Mittel(z.Moyenne)</strong> · rang <strong>@z.Rang.Text</strong></p>
+                <RadioGruppe T="int" Label="Distinction" @bind-Wert="distinktion" Optionen="DistinktionOptionen(z)" Deaktiviert="gesperrt" />
+                <div>
+                    <p class="sk-feld-label">Sanctions</p>
+                    <div class="nt-sanktionen">
+                        @foreach (var s in NotenTexte.AlleSanktionen)
+                        {
+                            <Schalter Wert="sanktionen.HasFlag(s)" WertChanged="an => sanktionen = an ? sanktionen | s : sanktionen & ~s" Label="@NotenTexte.SanktionenTexte(s)[0]" Deaktiviert="gesperrt" />
+                        }
+                    </div>
+                </div>
+                <TextFeld Label="Appréciation du conseil" @bind-Wert="bemerkung" Zeilen="3" MaxLaenge="300" Deaktiviert="gesperrt"
+                          Platzhalter="Bon trimestre, élève sérieux. Continuez ainsi." />
+                @if (u.IstLetztePeriode)
+                {
+                    <RadioGruppe T="JahresEntscheidungsArt" Label="Décision de fin d'année" @bind-Wert="entscheidung" Optionen="EntscheidungOptionen" Deaktiviert="@(z.EntscheidungAusgefuehrt)" />
+                    @if (entscheidung is JahresEntscheidungsArt.Admis or JahresEntscheidungsArt.Orientation)
+                    {
+                        <AuswahlFeld T="Guid?" Label="Niveau visé (facultatif)" @bind-Wert="zielStufe" Optionen="StufenOptionen" Platzhalter="Niveau suivant (par défaut)"
+                                     Hinweis="Utilisé par le passage d'année ; par défaut, le niveau qui suit." />
+                    }
+                    @if (z.EntscheidungAusgefuehrt)
+                    {
+                        <Hinweis Art="info">Cette décision a déjà été appliquée lors du passage d'année.</Hinweis>
+                    }
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" Disabled="@(gesperrt && !(Uebersicht?.IstLetztePeriode ?? false))" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private static readonly IReadOnlyList<AuswahlOption<JahresEntscheidungsArt>> EntscheidungOptionen =
+        Enum.GetValues<JahresEntscheidungsArt>().Select(e => new AuswahlOption<JahresEntscheidungsArt>(e, NotenTexte.EntscheidungKurz(e))).ToList();
+
+    [Parameter] public KlassenratZeile? Zeile { get; set; }
+    [Parameter] public KlassenratUebersicht? Uebersicht { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private int distinktion = -1;
+    private Sanktionen sanktionen;
+    private string? bemerkung;
+    private JahresEntscheidungsArt entscheidung;
+    private Guid? zielStufe;
+    private KlassenratZeile? geoeffnet;
+
+    private bool gesperrt => Uebersicht?.ConseilSperre is not null;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> StufenOptionen => (Uebersicht?.Stufen ?? []).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name)).Prepend(new AuswahlOption<Guid?>(null, "Niveau suivant")).ToList();
+
+    private static IReadOnlyList<AuswahlOption<int>> DistinktionOptionen(KlassenratZeile z) =>
+    [
+        new(-1, $"Selon la moyenne ({(z.Vorschlag == Distinktion.Keine ? "aucune" : NotenTexte.DistinktionText(z.Vorschlag).Replace("Tableau d'honneur + ", ""))})"),
+        new((int)Distinktion.Keine, "Aucune"), new((int)Distinktion.TableauHonneur, "Tableau d'honneur"),
+        new((int)Distinktion.Encouragements, "Encouragements"), new((int)Distinktion.Felicitations, "Félicitations"),
+    ];
+
+    protected override void OnParametersSet()
+    {
+        if (Zeile is not null && !ReferenceEquals(Zeile, geoeffnet))
+        {
+            geoeffnet = Zeile;
+            Fehlermeldung = null;
+            (distinktion, sanktionen, bemerkung) = (Zeile.Distinktion is { } d ? (int)d : -1, Zeile.Sanktionen, Zeile.Bemerkung);
+            (entscheidung, zielStufe) = (Zeile.Entscheidung, Zeile.ZielStufeId);
+        }
+        else if (Zeile is null) geoeffnet = null;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Zeile is not { } z || Uebersicht is not { } u) return;
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            if (!gesperrt)
+                await Conseil.ConseilSpeichernAsync(Ich.KontoId, u.PeriodeId, z.EinschreibungId,
+                    new ConseilEingabe(distinktion < 0 ? null : (Distinktion)distinktion, sanktionen, bemerkung));
+            if (u.IstLetztePeriode && !z.EntscheidungAusgefuehrt)
+                await Conseil.EntscheidungSpeichernAsync(Ich.KontoId, u.PeriodeId, z.EinschreibungId, new EntscheidungEingabe(entscheidung, zielStufe, null));
+        }, "Le conseil est enregistré.");
+        if (ok) await OnGespeichert.InvokeAsync();
+    }
+}

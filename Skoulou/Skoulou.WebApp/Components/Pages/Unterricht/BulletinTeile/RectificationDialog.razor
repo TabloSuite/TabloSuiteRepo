@@ -1,0 +1,104 @@
+@* Rectification: öffnen (Motiv), nach der Korrektur Wirkung berechnen und veröffentlichen oder abbrechen. *@
+@inherits SkoulouSeite
+@inject BulletinService Bulletins
+
+<ModalDialog Open="Open" Title="@(Offen ? "Terminer la rectification" : "Rectifier les bulletins")" Oberzeile="@($"{Uebersicht?.Klasse} · {Uebersicht?.Periode}")"
+             Breite="sk-modal-lg" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (!Offen)
+        {
+            <div class="sk-formular">
+                <p>Une rectification rouvre les notes et le conseil de cette période pour cette classe. Les bulletins déjà remis restent valables jusqu'à la publication des bulletins rectifiés, qui reçoivent un nouveau numéro et la mention « remplace le n° … ».</p>
+                <TextFeld Label="Motif de la rectification" @bind-Wert="grund" Pflicht="true" MaxLaenge="300" Platzhalter="Erreur de report en mathématiques…" />
+            </div>
+        }
+        else if (vorschau is null)
+        {
+            <LadeIndikator />
+        }
+        else if (vorschau.Aenderungen.Count == 0)
+        {
+            <Leerzustand Icon="check-circle" Titel="Aucun bulletin ne change pour l'instant" Text="Corrigez les notes ou le conseil, puis revenez ici. Vous pouvez aussi abandonner la rectification." />
+        }
+        else
+        {
+            <p>@vorschau.Aenderungen.Count bulletin(s) seront remplacés ou ajoutés :</p>
+            <div class="sk-tabelle-rahmen sk-liste-scroll">
+                <table class="sk-tabelle">
+                    <thead><tr><th>Élève</th><th>Période</th><th>Moyenne</th><th>Rang</th><th>Remplace</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in vorschau.Aenderungen)
+                        {
+                            <tr>
+                                <td><strong>@a.Schueler</strong></td>
+                                <td>@a.Periode</td>
+                                <td class="nt-zahl">@a.AltMoyenne → <strong>@a.NeuMoyenne</strong></td>
+                                <td>@a.AltRang → <strong>@a.NeuRang</strong></td>
+                                <td>@(a.AltNummer ?? "nouveau")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
+        @if (!Offen)
+        {
+            <AsyncKnopf Text="Ouvrir la rectification" Icon="edit" CssClass="sk-btn-primaer" OnClick="OeffnenAsync" />
+        }
+        else
+        {
+            <AsyncKnopf Text="Abandonner" Icon="x" CssClass="sk-btn-ghost" OnClick="AbbrechenAsync" />
+            <AsyncKnopf Text="Publier les bulletins rectifiés" BusyText="Publication…" Icon="send" CssClass="sk-btn-primaer"
+                        Disabled="@(vorschau is not { Aenderungen.Count: > 0 })" OnClick="VeroeffentlichenAsync" />
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public KlassenratUebersicht? Uebersicht { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? grund;
+    private RectificationVorschau? vorschau;
+    private bool warOffen;
+
+    private bool Offen => Uebersicht?.Status == VeroeffentlichungsStatus.EnRectification;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            (warOffen, grund, vorschau, Fehlermeldung) = (true, null, null, null);
+            if (Offen && Uebersicht is { } u) await AusfuehrenAsync(async () => vorschau = await Bulletins.RectificationVorschauAsync(Ich.KontoId, u.KlasseId, u.PeriodeId));
+        }
+        else if (!Open) warOffen = false;
+    }
+
+    private async Task OeffnenAsync()
+    {
+        if (Uebersicht is { } u && await AusfuehrenAsync(() => Bulletins.RectificationOeffnenAsync(Ich.KontoId, u.KlasseId, u.PeriodeId, grund), "La rectification est ouverte : corrigez les notes."))
+            await OnGespeichert.InvokeAsync();
+    }
+
+    private async Task AbbrechenAsync()
+    {
+        if (Uebersicht is { } u && await AusfuehrenAsync(() => Bulletins.RectificationAbbrechenAsync(Ich.KontoId, u.KlasseId, u.PeriodeId), "La rectification est abandonnée."))
+            await OnGespeichert.InvokeAsync();
+    }
+
+    private async Task VeroeffentlichenAsync()
+    {
+        if (Uebersicht is not { } u || vorschau is null) return;
+        if (await AusfuehrenAsync(async () =>
+            {
+                var n = await Bulletins.RectificationVeroeffentlichenAsync(Ich.KontoId, u.KlasseId, u.PeriodeId, vorschau.Hash);
+                Toast.ZeigeErfolg($"{n} bulletin(s) rectifié(s) publié(s).");
+            }))
+            await OnGespeichert.InvokeAsync();
+    }
+}

@@ -1,0 +1,60 @@
+@* Appréciation des Lehrers für einen Schüler (Fach, Periode); leer = entfernen. *@
+@inherits SkoulouSeite
+@inject NotenService Noten
+
+<ModalDialog Open="Zeile is not null" Title="Appréciation" Oberzeile="@($"{Fach} · {Zeile?.Name}")" Breite="sk-modal-sm" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <TextFeld Label="Appréciation de l'enseignant" @bind-Wert="text" Zeilen="3" MaxLaenge="300" Deaktiviert="!Bearbeitbar"
+                      Hinweis="Imprimée sur le bulletin. Sans appréciation, le bulletin indique celle qui correspond à la moyenne (ex. « Assez bien »)." />
+            <div class="sk-chips" role="group" aria-label="Propositions">
+                @foreach (var v in Vorschlaege)
+                {
+                    <button type="button" class="sk-chip" disabled="@(!Bearbeitbar)" @onclick="() => text = v">@v</button>
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">@(Bearbeitbar ? "Annuler" : "Fermer")</button>
+        @if (Bearbeitbar)
+        {
+            <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    private static readonly string[] Vorschlaege =
+        ["Excellent travail.", "Bon travail, continuez.", "Des progrès, persévérez.", "Travail irrégulier.", "Doit fournir plus d'efforts.", "Résultats insuffisants."];
+
+    [Parameter] public RasterZeile? Zeile { get; set; }
+    [Parameter] public Guid KlassenfachId { get; set; }
+    [Parameter] public Guid PeriodeId { get; set; }
+    [Parameter] public string Fach { get; set; } = string.Empty;
+    [Parameter] public bool Bearbeitbar { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string?> OnGespeichert { get; set; }
+
+    private string? text;
+    private RasterZeile? geoeffnet;
+
+    protected override void OnParametersSet()
+    {
+        if (Zeile is not null && !ReferenceEquals(Zeile, geoeffnet))
+        {
+            geoeffnet = Zeile;
+            Fehlermeldung = null;
+            text = Zeile.Bemerkung;
+        }
+        else if (Zeile is null) geoeffnet = null;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Zeile is null) return;
+        if (await AusfuehrenAsync(() => Noten.BemerkungSpeichernAsync(Ich.KontoId, KlassenfachId, PeriodeId, Zeile.EinschreibungId, text), "L'appréciation est enregistrée."))
+            await OnGespeichert.InvokeAsync(string.IsNullOrWhiteSpace(text) ? null : string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)));
+    }
+}

@@ -1,0 +1,33 @@
+@* Historie einer Note (nur anhängen): wann, wer, alt → neu. *@
+@inject TimeProvider Uhr
+
+<ModalDialog Open="Open" Title="Historique de la note" Oberzeile="@Titel" Breite="sk-modal-sm" OnClose="OnClose">
+    <ChildContent>
+        @if (Eintraege is { Count: > 0 } liste)
+        {
+            <ol class="nt-historie">
+                @foreach (var h in liste)
+                {
+                    <li>
+                        <span class="nt-historie-wert"><s>@h.Alt</s> <Icon Name="arrow-right" Groesse="14" /> <strong>@h.Neu</strong></span>
+                        <small>@(new SchulZeit(Uhr).AlsText(h.ZeitUtc)) · @h.Von</small>
+                    </li>
+                }
+            </ol>
+        }
+        else
+        {
+            <Leerzustand Icon="history" Titel="Aucune saisie pour cette note" />
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Titel { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<NotenHistorie>? Eintraege { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

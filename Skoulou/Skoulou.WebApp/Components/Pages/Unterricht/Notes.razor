@@ -1,5 +1,194 @@
 @page "/notes"
 @attribute [Authorize(Policy = Richtlinien.Unterricht)]
+@inherits JahrSeite
+@using Skoulou.Core.Noten
+@using Skoulou.WebApp.Services.Noten
+@using Skoulou.WebApp.Components.Pages.Noten
+@using Skoulou.WebApp.Components.Pages.Direction.Gemeinsam
+@inject NotenService Noten
+@inject BewertungService Bewertungen
 
-<InVorbereitung Titel="Notes" Icon="clipboard" Etappe="E5 – Notes et bulletins"
-                Beschreibung="Saisie des notes en grille (élèves × évaluations), au clavier ou sur téléphone, avec enregistrement automatique." />
+<PageTitle>Notes · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Notes" Icon="clipboard" Oberzeile="@Jahr?.Bezeichnung"
+            Untertitel="Choisissez la classe, la matière et la période, puis saisissez au clavier : Entrée passe à l'élève suivant ; abs, aj ou disp pour une absence ou une dispense. Chaque note est enregistrée aussitôt." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (auswahl is null)
+{
+    <div class="sk-skelett"><div></div><div></div></div>
+}
+else if (auswahl.Klassen.Count == 0)
+{
+    <Leerzustand Icon="clipboard" Titel="Aucune classe"
+                 Text="@(Ich.Rolle == Rollen.Lehrer ? "Vous n'avez pas encore d'affectation cette année : la direction vous attribue vos classes et matières." : "Créez d'abord les classes et leurs matières (Classes).")" />
+}
+else
+{
+    <Karte CssClass="nt-auswahl">
+        <div class="nt-auswahl-zeile">
+            <AuswahlFeld T="Guid?" Label="Classe" Wert="klasseId" WertChanged="KlasseAsync" Optionen="KlassenOptionen" Icon="layers" />
+            <AuswahlFeld T="Guid?" Label="Matière" Wert="klassenfachId" WertChanged="FachAsync" Optionen="FachOptionen" Icon="book" />
+        </div>
+        <div class="sk-chips nt-perioden" role="group" aria-label="Période">
+            @foreach (var p in auswahl.Perioden)
+            {
+                <button type="button" class="sk-chip @(p.Id == periodeId ? "aktiv" : null)" aria-pressed="@(p.Id == periodeId ? "true" : "false")" @onclick="() => PeriodeAsync(p.Id)">
+                    @if (p.Status == PeriodenStatus.Geschlossen)
+                    {
+                        <Icon Name="lock" Groesse="14" />
+                    }
+                    @p.Titel
+                </button>
+            }
+        </div>
+    </Karte>
+
+    @if (klassenfachId is null)
+    {
+        <Leerzustand Icon="book" Titel="Aucune matière dans cette classe" Text="Ajoutez les matières de la classe (Classes › Matières et coefficients)." />
+    }
+    else if (raster is null)
+    {
+        <div class="sk-skelett"><div></div><div></div><div></div></div>
+    }
+    else
+    {
+        <Karte>
+            <div class="nt-kopf">
+                <div>
+                    <h2>@raster.Fach · @raster.Klasse</h2>
+                    <p class="sk-leise">@raster.Periode · coefficient @raster.Koeffizient.ToString("0.##", SkoulouKultur.Kultur) · @raster.Zeilen.Count élève@(raster.Zeilen.Count > 1 ? "s" : "")</p>
+                </div>
+                <div class="nt-fortschritt" title="Notes saisies">
+                    <span><strong>@erfasst</strong> / @raster.Erwartet notes</span>
+                    <span class="nt-balken"><span style="width:@(Prozent)%"></span></span>
+                </div>
+                @if (raster.Bearbeitbar && raster.StrukturSperre is null)
+                {
+                    <div class="sk-knopfzeile">
+                        @if (offeneKomponenten > 0)
+                        {
+                            <AsyncKnopf Text="@(offeneKomponenten == 1 ? "Créer la composante manquante" : $"Créer les {offeneKomponenten} composantes")" Icon="layers" CssClass="sk-btn-ghost" OnClick="AusKomponentenAsync" />
+                        }
+                        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => BewertungOeffnen(null)"><Icon Name="plus" Groesse="18" /> <span>Évaluation</span></button>
+                    </div>
+                }
+            </div>
+            @if (raster.Sperre is not null)
+            {
+                <Hinweis Art="info" Titel="Lecture seule">@raster.Sperre</Hinweis>
+            }
+            else if (!raster.Schreibbar)
+            {
+                <Hinweis Art="info" Titel="Lecture seule">Vous consultez cette matière comme professeur principal de la classe.</Hinweis>
+            }
+            @if (raster.Spalten.Count == 0)
+            {
+                <Leerzustand Icon="clipboard" Titel="Aucune évaluation pour cette période"
+                             Text="Créez une évaluation (interrogation, devoir, composition…) ou reprenez les composantes définies par la direction." />
+            }
+            else if (raster.Zeilen.Count == 0)
+            {
+                <Leerzustand Icon="users" Titel="Aucun élève inscrit dans cette classe pendant la période" />
+            }
+            else
+            {
+                <NotenRasterTabelle @key="raster" Raster="raster" SpaltenBearbeitbar="@(raster.Bearbeitbar && raster.StrukturSperre is null)"
+                                    OnSpalte="BewertungOeffnen" OnFortschritt="n => erfasst = n" />
+            }
+        </Karte>
+    }
+}
+
+<BewertungDialog Open="dialog" Oberzeile="@(raster is null ? null : $"{raster.Fach} · {raster.Klasse} · {raster.Periode}")" KlassenfachId="klassenfachId ?? Guid.Empty"
+                 PeriodeId="periodeId ?? Guid.Empty" Spalte="spalte" Komponenten="komponenten" OnClose="() => dialog = false" OnGespeichert="BewertungGespeichertAsync" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "classe")] public Guid? KlasseAusAdresse { get; set; }
+    [SupplyParameterFromQuery(Name = "periode")] public Guid? PeriodeAusAdresse { get; set; }
+
+    private NotenAuswahl? auswahl;
+    private Guid? klasseId, klassenfachId, periodeId;
+    private NotenRaster? raster;
+    private int erfasst;
+    private bool dialog;
+    private RasterSpalte? spalte;
+    private IReadOnlyList<KomponenteZeile> komponenten = [];
+    private int offeneKomponenten;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen
+        => (auswahl?.Klassen ?? []).Select(k => new AuswahlOption<Guid?>(k.KlasseId, k.Klasse, k.IstKlassenlehrer ? "professeur principal" : null)).ToList();
+
+    private IReadOnlyList<AuswahlOption<Guid?>> FachOptionen
+        => (auswahl?.Klassen.FirstOrDefault(k => k.KlasseId == klasseId)?.Faecher ?? [])
+            .Select(f => new AuswahlOption<Guid?>(f.KlassenfachId, f.Fach, f.Schreibbar ? null : "lecture")).ToList();
+
+    private int Prozent => raster is null || raster.Erwartet == 0 ? 0 : (int)Math.Round(erfasst * 100m / raster.Erwartet);
+
+    protected override async Task JahrLadenAsync()
+    {
+        raster = null;
+        auswahl = JahrId is { } id ? await Noten.AuswahlAsync(Ich.KontoId, id) : new NotenAuswahl([], []);
+        klasseId = auswahl.Klassen.FirstOrDefault(k => k.KlasseId == (klasseId ?? KlasseAusAdresse))?.KlasseId ?? auswahl.Klassen.FirstOrDefault()?.KlasseId;
+        periodeId = auswahl.Perioden.FirstOrDefault(p => p.Id == (periodeId ?? PeriodeAusAdresse))?.Id ?? auswahl.Perioden.FirstOrDefault(p => p.Aktuell)?.Id;
+        WaehleFach();
+        komponenten = JahrId is { } j ? (await Bewertungen.KomponentenAsync(Ich.KontoId, j)).SelectMany(p => p.Komponenten).ToList() : [];
+        await RasterLadenAsync();
+    }
+
+    private void WaehleFach()
+    {
+        var faecher = auswahl?.Klassen.FirstOrDefault(k => k.KlasseId == klasseId)?.Faecher ?? [];
+        if (faecher.All(f => f.KlassenfachId != klassenfachId)) klassenfachId = (faecher.FirstOrDefault(f => f.Schreibbar) ?? faecher.FirstOrDefault())?.KlassenfachId;
+    }
+
+    private async Task RasterLadenAsync()
+    {
+        raster = null;
+        if (klassenfachId is not { } kf || periodeId is not { } p) return;
+        await AusfuehrenAsync(async () =>
+        {
+            raster = await Noten.RasterAsync(Ich.KontoId, kf, p);
+            erfasst = raster.Erfasst;
+            var genutzt = raster.Spalten.Where(s => s.KomponenteId is not null).Select(s => s.KomponenteId).ToHashSet();
+            offeneKomponenten = komponenten.Count(k => k.PeriodeId == p && !genutzt.Contains(k.Id));
+        });
+    }
+
+    private async Task KlasseAsync(Guid? id)
+    {
+        klasseId = id;
+        WaehleFach();
+        await RasterLadenAsync();
+    }
+
+    private async Task FachAsync(Guid? id)
+    {
+        klassenfachId = id;
+        await RasterLadenAsync();
+    }
+
+    private async Task PeriodeAsync(Guid id)
+    {
+        periodeId = id;
+        await RasterLadenAsync();
+    }
+
+    private void BewertungOeffnen(RasterSpalte? s) => (spalte, dialog) = (s, true);
+
+    private async Task BewertungGespeichertAsync()
+    {
+        dialog = false;
+        await RasterLadenAsync();
+    }
+
+    private async Task AusKomponentenAsync()
+    {
+        if (klassenfachId is not { } kf || periodeId is not { } p) return;
+        if (await AusfuehrenAsync(async () => await Bewertungen.AusKomponentenAsync(Ich.KontoId, kf, p), "Les évaluations sont créées.")) await RasterLadenAsync();
+    }
+}
