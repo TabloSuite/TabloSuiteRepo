@@ -138,3 +138,88 @@ keine Optimierung nötig, vorher = nachher.
 - **Nicht simuliert:** zwei Tablets desselben Ladens gleichzeitig (Bestandsabzug ohne Nebenläufigkeits-Token, Verkauf
   während des Abschlusses) – Kandidat für die Klick-Simulation S2 mit parallelen Nutzern.
 - Erstattungsdialog listet 0-F-Zeilen (offert) als erstattbar; der Server antwortet korrekt « Rien à rembourser ».
+
+## S2 – Klick-Simulation (App im Hintergrund)
+
+Stand 15.11.2026. App aus eigenem Build-Ordner (`%TEMP%\sim\enote\build`, Development, http://localhost:5291) auf
+`ENOTEDB_SIM`, Server-Log in Datei. **Nichts nach außen:** `Mail__Provider=Aucun` (Token/SMTP leer, Seite E-mails zeigt
+inaktiven Versand) – 199 Mails nur in der Warteschlange, 0 versendet; Medien nur im lokalen Temp-Speicher (Development
+nutzt nie Azure Blob, die Azure-Schlüssel der User-Secrets werden nicht gelesen); Seed-Admin aus. Konten der SIM-DB mit
+bekannten Passwörtern/PINs per Helfer (`pw\konten.mjs`, Zugangsdaten nur in `%TEMP%\sim\enote\konten.json`).
+Playwright (Edge headless) mit `pw\lib.mjs` (Bereitschaft über SignalR-Ruhe, Erfassung von Konsolen-/Seitenfehlern,
+HTTP ≥ 400, Reconnect, Handy-Überlauf, Texte, Zeiten), Abläufe `kasse.mjs`, `praesenz.mjs`, `rollen.mjs`, Läufe
+`lauf.mjs`, `zwei-geraete.mjs`, `monkey.mjs`, DB-Stichprobe `pruefung.mjs`.
+
+### Läufe und Umfang
+
+- **Hauptlauf** (3 Runden, 12:48 min) und **Abschlusslauf** (2 Runden, 7:56 min, neue Zufallsdaten): je **13 gleichzeitige
+  Nutzer**, Desktop 1440×900 und Handy 390×844 gemischt – 5 Employés (Maquis, Superette, Cabinet médical, Boutique,
+  Barbershop: Kasse öffnen, Verkäufe bar/Mobile Money/Karte/gemischt, Remise, Kunde suchen/anlegen, Montant libre,
+  Ticket parken/fortsetzen, Ankunft « Clients présents » mit Fiche/Notiz, « Enregistrer sans encaisser » → « À la caisse »
+  → Encaissement, Départ, Erstattung, Retrait bar/Ware, Ventes, Écran client, Réduire, Abschluss mit Écart), 2 Propriétaires
+  (Kategorie/Farbe, Leistung + Produkt mit Lager anlegen/ändern/archivieren/löschen, Perte, Etiketten-PDF, Inventaire,
+  Remises, Équipe anlegen/PIN/Droits/entfernen, Clients/Fiche/Note/anlegen/löschen, Finances mit Zeiträumen/Reitern/PDF/
+  Apport, Dépenses, Paramètres/Salles/Mobile Money, Abonnement: Formel, Kündigung und Löschung bis zum letzten Schritt
+  und abbrechen, « J'ai payé », Profil), 2 Responsables (Établissements, Nouvel établissement, Valider, Essai, Demande,
+  Facturation), 2 Admins (Établissements, Tarif personnalisé, Tarifs mit geplanter und wieder aufgehobener Erhöhung,
+  Mobile Money, Administrateurs anlegen/sperren/entsperren/löschen, Facturation Confirmer/Refuser, E-mails, Annonces,
+  Journaux), 2 Visiteurs (Startseite/FAQ/Video, Kontaktformular, Registrierung mit CGU, Hilfe).
+- **Zwei Geräte desselben Ladens** (Superette, Tablet + Handy, 3 Läufe): gemeinsame Kasse, 24 Verkäufe desselben
+  Lagerartikels (Suche/Kachel und Barcode-Scanner) plus 8× exakt gleichzeitiges « Encaisser », gleichzeitiges
+  « Reprendre » desselben geparkten Tickets, Verkauf auf B während A schließt (gleichzeitig / B zuerst / A zuerst),
+  doppelter Abschluss.
+- **Monkey** je Rolle (8 Nutzer parallel, 9:56 min): auf jeder erreichbaren Seite alle sichtbaren Knöpfe/Links/Reiter,
+  Dialoge mit leeren Feldern und Unsinn (negativ, 14 Ziffern, 600 Zeichen, Skript-Tags, Akzente/Anführungszeichen),
+  Doppelklick auf Speichern, Zurück-Taste, Neuladen; endgültige Kündigung und Kontolöschung nur auf einem
+  Wegwerf-Konto (Kündigung zum Probe-Ende, Löschung ab +30 Tage, Kasse gesperrt – korrekt).
+- **Langsame Verbindung:** Tippen mit 250/400 ms WebSocket-Latenz (Playwright `routeWebSocket`).
+- **Klicks gesamt ≈ 7.500:** Employé 5.181, Propriétaire 1.466, Admin 480, Responsable 237, Visiteur 128.
+  Über die UI gebucht: 461 Verkäufe, 27 Erstattungen, 53 Kassenabschlüsse, 46 Ankünfte, 72 neue Kunden.
+
+### DB-Stichprobe (UI ↔ Datenbank)
+
+Je Laden: Anzahl Verkäufe, Umsatz, Anteile bar/Karte/Mobile Money, Erstattungen, Anzahl Abschlüsse, je Abschluss
+angezeigtes Soll = gespeichertes Soll = Start + Baranteile + Bewegungen in der Kasse, Écart = gezählt − Soll; dazu für
+alle Läden: höchstens eine offene Kasse, kein Verkauf nach dem Abschluss seiner Sitzung, Anteile = Zeilen = Gesamt, keine
+Mail versendet. Hauptlauf 85 Prüfungen, 2 Abweichungen (Festbetrag-Remise, s. u.); **Abschlusslauf 70 Prüfungen,
+0 Abweichungen**; Server-Log ohne Fehler.
+
+### Gefundene und behobene Fehler
+
+| Fehler | Ursache / Behebung | Commit |
+|---|---|---|
+| Bei langsamer Verbindung (250–400 ms) verlor das Tippen Zeichen: Anmeldepasswort « Clic2026sim-test » → « Clc06i-et », Kassen-PIN « 200159 » → « 2019 », Fond « 1525000 » → « 1.200 », Kunden wurden als « KodjvAgbodji 865 » angelegt, Motif/Notiz verstümmelt | 8 Felder mit `value="@x" @oninput` (PasswordInput, PinEingabe, BetragEingabe, KundenAuswahl, Clients-Suche, AnkunftFelder, KundenVerlauf, TarifAnpassung) auf `@bind` bzw. `@bind:get/@bind:set` umgestellt (Blazor gleicht dann mit dem Browser ab); Betragsfeld formatiert beim Verlassen. Wächter-Test gegen das Muster | 8f253df |
+| « Mot de passe oublié » / « Réinitialiser » lieferten 500 | `KontoWiederherstellung` nie in Program.cs registriert; mit ihm drei weitere (noch nicht eingebundene) Dienste. Test prüft alle in Komponenten injizierten Dienste | 8f253df |
+| `/ausgaben` lieferte 500 in `ENOTEDB_SIM` | Simulationsartefakt: S1-Medienspeicher vergab Namen `sim/<guid>`; jetzt nach App-Regeln, SIM-DB per SQL repariert | 8f253df |
+| Zwei Kassen: gleichzeitige Verkäufe desselben Artikels verloren Bestandsabzüge (−15 erwartet, −14 gebucht; SQL-Test 40 Verkäufe → 99 statt 60); Verkauf während des Abschlusses konnte im Soll fehlen | `KassenService`: Verkauf und Abschluss einer Sitzung in einer Transaktion mit `UPDLOCK` auf der Sitzungszeile (über die Retry-Strategie) | f0604e8 |
+| Zweites Gerät blieb nach dem Abschluss auf dem anderen Gerät auf der alten Sitzung (« Aucune caisse ouverte. ») | Abschluss meldet sich über `AnwesenheitsSignal`, die Kasse zieht nach (Kassenstart bzw. neue Sitzung, Hinweis, Ticket bleibt) | f0604e8 |
+| Remise « 0 % » mit Unsinn-Namen gespeichert | Wert muss > 0 sein (`Rabatte.Pruefe`) | f787bb6 |
+| `/remises` am Handy 1111 px breit (lange « Condition ») | `overflow-wrap: anywhere` auf `.rm-karte` | f787bb6 |
+| **Festbetrag-Remise je Zeile statt je Bon:** Kasse zeigte 30.300 F, gebucht 29.900 F (3 Zeilen × 200 F) – Bon, Umsatz, Zahlungsanteil und Rückgeld wichen vom Kassierten ab | `KassenService.VerteileFestbetraege`: einmal je Remise, anteilig auf die Zeilen. In der S1-DB 3 Belege (1.200 F) betroffen | 4ac4069 |
+| Warnung « Savepoints are disabled because MARS is enabled » je Verkauf (Folge der neuen Transaktion) | Savepoints aus, Ereignis in der DbContext-Konfiguration ignoriert | f787bb6, Abschluss-Commit |
+
+Regressionstests: `EingabefelderTests` (Wächter + Betrag + Remise), `DiensteRegistrierungTests`,
+`KassenAblaufEndToEndTests` (Festbetrag, Verkauf/Abschluss auf geschlossener Sitzung), `ZweiKassenSqlTests` (opt-in
+`ENOTE_SIM=1`, echte SQL-DB, Gegenprobe ohne Korrektur rot), Medienspeicher der Simulation. 427 Tests grün,
+Build ohne neue Warnungen. **Keine Schemaänderung, keine Migration.**
+
+### Antwortzeiten
+
+Ruhig gemessen (ein Nutzer, Median von 3, bis zum sichtbaren Ergebnis): Kasse laden 108 ms, Kachel 49 ms, Encaisser
+344 ms, Ventes 127 ms, Clôturer öffnen 51 ms; Besitzer Finances 45 ms (30 jours 762 ms), Clients 240 ms, Prestations
+78 ms, Équipe 61 ms; Admin Établissements 252 ms, Facturation 245 ms – keine Aktion > 2 s, keine Seite > 1 s. Unter
+Volllast (13 Browser + Server auf einem Rechner) maßen die Browser 3–4 s je Aktion; der Server antwortete dabei in
+~30 ms – Engpass war der Testrechner, nicht die App.
+
+### Offene Punkte
+
+- **« En caisse » im Kassenkopf** zeigt je Gerät nur die eigenen Verkäufe (zweites Gerät desselben Ladens); der Abschluss
+  rechnet korrekt aus der DB. Ebenso zeigt ein offener Abschlussdialog « Espèces attendues » vom Öffnen. Vorschlag:
+  nach jedem Verkauf Ladensignal und Stand aus der DB.
+- Perte, Retrait Ware, « Enregistrer sans encaisser », Erstattung ins Lager sowie Bar-Erstattung/Retrait laufen noch ohne
+  die Sitzungssperre (gleichzeitig mit einem Verkauf theoretisch verlorener Abzug; nicht beobachtet).
+- Remise « Nom »/« Condition » nur im Browser begrenzt (`maxlength`); der Server speichert auch 600 Zeichen.
+- Erstattung: « Rembourser » bleibt aktiv, wenn der Betrag den Rest des gewählten Zahlwegs übersteigt (Server lehnt mit
+  klarer Meldung ab).
+- EF-Hinweise: Kundenabfrage mit `TOP(@p)` ohne `ORDER BY`; Mehrfach-Include (aus S1 bekannt).
+- Die S1-Daten-Simulation wurde mit dem korrigierten Medienspeicher nicht neu gerechnet (Regressionstest grün).
