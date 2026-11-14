@@ -12,14 +12,10 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
 `az webapp restart` behoben, Admin DodjiEtse angelegt. Live-DB-Schema = « Fundament » 20261114004546 (= lokal).
 
 **Pausiert (beim Ausschalten des Rechners), in dieser Reihenfolge fortsetzen – immer nur 1 Agent:**
-1. **« Pourquoi SKOULOU ? » neu** (Nutzerwunsch 12:25, Priorität): Werbevideo 90–120 s auf der NEUEN Oberfläche, ohne
-   Sprecherin; Projekt `TabloSuite Videos\Skoulou Videos\projekte\pourquoi-v3\` – Zwischenstand in dessen `STAND.md`
-   (falls vorhanden; sonst neu beginnen). Danach in die SKOULOU-App: `Medien/videos/skoulou-pourquoi.mp4` UND
-   `skoulou-presentation.mp4` ersetzen (Startseite zeigt noch die ALTE Oberfläche), Poster, Build, commit.
-   Stand beim Abbruch: Text (10 Szenen), Plan, Stimme (72 s) fertig; Aufnahmen cockpit, classes, notes, frais, parents,
-   acces, partout + Bulletin-PDF/Reçu-Bild fertig; **bulletin neu aufnehmen** (Timeout); bau.py fehlt noch, dann
-   check/render/Einbau. Lokale SkoulouDB hat dadurch 1 Test-Zahlung (5.000 F, Kossi Adjo). Temp `%TEMP%\skoulou-promo\`
-   (node_modules = Junction → vor dem Papierkorb mit `rmdir` lösen).
+1. ✅ **« Pourquoi SKOULOU ? » v3** (14.11. nachmittags): 1:39, −16,7 LUFS, neue Oberfläche, ohne Sprecherin; in der App
+   als `skoulou-pourquoi.mp4` + `skoulou-presentation.mp4` (Startseite) mit neuem Poster, Katalog 1:39. Projekt
+   `TabloSuite Videos\Skoulou Videos\projekte\pourquoi-v3\` (bau.py, renders/), Master-Kopie in `Skoulou Videos\Backup\Werbevideo`,
+   Bilder `Pictures\SKOULOU-Pourquoi-v3`. Lokale SkoulouDB hat 1 Test-Zahlung (5.000 F, Kossi Adjo). Muss noch deployt werden.
 2. **eNOTE-Videos Paket C** (Responsable + Admin): pausiert vor dem ersten Video; Plan + Befunde in
    `lernen-v3/AUFTRAG-Alle.md` (« Paket C – Stand bei der Pause »). Dann **Paket D** (Visite guidée + « Pourquoi eNOTE ? »
    ohne Sprecherin) und **E** (unbenutzte Videos löschen). Agent-Muster: Auftrag aus AUFTRAG-Alle.md + « The owner

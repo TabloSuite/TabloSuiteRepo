@@ -39,7 +39,7 @@ public static partial class VideoKatalog
         new("skoulou-visite-guidee.mp4", "La visite guidée",
             "Où trouver chaque fonction : direction, enseignants, élèves et parents.", PourTous, Alle, "2:03"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
-            "Direction, enseignants, élèves et parents : ce que SKOULOU change au quotidien.", PourTous, Alle, "0:47"),
+            "Élèves, notes, bulletins vérifiables, paiements et parents : tout votre établissement dans un seul espace.", PourTous, Alle, "1:39"),
         new("skoulou-direction-preparer.mp4", "Préparer l'établissement",
             "L'année scolaire, les classes, inscrire un élève, un nouveau mot de passe.", Direction, Leitung, "1:50"),
         new("skoulou-direction-equipe.mp4", "Enseignants et emplois du temps",
