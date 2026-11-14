@@ -56,6 +56,11 @@ public partial class Caisse(
         if (aktiveSitzung?.SalonId != salonId) return;
         _ = InvokeAsync(async () =>
         {
+            if (!await GleicheSitzungAbAsync())
+            {
+                StateHasChanged();
+                return;
+            }
             await LadeAnwesendeAsync();
             await LadeWartendeAsync();
             // Anderes Gerät hat für den Kunden am Ticket etwas erfasst oder zurückgenommen.
@@ -1063,6 +1068,13 @@ public partial class Caisse(
                 await LadeErfassteAsync();
                 gegeben = gesamtSumme;
             }
+            else if (fehler == KassenService.KeineOffeneKasseFehler)
+            {
+                // Kasse wurde auf einem anderen Gerät geschlossen: Ansicht nachziehen, Ticket bleibt erhalten.
+                verkaufFehler = await GleicheSitzungAbAsync()
+                    ? "La caisse a été clôturée sur un autre appareil puis rouverte. Le ticket est conservé : confirmez à nouveau pour l'encaisser."
+                    : null;
+            }
             return;
         }
 
@@ -1164,6 +1176,7 @@ public partial class Caisse(
         if (!erfolg || sitzung is null)
         {
             abschlussFehler = fehler;
+            if (fehler == KassenService.KeineOffeneKasseFehler && !await GleicheSitzungAbAsync()) abschlussFehler = null;
             return;
         }
 
@@ -1175,7 +1188,14 @@ public partial class Caisse(
         letzterVerkauf = null;
         SetzeTicketZurueck();
         anzeigeState.SitzungBeendet();
+        // Andere Geräte des Ladens (zweite Kasse, Empfang) erfahren sofort, dass die Kasse geschlossen ist.
+        anwesenheitsSignal.Melde(sitzung.SalonId);
 
+        await ZeigeKassenstartAsync();
+    }
+
+    private async Task ZeigeKassenstartAsync()
+    {
         // Zurück zum Start: Kassiererliste neu laden.
         if (aktuellerBenutzerId != Guid.Empty)
         {
@@ -1183,6 +1203,39 @@ public partial class Caisse(
             startbestand = 0m;
             await LadeKassiererListeAsync(await katalogService.GetUserSalonsAsync(aktuellerBenutzerId));
         }
+    }
+
+    /// <summary>
+    /// Zweites Gerät (Klick-Simulation S2): Die Kasse kann auf einem anderen Gerät geschlossen (und neu geöffnet) worden
+    /// sein. Dann die Ansicht nachziehen statt auf der alten Sitzung weiterzuarbeiten (« Aucune caisse ouverte. »).
+    /// Das laufende Ticket bleibt erhalten. Liefert true, wenn weiter eine offene Kasse angezeigt wird.
+    /// </summary>
+    private async Task<bool> GleicheSitzungAbAsync()
+    {
+        if (aktiveSitzung is not { } bisher) return false;
+        var offene = await kassenService.GetOffeneSitzungAsync(bisher.SalonId);
+        // Signal und abgelehnte Zahlung können gleichzeitig abgleichen: nach dem Warten den aktuellen Stand nehmen.
+        if (aktiveSitzung is null) return false;
+        if (offene?.Id == aktiveSitzung.Id) return true;
+
+        if (offene is not null)
+        {
+            aktiveSitzung = offene;
+            var aufstellung = await kassenService.GetBarSollAufstellungAsync(offene.Id);
+            anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
+                aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
+            toast.ZeigeInfo($"La caisse a été clôturée sur un autre appareil puis rouverte par {offene.Kassierer.FullName}.");
+            return true;
+        }
+
+        abschlussOffen = false;
+        zahlDialogOffen = false;
+        aktiveSitzung = null;
+        letzterVerkauf = null;
+        anzeigeState.SitzungBeendet();
+        toast.ZeigeInfo("La caisse a été clôturée sur un autre appareil. Ouvrez-la à nouveau pour continuer (le ticket en cours est conservé).");
+        await ZeigeKassenstartAsync();
+        return false;
     }
 
     /// <summary>Öffnet den Browserdruck; im eingerichteten Windows-Kioskprofil ohne Druckdialog.</summary>

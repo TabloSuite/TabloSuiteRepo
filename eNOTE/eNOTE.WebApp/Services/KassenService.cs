@@ -5,6 +5,7 @@ using ENote.Core.DataModels.Salons;
 using ENote.Core.Services.Kasse;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ENote.WebApp.Services;
 
@@ -303,6 +304,9 @@ public class KassenService(
         Guid? AufenthaltsPositionId = null);
 
     /// <summary>Fehlertext, wenn die erfassten Leistungen des Kunden nicht mehr zum Ticket passen (Kasse lädt sie dann neu).</summary>
+    /// <summary>Sitzung nicht (mehr) offen – z. B. auf einem anderen Gerät geschlossen; die Kasse gleicht dann ihre Ansicht ab.</summary>
+    public const string KeineOffeneKasseFehler = "Aucune caisse ouverte.";
+
     public const string AufenthaltGeaendertFehler = "Les prestations enregistrées de ce client ont changé entre-temps. Le ticket a été actualisé : vérifiez-le puis encaissez.";
 
     /// <summary>
@@ -340,20 +344,51 @@ public class KassenService(
         CancellationToken cancellationToken = default,
         Guid? kundeId = null)
     {
-        var warnungen = new List<string>();
-
         if (positionen.Count == 0)
         {
-            return (false, "Le ticket est vide.", null, warnungen);
+            return (false, "Le ticket est vide.", null, []);
         }
 
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        // Verkäufe und Abschluss derselben Sitzung laufen nacheinander (siehe SperreSitzungAsync).
+        await using var vorbereitung = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await vorbereitung.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaktion = await SperreSitzungAsync(db, kassenSitzungId, cancellationToken);
+            return await BucheVerkaufGesperrtAsync(db, transaktion, kassenSitzungId, positionen, zahlungen, kundeId, cancellationToken);
+        });
+    }
+
+    /// <summary>
+    /// Sperrt die Zeile der Kassensitzung bis zum Ende der Transaktion. Zwei Geräte desselben Ladens buchen dieselbe Kasse:
+    /// ohne Sperre gingen bei gleichzeitigen Verkäufen Bestandsabzüge verloren, und ein Verkauf während des Abschlusses
+    /// konnte im Soll fehlen (Klick-Simulation S2). Ohne relationale Datenbank (Unit-Tests) keine Transaktion.
+    /// </summary>
+    private static async Task<IDbContextTransaction?> SperreSitzungAsync(ApplicationDbContext db, Guid sitzungId, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational()) return null;
+        var transaktion = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"DECLARE @x int; SELECT @x = 1 FROM [KassenSitzungen] WITH (UPDLOCK, ROWLOCK) WHERE [Id] = {sitzungId};", ct);
+        return transaktion;
+    }
+
+    private async Task<(bool Erfolg, string? Fehler, Verkauf? Verkauf, List<string> Warnungen)> BucheVerkaufGesperrtAsync(
+        ApplicationDbContext db,
+        IDbContextTransaction? transaktion,
+        Guid kassenSitzungId,
+        IReadOnlyList<VerkaufsPositionInput> positionen,
+        IReadOnlyList<ZahlungInput> zahlungen,
+        Guid? kundeId,
+        CancellationToken cancellationToken)
+    {
+        var warnungen = new List<string>();
 
         var sitzung = await db.KassenSitzungen
             .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
         if (sitzung is null)
         {
-            return (false, "Aucune caisse ouverte.", null, warnungen);
+            return (false, KeineOffeneKasseFehler, null, warnungen);
         }
 
         if (await PruefeKassenSperreAsync(sitzung.SalonId, synchronisieren: false, cancellationToken) is string sperre)
@@ -577,6 +612,7 @@ public class KassenService(
         {
             return (false, AufenthaltGeaendertFehler, null, warnungen);
         }
+        if (transaktion is not null) await transaktion.CommitAsync(cancellationToken);
         if (beendeteBesuche > 0 || aufenthalt.Count > 0) anwesenheit?.Melde(sitzung.SalonId);
 
         // Live-Update an abonnierte Besitzer-Ansichten desselben Salons.
@@ -761,26 +797,33 @@ public class KassenService(
         string? notiz,
         CancellationToken cancellationToken = default)
     {
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var sitzung = await db.KassenSitzungen
-            .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
-            .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
-        if (sitzung is null)
+        // Wartet auf laufende Verkäufe derselben Sitzung (Sperre), danach bucht keiner mehr in die geschlossene Kasse.
+        await using var vorbereitung = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await vorbereitung.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            return (false, "Aucune caisse ouverte.", null);
-        }
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaktion = await SperreSitzungAsync(db, kassenSitzungId, cancellationToken);
 
-        var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));
+            var sitzung = await db.KassenSitzungen
+                .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
+                .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
+            if (sitzung is null)
+            {
+                return (false, KeineOffeneKasseFehler, (KassenSitzung?)null);
+            }
 
-        sitzung.Status = KassenSitzungStatus.Abgeschlossen;
-        sitzung.AbgeschlossenUtc = uhr.GetUtcNow().UtcDateTime;
-        sitzung.BareinnahmenSoll = soll;
-        sitzung.EndbestandGezaehlt = Math.Round(endbestandGezaehlt, 2);
-        sitzung.Differenz = KassenRechner.BerechneDifferenz(soll, endbestandGezaehlt);
-        sitzung.AbschlussNotiz = string.IsNullOrWhiteSpace(notiz) ? null : notiz.Trim();
+            var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));
 
-        await db.SaveChangesAsync(cancellationToken);
-        return (true, null, sitzung);
+            sitzung.Status = KassenSitzungStatus.Abgeschlossen;
+            sitzung.AbgeschlossenUtc = uhr.GetUtcNow().UtcDateTime;
+            sitzung.BareinnahmenSoll = soll;
+            sitzung.EndbestandGezaehlt = Math.Round(endbestandGezaehlt, 2);
+            sitzung.Differenz = KassenRechner.BerechneDifferenz(soll, endbestandGezaehlt);
+            sitzung.AbschlussNotiz = string.IsNullOrWhiteSpace(notiz) ? null : notiz.Trim();
+
+            await db.SaveChangesAsync(cancellationToken);
+            if (transaktion is not null) await transaktion.CommitAsync(cancellationToken);
+            return (true, (string?)null, (KassenSitzung?)sitzung);
+        });
     }
 }

@@ -124,6 +124,19 @@ public class KassenAblaufEndToEndTests
 
         // Gesamtumsatz: 5000 + 10000 + 5000 = 20000.
         Assert.Equal(20000m, sitzungNeu.Verkaeufe.Sum(v => v.GesamtSumme));
+
+        // 8) Zweites Gerät (S2): Verkauf und zweiter Abschluss auf der geschlossenen Sitzung liefern den festen Fehler,
+        //    an dem die Kasse erkennt, dass sie ihre Ansicht nachziehen muss (kein Verkauf in geschlossener Sitzung).
+        var spaet = await kassen.BucheVerkaufAsync(sitzungId, [new KassenService.VerkaufsPositionInput(prestation.Id, 1, null, false)],
+            ZahlungsArt.Karte, gegeben: null, karteBestaetigt: true);
+        Assert.False(spaet.Erfolg);
+        Assert.Equal(KassenService.KeineOffeneKasseFehler, spaet.Fehler);
+        var zweiterAbschluss = await kassen.SchliesseSitzungAsync(sitzungId, 30000m, "Zweites Gerät");
+        Assert.False(zweiterAbschluss.Erfolg);
+        Assert.Equal(KassenService.KeineOffeneKasseFehler, zweiterAbschluss.Fehler);
+        await using var pruefDb2 = await factory.CreateDbContextAsync();
+        Assert.Equal(3, await pruefDb2.Verkaeufe.CountAsync(v => v.KassenSitzungId == sitzungId));
+        Assert.Equal(25000m, (await pruefDb2.KassenSitzungen.FirstAsync(k => k.Id == sitzungId)).EndbestandGezaehlt);
     }
 
     [Fact]
