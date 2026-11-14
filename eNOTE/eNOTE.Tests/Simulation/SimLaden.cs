@@ -238,6 +238,8 @@ internal sealed partial class Simulation
             if (alle.Count > 1) await PruefeErgebnis("Mobile Money", d.Hole<MobileMoneyService>().SetzeAuswahlAsync(l.Besitzer, l.Id, [alle[0].Id]));
         }
 
+        Pruefe((await AnbieterAsync(l)).Count > 0, $"{l.Name} ({l.Land ?? "ohne Land"}) kann Mobile Money annehmen");
+
         foreach (var raum in l.V.Raeume)
             await SollAsync("Salle", () => d.Hole<KundenBesuchService>().RaumAnlegenAsync(l.Besitzer, l.Id, raum));
         foreach (var k in l.V.Ausgaben)
@@ -388,7 +390,8 @@ internal sealed partial class Simulation
         if (z.Prozent(1.5)) await LagerEntnahmeAsync(l, sitzung, kassierer, z);
 
         // Abschluss: meist exakt, manchmal mit Écart.
-        Uhr.SetzeLokal(tag.ToDateTime(new TimeOnly(19, 30)) - l.Versatz);
+        var feierabend = tag.ToDateTime(new TimeOnly(19, 30)) - l.Versatz;
+        Uhr.SetzeLokal(Uhr.Jetzt > feierabend ? Uhr.Jetzt.AddMinutes(5) : feierabend);
         var gezaehlt = soll + (z.Prozent(8) ? (z.Prozent(50) ? 1 : -1) * 100 * z.Zahl(1, 20) : 0);
         var ab = await kassen.SchliesseSitzungAsync(sitzung, gezaehlt, gezaehlt == soll ? null : "Écart constaté au comptage");
         if (!ab.Erfolg) { Befund($"{l.Name}: Abschluss: {ab.Fehler}"); return; }
@@ -553,7 +556,7 @@ internal sealed partial class Simulation
         var storno = d.Hole<StornoService>();
         var vorlage = await storno.GetVorlageAsync(original.Id, sitzung, m.Id);
         if (vorlage is null) { Befund($"{l.Name}: Vorlage zur Erstattung fehlt ({original.Id})."); return 0; }
-        var offen = vorlage.Positionen.Where(p => p.Offen > 0).ToList();
+        var offen = vorlage.Positionen.Where(p => p.Offen > 0 && p.ZeilenSumme - p.ErstattetBetrag > 0).ToList(); // 0-F-Zeilen (offert) zeigt die Kasse ohne Betrag
         var wege = vorlage.Wege.Where(w => w.Offen > 0 && (w.Art != ZahlungsArt.Bar || w.Offen <= soll)).ToList();
         if (offen.Count == 0 || wege.Count == 0) return 0;
         var pos = z.Wahl(offen);

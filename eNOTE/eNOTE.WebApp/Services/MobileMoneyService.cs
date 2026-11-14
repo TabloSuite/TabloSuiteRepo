@@ -13,6 +13,12 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public partial class MobileMoneyService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
 {
+    /// <summary>
+    /// Land eines Ladens ohne Angabe (Selbstregistrierung fragt kein Land ab): Togo – wie die Ortszeit (Lomé, <see cref="ENote.Core.Services.Zeitzonen.Standard"/>).
+    /// Sonst hätte ein selbst registrierter Laden keinen einzigen Mobile-Money-Anbieter.
+    /// </summary>
+    public const string StandardLand = "Togo";
+
     public record AnbieterAuswahl(MobileMoneyAnbieter Anbieter, bool Akzeptiert);
 
     /// <summary>
@@ -26,7 +32,7 @@ public partial class MobileMoneyService(IDbContextFactory<ApplicationDbContext> 
         return db.MobileMoneyAnbieter
             .Where(a => a.IstAktiv && salon.Any(s => s.MobileMoneyIndividuell
                 ? explizit.Contains(a.Id)
-                : s.Land == a.Land))
+                : (s.Land ?? StandardLand) == a.Land))
             .OrderBy(a => a.Reihenfolge).ThenBy(a => a.Name);
     }
 
@@ -44,7 +50,7 @@ public partial class MobileMoneyService(IDbContextFactory<ApplicationDbContext> 
         var land = await db.Salons.Where(s => s.Id == salonId).Select(s => s.Land).FirstOrDefaultAsync(ct);
         var erlaubt = await ErlaubteAnbieterAbfrage(db, salonId).Select(a => a.Id).ToListAsync(ct);
         var imLand = await db.MobileMoneyAnbieter.AsNoTracking()
-            .Where(a => a.IstAktiv && (a.Land == land || erlaubt.Contains(a.Id)))
+            .Where(a => a.IstAktiv && (a.Land == (land ?? StandardLand) || erlaubt.Contains(a.Id)))
             .OrderBy(a => a.Reihenfolge).ThenBy(a => a.Name)
             .ToListAsync(ct);
         return imLand.Select(a => new AnbieterAuswahl(a, erlaubt.Contains(a.Id))).ToList();

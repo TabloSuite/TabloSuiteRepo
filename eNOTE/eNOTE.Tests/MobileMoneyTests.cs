@@ -185,4 +185,27 @@ public class MobileMoneyTests
         Assert.Equal("Un seul paiement en espèces par vente.",
             KassenRechner.PruefeZahlungen(100, [(ZahlungsArt.Bar, 50m), (ZahlungsArt.Bar, 50m)]));
     }
+
+    [Fact]
+    public async Task Laden_ohne_Land_aus_der_Selbstregistrierung_akzeptiert_die_Anbieter_aus_Togo()
+    {
+        // Simulation S1: Selbst registrierte Läden haben kein Land – sie hatten keinen einzigen Mobile-Money-Anbieter.
+        var b = await BasisAsync();
+        await using (var db = await b.Factory.CreateDbContextAsync())
+        {
+            var salon = await db.Salons.SingleAsync(s => s.Id == b.Salon.Id);
+            salon.Land = null;
+            await db.SaveChangesAsync();
+        }
+        var service = new MobileMoneyService(b.Factory);
+
+        Assert.Equal(["Flooz", "Mixx by Yas"], (await service.GetErlaubteAnbieterAsync(b.Salon.Id)).Select(a => a.Name));
+        Assert.Equal(["Flooz", "Mixx by Yas"], (await service.GetAuswahlFuerLadenAsync(b.Salon.Id)).Select(a => a.Anbieter.Name));
+        var verkauf = await b.Kasse.BucheVerkaufAsync(b.SitzungId, EinePosition(b),
+            [new KassenService.ZahlungInput(ZahlungsArt.MobileMoney, AnbieterId: b.Flooz.Id)]);
+        Assert.True(verkauf.Erfolg, verkauf.Fehler);
+        var wave = await b.Kasse.BucheVerkaufAsync(b.SitzungId, EinePosition(b),
+            [new KassenService.ZahlungInput(ZahlungsArt.MobileMoney, AnbieterId: b.Wave.Id)]);
+        Assert.False(wave.Erfolg);
+    }
 }

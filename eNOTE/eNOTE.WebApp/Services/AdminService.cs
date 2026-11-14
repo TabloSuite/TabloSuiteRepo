@@ -259,7 +259,7 @@ public class AdminService(
                 {
                     await emailService.SendeAsync(
                         besitzer.Email,
-                        "Ton inscription a été validée",
+                        "Votre inscription a été validée",
                         Mails.TabloSuiteMails.InscriptionValidee(besitzer.Vorname, "eNOTE", MailDienst?.AppUrl ?? BonQr.AppSeite),
                         "inscription-validee",
                         cancellationToken);

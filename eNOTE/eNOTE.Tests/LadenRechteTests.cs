@@ -3,6 +3,8 @@ using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using ENote.WebApp.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -134,5 +136,27 @@ public class LadenRechteTests
         Assert.True(await w.Admin.SetzeProbezeitAsync(w.AdminId, w.SalonId, DateTime.UtcNow.Date.AddDays(200)));
         Assert.True(await w.Admin.SetzeProbezeitAsync(w.AdminId, w.SalonId, null));
         Assert.Null((await LadeAsync(w)).ProbeBisUtc);
+    }
+
+    [Fact]
+    public async Task Validierungsmail_spricht_den_Besitzer_mit_vous_an()
+    {
+        // Simulation S1: Der Betreff lautete « Ton inscription a été validée », alle anderen Mails sagen « vous ».
+        var w = await BaueAsync();
+        await using (var db = await w.Factory.CreateDbContextAsync())
+        {
+            db.UserSalons.Add(new UserSalon { AppUserId = w.BesitzerId, SalonId = w.SalonId });
+            await db.SaveChangesAsync();
+        }
+        var email = new ENote.WebApp.Services.Mails.EmailService(new ConfigurationBuilder().Build(), w.Factory,
+            NullLogger<ENote.WebApp.Services.Mails.EmailService>.Instance);
+        var admin = new AdminService(w.Factory, new ServiceCollection().BuildServiceProvider(), NullLogger<AdminService>.Instance, email);
+
+        Assert.True(await admin.SetzeFreigabeAsync(w.AdminId, w.SalonId, true));
+
+        await using var pruef = await w.Factory.CreateDbContextAsync();
+        var betreff = Assert.Single(await pruef.MailNachrichten.Select(m => m.Betreff).ToListAsync());
+        Assert.Contains("Votre inscription a été validée", betreff);
+        Assert.DoesNotContain("Ton ", betreff);
     }
 }
