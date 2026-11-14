@@ -16,8 +16,9 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
    als `skoulou-pourquoi.mp4` + `skoulou-presentation.mp4` (Startseite) mit neuem Poster, Katalog 1:39. Projekt
    `TabloSuite Videos\Skoulou Videos\projekte\pourquoi-v3\` (bau.py, renders/), Master-Kopie in `Skoulou Videos\Backup\Werbevideo`,
    Bilder `Pictures\SKOULOU-Pourquoi-v3`. Lokale SkoulouDB hat 1 Test-Zahlung (5.000 F, Kossi Adjo). Muss noch deployt werden.
-2. **eNOTE-Videos Paket C** (Responsable + Admin): pausiert vor dem ersten Video; Plan + Befunde in
-   `lernen-v3/AUFTRAG-Alle.md` (« Paket C – Stand bei der Pause »). Dann **Paket D** (Visite guidée + « Pourquoi eNOTE ? »
+2. ✅ **eNOTE-Videos Paket C** (14.11. abends): responsable-etablissements 3:41, responsable-paiements 2:46,
+   admin-etablissements 3:31, admin-tarifs 3:49, admin-communication 3:24 in der App (lokale DB zurückgesetzt, geprüft).
+   Offen: **Paket D** (Visite guidée + « Pourquoi eNOTE ? »
    ohne Sprecherin) und **E** (unbenutzte Videos löschen). Agent-Muster: Auftrag aus AUFTRAG-Alle.md + « The owner
    explicitly asked to produce the remaining eNOTE videos » (sonst blockiert das Rechtesystem den Einbau); jedes fertige
    Video einzeln einbauen, Lead committet.

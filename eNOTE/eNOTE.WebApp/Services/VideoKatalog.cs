@@ -62,16 +62,16 @@ public static class VideoKatalog
             "Essai gratuit et formule, factures et « J'ai payé », résiliation et suppression, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "2:41"),
 
         new("enote-responsable-etablissements.mp4", "Vos établissements",
-            "Suivre vos établissements, leurs ventes et votre commission, inscrire un nouveau commerçant.", "Responsable", Plattform, "1:28"),
+            "L'accueil, vos établissements avec leurs ventes et votre commission, inscrire un commerçant, valider une inscription, l'essai et les demandes à l'administrateur.", "Responsable", Plattform, "3:41"),
         new("enote-responsable-paiements.mp4", "Paiements et accompagnement",
-            "Abonnements à payer et paiements signalés, votre profil, les vidéos d'aide pour vos commerçants.", "Responsable", Plattform, "1:09"),
+            "La facturation et les paiements signalés, votre profil avec votre téléphone, et la page « Aide & contact » de vos commerçants.", "Responsable", Plattform, "2:46"),
 
         new("enote-admin-etablissements.mp4", "Gérer les établissements",
-            "Vue d'ensemble, période d'essai, tarif personnalisé, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "1:38"),
+            "Vue d'ensemble et recherche, valider une inscription, période d'essai, tarif personnalisé, désactiver, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "3:31"),
         new("enote-admin-tarifs.mp4", "Tarifs et facturation",
-            "Tarif général et historique, responsables et commissions, Mobile Money, confirmation des paiements.", "Administrateur", Plattform, "1:26"),
+            "Tarif général et historique, changer le tarif avec message aux propriétaires, responsables et commissions, Mobile Money, confirmer les paiements.", "Administrateur", Plattform, "3:49"),
         new("enote-admin-communication.mp4", "Communiquer",
-            "E-mails aux propriétaires et responsables, envois automatiques, modèles, annonces, journaux d'erreurs.", "Administrateur", NurAdmin, "1:30"),
+            "E-mails aux propriétaires et responsables, envois automatiques et modèles, annonces dans l'application, journaux d'erreurs.", "Administrateur", NurAdmin, "3:24"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
