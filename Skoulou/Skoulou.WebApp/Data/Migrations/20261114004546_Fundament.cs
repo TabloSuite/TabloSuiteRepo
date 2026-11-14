@@ -1639,6 +1639,8 @@ namespace Skoulou.WebApp.Data.Migrations
                     ErgaenztId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     BestaetigtVonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     BestaetigtAmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Erinnerungen = table.Column<int>(type: "int", nullable: false),
+                    Version = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true),
                     ErstelltAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     GeaendertAmUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -2026,6 +2028,13 @@ namespace Skoulou.WebApp.Data.Migrations
                 column: "BelegMediumId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Buchungen_EinStorno",
+                table: "Buchungen",
+                column: "StornoVonId",
+                unique: true,
+                filter: "[StornoVonId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Buchungen_ErfasstVonId",
                 table: "Buchungen",
                 column: "ErfasstVonId");
@@ -2050,11 +2059,6 @@ namespace Skoulou.WebApp.Data.Migrations
                 table: "Buchungen",
                 columns: new[] { "SchuleId", "Nummer" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Buchungen_StornoVonId",
-                table: "Buchungen",
-                column: "StornoVonId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bulletins_EinGueltiges",

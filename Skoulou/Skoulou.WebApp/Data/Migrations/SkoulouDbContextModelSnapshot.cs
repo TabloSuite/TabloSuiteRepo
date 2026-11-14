@@ -504,7 +504,10 @@ namespace Skoulou.WebApp.Data.Migrations
 
                     b.HasIndex("KategorieId");
 
-                    b.HasIndex("StornoVonId");
+                    b.HasIndex("StornoVonId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Buchungen_EinStorno")
+                        .HasFilter("[StornoVonId] IS NOT NULL");
 
                     b.HasIndex("Herkunft", "HerkunftId");
 
@@ -2465,6 +2468,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<Guid?>("ErgaenztId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Erinnerungen")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
@@ -2494,6 +2500,11 @@ namespace Skoulou.WebApp.Data.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 

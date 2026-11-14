@@ -69,6 +69,14 @@ public static class OrgAudit
         AuditAktionen.RechnungStatus => "Facture SKOULOU",
         AuditAktionen.SchulStatus => "Statut de l'établissement",
         AuditAktionen.Jahreswechsel => "Passage d'année",
+        // Codes aus Noten (E5) und Finanzen (E6)
+        "bulletin.retire" => "Bulletin retiré",
+        "bulletin.rectification-ouverte" => "Rectification ouverte",
+        "bulletin.rectification-abandonnee" => "Rectification abandonnée",
+        "finanzen.ecriture-annulee" => "Écriture annulée",
+        "finanzen.reduction-retiree" => "Réduction retirée",
+        "rechnung.erstellt" => "Facture SKOULOU émise",
+        "responsable.versement" => "Versement au responsable",
         _ => aktion
     };
 }
