@@ -1,5 +1,67 @@
 @page "/direction/journal"
 @attribute [Authorize(Policy = Richtlinien.Direktor)]
+@inherits SkoulouSeite
+@inject ProtokollService Journale
+@inject TimeProvider Uhr
 
-<InVorbereitung Titel="Journal" Icon="history" Etappe="E3 – Organisation"
-                Beschreibung="Actions sensibles de l'établissement : comptes, mots de passe, notes, publications, paiements." />
+@* Journal der Schule (Bauplan §3.6): sensible Aktionen des Établissements, nur für den Directeur, neueste zuerst. *@
+
+<PageTitle>Journal · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Journal" Icon="history" Untertitel="Les actions sensibles de votre établissement : comptes et mots de passe, inscriptions, notes, bulletins, paiements. Qui a fait quoi, et quand." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (!Laedt)
+{
+    <Liste T="SchulJournalZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Rechercher dans le texte (nom, classe, n° de reçu…)" LeerIcon="history"
+           LeerTitel="Aucune action pour ces critères" LeerText="Les actions sensibles apparaissent ici dès qu'elles sont faites (création de comptes, paiements, publication des bulletins…).">
+        <Werkzeuge>
+            <AuswahlFeld T="string" Wert="bereich" WertChanged="BereichAsync" Optionen="bereiche" Platzhalter="Tous les domaines" Kompakt="true" Icon="filter" />
+            <DatumFeld Platzhalter="Du" Wert="von" WertChanged="VonAsync" />
+            <DatumFeld Platzhalter="Au" Wert="bis" WertChanged="BisAsync" />
+        </Werkzeuge>
+        <Zeile Context="a">
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon"><Icon Name="history" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@a.Bezeichnung</span>
+                    <span>@a.Text</span>
+                    <span class="pl-zeile-meta">
+                        <span>@Zeit(a.ZeitUtc)</span>
+                        <span><Icon Name="user" Groesse="14" /> @(a.Akteur ?? "Système")@(a.AkteurRolle is { Length: > 0 } r ? $" · {Rollen.Bezeichnung(r)}" : "")</span>
+                    </span>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+@code {
+    private Liste<SchulJournalZeile>? liste;
+
+    private string Zeit(DateTime utc) => new SchulZeit(Uhr).AlsText(utc);
+    private string? bereich;
+    private DateOnly? von, bis;
+    private IReadOnlyList<AuswahlOption<string>> bereiche = [];
+
+    protected override Task InitialisierenAsync()
+    {
+        bereiche = [new(null!, "Tous les domaines"), .. ProtokollService.SchulJournalBereiche.Select(b => new AuswahlOption<string>(b.Wert, b.Text))];
+        return Task.CompletedTask;
+    }
+
+    private Task<(IReadOnlyList<SchulJournalZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Journale.SchulJournalAsync(Ich.KontoId, new ProtokollFilter(a.Suche, von, bis), bereich, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task BereichAsync(string? b) { bereich = b; await NeuAsync(); }
+    private async Task VonAsync(DateOnly? d) { von = d; await NeuAsync(); }
+    private async Task BisAsync(DateOnly? d) { bis = d; await NeuAsync(); }
+
+    private async Task NeuAsync()
+    {
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

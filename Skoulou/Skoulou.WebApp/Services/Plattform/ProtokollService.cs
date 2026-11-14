@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Fehler;
+using Skoulou.Core.Rechte;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
+using Skoulou.WebApp.Services.Organisation;
 
 namespace Skoulou.WebApp.Services.Plattform;
 
@@ -12,6 +14,9 @@ public sealed record FehlerZeile(Guid Id, DateTime ZeitUtc, string Nachricht, st
 public sealed record AuditZeile(Guid Id, DateTime ZeitUtc, string Aktion, string Text, string? Akteur, string? Schule, string ZielTyp);
 
 /// <summary>Filter eines Journals (Tage in UTC, jeweils inklusive).</summary>
+/// <summary>Zeile des Schuljournals (Direktion) mit lesbarer Bezeichnung der Aktion und Rolle der handelnden Person.</summary>
+public sealed record SchulJournalZeile(Guid Id, DateTime ZeitUtc, string Aktion, string Bezeichnung, string Text, string? Akteur, string? AkteurRolle);
+
 public sealed record ProtokollFilter(string? Suche = null, DateOnly? Von = null, DateOnly? Bis = null, Guid? SchuleId = null, bool NurOffene = false);
 
 /// <summary>
@@ -82,6 +87,35 @@ public sealed class ProtokollService(IDbContextFactory<SkoulouDbContext> dbFacto
             db.Schulen.Where(sc => sc.Id == x.SchuleId).Select(sc => sc.Name).FirstOrDefault(), x.ZielTyp));
         return await PlattformListen.SeiteAsync(abfrage, ueberspringen, anzahl, ct);
     }
+
+    /// <summary>
+    /// Journal der eigenen Schule (Seite /direction/journal, nur Direktor): sensible Aktionen der Schule – Konten,
+    /// Passwörter, Einschreibungen, Noten, Bulletins, Zahlungen –, neueste zuerst, mit lesbarer Bezeichnung.
+    /// </summary>
+    public async Task<(IReadOnlyList<SchulJournalZeile> Eintraege, bool Mehr)> SchulJournalAsync(Guid akteurId, ProtokollFilter f, string? bereich,
+        int ueberspringen = 0, int anzahl = 50, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.SchuleVerwalten, schreiben: false, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var q = db.AuditEintraege.AsNoTracking().Where(x => x.SchuleId == a.SchuleId);
+        if (!string.IsNullOrWhiteSpace(bereich)) { var p = bereich.Trim() + "."; q = q.Where(x => x.Aktion.StartsWith(p)); }
+        if (f.Von is { } von) { var v = von.ToDateTime(TimeOnly.MinValue); q = q.Where(x => x.ZeitUtc >= v); }
+        if (f.Bis is { } bis) { var b = bis.AddDays(1).ToDateTime(TimeOnly.MinValue); q = q.Where(x => x.ZeitUtc < b); }
+        if (PlattformListen.Suchtext(f.Suche) is { } t) q = q.Where(x => x.Text.Contains(t));
+        var abfrage = q.OrderByDescending(x => x.ZeitUtc).ThenByDescending(x => x.Id).Select(x => new SchulJournalZeile(x.Id, x.ZeitUtc, x.Aktion, string.Empty, x.Text,
+            db.Users.Where(k => k.Id == x.AkteurId).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefault(),
+            db.Users.Where(k => k.Id == x.AkteurId).Select(k => k.Rolle).FirstOrDefault()));
+        var (seite, mehr) = await PlattformListen.SeiteAsync(abfrage, ueberspringen, anzahl, ct);
+        return (seite.Select(z => z with { Bezeichnung = OrgAudit.Bezeichnung(z.Aktion) }).ToList(), mehr);
+    }
+
+    /// <summary>Bereiche des Schuljournals (Präfixe der Aktionen).</summary>
+    public static readonly IReadOnlyList<(string Wert, string Text)> SchulJournalBereiche =
+    [
+        ("konto", "Comptes et mots de passe"), ("eleve", "Élèves"), ("einschreibung", "Inscriptions en classe"), ("eltern", "Parents"),
+        ("note", "Notes"), ("bulletin", "Bulletins"), ("finanzen", "Finances"), ("rechnung", "Factures SKOULOU"),
+        ("schuljahr", "Années scolaires"), ("periode", "Périodes"), ("schule", "Établissement")
+    ];
 
     /// <summary>Bereiche (Präfixe) der vorhandenen Audit-Aktionen für den Filter.</summary>
     public static readonly IReadOnlyList<(string Wert, string Text)> AuditBereiche =
