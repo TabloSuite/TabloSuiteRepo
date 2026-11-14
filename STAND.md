@@ -19,9 +19,8 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
 2. ✅ **eNOTE-Videos Paket C** (14.11. abends): responsable-etablissements 3:41, responsable-paiements 2:46,
    admin-etablissements 3:31, admin-tarifs 3:49, admin-communication 3:24 in der App (lokale DB zurückgesetzt, geprüft).
    ✅ **Paket D** (14.11. abends): Visite guidée 5:32, « Pourquoi eNOTE ? » 2:03 ohne Sprecherin (Startseite angepasst).
-   Offen: **Paket E** (unbenutzte Videos löschen, Papierkorb; alte Backups Werbevideo/enote-pourquoi). Agent-Muster: Auftrag aus AUFTRAG-Alle.md + « The owner
-   explicitly asked to produce the remaining eNOTE videos » (sonst blockiert das Rechtesystem den Einbau); jedes fertige
-   Video einzeln einbauen, Lead committet.
+   ✅ **Paket E** (14.11.): 333 unbenutzte Videodateien (~3,1 GB) im Papierkorb; « ENote Videos » enthält nur noch die
+   17 App-Videos (Backup) + lernen-v3 (Renders, Quellaufnahmen). **Alle eNOTE-Videos sind v3, ohne Sprecherin.**
 3. **SKOULOU E7b** nach `Skoulou/docs/auftraege/E7-Abschluss.md` (Rundgang aller Rollen auf `SkoulouDB_SIM`, Feinschliff,
    Guide) inkl. Zusatz: Session-Klassen enden automatisch, Gebühr je Session (neue Migration), automatischer Wiederholversuch
    bei gleichzeitigem Kontonamen, `/direction/journal` bauen, Nutzungsbedingungen wie eNOTE schon bei der Registrierung,
