@@ -103,3 +103,10 @@ Do these first (with tests, and extend the simulation's invariants where it fits
 4. Simultaneous account creation with the same name (« enregistrement simultané »): retry automatically with the next
    username suggestion (max. 3 tries) instead of showing the error.
 5. `/direction/journal` is still a placeholder page – build it (it belongs in the tour anyway).
+6. **Terms of use like eNOTE** (owner 14.11., to-do): today every account sees the big « Conditions d'utilisation »
+   dialog after login (« AVANT DE COMMENCER », role block + « Règles communes », « J'accepte et je continue »). Solve it
+   like eNOTE: whoever registers (Direction/school registration, student self-registration) accepts the terms already in
+   the registration form (checkbox + link, version + time stored) and never sees the dialog afterwards. First check in
+   `eNOTE/eNOTE.WebApp` how eNOTE handles registration terms and accounts created by someone else (employees) and mirror
+   that for SKOULOU accounts created by the school (staff, students, parents) and for new terms versions. You may also
+   make the content cleaner and shorter in eNOTE's style (owner's permission) – keep it in French with « vous ».
