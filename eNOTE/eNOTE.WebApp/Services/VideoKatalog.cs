@@ -57,7 +57,7 @@ public static class VideoKatalog
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
             "Les chiffres du jour sur l'accueil, les finances par période (solde, entrées, dépenses, clôtures), noter une dépense, apport et rapport PDF.", "Propriétaire", AbBesitzer, "3:12"),
         new("enote-proprietaire-clients.mp4", "Vos clients",
-            "Le fichier clients, la fiche avec note privée et notes de l'équipe, une remise de fidélité.", "Propriétaire", AbBesitzer, "1:27"),
+            "Le fichier clients, la fiche avec achats, préférés, note privée et notes de l'équipe, un nouveau client, une remise pour les fidèles.", "Propriétaire", AbBesitzer, "2:36"),
         new("enote-proprietaire-compte.mp4", "Abonnement et compte",
             "Essai gratuit et formule, résiliation, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "1:02"),
 
