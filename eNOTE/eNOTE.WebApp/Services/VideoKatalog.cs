@@ -33,7 +33,7 @@ public static class VideoKatalog
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
         // Für alle (12.11.2026: Lernvideos mit Sprecherin; ab 14.11.2026 nach und nach im v3-Stil ohne Sprecherin:
-        // Premiers pas + alle Employé-Videos (Paket A) – die übrigen folgen paketweise)
+        // Premiers pas + alle Employé-Videos (Paket A), Propriétaire (Paket B) – die übrigen folgen paketweise)
         new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
             "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:14"),
         new("enote-visite-guidee.mp4", "La visite guidée",
@@ -51,7 +51,7 @@ public static class VideoKatalog
             "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
 
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
-            "Catégories, nouvelle prestation, produit avec prix d'achat, stock et code-barres, remises.", "Propriétaire", AbBesitzer, "2:05"),
+            "Les catégories, une prestation, un produit avec prix d'achat, stock et code-barres, étiquettes et pertes, les remises.", "Propriétaire", AbBesitzer, "3:41"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
             "Ajouter un employé, ses droits, votre reçu, Mobile Money, salles et code PIN.", "Propriétaire", AbBesitzer, "1:46"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
