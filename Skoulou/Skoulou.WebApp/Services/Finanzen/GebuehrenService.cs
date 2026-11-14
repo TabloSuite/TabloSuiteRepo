@@ -11,10 +11,13 @@ using Skoulou.WebApp.Services.Organisation;
 namespace Skoulou.WebApp.Services.Finanzen;
 
 public sealed record RateEingabe(long? Betrag, DateOnly? Faellig);
-public sealed record PostenEingabe(string? Bezeichnung, long? Betrag, Guid? StufeId, Guid? KlasseId, bool Pflicht, IReadOnlyList<RateEingabe> Raten);
+/// <summary>Eingabe eines Postens; <paramref name="PeriodeId"/> = nur für diese Periode/Session (null = ganzes Jahr).</summary>
+public sealed record PostenEingabe(string? Bezeichnung, long? Betrag, Guid? StufeId, Guid? KlasseId, bool Pflicht, IReadOnlyList<RateEingabe> Raten,
+    Guid? PeriodeId = null);
 public sealed record RateZeile(int Nr, long Betrag, DateOnly Faellig);
-public sealed record PostenZeile(Guid Id, string Bezeichnung, long Betrag, Guid? StufeId, Guid? KlasseId, string Geltung, bool Pflicht, int Reihenfolge, IReadOnlyList<RateZeile> Raten);
-public sealed record GeltungsAuswahl(IReadOnlyList<AuswahlEintrag> Stufen, IReadOnlyList<AuswahlEintrag> Klassen);
+public sealed record PostenZeile(Guid Id, string Bezeichnung, long Betrag, Guid? StufeId, Guid? KlasseId, string Geltung, bool Pflicht, int Reihenfolge, IReadOnlyList<RateZeile> Raten,
+    Guid? PeriodeId = null);
+public sealed record GeltungsAuswahl(IReadOnlyList<AuswahlEintrag> Stufen, IReadOnlyList<AuswahlEintrag> Klassen, IReadOnlyList<AuswahlEintrag> Perioden);
 public sealed record ErmaessigungEingabe(Guid SchuelerId, Guid? PostenId, ErmaessigungsArt Art, decimal? Wert, string? Grund);
 public sealed record ErmaessigungZeile(Guid Id, Guid? PostenId, string Posten, ErmaessigungsArt Art, decimal Wert, string Grund, string ErfasstVon, DateTime ErstelltAmUtc);
 public sealed record ZahlungKurz(Guid Id, string Quittungsnummer, DateOnly Datum, long Betrag, ZahlungsKanal Kanal, string? Referenz, bool Storniert, string? StornoGrund);
@@ -48,14 +51,19 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
             .OrderBy(p => p.Reihenfolge).ThenBy(p => p.Bezeichnung).ToListAsync(ct);
         var stufen = await db.Stufen.Where(s => s.SchuleId == a.SchuleId).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
         var klassen = await db.Klassen.Where(k => k.SchuljahrId == jahrId).ToDictionaryAsync(k => k.Id, k => k.Name, ct);
+        var perioden = await db.Perioden.Where(p => p.SchuljahrId == jahrId).ToDictionaryAsync(p => p.Id, p => p.Titel, ct);
         return posten.Select(p => new PostenZeile(p.Id, p.Bezeichnung, p.Betrag, p.StufeId, p.KlasseId,
-            Geltung(p, stufen, klassen), p.Pflicht, p.Reihenfolge,
-            p.Raten.OrderBy(r => r.Nr).Select(r => new RateZeile(r.Nr, r.Betrag, r.Faellig)).ToList())).ToList();
+            Geltung(p, stufen, klassen, perioden), p.Pflicht, p.Reihenfolge,
+            p.Raten.OrderBy(r => r.Nr).Select(r => new RateZeile(r.Nr, r.Betrag, r.Faellig)).ToList(), p.PeriodeId)).ToList();
     }
 
-    public static string Geltung(GebuehrenPosten p, IReadOnlyDictionary<Guid, string> stufen, IReadOnlyDictionary<Guid, string> klassen)
-        => p.KlasseId is { } k ? $"Classe {klassen.GetValueOrDefault(k, "?")}"
+    public static string Geltung(GebuehrenPosten p, IReadOnlyDictionary<Guid, string> stufen, IReadOnlyDictionary<Guid, string> klassen,
+        IReadOnlyDictionary<Guid, string>? perioden = null)
+    {
+        var wer = p.KlasseId is { } k ? $"Classe {klassen.GetValueOrDefault(k, "?")}"
             : p.StufeId is { } s ? $"Niveau {stufen.GetValueOrDefault(s, "?")}" : "Tous les élèves";
+        return p.PeriodeId is { } per ? $"{wer} · {perioden?.GetValueOrDefault(per) ?? "?"} seulement" : wer;
+    }
 
     public async Task<GeltungsAuswahl> GeltungsAuswahlAsync(Guid akteurId, Guid jahrId, CancellationToken ct = default)
     {
@@ -66,7 +74,10 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
             .Select(s => new AuswahlEintrag(s.Id, s.Name, null)).ToListAsync(ct);
         var klassen = await db.Klassen.Where(k => k.SchuljahrId == jahrId && k.Aktiv).OrderBy(k => k.Name)
             .Select(k => new AuswahlEintrag(k.Id, k.Name, null)).ToListAsync(ct);
-        return new GeltungsAuswahl(stufen, klassen);
+        var perioden = await db.Perioden.Where(p => p.SchuljahrId == jahrId).OrderBy(p => p.Beginn).ThenBy(p => p.Nr)
+            .Select(p => new { p.Id, p.Titel, p.Beginn, p.Ende }).ToListAsync(ct);
+        return new GeltungsAuswahl(stufen, klassen, perioden
+            .Select(p => new AuswahlEintrag(p.Id, p.Titel, $"{SkoulouKultur.Datum(p.Beginn)} – {SkoulouKultur.Datum(p.Ende)}")).ToList());
     }
 
     public async Task<Guid> PostenSpeichernAsync(Guid akteurId, Guid jahrId, Guid? postenId, PostenEingabe e, CancellationToken ct = default)
@@ -89,6 +100,16 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
                 if (!await db.Stufen.AnyAsync(x => x.Id == s && x.SchuleId == a.SchuleId, ct)) throw new FachFehler("Ce niveau est introuvable.", "geltung");
                 stufeId = s;
             }
+            Guid? periodeId = null;
+            if (e.PeriodeId is { } pid)
+            {
+                var periode = await db.Perioden.FirstOrDefaultAsync(x => x.Id == pid && x.SchuljahrId == jahrId, ct)
+                              ?? throw new FachFehler("Cette période n'appartient pas à l'année choisie.", "periode");
+                if (klasseId is { } kl && await db.Klassen.Where(x => x.Id == kl).Select(x => x.PeriodeId).FirstOrDefaultAsync(ct) is { } klassenSession
+                    && klassenSession != pid)
+                    throw new FachFehler($"Cette classe n'a pas lieu pendant « {periode.Titel} ».", "periode");
+                periodeId = pid;
+            }
             var raten = Raten(e.Raten, betrag, jahr);
 
             GebuehrenPosten posten;
@@ -106,7 +127,7 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
                 posten = new GebuehrenPosten { SchuleId = a.SchuleId, SchuljahrId = jahrId, Reihenfolge = letzte + 1 };
                 db.GebuehrenPosten.Add(posten);
             }
-            (posten.Bezeichnung, posten.Betrag, posten.StufeId, posten.KlasseId, posten.Pflicht) = (bezeichnung, betrag, stufeId, klasseId, e.Pflicht);
+            (posten.Bezeichnung, posten.Betrag, posten.StufeId, posten.KlasseId, posten.PeriodeId, posten.Pflicht) = (bezeichnung, betrag, stufeId, klasseId, periodeId, e.Pflicht);
             foreach (var r in raten) db.GebuehrenRaten.Add(new GebuehrenRate { PostenId = posten.Id, Nr = r.Nr, Betrag = r.Betrag, Faellig = r.Faellig });
             await db.SaveChangesAsync(ct);
             return posten.Id;
@@ -164,6 +185,9 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
             var vorhandene = await db.GebuehrenPosten.Where(p => p.SchuljahrId == jahrId).Select(p => new { p.Bezeichnung, p.StufeId, p.KlasseId, p.Reihenfolge }).ToListAsync(ct);
             var alteKlassen = await db.Klassen.Where(k => k.SchuljahrId == vorjahr.Id).ToDictionaryAsync(k => k.Id, k => k.Name, ct);
             var neueKlassen = await db.Klassen.Where(k => k.SchuljahrId == jahrId).ToListAsync(ct);
+            // Posten einer Session: Periode mit derselben Nr im neuen Jahr (fehlt sie, wird der Posten übersprungen).
+            var altePerioden = await db.Perioden.Where(p => p.SchuljahrId == vorjahr.Id).ToDictionaryAsync(p => p.Id, p => p.Nr, ct);
+            var neuePerioden = await db.Perioden.Where(p => p.SchuljahrId == jahrId).ToDictionaryAsync(p => p.Nr, p => p.Id, ct);
             var verschiebung = jahr.Beginn.Year - vorjahr.Beginn.Year;
             var reihenfolge = vorhandene.Count == 0 ? 0 : vorhandene.Max(p => p.Reihenfolge);
             int kopiert = 0, uebersprungen = 0;
@@ -175,11 +199,17 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
                     klasse = neueKlassen.FirstOrDefault(k => k.Name == alteKlassen.GetValueOrDefault(altK))?.Id;
                     if (klasse is null) { uebersprungen++; continue; }
                 }
+                Guid? periode = null;
+                if (p.PeriodeId is { } altP)
+                {
+                    if (!altePerioden.TryGetValue(altP, out var nr) || !neuePerioden.TryGetValue(nr, out var neuP)) { uebersprungen++; continue; }
+                    periode = neuP;
+                }
                 if (vorhandene.Any(v => v.Bezeichnung == p.Bezeichnung && v.StufeId == p.StufeId && v.KlasseId == klasse)) { uebersprungen++; continue; }
                 var neu = new GebuehrenPosten
                 {
                     SchuleId = a.SchuleId, SchuljahrId = jahrId, Bezeichnung = p.Bezeichnung, Betrag = p.Betrag,
-                    StufeId = klasse is null ? p.StufeId : null, KlasseId = klasse, Pflicht = p.Pflicht, Reihenfolge = ++reihenfolge
+                    StufeId = klasse is null ? p.StufeId : null, KlasseId = klasse, PeriodeId = periode, Pflicht = p.Pflicht, Reihenfolge = ++reihenfolge
                 };
                 db.GebuehrenPosten.Add(neu);
                 foreach (var r in p.Raten.OrderBy(r => r.Nr))

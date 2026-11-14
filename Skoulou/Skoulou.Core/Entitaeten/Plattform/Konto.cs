@@ -39,6 +39,11 @@ public class Konto : IdentityUser<Guid>, IZeitgestempelt
     public DateTime? LetzteAnmeldungUtc { get; set; }
     public Guid? ErstelltVonId { get; set; }
     public bool SelbstRegistriert { get; set; }
+    /// <summary>
+    /// Hauptadministrator (nur ein SuperAdmin-Konto): verwaltet die anderen Administratoren und kann dort selbst
+    /// nicht geändert werden. Fehlt die Kennzeichnung, erhält sie das älteste aktive Administratorkonto.
+    /// </summary>
+    public bool IstHauptAdmin { get; set; }
 
     public DateTime ErstelltAmUtc { get; set; }
     public DateTime GeaendertAmUtc { get; set; }

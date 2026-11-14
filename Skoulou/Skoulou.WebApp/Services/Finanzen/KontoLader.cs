@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.Core.Finanzen;
+using Skoulou.Core.Organisation;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
 
@@ -17,13 +18,11 @@ public sealed record SchuelerKopf(Guid Id, string Name, string? Matrikel, Guid? 
 /// </summary>
 internal static class KontoLader
 {
-    private sealed record Belegung(Guid KlasseId, Guid? StufeId);
-
-    private sealed record Posten(PostenDaten Daten, Guid? StufeId, Guid? KlasseId);
+    private sealed record Posten(PostenDaten Daten, GeltungDaten Geltung);
 
     private sealed class JahresDaten
     {
-        public required Dictionary<Guid, Belegung> Klassen { get; init; }
+        public required Dictionary<Guid, List<BelegungDaten>> Klassen { get; init; }
         public required List<Posten> Posten { get; init; }
         public required ILookup<Guid, ErmaessigungDaten> Ermaessigungen { get; init; }
         public required ILookup<Guid, ZahlungDaten> Zahlungen { get; init; }
@@ -31,10 +30,8 @@ internal static class KontoLader
 
         public IReadOnlyList<PostenDaten> PostenFuer(Guid schuelerId)
         {
-            if (!Klassen.TryGetValue(schuelerId, out var b)) return [];
-            return Posten.Where(p => (p.KlasseId is null && p.StufeId is null) || p.KlasseId == b.KlasseId
-                                     || (p.KlasseId is null && p.StufeId is not null && p.StufeId == b.StufeId))
-                .Select(p => p.Daten).ToList();
+            if (!Klassen.TryGetValue(schuelerId, out var belegungen)) return [];
+            return Posten.Where(p => PostenGeltung.Gilt(p.Geltung, belegungen)).Select(p => p.Daten).ToList();
         }
     }
 
@@ -102,25 +99,37 @@ internal static class KontoLader
         var namen = await db.Klassen.Where(k => k.SchuljahrId == jahrId).Select(k => new { k.Id, k.Name }).ToDictionaryAsync(k => k.Id, k => k.Name, ct);
         return konten.ToDictionary(k => k.Id, k =>
         {
-            var klasse = klassen.TryGetValue(k.Id, out var b) ? b.KlasseId : (Guid?)null;
+            var klasse = klassen.TryGetValue(k.Id, out var b) ? PostenGeltung.Massgeblich(b)?.KlasseId : null;
             return new SchuelerKopf(k.Id, $"{k.Nachname} {k.Vorname}".Trim(), k.Matrikel, klasse, klasse is { } kid ? namen.GetValueOrDefault(kid) : null);
         });
     }
 
-    private static async Task<Dictionary<Guid, Belegung>> KlassenAsync(SkoulouDbContext db, Guid jahrId, List<Guid> ids, CancellationToken ct)
+    /// <summary>
+    /// Gültige Einschreibungen des Jahres je Schüler mit effektivem Zeitraum (Session-Klassen enden mit ihrer Session).
+    /// Maßgeblich für Jahresposten und Kopf ist die aktive bzw. zuletzt begonnene (<see cref="PostenGeltung.Massgeblich"/>).
+    /// </summary>
+    private static async Task<Dictionary<Guid, List<BelegungDaten>>> KlassenAsync(SkoulouDbContext db, Guid jahrId, List<Guid> ids, CancellationToken ct)
     {
-        // Maßgeblich ist die aktive bzw. zuletzt begonnene Einschreibung des Jahres (Klassenwechsel: neue Klasse).
         var einschreibungen = await (from e in SchulAbfragen.GueltigeEinschreibungen(db)
                                      where e.SchuljahrId == jahrId && ids.Contains(e.SchuelerId)
                                      join k in db.Klassen on e.KlasseId equals k.Id
-                                     select new { e.SchuelerId, e.KlasseId, k.StufeId, e.Von, Aktiv = e.Status == EinschreibungsStatus.Active }).ToListAsync(ct);
+                                     join p in db.Perioden on k.PeriodeId equals (Guid?)p.Id into pj
+                                     from p in pj.DefaultIfEmpty()
+                                     select new
+                                     {
+                                         e.SchuelerId, e.KlasseId, k.StufeId, e.Von, e.Bis, Aktiv = e.Status == EinschreibungsStatus.Active,
+                                         SessionBeginn = p == null ? (DateOnly?)null : p.Beginn, SessionEnde = p == null ? (DateOnly?)null : p.Ende
+                                     }).ToListAsync(ct);
         return einschreibungen.GroupBy(e => e.SchuelerId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.Aktiv).ThenByDescending(e => e.Von).Select(e => new Belegung(e.KlasseId, e.StufeId)).First());
+            .ToDictionary(g => g.Key, g => g.Select(e => new BelegungDaten(e.KlasseId, e.StufeId,
+                SessionRegel.Beginn(e.Von, e.SessionBeginn), SessionRegel.Ende(e.Bis, e.SessionEnde), e.Aktiv)).ToList());
     }
 
     private static async Task<JahresDaten> JahresDatenAsync(SkoulouDbContext db, Guid jahrId, DateOnly beginn, List<Guid> ids, CancellationToken ct)
     {
         var posten = await db.GebuehrenPosten.AsNoTracking().Where(p => p.SchuljahrId == jahrId).Include(p => p.Raten).ToListAsync(ct);
+        var perioden = await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahrId)
+            .Select(p => new { p.Id, p.Beginn, p.Ende }).ToDictionaryAsync(p => p.Id, ct);
         var ermaessigungen = await db.Ermaessigungen.AsNoTracking()
             .Where(e => e.SchuljahrId == jahrId && ids.Contains(e.SchuelerId))
             .Select(e => new { e.SchuelerId, Daten = new ErmaessigungDaten(e.PostenId, e.Art, e.Wert) }).ToListAsync(ct);
@@ -130,7 +139,9 @@ internal static class KontoLader
         return new JahresDaten
         {
             Klassen = await KlassenAsync(db, jahrId, ids, ct),
-            Posten = posten.Select(p => new Posten(Daten(p), p.StufeId, p.KlasseId)).ToList(),
+            Posten = posten.Select(p => new Posten(Daten(p), p.PeriodeId is { } pid && perioden.TryGetValue(pid, out var per)
+                ? new GeltungDaten(p.StufeId, p.KlasseId, per.Beginn, per.Ende)
+                : new GeltungDaten(p.StufeId, p.KlasseId))).ToList(),
             Ermaessigungen = ermaessigungen.ToLookup(e => e.SchuelerId, e => e.Daten),
             Zahlungen = zahlungen.ToLookup(z => z.SchuelerId, z => z.Daten),
             Beginn = beginn

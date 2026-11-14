@@ -123,36 +123,46 @@ internal static class OrgRechte
 /// <summary>Schreibvorgänge in einer Transaktion (mit der Wiederholungsstrategie von SQL Server verträglich).</summary>
 internal static class DbArbeit
 {
+    public const string MeldungSimultan = "Cette donnée existe déjà (enregistrement simultané). Rechargez la page et réessayez.";
+
+    /// <summary>Versuche bei der Kontoanlage: gleichzeitige Anlage desselben Identifiants → nächster Vorschlag.</summary>
+    public const int KontoVersuche = 3;
+
     /// <summary>
     /// Führt die Arbeit mit einem frischen Kontext in einer Transaktion aus; bei einer Wiederholung
     /// (Verbindungsabbruch) läuft sie erneut von vorn. InMemory (Tests) kennt keine Transaktionen.
+    /// Mit <paramref name="versuche"/> &gt; 1 wird die ganze Arbeit nach einer Unique-Verletzung (gleichzeitige Anlage,
+    /// z. B. dasselbe Identifiant in zwei Schulen) wiederholt – sie rechnet dann z. B. den nächsten freien Vorschlag.
     /// </summary>
     public static async Task<T> TransaktionAsync<T>(this IDbContextFactory<SkoulouDbContext> fabrik,
-        Func<SkoulouDbContext, Task<T>> arbeit, CancellationToken ct = default)
+        Func<SkoulouDbContext, Task<T>> arbeit, CancellationToken ct = default, int versuche = 1)
     {
-        await using var probe = await fabrik.CreateDbContextAsync(ct);
-        var strategie = probe.Database.CreateExecutionStrategy();
-        return await strategie.ExecuteAsync(async () =>
+        for (var versuch = 1; ; versuch++)
         {
-            await using var db = await fabrik.CreateDbContextAsync(ct);
-            if (!db.Database.IsRelational()) return await arbeit(db);
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
             try
             {
-                var ergebnis = await arbeit(db);
-                await tx.CommitAsync(ct);
-                return ergebnis;
+                await using var probe = await fabrik.CreateDbContextAsync(ct);
+                var strategie = probe.Database.CreateExecutionStrategy();
+                return await strategie.ExecuteAsync(async () =>
+                {
+                    await using var db = await fabrik.CreateDbContextAsync(ct);
+                    if (!db.Database.IsRelational()) return await arbeit(db);
+                    await using var tx = await db.Database.BeginTransactionAsync(ct);
+                    var ergebnis = await arbeit(db);
+                    await tx.CommitAsync(ct);
+                    return ergebnis;
+                });
             }
             catch (DbUpdateException ex) when (IstEindeutigkeitsFehler(ex))
             {
-                throw new FachFehler("Cette donnée existe déjà (enregistrement simultané). Rechargez la page et réessayez.");
+                if (versuch >= versuche) throw new FachFehler(MeldungSimultan);
             }
-        });
+        }
     }
 
     public static Task TransaktionAsync(this IDbContextFactory<SkoulouDbContext> fabrik,
-        Func<SkoulouDbContext, Task> arbeit, CancellationToken ct = default)
-        => fabrik.TransaktionAsync<bool>(async db => { await arbeit(db); return true; }, ct);
+        Func<SkoulouDbContext, Task> arbeit, CancellationToken ct = default, int versuche = 1)
+        => fabrik.TransaktionAsync<bool>(async db => { await arbeit(db); return true; }, ct, versuche);
 
     /// <summary>Verletzung eines Unique-Index (SQL Server 2601/2627)?</summary>
     public static bool IstEindeutigkeitsFehler(DbUpdateException ex)

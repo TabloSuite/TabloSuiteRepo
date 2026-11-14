@@ -142,7 +142,7 @@ public sealed class ElternService(
             await db.SaveChangesAsync(ct);
             var name = await db.Schulen.Where(s => s.Id == a.SchuleId).Select(s => s.Name).FirstAsync(ct);
             return (new Zugang(konto.Id, konto.VollerName, Rollen.Eltern, identifiant, passwort, kind is null ? null : $"{bez} de {kind.VollerName}"), name);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
         await mails.WillkommenAsync(new MailEmpfaenger(daten.Email, daten.Vorname, zugang.Identifiant, Rollen.Eltern), schule, ct);
         return ablage.Ablegen(a.Id, a.SchuleId, [zugang]);
     }

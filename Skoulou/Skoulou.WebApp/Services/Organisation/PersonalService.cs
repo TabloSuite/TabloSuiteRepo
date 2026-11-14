@@ -100,7 +100,7 @@ public sealed class PersonalService(
             await db.SaveChangesAsync(ct);
             var name = await db.Schulen.Where(s => s.Id == a.SchuleId).Select(s => s.Name).FirstAsync(ct);
             return (new Zugang(konto.Id, konto.VollerName, e.Rolle, identifiant, passwort), name);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
         await mails.WillkommenAsync(new MailEmpfaenger(daten.Email, daten.Vorname, zugang.Identifiant, e.Rolle), schule, ct);
         return ablage.Ablegen(a.Id, a.SchuleId, [zugang]);
     }

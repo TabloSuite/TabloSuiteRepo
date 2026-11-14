@@ -29,16 +29,32 @@ public static class SchulAbfragen
     public static IQueryable<Einschreibung> AktiveEinschreibungen(SkoulouDbContext db)
         => GueltigeEinschreibungen(db).Where(e => e.Status == EinschreibungsStatus.Active);
 
-    /// <summary>Einschreibungen, deren Zeitraum [von, bis] schneidet (Periode, Abrechnung, Effectif am Stichtag).</summary>
-    public static IQueryable<Einschreibung> EinschreibungenImZeitraum(SkoulouDbContext db, Guid schuljahrId, DateOnly von, DateOnly bis)
-        => GueltigeEinschreibungen(db)
-            .Where(e => e.SchuljahrId == schuljahrId && e.Von <= bis && (e.Bis == null || e.Bis >= von));
+    /// <summary>
+    /// Laufende Einschreibungen am Stichtag: aktiv und – bei einer Session-Klasse – Session nicht beendet
+    /// (Session-Klassen enden automatisch, <see cref="Skoulou.Core.Organisation.SessionRegel"/>). Für « aktuelle Klasse » in Listen.
+    /// </summary>
+    public static IQueryable<Einschreibung> LaufendeEinschreibungen(SkoulouDbContext db, DateOnly stichtag)
+        => AktiveEinschreibungen(db).Where(e => !db.Klassen.Any(k => k.Id == e.KlasseId && k.PeriodeId != null
+            && db.Perioden.Any(p => p.Id == k.PeriodeId && p.Ende < stichtag)));
 
-    /// <summary>Gültige Einschreibungen eines Schülers, die [von, bis] schneiden (jahresübergreifend, neueste zuerst).</summary>
+    /// <summary>
+    /// Einschreibungen, deren effektiver Zeitraum [von, bis] schneidet (Periode, Abrechnung, Effectif am Stichtag).
+    /// Session-Klassen zählen nur in ihrer Session: Einschreibung, Session und Zeitraum müssen sich paarweise schneiden.
+    /// </summary>
+    public static IQueryable<Einschreibung> EinschreibungenImZeitraum(SkoulouDbContext db, Guid schuljahrId, DateOnly von, DateOnly bis)
+        => InSession(db, GueltigeEinschreibungen(db)
+            .Where(e => e.SchuljahrId == schuljahrId && e.Von <= bis && (e.Bis == null || e.Bis >= von)), von, bis);
+
+    /// <summary>Gültige Einschreibungen eines Schülers, deren effektiver Zeitraum [von, bis] schneidet (jahresübergreifend, neueste zuerst).</summary>
     public static IQueryable<Einschreibung> EinschreibungenDesSchuelersImZeitraum(SkoulouDbContext db, Guid schuelerId, DateOnly von, DateOnly bis)
-        => GueltigeEinschreibungen(db)
-            .Where(e => e.SchuelerId == schuelerId && e.Von <= bis && (e.Bis == null || e.Bis >= von))
+        => InSession(db, GueltigeEinschreibungen(db)
+            .Where(e => e.SchuelerId == schuelerId && e.Von <= bis && (e.Bis == null || e.Bis >= von)), von, bis)
             .OrderByDescending(e => e.Von);
+
+    /// <summary>Schließt Einschreibungen in Session-Klassen aus, deren Session [von, bis] oder die Einschreibung selbst nicht schneidet.</summary>
+    public static IQueryable<Einschreibung> InSession(SkoulouDbContext db, IQueryable<Einschreibung> q, DateOnly von, DateOnly bis)
+        => q.Where(e => !db.Klassen.Any(k => k.Id == e.KlasseId && k.PeriodeId != null
+            && db.Perioden.Any(p => p.Id == k.PeriodeId && (p.Ende < von || p.Beginn > bis || p.Ende < e.Von || (e.Bis != null && p.Beginn > e.Bis)))));
 
     /// <summary>Aktuelle Einschreibung eines Schülers (aktiv, neueste zuerst); null = ohne Klasse.</summary>
     public static Task<Einschreibung?> AktuelleEinschreibungAsync(SkoulouDbContext db, Guid schuelerId, CancellationToken ct = default)

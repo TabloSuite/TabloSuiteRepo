@@ -80,8 +80,12 @@ public sealed class PlattformAbrechnung(
     /// <summary>Abrechnungspflichtige, noch nicht abgerechnete Schüler der Periode.</summary>
     internal static async Task<IReadOnlyList<AbrechnungsKandidat>> KandidatenAsync(SkoulouDbContext db, Periode p, bool mitStornierten, CancellationToken ct)
     {
-        var einschreibungen = await SchulAbfragen.EinschreibungenImZeitraum(db, p.SchuljahrId, p.Beginn, p.Ende)
-            .Select(e => new EinschreibungsZeitraum(e.SchuelerId, e.Id, e.Von, e.Bis)).ToListAsync(ct);
+        var einschreibungen = await (from e in SchulAbfragen.EinschreibungenImZeitraum(db, p.SchuljahrId, p.Beginn, p.Ende)
+                                     join k in db.Klassen on e.KlasseId equals k.Id
+                                     join s in db.Perioden on k.PeriodeId equals (Guid?)s.Id into sj
+                                     from s in sj.DefaultIfEmpty()
+                                     select new EinschreibungsZeitraum(e.SchuelerId, e.Id, e.Von, e.Bis,
+                                         s == null ? (DateOnly?)null : s.Beginn, s == null ? (DateOnly?)null : s.Ende)).ToListAsync(ct);
         var positionen = db.Rechnungspositionen.Where(x => x.PeriodeId == p.Id);
         if (!mitStornierten) positionen = positionen.Where(x => x.StorniertGrund == null);
         var bereits = (await positionen.Select(x => x.SchuelerId).ToListAsync(ct)).ToHashSet();

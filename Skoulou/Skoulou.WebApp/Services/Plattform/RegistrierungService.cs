@@ -163,7 +163,7 @@ public sealed class RegistrierungService(
             neu.AgbAkzeptiertAmUtc = zeit.GetUtcNow().UtcDateTime;
             await db.SaveChangesAsync(ct);
             return (new RegistrierungsErgebnis(e.Art, p.Identifiant, name), neu, name, ortText);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
 
         bremse.Merken(verbindung, e.Email);
         if (e.Art == RegistrierungsArt.Direction)

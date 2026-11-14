@@ -64,16 +64,9 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
     {
         try
         {
-            try
-            {
-                return await aktion();
-            }
-            catch (FachFehler ex) when (ex.Message.Contains("enregistrement simultané", StringComparison.Ordinal))
-            {
-                // Gleichzeitige Anlage desselben Identifiants in zwei Schulen: wie die Meldung empfiehlt, erneut versuchen.
-                Zaehle("Gleichzeitige Anlage wiederholt");
-                return await aktion();
-            }
+            // Gleichzeitige Anlage desselben Identifiants in zwei Schulen wiederholen die Dienste selbst (E7b);
+            // eine verbleibende Meldung « enregistrement simultané » ist ein Befund.
+            return await aktion();
         }
         catch (Exception ex) when (ex is FachFehler or KeinZugriffFehler or DbUpdateException or InvalidOperationException)
         {

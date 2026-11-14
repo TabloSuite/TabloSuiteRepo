@@ -14,6 +14,12 @@ public class GebuehrenPosten : Entitaet, ISchulgebunden
     public Guid? StufeId { get; set; }
     public Guid? KlasseId { get; set; }
 
+    /// <summary>
+    /// Nur für eine Periode/Session (Sprachschulen): gilt dann nur für Schüler, die in dieser Session eingeschrieben
+    /// sind (effektiver Zeitraum, siehe <c>SessionRegel</c>); null = ganzes Jahr.
+    /// </summary>
+    public Guid? PeriodeId { get; set; }
+
     public bool Pflicht { get; set; } = true;
     public int Reihenfolge { get; set; }
     public List<GebuehrenRate> Raten { get; set; } = [];

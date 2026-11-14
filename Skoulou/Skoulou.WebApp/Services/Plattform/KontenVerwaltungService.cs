@@ -182,7 +182,7 @@ public sealed class KontenVerwaltungService(
             audit.Erfasse(db, akteur.Id, null, AuditAktionen.KontoAngelegt, nameof(Konto), konto.Id, $"Responsable {konto.VollerName} créé.");
             await db.SaveChangesAsync(ct);
             return (konto, passwort);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
         await mails.ResponsableWillkommenAsync(konto.Email, konto.Vorname, konto.UserName!, ct);
         return new Zugang(konto.Id, konto.VollerName, Rollen.Bezeichnung(Rollen.Responsable), konto.UserName!, passwort);
     }

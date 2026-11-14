@@ -81,6 +81,8 @@ internal sealed class SimSchueler(Guid id, string vorname, string nachname, doub
     public Guid? Eltern { get; set; }
     public SimKlasse? Klasse { get; set; }
     public bool Aktiv { get; set; }
+    /// <summary>Sprachschule: nach einer Session weder Wechsel noch Austritt (die Einschreibung endet automatisch mit der Session).</summary>
+    public bool SessionVergessen { get; set; }
     public Dictionary<Guid, JahresKonto> Konten { get; } = [];
 }
 

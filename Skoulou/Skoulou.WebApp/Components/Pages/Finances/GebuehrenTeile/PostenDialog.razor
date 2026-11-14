@@ -14,6 +14,13 @@
                 <AuswahlFeld T="string" Label="Concerne" @bind-Wert="geltung" Optionen="geltungen" />
                 <Schalter Label="Frais obligatoire" @bind-Wert="pflicht" Hinweis="Un frais facultatif (tenue, cantine…) s'applique aussi à tous ; exonérez au besoin un élève avec une réduction de 100 %." />
             </div>
+            @if (perioden.Count > 1)
+            {
+                <div class="sk-raster-2">
+                    <AuswahlFeld T="string" Label="Période" @bind-Wert="periode" Optionen="perioden" />
+                    <p class="sk-leise">Un frais lié à une session ne concerne que les élèves inscrits pendant cette session (écoles de langues). Un élève qui part en cours de session le doit en entier ; accordez au besoin une réduction.</p>
+                </div>
+            }
             <div class="fin-raten-kopf">
                 <strong>Tranches et échéances</strong>
                 <span class="sk-leise">Somme : @Geld.F(raten.Sum(r => r.Betrag ?? 0)) / @Geld.F(betrag ?? 0)</span>
@@ -56,6 +63,8 @@
     private bool pflicht = true, warOffen;
     private List<RateEingabe> raten = [];
     private IReadOnlyList<AuswahlOption<string>> geltungen = [];
+    private string? periode = "annee";
+    private IReadOnlyList<AuswahlOption<string>> perioden = [];
 
     protected override void OnParametersSet()
     {
@@ -64,16 +73,19 @@
             geltungen = [new("tous", "Tous les élèves"),
                 .. (Auswahl?.Stufen ?? []).Select(s => new AuswahlOption<string>("s:" + s.Id, $"Niveau {s.Name}")),
                 .. (Auswahl?.Klassen ?? []).Select(k => new AuswahlOption<string>("k:" + k.Id, $"Classe {k.Name}"))];
+            perioden = [new("annee", "Toute l'année"),
+                .. (Auswahl?.Perioden ?? []).Select(p => new AuswahlOption<string>(p.Id.ToString(), $"Seulement {p.Name} ({p.Zusatz})"))];
             Fehlermeldung = null;
             if (Posten is { } p)
             {
                 (bezeichnung, betrag, pflicht) = (p.Bezeichnung, p.Betrag, p.Pflicht);
                 geltung = p.KlasseId is { } k ? "k:" + k : p.StufeId is { } s ? "s:" + s : "tous";
+                periode = p.PeriodeId?.ToString() ?? "annee";
                 raten = p.Raten.Select(r => new RateEingabe(r.Betrag, r.Faellig)).ToList();
             }
             else
             {
-                (bezeichnung, betrag, pflicht, geltung) = (null, null, true, "tous");
+                (bezeichnung, betrag, pflicht, geltung, periode) = (null, null, true, "tous", "annee");
                 raten = [new RateEingabe(null, null)];
             }
         }
@@ -94,7 +106,7 @@
 
     private async Task SpeichernAsync()
     {
-        var eingabe = new PostenEingabe(bezeichnung, betrag, Id("s:"), Id("k:"), pflicht, raten);
+        var eingabe = new PostenEingabe(bezeichnung, betrag, Id("s:"), Id("k:"), pflicht, raten, Guid.TryParse(periode, out var per) ? per : null);
         if (await AusfuehrenAsync(() => Gebuehren.PostenSpeichernAsync(Ich.KontoId, JahrId, Posten?.Id, eingabe), "Le frais est enregistré."))
             await OnGespeichert.InvokeAsync();
     }

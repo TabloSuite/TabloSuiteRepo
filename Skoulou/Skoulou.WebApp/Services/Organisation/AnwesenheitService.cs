@@ -84,7 +84,8 @@ public sealed class AnwesenheitService(IDbContextFactory<SkoulouDbContext> dbFac
     }
 
     private static IQueryable<Einschreibung> AmTag(SkoulouDbContext db, Guid klasseId, DateOnly datum)
-        => SchulAbfragen.GueltigeEinschreibungen(db).Where(e => e.KlasseId == klasseId && e.Von <= datum && (e.Bis == null || e.Bis >= datum));
+        => SchulAbfragen.InSession(db, SchulAbfragen.GueltigeEinschreibungen(db)
+            .Where(e => e.KlasseId == klasseId && e.Von <= datum && (e.Bis == null || e.Bis >= datum)), datum, datum);
 
     public async Task<Appell> AppellAsync(Guid akteurId, Guid klasseId, DateOnly datum, CancellationToken ct = default)
     {
@@ -162,7 +163,8 @@ public sealed class AnwesenheitService(IDbContextFactory<SkoulouDbContext> dbFac
         if (bis < von) (von, bis) = (bis, von);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var (_, klasse, _) = await KlasseFuerAppellAsync(db, akteurId, klasseId, ct);
-        var einschreibungen = SchulAbfragen.GueltigeEinschreibungen(db).Where(e => e.KlasseId == klasse.Id && e.Von <= bis && (e.Bis == null || e.Bis >= von));
+        var einschreibungen = SchulAbfragen.InSession(db, SchulAbfragen.GueltigeEinschreibungen(db)
+            .Where(e => e.KlasseId == klasse.Id && e.Von <= bis && (e.Bis == null || e.Bis >= von)), von, bis);
         var schueler = await (from e in einschreibungen.AsNoTracking()
                               join k in db.Users on e.SchuelerId equals k.Id
                               select new { EinschreibungId = e.Id, SchuelerId = k.Id, k.Vorname, k.Nachname })

@@ -55,13 +55,13 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
     private static IQueryable<PeriodeMitJahr> PeriodenAbfrage(SkoulouDbContext db, List<Guid> jahrIds)
         => db.Perioden.AsNoTracking().Where(p => jahrIds.Contains(p.SchuljahrId)).Select(p => new PeriodeMitJahr(p.SchuljahrId,
             new PeriodeZeile(p.Id, p.Nr, p.Titel, p.Beginn, p.Ende, p.Jahresgewicht, p.ZaehltFuerJahr, p.Status,
-                db.Bewertungen.Any(b => b.PeriodeId == p.Id) || db.Klassen.Any(k => k.PeriodeId == p.Id)
+                db.Bewertungen.Any(b => b.PeriodeId == p.Id) || db.Klassen.Any(k => k.PeriodeId == p.Id) || db.GebuehrenPosten.Any(g => g.PeriodeId == p.Id)
                 || db.PeriodenKomponenten.Any(k => k.PeriodeId == p.Id) || db.Plattformrechnungen.Any(r => r.PeriodeId == p.Id)
                 || db.KlassenVeroeffentlichungen.Any(v => v.PeriodeId == p.Id) || db.Bulletins.Any(b => b.PeriodeId == p.Id))));
 
     private static Task<bool> PeriodeBenutztAsync(SkoulouDbContext db, Guid periodeId, CancellationToken ct)
         => db.Perioden.Where(p => p.Id == periodeId).AnyAsync(p =>
-            db.Bewertungen.Any(b => b.PeriodeId == p.Id) || db.Klassen.Any(k => k.PeriodeId == p.Id)
+            db.Bewertungen.Any(b => b.PeriodeId == p.Id) || db.Klassen.Any(k => k.PeriodeId == p.Id) || db.GebuehrenPosten.Any(g => g.PeriodeId == p.Id)
             || db.PeriodenKomponenten.Any(k => k.PeriodeId == p.Id) || db.Plattformrechnungen.Any(r => r.PeriodeId == p.Id)
             || db.KlassenVeroeffentlichungen.Any(v => v.PeriodeId == p.Id) || db.Bulletins.Any(b => b.PeriodeId == p.Id), ct);
 

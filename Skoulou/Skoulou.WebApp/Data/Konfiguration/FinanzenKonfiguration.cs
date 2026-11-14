@@ -17,6 +17,7 @@ internal sealed class GebuehrenPostenKonfiguration : IEntityTypeConfiguration<Ge
         b.Fk<GebuehrenPosten, Schuljahr>(x => x.SchuljahrId);
         b.Fk<GebuehrenPosten, Stufe>(x => x.StufeId);
         b.Fk<GebuehrenPosten, Klasse>(x => x.KlasseId);
+        b.Fk<GebuehrenPosten, Periode>(x => x.PeriodeId);
         b.HasMany(x => x.Raten).WithOne().HasForeignKey(r => r.PostenId).OnDelete(DeleteBehavior.Restrict);
         b.ToTable(t => t.HasCheckConstraint("CK_GebuehrenPosten_Betrag", "[Betrag] >= 0"));
     }

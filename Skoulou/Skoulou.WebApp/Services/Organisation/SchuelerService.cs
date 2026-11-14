@@ -48,9 +48,10 @@ public sealed class SchuelerService(
     public const string FilterBloques = "bloques";
     public const string FilterArchives = "archives";
 
-    private static IQueryable<Konto> Gefiltert(SkoulouDbContext db, Guid schuleId, string? filter, Guid? klasseId)
+    private static IQueryable<Konto> Gefiltert(SkoulouDbContext db, Guid schuleId, string? filter, Guid? klasseId, DateOnly heute)
     {
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        // Aktuelle Klasse = laufende Einschreibung (Session-Klassen enden automatisch mit ihrer Session).
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, heute);
         var q = db.Users.AsNoTracking().Where(k => k.SchuleId == schuleId && k.Rolle == Rollen.Schueler);
         q = filter switch
         {
@@ -68,7 +69,8 @@ public sealed class SchuelerService(
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, schreiben: false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var q = Gefiltert(db, a.SchuleId, filter, klasseId);
+        var heute = new SchulZeit(zeit).Heute;
+        var q = Gefiltert(db, a.SchuleId, filter, klasseId, heute);
         if (Eingabe.Suche(suche) is { } s)
         {
             var muster = $"%{s}%";
@@ -76,7 +78,7 @@ public sealed class SchuelerService(
                              || EF.Functions.Like(k.UserName!, muster)
                              || db.SchuelerProfile.Any(p => p.KontoId == k.Id && p.Matrikel != null && EF.Functions.Like(p.Matrikel, muster)));
         }
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, heute);
         var sortiert = filter == FilterAValider ? q.OrderBy(k => k.ErstelltAmUtc) : q.OrderBy(k => k.Nachname).ThenBy(k => k.Vorname);
         var abfrage = sortiert.Select(k => new SchuelerZeile(k.Id, k.Vorname, k.Nachname, k.UserName!, k.Status, k.SelbstRegistriert,
             db.SchuelerProfile.Where(p => p.KontoId == k.Id).Select(p => p.Matrikel).FirstOrDefault(),
@@ -94,12 +96,13 @@ public sealed class SchuelerService(
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, schreiben: false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var heute = new SchulZeit(zeit).Heute;
         return new SchuelerZaehler(
-            await Gefiltert(db, a.SchuleId, null, null).CountAsync(ct),
-            await Gefiltert(db, a.SchuleId, FilterAValider, null).CountAsync(ct),
-            await Gefiltert(db, a.SchuleId, FilterSansClasse, null).CountAsync(ct),
-            await Gefiltert(db, a.SchuleId, FilterBloques, null).CountAsync(ct),
-            await Gefiltert(db, a.SchuleId, FilterArchives, null).CountAsync(ct));
+            await Gefiltert(db, a.SchuleId, null, null, heute).CountAsync(ct),
+            await Gefiltert(db, a.SchuleId, FilterAValider, null, heute).CountAsync(ct),
+            await Gefiltert(db, a.SchuleId, FilterSansClasse, null, heute).CountAsync(ct),
+            await Gefiltert(db, a.SchuleId, FilterBloques, null, heute).CountAsync(ct),
+            await Gefiltert(db, a.SchuleId, FilterArchives, null, heute).CountAsync(ct));
     }
 
     /// <summary>Kurze Auswahl (höchstens 20) für Verknüpfungen, z. B. Kind eines Elternteils.</summary>
@@ -168,7 +171,7 @@ public sealed class SchuelerService(
                 $"Élève {konto.VollerName} créé(e) (matricule {matrikel}{(klasse is null ? "" : $", classe {klasse.Name}")}).");
             await db.SaveChangesAsync(ct);
             return (new Zugang(konto.Id, konto.VollerName, Rollen.Schueler, identifiant, passwort, klasse?.Name), schule.Name);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
         await mails.WillkommenAsync(new MailEmpfaenger(daten.Konto.Email, daten.Konto.Vorname, zugang.Identifiant, Rollen.Schueler), schulName, ct);
         return ablage.Ablegen(a.Id, a.SchuleId, [zugang]);
     }

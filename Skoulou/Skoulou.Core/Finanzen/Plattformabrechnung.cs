@@ -1,3 +1,5 @@
+using Skoulou.Core.Organisation;
+
 namespace Skoulou.Core.Finanzen;
 
 /// <summary>
@@ -18,8 +20,15 @@ public static class PlattformAnteil
         => Enumerable.Range(1, anzahl).Select(i => Anteil(jahrespreis, i, anzahl)).ToList();
 }
 
-/// <summary>Zeitraum einer (nicht stornierten) Einschreibung.</summary>
-public sealed record EinschreibungsZeitraum(Guid SchuelerId, Guid EinschreibungId, DateOnly Von, DateOnly? Bis);
+/// <summary>
+/// Zeitraum einer (nicht stornierten) Einschreibung; bei einer Session-Klasse mit Beginn/Ende der Session
+/// (die Einschreibung endet automatisch mit der Session, <see cref="SessionRegel"/>).
+/// </summary>
+public sealed record EinschreibungsZeitraum(Guid SchuelerId, Guid EinschreibungId, DateOnly Von, DateOnly? Bis,
+    DateOnly? SessionBeginn = null, DateOnly? SessionEnde = null)
+{
+    public bool Schneidet(DateOnly beginn, DateOnly ende) => SessionRegel.Schneidet(Von, Bis, SessionBeginn, SessionEnde, beginn, ende);
+}
 
 /// <summary>Abrechnungspflichtiger Schüler einer Periode mit der Einschreibung, die die Position trägt.</summary>
 public sealed record AbrechnungsKandidat(Guid SchuelerId, Guid EinschreibungId);
@@ -27,6 +36,7 @@ public sealed record AbrechnungsKandidat(Guid SchuelerId, Guid EinschreibungId);
 /// <summary>
 /// Wer ist in einer Periode abrechnungspflichtig? Jeder Schüler mit einer Einschreibung, deren Zeitraum die Periode
 /// schneidet – genau einmal je Periode, auch bei Klassenwechsel (die zuletzt begonnene Einschreibung trägt die Position).
+/// Session-Klassen zählen nur in ihrer Session (effektiver Zeitraum).
 /// </summary>
 public static class Abrechnungspflicht
 {
@@ -35,7 +45,7 @@ public static class Abrechnungspflicht
     public static IReadOnlyList<AbrechnungsKandidat> Kandidaten(IEnumerable<EinschreibungsZeitraum> einschreibungen,
         DateOnly beginn, DateOnly ende, IReadOnlySet<Guid>? bereitsAbgerechnet = null)
         => einschreibungen
-            .Where(e => Schneidet(e.Von, e.Bis, beginn, ende))
+            .Where(e => e.Schneidet(beginn, ende))
             .Where(e => bereitsAbgerechnet is null || !bereitsAbgerechnet.Contains(e.SchuelerId))
             .GroupBy(e => e.SchuelerId)
             .Select(g => g.OrderByDescending(e => e.Von).ThenByDescending(e => e.EinschreibungId).First())

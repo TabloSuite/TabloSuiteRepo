@@ -142,7 +142,7 @@ public sealed class ImportService(
                 $"Import de {liste.Count} {ImportVorlage.Bezeichnung(sitzung.Art)} depuis « {sitzung.Datei} » ({geprueft.Count - gueltig.Count} ligne(s) écartée(s)).");
             await db.SaveChangesAsync(ct);
             return (liste, geprueft.Count - gueltig.Count, schule.Name, mailEmpfaenger);
-        }, ct);
+        }, ct, DbArbeit.KontoVersuche);
 
         ablage.Entfernen<ImportSitzung>(vorschauId);
         foreach (var m in empfaenger) await mails.WillkommenAsync(m, schulName, ct);

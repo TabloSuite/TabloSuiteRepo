@@ -51,8 +51,17 @@ internal sealed partial class Simulation
             Perioden = await db.Perioden.Where(p => p.ZaehltFuerJahr).Select(p => new { p.Id, p.SchuljahrId, p.Nr, p.Beginn, p.Ende, p.Titel }).ToListAsync(),
             Rechnungen = await db.Plattformrechnungen.Select(r => new { r.Id, r.Nummer, r.PeriodeId, r.SchuljahrId, r.Status, r.Betrag, r.Anzahl }).ToListAsync(),
             Positionen = await db.Rechnungspositionen.Select(p => new { p.RechnungId, p.PeriodeId, p.SchuelerId, p.Betrag, p.StorniertGrund }).ToListAsync(),
-            Einschreibungen = await db.Einschreibungen.Where(e => e.StorniertAmUtc == null)
-                .Select(e => new { e.SchuelerId, e.SchuljahrId, e.Von, e.Bis }).ToListAsync(),
+            // Session-Klassen (E7b): die Einschreibung zählt nur innerhalb ihrer Session (unabhängig nachgerechnet).
+            Einschreibungen = await (from e in db.Einschreibungen
+                                     where e.StorniertAmUtc == null
+                                     join k in db.Klassen on e.KlasseId equals k.Id
+                                     join s in db.Perioden on k.PeriodeId equals (Guid?)s.Id into sj
+                                     from s in sj.DefaultIfEmpty()
+                                     select new
+                                     {
+                                         e.SchuelerId, e.SchuljahrId, e.Von, e.Bis,
+                                         SBeginn = s == null ? (DateOnly?)null : s.Beginn, SEnde = s == null ? (DateOnly?)null : s.Ende
+                                     }).ToListAsync(),
             Schulen = await db.Schulen.Select(s => new { s.Id, s.Status }).ToDictionaryAsync(s => s.Id, s => s.Status)
         });
         var rechnungen = daten.Rechnungen.ToDictionary(r => r.Id);
@@ -97,7 +106,13 @@ internal sealed partial class Simulation
         {
             var jahr = daten.Jahre.First(j => j.Id == p.SchuljahrId);
             if (jahr.Status == SchuljahrStatus.Vorbereitung || daten.Schulen[jahr.SchuleId] is not (SchulStatus.Active or SchulStatus.Suspendue)) continue;
-            var soll = daten.Einschreibungen.Where(e => e.SchuljahrId == p.SchuljahrId && Abrechnungspflicht.Schneidet(e.Von, e.Bis, p.Beginn, p.Ende))
+            var soll = daten.Einschreibungen.Where(e => e.SchuljahrId == p.SchuljahrId)
+                .Where(e =>
+                {
+                    var von = e.SBeginn is { } sb && sb > e.Von ? sb : e.Von;
+                    var bis = e.SEnde is { } se && (e.Bis is null || se < e.Bis) ? se : e.Bis;
+                    return von <= p.Ende && (bis is null || (bis >= p.Beginn && bis >= von));
+                })
                 .Select(e => e.SchuelerId).ToHashSet();
             var ist = abgerechnet.GetValueOrDefault(p.Id) ?? [];
             var fehlt = soll.Except(ist).Count();
@@ -105,7 +120,7 @@ internal sealed partial class Simulation
             Pruefe(fehlt == 0 && zuviel == 0, $"Periode {p.Titel} ({jahr.Bezeichnung}, Schule {jahr.SchuleId}): {fehlt} nicht abgerechnet, {zuviel} ohne Einschreibung abgerechnet.");
             geprueftePerioden++;
         }
-        Geprueft.Add($"Vollständige Abrechnung: {geprueftePerioden} beendete Perioden");
+        Geprueft.Add($"Vollständige Abrechnung: {geprueftePerioden} beendete Perioden (Session-Klassen nur in ihrer Session)");
     }
 
     // ---------- 3: Nummernkreise ohne Lücken und Dubletten

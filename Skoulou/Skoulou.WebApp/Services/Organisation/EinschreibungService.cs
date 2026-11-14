@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
+using Skoulou.Core.Organisation;
 using Skoulou.Core.Rechte;
 using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
@@ -31,6 +32,34 @@ public sealed class EinschreibungService(
         if (datum < jahr.Beginn || datum > jahr.Ende)
             throw new FachFehler($"La date doit se situer dans l'année scolaire {jahr.Bezeichnung} ({SkoulouKultur.Datum(jahr.Beginn)} – {SkoulouKultur.Datum(jahr.Ende)}).", "datum");
     }
+
+    /// <summary>
+    /// Session-Klassen enden automatisch (<see cref="SessionRegel"/>): eine noch « aktive » Einschreibung, deren Session vor
+    /// <paramref name="ab"/> endete, wird bei einer neuen Einschreibung zum Session-Ende abgeschlossen (« Terminée »).
+    /// </summary>
+    private static async Task SessionEndenAbschliessenAsync(SkoulouDbContext db, IReadOnlyCollection<Guid> schuelerIds, DateOnly ab, CancellationToken ct)
+    {
+        var beendet = await (from e in SchulAbfragen.AktiveEinschreibungen(db)
+                             where schuelerIds.Contains(e.SchuelerId)
+                             join k in db.Klassen on e.KlasseId equals k.Id
+                             join p in db.Perioden on k.PeriodeId equals (Guid?)p.Id
+                             where p.Ende < ab
+                             select new { Einschreibung = e, p.Ende }).ToListAsync(ct);
+        if (beendet.Count == 0) return;
+        foreach (var x in beendet)
+        {
+            x.Einschreibung.Bis = SessionRegel.Ende(x.Einschreibung.Bis, x.Ende);
+            x.Einschreibung.Status = EinschreibungsStatus.Terminee;
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Ende der Session einer Klasse (null = Klasse läuft das ganze Jahr).</summary>
+    private static Task<DateOnly?> SessionEndeAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
+        => (from k in db.Klassen
+            where k.Id == klasseId
+            join p in db.Perioden on k.PeriodeId equals (Guid?)p.Id
+            select (DateOnly?)p.Ende).FirstOrDefaultAsync(ct);
 
     private async Task<(SchulAkteur A, Konto Schueler)> SchuelerAsync(SkoulouDbContext db, Guid akteurId, Guid schuelerId, CancellationToken ct)
     {
@@ -65,6 +94,8 @@ public sealed class EinschreibungService(
             PruefeDatum(jahr, von);
             var ids = schuelerIds.Distinct().ToList();
             var konten = await db.Users.Where(k => ids.Contains(k.Id)).ToListAsync(ct);
+            if (konten.Any(k => k.SchuleId != a.SchuleId)) throw new KeinZugriffFehler(Zugriff.MeldungAndereSchule);
+            await SessionEndenAbschliessenAsync(db, ids, von, ct);
             var mitKlasse = await SchulAbfragen.AktiveEinschreibungen(db).Where(e => ids.Contains(e.SchuelerId)).Select(e => e.SchuelerId).ToListAsync(ct);
             var uebersprungen = new List<string>();
             var anzahl = 0;
@@ -94,6 +125,7 @@ public sealed class EinschreibungService(
         PruefeDatum(jahr, von);
         if (konto.Status != KontoStatus.Actif)
             throw new FachFehler(konto.Status == KontoStatus.EnAttente ? "Validez d'abord l'inscription de cet élève." : "Le compte de cet élève n'est pas actif.");
+        await SessionEndenAbschliessenAsync(db, [konto.Id], von, ct);
         var aktiv = await (from e in SchulAbfragen.AktiveEinschreibungen(db)
                            join k in db.Klassen on e.KlasseId equals k.Id
                            where e.SchuelerId == konto.Id
@@ -129,7 +161,8 @@ public sealed class EinschreibungService(
                 throw new FachFehler($"Le changement doit avoir lieu après le {SkoulouKultur.Datum(alt.Von)} (début de l'inscription actuelle). Pour corriger une erreur d'inscription, annulez l'inscription.", "datum");
             var altName = await db.Klassen.Where(k => k.Id == alt.KlasseId).Select(k => k.Name).FirstAsync(ct);
 
-            alt.Bis = datum.AddDays(-1);
+            // Session-Klasse: endete die Session schon vorher, endet die alte Einschreibung mit ihr.
+            alt.Bis = SessionRegel.Ende(datum.AddDays(-1), await SessionEndeAsync(db, alt.KlasseId, ct));
             alt.Status = EinschreibungsStatus.Changee;
             await db.SaveChangesAsync(ct);
 

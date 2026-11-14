@@ -1222,6 +1222,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<Guid?>("KlasseId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("PeriodeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("Pflicht")
                         .HasColumnType("bit");
 
@@ -1240,6 +1243,8 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("KlasseId");
+
+                    b.HasIndex("PeriodeId");
 
                     b.HasIndex("SchuleId");
 
@@ -1615,6 +1620,9 @@ namespace Skoulou.WebApp.Data.Migrations
 
                     b.Property<int>("Geschlecht")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IstHauptAdmin")
+                        .HasColumnType("bit");
 
                     b.Property<int>("KoordinatorRechte")
                         .HasColumnType("int");
@@ -3782,6 +3790,11 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.HasOne("Skoulou.Core.Entitaeten.Klasse", null)
                         .WithMany()
                         .HasForeignKey("KlasseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Periode", null)
+                        .WithMany()
+                        .HasForeignKey("PeriodeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Skoulou.Core.Entitaeten.Schule", null)

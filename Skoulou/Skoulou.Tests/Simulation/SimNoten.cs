@@ -231,6 +231,15 @@ internal sealed partial class Simulation
         var naechste = jahr.Perioden[p.Nr];
         foreach (var schueler in s.Aktive.Where(x => x.Klasse!.Session == p.Nr).ToList())
         {
+            schueler.SessionVergessen = false;
+            if (z.Ja(0.04))
+            {
+                // E7b: die Direktion vergisst den Teilnehmer – die Einschreibung endet trotzdem mit der Session
+                // (keine Abrechnung der Folgesessions, Invariante « Vollständige Abrechnung »); Austritt erst zum Jahresende.
+                schueler.SessionVergessen = true;
+                Zaehle("Session ohne Wechsel/Austritt");
+                continue;
+            }
             if (z.Ja(0.25))
             {
                 await SollAsync("Austritt (Session)", () => api.Einschreibung.AustrittAsync(s.Direktor, schueler.Id, p.Ende, "Fin de la session.", false));
@@ -267,6 +276,13 @@ internal sealed partial class Simulation
     private async Task PassageAsync(SimSchule s, Zufall z)
     {
         var alt = s.Jahr;
+        // Vergessene Session-Teilnehmer verlassen die Schule zum Jahresende (ihre Einschreibung bleibt bis dahin offen).
+        foreach (var schueler in s.Aktive.Where(x => x.SessionVergessen).ToList())
+        {
+            await SollAsync("Austritt (Session vergessen)", () => api.Einschreibung.AustrittAsync(s.Direktor, schueler.Id, alt.Ende, "Fin d'année : session terminée.", false));
+            schueler.Aktiv = false;
+            schueler.SessionVergessen = false;
+        }
         var wechsel = api.Wechsel;
         var plan = await wechsel.PlanAsync(s.Direktor, alt.Id);
         if (s.P.Typ == SchulTyp.Langues)

@@ -33,7 +33,7 @@ public sealed class CockpitService(IDbContextFactory<SkoulouDbContext> dbFactory
         var jahrId = jahr?.Id;
 
         var schueler = db.Users.AsNoTracking().Where(k => k.SchuleId == a.SchuleId && k.Rolle == Rollen.Schueler);
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, heute);
         var schuelerAktiv = await schueler.CountAsync(k => k.Status == KontoStatus.Actif, ct);
         var aValider = await schueler.CountAsync(k => k.Status == KontoStatus.EnAttente, ct);
         var ohneKlasse = await schueler.CountAsync(k => k.Status == KontoStatus.Actif && !aktive.Any(e => e.SchuelerId == k.Id), ct);
