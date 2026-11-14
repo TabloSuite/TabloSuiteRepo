@@ -11,6 +11,13 @@ Auftrag `docs/Simulationen-Auftrag.md` (S1 eNOTE Daten, S2 eNOTE Klick-Simulatio
 volle Größe, S4 SKOULOU Klick-Simulation) – nacheinander, je 1 Agent, Stand in der Tabelle dort. **Der Nutzer deployt erst,
 wenn alles ok ist.** Danach ggf. neue Migrationen auf Azure (OK liegt vor) und push.
 
+**Nach S2, vor S3 einschieben – Nutzerwunsch 14.11. spät (« Die Lösungen der zwei Fragen umsetzen »), eNOTE:**
+- W1 **Entwarnung bei aufgehobener Tariferhöhung:** Hebt der Admin eine angekündigte Erhöhung auf, bekommen die Besitzer, die
+  die Ankündigung erhalten haben, automatisch eine Entwarnung (Dialog mit vorausgefülltem, änderbarem Titel/Text und Schalter
+  « Envoyer aussi par e-mail », standardmäßig an, wenn die Ankündigung per Mail ging; Journal-Eintrag; Text « vous »).
+- W2 **Land bei der Registrierung:** Feld « Pays » im Registrierungsformular (Länder mit Konfiguration, Vorauswahl Togo);
+  Land später änderbar durch den Besitzer (Paramètres, Hinweis auf Folgen: Ortszeit, Mobile-Money-Anbieter) und den Admin.
+
 ## 1. Stand 14.11. abends – Abschluss erledigt, Nutzer deployt
 
 **Alles fertig, getestet, gepusht. Azure-DBs = lokal.** Der Nutzer deployt jetzt **eNOTE und SKOULOU** (VS-Profile).
