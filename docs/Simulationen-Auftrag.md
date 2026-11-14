@@ -8,7 +8,7 @@ Vier Läufe, **nacheinander, immer nur 1 Agent** (Limit des Nutzers). Stand je L
 
 | Lauf | Inhalt | Stand |
 |---|---|---|
-| S1 | eNOTE Daten-Simulation (Massendaten über echte Services, viele Monate, Invarianten, Antwortzeiten), DB `ENOTEDB_SIM` behalten | offen |
+| S1 | eNOTE Daten-Simulation (Massendaten über echte Services, viele Monate, Invarianten, Antwortzeiten), DB `ENOTEDB_SIM` behalten | erledigt (14.11.: 110.982 Verkäufe, 0 Befunde, 4 Fehler behoben, siehe docs/Simulation-eNOTE.md) |
 | S2 | eNOTE Klick-Simulation: App im Hintergrund auf `ENOTEDB_SIM`, viele simulierte Nutzer klicken alle Funktionen aller Rollen | offen |
 | S3 | SKOULOU Daten-Simulation in voller Größe mit den neuen Regeln (Session-Ende, Gebühr je Session, Hauptadmin), `SkoulouDB_SIM` neu | offen |
 | S4 | SKOULOU Klick-Simulation: App im Hintergrund auf `SkoulouDB_SIM`, simulierte Nutzer aller Rollen führen echte Abläufe über Perioden aus | offen |
