@@ -1,20 +1,38 @@
-# TabloSuite – Arbeitsstand 14.11.2026, morgens
+# TabloSuite – Arbeitsstand 14.11.2026, ~12:35 (Rechner aus)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 1. Stand 14.11. morgens
+## 1. Stand 14.11. mittags – hier weitermachen
 
-- **SKOULOU-Neubau E1–E6 fertig und zusammengeführt** (E2 Plattform, E5 Noten & Bulletins, E6 Finanzen dazu), Migration « Fundament » neu (20261114004546), 540 Tests grün inkl. SQL, eNOTE 409 grün, Rundgang 21 neue Seiten ohne Fehler. Lokale `SkoulouDB` und Azure `Skoulou-Database` mit diesem Schema neu aufgebaut (leer, Admin aus Seed-Einstellungen beim Start).
-- Alles gepusht (Nutzer, 14.11.). Veröffentlichen beider Apps macht der Nutzer (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
-- **Läuft:** Video-Pilot v3.1 (Agent fortgesetzt; Ziel ≈ 5 min, Zeiger synchron zur Stimme, Klick-Schilder ohne Überdeckung – `lernen-v3`, Bilder `Pictures/eNOTE-Videos-v3-Pilot/v3.1`). Falls unterbrochen: neuen Agenten mit `lernen-v3/AUFTRAG-Pilot.md` + diesen drei Zielen starten.
-- **14.11. mittags: Video-Pilot v3.1 vom Nutzer freigegeben** (« Stil ist gut, sehr gut ausführlich »). Danach Klick-Kreis durchsichtiger (`RING_DECKKRAFT` 0,5 in bau.py) → `enote-encaisser-v3.2.mp4`. **Nächste Video-Arbeit:** alle eNOTE-Videos nach `lernen-v3/AUFTRAG-Alle.md` in Paketen A–E (je Lauf 1 Paket, erst nach E7a/E7b bzw. wenn kein anderer Agent läuft), einbauen, dann unbenutzte Videos löschen. Erste Aufräumrunde 14.11.: 43 alte Videos (530 MB: ENote Temp, Lernvideos, erklaer, lernen v1, werbung-v2, Skoulou lernen v1) im Papierkorb.
-- **E7a fertig (14.11.)**: 256da0a (Jahreswechsel übernimmt Session der Klassen), b850faf Simulation (`SKOULOU_SIM=1`, 22 Schulen, 3 Jahre, ~9.900 Schüler, 0 Invarianten-Verstöße, alle Listen < 150 ms), 6a46a25 `Skoulou/docs/Simulation-Bericht.md` (offene Punkte dort). Keine Schemaänderung. `SkoulouDB_SIM` lokal für E7b behalten.
-- **eNOTE-Videos v3 (14.11.):** Paket A (Employé + Premiers pas) und B (Propriétaire) fertig, in der App und gepusht (bis d4ba620), Nutzer hat eNOTE um ~10:50 deployt (Stand Paket A). Offen: Paket C (Responsable + Admin), D (Visite guidée + Présentation ohne Sprecherin), E (Aufräumen). Danach E7b. SKOULOU 14.11. ~11:30 vom Nutzer deployt (Stand E7a, Live-DB unverändert; Admin per App-Neustart angelegt).
-- **Abschluss (Nutzer 14.11.):** Wenn E7b + Video-Pakete B–E fertig sind: lokale DBs (`SkoulouDB`, eNOTE lokal) und Azure-DBs (`Skoulou-Database`, ggf. `ENote-Database`) auf den neuesten Migrationsstand bringen – OK des Nutzers dafür liegt vor (« am Ende ») –, alles testen, committen + pushen, dann deployt der Nutzer **beide Apps** (eNOTE, SKOULOU). Vorher keine Azure-Änderungen.
-- **Danach:** E7 nach `Skoulou/docs/auftraege/E7-Abschluss.md` – erst E7a Simulation, dann E7b Rundgang + Feinschliff (je 1 Agent, im Hauptbaum; Schemaänderungen nur als neue Migration, « Fundament » nicht neu erzeugen, da live). Immer nur 1 Agent gleichzeitig (Limit des Nutzers).
+**Live:** eNOTE deployt (~10:50, Stand Paket A; Paket B ist committet, aber evtl. noch nicht deployt – Nutzer fragen).
+SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vor dem DB-User) → per
+`az webapp restart` behoben, Admin DodjiEtse angelegt. Live-DB-Schema = « Fundament » 20261114004546 (= lokal).
+
+**Pausiert (beim Ausschalten des Rechners), in dieser Reihenfolge fortsetzen – immer nur 1 Agent:**
+1. **« Pourquoi SKOULOU ? » neu** (Nutzerwunsch 12:25, Priorität): Werbevideo 90–120 s auf der NEUEN Oberfläche, ohne
+   Sprecherin; Projekt `TabloSuite Videos\Skoulou Videos\projekte\pourquoi-v3\` – Zwischenstand in dessen `STAND.md`
+   (falls vorhanden; sonst neu beginnen). Danach in die SKOULOU-App: `Medien/videos/skoulou-pourquoi.mp4` UND
+   `skoulou-presentation.mp4` ersetzen (Startseite zeigt noch die ALTE Oberfläche), Poster, Build, commit.
+2. **eNOTE-Videos Paket C** (Responsable + Admin): pausiert vor dem ersten Video; Plan + Befunde in
+   `lernen-v3/AUFTRAG-Alle.md` (« Paket C – Stand bei der Pause »). Dann **Paket D** (Visite guidée + « Pourquoi eNOTE ? »
+   ohne Sprecherin) und **E** (unbenutzte Videos löschen). Agent-Muster: Auftrag aus AUFTRAG-Alle.md + « The owner
+   explicitly asked to produce the remaining eNOTE videos » (sonst blockiert das Rechtesystem den Einbau); jedes fertige
+   Video einzeln einbauen, Lead committet.
+3. **SKOULOU E7b** nach `Skoulou/docs/auftraege/E7-Abschluss.md` (Rundgang aller Rollen auf `SkoulouDB_SIM`, Feinschliff,
+   Guide) inkl. Zusatz: Session-Klassen enden automatisch, Gebühr je Session (neue Migration), automatischer Wiederholversuch
+   bei gleichzeitigem Kontonamen, `/direction/journal` bauen, Nutzungsbedingungen wie eNOTE schon bei der Registrierung.
+4. **Abschluss** (Nutzer 14.11.): lokale DBs + Azure-DBs auf neuesten Migrationsstand (OK liegt vor, « am Ende »),
+   Tests, push → Nutzer deployt **beide Apps**. Nach DB-Änderungen auf Azure die Web-App neu starten (Seed!).
+
+**Heute erledigt:** Video-Pilot v3.1/v3.2 freigegeben (« Stil ist gut, sehr gut ausführlich »; Klick-Kreis halb
+durchsichtig). eNOTE-Videos Paket A (Premiers pas, Encaisser, Attente, Clients, Clôture) + B (Catalogue, Équipe,
+Activité, Vos clients, Compte) in der App, gepusht bis d4ba620. E7a Simulation (22 Schulen, 3 Jahre, ~9.900 Schüler,
+0 Verstöße, Listen < 150 ms, 1 Fehler behoben 256da0a, Bericht `Skoulou/docs/Simulation-Bericht.md`). 43 alte Videos
+(530 MB) im Papierkorb. Entscheidungen des Nutzers: Treueprogramm eNOTE zurückgestellt; Session-Klassen automatisch
+beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte bezahlte SKOULOU-Rechnung ohne Verrechnung.
 
 ## 2. SKOULOU-Neubau (Hauptprojekt)
 
@@ -84,10 +102,6 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 6. Nächste Schritte (Reihenfolge)
+## 6. Nächste Schritte
 
-1. Video-Pilot v3.1 abwarten (§1) → Nutzer zeigen → bei OK alle eNOTE-Videos im v3-Stil, Einbau, Deploy durch den Nutzer.
-2. SKOULOU: E5 + E6 laufen (§1) → nach Fertigmeldung je prüfen, mergen, Migration « Fundament » neu erzeugen, Tests + SQL-Tests, Rundgang, push; dann E2 starten (Auftrag liegt bereit).
-3. Lokale `SkoulouDB` am 14.11. neu aufgebaut (aktuelles Schema, Demo-Seed); alte Test-DBs gelöscht.
-4. Agenten Video v3.1, E5, E6 am 14.11. ~00:50 vom Nutzungslimit gestoppt (Arbeit gespeichert) → nach 3:50 fortsetzen; künftig höchstens 1–2 Agenten gleichzeitig (Nutzer: Limit zu schnell erreicht).
-5. E7 Simulation + Browser-Rundgang; E8 Umstellung (Azure nur mit OK); danach SKOULOU-Videos auf der neuen Oberfläche.
+Siehe §1 (Reihenfolge 1–4). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
