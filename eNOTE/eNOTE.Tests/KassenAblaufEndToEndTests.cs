@@ -125,4 +125,59 @@ public class KassenAblaufEndToEndTests
         // Gesamtumsatz: 5000 + 10000 + 5000 = 20000.
         Assert.Equal(20000m, sitzungNeu.Verkaeufe.Sum(v => v.GesamtSumme));
     }
+
+    [Fact]
+    public async Task Preis_aendern_ueberschreibt_den_Bestand_nicht_wenn_dazwischen_verkauft_wurde()
+    {
+        // Simulation S1: Besitzer öffnet « Modifier » (Formular zeigt Bestand 20), die Kasse verkauft 2 Stück,
+        // dann speichert er nur einen neuen Preis – vorher kam die verkaufte Ware dabei « zurück » ins Lager.
+        var (factory, salon, besitzer, kassen, katalog) = await BasisAsync();
+        var produkt = await katalog.SpeichereLeistungAsync(new Leistung
+        {
+            Id = Guid.Empty, SalonId = salon.Id, Name = "Huile de coco", Typ = LeistungsTyp.Produit, Preis = 2000,
+            HatStueckzahl = true, Stueckzahl = 20, IstAktiv = true
+        });
+        var formular = (await katalog.GetLeistungAsync(produkt.Id))!;
+        var beimOeffnen = formular.Stueckzahl;
+
+        var sitzung = (await kassen.StarteSitzungAsync(salon.Id, besitzer.Id, 0m)).Sitzung!;
+        var verkauf = await kassen.BucheVerkaufAsync(sitzung.Id, [new KassenService.VerkaufsPositionInput(produkt.Id, 2, null, false)],
+            ZahlungsArt.Karte, gegeben: null, karteBestaetigt: true);
+        Assert.True(verkauf.Erfolg, verkauf.Fehler);
+
+        formular.Preis = 2200;
+        var gespeichert = await katalog.SpeichereLeistungAsync(formular, default, beimOeffnen);
+        Assert.Equal(2200m, gespeichert.Preis);
+        Assert.Equal(18m, (await katalog.GetLeistungAsync(produkt.Id))!.Stueckzahl);
+
+        // Lieferung im Formular (+30) während eines weiteren Verkaufs: nur die Änderung zählt.
+        formular = (await katalog.GetLeistungAsync(produkt.Id))!;
+        beimOeffnen = formular.Stueckzahl;
+        await kassen.BucheVerkaufAsync(sitzung.Id, [new KassenService.VerkaufsPositionInput(produkt.Id, 1, null, false)],
+            ZahlungsArt.Karte, gegeben: null, karteBestaetigt: true);
+        formular.Stueckzahl += 30;
+        await katalog.SpeichereLeistungAsync(formular, default, beimOeffnen);
+        Assert.Equal(47m, (await katalog.GetLeistungAsync(produkt.Id))!.Stueckzahl);
+    }
+
+    [Fact]
+    public async Task Ticket_offert_mit_Remise_ueber_dem_Preis_laesst_sich_bar_mit_0_F_buchen()
+    {
+        // Simulation S1: Festbetrag-Remise (200 F) auf eine Photocopie (25 F) → Ticket 0 F; vorher « Chaque paiement doit avoir un montant positif ».
+        var (factory, salon, besitzer, kassen, katalog) = await BasisAsync();
+        var kopie = await katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.Empty, SalonId = salon.Id, Name = "Photocopie", Preis = 25, IstAktiv = true });
+        var geste = await katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.Empty, SalonId = salon.Id, Name = "Geste commercial", Art = RabattArt.Festbetrag, Wert = 200, IstAktiv = true });
+        var sitzung = (await kassen.StarteSitzungAsync(salon.Id, besitzer.Id, 1000m)).Sitzung!;
+
+        var r = await kassen.BucheVerkaufAsync(sitzung.Id, [new KassenService.VerkaufsPositionInput(kopie.Id, 1, geste.Id, false)],
+            [new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 0m)]);
+
+        Assert.True(r.Erfolg, r.Fehler);
+        Assert.Equal(0m, r.Verkauf!.GesamtSumme);
+        Assert.Equal(25m, r.Verkauf.RabattSumme);
+        Assert.Equal(1000m, (await kassen.SchliesseSitzungAsync(sitzung.Id, 1000m, null)).Sitzung!.BareinnahmenSoll);
+        Assert.Null(KassenRechner.PruefeZahlungen(0m, [(ZahlungsArt.Bar, 0m)]));
+        Assert.NotNull(KassenRechner.PruefeZahlungen(0m, [(ZahlungsArt.Bar, 0m), (ZahlungsArt.Karte, 0m)]));
+        Assert.NotNull(KassenRechner.PruefeZahlungen(100m, [(ZahlungsArt.Bar, 0m)]));
+    }
 }

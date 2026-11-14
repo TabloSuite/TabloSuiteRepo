@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Services;
 
-public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> factory)
+public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> factory, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public record BesitzerEintrag(Guid Id, string Name, string? Email);
     public record LadenEintrag(Guid Id, string Name, string Vertragsart);
     public record MonatsFinanzen(DateTime Monat, int Verkaeufe, decimal Bar, decimal Karte, decimal MobileMoney, decimal Ausgaben)
@@ -64,7 +66,7 @@ public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> facto
             .Select(us => us.Salon).Distinct().OrderBy(s => s.Name).ToListAsync(ct);
         var ids = laeden.Select(s => s.Id).ToList();
         var abos = await db.NutzungsAbos.AsNoTracking().Where(a => ids.Contains(a.SalonId)).ToListAsync(ct);
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         return laeden.Select(s => new LadenEintrag(s.Id, s.Name, VertragsText(abos.Where(a => a.SalonId == s.Id), s.ProbeBisUtc, jetzt))).ToList();
     }
 
@@ -104,7 +106,7 @@ public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> facto
             .Select(m => new MonatsFinanzen(m, verkaeufe.Count(v => Monat(v.ZeitUtc) == m && !v.IstStorno),
                 Summe(m, ZahlungsArt.Bar), Summe(m, ZahlungsArt.Karte), Summe(m, ZahlungsArt.MobileMoney),
                 ausgaben.Where(a => Monat(a.DatumUtc) == m).Sum(a => a.Betrag))).ToList();
-        return new Bericht(salon.Name, VertragsText(alleAbos, salon.ProbeBisUtc, DateTime.UtcNow), von.Date, bis.Date, monate, abos,
+        return new Bericht(salon.Name, VertragsText(alleAbos, salon.ProbeBisUtc, uhr.GetUtcNow().UtcDateTime), von.Date, bis.Date, monate, abos,
             abos.Where(a => a.ZahlungStatus == AboZahlungStatus.Bestaetigt).Sum(a => a.PreisSnapshot),
             abos.Where(a => a.ZahlungStatus == AboZahlungStatus.Gemeldet).Sum(a => a.PreisSnapshot),
             abos.Where(a => a.ZahlungStatus == AboZahlungStatus.Offen).Sum(a => a.PreisSnapshot));

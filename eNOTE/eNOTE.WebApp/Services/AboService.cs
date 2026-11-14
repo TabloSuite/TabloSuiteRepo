@@ -9,8 +9,10 @@ namespace ENote.WebApp.Services;
 /// Abo-Preise (eine Regel für Besitzer und Admin) und Zahlungsbestätigung durch den SuperAdmin.
 /// Perioden entstehen ausschließlich automatisch über <see cref="VertragsService"/>.
 /// </summary>
-public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory, Mails.MailBenachrichtigungen? mails = null)
+public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory, Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     /// <summary>Aktuelles (letztes) Abo eines Salons.</summary>
     public async Task<NutzungsAbo?> GetAktuellesAboAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
@@ -34,7 +36,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
             .Select(s => s.ProbeBisUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var laeuft = probeBis is not null && probeBis.Value > DateTime.UtcNow;
+        var laeuft = probeBis is not null && probeBis.Value > uhr.GetUtcNow().UtcDateTime;
         return (laeuft, probeBis);
     }
 
@@ -50,9 +52,9 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     /// Globaler Monatspreis der Plattform: letzter gültiger Stand (Historie), sonst der aktuelle
     /// Monats-Plattformpreis. Einzige Quelle für Admin-Anzeige und Besitzer-Preise.
     /// </summary>
-    public static async Task<decimal> GlobalerMonatsPreisAsync(ApplicationDbContext db, CancellationToken ct = default)
+    public static async Task<decimal> GlobalerMonatsPreisAsync(ApplicationDbContext db, CancellationToken ct = default, DateTime? jetztUtc = null)
     {
-        var jetzt = DateTime.UtcNow;
+        var jetzt = jetztUtc ?? DateTime.UtcNow;
         var stand = await db.MonatsPreisStaende.AsNoTracking()
             .Where(p => p.SalonId == null && p.GueltigAbUtc <= jetzt)
             .OrderByDescending(p => p.GueltigAbUtc)
@@ -66,11 +68,11 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     }
 
     /// <summary>Monatsbasis eines Ladens: individueller Preis hat Vorrang vor dem globalen Preis.</summary>
-    public static async Task<(decimal Basis, bool Individuell)> MonatsBasisAsync(ApplicationDbContext db, Guid salonId, CancellationToken ct = default)
+    public static async Task<(decimal Basis, bool Individuell)> MonatsBasisAsync(ApplicationDbContext db, Guid salonId, CancellationToken ct = default, DateTime? jetztUtc = null)
     {
         var individuell = await db.Salons.AsNoTracking().Where(s => s.Id == salonId)
             .Select(s => s.IndividuellerMonatsPreis).FirstOrDefaultAsync(ct);
-        return individuell is decimal p and > 0 ? (p, true) : (await GlobalerMonatsPreisAsync(db, ct), false);
+        return individuell is decimal p and > 0 ? (p, true) : (await GlobalerMonatsPreisAsync(db, ct, jetztUtc), false);
     }
 
     /// <summary>
@@ -80,7 +82,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     public async Task<FormelPreis?> GetFormelPreisAsync(Guid salonId, AboIntervall intervall, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var (basis, individuell) = await MonatsBasisAsync(db, salonId, cancellationToken);
+        var (basis, individuell) = await MonatsBasisAsync(db, salonId, cancellationToken, uhr.GetUtcNow().UtcDateTime);
         return basis <= 0
             ? null
             : new FormelPreis(intervall, VertragsRegeln.Preis(basis, intervall), basis, VertragsRegeln.Rabatt(intervall), individuell);
@@ -102,7 +104,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     public async Task<(DateTime AbUtc, decimal Preis)?> GetKommenderPreisAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await PreisAnpassungService.KommenderPreisAsync(db, salonId, DateTime.UtcNow, cancellationToken);
+        return await PreisAnpassungService.KommenderPreisAsync(db, salonId, uhr.GetUtcNow().UtcDateTime, cancellationToken);
     }
 
     /// <summary>Effektiver Preis einer Formel (0 = kein Preis konfiguriert).</summary>
@@ -132,7 +134,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         abo.ZahlungStatus = status;
         if (status == AboZahlungStatus.Bestaetigt)
         {
-            abo.ZahlungBestaetigtUtc = DateTime.UtcNow;
+            abo.ZahlungBestaetigtUtc = uhr.GetUtcNow().UtcDateTime;
         }
 
         await db.SaveChangesAsync(cancellationToken);

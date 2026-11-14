@@ -16,8 +16,10 @@ public class AdminService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     IServiceProvider serviceProvider,
     ILogger<AdminService> logger,
-    Mails.EmailService emailService)
+    Mails.EmailService emailService, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     /// <summary>Fachliche Mails (optional – in Tests ohne Service-Provider nicht vorhanden).</summary>
     private Mails.MailBenachrichtigungen? MailDienst => serviceProvider?.GetService(typeof(Mails.MailBenachrichtigungen)) as Mails.MailBenachrichtigungen;
 
@@ -85,11 +87,11 @@ public class AdminService(
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        return await AnreichernAsync(db, salons, cancellationToken);
+        return await AnreichernAsync(db, salons, uhr.GetUtcNow().UtcDateTime, cancellationToken);
     }
 
     /// <summary>Ergänzt Läden um Teamgröße, Umsatz, Besitzer und Responsable – nur für die übergebene (kleine) Seite.</summary>
-    private static async Task<List<SalonUebersicht>> AnreichernAsync(ApplicationDbContext db, List<Salon> salons, CancellationToken cancellationToken)
+    private static async Task<List<SalonUebersicht>> AnreichernAsync(ApplicationDbContext db, List<Salon> salons, DateTime jetztUtc, CancellationToken cancellationToken)
     {
         var ids = salons.Select(s => s.Id).ToList();
         var mitglieder = await db.UserSalons.AsNoTracking()
@@ -130,7 +132,7 @@ public class AdminService(
             s.Land,
             s.IstFreigegeben,
             s.IstAktiv,
-            s.ProbeBisUtc is not null && s.ProbeBisUtc > DateTime.UtcNow,
+            s.ProbeBisUtc is not null && s.ProbeBisUtc > jetztUtc,
             mitglieder.FirstOrDefault(m => m.Key == s.Id)?.Anzahl ?? 0,
             umsatz.FirstOrDefault(u => u.Key == s.Id)?.Summe ?? 0m,
             s.CreatedAtUtc,
@@ -152,7 +154,7 @@ public class AdminService(
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var basis = SichtbareSalons(db, userId, istSuperAdmin);
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         return new SalonKennzahlen(
             await basis.CountAsync(cancellationToken),
             await basis.CountAsync(s => !s.IstFreigegeben && s.IstAktiv, cancellationToken),
@@ -190,7 +192,7 @@ public class AdminService(
             .Skip(Math.Max(0, ueberspringen)).Take(anzahl + 1).ToListAsync(cancellationToken);
         var mehr = salons.Count > anzahl;
         if (mehr) salons.RemoveAt(salons.Count - 1);
-        return (await AnreichernAsync(db, salons, cancellationToken), mehr);
+        return (await AnreichernAsync(db, salons, uhr.GetUtcNow().UtcDateTime, cancellationToken), mehr);
     }
 
     /// <summary>So viele Tage ab heute darf ein Responsable eine laufende Probezeit höchstens verlängern.</summary>
@@ -239,7 +241,7 @@ public class AdminService(
         }
 
         salon.IstFreigegeben = freigegeben;
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
 
         // Validierungs-Mail an den Besitzer (nur bei Freigabe, nicht beim Entzug).
@@ -289,7 +291,7 @@ public class AdminService(
 
         var geaendert = salon.IstAktiv != aktiv;
         salon.IstAktiv = aktiv;
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
         if (geaendert && MailDienst is { } m)
             await m.LadenStatusAsync(salonId, aktiv, cancellationToken);
@@ -322,12 +324,12 @@ public class AdminService(
                 throw new UnauthorizedAccessException(NurAdminMeldung);
             if (gewuenscht < bisher)
                 throw new UnauthorizedAccessException("Un responsable peut seulement prolonger l'essai, pas le raccourcir.");
-            if (gewuenscht > PoProbeGrenze(DateTime.UtcNow))
+            if (gewuenscht > PoProbeGrenze(uhr.GetUtcNow().UtcDateTime))
                 throw new UnauthorizedAccessException($"Un responsable peut prolonger l'essai de {PoProbeMaxTage} jours au plus à partir d'aujourd'hui.");
         }
 
         salon.ProbeBisUtc = neu;
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
 
         if (!wer.IstAdmin && MailDienst is { } m)
@@ -404,7 +406,7 @@ public class AdminService(
             alt.IstAktuell = false;
         }
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         db.PlattformPreise.Add(new PlattformPreis
         {
             Intervall = intervall,
@@ -429,7 +431,7 @@ public class AdminService(
     public async Task<decimal> GetGlobalenMonatsPreisAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        return await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
+        return await AboService.GlobalerMonatsPreisAsync(db, cancellationToken, uhr.GetUtcNow().UtcDateTime);
     }
 
     public async Task<LadenTarif> GetLadenTarifAsync(
@@ -439,7 +441,7 @@ public class AdminService(
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
         var salon = await db.Salons.AsNoTracking()
             .SingleAsync(s => s.Id == salonId, cancellationToken);
-        var global = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
+        var global = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken, uhr.GetUtcNow().UtcDateTime);
         return new LadenTarif(salon.Name, global, salon.IndividuellerMonatsPreis);
     }
 
@@ -465,9 +467,9 @@ public class AdminService(
             return false;
         }
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         // Der Standardpreis ist der Mindestpreis: ein individueller Preis darf nicht darunter liegen.
-        var standard = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken);
+        var standard = await AboService.GlobalerMonatsPreisAsync(db, cancellationToken, uhr.GetUtcNow().UtcDateTime);
         if (preis is decimal eigener && standard > 0 && eigener < standard)
             throw new ArgumentOutOfRangeException(nameof(preis),
                 $"Le tarif personnalisé ne peut pas être inférieur au tarif général ({standard:N0} F).");
@@ -564,7 +566,7 @@ public class AdminService(
             Land = string.IsNullOrWhiteSpace(land) ? null : land.Trim(),
             IstAktiv = true,
             IstFreigegeben = true, // vom Admin angelegt ? sofort freigegeben
-            ProbeBisUtc = AuthService.BerechneProbeEnde(DateTime.UtcNow) // Probezeit wie bei Selbstregistrierung
+            ProbeBisUtc = AuthService.BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime) // Probezeit wie bei Selbstregistrierung
         };
 
         db.Salons.Add(salon);

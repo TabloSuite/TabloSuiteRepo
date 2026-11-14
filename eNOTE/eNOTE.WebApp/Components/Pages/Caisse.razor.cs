@@ -570,7 +570,7 @@ public partial class Caisse(
 
     private bool ZahlungMoeglich => zahlModus switch
     {
-        ZahlModus.Bar => gegeben >= gesamtSumme && gesamtSumme > 0,
+        ZahlModus.Bar => gegeben >= gesamtSumme && (gesamtSumme > 0 || ticket.Count > 0), // 0 F (offert, Remise ≥ Preis) bar bestätigen
         ZahlModus.Karte => gesamtSumme > 0,
         ZahlModus.MobileMoney => mobileAnbieterId is not null && gesamtSumme > 0,
         _ => mixBar > 0 && mixBar < gesamtSumme && (mixZweitArt != ZahlungsArt.MobileMoney || mobileAnbieterId is not null)

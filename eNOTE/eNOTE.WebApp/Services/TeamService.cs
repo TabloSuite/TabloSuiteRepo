@@ -15,8 +15,10 @@ public class TeamService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     UserManager<AppUser> userManager,
     ILogger<TeamService> logger,
-    Mails.MailBenachrichtigungen? mails = null)
+    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public record TeamMitglied(
         Guid UserSalonId,
         Guid UserId,
@@ -53,7 +55,7 @@ public class TeamService(
             .ToHashSetAsync(cancellationToken);
 
         // Aktivität an der Kasse: letzte Sitzung und Verkäufe im laufenden Monat (ohne Rückerstattungen).
-        var monatsAnfang = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monatsAnfang = new DateTime(uhr.GetUtcNow().UtcDateTime.Year, uhr.GetUtcNow().UtcDateTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var letzteKasse = await db.KassenSitzungen.AsNoTracking()
             .Where(k => k.SalonId == salonId && userIds.Contains(k.KassiererId))
             .GroupBy(k => k.KassiererId)

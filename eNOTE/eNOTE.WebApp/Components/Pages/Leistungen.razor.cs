@@ -38,6 +38,8 @@ public partial class Leistungen(
         await PruefeBarcodeAsync();
     }
     private Leistung bearbeitungsLeistung = new();
+    // Bestand, den das Formular beim Öffnen zeigt (Speichern übernimmt nur die Änderung, Verkäufe dazwischen bleiben).
+    private decimal? stueckzahlBeimOeffnen;
     private Leistung? zuLoeschendeLeistung;
     private string? bildVorschau;
     private string? bildFehler;
@@ -238,6 +240,7 @@ public partial class Leistungen(
 
     private async void NeuAnlegen()
     {
+        stueckzahlBeimOeffnen = null;
         bearbeitungsLeistung = new Leistung { Id = Guid.Empty, SalonId = salonId, IstAktiv = true, Typ = LeistungsTyp.Prestation };
         istSammelArtikel = false;
         basisLeistungIdText = string.Empty;
@@ -255,6 +258,7 @@ public partial class Leistungen(
 
     private async void Bearbeiten(Leistung leistung)
     {
+        stueckzahlBeimOeffnen = leistung.HatStueckzahl ? leistung.Stueckzahl : null;
         bearbeitungsLeistung = new Leistung
         {
             Id = leistung.Id,
@@ -478,7 +482,7 @@ public partial class Leistungen(
         Leistung gespeichert;
         try
         {
-            gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung);
+            gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung, default, stueckzahlBeimOeffnen);
         }
         catch (InvalidOperationException ex)
         {

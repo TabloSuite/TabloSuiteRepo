@@ -14,8 +14,10 @@ namespace ENote.WebApp.Services;
 public class StornoService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     KassenService kassenService,
-    IUmsatzBenachrichtigungService umsatzBenachrichtigung)
+    IUmsatzBenachrichtigungService umsatzBenachrichtigung, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public static readonly string[] GrundVorschlaege = ["Erreur de caisse", "Article défectueux", "Client mécontent", "Prestation non réalisée"];
 
     public record StornoPosition(Guid PositionId, string Name, decimal EinzelPreis, int Menge, int ErstattetMenge,
@@ -120,7 +122,7 @@ public class StornoService(
         {
             KassenSitzungId = sitzung.Id,
             SalonId = sitzung.SalonId,
-            ZeitUtc = DateTime.UtcNow,
+            ZeitUtc = uhr.GetUtcNow().UtcDateTime,
             ZahlungsArt = weg.Art,
             StornoVonVerkaufId = original.Id,
             KundeId = original.KundeId,
@@ -199,7 +201,7 @@ public class StornoService(
         try
         {
             var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == sitzung.SalonId).Select(s => s.Land).FirstOrDefaultAsync(ct));
-            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, DateTime.UtcNow), zone);
+            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, uhr.GetUtcNow().UtcDateTime), zone);
             var tagesUmsatz = await db.Verkaeufe.Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute).SumAsync(v => v.GesamtSumme, ct);
             var anzahl = await db.Verkaeufe.CountAsync(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute && v.StornoVonVerkaufId == null, ct);
             await umsatzBenachrichtigung.VerkaufGemeldetAsync(sitzung.SalonId, tagesUmsatz, anzahl, ct);

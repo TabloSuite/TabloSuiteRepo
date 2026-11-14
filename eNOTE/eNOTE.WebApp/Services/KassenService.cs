@@ -80,7 +80,7 @@ public class KassenService(
             return (false, "Employé introuvable ou sans code PIN.", null, 0);
         }
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         UserSalon? treffer = null;
 
         foreach (var zuordnung in zuordnungen)
@@ -154,7 +154,7 @@ public class KassenService(
             return (false, "Aucun code PIN propriétaire configuré.");
         }
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         foreach (var zuordnung in besitzerZuordnungen)
         {
             if (zuordnung.PinGesperrtBisUtc is DateTime gesperrtBis && gesperrtBis > jetzt)
@@ -276,7 +276,7 @@ public class KassenService(
             return new(false, "Employé introuvable ou sans code PIN.", null, 0);
         }
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
 
         // Standard-Artikel „Divers“ sicherstellen (freier Betrag für vergessene Leistungen).
         await StelleStandardArtikelSicherAsync(salonId, cancellationToken);
@@ -408,11 +408,11 @@ public class KassenService(
         {
             KassenSitzungId = sitzung.Id,
             SalonId = sitzung.SalonId,
-            ZeitUtc = DateTime.UtcNow,
+            ZeitUtc = uhr.GetUtcNow().UtcDateTime,
             KundeId = kundeId
         };
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         decimal zwischensumme = 0m;
         decimal rabattSumme = 0m;
 
@@ -583,7 +583,7 @@ public class KassenService(
         try
         {
             var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == sitzung.SalonId).Select(s => s.Land).FirstOrDefaultAsync(cancellationToken));
-            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, DateTime.UtcNow), zone);
+            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, uhr.GetUtcNow().UtcDateTime), zone);
             var tagesUmsatz = await db.Verkaeufe
                 .Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute)
                 .SumAsync(v => v.GesamtSumme, cancellationToken);
@@ -774,7 +774,7 @@ public class KassenService(
         var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));
 
         sitzung.Status = KassenSitzungStatus.Abgeschlossen;
-        sitzung.AbgeschlossenUtc = DateTime.UtcNow;
+        sitzung.AbgeschlossenUtc = uhr.GetUtcNow().UtcDateTime;
         sitzung.BareinnahmenSoll = soll;
         sitzung.EndbestandGezaehlt = Math.Round(endbestandGezaehlt, 2);
         sitzung.Differenz = KassenRechner.BerechneDifferenz(soll, endbestandGezaehlt);

@@ -333,7 +333,8 @@ public class KatalogService(
         return await db.Leistungen.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
     }
 
-    public async Task<Leistung> SpeichereLeistungAsync(Leistung leistung, CancellationToken cancellationToken = default)
+    public async Task<Leistung> SpeichereLeistungAsync(Leistung leistung, CancellationToken cancellationToken = default,
+        decimal? stueckzahlBeimOeffnen = null)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -374,8 +375,7 @@ public class KatalogService(
         {
             var vorhanden = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == leistung.Id, cancellationToken)
                 ?? throw new InvalidOperationException("Leistung nicht gefunden.");
-
-
+            var hatteStueckzahl = vorhanden.HatStueckzahl;
             vorhanden.Name = leistung.Name;
             vorhanden.Beschreibung = leistung.Beschreibung;
             vorhanden.Typ = leistung.Typ;
@@ -384,7 +384,12 @@ public class KatalogService(
             vorhanden.StrichCode = leistung.StrichCode;
             vorhanden.KategorieId = leistung.KategorieId;
             vorhanden.HatStueckzahl = leistung.HatStueckzahl;
-            vorhanden.Stueckzahl = leistung.HatStueckzahl ? leistung.Stueckzahl : 0;
+            // Das Formular zeigt den Bestand beim Öffnen. Inzwischen gebuchte Verkäufe/Abgänge nicht überschreiben:
+            // nur die Änderung aus dem Formular übernehmen (sonst « kommt » verkaufte Ware beim Speichern eines Preises zurück).
+            vorhanden.Stueckzahl = !leistung.HatStueckzahl ? 0
+                : hatteStueckzahl && stueckzahlBeimOeffnen is decimal beimOeffnen
+                    ? vorhanden.Stueckzahl + (leistung.Stueckzahl - beimOeffnen)
+                    : leistung.Stueckzahl;
             vorhanden.MindestbestandWarnung = leistung.HatStueckzahl ? leistung.MindestbestandWarnung : null;
             vorhanden.BasisLeistungId = leistung.BasisLeistungId;
             vorhanden.BasisAbzugMenge = leistung.BasisAbzugMenge;

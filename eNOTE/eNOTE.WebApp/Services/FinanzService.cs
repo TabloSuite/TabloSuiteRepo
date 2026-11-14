@@ -9,8 +9,10 @@ namespace ENote.WebApp.Services;
 /// Besitzer-Finanzansicht: Umsatzübersicht, Verkaufsliste und Kassenabschlüsse
 /// eines Salons. Optional für delegierte Kassierer mit Finanzrecht.
 /// </summary>
-public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
+public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFactory, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public record TagesUmsatz(DateTime Datum, int AnzahlVerkaeufe, decimal Bar, decimal Karte, decimal MobileMoney, decimal Gesamt);
 
     /// <summary>Einnahmen, Ausgaben und Saldo (Solde de caisse) eines Zeitraums.</summary>
@@ -88,7 +90,7 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
     public async Task<List<TagesUmsatz>> GetTagesUmsaetzeAsync(Guid salonId, int tage = 14, CancellationToken cancellationToken = default, TimeSpan versatz = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var ab = DateTime.UtcNow.Date.AddDays(-tage);
+        var ab = uhr.GetUtcNow().UtcDateTime.Date.AddDays(-tage);
         return GruppiereNachTag(await LadeAnteileAsync(db, salonId, ab, DateTime.MaxValue, cancellationToken), versatz);
     }
 

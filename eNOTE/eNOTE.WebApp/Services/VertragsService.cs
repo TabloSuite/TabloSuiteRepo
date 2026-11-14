@@ -36,10 +36,10 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
     }
 
     /// <summary>Aktueller Preis einer Formel – dieselbe Quelle wie Besitzer-Seite und Admin-Tarif.</summary>
-    public static async Task<decimal> PreisAsync(ApplicationDbContext db, Guid salonId, AboIntervall intervall, CancellationToken ct)
+    public static async Task<decimal> PreisAsync(ApplicationDbContext db, Guid salonId, AboIntervall intervall, CancellationToken ct, DateTime? jetztUtc = null)
     {
         _ = VertragsRegeln.Monate(intervall);
-        var (basis, _) = await AboService.MonatsBasisAsync(db, salonId, ct);
+        var (basis, _) = await AboService.MonatsBasisAsync(db, salonId, ct, jetztUtc);
         return basis > 0 ? VertragsRegeln.Preis(basis, intervall) : throw new InvalidOperationException("Le prix mensuel doit être configuré par l'administrateur.");
     }
 
@@ -235,7 +235,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         var salon = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
         var ende = await db.NutzungsAbos.Where(a => a.SalonId == salonId && a.ZeitraumBisUtc > jetzt)
             .Select(a => (DateTime?)a.ZeitraumBisUtc).MaxAsync(ct);
-        return new(WechselArt.AbNaechsterPeriode, await PreisAsync(db, salonId, intervall, ct),
+        return new(WechselArt.AbNaechsterPeriode, await PreisAsync(db, salonId, intervall, ct, zeit.GetUtcNow().UtcDateTime),
             ende ?? (salon.ProbeBisUtc is DateTime probe ? VertragsRegeln.BeginnNachProbe(probe) : jetzt), null, null);
     }
 

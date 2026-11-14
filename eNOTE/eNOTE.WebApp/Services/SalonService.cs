@@ -12,8 +12,10 @@ namespace ENote.WebApp.Services;
 public class SalonService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     IMediaStorageService mediaStorage,
-    UserManager<AppUser> userManager)
+    UserManager<AppUser> userManager, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public async Task<Salon?> GetSalonAsync(Guid salonId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -33,7 +35,7 @@ public class SalonService(
         }
 
         salon.Slogan = string.IsNullOrWhiteSpace(slogan) ? null : slogan.Trim();
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -53,7 +55,7 @@ public class SalonService(
         salon.TelefonNummer = string.IsNullOrWhiteSpace(telefon) ? null : telefon.Trim();
         salon.Adresse = string.IsNullOrWhiteSpace(adresse) ? null : adresse.Trim();
         salon.BonQrLink = string.IsNullOrWhiteSpace(bonQrLink) ? null : bonQrLink.Trim();
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -100,7 +102,7 @@ public class SalonService(
         await db.SaveChangesAsync(cancellationToken);
 
         salon.LogoAssetId = asset.Id;
-        salon.UpdatedAtUtc = DateTime.UtcNow;
+        salon.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
 
         return (true, null, mediaStorage.GetPublicUrl(ergebnis.BlobName!));
@@ -141,7 +143,7 @@ public class SalonService(
     public async Task<bool> DarfWeiterenLadenAnlegenAsync(Guid besitzerId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         return await db.UserSalons
             .AnyAsync(us => us.AppUserId == besitzerId
                 && us.Salon.IstFreigegeben

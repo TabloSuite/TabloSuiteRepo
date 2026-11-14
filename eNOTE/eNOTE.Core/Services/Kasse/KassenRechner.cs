@@ -96,6 +96,9 @@ public static class KassenRechner
             return "Veuillez choisir un mode de paiement.";
         if (anteile.Any(a => a.Art == ZahlungsArt.Gemischt || !Enum.IsDefined(a.Art)))
             return "Mode de paiement invalide.";
+        // Ticket « offert » (Remise ≥ Preis): genau ein Anteil über 0 F, sonst bliebe die Kasse mit dem Ticket stehen.
+        if (Math.Round(gesamtSumme, 2, MidpointRounding.AwayFromZero) == 0m && anteile.Count == 1 && anteile[0].Betrag == 0m)
+            return null;
         if (anteile.Any(a => a.Betrag <= 0m))
             return "Chaque paiement doit avoir un montant positif.";
         if (anteile.Count(a => a.Art == ZahlungsArt.Bar) > 1)

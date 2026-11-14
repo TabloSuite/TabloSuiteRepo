@@ -10,8 +10,10 @@ namespace ENote.WebApp.Services;
 /// ProduktOwner-Verwaltung: Admin legt POs an, weist ihnen Läden zu und steuert
 /// deren Umsatz-Sichtbarkeit. POs sehen/verwalten nur zugewiesene + eigene Läden.
 /// </summary>
-public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
+public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbContextFactory, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     public record Zuweisung(
         Guid ZuweisungId,
         Guid SalonId,
@@ -73,7 +75,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
 
         // Ein Laden = genau ein aktiver PO: bisherige aktive Zuordnungen anderer POs
         // für diesen Laden archivieren (GueltigBisUtc setzen), statt sie zu löschen.
-        var jetzt = DateTime.UtcNow;
+        var jetzt = uhr.GetUtcNow().UtcDateTime;
         var fremdeZuweisungen = await db.ProduktOwnerSalons
             .Where(p => p.SalonId == salonId && p.ProduktOwnerId != produktOwnerId && p.GueltigBisUtc == null)
             .ToListAsync(cancellationToken);
@@ -163,7 +165,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
             Land = string.IsNullOrWhiteSpace(land) ? null : land.Trim(),
             IstAktiv = true,
             IstFreigegeben = false, // Admin gibt frei
-            ProbeBisUtc = AuthService.BerechneProbeEnde(DateTime.UtcNow)
+            ProbeBisUtc = AuthService.BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime)
         };
         db.Salons.Add(salon);
         await db.SaveChangesAsync(cancellationToken);
@@ -247,8 +249,8 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
             .ToListAsync(cancellationToken);
 
         var salonIds = zuweisungen.Select(z => z.SalonId).ToList();
-        var heute = DateTime.UtcNow.Date;
-        var monatStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var heute = uhr.GetUtcNow().UtcDateTime.Date;
+        var monatStart = new DateTime(uhr.GetUtcNow().UtcDateTime.Year, uhr.GetUtcNow().UtcDateTime.Month, 1);
 
         var umsatzHeute = await db.Verkaeufe.AsNoTracking()
             .Where(v => salonIds.Contains(v.SalonId) && v.ZeitUtc >= heute)
@@ -377,7 +379,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         }
 
         auszahlung.Status = Core.DataModels.Abo.AuszahlungStatus.Bestaetigt;
-        auszahlung.BestaetigtUtc = DateTime.UtcNow;
+        auszahlung.BestaetigtUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

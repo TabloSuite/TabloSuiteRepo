@@ -18,8 +18,10 @@ public class AuthService(
     SignInManager<AppUser> signInManager,
     ILogger<AuthService> logger,
     Mails.EmailService emailService,
-    Mails.MailBenachrichtigungen? mails = null)
+    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
 {
+    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+
     private const string AppName = "eNOTE";
     private const string AppUrl = "https://enote.tablosuite.com";
     /// <summary>
@@ -43,7 +45,7 @@ public class AuthService(
         var hatBereitsLaden = await db.UserSalons
             .AnyAsync(us => us.AppUserId == besitzerId, cancellationToken);
 
-        return hatBereitsLaden ? null : BerechneProbeEnde(DateTime.UtcNow);
+        return hatBereitsLaden ? null : BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime);
     }
 
     public async Task<(bool Succeeded, string? Error)> LoginAsync(
@@ -68,7 +70,7 @@ public class AuthService(
 
         // Eine neue Anmeldung meldet eine frühere Sitzung auf einem anderen Gerät ab.
         user.ActiveSessionId = Guid.NewGuid();
-        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await userManager.UpdateAsync(user);
 
         await signInManager.SignInAsync(user, dauerhaft);
@@ -113,7 +115,7 @@ public class AuthService(
 
         // Sitzung rotieren, damit andere Geräte abgemeldet werden.
         user.ActiveSessionId = Guid.NewGuid();
-        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
         await userManager.UpdateAsync(user);
         return (true, null);
     }
@@ -185,7 +187,7 @@ public class AuthService(
             Slogan = string.IsNullOrWhiteSpace(salonSlogan) ? null : salonSlogan.Trim(),
             IstAktiv = true,
             IstFreigegeben = false,
-            ProbeBisUtc = BerechneProbeEnde(DateTime.UtcNow)
+            ProbeBisUtc = BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime)
         };
 
         db.Salons.Add(salon);
