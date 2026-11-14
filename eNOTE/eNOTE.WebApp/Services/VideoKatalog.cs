@@ -53,7 +53,7 @@ public static class VideoKatalog
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
             "Les catégories, une prestation, un produit avec prix d'achat, stock et code-barres, étiquettes et pertes, les remises.", "Propriétaire", AbBesitzer, "3:41"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
-            "Ajouter un employé, ses droits, votre reçu, Mobile Money, salles et code PIN.", "Propriétaire", AbBesitzer, "1:46"),
+            "La page Équipe, ajouter un employé avec son code PIN, ses droits, votre reçu, Mobile Money, salles et postes, votre code PIN.", "Propriétaire", AbBesitzer, "3:42"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
             "Les chiffres du jour, les finances par période, noter une dépense, rapport PDF et inventaire.", "Propriétaire", AbBesitzer, "1:51"),
         new("enote-proprietaire-clients.mp4", "Vos clients",
