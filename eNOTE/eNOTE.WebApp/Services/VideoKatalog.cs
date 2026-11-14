@@ -59,7 +59,7 @@ public static class VideoKatalog
         new("enote-proprietaire-clients.mp4", "Vos clients",
             "Le fichier clients, la fiche avec achats, préférés, note privée et notes de l'équipe, un nouveau client, une remise pour les fidèles.", "Propriétaire", AbBesitzer, "2:36"),
         new("enote-proprietaire-compte.mp4", "Abonnement et compte",
-            "Essai gratuit et formule, résiliation, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "1:02"),
+            "Essai gratuit et formule, factures et « J'ai payé », résiliation et suppression, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "2:41"),
 
         new("enote-responsable-etablissements.mp4", "Vos établissements",
             "Suivre vos établissements, leurs ventes et votre commission, inscrire un nouveau commerçant.", "Responsable", Plattform, "1:28"),
