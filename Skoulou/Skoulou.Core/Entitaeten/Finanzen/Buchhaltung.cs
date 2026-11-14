@@ -31,7 +31,7 @@ public class Buchung : Entitaet, ISchulgebunden
     public Guid? BelegMediumId { get; set; }
     public Guid ErfasstVonId { get; set; }
 
-    /// <summary>Gegenbuchung, die diese Buchung aufhebt.</summary>
+    /// <summary>Bei einer Gegenbuchung: die Buchung, die sie aufhebt (je Buchung höchstens eine Gegenbuchung).</summary>
     public Guid? StornoVonId { get; set; }
 }
 
@@ -56,6 +56,10 @@ public class Plattformrechnung : Entitaet, ISchulgebunden
 
     public Guid? BestaetigtVonId { get; set; }
     public DateTime? BestaetigtAmUtc { get; set; }
+
+    /// <summary>Anzahl versandter Zahlungserinnerungen (0, 1 = bei Fälligkeit, 2 = Fälligkeit + 7 Tage).</summary>
+    public int Erinnerungen { get; set; }
+
     public List<Rechnungsposition> Positionen { get; set; } = [];
 }
 

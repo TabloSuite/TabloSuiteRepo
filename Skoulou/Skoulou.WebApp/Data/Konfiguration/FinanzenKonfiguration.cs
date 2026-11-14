@@ -93,6 +93,8 @@ internal sealed class BuchungKonfiguration : IEntityTypeConfiguration<Buchung>
         b.Fk<Buchung, Kategorie>(x => x.KategorieId);
         b.Fk<Buchung, Medium>(x => x.BelegMediumId);
         b.Fk<Buchung, Buchung>(x => x.StornoVonId);
+        // Jede Buchung höchstens einmal aufgehoben (auch bei parallelem Storno).
+        b.HasIndex(x => x.StornoVonId).IsUnique().HasFilter("[StornoVonId] IS NOT NULL").HasDatabaseName("IX_Buchungen_EinStorno");
         b.KontoFk(x => x.ErfasstVonId);
         b.ToTable(t => t.HasCheckConstraint("CK_Buchungen_Betrag", "[Betrag] > 0"));
     }
@@ -108,6 +110,8 @@ internal sealed class PlattformrechnungKonfiguration : IEntityTypeConfiguration<
         b.HasIndex(x => x.Nummer).IsUnique();
         b.HasIndex(x => new { x.SchuleId, x.PeriodeId });
         b.HasIndex(x => new { x.Status, x.Faellig });
+        // Statuswechsel (Melden, Bestätigen, Stornieren) parallel abgesichert.
+        b.Property<byte[]>("Version").IsRowVersion();
         b.Fk<Plattformrechnung, Schuljahr>(x => x.SchuljahrId);
         b.Fk<Plattformrechnung, Periode>(x => x.PeriodeId);
         b.Fk<Plattformrechnung, Plattformrechnung>(x => x.ErgaenztId);
