@@ -14,7 +14,6 @@ public sealed record Akteur(
     KoordinatorRechte Rechte,
     KontoStatus Status,
     SchulStatus? SchulStatus,
-    bool AgbAkzeptiert,
     string Name)
 {
     public bool IstAdmin => Rolle == Rollen.SuperAdmin;
@@ -30,7 +29,6 @@ public sealed class Zugriff(IDbContextFactory<SkoulouDbContext> dbFactory)
 {
     public const string MeldungAndereSchule = "Cette ressource appartient à un autre établissement.";
     public const string MeldungKontoInaktiv = "Votre compte n'est pas actif.";
-    public const string MeldungAgb = "Veuillez d'abord accepter les conditions d'utilisation.";
     public const string MeldungSchuleGesperrt = "L'accès à votre établissement est suspendu ou pas encore validé.";
 
     /// <summary>Lädt den Akteur; unbekanntes Konto → <see cref="KeinZugriffFehler"/>.</summary>
@@ -41,14 +39,13 @@ public sealed class Zugriff(IDbContextFactory<SkoulouDbContext> dbFactory)
             .Where(x => x.Id == kontoId)
             .Select(x => new
             {
-                x.Id, x.Rolle, x.SchuleId, x.KoordinatorRechte, x.Status, x.AgbVersion, x.Vorname, x.Nachname,
+                x.Id, x.Rolle, x.SchuleId, x.KoordinatorRechte, x.Status, x.Vorname, x.Nachname,
                 SchulStatus = x.Schule == null ? (SchulStatus?)null : x.Schule.Status
             })
             .FirstOrDefaultAsync(ct) ?? throw new KeinZugriffFehler("Votre compte est introuvable.");
 
-        var agbVersion = await db.PlattformEinstellungen.AsNoTracking().Where(p => p.Id == PlattformEinstellung.EinzigeId).Select(p => p.AgbVersion).FirstOrDefaultAsync(ct);
-        var akzeptiert = string.IsNullOrEmpty(agbVersion) || k.AgbVersion == agbVersion;
-        return new Akteur(k.Id, k.Rolle, k.SchuleId, k.KoordinatorRechte, k.Status, k.SchulStatus, akzeptiert,
+        // Nutzungsbedingungen sperren nichts (wie eNOTE: Zustimmung bei der Registrierung; Konten der Schule fallen darunter).
+        return new Akteur(k.Id, k.Rolle, k.SchuleId, k.KoordinatorRechte, k.Status, k.SchulStatus,
             $"{k.Vorname} {k.Nachname}".Trim());
     }
 
@@ -56,7 +53,6 @@ public sealed class Zugriff(IDbContextFactory<SkoulouDbContext> dbFactory)
     public static Zugriffsart Pruefe(Akteur akteur, Faehigkeit faehigkeit, bool schreiben = false)
     {
         if (akteur.Status != KontoStatus.Actif) throw new KeinZugriffFehler(MeldungKontoInaktiv);
-        if (!akteur.AgbAkzeptiert) throw new KeinZugriffFehler(MeldungAgb);
         if (Rollen.IstSchulRolle(akteur.Rolle) && akteur.SchulStatus != SchulStatus.Active)
             throw new KeinZugriffFehler(MeldungSchuleGesperrt);
 

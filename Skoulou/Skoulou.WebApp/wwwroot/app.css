@@ -494,6 +494,10 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-passwort-auge:hover { background: var(--sk-flaeche-3); color: var(--sk-text); }
 .sk-ankreuzen { display: flex; align-items: center; gap: .6rem; font-size: .92rem; font-weight: 500; cursor: pointer; }
 .sk-ankreuzen input { width: 1.15rem; height: 1.15rem; accent-color: var(--sk-primaer); }
+.sk-agb-zustimmung { display: grid; gap: .35rem; padding: .75rem .9rem; border-radius: var(--sk-radius); background: var(--sk-primaer-zart); }
+.sk-agb-zustimmung .sk-ankreuzen { align-items: flex-start; line-height: 1.45; }
+.sk-agb-zustimmung .sk-ankreuzen input { margin-top: .15rem; flex: none; }
+.sk-agb-link { padding: 0; font-size: inherit; text-decoration: underline; }
 
 /* Schalter */
 .sk-schalter-zeile { display: flex; align-items: center; gap: .75rem; }

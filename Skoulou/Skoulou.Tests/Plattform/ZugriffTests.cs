@@ -43,15 +43,15 @@ public class ZugriffTests
     }
 
     [Fact]
-    public async Task Ohne_akzeptierte_Bedingungen_kein_Zugriff()
+    public async Task Bedingungen_sperren_keinen_Zugriff()
     {
+        // Wie eNOTE: Konten der Schule fallen unter die Zustimmung der Direktion bei der Registrierung.
         await using var u = new TestUmgebung();
         await u.SeedAsync();
         var schule = await u.SchuleAsync("A");
         var lehrer = await u.KontoAsync("prof.a", Rollen.Lehrer, schule.Id, agbAkzeptiert: false);
-        var zugriff = u.Hole<Zugriff>();
-        Assert.Equal(Zugriff.MeldungAgb,
-            (await Assert.ThrowsAsync<KeinZugriffFehler>(() => zugriff.PruefeAsync(lehrer.Id, Faehigkeit.NotenErfassen))).Message);
+        var (akteur, _) = await u.Hole<Zugriff>().PruefeAsync(lehrer.Id, Faehigkeit.NotenErfassen);
+        Assert.Equal(lehrer.Id, akteur.Id);
     }
 
     [Fact]

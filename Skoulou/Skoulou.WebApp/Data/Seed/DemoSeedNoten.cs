@@ -111,7 +111,7 @@ public static class DemoSeedNoten
 
         // Veröffentlichung der 6e A und ein berichtigtes Bulletin – über den Kern des Dienstes (dieselben Regeln, ohne Mails).
         if (!klassen.TryGetValue("6e A", out var sechsA)) return;
-        var akteur = new SchulAkteur(new Akteur(direktor, Rollen.Direktor, schuleId, Core.Rechte.KoordinatorRechte.Keine, KontoStatus.Actif, SchulStatus.Active, true, "Démo"),
+        var akteur = new SchulAkteur(new Akteur(direktor, Rollen.Direktor, schuleId, Core.Rechte.KoordinatorRechte.Keine, KontoStatus.Actif, SchulStatus.Active, "Démo"),
             Core.Rechte.Zugriffsart.Ja, schuleId);
         var bulletins = dienste.GetRequiredService<BulletinService>();
         await bulletins.VeroeffentlichenKernAsync(akteur, sechsA.Id, p1, null, trotzNichtKlassierter: true, mitMails: false, ct);

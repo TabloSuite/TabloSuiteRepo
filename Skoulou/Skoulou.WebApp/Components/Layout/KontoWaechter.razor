@@ -1,26 +1,20 @@
-@* Pflichtdialoge nach der Anmeldung: zuerst Startpasswort ändern, dann Nutzungsbedingungen akzeptieren. *@
+@* Pflichtschritt nach der Anmeldung: Startpasswort ändern. Die Nutzungsbedingungen werden wie bei eNOTE bei der
+   Registrierung akzeptiert; von der Schule angelegte Konten sehen keinen Dialog. *@
 @inject KontoService Konten
-@inject NavigationManager Nav
 
 @if (stand is { MussPasswortAendern: true })
 {
     <PasswortPflicht />
 }
-else if (stand is { MussAkzeptieren: true })
-{
-    <AgbDialog Rolle="@stand.Rolle" Version="@stand.Version" OnAkzeptiert="Akzeptiert" />
-}
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
 
-    private AgbStand? stand;
+    private KontoStand? stand;
 
     protected override async Task OnInitializedAsync()
     {
         if (AuthZustand is not null && (await AuthZustand).User.KontoId() is { } id)
-            stand = await Konten.AgbStandAsync(id);
+            stand = await Konten.KontoStandAsync(id);
     }
-
-    private void Akzeptiert() => stand = stand! with { MussAkzeptieren = false };
 }

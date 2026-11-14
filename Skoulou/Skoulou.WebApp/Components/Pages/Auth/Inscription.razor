@@ -41,10 +41,6 @@
         <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" @onsubmit="WeiterAsync" @onsubmit:preventDefault>
             <AntiforgeryToken />
             <input type="hidden" name="type" value="@(art == RegistrierungsArt.Eleve ? "eleve" : "direction")" />
-            @if (agb)
-            {
-                <input type="hidden" name="agb" value="oui" />
-            }
 
             <p class="pl-abschnitt-titel">Votre établissement</p>
             @if (art == RegistrierungsArt.Direction)
@@ -95,7 +91,17 @@
                 <PasswortFeld Label="Confirmation" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" Fehler="@F("confirmation")" />
             </div>
             <label class="sk-honigtopf" aria-hidden="true">Site web <input type="text" name="site" tabindex="-1" autocomplete="off" /></label>
-            <AsyncKnopf Text="Continuer" BusyText="Vérification…" Icon="arrow-right" CssClass="sk-btn-primaer sk-btn-breit" OnClick="WeiterAsync" />
+            <div class="sk-agb-zustimmung">
+                <label class="sk-ankreuzen">
+                    <input type="checkbox" name="agb" value="oui" checked="@agb" @onchange="AgbGeaendert" />
+                    <span>J'ai lu et j'accepte les <button type="button" class="sk-link-knopf sk-agb-link" @onclick="() => agbOffen = true">conditions d'utilisation</button> de SKOULOU.</span>
+                </label>
+                @if (F("agb") is { } agbFehler)
+                {
+                    <span class="sk-feld-fehler" role="alert"><Icon Name="alert" Groesse="14" /> @agbFehler</span>
+                }
+            </div>
+            <AsyncKnopf Text="Créer mon compte" BusyText="Création du compte…" Icon="check" CssClass="sk-btn-primaer sk-btn-breit" OnClick="WeiterAsync" />
         </form>
 
         <div class="sk-auth-links">
@@ -105,4 +111,4 @@
     }
 </div>
 
-<AgbInscriptionDialog Open="agbOffen" Rolle="@(art == RegistrierungsArt.Eleve ? Rollen.Schueler : Rollen.Direktor)" OnAkzeptiert="AkzeptiertAsync" OnAbbrechen="() => agbOffen = false" />
+<AgbInscriptionDialog Open="agbOffen" Rolle="@(art == RegistrierungsArt.Eleve ? Rollen.Schueler : Rollen.Direktor)" OnAkzeptiert="Akzeptiert" OnSchliessen="() => agbOffen = false" />

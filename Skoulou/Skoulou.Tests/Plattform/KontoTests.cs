@@ -11,31 +11,26 @@ namespace Skoulou.Tests.Plattform;
 public class KontoTests
 {
     [Fact]
-    public async Task Bedingungen_akzeptieren_schaltet_Zugriff_frei_und_protokolliert()
+    public async Task Von_der_Schule_angelegte_Konten_brauchen_keine_eigene_Zustimmung()
     {
+        // E7b-Zusatz 6 (wie eNOTE): Zustimmung bei der Registrierung; Konten der Schule fallen darunter, auch nach einer neuen Version.
         await using var u = new TestUmgebung();
         await u.SeedAsync();
         var schule = await u.SchuleAsync("A");
         var lehrer = await u.KontoAsync("prof.a", Rollen.Lehrer, schule.Id, agbAkzeptiert: false);
         var konten = u.Hole<KontoService>();
 
-        var stand = await konten.AgbStandAsync(lehrer.Id);
-        Assert.True(stand.MussAkzeptieren);
-        Assert.Equal(Rollen.Lehrer, stand.Rolle);
-        await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Hole<Zugriff>().PruefeAsync(lehrer.Id, Faehigkeit.NotenErfassen));
-
-        await konten.AgbAkzeptierenAsync(lehrer.Id);
-        await konten.AgbAkzeptierenAsync(lehrer.Id); // zweites Mal ändert nichts
-        Assert.False((await konten.AgbStandAsync(lehrer.Id)).MussAkzeptieren);
+        var stand = await konten.KontoStandAsync(lehrer.Id);
+        Assert.Equal((Rollen.Lehrer, false), (stand.Rolle, stand.MussPasswortAendern));
         await u.Hole<Zugriff>().PruefeAsync(lehrer.Id, Faehigkeit.NotenErfassen);
 
-        await using var db = await u.Db.CreateDbContextAsync();
-        Assert.Equal(1, await db.AuditEintraege.CountAsync(a => a.Aktion == AuditAktionen.AgbAkzeptiert && a.AkteurId == lehrer.Id));
-
-        // Neue Version → erneute Zustimmung nötig
-        (await db.PlattformEinstellungen.SingleAsync()).AgbVersion = "2027-01-01";
-        await db.SaveChangesAsync();
-        Assert.True((await konten.AgbStandAsync(lehrer.Id)).MussAkzeptieren);
+        await using (var db = await u.Db.CreateDbContextAsync())
+        {
+            (await db.PlattformEinstellungen.SingleAsync()).AgbVersion = "2027-01-01";
+            await db.SaveChangesAsync();
+        }
+        await u.Hole<Zugriff>().PruefeAsync(lehrer.Id, Faehigkeit.NotenErfassen);
+        Assert.Equal(new KontoStand(string.Empty, false), await konten.KontoStandAsync(Guid.NewGuid()));
     }
 
     [Fact]
@@ -63,7 +58,7 @@ public class KontoTests
             await db.SaveChangesAsync();
         }
         var konten = u.Hole<KontoService>();
-        Assert.True((await konten.AgbStandAsync(konto.Id)).MussPasswortAendern);
+        Assert.True((await konten.KontoStandAsync(konto.Id)).MussPasswortAendern);
         Assert.Equal(PasswortService.MeldungAktuellFalsch, await konten.PruefePasswortWechselAsync(konto.Id, "falsch1", "neues1x", "neues1x"));
         Assert.Equal(PasswortService.MeldungBestaetigung, await konten.PruefePasswortWechselAsync(konto.Id, TestUmgebung.Passwort, "neues1x", "neues2x"));
         Assert.Null(await konten.PruefePasswortWechselAsync(konto.Id, TestUmgebung.Passwort, "neues1x", "neues1x"));

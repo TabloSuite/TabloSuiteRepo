@@ -1,11 +1,12 @@
-@* Nutzungsbedingungen vor der Registrierung: Abschnitt der gewählten Rolle + gemeinsame Regeln. *@
+@* Nutzungsbedingungen aus dem Registrierungsformular (Link am Kästchen, wie eNOTE): Abschnitt der gewählten Rolle +
+   gemeinsame Regeln; « J'accepte » setzt das Kästchen. *@
 
-<ModalDialog Open="Open" Title="Conditions d'utilisation" Oberzeile="Dernière étape" Schliessbar="false" Breite="sk-modal-lg">
+<ModalDialog Open="Open" Title="Conditions d'utilisation" Oberzeile="SKOULOU" Breite="sk-modal-lg" OnClose="OnSchliessen">
     <ChildContent>
         <div class="sk-agb-kopf">
             <div>
-                <strong>Validez les règles de votre espace</strong>
-                <p>Lisez les conditions liées à votre rôle (@Rollen.Bezeichnung(Rolle)) et confirmez pour créer votre compte.</p>
+                <strong>Les règles de votre espace</strong>
+                <p>Lisez les conditions liées à votre rôle (@Rollen.Bezeichnung(Rolle)). En cochant la case du formulaire, vous les acceptez pour votre compte@(Rolle == Rollen.Direktor ? " et pour les comptes que votre établissement créera" : "").</p>
             </div>
         </div>
         <div class="sk-agb-text">
@@ -15,8 +16,8 @@
         </div>
     </ChildContent>
     <Footer>
-        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnAbbrechen">Annuler l'inscription</button>
-        <AsyncKnopf Text="J'accepte et je poursuis" BusyText="Création du compte…" Icon="check" CssClass="sk-btn-primaer" OnClick="OnAkzeptiert" />
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnSchliessen">Fermer</button>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnAkzeptiert"><Icon Name="check" Groesse="18" /> <span>J'accepte</span></button>
     </Footer>
 </ModalDialog>
 
@@ -24,5 +25,5 @@
     [Parameter] public bool Open { get; set; }
     [Parameter] public string Rolle { get; set; } = Rollen.Direktor;
     [Parameter] public EventCallback OnAkzeptiert { get; set; }
-    [Parameter] public EventCallback OnAbbrechen { get; set; }
+    [Parameter] public EventCallback OnSchliessen { get; set; }
 }

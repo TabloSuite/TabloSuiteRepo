@@ -16,18 +16,18 @@ public sealed record ProfilDaten(
 /// <summary>Bearbeitbare Profilfelder.</summary>
 public sealed record ProfilEingabe(string Vorname, string Nachname, string? Telefon, Geschlecht Geschlecht);
 
-/// <summary>Stand der Nutzungsbedingungen für ein Konto.</summary>
-public sealed record AgbStand(bool MussAkzeptieren, string Version, string Rolle, bool MussPasswortAendern);
+/// <summary>Pflichtschritt nach der Anmeldung (nur noch das Startpasswort; die Bedingungen werden bei der Registrierung akzeptiert).</summary>
+public sealed record KontoStand(string Rolle, bool MussPasswortAendern);
 
 /// <summary>
-/// Kontodienste für die Oberfläche (Blazor): Profil, Nutzungsbedingungen, Vorabprüfung des Passwortwechsels.
+/// Kontodienste für die Oberfläche (Blazor): Profil, Pflichtschritt nach der Anmeldung, Vorabprüfung des Passwortwechsels.
+/// Nutzungsbedingungen wie eNOTE: wer sich registriert, akzeptiert sie im Formular (Version + Zeit gespeichert);
+/// von der Schule bzw. Plattform angelegte Konten fallen unter diese Zustimmung und sehen keinen Dialog.
 /// Nutzt nur die DbContext-Factory (kein UserManager im Circuit).
 /// </summary>
 public sealed class KontoService(
     IDbContextFactory<SkoulouDbContext> dbFactory,
-    IPasswordHasher<Konto> hasher,
-    AuditService audit,
-    TimeProvider zeit)
+    IPasswordHasher<Konto> hasher)
 {
     public async Task<ProfilDaten> LadeProfilAsync(Guid kontoId, CancellationToken ct = default)
     {
@@ -75,28 +75,13 @@ public sealed class KontoService(
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Muss das Konto die Bedingungen (neu) akzeptieren bzw. das Startpasswort ändern?</summary>
-    public async Task<AgbStand> AgbStandAsync(Guid kontoId, CancellationToken ct = default)
+    /// <summary>Muss das Konto zuerst das Startpasswort ändern?</summary>
+    public async Task<KontoStand> KontoStandAsync(Guid kontoId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var version = await db.PlattformEinstellungen.AsNoTracking().Where(p => p.Id == PlattformEinstellung.EinzigeId).Select(p => p.AgbVersion).FirstOrDefaultAsync(ct) ?? string.Empty;
         var k = await db.Users.AsNoTracking().Where(x => x.Id == kontoId)
-            .Select(x => new { x.AgbVersion, x.Rolle, x.MussPasswortAendern }).FirstOrDefaultAsync(ct);
-        if (k is null) return new AgbStand(false, version, string.Empty, false);
-        return new AgbStand(!string.IsNullOrEmpty(version) && k.AgbVersion != version, version, k.Rolle, k.MussPasswortAendern);
-    }
-
-    /// <summary>Speichert die Zustimmung zur aktuellen Version (mit Audit).</summary>
-    public async Task AgbAkzeptierenAsync(Guid kontoId, CancellationToken ct = default)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var version = await db.PlattformEinstellungen.Where(p => p.Id == PlattformEinstellung.EinzigeId).Select(p => p.AgbVersion).FirstOrDefaultAsync(ct) ?? string.Empty;
-        var konto = await db.Users.FirstOrDefaultAsync(k => k.Id == kontoId, ct) ?? throw new KeinZugriffFehler("Votre compte est introuvable.");
-        if (konto.AgbVersion == version) return;
-        konto.AgbVersion = version;
-        konto.AgbAkzeptiertAmUtc = zeit.GetUtcNow().UtcDateTime;
-        audit.Erfasse(db, konto.Id, konto.SchuleId, AuditAktionen.AgbAkzeptiert, nameof(Konto), konto.Id, $"Conditions d'utilisation acceptées (version {version}).");
-        await db.SaveChangesAsync(ct);
+            .Select(x => new KontoStand(x.Rolle, x.MussPasswortAendern)).FirstOrDefaultAsync(ct);
+        return k ?? new KontoStand(string.Empty, false);
     }
 
     /// <summary>Vorabprüfung eines Passwortwechsels (Meldung am Feld), bevor das Formular gesendet wird.</summary>

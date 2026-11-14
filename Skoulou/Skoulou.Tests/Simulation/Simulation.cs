@@ -38,11 +38,11 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
 
     private readonly ConcurrentDictionary<Guid, byte> angemeldet = new();
 
-    /// <summary>Erste Anmeldung eines Kontos: « J'accepte et je continue » (Nutzungsbedingungen), einmal je Konto.</summary>
+    /// <summary>Erste Anmeldung eines Kontos: Pflichtschritt prüfen (seit E7b kein Bedingungsdialog mehr), einmal je Konto.</summary>
     private async Task ErsteAnmeldungAsync(Guid konto)
     {
         if (!angemeldet.TryAdd(konto, 0)) return;
-        await d.Hole<KontoService>().AgbAkzeptierenAsync(konto);
+        await d.Hole<KontoService>().KontoStandAsync(konto);
     }
 
     public void Zaehle(string was, int anzahl = 1) => Zaehler.AddOrUpdate(was, anzahl, (_, alt) => alt + anzahl);

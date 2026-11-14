@@ -8,8 +8,8 @@ using Skoulou.WebApp.Services.Plattform;
 namespace Skoulou.WebApp.Components.Pages.Auth;
 
 /// <summary>
-/// Registrierung « Direction » oder « Élève »: Prüfung in Blazor (Meldung am Feld), dann Nutzungsbedingungen,
-/// dann klassisches Absenden an /auth/inscription/envoyer (Antiforgery, Rate-Limit, Honeypot).
+/// Registrierung « Direction » oder « Élève »: Prüfung in Blazor (Meldung am Feld), Zustimmung zu den Nutzungsbedingungen
+/// per Kästchen im Formular (wie eNOTE), dann klassisches Absenden an /auth/inscription/envoyer (Antiforgery, Rate-Limit, Honeypot).
 /// </summary>
 public partial class Inscription
 {
@@ -72,15 +72,19 @@ public partial class Inscription
         fehler = fehlerFeld = null;
     }
 
-    /// <summary>« Continuer »: alles prüfen (ohne Anlage), dann die Nutzungsbedingungen zeigen.</summary>
+    /// <summary>
+    /// « Créer mon compte »: alles prüfen (ohne Anlage), die Zustimmung zu den Bedingungen verlangen (Kästchen im
+    /// Formular wie bei eNOTE) und das Formular klassisch absenden.
+    /// </summary>
     private async Task WeiterAsync()
     {
         if (agbOffen) return;
         try
         {
-            await Registrierung.PruefeAsync(Eingabe(false));
+            await Registrierung.PruefeAsync(Eingabe(agb));
+            if (!agb) throw new FachFehler(RegistrierungService.MeldungAgb, "agb");
             fehler = fehlerFeld = meldung = null;
-            agbOffen = true;
+            await JS.InvokeVoidAsync("skFormularSenden", formId);
         }
         catch (FachFehler f)
         {
@@ -89,12 +93,17 @@ public partial class Inscription
         }
     }
 
-    /// <summary>Bedingungen akzeptiert: Feld « agb » setzen und das Formular klassisch absenden.</summary>
-    private async Task AkzeptiertAsync()
+    private void AgbGeaendert(ChangeEventArgs e)
+    {
+        agb = e.Value is true;
+        if (agb && fehlerFeld == "agb") fehler = fehlerFeld = null;
+    }
+
+    /// <summary>« J'accepte » im Fenster der Bedingungen: Kästchen setzen und Fenster schließen.</summary>
+    private void Akzeptiert()
     {
         agb = true;
-        StateHasChanged();
-        await Task.Yield(); // erst rendern (verstecktes Feld), dann absenden
-        await JS.InvokeVoidAsync("skFormularSenden", formId);
+        agbOffen = false;
+        if (fehlerFeld == "agb") fehler = fehlerFeld = null;
     }
 }
