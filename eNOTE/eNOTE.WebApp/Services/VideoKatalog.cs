@@ -33,13 +33,14 @@ public static class VideoKatalog
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
         // Für alle (12.11.2026: Lernvideos mit Sprecherin; ab 14.11.2026 nach und nach im v3-Stil ohne Sprecherin:
-        // Premiers pas + alle Employé-Videos (Paket A), Propriétaire (Paket B) – die übrigen folgen paketweise)
+        // Premiers pas + alle Employé-Videos (Paket A), Propriétaire (Paket B), Responsable + Administrateur (Paket C),
+        // Visite guidée + Werbevideo (Paket D))
         new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
             "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:14"),
         new("enote-visite-guidee.mp4", "La visite guidée",
-            "Toutes les fonctions d'eNOTE, où les trouver et comment s'en servir au quotidien.", Alle_, Alle, "5:10"),
+            "Qui voit quoi et où se trouve chaque fonction : accueil, caisse, clients présents, zone du propriétaire, responsable et administrateur.", Alle_, Alle, "5:32"),
         new(Werbung, "Pourquoi eNOTE ?",
-            "Ce que eNOTE change au quotidien pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "2:54"),
+            "En deux minutes : catalogue, caisse, Mobile Money, clients présents, clôture, finances et équipe, pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "2:03"),
 
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
             "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
