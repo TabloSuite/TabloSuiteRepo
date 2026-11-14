@@ -1,0 +1,25 @@
+@* Einmalige Anzeige eines neuen Startpassworts (Responsable angelegt, Passwort neu gesetzt). *@
+
+<ModalDialog Open="Zugang is not null" Title="Identifiants de connexion" Oberzeile="Accès à transmettre" Breite="sk-modal-md" SchliessenMitEscape="false" OnClose="OnClose">
+    <ChildContent>
+        @if (Zugang is not null)
+        {
+            <Hinweis Art="warn" Titel="Ce mot de passe ne sera plus affiché.">
+                Notez-le maintenant et remettez-le personnellement et confidentiellement. À la première connexion, la personne choisit son propre mot de passe.
+            </Hinweis>
+            <div class="pl-zugang">
+                <div><small class="sk-leise">Nom</small><br /><strong>@Zugang.Name</strong> · @Zugang.Rolle</div>
+                <div><small class="sk-leise">Identifiant</small><br /><code>@Zugang.Identifiant</code></div>
+                <div><small class="sk-leise">Mot de passe de départ</small><br /><code>@Zugang.Passwort</code></div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose"><Icon Name="check" Groesse="18" /> <span>J'ai noté et je transmettrai l'accès</span></button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public Skoulou.WebApp.Services.Organisation.Zugang? Zugang { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

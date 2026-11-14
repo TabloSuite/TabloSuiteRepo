@@ -1,0 +1,28 @@
+@* Nutzungsbedingungen vor der Registrierung: Abschnitt der gewählten Rolle + gemeinsame Regeln. *@
+
+<ModalDialog Open="Open" Title="Conditions d'utilisation" Oberzeile="Dernière étape" Schliessbar="false" Breite="sk-modal-lg">
+    <ChildContent>
+        <div class="sk-agb-kopf">
+            <div>
+                <strong>Validez les règles de votre espace</strong>
+                <p>Lisez les conditions liées à votre rôle (@Rollen.Bezeichnung(Rolle)) et confirmez pour créer votre compte.</p>
+            </div>
+        </div>
+        <div class="sk-agb-text">
+            <AgbAbschnittAnzeige Abschnitt="@AgbTexte.Fuer(Rolle)" Hervorgehoben="true" />
+            <AgbAbschnittAnzeige Abschnitt="@AgbTexte.Gemeinsam" />
+            <p class="sk-leise">Texte complet pour tous les rôles : <a href="/conditions" target="_blank" rel="noopener">conditions d'utilisation</a>.</p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnAbbrechen">Annuler l'inscription</button>
+        <AsyncKnopf Text="J'accepte et je poursuis" BusyText="Création du compte…" Icon="check" CssClass="sk-btn-primaer" OnClick="OnAkzeptiert" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Rolle { get; set; } = Rollen.Direktor;
+    [Parameter] public EventCallback OnAkzeptiert { get; set; }
+    [Parameter] public EventCallback OnAbbrechen { get; set; }
+}

@@ -1,4 +1,73 @@
 @page "/admin"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject PlattformUebersicht Uebersicht
 
-<RollenStart Untertitel="Administration de la plateforme SKOULOU." />
+<RollenStart Untertitel="Administration de la plateforme SKOULOU.">
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (z is not null)
+    {
+        <div class="pl-kennzahlen">
+            <KennzahlKachel Bezeichnung="Établissements actifs" Wert="@SkoulouKultur.Zahl(z.Schulen.Active)" Icon="school" Href="/admin/ecoles?filtre=active"
+                            Zusatz="@($"{z.Schulen.Suspendue} suspendu(s) · {z.Schulen.Refusee} refusé(s)")" />
+            <KennzahlKachel Bezeichnung="Établissements à valider" Wert="@z.Schulen.EnAttente.ToString()" Icon="clock" Haupt="@(z.Schulen.EnAttente > 0)"
+                            Href="/admin/ecoles?filtre=en-attente" Zusatz="@($"{z.NeueSchulen7Tage} nouveau(x) en 7 jours")" />
+            <KennzahlKachel Bezeichnung="Comptes" Wert="@SkoulouKultur.Zahl(z.KontenJeRolle.Sum(r => r.Anzahl))" Icon="users" Href="/admin/comptes"
+                            Zusatz="@($"{z.NeueKonten7Tage} créé(s) en 7 jours · {z.KontenGesperrt} bloqué(s)")" />
+            <KennzahlKachel Bezeichnung="Messages non lus" Wert="@z.NachrichtenUngelesen.ToString()" Icon="inbox" Href="/admin/messagerie" Haupt="@(z.NachrichtenUngelesen > 0)" />
+            <KennzahlKachel Bezeichnung="E-mails en échec" Wert="@z.MailsFehlgeschlagen.ToString()" Icon="mail"
+                            Zusatz="@(z.MailsWartend > 0 ? $"{z.MailsWartend} en nouvel essai" : "7 derniers jours")" />
+            <KennzahlKachel Bezeichnung="Erreurs (24 h)" Wert="@z.Fehler24h.ToString()" Icon="alert" Href="/admin/journal" />
+        </div>
+
+        <div class="pl-zweispaltig">
+            <Karte Titel="Établissements à valider" Icon="clock" Untertitel="Les plus anciennes demandes d'abord.">
+                <Aktionen><a class="sk-btn sk-btn-ghost sk-btn-klein" href="/admin/ecoles?filtre=en-attente">Tout voir <Icon Name="arrow-right" Groesse="14" /></a></Aktionen>
+                <ChildContent>
+                    @if (z.WartendeSchulen.Count == 0)
+                    {
+                        <Leerzustand Icon="check-circle" Titel="Aucune demande en attente" Text="Les nouvelles inscriptions d'établissements apparaîtront ici." />
+                    }
+                    @foreach (var s in z.WartendeSchulen)
+                    {
+                        <div class="pl-zeile">
+                            <span class="pl-zeile-icon warn"><Icon Name="school" Groesse="20" /></span>
+                            <div class="pl-zeile-haupt">
+                                <a class="pl-zeile-titel" href="/admin/ecoles?filtre=en-attente">@s.Name</a>
+                                <span class="pl-zeile-meta"><span>@s.Ort</span><span>@s.Direktor</span><span>inscrit le @Tag(s.ErstelltAmUtc)</span></span>
+                            </div>
+                        </div>
+                    }
+                </ChildContent>
+            </Karte>
+            <Karte Titel="Comptes par rôle" Icon="users">
+                <div class="sk-tabelle-rahmen">
+                    <table class="sk-tabelle">
+                        <tbody>
+                            @foreach (var (rolle, anzahl) in z.KontenJeRolle)
+                            {
+                                <tr>
+                                    <td><a href="/admin/comptes?filtre=@rolle">@Rollen.Bezeichnung(rolle)</a></td>
+                                    <td class="sk-zahl pl-rechts">@SkoulouKultur.Zahl(anzahl)</td>
+                                </tr>
+                            }
+                            @if (z.SchuelerAValider > 0)
+                            {
+                                <tr><td colspan="2"><small class="sk-leise">dont @z.SchuelerAValider élève(s) inscrit(s) en ligne en attente de leur école</small></td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </Karte>
+        </div>
+    }
+</RollenStart>
+
+@code {
+    private PlattformZahlen? z;
+
+    protected override async Task InitialisierenAsync() => z = await Uebersicht.ZahlenAsync(Ich.KontoId);
+}

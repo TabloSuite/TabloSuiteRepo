@@ -1,5 +1,106 @@
 @page "/admin/responsables"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject KontenVerwaltungService Konten
+@using Skoulou.WebApp.Components.Pages.Admin.KontenTeile
 
-<InVorbereitung Titel="Responsables" Icon="briefcase" Etappe="E2 – Plateforme"
-                Beschreibung="Responsables SKOULOU, les établissements qu'ils accompagnent et le versement de leurs parts." />
+<PageTitle>Responsables · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Responsables" Icon="briefcase" Untertitel="Les responsables SKOULOU accompagnent leurs écoles : suivi, facturation, messagerie. Ils ne peuvent rien supprimer ni bloquer.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => neu = true"><Icon Name="user-plus" Groesse="18" /> <span>Nouveau responsable</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <Liste T="ResponsableZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Nom, identifiant ou e-mail…"
+           LeerIcon="briefcase" LeerTitel="Aucun responsable" LeerText="Créez un responsable puis attribuez-lui des écoles.">
+        <Zeile Context="r">
+            <div class="pl-zeile">
+                <NamensKreis Name="@r.Name" Groesse="40" />
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@r.Name</span>
+                    <span class="pl-zeile-meta">
+                        <code>@r.Identifiant</code>
+                        @if (r.Email is not null)
+                        {
+                            <a href="mailto:@r.Email">@r.Email</a>
+                        }
+                    </span>
+                    <span class="pl-zeile-meta">
+                        <Icon Name="school" Groesse="14" />
+                        @(r.Schulen.Count == 0 ? "Aucune école attribuée" : string.Join(" · ", r.Schulen))
+                    </span>
+                </div>
+                <div class="pl-zeile-info">
+                    <StatusBadge Text="@($"{r.Schulen.Count} école(s)")" Art="info" />
+                    @if (r.Status == KontoStatus.Bloque)
+                    {
+                        <StatusBadge Text="Bloqué" Art="fehler" Icon="lock" />
+                    }
+                </div>
+                <div class="pl-zeile-aktionen">
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => schulenFuer = r"><Icon Name="school" Groesse="16" /> <span>Écoles</span></button>
+                    @if (r.Status == KontoStatus.Bloque)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => aktion = new(r.Id, r.Name, KontoAktionArt.Entsperren)">Débloquer</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => aktion = new(r.Id, r.Name, KontoAktionArt.Sperren)"><Icon Name="lock" Groesse="16" /> <span>Bloquer</span></button>
+                    }
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => aktion = new(r.Id, r.Name, KontoAktionArt.Passwort)"><Icon Name="key" Groesse="16" /> <span>Mot de passe</span></button>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<ResponsableNeuDialog Open="neu" OnClose="() => neu = false" OnAngelegt="AngelegtAsync" />
+<SchulenZuweisenDialog Responsable="schulenFuer" OnClose="() => schulenFuer = null" OnGespeichert="SchulenGespeichertAsync" />
+<KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="ErledigtAsync" />
+<ZugangDialog Zugang="zugang" OnClose="() => zugang = null" />
+
+@code {
+    private Liste<ResponsableZeile>? liste;
+    private bool neu;
+    private ResponsableZeile? schulenFuer;
+    private KontoAktionAnfrage? aktion;
+    private Skoulou.WebApp.Services.Organisation.Zugang? zugang;
+
+    private Task<(IReadOnlyList<ResponsableZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Konten.ResponsablesAsync(Ich.KontoId, a.Suche, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task NeuLadenAsync()
+    {
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task AngelegtAsync(Skoulou.WebApp.Services.Organisation.Zugang z)
+    {
+        neu = false;
+        zugang = z;
+        Toast.ZeigeErfolg("Responsable créé. Un e-mail de bienvenue lui a été envoyé (sans mot de passe).");
+        await NeuLadenAsync();
+    }
+
+    private async Task SchulenGespeichertAsync()
+    {
+        schulenFuer = null;
+        Toast.ZeigeErfolg("Écoles enregistrées.");
+        await NeuLadenAsync();
+    }
+
+    private async Task ErledigtAsync((string Meldung, Skoulou.WebApp.Services.Organisation.Zugang? Zugang) e)
+    {
+        aktion = null;
+        zugang = e.Zugang;
+        Toast.ZeigeErfolg(e.Meldung);
+        await NeuLadenAsync();
+    }
+}

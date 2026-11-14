@@ -1,0 +1,96 @@
+@* Neue Nachricht: SuperAdmin an jede Adresse (Schule optional); Responsable an die Direktion einer seiner Schulen. *@
+@inject MessagerieService Messagerie
+
+<ModalDialog Open="Open" Title="Nouveau message" Oberzeile="Messagerie" Breite="sk-modal-lg" ErrorMessage="@(feld is null ? fehler : null)" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <AuswahlFeld T="Guid?" Label="@(IstAdmin ? "École (facultatif)" : "École")" Wert="schuleId" WertChanged="SchuleGewaehltAsync" Optionen="schulen"
+                             Platzhalter="Choisir une école" Pflicht="@(!IstAdmin)" Fehler="@FeldFehler("ecole")" />
+                @if (IstAdmin)
+                {
+                    <TextFeld Label="Destinataire (e-mail)" Typ="email" @bind-Wert="an" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("destinataire")" />
+                }
+                else
+                {
+                    <AuswahlFeld T="string" Label="Destinataire" @bind-Wert="an" Optionen="empfaenger" Platzhalter="@(schuleId is null ? "Choisissez d'abord l'école" : "Direction de l'école")"
+                                 Pflicht="true" Deaktiviert="@(schuleId is null)" Fehler="@FeldFehler("destinataire")" />
+                }
+            </div>
+            @if (IstAdmin && empfaenger.Count > 0)
+            {
+                <div class="sk-chips">
+                    @foreach (var e in empfaenger)
+                    {
+                        <button type="button" class="sk-chip" @onclick="() => an = e.Wert">@e.Label</button>
+                    }
+                </div>
+            }
+            <TextFeld Label="Objet" @bind-Wert="betreff" MaxLaenge="250" Pflicht="true" Fehler="@FeldFehler("objet")" />
+            <TextFeld Label="Message" @bind-Wert="text" Zeilen="8" MaxLaenge="10000" Pflicht="true" Fehler="@FeldFehler("message")"
+                      Hinweis="Envoyé depuis contact@tablosuite.com ; « [SKOULOU] » est ajouté à l'objet." />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Envoyer" BusyText="Envoi…" Icon="send" CssClass="sk-btn-primaer" OnClick="SendenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public bool IstAdmin { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGesendet { get; set; }
+
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+    private IReadOnlyList<AuswahlOption<string>> empfaenger = [];
+    private Guid? schuleId;
+    private string? an, betreff, text, fehler, feld;
+    private bool warOffen;
+
+    private string? FeldFehler(string name) => feld == name ? fehler : null;
+
+    private async Task<Guid?> IchAsync() => AuthZustand is null ? null : (await AuthZustand).User.KontoId();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            schuleId = null;
+            an = betreff = text = fehler = feld = null;
+            empfaenger = [];
+            if (await IchAsync() is { } ich)
+                schulen = (await Messagerie.SchulenAsync(ich)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort)).ToList();
+        }
+        warOffen = Open;
+    }
+
+    private async Task SchuleGewaehltAsync(Guid? id)
+    {
+        schuleId = id;
+        if (!IstAdmin) an = null;
+        empfaenger = [];
+        if (id is { } s && await IchAsync() is { } ich)
+            empfaenger = (await Messagerie.EmpfaengerAsync(ich, s)).Select(e => new AuswahlOption<string>(e.Email, $"{e.Name} ({Rollen.Bezeichnung(e.Rolle)})", e.Email)).ToList();
+    }
+
+    private async Task SendenAsync()
+    {
+        if (await IchAsync() is not { } ich) return;
+        try
+        {
+            await Messagerie.NeuAsync(ich, an, betreff, text, schuleId);
+            await OnGesendet.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (fehler, feld) = (f.Message, f.Feld);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            (fehler, feld) = (k.Message, null);
+        }
+    }
+}

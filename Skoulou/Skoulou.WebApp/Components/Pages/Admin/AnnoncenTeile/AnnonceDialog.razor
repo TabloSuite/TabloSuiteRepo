@@ -1,0 +1,115 @@
+@* Annonce anlegen/bearbeiten: Titel, Text, Stufe, Zielgruppen (inkl. Visiteurs), optional Schule, Zeitraum (Tage, Zeitzone Togo). *@
+@inject AnkuendigungService Annonces
+@inject SchulVerwaltungService Schulen
+@inject TimeProvider Uhr
+
+<ModalDialog Open="Offen" Title="@(Id is null ? "Nouvelle annonce" : "Modifier l'annonce")" Oberzeile="Annonces" Breite="sk-modal-lg"
+             ErrorMessage="@(feld is null ? fehler : null)" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="200" Pflicht="true" Fehler="@FeldFehler("titre")" />
+            <TextFeld Label="Message" @bind-Wert="text" Zeilen="4" MaxLaenge="2000" Pflicht="true" Fehler="@FeldFehler("texte")" />
+            <RadioGruppe T="AnkuendigungsStufe" Label="Niveau" @bind-Wert="stufe" Optionen="stufen" />
+            <Feld Label="Public" Pflicht="true" Fehler="@FeldFehler("public")">
+                <div class="pl-zielgruppen">
+                    @foreach (var (wert, beschriftung) in AnkuendigungService.Zielgruppen)
+                    {
+                        <label class="sk-ankreuzen">
+                            <input type="checkbox" checked="@ziel.HasFlag(wert)" @onchange="e => Umschalten(wert, e.Value is true)" />
+                            <span>@beschriftung</span>
+                        </label>
+                    }
+                </div>
+            </Feld>
+            <AuswahlFeld T="Guid?" Label="Établissement (facultatif)" @bind-Wert="schuleId" Optionen="schulen" Platzhalter="Toutes les écoles"
+                         Hinweis="Limitée à une école, l'annonce n'est visible que par ses comptes." Fehler="@FeldFehler("ecole")" />
+            <div class="sk-raster-2">
+                <DatumFeld Label="Afficher à partir du" @bind-Wert="von" Pflicht="true" />
+                <DatumFeld Label="Jusqu'au (inclus)" @bind-Wert="bis" Min="von" Pflicht="true" Fehler="@FeldFehler("fin")" />
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@(Id is null ? "Publier" : "Enregistrer")" BusyText="Enregistrement…" Icon="megaphone" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public bool Offen { get; set; }
+    [Parameter] public Guid? Id { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<AnkuendigungsStufe>> stufen =
+        [new(AnkuendigungsStufe.Info, "Information"), new(AnkuendigungsStufe.Wichtig, "Important", "mise en avant")];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+    private string? titel, text, fehler, feld;
+    private AnkuendigungsStufe stufe;
+    private ZielRollen ziel;
+    private Guid? schuleId;
+    private DateOnly? von, bis;
+    private bool warOffen;
+
+    private string? FeldFehler(string name) => feld == name ? fehler : null;
+
+    private void Umschalten(ZielRollen wert, bool an) => ziel = an ? ziel | wert : ziel & ~wert;
+
+    private async Task<Guid?> IchAsync() => AuthZustand is null ? null : (await AuthZustand).User.KontoId();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Offen && !warOffen && await IchAsync() is { } ich)
+        {
+            fehler = feld = null;
+            var zeit = new SchulZeit(Uhr);
+            if (schulen.Count == 0)
+            {
+                var (liste, _) = await Schulen.SucheAsync(ich, null, SchulVerwaltungService.FilterActive, 0, 200);
+                schulen = [new AuswahlOption<Guid?>(null, "Toutes les écoles"), .. liste.Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort))];
+            }
+            if (Id is { } id)
+            {
+                var a = await Annonces.LadenAsync(ich, id);
+                (titel, text, stufe, ziel, schuleId) = (a.Titel, a.Text, a.Stufe, a.Zielrollen, a.SchuleId);
+                von = zeit.TagVon(a.StartUtc);
+                bis = zeit.TagVon(a.EndeUtc.AddSeconds(-1));
+            }
+            else
+            {
+                (titel, text, stufe, ziel, schuleId) = (null, null, AnkuendigungsStufe.Info, ZielRollen.Alle & ~ZielRollen.Visiteurs, null);
+                von = zeit.Heute;
+                bis = zeit.Heute.AddDays(7);
+            }
+        }
+        warOffen = Offen;
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (await IchAsync() is not { } ich) return;
+        if (von is null || bis is null)
+        {
+            (fehler, feld) = ("Indiquez la période d'affichage.", "fin");
+            return;
+        }
+        var zeit = new SchulZeit(Uhr);
+        // Neue Annonce ab heute: sofort sichtbar (nicht erst ab Mitternacht).
+        var start = Id is null && von == zeit.Heute ? zeit.JetztUtc : zeit.TagesbeginnUtc(von.Value);
+        try
+        {
+            await Annonces.SpeichernAsync(ich, Id, new AnnonceEingabe(titel, text, stufe, ziel, schuleId, start, zeit.TagesendeUtc(bis.Value)));
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (fehler, feld) = (f.Message, f.Feld);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            (fehler, feld) = (k.Message, null);
+        }
+    }
+}

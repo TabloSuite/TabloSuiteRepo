@@ -1,5 +1,104 @@
 @page "/admin/annonces"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject AnkuendigungService Dienst
+@using Skoulou.WebApp.Components.Pages.Admin.AnnoncenTeile
 
-<InVorbereitung Titel="Annonces" Icon="megaphone" Etappe="E2 – Plateforme"
-                Beschreibung="Annonces dans l'application, ciblées par rôle et par établissement, avec date de début et de fin." />
+<PageTitle>Annonces · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Annonces" Icon="megaphone" Untertitel="Messages affichés en haut de l'application – par rôle, par école, et aussi sur les pages publiques (visiteurs).">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Bearbeiten(null)"><Icon Name="plus" Groesse="18" /> <span>Nouvelle annonce</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <Liste T="AnnonceZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@AnkuendigungService.FilterAktiv" SuchPlatzhalter="Titre…"
+           LeerIcon="megaphone" LeerTitel="Aucune annonce" LeerText="Publiez une annonce pour informer les écoles, les familles ou les visiteurs.">
+        <Zeile Context="a">
+            @{ var jetzt = Uhr.GetUtcNow().UtcDateTime; }
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon @(a.Stufe == AnkuendigungsStufe.Wichtig ? "warn" : "info")"><Icon Name="megaphone" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <button type="button" class="pl-zeile-titel" @onclick="() => Bearbeiten(a.Id)">@a.Titel</button>
+                    <span class="pl-zeile-meta">
+                        <span>@AnkuendigungService.ZielText(a.Zielrollen)</span>
+                        @if (a.Schule is not null)
+                        {
+                            <span><Icon Name="school" Groesse="14" /> @a.Schule</span>
+                        }
+                        <span>du @Tag(a.StartUtc) au @Tag(a.EndeUtc.AddSeconds(-1))</span>
+                    </span>
+                </div>
+                <div class="pl-zeile-info">
+                    @if (a.Stufe == AnkuendigungsStufe.Wichtig)
+                    {
+                        <StatusBadge Text="Important" Art="warn" />
+                    }
+                    @if (a.EndeUtc <= jetzt)
+                    {
+                        <StatusBadge Text="Expirée" Art="neutral" />
+                    }
+                    else if (a.StartUtc > jetzt)
+                    {
+                        <StatusBadge Text="Planifiée" Art="info" Icon="clock" />
+                    }
+                    else
+                    {
+                        <StatusBadge Text="Visible" Art="erfolg" />
+                    }
+                </div>
+                <div class="pl-zeile-aktionen">
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Bearbeiten(a.Id)"><Icon Name="edit" Groesse="16" /> <span>Modifier</span></button>
+                    <button type="button" class="sk-icon-knopf" aria-label="Supprimer" title="Supprimer" @onclick="() => loeschen = a"><Icon Name="trash" Groesse="18" /></button>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<AnnonceDialog Offen="dialog" Id="bearbeitet" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<BestaetigungsDialog Open="loeschen is not null" Titel="Supprimer l'annonce ?" Text="@($"« {loeschen?.Titel} » disparaît immédiatement de toutes les pages.")"
+                     BestaetigenText="Supprimer" Gefahr="true" OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+@code {
+    private Liste<AnnonceZeile>? liste;
+    private bool dialog;
+    private Guid? bearbeitet;
+    private AnnonceZeile? loeschen;
+
+    private static readonly IReadOnlyList<FilterChip> Chips =
+    [
+        new(null, "Toutes"), new(AnkuendigungService.FilterAktiv, "Visibles"), new(AnkuendigungService.FilterGeplant, "Planifiées"),
+        new(AnkuendigungService.FilterAbgelaufen, "Expirées")
+    ];
+
+    private Task<(IReadOnlyList<AnnonceZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Dienst.SucheAsync(Ich.KontoId, a.Suche, a.Filter, a.Ueberspringen, a.Anzahl, ct);
+
+    private void Bearbeiten(Guid? id)
+    {
+        bearbeitet = id;
+        dialog = true;
+    }
+
+    private async Task GespeichertAsync()
+    {
+        dialog = false;
+        Toast.ZeigeErfolg(bearbeitet is null ? "Annonce publiée." : "Annonce enregistrée.");
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } a) return;
+        if (await AusfuehrenAsync(() => Dienst.LoeschenAsync(Ich.KontoId, a.Id), "Annonce supprimée.") && liste is not null)
+            await liste.NeuLadenAsync();
+        loeschen = null;
+    }
+}

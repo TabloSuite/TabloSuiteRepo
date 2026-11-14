@@ -1,5 +1,114 @@
 @page "/admin/comptes"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject KontenVerwaltungService Konten
+@using Skoulou.WebApp.Components.Pages.Admin.KontenTeile
 
-<InVorbereitung Titel="Comptes" Icon="users" Etappe="E2 – Plateforme"
-                Beschreibung="Rechercher tous les comptes, créer des directeurs et des responsables, bloquer ou débloquer un compte." />
+<PageTitle>Comptes · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Comptes" Icon="users" Untertitel="Tous les comptes de la plateforme : rechercher, bloquer, débloquer, nouveau mot de passe de départ." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zaehler is not null)
+{
+    <Liste T="KontoZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@Filtre" SuchPlatzhalter="Nom, identifiant ou e-mail…"
+           LeerIcon="users" LeerTitel="Aucun compte trouvé">
+        <Zeile Context="k">
+            <div class="pl-zeile">
+                <NamensKreis Name="@k.Name" Groesse="40" />
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@k.Name</span>
+                    <span class="pl-zeile-meta">
+                        <code>@k.Identifiant</code>
+                        @if (k.Email is not null)
+                        {
+                            <span>@k.Email</span>
+                        }
+                        @if (k.Schule is not null)
+                        {
+                            <span><Icon Name="school" Groesse="14" /> @k.Schule</span>
+                        }
+                        <span>@(k.LetzteAnmeldungUtc is { } l ? $"dernière connexion le {Tag(l)}" : "jamais connecté")</span>
+                    </span>
+                </div>
+                <div class="pl-zeile-info">
+                    <StatusBadge Text="@Rollen.Bezeichnung(k.Rolle)" Art="info" />
+                    @switch (k.Status)
+                    {
+                        case KontoStatus.EnAttente: <StatusBadge Text="En attente de validation" Art="warn" Icon="clock" /> break;
+                        case KontoStatus.Bloque: <StatusBadge Text="Bloqué" Art="fehler" Icon="lock" /> break;
+                        case KontoStatus.Archive: <StatusBadge Text="Archivé" Art="neutral" /> break;
+                    }
+                    @if (k.Verriegelt)
+                    {
+                        <StatusBadge Text="Verrouillé 15 min" Art="warn" />
+                    }
+                    @if (k.SelbstRegistriert)
+                    {
+                        <small>inscription en ligne</small>
+                    }
+                </div>
+                <div class="pl-zeile-aktionen">
+                    @if (k.Id != Ich.KontoId && k.Rolle != Rollen.SuperAdmin && k.Status != KontoStatus.Archive)
+                    {
+                        @if (k.Status == KontoStatus.Bloque)
+                        {
+                            <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => aktion = new(k.Id, k.Name, KontoAktionArt.Entsperren)"><Icon Name="check" Groesse="16" /> <span>Débloquer</span></button>
+                        }
+                        else
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => aktion = new(k.Id, k.Name, KontoAktionArt.Sperren)"><Icon Name="lock" Groesse="16" /> <span>Bloquer</span></button>
+                        }
+                    }
+                    @if (k.Id != Ich.KontoId && k.Status != KontoStatus.Archive)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => aktion = new(k.Id, k.Name, KontoAktionArt.Passwort)"><Icon Name="key" Groesse="16" /> <span>Mot de passe</span></button>
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="ErledigtAsync" />
+<ZugangDialog Zugang="zugang" OnClose="() => zugang = null" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "filtre")] public string? Filtre { get; set; }
+
+    private Liste<KontoZeile>? liste;
+    private IReadOnlyDictionary<string, int>? zaehler;
+    private KontoAktionAnfrage? aktion;
+    private Skoulou.WebApp.Services.Organisation.Zugang? zugang;
+
+    private IReadOnlyList<FilterChip> Chips
+    {
+        get
+        {
+            if (zaehler is null) return [];
+            int Z(string s) => zaehler.TryGetValue(s, out var n) ? n : 0;
+            var chips = new List<FilterChip> { new(null, "Tous") };
+            chips.AddRange(Rollen.Alle.Where(r => Z(r) > 0).Select(r => new FilterChip(r, Rollen.Bezeichnung(r), Z(r))));
+            chips.Add(new(KontenVerwaltungService.FilterWartend, "En attente", Z(KontenVerwaltungService.FilterWartend)));
+            chips.Add(new(KontenVerwaltungService.FilterGesperrt, "Bloqués", Z(KontenVerwaltungService.FilterGesperrt)));
+            return chips;
+        }
+    }
+
+    protected override async Task InitialisierenAsync() => zaehler = await Konten.ZaehlerAsync(Ich.KontoId);
+
+    private Task<(IReadOnlyList<KontoZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Konten.SucheAsync(Ich.KontoId, a.Suche, a.Filter, null, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task ErledigtAsync((string Meldung, Skoulou.WebApp.Services.Organisation.Zugang? Zugang) e)
+    {
+        aktion = null;
+        zugang = e.Zugang;
+        Toast.ZeigeErfolg(e.Meldung);
+        await AusfuehrenAsync(async () => zaehler = await Konten.ZaehlerAsync(Ich.KontoId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

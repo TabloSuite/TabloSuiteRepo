@@ -1,5 +1,17 @@
 @page "/admin/messagerie"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@using Skoulou.WebApp.Components.Pages.Admin.PostfachTeile
 
-<InVorbereitung Titel="Messagerie" Icon="inbox" Etappe="E2 – Plateforme"
-                Beschreibung="E-mails reçus sur l'adresse de contact et réponses, avec attribution automatique à l'établissement." />
+<PageTitle>Messagerie · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Messagerie" Icon="inbox" Untertitel="E-mails reçus sur contact@tablosuite.com, messages du formulaire de contact et réponses envoyées.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => neu = true"><Icon Name="send" Groesse="18" /> <span>Nouveau message</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+<PostfachAnsicht IstAdmin="true" @bind-Neu="neu" />
+
+@code {
+    private bool neu;
+}

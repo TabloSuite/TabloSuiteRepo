@@ -1,5 +1,113 @@
 @page "/admin/ecoles"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject SchulVerwaltungService Schulen
+@using Skoulou.WebApp.Components.Pages.Admin.SchulTeile
 
-<InVorbereitung Titel="Écoles" Icon="school" Etappe="E2 – Plateforme"
-                Beschreibung="Valider ou refuser les nouveaux établissements, suspendre un établissement avec motif, fixer son tarif et son responsable SKOULOU." />
+<PageTitle>Écoles · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Écoles" Icon="school" Untertitel="Valider les nouvelles inscriptions, suspendre ou réactiver un établissement, attribuer un responsable SKOULOU." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zaehler is not null)
+{
+    <Liste T="SchulZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@Filtre" SuchPlatzhalter="Nom, ville ou pays…"
+           LeerIcon="school" LeerTitel="Aucun établissement" LeerText="Les établissements inscrits en ligne apparaissent ici pour validation.">
+        <Zeile Context="s">
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon @(s.Status switch { SchulStatus.EnAttente => "warn", SchulStatus.Suspendue => "fehler", SchulStatus.Active => "info", _ => null })">
+                    <Icon Name="school" Groesse="20" />
+                </span>
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@s.Name</span>
+                    <span class="pl-zeile-meta">
+                        <span><Icon Name="map-pin" Groesse="14" /> @s.Ort, @s.Land</span>
+                        @if (s.Direktor is not null)
+                        {
+                            <span><Icon Name="user" Groesse="14" /> @s.Direktor</span>
+                        }
+                        @if (s.DirektorEmail is not null)
+                        {
+                            <a href="mailto:@s.DirektorEmail">@s.DirektorEmail</a>
+                        }
+                        <span>inscrit le @Tag(s.ErstelltAmUtc)</span>
+                    </span>
+                    @if (s.StatusGrund is not null)
+                    {
+                        <span class="pl-grund">Motif : @s.StatusGrund</span>
+                    }
+                </div>
+                <div class="pl-zeile-info">
+                    <StatusBadge Text="@SchulVerwaltungService.StatusText(s.Status)" Art="@SchulVerwaltungService.StatusArt(s.Status)" />
+                    <span>@SkoulouKultur.Zahl(s.Schueler) élève(s) · @s.Personal personnel</span>
+                    <span><Icon Name="briefcase" Groesse="14" /> @(s.Responsable ?? "Sans responsable")</span>
+                    @if (s.PreisOverride is { } preis)
+                    {
+                        <a href="/admin/tarifs" title="Tarif spécifique (voir Tarifs)"><Icon Name="tag" Groesse="14" /> @SkoulouKultur.Fcfa(preis)</a>
+                    }
+                </div>
+                <div class="pl-zeile-aktionen">
+                    @switch (s.Status)
+                    {
+                        case SchulStatus.EnAttente:
+                            <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => anfrage = new(s, SchulAktion.Validieren)"><Icon Name="check" Groesse="16" /> <span>Valider</span></button>
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => anfrage = new(s, SchulAktion.Ablehnen)">Refuser</button>
+                            break;
+                        case SchulStatus.Active:
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => anfrage = new(s, SchulAktion.Suspendieren)"><Icon Name="lock" Groesse="16" /> <span>Suspendre</span></button>
+                            break;
+                        case SchulStatus.Suspendue:
+                            <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="() => anfrage = new(s, SchulAktion.Reaktivieren)"><Icon Name="refresh" Groesse="16" /> <span>Réactiver</span></button>
+                            break;
+                        default:
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => anfrage = new(s, SchulAktion.Validieren)">Valider quand même</button>
+                            break;
+                    }
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => responsableFuer = s"><Icon Name="briefcase" Groesse="16" /> <span>Responsable</span></button>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<SchulAktionDialog Anfrage="anfrage" OnClose="() => anfrage = null" OnErledigt="ErledigtAsync" />
+<ResponsableDialog Schule="responsableFuer" OnClose="() => responsableFuer = null" OnGespeichert="ResponsableGespeichertAsync" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "filtre")] public string? Filtre { get; set; }
+
+    private Liste<SchulZeile>? liste;
+    private SchulZaehler? zaehler;
+    private SchulAktionAnfrage? anfrage;
+    private SchulZeile? responsableFuer;
+
+    private IReadOnlyList<FilterChip> Chips => zaehler is not { } z ? [] :
+    [
+        new(null, "Toutes", z.Alle), new(SchulVerwaltungService.FilterEnAttente, "À valider", z.EnAttente),
+        new(SchulVerwaltungService.FilterActive, "Actives", z.Active), new(SchulVerwaltungService.FilterSuspendue, "Suspendues", z.Suspendue),
+        new(SchulVerwaltungService.FilterRefusee, "Refusées", z.Refusee)
+    ];
+
+    protected override async Task InitialisierenAsync() => zaehler = await Schulen.ZaehlerAsync(Ich.KontoId);
+
+    private Task<(IReadOnlyList<SchulZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Schulen.SucheAsync(Ich.KontoId, a.Suche, a.Filter, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task ErledigtAsync(string meldung)
+    {
+        anfrage = null;
+        Toast.ZeigeErfolg(meldung);
+        await AusfuehrenAsync(async () => zaehler = await Schulen.ZaehlerAsync(Ich.KontoId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task ResponsableGespeichertAsync()
+    {
+        responsableFuer = null;
+        Toast.ZeigeErfolg("Responsable enregistré.");
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

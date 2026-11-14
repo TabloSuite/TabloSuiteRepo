@@ -1,0 +1,115 @@
+@* Nachricht lesen (bereinigtes HTML), antworten und – nur SuperAdmin – einer Schule zuordnen. *@
+@inject MessagerieService Messagerie
+@inject TimeProvider Uhr
+
+<ModalDialog Open="NachrichtId is not null" Title="@(detail?.Betreff ?? "Message")" Oberzeile="@(detail?.Richtung == NachrichtRichtung.Ausgang ? "Message envoyé" : "Message reçu")"
+             Breite="sk-modal-lg" ErrorMessage="@fehler" OnClose="OnClose">
+    <ChildContent>
+        @if (detail is null)
+        {
+            <p class="sk-leise">Chargement…</p>
+        }
+        else
+        {
+            <div class="pl-nachricht-kopf">
+                <span>De : <strong>@detail.Von</strong></span>
+                <span>À : @detail.An</span>
+                <span>@(new SchulZeit(Uhr).AlsText(detail.ZeitUtc))@(detail.Schule is null ? "" : $" · {detail.Schule}")</span>
+            </div>
+            <div class="pl-nachricht-text">@((MarkupString)detail.TextHtml)</div>
+            @if (detail.Antworten.Count > 0)
+            {
+                <div class="pl-antworten">
+                    @foreach (var a in detail.Antworten)
+                    {
+                        <span><Icon Name="send" Groesse="14" /> Réponse envoyée à @a.An le @(new SchulZeit(Uhr).AlsText(a.ZeitUtc))</span>
+                    }
+                </div>
+            }
+            @if (IstAdmin && detail.Richtung == NachrichtRichtung.Eingang)
+            {
+                <div class="sk-oben-abstand">
+                    <AuswahlFeld T="Guid?" Label="École concernée" @bind-Wert="schuleId" Optionen="schulen" Platzhalter="Sans école"
+                                 Hinweis="Le responsable de l'école voit ensuite ce message." />
+                    <div class="sk-knopfzeile">
+                        <AsyncKnopf Text="Attribuer" BusyText="…" Icon="school" CssClass="sk-btn-ghost" OnClick="ZuordnenAsync" Disabled="@(schuleId == detail.SchuleId)" />
+                    </div>
+                </div>
+            }
+            <div class="sk-oben-abstand">
+                <TextFeld Label="@($"Répondre à {(detail.Richtung == NachrichtRichtung.Eingang ? detail.Von : detail.An)}")" @bind-Wert="antwort" Zeilen="5" MaxLaenge="10000"
+                          Hinweis="Envoyé depuis contact@tablosuite.com avec « [SKOULOU] » dans l'objet." />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
+        @if (detail is not null)
+        {
+            <AsyncKnopf Text="Envoyer la réponse" BusyText="Envoi…" Icon="send" CssClass="sk-btn-primaer" OnClick="AntwortenAsync" Disabled="@string.IsNullOrWhiteSpace(antwort)" />
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public Guid? NachrichtId { get; set; }
+    [Parameter] public bool IstAdmin { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private NachrichtDetail? detail;
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+    private Guid? schuleId, letzte;
+    private string? antwort, fehler;
+
+    private async Task<Guid?> IchAsync() => AuthZustand is null ? null : (await AuthZustand).User.KontoId();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (NachrichtId == letzte) return;
+        letzte = NachrichtId;
+        detail = null;
+        antwort = fehler = null;
+        if (NachrichtId is not { } id || await IchAsync() is not { } ich) return;
+        try
+        {
+            detail = await Messagerie.OeffnenAsync(ich, id);
+            schuleId = detail.SchuleId;
+            if (IstAdmin && schulen.Count == 0)
+                schulen = [new AuswahlOption<Guid?>(null, "Sans école"), .. (await Messagerie.SchulenAsync(ich)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort))];
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task AntwortenAsync()
+    {
+        if (detail is null || await IchAsync() is not { } ich) return;
+        try
+        {
+            await Messagerie.AntwortenAsync(ich, detail.Id, antwort);
+            await OnClose.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task ZuordnenAsync()
+    {
+        if (detail is null || await IchAsync() is not { } ich) return;
+        try
+        {
+            await Messagerie.ZuordnenAsync(ich, detail.Id, schuleId);
+            detail = detail with { SchuleId = schuleId, Schule = schulen.FirstOrDefault(s => s.Wert == schuleId)?.Label };
+            fehler = null;
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

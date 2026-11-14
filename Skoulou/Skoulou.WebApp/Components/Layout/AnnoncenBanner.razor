@@ -1,0 +1,59 @@
+@* Annonces oben im Layout (Entscheidung 21): je Rolle bzw. « Visiteurs », optional je Schule; aus dem Cache, neu bei jeder Navigation. *@
+@implements IDisposable
+@inject AnkuendigungService Annonces
+@inject NavigationManager Nav
+
+@if (sichtbar.Count > 0)
+{
+    <div class="pl-banner-stapel" role="region" aria-label="Annonces">
+        @foreach (var a in sichtbar)
+        {
+            <div class="pl-banner @(a.Stufe == AnkuendigungsStufe.Wichtig ? "wichtig" : null)" role="status">
+                <span class="pl-banner-icon"><Icon Name="@(a.Stufe == AnkuendigungsStufe.Wichtig ? "alert" : "megaphone")" Groesse="20" /></span>
+                <div>
+                    <strong>@a.Titel</strong>
+                    <div class="pl-banner-text">@((MarkupString)a.InhaltHtml)</div>
+                </div>
+                <button type="button" class="sk-icon-knopf" aria-label="Masquer l'annonce" title="Masquer" @onclick="() => Ausblenden(a.Id)"><Icon Name="x" Groesse="18" /></button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Rolle des Kontos; null = nicht angemeldeter Besucher.</summary>
+    [Parameter] public string? Rolle { get; set; }
+    [Parameter] public Guid? SchuleId { get; set; }
+
+    private readonly HashSet<Guid> ausgeblendet = [];
+    private IReadOnlyList<AnnonceAnzeige> alle = [];
+    private List<AnnonceAnzeige> sichtbar = [];
+
+    protected override async Task OnParametersSetAsync() => await LadenAsync();
+
+    protected override void OnInitialized() => Nav.LocationChanged += Navigiert;
+
+    private async Task LadenAsync()
+    {
+        try
+        {
+            alle = await Annonces.AktiveAsync(string.IsNullOrEmpty(Rolle) ? null : Rolle, SchuleId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            alle = []; // Annonces dürfen nie eine Seite stören.
+        }
+        sichtbar = alle.Where(a => !ausgeblendet.Contains(a.Id)).ToList();
+    }
+
+    private void Navigiert(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => _ = InvokeAsync(async () => { await LadenAsync(); StateHasChanged(); });
+
+    private void Ausblenden(Guid id)
+    {
+        ausgeblendet.Add(id);
+        sichtbar = alle.Where(a => !ausgeblendet.Contains(a.Id)).ToList();
+    }
+
+    public void Dispose() => Nav.LocationChanged -= Navigiert;
+}

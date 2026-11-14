@@ -31,6 +31,10 @@
                     <BenutzerMenue />
                 </header>
                 <main class="sk-main" id="inhalt">
+                    @if (Kontext.Geladen)
+                    {
+                        <AnnoncenBanner Rolle="@Kontext.Rolle" SchuleId="@Kontext.SchuleId" />
+                    }
                     <ErrorBoundary @ref="grenze">
                         <ChildContent>@Body</ChildContent>
                         <ErrorContent Context="fehlerKontext">
@@ -59,7 +63,7 @@
                     <a class="sk-btn sk-btn-primaer sk-nur-breit" href="/auth/inscription">Inscrire mon établissement</a>
                 </div>
             </header>
-            <main class="sk-oeffentlich-main">@Body</main>
+            <main class="sk-oeffentlich-main"><AnnoncenBanner />@Body</main>
             <AppFusszeile />
         </div>
     </NotAuthorized>

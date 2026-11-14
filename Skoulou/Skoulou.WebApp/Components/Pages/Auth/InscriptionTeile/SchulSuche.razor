@@ -1,0 +1,68 @@
+@* Suche einer aktiven Schule für die Schülerregistrierung (ab 2 Zeichen, verzögert). *@
+@implements IDisposable
+@inject RegistrierungService Registrierung
+
+@if (Gewaehlt is { } g)
+{
+    <Feld Label="Votre établissement" Pflicht="true" Fehler="@Fehler">
+        <div class="pl-gewaehlt">
+            <Icon Name="school" Groesse="20" />
+            <div><strong>@g.Name</strong><small>@g.Ort</small></div>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => GewaehltChanged.InvokeAsync(null)">Changer</button>
+        </div>
+    </Feld>
+}
+else
+{
+    <TextFeld Label="Votre établissement" Wert="@suche" WertChanged="SucheGeaendertAsync" Sofort="true" Pflicht="true" Fehler="@Fehler"
+              Platzhalter="Tapez le nom ou la ville de votre école" Autocomplete="off"
+              Hinweis="Seuls les établissements validés par SKOULOU apparaissent. Votre école n'y est pas ? Demandez à la direction de l'inscrire." />
+    @if (treffer.Count > 0)
+    {
+        <div class="pl-treffer" role="listbox" aria-label="Établissements trouvés">
+            @foreach (var t in treffer)
+            {
+                <button type="button" role="option" @onclick="() => GewaehltChanged.InvokeAsync(t)"><strong>@t.Name</strong><small>@t.Ort</small></button>
+            }
+        </div>
+    }
+    else if (gesucht && (suche?.Trim().Length ?? 0) >= 2)
+    {
+        <p class="sk-leise">Aucun établissement trouvé pour « @suche ».</p>
+    }
+}
+
+@code {
+    [Parameter] public SchulTreffer? Gewaehlt { get; set; }
+    [Parameter] public EventCallback<SchulTreffer?> GewaehltChanged { get; set; }
+    [Parameter] public string? Fehler { get; set; }
+
+    private string? suche;
+    private bool gesucht;
+    private IReadOnlyList<SchulTreffer> treffer = [];
+    private CancellationTokenSource? abbruch;
+
+    private async Task SucheGeaendertAsync(string? text)
+    {
+        suche = text;
+        abbruch?.Cancel();
+        abbruch = new CancellationTokenSource();
+        var ct = abbruch.Token;
+        try
+        {
+            await Task.Delay(300, ct);
+            treffer = await Registrierung.SchulenSuchenAsync(text, ct);
+            gesucht = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // überholt durch eine neuere Eingabe
+        }
+    }
+
+    public void Dispose()
+    {
+        abbruch?.Cancel();
+        abbruch?.Dispose();
+    }
+}

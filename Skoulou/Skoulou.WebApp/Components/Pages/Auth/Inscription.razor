@@ -1,20 +1,108 @@
 @page "/auth/inscription"
 @layout AuthLayout
 @attribute [AllowAnonymous]
+@using Skoulou.WebApp.Components.Pages.Auth.InscriptionTeile
 
 <PageTitle>Inscription · SKOULOU</PageTitle>
 
 <div class="sk-auth-karte">
-    <span class="sk-badge sk-badge-info"><Icon Name="clock" Groesse="13" Strich="2.5" /> Cette page arrive bientôt</span>
-    <h1>Inscription</h1>
-    <p class="sk-auth-unter">L'inscription en ligne d'un établissement (direction) ou d'un élève arrive avec la prochaine étape (E2 – Plateforme).</p>
-    <ul class="sk-bald-punkte">
-        <li><Icon Name="check" Groesse="16" /> <span>Direction : créer l'établissement et le compte de direction, validation par SKOULOU.</span></li>
-        <li><Icon Name="check" Groesse="16" /> <span>Élève : choisir son établissement, validation par la direction.</span></li>
-    </ul>
-    <p class="sk-auth-unter">En attendant, écrivez-nous pour ouvrir votre établissement.</p>
-    <div class="sk-knopfzeile">
-        <a class="sk-btn sk-btn-primaer" href="/contact"><Icon Name="mail" Groesse="18" /> Nous contacter</a>
-        <a class="sk-btn sk-btn-ghost" href="/auth/connexion">Se connecter</a>
-    </div>
+    @if (gesendet is not null)
+    {
+        <Leerzustand Icon="check-circle" Titel="@(gesendet == RegistrierungsArt.Direction ? "Votre établissement est inscrit" : "Votre inscription est enregistrée")"
+                     Text="@(gesendet == RegistrierungsArt.Direction
+                        ? "L'équipe SKOULOU vérifie votre demande. Vous recevrez un e-mail dès la validation ; en attendant, vous pouvez vous connecter pour suivre votre demande."
+                        : "La direction de votre établissement doit maintenant valider votre inscription. Vous pourrez ensuite vous connecter avec votre identifiant et votre mot de passe.")">
+            @if (Identifiant is not null)
+            {
+                <p>Votre identifiant de connexion : <code>@Identifiant</code></p>
+            }
+            <a class="sk-btn sk-btn-primaer" href="/auth/connexion@(Identifiant is null ? "" : $"?identifiant={Uri.EscapeDataString(Identifiant)}")"><Icon Name="login" Groesse="18" /> Se connecter</a>
+        </Leerzustand>
+    }
+    else
+    {
+        <h1>Inscription</h1>
+        <p class="sk-auth-unter">Chaque compte appartient à un seul établissement. Les enseignants, coordinateurs et parents reçoivent leur accès de la direction.</p>
+
+        <div class="pl-wahl" role="radiogroup" aria-label="Type d'inscription">
+            <button type="button" role="radio" aria-checked="@(art == RegistrierungsArt.Direction)" class="pl-wahl-kachel @(art == RegistrierungsArt.Direction ? "aktiv" : null)" @onclick="() => Waehlen(RegistrierungsArt.Direction)">
+                <Icon Name="school" Groesse="22" /><strong>Inscrire mon établissement</strong><small>Direction : école, collège, lycée, centre de formation.</small>
+            </button>
+            <button type="button" role="radio" aria-checked="@(art == RegistrierungsArt.Eleve)" class="pl-wahl-kachel @(art == RegistrierungsArt.Eleve ? "aktiv" : null)" @onclick="() => Waehlen(RegistrierungsArt.Eleve)">
+                <Icon Name="graduation" Groesse="22" /><strong>M'inscrire comme élève</strong><small>Dans un établissement déjà présent sur SKOULOU.</small>
+            </button>
+        </div>
+
+        @if (meldung is not null)
+        {
+            <Hinweis Art="fehler">@meldung</Hinweis>
+        }
+
+        <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" @onsubmit="WeiterAsync" @onsubmit:preventDefault>
+            <AntiforgeryToken />
+            <input type="hidden" name="type" value="@(art == RegistrierungsArt.Eleve ? "eleve" : "direction")" />
+            @if (agb)
+            {
+                <input type="hidden" name="agb" value="oui" />
+            }
+
+            <p class="pl-abschnitt-titel">Votre établissement</p>
+            @if (art == RegistrierungsArt.Direction)
+            {
+                <TextFeld Label="Nom de l'établissement" Name="ecole-nom" @bind-Wert="schulName" MaxLaenge="200" Pflicht="true" Fehler="@F("ecole-nom")"
+                          Platzhalter="ex. Collège Les Palmiers" />
+                <div class="sk-raster-2">
+                    <TextFeld Label="Ville" Name="ville" @bind-Wert="ort" MaxLaenge="120" Pflicht="true" Fehler="@F("ville")" />
+                    <TextFeld Label="Pays" Name="pays" @bind-Wert="land" MaxLaenge="120" Fehler="@F("pays")" />
+                </div>
+            }
+            else
+            {
+                <SchulSuche @bind-Gewaehlt="schule" Fehler="@F("ecole")" />
+                <input type="hidden" name="ecole" value="@schule?.Id" />
+            }
+
+            <p class="pl-abschnitt-titel">@(art == RegistrierungsArt.Direction ? "Directeur ou directrice" : "Vos informations")</p>
+            <div class="sk-raster-2">
+                <TextFeld Label="Prénom" Name="prenom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Autocomplete="given-name" Fehler="@F("prenom")" />
+                <TextFeld Label="Nom" Name="nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Autocomplete="family-name" Fehler="@F("nom")" />
+            </div>
+            <div class="sk-raster-2">
+                <TextFeld Label="@(art == RegistrierungsArt.Direction ? "Adresse e-mail" : "Adresse e-mail (facultatif)")" Name="email" Typ="email" @bind-Wert="email"
+                          MaxLaenge="256" Pflicht="@(art == RegistrierungsArt.Direction)" Autocomplete="email" Fehler="@F("email")"
+                          Hinweis="@(art == RegistrierungsArt.Direction ? "Pour la validation, les factures et le mot de passe oublié." : null)" />
+                <TextFeld Label="Téléphone (facultatif)" Name="telephone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Autocomplete="tel" Fehler="@F("telephone")" />
+            </div>
+            @if (art == RegistrierungsArt.Eleve)
+            {
+                <DatumFeld Label="Date de naissance (facultatif)" @bind-Wert="geburtsdatum" Max="heute" Fehler="@F("naissance")" />
+                <input type="hidden" name="naissance" value="@(geburtsdatum?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+                <div class="sk-raster-2">
+                    <TextFeld Label="Téléphone d'un parent (facultatif)" Name="parent-tel" Typ="tel" @bind-Wert="elternTelefon" MaxLaenge="50" Fehler="@F("parent-tel")" />
+                    <TextFeld Label="E-mail d'un parent (facultatif)" Name="parent-email" Typ="email" @bind-Wert="elternEmail" MaxLaenge="256" Fehler="@F("parent-email")" />
+                </div>
+            }
+
+            <p class="pl-abschnitt-titel">Vos accès</p>
+            <div class="pl-identifiant">
+                <TextFeld Label="Identifiant" Name="identifiant" @bind-Wert="identifiant" MaxLaenge="40" Autocomplete="username" Fehler="@F("identifiant")"
+                          Hinweis="Pour vous connecter (minuscules, chiffres, . _ -). Vide : proposé automatiquement." autocapitalize="none" spellcheck="false" />
+                <button type="button" class="sk-btn sk-btn-ghost" @onclick="VorschlagAsync">Proposer</button>
+            </div>
+            <div class="sk-raster-2">
+                <PasswortFeld Label="Mot de passe" Name="motdepasse" @bind-Wert="passwort" Autocomplete="new-password" Pflicht="true" Fehler="@F("motdepasse")"
+                              Hinweis="Au moins 6 caractères, dont un chiffre et une minuscule." />
+                <PasswortFeld Label="Confirmation" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" Fehler="@F("confirmation")" />
+            </div>
+            <label class="sk-honigtopf" aria-hidden="true">Site web <input type="text" name="site" tabindex="-1" autocomplete="off" /></label>
+            <AsyncKnopf Text="Continuer" BusyText="Vérification…" Icon="arrow-right" CssClass="sk-btn-primaer sk-btn-breit" OnClick="WeiterAsync" />
+        </form>
+
+        <div class="sk-auth-links">
+            <span>Déjà inscrit ? <a href="/auth/connexion">Se connecter</a></span>
+            <a href="/contact">Une question ? Contactez-nous</a>
+        </div>
+    }
 </div>
+
+<AgbInscriptionDialog Open="agbOffen" Rolle="@(art == RegistrierungsArt.Eleve ? Rollen.Schueler : Rollen.Direktor)" OnAkzeptiert="AkzeptiertAsync" OnAbbrechen="() => agbOffen = false" />

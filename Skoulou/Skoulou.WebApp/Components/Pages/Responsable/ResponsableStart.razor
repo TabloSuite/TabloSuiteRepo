@@ -1,4 +1,82 @@
 @page "/responsable"
 @attribute [Authorize(Policy = Richtlinien.Responsable)]
+@inherits PlattformSeite
+@inject PlattformUebersicht Uebersicht
 
-<RollenStart Untertitel="Les établissements que vous accompagnez." />
+<RollenStart Untertitel="Les établissements que vous accompagnez.">
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (schulen is not null)
+    {
+        <Abschnitt Titel="Mes écoles" Beschreibung="@($"{schulen.Count} établissement(s) · {SkoulouKultur.Zahl(schulen.Sum(s => s.Schueler))} élève(s) actif(s)")">
+            @if (schulen.Count == 0)
+            {
+                <Karte>
+                    <Leerzustand Icon="school" Titel="Aucune école ne vous est encore attribuée" Text="L'administrateur SKOULOU vous attribue vos écoles ; elles apparaîtront ici." />
+                </Karte>
+            }
+            else
+            {
+                <div class="pl-schulen">
+                    @foreach (var s in schulen)
+                    {
+                        <Karte CssClass="pl-schule">
+                            <div class="pl-schule-kopf">
+                                <div>
+                                    <strong>@s.Name</strong><br />
+                                    <small class="sk-leise"><Icon Name="map-pin" Groesse="13" /> @s.Ort</small>
+                                </div>
+                                <StatusBadge Text="@SchulVerwaltungService.StatusText(s.Status)" Art="@SchulVerwaltungService.StatusArt(s.Status)" />
+                            </div>
+                            @if (s.StatusGrund is not null && s.Status != SchulStatus.Active)
+                            {
+                                <span class="pl-grund">Motif : @s.StatusGrund</span>
+                            }
+                            <div class="pl-schule-zahlen">
+                                <span><strong>@SkoulouKultur.Zahl(s.Schueler)</strong> élève(s)</span>
+                                <span><strong>@s.Personal</strong> membre(s) du personnel</span>
+                                @if (s.SchuelerAValider > 0)
+                                {
+                                    <StatusBadge Text="@($"{s.SchuelerAValider} inscription(s) à valider par l'école")" Art="warn" />
+                                }
+                            </div>
+                            <div class="pl-kontakte">
+                                @if (s.Direktion.Count == 0)
+                                {
+                                    <span class="sk-leise">Aucun compte de direction.</span>
+                                }
+                                @foreach (var d in s.Direktion)
+                                {
+                                    <div class="pl-kontakt">
+                                        <NamensKreis Name="@d.Name" Groesse="28" />
+                                        <span><strong>@d.Name</strong> · @d.Rolle</span>
+                                        @if (d.Email is not null)
+                                        {
+                                            <a href="mailto:@d.Email"><Icon Name="mail" Groesse="14" /> @d.Email</a>
+                                        }
+                                    </div>
+                                }
+                                @if (s.SchulTelefon is not null)
+                                {
+                                    <div class="pl-kontakt">
+                                        <Icon Name="phone" Groesse="14" />
+                                        <a href="tel:@(new string(s.SchulTelefon.Where(c => char.IsDigit(c) || c == '+').ToArray()))">@s.SchulTelefon</a>
+                                        <small class="sk-leise">(standard de l'établissement)</small>
+                                    </div>
+                                }
+                            </div>
+                        </Karte>
+                    }
+                </div>
+            }
+        </Abschnitt>
+    }
+</RollenStart>
+
+@code {
+    private IReadOnlyList<BetreuteSchule>? schulen;
+
+    protected override async Task InitialisierenAsync() => schulen = await Uebersicht.MeineSchulenAsync(Ich.KontoId);
+}

@@ -1,5 +1,99 @@
 @page "/admin/journal"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject JournalService Journale
+@inject IJSRuntime JS
 
-<InVorbereitung Titel="Journal des erreurs" Icon="alert" Etappe="E2 – Plateforme"
-                Beschreibung="Erreurs techniques des 90 derniers jours, à traiter et à suivre." />
+<PageTitle>Journal des erreurs · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Journal des erreurs" Icon="alert" Untertitel="Erreurs techniques enregistrées par l'application. Conservation : 90 jours (nettoyage automatique chaque nuit)." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <Liste T="FehlerZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="offen" SuchPlatzhalter="Message, type ou adresse…"
+           LeerIcon="check-circle" LeerTitel="Aucune erreur" LeerText="Rien à signaler pour ces critères.">
+        <Werkzeuge>
+            <DatumFeld Platzhalter="Du" Wert="von" WertChanged="VonAsync" />
+            <DatumFeld Platzhalter="Au" Wert="bis" WertChanged="BisAsync" />
+        </Werkzeuge>
+        <Zeile Context="f">
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon @(f.Bearbeitet ? null : "fehler")"><Icon Name="alert" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@f.Nachricht</span>
+                    <span class="pl-zeile-meta">
+                        <span>@Zeit(f.ZeitUtc)</span>
+                        @if (f.Typ is not null) {<code>@f.Typ</code>}
+                        @if (f.Pfad is not null) {<span>@f.Pfad</span>}
+                        @if (f.Schule is not null) {<span><Icon Name="school" Groesse="14" /> @f.Schule</span>}
+                    </span>
+                    <details class="pl-details" @ontoggle="() => DetailsAsync(f.Id)">
+                        <summary>Détails techniques</summary>
+                        <pre>@(details.TryGetValue(f.Id, out var d) ? d ?? "Aucun détail." : "Chargement…")</pre>
+                    </details>
+                </div>
+                <div class="pl-zeile-info">
+                    <StatusBadge Text="@(f.Bearbeitet ? "Traitée" : "À traiter")" Art="@(f.Bearbeitet ? "erfolg" : "warn")" />
+                </div>
+                <div class="pl-zeile-aktionen">
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => BearbeitetAsync(f)">@(f.Bearbeitet ? "Rouvrir" : "Traiter")</button>
+                    <button type="button" class="sk-icon-knopf" aria-label="Copier" title="Copier" @onclick="() => KopierenAsync(f)"><Icon Name="clipboard" Groesse="18" /></button>
+                    <button type="button" class="sk-icon-knopf" aria-label="Supprimer" title="Supprimer" @onclick="() => loeschen = f"><Icon Name="trash" Groesse="18" /></button>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<BestaetigungsDialog Open="loeschen is not null" Titel="Supprimer cette erreur ?" Text="L'entrée est retirée définitivement du journal."
+                     BestaetigenText="Supprimer" Gefahr="true" OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+@code {
+    private Liste<FehlerZeile>? liste;
+    private DateOnly? von, bis;
+    private FehlerZeile? loeschen;
+    private readonly Dictionary<Guid, string?> details = [];
+
+    private static readonly IReadOnlyList<FilterChip> Chips = [new("offen", "À traiter"), new(null, "Toutes")];
+
+    private Task<(IReadOnlyList<FehlerZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Journale.FehlerAsync(Ich.KontoId, new JournalFilter(a.Suche, von, bis, null, a.Filter == "offen"), a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task VonAsync(DateOnly? d) { von = d; await NeuAsync(); }
+    private async Task BisAsync(DateOnly? d) { bis = d; await NeuAsync(); }
+
+    private async Task NeuAsync()
+    {
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task DetailsAsync(Guid id)
+    {
+        if (details.ContainsKey(id)) return;
+        await AusfuehrenAsync(async () => details[id] = await Journale.FehlerDetailsAsync(Ich.KontoId, id));
+    }
+
+    private async Task BearbeitetAsync(FehlerZeile f)
+    {
+        if (await AusfuehrenAsync(() => Journale.BearbeitetAsync(Ich.KontoId, f.Id, !f.Bearbeitet))) await NeuAsync();
+    }
+
+    private async Task KopierenAsync(FehlerZeile f)
+    {
+        await DetailsAsync(f.Id);
+        var text = $"{Zeit(f.ZeitUtc)} – {f.Nachricht}\n{f.Typ}\n{f.Pfad}\n{(details.TryGetValue(f.Id, out var d) ? d : null)}";
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Toast.ZeigeInfo("Copié dans le presse-papiers.");
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } f) return;
+        if (await AusfuehrenAsync(() => Journale.FehlerLoeschenAsync(Ich.KontoId, f.Id), "Entrée supprimée.")) await NeuAsync();
+        loeschen = null;
+    }
+}
