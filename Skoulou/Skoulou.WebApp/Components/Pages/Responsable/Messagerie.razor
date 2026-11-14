@@ -1,5 +1,16 @@
 @page "/responsable/messagerie"
 @attribute [Authorize(Policy = Richtlinien.Responsable)]
 
-<InVorbereitung Titel="Messagerie" Icon="inbox" Etappe="E2 – Plateforme"
-                Beschreibung="Échanges par e-mail avec les directions de vos établissements." />
+<PageTitle>Messagerie · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Messagerie" Icon="inbox" Untertitel="Messages de vos écoles. Répondez directement ou écrivez à la direction d'une de vos écoles.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => neu = true"><Icon Name="send" Groesse="18" /> <span>Nouveau message</span></button>
+    </Aktionen>
+</SeitenKopf>
+
+<PostfachAnsicht IstAdmin="false" @bind-Neu="neu" />
+
+@code {
+    private bool neu;
+}

@@ -66,6 +66,18 @@ public static class PlattformRegistrierung
         services.AddHttpClient(MailWeiterleitung.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<MailWeiterleitung>();
         services.AddSingleton<PostEingangService>();
+        // E2: Registrierung, Admin, Responsables, Annonces, Messagerie, Journal, Medien
+        services.AddSingleton<RegistrierungsBremse>();
+        services.AddSingleton<PlattformMails>();
+        services.AddScoped<PlattformKontoFabrik>();
+        services.AddScoped<RegistrierungService>();
+        services.AddScoped<SchulVerwaltungService>();
+        services.AddScoped<KontenVerwaltungService>();
+        services.AddSingleton<AnkuendigungService>();
+        services.AddScoped<MessagerieService>();
+        services.AddScoped<JournalService>();
+        services.AddScoped<MedienVerwaltungService>();
+        services.AddScoped<PlattformUebersicht>();
         services.AddScoped<StartSeed>();
         services.AddScoped<DemoSeed>();
         return services;
@@ -75,6 +87,7 @@ public static class PlattformRegistrierung
     {
         app.MapAuthEndpunkte();
         app.MapKommunikationsEndpunkte();
+        app.MapInscriptionEndpunkt();
         return app;
     }
 }

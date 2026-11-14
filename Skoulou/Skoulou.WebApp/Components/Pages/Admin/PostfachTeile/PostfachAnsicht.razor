@@ -1,0 +1,92 @@
+@* Messagerie für SuperAdmin (alles, Zuordnung, freie Adresse) und Responsable (nur seine Schulen). *@
+@inherits PlattformSeite
+@inject MessagerieService Messagerie
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (!Laedt)
+{
+    <div class="sk-knopfzeile sk-oben-abstand">
+        <button type="button" class="sk-btn @(ordner == Postfach.Eingang ? "sk-btn-primaer" : "sk-btn-ghost") sk-btn-klein" @onclick="() => Ordner(Postfach.Eingang)">
+            <Icon Name="inbox" Groesse="16" /> <span>Réception@(ungelesen > 0 ? $" ({ungelesen} non lu{(ungelesen > 1 ? "s" : "")})" : "")</span>
+        </button>
+        <button type="button" class="sk-btn @(ordner == Postfach.Ausgang ? "sk-btn-primaer" : "sk-btn-ghost") sk-btn-klein" @onclick="() => Ordner(Postfach.Ausgang)">
+            <Icon Name="send" Groesse="16" /> <span>Envoyés</span>
+        </button>
+    </div>
+    <Liste T="NachrichtZeile" @ref="liste" @key="ordner" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Objet, expéditeur, destinataire ou texte…"
+           LeerIcon="inbox" LeerTitel="@(ordner == Postfach.Eingang ? "Aucun message reçu" : "Aucun message envoyé")"
+           LeerText="@(IstAdmin ? "Les e-mails reçus sur contact@tablosuite.com et les messages du formulaire de contact arrivent ici." : "Les messages de vos écoles apparaissent ici dès qu'ils leur sont attribués.")">
+        <Zeile Context="n">
+            <div class="pl-zeile @(n.Gelesen ? null : "pl-ungelesen")">
+                <span class="pl-zeile-icon @(n.Gelesen ? null : "info")"><Icon Name="@(n.Richtung == NachrichtRichtung.Eingang ? "mail" : "send")" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <button type="button" class="pl-zeile-titel" @onclick="() => offen = n.Id">@n.Betreff</button>
+                    <span class="pl-zeile-meta">
+                        <span>@(n.Richtung == NachrichtRichtung.Eingang ? $"De : {n.Von}" : $"À : {n.An}")</span>
+                        <span>@Zeit(n.ZeitUtc)</span>
+                    </span>
+                </div>
+                <div class="pl-zeile-info">
+                    @if (n.Schule is not null)
+                    {
+                        <StatusBadge Text="@n.Schule" Art="info" Icon="school" />
+                    }
+                    else if (IstAdmin && n.Richtung == NachrichtRichtung.Eingang)
+                    {
+                        <StatusBadge Text="Sans école" Art="neutral" />
+                    }
+                    @if (!n.Gelesen)
+                    {
+                        <StatusBadge Text="Non lu" Art="warn" />
+                    }
+                </div>
+                <div class="pl-zeile-aktionen">
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => offen = n.Id"><Icon Name="eye" Groesse="16" /> <span>Ouvrir</span></button>
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<NachrichtDialog NachrichtId="offen" IstAdmin="IstAdmin" OnClose="GeschlossenAsync" />
+<NeueNachrichtDialog Open="Neu" IstAdmin="IstAdmin" OnClose="() => NeuChanged.InvokeAsync(false)" OnGesendet="GesendetAsync" />
+
+@code {
+    [Parameter] public bool IstAdmin { get; set; }
+    [Parameter] public bool Neu { get; set; }
+    [Parameter] public EventCallback<bool> NeuChanged { get; set; }
+
+    private Liste<NachrichtZeile>? liste;
+    private string ordner = Postfach.Eingang;
+    private int ungelesen;
+    private Guid? offen;
+
+    private IReadOnlyList<FilterChip> Chips => ordner == Postfach.Ausgang ? [] : IstAdmin
+        ? [new(null, "Tous"), new(Postfach.Ungelesen, "Non lus", ungelesen), new(Postfach.OhneSchule, "Sans école")]
+        : [new(null, "Tous"), new(Postfach.Ungelesen, "Non lus", ungelesen)];
+
+    protected override async Task InitialisierenAsync() => ungelesen = await Messagerie.UngeleseneAsync(Ich.KontoId);
+
+    private Task<(IReadOnlyList<NachrichtZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Messagerie.SucheAsync(Ich.KontoId, ordner, a.Suche, a.Filter, a.Ueberspringen, a.Anzahl, ct);
+
+    private void Ordner(string neu) => ordner = neu;
+
+    private async Task GeschlossenAsync()
+    {
+        offen = null;
+        // Gelesen-Markierung, Antwort oder Zuordnung sichtbar machen.
+        await AusfuehrenAsync(async () => ungelesen = await Messagerie.UngeleseneAsync(Ich.KontoId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task GesendetAsync()
+    {
+        await NeuChanged.InvokeAsync(false);
+        Toast.ZeigeErfolg("Message envoyé.");
+        if (ordner == Postfach.Ausgang && liste is not null) await liste.NeuLadenAsync();
+    }
+}

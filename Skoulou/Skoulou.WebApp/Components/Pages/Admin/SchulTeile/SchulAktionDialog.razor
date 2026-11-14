@@ -1,0 +1,84 @@
+@* Statusänderung einer Schule mit Rückfrage (Ablehnen/Suspendieren mit Pflichtgrund, Mail an die Direktion). *@
+@inject SchulVerwaltungService Schulen
+
+<BestaetigungsDialog Open="Anfrage is not null" Titel="@Titel" Text="@Text" BestaetigenText="@Knopf" Gefahr="@Gefahr" Fehler="@fehler"
+                     OnBestaetigen="AusfuehrenAsync" OnAbbrechen="SchliessenAsync">
+    @if (MitGrund)
+    {
+        <TextFeld Label="Motif (envoyé à la direction)" @bind-Wert="grund" Zeilen="3" MaxLaenge="500" Pflicht="true"
+                  Platzhalter="@(Anfrage?.Aktion == SchulAktion.Ablehnen ? "ex. Informations incomplètes, établissement introuvable…" : "ex. Factures impayées depuis plus de 60 jours")" />
+    }
+</BestaetigungsDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public SchulAktionAnfrage? Anfrage { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnErledigt { get; set; }
+
+    private string? grund, fehler;
+    private SchulAktionAnfrage? letzte;
+
+    private bool MitGrund => Anfrage?.Aktion is SchulAktion.Ablehnen or SchulAktion.Suspendieren;
+    private bool Gefahr => MitGrund;
+
+    private string Titel => Anfrage?.Aktion switch
+    {
+        SchulAktion.Validieren => "Valider l'établissement ?",
+        SchulAktion.Ablehnen => "Refuser l'inscription ?",
+        SchulAktion.Suspendieren => "Suspendre l'établissement ?",
+        _ => "Réactiver l'établissement ?"
+    };
+
+    private string Knopf => Anfrage?.Aktion switch
+    {
+        SchulAktion.Validieren => "Valider",
+        SchulAktion.Ablehnen => "Refuser",
+        SchulAktion.Suspendieren => "Suspendre",
+        _ => "Réactiver"
+    };
+
+    private string Text => Anfrage is not { } a ? string.Empty : a.Aktion switch
+    {
+        SchulAktion.Validieren => $"« {a.Schule.Name} » devient actif. La direction est activée et reçoit un e-mail ; les élèves peuvent ensuite s'inscrire.",
+        SchulAktion.Ablehnen => $"L'inscription de « {a.Schule.Name} » est refusée. La direction reçoit le motif par e-mail. Aucune donnée n'est supprimée.",
+        SchulAktion.Suspendieren => $"Tous les comptes de « {a.Schule.Name} » ne pourront plus se connecter. Aucune donnée n'est supprimée ; la direction reçoit le motif par e-mail.",
+        _ => $"« {a.Schule.Name} » redevient accessible à toute son équipe. La direction est prévenue par e-mail."
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Anfrage == letzte) return;
+        letzte = Anfrage;
+        grund = null;
+        fehler = null;
+    }
+
+    private async Task AusfuehrenAsync()
+    {
+        if (Anfrage is not { } a || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            switch (a.Aktion)
+            {
+                case SchulAktion.Validieren: await Schulen.ValidierenAsync(ich, a.Schule.Id); break;
+                case SchulAktion.Ablehnen: await Schulen.AblehnenAsync(ich, a.Schule.Id, grund); break;
+                case SchulAktion.Suspendieren: await Schulen.SuspendierenAsync(ich, a.Schule.Id, grund); break;
+                default: await Schulen.ReaktivierenAsync(ich, a.Schule.Id); break;
+            }
+            await OnErledigt.InvokeAsync(a.Aktion switch
+            {
+                SchulAktion.Validieren => "Établissement validé. La direction a été prévenue.",
+                SchulAktion.Ablehnen => "Inscription refusée. La direction a été prévenue.",
+                SchulAktion.Suspendieren => "Établissement suspendu. La direction a été prévenue.",
+                _ => "Établissement réactivé."
+            });
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private Task SchliessenAsync() => OnClose.InvokeAsync();
+}

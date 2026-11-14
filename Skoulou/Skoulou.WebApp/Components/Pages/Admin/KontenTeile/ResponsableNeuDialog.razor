@@ -1,0 +1,61 @@
+@* Neuen Responsable anlegen (E-Mail Pflicht); danach wird das Startpasswort einmal angezeigt. *@
+@inject KontenVerwaltungService Konten
+
+<ModalDialog Open="Open" Title="Nouveau responsable" Oberzeile="Responsable SKOULOU" Breite="sk-modal-md" ErrorMessage="@(feld is null ? fehler : null)" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("prenom")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nom")" />
+            </div>
+            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("email")"
+                      Hinweis="Pour les factures, les messages de la plateforme et le mot de passe oublié." />
+            <div class="sk-raster-2">
+                <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Fehler="@FeldFehler("telephone")"
+                          Hinweis="Visible uniquement par la direction de ses écoles (page Contact)." />
+                <TextFeld Label="Identifiant (facultatif)" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")"
+                          Hinweis="Vide : proposé automatiquement (prenom.nom)." />
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Créer le compte" BusyText="Création…" Icon="user-plus" CssClass="sk-btn-primaer" OnClick="AnlegenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Skoulou.WebApp.Services.Organisation.Zugang> OnAngelegt { get; set; }
+
+    private string? vorname, nachname, email, telefon, identifiant, fehler, feld;
+    private bool warOffen;
+
+    private string? FeldFehler(string name) => feld == name ? fehler : null;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen) vorname = nachname = email = telefon = identifiant = fehler = feld = null;
+        warOffen = Open;
+    }
+
+    private async Task AnlegenAsync()
+    {
+        if (AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            var zugang = await Konten.ResponsableAnlegenAsync(ich, new ResponsableEingabe(vorname, nachname, identifiant, email, telefon));
+            await OnAngelegt.InvokeAsync(zugang);
+        }
+        catch (Skoulou.Core.Fehler.FachFehler f)
+        {
+            (fehler, feld) = (f.Message, f.Feld);
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler k)
+        {
+            (fehler, feld) = (k.Message, null);
+        }
+    }
+}

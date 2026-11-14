@@ -1,0 +1,51 @@
+@* Schulen eines Responsable festlegen (Mehrfachauswahl mit Suche). *@
+@inject KontenVerwaltungService Konten
+
+<ModalDialog Open="Responsable is not null" Title="Écoles accompagnées" Oberzeile="@Responsable?.Name" Breite="sk-modal-md" ErrorMessage="@fehler" OnClose="OnClose">
+    <ChildContent>
+        <p class="sk-leise">Une école n'a qu'un seul responsable : la cocher ici la retire de son responsable actuel.</p>
+        <MehrfachAuswahl T="Guid" Label="Écoles" @bind-Werte="gewaehlt" Optionen="optionen" />
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public ResponsableZeile? Responsable { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private IReadOnlyList<AuswahlOption<Guid>> optionen = [];
+    private IReadOnlyCollection<Guid> gewaehlt = [];
+    private string? fehler;
+    private ResponsableZeile? letzte;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Responsable == letzte) return;
+        letzte = Responsable;
+        fehler = null;
+        if (Responsable is null || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        var schulen = await Konten.SchulOptionenAsync(ich);
+        optionen = schulen.Select(s => new AuswahlOption<Guid>(s.Id, s.Name,
+            s.Responsable is null || s.Responsable == Responsable.Name ? s.Ort : $"{s.Ort} · actuellement {s.Responsable}")).ToList();
+        gewaehlt = (await Konten.SchulenDesResponsableAsync(ich, Responsable.Id)).ToList();
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Responsable is null || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            await Konten.SchulenZuweisenAsync(ich, Responsable.Id, gewaehlt);
+            await OnGespeichert.InvokeAsync();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

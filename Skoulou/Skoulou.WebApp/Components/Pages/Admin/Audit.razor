@@ -1,5 +1,67 @@
 @page "/admin/audit"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject JournalService Journale
+@inject MessagerieService Messagerie
 
-<InVorbereitung Titel="Audit" Icon="shield" Etappe="E2 – Plateforme"
-                Beschreibung="Historique des actions sensibles de tous les établissements." />
+<PageTitle>Audit · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Audit" Icon="shield" Untertitel="Actions sensibles de toutes les écoles : validations, blocages, mots de passe, notes, bulletins, paiements. Conservé sans limite." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (!Laedt)
+{
+    <Liste T="AuditZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Texte de l'action…" LeerIcon="shield" LeerTitel="Aucune action pour ces critères">
+        <Werkzeuge>
+            <AuswahlFeld T="string" Wert="bereich" WertChanged="BereichAsync" Optionen="bereiche" Platzhalter="Tous les domaines" Kompakt="true" Icon="filter" />
+            <AuswahlFeld T="Guid?" Wert="schuleId" WertChanged="SchuleAsync" Optionen="schulen" Platzhalter="Toutes les écoles" Kompakt="true" Icon="school" />
+            <DatumFeld Platzhalter="Du" Wert="von" WertChanged="VonAsync" />
+            <DatumFeld Platzhalter="Au" Wert="bis" WertChanged="BisAsync" />
+        </Werkzeuge>
+        <Zeile Context="a">
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon"><Icon Name="history" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <span>@a.Text</span>
+                    <span class="pl-zeile-meta">
+                        <span>@Zeit(a.ZeitUtc)</span>
+                        <span><Icon Name="user" Groesse="14" /> @(a.Akteur ?? "Système")</span>
+                        @if (a.Schule is not null) {<span><Icon Name="school" Groesse="14" /> @a.Schule</span>}
+                    </span>
+                </div>
+                <div class="pl-zeile-info"><code>@a.Aktion</code></div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+@code {
+    private Liste<AuditZeile>? liste;
+    private string? bereich;
+    private Guid? schuleId;
+    private DateOnly? von, bis;
+    private IReadOnlyList<AuswahlOption<string>> bereiche = [];
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+
+    protected override async Task InitialisierenAsync()
+    {
+        bereiche = [new(null!, "Tous les domaines"), .. JournalService.AuditBereiche.Select(b => new AuswahlOption<string>(b.Wert, b.Text))];
+        schulen = [new(null, "Toutes les écoles"), .. (await Messagerie.SchulenAsync(Ich.KontoId)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort))];
+    }
+
+    private Task<(IReadOnlyList<AuditZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Journale.AuditAsync(Ich.KontoId, new JournalFilter(a.Suche, von, bis, schuleId), bereich, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task BereichAsync(string? b) { bereich = b; await NeuAsync(); }
+    private async Task SchuleAsync(Guid? s) { schuleId = s; await NeuAsync(); }
+    private async Task VonAsync(DateOnly? d) { von = d; await NeuAsync(); }
+    private async Task BisAsync(DateOnly? d) { bis = d; await NeuAsync(); }
+
+    private async Task NeuAsync()
+    {
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

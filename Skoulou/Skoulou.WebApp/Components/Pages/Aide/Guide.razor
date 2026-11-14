@@ -1,5 +1,53 @@
 @page "/aide/guide"
 @attribute [Authorize]
+@inherits SkoulouSeite
 
-<InVorbereitung Titel="Guide utilisateur" Icon="book" Etappe="E7 – Finitions"
-                Beschreibung="Le guide pas à pas de chaque fonction, adapté à votre rôle." />
+<PageTitle>Guide utilisateur · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Guide utilisateur" Icon="book" Oberzeile="@Rollen.Bezeichnung(Ich.Rolle)"
+            Untertitel="L'essentiel pour votre rôle, étape par étape. Chaque point mène directement à la bonne page." />
+
+<nav class="pl-guide-sprung" aria-label="Chapitres">
+    @foreach (var k in kapitel)
+    {
+        <a class="sk-chip" href="/aide/guide#@k.Id"><Icon Name="@k.Icon" Groesse="14" /> @k.Titel</a>
+    }
+    <a class="sk-chip" href="/aide/videos"><Icon Name="video" Groesse="14" /> Vidéos d'aide</a>
+</nav>
+
+@foreach (var k in kapitel)
+{
+    <section id="@k.Id">
+        <Karte Titel="@k.Titel" Icon="@k.Icon">
+            <ol class="pl-guide-schritte">
+                @foreach (var s in k.Schritte)
+                {
+                    <li>
+                        <div>
+                            <strong>@s.Titel</strong>
+                            <p>@s.Text</p>
+                        </div>
+                        @if (s.Href is not null)
+                        {
+                            <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@s.Href">Ouvrir <Icon Name="arrow-right" Groesse="14" /></a>
+                        }
+                    </li>
+                }
+            </ol>
+        </Karte>
+    </section>
+}
+
+<Hinweis Art="info" Titel="Une question reste sans réponse ?">
+    Écrivez-nous depuis la page <a href="/contact">Contact</a> : l'équipe SKOULOU vous répond par e-mail.
+</Hinweis>
+
+@code {
+    private IReadOnlyList<GuideKapitel> kapitel = [];
+
+    protected override Task InitialisierenAsync()
+    {
+        kapitel = GuideTexte.Fuer(Ich.Rolle);
+        return Task.CompletedTask;
+    }
+}

@@ -1,2 +1,107 @@
 /* SKOULOU – Stile des Bereichs E2 Plattform (Admin, Responsable, Inscription, Kontakt, Guide).
    Nur bereichsspezifische Klassen; gemeinsame Bausteine stehen in app.css (Tokens --sk-* verwenden, keine festen Farben). */
+
+/* Kennzahlen */
+.pl-kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .9rem; margin: .5rem 0 1rem; }
+@media (max-width: 640px) { .pl-kennzahlen { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; } .pl-kennzahlen .sk-kennzahl { padding: .7rem .75rem; } }
+.pl-zweispaltig { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .pl-zweispaltig { grid-template-columns: minmax(0, 1fr); } }
+
+/* Listenzeilen */
+.pl-zeile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: .6rem 1rem; padding: .8rem .9rem; border-bottom: 1px solid var(--sk-rand); }
+.pl-zeile:last-child { border-bottom: 0; }
+.pl-zeile.pl-ungelesen .pl-zeile-titel { font-weight: 800; }
+.pl-zeile-haupt { display: grid; gap: .2rem; min-width: 0; }
+.pl-zeile-titel { font-weight: 700; color: var(--sk-text); overflow-wrap: anywhere; background: none; border: 0; padding: 0; font: inherit; font-weight: 700; text-align: left; }
+button.pl-zeile-titel { cursor: pointer; }
+button.pl-zeile-titel:hover { color: var(--sk-primaer-text); text-decoration: underline; }
+.pl-zeile-meta { display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .84rem; color: var(--sk-text-leise); align-items: center; }
+.pl-zeile-meta code { font-size: .82rem; }
+.pl-zeile-info { display: flex; flex-wrap: wrap; gap: .35rem .5rem; align-items: center; justify-content: flex-end; font-size: .86rem; color: var(--sk-text-leise); }
+.pl-zeile-aktionen { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; justify-content: flex-end; }
+.pl-zeile-icon { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: var(--sk-radius); background: var(--sk-flaeche-2); color: var(--sk-text-leise); }
+.pl-zeile-icon.warn { background: var(--sk-warn-zart); color: var(--sk-warn-text); }
+.pl-zeile-icon.fehler { background: var(--sk-fehler-zart); color: var(--sk-fehler-text); }
+.pl-zeile-icon.info { background: var(--sk-primaer-zart); color: var(--sk-primaer-text); }
+@media (max-width: 760px) {
+    .pl-zeile { grid-template-columns: auto minmax(0, 1fr); gap: .5rem .7rem; }
+    .pl-zeile-info, .pl-zeile-aktionen { grid-column: 1 / -1; justify-content: flex-start; }
+}
+.pl-grund { margin-top: .2rem; font-size: .84rem; color: var(--sk-text-leise); font-style: italic; overflow-wrap: anywhere; }
+
+/* Annonces-Banner (Layout) */
+.pl-banner-stapel { display: grid; gap: .5rem; margin-bottom: 1rem; }
+.sk-oeffentlich-main > .pl-banner-stapel { max-width: 72rem; margin: 1rem auto 0; padding: 0 1rem; }
+.pl-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .75rem; align-items: start; padding: .75rem 1rem;
+    border-radius: var(--sk-radius); border: 1px solid var(--sk-info-rand); background: var(--sk-primaer-zart); color: var(--sk-text); }
+.pl-banner.wichtig { border-color: var(--sk-warn-rand); background: var(--sk-warn-zart); }
+.pl-banner-icon { color: var(--sk-primaer-text); margin-top: .1rem; }
+.pl-banner.wichtig .pl-banner-icon { color: var(--sk-warn-text); }
+.pl-banner strong { display: block; margin-bottom: .15rem; }
+.pl-banner-text { font-size: .92rem; overflow-wrap: anywhere; }
+.pl-banner small { color: var(--sk-text-leise); }
+
+/* Inscription */
+.pl-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: .5rem 0 1.25rem; }
+.pl-wahl-kachel { display: grid; gap: .3rem; padding: .9rem 1rem; text-align: left; cursor: pointer; font: inherit; color: var(--sk-text);
+    border: 2px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); }
+.pl-wahl-kachel:hover { border-color: var(--sk-rand-stark); }
+.pl-wahl-kachel.aktiv { border-color: var(--sk-primaer); background: var(--sk-primaer-zart); }
+.pl-wahl-kachel small { color: var(--sk-text-leise); }
+.pl-wahl-kachel .sk-icon { color: var(--sk-primaer-text); }
+@media (max-width: 480px) { .pl-wahl { grid-template-columns: minmax(0, 1fr); } }
+.pl-abschnitt-titel { margin: 1rem 0 .25rem; font-size: .8rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sk-text-leise); }
+.pl-identifiant { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; align-items: start; }
+.pl-identifiant > .sk-btn { margin-top: 1.75rem; }
+.pl-treffer { display: grid; margin-top: .35rem; max-height: 15rem; overflow: auto; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche); }
+.pl-treffer button { display: grid; gap: .1rem; padding: .55rem .75rem; text-align: left; font: inherit; color: var(--sk-text); background: none; border: 0; border-bottom: 1px solid var(--sk-rand); cursor: pointer; }
+.pl-treffer button:last-child { border-bottom: 0; }
+.pl-treffer button:hover, .pl-treffer button:focus-visible { background: var(--sk-primaer-zart); }
+.pl-treffer small, .pl-gewaehlt small { color: var(--sk-text-leise); }
+.pl-gewaehlt { display: flex; align-items: center; gap: .6rem; padding: .55rem .75rem; border: 1px solid var(--sk-info-rand); border-radius: var(--sk-radius); background: var(--sk-primaer-zart); }
+.pl-gewaehlt > div { flex: 1; display: grid; }
+
+/* Messagerie */
+.pl-nachricht-kopf { display: grid; gap: .2rem; padding-bottom: .75rem; margin-bottom: .75rem; border-bottom: 1px solid var(--sk-rand); font-size: .9rem; color: var(--sk-text-leise); overflow-wrap: anywhere; }
+.pl-nachricht-kopf strong { color: var(--sk-text); }
+.pl-nachricht-text { max-height: 22rem; overflow: auto; padding: .75rem .9rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); overflow-wrap: anywhere; }
+.pl-nachricht-text img { max-width: 100%; height: auto; }
+.pl-antworten { margin-top: .75rem; display: grid; gap: .35rem; font-size: .88rem; }
+
+/* Journal */
+.pl-details { margin-top: .4rem; }
+.pl-details summary { cursor: pointer; color: var(--sk-primaer-text); font-size: .86rem; }
+.pl-details pre { max-height: 18rem; overflow: auto; margin: .4rem 0 0; padding: .6rem .75rem; font-size: .78rem; white-space: pre-wrap; overflow-wrap: anywhere;
+    border-radius: var(--sk-radius); background: var(--sk-flaeche-2); border: 1px solid var(--sk-rand); }
+.pl-filter-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .6rem; align-items: end; margin-bottom: .75rem; }
+
+/* Medien */
+.pl-balken-liste { display: grid; gap: .55rem; }
+.pl-balken-zeile { display: grid; gap: .25rem; font-size: .88rem; }
+.pl-balken-zeile > div:first-child { display: flex; justify-content: space-between; gap: .5rem; }
+.pl-balken { height: .45rem; border-radius: 999px; background: var(--sk-flaeche-2); overflow: hidden; }
+.pl-balken > span { display: block; height: 100%; border-radius: inherit; background: var(--sk-primaer); }
+
+/* Responsable – Mes écoles */
+.pl-schulen { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 1rem; }
+.pl-schule { display: grid; gap: .6rem; }
+.pl-schule-kopf { display: flex; justify-content: space-between; gap: .5rem; align-items: start; }
+.pl-schule-zahlen { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .88rem; color: var(--sk-text-leise); }
+.pl-schule-zahlen strong { color: var(--sk-text); }
+.pl-kontakte { display: grid; gap: .4rem; padding-top: .6rem; border-top: 1px solid var(--sk-rand); font-size: .9rem; }
+.pl-kontakt { display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: center; }
+.pl-kontakt a { overflow-wrap: anywhere; }
+
+/* Guide */
+.pl-guide-sprung { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.pl-guide-schritte { display: grid; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.pl-guide-schritte li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem 1rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--sk-rand); }
+.pl-guide-schritte li:last-child { border-bottom: 0; }
+.pl-guide-schritte p { margin: .15rem 0 0; color: var(--sk-text-leise); font-size: .92rem; }
+@media (max-width: 560px) { .pl-guide-schritte li { grid-template-columns: minmax(0, 1fr); } }
+
+/* Formular-Ergänzungen */
+.pl-zielgruppen { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .35rem .75rem; }
+.pl-zugang { display: grid; gap: .5rem; padding: .9rem 1rem; border: 1px dashed var(--sk-rand-stark); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); }
+.pl-zugang code { font-size: 1.05rem; font-weight: 700; letter-spacing: .03em; }
+.pl-rechts { text-align: right; }

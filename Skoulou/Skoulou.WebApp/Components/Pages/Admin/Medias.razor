@@ -1,5 +1,123 @@
 @page "/admin/medias"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits PlattformSeite
+@inject MedienVerwaltungService Medien
+@inject MessagerieService Messagerie
 
-<InVorbereitung Titel="Médias" Icon="image" Etappe="E2 – Plateforme"
-                Beschreibung="Fichiers stockés par établissement, avec leur taille et leur utilisation." />
+<PageTitle>Médias · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Médias" Icon="image" Untertitel="Fichiers stockés par école (images, vidéos, justificatifs). Seuls les fichiers non utilisés peuvent être supprimés." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (summen is not null)
+{
+    <div class="pl-zweispaltig">
+        <div class="pl-kennzahlen">
+            <KennzahlKachel Bezeichnung="Fichiers" Wert="@SkoulouKultur.Zahl(summen.Anzahl)" Icon="image" />
+            <KennzahlKachel Bezeichnung="Espace utilisé" Wert="@MedienVerwaltungService.Groesse(summen.Bytes)" Icon="layers" />
+            <KennzahlKachel Bezeichnung="Non utilisés" Wert="@SkoulouKultur.Zahl(summen.Ungenutzt)" Icon="trash" Zusatz="@MedienVerwaltungService.Groesse(summen.UngenutztBytes)" />
+        </div>
+        <Karte Titel="Espace par école" Icon="school">
+            @if (summen.JeSchule.Count == 0)
+            {
+                <p class="sk-leise">Aucun fichier pour le moment.</p>
+            }
+            <div class="pl-balken-liste">
+                @foreach (var s in summen.JeSchule)
+                {
+                    <div class="pl-balken-zeile">
+                        <div><span>@s.Schule</span><small class="sk-leise">@s.Anzahl fichier(s) · @MedienVerwaltungService.Groesse(s.Bytes)</small></div>
+                        <div class="pl-balken"><span style="width:@Anteil(s.Bytes)%"></span></div>
+                    </div>
+                }
+            </div>
+        </Karte>
+    </div>
+
+    <Liste T="MedienEintrag" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom du fichier…" LeerIcon="image" LeerTitel="Aucun fichier">
+        <Werkzeuge>
+            <AuswahlFeld T="Guid?" Wert="schuleId" WertChanged="SchuleAsync" Optionen="schulen" Platzhalter="Toutes les écoles" Kompakt="true" Icon="school" />
+        </Werkzeuge>
+        <Zeile Context="m">
+            <div class="pl-zeile">
+                <span class="pl-zeile-icon"><Icon Name="@(m.Art switch { MedienArt.Video => "video", MedienArt.Dokument => "receipt", _ => "image" })" Groesse="18" /></span>
+                <div class="pl-zeile-haupt">
+                    <span class="pl-zeile-titel">@m.Dateiname</span>
+                    <span class="pl-zeile-meta">
+                        <span>@ZweckText(m.Zweck)</span>
+                        <span><Icon Name="school" Groesse="14" /> @(m.Schule ?? "Plateforme")</span>
+                        @if (m.Besitzer is not null) {<span><Icon Name="user" Groesse="14" /> @m.Besitzer</span>}
+                        <span>@Tag(m.ErstelltAmUtc)</span>
+                    </span>
+                </div>
+                <div class="pl-zeile-info">
+                    <span>@MedienVerwaltungService.Groesse(m.Bytes)</span>
+                    <StatusBadge Text="@(m.Genutzt ? "Utilisé" : "Non utilisé")" Art="@(m.Genutzt ? "erfolg" : "warn")" />
+                </div>
+                <div class="pl-zeile-aktionen">
+                    @if (!m.Genutzt)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => loeschen = m"><Icon Name="trash" Groesse="16" /> <span>Supprimer</span></button>
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<BestaetigungsDialog Open="loeschen is not null" Titel="Supprimer ce fichier ?" Text="@($"« {loeschen?.Dateiname} » n'est utilisé nulle part. Il sera supprimé définitivement du stockage.")"
+                     BestaetigenText="Supprimer" Gefahr="true" OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+
+@code {
+    private Liste<MedienEintrag>? liste;
+    private MedienSummen? summen;
+    private Guid? schuleId;
+    private MedienEintrag? loeschen;
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+
+    private IReadOnlyList<FilterChip> Chips =>
+    [
+        new(null, "Tous"), new(MedienVerwaltungService.FilterUngenutzt, "Non utilisés", summen?.Ungenutzt),
+        new(MedienVerwaltungService.FilterBilder, "Images"), new(MedienVerwaltungService.FilterVideos, "Vidéos"), new(MedienVerwaltungService.FilterDokumente, "Documents")
+    ];
+
+    private static string ZweckText(MedienZweck z) => z switch
+    {
+        MedienZweck.Logo => "Logo",
+        MedienZweck.Foto => "Photo de profil",
+        MedienZweck.Beleg => "Justificatif",
+        MedienZweck.Video => "Vidéo de cours",
+        _ => "Contenu de cours"
+    };
+
+    private int Anteil(long bytes) => summen is { Bytes: > 0 } s ? (int)Math.Max(2, Math.Round(bytes * 100d / s.Bytes)) : 0;
+
+    protected override async Task InitialisierenAsync()
+    {
+        summen = await Medien.SummenAsync(Ich.KontoId);
+        schulen = [new(null, "Toutes les écoles"), .. (await Messagerie.SchulenAsync(Ich.KontoId)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort))];
+    }
+
+    private Task<(IReadOnlyList<MedienEintrag> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => Medien.SucheAsync(Ich.KontoId, a.Suche, a.Filter, schuleId, a.Ueberspringen, a.Anzahl, ct);
+
+    private async Task SchuleAsync(Guid? s)
+    {
+        schuleId = s;
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } m) return;
+        if (await AusfuehrenAsync(() => Medien.LoeschenAsync(Ich.KontoId, m.Id), "Fichier supprimé."))
+        {
+            summen = await Medien.SummenAsync(Ich.KontoId);
+            if (liste is not null) await liste.NeuLadenAsync();
+        }
+        loeschen = null;
+    }
+}

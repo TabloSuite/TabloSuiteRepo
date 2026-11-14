@@ -1,0 +1,78 @@
+@* Sperren (mit Grund), Entsperren oder neues Startpasswort für ein Konto – mit Rückfrage. *@
+@inject KontenVerwaltungService Konten
+
+<BestaetigungsDialog Open="Anfrage is not null" Titel="@Titel" Text="@Text" BestaetigenText="@Knopf" Gefahr="@(Anfrage?.Aktion == KontoAktionArt.Sperren)" Fehler="@fehler"
+                     OnBestaetigen="AusfuehrenAsync" OnAbbrechen="() => OnClose.InvokeAsync()">
+    @if (Anfrage?.Aktion == KontoAktionArt.Sperren)
+    {
+        <TextFeld Label="Motif (facultatif, visible dans l'audit)" @bind-Wert="grund" Zeilen="2" MaxLaenge="300" />
+    }
+</BestaetigungsDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    [Parameter] public KontoAktionAnfrage? Anfrage { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>Erfolgsmeldung und ggf. neuer Zugang (Passwort).</summary>
+    [Parameter] public EventCallback<(string Meldung, Skoulou.WebApp.Services.Organisation.Zugang? Zugang)> OnErledigt { get; set; }
+
+    private string? grund, fehler;
+    private KontoAktionAnfrage? letzte;
+
+    private string Titel => Anfrage?.Aktion switch
+    {
+        KontoAktionArt.Sperren => "Bloquer ce compte ?",
+        KontoAktionArt.Entsperren => "Débloquer ce compte ?",
+        _ => "Nouveau mot de passe de départ ?"
+    };
+
+    private string Knopf => Anfrage?.Aktion switch
+    {
+        KontoAktionArt.Sperren => "Bloquer",
+        KontoAktionArt.Entsperren => "Débloquer",
+        _ => "Générer le mot de passe"
+    };
+
+    private string Text => Anfrage is not { } a ? string.Empty : a.Aktion switch
+    {
+        KontoAktionArt.Sperren => $"{a.Name} ne pourra plus se connecter ; ses sessions ouvertes sont fermées immédiatement.",
+        KontoAktionArt.Entsperren => $"{a.Name} pourra de nouveau se connecter.",
+        _ => $"Un mot de passe de départ est créé pour {a.Name} et affiché une seule fois. Ses sessions ouvertes sont fermées ; à la connexion, il ou elle choisira un nouveau mot de passe."
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Anfrage == letzte) return;
+        letzte = Anfrage;
+        grund = null;
+        fehler = null;
+    }
+
+    private async Task AusfuehrenAsync()
+    {
+        if (Anfrage is not { } a || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            switch (a.Aktion)
+            {
+                case KontoAktionArt.Sperren:
+                    await Konten.SperrenAsync(ich, a.KontoId, grund);
+                    await OnErledigt.InvokeAsync(("Compte bloqué.", null));
+                    break;
+                case KontoAktionArt.Entsperren:
+                    await Konten.EntsperrenAsync(ich, a.KontoId);
+                    await OnErledigt.InvokeAsync(("Compte débloqué.", null));
+                    break;
+                default:
+                    var zugang = await Konten.PasswortZuruecksetzenAsync(ich, a.KontoId);
+                    await OnErledigt.InvokeAsync(("Nouveau mot de passe créé.", zugang));
+                    break;
+            }
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}
