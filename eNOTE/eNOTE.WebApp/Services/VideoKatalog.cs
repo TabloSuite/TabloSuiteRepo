@@ -32,18 +32,19 @@ public static class VideoKatalog
 
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
-        // Für alle (12.11.2026: neue Lernvideos mit Sprecherin, ausführlich für Einsteiger)
+        // Für alle (12.11.2026: Lernvideos mit Sprecherin; ab 14.11.2026 nach und nach im v3-Stil ohne Sprecherin:
+        // Premiers pas, Encaisser, Attente – die übrigen folgen paketweise)
         new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
-            "Se connecter, le menu, les boutons et les fenêtres, les messages, la zone du propriétaire.", Alle_, Alle, "2:03"),
+            "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:14"),
         new("enote-visite-guidee.mp4", "La visite guidée",
             "Toutes les fonctions d'eNOTE, où les trouver et comment s'en servir au quotidien.", Alle_, Alle, "5:10"),
         new(Werbung, "Pourquoi eNOTE ?",
             "Ce que eNOTE change au quotidien pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "2:54"),
 
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
-            "Ouvrir la caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "2:44"),
+            "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
-            "Garder un ticket pour plus tard, le retrouver et le reprendre, aussi pour un client présent.", "Employé", Alle, "1:21"),
+            "Garder un ticket pour plus tard, le reprendre ou le supprimer ; pour un client présent : « Enregistrer sans encaisser ».", "Employé", Alle, "3:07"),
         new("enote-employe-clients.mp4", "Accueillir les clients",
             "Noter une arrivée, créer un nouveau client, la carte et la fiche, encaisser ou noter le départ.", "Employé", Alle, "2:04"),
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
