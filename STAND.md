@@ -27,7 +27,8 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
    Video einzeln einbauen, Lead committet.
 3. **SKOULOU E7b** nach `Skoulou/docs/auftraege/E7-Abschluss.md` (Rundgang aller Rollen auf `SkoulouDB_SIM`, Feinschliff,
    Guide) inkl. Zusatz: Session-Klassen enden automatisch, Gebühr je Session (neue Migration), automatischer Wiederholversuch
-   bei gleichzeitigem Kontonamen, `/direction/journal` bauen, Nutzungsbedingungen wie eNOTE schon bei der Registrierung.
+   bei gleichzeitigem Kontonamen, `/direction/journal` bauen, Nutzungsbedingungen wie eNOTE schon bei der Registrierung,
+   **Administratoren verwalten wie eNOTE** (Nutzer 14.11.: nur Hauptadmin legt weitere Admins an/ändert/sperrt/löscht).
 4. **Abschluss** (Nutzer 14.11.): lokale DBs + Azure-DBs auf neuesten Migrationsstand (OK liegt vor, « am Ende »),
    Tests, push → Nutzer deployt **beide Apps**. Nach DB-Änderungen auf Azure die Web-App neu starten (Seed!).
 

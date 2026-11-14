@@ -110,3 +110,13 @@ Do these first (with tests, and extend the simulation's invariants where it fits
    `eNOTE/eNOTE.WebApp` how eNOTE handles registration terms and accounts created by someone else (employees) and mirror
    that for SKOULOU accounts created by the school (staff, students, parents) and for new terms versions. You may also
    make the content cleaner and shorter in eNOTE's style (owner's permission) – keep it in French with « vous ».
+7. **Administrators management like eNOTE** (owner 14.11.: « Ja wie bei eNote »): today SKOULOU has only the start
+   SuperAdmin from the seed settings; no UI can add another admin (`/admin/comptes` only blocks/unblocks/resets).
+   Mirror eNOTE's `Components/Shared/AdminKontenVerwaltung.razor` + `Services/AdminKontenService.cs` (tab
+   « Administrateurs » in `Components/Pages/Admin.razor`): only the **main administrator** (eNOTE: flag `IstErsterAdmin`,
+   set on the oldest admin) sees it and can add (Prénom, Nom, e-mail, Pseudonyme, generated initial password shown once
+   with the hint to pass it on), edit, block (signs the person out at once) and delete other administrators; the main
+   admin cannot be changed there. New admins get the same rights as the SuperAdmin except this management. In SKOULOU
+   put it in the admin area (own page or tab, in the admin navigation), write it to the journal, with tests (only the
+   main admin may do it, nobody can block/delete the main admin or themselves). If it needs a schema change, put it into
+   the same NEW migration as point 2.
