@@ -3,6 +3,7 @@ using ENote.Core.Services;
 using ENote.Core.Services.Kasse;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ENote.WebApp.Services;
 
@@ -79,7 +80,27 @@ public class AufenthaltService(IDbContextFactory<ApplicationDbContext> factory, 
         if (positionen.Count > AufenthaltRegeln.ZeilenJeErfassungMax) throw new ArgumentException($"{AufenthaltRegeln.ZeilenJeErfassungMax} lignes au maximum.");
         if (positionen.Any(p => p.Menge < 1 || p.Menge > AufenthaltRegeln.MengeMax)) throw new ArgumentException("Quantité invalide.");
 
-        await using var db = await factory.CreateDbContextAsync(ct);
+        // Lagerabgang unter der Kassensperre des Ladens: ein gleichzeitiger Verkauf am anderen Gerät verliert keinen Abzug (W3).
+        List<string> warnungen;
+        try
+        {
+            warnungen = await KassenSperre.MitLadenAsync(factory, salonId,
+                (db, transaktion) => ErfasseGesperrtAsync(db, transaktion, user, salonId, kundeId, positionen, ct), ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
+        {
+            throw new ArgumentException(ex.Message);
+        }
+        signal.Melde(salonId);
+
+        await using var lesen = await factory.CreateDbContextAsync(ct);
+        var gesamt = await Offene(lesen, salonId, kundeId).Select(a => new { a.Menge, a.EinzelPreis }).ToListAsync(ct);
+        return new ErfassErgebnis(positionen.Count, new Stand(gesamt.Sum(g => g.Menge), gesamt.Sum(g => g.EinzelPreis * g.Menge)), warnungen);
+    }
+
+    private async Task<List<string>> ErfasseGesperrtAsync(ApplicationDbContext db, IDbContextTransaction? transaktion,
+        Guid user, Guid salonId, Guid kundeId, IReadOnlyList<PositionInput> positionen, CancellationToken ct)
+    {
         var person = await PruefeZugangAsync(db, user, salonId, ct);
 
         var besuch = await db.KundenBesuche.AsNoTracking()
@@ -136,10 +157,8 @@ public class AufenthaltService(IDbContextFactory<ApplicationDbContext> factory, 
             db.AufenthaltsPositionen.Add(zeile);
         }
         await db.SaveChangesAsync(ct);
-        signal.Melde(salonId);
-
-        var gesamt = await Offene(db, salonId, kundeId).Select(a => new { a.Menge, a.EinzelPreis }).ToListAsync(ct);
-        return new ErfassErgebnis(positionen.Count, new Stand(gesamt.Sum(g => g.Menge), gesamt.Sum(g => g.EinzelPreis * g.Menge)), warnungen.Distinct().ToList());
+        await KassenSperre.BestaetigeAsync(transaktion, ct);
+        return warnungen.Distinct().ToList();
     }
 
     // ------------------------------------------------------------------ Lesen
@@ -196,16 +215,47 @@ public class AufenthaltService(IDbContextFactory<ApplicationDbContext> factory, 
     public async Task NimmZurueckAsync(Guid user, Guid zeileId, string? grund, bool insLager, string? besitzerPin = null, CancellationToken ct = default)
     {
         var g = AufenthaltRegeln.PruefeGrund(grund);
-        await using var db = await factory.CreateDbContextAsync(ct);
-        var zeile = await db.AufenthaltsPositionen.FirstOrDefaultAsync(a => a.Id == zeileId, ct) ?? throw new ArgumentException("Ligne introuvable.");
-        var person = await PruefeZugangAsync(db, user, zeile.SalonId, ct);
+        Guid salonId;
+        var jetzt = Jetzt;
+        await using (var vorab = await factory.CreateDbContextAsync(ct))
+        {
+            var z = await vorab.AufenthaltsPositionen.AsNoTracking().FirstOrDefaultAsync(a => a.Id == zeileId, ct) ?? throw new ArgumentException("Ligne introuvable.");
+            await PruefeZugangAsync(vorab, user, z.SalonId, ct);
+            PruefeOffen(z);
+            var sofort = z.ErfasstVonId == user && jetzt - z.ErfasstUtc <= AufenthaltRegeln.SofortKorrektur;
+            if (!sofort && await kassen.PruefeBesitzerFreigabeAsync(z.SalonId, user, besitzerPin, ct) is string fehler)
+                throw new UnauthorizedAccessException(fehler);
+            salonId = z.SalonId;
+        }
+
+        // Rücknahme ins Lager unter der Kassensperre (W3).
+        try
+        {
+            await KassenSperre.MitLadenAsync(factory, salonId, async (db, transaktion) =>
+            {
+                await NimmZurueckGesperrtAsync(db, user, zeileId, g, insLager, jetzt, ct);
+                await KassenSperre.BestaetigeAsync(transaktion, ct);
+                return true;
+            }, ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
+        {
+            throw new ArgumentException(ex.Message);
+        }
+        signal.Melde(salonId);
+    }
+
+    private static void PruefeOffen(AufenthaltsPosition zeile)
+    {
         if (zeile.VerkaufId is not null) throw new ArgumentException("Cette prestation est déjà encaissée : utilisez « Rembourser » dans l'historique.");
         if (zeile.ZurueckgenommenUtc is not null) throw new ArgumentException("Cette ligne est déjà retirée.");
+    }
 
-        var jetzt = Jetzt;
-        var sofort = zeile.ErfasstVonId == user && jetzt - zeile.ErfasstUtc <= AufenthaltRegeln.SofortKorrektur;
-        if (!sofort && await kassen.PruefeBesitzerFreigabeAsync(zeile.SalonId, user, besitzerPin, ct) is string fehler)
-            throw new UnauthorizedAccessException(fehler);
+    private static async Task NimmZurueckGesperrtAsync(ApplicationDbContext db, Guid user, Guid zeileId, string g, bool insLager, DateTime jetzt, CancellationToken ct)
+    {
+        var zeile = await db.AufenthaltsPositionen.FirstOrDefaultAsync(a => a.Id == zeileId, ct) ?? throw new ArgumentException("Ligne introuvable.");
+        var person = await PruefeZugangAsync(db, user, zeile.SalonId, ct);
+        PruefeOffen(zeile);
 
         zeile.ZurueckgenommenUtc = jetzt;
         zeile.ZurueckgenommenVonName = person.Name;
@@ -227,6 +277,5 @@ public class AufenthaltService(IDbContextFactory<ApplicationDbContext> factory, 
         }
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException) { throw new ArgumentException("Cette ligne vient d'être encaissée ou retirée à une autre caisse."); }
-        signal.Melde(zeile.SalonId);
     }
 }

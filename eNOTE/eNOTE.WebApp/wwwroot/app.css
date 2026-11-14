@@ -1668,6 +1668,9 @@ button.enote-laedt { cursor: progress; }
 .kx-pay-ref { display: grid; gap: .35rem; font-size: .86rem; font-weight: 700; }
 .kx-pay-ref .enote-input { max-width: none; }
 .kx-pay-hinweis { margin: 0; display: flex; align-items: center; gap: .45rem; font-size: .82rem; color: var(--enote-text-muted); }
+.kx-pay-hinweis.kx-storno-grenze { color: var(--enote-danger); font-weight: 600; align-items: flex-start; }
+.kx-pay-hinweis.kx-abschluss-aktuell { color: var(--enote-accent-text); font-weight: 600; align-items: flex-start; }
+.kx-pay-hinweis.kx-storno-grenze svg, .kx-pay-hinweis.kx-abschluss-aktuell svg { flex: none; margin-top: .1rem; }
 .kx-pay-rest { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); font-size: .88rem; font-weight: 700; }
 .kx-pay-rest strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .kx-pay-rest-wahl { display: flex; gap: .35rem; flex-wrap: wrap; }

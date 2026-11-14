@@ -9,9 +9,21 @@ public sealed class AnwesenheitsSignal
 {
     public event Action<Guid>? Geaendert;
 
+    /// <summary>
+    /// Bargeld/Kassenstand eines Ladens hat sich geändert (Verkauf, Erstattung, Retrait, Einlage, Abschluss): nur die
+    /// Kassen hören zu und laden « En caisse » bzw. einen offenen Abschlussdialog aus der Datenbank (W3).
+    /// </summary>
+    public event Action<Guid>? KasseGeaendert;
+
     public void Melde(Guid salonId)
     {
         try { Geaendert?.Invoke(salonId); }
+        catch { /* eine Ansicht darf die anderen nicht stören */ }
+    }
+
+    public void MeldeKasse(Guid salonId)
+    {
+        try { KasseGeaendert?.Invoke(salonId); }
         catch { /* eine Ansicht darf die anderen nicht stören */ }
     }
 }

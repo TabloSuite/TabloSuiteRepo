@@ -79,7 +79,7 @@ public class MehrladenTests
         var katalog = new KatalogService(factory, scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<AppUser>>(), null!);
         // Leistung mit nicht vorhandener Id läuft in den Aktualisierungszweig und schlägt fehl.
         await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.NewGuid(), SalonId = b.Id, Name = "Falsch" }));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.NewGuid(), SalonId = b.Id, LeistungId = artikel.Id, Name = "Falsch" }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.NewGuid(), SalonId = b.Id, LeistungId = artikel.Id, Name = "Falsch", Wert = 10m }));
         await using var kontrolle = await factory.CreateDbContextAsync(); Assert.Equal("Original", (await kontrolle.Leistungen.SingleAsync()).Name);
 
         // Neue Remise (wie « Nouvelle remise » sie anlegt: Id leer) wird gespeichert und bekommt eine Id.

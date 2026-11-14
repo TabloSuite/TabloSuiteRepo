@@ -107,7 +107,7 @@
 <ModalDialog Open="editorOffen" Title="@(istNeueRemise ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
-            <label>Nom <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="120" /></label>
+            <label>Nom <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="@ENote.WebApp.Services.KatalogService.RabattNameMax" /></label>
 
             <label>Type de remise</label>
             <EnoteRadioGroup TValue="RabattArt" @bind-Value="bearbeitungsRabatt.Art" Options="rabattArtOptionen" />
@@ -134,7 +134,7 @@
             </div>
 
             <label>Condition <small class="enote-muted">(facultatif — l'employé la confirme)</small>
-                <input @bind="bearbeitungsRabatt.Bedingung" placeholder="ex. Client fidèle, carte étudiant présentée" maxlength="200" />
+                <input @bind="bearbeitungsRabatt.Bedingung" placeholder="ex. Client fidèle, carte étudiant présentée" maxlength="@ENote.WebApp.Services.KatalogService.RabattBedingungMax" />
             </label>
 
             <EnoteCheckbox @bind-Value="hatGueltigkeit" Label="Période de validité (facultatif)" />

@@ -69,6 +69,35 @@ public partial class Caisse(
         });
     }
 
+    /// <summary>
+    /// Anderes (oder dieses) Gerät hat Bargeld bewegt: « En caisse » und ein offener Abschlussdialog zeigen den Stand der
+    /// Datenbank (W3; vorher zählte jedes Gerät nur seine eigenen Verkäufe).
+    /// </summary>
+    private void KasseGeaendert(Guid salonId)
+    {
+        if (aktiveSitzung?.SalonId != salonId) return;
+        _ = InvokeAsync(async () =>
+        {
+            await AktualisiereKassenstandAsync();
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>Bar-Stand aus der Datenbank in den Kassenkopf (und in einen offenen Abschlussdialog) übernehmen.</summary>
+    private async Task AktualisiereKassenstandAsync()
+    {
+        if (aktiveSitzung is not { } sitzung) return;
+        var aufstellung = await kassenService.GetBarSollAufstellungAsync(sitzung.Id);
+        if (aufstellung is not { } a || aktiveSitzung?.Id != sitzung.Id) return; // geschlossen: Abgleich über AnwesenheitGeaendert
+        anzeigeState.SetzeBarStand(a.Soll);
+        if (abschlussOffen && abschlussInfo is { } bisher)
+        {
+            abschlussInfo = await kassenService.GetSitzungsUebersichtAsync(sitzung.Id) ?? bisher;
+            if (abschlussInfo.BarSoll != bisher.BarSoll)
+                abschlussHinweis = $"Espèces attendues mises à jour : {bisher.BarSoll:N0} F → {abschlussInfo.BarSoll:N0} F (opération sur un autre appareil).";
+        }
+    }
+
     private async Task UebernehmeKundeAusLinkAsync()
     {
         if (KundeAusLink is not Guid kundeId || aktiveSitzung is null) return;
@@ -369,6 +398,13 @@ public partial class Caisse(
         .Where(p => stornoMengen.GetValueOrDefault(p.PositionId) is var m && m > 0 && m <= p.Offen)
         .Sum(p => Core.Services.Kasse.StornoRechner.Betrag(p.ZeilenSumme, p.Menge, p.ErstattetMenge, p.ErstattetBetrag, stornoMengen[p.PositionId]));
 
+    /// <summary>Betrag übersteigt den Rest des gewählten Zahlwegs bzw. das Bargeld in der Kasse – « Rembourser » ist dann aus.</summary>
+    private string? StornoGrenze => StornoGewaehlterWeg is not { } w || StornoBetrag <= 0 ? null
+        : StornoBetrag > w.Offen ? $"Au maximum {w.Offen:N0} F en {w.Name} : retirez des articles ou faites un 2e remboursement pour le reste."
+        : w.Art == ZahlungsArt.Bar && StornoBetrag > anzeigeState.ErwarteterBarBetrag
+            ? $"Pas assez d'espèces en caisse ({anzeigeState.ErwarteterBarBetrag:N0} F attendus) : choisissez un autre moyen ou moins d'articles."
+            : null;
+
     private async Task OeffneStornoAsync(Guid verkaufId)
     {
         stornoVorlage = null;
@@ -380,6 +416,7 @@ public partial class Caisse(
         historieOffen = false;
         stornoOffen = true;
 
+        await AktualisiereKassenstandAsync();
         stornoVorlage = await stornoService.GetVorlageAsync(verkaufId, aktiveSitzung?.Id, aktuellerBenutzerId);
         if (stornoVorlage is null)
         {
@@ -461,6 +498,7 @@ public partial class Caisse(
         retraitPin = string.Empty;
         retraitFehler = null;
         retraitBrauchtPin = await kassenService.HatBesitzerPinAsync(aktiveSitzung.SalonId);
+        await AktualisiereKassenstandAsync();
         retraitOffen = true;
     }
 
@@ -496,6 +534,7 @@ public partial class Caisse(
     private bool historieLaedt;
     private List<FinanzService.VerkaufEintrag> historieVerkaeufe = [];
     private bool abschlussOffen;
+    private string? abschlussHinweis;
     private decimal endbestandGezaehlt;
     private string? abschlussNotiz;
     private string? abschlussFehler;
@@ -590,6 +629,7 @@ public partial class Caisse(
     {
         anzeigeState.OnChange += HandleAnzeigeStateChanged;
         anwesenheitsSignal.Geaendert += AnwesenheitGeaendert;
+        anwesenheitsSignal.KasseGeaendert += KasseGeaendert;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         if (!Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -1161,7 +1201,9 @@ public partial class Caisse(
         abschlussFehler = null;
         endbestandGezaehlt = 0m;
         abschlussNotiz = null;
+        abschlussHinweis = null;
         abschlussInfo = aktiveSitzung is not null ? await kassenService.GetSitzungsUebersichtAsync(aktiveSitzung.Id) : null;
+        if (abschlussInfo is not null) anzeigeState.SetzeBarStand(abschlussInfo.BarSoll);
         abschlussOffen = true;
     }
 
@@ -1172,10 +1214,19 @@ public partial class Caisse(
             return;
         }
 
-        var (erfolg, fehler, sitzung) = await kassenService.SchliesseSitzungAsync(aktiveSitzung.Id, endbestandGezaehlt, abschlussNotiz);
+        var (erfolg, fehler, sitzung) = await kassenService.SchliesseSitzungAsync(aktiveSitzung.Id, endbestandGezaehlt, abschlussNotiz,
+            erwartetesSoll: abschlussInfo?.BarSoll);
         if (!erfolg || sitzung is null)
         {
             abschlussFehler = fehler;
+            if (fehler == KassenService.SollGeaendertFehler)
+            {
+                // Stand neu laden; der Dialog zeigt die neuen « Espèces attendues » und das neue Écart.
+                abschlussHinweis = null;
+                abschlussInfo = await kassenService.GetSitzungsUebersichtAsync(aktiveSitzung.Id) ?? abschlussInfo;
+                if (abschlussInfo is not null) anzeigeState.SetzeBarStand(abschlussInfo.BarSoll);
+                return;
+            }
             if (fehler == KassenService.KeineOffeneKasseFehler && !await GleicheSitzungAbAsync()) abschlussFehler = null;
             return;
         }
@@ -1248,6 +1299,7 @@ public partial class Caisse(
     {
         anzeigeState.OnChange -= HandleAnzeigeStateChanged;
         anwesenheitsSignal.Geaendert -= AnwesenheitGeaendert;
+        anwesenheitsSignal.KasseGeaendert -= KasseGeaendert;
         if (scannerRef is not null)
         {
             try { await js.InvokeVoidAsync("enoteScanner.stop"); }

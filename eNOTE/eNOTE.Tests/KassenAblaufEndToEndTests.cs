@@ -173,6 +173,61 @@ public class KassenAblaufEndToEndTests
         Assert.Equal(47m, (await katalog.GetLeistungAsync(produkt.Id))!.Stueckzahl);
     }
 
+    /// <summary>
+    /// W3: Ein offener Abschlussdialog zeigte « Espèces attendues » vom Öffnen; verkaufte ein zweites Gerät inzwischen bar,
+    /// wurde mit falschem Écart geschlossen. Jetzt schickt der Dialog sein Soll mit – weicht die DB ab, wird nicht geschlossen.
+    /// </summary>
+    [Fact]
+    public async Task Abschluss_mit_veraltetem_Soll_wird_abgelehnt_und_zeigt_den_neuen_Stand()
+    {
+        var (_, salon, besitzer, kassen, katalog) = await BasisAsync();
+        var savon = await katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.Empty, SalonId = salon.Id, Name = "Savon", Preis = 400, IstAktiv = true });
+        var sitzung = (await kassen.StarteSitzungAsync(salon.Id, besitzer.Id, 1000m)).Sitzung!;
+        var dialog = (await kassen.GetSitzungsUebersichtAsync(sitzung.Id))!;
+        Assert.Equal(1000m, dialog.BarSoll);
+
+        // anderes Gerät verkauft bar, während der Dialog offen ist
+        Assert.True((await kassen.BucheVerkaufAsync(sitzung.Id, [new KassenService.VerkaufsPositionInput(savon.Id, 1, null, false)],
+            [new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 400m)])).Erfolg);
+
+        var veraltet = await kassen.SchliesseSitzungAsync(sitzung.Id, 1000m, null, erwartetesSoll: dialog.BarSoll);
+        Assert.Equal((false, KassenService.SollGeaendertFehler), (veraltet.Erfolg, veraltet.Fehler));
+        Assert.Equal(1400m, (await kassen.GetSitzungsUebersichtAsync(sitzung.Id))!.BarSoll); // Kasse bleibt offen, neuer Stand
+
+        var ok = await kassen.SchliesseSitzungAsync(sitzung.Id, 1400m, null, erwartetesSoll: 1400m);
+        Assert.True(ok.Erfolg, ok.Fehler);
+        Assert.Equal(0m, ok.Sitzung!.Differenz);
+
+        // Kassenkopf « En caisse »: Stand aus der DB übernehmen (alle Geräte), nicht nur eigene Verkäufe
+        var anzeige = new KassenAnzeigeState(new BesitzerPinState());
+        anzeige.SitzungGestartet(sitzung.Id, salon.Id, "Ama", 1000m);
+        anzeige.VerkaufGebucht(400m);
+        anzeige.SetzeBarStand(2200m);
+        Assert.Equal(2200m, anzeige.ErwarteterBarBetrag);
+    }
+
+    /// <summary>W3: « Nom »/« Condition » einer Remise waren nur im Browser begrenzt – der Server speicherte auch 600 Zeichen.</summary>
+    [Fact]
+    public async Task Remise_Texte_sind_auch_auf_dem_Server_begrenzt()
+    {
+        var (factory, salon, _, _, katalog) = await BasisAsync();
+        await Assert.ThrowsAsync<ArgumentException>(() => katalog.SpeichereRabattAsync(new Rabatt
+            { Id = Guid.Empty, SalonId = salon.Id, Name = new string('x', 600), Art = RabattArt.Prozent, Wert = 10 }));
+        await Assert.ThrowsAsync<ArgumentException>(() => katalog.SpeichereRabattAsync(new Rabatt
+            { Id = Guid.Empty, SalonId = salon.Id, Name = "Fidélité", Bedingung = new string('y', KatalogService.RabattBedingungMax + 1), Art = RabattArt.Prozent, Wert = 10 }));
+        var ok = await katalog.SpeichereRabattAsync(new Rabatt
+            { Id = Guid.Empty, SalonId = salon.Id, Name = "  " + new string('n', KatalogService.RabattNameMax) + " ", Bedingung = " ", Art = RabattArt.Prozent, Wert = 10 });
+        Assert.Equal((KatalogService.RabattNameMax, (string?)null), (ok.Name.Length, ok.Bedingung));
+
+        // Ältere Remise, die die heutigen Regeln nicht erfüllt, lässt sich auf der Karte trotzdem ein-/ausschalten.
+        var alt = new Rabatt { SalonId = salon.Id, Name = new string('z', 600), Art = RabattArt.Prozent, Wert = 0, IstAktiv = true };
+        await using (var db = await factory.CreateDbContextAsync()) { db.Rabatte.Add(alt); await db.SaveChangesAsync(); }
+        Assert.True(await katalog.SetzeRabattAktivAsync(alt.Id, salon.Id, false));
+        Assert.False(await katalog.SetzeRabattAktivAsync(alt.Id, Guid.NewGuid(), true)); // fremder Laden
+        await using (var db = await factory.CreateDbContextAsync())
+            Assert.False((await db.Rabatte.SingleAsync(r => r.Id == alt.Id)).IstAktiv);
+    }
+
     [Fact]
     public async Task Ticket_offert_mit_Remise_ueber_dem_Preis_laesst_sich_bar_mit_0_F_buchen()
     {

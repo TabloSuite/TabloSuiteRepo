@@ -2,6 +2,7 @@
 using ENote.Core.Services.Kasse;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ENote.WebApp.Services;
 
@@ -14,7 +15,7 @@ namespace ENote.WebApp.Services;
 public class StornoService(
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     KassenService kassenService,
-    IUmsatzBenachrichtigungService umsatzBenachrichtigung, TimeProvider? zeit = null)
+    IUmsatzBenachrichtigungService umsatzBenachrichtigung, TimeProvider? zeit = null, AnwesenheitsSignal? signal = null)
 {
     private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
 
@@ -99,7 +100,55 @@ public class StornoService(
         var gewaehlt = positionen.Where(p => p.Menge > 0).ToList();
         if (gewaehlt.Count == 0) return new(false, "Choisissez au moins un article à rembourser.");
 
-        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        // Freigabe vorab (eigene Verbindung, zählt PIN-Fehlversuche); die Buchung selbst unter der Kassensperre (W3):
+        // zwei Geräte erstatten denselben Bon nicht doppelt, Bargeld nie über den Kassenstand, nichts nach dem Abschluss.
+        Guid salonId;
+        await using (var vorab = await dbContextFactory.CreateDbContextAsync(ct))
+        {
+            var offen = await vorab.KassenSitzungen.AsNoTracking()
+                .FirstOrDefaultAsync(k => k.Id == sitzungId && k.Status == KassenSitzungStatus.Offen, ct);
+            if (offen is null) return new(false, "Ouvrez la caisse pour rembourser.");
+            if (!await vorab.Verkaeufe.AnyAsync(v => v.Id == verkaufId && v.SalonId == offen.SalonId, ct)) return new(false, "Vente introuvable.");
+            if (!await DarfOhneFreigabeErstattenAsync(vorab, offen, userId, ct)
+                && await kassenService.PruefeBesitzerFreigabeAsync(offen.SalonId, userId, besitzerPin, ct) is string freigabeFehler)
+                return new(false, freigabeFehler);
+            salonId = offen.SalonId;
+        }
+
+        StornoErgebnis ergebnis;
+        try
+        {
+            ergebnis = await KassenSperre.MitSitzungAsync(dbContextFactory, sitzungId,
+                (db, transaktion) => ErstatteGesperrtAsync(db, transaktion, userId, sitzungId, verkaufId, gewaehlt, wegSchluessel, zurueckInsLager, grund, ct), ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
+        {
+            return new(false, ex.Message);
+        }
+        if (!ergebnis.Erfolg) return ergebnis;
+        signal?.MeldeKasse(salonId);
+
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+            var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == salonId).Select(s => s.Land).FirstOrDefaultAsync(ct));
+            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, uhr.GetUtcNow().UtcDateTime), zone);
+            var tagesUmsatz = await db.Verkaeufe.Where(v => v.SalonId == salonId && v.ZeitUtc >= heute).SumAsync(v => v.GesamtSumme, ct);
+            var anzahl = await db.Verkaeufe.CountAsync(v => v.SalonId == salonId && v.ZeitUtc >= heute && v.StornoVonVerkaufId == null, ct);
+            await umsatzBenachrichtigung.VerkaufGemeldetAsync(salonId, tagesUmsatz, anzahl, ct);
+        }
+        catch
+        {
+            // Live-Benachrichtigung darf die Erstattung nie blockieren.
+        }
+
+        return ergebnis;
+    }
+
+    private async Task<StornoErgebnis> ErstatteGesperrtAsync(ApplicationDbContext db, IDbContextTransaction? transaktion, Guid userId,
+        Guid sitzungId, Guid verkaufId, IReadOnlyList<StornoPositionInput> gewaehlt, string wegSchluessel, bool zurueckInsLager,
+        string grund, CancellationToken ct)
+    {
         var sitzung = await db.KassenSitzungen.AsNoTracking()
             .FirstOrDefaultAsync(k => k.Id == sitzungId && k.Status == KassenSitzungStatus.Offen, ct);
         if (sitzung is null) return new(false, "Ouvrez la caisse pour rembourser.");
@@ -107,10 +156,6 @@ public class StornoService(
         var original = await LadeOriginalAsync(db, verkaufId, ct);
         if (original is null || original.SalonId != sitzung.SalonId) return new(false, "Vente introuvable.");
         if (original.IstStorno) return new(false, "Un remboursement ne peut pas être remboursé.");
-
-        if (!await DarfOhneFreigabeErstattenAsync(db, sitzung, userId, ct)
-            && await kassenService.PruefeBesitzerFreigabeAsync(sitzung.SalonId, userId, besitzerPin, ct) is string freigabeFehler)
-            return new(false, freigabeFehler);
 
         var storni = await LadeStorniAsync(db, verkaufId, ct);
         var vorlage = BaueVorlage(original, storni, string.Empty, false);
@@ -178,7 +223,7 @@ public class StornoService(
 
         if (weg.Art == ZahlungsArt.Bar)
         {
-            var barSoll = await kassenService.GetBarSollAsync(sitzung.Id, ct) ?? 0m;
+            var barSoll = await KassenService.BarSollAsync(db, sitzung.Id, ct) ?? 0m;
             if (betrag > barSoll)
                 return new(false, $"Pas assez d'espèces en caisse ({barSoll:N0} F attendus) pour rembourser {betrag:N0} F.");
         }
@@ -197,20 +242,7 @@ public class StornoService(
 
         db.Verkaeufe.Add(storno);
         await db.SaveChangesAsync(ct);
-
-        try
-        {
-            var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == sitzung.SalonId).Select(s => s.Land).FirstOrDefaultAsync(ct));
-            var heute = ENote.Core.Services.Zeitzonen.NachUtc(ENote.Core.Services.Zeitzonen.Heute(zone, uhr.GetUtcNow().UtcDateTime), zone);
-            var tagesUmsatz = await db.Verkaeufe.Where(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute).SumAsync(v => v.GesamtSumme, ct);
-            var anzahl = await db.Verkaeufe.CountAsync(v => v.SalonId == sitzung.SalonId && v.ZeitUtc >= heute && v.StornoVonVerkaufId == null, ct);
-            await umsatzBenachrichtigung.VerkaufGemeldetAsync(sitzung.SalonId, tagesUmsatz, anzahl, ct);
-        }
-        catch
-        {
-            // Live-Benachrichtigung darf die Erstattung nie blockieren.
-        }
-
+        await KassenSperre.BestaetigeAsync(transaktion, ct);
         return new(true, null, storno, betrag);
     }
 

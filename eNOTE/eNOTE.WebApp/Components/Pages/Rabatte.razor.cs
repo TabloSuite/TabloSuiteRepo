@@ -156,15 +156,11 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
         editorOffen = true;
     }
 
-    /// <summary>Prüft Name und Wert einer Remise; null = in Ordnung. Wert 0 war erlaubt (Remise ohne Wirkung, Klick-Simulation S2).</summary>
-    public static string? Pruefe(Rabatt rabatt)
-    {
-        if (string.IsNullOrWhiteSpace(rabatt.Name)) return "Veuillez saisir un nom.";
-        if (rabatt.Wert < 0) return "La valeur ne peut pas être négative.";
-        if (rabatt.Wert == 0) return "Saisissez une valeur supérieure à 0.";
-        if (rabatt.Art == RabattArt.Prozent && rabatt.Wert > 100) return "Le pourcentage ne peut pas dépasser 100.";
-        return null;
-    }
+    /// <summary>
+    /// Prüft Name, Texte und Wert einer Remise; null = in Ordnung. Wert 0 war erlaubt (Remise ohne Wirkung, Klick-Simulation S2);
+    /// dieselbe Regel prüft der Server (<see cref="KatalogService.PruefeRabatt"/>, auch die Länge von Nom/Condition).
+    /// </summary>
+    public static string? Pruefe(Rabatt rabatt) => KatalogService.PruefeRabatt(rabatt);
 
     private async Task SpeichernAsync()
     {
@@ -179,7 +175,15 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
         bearbeitungsRabatt.GueltigVonUtc = hatGueltigkeit ? gueltigVon : null;
         bearbeitungsRabatt.GueltigBisUtc = hatGueltigkeit ? gueltigBis : null;
 
-        await katalogService.SpeichereRabattAsync(bearbeitungsRabatt);
+        try
+        {
+            await katalogService.SpeichereRabattAsync(bearbeitungsRabatt);
+        }
+        catch (ArgumentException ex)
+        {
+            editorFehler = ex.Message;
+            return;
+        }
         editorOffen = false;
         toast.ZeigeErfolg("Remise enregistrée.");
         await LadeAsync();
@@ -189,13 +193,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private async Task SetzeAktivAsync(Rabatt rabatt, bool aktiv)
     {
         if (!darfVerwalten) return;
-        var kopie = new Rabatt
-        {
-            Id = rabatt.Id, SalonId = rabatt.SalonId, Name = rabatt.Name, Bedingung = rabatt.Bedingung, Art = rabatt.Art,
-            Wert = rabatt.Wert, LeistungId = rabatt.LeistungId, IstAktiv = aktiv,
-            GueltigVonUtc = rabatt.GueltigVonUtc, GueltigBisUtc = rabatt.GueltigBisUtc
-        };
-        await katalogService.SpeichereRabattAsync(kopie);
+        if (!await katalogService.SetzeRabattAktivAsync(rabatt.Id, rabatt.SalonId, aktiv)) return;
         rabatt.IstAktiv = aktiv;
         toast.ZeigeInfo(aktiv ? $"« {rabatt.Name} » est active en caisse." : $"« {rabatt.Name} » est désactivée.");
     }

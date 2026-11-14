@@ -579,8 +579,37 @@ public class KatalogService(
             .ToListAsync(cancellationToken);
     }
 
+    public const int RabattNameMax = 120, RabattBedingungMax = 200;
+
+    /// <summary>Regeln einer Remise (Formular und Server): Name, Wert &gt; 0, höchstens 100 %, Längen der Texte.</summary>
+    public static string? PruefeRabatt(Rabatt rabatt)
+    {
+        if (string.IsNullOrWhiteSpace(rabatt.Name)) return "Veuillez saisir un nom.";
+        if (rabatt.Name.Trim().Length > RabattNameMax) return $"Nom : {RabattNameMax} caractères au maximum.";
+        if (rabatt.Bedingung is { } b && b.Trim().Length > RabattBedingungMax) return $"Condition : {RabattBedingungMax} caractères au maximum.";
+        if (rabatt.Wert < 0) return "La valeur ne peut pas être négative.";
+        if (rabatt.Wert == 0) return "Saisissez une valeur supérieure à 0.";
+        if (rabatt.Art == RabattArt.Prozent && rabatt.Wert > 100) return "Le pourcentage ne peut pas dépasser 100.";
+        return null;
+    }
+
+    /// <summary>Schalter auf der Karte: nur aktiv/inaktiv (auch für ältere Remises, die die heutigen Regeln nicht erfüllen).</summary>
+    public async Task<bool> SetzeRabattAktivAsync(Guid id, Guid salonId, bool aktiv, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var rabatt = await db.Rabatte.FirstOrDefaultAsync(r => r.Id == id && r.SalonId == salonId, cancellationToken);
+        if (rabatt is null) return false;
+        rabatt.IstAktiv = aktiv;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Speichert eine Remise; ungültige Eingaben (auch zu lange Texte) → <see cref="ArgumentException"/>.</summary>
     public async Task<Rabatt> SpeichereRabattAsync(Rabatt rabatt, CancellationToken cancellationToken = default)
     {
+        if (PruefeRabatt(rabatt) is string fehler) throw new ArgumentException(fehler);
+        rabatt.Name = rabatt.Name.Trim();
+        rabatt.Bedingung = string.IsNullOrWhiteSpace(rabatt.Bedingung) ? null : rabatt.Bedingung.Trim();
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         if (rabatt.Id == Guid.Empty)

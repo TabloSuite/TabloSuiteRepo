@@ -47,6 +47,15 @@ public class KassenAnzeigeState
         OnChange?.Invoke();
     }
 
+    /// <summary>Erwarteten Bargeldbestand aus der Datenbank übernehmen (alle Geräte des Ladens, Retraits, Erstattungen).</summary>
+    public void SetzeBarStand(decimal erwartet)
+    {
+        var neu = erwartet - Startbestand;
+        if (neu == BarUmsatz) return;
+        BarUmsatz = neu;
+        OnChange?.Invoke();
+    }
+
     /// <summary>Bargeld-Einlage (+) oder -Entnahme (−) in der Schublade, ohne Verkauf.</summary>
     public void BargeldBewegt(decimal betrag)
     {

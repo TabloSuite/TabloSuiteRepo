@@ -78,6 +78,9 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         var klein = s.ToLower();
         var treffer = await db.Kunden.AsNoTracking().Where(k => k.SalonId == salonId
                 && (k.Name.ToLower().Contains(klein) || (ziffern != null && ziffern.Length >= 3 && k.TelefonZiffern != null && k.TelefonZiffern.Contains(ziffern))))
+            // Feste Reihenfolge vor TOP (EF-Hinweis « row limiting operator without OrderBy », Klick-Simulation S2):
+            // Namen, die mit der Eingabe beginnen, zuerst – sonst wären die 40 Kandidaten zufällig.
+            .OrderByDescending(k => k.Name.ToLower().StartsWith(klein)).ThenBy(k => k.Name).ThenBy(k => k.Id)
             .Select(k => new { k.Id, k.Name, k.TelefonZiffern })
             .Take(40).ToListAsync(ct);
         var ids = treffer.Select(t => t.Id).ToList();

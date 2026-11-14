@@ -570,6 +570,10 @@ else
                         <div><span><Icon Name="wallet" Groesse="16" /> Retraits du propriétaire</span><span>− @info.EntnahmenBar.ToString("N0") F</span></div>
                     }
                     <div class="kx-abschluss-soll"><span>Espèces attendues</span><strong>@info.BarSoll.ToString("N0") F</strong></div>
+                    @if (abschlussHinweis is not null)
+                    {
+                        <p class="kx-pay-hinweis kx-abschluss-aktuell" role="status"><Icon Name="info" Groesse="16" /> @abschlussHinweis</p>
+                    }
                     @if (info.Karte > 0)
                     {
                         <div class="kx-abschluss-neben"><span><Icon Name="card" Groesse="16" /> Carte (terminal)</span><span>@info.Karte.ToString("N0") F</span></div>
@@ -738,6 +742,10 @@ else
                     <span>À rendre au client</span>
                     <strong>@StornoBetrag.ToString("N0") F</strong>
                 </div>
+                @if (StornoGrenze is { } grenze)
+                {
+                    <p class="kx-pay-hinweis kx-storno-grenze" role="alert"><Icon Name="info" Groesse="16" /> @grenze</p>
+                }
             </div>
         }
         else
@@ -748,7 +756,7 @@ else
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => stornoOffen = false">Annuler</button>
         <AsyncActionButton Text="@($"Rembourser {StornoBetrag:N0} F")" OnClick="BestaetigeStornoAsync" CssClass="enote-btn-danger"
-                           Disabled="@(StornoBetrag <= 0 || StornoGewaehlterWeg is null || string.IsNullOrWhiteSpace(stornoGrund))" />
+                           Disabled="@(StornoBetrag <= 0 || StornoGewaehlterWeg is null || StornoGrenze is not null || string.IsNullOrWhiteSpace(stornoGrund))" />
     </Footer>
 </ModalDialog>
 
