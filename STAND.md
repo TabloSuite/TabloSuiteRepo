@@ -11,6 +11,14 @@ Auftrag `docs/Simulationen-Auftrag.md` (S1 eNOTE Daten, S2 eNOTE Klick-Simulatio
 volle Größe, S4 SKOULOU Klick-Simulation) – nacheinander, je 1 Agent, Stand in der Tabelle dort. **Der Nutzer deployt erst,
 wenn alles ok ist.** Danach ggf. neue Migrationen auf Azure (OK liegt vor) und push.
 
+**SKOULOU-Auftrag für den neuen Chat (zusätzlich zu S3/S4) – Nutzer 15.11.:**
+- **Ladekreis fehlt am Handy beim Knopf « Registrieren »/« S'inscrire »** (und vermutlich bei Anmelden/anderen klassischen
+  Formularen). In eNOTE behoben mit 7b68100 « Ladeanzeige überall »: globale Ladeanzeige für klassische Formulare
+  (`data-ladeanzeige`) statt Inline-Skript (lief nach Blazor-Navigation am Handy nie), bfcache/« Zurück » gibt den Knopf frei,
+  Spinner-Fallback ohne `color-mix` für ältere Mobil-Browser, JS versioniert einbinden; Muster `eNOTE.WebApp/Components/Pages/
+  Register.razor` (`isSubmitting` + `btn-spinner`). In SKOULOU alle Formular-/Aktionsknöpfe prüfen (Registrierung Schule,
+  Schüler-Selbstregistrierung, Connexion, Mot de passe oublié) und am Handy (390×844, auch langsame Verbindung) testen.
+
 **Nach S2, vor S3 einschieben – Nutzerwunsch 14.11. spät (« Die Lösungen der zwei Fragen umsetzen »), eNOTE:**
 - W1 **Entwarnung bei aufgehobener Tariferhöhung:** Hebt der Admin eine angekündigte Erhöhung auf, bekommen die Besitzer, die
   die Ankündigung erhalten haben, automatisch eine Entwarnung (Dialog mit vorausgefülltem, änderbarem Titel/Text und Schalter
