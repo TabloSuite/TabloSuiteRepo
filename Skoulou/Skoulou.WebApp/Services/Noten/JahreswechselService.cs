@@ -181,6 +181,10 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var altKlassen = await db.Klassen.Where(k => k.SchuljahrId == alt.Id).ToDictionaryAsync(k => k.Id, ct);
             var neueKlassen = await db.Klassen.Where(k => k.SchuljahrId == neu.Id).ToListAsync(ct);
             var zuordnung = new Dictionary<string, Klasse>(StringComparer.OrdinalIgnoreCase);
+            // Session-Klassen (Sprachschulen) gehören im neuen Jahr zur Periode mit derselben Nr.
+            var altePeriodenNr = await db.Perioden.Where(p => p.SchuljahrId == alt.Id).ToDictionaryAsync(p => p.Id, p => p.Nr, ct);
+            Guid? NeueSession(Guid? altePeriode) => altePeriode is { } pid && altePeriodenNr.TryGetValue(pid, out var nr)
+                ? neuePerioden.FirstOrDefault(p => p.Nr == nr)?.Id : null;
             var angelegt = 0;
             foreach (var (altId, name) in namen)
             {
@@ -191,7 +195,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
                     ziel = new Klasse
                     {
                         SchuleId = a.SchuleId, SchuljahrId = neu.Id, StufeId = quelle.StufeId, Name = name, Kapazitaet = quelle.Kapazitaet,
-                        KlassenlehrerId = quelle.KlassenlehrerId, Raum = quelle.Raum
+                        KlassenlehrerId = quelle.KlassenlehrerId, Raum = quelle.Raum, PeriodeId = NeueSession(quelle.PeriodeId)
                     };
                     db.Klassen.Add(ziel);
                     neueKlassen.Add(ziel);

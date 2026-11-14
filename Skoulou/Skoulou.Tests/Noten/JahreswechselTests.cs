@@ -110,4 +110,18 @@ public class JahreswechselTests
         Assert.Contains("exclu", alt.Austrittsgrund);
         Assert.Equal(SchuljahrStatus.Vorbereitung, await w.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == ergebnis.NeuesJahrId).Select(j => j.Status).SingleAsync()));
     }
+
+    [Fact]
+    public async Task Session_Klassen_behalten_ihre_Session_im_neuen_Jahr()
+    {
+        // Gefunden in der Simulation (E7a): Sprachschulen verloren beim Jahreswechsel die Session ihrer Klassen.
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db => (await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse6B)).PeriodeId = w.O.P2);
+        await w.Wechsel.OffeneEntscheidenAsync(w.D, w.O.Klasse6A, JahresEntscheidungsArt.Admis);
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, await w.Wechsel.PlanAsync(w.D, w.O.Jahr));
+
+        var klassen = await w.MitDbAsync(db => db.Klassen.Where(k => k.SchuljahrId == ergebnis.NeuesJahrId).ToDictionaryAsync(k => k.Name, k => k.PeriodeId));
+        Assert.Equal(w.O.PV2, klassen["6e B"]);
+        Assert.Null(klassen["6e A"]);
+    }
 }
