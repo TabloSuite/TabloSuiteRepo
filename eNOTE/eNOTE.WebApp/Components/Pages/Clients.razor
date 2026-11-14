@@ -38,7 +38,7 @@
         <div class="enote-filter-leiste">
             <div class="kx-suche ku-liste-suche">
                 <Icon Name="search" Groesse="18" CssClass="kx-suche-ico" />
-                <input class="kx-suche-feld" placeholder="Rechercher un nom ou un numéro…" value="@suche" @oninput="SucheAsync" />
+                <input class="kx-suche-feld" placeholder="Rechercher un nom ou un numéro…" @bind="suche" @bind:event="oninput" @bind:after="SucheAsync" />
             </div>
         </div>
 
@@ -212,9 +212,10 @@
         catch (UnauthorizedAccessException) { fehler = "Seul le propriétaire peut consulter la liste des clients."; }
     }
 
-    private async Task SucheAsync(ChangeEventArgs e)
+    // Suchfeld über @bind (nicht value + @oninput) – keine veralteten Zeichen bei langsamer Verbindung (Klick-Simulation S2).
+    private async Task SucheAsync()
     {
-        suche = e.Value?.ToString() ?? "";
+        suche ??= "";
         var meine = ++abfrage;
         var (ergebnis, weitere) = await kunden.SucheListeAsync(benutzer, salonId, suche, 0);
         if (meine == abfrage) { liste = ergebnis; mehr = weitere; }

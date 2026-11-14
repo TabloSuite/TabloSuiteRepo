@@ -11,9 +11,11 @@
                inputmode="numeric"
                autocomplete="off"
                aria-label="@(Label ?? "Montant")"
-               value="@(Wert == 0 ? string.Empty : Wert.ToString("N0"))"
+               @bind:get="Anzeige"
+               @bind:set="EingabeGeaendert"
+               @bind:event="oninput"
                placeholder="0"
-               @oninput="EingabeGeaendert"
+               @onblur="() => roh = null"
                @onkeydown="TasteAsync" />
         <span class="enote-betrag-waehrung">F</span>
     </label>
@@ -23,7 +25,7 @@
         <div class="enote-betrag-schnell">
             @foreach (var b in Schnellbetraege)
             {
-                <button type="button" class="enote-chip @(b == Wert ? "enote-chip-aktiv" : "")" @onclick="() => SetzeAsync(b)">@b.ToString("N0")</button>
+                <button type="button" class="enote-chip @(b == Wert ? "enote-chip-aktiv" : "")" @onclick="() => WaehleAsync(b)">@b.ToString("N0")</button>
             }
         </div>
     }
@@ -67,20 +69,43 @@
         await WertChanged.InvokeAsync(neu);
     }
 
-    private Task EingabeGeaendert(ChangeEventArgs e)
+    // Tastatur: Während des Tippens bleibt der getippte Text stehen (keine Neuformatierung je Zeichen) und das Feld
+    // läuft über @bind:get/@bind:set – sonst überschreibt die Server-Antwort bei langsamer Verbindung bereits getippte
+    // Ziffern (« 1525000 » wurde zu « 1.520 », Klick-Simulation S2). Formatiert wird beim Verlassen des Feldes.
+    private string? roh;
+    private string Anzeige => roh ?? (Wert == 0 ? string.Empty : Wert.ToString("N0"));
+
+    public static decimal ZifferWert(string? text)
     {
-        var ziffern = new string((e.Value?.ToString() ?? string.Empty).Where(char.IsDigit).ToArray());
-        return SetzeAsync(decimal.TryParse(ziffern, out var b) ? b : 0m);
+        var ziffern = new string((text ?? string.Empty).Where(char.IsDigit).ToArray());
+        return decimal.TryParse(ziffern, out var b) ? b : 0m;
     }
+
+    private Task EingabeGeaendert(string? text)
+    {
+        // nur Ziffern und Tausendertrenner stehen lassen (Buchstaben verschwinden sofort wie bisher)
+        roh = new string((text ?? string.Empty).Where(c => char.IsDigit(c) || c is ' ' or '.' or ' ' or ' ').ToArray());
+        return SetzeAsync(ZifferWert(roh));
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Wert von außen geändert (Schnellbetrag der Seite, Zurücksetzen nach dem Verkauf …) → formatiert anzeigen.
+        if (roh is not null && ZifferWert(roh) != Wert) roh = null;
+    }
+
+    private Task WaehleAsync(decimal betrag) { roh = null; return SetzeAsync(betrag); }
 
     private Task Tippe(string ziffern)
     {
+        roh = null;
         var text = (Wert == 0 ? string.Empty : ((long)Wert).ToString()) + ziffern;
         return text.Length > 9 ? Task.CompletedTask : SetzeAsync(decimal.Parse(text));
     }
 
     private Task Zurueck()
     {
+        roh = null;
         var text = ((long)Wert).ToString();
         return SetzeAsync(text.Length <= 1 ? 0m : decimal.Parse(text[..^1]));
     }

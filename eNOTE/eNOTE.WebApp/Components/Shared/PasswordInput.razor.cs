@@ -16,9 +16,11 @@ public partial class PasswordInput
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private async Task OnInput(ChangeEventArgs e)
+    // Über @bind:get/@bind:set (nicht value + @oninput): Blazor gleicht dann mit dem Stand im Browser ab und schreibt
+    // bei langsamer Verbindung keine veralteten Zeichen in das Feld zurück (Klick-Simulation S2).
+    private async Task SetzeAsync(string? wert)
     {
-        Value = e.Value?.ToString();
+        Value = wert;
         await ValueChanged.InvokeAsync(Value);
     }
 }

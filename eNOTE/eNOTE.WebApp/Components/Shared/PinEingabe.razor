@@ -7,8 +7,9 @@
                autocomplete="off"
                maxlength="@MaxLaenge"
                aria-label="@AriaLabel"
-               value="@Wert"
-               @oninput="EingabeGeaendert"
+               @bind:get="Wert"
+               @bind:set="SetzeAsync"
+               @bind:event="oninput"
                @onkeydown="TasteAsync" />
         @for (var i = 0; i < Math.Max(4, Math.Min(MaxLaenge, Wert.Length + (Wert.Length < MaxLaenge ? 1 : 0))); i++)
         {
@@ -38,15 +39,15 @@
     [Parameter] public bool Fehlerhaft { get; set; }
     [Parameter] public string AriaLabel { get; set; } = "Code PIN";
 
-    private async Task SetzeAsync(string neu)
+    // Tastatur über @bind:get/@bind:set (nicht value + @oninput): Blazor gleicht mit dem Stand im Browser ab und
+    // schreibt bei langsamer Verbindung keine veralteten Ziffern zurück (Klick-Simulation S2).
+    private async Task SetzeAsync(string? neu)
     {
-        neu = new string(neu.Where(char.IsDigit).Take(MaxLaenge).ToArray());
+        neu = new string((neu ?? string.Empty).Where(char.IsDigit).Take(MaxLaenge).ToArray());
         if (neu == Wert) return;
         Wert = neu;
         await WertChanged.InvokeAsync(neu);
     }
-
-    private Task EingabeGeaendert(ChangeEventArgs e) => SetzeAsync(e.Value?.ToString() ?? string.Empty);
 
     private async Task Tippe(string ziffer)
     {

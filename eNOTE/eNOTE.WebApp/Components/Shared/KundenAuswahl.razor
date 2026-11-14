@@ -43,7 +43,7 @@
     {
         <div class="ku-suche">
             <Icon Name="search" Groesse="16" CssClass="ku-suche-ico" />
-            <input class="ku-feld" placeholder="@Platzhalter" value="@suche" @oninput="SucheAsync" @onkeydown="Taste" @ref="feld" />
+            <input class="ku-feld" placeholder="@Platzhalter" @bind="suche" @bind:event="oninput" @bind:after="SucheAsync" @onkeydown="Taste" @ref="feld" />
             <button type="button" class="enote-icon-btn" aria-label="Fermer" @onclick="Schliesse"><Icon Name="x" Groesse="16" /></button>
         </div>
         @if (!string.IsNullOrWhiteSpace(suche))
@@ -100,9 +100,11 @@
         try { await feld.FocusAsync(); } catch (Exception) { /* Feld schon weg */ }
     }
 
-    private async Task SucheAsync(ChangeEventArgs e)
+    // Feld über @bind (nicht value + @oninput): sonst schrieb die Server-Antwort bei langsamer Verbindung veraltete
+    // Buchstaben zurück und Kunden wurden mit verstümmeltem Namen angelegt (Klick-Simulation S2).
+    private async Task SucheAsync()
     {
-        suche = e.Value?.ToString() ?? "";
+        suche ??= "";
         var meine = ++abfrage;
         if (string.IsNullOrWhiteSpace(suche)) { treffer = []; return; }
         try

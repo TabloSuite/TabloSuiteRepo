@@ -1,4 +1,4 @@
-﻿@using ENote.Core.Services
+@using ENote.Core.Services
 @using ENote.WebApp.Services
 @inject PreisAnpassungService preise
 @inject ToastService toast
@@ -73,7 +73,7 @@
             <div class="enote-form-grid">
                 <label>
                     Nouveau tarif mensuel (F)
-                    <input type="number" min="1" step="100" value="@neuerPreis" @oninput="PreisGeaendertAsync" />
+                    <input type="number" min="1" step="100" @bind:get="neuerPreis" @bind:set="PreisGeaendertAsync" @bind:event="oninput" />
                 </label>
                 <label>
                     À partir du
@@ -249,9 +249,10 @@
         offen = true;
     }
 
-    private async Task PreisGeaendertAsync(ChangeEventArgs e)
+    // über @bind:get/@bind:set: keine veralteten Ziffern bei langsamer Verbindung (Klick-Simulation S2)
+    private async Task PreisGeaendertAsync(decimal preis)
     {
-        neuerPreis = decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0;
+        neuerPreis = preis;
         BaueOptionen();
         await AktualisiereVorschauAsync();
     }

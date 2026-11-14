@@ -7,7 +7,7 @@
 <div class="kv-ankunft">
     <label>
         Présent pour
-        <input value="@Grund" @oninput="e => GrundGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.GrundMax"
+        <input @bind:get="Grund" @bind:set="GrundGeaendert" @bind:event="oninput" maxlength="@KundenBesuchRegeln.GrundMax"
                placeholder="ex. coupe, consultation, pansement, retouche…" list="@(Vorschlaege?.Katalog is { Count: > 0 } ? listeId : null)" autocomplete="off" />
     </label>
     @if (Vorschlaege?.Katalog is { Count: > 0 } katalog)
@@ -31,7 +31,7 @@
 
     <label>
         <span>Salle / poste <span class="enote-muted kv-optional">(facultatif)</span></span>
-        <input value="@Raum" @oninput="e => RaumGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.RaumMax"
+        <input @bind:get="Raum" @bind:set="RaumGetippt" @bind:event="oninput" maxlength="@KundenBesuchRegeln.RaumMax"
                placeholder="ex. Salle 2, Bac, Cabine 1" />
     </label>
     @if (Vorschlaege?.Raeume is { Count: > 0 } raeume)
@@ -48,7 +48,7 @@
     {
         <label>
             <span>Note <span class="enote-muted kv-optional">(facultatif)</span></span>
-            <textarea rows="2" value="@Notiz" @oninput="e => NotizGeaendert(e.Value?.ToString())" maxlength="@KundenBesuchRegeln.NotizMax"
+            <textarea rows="2" @bind:get="Notiz" @bind:set="NotizGeaendert" @bind:event="oninput" maxlength="@KundenBesuchRegeln.NotizMax"
                       placeholder="ex. a attendu 10 min, souhaite la même coupe"></textarea>
         </label>
     }
@@ -74,5 +74,7 @@
         Raum = string.Equals(neu, Raum, StringComparison.OrdinalIgnoreCase) && Vorschlaege?.Raeume.Contains(neu) == true ? "" : neu;
         return RaumChanged.InvokeAsync(Raum);
     }
+    // Getippt (über @bind:get/@bind:set, damit bei langsamer Verbindung keine veralteten Zeichen zurückkommen – S2).
+    private Task RaumGetippt(string? wert) { Raum = wert ?? ""; return RaumChanged.InvokeAsync(Raum); }
     private Task NotizGeaendert(string? wert) { Notiz = wert ?? ""; return NotizChanged.InvokeAsync(Notiz); }
 }

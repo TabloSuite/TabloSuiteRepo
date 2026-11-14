@@ -4,6 +4,7 @@ using ENote.Core.Services.Storage;
 using ENote.WebApp.Data;
 using ENote.WebApp.Services;
 using ENote.WebApp.Services.Mails;
+using ENote.WebApp.Services.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -143,13 +144,14 @@ internal sealed class SimMedienSpeicher : IMediaStorageService
     {
         using var ms = new MemoryStream();
         await request.Inhalt.CopyToAsync(ms, cancellationToken);
-        var name = $"sim/{Guid.NewGuid():N}";
+        // Namen wie die echten Speicher (<salonId|global>/<guid>.<endung>) – eine behaltene SIM-DB läuft auch in der App.
+        var name = MedienDateien.NeuerName(request.SalonId, request.DateiName);
         Dateien[name] = ms.ToArray();
-        return MediaSaveResult.Ok(name, "https://enote.simulation/media/" + name, ms.Length);
+        return MediaSaveResult.Ok(name, MedienDateien.Url(name), ms.Length);
     }
 
     public Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default) => Task.FromResult(Dateien.TryRemove(blobName, out _));
-    public string GetPublicUrl(string blobName) => "https://enote.simulation/media/" + blobName;
+    public string GetPublicUrl(string blobName) => MedienDateien.Url(blobName);
     public Task<byte[]?> LadeBytesAsync(string blobName, CancellationToken cancellationToken = default)
         => Task.FromResult(Dateien.TryGetValue(blobName, out var b) ? b : null);
 }

@@ -14,6 +14,21 @@ namespace ENote.Tests.Simulation;
 /// </summary>
 public class SimulationTests(ITestOutputHelper ausgabe)
 {
+    /// <summary>S2: Eine behaltene SIM-DB läuft in der echten App – Belegnamen müssen deren Regeln erfüllen (sonst 500 auf /ausgaben).</summary>
+    [Fact]
+    public async Task Medienspeicher_der_Simulation_vergibt_Namen_nach_den_Regeln_der_App()
+    {
+        var speicher = new SimMedienSpeicher();
+        var salonId = Guid.NewGuid();
+        var r = await speicher.SaveAsync(new ENote.Core.Services.Storage.MediaSaveRequest
+        {
+            SalonId = salonId, DateiName = "recu.pdf", ContentType = "application/pdf", Inhalt = new MemoryStream("%PDF-1.4"u8.ToArray()),
+        });
+        Assert.True(ENote.WebApp.Services.Storage.MedienDateien.IstGueltigerName(r.BlobName), r.BlobName);
+        Assert.StartsWith(salonId.ToString("D") + "/", r.BlobName);
+        Assert.Equal(ENote.WebApp.Services.Storage.MedienDateien.Url(r.BlobName!), speicher.GetPublicUrl(r.BlobName!));
+    }
+
     [EnoteSimFact]
     public async Task Achtzehn_Monate_Betrieb_mit_ueber_dreissig_Laeden_halten_alle_Invarianten()
     {
