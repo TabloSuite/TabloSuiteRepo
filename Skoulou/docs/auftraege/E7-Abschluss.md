@@ -87,3 +87,19 @@ FINAL REPORT E7a (≤ 30 lines): commits, volume, bugs fixed, schema changes (ex
 
 FINAL REPORT E7b (≤ 30 lines): commits, pages visited per role, errors found/fixed, schema changes (exact), remaining
 open points, picture folder (name the 6–8 most telling pictures).
+
+### E7b – Zusatz aus E7a (Entscheidungen des Nutzers 14.11.2026, siehe `docs/Simulation-Bericht.md`)
+
+Do these first (with tests, and extend the simulation's invariants where it fits):
+1. **Session classes end automatically** (owner: « Automatisch beenden »): an enrollment in a class that runs only in one
+   session/period ends with that session – the student is not billed (platform invoice) and not listed in later
+   sessions unless re-enrolled. Prefer a computed rule (effective end = min(enrollment end, class session end)) used by
+   billing, fee accounts and lists over a background job; no data copying.
+2. **Fee item per session** (owner: « Nur Gebühr je Session »): a `GebuehrenPosten` can be bound to one period/session
+   and then applies only to students enrolled in that session (language schools). Mid-year departure: no automatic
+   proration (stays a manual reduction). This needs a schema change → add a NEW migration (never touch « Fundament »),
+   list it in the report; the lead applies it to Azure only with the owner's OK.
+3. Cancelled paid platform invoice: **no** automatic offset (owner: « So lassen ») – nothing to build.
+4. Simultaneous account creation with the same name (« enregistrement simultané »): retry automatically with the next
+   username suggestion (max. 3 tries) instead of showing the error.
+5. `/direction/journal` is still a placeholder page – build it (it belongs in the tour anyway).
