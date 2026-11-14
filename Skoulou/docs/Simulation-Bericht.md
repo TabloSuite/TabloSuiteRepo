@@ -114,8 +114,58 @@ Alle Listen deutlich unter 500 ms – keine Änderung nötig (vorher = nachher).
    großen Schulen (> 3.000) ≈ 1 s zu erwarten. Beobachten.
 6. Seite **/direction/journal** (Audit der Schule) ist noch ein Platzhalter (« en préparation ») → E7b.
 
+Stand E7b: Punkte 1, 2, 3 und 6 umgesetzt (f67552d, 8e809da; Migration `SessionGebuehrUndHauptAdmin`), Punkt 4
+bleibt auf Wunsch des Nutzers so, Punkt 5 weiter beobachten (im Rundgang 0,4 s bei ≈ 570 Konten).
+
 ## Datenbank für den Rundgang (E7b)
 
 `SkoulouDB_SIM` (lokal) enthält den Endstand des letzten vollständigen Laufs: Jahre 2023-24 bis 2025-26
 abgeschlossen, 2026-27 läuft (Noten der 1. Periode teilweise erfasst, nicht veröffentlicht), Uhrzeit der Daten
 14/11/2026. Alle Passwörter sind zufällig (nirgends gespeichert); E7b setzt bekannte Passwörter per Hilfsskript.
+
+## Rundgang (E7b, Bauplan §9.5)
+
+App lokal auf `SkoulouDB_SIM` (eigener Build-Ordner, Port 5181, Postmark aus), je Rolle ein Konto mit bekanntem
+Passwort (nur in `%TEMP%\skoulou-neu\E7\konten.json`). Playwright mit Edge headless, Desktop 1440×900 und Handy
+390×844: alle Ziele der Navigation + Profil, dazu Reiter, je Seite ein Detail-Link und der Hauptdialog
+(« Nouveau… », « Ajouter… », « Encaisser… », « Importer… »; nur öffnen und schließen). Geprüft: Konsolenfehler,
+HTTP ≥ 400/abgebrochene Anfragen, Ladezeit, horizontaler Überlauf am Handy (auch abgeschnittene Inhalte und zu schmale
+Felder), englische/deutsche Wörter, Texte ohne Akzente, Platzhalter, leere Listen ohne Erklärung, Fehlerhinweise,
+Dialog « Avant de commencer ». E-Mails in den Bildern maskiert. Bilder: `Pictures\SKOULOU-Neubau-E7-Rundgang\<rolle>\`
+(erster Durchgang vor den Korrekturen in `<rolle>\vorher\`).
+
+| Rolle (Konto der größten Schule) | Seiten (Desktop/Handy) | Dialoge | langsamste Seite |
+|---|---|---|---|
+| Visiteur (öffentliche Seiten, Inscription Direction/Élève) | 11 / 11 | Bedingungen 2 | / 0,45 s |
+| Administrateur principal | 18 / 18 | 4 | /admin/ecoles 0,37 s |
+| Administrateur | 18 / 18 | 3 | /admin/ecoles 0,31 s |
+| Responsable | 8 / 8 | – | /responsable/facturation 0,16 s |
+| Direction (Collège, ≈ 1.000 Schüler) | 35 / 35 | 12 | /finances 0,74 s (kalt), sonst 0,45 s |
+| Direction école de langues (Sessions) | 35 / 35 | 12 | /finances/journal 0,23 s |
+| Coordinateur avec droits financiers | 33 / 33 | 12 | /finances 0,44 s |
+| Coordinateur sans droits | 26 / 26 | 8 | /direction/eleves 0,16 s |
+| Enseignant (professeur principal) | 15 / 15 | – | /bulletins 0,14 s |
+| Élève / Parent | 11 / 11, 10 / 10 | – | 0,16 s / 0,14 s |
+
+Ergebnis des letzten Durchgangs: keine Konsolenfehler, keine fehlgeschlagenen Anfragen, kein Überlauf am Handy,
+keine Platzhalter, kein Fehler im Server-Protokoll. Rechte wie gewollt: « Administrateurs » nur beim
+Hauptadministrator (ein anderer Admin sieht den Eintrag nicht, direkter Aufruf → « Seul l'administrateur principal… »),
+Koordinator ohne Recht ohne Finanzen/Établissement/Journal. Inscription: Kästchen « J'accepte les conditions
+d'utilisation » + Fenster der Bedingungen für Direction und Élève; nach der Anmeldung erscheint bei keiner Rolle mehr
+« Avant de commencer ». Dialog « Nouveau frais » zeigt « Période » (Gebühr je Session).
+
+Gefunden und behoben:
+
+| Befund | Behebung (Commit) |
+|---|---|
+| Guide utilisateur unvollständig (Admin ohne Facturation/Tarifs/Administrateurs, Responsable ohne Mes parts, Direction ohne Parents, Contenus, Passage, Finanzseiten, Établissement, Journal) und Links ins Leere (Koordinator ohne Recht → /finances) | Texte ergänzt und an die Seiten angeglichen, Schritte nur zu erreichbaren Seiten; Tests: jeder Schritt in der Navigation, jede Seite der Navigation im Guide (98a13eb) |
+| Beträge in den Finanzen « F CFA », sonst « FCFA » | einheitlich « 150.000 FCFA » (4a5c59b) |
+| Handy: Schuljahr-Auswahl der Kopfzeile lag 13 px unter dem Avatar | Rasterspalte begrenzt, Kalender-Icon am Handy aus, « 2026-2027 » ganz lesbar (4a5c59b) |
+| Admin Médias: leere Liste ohne Erklärung | Erklärungstext (4a5c59b) |
+
+Ladezeiten: alle Seiten unter 1 s. Einzige Seite über 1 s war /finances beim ersten Aufruf nach dem Start (1,27 s,
+Kaltstart der Abfragen); warm 0,45 s, im letzten Durchgang kalt 0,74 s – keine Änderung nötig.
+
+Hinweise ohne Änderung: Die Liste « Journal » der Direction zeigt in `SkoulouDB_SIM` viele « Conditions acceptées »
+aus dem E7a-Lauf (Altbestand, der heutige Code schreibt diese Einträge nicht mehr). Beim Start mit den lokalen
+Einstellungen legt der Start-Seed das konfigurierte Admin-Konto zusätzlich in `SkoulouDB_SIM` an (nur lokal).
