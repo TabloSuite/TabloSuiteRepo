@@ -191,7 +191,7 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
 .sk-topbar-schule span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sk-topbar-luecke { flex: 1; }
 .sk-topbar-jahr { width: 12.5rem; flex-shrink: 0; }
-.sk-topbar-jahr .sk-feld { gap: 0; }
+.sk-topbar-jahr .sk-feld { gap: 0; grid-template-columns: minmax(0, 1fr); } /* Handy: Auswahl bleibt in ihrer Breite (sonst unter dem Avatar) */
 
 /* Benutzermenü */
 .sk-benutzermenue { position: relative; }
@@ -281,6 +281,8 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
     .sk-topbar-schule { font-size: .86rem; }
     .sk-topbar-schule .sk-icon { display: none; }
     .sk-topbar-jahr { width: 7.6rem; }
+    .sk-topbar-jahr .sk-auswahl-knopf { gap: .35rem; padding-inline: .6rem; }
+    .sk-topbar-jahr .sk-auswahl-knopf > .sk-icon:first-child { display: none; } /* Platz für « 2026-2027 » */
     .sk-avatar-text, .sk-avatar-pfeil { display: none; }
     .sk-main { overflow: visible; padding: 1rem 1rem calc(6rem + env(safe-area-inset-bottom)); }
     .sk-nav-mobil {

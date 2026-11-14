@@ -37,7 +37,8 @@ else if (summen is not null)
         </Karte>
     </div>
 
-    <Liste T="MedienEintrag" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom du fichier…" LeerIcon="image" LeerTitel="Aucun fichier">
+    <Liste T="MedienEintrag" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom du fichier…" LeerIcon="image" LeerTitel="Aucun fichier"
+           LeerText="Les logos, images, vidéos et justificatifs enregistrés par les écoles apparaîtront ici.">
         <Werkzeuge>
             <AuswahlFeld T="Guid?" Wert="schuleId" WertChanged="SchuleAsync" Optionen="schulen" Platzhalter="Toutes les écoles" Kompakt="true" Icon="school" />
         </Werkzeuge>
