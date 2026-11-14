@@ -5,20 +5,11 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 1. Was gerade läuft
+## 1. Stand 14.11. morgens
 
-| Arbeit | Ort | Stand |
-|---|---|---|
-| **eNOTE-Lernvideo v3.1 – Pilot « encaisser »** | `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\` | Nutzer 13.11.: « Stil ist gut ». v3.0 (7:04) liegt als Render vor. **Agent läuft:** Text kürzen (Ziel ≈ 5–5:30 min), neu aufnehmen mit Zeiger synchron zur Stimme (−0,4…+0,3 s), Klick-Schilder dürfen keine Nachbarinhalte verdecken. Ergebnis: `renders/enote-encaisser.mp4` (alt: `…-v3.0.mp4`), Bilder `Pictures\eNOTE-Videos-v3-Pilot\v3.1\`. Danach dem Nutzer zeigen, dann alle eNOTE-Videos im v3-Stil. Falls unterbrochen: neuen Agenten mit dieser Zeile + `AUFTRAG-Pilot.md` starten. |
-
-| **SKOULOU E5 Noten & Bulletins** | Worktree `.claude/worktrees/agent-a62dd2b10313c8194`, Branch `worktree-agent-a62dd2b10313c8194` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E5-Noten.md` |
-| **SKOULOU E6 Finanzen** | Worktree `.claude/worktrees/agent-a14228940cb0da92e`, Branch `worktree-agent-a14228940cb0da92e` (Basis f6c642e) | **Agent läuft** (Start 14.11. ~00:30). Auftrag `Skoulou/docs/auftraege/E6-Finanzen.md` |
-
-Danach: E2 mit `Skoulou/docs/auftraege/E2-Plattform.md` (eigener Worktree vom dann aktuellen Hauptbranch). Bei Unterbrechung: je neuen Agenten mit der Auftragsdatei + « Continue in the existing worktree … » starten.
-
-**Wichtig zum Limit:** höchstens 2–3 große Agenten gleichzeitig. Esc/„Stopp“ während Agenten laufen bricht sie ab (dann nur Neustart möglich); normale Nachrichten stören nicht.
-
----
+- **SKOULOU-Neubau E1–E6 fertig und zusammengeführt** (E2 Plattform, E5 Noten & Bulletins, E6 Finanzen dazu), Migration « Fundament » neu (20261114004546), 540 Tests grün inkl. SQL, eNOTE 409 grün, Rundgang 21 neue Seiten ohne Fehler. Lokale `SkoulouDB` und Azure `Skoulou-Database` mit diesem Schema neu aufgebaut (leer, Admin aus Seed-Einstellungen beim Start).
+- **Nutzer veröffentlicht jetzt beide Apps** (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
+- **Als Nächstes:** Video-Pilot v3.1 fortsetzen (Agent war vom Limit gestoppt; Ziel ≈ 5 min, Zeiger synchron, Schilder ohne Überdeckung – `lernen-v3`), danach E7 (Simulation viele Schulen/Jahre + Rundgang) und Feinschliff. Höchstens 1–2 Agenten gleichzeitig (Limit des Nutzers).
 
 ## 2. SKOULOU-Neubau (Hauptprojekt)
 
