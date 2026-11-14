@@ -1,5 +1,85 @@
 @page "/admin/tarifs"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Components.Pages.Admin.AbrechnungTeile
+@using Skoulou.WebApp.Components.Pages.Finances.FinanzTeile
+@using Skoulou.WebApp.Services.Finanzen
+@inject TarifService Tarife
 
-<InVorbereitung Titel="Tarifs" Icon="tag" Etappe="E2 – Plateforme"
-                Beschreibung="Prix annuel par élève, délai de paiement des factures et part standard des responsables." />
+<PageTitle>Tarifs · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Tarifs" Icon="tag" Untertitel="Prix annuel par élève, délai de paiement des factures et part des responsables. Le prix est figé pour chaque établissement au démarrage de son année scolaire." />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (standard is not null)
+{
+    <Karte Titel="Tarif de la plateforme" Icon="settings" Untertitel="Facturé par période : le prix annuel est réparti sur les périodes de l'année (ex. 4.166 + 4.167 + 4.167 F CFA).">
+        <div class="sk-formular">
+            <div class="fin-tarif-raster">
+                <BetragFeld Label="Prix annuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis" Pflicht="true" />
+                <ZahlFeld Label="Délai de paiement" @bind-Wert="ziel" Min="0" Max="365" Stellen="0" Einheit="jours" Pflicht="true" />
+                <ZahlFeld Label="Part standard des responsables" @bind-Wert="prozent" Min="0" Max="100" Einheit="%" />
+            </div>
+            <div class="sk-formular-fuss">
+                <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+            </div>
+        </div>
+    </Karte>
+
+    <Abschnitt Titel="Tarifs par établissement" Beschreibung="Un prix ou une part propre à un établissement remplace la valeur standard.">
+        <Liste T="SchulTarifZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Établissement ou ville…" LeerIcon="school" LeerTitel="Aucun établissement">
+            <Zeile Context="s">
+                <div class="fin-zeile">
+                    <span class="fin-zeile-icon"><Icon Name="school" Groesse="18" /></span>
+                    <div class="fin-zeile-haupt">
+                        <strong>@s.Name</strong>
+                        <span class="fin-zeile-meta"><span>@s.Ort</span><span>@(s.Responsable ?? "sans responsable")</span>
+                            @if (s.LaufendesJahr is not null) {<span>@s.LaufendesJahr : @Geld.F(s.Eingefroren ?? 0) figé</span>}</span>
+                    </div>
+                    <span class="fin-zeile-info">
+                        <StatusBadge Text="@(s.Preis is { } p ? Geld.F(p) : "Prix standard")" Art="@(s.Preis is null ? "neutral" : "info")" />
+                        <StatusBadge Text="@(s.Prozent is { } r ? $"{r:0.##} %" : "Part standard")" Art="@(s.Prozent is null ? "neutral" : "info")" />
+                    </span>
+                    <div class="fin-zeile-aktionen">
+                        <button type="button" class="sk-icon-knopf" title="Modifier" aria-label="Modifier le tarif de @s.Name" @onclick="() => bearbeitet = s"><Icon Name="edit" Groesse="16" /></button>
+                    </div>
+                </div>
+            </Zeile>
+        </Liste>
+    </Abschnitt>
+}
+
+<SchulTarifDialog Schule="bearbeitet" Standard="standard" OnClose="() => bearbeitet = null" OnGespeichert="GespeichertAsync" />
+
+@code {
+    private Liste<SchulTarifZeile>? liste;
+    private TarifEinstellung? standard;
+    private SchulTarifZeile? bearbeitet;
+    private long? preis;
+    private decimal? ziel, prozent;
+
+    protected override async Task InitialisierenAsync()
+    {
+        standard = await Tarife.EinstellungAsync(Ich.KontoId);
+        (preis, ziel, prozent) = (standard.Jahrespreis, standard.ZahlungszielTage, standard.ResponsableProzent);
+    }
+
+    private async Task<(IReadOnlyList<SchulTarifZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Tarife.SchulenAsync(Ich.KontoId, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private async Task SpeichernAsync()
+    {
+        var eingabe = new TarifEinstellung(preis, ziel is { } z && z == Math.Floor(z) ? (int)z : null, prozent);
+        if (await AusfuehrenAsync(() => Tarife.EinstellungSpeichernAsync(Ich.KontoId, eingabe), "Les tarifs sont enregistrés."))
+            standard = await Tarife.EinstellungAsync(Ich.KontoId);
+    }
+
+    private async Task GespeichertAsync()
+    {
+        bearbeitet = null;
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

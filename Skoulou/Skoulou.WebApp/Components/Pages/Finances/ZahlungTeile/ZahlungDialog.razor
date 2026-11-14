@@ -1,0 +1,193 @@
+@* « Encaisser un paiement »: Schüler suchen (mit Reste à payer), Betrag, Datum, Kanal, Referenz → Quittung. Doppelklick über die Vorgangs-Id abgesichert. *@
+@inherits SkoulouSeite
+@implements IDisposable
+@inject ZahlungService Zahlungen
+@inject TimeProvider Zeit
+
+<ModalDialog Open="Open" Title="@(ergebnis is null ? "Encaisser un paiement" : "Paiement enregistré")" Oberzeile="@Kontext.SchulName" SchliessenMitEscape="false"
+             ErrorMessage="@(feld == "guthaben" ? null : Fehlermeldung)" OnClose="OnClose">
+    <ChildContent>
+        @if (ergebnis is { } e)
+        {
+            <div class="fin-ergebnis">
+                <span class="fin-ergebnis-icon"><Icon Name="check-circle" Groesse="30" /></span>
+                <p><strong>@Geld.F(betrag ?? 0)</strong> reçus de <strong>@schueler?.Name</strong>.</p>
+                <p>Reçu n° <strong>@e.Quittungsnummer</strong> · reste à payer : <strong>@Geld.F(e.Rest)</strong>@(e.Guthaben > 0 ? $" · avoir : {Geld.F(e.Guthaben)}" : "")</p>
+                @if (e.Mails > 0)
+                {
+                    <p class="sk-leise">Le reçu a été envoyé par e-mail à @e.Mails adresse@(e.Mails > 1 ? "s" : "") de la famille.</p>
+                }
+                <a class="sk-btn sk-btn-primaer" href="@($"/finances/recu/{e.ZahlungId}")" target="_blank" rel="noopener"><Icon Name="printer" Groesse="18" /> <span>Imprimer le reçu</span></a>
+            </div>
+        }
+        else
+        {
+            <div class="sk-formular">
+                <div class="sk-feld">
+                    <span class="sk-feld-label">Élève <span class="sk-pflicht">*</span></span>
+                    @if (schueler is { } s)
+                    {
+                        <div class="fin-gewaehlt">
+                            <NamensKreis Name="@s.Name" Groesse="34" />
+                            <span>
+                                <strong>@s.Name</strong>
+                                <small class="sk-leise">@string.Join(" · ", new[] { s.Klasse, s.Matrikel }.Where(x => x is not null))</small>
+                                <small>Reste à payer : <strong>@Geld.F(s.Offen)</strong>@(s.EnRetard > 0 ? $" · en retard : {Geld.F(s.EnRetard)}" : "")</small>
+                            </span>
+                            @if (Vorwahl is null)
+                            {
+                                <button type="button" class="sk-link-knopf" @onclick="() => schueler = null">Changer</button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="sk-suche fin-voll">
+                            <Icon Name="search" Groesse="18" />
+                            <input type="search" placeholder="Nom, identifiant ou matricule…" aria-label="Rechercher un élève" value="@suche" @oninput="SucheAsync" />
+                        </label>
+                        @if (treffer is { Count: > 0 })
+                        {
+                            <div class="fin-treffer" role="listbox">
+                                @foreach (var t in treffer)
+                                {
+                                    <button type="button" class="sk-auswahl-option" role="option" aria-selected="false" @onclick="() => Waehle(t)">
+                                        <span>@t.Name <small class="sk-leise">@t.Klasse</small></span>
+                                        <small>@(t.Offen > 0 ? $"Reste {Geld.F(t.Offen)}" : "Soldé")</small>
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else if (treffer is not null)
+                        {
+                            <span class="sk-feld-hinweis">Aucun élève trouvé.</span>
+                        }
+                    }
+                </div>
+                <div class="sk-raster-2 fin-oben">
+                    <BetragFeld Label="Montant reçu" @bind-Wert="betrag" Min="1" Pflicht="true" Fehler="@(feld == "betrag" ? Fehlermeldung : null)" />
+                    <DatumFeld Label="Date du paiement" @bind-Wert="datum" Pflicht="true" Max="@heute" Fehler="@(feld == "datum" ? Fehlermeldung : null)" />
+                </div>
+                @if (schueler is { Offen: > 0 } s2)
+                {
+                    <div class="fin-schnell fin-schnell-dicht">
+                        <span class="sk-leise">Montant rapide :</span>
+                        <button type="button" class="sk-chip" @onclick="() => betrag = s2.Offen">Tout le reste (@Geld.F(s2.Offen))</button>
+                        @if (s2.EnRetard > 0 && s2.EnRetard < s2.Offen)
+                        {
+                            <button type="button" class="sk-chip" @onclick="() => betrag = s2.EnRetard">Le retard (@Geld.F(s2.EnRetard))</button>
+                        }
+                    </div>
+                }
+                <RadioGruppe T="ZahlungsKanal" Label="Moyen de paiement" @bind-Wert="kanal" Optionen="Geld.Kanaele" />
+                <div class="sk-raster-2">
+                    <TextFeld Label="@(kanal == ZahlungsKanal.MobileMoney ? "Référence de la transaction" : "Référence")" @bind-Wert="referenz" MaxLaenge="100" Pflicht="@(kanal != ZahlungsKanal.Especes)"
+                              Platzhalter="@(kanal == ZahlungsKanal.MobileMoney ? "ex. ID T-Money / Flooz" : kanal == ZahlungsKanal.Cheque ? "N° du chèque" : "facultatif")"
+                              Fehler="@(feld == "referenz" ? Fehlermeldung : null)" />
+                    <TextFeld Label="Remarque" @bind-Wert="bemerkung" MaxLaenge="300" Platzhalter="facultatif" />
+                </div>
+                @if (feld == "guthaben")
+                {
+                    <Hinweis Art="warn">@Fehlermeldung</Hinweis>
+                    <label class="fin-haken"><input type="checkbox" @bind="guthaben" /> Enregistrer la différence comme avoir de l'élève</label>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (ergebnis is null)
+        {
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+            <AsyncKnopf Text="Enregistrer le paiement" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
+                        Disabled="@(schueler is null || betrag is null || (feld == "guthaben" && !guthaben))" OnClick="SpeichernAsync" />
+        }
+        else
+        {
+            @if (Vorwahl is null)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost" @onclick="Neu">Nouveau paiement</button>
+            }
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose">Terminer</button>
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid? JahrId { get; set; }
+    [Parameter] public SchuelerAuswahl? Vorwahl { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<ZahlungErgebnis> OnGespeichert { get; set; }
+
+    private Guid vorgang;
+    private SchuelerAuswahl? schueler;
+    private string? suche, referenz, bemerkung, feld;
+    private List<SchuelerAuswahl>? treffer;
+    private long? betrag;
+    private DateOnly? datum;
+    private DateOnly heute;
+    private ZahlungsKanal kanal = ZahlungsKanal.Especes;
+    private bool guthaben, warOffen;
+    private ZahlungErgebnis? ergebnis;
+    private CancellationTokenSource? abbruch;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen) Neu();
+        warOffen = Open;
+    }
+
+    private void Neu()
+    {
+        heute = new SchulZeit(Zeit).Heute;
+        (vorgang, schueler, suche, treffer, betrag, datum, kanal) = (Guid.NewGuid(), Vorwahl, null, null, null, heute, ZahlungsKanal.Especes);
+        (referenz, bemerkung, feld, guthaben, ergebnis, Fehlermeldung) = (null, null, null, false, null, null);
+    }
+
+    private void Waehle(SchuelerAuswahl t) => (schueler, treffer, suche) = (t, null, null);
+
+    private async Task SucheAsync(ChangeEventArgs e)
+    {
+        suche = e.Value?.ToString();
+        abbruch?.Cancel();
+        abbruch = new CancellationTokenSource();
+        var token = abbruch.Token;
+        try
+        {
+            await Task.Delay(300, token);
+            if (JahrId is not { } jahr || string.IsNullOrWhiteSpace(suche) || suche.Trim().Length < 2) { treffer = null; return; }
+            treffer = (await Zahlungen.SchuelerSuchenAsync(Ich.KontoId, jahr, suche, token)).ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            // überholt
+        }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (schueler is null || JahrId is not { } jahr) return;
+        ZahlungErgebnis? neu = null;
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            try
+            {
+                neu = await Zahlungen.ErfassenAsync(Ich.KontoId, jahr, new ZahlungEingabe(vorgang, schueler.Id, betrag, datum, kanal, referenz, bemerkung, guthaben));
+            }
+            catch (Skoulou.Core.Fehler.FachFehler f)
+            {
+                feld = f.Feld;
+                throw;
+            }
+        });
+        if (!ok || neu is null) return;
+        (ergebnis, feld) = (neu, null);
+        await OnGespeichert.InvokeAsync(neu);
+    }
+
+    public void Dispose()
+    {
+        abbruch?.Cancel();
+        abbruch?.Dispose();
+    }
+}

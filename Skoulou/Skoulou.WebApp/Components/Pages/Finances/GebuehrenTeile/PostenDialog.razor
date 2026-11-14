@@ -1,0 +1,101 @@
+@* Frais anlegen/bearbeiten: Libellé, Montant, Geltung (tous / niveau / classe), obligatoire, tranches avec échéances (somme = montant). *@
+@inherits SkoulouSeite
+@inject GebuehrenService Gebuehren
+
+<ModalDialog Open="Open" Title="@(Posten is null ? "Nouveau frais" : "Modifier le frais")" Oberzeile="@JahrText" Breite="sk-modal-lg" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <div class="sk-raster-2">
+                <TextFeld Label="Libellé" @bind-Wert="bezeichnung" MaxLaenge="120" Pflicht="true" Platzhalter="ex. Scolarité, Inscription, APE, Tenue" />
+                <BetragFeld Label="Montant par élève" @bind-Wert="betrag" Min="1" Pflicht="true" />
+            </div>
+            <div class="sk-raster-2">
+                <AuswahlFeld T="string" Label="Concerne" @bind-Wert="geltung" Optionen="geltungen" />
+                <Schalter Label="Frais obligatoire" @bind-Wert="pflicht" Hinweis="Un frais facultatif (tenue, cantine…) s'applique aussi à tous ; exonérez au besoin un élève avec une réduction de 100 %." />
+            </div>
+            <div class="fin-raten-kopf">
+                <strong>Tranches et échéances</strong>
+                <span class="sk-leise">Somme : @Geld.F(raten.Sum(r => r.Betrag ?? 0)) / @Geld.F(betrag ?? 0)</span>
+            </div>
+            @for (var i = 0; i < raten.Count; i++)
+            {
+                var index = i;
+                <div class="fin-rate">
+                    <span class="fin-rate-nr">@(index + 1)</span>
+                    <BetragFeld Label="Montant" Wert="raten[index].Betrag" WertChanged="w => raten[index] = raten[index] with { Betrag = w }" Min="1" />
+                    <DatumFeld Label="Échéance" Wert="raten[index].Faellig" WertChanged="d => raten[index] = raten[index] with { Faellig = d }" />
+                    <button type="button" class="sk-icon-knopf" title="Retirer la tranche" aria-label="Retirer la tranche @(index + 1)" disabled="@(raten.Count == 1)"
+                            @onclick="() => raten.RemoveAt(index)"><Icon Name="trash" Groesse="16" /></button>
+                </div>
+            }
+            <div class="sk-knopfzeile">
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" disabled="@(raten.Count >= GebuehrenService.MaxRaten)" @onclick="RateHinzu"><Icon Name="plus" Groesse="16" /> <span>Ajouter une tranche</span></button>
+                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" disabled="@(betrag is null)" @onclick="Gleichmaessig"><span>Répartir à parts égales</span></button>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid JahrId { get; set; }
+    [Parameter] public string? JahrText { get; set; }
+    [Parameter] public PostenZeile? Posten { get; set; }
+    [Parameter] public GeltungsAuswahl? Auswahl { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private string? bezeichnung;
+    private long? betrag;
+    private string? geltung = "tous";
+    private bool pflicht = true, warOffen;
+    private List<RateEingabe> raten = [];
+    private IReadOnlyList<AuswahlOption<string>> geltungen = [];
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen)
+        {
+            geltungen = [new("tous", "Tous les élèves"),
+                .. (Auswahl?.Stufen ?? []).Select(s => new AuswahlOption<string>("s:" + s.Id, $"Niveau {s.Name}")),
+                .. (Auswahl?.Klassen ?? []).Select(k => new AuswahlOption<string>("k:" + k.Id, $"Classe {k.Name}"))];
+            Fehlermeldung = null;
+            if (Posten is { } p)
+            {
+                (bezeichnung, betrag, pflicht) = (p.Bezeichnung, p.Betrag, p.Pflicht);
+                geltung = p.KlasseId is { } k ? "k:" + k : p.StufeId is { } s ? "s:" + s : "tous";
+                raten = p.Raten.Select(r => new RateEingabe(r.Betrag, r.Faellig)).ToList();
+            }
+            else
+            {
+                (bezeichnung, betrag, pflicht, geltung) = (null, null, true, "tous");
+                raten = [new RateEingabe(null, null)];
+            }
+        }
+        warOffen = Open;
+    }
+
+    private void RateHinzu() => raten.Add(new RateEingabe(null, raten.LastOrDefault()?.Faellig?.AddMonths(3)));
+
+    private void Gleichmaessig()
+    {
+        if (betrag is not { } b || raten.Count == 0) return;
+        var teil = b / raten.Count;
+        for (var i = 0; i < raten.Count; i++)
+            raten[i] = raten[i] with { Betrag = i == raten.Count - 1 ? b - teil * (raten.Count - 1) : teil };
+    }
+
+    private Guid? Id(string praefix) => geltung is { } g && g.StartsWith(praefix, StringComparison.Ordinal) && Guid.TryParse(g[2..], out var id) ? id : null;
+
+    private async Task SpeichernAsync()
+    {
+        var eingabe = new PostenEingabe(bezeichnung, betrag, Id("s:"), Id("k:"), pflicht, raten);
+        if (await AusfuehrenAsync(() => Gebuehren.PostenSpeichernAsync(Ich.KontoId, JahrId, Posten?.Id, eingabe), "Le frais est enregistré."))
+            await OnGespeichert.InvokeAsync();
+    }
+}

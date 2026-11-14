@@ -1,0 +1,119 @@
+@* Gebührenkonto eines Schülers: Kennzahlen, Raten mit Fälligkeit und Stand, Zahlungen mit Quittung, optional Ermäßigungen. *@
+@{
+    var k = Detail.Konto;
+}
+<div class="fin-kennzahlen">
+    <KennzahlKachel Bezeichnung="Total dû" Wert="@Geld.F(k.Soll)" Icon="tag" Zusatz="@(k.Ermaessigungen > 0 ? $"après {Geld.F(k.Ermaessigungen)} de réduction" : null)" />
+    <KennzahlKachel Bezeichnung="Déjà payé" Wert="@Geld.F(k.Bezahlt)" Icon="check-circle" />
+    <KennzahlKachel Bezeichnung="Reste à payer" Wert="@Geld.F(k.Offen)" Icon="wallet" Haupt="true"
+                    Zusatz="@(k.Guthaben > 0 ? $"Avoir : {Geld.F(k.Guthaben)}" : k.Offen == 0 && k.Soll > 0 ? "Tout est réglé" : null)" />
+    <KennzahlKachel Bezeichnung="En retard" Wert="@Geld.F(k.EnRetardBetrag)" Icon="alert" Zusatz="@(k.IstEnRetard ? "Échéances dépassées" : "Aucun retard")" />
+</div>
+
+@if (k.Zeilen.Count == 0)
+{
+    <Leerzustand Icon="tag" Titel="Aucun frais pour cette année" Text="L'établissement n'a pas encore fixé de frais pour cette classe." />
+}
+else
+{
+    <div class="sk-tabelle-rahmen fin-raten">
+        <table class="sk-tabelle">
+            <thead><tr><th>Frais</th><th>Échéance</th><th class="fin-rechts">Montant</th><th class="fin-rechts">Payé</th><th class="fin-rechts">Reste</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var z in k.Zeilen)
+                {
+                    <tr class="@(z.EnRetard ? "fin-zeile-retard" : null)">
+                        <td>
+                            <strong>@z.Bezeichnung</strong>
+                            @if (z.RatenAnzahl > 1)
+                            {
+                                <span class="sk-leise fin-klein"> · tranche @z.RateNr/@z.RatenAnzahl</span>
+                            }
+                            @if (!z.Pflicht)
+                            {
+                                <span class="sk-leise fin-klein"> · facultatif</span>
+                            }
+                            @if (z.Ermaessigung > 0)
+                            {
+                                <span class="fin-klein fin-erm"> · −@Geld.F(z.Ermaessigung)</span>
+                            }
+                        </td>
+                        <td data-label="Échéance">@(z.IstVortrag ? "Immédiate" : Geld.Datum(z.Faellig))</td>
+                        <td class="fin-rechts" data-label="Montant">@Geld.F(z.Betrag)</td>
+                        <td class="fin-rechts" data-label="Payé">@Geld.F(z.Bezahlt)</td>
+                        <td class="fin-rechts" data-label="Reste"><strong>@Geld.F(z.Offen)</strong></td>
+                        <td>
+                            @if (z.Betrag == 0)
+                            {
+                                <StatusBadge Text="Exonéré" Art="neutral" />
+                            }
+                            else if (z.Offen == 0)
+                            {
+                                <StatusBadge Text="Payé" Art="erfolg" Icon="check" />
+                            }
+                            else if (z.EnRetard)
+                            {
+                                <StatusBadge Text="En retard" Art="fehler" Icon="alert" />
+                            }
+                            else
+                            {
+                                <StatusBadge Text="À venir" Art="info" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (MitErmaessigungen && Detail.Ermaessigungen.Count > 0)
+{
+    <h3 class="fin-unterkopf">Réductions</h3>
+    <ul class="fin-liste-klein">
+        @foreach (var e in Detail.Ermaessigungen)
+        {
+            <li>
+                <span><strong>@(e.Art == ErmaessigungsArt.Pourcentage ? $"{e.Wert:0.##} %" : Geld.F((long)e.Wert))</strong> sur @e.Posten · @e.Grund
+                    <small class="sk-leise">(@e.ErfasstVon)</small></span>
+                @if (Entfernbar && OnErmaessigungEntfernen.HasDelegate)
+                {
+                    <button type="button" class="sk-icon-knopf klein" title="Retirer la réduction" aria-label="Retirer la réduction @e.Grund"
+                            @onclick="() => OnErmaessigungEntfernen.InvokeAsync(e)"><Icon Name="trash" Groesse="16" /></button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+<h3 class="fin-unterkopf">Paiements</h3>
+@if (Detail.Zahlungen.Count == 0)
+{
+    <p class="sk-leise">Aucun paiement enregistré pour cette année.</p>
+}
+else
+{
+    <ul class="fin-liste-klein">
+        @foreach (var z in Detail.Zahlungen)
+        {
+            <li class="@(z.Storniert ? "fin-storniert" : null)">
+                <span>
+                    <strong>@Geld.F(z.Betrag)</strong> · @Geld.Datum(z.Datum) · @Geld.Kanal(z.Kanal)
+                    <small class="sk-leise">@z.Quittungsnummer</small>
+                    @if (z.Storniert)
+                    {
+                        <StatusBadge Text="Annulé" Art="fehler" />
+                    }
+                </span>
+                <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/finances/recu/{z.Id}")" target="_blank" rel="noopener"><Icon Name="printer" Groesse="16" /> <span>Reçu</span></a>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public SchuelerKontoDetail Detail { get; set; } = default!;
+    [Parameter] public bool MitErmaessigungen { get; set; }
+    [Parameter] public bool Entfernbar { get; set; }
+    [Parameter] public EventCallback<ErmaessigungZeile> OnErmaessigungEntfernen { get; set; }
+}

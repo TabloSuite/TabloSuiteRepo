@@ -1,5 +1,10 @@
 @page "/responsable/facturation"
 @attribute [Authorize(Policy = Richtlinien.Responsable)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Components.Pages.Finances.RechnungTeile
 
-<InVorbereitung Titel="Facturation de mes écoles" Icon="receipt" Etappe="E6 – Finances"
-                Beschreibung="Les factures SKOULOU de vos établissements et leur état de paiement." />
+<PageTitle>Facturation de mes écoles · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Facturation de mes écoles" Icon="receipt" Untertitel="Les factures SKOULOU de vos établissements et leur état de paiement (lecture seule)." />
+
+<RechnungListe Modus="responsable" />

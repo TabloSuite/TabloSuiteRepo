@@ -1,0 +1,47 @@
+@* Abweichender Preis und Responsable-Anteil einer Schule (leer = Standard der Plattform). *@
+@inherits SkoulouSeite
+@inject TarifService Tarife
+
+<ModalDialog Open="Schule is not null" Title="Tarif de l'établissement" Oberzeile="@Schule?.Name" Breite="sk-modal-sm" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <BetragFeld Label="Prix annuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis"
+                        Hinweis="@($"Vide = prix de la plateforme ({Geld.F(Standard?.Jahrespreis ?? 0)}). S'applique à partir du prochain démarrage d'année.")" />
+            <ZahlFeld Label="Part du responsable" @bind-Wert="prozent" Min="0" Max="100" Einheit="%"
+                      Hinweis="@($"Vide = part standard ({(Standard?.ResponsableProzent ?? 0):0.##} %).")" />
+            @if (Schule?.Eingefroren is { } e)
+            {
+                <Hinweis Art="info">Le prix de l'année en cours (@Schule.LaufendesJahr) reste figé à @Geld.F(e).</Hinweis>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public SchulTarifZeile? Schule { get; set; }
+    [Parameter] public TarifEinstellung? Standard { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private long? preis;
+    private decimal? prozent;
+    private Guid? geladen;
+
+    protected override void OnParametersSet()
+    {
+        if (Schule?.Id == geladen) return;
+        geladen = Schule?.Id;
+        (preis, prozent, Fehlermeldung) = (Schule?.Preis, Schule?.Prozent, null);
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (await AusfuehrenAsync(() => Tarife.SchulTarifSpeichernAsync(Ich.KontoId, Schule!.Id, preis, prozent), "Le tarif de l'établissement est enregistré."))
+            await OnGespeichert.InvokeAsync();
+    }
+}

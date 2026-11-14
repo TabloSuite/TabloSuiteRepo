@@ -1,5 +1,62 @@
 @page "/parents/frais"
 @attribute [Authorize(Policy = Richtlinien.Parents)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Finanzen
+@using Skoulou.WebApp.Components.Pages.Finances.FinanzTeile
+@inject FamilienFinanzService Familie
 
-<InVorbereitung Titel="Frais et reçus" Icon="wallet" Etappe="E6 – Finances"
-                Beschreibung="Frais de scolarité de vos enfants, paiements et reçus." />
+<PageTitle>Frais et reçus · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Frais et reçus" Icon="wallet" Untertitel="Frais de scolarité de votre enfant : échéances, paiements, reste à payer et reçus à télécharger." />
+
+@if (!Laedt)
+{
+    <KindAuswahl KontoId="Ich.KontoId" Gewaehlt="kind" GewaehltChanged="KindAsync" />
+}
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (kind is not null)
+{
+    @if (laedt)
+    {
+        <div class="sk-skelett"><div></div><div></div></div>
+    }
+    else if (detail is null)
+    {
+        <Leerzustand Icon="wallet" Titel="Aucune année scolaire en cours" Text="Les frais apparaîtront dès que l'établissement aura ouvert l'année scolaire." />
+    }
+    else
+    {
+        <Karte Titel="@detail.Kopf.Name" Untertitel="@($"{detail.Kopf.Klasse} · année {detail.Schuljahr}")" Icon="user" CssClass="fin-familie">
+            <KontoAnsicht Detail="detail" />
+        </Karte>
+        <p class="sk-leise">Les reçus sont aussi envoyés par e-mail lorsque l'établissement connaît votre adresse.</p>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "kind")] public Guid? KindParameter { get; set; }
+
+    private Guid? kind;
+    private SchuelerKontoDetail? detail;
+    private bool laedt = true;
+
+    protected override void OnInitialized() => kind = KindParameter;
+
+    protected override async Task InitialisierenAsync()
+    {
+        if (kind is { } k) detail = await Familie.KontoAsync(Ich.KontoId, k);
+        laedt = false;
+    }
+
+    private async Task KindAsync(Guid? id)
+    {
+        if (id is null || (id == kind && !laedt)) return;
+        (kind, laedt, detail) = (id, true, null);
+        await AusfuehrenAsync(async () => detail = await Familie.KontoAsync(Ich.KontoId, id));
+        laedt = false;
+    }
+}

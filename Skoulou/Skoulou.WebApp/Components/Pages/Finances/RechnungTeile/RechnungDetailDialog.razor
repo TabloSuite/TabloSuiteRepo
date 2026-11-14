@@ -1,0 +1,143 @@
+@* Detail einer SKOULOU-Rechnung für Schule, Admin und Responsable; Aktionen je Sicht und Status. *@
+@inherits SkoulouSeite
+@inject RechnungService Rechnungen
+@inject TimeProvider Zeit
+
+<ModalDialog Open="RechnungId is not null && unterdialog is null" Title="@(detail is { } t ? $"Facture {t.Kopf.Nummer}" : "Facture SKOULOU")" Breite="sk-modal-lg"
+             Oberzeile="@(detail is { } o ? $"{o.Kopf.Schule} · {o.Kopf.Periode} {o.Kopf.Schuljahr}" : null)" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @if (detail is not { } d)
+        {
+            <LadeIndikator />
+        }
+        else
+        {
+            var k = d.Kopf;
+            <div class="fin-kennzahlen">
+                <KennzahlKachel Bezeichnung="Montant" Wert="@Geld.F(k.Betrag)" Icon="receipt" Haupt="true" Zusatz="@($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {Geld.F(d.ProSchueler)}")" />
+                <KennzahlKachel Bezeichnung="Date" Wert="@Geld.Datum(k.Datum)" Icon="calendar" Zusatz="@(d.ErgaenztNummer is null ? null : $"Complément de {d.ErgaenztNummer}")" />
+                <KennzahlKachel Bezeichnung="Échéance" Wert="@Geld.Datum(k.Faellig)" Icon="clock" Zusatz="@(k.Ueberfaellig(heute) ? "Dépassée" : null)" />
+                <div class="sk-kennzahl"><span class="sk-kennzahl-label">Statut</span><StatusBadge Text="@Geld.Status(k.Status)" Art="@Geld.StatusArt(k.Status)" />
+                    @if (d.BestaetigtAmUtc is { } am) {<span class="sk-kennzahl-zusatz">confirmée le @Geld.Datum(DateOnly.FromDateTime(am))</span>}</div>
+            </div>
+            @if (k.Grund is not null)
+            {
+                <Hinweis Art="@(k.Status == RechnungsStatus.Contestee ? "warn" : "info")" Titel="@(k.Status switch { RechnungsStatus.Contestee => "Contestation", RechnungsStatus.Annulee => "Motif de l'annulation", _ => "Remarque" })">@k.Grund</Hinweis>
+            }
+            @if (d.Meldungen.Count > 0)
+            {
+                <h3 class="fin-unterkopf">Paiement déclaré</h3>
+                <ul class="fin-liste-klein">
+                    @foreach (var m in d.Meldungen)
+                    {
+                        <li><span><strong>@Geld.F(m.Betrag)</strong> le @Geld.Datum(m.Datum) · réf. @m.Referenz <small class="sk-leise">par @m.GemeldetVon</small></span>
+                            @if (m.HatBeleg && m.BuchungId is { } b) {<a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/finances/justificatif/{b}")" target="_blank" rel="noopener"><Icon Name="eye" Groesse="16" /> <span>Preuve</span></a>}</li>
+                    }
+                </ul>
+            }
+            @if (d.Anteile.Count > 0 && Modus != "schule")
+            {
+                <h3 class="fin-unterkopf">Part du responsable</h3>
+                <ul class="fin-liste-klein">
+                    @foreach (var a in d.Anteile)
+                    {
+                        <li><span>@a.Responsable · @a.Prozent.ToString("0.##") % · <strong>@Geld.F(a.Betrag)</strong></span>
+                            <StatusBadge Text="@(a.AusgezahltAmUtc is { } v ? $"Versée le {Geld.Datum(DateOnly.FromDateTime(v))}" : a.Betrag < 0 ? "Ajustement" : "À verser")" Art="@(a.AusgezahltAmUtc is null ? "warn" : "erfolg")" /></li>
+                    }
+                </ul>
+            }
+            <h3 class="fin-unterkopf">Élèves facturés (@d.Positionen.Count)</h3>
+            <div class="sk-tabelle-rahmen fin-positionen">
+                <table class="sk-tabelle">
+                    <thead><tr><th>Élève</th><th>Matricule</th><th>Classe</th><th class="fin-rechts">Montant</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in d.Positionen)
+                        {
+                            <tr class="@(p.StorniertGrund is null ? null : "fin-storniert")"><td>@p.Name</td><td>@(p.Matrikel ?? "—")</td><td>@(p.Klasse ?? "—")</td><td class="fin-rechts">@Geld.F(p.Betrag)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (detail is { } f)
+        {
+            <a class="sk-btn sk-btn-ghost" href="@($"/finances/facture/{f.Kopf.Id}")" target="_blank" rel="noopener"><Icon Name="download" Groesse="18" /> <span>Facture PDF</span></a>
+            @if (Modus == "schule" && DarfHandeln && f.Kopf.Status == RechnungsStatus.Ouverte)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost" @onclick='() => unterdialog = "contester"'>Contester</button>
+                <button type="button" class="sk-btn sk-btn-primaer" @onclick='() => unterdialog = "melden"'><Icon Name="send" Groesse="18" /> <span>Déclarer le paiement</span></button>
+            }
+            @if (Modus == "admin")
+            {
+                @if (f.Kopf.Status != RechnungsStatus.Annulee)
+                {
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick='() => unterdialog = "annuler"'>Annuler la facture</button>
+                }
+                @if (f.Kopf.Status == RechnungsStatus.Contestee)
+                {
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick='() => unterdialog = "maintenir"'>Répondre et maintenir</button>
+                }
+                @if (f.Kopf.Status is RechnungsStatus.Ouverte or RechnungsStatus.PaiementDeclare)
+                {
+                    <button type="button" class="sk-btn sk-btn-primaer" @onclick='() => unterdialog = "confirmer"'><Icon Name="check" Groesse="18" /> <span>Confirmer le paiement reçu</span></button>
+                }
+            }
+        }
+    </Footer>
+</ModalDialog>
+
+<MeldungDialog Rechnung="@(unterdialog == "melden" ? detail?.Kopf : null)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
+<GrundDialog Open='unterdialog == "contester"' Titel="Contester la facture" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Contester" MaxLaenge="500"
+             Text="Expliquez ce qui ne va pas (élèves partis, doublons…). L'administrateur SKOULOU examine la contestation et vous répond."
+             Label="Motif de la contestation" ErfolgsMeldung="La contestation est envoyée."
+             Aktion="g => Rechnungen.AnfechtenAsync(Ich.KontoId, RechnungId!.Value, g)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
+<GrundDialog Open='unterdialog == "maintenir"' Titel="Répondre à la contestation" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Maintenir la facture" MaxLaenge="500"
+             Text="La facture redevient « à payer » ; votre réponse est visible par l'établissement." Label="Réponse à l'établissement" ErfolgsMeldung="La facture est maintenue."
+             Aktion="g => Rechnungen.AufrechterhaltenAsync(Ich.KontoId, RechnungId!.Value, g)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
+<GrundDialog Open='unterdialog == "annuler"' Titel="Annuler la facture" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Annuler la facture" Gefahr="true"
+             Text="Les élèves de cette facture redeviennent facturables (« Facturer maintenant »). Si elle était payée, la part du responsable est compensée. Un remboursement éventuel se règle hors de SKOULOU."
+             Label="Motif de l'annulation" ErfolgsMeldung="La facture est annulée."
+             Aktion="g => Rechnungen.StornierenAsync(Ich.KontoId, RechnungId!.Value, g)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
+<BestaetigungsDialog Open='unterdialog == "confirmer"' Titel="Confirmer le paiement reçu ?" BestaetigenText="Confirmer" Fehler="@Fehlermeldung"
+                     Text="@($"Vous confirmez avoir reçu {Geld.F(detail?.Kopf.Betrag ?? 0)} sur le compte SKOULOU. La facture passe à « Payée » et la part du responsable est calculée.")"
+                     OnBestaetigen="BestaetigenAsync" OnAbbrechen="Zurueck" />
+
+@code {
+    [Parameter] public Guid? RechnungId { get; set; }
+
+    /// <summary>« schule », « admin » oder « responsable ».</summary>
+    [Parameter] public string Modus { get; set; } = "schule";
+    [Parameter] public bool DarfHandeln { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private RechnungDetail? detail;
+    private Guid? geladen;
+    private string? unterdialog;
+    private DateOnly heute;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (RechnungId == geladen) return;
+        (geladen, detail, unterdialog, Fehlermeldung) = (RechnungId, null, null, null);
+        heute = new SchulZeit(Zeit).Heute;
+        if (RechnungId is { } id) await AusfuehrenAsync(async () => detail = await Rechnungen.DetailAsync(Ich.KontoId, id));
+    }
+
+    private void Zurueck() => (unterdialog, Fehlermeldung) = (null, null);
+
+    private async Task ErledigtAsync()
+    {
+        unterdialog = null;
+        await AusfuehrenAsync(async () => detail = await Rechnungen.DetailAsync(Ich.KontoId, RechnungId!.Value));
+        await OnGeaendert.InvokeAsync();
+    }
+
+    private async Task BestaetigenAsync()
+    {
+        if (await AusfuehrenAsync(() => Rechnungen.BestaetigenAsync(Ich.KontoId, RechnungId!.Value), "La facture est confirmée payée."))
+            await ErledigtAsync();
+    }
+}

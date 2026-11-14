@@ -1,5 +1,41 @@
 @page "/finances/frais"
+@page "/finances/frais/comptes"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits JahrSeite
 
-<InVorbereitung Titel="Frais de scolarité" Icon="tag" Etappe="E6 – Finances"
-                Beschreibung="Frais par niveau ou par classe, tranches avec échéances et réductions." />
+<PageTitle>Frais de scolarité · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Frais de scolarité" Icon="tag"
+            Untertitel="@($"Frais par niveau ou par classe, tranches avec échéances et réductions{(Jahr is null ? "" : $" · année {Jahr.Bezeichnung}")}.")" />
+
+<Reiter Beschriftung="Frais de scolarité" Eintraege="reiter" />
+
+@if (JahrId is not { } jahr)
+{
+    <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Créez d'abord une année scolaire dans « Année scolaire »." />
+}
+else if (Comptes)
+{
+    <KontenListe @key="jahr" JahrId="jahr" DarfGebuehren="Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen)" DarfKassieren="Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen)" />
+}
+else
+{
+    @if (Jahr?.Status == SchuljahrStatus.Abgeschlossen)
+    {
+        <Hinweis Art="info">L'année @Jahr.Bezeichnung est clôturée : ses frais ne peuvent plus être modifiés.</Hinweis>
+    }
+    <PostenListe @key="jahr" JahrId="jahr" JahrText="@($"Année {Jahr?.Bezeichnung}")"
+                 DarfSchreiben="@(Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen) && Jahr?.Status != SchuljahrStatus.Abgeschlossen)" />
+}
+
+@code {
+    private static readonly IReadOnlyList<Reiter.Eintrag> reiter =
+    [
+        new("/finances/frais", "Frais et tranches", "tag"),
+        new("/finances/frais/comptes", "Comptes des élèves", "users"),
+    ];
+
+    private bool Comptes => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/').EndsWith("comptes", StringComparison.Ordinal);
+
+    protected override Task JahrLadenAsync() => Task.CompletedTask;
+}

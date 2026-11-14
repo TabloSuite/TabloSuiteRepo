@@ -1,5 +1,99 @@
 @page "/finances/paiements"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits JahrSeite
+@inject ZahlungService Zahlungen
 
-<InVorbereitung Titel="Paiements" Icon="banknote" Etappe="E6 – Finances"
-                Beschreibung="Encaisser un paiement, imprimer le reçu, annuler avec motif." />
+<PageTitle>Paiements · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Paiements" Icon="banknote" Untertitel="@($"Encaissements des familles{(Jahr is null ? "" : $" · année {Jahr.Bezeichnung}")} : chaque paiement reçoit un reçu numéroté.")">
+    <Aktionen>
+        @if (Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen))
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" disabled="@(JahrId is null)" @onclick="() => dialog = true"><Icon Name="plus" Groesse="18" /> <span>Encaisser un paiement</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (JahrId is null)
+{
+    <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Créez d'abord une année scolaire dans « Année scolaire »." />
+}
+else if (zaehler is { } z)
+{
+    <div class="fin-kennzahlen">
+        <KennzahlKachel Bezeichnung="Aujourd'hui" Wert="@Geld.F(z.HeuteSumme)" Icon="banknote" Zusatz="@($"{z.HeuteAnzahl} paiement{(z.HeuteAnzahl > 1 ? "s" : "")}")" Haupt="true" />
+        <KennzahlKachel Bezeichnung="Ce mois-ci" Wert="@Geld.F(z.MonatSumme)" Icon="calendar" />
+        <KennzahlKachel Bezeichnung="Depuis le début de l'année" Wert="@Geld.F(z.JahrSumme)" Icon="trend-up" />
+        <KennzahlKachel Bezeichnung="Paiements annulés" Wert="@z.Storniert.ToString()" Icon="history" />
+    </div>
+
+    <Liste T="ZahlungZeile" @ref="liste" @key="JahrId" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="N° de reçu, élève, matricule, référence…"
+           LeerIcon="banknote" LeerTitel="Aucun paiement" LeerText="Encaissez le premier paiement : le reçu se crée tout seul.">
+        <Zeile Context="p">
+            <div class="fin-zeile @(p.Storniert ? "fin-storniert" : null)">
+                <span class="fin-zeile-icon"><Icon Name="@Geld.KanalIcon(p.Kanal)" Groesse="18" /></span>
+                <div class="fin-zeile-haupt">
+                    <strong>@p.Schueler</strong>
+                    <span class="fin-zeile-meta">
+                        <code>@p.Quittungsnummer</code><span>@Geld.Datum(p.Datum)</span><span>@Geld.Kanal(p.Kanal)@(p.Referenz is null ? "" : $" · {p.Referenz}")</span>
+                        <span>par @p.ErfasstVon</span>
+                    </span>
+                    @if (p.Storniert)
+                    {
+                        <span class="fin-zeile-meta"><StatusBadge Text="Annulé" Art="fehler" /> @p.StornoGrund</span>
+                    }
+                </div>
+                <strong class="fin-betrag">@Geld.F(p.Betrag)</strong>
+                <div class="fin-zeile-aktionen">
+                    <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/finances/recu/{p.Id}")" target="_blank" rel="noopener"><Icon Name="printer" Groesse="16" /> <span>Reçu</span></a>
+                    @if (!p.Storniert && Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen))
+                    {
+                        <button type="button" class="sk-icon-knopf" title="Annuler le paiement" aria-label="Annuler le paiement @p.Quittungsnummer" @onclick="() => storno = p"><Icon Name="x" Groesse="16" /></button>
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<ZahlungDialog Open="dialog" JahrId="JahrId" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<GrundDialog Open="storno is not null" Titel="Annuler le paiement" Oberzeile="@storno?.Quittungsnummer" Gefahr="true" KnopfText="Annuler le paiement"
+             Text="@($"Le paiement de {Geld.F(storno?.Betrag ?? 0)} de {storno?.Schueler} sera annulé : une écriture inverse est passée au journal de caisse et le reçu porte la mention « ANNULÉ ». Rien n'est effacé.")"
+             Label="Motif de l'annulation" ErfolgsMeldung="Le paiement est annulé."
+             Aktion="grund => Zahlungen.StornierenAsync(Ich.KontoId, storno!.Id, grund)" OnClose="() => storno = null" OnErledigt="StorniertAsync" />
+
+@code {
+    private Liste<ZahlungZeile>? liste;
+    private ZahlungZaehler? zaehler;
+    private bool dialog;
+    private ZahlungZeile? storno;
+
+    private IReadOnlyList<FilterChip> Chips => [
+        new(null, "Tous", zaehler?.Alle), new(ZahlungService.FilterEspeces, "Espèces"), new(ZahlungService.FilterMobile, "Mobile Money"),
+        new(ZahlungService.FilterBanque, "Virement / chèque"), new(ZahlungService.FilterAnnules, "Annulés", zaehler?.Storniert),
+    ];
+
+    protected override async Task JahrLadenAsync()
+        => zaehler = JahrId is { } j ? await Zahlungen.ZaehlerAsync(Ich.KontoId, j) : null;
+
+    private async Task<(IReadOnlyList<ZahlungZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Zahlungen.SucheAsync(Ich.KontoId, JahrId!.Value, a.Filter, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(JahrLadenAsync);
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private Task GespeichertAsync(ZahlungErgebnis _) => NeuLadenAsync();
+
+    private async Task StorniertAsync()
+    {
+        storno = null;
+        await NeuLadenAsync();
+    }
+}

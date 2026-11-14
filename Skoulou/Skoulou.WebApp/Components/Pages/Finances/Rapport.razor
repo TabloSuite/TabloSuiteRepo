@@ -1,5 +1,96 @@
 @page "/finances/rapport"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits SkoulouSeite
+@inject BerichtService Bericht
+@inject TimeProvider Zeit
 
-<InVorbereitung Titel="Rapport financier" Icon="bars" Etappe="E6 – Finances"
-                Beschreibung="Rapport financier par période, à imprimer ou télécharger en PDF." />
+<PageTitle>Rapport financier · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Rapport financier" Icon="bars" Untertitel="Recettes et dépenses par catégorie, paiements par moyen et retards des familles sur la période choisie.">
+    <Aktionen>
+        @if (von is { } v && bis is { } b)
+        {
+            <a class="sk-btn sk-btn-primaer" href="@($"/finances/rapport/pdf?von={v:yyyy-MM-dd}&bis={b:yyyy-MM-dd}")" target="_blank" rel="noopener"><Icon Name="download" Groesse="18" /> <span>Télécharger le PDF</span></a>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <div class="fin-filter fin-leiste">
+        <DatumFeld Label="Du" Wert="von" WertChanged="d => ZeitraumAsync(d, bis)" CssClass="fin-filter-feld" />
+        <DatumFeld Label="Au" Wert="bis" WertChanged="d => ZeitraumAsync(von, d)" CssClass="fin-filter-feld" />
+        <div class="sk-chips fin-schnell">
+            <button type="button" class="sk-chip" @onclick="() => ZeitraumAsync(standard.Von, standard.Bis)">Année scolaire</button>
+            <button type="button" class="sk-chip" @onclick="() => ZeitraumAsync(new DateOnly(heute.Year, heute.Month, 1), heute)">Ce mois-ci</button>
+            <button type="button" class="sk-chip" @onclick="() => ZeitraumAsync(new DateOnly(heute.Year, heute.Month, 1).AddMonths(-1), new DateOnly(heute.Year, heute.Month, 1).AddDays(-1))">Mois dernier</button>
+        </div>
+    </div>
+
+    @if (daten is { } d)
+    {
+        <div class="fin-kennzahlen">
+            <KennzahlKachel Bezeichnung="Solde au début" Wert="@Geld.F(d.SaldoAnfang)" Icon="wallet" Zusatz="@Geld.Datum(d.Von)" />
+            <KennzahlKachel Bezeichnung="Recettes" Wert="@Geld.F(d.TotalRecettes)" Icon="plus" />
+            <KennzahlKachel Bezeichnung="Dépenses" Wert="@Geld.F(d.TotalDepenses)" Icon="minus" />
+            <KennzahlKachel Bezeichnung="Solde à la fin" Wert="@Geld.F(d.SaldoEnde)" Icon="wallet" Haupt="true" Zusatz="@Geld.Datum(d.Bis)" />
+        </div>
+        <div class="sk-raster-2 fin-bericht">
+            <Karte Titel="Recettes par catégorie" Icon="plus">
+                <BerichtTabelle Zeilen="@d.Recettes.Select(r => (r.Kategorie, r.Betrag)).ToList()" Total="d.TotalRecettes" />
+            </Karte>
+            <Karte Titel="Dépenses par catégorie" Icon="minus">
+                <BerichtTabelle Zeilen="@d.Depenses.Select(r => (r.Kategorie, r.Betrag)).ToList()" Total="d.TotalDepenses" />
+            </Karte>
+            <Karte Titel="Paiements des familles par moyen" Icon="banknote">
+                <BerichtTabelle Zeilen="@d.Kanaele.Select(k => ($"{k.Kanal} ({k.Anzahl})", k.Betrag)).ToList()" Total="d.Kanaele.Sum(k => k.Betrag)" />
+                @if (d.Stornos > 0)
+                {
+                    <p class="sk-leise">@d.Stornos paiement@(d.Stornos > 1 ? "s" : "") annulé@(d.Stornos > 1 ? "s" : "") (@Geld.F(d.StornoBetrag)) – non compté@(d.Stornos > 1 ? "s" : "").</p>
+                }
+            </Karte>
+            <Karte Titel="Créances des familles" Icon="alert" Untertitel="@(d.Schuljahr is null ? null : $"Année {d.Schuljahr}, aujourd'hui")">
+                <dl class="sk-daten">
+                    <dt>Reste à encaisser</dt><dd><strong>@Geld.F(d.Forderungen)</strong></dd>
+                    <dt>Dont en retard</dt><dd><strong>@Geld.F(d.EnRetard)</strong> · @d.SchuelerEnRetard élève@(d.SchuelerEnRetard > 1 ? "s" : "")</dd>
+                </dl>
+                @if (d.Rueckstaende.Count > 0)
+                {
+                    <ul class="fin-liste-klein">
+                        @foreach (var r in d.Rueckstaende.Take(8))
+                        {
+                            <li><span>@r.Name <small class="sk-leise">@r.Klasse</small></span><strong class="fin-aus">@Geld.F(r.EnRetard)</strong></li>
+                        }
+                    </ul>
+                }
+            </Karte>
+        </div>
+        <p class="sk-leise">Le solde ne contient que les mouvements réels de caisse. Les créances des familles et les factures SKOULOU non réglées sont des chiffres à part.</p>
+    }
+}
+
+@code {
+    private BerichtDaten? daten;
+    private DateOnly? von, bis;
+    private DateOnly heute;
+    private (DateOnly Von, DateOnly Bis) standard;
+
+    protected override async Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Zeit).Heute;
+        standard = await Bericht.StandardZeitraumAsync(Ich.KontoId);
+        (von, bis) = standard;
+        daten = await Bericht.BerichtAsync(Ich.KontoId, standard.Von, standard.Bis);
+    }
+
+    private async Task ZeitraumAsync(DateOnly? neuVon, DateOnly? neuBis)
+    {
+        (von, bis) = (neuVon, neuBis);
+        if (von is { } v && bis is { } b)
+            await AusfuehrenAsync(async () => daten = await Bericht.BerichtAsync(Ich.KontoId, v, b));
+    }
+}

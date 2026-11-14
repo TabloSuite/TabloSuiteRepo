@@ -1,5 +1,12 @@
 @page "/finances/facturation"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits SkoulouSeite
 
-<InVorbereitung Titel="Facturation SKOULOU" Icon="receipt" Etappe="E6 – Finances"
-                Beschreibung="Factures de la plateforme par période : déclarer un paiement ou contester." />
+<PageTitle>Facturation SKOULOU · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Facturation SKOULOU" Icon="receipt"
+            Untertitel="Après chaque période, SKOULOU facture chaque élève inscrit une seule fois (part du prix annuel figé). Virez le montant, puis déclarez le paiement ici." />
+
+<Hinweis Art="info">Une facture impayée ne bloque rien. En cas d'erreur (élève parti, doublon), contestez la facture : l'administrateur vous répond ici.</Hinweis>
+
+<RechnungListe Modus="schule" DarfHandeln="Kontext.HatRecht(KoordinatorRechte.RechnungSkoulou)" />

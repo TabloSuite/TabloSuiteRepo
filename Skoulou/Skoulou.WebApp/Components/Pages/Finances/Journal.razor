@@ -1,5 +1,146 @@
 @page "/finances/journal"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits SkoulouSeite
+@inject JournalService Buchungen
 
-<InVorbereitung Titel="Journal de caisse" Icon="log" Etappe="E6 – Finances"
-                Beschreibung="Recettes et dépenses de l'établissement avec justificatifs." />
+<PageTitle>Journal de caisse · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Journal de caisse" Icon="log" Untertitel="Les vrais mouvements d'argent de l'établissement. On ne supprime rien : une erreur se corrige par une écriture inverse.">
+    <Aktionen>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => kategorienOffen = true"><Icon Name="layers" Groesse="18" /> <span>Catégories</span></button>
+        @if (darfSchreiben)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => neu = true"><Icon Name="plus" Groesse="18" /> <span>Nouvelle écriture</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    <div class="fin-kennzahlen">
+        <KennzahlKachel Bezeichnung="Solde de caisse" Wert="@Geld.F(saldo)" Icon="wallet" Haupt="true" Zusatz="toutes les écritures" />
+        <KennzahlKachel Bezeichnung="Recettes (filtre)" Wert="@Geld.F(summen?.Recettes ?? 0)" Icon="plus" />
+        <KennzahlKachel Bezeichnung="Dépenses (filtre)" Wert="@Geld.F(summen?.Depenses ?? 0)" Icon="minus" />
+        <KennzahlKachel Bezeichnung="Résultat (filtre)" Wert="@Geld.F(summen?.Saldo ?? 0)" Icon="trend-up" />
+    </div>
+
+    <Liste T="BuchungZeile" @ref="liste" Laden="LadenAsync" Filter="chips" SuchPlatzhalter="N° d'écriture ou libellé…" LeerIcon="log"
+           LeerTitel="Aucune écriture" LeerText="Les paiements des familles s'inscrivent automatiquement ; ajoutez ici les autres recettes et dépenses.">
+        <Werkzeuge>
+            <div class="fin-filter">
+                <DatumFeld Wert="von" WertChanged="d => FilterAsync(() => von = d)" Platzhalter="Du" CssClass="fin-filter-feld" />
+                <DatumFeld Wert="bis" WertChanged="d => FilterAsync(() => bis = d)" Platzhalter="Au" CssClass="fin-filter-feld" />
+                <AuswahlFeld T="Guid?" Wert="kategorie" WertChanged="k => FilterAsync(() => kategorie = k)" Optionen="KategorieOptionen" Kompakt="true" CssClass="fin-filter-feld" />
+            </div>
+        </Werkzeuge>
+        <Zeile Context="b">
+            <div class="fin-zeile @(b.Aufgehoben || b.IstGegenbuchung ? "fin-storniert" : null)">
+                <span class="fin-zeile-icon @(b.Richtung == BuchungsRichtung.Recette ? "fin-ein" : "fin-aus")"><Icon Name="@(b.Richtung == BuchungsRichtung.Recette ? "plus" : "minus")" Groesse="18" /></span>
+                <div class="fin-zeile-haupt">
+                    <strong>@b.Text</strong>
+                    <span class="fin-zeile-meta">
+                        <span>@Geld.Datum(b.Datum)</span><code>@b.Nummer</code><span>@b.Kategorie</span><span>par @b.ErfasstVon</span>
+                        @if (b.Aufgehoben) {<StatusBadge Text="Annulée" Art="neutral" />}
+                        @if (b.IstGegenbuchung) {<StatusBadge Text="Écriture inverse" Art="neutral" />}
+                    </span>
+                </div>
+                <span class="fin-zeile-info">
+                    @if (b.SaldoNach is { } s)
+                    {
+                        <small class="sk-leise" title="Solde de caisse après cette écriture">solde @Geld.F(s)</small>
+                    }
+                </span>
+                <strong class="fin-betrag @(b.Richtung == BuchungsRichtung.Recette ? "fin-ein" : "fin-aus")">@Geld.Mit(b.Richtung, b.Betrag)</strong>
+                <div class="fin-zeile-aktionen">
+                    @if (b.HatBeleg)
+                    {
+                        <a class="sk-icon-knopf" href="@($"/finances/justificatif/{b.Id}")" target="_blank" rel="noopener" title="Voir le justificatif" aria-label="Voir le justificatif de @b.Nummer"><Icon Name="eye" Groesse="16" /></a>
+                    }
+                    @if (b.Herkunft == BuchungsHerkunft.Paiement && b.HerkunftId is { } z)
+                    {
+                        <a class="sk-icon-knopf" href="@($"/finances/recu/{z}")" target="_blank" rel="noopener" title="Reçu de paiement" aria-label="Reçu de @b.Nummer"><Icon Name="receipt" Groesse="16" /></a>
+                    }
+                    @if (darfSchreiben && b.Herkunft == BuchungsHerkunft.Manuelle && !b.Aufgehoben)
+                    {
+                        <button type="button" class="sk-icon-knopf" title="Annuler par une écriture inverse" aria-label="Annuler @b.Nummer" @onclick="() => gegen = b"><Icon Name="history" Groesse="16" /></button>
+                    }
+                </div>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<BuchungDialog Open="neu" Kategorien="kategorien" OnClose="() => neu = false" OnGespeichert="GespeichertAsync" />
+<KategorienDialog Open="kategorienOffen" DarfSchreiben="darfSchreiben" Kategorien="kategorien" OnClose="() => kategorienOffen = false" OnGeaendert="KategorienLadenAsync" />
+<GrundDialog Open="gegen is not null" Titel="Annuler l'écriture" Oberzeile="@gegen?.Nummer" Gefahr="true" KnopfText="Passer l'écriture inverse" MaxLaenge="200"
+             Text="@($"Une écriture inverse de {Geld.F(gegen?.Betrag ?? 0)} est passée aujourd'hui ; l'écriture d'origine reste visible.")"
+             Label="Motif de la correction" ErfolgsMeldung="L'écriture est annulée."
+             Aktion="grund => Buchungen.GegenbuchungAsync(Ich.KontoId, gegen!.Id, grund)" OnClose="() => gegen = null" OnErledigt="GegenErledigtAsync" />
+
+@code {
+    private Liste<BuchungZeile>? liste;
+    private IReadOnlyList<KategorieZeile> kategorien = [];
+    private JournalSummen? summen;
+    private long saldo;
+    private bool neu, kategorienOffen, darfSchreiben;
+    private DateOnly? von, bis;
+    private Guid? kategorie;
+    private string? richtungFilter;
+    private BuchungZeile? gegen;
+
+    private static readonly IReadOnlyList<FilterChip> chips = [new(null, "Tout"), new("recettes", "Recettes"), new("depenses", "Dépenses")];
+
+    private IReadOnlyList<AuswahlOption<Guid?>> KategorieOptionen =>
+        [new(null, "Toutes les catégories"), .. kategorien.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Richtung == BuchungsRichtung.Recette ? "recette" : "dépense"))];
+
+    private JournalFilter Filter(string? suche = null) => new(von, bis,
+        richtungFilter switch { "recettes" => BuchungsRichtung.Recette, "depenses" => BuchungsRichtung.Depense, _ => null }, kategorie, suche);
+
+    protected override async Task InitialisierenAsync()
+    {
+        darfSchreiben = Kontext.HatRecht(KoordinatorRechte.BuchhaltungErfassen);
+        await KategorienLadenAsync();
+        await KennzahlenAsync();
+    }
+
+    private async Task KategorienLadenAsync() => kategorien = await Buchungen.KategorienAsync(Ich.KontoId);
+
+    private async Task KennzahlenAsync()
+    {
+        summen = await Buchungen.SummenAsync(Ich.KontoId, Filter());
+        saldo = (await Buchungen.SummenAsync(Ich.KontoId, new JournalFilter(null, null, null, null, null))).Saldo;
+    }
+
+    private async Task<(IReadOnlyList<BuchungZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+    {
+        if (a.Filter != richtungFilter)
+        {
+            richtungFilter = a.Filter;
+            await InvokeAsync(async () => { await AusfuehrenAsync(KennzahlenAsync); StateHasChanged(); });
+        }
+        return (await Buchungen.SucheAsync(Ich.KontoId, Filter(a.Suche), a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+    }
+
+    private async Task FilterAsync(Action setzen)
+    {
+        setzen();
+        await AusfuehrenAsync(KennzahlenAsync);
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private async Task GespeichertAsync()
+    {
+        neu = false;
+        await FilterAsync(() => { });
+    }
+
+    private async Task GegenErledigtAsync()
+    {
+        gegen = null;
+        await FilterAsync(() => { });
+    }
+}

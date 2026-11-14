@@ -1,0 +1,68 @@
+@* « Déclarer le paiement » einer SKOULOU-Rechnung: Betrag, Datum, Referenz, optional Nachweis → Ausgabe im Kassenjournal. *@
+@inherits SkoulouSeite
+@inject RechnungService Rechnungen
+@inject TimeProvider Zeit
+
+<ModalDialog Open="Rechnung is not null" Title="Déclarer le paiement" Oberzeile="@($"Facture {Rechnung?.Nummer}")" SchliessenMitEscape="false"
+             ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <p class="fin-dialog-text">Indiquez le virement effectué vers SKOULOU. Il est inscrit comme dépense « Facture SKOULOU » dans votre journal de caisse ; l'administrateur confirme ensuite la réception.</p>
+            <div class="sk-raster-2">
+                <BetragFeld Label="Montant viré" @bind-Wert="betrag" Min="1" Pflicht="true" />
+                <DatumFeld Label="Date du virement" @bind-Wert="datum" Max="@heute" Pflicht="true" />
+            </div>
+            <TextFeld Label="Référence du virement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Platzhalter="ex. n° d'opération bancaire ou Mobile Money" />
+            <div class="sk-feld">
+                <span class="sk-feld-label">Preuve (facultatif)</span>
+                <label class="fin-datei">
+                    <Icon Name="download" Groesse="18" />
+                    <span>@(datei?.Name ?? "Avis de virement en PDF ou photo (10 Mo au plus)")</span>
+                    <InputFile OnChange="e => datei = e.File" accept="application/pdf,image/png,image/jpeg" />
+                </label>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Déclarer le paiement" Icon="send" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public RechnungZeile? Rechnung { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnErledigt { get; set; }
+
+    private long? betrag;
+    private DateOnly? datum;
+    private DateOnly heute;
+    private string? referenz;
+    private IBrowserFile? datei;
+    private Guid? geladen;
+
+    protected override void OnParametersSet()
+    {
+        if (Rechnung?.Id == geladen) return;
+        geladen = Rechnung?.Id;
+        heute = new SchulZeit(Zeit).Heute;
+        (betrag, datum, referenz, datei, Fehlermeldung) = (Rechnung?.Betrag, heute, null, null, null);
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (Rechnung is not { } r) return;
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            if (datei is null)
+            {
+                await Rechnungen.MeldenAsync(Ich.KontoId, r.Id, new MeldungEingabe(betrag, datum, referenz), null);
+                return;
+            }
+            if (datei.Size > BelegSpeicher.MaxBytes) throw new Skoulou.Core.Fehler.FachFehler("La preuve est trop lourde (10 Mo au maximum).");
+            await using var strom = datei.OpenReadStream(BelegSpeicher.MaxBytes);
+            await Rechnungen.MeldenAsync(Ich.KontoId, r.Id, new MeldungEingabe(betrag, datum, referenz), new BelegDatei(strom, datei.Name));
+        }, "Le paiement est déclaré. L'administrateur SKOULOU va le confirmer.");
+        if (ok) await OnErledigt.InvokeAsync();
+    }
+}

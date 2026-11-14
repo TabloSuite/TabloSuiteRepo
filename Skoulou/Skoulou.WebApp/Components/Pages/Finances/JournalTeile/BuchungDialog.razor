@@ -1,0 +1,84 @@
+@* « Nouvelle écriture »: Recette/Dépense, Kategorie, Betrag, Datum, Libellé, optional Justificatif (PDF/PNG/JPG ≤ 10 Mo). *@
+@inherits SkoulouSeite
+@inject JournalService Journal
+@inject TimeProvider Zeit
+
+<ModalDialog Open="Open" Title="Nouvelle écriture" Oberzeile="Journal de caisse" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <RadioGruppe T="BuchungsRichtung" Label="Type" Wert="richtung" WertChanged="RichtungAsync" Optionen="richtungen" />
+            <div class="sk-raster-2">
+                <AuswahlFeld T="Guid?" Label="Catégorie" @bind-Wert="kategorie" Optionen="Optionen" Pflicht="true" />
+                <BetragFeld Label="Montant" @bind-Wert="betrag" Min="1" Pflicht="true" />
+            </div>
+            <div class="sk-raster-2">
+                <DatumFeld Label="Date" @bind-Wert="datum" Max="@heute" Pflicht="true" />
+                <TextFeld Label="Libellé" @bind-Wert="text" MaxLaenge="300" Pflicht="true" Platzhalter="ex. Facture d'électricité d'octobre" />
+            </div>
+            <div class="sk-feld">
+                <span class="sk-feld-label">Justificatif (facultatif)</span>
+                <label class="fin-datei">
+                    <Icon Name="download" Groesse="18" />
+                    <span>@(datei?.Name ?? "Choisir un PDF ou une photo (10 Mo au plus)")</span>
+                    <InputFile OnChange="DateiGewaehlt" accept="application/pdf,image/png,image/jpeg" />
+                </label>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="Enregistrer l'écriture" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public IReadOnlyList<KategorieZeile> Kategorien { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGespeichert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<BuchungsRichtung>> richtungen =
+        [new(BuchungsRichtung.Depense, "Dépense", Icon: "minus"), new(BuchungsRichtung.Recette, "Recette", Icon: "plus")];
+
+    private BuchungsRichtung richtung = BuchungsRichtung.Depense;
+    private Guid? kategorie;
+    private long? betrag;
+    private DateOnly? datum;
+    private DateOnly heute;
+    private string? text;
+    private IBrowserFile? datei;
+    private bool warOffen;
+
+    private IReadOnlyList<AuswahlOption<Guid?>> Optionen => Kategorien.Where(k => k.Richtung == richtung && !k.IstSystem)
+        .Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Eigene ? "de l'établissement" : null)).ToList();
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen)
+        {
+            heute = new SchulZeit(Zeit).Heute;
+            (richtung, kategorie, betrag, datum, text, datei, Fehlermeldung) = (BuchungsRichtung.Depense, null, null, heute, null, null, null);
+        }
+        warOffen = Open;
+    }
+
+    private void RichtungAsync(BuchungsRichtung r) => (richtung, kategorie) = (r, null);
+
+    private void DateiGewaehlt(InputFileChangeEventArgs e) => datei = e.File;
+
+    private async Task SpeichernAsync()
+    {
+        var ok = await AusfuehrenAsync(async () =>
+        {
+            if (datei is null)
+            {
+                await Journal.ErfassenAsync(Ich.KontoId, new BuchungEingabe(datum, kategorie, betrag, text), null);
+                return;
+            }
+            if (datei.Size > BelegSpeicher.MaxBytes) throw new Skoulou.Core.Fehler.FachFehler("Le justificatif est trop lourd (10 Mo au maximum).");
+            await using var strom = datei.OpenReadStream(BelegSpeicher.MaxBytes);
+            await Journal.ErfassenAsync(Ich.KontoId, new BuchungEingabe(datum, kategorie, betrag, text), new BelegDatei(strom, datei.Name));
+        }, "L'écriture est enregistrée.");
+        if (ok) await OnGespeichert.InvokeAsync();
+    }
+}
