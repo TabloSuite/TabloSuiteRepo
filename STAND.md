@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 14.11.2026, ~00:10
+# TabloSuite – Arbeitsstand 14.11.2026, morgens
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -8,8 +8,9 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 1. Stand 14.11. morgens
 
 - **SKOULOU-Neubau E1–E6 fertig und zusammengeführt** (E2 Plattform, E5 Noten & Bulletins, E6 Finanzen dazu), Migration « Fundament » neu (20261114004546), 540 Tests grün inkl. SQL, eNOTE 409 grün, Rundgang 21 neue Seiten ohne Fehler. Lokale `SkoulouDB` und Azure `Skoulou-Database` mit diesem Schema neu aufgebaut (leer, Admin aus Seed-Einstellungen beim Start).
-- **Nutzer veröffentlicht jetzt beide Apps** (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
-- **Als Nächstes:** Video-Pilot v3.1 fortsetzen (Agent war vom Limit gestoppt; Ziel ≈ 5 min, Zeiger synchron, Schilder ohne Überdeckung – `lernen-v3`), danach E7 (Simulation viele Schulen/Jahre + Rundgang) und Feinschliff. Höchstens 1–2 Agenten gleichzeitig (Limit des Nutzers).
+- Alles gepusht (Nutzer, 14.11.). Veröffentlichen beider Apps macht der Nutzer (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
+- **Läuft:** Video-Pilot v3.1 (Agent fortgesetzt; Ziel ≈ 5 min, Zeiger synchron zur Stimme, Klick-Schilder ohne Überdeckung – `lernen-v3`, Bilder `Pictures/eNOTE-Videos-v3-Pilot/v3.1`). Falls unterbrochen: neuen Agenten mit `lernen-v3/AUFTRAG-Pilot.md` + diesen drei Zielen starten.
+- **Danach:** E7 (Simulation ≥ 20 Schulen, 3 Jahre, Sprachschule mit Sessions + Browser-Rundgang, Bauplan §9.4/§10), dann Feinschliff. Immer nur 1 Agent gleichzeitig (Limit des Nutzers).
 
 ## 2. SKOULOU-Neubau (Hauptprojekt)
 
