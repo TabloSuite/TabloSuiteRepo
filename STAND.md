@@ -1,17 +1,22 @@
-# TabloSuite – Arbeitsstand 14.11.2026, ~12:35 (Rechner aus)
+# TabloSuite – Arbeitsstand 14.11.2026, abends
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 1. Stand 14.11. mittags – hier weitermachen
+## 1. Stand 14.11. abends – Abschluss erledigt, Nutzer deployt
 
-**Live:** eNOTE deployt (~10:50, Stand Paket A; Paket B ist committet, aber evtl. noch nicht deployt – Nutzer fragen).
-SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vor dem DB-User) → per
-`az webapp restart` behoben, Admin DodjiEtse angelegt. Live-DB-Schema = « Fundament » 20261114004546 (= lokal).
+**Alles fertig, getestet, gepusht. Azure-DBs = lokal.** Der Nutzer deployt jetzt **eNOTE und SKOULOU** (VS-Profile).
+- DB-Stand: Skoulou-Database (Azure) + SkoulouDB = `20261114182350_SessionGebuehrUndHauptAdmin`; ENote-Database (Azure) +
+  ENOTEDB = `20261113221524_AufenthaltsPositionen` (eNOTE heute ohne Schemaänderung). Tests: eNOTE 409, SKOULOU 542 grün
+  (+ SQL 561 im Agentenlauf).
+- Nach dem SKOULOU-Deploy prüfen: Anmeldung DodjiEtse, Menü « Administrateurs » sichtbar (ältestes Admin-Konto wird beim
+  Start automatisch Hauptadmin), Startseite zeigt das neue Video. Falls 0 Konten/Login scheitert: `az webapp restart`.
+- Danach offen: nichts aus dem Plan. Ideen/Beobachtungen: « Comptes élèves » (0,4 s bei 570 Konten) beobachten;
+  Bilder `Pictures\SKOULOU-Neubau-E7-Rundgang\<rolle>\vorher\` (alter Stand) können in den Papierkorb.
 
-**Pausiert (beim Ausschalten des Rechners), in dieser Reihenfolge fortsetzen – immer nur 1 Agent:**
+**Erledigt am 14.11. nachmittags/abends (Reihenfolge der Sitzung):**
 1. ✅ **« Pourquoi SKOULOU ? » v3** (14.11. nachmittags): 1:39, −16,7 LUFS, neue Oberfläche, ohne Sprecherin; in der App
    als `skoulou-pourquoi.mp4` + `skoulou-presentation.mp4` (Startseite) mit neuem Poster, Katalog 1:39. Projekt
    `TabloSuite Videos\Skoulou Videos\projekte\pourquoi-v3\` (bau.py, renders/), Master-Kopie in `Skoulou Videos\Backup\Werbevideo`,
@@ -26,11 +31,13 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
    (`SessionRegel`), Gebühr je Session (Feld « Période »), Kontoanlage wiederholt 3×, `/direction/journal`, Bedingungen im
    Registrierungsformular (Dialog nach Login entfernt), `/admin/administrateurs` (nur Hauptadmin; « Supprimer » = archivieren;
    nur Hauptadmin setzt Admin-Passwörter zurück). **Neue Migration `20261114182350_SessionGebuehrUndHauptAdmin`**
-   (GebuehrenPosten.PeriodeId, Konten.IstHauptAdmin) – lokal SkoulouDB + SkoulouDB_SIM eingespielt, **Azure offen**
-   (Abschluss). 558 Tests grün inkl. SQL. Bilder `Pictures\SKOULOU-Neubau-E7b-Zusatz`.
-   ⏳ **Teil 2**: Browser-Rundgang aller Rollen (Schritte 1–5) inkl. der neuen Seiten, Feinschliff, Guide.
-4. **Abschluss** (Nutzer 14.11.): lokale DBs + Azure-DBs auf neuesten Migrationsstand (OK liegt vor, « am Ende »),
-   Tests, push → Nutzer deployt **beide Apps**. Nach DB-Änderungen auf Azure die Web-App neu starten (Seed!).
+   (GebuehrenPosten.PeriodeId, Konten.IstHauptAdmin) – lokal SkoulouDB + SkoulouDB_SIM und Azure Skoulou-Database
+   eingespielt. 558 Tests grün inkl. SQL. Bilder `Pictures\SKOULOU-Neubau-E7b-Zusatz`.
+   ✅ **Teil 2 Rundgang** (98a13eb 4a5c59b 495ac44): 11 Rollen, 440 Aufrufe + 51 Dialoge, Desktop + Handy, am Ende sauber;
+   Guide an echte Seiten angepasst (+ Tests Guide ↔ Navigation), « FCFA » einheitlich, Handy-Kopfzeile, Médias-Leerzustand;
+   alle Seiten < 1 s; keine Schemaänderung. Bericht `Skoulou/docs/Simulation-Bericht.md` § Rundgang, Bilder
+   `Pictures\SKOULOU-Neubau-E7-Rundgang`.
+4. ✅ **Abschluss**: Migration auf Azure Skoulou-Database eingespielt + geprüft, eNOTE Azure schon aktuell, Tests grün, gepusht.
 
 **Heute erledigt:** Video-Pilot v3.1/v3.2 freigegeben (« Stil ist gut, sehr gut ausführlich »; Klick-Kreis halb
 durchsichtig). eNOTE-Videos Paket A (Premiers pas, Encaisser, Attente, Clients, Clôture) + B (Catalogue, Équipe,
