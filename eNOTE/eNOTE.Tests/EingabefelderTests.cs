@@ -37,6 +37,17 @@ public class EingabefelderTests
     public void Betragseingabe_liest_den_getippten_Text_als_Ziffern(string text, decimal erwartet)
         => Assert.Equal(erwartet, ENote.WebApp.Components.Shared.BetragEingabe.ZifferWert(text));
 
+    // Monkey S2: eine Remise « 0 % » mit Unsinn-Namen wurde gespeichert (an der Kasse wählbar, ohne Wirkung).
+    [Theory]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Prozent, 0, false)]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Prozent, -5, false)]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Prozent, 101, false)]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Prozent, 10, true)]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Festbetrag, 0, false)]
+    [InlineData(ENote.Core.DataModels.Katalog.RabattArt.Festbetrag, 500, true)]
+    public void Remise_braucht_einen_Wert_ueber_null(ENote.Core.DataModels.Katalog.RabattArt art, int wert, bool gueltig)
+        => Assert.Equal(gueltig, ENote.WebApp.Components.Pages.Rabatte.Pruefe(new ENote.Core.DataModels.Katalog.Rabatt { Name = "Fidélité", Art = art, Wert = wert }) is null);
+
     private static string RepoWurzel([System.Runtime.CompilerServices.CallerFilePath] string quelle = "")
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(quelle)!);

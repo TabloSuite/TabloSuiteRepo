@@ -367,6 +367,8 @@ public class KassenService(
     private static async Task<IDbContextTransaction?> SperreSitzungAsync(ApplicationDbContext db, Guid sitzungId, CancellationToken ct)
     {
         if (!db.Database.IsRelational()) return null;
+        // Bei einem Fehler wird die ganze Transaktion verworfen – Savepoints unnötig (und mit MARS ohnehin aus, sonst Warnung je Verkauf).
+        db.Database.AutoSavepointsEnabled = false;
         var transaktion = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"DECLARE @x int; SELECT @x = 1 FROM [KassenSitzungen] WITH (UPDLOCK, ROWLOCK) WHERE [Id] = {sitzungId};", ct);

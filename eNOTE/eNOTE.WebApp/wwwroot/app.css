@@ -2232,7 +2232,7 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .rm-suche .kx-suche-feld { width: 100%; }
 .rm-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
 .rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr)); gap: 1rem; }
-.rm-karte { display: grid; gap: .85rem; padding: 1.1rem 1.15rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg, 16px); box-shadow: var(--enote-shadow-sm, 0 1px 3px rgba(16,26,51,.06)); transition: box-shadow .2s, opacity .2s; }
+.rm-karte { min-width: 0; overflow-wrap: anywhere; /* lange Wörter (Condition, Name) brechen um – sonst wurde die Seite am Handy 1111 px breit (S2) */ display: grid; gap: .85rem; padding: 1.1rem 1.15rem; background: var(--enote-surface); border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg, 16px); box-shadow: var(--enote-shadow-sm, 0 1px 3px rgba(16,26,51,.06)); transition: box-shadow .2s, opacity .2s; }
 .rm-karte:hover { box-shadow: var(--enote-shadow, 0 6px 20px rgba(16,26,51,.08)); }
 .rm-karte.aus { background: var(--enote-surface-2); }
 .rm-karte.aus .rm-wert { background: var(--enote-surface-3); color: var(--enote-text-muted); }

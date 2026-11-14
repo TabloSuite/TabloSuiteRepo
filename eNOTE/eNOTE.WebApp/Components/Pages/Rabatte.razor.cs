@@ -156,23 +156,21 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
         editorOffen = true;
     }
 
+    /// <summary>Prüft Name und Wert einer Remise; null = in Ordnung. Wert 0 war erlaubt (Remise ohne Wirkung, Klick-Simulation S2).</summary>
+    public static string? Pruefe(Rabatt rabatt)
+    {
+        if (string.IsNullOrWhiteSpace(rabatt.Name)) return "Veuillez saisir un nom.";
+        if (rabatt.Wert < 0) return "La valeur ne peut pas être négative.";
+        if (rabatt.Wert == 0) return "Saisissez une valeur supérieure à 0.";
+        if (rabatt.Art == RabattArt.Prozent && rabatt.Wert > 100) return "Le pourcentage ne peut pas dépasser 100.";
+        return null;
+    }
+
     private async Task SpeichernAsync()
     {
-        if (string.IsNullOrWhiteSpace(bearbeitungsRabatt.Name))
+        if (Pruefe(bearbeitungsRabatt) is string fehler)
         {
-            editorFehler = "Veuillez saisir un nom.";
-            return;
-        }
-
-        if (bearbeitungsRabatt.Wert < 0)
-        {
-            editorFehler = "La valeur ne peut pas être négative.";
-            return;
-        }
-
-        if (bearbeitungsRabatt.Art == RabattArt.Prozent && bearbeitungsRabatt.Wert > 100)
-        {
-            editorFehler = "Le pourcentage ne peut pas dépasser 100.";
+            editorFehler = fehler;
             return;
         }
 
