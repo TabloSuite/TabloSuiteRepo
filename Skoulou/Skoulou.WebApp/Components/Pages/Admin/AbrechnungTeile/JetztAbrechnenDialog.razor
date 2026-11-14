@@ -1,0 +1,73 @@
+@* « Facturer maintenant »: Schule wählen, Abrechnungsperioden mit noch nicht berechneten Schülern, je Periode abrechnen. *@
+@inherits SkoulouSeite
+@inject RechnungService Rechnungen
+@inject TimeProvider Zeit
+
+<ModalDialog Open="Open" Title="Facturer maintenant" Oberzeile="Facturation SKOULOU" Breite="sk-modal-lg" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            <p class="fin-dialog-text">Le service facture automatiquement chaque nuit les périodes terminées. Ici, vous facturez une période sans attendre ; les élèves inscrits plus tard recevront une facture complémentaire.</p>
+            <AuswahlFeld T="Guid?" Label="Établissement" Wert="schule" WertChanged="SchuleAsync" Optionen="schulen" Pflicht="true" />
+            @if (perioden is { Count: 0 })
+            {
+                <Leerzustand Icon="calendar" Titel="Aucune période facturable" Text="L'établissement n'a pas d'année démarrée avec des périodes qui comptent pour l'année." />
+            }
+            else if (perioden is not null)
+            {
+                <ul class="fin-liste-klein">
+                    @foreach (var p in perioden)
+                    {
+                        <li>
+                            <span><strong>@p.Titel @p.Schuljahr</strong> <small class="sk-leise">@Geld.Datum(p.Beginn) – @Geld.Datum(p.Ende)@(p.Beendet ? " · terminée" : p.Begonnen(Heute) ? " · en cours" : " · à venir")</small><br />
+                                <small>@(p.Abrechenbar == 0 ? "Tous les élèves sont déjà facturés." : $"{p.Abrechenbar} élève(s) à facturer × {Geld.F(p.ProSchueler)} = {Geld.F(p.Abrechenbar * p.ProSchueler)}")</small></span>
+                            <AsyncKnopf Text="Facturer" Icon="receipt" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(p.Abrechenbar == 0 || !p.Begonnen(Heute))" OnClick="() => AbrechnenAsync(p)" />
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose">Fermer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnAbgerechnet { get; set; }
+
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+    private IReadOnlyList<AbrechenbarePeriode>? perioden;
+    private Guid? schule;
+    private bool warOffen;
+    private DateOnly Heute => new SchulZeit(Zeit).Heute;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !warOffen)
+        {
+            (schule, perioden, Fehlermeldung) = (null, null, null);
+            await AusfuehrenAsync(async () => schulen = (await Rechnungen.SchulenAsync(Ich.KontoId)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Zusatz)).ToList());
+        }
+        warOffen = Open;
+    }
+
+    private async Task SchuleAsync(Guid? id)
+    {
+        schule = id;
+        perioden = null;
+        if (id is { } s) await AusfuehrenAsync(async () => perioden = await Rechnungen.AbrechenbareAsync(Ich.KontoId, s));
+    }
+
+    private async Task AbrechnenAsync(AbrechenbarePeriode p)
+    {
+        Guid? neu = null;
+        if (await AusfuehrenAsync(async () => neu = await Rechnungen.JetztAbrechnenAsync(Ich.KontoId, p.PeriodeId)))
+        {
+            Toast.ZeigeErfolg(neu is null ? "Aucun élève à facturer." : "La facture est créée et envoyée à la direction.");
+            await SchuleAsync(schule);
+            await OnAbgerechnet.InvokeAsync();
+        }
+    }
+}

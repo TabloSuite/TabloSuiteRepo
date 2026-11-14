@@ -1,0 +1,47 @@
+@* Aktion mit Pflichtgrund (Storno, Anfechtung, Antwort): Fehler bleiben im Dialog, Erfolg meldet OnErledigt. *@
+@inherits SkoulouSeite
+
+<ModalDialog Open="Open" Title="@Titel" Oberzeile="@Oberzeile" Breite="sk-modal-sm" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        <div class="sk-formular">
+            @if (Text is not null)
+            {
+                <p class="fin-dialog-text">@Text</p>
+            }
+            <TextFeld Label="@Label" @bind-Wert="grund" Zeilen="3" MaxLaenge="@MaxLaenge" Pflicht="true" Sofort="true" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
+        <AsyncKnopf Text="@KnopfText" CssClass="@(Gefahr ? "sk-btn-gefahr" : "sk-btn-primaer")" Disabled="@string.IsNullOrWhiteSpace(grund)" OnClick="LosAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Titel { get; set; } = "Motif";
+    [Parameter] public string? Oberzeile { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string Label { get; set; } = "Motif";
+    [Parameter] public string KnopfText { get; set; } = "Confirmer";
+    [Parameter] public bool Gefahr { get; set; }
+    [Parameter] public int MaxLaenge { get; set; } = 300;
+    [Parameter] public string? ErfolgsMeldung { get; set; }
+    [Parameter, EditorRequired] public Func<string?, Task> Aktion { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnErledigt { get; set; }
+
+    private string? grund;
+    private bool warOffen;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !warOffen) (grund, Fehlermeldung) = (null, null);
+        warOffen = Open;
+    }
+
+    private async Task LosAsync()
+    {
+        if (await AusfuehrenAsync(() => Aktion(grund), ErfolgsMeldung)) await OnErledigt.InvokeAsync();
+    }
+}

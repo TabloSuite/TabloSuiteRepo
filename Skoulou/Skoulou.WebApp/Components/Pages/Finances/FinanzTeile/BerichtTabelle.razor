@@ -1,0 +1,22 @@
+@* Zweispaltige Summentabelle (Bezeichnung, Betrag) mit Total. *@
+@if (Zeilen.Count == 0)
+{
+    <p class="sk-leise">Aucun mouvement sur la période.</p>
+}
+else
+{
+    <table class="sk-tabelle fin-summen">
+        <tbody>
+            @foreach (var (text, betrag) in Zeilen)
+            {
+                <tr><td>@text</td><td class="fin-rechts">@Geld.F(betrag)</td></tr>
+            }
+        </tbody>
+        <tfoot><tr><th>Total</th><th class="fin-rechts">@Geld.F(Total)</th></tr></tfoot>
+    </table>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<(string Text, long Betrag)> Zeilen { get; set; } = [];
+    [Parameter] public long Total { get; set; }
+}

@@ -1,5 +1,10 @@
 @page "/responsable/parts"
 @attribute [Authorize(Policy = Richtlinien.Responsable)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Components.Pages.Admin.AbrechnungTeile
 
-<InVorbereitung Titel="Mes parts" Icon="coins" Etappe="E6 – Finances"
-                Beschreibung="Vos parts sur les factures payées de vos établissements : à verser et déjà versées." />
+<PageTitle>Mes parts · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Mes parts" Icon="coins" Untertitel="Votre part sur chaque facture payée de vos établissements : à recevoir et déjà versée. Une facture annulée après paiement crée un ajustement négatif." />
+
+<AnteileListe Admin="false" />

@@ -1,0 +1,138 @@
+@* Parts des responsables: Admin markiert Auszahlungen (einzeln oder gesammelt); Responsable sieht nur seine (nur lesen). *@
+@inherits SkoulouSeite
+@inject AnteilService Anteile
+@inject TimeProvider Zeit
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    @if (summen is { } s)
+    {
+        <div class="fin-kennzahlen">
+            <KennzahlKachel Bezeichnung="@(Admin ? "À verser" : "À recevoir")" Wert="@Geld.F(s.Offen)" Icon="coins" Haupt="true" Zusatz="@($"{s.OffenAnzahl} part(s)")" />
+            <KennzahlKachel Bezeichnung="Déjà versé" Wert="@Geld.F(s.Ausgezahlt)" Icon="check-circle" />
+        </div>
+    }
+    @if (Admin && gewaehlt.Count > 0)
+    {
+        <div class="fin-auswahlleiste">
+            <strong>@gewaehlt.Count part(s) · @Geld.F(gewaehlt.Values.Sum())</strong>
+            <span class="fin-luecke"></span>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => gewaehlt.Clear()">Désélectionner</button>
+            <button type="button" class="sk-btn sk-btn-primaer sk-btn-klein" @onclick="AuszahlenOeffnen"><Icon Name="check" Groesse="16" /> <span>Marquer comme versé</span></button>
+        </div>
+    }
+    <Liste T="AnteilZeile" @ref="liste" Laden="LadenAsync" Filter="chips" AnfangsFilter="@AnteilService.FilterOffen" MitSuche="false" LeerIcon="coins"
+           LeerTitel="Aucune part" LeerText="Une part est créée quand l'administrateur confirme le paiement d'une facture d'un établissement suivi.">
+        <Werkzeuge>
+            @if (Admin && responsables.Count > 1)
+            {
+                <AuswahlFeld T="Guid?" Wert="responsable" WertChanged="ResponsableAsync" Optionen="responsables" Kompakt="true" Icon="user" CssClass="fin-filter-feld" />
+            }
+        </Werkzeuge>
+        <Zeile Context="a">
+            <div class="fin-zeile">
+                @if (Admin && a.AusgezahltAmUtc is null)
+                {
+                    <input type="checkbox" class="fin-haken-box" aria-label="Choisir la part @a.Rechnung" checked="@gewaehlt.ContainsKey(a.Id)" @onchange="e => Umschalten(a, e)" />
+                }
+                else
+                {
+                    <span class="fin-zeile-icon"><Icon Name="coins" Groesse="18" /></span>
+                }
+                <div class="fin-zeile-haupt">
+                    <strong>@a.Schule</strong>
+                    <span class="fin-zeile-meta">
+                        @if (Admin) {<span>@a.Responsable</span>}
+                        <code>@a.Rechnung</code><span>@a.Periode</span><span>@a.Prozent.ToString("0.##") %</span>
+                        @if (a.IstAusgleich) {<StatusBadge Text="Ajustement (facture annulée)" Art="neutral" />}
+                    </span>
+                </div>
+                <span class="fin-zeile-info">
+                    <StatusBadge Text="@(a.AusgezahltAmUtc is { } v ? $"Versée le {Geld.Datum(DateOnly.FromDateTime(v))}{(a.Referenz is null ? "" : $" · {a.Referenz}")}" : "À verser")"
+                                 Art="@(a.AusgezahltAmUtc is null ? "warn" : "erfolg")" />
+                </span>
+                <strong class="fin-betrag @(a.Betrag < 0 ? "fin-aus" : null)">@Geld.F(a.Betrag)</strong>
+            </div>
+        </Zeile>
+    </Liste>
+}
+
+<ModalDialog Open="auszahlen" Title="Marquer comme versé" Oberzeile="@($"{gewaehlt.Count} part(s) · {Geld.F(gewaehlt.Values.Sum())}")" Breite="sk-modal-sm"
+             SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="() => auszahlen = false">
+    <ChildContent>
+        <div class="sk-formular">
+            <DatumFeld Label="Date du versement" @bind-Wert="datum" Max="@heute" Pflicht="true" />
+            <TextFeld Label="Référence du versement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Platzhalter="ex. virement, Mobile Money" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => auszahlen = false">Annuler</button>
+        <AsyncKnopf Text="Confirmer le versement" Icon="check" CssClass="sk-btn-primaer" OnClick="AuszahlenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Admin { get; set; }
+
+    private Liste<AnteilZeile>? liste;
+    private AnteilSummen? summen;
+    private Guid? responsable;
+    private IReadOnlyList<AuswahlOption<Guid?>> responsables = [];
+    private readonly Dictionary<Guid, long> gewaehlt = [];
+    private bool auszahlen;
+    private DateOnly? datum;
+    private DateOnly heute;
+    private string? referenz;
+
+    private static readonly IReadOnlyList<FilterChip> chips =
+        [new(AnteilService.FilterOffen, "À verser"), new(AnteilService.FilterAusgezahlt, "Versées"), new(null, "Toutes")];
+
+    protected override async Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Zeit).Heute;
+        summen = await Anteile.SummenAsync(Ich.KontoId, responsable);
+        if (Admin)
+            responsables = [new(null, "Tous les responsables"), .. (await Anteile.ResponsablesAsync(Ich.KontoId))
+                .Select(r => new AuswahlOption<Guid?>(r.Id, r.Name, r.Offen != 0 ? $"à verser {Geld.F(r.Offen)}" : null))];
+    }
+
+    private async Task<(IReadOnlyList<AnteilZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Anteile.ListeAsync(Ich.KontoId, responsable, a.Filter, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private async Task ResponsableAsync(Guid? id)
+    {
+        (responsable, summen) = (id, null);
+        gewaehlt.Clear();
+        await NeuLadenAsync();
+    }
+
+    private void Umschalten(AnteilZeile a, ChangeEventArgs e)
+    {
+        if (e.Value is true) gewaehlt[a.Id] = a.Betrag;
+        else gewaehlt.Remove(a.Id);
+    }
+
+    private void AuszahlenOeffnen() => (auszahlen, datum, referenz, Fehlermeldung) = (true, heute, null, null);
+
+    private async Task AuszahlenAsync()
+    {
+        var anzahl = 0;
+        if (await AusfuehrenAsync(async () => anzahl = await Anteile.AuszahlenAsync(Ich.KontoId, gewaehlt.Keys.ToList(), datum, referenz)))
+        {
+            Toast.ZeigeErfolg($"{anzahl} part(s) marquée(s) comme versée(s).");
+            (auszahlen, Fehlermeldung) = (false, null);
+            gewaehlt.Clear();
+            await NeuLadenAsync();
+        }
+    }
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => summen = await Anteile.SummenAsync(Ich.KontoId, responsable));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+}

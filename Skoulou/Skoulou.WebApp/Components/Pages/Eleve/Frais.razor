@@ -1,5 +1,32 @@
 @page "/eleve/frais"
 @attribute [Authorize(Policy = Richtlinien.Eleve)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Finanzen
+@using Skoulou.WebApp.Components.Pages.Finances.FinanzTeile
+@inject FamilienFinanzService Familie
 
-<InVorbereitung Titel="Frais de scolarité" Icon="wallet" Etappe="E6 – Finances"
-                Beschreibung="Ce qui est payé, ce qui reste et vos reçus." />
+<PageTitle>Frais de scolarité · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Frais de scolarité" Icon="wallet" Untertitel="@($"Ce qui est payé, ce qui reste et vos reçus{(detail is null ? "" : $" · année {detail.Schuljahr}")}.")" />
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (!Laedt && detail is null)
+{
+    <Leerzustand Icon="wallet" Titel="Aucune année scolaire en cours" Text="Les frais apparaîtront dès que l'établissement aura ouvert l'année scolaire." />
+}
+else if (detail is not null)
+{
+    <Karte CssClass="fin-familie">
+        <KontoAnsicht Detail="detail" />
+    </Karte>
+    <p class="sk-leise">Une question sur un montant ? Adressez-vous au secrétariat ou à la direction de l'établissement.</p>
+}
+
+@code {
+    private SchuelerKontoDetail? detail;
+
+    protected override async Task InitialisierenAsync() => detail = await Familie.KontoAsync(Ich.KontoId, null);
+}

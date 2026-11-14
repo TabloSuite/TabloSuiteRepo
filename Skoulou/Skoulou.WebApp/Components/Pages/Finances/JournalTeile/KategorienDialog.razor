@@ -1,0 +1,70 @@
+@* Kategorien des Journals: Standard- und Systemkategorien (fest) und eigene der Schule (anlegen, unbenutzte löschen). *@
+@inherits SkoulouSeite
+@inject JournalService Journal
+
+<ModalDialog Open="Open" Title="Catégories" Oberzeile="Journal de caisse" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
+    <ChildContent>
+        @foreach (var gruppe in Kategorien.GroupBy(k => k.Richtung))
+        {
+            <h3 class="fin-unterkopf">@(gruppe.Key == BuchungsRichtung.Recette ? "Recettes" : "Dépenses")</h3>
+            <ul class="fin-liste-klein">
+                @foreach (var k in gruppe)
+                {
+                    <li>
+                        <span>@k.Name
+                            @if (k.IstSystem) {<StatusBadge Text="automatique" Art="info" />}
+                            else if (k.Eigene) {<StatusBadge Text="établissement" Art="neutral" />}
+                        </span>
+                        @if (k.Eigene && !k.Benutzt && DarfSchreiben)
+                        {
+                            <button type="button" class="sk-icon-knopf klein" title="Supprimer" aria-label="Supprimer @k.Name" @onclick="() => LoeschenAsync(k)"><Icon Name="trash" Groesse="16" /></button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        @if (DarfSchreiben)
+        {
+            <div class="fin-erm-form">
+                <h3 class="fin-unterkopf">Nouvelle catégorie</h3>
+                <div class="sk-raster-2">
+                    <TextFeld Label="Nom" @bind-Wert="name" MaxLaenge="100" Platzhalter="ex. Cantine, Sorties scolaires" />
+                    <RadioGruppe T="BuchungsRichtung" Label="Type" @bind-Wert="richtung" Optionen="richtungen" />
+                </div>
+                <AsyncKnopf Text="Ajouter la catégorie" Icon="plus" CssClass="sk-btn-ghost sk-btn-klein" Disabled="@string.IsNullOrWhiteSpace(name)" OnClick="AnlegenAsync" />
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose">Fermer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public bool DarfSchreiben { get; set; }
+    [Parameter] public IReadOnlyList<KategorieZeile> Kategorien { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private static readonly IReadOnlyList<AuswahlOption<BuchungsRichtung>> richtungen =
+        [new(BuchungsRichtung.Depense, "Dépense"), new(BuchungsRichtung.Recette, "Recette")];
+
+    private string? name;
+    private BuchungsRichtung richtung = BuchungsRichtung.Depense;
+
+    private async Task AnlegenAsync()
+    {
+        if (await AusfuehrenAsync(() => Journal.KategorieAnlegenAsync(Ich.KontoId, name, richtung), "La catégorie est créée."))
+        {
+            name = null;
+            await OnGeaendert.InvokeAsync();
+        }
+    }
+
+    private async Task LoeschenAsync(KategorieZeile k)
+    {
+        if (await AusfuehrenAsync(() => Journal.KategorieLoeschenAsync(Ich.KontoId, k.Id), "La catégorie est supprimée."))
+            await OnGeaendert.InvokeAsync();
+    }
+}

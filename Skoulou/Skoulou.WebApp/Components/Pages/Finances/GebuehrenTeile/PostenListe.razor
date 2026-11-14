@@ -1,0 +1,111 @@
+@* Frais de l'année: Karten je Posten mit Raten, Anlegen/Bearbeiten/Löschen, Kopie aus dem Vorjahr. *@
+@inherits SkoulouSeite
+@inject GebuehrenService Gebuehren
+
+<div class="sk-knopfzeile fin-leiste">
+    <span class="sk-leise">@posten.Count frais · total pour un élève qui paie tout : @Geld.F(posten.Where(p => p.KlasseId is null && p.StufeId is null).Sum(p => p.Betrag)) + frais de niveau ou de classe</span>
+    @if (DarfSchreiben)
+    {
+        <span class="fin-luecke"></span>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => kopieren = true"><Icon Name="refresh" Groesse="18" /> <span>Reprendre l'année précédente</span></button>
+        <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => Oeffnen(null)"><Icon Name="plus" Groesse="18" /> <span>Nouveau frais</span></button>
+    }
+</div>
+
+@if (posten.Count == 0)
+{
+    <Leerzustand Icon="tag" Titel="Aucun frais pour cette année" Text="Créez les frais (inscription, scolarité, APE…) avec leurs tranches et échéances, ou reprenez ceux de l'année précédente." />
+}
+else
+{
+    <div class="fin-posten-raster">
+        @foreach (var p in posten)
+        {
+            <section class="sk-karte fin-posten">
+                <div class="fin-posten-kopf">
+                    <div>
+                        <h3>@p.Bezeichnung</h3>
+                        <span class="fin-zeile-meta"><StatusBadge Text="@p.Geltung" Art="info" />@if (!p.Pflicht) {<StatusBadge Text="Facultatif" Art="neutral" />}</span>
+                    </div>
+                    <strong class="fin-betrag-gross">@Geld.F(p.Betrag)</strong>
+                </div>
+                <ol class="fin-posten-raten">
+                    @foreach (var r in p.Raten)
+                    {
+                        <li><span>@(p.Raten.Count > 1 ? $"Tranche {r.Nr}" : "En une fois")</span><span class="sk-leise">avant le @Geld.Datum(r.Faellig)</span><strong>@Geld.F(r.Betrag)</strong></li>
+                    }
+                </ol>
+                @if (DarfSchreiben)
+                {
+                    <div class="sk-knopfzeile fin-posten-aktionen">
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Oeffnen(p)"><Icon Name="edit" Groesse="16" /> <span>Modifier</span></button>
+                        <button type="button" class="sk-icon-knopf" title="Supprimer" aria-label="Supprimer @p.Bezeichnung" @onclick="() => loeschen = p"><Icon Name="trash" Groesse="16" /></button>
+                    </div>
+                }
+            </section>
+        }
+    </div>
+}
+
+<PostenDialog Open="dialog" JahrId="JahrId" JahrText="@JahrText" Posten="bearbeitet" Auswahl="auswahl" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<BestaetigungsDialog Open="loeschen is not null" Titel="Supprimer ce frais ?" Gefahr="true" BestaetigenText="Supprimer"
+                     Text="@($"« {loeschen?.Bezeichnung} » et ses tranches seront supprimés. Les paiements déjà reçus restent enregistrés et seront répartis sur les autres frais.")"
+                     OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
+<BestaetigungsDialog Open="kopieren" Titel="Reprendre les frais de l'année précédente ?" BestaetigenText="Reprendre"
+                     Text="Les frais de l'année précédente sont copiés avec leurs tranches (échéances décalées d'un an). Les frais déjà présents ne sont pas dupliqués."
+                     OnBestaetigen="KopierenAsync" OnAbbrechen="() => kopieren = false" />
+
+@code {
+    [Parameter, EditorRequired] public Guid JahrId { get; set; }
+    [Parameter] public string? JahrText { get; set; }
+    [Parameter] public bool DarfSchreiben { get; set; }
+
+    private IReadOnlyList<PostenZeile> posten = [];
+    private GeltungsAuswahl? auswahl;
+    private PostenZeile? bearbeitet, loeschen;
+    private bool dialog, kopieren;
+    private Guid geladen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (geladen == JahrId) return;
+        geladen = JahrId;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync()
+    {
+        posten = await Gebuehren.PostenAsync(Ich.KontoId, JahrId);
+        if (DarfSchreiben) auswahl = await Gebuehren.GeltungsAuswahlAsync(Ich.KontoId, JahrId);
+    }
+
+    private void Oeffnen(PostenZeile? p) => (bearbeitet, dialog) = (p, true);
+
+    private async Task GespeichertAsync()
+    {
+        dialog = false;
+        await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LoeschenAsync()
+    {
+        if (loeschen is not { } p) return;
+        if (await AusfuehrenAsync(() => Gebuehren.PostenLoeschenAsync(Ich.KontoId, p.Id), "Le frais est supprimé."))
+        {
+            loeschen = null;
+            await AusfuehrenAsync(LadenAsync);
+        }
+    }
+
+    private async Task KopierenAsync()
+    {
+        (int Kopiert, int Uebersprungen) ergebnis = default;
+        if (await AusfuehrenAsync(async () => ergebnis = await Gebuehren.VorjahrKopierenAsync(Ich.KontoId, JahrId)))
+        {
+            kopieren = false;
+            Toast.ZeigeErfolg($"{ergebnis.Kopiert} frais repris{(ergebnis.Uebersprungen > 0 ? $", {ergebnis.Uebersprungen} déjà présent(s) ou sans classe correspondante" : "")}.");
+            await AusfuehrenAsync(LadenAsync);
+        }
+        else kopieren = false;
+    }
+}

@@ -35,6 +35,7 @@ public sealed class PlattformAbrechnung(
             if (!p.ZaehltFuerJahr) throw new FachFehler("Cette période ne compte pas pour l'année : elle n'est pas facturée.");
             var jahr = await db.Schuljahre.AsNoTracking().FirstAsync(j => j.Id == p.SchuljahrId, ct);
             if (jahr.Status == SchuljahrStatus.Vorbereitung) throw new FachFehler("L'année scolaire n'a pas encore démarré : le prix n'est pas encore figé.");
+            if (p.Beginn > Heute) throw new FachFehler("Cette période n'a pas encore commencé : elle ne peut pas encore être facturée.");
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == p.SchuleId, ct);
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 

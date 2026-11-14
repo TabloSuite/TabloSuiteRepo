@@ -1,5 +1,114 @@
 @page "/finances"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
+@inherits JahrSeite
+@inject JournalService Journal
+@inject GebuehrenService Gebuehren
+@inject ZahlungService Zahlungen
+@inject RechnungService Rechnungen
 
-<InVorbereitung Titel="Finances" Icon="wallet" Etappe="E6 – Finances"
-                Beschreibung="Vue d'ensemble : recettes, impayés des familles, solde de caisse et factures SKOULOU." />
+<PageTitle>Finances · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Finances" Icon="wallet" Untertitel="@($"Vue d'ensemble{(Jahr is null ? "" : $" · année {Jahr.Bezeichnung}")} : la caisse, ce que les familles doivent encore et les factures SKOULOU – trois chiffres séparés.")">
+    <Aktionen>
+        @if (Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen) && JahrId is not null)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => kasse = true"><Icon Name="banknote" Groesse="18" /> <span>Encaisser un paiement</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (!Laedt)
+{
+    <div class="fin-kennzahlen">
+        @if (stand is { } s)
+        {
+            <KennzahlKachel Bezeichnung="Solde de caisse" Wert="@Geld.F(s.Saldo)" Icon="wallet" Haupt="true" Href="/finances/journal"
+                            Zusatz="@($"Année : +{Geld.F(s.RecettesJahr)} / −{Geld.F(s.DepensesJahr)}")" />
+        }
+        @if (zahlungen is { } z)
+        {
+            <KennzahlKachel Bezeichnung="Encaissé aujourd'hui" Wert="@Geld.F(z.HeuteSumme)" Icon="banknote" Href="/finances/paiements"
+                            Zusatz="@($"Ce mois : {Geld.F(z.MonatSumme)}")" />
+        }
+        @if (konten is { } k)
+        {
+            <KennzahlKachel Bezeichnung="Reste à encaisser (familles)" Wert="@Geld.F(k.Offen)" Icon="users" Href="/finances/frais/comptes"
+                            Zusatz="@($"En retard : {Geld.F(k.EnRetardBetrag)} · {k.EnRetard} élève{(k.EnRetard > 1 ? "s" : "")}")" />
+        }
+        @if (rechnungen is { } r)
+        {
+            <KennzahlKachel Bezeichnung="Factures SKOULOU à régler" Wert="@Geld.F(r.ResteAPayer)" Icon="receipt" Href="/finances/facturation"
+                            Zusatz="@(r.EnRetard > 0 ? $"{r.EnRetard} en retard" : $"{r.Ouvertes + r.Contestees} à payer · {r.Declarees} déclarée(s)")" />
+        }
+    </div>
+
+    @if (konten is { EnRetard: > 0 } retard)
+    {
+        <Hinweis Art="warn" Titel="Paiements en retard">@retard.EnRetard élève@(retard.EnRetard > 1 ? "s ont" : " a") des tranches échues non payées (@Geld.F(retard.EnRetardBetrag)). <a href="/finances/frais/comptes">Voir les comptes</a></Hinweis>
+    }
+
+    <div class="sk-kachel-raster fin-wege">
+        @foreach (var w in Wege)
+        {
+            <a class="sk-kachel" href="@w.Href"><span class="sk-kachel-icon"><Icon Name="@w.Icon" Groesse="22" /></span><strong>@w.Titel</strong><small>@w.Text</small><Icon Name="arrow-right" Groesse="16" CssClass="sk-kachel-pfeil" /></a>
+        }
+    </div>
+
+    @if (letzte.Count > 0)
+    {
+        <Karte Titel="Derniers paiements" Icon="history">
+            <ul class="fin-liste-klein">
+                @foreach (var p in letzte)
+                {
+                    <li class="@(p.Storniert ? "fin-storniert" : null)"><span><strong>@p.Schueler</strong> <small class="sk-leise">@Geld.Datum(p.Datum) · @Geld.Kanal(p.Kanal) · @p.Quittungsnummer</small></span>
+                        <strong>@Geld.F(p.Betrag)</strong></li>
+                }
+            </ul>
+        </Karte>
+    }
+}
+
+<ZahlungDialog Open="kasse" JahrId="JahrId" OnClose="() => kasse = false" OnGespeichert="_ => JahrLadenAsync()" />
+
+@code {
+    private KassenStand? stand;
+    private ZahlungZaehler? zahlungen;
+    private KontenZaehler? konten;
+    private RechnungsZaehler? rechnungen;
+    private IReadOnlyList<ZahlungZeile> letzte = [];
+    private bool kasse;
+
+    private sealed record Weg(string Href, string Icon, string Titel, string Text);
+
+    private IEnumerable<Weg> Wege
+    {
+        get
+        {
+            if (Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen))
+            {
+                yield return new("/finances/paiements", "banknote", "Paiements", "Encaisser, imprimer et annuler les reçus.");
+                yield return new("/finances/frais", "tag", "Frais de scolarité", "Frais, tranches, réductions et comptes des élèves.");
+            }
+            if (Kontext.HatRecht(KoordinatorRechte.BuchhaltungErfassen)) yield return new("/finances/journal", "log", "Journal de caisse", "Autres recettes et dépenses, justificatifs.");
+            if (Kontext.HatRecht(KoordinatorRechte.RechnungSkoulou)) yield return new("/finances/facturation", "receipt", "Facturation SKOULOU", "Factures de la plateforme par période.");
+            if (Kontext.HatRecht(KoordinatorRechte.FinanzenEinsehen)) yield return new("/finances/rapport", "bars", "Rapport financier", "Rapport par période, en PDF.");
+        }
+    }
+
+    protected override async Task JahrLadenAsync()
+    {
+        var alles = Kontext.HatRecht(KoordinatorRechte.FinanzenEinsehen);
+        var kasseRecht = alles || Kontext.HatRecht(KoordinatorRechte.BuchhaltungErfassen);
+        var zahlRecht = alles || Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen);
+        var rechnungRecht = alles || Kontext.HatRecht(KoordinatorRechte.RechnungSkoulou);
+        stand = kasseRecht && JahrId is { } j1 ? await Journal.KasseAsync(Ich.KontoId, j1) : null;
+        zahlungen = zahlRecht && JahrId is { } j2 ? await Zahlungen.ZaehlerAsync(Ich.KontoId, j2) : null;
+        konten = zahlRecht && JahrId is { } j3 ? await Gebuehren.ZaehlerAsync(Ich.KontoId, j3, null) : null;
+        letzte = zahlRecht && JahrId is { } j4 ? (await Zahlungen.SucheAsync(Ich.KontoId, j4, null, null, 0, 6)).Eintraege : [];
+        rechnungen = rechnungRecht ? await Rechnungen.ZaehlerAsync(Ich.KontoId) : null;
+    }
+}

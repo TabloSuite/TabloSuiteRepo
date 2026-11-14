@@ -1,0 +1,121 @@
+@* Compte d'un élève (Direktion): Raten, Zahlungen, Ermäßigungen anlegen/entfernen, direkt kassieren. *@
+@inherits SkoulouSeite
+@inject GebuehrenService Gebuehren
+
+<ModalDialog Open="SchuelerId is not null" Title="@(detail?.Kopf.Name ?? "Compte de l'élève")" Breite="sk-modal-lg" ErrorMessage="@Fehlermeldung" OnClose="OnClose"
+             Oberzeile="@(detail is { } d ? string.Join(" · ", new[] { d.Kopf.Klasse, d.Kopf.Matrikel, $"année {d.Schuljahr}" }.Where(x => x is not null)) : null)">
+    <ChildContent>
+        @if (detail is null)
+        {
+            <LadeIndikator />
+        }
+        else
+        {
+            <KontoAnsicht Detail="detail" MitErmaessigungen="true" Entfernbar="DarfGebuehren" OnErmaessigungEntfernen="EntfernenAsync" />
+            @if (DarfGebuehren)
+            {
+                @if (neu)
+                {
+                    <div class="fin-erm-form">
+                        <h3 class="fin-unterkopf">Nouvelle réduction</h3>
+                        <div class="sk-raster-2">
+                            <AuswahlFeld T="string" Label="Sur" @bind-Wert="postenWahl" Optionen="postenOptionen" />
+                            <RadioGruppe T="ErmaessigungsArt" Label="Type" @bind-Wert="art" Optionen="arten" />
+                        </div>
+                        <div class="sk-raster-2">
+                            @if (art == ErmaessigungsArt.Pourcentage)
+                            {
+                                <ZahlFeld Label="Pourcentage" @bind-Wert="wert" Min="0" Max="100" Einheit="%" Pflicht="true" />
+                            }
+                            else
+                            {
+                                <BetragFeld Label="Montant" Wert="@(wert is { } w ? (long)w : null)" WertChanged="b => wert = b" Min="1" Pflicht="true" />
+                            }
+                            <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="200" Pflicht="true" Platzhalter="Bourse, Fratrie, Enfant du personnel…" />
+                        </div>
+                        <div class="sk-knopfzeile">
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => neu = false">Annuler</button>
+                            <AsyncKnopf Text="Ajouter la réduction" Icon="check" CssClass="sk-btn-primaer sk-btn-klein" OnClick="AnlegenAsync" />
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </ChildContent>
+    <Footer>
+        @if (DarfGebuehren && !neu && detail is not null)
+        {
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="NeueErmaessigung"><Icon Name="tag" Groesse="18" /> <span>Accorder une réduction</span></button>
+        }
+        @if (DarfKassieren && detail is not null)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="KassierenAsync"><Icon Name="banknote" Groesse="18" /> <span>Encaisser</span></button>
+        }
+        else
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="OnClose">Fermer</button>
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public Guid? SchuelerId { get; set; }
+    [Parameter] public Guid JahrId { get; set; }
+    [Parameter] public bool DarfGebuehren { get; set; }
+    [Parameter] public bool DarfKassieren { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+    [Parameter] public EventCallback<SchuelerAuswahl> OnKassieren { get; set; }
+
+    private SchuelerKontoDetail? detail;
+    private Guid? geladen;
+    private bool neu;
+    private string? postenWahl = "alle", grund;
+    private ErmaessigungsArt art = ErmaessigungsArt.Pourcentage;
+    private decimal? wert;
+    private IReadOnlyList<AuswahlOption<string>> postenOptionen = [];
+    private static readonly IReadOnlyList<AuswahlOption<ErmaessigungsArt>> arten =
+        [new(ErmaessigungsArt.Pourcentage, "Pourcentage"), new(ErmaessigungsArt.Montant, "Montant")];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SchuelerId == geladen) return;
+        (geladen, detail, neu, Fehlermeldung) = (SchuelerId, null, false, null);
+        if (SchuelerId is not null) await AusfuehrenAsync(LadenAsync);
+    }
+
+    private async Task LadenAsync()
+    {
+        detail = await Gebuehren.KontoAsync(Ich.KontoId, JahrId, SchuelerId!.Value);
+        postenOptionen = [new("alle", "Tous les frais"), .. detail.Konto.Zeilen.Where(z => z.PostenId is not null).DistinctBy(z => z.PostenId)
+            .Select(z => new AuswahlOption<string>(z.PostenId!.Value.ToString(), z.Bezeichnung))];
+    }
+
+    private void NeueErmaessigung() => (neu, postenWahl, art, wert, grund) = (true, "alle", ErmaessigungsArt.Pourcentage, null, null);
+
+    private async Task AnlegenAsync()
+    {
+        Guid? posten = Guid.TryParse(postenWahl, out var id) ? id : null;
+        if (await AusfuehrenAsync(() => Gebuehren.ErmaessigungAnlegenAsync(Ich.KontoId, JahrId, new ErmaessigungEingabe(SchuelerId!.Value, posten, art, wert, grund)), "La réduction est accordée."))
+        {
+            neu = false;
+            await AusfuehrenAsync(LadenAsync);
+            await OnGeaendert.InvokeAsync();
+        }
+    }
+
+    private async Task EntfernenAsync(ErmaessigungZeile e)
+    {
+        if (await AusfuehrenAsync(() => Gebuehren.ErmaessigungLoeschenAsync(Ich.KontoId, e.Id), "La réduction est retirée."))
+        {
+            await AusfuehrenAsync(LadenAsync);
+            await OnGeaendert.InvokeAsync();
+        }
+    }
+
+    private Task KassierenAsync()
+    {
+        var k = detail!.Konto;
+        return OnKassieren.InvokeAsync(new SchuelerAuswahl(detail.Kopf.Id, detail.Kopf.Name, detail.Kopf.Matrikel, detail.Kopf.Klasse, k.Soll, k.Offen, k.EnRetardBetrag, k.Guthaben));
+    }
+}

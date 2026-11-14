@@ -1,0 +1,97 @@
+@* Liste der SKOULOU-Rechnungen (Schule, Admin, Responsable) mit Kennzahlen, Status-Chips und Detaildialog. *@
+@inherits SkoulouSeite
+@inject RechnungService Rechnungen
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else
+{
+    @if (zaehler is { } z)
+    {
+        <div class="fin-kennzahlen">
+            <KennzahlKachel Bezeichnung="Reste à régler" Wert="@Geld.F(z.ResteAPayer)" Icon="wallet" Haupt="true" Zusatz="@($"{z.Ouvertes + z.Declarees + z.Contestees} facture(s) en cours")" />
+            <KennzahlKachel Bezeichnung="En retard" Wert="@z.EnRetard.ToString()" Icon="alert" Zusatz="échéance dépassée" />
+            <KennzahlKachel Bezeichnung="Paiements déclarés" Wert="@z.Declarees.ToString()" Icon="send" Zusatz="@(Modus == "admin" ? "à confirmer" : "en attente de confirmation")" />
+            <KennzahlKachel Bezeichnung="Payées" Wert="@z.Payees.ToString()" Icon="check-circle" />
+        </div>
+    }
+    <Liste T="RechnungZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@AnfangsFilter" SuchPlatzhalter="@(Modus == "schule" ? "N° de facture…" : "N° de facture ou établissement…")"
+           LeerIcon="receipt" LeerTitel="Aucune facture" LeerText="Les factures SKOULOU sont créées après la fin de chaque période (trimestre, semestre ou session).">
+        <Werkzeuge>
+            @if (Modus != "schule" && schulen.Count > 2)
+            {
+                <AuswahlFeld T="Guid?" Wert="schule" WertChanged="SchuleAsync" Optionen="schulen" Kompakt="true" Icon="school" CssClass="fin-filter-feld" />
+            }
+        </Werkzeuge>
+        <Zeile Context="r">
+            <button type="button" class="fin-zeile fin-zeile-knopf @(r.Status == RechnungsStatus.Annulee ? "fin-storniert" : null)" @onclick="() => offen = r.Id">
+                <span class="fin-zeile-icon"><Icon Name="receipt" Groesse="18" /></span>
+                <span class="fin-zeile-haupt">
+                    <strong>@(Modus == "schule" ? $"{r.Periode} {r.Schuljahr}" : r.Schule)</strong>
+                    <span class="fin-zeile-meta">
+                        <code>@r.Nummer</code>
+                        @if (Modus != "schule") {<span>@r.Periode @r.Schuljahr</span>}
+                        <span>@r.Anzahl élève@(r.Anzahl > 1 ? "s" : "")</span><span>échéance @Geld.Datum(r.Faellig)</span>
+                        @if (r.IstNachtrag) {<StatusBadge Text="Complément" Art="neutral" />}
+                    </span>
+                </span>
+                <span class="fin-zeile-info">
+                    @if (r.Ueberfaellig(heute)) {<StatusBadge Text="En retard" Art="fehler" Icon="alert" />}
+                    <StatusBadge Text="@Geld.Status(r.Status)" Art="@Geld.StatusArt(r.Status)" />
+                </span>
+                <strong class="fin-betrag">@Geld.F(r.Betrag)</strong>
+            </button>
+        </Zeile>
+    </Liste>
+}
+
+<RechnungDetailDialog RechnungId="offen" Modus="@Modus" DarfHandeln="DarfHandeln" OnClose="() => offen = null" OnGeaendert="NeuLadenAsync" />
+
+@code {
+    /// <summary>« schule », « admin » oder « responsable ».</summary>
+    [Parameter] public string Modus { get; set; } = "schule";
+    [Parameter] public bool DarfHandeln { get; set; }
+    [Parameter] public string? AnfangsFilter { get; set; }
+
+    [Inject] private TimeProvider Zeit { get; set; } = default!;
+
+    private Liste<RechnungZeile>? liste;
+    private RechnungsZaehler? zaehler;
+    private Guid? offen, schule;
+    private DateOnly heute;
+    private IReadOnlyList<AuswahlOption<Guid?>> schulen = [];
+
+    private IReadOnlyList<FilterChip> Chips => [
+        new(null, "Toutes", zaehler?.Alle), new(RechnungService.FilterOuvertes, "À payer", zaehler?.Ouvertes),
+        new(RechnungService.FilterDeclarees, Modus == "admin" ? "À confirmer" : "Paiement déclaré", zaehler?.Declarees),
+        new(RechnungService.FilterRetard, "En retard", zaehler?.EnRetard), new(RechnungService.FilterContestees, "Contestées", zaehler?.Contestees),
+        new(RechnungService.FilterPayees, "Payées", zaehler?.Payees), new(RechnungService.FilterAnnulees, "Annulées", zaehler?.Annulees),
+    ];
+
+    protected override async Task InitialisierenAsync()
+    {
+        heute = new SchulZeit(Zeit).Heute;
+        zaehler = await Rechnungen.ZaehlerAsync(Ich.KontoId, schule);
+        if (Modus != "schule")
+            schulen = [new(null, "Tous les établissements"), .. (await Rechnungen.SchulenAsync(Ich.KontoId)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Zusatz))];
+    }
+
+    private async Task<(IReadOnlyList<RechnungZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Rechnungen.ListeAsync(Ich.KontoId, a.Filter, schule, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private async Task SchuleAsync(Guid? id)
+    {
+        schule = id;
+        await NeuLadenAsync();
+    }
+
+    /// <summary>Kennzahlen und Liste neu laden (z. B. nach « Facturer maintenant »).</summary>
+    public async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => zaehler = await Rechnungen.ZaehlerAsync(Ich.KontoId, schule));
+        if (liste is not null) await liste.NeuLadenAsync();
+        StateHasChanged();
+    }
+}

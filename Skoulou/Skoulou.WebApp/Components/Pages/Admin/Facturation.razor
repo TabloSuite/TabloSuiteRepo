@@ -1,5 +1,46 @@
 @page "/admin/facturation"
+@page "/admin/facturation/parts"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Components.Pages.Admin.AbrechnungTeile
+@using Skoulou.WebApp.Components.Pages.Finances.RechnungTeile
+@using Skoulou.WebApp.Services.Finanzen
 
-<InVorbereitung Titel="Facturation" Icon="receipt" Etappe="E6 – Finances"
-                Beschreibung="Toutes les factures SKOULOU : confirmer un paiement, annuler, facturer une période sans attendre." />
+<PageTitle>Facturation · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Facturation" Icon="receipt" Untertitel="Factures SKOULOU de tous les établissements (une par période), confirmations de paiement, contestations et parts des responsables.">
+    <Aktionen>
+        @if (!Parts)
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="() => jetzt = true"><Icon Name="receipt" Groesse="18" /> <span>Facturer maintenant</span></button>
+        }
+    </Aktionen>
+</SeitenKopf>
+
+<Reiter Beschriftung="Facturation" Eintraege="reiter" />
+
+@if (Parts)
+{
+    <AnteileListe Admin="true" />
+}
+else
+{
+    <RechnungListe @ref="liste" Modus="admin" DarfHandeln="true" AnfangsFilter="@RechnungService.FilterDeclarees" />
+}
+
+<JetztAbrechnenDialog Open="jetzt" OnClose="() => jetzt = false" OnAbgerechnet="AbgerechnetAsync" />
+
+@code {
+    private static readonly IReadOnlyList<Reiter.Eintrag> reiter =
+    [
+        new("/admin/facturation", "Factures", "receipt"),
+        new("/admin/facturation/parts", "Parts des responsables", "coins"),
+    ];
+
+    private RechnungListe? liste;
+    private bool jetzt;
+
+    private bool Parts => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/').EndsWith("parts", StringComparison.Ordinal);
+
+    private Task AbgerechnetAsync() => liste?.NeuLadenAsync() ?? Task.CompletedTask;
+}

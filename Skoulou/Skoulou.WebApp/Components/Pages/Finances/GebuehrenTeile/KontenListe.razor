@@ -1,0 +1,102 @@
+@* Comptes des élèves: Kennzahlen, Klassenfilter, « en retard », Suche und Paging serverseitig; Klick öffnet das Konto. *@
+@inherits SkoulouSeite
+@inject GebuehrenService Gebuehren
+
+@if (zaehler is { } z)
+{
+    <div class="fin-kennzahlen">
+        <KennzahlKachel Bezeichnung="Total dû" Wert="@Geld.F(z.Soll)" Icon="tag" Zusatz="@($"{z.Alle} élève{(z.Alle > 1 ? "s" : "")}")" />
+        <KennzahlKachel Bezeichnung="Encaissé" Wert="@Geld.F(z.Bezahlt)" Icon="check-circle" />
+        <KennzahlKachel Bezeichnung="Reste à encaisser" Wert="@Geld.F(z.Offen)" Icon="wallet" Haupt="true" />
+        <KennzahlKachel Bezeichnung="En retard" Wert="@Geld.F(z.EnRetardBetrag)" Icon="alert" Zusatz="@($"{z.EnRetard} élève{(z.EnRetard > 1 ? "s" : "")}")" />
+    </div>
+}
+
+<Liste T="KontoUebersichtZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" SuchPlatzhalter="Nom ou matricule…" LeerIcon="users"
+       LeerTitel="Aucun élève" LeerText="Les élèves inscrits dans une classe de l'année apparaissent ici avec leurs frais.">
+    <Werkzeuge>
+        <AuswahlFeld T="Guid?" Wert="klasse" WertChanged="KlasseAsync" Optionen="klassen" Kompakt="true" Icon="school" CssClass="fin-filter-feld" />
+    </Werkzeuge>
+    <Zeile Context="k">
+        <button type="button" class="fin-zeile fin-zeile-knopf" @onclick="() => offen = k.SchuelerId">
+            <NamensKreis Name="@k.Name" Groesse="36" />
+            <span class="fin-zeile-haupt">
+                <strong>@k.Name</strong>
+                <span class="fin-zeile-meta"><span>@(k.Klasse ?? "Sans classe")</span>@if (k.Matrikel is not null) {<code>@k.Matrikel</code>}<span>dû @Geld.F(k.Soll) · payé @Geld.F(k.Bezahlt)</span></span>
+            </span>
+            <span class="fin-zeile-info">
+                @if (k.EnRetard > 0)
+                {
+                    <StatusBadge Text="@($"En retard {Geld.F(k.EnRetard)}")" Art="fehler" Icon="alert" />
+                }
+                else if (k.Guthaben > 0)
+                {
+                    <StatusBadge Text="@($"Avoir {Geld.F(k.Guthaben)}")" Art="info" />
+                }
+                else if (k.Offen == 0 && k.Soll > 0)
+                {
+                    <StatusBadge Text="Soldé" Art="erfolg" Icon="check" />
+                }
+            </span>
+            <strong class="fin-betrag">@Geld.F(k.Offen)</strong>
+        </button>
+    </Zeile>
+</Liste>
+
+<KontoDialog SchuelerId="offen" JahrId="JahrId" DarfGebuehren="DarfGebuehren" DarfKassieren="DarfKassieren" OnClose="() => offen = null"
+             OnGeaendert="NeuLadenAsync" OnKassieren="Kassieren" />
+<ZahlungDialog Open="kasse is not null" JahrId="JahrId" Vorwahl="kasse" OnClose="KasseZuAsync" OnGespeichert="_ => bezahlt = true" />
+
+@code {
+    [Parameter, EditorRequired] public Guid JahrId { get; set; }
+    [Parameter] public bool DarfGebuehren { get; set; }
+    [Parameter] public bool DarfKassieren { get; set; }
+
+    private Liste<KontoUebersichtZeile>? liste;
+    private KontenZaehler? zaehler;
+    private Guid? klasse, offen;
+    private SchuelerAuswahl? kasse;
+    private bool bezahlt;
+    private IReadOnlyList<AuswahlOption<Guid?>> klassen = [new(null, "Toutes les classes")];
+
+    private IReadOnlyList<FilterChip> Chips => [
+        new(null, "Tous", zaehler?.Alle), new(GebuehrenService.FilterEnRetard, "En retard", zaehler?.EnRetard),
+        new(GebuehrenService.FilterReste, "Reste à payer"), new(GebuehrenService.FilterSoldes, "Soldés", zaehler?.Soldes),
+        new(GebuehrenService.FilterAvoirs, "Avoirs", zaehler?.Avoirs),
+    ];
+
+    protected override async Task InitialisierenAsync()
+    {
+        var auswahl = await Gebuehren.GeltungsAuswahlAsync(Ich.KontoId, JahrId);
+        klassen = [new(null, "Toutes les classes"), .. auswahl.Klassen.Select(k => new AuswahlOption<Guid?>(k.Id, k.Name))];
+        zaehler = await Gebuehren.ZaehlerAsync(Ich.KontoId, JahrId, klasse);
+    }
+
+    private async Task<(IReadOnlyList<KontoUebersichtZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)
+        => (await Gebuehren.KontenAsync(Ich.KontoId, JahrId, klasse, a.Filter, a.Suche, a.Ueberspringen, a.Anzahl, ct)).AlsTupel();
+
+    private async Task KlasseAsync(Guid? id)
+    {
+        klasse = id;
+        await NeuLadenAsync();
+    }
+
+    private async Task NeuLadenAsync()
+    {
+        await AusfuehrenAsync(async () => zaehler = await Gebuehren.ZaehlerAsync(Ich.KontoId, JahrId, klasse));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private void Kassieren(SchuelerAuswahl s) => (kasse, offen, bezahlt) = (s, null, false);
+
+    private async Task KasseZuAsync()
+    {
+        var id = kasse?.Id;
+        kasse = null;
+        if (bezahlt)
+        {
+            await NeuLadenAsync();
+            offen = id;
+        }
+    }
+}

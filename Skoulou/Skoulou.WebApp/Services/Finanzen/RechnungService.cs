@@ -23,7 +23,10 @@ public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadO
     IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer);
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
-public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler);
+public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler)
+{
+    public bool Begonnen(DateOnly heute) => Beginn <= heute;
+}
 
 /// <summary>
 /// Plattformrechnungen (SKOULOU → Schule) aus Sicht der Schule (lesen, Zahlung melden, anfechten), des Admins (alle, bestätigen,
