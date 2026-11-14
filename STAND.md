@@ -21,10 +21,14 @@ SKOULOU deployt (~11:30, Stand E7a). SKOULOU-Live-DB hatte 0 Konten (App lief vo
    ✅ **Paket D** (14.11. abends): Visite guidée 5:32, « Pourquoi eNOTE ? » 2:03 ohne Sprecherin (Startseite angepasst).
    ✅ **Paket E** (14.11.): 333 unbenutzte Videodateien (~3,1 GB) im Papierkorb; « ENote Videos » enthält nur noch die
    17 App-Videos (Backup) + lernen-v3 (Renders, Quellaufnahmen). **Alle eNOTE-Videos sind v3, ohne Sprecherin.**
-3. **SKOULOU E7b** nach `Skoulou/docs/auftraege/E7-Abschluss.md` (Rundgang aller Rollen auf `SkoulouDB_SIM`, Feinschliff,
-   Guide) inkl. Zusatz: Session-Klassen enden automatisch, Gebühr je Session (neue Migration), automatischer Wiederholversuch
-   bei gleichzeitigem Kontonamen, `/direction/journal` bauen, Nutzungsbedingungen wie eNOTE schon bei der Registrierung,
-   **Administratoren verwalten wie eNOTE** (Nutzer 14.11.: nur Hauptadmin legt weitere Admins an/ändert/sperrt/löscht).
+3. **SKOULOU E7b** nach `Skoulou/docs/auftraege/E7-Abschluss.md`, in zwei Läufen:
+   ✅ **Teil 1 Zusatzpunkte** (14.11. abends, f67552d 7534ca9 d937116 8e809da): Session-Klassen enden automatisch
+   (`SessionRegel`), Gebühr je Session (Feld « Période »), Kontoanlage wiederholt 3×, `/direction/journal`, Bedingungen im
+   Registrierungsformular (Dialog nach Login entfernt), `/admin/administrateurs` (nur Hauptadmin; « Supprimer » = archivieren;
+   nur Hauptadmin setzt Admin-Passwörter zurück). **Neue Migration `20261114182350_SessionGebuehrUndHauptAdmin`**
+   (GebuehrenPosten.PeriodeId, Konten.IstHauptAdmin) – lokal SkoulouDB + SkoulouDB_SIM eingespielt, **Azure offen**
+   (Abschluss). 558 Tests grün inkl. SQL. Bilder `Pictures\SKOULOU-Neubau-E7b-Zusatz`.
+   ⏳ **Teil 2**: Browser-Rundgang aller Rollen (Schritte 1–5) inkl. der neuen Seiten, Feinschliff, Guide.
 4. **Abschluss** (Nutzer 14.11.): lokale DBs + Azure-DBs auf neuesten Migrationsstand (OK liegt vor, « am Ende »),
    Tests, push → Nutzer deployt **beide Apps**. Nach DB-Änderungen auf Azure die Web-App neu starten (Seed!).
 
