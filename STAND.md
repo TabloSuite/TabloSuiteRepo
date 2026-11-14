@@ -10,7 +10,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - **SKOULOU-Neubau E1–E6 fertig und zusammengeführt** (E2 Plattform, E5 Noten & Bulletins, E6 Finanzen dazu), Migration « Fundament » neu (20261114004546), 540 Tests grün inkl. SQL, eNOTE 409 grün, Rundgang 21 neue Seiten ohne Fehler. Lokale `SkoulouDB` und Azure `Skoulou-Database` mit diesem Schema neu aufgebaut (leer, Admin aus Seed-Einstellungen beim Start).
 - Alles gepusht (Nutzer, 14.11.). Veröffentlichen beider Apps macht der Nutzer (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
 - **Läuft:** Video-Pilot v3.1 (Agent fortgesetzt; Ziel ≈ 5 min, Zeiger synchron zur Stimme, Klick-Schilder ohne Überdeckung – `lernen-v3`, Bilder `Pictures/eNOTE-Videos-v3-Pilot/v3.1`). Falls unterbrochen: neuen Agenten mit `lernen-v3/AUFTRAG-Pilot.md` + diesen drei Zielen starten.
-- **Danach:** E7 (Simulation ≥ 20 Schulen, 3 Jahre, Sprachschule mit Sessions + Browser-Rundgang, Bauplan §9.4/§10), dann Feinschliff. Immer nur 1 Agent gleichzeitig (Limit des Nutzers).
+- **14.11. vormittags:** v3.1-Agent neu gestartet (Text + Stimme waren fertig, `woerter.json` mit Wortzeiten; offen: Neuaufnahme mit Zeiger nach Wortzeiten, Überdeckungs-Prüfung in bau.py, Render `renders/enote-encaisser-v3.1.mp4`, Bilder `v3.1`).
+- **Danach:** E7 nach `Skoulou/docs/auftraege/E7-Abschluss.md` – erst E7a Simulation, dann E7b Rundgang + Feinschliff (je 1 Agent, im Hauptbaum; Schemaänderungen nur als neue Migration, « Fundament » nicht neu erzeugen, da live). Immer nur 1 Agent gleichzeitig (Limit des Nutzers).
 
 ## 2. SKOULOU-Neubau (Hauptprojekt)
 
