@@ -13,8 +13,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (+ SQL 561 im Agentenlauf).
 - Nach dem SKOULOU-Deploy prüfen: Anmeldung DodjiEtse, Menü « Administrateurs » sichtbar (ältestes Admin-Konto wird beim
   Start automatisch Hauptadmin), Startseite zeigt das neue Video. Falls 0 Konten/Login scheitert: `az webapp restart`.
-- Danach offen: nichts aus dem Plan. Ideen/Beobachtungen: « Comptes élèves » (0,4 s bei 570 Konten) beobachten;
-  Bilder `Pictures\SKOULOU-Neubau-E7-Rundgang\<rolle>\vorher\` (alter Stand) können in den Papierkorb.
+- Danach offen: nichts aus dem Plan. Ideen/Beobachtungen: « Comptes élèves » (0,4 s bei 570 Konten) beobachten.
 
 **Erledigt am 14.11. nachmittags/abends (Reihenfolge der Sitzung):**
 1. ✅ **« Pourquoi SKOULOU ? » v3** (14.11. nachmittags): 1:39, −16,7 LUFS, neue Oberfläche, ohne Sprecherin; in der App
