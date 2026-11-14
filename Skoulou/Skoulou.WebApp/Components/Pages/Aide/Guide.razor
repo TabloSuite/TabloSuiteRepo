@@ -47,7 +47,7 @@
 
     protected override Task InitialisierenAsync()
     {
-        kapitel = GuideTexte.Fuer(Ich.Rolle);
+        kapitel = GuideTexte.Fuer(Ich.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin);
         return Task.CompletedTask;
     }
 }
