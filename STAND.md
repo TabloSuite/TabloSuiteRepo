@@ -11,7 +11,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - Alles gepusht (Nutzer, 14.11.). Veröffentlichen beider Apps macht der Nutzer (eNOTE wie gewohnt; SKOULOU aus `Skoulou/Skoulou.WebApp`, Profil « skoulou - Zip Deploy »).
 - **Läuft:** Video-Pilot v3.1 (Agent fortgesetzt; Ziel ≈ 5 min, Zeiger synchron zur Stimme, Klick-Schilder ohne Überdeckung – `lernen-v3`, Bilder `Pictures/eNOTE-Videos-v3-Pilot/v3.1`). Falls unterbrochen: neuen Agenten mit `lernen-v3/AUFTRAG-Pilot.md` + diesen drei Zielen starten.
 - **14.11. mittags: Video-Pilot v3.1 vom Nutzer freigegeben** (« Stil ist gut, sehr gut ausführlich »). Danach Klick-Kreis durchsichtiger (`RING_DECKKRAFT` 0,5 in bau.py) → `enote-encaisser-v3.2.mp4`. **Nächste Video-Arbeit:** alle eNOTE-Videos nach `lernen-v3/AUFTRAG-Alle.md` in Paketen A–E (je Lauf 1 Paket, erst nach E7a/E7b bzw. wenn kein anderer Agent läuft), einbauen, dann unbenutzte Videos löschen. Erste Aufräumrunde 14.11.: 43 alte Videos (530 MB: ENote Temp, Lernvideos, erklaer, lernen v1, werbung-v2, Skoulou lernen v1) im Papierkorb.
-- **Läuft: E7a Simulation** (Agent, im Hauptbaum, committet selbst, pusht nicht).
+- **E7a fertig (14.11.)**: 256da0a (Jahreswechsel übernimmt Session der Klassen), b850faf Simulation (`SKOULOU_SIM=1`, 22 Schulen, 3 Jahre, ~9.900 Schüler, 0 Invarianten-Verstöße, alle Listen < 150 ms), 6a46a25 `Skoulou/docs/Simulation-Bericht.md` (offene Punkte dort). Keine Schemaänderung. `SkoulouDB_SIM` lokal für E7b behalten.
+- **Läuft: Video-Paket A** (Employé, `lernen-v3/AUFTRAG-Alle.md`). Danach E7b, dann Pakete B–E.
 - **Danach:** E7 nach `Skoulou/docs/auftraege/E7-Abschluss.md` – erst E7a Simulation, dann E7b Rundgang + Feinschliff (je 1 Agent, im Hauptbaum; Schemaänderungen nur als neue Migration, « Fundament » nicht neu erzeugen, da live). Immer nur 1 Agent gleichzeitig (Limit des Nutzers).
 
 ## 2. SKOULOU-Neubau (Hauptprojekt)
