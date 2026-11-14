@@ -591,6 +591,8 @@ public class KassenService(
             }
         }
 
+        rabattSumme += VerteileFestbetraege(verkauf.Positionen, rabatte);
+
         verkauf.Zwischensumme = Math.Round(zwischensumme, 2);
         verkauf.RabattSumme = Math.Round(rabattSumme, 2);
         verkauf.GesamtSumme = Math.Round(zwischensumme - rabattSumme, 2);
@@ -636,6 +638,39 @@ public class KassenService(
         }
 
         return (true, null, verkauf, warnungen);
+    }
+
+    /// <summary>
+    /// Eine Festbetrag-Remise gilt einmal für alle Zeilen, auf die sie angewendet wird (ganzer Bon bzw. die Zeilen der
+    /// Leistung) – so rechnet auch die Kasse. Vorher wurde sie je Zeile abgezogen (200 F × 3 Zeilen = 600 F statt 200 F;
+    /// Bon und Kasse wichen ab, Klick-Simulation S2). Verteilung anteilig zum Zeilenbetrag, Rest auf die letzte Zeile.
+    /// Liefert die Änderung der Remise-Summe.
+    /// </summary>
+    internal static decimal VerteileFestbetraege(IEnumerable<VerkaufsPosition> positionen, IReadOnlyCollection<Rabatt> rabatte)
+    {
+        var aenderung = 0m;
+        foreach (var gruppe in positionen.Where(p => p.RabattId is not null).GroupBy(p => p.RabattId!.Value))
+        {
+            var rabatt = rabatte.FirstOrDefault(r => r.Id == gruppe.Key);
+            if (rabatt is null || rabatt.Art != RabattArt.Festbetrag) continue;
+            var zeilen = gruppe.ToList();
+            var basis = zeilen.Sum(z => z.ZeilenSumme + z.RabattBetrag);
+            var gesamt = basis - KassenRechner.WendeRabattAn(basis, rabatt.Art, rabatt.Wert);
+            var verteilt = 0m;
+            for (var i = 0; i < zeilen.Count; i++)
+            {
+                var z = zeilen[i];
+                var zeilenBetrag = z.ZeilenSumme + z.RabattBetrag;
+                var anteil = i == zeilen.Count - 1 || basis == 0
+                    ? gesamt - verteilt
+                    : Math.Round(gesamt * zeilenBetrag / basis, 2, MidpointRounding.AwayFromZero);
+                verteilt += anteil;
+                aenderung += anteil - z.RabattBetrag;
+                z.RabattBetrag = anteil;
+                z.ZeilenSumme = zeilenBetrag - anteil;
+            }
+        }
+        return aenderung;
     }
 
     /// <summary>

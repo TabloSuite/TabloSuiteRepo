@@ -193,4 +193,30 @@ public class KassenAblaufEndToEndTests
         Assert.NotNull(KassenRechner.PruefeZahlungen(0m, [(ZahlungsArt.Bar, 0m), (ZahlungsArt.Karte, 0m)]));
         Assert.NotNull(KassenRechner.PruefeZahlungen(100m, [(ZahlungsArt.Bar, 0m)]));
     }
+
+    [Fact]
+    public async Task Festbetrag_Remise_gilt_einmal_fuer_den_ganzen_Bon_wie_an_der_Kasse_angezeigt()
+    {
+        // Klick-Simulation S2 (Boutique Yopougon): Kasse zeigte 30.500 − 200 = 30.300 F, gebucht wurden 29.900 F (200 F je Zeile).
+        var (factory, salon, besitzer, kassen, katalog) = await BasisAsync();
+        var tee = await katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.Empty, SalonId = salon.Id, Name = "Tee-shirt", Preis = 3500, IstAktiv = true });
+        var chemise = await katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.Empty, SalonId = salon.Id, Name = "Chemise homme", Preis = 7500, IstAktiv = true });
+        var robe = await katalog.SpeichereLeistungAsync(new Leistung { Id = Guid.Empty, SalonId = salon.Id, Name = "Robe en pagne", Preis = 12000, IstAktiv = true });
+        var geste = await katalog.SpeichereRabattAsync(new Rabatt { Id = Guid.Empty, SalonId = salon.Id, Name = "Geste commercial", Art = RabattArt.Festbetrag, Wert = 200, IstAktiv = true });
+        var sitzung = (await kassen.StarteSitzungAsync(salon.Id, besitzer.Id, 1000m)).Sitzung!;
+
+        var r = await kassen.BucheVerkaufAsync(sitzung.Id,
+            [new KassenService.VerkaufsPositionInput(tee.Id, 1, geste.Id, false), new KassenService.VerkaufsPositionInput(chemise.Id, 2, geste.Id, false),
+             new KassenService.VerkaufsPositionInput(robe.Id, 1, geste.Id, false)],
+            [new KassenService.ZahlungInput(ZahlungsArt.Bar, Gegeben: 30300m)]);
+
+        Assert.True(r.Erfolg, r.Fehler);
+        Assert.Equal(30500m, r.Verkauf!.Zwischensumme);
+        Assert.Equal(200m, r.Verkauf.RabattSumme);
+        Assert.Equal(30300m, r.Verkauf.GesamtSumme);
+        Assert.Equal(30300m, r.Verkauf.Positionen.Sum(p => p.ZeilenSumme));
+        Assert.Equal(200m, r.Verkauf.Positionen.Sum(p => p.RabattBetrag));
+        Assert.Equal(0m, r.Verkauf.Rueckgeld ?? 0m);
+        Assert.Equal(31300m, (await kassen.SchliesseSitzungAsync(sitzung.Id, 31300m, null)).Sitzung!.BareinnahmenSoll);
+    }
 }
