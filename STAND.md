@@ -5,6 +5,12 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
+## 0. LÄUFT: Echte Simulationen beider Apps (Nutzer 14.11. abends, vor dem Deploy)
+
+Auftrag `docs/Simulationen-Auftrag.md` (S1 eNOTE Daten, S2 eNOTE Klick-Simulation mit App im Hintergrund, S3 SKOULOU Daten
+volle Größe, S4 SKOULOU Klick-Simulation) – nacheinander, je 1 Agent, Stand in der Tabelle dort. **Der Nutzer deployt erst,
+wenn alles ok ist.** Danach ggf. neue Migrationen auf Azure (OK liegt vor) und push.
+
 ## 1. Stand 14.11. abends – Abschluss erledigt, Nutzer deployt
 
 **Alles fertig, getestet, gepusht. Azure-DBs = lokal.** Der Nutzer deployt jetzt **eNOTE und SKOULOU** (VS-Profile).
