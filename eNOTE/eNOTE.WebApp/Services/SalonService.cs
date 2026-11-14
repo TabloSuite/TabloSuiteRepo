@@ -40,6 +40,22 @@ public class SalonService(
         return true;
     }
 
+    /// <summary>Wählbare Länder (siehe <see cref="LaenderAuswahl"/>).</summary>
+    public async Task<List<string>> GetLaenderAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await LaenderAuswahl.GetAsync(db, cancellationToken);
+    }
+
+    /// <summary>Besitzer ändert das Land seines Ladens (Ortszeit, Mobile-Money-Anbieter); <see cref="ArgumentException"/> bei ungültiger Wahl.</summary>
+    public async Task<bool> SetzeLandAsync(Guid benutzerId, Guid salonId, string? land, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!await LadenZugriff.IstBesitzerAsync(db, benutzerId, salonId, cancellationToken))
+            throw new UnauthorizedAccessException("Seul le propriétaire peut changer le pays de l'établissement.");
+        return await LaenderAuswahl.SetzeAsync(db, salonId, land, uhr.GetUtcNow().UtcDateTime, cancellationToken);
+    }
+
     /// <summary>Aktualisiert die Kontaktdaten (Slogan, Telefon, Adresse, QR-Link) für den Bon.</summary>
     public async Task<bool> SetzeKontaktdatenAsync(
         Guid salonId, string? slogan, string? telefon, string? adresse, string? bonQrLink, CancellationToken cancellationToken = default)

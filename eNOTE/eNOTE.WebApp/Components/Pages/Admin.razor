@@ -121,7 +121,16 @@
                                 <small>@(s.BesitzerEmail)@(string.IsNullOrWhiteSpace(s.ProduktOwnerName) ? "" : " · PO " + s.ProduktOwnerName)</small>
                             </div>
                             <div class="ad-meta">
-                                <span>@(string.IsNullOrWhiteSpace(s.Land) ? "—" : s.Land)</span>
+                                @if (istSuperAdmin)
+                                {
+                                    <button type="button" class="ad-land-knopf" title="Modifier le pays" aria-label="@($"Modifier le pays de {s.Name}")" @onclick="() => OeffneLandDialog(s.SalonId, s.Name, s.Land)">
+                                        <Icon Name="globe" Groesse="13" /> @(string.IsNullOrWhiteSpace(s.Land) ? "Togo (défaut)" : s.Land)
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span>@(string.IsNullOrWhiteSpace(s.Land) ? "—" : s.Land)</span>
+                                }
                                 <small>@s.AnzahlMitglieder membre@(s.AnzahlMitglieder > 1 ? "s" : "")</small>
                             </div>
                             <strong class="ad-umsatz">@s.GesamtUmsatz.ToString("N0") F</strong>
@@ -397,6 +406,28 @@
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => provisionDialogOffen = false">Annuler</button>
         <AsyncActionButton Text="Enregistrer" OnClick="SpeichereProvisionAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@* Land eines Ladens ändern (nur Admin): Ortszeit und Mobile-Money-Anbieter folgen *@
+<ModalDialog Open="landDialogOffen" Title="@($"Pays de « {landSalonName} »")" ErrorMessage="@landFehler" OnClose="() => landDialogOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <div class="enote-form">
+            <p class="enote-muted">@ENote.WebApp.Services.LaenderAuswahl.Hinweis</p>
+            <EnoteSelect TValue="string" Value="landNeu" ValueChanged="(string? l) => landNeu = l ?? landNeu" Options="landAuswahlOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
+            @if (landNeu != (landBisher ?? ENote.WebApp.Services.LaenderAuswahl.Standard))
+            {
+                <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @ENote.WebApp.Services.LaenderAuswahl.Folgen(landNeu, DateTime.UtcNow, fuerBesitzer: false)</p>
+            }
+            else if (landBisher is null)
+            {
+                <small class="enote-muted">Pays non renseigné : Togo par défaut (heure de Lomé).</small>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => landDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" OnClick="SpeichereLandAsync" CssClass="enote-btn-primary" Disabled="@(landNeu == landBisher)" />
     </Footer>
 </ModalDialog>
 

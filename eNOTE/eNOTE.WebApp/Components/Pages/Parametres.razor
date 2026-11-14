@@ -58,6 +58,28 @@
                     </div>
                 </section>
 
+                <section class="enote-card st-karte" aria-labelledby="st-land-titel">
+                    <div class="st-karte-kopf">
+                        <span class="st-ico"><Icon Name="globe" /></span>
+                        <div>
+                            <h2 id="st-land-titel">Pays</h2>
+                            <p>@LaenderAuswahl.Hinweis</p>
+                        </div>
+                    </div>
+                    <div class="enote-form">
+                        <EnoteSelect TValue="string" Value="landWahl" ValueChanged="(string? l) => landWahl = l ?? landWahl" Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
+                        @if (landWahl != (land ?? LaenderAuswahl.Standard))
+                        {
+                            <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @LaenderAuswahl.Folgen(landWahl, DateTime.UtcNow)</p>
+                        }
+                        else if (land is null)
+                        {
+                            <small class="enote-muted">Pays non renseigné : Togo par défaut (heure de Lomé).</small>
+                        }
+                        <AsyncActionButton Text="Enregistrer le pays" BusyText="Enregistrement…" OnClick="SpeichereLandAsync" CssClass="enote-btn-primary" Disabled="@(landWahl == land)" />
+                    </div>
+                </section>
+
                 <section class="enote-card st-karte">
                     <div class="st-karte-kopf">
                         <span class="st-ico st-ico-momo"><Icon Name="momo" /></span>

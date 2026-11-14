@@ -58,14 +58,22 @@
                 </label>
 
                 <label>
-                    Nom de l\u0027établissement
+                    Nom de l'établissement
                     <InputText @bind-Value="FormModel.SalonName" />
                 </label>
 
-                <label>
-                    Ville / quartier (facultatif)
-                    <InputText @bind-Value="FormModel.SalonStandort" />
-                </label>
+                <div class="enote-form-grid">
+                    <label>
+                        Pays
+                        <EnoteSelect TValue="string" Value="FormModel.Land" ValueChanged="(string? l) => FormModel.Land = l ?? FormModel.Land"
+                                     Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
+                    </label>
+                    <label>
+                        Ville / quartier (facultatif)
+                        <InputText @bind-Value="FormModel.SalonStandort" />
+                    </label>
+                </div>
+                <small class="enote-muted auth-land-hinweis">@ENote.WebApp.Services.LaenderAuswahl.Hinweis Modifiable ensuite dans « Paramètres ».</small>
 
                 <label>
                     Slogan (facultatif)

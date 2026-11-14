@@ -25,6 +25,8 @@ public partial class Parametres(
 
     private bool isLoading = true;
     private string? land;
+    private string landWahl = LaenderAuswahl.Standard;
+    private IReadOnlyList<Shared.EnoteSelectOption<string>> landOptionen = [];
     private List<MomoEintrag> momoAuswahl = [];
     private Guid salonId;
     private Guid benutzerId;
@@ -115,7 +117,12 @@ public partial class Parametres(
             bonQrLink = salon.BonQrLink;
             logoVorschau = salonService.GetLogoUrl(salon);
             land = salon.Land;
+            landWahl = salon.Land ?? LaenderAuswahl.Standard;
         }
+
+        if (landOptionen.Count == 0)
+            landOptionen = (await salonService.GetLaenderAsync())
+                .Select(l => new Shared.EnoteSelectOption<string> { Value = l, Label = l }).ToList();
 
         momoAuswahl = (await mobileMoneyService.GetAuswahlFuerLadenAsync(salonId))
             .Select(a => new MomoEintrag(a.Anbieter, a.Akzeptiert)).ToList();
@@ -233,6 +240,23 @@ public partial class Parametres(
         }
 
         toast.ZeigeErfolg("Paramètres enregistrés.");
+    }
+
+    /// <summary>Land ändern: Ortszeit und Mobile-Money-Anbieter folgen sofort (Kasse, Bon, Finances).</summary>
+    private async Task SpeichereLandAsync()
+    {
+        try
+        {
+            await salonService.SetzeLandAsync(benutzerId, salonId, landWahl);
+            // Ortszeit der Navigation/Kasse in diesem Browser nachziehen.
+            await aktiverSalon.AktualisiereLaedenAsync(benutzerId);
+            await LadeSalonAsync();
+            toast.ZeigeErfolg($"Pays enregistré : {land}.");
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
     }
 
     private async Task SpeichereMomoAsync()

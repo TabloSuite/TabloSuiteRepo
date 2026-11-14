@@ -276,6 +276,22 @@ public class AdminService(
         return true;
     }
 
+    /// <summary>Wählbare Länder (siehe <see cref="LaenderAuswahl"/>).</summary>
+    public async Task<List<string>> GetLaenderAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await LaenderAuswahl.GetAsync(db, cancellationToken);
+    }
+
+    /// <summary>Land eines Ladens ändern (Ortszeit, Mobile Money) – nur der SuperAdmin.</summary>
+    public async Task<bool> SetzeLandAsync(Guid bearbeiter, Guid salonId, string? land, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!(await PruefeBearbeiterAsync(db, bearbeiter, salonId, cancellationToken)).IstAdmin)
+            throw new UnauthorizedAccessException(NurAdminMeldung);
+        return await LaenderAuswahl.SetzeAsync(db, salonId, land, uhr.GetUtcNow().UtcDateTime, cancellationToken);
+    }
+
     /// <summary>Laden abschalten/einschalten – nur der SuperAdmin (kritisch, auch bei gestohlenen Responsable-Zugangsdaten).</summary>
     public async Task<bool> SetzeAktivAsync(Guid bearbeiter, Guid salonId, bool aktiv, CancellationToken cancellationToken = default)
     {

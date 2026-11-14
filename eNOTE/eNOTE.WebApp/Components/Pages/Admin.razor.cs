@@ -243,6 +243,43 @@ public partial class Admin(
         await LadeAsync();
     }
 
+    // Land eines Ladens (nur SuperAdmin): Ortszeit und Mobile Money.
+    private bool landDialogOffen;
+    private Guid landSalonId;
+    private string landSalonName = string.Empty;
+    private string? landBisher;
+    private string landNeu = ENote.WebApp.Services.LaenderAuswahl.Standard;
+    private string? landFehler;
+    private IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> landAuswahlOptionen = [];
+
+    private async Task OeffneLandDialog(Guid salonId, string name, string? land)
+    {
+        if (landAuswahlOptionen.Count == 0)
+            landAuswahlOptionen = (await adminService.GetLaenderAsync())
+                .Select(l => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = l, Label = l }).ToList();
+        landSalonId = salonId;
+        landSalonName = name;
+        landBisher = land;
+        landNeu = land ?? ENote.WebApp.Services.LaenderAuswahl.Standard;
+        landFehler = null;
+        landDialogOffen = true;
+    }
+
+    private async Task SpeichereLandAsync()
+    {
+        try
+        {
+            await adminService.SetzeLandAsync(aktuellerBenutzerId, landSalonId, landNeu);
+            landDialogOffen = false;
+            toast.ZeigeErfolg($"Pays de « {landSalonName} » : {landNeu}.");
+            await LadeSalonsAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            landFehler = ex.Message;
+        }
+    }
+
     // Anfrage eines Responsables an den Admin (kritische Aktionen führt nur der Admin aus).
     private bool anfrageDialogOffen;
     private Guid anfrageSalonId;

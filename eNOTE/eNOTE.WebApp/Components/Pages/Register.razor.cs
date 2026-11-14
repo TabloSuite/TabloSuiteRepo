@@ -14,6 +14,13 @@ public partial class Register(AuthService authService, NavigationManager navigat
     private string? errorMessage;
     private bool isSubmitting;
     private bool cguOffen;
+    private IReadOnlyList<Shared.EnoteSelectOption<string>> landOptionen = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        landOptionen = (await authService.GetLaenderAsync())
+            .Select(l => new Shared.EnoteSelectOption<string> { Value = l, Label = l }).ToList();
+    }
 
     private async Task HandleSubmit()
     {
@@ -35,7 +42,8 @@ public partial class Register(AuthService authService, NavigationManager navigat
             FormModel.Passwort,
             FormModel.SalonName,
             FormModel.SalonStandort,
-            FormModel.Slogan);
+            FormModel.Slogan,
+            land: FormModel.Land);
 
         isSubmitting = false;
 
@@ -71,6 +79,9 @@ public partial class Register(AuthService authService, NavigationManager navigat
         public string SalonName { get; set; } = string.Empty;
 
         public string? SalonStandort { get; set; }
+
+        /// <summary>Ortszeit und Mobile-Money-Anbieter des Ladens; Standard Togo (Hauptmarkt).</summary>
+        public string Land { get; set; } = ENote.WebApp.Services.LaenderAuswahl.Standard;
 
         public string? Slogan { get; set; }
 

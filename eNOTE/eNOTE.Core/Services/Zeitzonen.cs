@@ -50,6 +50,16 @@ public static class Zeitzonen
     /// <summary>Lomé (UTC+0): Standard für Läden ohne bekanntes Land.</summary>
     public static TimeZoneInfo Standard { get; } = Erzeuge("Africa/Lome", 0);
 
+    /// <summary>Hat eNOTE eine Ortszeit für dieses Land hinterlegt?</summary>
+    public static bool Kennt(string? land) => land is not null && Laender.ContainsKey(land.Trim());
+
+    /// <summary>Kurzer Versatz-Text wie « UTC+1 » (für Hinweise in Formularen).</summary>
+    public static string VersatzText(string? land, DateTime utc)
+    {
+        var v = Versatz(Fuer(land), utc);
+        return v == TimeSpan.Zero ? "UTC+0" : $"UTC{(v < TimeSpan.Zero ? "−" : "+")}{Math.Abs(v.TotalHours):0.#}";
+    }
+
     public static TimeZoneInfo Fuer(string? land)
         => land is not null && Laender.TryGetValue(land.Trim(), out var z) ? Cache.GetOrAdd(z.Iana, _ => Erzeuge(z.Iana, z.Stunden)) : Standard;
 

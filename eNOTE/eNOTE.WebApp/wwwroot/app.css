@@ -1947,6 +1947,9 @@ button.enote-laedt { cursor: progress; }
 .st-karte .enote-form input { max-width: none; }
 .st-karte .enote-form > .enote-btn { justify-self: start; }
 .st-momo { display: grid; gap: .5rem; }
+.st-land-folgen { display: flex; align-items: flex-start; gap: .5rem; margin: 0; padding: .6rem .8rem; border-radius: var(--enote-radius); background: var(--enote-accent-soft); color: var(--enote-accent-text); font-size: .86rem; line-height: 1.45; }
+.st-land-folgen svg { flex: none; margin-top: .1rem; }
+.auth-land-hinweis { margin-top: -.6rem; font-size: .8rem; line-height: 1.4; }
 .st-momo-zeile { display: flex; align-items: center; gap: .8rem; padding: .65rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); cursor: pointer; transition: border-color .15s, background .15s; }
 .st-momo-zeile.an { border-color: var(--enote-border-strong); background: var(--enote-surface-2); }
 .st-momo-name { flex: 1; display: grid; line-height: 1.25; }
@@ -2411,6 +2414,12 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 .ad-person, .ad-meta { display: grid; min-width: 0; }
 .ad-person span, .ad-person small, .ad-meta small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ad-person small, .ad-meta small { color: var(--enote-text-muted); font-size: .82rem; }
+.ad-land-knopf {
+    justify-self: start; display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; min-height: 2.25rem; padding: .1rem .5rem;
+    border: 1px dashed var(--enote-border); border-radius: var(--enote-radius-pill); background: none; color: var(--enote-text);
+    font: inherit; font-size: .88rem; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ad-land-knopf:hover { border-style: solid; border-color: var(--enote-accent); color: var(--enote-accent-text); }
 .ad-umsatz { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ad-aktionen { display: flex; align-items: center; gap: .35rem; justify-content: flex-end; flex-wrap: wrap; }
 @media (max-width: 1100px) {

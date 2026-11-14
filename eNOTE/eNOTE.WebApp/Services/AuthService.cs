@@ -120,6 +120,13 @@ public class AuthService(
         return (true, null);
     }
 
+    /// <summary>Länder für das Registrierungsformular (siehe <see cref="LaenderAuswahl"/>).</summary>
+    public async Task<List<string>> GetLaenderAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await LaenderAuswahl.GetAsync(db, cancellationToken);
+    }
+
     public async Task<(bool Succeeded, string ErrorMessage)> RegisterBesitzerAsync(
         string vorname,
         string nachname,
@@ -129,7 +136,8 @@ public class AuthService(
         string salonName,
         string? salonStandort,
         string? salonSlogan = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? land = null)
     {
         var bereinigtPseudonym = pseudonym.Trim();
         var bereinigtEmail = email.Trim();
@@ -155,6 +163,14 @@ public class AuthService(
         if (await db.Salons.AnyAsync(s => s.Name == bereinigtSalon, cancellationToken))
         {
             return (false, "Un salon portant ce nom existe déjà.");
+        }
+
+        // Land (Ortszeit, Mobile Money) aus dem Formular prüfen, bevor das Konto entsteht; ohne Angabe gilt Togo.
+        string? ladenLand = null;
+        if (land is not null)
+        {
+            try { ladenLand = await LaenderAuswahl.PruefeAsync(db, land, cancellationToken); }
+            catch (ArgumentException ex) { return (false, ex.Message); }
         }
 
         var besitzer = new AppUser
@@ -185,6 +201,7 @@ public class AuthService(
             Name = bereinigtSalon,
             Standort = string.IsNullOrWhiteSpace(salonStandort) ? null : salonStandort.Trim(),
             Slogan = string.IsNullOrWhiteSpace(salonSlogan) ? null : salonSlogan.Trim(),
+            Land = ladenLand,
             IstAktiv = true,
             IstFreigegeben = false,
             ProbeBisUtc = BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime)
@@ -223,7 +240,9 @@ public class AuthService(
 
         // Info an das TabloSuite-Team: neues Établissement wartet auf Validierung.
         if (mails is not null)
-            await mails.NeueRegistrierungAsync(bereinigtSalon, $"{vorname.Trim()} {nachname.Trim()}", bereinigtEmail, null, salonStandort?.Trim(), cancellationToken);
+            await mails.NeueRegistrierungAsync(bereinigtSalon, $"{vorname.Trim()} {nachname.Trim()}", bereinigtEmail, null,
+                string.Join(" · ", new[] { ladenLand, salonStandort?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } ort ? ort : null,
+                cancellationToken);
 
         return (true, string.Empty);
     }
