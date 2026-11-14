@@ -1,7 +1,7 @@
 @page "/admin/audit"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
 @inherits PlattformSeite
-@inject JournalService Journale
+@inject ProtokollService Journale
 @inject MessagerieService Messagerie
 
 <PageTitle>Audit · SKOULOU</PageTitle>
@@ -48,12 +48,12 @@ else if (!Laedt)
 
     protected override async Task InitialisierenAsync()
     {
-        bereiche = [new(null!, "Tous les domaines"), .. JournalService.AuditBereiche.Select(b => new AuswahlOption<string>(b.Wert, b.Text))];
+        bereiche = [new(null!, "Tous les domaines"), .. ProtokollService.AuditBereiche.Select(b => new AuswahlOption<string>(b.Wert, b.Text))];
         schulen = [new(null, "Toutes les écoles"), .. (await Messagerie.SchulenAsync(Ich.KontoId)).Select(s => new AuswahlOption<Guid?>(s.Id, s.Name, s.Ort))];
     }
 
     private Task<(IReadOnlyList<AuditZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
-        => Journale.AuditAsync(Ich.KontoId, new JournalFilter(a.Suche, von, bis, schuleId), bereich, a.Ueberspringen, a.Anzahl, ct);
+        => Journale.AuditAsync(Ich.KontoId, new ProtokollFilter(a.Suche, von, bis, schuleId), bereich, a.Ueberspringen, a.Anzahl, ct);
 
     private async Task BereichAsync(string? b) { bereich = b; await NeuAsync(); }
     private async Task SchuleAsync(Guid? s) { schuleId = s; await NeuAsync(); }

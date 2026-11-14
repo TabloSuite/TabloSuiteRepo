@@ -12,15 +12,15 @@ public sealed record FehlerZeile(Guid Id, DateTime ZeitUtc, string Nachricht, st
 public sealed record AuditZeile(Guid Id, DateTime ZeitUtc, string Aktion, string Text, string? Akteur, string? Schule, string ZielTyp);
 
 /// <summary>Filter eines Journals (Tage in UTC, jeweils inklusive).</summary>
-public sealed record JournalFilter(string? Suche = null, DateOnly? Von = null, DateOnly? Bis = null, Guid? SchuleId = null, bool NurOffene = false);
+public sealed record ProtokollFilter(string? Suche = null, DateOnly? Von = null, DateOnly? Bis = null, Guid? SchuleId = null, bool NurOffene = false);
 
 /// <summary>
 /// Fehlerjournal (Entscheidung 22: 90 Tage, Bereinigung durch <see cref="AufraeumDienst"/>) und Audit
 /// (unbegrenzt) – nur für den SuperAdmin, serverseitig gefiltert und geblättert.
 /// </summary>
-public sealed class JournalService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, TimeProvider zeit)
+public sealed class ProtokollService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, TimeProvider zeit)
 {
-    public async Task<(IReadOnlyList<FehlerZeile> Eintraege, bool Mehr)> FehlerAsync(Guid akteurId, JournalFilter f,
+    public async Task<(IReadOnlyList<FehlerZeile> Eintraege, bool Mehr)> FehlerAsync(Guid akteurId, ProtokollFilter f,
         int ueberspringen = 0, int anzahl = 50, CancellationToken ct = default)
     {
         await zugriff.AdminAsync(akteurId, ct);
@@ -66,7 +66,7 @@ public sealed class JournalService(IDbContextFactory<SkoulouDbContext> dbFactory
     }
 
     /// <summary>Audit aller Schulen; Filter <paramref name="bereich"/> = Präfix der Aktion (z. B. « schule », « konto »).</summary>
-    public async Task<(IReadOnlyList<AuditZeile> Eintraege, bool Mehr)> AuditAsync(Guid akteurId, JournalFilter f, string? bereich,
+    public async Task<(IReadOnlyList<AuditZeile> Eintraege, bool Mehr)> AuditAsync(Guid akteurId, ProtokollFilter f, string? bereich,
         int ueberspringen = 0, int anzahl = 50, CancellationToken ct = default)
     {
         await zugriff.AdminAsync(akteurId, ct);

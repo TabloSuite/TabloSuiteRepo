@@ -1,7 +1,7 @@
 @page "/admin/journal"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
 @inherits PlattformSeite
-@inject JournalService Journale
+@inject ProtokollService Journale
 @inject IJSRuntime JS
 
 <PageTitle>Journal des erreurs · SKOULOU</PageTitle>
@@ -61,7 +61,7 @@ else
     private static readonly IReadOnlyList<FilterChip> Chips = [new("offen", "À traiter"), new(null, "Toutes")];
 
     private Task<(IReadOnlyList<FehlerZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
-        => Journale.FehlerAsync(Ich.KontoId, new JournalFilter(a.Suche, von, bis, null, a.Filter == "offen"), a.Ueberspringen, a.Anzahl, ct);
+        => Journale.FehlerAsync(Ich.KontoId, new ProtokollFilter(a.Suche, von, bis, null, a.Filter == "offen"), a.Ueberspringen, a.Anzahl, ct);
 
     private async Task VonAsync(DateOnly? d) { von = d; await NeuAsync(); }
     private async Task BisAsync(DateOnly? d) { bis = d; await NeuAsync(); }

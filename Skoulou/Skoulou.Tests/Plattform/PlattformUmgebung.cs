@@ -23,7 +23,7 @@ internal sealed class PlattformUmgebung : IAsyncDisposable
     public KontenVerwaltungService Konten { get; }
     public AnkuendigungService Annonces { get; }
     public MessagerieService Messagerie { get; }
-    public JournalService Journal { get; }
+    public ProtokollService Journal { get; }
     public MedienVerwaltungService Medien { get; }
     public PlattformUebersicht Uebersicht { get; }
 
@@ -39,7 +39,7 @@ internal sealed class PlattformUmgebung : IAsyncDisposable
         Konten = Neu<KontenVerwaltungService>(fabrik, mails);
         Annonces = new AnkuendigungService(Basis.Db, sp.GetRequiredService<Zugriff>(), sp.GetRequiredService<IMemoryCache>(), Basis.Zeit);
         Messagerie = Neu<MessagerieService>(mails);
-        Journal = Neu<JournalService>();
+        Journal = Neu<ProtokollService>();
         Medien = Neu<MedienVerwaltungService>((IMedienSpeicher)Speicher);
         Uebersicht = Neu<PlattformUebersicht>();
     }

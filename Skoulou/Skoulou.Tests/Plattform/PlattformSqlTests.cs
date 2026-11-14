@@ -97,9 +97,9 @@ public class PlattformSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenb
         Assert.Equal(1, await messagerie.UngeleseneAsync(resp.Id));
         Assert.Single(await messagerie.EmpfaengerAsync(resp.Id, schuleId));
 
-        var journal = new JournalService(fabrik, zugriff, zeit);
-        Assert.Single((await journal.FehlerAsync(admin.Id, new JournalFilter(kennung, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), schuleId, true))).Eintraege);
-        Assert.Single((await journal.AuditAsync(admin.Id, new JournalFilter(kennung, SchuleId: schuleId), "schule")).Eintraege);
+        var journal = new ProtokollService(fabrik, zugriff, zeit);
+        Assert.Single((await journal.FehlerAsync(admin.Id, new ProtokollFilter(kennung, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), schuleId, true))).Eintraege);
+        Assert.Single((await journal.AuditAsync(admin.Id, new ProtokollFilter(kennung, SchuleId: schuleId), "schule")).Eintraege);
 
         var medien = new MedienVerwaltungService(fabrik, zugriff, audit, new SpeicherAttrappe());
         Assert.True((await medien.SummenAsync(admin.Id)).Ungenutzt >= 1);

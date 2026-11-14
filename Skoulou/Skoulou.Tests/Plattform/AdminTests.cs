@@ -42,8 +42,8 @@ public class AdminTests
             ("Konten.SchulenZuweisen", a => u.Konten.SchulenZuweisenAsync(a, w.Responsable.Id, [w.Fremde.Id])),
             ("Annonces.Suche", a => u.Annonces.SucheAsync(a, null, null)),
             ("Messagerie.Zuordnen", a => u.Messagerie.ZuordnenAsync(a, Guid.NewGuid(), null)),
-            ("Journal.Fehler", a => u.Journal.FehlerAsync(a, new JournalFilter())),
-            ("Journal.Audit", a => u.Journal.AuditAsync(a, new JournalFilter(), null)),
+            ("Journal.Fehler", a => u.Journal.FehlerAsync(a, new ProtokollFilter())),
+            ("Journal.Audit", a => u.Journal.AuditAsync(a, new ProtokollFilter(), null)),
             ("Medien.Summen", a => u.Medien.SummenAsync(a)),
             ("Uebersicht.Zahlen", a => u.Uebersicht.ZahlenAsync(a)),
         };
