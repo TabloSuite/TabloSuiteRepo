@@ -11,7 +11,7 @@ internal sealed partial class Simulation
     /// <summary>Bis zum Stichtag fälliger Betrag eines Jahres (alle Raten mit Fälligkeit ≤ Tag) nach Ermäßigung.</summary>
     private static long FaelligBis(SimJahr jahr, JahresKonto k, DateOnly tag)
     {
-        var faellig = jahr.Posten.Where(p => p.StufeId is null || p.StufeId == k.StufeId)
+        var faellig = jahr.Posten.Where(p => jahr.Gilt(p, k))
             .SelectMany(p => p.Raten).Where(r => r.Faellig <= tag).Sum(r => r.Betrag);
         return Math.Max(0, faellig - k.Ermaessigung);
     }
@@ -25,7 +25,7 @@ internal sealed partial class Simulation
             if (!schueler.Konten.TryGetValue(jahr.Id, out var konto)) continue;
             var offen = s.Saldo(schueler, jahr.Id);
             if (offen <= 0) continue;
-            var vortrag = offen - (Math.Max(0, jahr.SollFuer(konto.StufeId) - konto.Ermaessigung) - konto.Bezahlt);
+            var vortrag = offen - (Math.Max(0, jahr.SollFuer(konto) - konto.Ermaessigung) - konto.Bezahlt);
             long betrag = schueler.Zahler switch
             {
                 0 => FaelligBis(jahr, konto, heute.AddDays(7)) + Math.Max(0, vortrag) - konto.Bezahlt,
@@ -94,7 +94,7 @@ internal sealed partial class Simulation
         }
         var kategorien = await journal.KategorienAsync(s.Direktor);
         Guid Kat(string name) => kategorien.First(k => k.Name == name).Id;
-        var monatsSoll = s.Aktive.Sum(x => s.Jahr.SollFuer(x.Konten.GetValueOrDefault(s.Jahr.Id)?.StufeId)) / 10;
+        var monatsSoll = s.Aktive.Sum(x => x.Konten.TryGetValue(s.Jahr.Id, out var k) ? s.Jahr.SollFuer(k) : 0) / 10;
         var akteur = z.Ja(0.5) ? s.Direktor : s.KoordMit;
         var datum = heute.AddDays(-z.Zahl(1, 10));
         var eintraege = new List<BuchungEingabe>

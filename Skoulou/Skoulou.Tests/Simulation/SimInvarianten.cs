@@ -18,7 +18,9 @@ internal sealed partial class Simulation
 
     private void Pruefe(bool ok, string meldung)
     {
-        if (!ok && Verletzungen.Count < 400) Verletzungen.Add(meldung);
+        if (ok) return;
+        lock (Verletzungen)
+            if (Verletzungen.Count < 400) Verletzungen.Add(meldung);
     }
 
     public async Task InvariantenAsync()
@@ -27,7 +29,8 @@ internal sealed partial class Simulation
         foreach (var (name, pruefung) in new (string, Func<Task>)[]
                  {
                      ("Plattformanteile", PlattformanteileAsync), ("Nummern", NummernAsync), ("Kasse", KasseAsync), ("Familiensalden", FamilienSaldenAsync),
-                     ("Ränge", RaengeAsync), ("Anteile", AnteileAsync), ("Rechte", RechteAsync)
+                     ("Ränge", RaengeAsync), ("Anteile", AnteileAsync), ("Rechte", RechteAsync),
+                     ("Session-Posten", SessionPostenAsync), ("Session-Ende", SessionEndeAsync), ("Hauptadministrator", HauptAdminAsync)
                  })
         {
             try

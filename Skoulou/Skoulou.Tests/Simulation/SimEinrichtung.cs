@@ -39,7 +39,7 @@ internal sealed partial class Simulation
 
     private int Groesse(SimSchule s, Zufall z) => Math.Max(5, (int)Math.Round(z.Zahl(s.P.MinGroesse, s.P.MaxGroesse + 1) * faktor));
 
-    /// <summary>Erstes Jahr einer Schule: Stammdaten, Personal, Fächer, Stufen, Jahr 2023-2024, Klassen, Lehraufträge, Gebühren, Schüler.</summary>
+    /// <summary>Erstes Jahr einer Schule: Stammdaten, Personal, Fächer, Stufen, erstes Jahr (2022-2023), Klassen, Lehraufträge, Gebühren, Schüler.</summary>
     private async Task EinrichtenAsync(SimSchule s, Zufall z)
     {
         var dir = s.Direktor;
@@ -63,7 +63,7 @@ internal sealed partial class Simulation
         for (var i = 0; i < stufen.Length - 1; i++)
             await api.Klassen.StufeSpeichernAsync(dir, s.Stufen[i].Id, new StufeEingabe(stufen[i].Name, stufen[i].Zyklus, s.Stufen[i + 1].Id));
 
-        var jahr = await JahrAnlegenAsync(s, 2023);
+        var jahr = await JahrAnlegenAsync(s, ErstesJahr);
 
         // Klassen (Sprachschule: je Stufe und Session eine Klasse, nur für diese Session).
         var klassen = new List<(string Name, SimStufe Stufe, int Session)>();
@@ -199,8 +199,24 @@ internal sealed partial class Simulation
         if (ape > 0) await PostenAsync(s, jahr, new PostenEingabe("APE", ape, null, null, true, Raten(ape, jahr.Beginn.AddDays(30))));
         if (s.P.Typ == SchulTyp.Langues)
         {
-            await PostenAsync(s, jahr, new PostenEingabe("Formation (4 sessions)", basis, null, null, true,
-                Raten(basis, jahr.Perioden.Select(p => p.Beginn).ToArray())));
+            if (s.P.Gebuehr == SessionGebuehr.Jahr)
+            {
+                await PostenAsync(s, jahr, new PostenEingabe("Formation (4 sessions)", basis, null, null, true,
+                    Raten(basis, jahr.Perioden.Select(p => p.Beginn).ToArray())));
+                return;
+            }
+            // Gebühr je Session (E7b): nur Teilnehmer dieser Session schulden sie; eine Schule nennt alle Posten gleich
+            // und verlangt in der höchsten Stufe zusätzlich « Préparation à l'examen » (Posten einer Klasse und Session).
+            var je = basis / jahr.Perioden.Count;
+            foreach (var p in jahr.Perioden)
+            {
+                var name = s.P.Gebuehr == SessionGebuehr.JeSession ? $"Formation {p.Titel}" : "Frais de session";
+                await PostenAsync(s, jahr, new PostenEingabe(name, je, null, null, true, Raten(je, p.Beginn, p.Beginn.AddDays(21)), p.Id));
+                if (s.P.Gebuehr != SessionGebuehr.GleicheBezeichnung) continue;
+                var hoechste = jahr.Klassen.First(k => k.Session == p.Nr && k.Stufe.Nr == s.Stufen.Count);
+                await PostenAsync(s, jahr, new PostenEingabe("Préparation à l'examen", 7_500, null, hoechste.Id, true, Raten(7_500, p.Beginn.AddDays(14)), p.Id));
+            }
+            Zaehle("Posten je Session", jahr.Perioden.Count);
             return;
         }
         foreach (var st in s.Stufen)
@@ -215,7 +231,8 @@ internal sealed partial class Simulation
     {
         var akteur = s.Nr % 2 == 0 ? s.KoordMit : s.Direktor;
         var id = await api.Gebuehren.PostenSpeichernAsync(akteur, jahr.Id, null, e);
-        jahr.Posten.Add(new SimPosten(id, e.Bezeichnung!, e.Betrag!.Value, e.StufeId, e.Raten.Select(r => (r.Betrag!.Value, r.Faellig!.Value)).ToList()));
+        jahr.Posten.Add(new SimPosten(id, e.Bezeichnung!, e.Betrag!.Value, e.StufeId, e.Raten.Select(r => (r.Betrag!.Value, r.Faellig!.Value)).ToList(),
+            e.KlasseId, e.PeriodeId));
     }
 
     /// <summary>Gebührenposten eines neuen Jahres aus dem Dienst lesen (nach « Copier l'année précédente »).</summary>
@@ -223,13 +240,13 @@ internal sealed partial class Simulation
     {
         jahr.Posten.Clear();
         foreach (var p in await api.Gebuehren.PostenAsync(s.Direktor, jahr.Id))
-            jahr.Posten.Add(new SimPosten(p.Id, p.Bezeichnung, p.Betrag, p.StufeId, p.Raten.Select(r => (r.Betrag, r.Faellig)).ToList()));
+            jahr.Posten.Add(new SimPosten(p.Id, p.Bezeichnung, p.Betrag, p.StufeId, p.Raten.Select(r => (r.Betrag, r.Faellig)).ToList(), p.KlasseId, p.PeriodeId));
     }
 
-    private async Task<Guid> PersonAsync(SimSchule s, Zufall z, string rolle, bool mitMail)
+    private async Task<Guid> PersonAsync(SimSchule s, Zufall z, string rolle, bool mitMail, (string Vor, string Nach, Geschlecht G)? name = null)
     {
-        var (vor, g) = SimNamen.Vorname(z);
-        var nach = SimNamen.Nachname(z);
+        var (vor, g) = name is { } n ? (n.Vor, n.G) : SimNamen.Vorname(z);
+        var nach = name?.Nach ?? SimNamen.Nachname(z);
         var eingabe = new PersonalEingabe(rolle, vor, nach, null, mitMail ? SimNamen.Mail(vor, nach, z.Zahl(1, 99)) : null, SimNamen.Telefon(z), g);
         var stapel = await SollAsync("Personal anlegen", () => api.Personal.AnlegenAsync(s.Direktor, eingabe))
                      ?? throw new InvalidOperationException($"Personal in {s.P.Name} nicht angelegt.");
@@ -240,17 +257,18 @@ internal sealed partial class Simulation
     }
 
     /// <summary>Neuer Schüler über « Nouvel élève » (mit Klasse), Eltern (neu oder Geschwister), Ermäßigungen.</summary>
-    private async Task<SimSchueler?> SchuelerAnlegenAsync(SimSchule s, Zufall z, SimKlasse? klasse, Guid akteur, bool wiederholer = false)
+    private async Task<SimSchueler?> SchuelerAnlegenAsync(SimSchule s, Zufall z, SimKlasse? klasse, Guid akteur, bool wiederholer = false,
+        (string Vor, string Nach, Geschlecht G)? name = null)
     {
-        var (vor, g) = SimNamen.Vorname(z);
+        var (vor, g) = name is { } n ? (n.Vor, n.G) : SimNamen.Vorname(z);
         SimSchueler? geschwister = null;
-        if (z.Ja(0.12))
+        if (name is null && z.Ja(0.12))
         {
             List<SimSchueler> kandidaten;
             lock (s.Schueler) kandidaten = s.Aktive.Where(x => x.Eltern is { } e && s.KinderJeEltern.GetValueOrDefault(e) < 3).ToList();
             if (kandidaten.Count > 0) geschwister = z.Eins(kandidaten);
         }
-        var nach = geschwister?.Nachname ?? SimNamen.Nachname(z);
+        var nach = name?.Nach ?? geschwister?.Nachname ?? SimNamen.Nachname(z);
         var alter = s.P.Typ switch { SchulTyp.Primaire => 6, SchulTyp.College => 11, SchulTyp.Lycee => 15, _ => 18 } + (klasse?.Stufe.Nr ?? 1);
         var gross = s.P.Typ is SchulTyp.Lycee or SchulTyp.Langues;
         var eingabe = new SchuelerEingabe(vor, nach, g, new DateOnly(d.HeuteDatum.Year - alter, z.Zahl(1, 13), z.Zahl(1, 29)), z.Eins(SimNamen.Geburtsorte),
@@ -298,6 +316,7 @@ internal sealed partial class Simulation
     {
         if (!schueler.Konten.TryGetValue(s.Jahr.Id, out var k)) schueler.Konten[s.Jahr.Id] = k = new JahresKonto();
         k.StufeId = s.P.Typ == SchulTyp.Langues ? null : klasse.Stufe.Id;
+        k.Klassen.Add(klasse.Id);
     }
 
     /// <summary>Prozentuale Ermäßigung auf die Scolarité der Stufe (ganze FCFA, Beträge sind Vielfache von 1.000).</summary>

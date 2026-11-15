@@ -12,13 +12,15 @@ using Skoulou.WebApp.Services.Plattform;
 namespace Skoulou.Tests.Simulation;
 
 /// <summary>
-/// Simulation (Bauplan §9.4): ≥ 20 Schulen, drei vollständige Schuljahre (2023-2024 … 2025-2026) und das laufende Jahr
-/// 2026-2027 bis heute (14/11/2026) – alles über die echten Dienste. Die Uhr ist global; je Stichtag arbeiten die Schulen
-/// parallel (Zufall je Schule und Stichtag mit festem Startwert), danach laufen Abrechnung und Rechnungswege nacheinander.
+/// Simulation (Bauplan §9.4, S3): ≥ 30 Schulen, vier vollständige Schuljahre (2022-2023 … 2025-2026) und das laufende
+/// Jahr 2026-2027 bis heute (14/11/2026) – alles über die echten Dienste. Die Uhr ist global; je Stichtag arbeiten die
+/// Schulen parallel (Zufall je Schule und Stichtag mit festem Startwert), danach laufen Abrechnung und Rechnungswege
+/// nacheinander. Gleichzeitige Kontoanlagen werden gezielt ausgelöst (die Simulation wiederholt nichts selbst).
 /// </summary>
 internal sealed partial class Simulation(SimDienste d, double faktor)
 {
-    public const int Startwert = 20_261_114;
+    public const int Startwert = 20_261_115;
+    public const int ErstesJahr = 2022;
     public static readonly DateOnly Ende = new(2026, 11, 14);
     private const int Parallel = 8;
 
@@ -26,7 +28,8 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
     private readonly Stopwatch uhr = Stopwatch.StartNew();
 
     public List<SimSchule> Schulen { get; } = [];
-    public Guid Admin, Admin2, Admin3;
+    /// <summary>Admin = Hauptadministrator (Start-Seed); Admin2/Admin3 legt er an; Admin4 wird gesperrt, entsperrt, archiviert; von zwei gleichzeitig angelegten bleibt AdminZwilling, AdminDoppelt wird archiviert.</summary>
+    public Guid Admin, Admin2, Admin3, Admin4, Admin5, AdminZwilling, AdminDoppelt;
     public List<Guid> Responsables { get; } = [];
     public List<SimRechnung> Rechnungen { get; } = [];
     public ConcurrentQueue<string> Fehler { get; } = new();
@@ -53,7 +56,7 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         lock (Ablauf)
         {
             Ablauf.Add(zeile);
-            var ordner = Path.Combine(Path.GetTempPath(), "skoulou-neu", "E7");
+            var ordner = Path.Combine(Path.GetTempPath(), "sim", "skoulou");
             Directory.CreateDirectory(ordner);
             File.AppendAllText(Path.Combine(ordner, "simulation-fortschritt.txt"), zeile + Environment.NewLine);
         }
@@ -113,17 +116,19 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
 
     public async Task AusfuehrenAsync()
     {
-        d.Heute(new DateOnly(2023, 6, 1));
+        d.Heute(new DateOnly(ErstesJahr, 6, 1));
         await PlattformAsync();
         await SchulenRegistrierenAsync();
         Notiere($"Plattform: {Schulen.Count} Schulen aktiv.");
 
-        d.Heute(new DateOnly(2023, 7, 3));
+        d.Heute(new DateOnly(ErstesJahr, 7, 4));
         await JeSchuleAsync("einrichten", EinrichtenAsync, 0);
         Notiere($"Eingerichtet: {Schulen.Sum(s => s.Schueler.Count)} Schüler.");
 
-        for (var startJahr = 2023; startJahr <= 2026; startJahr++)
+        for (var startJahr = ErstesJahr; startJahr <= Ende.Year; startJahr++)
         {
+            d.Heute(new DateOnly(startJahr, 8, 25));
+            await GleichzeitigeAnlagenAsync(startJahr);
             await JahrAsync(startJahr);
             Notiere($"Jahr {startJahr}-{startJahr + 1} fertig: {Schulen.Sum(s => s.Schueler.Count)} Schüler, {Rechnungen.Count} Rechnungen.");
         }
@@ -145,7 +150,7 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
 
     private async Task JahrAsync(int startJahr)
     {
-        var laufend = startJahr == 2026;
+        var laufend = startJahr == Ende.Year;
         var vorher = new DateOnly(startJahr, 8, 31);
         foreach (var tag in Stichtage(startJahr))
         {
@@ -200,11 +205,18 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
             await scope.ServiceProvider.GetRequiredService<StartSeed>().AusfuehrenAsync();
         await d.MitDbAsync(async db => { await FinanzKategorien.SicherstellenAsync(db); return true; });
         Admin = await d.MitDbAsync(db => db.Users.Where(k => k.Rolle == Rollen.SuperAdmin).Select(k => k.Id).SingleAsync());
+        var haupt = await d.MitDbAsync(db => db.Users.Where(k => k.IstHauptAdmin).Select(k => k.Id).ToListAsync());
+        if (haupt.Count != 1 || haupt[0] != Admin) Fehler.Enqueue($"Start-Seed: {haupt.Count} Hauptadministrator(en) statt des Seed-Kontos.");
 
-        // Zwei weitere Administratoren (wie der Start-Seed: Identity, eigenes Passwort).
-        Admin2 = await AdminAnlegenAsync("akouvi.lawson", "Akouvi", "Lawson");
-        Admin3 = await AdminAnlegenAsync("yao.mensah", "Yao", "Mensah");
-        foreach (var a in new[] { Admin, Admin2, Admin3 }) await ErsteAnmeldungAsync(a);
+        // Der Hauptadministrator legt die weiteren Administratoren an (/admin/administrateurs); zwei gleichnamige gleichzeitig.
+        Admin2 = await AdminAnlegenAsync("Akouvi", "Lawson");
+        Admin3 = await AdminAnlegenAsync("Yao", "Mensah");
+        Admin4 = await AdminAnlegenAsync("Sélom", "Ahadji");
+        var doppelt = await Task.WhenAll(AdminAnlegenAsync("Kossi", "Amouzou"), AdminAnlegenAsync("Kossi", "Amouzou"));
+        (AdminZwilling, AdminDoppelt) = (doppelt[0], doppelt[1]);
+        await KontenVerschiedenAsync("Administrateurs gleichzeitig", doppelt);
+        foreach (var a in new[] { Admin, Admin2, Admin3, Admin4 }) await ErsteAnmeldungAsync(a);
+        await AdminVerwaltungAbgelehntAsync();
 
         var tarife = api.Tarife;
         await tarife.EinstellungSpeichernAsync(Admin, new TarifEinstellung(12_500, 30, 10));
@@ -215,16 +227,28 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
             Responsables.Add(zugang.KontoId);
             await ErsteAnmeldungAsync(zugang.KontoId);
         }
-        Zaehle("Admins", 3);
+
         Zaehle("Responsables", Responsables.Count);
     }
 
-    private async Task<Guid> AdminAnlegenAsync(string identifiant, string vorname, string nachname)
+    /// <summary>« Ajouter un administrateur » durch den Hauptadministrator (Startpasswort wird nicht gespeichert).</summary>
+    private async Task<Guid> AdminAnlegenAsync(string vorname, string nachname)
     {
-        var konto = new Konto { UserName = identifiant, Email = $"{identifiant}@skoulou-sim.tg", Vorname = vorname, Nachname = nachname, Status = KontoStatus.Actif };
-        var ergebnis = await KontoAnlage.AnlegenAsync(api.Benutzer, konto, Rollen.SuperAdmin, "Sim" + Guid.NewGuid().ToString("N")[..10] + "7");
-        Assert.True(ergebnis.Succeeded, KontoAnlage.Fehlertext(ergebnis));
-        return konto.Id;
+        var mail = $"admin.{Guid.NewGuid():N}"[..18] + "@skoulou-sim.tg";
+        var zugang = await SollAsync($"Administrateur {vorname} {nachname} anlegen", () => api.Administratoren.AnlegenAsync(Admin, new AdminEingabe(vorname, nachname, mail)))
+                     ?? throw new InvalidOperationException($"Administrateur {vorname} {nachname} nicht angelegt.");
+        Zaehle("Admins");
+        return zugang.KontoId;
+    }
+
+    /// <summary>Gleichzeitig angelegte Konten haben verschiedene Identifiants (keine Dubletten, keine Meldung « simultané »).</summary>
+    private async Task KontenVerschiedenAsync(string was, IReadOnlyCollection<Guid> ids)
+    {
+        var liste = ids.Where(i => i != Guid.Empty).ToList();
+        var namen = await d.MitDbAsync(db => db.Users.Where(k => liste.Contains(k.Id)).Select(k => k.UserName!).ToListAsync());
+        if (namen.Count != ids.Count || namen.Distinct(StringComparer.OrdinalIgnoreCase).Count() != namen.Count)
+            Fehler.Enqueue($"{d.HeuteDatum:dd/MM/yyyy} {was}: {ids.Count} gleichzeitig, {namen.Count} angelegt, Identifiants {string.Join(", ", namen)}.");
+        Zaehle("Gleichzeitige Anlagen", namen.Count);
     }
 
     private static readonly SchulProfil[] Profile =
@@ -249,39 +273,52 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         new("Lycée Les Cocotiers", "Lomé", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 30, 45),
         new("Lycée Mono", "Notsé", SchulTyp.Lycee, PeriodenArt.Trimestre, 1, 30, 45),
         new("Lycée de la Kozah", "Kara", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 35, 50),
-        new("Institut de langues Le Pont", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 18, Preis: 8_000),
+        new("Institut de langues Le Pont", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 18, Preis: 8_000, Gebuehr: SessionGebuehr.JeSession),
         new("Centre de langues Horizon", "Kara", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 15, Preis: 8_000),
+        // S3: acht weitere Schulen (zwei je Typ), darunter zwei Sprachschulen mit Gebühr je Session.
+        new("EPP Hédzranawoé", "Lomé", SchulTyp.Primaire, PeriodenArt.Trimestre, 2, 28, 40),
+        new("École primaire Saint-Michel", "Sokodé", SchulTyp.Primaire, PeriodenArt.Trimestre, 1, 20, 34),
+        new("CEG Bassar", "Bassar", SchulTyp.College, PeriodenArt.Semestre, 2, 30, 45),
+        new("Collège moderne de Tabligbo", "Tabligbo", SchulTyp.College, PeriodenArt.Trimestre, 2, 30, 45, Prozent: 12),
+        new("Lycée d'Atakpamé", "Atakpamé", SchulTyp.Lycee, PeriodenArt.Trimestre, 2, 35, 50),
+        new("Lycée technique de Lomé", "Lomé", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 30, 45),
+        new("École de langues Arc-en-ciel", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 16, Preis: 8_000, Gebuehr: SessionGebuehr.GleicheBezeichnung),
+        new("Centre linguistique du Sahel", "Dapaong", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 14, Preis: 7_500, Gebuehr: SessionGebuehr.JeSession),
     ];
 
-    /// <summary>Selbstregistrierung der Direktionen, Prüfung durch die Admins (validieren / ablehnen / offen lassen), Responsables, Tarife.</summary>
+    /// <summary>
+    /// Selbstregistrierung der Direktionen (je vier gleichzeitig, davon zwei mit gleichem Namen), Prüfung durch die Admins
+    /// (validieren / ablehnen / offen lassen), Responsables, Tarife.
+    /// </summary>
     private async Task SchulenRegistrierenAsync()
     {
         var z = new Zufall(Startwert);
-        var reg = api.Registrierung;
-        for (var i = 0; i < Profile.Length; i++)
+        for (var start = 0; start < Profile.Length; start += 4)
         {
-            var p = Profile[i];
-            var (vor, g) = SimNamen.Vorname(z);
-            var nach = SimNamen.Nachname(z);
-            var pw = "Direction" + Guid.NewGuid().ToString("N")[..8] + "4";
-            var ergebnis = await reg.RegistrierenAsync(new RegistrierungsEingabe(RegistrierungsArt.Direction, vor, nach, null,
-                SimNamen.Mail(vor, nach, i), SimNamen.Telefon(z), pw, pw, true,
-                p.Name, p.Ort, "Togo"), $"10.0.{i}.1");
-            var schule = new SimSchule(i + 1, p);
-            (schule.Id, schule.Direktor) = await d.MitDbAsync(async db =>
+            var gruppe = Enumerable.Range(start, Math.Min(4, Profile.Length - start)).ToList();
+            var namen = gruppe.Select(_ => (Vor: SimNamen.Vorname(z).Vorname, Nach: SimNamen.Nachname(z), Tel: SimNamen.Telefon(z))).ToList();
+            if (namen.Count > 1) namen[1] = namen[0] with { Tel = SimNamen.Telefon(z) };
+            var ergebnisse = await Task.WhenAll(gruppe.Select((i, n) => SollAsync($"Registrierung {Profile[i].Name}", async () =>
             {
-                var k = await db.Users.Where(k => k.UserName == ergebnis.Identifiant).Select(k => new { k.Id, k.SchuleId }).SingleAsync();
-                return (k.SchuleId!.Value, k.Id);
-            });
-            _ = g;
-            Schulen.Add(schule);
+                var p = Profile[i];
+                var pw = "Direction" + Guid.NewGuid().ToString("N")[..8] + "4";
+                var e = await api.Registrierung.RegistrierenAsync(new RegistrierungsEingabe(RegistrierungsArt.Direction, namen[n].Vor, namen[n].Nach, null,
+                    SimNamen.Mail(namen[n].Vor, namen[n].Nach, i), namen[n].Tel, pw, pw, true, p.Name, p.Ort, "Togo"), $"10.0.{i}.1");
+                return await d.MitDbAsync(db => db.Users.Where(k => k.UserName == e.Identifiant).Select(k => new { k.Id, SchuleId = k.SchuleId!.Value }).SingleAsync());
+            })));
+            for (var n = 0; n < gruppe.Count; n++)
+            {
+                var r = ergebnisse[n] ?? throw new InvalidOperationException($"Registrierung {Profile[gruppe[n]].Name} fehlgeschlagen.");
+                Schulen.Add(new SimSchule(gruppe[n] + 1, Profile[gruppe[n]]) { Id = r.SchuleId, Direktor = r.Id });
+            }
+            await KontenVerschiedenAsync("Registrierungen gleichzeitig", ergebnisse.Select(r => r?.Id ?? Guid.Empty).ToList());
         }
         Zaehle("Schulen registriert", Profile.Length);
 
         // Zwei weitere Anmeldungen: eine wird abgelehnt, eine bleibt in Prüfung.
         foreach (var (name, ort, nr) in new[] { ("Académie Excellence Plus", "Vogan", 90), ("Cours du soir L'Espoir", "Vogan", 91) })
         {
-            var e = await reg.RegistrierenAsync(new RegistrierungsEingabe(RegistrierungsArt.Direction, "Komlan", "Folly", null,
+            var e = await api.Registrierung.RegistrierenAsync(new RegistrierungsEingabe(RegistrierungsArt.Direction, "Komlan", "Folly", null,
                 SimNamen.Mail("Komlan", "Folly", nr), "+228 99 00 00 " + nr, "Direction" + nr + "abc", "Direction" + nr + "abc", true, name, ort, "Togo"), $"10.9.{nr}.1");
             var id = await d.MitDbAsync(db => db.Users.Where(k => k.UserName == e.Identifiant).Select(k => k.SchuleId!.Value).SingleAsync());
             if (nr == 90) AbgelehnteSchule = id; else WartendeSchule = id;
@@ -325,5 +362,6 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         }
         if (tag == new DateOnly(2025, 6, 15))
             await SollAsync("Tarif 13.000", () => api.Tarife.EinstellungSpeichernAsync(Admin3, new TarifEinstellung(13_000, 30, 10)));
+        await AdminEreignisseAsync(tag);
     }
 }

@@ -223,20 +223,30 @@ internal sealed partial class Simulation
         }
     }
 
-    /// <summary>Sprachschule nach einer Session: weiter in die Klasse der nächsten Session (teils Stufe höher), Austritt oder neue Schüler.</summary>
+    /// <summary>
+    /// Sprachschule nach einer Session: weiter in die Klasse der nächsten Session (teils Stufe höher), Austritt, vergessen
+    /// (weder Wechsel noch Austritt – die Einschreibung endet mit der Session) oder neue Schüler. Vergessene früherer
+    /// Sessions kommen teils zurück (« Inscrire » bzw. « Changer de classe ») oder werden aus « Sans classe » archiviert.
+    /// </summary>
     private async Task SessionWechselAsync(SimSchule s, Zufall z, SimPeriode p)
     {
         var jahr = s.Jahr;
         if (p.Nr >= jahr.Perioden.Count) return;
         var naechste = jahr.Perioden[p.Nr];
-        foreach (var schueler in s.Aktive.Where(x => x.Klasse!.Session == p.Nr).ToList())
+        foreach (var v in s.Vergessene.Where(v => v.JahrId == jahr.Id && v.ZurueckAb is null && !v.Archiviert && v.Session < p.Nr).ToList())
         {
-            schueler.SessionVergessen = false;
-            if (z.Ja(0.04))
+            var x = z.Anteil();
+            if (x < 0.35) await ZurueckAsync(s, z, v, naechste);
+            else if (x < 0.45) await VergessenArchivierenAsync(s, v);
+        }
+        foreach (var schueler in s.Aktive.Where(x => x.Klasse!.Session == p.Nr && !x.SessionVergessen).ToList())
+        {
+            if (z.Ja(0.06))
             {
                 // E7b: die Direktion vergisst den Teilnehmer – die Einschreibung endet trotzdem mit der Session
-                // (keine Abrechnung der Folgesessions, Invariante « Vollständige Abrechnung »); Austritt erst zum Jahresende.
+                // (keine Abrechnung/Gebühr der Folgesessions, nicht mehr in den Listen).
                 schueler.SessionVergessen = true;
+                lock (s.Vergessene) s.Vergessene.Add(new SimVergessen(schueler, jahr.Id, p.Nr));
                 Zaehle("Session ohne Wechsel/Austritt");
                 continue;
             }
@@ -251,11 +261,91 @@ internal sealed partial class Simulation
             if (z.Ja(0.3) && stufe.Nr < s.Stufen.Count) stufe = s.Stufen[stufe.Nr];
             var ziel = jahr.Klassen.First(k => k.Stufe == stufe && k.Session == naechste.Nr);
             var e = await SollAsync("Sessionwechsel", () => api.Einschreibung.KlasseWechselnAsync(s.KoordMit, schueler.Id, ziel.Id, naechste.Beginn));
-            if (e != Guid.Empty) { schueler.Klasse = ziel; Zaehle("Sessionwechsel"); }
+            if (e != Guid.Empty) { schueler.Klasse = ziel; KontoFuer(s, schueler, ziel); Zaehle("Sessionwechsel"); }
         }
         foreach (var k in jahr.Klassen.Where(k => k.Session == naechste.Nr))
             for (var i = 0; i < Groesse(s, z) / 3; i++)
                 await NeuEinschreibenAsync(s, z, k, naechste.Beginn);
+        await NachSessionEndePruefenAsync(s);
+    }
+
+    /// <summary>Ein vergessener Teilnehmer kommt in der nächsten Session wieder (je zur Hälfte « Inscrire » bzw. « Changer de classe »).</summary>
+    private async Task ZurueckAsync(SimSchule s, Zufall z, SimVergessen v, SimPeriode naechste)
+    {
+        var schueler = v.Schueler;
+        var ziel = s.Jahr.Klassen.First(k => k.Stufe == schueler.Klasse!.Stufe && k.Session == naechste.Nr);
+        var inscrire = z.Ja(0.5);
+        // « Inscrire » schließt die abgelaufene Session-Einschreibung selbst (Terminée zum Session-Ende).
+        var e = inscrire
+            ? await SollAsync("Rückkehr (Inscrire)", () => api.Einschreibung.EinschreibenAsync(s.KoordMit, schueler.Id, ziel.Id, naechste.Beginn, false))
+            : await SollAsync("Rückkehr (Changer de classe)", () => api.Einschreibung.KlasseWechselnAsync(s.Direktor, schueler.Id, ziel.Id, naechste.Beginn));
+        if (e == Guid.Empty) return;
+        schueler.Klasse = ziel;
+        schueler.SessionVergessen = false;
+        v.ZurueckAb = naechste.Nr;
+        KontoFuer(s, schueler, ziel);
+        Zaehle(inscrire ? "Vergessene zurück (Inscrire)" : "Vergessene zurück (Changer de classe)");
+    }
+
+    /// <summary>Die Direktion archiviert einen vergessenen Teilnehmer aus « Sans classe » (seine Session ist vorbei).</summary>
+    private async Task VergessenArchivierenAsync(SimSchule s, SimVergessen v)
+    {
+        var ok = await SollAsync("Vergessenen archivieren", async () => { await api.Konten.ArchivierenAsync(s.Direktor, v.Schueler.Id); return true; });
+        if (!ok) return;
+        v.Archiviert = true;
+        v.Schueler.Aktiv = false;
+        v.Schueler.SessionVergessen = false;
+        Zaehle("Vergessene archiviert");
+    }
+
+    /// <summary>
+    /// Nach dem Ende einer Session (Invariante « kein Schüler nach Session-Ende in Listen »): beendete Session-Klassen haben
+    /// in « Classes », in den Auswahllisten (Inscrire, Appel) kein Effectif mehr, die Schülerliste zeigt vergessene Teilnehmer
+    /// « sans classe », die Eltern sehen keine beendete Klasse, der Appell der alten Klasse ist leer.
+    /// </summary>
+    private async Task NachSessionEndePruefenAsync(SimSchule s)
+    {
+        var jahr = s.Jahr;
+        var heute = d.HeuteDatum;
+        var beendet = jahr.Klassen.Where(k => k.Session > 0 && jahr.Perioden[k.Session - 1].Ende < heute).ToDictionary(k => k.Id);
+        if (beendet.Count == 0) return;
+        var wo = $"{s.P.Name} {heute:dd/MM/yyyy}";
+        foreach (var k in await api.Klassen.KlassenAsync(s.Direktor, jahr.Id))
+            if (beendet.ContainsKey(k.Id)) Pruefe(k.Effectif == 0, $"{wo}: « Classes » zeigt {k.Name} (Session beendet) mit Effectif {k.Effectif}.");
+        // Zusatz der Auswahl: « 0 élève » bzw. mit Kapazität « 0/60 élèves ».
+        static bool OhneEffectif(string? zusatz) => zusatz is not null && (zusatz.StartsWith("0 ", StringComparison.Ordinal) || zusatz.StartsWith("0/", StringComparison.Ordinal));
+        foreach (var k in await api.Klassen.KlassenAuswahlAsync(s.Direktor, jahr.Id))
+            if (beendet.ContainsKey(k.Id)) Pruefe(OhneEffectif(k.Zusatz), $"{wo}: Auswahl « Inscrire » zeigt {k.Name} (Session beendet) mit « {k.Zusatz} ».");
+        foreach (var k in await api.Anwesenheit.KlassenAsync(s.Direktor, jahr.Id))
+            if (beendet.ContainsKey(k.Id)) Pruefe(OhneEffectif(k.Zusatz), $"{wo}: Auswahl « Appel » zeigt {k.Name} (Session beendet) mit « {k.Zusatz} ».");
+        foreach (var (kid, klasse) in beendet)
+        {
+            var liste = await api.Schueler.SucheAsync(s.Direktor, null, kid, null, 0, 50);
+            Pruefe(liste.Eintraege.Count == 0, $"{wo}: « Élèves » der Klasse {klasse.Name} (Session beendet) zeigt {liste.Eintraege.Count} Schüler.");
+        }
+        List<SimVergessen> vergessene;
+        lock (s.Vergessene) vergessene = s.Vergessene.Where(v => v.JahrId == jahr.Id && v.ZurueckAb is null && !v.Archiviert).ToList();
+        foreach (var v in vergessene)
+        {
+            var x = v.Schueler;
+            var zeile = (await api.Schueler.SucheAsync(s.Direktor, SchuelerService.FilterSansClasse, null, $"{x.Vorname} {x.Nachname}", 0, 200))
+                .Eintraege.FirstOrDefault(r => r.KontoId == x.Id);
+            Pruefe(zeile is not null && zeile.KlasseId is null, $"{wo}: {x.Nachname} {x.Vorname} (Session {v.Session} beendet) nicht « sans classe » ({zeile?.Klasse ?? "fehlt"}).");
+            if (x.Eltern is { } eltern)
+            {
+                var kind = (await api.ElternKinder.KinderAsync(eltern)).FirstOrDefault(k => k.SchuelerId == x.Id);
+                Pruefe(kind?.Klasse is null || !beendet.Values.Any(k => k.Name == kind.Klasse), $"{wo}: Eltern sehen {x.Vorname} {x.Nachname} noch in {kind?.Klasse} (Session beendet).");
+            }
+            Zaehle("Listenprüfung: vergessene Teilnehmer");
+        }
+        var tag = heute.DayOfWeek switch { DayOfWeek.Saturday => heute.AddDays(-1), DayOfWeek.Sunday => heute.AddDays(-2), _ => heute };
+        foreach (var v in vergessene.Where(v => jahr.Perioden[v.Session - 1].Ende < tag).Take(2))
+        {
+            var klasse = v.Schueler.Klasse!;
+            var appell = await SollAsync("Appell (alte Session)", () => api.Anwesenheit.AppellAsync(s.Direktor, klasse.Id, tag));
+            Pruefe(appell is null || appell.Zeilen.All(r => r.SchuelerId != v.Schueler.Id), $"{wo}: Appell der Klasse {klasse.Name} (Session beendet) enthält {v.Schueler.Nachname}.");
+        }
+        Zaehle("Listenprüfungen nach Session-Ende");
     }
 
     /// <summary>Konto ohne Klasse anlegen und ab einem Datum einschreiben (Session- oder rückwirkende Einschreibung).</summary>
@@ -276,10 +366,13 @@ internal sealed partial class Simulation
     private async Task PassageAsync(SimSchule s, Zufall z)
     {
         var alt = s.Jahr;
-        // Vergessene Session-Teilnehmer verlassen die Schule zum Jahresende (ihre Einschreibung bleibt bis dahin offen).
+        // Vergessene Session-Teilnehmer: die Hälfte trägt die Direktion zum Jahresende aus, die übrigen bleiben unberührt –
+        // sie dürfen weder in der Liste des Passage-Assistenten noch im neuen Jahr erscheinen (ihre Session ist vorbei).
+        var unberuehrt = new List<SimSchueler>();
         foreach (var schueler in s.Aktive.Where(x => x.SessionVergessen).ToList())
         {
-            await SollAsync("Austritt (Session vergessen)", () => api.Einschreibung.AustrittAsync(s.Direktor, schueler.Id, alt.Ende, "Fin d'année : session terminée.", false));
+            if (z.Ja(0.5)) unberuehrt.Add(schueler);
+            else await SollAsync("Austritt (Session vergessen)", () => api.Einschreibung.AustrittAsync(s.Direktor, schueler.Id, alt.Ende, "Fin d'année : session terminée.", false));
             schueler.Aktiv = false;
             schueler.SessionVergessen = false;
         }
@@ -294,6 +387,14 @@ internal sealed partial class Simulation
         var vorschau = await wechsel.VorschauAsync(s.Direktor, alt.Id, plan);
         if (!vorschau.Bereit)
             Fehler.Enqueue($"Passage {s.P.Name} nicht bereit: offen {vorschau.Offen}; {string.Join(" | ", vorschau.Warnungen)}");
+        if (unberuehrt.Count > 0)
+        {
+            var inListe = vorschau.Klassen.SelectMany(k => k.Schueler).Select(x => x.EinschreibungId).ToHashSet();
+            var ids = unberuehrt.Select(x => x.Id).ToList();
+            var gelistet = await d.MitDbAsync(db => db.Einschreibungen.Where(e => e.SchuljahrId == alt.Id && ids.Contains(e.SchuelerId))
+                .Select(e => e.Id).ToListAsync());
+            Pruefe(!gelistet.Any(inListe.Contains), $"Passage {s.P.Name} {alt.Bezeichnung}: {gelistet.Count(inListe.Contains)} vergessene Teilnehmer in der Liste des Assistenten.");
+        }
         var ergebnis = await SollAsync($"Passage {s.P.Name}", () => wechsel.AusfuehrenAsync(s.KoordMit, alt.Id, plan));
         if (ergebnis is null) return;
         Zaehle("Passagen");
@@ -301,6 +402,16 @@ internal sealed partial class Simulation
         Zaehle("Passage: Sortants", ergebnis.Sortants);
 
         await PassagePruefenAsync(s, alt, ergebnis.NeuesJahrId);
+        if (unberuehrt.Count > 0)
+        {
+            var ids = unberuehrt.Select(x => x.Id).ToList();
+            var danach = await d.MitDbAsync(db => db.Einschreibungen.Where(e => ids.Contains(e.SchuelerId) && e.StorniertAmUtc == null
+                    && (e.SchuljahrId == ergebnis.NeuesJahrId || (e.SchuljahrId == alt.Id && e.Status == EinschreibungsStatus.Active)))
+                .Select(e => new { e.SchuelerId, e.SchuljahrId }).ToListAsync());
+            foreach (var e in danach)
+                Pruefe(false, $"Passage {s.P.Name} {alt.Bezeichnung}: vergessener Teilnehmer {e.SchuelerId} {(e.SchuljahrId == alt.Id ? "bleibt im alten Jahr « active »" : "ist im neuen Jahr eingeschrieben")}.");
+            Zaehle("Passage: vergessene Teilnehmer unberührt", unberuehrt.Count);
+        }
         var jahr = await JahrLadenAsync(s, ergebnis.NeuesJahrId);
         s.Jahre.Add(jahr);
         foreach (var k in await api.Klassen.KlassenAsync(s.Direktor, jahr.Id))
@@ -337,14 +448,27 @@ internal sealed partial class Simulation
         }
 
         // Gebühren: Vorjahr kopieren, in einem Teil der Schulen die Scolarité um 5 % erhöhen.
+        if (s.P.Gebuehr == SessionGebuehr.GleicheBezeichnung)
+        {
+            // Die Direktion legt « Frais de session » der ersten Session schon selbst an und kopiert dann das Vorjahr:
+            // die gleichnamigen Posten der übrigen Sessions müssen trotzdem übernommen werden.
+            var erste = jahr.Perioden[0];
+            var betrag = alt.Posten.First(p => p.Name == "Frais de session").Betrag;
+            await SollAsync("Session-Posten vorab", () => api.Gebuehren.PostenSpeichernAsync(s.Direktor, jahr.Id, null,
+                new PostenEingabe("Frais de session", betrag, null, null, true, Raten(betrag, erste.Beginn, erste.Beginn.AddDays(21)), erste.Id)));
+        }
         await SollAsync("Gebühren kopieren", () => api.Gebuehren.VorjahrKopierenAsync(s.KoordMit, jahr.Id));
         await PostenLadenAsync(s, jahr);
+        if (jahr.Posten.Count != alt.Posten.Count)
+            Fehler.Enqueue($"{d.HeuteDatum:dd/MM/yyyy} Gebühren kopieren ({s.P.Name}, {jahr.Bezeichnung}): {jahr.Posten.Count} Posten statt {alt.Posten.Count} wie im Vorjahr.");
+        Zaehle("Gebühren kopiert", jahr.Posten.Count);
         if (s.Nr % 3 == 0)
-            foreach (var p in jahr.Posten.Where(p => p.Name.StartsWith("Scolarité", StringComparison.Ordinal)).ToList())
+            foreach (var p in jahr.Posten.Where(p => p.Name.StartsWith("Scolarité", StringComparison.Ordinal) || (p.PeriodeId is not null && p.KlasseId is null)).ToList())
             {
+                // Sprachschule: ein Posten einer Session behält beim Ändern seine Session.
                 var neuBetrag = (long)Math.Round(p.Betrag * 1.05m / 1_000m) * 1_000;
                 await SollAsync("Posten erhöhen", () => api.Gebuehren.PostenSpeichernAsync(s.Direktor, jahr.Id, p.Id,
-                    new PostenEingabe(p.Name, neuBetrag, p.StufeId, null, true, Raten(neuBetrag, p.Raten.Select(r => r.Faellig).ToArray()))));
+                    new PostenEingabe(p.Name, neuBetrag, p.StufeId, p.KlasseId, true, Raten(neuBetrag, p.Raten.Select(r => r.Faellig).ToArray()), p.PeriodeId)));
             }
         await PostenLadenAsync(s, jahr);
         foreach (var schueler in s.Aktive) KontoFuer(s, schueler, schueler.Klasse!);

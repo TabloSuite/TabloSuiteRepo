@@ -4,9 +4,12 @@ namespace Skoulou.Tests.Simulation;
 
 internal enum SchulTyp { Primaire, College, Lycee, Langues }
 
+/// <summary>Sprachschule: Gebühr fürs ganze Jahr, je Session (« Formation Session n ») oder je Session mit gleicher Bezeichnung + Zuschlag einer Klasse.</summary>
+internal enum SessionGebuehr { Jahr, JeSession, GleicheBezeichnung }
+
 /// <summary>Steckbrief einer simulierten Schule (Klassen je Stufe, Klassengröße von–bis).</summary>
 internal sealed record SchulProfil(string Name, string Ort, SchulTyp Typ, PeriodenArt Perioden, int KlassenJeStufe, int MinGroesse, int MaxGroesse,
-    long? Preis = null, decimal? Prozent = null);
+    long? Preis = null, decimal? Prozent = null, SessionGebuehr Gebuehr = SessionGebuehr.Jahr);
 
 internal sealed record SimFach(Guid Id, string Name, decimal Koeffizient);
 
@@ -45,7 +48,9 @@ internal sealed class SimPeriode(Guid id, int nr, string titel, DateOnly beginn,
     public bool Abgeschlossen { get; set; }
 }
 
-internal sealed record SimPosten(Guid Id, string Name, long Betrag, Guid? StufeId, IReadOnlyList<(long Betrag, DateOnly Faellig)> Raten);
+/// <summary>Gebührenposten; <paramref name="PeriodeId"/> = nur für Teilnehmer dieser Session (E7b), <paramref name="KlasseId"/> = nur diese Klasse.</summary>
+internal sealed record SimPosten(Guid Id, string Name, long Betrag, Guid? StufeId, IReadOnlyList<(long Betrag, DateOnly Faellig)> Raten,
+    Guid? KlasseId = null, Guid? PeriodeId = null);
 
 internal sealed class SimJahr(Guid id, string bezeichnung, DateOnly beginn, DateOnly ende)
 {
@@ -58,7 +63,23 @@ internal sealed class SimJahr(Guid id, string bezeichnung, DateOnly beginn, Date
     public List<SimPosten> Posten { get; } = [];
     public long Preis { get; set; }
 
-    public long SollFuer(Guid? stufeId) => Posten.Where(p => p.StufeId is null || p.StufeId == stufeId).Sum(p => p.Betrag);
+    /// <summary>
+    /// Unabhängige Geltung: Jahresposten nach der Stufe des Kontos; Posten einer Session nur, wenn der Schüler im Jahr in
+    /// einer passenden Klasse dieser Session eingeschrieben war (Session-Klassen enden mit ihrer Session).
+    /// </summary>
+    public bool Gilt(SimPosten p, JahresKonto k)
+    {
+        if (p.PeriodeId is not { } periode) return p.KlasseId is null && (p.StufeId is null || p.StufeId == k.StufeId);
+        foreach (var id in k.Klassen)
+        {
+            var c = Klassen.FirstOrDefault(x => x.Id == id);
+            if (c is null || c.Session == 0 || Perioden[c.Session - 1].Id != periode) continue;
+            if ((p.KlasseId is null || p.KlasseId == c.Id) && (p.StufeId is null || p.StufeId == c.Stufe.Id)) return true;
+        }
+        return false;
+    }
+
+    public long SollFuer(JahresKonto k) => Posten.Where(p => Gilt(p, k)).Sum(p => p.Betrag);
     public long PostenBetrag(Guid? stufeId, string name) => Posten.Where(p => p.Name.StartsWith(name, StringComparison.Ordinal) && (p.StufeId is null || p.StufeId == stufeId)).Sum(p => p.Betrag);
 }
 
@@ -66,6 +87,8 @@ internal sealed class SimJahr(Guid id, string bezeichnung, DateOnly beginn, Date
 internal sealed class JahresKonto
 {
     public Guid? StufeId { get; set; }
+    /// <summary>Klassen des Jahres mit gültiger Einschreibung (für Posten einer Session).</summary>
+    public HashSet<Guid> Klassen { get; } = [];
     public long Ermaessigung { get; set; }
     public long Bezahlt { get; set; }
 }
@@ -84,6 +107,16 @@ internal sealed class SimSchueler(Guid id, string vorname, string nachname, doub
     /// <summary>Sprachschule: nach einer Session weder Wechsel noch Austritt (die Einschreibung endet automatisch mit der Session).</summary>
     public bool SessionVergessen { get; set; }
     public Dictionary<Guid, JahresKonto> Konten { get; } = [];
+}
+
+/// <summary>Session-Teilnehmer ohne Wechsel/Austritt: nach Session <see cref="Session"/> nicht mehr in Listen/Abrechnung, bis er ggf. ab Session <see cref="ZurueckAb"/> wiederkommt.</summary>
+internal sealed class SimVergessen(SimSchueler schueler, Guid jahrId, int session)
+{
+    public SimSchueler Schueler { get; } = schueler;
+    public Guid JahrId { get; } = jahrId;
+    public int Session { get; } = session;
+    public int? ZurueckAb { get; set; }
+    public bool Archiviert { get; set; }
 }
 
 internal sealed class SimSchule(int nr, SchulProfil profil)
@@ -105,6 +138,7 @@ internal sealed class SimSchule(int nr, SchulProfil profil)
     public Dictionary<Guid, int> KinderJeEltern { get; } = [];
     public Dictionary<Guid, Guid> Kategorien { get; } = [];
     public bool Suspendiert { get; set; }
+    public List<SimVergessen> Vergessene { get; } = [];
 
     /// <summary>Netto der manuellen Buchungen (Recette +, Dépense −, Gegenbuchungen abgezogen).</summary>
     public long ManuellNetto;
@@ -116,7 +150,7 @@ internal sealed class SimSchule(int nr, SchulProfil profil)
         foreach (var j in Jahre)
         {
             if (s.Konten.TryGetValue(j.Id, out var k))
-                saldo += Math.Max(0, j.SollFuer(k.StufeId) - k.Ermaessigung) - k.Bezahlt;
+                saldo += Math.Max(0, j.SollFuer(k) - k.Ermaessigung) - k.Bezahlt;
             if (j.Id == bisJahr) break;
         }
         return saldo;

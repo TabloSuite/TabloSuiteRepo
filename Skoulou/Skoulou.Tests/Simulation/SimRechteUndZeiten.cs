@@ -85,7 +85,13 @@ internal sealed partial class Simulation
                 Direktor = await db.Users.Where(u => u.SchuleId == laufend.SchuleId && u.Rolle == Skoulou.Core.Rechte.Rollen.Direktor).Select(u => u.Id).FirstAsync(),
                 Klassenfach = await db.Klassenfaecher.Where(kf => kf.KlasseId == klasse).OrderBy(kf => kf.Reihenfolge).Select(kf => kf.Id).FirstAsync(),
                 Periode = await db.Perioden.Where(p => p.SchuljahrId == vorjahr).OrderBy(p => p.Nr).Select(p => p.Id).FirstAsync(),
-                Admin = await db.Users.Where(u => u.Rolle == Skoulou.Core.Rechte.Rollen.SuperAdmin).OrderBy(u => u.UserName).Select(u => u.Id).FirstAsync(),
+                Admin = await db.Users.Where(u => u.Rolle == Skoulou.Core.Rechte.Rollen.SuperAdmin).OrderByDescending(u => u.IstHauptAdmin).ThenBy(u => u.UserName).Select(u => u.Id).FirstAsync(),
+                Sprache = await db.GebuehrenPosten.Where(p => p.PeriodeId != null && db.Schuljahre.Any(j => j.Id == p.SchuljahrId && j.Status == SchuljahrStatus.Laufend))
+                    .Select(p => new
+                    {
+                        p.SchuljahrId,
+                        Direktor = db.Users.Where(u => u.SchuleId == p.SchuleId && u.Rolle == Skoulou.Core.Rechte.Rollen.Direktor).Select(u => u.Id).First()
+                    }).FirstOrDefaultAsync(),
                 VorjahrZeitraum = await db.Schuljahre.Where(j => j.Id == vorjahr).Select(j => new { j.Beginn, j.Ende }).SingleAsync(),
                 Rechnung = await db.Plattformrechnungen.Where(r => r.SchuleId == laufend.SchuleId).OrderByDescending(r => r.Anzahl).Select(r => r.Id).FirstAsync(),
                 Zahlung = await db.Zahlungen.Where(z => z.SchuleId == laufend.SchuleId).OrderBy(z => z.Quittungsnummer).Select(z => z.Id).FirstAsync()
@@ -112,6 +118,12 @@ internal sealed partial class Simulation
             ("Conseil de classe", () => api.Conseil.UebersichtAsync(dir, k.Id, p.Id)),
             ("Bulletins (année précédente)", () => api.BulletinLesen.SucheAsync(dir, vorjahr.Id, null, null, null, null, 0, 50)),
             ("Cockpit direction", () => api.Cockpit.LadeAsync(dir)),
+            ("Classes (direction)", () => api.Klassen.KlassenAsync(dir, jahr)),
+            ("Journal de l'école (direction)", () => api.Protokoll.SchulJournalAsync(dir, new ProtokollFilter(), null)),
+            ("Journal de l'école (recherche « paiement »)", () => api.Protokoll.SchulJournalAsync(dir, new ProtokollFilter("paiement"), null)),
+            ("Journal de l'école (Finances)", () => api.Protokoll.SchulJournalAsync(dir, new ProtokollFilter(), "finanzen")),
+            ("Comptes élèves (école de langues, frais par session)", () => x.Sprache is { } sp ? api.Gebuehren.KontenAsync(sp.Direktor, sp.SchuljahrId, null, null, null, 0, 50) : Task.CompletedTask),
+            ("Administrateurs (admin principal)", () => api.Administratoren.ListeAsync(Admin)),
             ("Factures SKOULOU (admin)", () => api.Rechnungen.ListeAsync(Admin, null, null, null, 0, 50)),
             ("Factures SKOULOU (école)", () => api.Rechnungen.ListeAsync(dir, null, null, null, 0, 50)),
             ("Compteurs factures (admin)", () => api.Rechnungen.ZaehlerAsync(Admin)),

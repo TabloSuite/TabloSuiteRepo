@@ -8,13 +8,13 @@ namespace Skoulou.Tests.Simulation;
 
 /// <summary>
 /// Simulation (Bauplan §9.4), nur mit <c>SKOULOU_SIM=1</c>. Optional: <c>SKOULOU_SIM_FAKTOR</c> (Klassengröße, Standard 1),
-/// <c>SKOULOU_SIM_BEHALTEN=SkoulouDB_SIM</c> (Datenbank für den Browser-Rundgang behalten). Ergebnis zusätzlich in
-/// %TEMP%\skoulou-neu\E7\simulation-ergebnis.txt (ohne Passwörter).
+/// <c>SKOULOU_SIM_BEHALTEN=SkoulouDB_SIM</c> (Datenbank für die Klick-Simulation behalten). Ergebnis zusätzlich in
+/// %TEMP%\sim\skoulou\simulation-ergebnis.txt (ohne Passwörter).
 /// </summary>
 public class SimulationTests(ITestOutputHelper ausgabe)
 {
     [SimFact]
-    public async Task Drei_Schuljahre_mit_ueber_zwanzig_Schulen_halten_alle_Invarianten()
+    public async Task Vier_Schuljahre_mit_ueber_dreissig_Schulen_halten_alle_Invarianten()
     {
         var faktor = double.TryParse(Environment.GetEnvironmentVariable("SKOULOU_SIM_FAKTOR"), NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f : 1.0;
         var datenbank = new SimDatenbank();
@@ -61,7 +61,7 @@ public class SimulationTests(ITestOutputHelper ausgabe)
 
             Assert.True(sim.Fehler.IsEmpty, $"{sim.Fehler.Count} Befund(e), z. B.:\n" + string.Join("\n", sim.Fehler.Take(15)));
             Assert.True(sim.Verletzungen.Count == 0, $"{sim.Verletzungen.Count} Invariante(n) verletzt, z. B.:\n" + string.Join("\n", sim.Verletzungen.Take(15)));
-            Assert.True(sim.Schulen.Count >= 20, "Mindestens 20 Schulen.");
+            Assert.True(sim.Schulen.Count >= 30, "Mindestens 30 Schulen.");
         }
         catch (Exception ex)
         {
@@ -89,7 +89,7 @@ public class SimulationTests(ITestOutputHelper ausgabe)
         foreach (var (liste, ms) in sim.Zeiten) text.AppendLine($"  {(ms > 500 ? "!!" : "  ")} {liste}: {ms:0}");
         foreach (var e in sim.Fehler) text.AppendLine("  " + e);
         ausgabe.WriteLine(text.ToString());
-        var ordner = Path.Combine(Path.GetTempPath(), "skoulou-neu", "E7");
+        var ordner = Path.Combine(Path.GetTempPath(), "sim", "skoulou");
         Directory.CreateDirectory(ordner);
         File.WriteAllText(Path.Combine(ordner, "antwortzeiten.txt"), text.ToString());
         Assert.True(sim.Fehler.IsEmpty, string.Join(Environment.NewLine, sim.Fehler));
@@ -98,7 +98,7 @@ public class SimulationTests(ITestOutputHelper ausgabe)
     private void Schreiben(string text)
     {
         ausgabe.WriteLine(text);
-        var ordner = Path.Combine(Path.GetTempPath(), "skoulou-neu", "E7");
+        var ordner = Path.Combine(Path.GetTempPath(), "sim", "skoulou");
         Directory.CreateDirectory(ordner);
         File.WriteAllText(Path.Combine(ordner, "simulation-ergebnis.txt"), text);
     }

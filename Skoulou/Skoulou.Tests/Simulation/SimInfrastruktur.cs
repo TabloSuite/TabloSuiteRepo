@@ -151,6 +151,9 @@ internal sealed class SimApi(SimDienste d)
     public RegistrierungService Registrierung => d.Hole<RegistrierungService>();
     public SchulVerwaltungService Schulen => d.Hole<SchulVerwaltungService>();
     public KontenVerwaltungService AdminKonten => d.Hole<KontenVerwaltungService>();
+    public AdministratorenService Administratoren => d.Hole<AdministratorenService>();
+    public ElternKinderService ElternKinder => d.Hole<ElternKinderService>();
+    public ProtokollService Protokoll => d.Hole<ProtokollService>();
     public TarifService Tarife => d.Hole<TarifService>();
     public SchulService Schule => d.Hole<SchulService>();
     public SchuljahrService Jahre => d.Hole<SchuljahrService>();
