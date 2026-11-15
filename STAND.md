@@ -1,40 +1,58 @@
-# TabloSuite – Arbeitsstand 14.11.2026, abends
+# TabloSuite – Arbeitsstand 15.11.2026, ~01:10
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. LÄUFT: Echte Simulationen beider Apps (Nutzer 14.11. abends, vor dem Deploy)
+## 0. HIER WEITERMACHEN (neuer Chat): SKOULOU – Simulationen S3 + S4 + Ladekreis
 
-Auftrag `docs/Simulationen-Auftrag.md` (S1 eNOTE Daten, S2 eNOTE Klick-Simulation mit App im Hintergrund, S3 SKOULOU Daten
-volle Größe, S4 SKOULOU Klick-Simulation) – nacheinander, je 1 Agent, Stand in der Tabelle dort. **Der Nutzer deployt erst,
-wenn alles ok ist.** Danach ggf. neue Migrationen auf Azure (OK liegt vor) und push.
+**eNOTE ist fertig** (Simulationen S1 + S2 + Nutzerwünsche W1–W3, alles gepusht bis 282c0b8, 435 Tests grün, Azure-DB =
+lokal = `20261114233118_PreisAnpassungEntwarnung`). eNOTE kann der Nutzer jederzeit deployen.
+**Der Nutzer deployt SKOULOU erst, wenn S3 + S4 sauber sind** (Nutzer 14.11.: « Danach mache ich Deploy, wenn alles ok ist »).
 
-**SKOULOU-Auftrag für den neuen Chat (zusätzlich zu S3/S4) – Nutzer 15.11.:**
-- **Ladekreis fehlt am Handy beim Knopf « Registrieren »/« S'inscrire »** (und vermutlich bei Anmelden/anderen klassischen
-  Formularen). In eNOTE behoben mit 7b68100 « Ladeanzeige überall »: globale Ladeanzeige für klassische Formulare
-  (`data-ladeanzeige`) statt Inline-Skript (lief nach Blazor-Navigation am Handy nie), bfcache/« Zurück » gibt den Knopf frei,
-  Spinner-Fallback ohne `color-mix` für ältere Mobil-Browser, JS versioniert einbinden; Muster `eNOTE.WebApp/Components/Pages/
-  Register.razor` (`isSubmitting` + `btn-spinner`). In SKOULOU alle Formular-/Aktionsknöpfe prüfen (Registrierung Schule,
-  Schüler-Selbstregistrierung, Connexion, Mot de passe oublié) und am Handy (390×844, auch langsame Verbindung) testen.
+Reihenfolge, immer nur **1 Agent**, Agent committet, Lead prüft + pusht, zwischendurch kurz auf Deutsch berichten:
+1. **S3 SKOULOU Daten-Simulation** in voller Größe mit den neuen Regeln – Auftrag `docs/Simulationen-Auftrag.md` (Gemeinsame
+   Regeln + Abschnitt S3; Tabelle dort: S1/S2 erledigt). Vorbild/Erfahrung aus eNOTE: `docs/Simulation-eNOTE.md`.
+2. **S4 SKOULOU Klick-Simulation** (App im Hintergrund auf `SkoulouDB_SIM`, Port 5181, mehrere gleichzeitige Nutzer aller
+   Rollen, echte Abläufe über eine Periode + « Monkey » je Rolle). In S2 bei eNOTE besonders ergiebig – in SKOULOU gezielt
+   prüfen: **Zeichenverlust bei langsamer Verbindung** (Felder mit `@bind:event="oninput"`/Wert-Überschreiben, mit 250/400 ms
+   Latenz tippen), **nicht registrierte Dienste** (jede Seite/jeder Dialog einmal öffnen → 500?), **gleichzeitige Buchungen**
+   (zwei Geräte derselben Schule: Zahlungen/Quittungsnummern, Kasse, Noten), « Mot de passe oublié », Doppelklick auf Speichern.
+3. **Ladekreis am Handy** (Nutzer 15.11.): Knopf « S'inscrire »/Registrieren zeigt am Handy keinen Ladekreis (vermutlich
+   auch Connexion und andere klassische Formulare). In eNOTE behoben mit 7b68100 « Ladeanzeige überall »: globale Ladeanzeige
+   für klassische Formulare (`data-ladeanzeige`) statt Inline-Skript (lief nach Blazor-Navigation am Handy nie),
+   bfcache/« Zurück » gibt den Knopf frei, Spinner-Fallback ohne `color-mix` für ältere Mobil-Browser, JS versioniert
+   einbinden; Muster `eNOTE/eNOTE.WebApp/Components/Pages/Register.razor` (`isSubmitting` + `btn-spinner`). In SKOULOU alle
+   Formular-/Aktionsknöpfe prüfen (Registrierung Schule, Schüler-Selbstregistrierung, Connexion, Mot de passe oublié), am
+   Handy 390×844 auch mit langsamer Verbindung testen. Kann in S4 mit erledigt werden (dem Agenten mitgeben).
+4. **Abschluss SKOULOU:** neue Migrationen (falls S3/S4 welche bringen) auf `SkoulouDB` + Azure `Skoulou-Database`
+   (OK des Nutzers für den Abschluss liegt vor; nur additive Änderungen, vorher Up() prüfen) per
+   `dotnet ef database update <Migration> --project Skoulou/Skoulou.WebApp --configuration Release --connection
+   "Server=tcp:tablosuite-sqlserver.database.windows.net,1433;Database=Skoulou-Database;Authentication=Active Directory Default;Encrypt=True;…"`,
+   lesend prüfen (`%TEMP%\enote-scripts\azure-sql.ps1 -Datenbank Skoulou-Database -Sql "…"`), Tests, push → Nutzer deployt
+   SKOULOU (und eNOTE, falls noch nicht). Nach dem Deploy: Login DodjiEtse, Menü « Administrateurs », Startseiten-Video;
+   bei 0 Konten `az webapp restart -g TabloSuiteRGruppe -n skoulou`.
 
-**Nach S2, vor S3 einschieben – Nutzerwunsch 14.11. spät (« Die Lösungen der zwei Fragen umsetzen »), eNOTE:**
-- W1 **Entwarnung bei aufgehobener Tariferhöhung:** Hebt der Admin eine angekündigte Erhöhung auf, bekommen die Besitzer, die
-  die Ankündigung erhalten haben, automatisch eine Entwarnung (Dialog mit vorausgefülltem, änderbarem Titel/Text und Schalter
-  « Envoyer aussi par e-mail », standardmäßig an, wenn die Ankündigung per Mail ging; Journal-Eintrag; Text « vous »).
-- W2 **Land bei der Registrierung:** Feld « Pays » im Registrierungsformular (Länder mit Konfiguration, Vorauswahl Togo);
-  Land später änderbar durch den Besitzer (Paramètres, Hinweis auf Folgen: Ortszeit, Mobile-Money-Anbieter) und den Admin.
+**Stand SKOULOU jetzt:** Azure Skoulou-Database = lokal SkoulouDB = `20261114182350_SessionGebuehrUndHauptAdmin`; letzter
+Code-Stand E7b komplett (bis 495ac44), 542 Tests grün (+ SQL 561). Noch nicht deployt seit E7a (enthält Werbevideo v3,
+E7b Zusatz + Rundgang).
 
-## 1. Stand 14.11. abends – Abschluss erledigt, Nutzer deployt
+## 1. eNOTE – Simulationen und Wünsche (14./15.11., fertig)
 
-**Alles fertig, getestet, gepusht. Azure-DBs = lokal.** Der Nutzer deployt jetzt **eNOTE und SKOULOU** (VS-Profile).
-- DB-Stand: Skoulou-Database (Azure) + SkoulouDB = `20261114182350_SessionGebuehrUndHauptAdmin`; ENote-Database (Azure) +
-  ENOTEDB = `20261113221524_AufenthaltsPositionen` (eNOTE heute ohne Schemaänderung). Tests: eNOTE 409, SKOULOU 542 grün
-  (+ SQL 561 im Agentenlauf).
-- Nach dem SKOULOU-Deploy prüfen: Anmeldung DodjiEtse, Menü « Administrateurs » sichtbar (ältestes Admin-Konto wird beim
-  Start automatisch Hauptadmin), Startseite zeigt das neue Video. Falls 0 Konten/Login scheitert: `az webapp restart`.
-- Danach offen: nichts aus dem Plan. Ideen/Beobachtungen: « Comptes élèves » (0,4 s bei 570 Konten) beobachten.
+- **S1 Daten** (5706474, e573224, cc2fae1): 39 Läden, 7 Länder, 187 Mitarbeitende, 7.136 Kunden, ~20 Monate, 110.982
+  Verkäufe; 4 Fehler behoben (Bestand beim Produkt-Speichern zurückgesetzt, Gratis-Ticket 0 F, Mobile Money ohne Land, Duzen
+  in Mail). DB `ENOTEDB_SIM` behalten.
+- **S2 Klicks** (8f253df … 0344763): 13 gleichzeitige Nutzer, ~7.500 Klicks; 9 Fehler behoben (Zeichenverlust bei langsamer
+  Verbindung in 8 Feldern, « Mot de passe oublié » 500 – Dienst nicht registriert, zwei Kassen verloren Lagerabzüge → Sperre,
+  zweites Gerät nach Abschluss, Festbetrag-Remise je Zeile, Remise 0 %, Handy-Überlauf /remises …).
+- **W1–W3** (e3df98a, 1062f91, 7aa6d0a, 424f7a5, 282c0b8): Entwarnung bei aufgehobener Tariferhöhung (Dialog + Mail an die
+  Empfänger der Ankündigung), « Pays » bei Registrierung + änderbar (Besitzer/Admin), Kassensperre (`sp_getapplock`) für alle
+  Kassenbuchungen, « En caisse »/Abschluss aus der DB, Rembourser-Grenze. Migration `20261114233118_PreisAnpassungEntwarnung`
+  lokal + Azure eingespielt (15.11. ~01:05).
+- Bericht `docs/Simulation-eNOTE.md`, Bilder `Pictures\Simulation-eNOTE\`.
+
+## 2. Frühere Stände (14.11.)
 
 **Erledigt am 14.11. nachmittags/abends (Reihenfolge der Sitzung):**
 1. ✅ **« Pourquoi SKOULOU ? » v3** (14.11. nachmittags): 1:39, −16,7 LUFS, neue Oberfläche, ohne Sprecherin; in der App
@@ -66,7 +84,7 @@ Activité, Vos clients, Compte) in der App, gepusht bis d4ba620. E7a Simulation 
 (530 MB) im Papierkorb. Entscheidungen des Nutzers: Treueprogramm eNOTE zurückgestellt; Session-Klassen automatisch
 beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte bezahlte SKOULOU-Rechnung ohne Verrechnung.
 
-## 2. SKOULOU-Neubau (Hauptprojekt)
+## 3. SKOULOU-Neubau (Hauptprojekt)
 
 **Seit 14.11. ~01:45 ist der Neubau LIVE** auf der bestehenden Web-App « skoulou » (skoulou.tablosuite.com, Startbefehl `dotnet Skoulou.WebApp.dll`), Azure-DB `Skoulou-Database` mit neuem Schema « Fundament » neu aufgebaut (leer, Admin aus Seed-Einstellungen). **Keine neuen Azure-Ressourcen anlegen** (Nutzer). Alte Projekte `SKOULOUAPP.*` sind aus Projektmappe und Repo entfernt (nur noch Git-Historie, z. B. f6c642e). Deploy durch den Nutzer: Profil « skoulou - Zip Deploy » liegt jetzt in `Skoulou/Skoulou.WebApp/Properties/PublishProfiles/` (lokal, nicht in Git). Nach jedem Neu-Erzeugen der Migration: Azure-DB vor dem Deploy neu aufbauen (löschen + `az sql db create` Basic 5 DTU 2 GB + `dotnet ef database update --connection` + `CREATE USER [skoulou] FROM EXTERNAL PROVIDER` mit datareader/datawriter). Eigenes Zip-Deploy: Zip mit `/`-Pfaden (PowerShell-Compress-Archive bricht auf Linux).
 
@@ -103,7 +121,7 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ---
 
-## 3. Videos
+## 4. Videos
 
 **Nutzer-Feedback 13.11.:** Die KI-Sprecherin wirkt unecht → **alle Videos ohne sie**; **ausführlich und informativ**; **jeden Klick zeigen** (welcher Knopf) und **welches Fenster sich öffnet**.
 - Neue Pipeline `lernen-v3` (Kopie von lernen-v2, alte bleibt): Ring + Beschriftung « Clic sur « … » » vor jedem Antippen, Banner « Fenêtre ouverte : « … » », Titelkarte statt Sprecherin, keine Zooms, Render in delivery-Qualität.
@@ -113,7 +131,7 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ---
 
-## 4. eNOTE und Live-Betrieb
+## 5. eNOTE und Live-Betrieb
 
 - Alles von heute ist committet und gepusht (u. a. Listen seitenweise/durchsuchbar in eNOTE 4bf5156/2fa3f5c/0277bf3 und SKOULOU-alt c651544, Start-Admin-Seed eNOTE, öffentliches Kontaktformular, Dialoge schließen nicht beim Klick daneben, PIN-Einrichtung, Responsable-Rechte, Mail-Routing über contact@tablosuite.com mit [eNOTE]/[SKOULOU] im Betreff).
 - **NEU 13.11. abends (f794f4f): eNOTE « Enregistrer sans encaisser »** – Leistungen anwesender Kunden (Praxis mit Übernachtung) fest erfassen, am Ende alles zusammen kassieren; Details in eNOTE/Projektuebersicht.md, Bilder Pictures/eNOTE-Prestations-a-payer-2026-11-13. Migration 20261113221524_AufenthaltsPositionen am 14.11. auch auf Azure eingespielt (Azure = lokal) → eNOTE kann deployt werden.
@@ -122,7 +140,7 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ---
 
-## 5. Feste Regeln (Kurzfassung)
+## 6. Feste Regeln (Kurzfassung)
 
 - Antworten auf Deutsch; App-Texte Französisch mit « vous »; nie « francophone » sagen; keine Preise von HeyGen o. ä. ungefragt nennen.
 - Fertige, grüne Schritte direkt committen + pushen (nicht fragen). Push braucht manchmal die GitHub-Anmeldung des Nutzers.
@@ -134,6 +152,6 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ---
 
-## 6. Nächste Schritte
+## 7. Nächste Schritte
 
-Siehe §1 (Reihenfolge 1–4). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
+Siehe §0 (Reihenfolge 1–4). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
