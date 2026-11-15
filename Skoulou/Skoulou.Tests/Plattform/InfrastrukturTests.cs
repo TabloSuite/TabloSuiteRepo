@@ -187,6 +187,22 @@ public class InfrastrukturTests
     public void Nach_einer_Ablehnung_geht_es_auf_dieselbe_Seite_mit_ihren_Parametern_zurueck(string seite, string erwartet)
         => Assert.Equal(erwartet, RateLimits.ZielNachAblehnung(new Uri(seite)));
 
+    [Theory]
+    // Azure, Weiterleitung noch nicht ausgewertet: der letzte Eintrag (vom Eingangsserver angehängt) ist der Besucher
+    [InlineData("169.254.130.1", "203.0.113.5:51234", false, true, "203.0.113.5")]
+    [InlineData("169.254.130.1", "10.9.9.9, 203.0.113.5:51234", false, true, "203.0.113.5")]   // erfundener Eintrag davor zählt nicht
+    [InlineData("169.254.130.1", "[2001:db8::7]:443", false, true, "2001:db8::7")]
+    // Azure, vom Framework schon ausgewertet (X-Original-For): die Verbindung IST der Besucher, Reste sind nicht vertrauenswürdig
+    [InlineData("203.0.113.5", "10.9.9.9", true, true, "203.0.113.5")]
+    // nicht hinter Azure: eine mitgeschickte Kopfzeile wird ignoriert
+    [InlineData("198.51.100.20", "203.0.113.5", false, false, "198.51.100.20")]
+    [InlineData("169.254.130.1", "", false, true, "169.254.130.1")]
+    [InlineData("169.254.130.1", "pas-une-adresse", false, true, "169.254.130.1")]
+    [InlineData(null, null, false, false, "unbekannt")]
+    public void Anschluss_ist_die_Adresse_des_Besuchers_auch_hinter_dem_Azure_Eingangsserver(
+        string? verbindung, string? weitergeleitet, bool schonAusgewertet, bool hinterAzure, string erwartet)
+        => Assert.Equal(erwartet, Anschluss.Adresse(verbindung, weitergeleitet, schonAusgewertet, hinterAzure));
+
     [Fact]
     public void Meldung_zum_Limit_nennt_keine_feste_Minute()
     {

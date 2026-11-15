@@ -34,7 +34,7 @@ public static class RateLimits
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             Regel(o, Anmeldung, AnmeldungenJeMinute, TimeSpan.FromMinutes(1));
             Regel(o, Registrierung, RegistrierungenJeZehnMinuten, TimeSpan.FromMinutes(10));
-            o.AddPolicy(Passwort, http => Fenster(PasswortSchluessel(http.User, http.Connection.RemoteIpAddress?.ToString()),
+            o.AddPolicy(Passwort, http => Fenster(PasswortSchluessel(http.User, Anschluss.Adresse(http)),
                 PasswortJeKontoJeZehnMinuten, TimeSpan.FromMinutes(10)));
             Regel(o, PasswortOublie, PasswortOublieJeZehnMinuten, TimeSpan.FromMinutes(10));
             Regel(o, Kontakt, 5, TimeSpan.FromMinutes(10));
@@ -74,7 +74,7 @@ public static class RateLimits
     }
 
     private static void Regel(RateLimiterOptions o, string name, int anzahl, TimeSpan fenster)
-        => o.AddPolicy(name, http => Fenster("ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unbekannt"), anzahl, fenster));
+        => o.AddPolicy(name, http => Fenster("ip:" + Anschluss.Adresse(http), anzahl, fenster));
 
     private static RateLimitPartition<string> Fenster(string schluessel, int anzahl, TimeSpan fenster)
         => RateLimitPartition.GetFixedWindowLimiter(schluessel,

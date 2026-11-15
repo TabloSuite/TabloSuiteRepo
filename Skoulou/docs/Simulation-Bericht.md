@@ -323,8 +323,9 @@ Rundgang 0 Befunde, Rest 20 von 20, Server-Log ohne Fehler (zwei bekannte EF-War
 
 ### Offene Punkte
 
-1. **Anschluss hinter dem Azure-Proxy:** die Schutzgrenzen zählen `RemoteIpAddress`. Nach dem Deploy einmal prüfen, ob
-   die App die Adresse des Besuchers sieht (weitergeleitete Kopfzeilen) – sonst teilen sich alle Nutzer einen Zähler.
+1. ~~Anschluss hinter dem Azure-Proxy~~ – erledigt am 15.11.: `Anschluss.Adresse` bestimmt die Adresse des Besuchers
+   unabhängig von der Einstellung der Plattform (letzter Eintrag von « X-Forwarded-For » hinter Azure, sonst die
+   Verbindung; schon vom Framework ausgewertet → Verbindung). Alle Schutzgrenzen und die Registrierungsbremse nutzen sie.
 2. QR-Prüfseite: Bulletin-Nummer und Datum zusätzlich anzeigen? (heute bewusst knapp, Test schreibt die Felder fest).
 3. Der Monkey hat in zwei Schulen der SIM-DB Unsinn angelegt (Klassen, Schuljahre 2027-28/2028-29) – nur Testdaten.
 

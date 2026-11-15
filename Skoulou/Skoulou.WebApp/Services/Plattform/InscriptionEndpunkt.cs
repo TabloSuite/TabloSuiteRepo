@@ -23,7 +23,7 @@ public static class InscriptionEndpunkt
             if (!string.IsNullOrEmpty(form["site"])) return Results.LocalRedirect("/auth/inscription?envoye=" + (art == RegistrierungsArt.Eleve ? "eleve" : "direction"));
             try
             {
-                var ergebnis = await registrierung.RegistrierenAsync(Lies(form, art), http.Connection.RemoteIpAddress?.ToString(), http.RequestAborted);
+                var ergebnis = await registrierung.RegistrierenAsync(Lies(form, art), Anschluss.Adresse(http), http.RequestAborted);
                 return Results.LocalRedirect($"/auth/inscription?envoye={(art == RegistrierungsArt.Eleve ? "eleve" : "direction")}&identifiant={Uri.EscapeDataString(ergebnis.Identifiant)}");
             }
             catch (FachFehler f)
