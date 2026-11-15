@@ -84,15 +84,19 @@ public static class VideoKatalog
         ("Administrateur", "Administrateur", "Piloter la plateforme."),
     ];
 
+    /// <summary>Gruppe der eigenen Rolle (erscheint nach « Pour bien commencer », auf der Seite als « Votre rôle » markiert).</summary>
+    public static string EigeneGruppe(ClaimsPrincipal user)
+        => user.IsInRole(AppRollen.SuperAdmin) ? "Administrateur"
+            : user.IsInRole(AppRollen.ProduktOwner) ? "Responsable"
+            : user.IsInRole(AppRollen.Besitzer) ? "Propriétaire"
+            : "Employé";
+
     /// <summary>
     /// Sichtbare Videos gruppiert: « Pour bien commencer » zuerst, dann die eigene Rolle, danach die übrigen.
     /// </summary>
     public static IReadOnlyList<Gruppe> FuerNutzer(ClaimsPrincipal user)
     {
-        var eigene = user.IsInRole(AppRollen.SuperAdmin) ? "Administrateur"
-            : user.IsInRole(AppRollen.ProduktOwner) ? "Responsable"
-            : user.IsInRole(AppRollen.Besitzer) ? "Propriétaire"
-            : "Employé";
+        var eigene = EigeneGruppe(user);
         return GruppenInfo
             .Select(g => new Gruppe(g.Fuer, g.Titel, g.Untertitel, Videos.Where(v => v.Fuer == g.Fuer && v.DarfSehen(user)).ToList()))
             .Where(g => g.Videos.Count > 0)

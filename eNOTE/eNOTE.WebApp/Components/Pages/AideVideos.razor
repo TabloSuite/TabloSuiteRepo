@@ -3,6 +3,7 @@
 @using ENote.WebApp.Services
 @inject AuthenticationStateProvider authStateProvider
 @inject IWebHostEnvironment umgebung
+@inject IJSRuntime JS
 
 <PageTitle>Vidéos d'aide</PageTitle>
 
@@ -25,10 +26,22 @@
             var istPourquoi = g.Fuer == VideoKatalog.Alle_;
             // Große Einzelkarte nur, wenn « Pour tous » genau ein Video hat; sonst normales Raster wie bei den Rollen
             var gross = istPourquoi && g.Videos.Count == 1;
-            <section class="vh-gruppe @(gross ? "vh-gruppe-pourquoi" : "")" aria-labelledby="vh-@Slug(g.Fuer)">
+            var bereich = Bereich(g.Fuer);
+            @* Jeder Nutzerbereich ist ein eigenes, farbig markiertes Feld – man sieht sofort, wo ein Bereich endet. *@
+            <section class="vh-gruppe vh-rolle-@bereich.Klasse @(gross ? "vh-gruppe-pourquoi" : "")" aria-labelledby="vh-@Slug(g.Fuer)">
                 <div class="vh-gruppe-kopf">
-                    <h2 id="vh-@Slug(g.Fuer)">@g.Titel</h2>
-                    <p>@g.Untertitel@(g.Videos.Count > 1 ? $" · {g.Videos.Count} vidéos · {Gesamt(g.Videos)}" : "")</p>
+                    <span class="vh-gruppe-symbol" aria-hidden="true"><Icon Name="@bereich.Icon" Groesse="22" /></span>
+                    <div class="vh-gruppe-titel">
+                        <h2 id="vh-@Slug(g.Fuer)">
+                            @g.Titel
+                            @if (g.Fuer == eigene)
+                            {
+                                <span class="vh-eigene">Votre rôle</span>
+                            }
+                        </h2>
+                        <p>@g.Untertitel</p>
+                    </div>
+                    <span class="vh-gruppe-zahl">@(g.Videos.Count == 1 ? "1 vidéo" : $"{g.Videos.Count} vidéos") · @Gesamt(g.Videos)</span>
                 </div>
                 <div class="vh-raster">
                     @for (var i = 0; i < g.Videos.Count; i++)
@@ -37,7 +50,7 @@
                         var nr = i + 1;
                         var vorhanden = Vorhanden(v);
                         <article class="enote-card vh-karte @(vorhanden ? "" : "bald")">
-                            <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => offen = v">
+                            <button type="button" class="vh-bild" disabled="@(!vorhanden)" aria-label="Regarder : @v.Titel" @onclick="() => OeffnenAsync(v)">
                                 @if (PosterVorhanden(v))
                                 {
                                     <img src="@PosterUrl(v)" alt="" loading="lazy" />
@@ -74,7 +87,7 @@
     @* Schließen nur über den Knopf – ein Fehlklick neben das Video beendet es nicht. *@
     <div class="lp-video-overlay">
         <div class="lp-video-box" @onclick:stopPropagation="true">
-            <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="() => offen = null"><Icon Name="x" Groesse="20" /></button>
+            <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="SchliessenAsync"><Icon Name="x" Groesse="20" /></button>
             <video src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline></video>
         </div>
     </div>
@@ -83,11 +96,40 @@
 @code {
     private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
     private VideoKatalog.LernVideo? offen;
+    private string eigene = "";
+
+    /// <summary>Farbe (CSS-Klasse) und Symbol je Nutzerbereich.</summary>
+    private static (string Klasse, string Icon) Bereich(string fuer) => fuer switch
+    {
+        VideoKatalog.Alle_ => ("tous", "sparkles"),
+        "Employé" => ("employe", "caisse"),
+        "Propriétaire" => ("proprietaire", "store"),
+        "Responsable" => ("responsable", "users"),
+        _ => ("admin", "shield")
+    };
 
     protected override async Task OnInitializedAsync()
     {
         var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
         gruppen = VideoKatalog.FuerNutzer(user);
+        eigene = VideoKatalog.EigeneGruppe(user);
+    }
+
+    /// <summary>
+    /// Vor dem Öffnen die Position der Seite merken, nach dem Schließen wiederherstellen: am Handy dreht das Vollbild ins
+    /// Querformat, die Seite ordnet sich um und stünde sonst ganz oben statt beim angesehenen Video.
+    /// </summary>
+    private async Task OeffnenAsync(VideoKatalog.LernVideo v)
+    {
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.merken"); } catch (JSException) { }
+        offen = v;
+    }
+
+    private async Task SchliessenAsync()
+    {
+        offen = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.zurueck"); } catch (JSException) { }
     }
 
     private static string Slug(string text) => new string(text.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());

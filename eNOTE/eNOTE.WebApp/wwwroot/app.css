@@ -3341,3 +3341,34 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .enote-mehr { display: block; margin: .6rem auto; }
 .enote-suchleiste { display: flex; align-items: center; gap: .5rem; padding: .55rem .8rem; margin: 0 0 .7rem; border: 1px solid var(--enote-border-strong); border-radius: var(--enote-radius); background: var(--enote-surface); color: var(--enote-text-muted); }
 .enote-suchleiste input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--enote-text); font: inherit; }
+
+/* Vidéos d'aide (15.11.2026): jeder Nutzerbereich ist ein eigenes, farbig markiertes Feld – oben ein breiter Farbstreifen,
+   Symbol und Titel der Rolle, rechts Anzahl und Dauer. Farben als rgb-Tripel (ohne Farbmischfunktion – ältere Handy-Browser kennen sie nicht). */
+.vh-gruppe { --vh-rgb: 37, 99, 235; --vh-text: #1d4ed8; display: grid; gap: 1rem; margin-bottom: 2.2rem; padding: 1.15rem 1.25rem 1.35rem;
+    border: 1px solid rgba(var(--vh-rgb), .32); border-top: 6px solid rgb(var(--vh-rgb)); border-radius: var(--enote-radius-lg);
+    background: linear-gradient(rgba(var(--vh-rgb), .06), rgba(var(--vh-rgb), .06)), var(--enote-surface); }
+.vh-rolle-tous { --vh-rgb: 37, 99, 235; --vh-text: #1d4ed8; }
+.vh-rolle-employe { --vh-rgb: 13, 148, 136; --vh-text: #0f766e; }
+.vh-rolle-proprietaire { --vh-rgb: 217, 119, 6; --vh-text: #b45309; }
+.vh-rolle-responsable { --vh-rgb: 124, 58, 237; --vh-text: #6d28d9; }
+.vh-rolle-admin { --vh-rgb: 190, 24, 93; --vh-text: #be185d; }
+html[data-theme="dark"] .vh-rolle-tous { --vh-text: #93c5fd; }
+html[data-theme="dark"] .vh-rolle-employe { --vh-text: #5eead4; }
+html[data-theme="dark"] .vh-rolle-proprietaire { --vh-text: #fcd34d; }
+html[data-theme="dark"] .vh-rolle-responsable { --vh-text: #c4b5fd; }
+html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
+.vh-gruppe-kopf { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem .9rem; padding-bottom: .9rem; border-bottom: 1px dashed rgba(var(--vh-rgb), .45); }
+.vh-gruppe-symbol { flex: none; display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: 999px; background: rgb(var(--vh-rgb)); color: #fff; }
+.vh-gruppe-titel { flex: 1 1 14rem; min-width: 0; display: grid; gap: .15rem; }
+.vh-gruppe-kopf h2 { margin: 0; font-size: 1.3rem; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.vh-eigene { font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: .15rem .6rem; border-radius: var(--enote-radius-pill); background: rgb(var(--vh-rgb)); color: #fff; }
+.vh-gruppe-zahl { flex: none; font-size: .82rem; font-weight: 800; padding: .3rem .75rem; border-radius: var(--enote-radius-pill); border: 1px solid rgba(var(--vh-rgb), .5); color: var(--vh-text); background: var(--enote-surface); }
+.vh-gruppe .vh-fuer { color: var(--vh-text); }
+/* Im Feld ist etwas weniger Platz als vorher auf der Seite: Karten etwas schmaler, damit weiter drei nebeneinander passen. */
+.vh-gruppe .vh-raster { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); }
+.vh-gruppe.vh-gruppe-pourquoi .vh-raster { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 640px) {
+    .vh-gruppe { padding: .95rem .8rem 1.05rem; margin-bottom: 1.6rem; }
+    .vh-gruppe-kopf h2 { font-size: 1.15rem; }
+    .vh-gruppe-symbol { width: 2.5rem; height: 2.5rem; }
+}

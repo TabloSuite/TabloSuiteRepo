@@ -193,3 +193,41 @@ window.enoteScanner = (function () {
         stop: function () { ref = null; document.removeEventListener('keydown', handler, true); }
     };
 })();
+
+// « Vidéos d'aide »: Position der Seite merken, solange ein Video offen ist. Am Handy dreht das Vollbild ins Querformat;
+// dabei wechselt die Seite ihre Anordnung und stünde nach dem Schließen ganz oben statt beim angesehenen Video.
+window.enoteVideoPosition = (function () {
+    var gemerkt = null, timer = null, aktiv = false, lauf = 0;
+    function rollend() {
+        return [document.scrollingElement, document.querySelector('.enote-main')].filter(function (e) { return !!e; });
+    }
+    function setzen() {
+        if (!gemerkt) return;
+        var html = document.documentElement, vorher = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';   // « smooth » würde sichtbar von oben herunterfahren
+        rollend().forEach(function (e, i) {
+            if (typeof gemerkt[i] === 'number' && Math.abs(e.scrollTop - gemerkt[i]) > 2) e.scrollTop = gemerkt[i];
+        });
+        html.style.scrollBehavior = vorher;
+    }
+    function spaeter() { clearTimeout(timer); timer = setTimeout(setzen, 200); }
+    function horchen(an) {
+        if (an === aktiv) return;
+        aktiv = an;
+        var f = an ? 'addEventListener' : 'removeEventListener';
+        window[f]('resize', spaeter);
+        window[f]('orientationchange', spaeter);
+        document[f]('fullscreenchange', spaeter);
+        document[f]('webkitfullscreenchange', spaeter);
+    }
+    return {
+        merken: function () { lauf++; gemerkt = rollend().map(function (e) { return e.scrollTop; }); horchen(true); },
+        zurueck: function () {
+            var meiner = lauf;   // wird gleich das nächste Video geöffnet, darf dieses Aufräumen dessen Stand nicht löschen
+            setzen();
+            // Das Zurückdrehen ins Hochformat kann erst nach dem Schließen fertig sein: noch kurz weiter horchen.
+            [150, 500, 1200].forEach(function (ms) { setTimeout(function () { if (meiner === lauf) setzen(); }, ms); });
+            setTimeout(function () { if (meiner !== lauf) return; horchen(false); clearTimeout(timer); gemerkt = null; }, 2500);
+        }
+    };
+})();
