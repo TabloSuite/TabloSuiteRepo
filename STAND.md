@@ -1,57 +1,78 @@
-# TabloSuite – Arbeitsstand 15.11.2026, ~14:45
+# TabloSuite – Arbeitsstand 15.11.2026, ~16:35
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat): SKOULOU – Simulationen S3 + S4 + Ladekreis
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~16:35
 
-**eNOTE ist fertig** (Simulationen S1 + S2 + Nutzerwünsche W1–W3, alles gepusht bis 282c0b8, 435 Tests grün, Azure-DB =
-lokal = `20261114233118_PreisAnpassungEntwarnung`). eNOTE kann der Nutzer jederzeit deployen.
-**Der Nutzer deployt SKOULOU erst, wenn S3 + S4 sauber sind** (Nutzer 14.11.: « Danach mache ich Deploy, wenn alles ok ist »).
+**Lage:** Das 5-Stunden-Limit wurde am 15.11. dreimal erreicht (zuletzt ~15:45, Rücksetzung **19:20**). Zwei Aufgaben sind
+dadurch mitten in der Arbeit stehen geblieben: **(A) Video « Pourquoi eNOTE ? » Entwurf 2** und **(B) SKOULOU S4**.
+Alles Nötige steht in Dateien; ein neuer Chat startet je Aufgabe einen frischen Agenten. **Immer nur 1 Agent** (Limit!),
+Agent committet, Leitung prüft + pusht, zwischendurch kurz auf Deutsch berichten. Kleine Restarbeiten (Bericht, Tests,
+Commit) selbst erledigen statt einen großen Agenten neu zu laden. **Planmodus sperrt auch die Agenten.**
+Reihenfolge laut Nutzer: **erst Video (A), dann S4 (B)**, dann Abschluss (C).
 
-**Stand 15.11. ~14:45:** S3 ist **erledigt** (ff476bb, 0ec535b, 3540fad, dfba09e; Bericht `Skoulou/docs/Simulation-Bericht.md`
-§ Simulation S3): 32 Schulen, 4 Jahre + laufendes, 15.052 Schüler, 0 Befunde; 6 App-Fehler behoben (Session-Ende in Listen,
-Eltern-Sicht, Archivieren, Jahreswechsel, Vorjahreskopie; Schulliste im Admin 383 → 18 ms), **keine Migration**; 545 Tests
-grün (+ SQL 564). `SkoulouDB_SIM` neu vom 15.11. (für S4). Push von dfba09e wartete auf die GitHub-Anmeldung – prüfen mit
-`git log @{u}..HEAD`.
+### A. Video « Pourquoi eNOTE ? » v4 – Entwurf 2 (Vorrang)
+- Nutzer 15.11.: eNOTE-Lernvideos gefallen (« sehr inforeich »); « Pourquoi eNOTE ? » neu. Aufbau: 1. Probleme ohne eNOTE +
+  Einsatzarten (a Boutique nur Produkte, Schnellverkauf ohne Kunden; b Salon Produkte + Prestations, mit/ohne Kunden;
+  c Cabinet: Kunden **empfohlen, nie Pflicht**), 2. Katalog, 3. Kasse (a, dann b + c), 4. Clôture für den nächsten
+  Mitarbeiter, 5. weitere Infos.
+- **Entwurf 1** fertig und vom Nutzer angesehen: `C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\
+  presentation-v4\renders\enote-pourquoi-v4-entwurf.mp4` (4:54), Bilder `Pictures\eNOTE-Pourquoi-v4\`.
+- **Rückmeldung des Nutzers:** (1) Anfang wie beim alten Werbevideo mit der Heft-Szene « Chaque matin, le même cahier …
+  où sont passés ces trois mille cinq cents francs ? » (Quelle `projekte\werbung-v2`), (2) vor dem ersten Produkt
+  Kategorien erklären/anlegen → Produkt in der Kategorie → zeigen, wie ein Produkt ohne Kategorie aussieht,
+  (3) « Sei kreativ mit dem Video. Leute gut überzeugen :) ».
+- **Vollständiger Auftrag für den Agenten:** `…\lernen-v3\presentation-v4\AUFTRAG-Entwurf2.md` (Bestand, Wünsche,
+  kreatives Konzept « Heft vom Morgen wird Punkt für Punkt abgehakt, abends Écart 0 F », Korrekturen Banner/Schilder,
+  Regeln, Ergebnis `…-entwurf2.mp4`). Mit Entwurf 2 ist **noch nicht begonnen** (Agent brach beim Einlesen ab).
+- Danach: Entwurf 2 dem Nutzer zeigen (Pfad + Szenenfolge + 2–3 Standbilder prüfen). **Einbau erst nach Freigabe:**
+  `lernen-v3\einbau.py` (Quelle für `enote-presentation.mp4` auf v4 umstellen, ausführen), Dauer/Text in
+  `eNOTE.WebApp/Services/VideoKatalog.cs` (Z. 42–43) und `Components/Shared/Startseite.razor` (Z. 71, « En … minutes »),
+  Backup-Kopie nach `ENote Videos\Backup\Werbevideo`, Tests, commit + push. Memory: `pourquoi-enote-neu`.
 
-**Neu vom Nutzer (15.11.): « Pourquoi eNOTE ? » neu machen, und zwar VOR S4.** eNOTE-Lernvideos gefallen (« sehr inforeich »).
-Aufbau: 1. Probleme ohne eNOTE + alle Einsatzarten/Vorteile (a Laden nur mit Produkten, Schnellverkauf ohne Kunden;
-b Produkte + Prestations, mit oder ohne Kunden; c z. B. Arztpraxis: Kunden erfassen **empfohlen, nie Pflicht**),
-2. Artikel/Prestations anlegen, 3. Kasse (erst a, dann b + c mit Kunde), 4. Clôture für den nächsten Mitarbeiter,
-5. weitere Infos. Entwurf entsteht in `TabloSuite Videos\ENote Videos\projekte\lernen-v3\presentation-v4\`
-(`renders\enote-pourquoi-v4-entwurf.mp4`, Bilder `Pictures\eNOTE-Pourquoi-v4\`); alte Fassung bleibt in der App,
-**Einbau (einbau.py, Startseiten-Text zur Länge) erst nach Freigabe des Nutzers**. Details: Memory `pourquoi-enote-neu`.
+### B. SKOULOU S4 Klick-Simulation + Ladekreis (angefangen)
+- Auftrag: `docs/Simulationen-Auftrag.md` (Gemeinsame Regeln, § S4, S2.3 Monkey). **Laufender Stand des Agenten:**
+  `%TEMP%\sim\skoulou\S4-stand.md` (erledigt/offen/Funde), Skripte `%TEMP%\sim\skoulou\pw\` (lib, db, konten, rundgang,
+  ladekreis, langsam, visiteur, monkey, erkunde), `bauen.sh`/`start.sh`/`stopp.ps1`, Konten `konten.json` (nur dort).
+- **Erledigt + committet (lokal, noch zu pushen falls `git log @{u}..HEAD` sie zeigt):**
+  `7e52c30` Ladekreis am Handy (5 Formulare, 3× tippen = 1 POST, « Zurück » gibt frei) + Zeichenverlust bei langsamer
+  Verbindung (vorher 22 von 28 Feldern, jetzt 0 von 38); `825a1c6` Seite « Page introuvable » statt leerer 404.
+  Rundgang 13 Rollen + Visiteur ohne 500/Konsolenfehler. Mail sicher aus (`Postmark__Enabled=false`).
+- **Offen:** echte Abläufe über eine Periode (Wegwerf-Schule « École pilote S4 … », Schule B, Sprachschule L), zwei Geräte
+  gleichzeitig (Quittungsnummern, Kasse, Noten), Monkey je Rolle, DB-Stichproben, « Mot de passe oublié » echt,
+  Doppelklick/Neuladen/Zurück, S3-Korrekturen in der Oberfläche (Session-Ende), Zeitmessung bei ruhigem Rechner;
+  Beobachtungen aus S4-stand.md klären (0,8 s leere Seite nach Verbindungsstart bei 400 ms Latenz → Getipptes verloren;
+  kein Reconnect-Fenster); Bericht « Klick-Simulation S4 » in `Skoulou/docs/Simulation-Bericht.md`, Zeile S4 im Auftrag,
+  Bilder nach `Pictures\Simulation-SKOULOU\`, aufräumen.
+- **Achtung:** Die S4-App läuft evtl. noch im Hintergrund (Port 5181, `dotnet Skoulou.WebApp.dll`, DB `SkoulouDB_SIM`,
+  gestartet 15.11. 15:28) – stoppen mit `%TEMP%\sim\skoulou\stopp.ps1` (nur diesen Prozess, nie Visual Studio).
+- Neuer Agent: S4-Text + « Continue: check git log/status, read %TEMP%\sim\skoulou\S4-stand.md, then finish the run. »
+  Commits « SKOULOU Simulation S4: … », letzte Zeile `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`, kein Push.
 
-Reihenfolge, immer nur **1 Agent**, Agent committet, Lead prüft + pusht, zwischendurch kurz auf Deutsch berichten:
-0. **Video-Entwurf « Pourquoi eNOTE ? » v4** fertigstellen und dem Nutzer zeigen (siehe oben).
-1. ✅ **S3 SKOULOU Daten-Simulation** – erledigt (siehe oben). Auftrag `docs/Simulationen-Auftrag.md` (Gemeinsame
-   Regeln + Abschnitt S3). Vorbild/Erfahrung aus eNOTE: `docs/Simulation-eNOTE.md`.
-2. **S4 SKOULOU Klick-Simulation** (App im Hintergrund auf `SkoulouDB_SIM`, Port 5181, mehrere gleichzeitige Nutzer aller
-   Rollen, echte Abläufe über eine Periode + « Monkey » je Rolle). In S2 bei eNOTE besonders ergiebig – in SKOULOU gezielt
-   prüfen: **Zeichenverlust bei langsamer Verbindung** (Felder mit `@bind:event="oninput"`/Wert-Überschreiben, mit 250/400 ms
-   Latenz tippen), **nicht registrierte Dienste** (jede Seite/jeder Dialog einmal öffnen → 500?), **gleichzeitige Buchungen**
-   (zwei Geräte derselben Schule: Zahlungen/Quittungsnummern, Kasse, Noten), « Mot de passe oublié », Doppelklick auf Speichern.
-3. **Ladekreis am Handy** (Nutzer 15.11.): Knopf « S'inscrire »/Registrieren zeigt am Handy keinen Ladekreis (vermutlich
-   auch Connexion und andere klassische Formulare). In eNOTE behoben mit 7b68100 « Ladeanzeige überall »: globale Ladeanzeige
-   für klassische Formulare (`data-ladeanzeige`) statt Inline-Skript (lief nach Blazor-Navigation am Handy nie),
-   bfcache/« Zurück » gibt den Knopf frei, Spinner-Fallback ohne `color-mix` für ältere Mobil-Browser, JS versioniert
-   einbinden; Muster `eNOTE/eNOTE.WebApp/Components/Pages/Register.razor` (`isSubmitting` + `btn-spinner`). In SKOULOU alle
-   Formular-/Aktionsknöpfe prüfen (Registrierung Schule, Schüler-Selbstregistrierung, Connexion, Mot de passe oublié), am
-   Handy 390×844 auch mit langsamer Verbindung testen. Kann in S4 mit erledigt werden (dem Agenten mitgeben).
-4. **Abschluss SKOULOU:** neue Migrationen (falls S3/S4 welche bringen) auf `SkoulouDB` + Azure `Skoulou-Database`
-   (OK des Nutzers für den Abschluss liegt vor; nur additive Änderungen, vorher Up() prüfen) per
-   `dotnet ef database update <Migration> --project Skoulou/Skoulou.WebApp --configuration Release --connection
-   "Server=tcp:tablosuite-sqlserver.database.windows.net,1433;Database=Skoulou-Database;Authentication=Active Directory Default;Encrypt=True;…"`,
-   lesend prüfen (`%TEMP%\enote-scripts\azure-sql.ps1 -Datenbank Skoulou-Database -Sql "…"`), Tests, push → Nutzer deployt
-   SKOULOU (und eNOTE, falls noch nicht). Nach dem Deploy: Login DodjiEtse, Menü « Administrateurs », Startseiten-Video;
-   bei 0 Konten `az webapp restart -g TabloSuiteRGruppe -n skoulou`.
+### C. Abschluss SKOULOU (nach S4)
+- Neue Migrationen nur falls S4 welche bringt (S3: keine): `Up()` prüfen (nur additiv), lokal `SkoulouDB`, dann Azure
+  `Skoulou-Database` (OK des Nutzers für den Abschluss liegt vor) per
+  `dotnet ef database update <Migration> --project Skoulou/Skoulou.WebApp --configuration Release --connection
+  "Server=tcp:tablosuite-sqlserver.database.windows.net,1433;Database=Skoulou-Database;Authentication=Active Directory Default;Encrypt=True;…"`,
+  lesend prüfen (`%TEMP%\enote-scripts\azure-sql.ps1 -Datenbank Skoulou-Database -Sql "…"`). Ohne Migration Azure nicht anfassen.
+- Tests (`dotnet test Skoulou/Skoulou.Tests/Skoulou.Tests.csproj`, einmal mit `SKOULOU_SQL_TESTS=1`), push, Temp
+  `%TEMP%\sim\skoulou\` in den Papierkorb (DB `SkoulouDB_SIM` bleibt) → Nutzer deployt SKOULOU und eNOTE. Nach dem Deploy:
+  Login DodjiEtse, Menü « Administrateurs », Startseiten-Video; bei 0 Konten `az webapp restart -g TabloSuiteRGruppe -n skoulou`.
 
-**Stand SKOULOU jetzt:** Azure Skoulou-Database = lokal SkoulouDB = `20261114182350_SessionGebuehrUndHauptAdmin` (S3 ohne Migration); vor S3 letzter
-Code-Stand E7b komplett (bis 495ac44), 542 Tests grün (+ SQL 561). Noch nicht deployt seit E7a (enthält Werbevideo v3,
-E7b Zusatz + Rundgang).
+### Erledigt am 15.11.
+- **eNOTE fertig** (S1 + S2 + W1–W3, gepusht bis 282c0b8, 435 Tests grün, Azure-DB = lokal =
+  `20261114233118_PreisAnpassungEntwarnung`); kann jederzeit deployt werden.
+- **S3 SKOULOU Daten-Simulation erledigt** (ff476bb, 0ec535b, 3540fad, dfba09e, gepusht): 32 Schulen, 4 Jahre + laufendes,
+  15.052 Schüler, voller Lauf 0 Befunde; 6 App-Fehler behoben (Session-Ende in Listen, Eltern-Sicht, Archivieren,
+  Jahreswechsel, Vorjahreskopie; Schulliste im Admin 383 → 18 ms), **keine Migration**; 545 Tests grün (+ SQL 564).
+  Bericht `Skoulou/docs/Simulation-Bericht.md` § Simulation S3. `SkoulouDB_SIM` neu vom 15.11.
+- Push braucht manchmal die GitHub-Anmeldung des Nutzers (Fenster bestätigen lassen; am 15.11. hing der Push 30 min).
+
+**Stand SKOULOU-Datenbanken:** Azure Skoulou-Database = lokal SkoulouDB = `20261114182350_SessionGebuehrUndHauptAdmin`.
+Noch nicht deployt seit E7a (enthält Werbevideo v3, E7b Zusatz + Rundgang, S3- und S4-Korrekturen).
 
 ## 1. eNOTE – Simulationen und Wünsche (14./15.11., fertig)
 
@@ -169,4 +190,4 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ## 7. Nächste Schritte
 
-Siehe §0 (Reihenfolge 1–4). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
+Siehe §0 (A Video, B S4, C Abschluss). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
