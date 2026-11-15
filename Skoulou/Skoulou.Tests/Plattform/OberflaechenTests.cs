@@ -69,6 +69,12 @@ public partial class OberflaechenTests
         Assert.Contains(".sk-karte-aktionen { display: flex; flex-wrap: wrap;", app);
         Assert.Contains(".pl-banner strong { display: block; margin-bottom: .15rem; overflow-wrap: anywhere; }", Css("css/plattform.css"));
 
+        // Gebührenkarten (Sprachschule: « Anglais A1 – S1 · Session 1 seulement »): die Geltung bricht um, der Betrag bleibt in der Karte.
+        var finanzen = Css("css/finanzen.css");
+        Assert.Contains(".fin-posten-kopf > div { min-width: 0; }", finanzen);
+        Assert.Contains(".fin-posten-kopf .sk-badge { white-space: normal;", finanzen);
+        Assert.Contains(".fin-posten-raster { grid-template-columns: minmax(0, 1fr); }", finanzen);
+
         var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
         Assert.Contains("function einpassen(fenster)", js);
         Assert.Contains("'.sk-auswahl-popup, .sk-datum-popup'", js);

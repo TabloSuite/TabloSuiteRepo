@@ -55,6 +55,10 @@
 .fin-posten-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: .9rem; align-items: start; }
 .fin-posten { margin: 0; padding: 1rem 1.1rem; display: grid; gap: .75rem; align-content: start; }
 .fin-posten-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
+/* Lange Geltung (« Anglais A1 – S1 · Session 1 seulement ») darf umbrechen statt den Betrag aus der Karte zu schieben (Handy). */
+.fin-posten-kopf > div { min-width: 0; }
+.fin-posten-kopf h3 { overflow-wrap: anywhere; }
+.fin-posten-kopf .sk-badge { white-space: normal; text-align: left; }
 .fin-posten-kopf h3 { margin: 0 0 .35rem; font-size: 1.05rem; color: var(--sk-ueberschrift); }
 .fin-posten-raten { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .fin-posten-raten li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: baseline; padding: .4rem .6rem;
@@ -112,7 +116,7 @@
     .fin-filter-feld { min-width: 0; flex: 1 1 9rem; }
     .fin-raten { overflow-x: auto; }
     .fin-raten .sk-tabelle th, .fin-raten .sk-tabelle td { padding: .55rem .6rem; }
-    .fin-posten-raster { grid-template-columns: 1fr; }
+    .fin-posten-raster { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Kennzahlen im Dialog kompakt in einer Reihe */
