@@ -40,7 +40,7 @@ public static class VideoKatalog
         new("enote-visite-guidee.mp4", "La visite guidée",
             "Qui voit quoi et où se trouve chaque fonction : accueil, caisse, clients présents, zone du propriétaire, responsable et administrateur.", Alle_, Alle, "5:32"),
         new(Werbung, "Pourquoi eNOTE ?",
-            "En deux minutes : catalogue, caisse, Mobile Money, clients présents, clôture, finances et équipe, pour un salon, une boutique ou un petit cabinet.", Alle_, Alle, "2:03"),
+            "En cinq minutes : le cahier du matin, puis la preuve dans l'application – catalogue et catégories, vente rapide, clients, clôture sans écart, finances et équipe. Pour une boutique, un salon ou un petit cabinet.", Alle_, Alle, "5:34"),
 
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
             "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
