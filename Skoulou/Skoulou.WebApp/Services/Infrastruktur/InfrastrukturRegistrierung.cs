@@ -124,6 +124,7 @@ public static class InfrastrukturRegistrierung
             app.UseHsts();
         }
         app.UseSicherheitsHeader();
+        app.UseNichtGefundenSeite();
         app.UseHttpsRedirection();
         var kultur = SkoulouKultur.Kultur;
         app.UseRequestLocalization(o =>
@@ -138,6 +139,26 @@ public static class InfrastrukturRegistrierung
         app.UseRateLimiter();
         app.UseAntiforgery();
         return app;
+    }
+
+    /// <summary>Adresse der Seite « Page introuvable ».</summary>
+    public const string NichtGefundenPfad = "/introuvable";
+
+    /// <summary>
+    /// Unbekannte Adresse (alter Link, Tippfehler): die Seite « Page introuvable » statt einer leeren Antwort 404 –
+    /// nur für Seitenaufrufe im Browser (GET, HTML), nicht für Dateien, Medien, Formular- und API-Endpunkte.
+    /// </summary>
+    public static IApplicationBuilder UseNichtGefundenSeite(this IApplicationBuilder app)
+    {
+        app.UseStatusCodePagesWithReExecute(NichtGefundenPfad);
+        return app.Use((http, weiter) =>
+        {
+            var seitenaufruf = HttpMethods.IsGet(http.Request.Method)
+                               && http.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase);
+            if (!seitenaufruf && http.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>() is { } seiten)
+                seiten.Enabled = false;
+            return weiter(http);
+        });
     }
 
     /// <summary>Statische Dateien, Lernvideos (Range) und geschützte Medien.</summary>
