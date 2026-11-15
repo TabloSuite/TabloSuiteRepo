@@ -328,7 +328,9 @@ internal sealed partial class Simulation
         var ok = await SollAsync("Ermäßigung", () => api.Gebuehren.ErmaessigungAnlegenAsync(s.Direktor, s.Jahr.Id,
             new ErmaessigungEingabe(schueler.Id, posten.Id, ErmaessigungsArt.Pourcentage, prozent, grund)));
         if (ok == Guid.Empty) return;
-        schueler.Konten[s.Jahr.Id].Ermaessigung += (long)Math.Round(posten.Betrag * prozent / 100m, MidpointRounding.AwayFromZero);
+        var konto = schueler.Konten[s.Jahr.Id];
+        konto.Ermaessigungen[posten.Id] = konto.Ermaessigungen.GetValueOrDefault(posten.Id)
+                                          + (long)Math.Round(posten.Betrag * prozent / 100m, MidpointRounding.AwayFromZero);
         Zaehle("Ermäßigungen");
     }
 

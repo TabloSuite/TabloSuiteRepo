@@ -1,15 +1,18 @@
-# SKOULOU – Simulationsbericht (E7a)
+# SKOULOU – Simulationsbericht (E7a, S3)
 
-Stand 14.11.2026. Simulation nach Bauplan §9.4: `Skoulou/Skoulou.Tests/Simulation/` (opt-in).
+Stand 15.11.2026. Simulation nach Bauplan §9.4: `Skoulou/Skoulou.Tests/Simulation/` (opt-in). Die Abschnitte bis
+« Rundgang » beschreiben den Lauf E7a vom 14.11. (22 Schulen, 3 Jahre); der größere Lauf mit den neuen Regeln steht
+unten in « Simulation S3 ».
 
 ```
-SKOULOU_SIM=1 dotnet test Skoulou/Skoulou.Tests --filter "FullyQualifiedName~SimulationTests.Drei"
-  SKOULOU_SIM_FAKTOR=0.15            kleinere Klassen (Entwicklung, ca. 5 min)
-  SKOULOU_SIM_BEHALTEN=SkoulouDB_SIM Datenbank behalten (für den Browser-Rundgang E7b)
+SKOULOU_SIM=1 dotnet test Skoulou/Skoulou.Tests --filter "FullyQualifiedName~SimulationTests.Vier"
+  SKOULOU_SIM_FAKTOR=0.15            kleinere Klassen (Entwicklung, ca. 7 min)
+  SKOULOU_SIM_BEHALTEN=SkoulouDB_SIM Datenbank behalten (für Rundgang und Klick-Simulation)
 SKOULOU_SIM=1 SKOULOU_SIM_MESSEN=SkoulouDB_SIM …~Antwortzeiten   nur Antwortzeiten auf vorhandener DB
 ```
 
-Ergebnis jedes Laufs zusätzlich in `%TEMP%\skoulou-neu\E7\simulation-ergebnis.txt` (ohne Passwörter).
+Ergebnis jedes Laufs zusätzlich in `%TEMP%\sim\skoulou\simulation-ergebnis.txt` (ohne Passwörter; E7a:
+`%TEMP%\skoulou-neu\E7\`).
 
 ## Aufbau
 
@@ -169,3 +172,100 @@ Kaltstart der Abfragen); warm 0,45 s, im letzten Durchgang kalt 0,74 s – keine
 Hinweise ohne Änderung: Die Liste « Journal » der Direction zeigt in `SkoulouDB_SIM` viele « Conditions acceptées »
 aus dem E7a-Lauf (Altbestand, der heutige Code schreibt diese Einträge nicht mehr). Beim Start mit den lokalen
 Einstellungen legt der Start-Seed das konfigurierte Admin-Konto zusätzlich in `SkoulouDB_SIM` an (nur lokal).
+
+## Simulation S3 (15.11.2026) – volle Größe mit den neuen Regeln
+
+Auftrag `docs/Simulationen-Auftrag.md` § S3. Gleicher Aufbau wie E7a (echte Dienste, echte SQL-Server-DB, globale
+Uhr, fester Zufall), erweitert um alles, was seit E7a neu ist.
+
+### Was neu simuliert wird
+
+- **Umfang:** 32 Registrierungen (30 Schulen aktiv, 1 abgelehnt, 1 in Prüfung), davon 4 Sprachschulen mit Sessions;
+  vier volle Schuljahre 2022-23 … 2025-26 und das laufende 2026-27.
+- **Gebühr je Session** in drei Sprachschulen (« Formation Session n » bzw. viermal « Frais de session », dazu Posten
+  für eine Klasse und Session), Vorjahreskopie mit schon vorhandenem Session-Posten, Erhöhung behält die Session.
+  Das unabhängige Gebührenbuch der Simulation rechnet Session-Posten nur den Teilnehmern der Session zu.
+- **Session-Teilnehmer ohne Wechsel/Austritt** (« vergessen »): bleiben, kommen per « Inscrire » / « Changer de
+  classe » zurück, werden aus « Sans classe » archiviert oder bleiben bis zum Jahreswechsel unberührt. An jedem
+  Session-Wechsel werden die Listen geprüft (Classes, Auswahl Inscrire/Appel, Élèves, Eltern-Sicht, Appell).
+- **Hauptadministrator:** legt Administratoren an (auch zwei gleichnamige gleichzeitig), sperrt, entsperrt, ändert,
+  setzt Passwörter zurück, archiviert; dieselben Schritte durch andere Admins, Responsable, Direction → abgelehnt.
+- **Gleichzeitige Kontoanlagen:** Registrierungen der Direktionen zu viert (zwei gleichnamig), vor jedem Schuljahr
+  drei Schulen gleichzeitig (Schüler, Lehrkraft, Selbstregistrierung mit gleichem Namen). Die Simulation wiederholt
+  nichts selbst – 72 gleichzeitige Anlagen, keine einzige Meldung « enregistrement simultané ».
+
+### Datenmenge und Laufzeit (Faktor 1)
+
+Laufzeit 22 min (Ablauf 21:44, Invarianten + Messungen 0:33). Endstand in `SkoulouDB_SIM` (15.11., für S4).
+
+| Bereich | Menge |
+|---|---|
+| Schulen / Konten | 32 / 22.172 (15.052 Schüler, 6.675 Eltern, 343 Lehrkräfte, 60 Koordinatoren, 6 Admins) |
+| Einschreibungen / Klassen | 39.713 / 1.280 (432 Klassenwechsel, 714 Austritte im Jahr, 590 Austritte nach Session, 61 annullierte) |
+| Noten / Bulletins | 597.239 / 82.706 (843 berichtigt, 845 « Non classé ») |
+| Jahresentscheidungen | 24.247 Admis, 4.330 Redouble, 91 Exclu, 299 Partie; 120 Passagen |
+| Zahlungen / Buchungen | 109.991 / 114.986 (3.471 manuell, 120 Gegenbuchungen), 3.071 Ermäßigungen |
+| Plattformrechnungen | 392, 88.036 Positionen, 347 Responsable-Anteile (210 ausgezahlt) |
+| Pädagogik | 47 Leçons, 47 Examens, 11.542 Versuche, 5.135 Korrekturen, 8.704 Appelle |
+| Outbox / Audit | 92.598 Mails (nicht versendet) / 144.328 Einträge |
+
+### Invarianten (voller Lauf: 0 Befunde, 0 Verstöße)
+
+Alle Invarianten von E7a (Jahrespreis-Aufteilung in 150 Schuljahren, keine Doppelabrechnung, vollständige Abrechnung
+in 352 beendeten Perioden, Nummernkreise lückenlos: 109.991 Quittungen, 114.986 Écritures, 82.706 Bulletins,
+392 Factures; Kassensaldo = Journal; Familiensalden; Ränge/Mittel; Anteile nur aus bestätigten Rechnungen; Rechte),
+dazu neu:
+
+- **Session-Posten nur für Teilnehmer:** 1.309 Schülerkonten in 15 Schuljahren, 2.973 Session-Posten = unabhängig
+  aus den Einschreibungen berechnet = Gebührenbuch der Simulation.
+- **Session-Ende:** 131 vergessene Teilnehmer (36 zurück, 8 archiviert) ohne Rechnungsposition nach dem Ende,
+  99 Konten ohne spätere Session-Posten; Listen an 48 Session-Wechseln ohne beendete Teilnehmer.
+- **Hauptadministrator:** genau einer, aktiv, nie gesperrt/archiviert; alle 12 Verwaltungsschritte an Admin-Konten
+  von ihm; Liste « Administrateurs » = nicht archivierte Admins; Verbote für alle anderen Rollen.
+
+### Gefundene und behobene App-Fehler
+
+Der erste kleine Lauf endete mit 63 Befunden und 201 Verstößen, alle in den vier Sprachschulen. Wurzel: `SessionRegel`
+griff nur in Schülerliste, Appell, Abrechnung und Gebühren. Ein Teilnehmer, der nach dem Ende seiner Session weder
+gewechselt noch ausgetreten ist, galt an anderen Stellen weiter als eingeschrieben.
+
+| Befund | Behebung (Commit ff476bb) |
+|---|---|
+| « Classes », Auswahl « Inscrire » und Auswahl « Appel » zählten ihn weiter im Effectif der beendeten Session-Klasse | Effectif über `SchulAbfragen.LaufendeEinschreibungen` (`KlassenService`, `AnwesenheitService`) |
+| Eltern-Sicht und Liste « Parents » zeigten das Kind weiter in der beendeten Klasse | gleiche Abfrage in `ElternKinderService`, `ElternService` |
+| Archivieren aus « Sans classe » abgelehnt (« encore inscrit dans une classe ») | `KontoVerwaltungService.ArchivierenAsync` schließt die abgelaufene Session-Einschreibung zum Session-Ende |
+| Jahreswechsel blockiert (« n élève(s) n'ont pas encore de décision »); Warnung « bulletins non publiés » zählte auch Klassen früherer Sessions | Assistent listet die laufenden Einschreibungen am Ende der letzten Periode, schließt abgelaufene Session-Einschreibungen beim Ausführen; Warnung nur für Klassen der letzten Periode |
+| « Copier l'année précédente » übersprang gleichnamige Posten anderer Sessions, wenn das neue Jahr schon einen Posten dieser Bezeichnung hatte | Vergleich « existiert schon » mit Session |
+| « Écoles (admin) » 261–383 ms bei 32 Schulen / 22.000 Konten (las 122.000 Seiten) | Direktionskonto über den Index statt « TOP 1 … ORDER BY » je Schule: 383 → 18 ms (Commit 3540fad) |
+
+Regressionstests: `SessionTests` (Listen, Archivieren, Vorjahreskopie – Listen und Archivieren auch auf SQL Server),
+`JahreswechselTests`, `AdminTests`, `PlattformSqlTests`. **Schemaänderungen: keine, keine Migration.**
+
+Korrekturen an der Simulation selbst (kein App-Fehler): Prüfung der Auswahl « Inscrire » war zu streng (« 0/60
+élèves »); 33 Befunde « Bewertungen aus Vorlage » waren Folge des blockierten Jahreswechsels; das Gebührenbuch der
+Simulation kappt Ermäßigungen jetzt wie die App je Posten bei dessen Betrag; die Messung des Klassen-PDF ist in Daten,
+ein Bulletin und ganzes Dokument getrennt.
+
+### Antwortzeiten (größte Schule, Endstand; Median von 3)
+
+| Liste | ms | Liste | ms |
+|---|---|---|---|
+| Élèves (1re page / recherche) | 15 / 18 | Factures SKOULOU (admin / école) | 1 / 1 |
+| Parents | 11 | Écoles (admin) | 10 (vorher 261–383) |
+| Paiements (année en cours / précédente) | 9 / 14 | Comptes (admin / recherche) | 36 / 85 |
+| Comptes élèves (frais, « en retard », compteurs) | 160 / 170 / 164 | Administrateurs / Parts des responsables | 1 / 1 |
+| Comptes élèves (école de langues, par session) | 30 | Tableau de bord admin | 37 |
+| Journal de caisse | 60 | Audit (admin / recherche) | 1 / 2 |
+| Grille de notes / Conseil de classe | 5 / 15 | Classes / Journal de l'école | 2 / 2 |
+| Bulletins (année précédente) / Cockpit | 18 / 16 | PDF : reçu / facture / rapport financier | 14 / 99 / 197 |
+
+Alle Listen unter 500 ms. Das PDF aller Bulletins einer Klasse (46 Bulletins) braucht 578 ms (E7a ≈ 750 ms): Daten
+4 ms, ein Bulletin 25 ms – der Rest ist Dokumenterzeugung, keine Liste.
+
+### Offene Punkte
+
+1. « Comptes élèves » rechnet weiter alle Konten des Jahres je Seite (160–170 ms an der größten Schule) – beobachten.
+2. Punkt 4 von E7a (Storno einer bezahlten Plattformrechnung ohne Verrechnung) bleibt auf Wunsch des Nutzers so.
+
+Teststand nach S3: Build ohne Warnungen, 545 Tests grün (22 übersprungen: SQL- und Simulationstests), mit
+`SKOULOU_SQL_TESTS=1` 564 grün (3 übersprungen: Simulation).

@@ -79,7 +79,11 @@ internal sealed class SimJahr(Guid id, string bezeichnung, DateOnly beginn, Date
         return false;
     }
 
+    /// <summary>Brutto der geltenden Posten (ohne Ermäßigungen).</summary>
     public long SollFuer(JahresKonto k) => Posten.Where(p => Gilt(p, k)).Sum(p => p.Betrag);
+
+    /// <summary>Soll nach Ermäßigungen: je Posten höchstens sein Betrag (mehrere Ermäßigungen über 100 % machen ihn nur null).</summary>
+    public long NettoFuer(JahresKonto k) => Posten.Where(p => Gilt(p, k)).Sum(p => Math.Max(0, p.Betrag - k.Ermaessigungen.GetValueOrDefault(p.Id)));
     public long PostenBetrag(Guid? stufeId, string name) => Posten.Where(p => p.Name.StartsWith(name, StringComparison.Ordinal) && (p.StufeId is null || p.StufeId == stufeId)).Sum(p => p.Betrag);
 }
 
@@ -89,7 +93,8 @@ internal sealed class JahresKonto
     public Guid? StufeId { get; set; }
     /// <summary>Klassen des Jahres mit gültiger Einschreibung (für Posten einer Session).</summary>
     public HashSet<Guid> Klassen { get; } = [];
-    public long Ermaessigung { get; set; }
+    /// <summary>Summe der Ermäßigungen je Posten (die App kappt je Posten beim Betrag des Postens).</summary>
+    public Dictionary<Guid, long> Ermaessigungen { get; } = [];
     public long Bezahlt { get; set; }
 }
 
@@ -150,7 +155,7 @@ internal sealed class SimSchule(int nr, SchulProfil profil)
         foreach (var j in Jahre)
         {
             if (s.Konten.TryGetValue(j.Id, out var k))
-                saldo += Math.Max(0, j.SollFuer(k) - k.Ermaessigung) - k.Bezahlt;
+                saldo += j.NettoFuer(k) - k.Bezahlt;
             if (j.Id == bisJahr) break;
         }
         return saldo;

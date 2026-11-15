@@ -10,7 +10,7 @@ Vier Läufe, **nacheinander, immer nur 1 Agent** (Limit des Nutzers). Stand je L
 |---|---|---|
 | S1 | eNOTE Daten-Simulation (Massendaten über echte Services, viele Monate, Invarianten, Antwortzeiten), DB `ENOTEDB_SIM` behalten | erledigt (14.11.: 110.982 Verkäufe, 0 Befunde, 4 Fehler behoben, siehe docs/Simulation-eNOTE.md) |
 | S2 | eNOTE Klick-Simulation: App im Hintergrund auf `ENOTEDB_SIM`, viele simulierte Nutzer klicken alle Funktionen aller Rollen | erledigt (15.11.: ~7.500 Klicks, 13 parallele Nutzer, 9 Fehler behoben, Abschlusslauf 0 Abweichungen, siehe docs/Simulation-eNOTE.md) |
-| S3 | SKOULOU Daten-Simulation in voller Größe mit den neuen Regeln (Session-Ende, Gebühr je Session, Hauptadmin), `SkoulouDB_SIM` neu | offen |
+| S3 | SKOULOU Daten-Simulation in voller Größe mit den neuen Regeln (Session-Ende, Gebühr je Session, Hauptadmin), `SkoulouDB_SIM` neu | erledigt (15.11.: 32 Schulen, 4 Jahre + laufendes, 15.052 Schüler, 0 Befunde; 6 App-Fehler behoben, keine Migration, siehe Skoulou/docs/Simulation-Bericht.md § Simulation S3) |
 | S4 | SKOULOU Klick-Simulation: App im Hintergrund auf `SkoulouDB_SIM`, simulierte Nutzer aller Rollen führen echte Abläufe über Perioden aus | offen |
 
 Falls ein Lauf unterbrochen wird: neuen Agenten mit diesem Text + Laufnummer starten und ergänzen « Continue: check git

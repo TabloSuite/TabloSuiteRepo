@@ -79,8 +79,12 @@ internal sealed partial class Simulation
                 .Select(j => new { j.Id, j.SchuleId, j.Beginn }).FirstAsync();
             var vorjahr = await db.Schuljahre.Where(j => j.SchuleId == laufend.SchuleId && j.Beginn < laufend.Beginn).OrderByDescending(j => j.Beginn).Select(j => j.Id).FirstAsync();
             var klasse = await db.Klassen.Where(k => k.SchuljahrId == vorjahr).OrderBy(k => k.Name).Select(k => k.Id).FirstAsync();
+            var erstePeriode = await db.Perioden.Where(p => p.SchuljahrId == vorjahr).OrderBy(p => p.Nr).Select(p => p.Id).FirstAsync();
             return new
             {
+                Bulletins = await db.Bulletins.Where(b => b.PeriodeId == erstePeriode && b.Status == BulletinStatus.Publie
+                        && db.Einschreibungen.Any(e => e.Id == b.EinschreibungId && e.KlasseId == klasse))
+                    .OrderBy(b => b.Nummer).Select(b => b.Id).ToListAsync(),
                 Jahr = laufend.Id, Vorjahr = vorjahr, Klasse = klasse,
                 Direktor = await db.Users.Where(u => u.SchuleId == laufend.SchuleId && u.Rolle == Skoulou.Core.Rechte.Rollen.Direktor).Select(u => u.Id).FirstAsync(),
                 Klassenfach = await db.Klassenfaecher.Where(kf => kf.KlasseId == klasse).OrderBy(kf => kf.Reihenfolge).Select(kf => kf.Id).FirstAsync(),
@@ -132,7 +136,9 @@ internal sealed partial class Simulation
             ("Comptes (admin, recherche « mensah »)", () => api.AdminKonten.SucheAsync(Admin, "mensah", null)),
             ("Parts des responsables (admin)", () => api.Anteile.ListeAsync(Admin, null, null, 0, 50)),
             ("Tableau de bord admin", () => d.Hole<PlattformUebersicht>().ZahlenAsync(Admin)),
-            ("PDF bulletins d'une classe", () => d.Hole<BulletinPdfService>().KlasseAsync(dir, k.Id, p.Id, "https://skoulou.simulation")),
+            ("Bulletins d'une classe (données du PDF)", () => api.BulletinLesen.KlassenDruckAsync(dir, k.Id, p.Id)),
+            ("PDF d'un bulletin", () => x.Bulletins.Count == 0 ? Task.CompletedTask : d.Hole<BulletinPdfService>().BulletinAsync(dir, x.Bulletins[0], "https://skoulou.simulation")),
+            ($"PDF bulletins d'une classe ({x.Bulletins.Count} bulletins, document)", () => d.Hole<BulletinPdfService>().KlasseAsync(dir, k.Id, p.Id, "https://skoulou.simulation")),
             ("PDF rapport financier (année précédente)", () => api.Bericht.PdfAsync(dir, x.VorjahrZeitraum.Beginn, x.VorjahrZeitraum.Ende)),
             ("PDF facture SKOULOU", () => api.Rechnungen.PdfAsync(dir, x.Rechnung)),
             ("PDF reçu", () => d.Hole<QuittungService>().PdfAsync(dir, x.Zahlung)),

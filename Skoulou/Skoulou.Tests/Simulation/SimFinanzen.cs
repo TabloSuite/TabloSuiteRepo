@@ -8,12 +8,24 @@ internal sealed partial class Simulation
 {
     private static long Abrunden(long betrag) => betrag >= 500 ? betrag / 500 * 500 : betrag;
 
-    /// <summary>Bis zum Stichtag fälliger Betrag eines Jahres (alle Raten mit Fälligkeit ≤ Tag) nach Ermäßigung.</summary>
+    /// <summary>
+    /// Bis zum Stichtag fälliger Betrag eines Jahres (Raten mit Fälligkeit ≤ Tag) nach Ermäßigung: wie in der App je Posten
+    /// höchstens sein Betrag, die spätesten Raten werden zuerst gekürzt.
+    /// </summary>
     private static long FaelligBis(SimJahr jahr, JahresKonto k, DateOnly tag)
     {
-        var faellig = jahr.Posten.Where(p => jahr.Gilt(p, k))
-            .SelectMany(p => p.Raten).Where(r => r.Faellig <= tag).Sum(r => r.Betrag);
-        return Math.Max(0, faellig - k.Ermaessigung);
+        long faellig = 0;
+        foreach (var p in jahr.Posten.Where(p => jahr.Gilt(p, k)))
+        {
+            var abzug = Math.Min(p.Betrag, k.Ermaessigungen.GetValueOrDefault(p.Id));
+            foreach (var r in p.Raten.OrderByDescending(r => r.Faellig))
+            {
+                var teil = Math.Min(r.Betrag, abzug);
+                abzug -= teil;
+                if (r.Faellig <= tag) faellig += r.Betrag - teil;
+            }
+        }
+        return faellig;
     }
 
     /// <summary>Zahlungen der Familien je nach Zahlertyp (bar, Mobile Money, Überweisung), gelegentlich mit Storno.</summary>
@@ -25,7 +37,7 @@ internal sealed partial class Simulation
             if (!schueler.Konten.TryGetValue(jahr.Id, out var konto)) continue;
             var offen = s.Saldo(schueler, jahr.Id);
             if (offen <= 0) continue;
-            var vortrag = offen - (Math.Max(0, jahr.SollFuer(konto) - konto.Ermaessigung) - konto.Bezahlt);
+            var vortrag = offen - (jahr.NettoFuer(konto) - konto.Bezahlt);
             long betrag = schueler.Zahler switch
             {
                 0 => FaelligBis(jahr, konto, heute.AddDays(7)) + Math.Max(0, vortrag) - konto.Bezahlt,
