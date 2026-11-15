@@ -1,4 +1,4 @@
-# SKOULOU – Simulationsbericht (E7a, S3)
+# SKOULOU – Simulationsbericht (E7a, S3, S4)
 
 Stand 15.11.2026. Simulation nach Bauplan §9.4: `Skoulou/Skoulou.Tests/Simulation/` (opt-in). Die Abschnitte bis
 « Rundgang » beschreiben den Lauf E7a vom 14.11. (22 Schulen, 3 Jahre); der größere Lauf mit den neuen Regeln steht
@@ -269,3 +269,63 @@ Alle Listen unter 500 ms. Das PDF aller Bulletins einer Klasse (46 Bulletins) br
 
 Teststand nach S3: Build ohne Warnungen, 545 Tests grün (22 übersprungen: SQL- und Simulationstests), mit
 `SKOULOU_SQL_TESTS=1` 564 grün (3 übersprungen: Simulation).
+
+## Klick-Simulation S4 (15.11.2026) – App im Hintergrund, echte Abläufe im Browser
+
+Auftrag `docs/Simulationen-Auftrag.md` § S4. App aus eigenem Build-Ordner auf `SkoulouDB_SIM` (Port 5181), Mail sicher
+aus (`Postmark__Enabled=false`, nur Outbox), Medien lokal. Playwright mit Edge, Desktop 1440×900 und Handy 390×844.
+
+### Was geklickt wurde
+
+| Lauf | Inhalt | Umfang |
+|---|---|---|
+| Rundgang | jede Seite der Navigation für 13 Konten (Hauptadmin, Admin, Responsable, Direction A/L, Coordinateur mit/ohne Finanzrecht, Enseignant, Élève, Parent in Collège und Sprachschule) + Visiteur | 227 Seiten je Durchgang |
+| Monkey | je Rolle alle Knöpfe, Reiter, Filter und Dialoge; Formulare leer und mit Unsinn | 2.681 Klicks, 202 Eingaben, über 100 Dialoge |
+| Abläufe | Wegwerf-Schule « École pilote S4 » über eine Periode: Registrierung mit Bedingungen → Validierung → Jahr, Klassen, Fächer, Personal, 12 Schüler, Eltern → Gebühren, Zahlungen bar/Mobile Money (Direktion am PC und Koordinator am Handy gleichzeitig), Ermäßigung, Storno, Journal → Stundenplan, Appell, Noten (zwei Lehrkräfte im selben Raster) → Conseil, Bulletins (zwei Geräte veröffentlichen gleichzeitig), PDF, QR-Prüfseite → Schüler und Eltern am Handy | 237 Klicks, 73 Eingaben, 8 Konten |
+| Rest | « Mot de passe oublié » bis zur neuen Anmeldung, Sperre nach 5 Fehlversuchen, Sprachschule nach Session-Ende, Plattformrechnung bestätigen, Jahreswechsel bis zur Vorschau, Neuladen/Zurück/Vor, Nummernkreise | 20 Prüfungen |
+| Gezielt | Ladekreis (5 Formulare), Zeichenverlust bei 250/400 ms Latenz (38 Felder), getrennte Verbindung | 20 + 38 Messfälle |
+
+Zusammen rund 3.000 Klicks, 500 Seitenaufrufe und 290 Eingaben (letzter Stand der Protokolle; Wiederholungen nicht mitgezählt).
+
+### Stichproben in der Datenbank
+
+- Quittungen 2.446, Écritures 2.545 und Bulletins 12 der vier beklickten Schulen: Nummern lückenlos und eindeutig.
+- Zwei Geräte veröffentlichen dieselbe Klasse gleichzeitig: genau 6 Bulletins (00001–00006), das zweite Gerät bekommt
+  « déjà publiés ». Zahlungen von zwei Geräten: Summe der gültigen Zahlungen = Kassenbuch, Storno mit Gegenbuchung.
+- Ränge im Conseil passen zu den Mitteln (zwei Klassen nachgerechnet); Ermäßigung 25 % richtig auf die Raten verteilt.
+- Sprachschule am Tag nach Session 1: 52 noch « aktive » Einschreibungen in 4 beendeten Klassen – « Classes » zeigt
+  0 élève, « Appel » keine Teilnehmer (S3-Korrektur wirkt in der Oberfläche); Rechnung Session 1 gemeldet → vom
+  Hauptadmin bestätigt → bei der Direktion « Payée ».
+
+### Gefundene und behobene Fehler
+
+| Befund | Behebung |
+|---|---|
+| **Ladekreis am Handy** fehlte auf klassischen Formularen (Inscription, Connexion, Mot de passe oublié, Réinitialiser, Contact); mehrfaches Tippen sendete mehrfach | globale Ladeanzeige (`data-ladeanzeige`), 3× tippen = 1 Anfrage, « Zurück » gibt den Knopf frei (7e52c30) |
+| **Zeichenverlust bei langsamer Verbindung:** in 22 von 28 Feldern gingen bei 250/400 ms Latenz getippte Zeichen verloren | Felder überschreiben den Wert nicht mehr während des Tippens: 0 von 38 (7e52c30) |
+| Unbekannte Adresse zeigte eine leere 404-Seite | Seite « Page introuvable » (825a1c6) |
+| Getrennte Verbindung: englisches Blazor-Fenster; nach dem Verbindungsstart 0,8 s Seite ohne Daten (Getipptes verloren) | französisches Fenster « Connexion interrompue », Zeichenschritte gepuffert: Lücke 13–28 ms (265d9a2) |
+| Handy: « Enregistrer l'appel » hinter der unteren Navigation (Appell nicht speicherbar); Kalender und Aufklapplisten ragten hinaus; Dialog « Modèle de bulletin » nicht schließbar; lange Wörter in Annoncen | klebende Leisten über der Navigation, Fenster bleiben im Bildschirm, Umbruch (265d9a2, d9a517c) |
+| **Schutzgrenzen je Anschluss zu eng:** 10 Anmeldungen/Minute, 5 Registrierungen und 5 Passwort-Vorgänge je 10 Minuten und IP – eine Klasse am selben Schul-WLAN sperrte sich gegenseitig aus (auch beim Pflichtdialog « Choisissez votre mot de passe ») | 60 / 30 / 20 je Anschluss, eigenes Passwort ändern zählt je Konto; nach einer Ablehnung bleibt der Rücksetz-Link erhalten und die Meldung stimmt (1d27ef1) |
+| Nach 5 Fehlversuchen gesperrt → Passwort per Mail-Link neu gesetzt → trotzdem bis zu 15 Minuten ausgesperrt | Zurücksetzen per Link hebt die Sperre auf (1d27ef1) |
+| Handy, Sprachschule: Gebührenkarte mit langer Geltung (« Classe … · Session 1 seulement ») machte die Seite 414 px breit | Geltung bricht um, Betrag bleibt in der Karte (55abdad) |
+
+**Schemaänderungen: keine, keine Migration.** Regressionstests in `OberflaechenTests`, `NichtGefundenSeiteTests`,
+`InfrastrukturTests` (Rate-Limits) und `KontoTests` (Sperre). Kein Fehler, sondern Absicht: die öffentliche QR-Prüfseite
+eines Bulletins zeigt Schule, Schüler, Klasse, Periode und Moyenne, aber nicht die Bulletin-Nummer.
+
+### Zeiten (ruhiger Rechner) und Abschlusslauf
+
+Rundgang über 227 Seiten: keine Seite über 1 s, keine Aktion über 2 s. Abschlusslauf nach der letzten Korrektur:
+Rundgang 0 Befunde, Rest 20 von 20, Server-Log ohne Fehler (zwei bekannte EF-Warnungen: `FirstOrDefault` ohne
+`OrderBy`, Savepoints bei MARS – nur lokale Verbindungszeichenfolge).
+
+### Offene Punkte
+
+1. **Anschluss hinter dem Azure-Proxy:** die Schutzgrenzen zählen `RemoteIpAddress`. Nach dem Deploy einmal prüfen, ob
+   die App die Adresse des Besuchers sieht (weitergeleitete Kopfzeilen) – sonst teilen sich alle Nutzer einen Zähler.
+2. QR-Prüfseite: Bulletin-Nummer und Datum zusätzlich anzeigen? (heute bewusst knapp, Test schreibt die Felder fest).
+3. Der Monkey hat in zwei Schulen der SIM-DB Unsinn angelegt (Klassen, Schuljahre 2027-28/2028-29) – nur Testdaten.
+
+Bilder: `C:\Users\etsec\Pictures\Simulation-SKOULOU\`. Teststand nach S4: Build ohne Warnungen, 561 Tests grün (22 übersprungen), mit `SKOULOU_SQL_TESTS=1` 580 grün
+(3 übersprungen: Simulation).
