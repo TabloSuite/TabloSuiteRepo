@@ -116,14 +116,16 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
     {
         var neu = await FolgejahrAsync(db, alt, ct);
         var klassen = await KlassenAsync(db, alt.Id, ct);
-        var schueler = await SchuelerAsync(db, alt.Id, ct);
+        var schueler = await SchuelerAsync(db, alt.Id, await LetztesPeriodenEndeAsync(db, alt, ct), ct);
         var warnungen = new List<string>();
         var perioden = await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == alt.Id).ToListAsync(ct);
         var letzte = perioden.Where(p => p.ZaehltFuerJahr).OrderByDescending(p => p.Ende).FirstOrDefault();
         if (letzte is not null)
         {
             var veroeffentlicht = await db.KlassenVeroeffentlichungen.Where(v => v.PeriodeId == letzte.Id).Select(v => v.KlasseId).ToListAsync(ct);
-            var ohne = klassen.Count(k => !veroeffentlicht.Contains(k.Id));
+            // Klassen einer früheren Session haben für die letzte Periode nie Bulletins: nicht mitzählen.
+            var andereSession = await db.Klassen.Where(k => k.SchuljahrId == alt.Id && k.PeriodeId != null && k.PeriodeId != letzte.Id).Select(k => k.Id).ToListAsync(ct);
+            var ohne = klassen.Count(k => !veroeffentlicht.Contains(k.Id) && !andereSession.Contains(k.Id));
             if (ohne > 0) warnungen.Add($"{ohne} classe(s) n'ont pas encore de bulletins publiés pour « {letzte.Titel} ».");
         }
         var bereits = alt.Status == SchuljahrStatus.Abgeschlossen && schueler.Count == 0;
@@ -205,6 +207,11 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
                 await FaecherKopierenAsync(db, a.SchuleId, quelle.Id, ziel.Id, plan.LehrauftraegeKopieren, ct);
             }
             await db.SaveChangesAsync(ct);
+
+            // Session-Klassen enden mit ihrer Session: wer dort ohne Wechsel/Austritt blieb, wird zum Session-Ende
+            // abgeschlossen (steht nicht in der Liste, wird nicht übernommen, bleibt im alten Jahr nicht « active »).
+            await SessionAbschluss.AbgelaufeneSchliessenAsync(db, db.Einschreibungen.Where(e => e.SchuljahrId == alt.Id),
+                await LetztesPeriodenEndeAsync(db, alt, ct), ct);
 
             // Alte Einschreibungen schließen (vor dem Anlegen der neuen: höchstens eine aktive je Schüler).
             var jetzt = zeit.GetUtcNow().UtcDateTime;
@@ -315,9 +322,17 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
         return liste.OrderBy(k => k.Reihenfolge).ThenBy(k => k.Name).ToList();
     }
 
-    private static async Task<List<AltSchueler>> SchuelerAsync(SkoulouDbContext db, Guid jahrId, CancellationToken ct)
+    /// <summary>Ende der letzten Periode des Jahres (ohne Perioden: Jahresende) – Session-Klassen früherer Perioden sind dann vorbei.</summary>
+    private static async Task<DateOnly> LetztesPeriodenEndeAsync(SkoulouDbContext db, Schuljahr jahr, CancellationToken ct)
+        => await db.Perioden.Where(p => p.SchuljahrId == jahr.Id).MaxAsync(p => (DateOnly?)p.Ende, ct) ?? jahr.Ende;
+
+    /// <summary>
+    /// Schüler des Jahresendes: laufende Einschreibungen am <paramref name="stichtag"/>. Wer in einer Session-Klasse ohne
+    /// Wechsel/Austritt blieb, deren Session vorbei ist, gehört nicht dazu (braucht keine Entscheidung, wird nicht übernommen).
+    /// </summary>
+    private static async Task<List<AltSchueler>> SchuelerAsync(SkoulouDbContext db, Guid jahrId, DateOnly stichtag, CancellationToken ct)
     {
-        var liste = await (from e in SchulAbfragen.AktiveEinschreibungen(db).AsNoTracking()
+        var liste = await (from e in SchulAbfragen.LaufendeEinschreibungen(db, stichtag).AsNoTracking()
                            join u in db.Users on e.SchuelerId equals u.Id
                            join j in db.Jahresentscheidungen on e.Id equals j.EinschreibungId into je
                            from j in je.DefaultIfEmpty()

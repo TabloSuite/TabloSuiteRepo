@@ -182,7 +182,7 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
                           ?? throw new FachFehler("Aucune année précédente dont copier les frais.");
             var alte = await db.GebuehrenPosten.AsNoTracking().Where(p => p.SchuljahrId == vorjahr.Id).Include(p => p.Raten).OrderBy(p => p.Reihenfolge).ToListAsync(ct);
             if (alte.Count == 0) throw new FachFehler($"L'année {vorjahr.Bezeichnung} n'a aucun frais à copier.");
-            var vorhandene = await db.GebuehrenPosten.Where(p => p.SchuljahrId == jahrId).Select(p => new { p.Bezeichnung, p.StufeId, p.KlasseId, p.Reihenfolge }).ToListAsync(ct);
+            var vorhandene = await db.GebuehrenPosten.Where(p => p.SchuljahrId == jahrId).Select(p => new { p.Bezeichnung, p.StufeId, p.KlasseId, p.PeriodeId, p.Reihenfolge }).ToListAsync(ct);
             var alteKlassen = await db.Klassen.Where(k => k.SchuljahrId == vorjahr.Id).ToDictionaryAsync(k => k.Id, k => k.Name, ct);
             var neueKlassen = await db.Klassen.Where(k => k.SchuljahrId == jahrId).ToListAsync(ct);
             // Posten einer Session: Periode mit derselben Nr im neuen Jahr (fehlt sie, wird der Posten übersprungen).
@@ -205,7 +205,8 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
                     if (!altePerioden.TryGetValue(altP, out var nr) || !neuePerioden.TryGetValue(nr, out var neuP)) { uebersprungen++; continue; }
                     periode = neuP;
                 }
-                if (vorhandene.Any(v => v.Bezeichnung == p.Bezeichnung && v.StufeId == p.StufeId && v.KlasseId == klasse)) { uebersprungen++; continue; }
+                // « Existiert schon » nur bei gleicher Session: gleichnamige Posten anderer Sessions (« Frais de session ») werden kopiert.
+                if (vorhandene.Any(v => v.Bezeichnung == p.Bezeichnung && v.StufeId == p.StufeId && v.KlasseId == klasse && v.PeriodeId == periode)) { uebersprungen++; continue; }
                 var neu = new GebuehrenPosten
                 {
                     SchuleId = a.SchuleId, SchuljahrId = jahrId, Bezeichnung = p.Bezeichnung, Betrag = p.Betrag,

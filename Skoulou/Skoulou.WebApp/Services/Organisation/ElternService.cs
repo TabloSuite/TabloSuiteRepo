@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.Core.Rechte;
+using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
 
@@ -24,7 +25,8 @@ public sealed record ElternEingabe(string? Vorname, string? Nachname, string? Id
 /// nach Eltern- oder Kindernamen. Höchstens 12 Kinder je Elternkonto; Kinder nur derselben Schule.
 /// </summary>
 public sealed class ElternService(
-    IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, KontoFabrik fabrik, ZugangsAblage ablage, OrgMails mails)
+    IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, KontoFabrik fabrik, ZugangsAblage ablage, OrgMails mails,
+    TimeProvider zeit)
 {
     public const int MaxKinder = 12;
     public const string FilterOhneKind = "sans-enfant";
@@ -64,16 +66,17 @@ public sealed class ElternService(
         }
         var seite = await Seite<Konto>.LadeAsync(q.OrderBy(k => k.Nachname).ThenBy(k => k.Vorname), ueberspringen, anzahl, ct);
         var ids = seite.Eintraege.Select(k => k.Id).ToList();
-        var kinder = await KinderAsync(db, ids, ct);
+        var kinder = await KinderAsync(db, ids, new SchulZeit(zeit).Heute, ct);
         return new Seite<ElternZeile>(seite.Eintraege.Select(k => new ElternZeile(k.Id, k.Vorname, k.Nachname, k.UserName!, k.Telefon, k.Email, k.Status,
             kinder.Where(x => x.ElternId == k.Id).Select(x => x.Kind).ToList())).ToList(), seite.Mehr);
     }
 
     private sealed record KindMitEltern(Guid ElternId, KindKurz Kind);
 
-    private static async Task<List<KindMitEltern>> KinderAsync(SkoulouDbContext db, List<Guid> elternIds, CancellationToken ct)
+    private static async Task<List<KindMitEltern>> KinderAsync(SkoulouDbContext db, List<Guid> elternIds, DateOnly heute, CancellationToken ct)
     {
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        // Aktuelle Klasse = laufende Einschreibung (eine Session-Klasse endet mit ihrer Session).
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, heute);
         return await (from ek in db.ElternKinder.AsNoTracking()
                       join kind in db.Users on ek.SchuelerId equals kind.Id
                       where elternIds.Contains(ek.ElternId)
@@ -103,7 +106,7 @@ public sealed class ElternService(
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, schreiben: false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var k = await OrgAbfragen.KontoAsync(db, a, elternId, ct, Rollen.Eltern);
-        var kinder = await KinderAsync(db, [k.Id], ct);
+        var kinder = await KinderAsync(db, [k.Id], new SchulZeit(zeit).Heute, ct);
         return new ElternZeile(k.Id, k.Vorname, k.Nachname, k.UserName!, k.Telefon, k.Email, k.Status, kinder.Select(x => x.Kind).ToList());
     }
 

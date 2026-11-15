@@ -239,6 +239,33 @@ public sealed record Seite<T>(IReadOnlyList<T> Eintraege, bool Mehr)
     public (IReadOnlyList<T>, bool) AlsTupel() => (Eintraege, Mehr);
 }
 
+/// <summary>
+/// Session-Klassen enden automatisch (<see cref="Skoulou.Core.Organisation.SessionRegel"/>): eine noch « aktive » Einschreibung,
+/// deren Session vorbei ist, wird bei der nächsten Aktion (neue Einschreibung, Archivieren, Jahreswechsel) zum Session-Ende
+/// abgeschlossen (« Terminée ») – so bleibt kein Teilnehmer ohne Wechsel/Austritt als « inscrit » hängen.
+/// </summary>
+internal static class SessionAbschluss
+{
+    /// <summary>Schließt die aktiven unter <paramref name="einschreibungen"/>, deren Session vor <paramref name="ab"/> endete; liefert die Anzahl.</summary>
+    public static async Task<int> AbgelaufeneSchliessenAsync(SkoulouDbContext db, IQueryable<Einschreibung> einschreibungen, DateOnly ab, CancellationToken ct)
+    {
+        var beendet = await (from e in einschreibungen
+                             where e.Status == EinschreibungsStatus.Active && e.StorniertAmUtc == null
+                             join k in db.Klassen on e.KlasseId equals k.Id
+                             join p in db.Perioden on k.PeriodeId equals (Guid?)p.Id
+                             where p.Ende < ab
+                             select new { Einschreibung = e, p.Ende }).ToListAsync(ct);
+        if (beendet.Count == 0) return 0;
+        foreach (var x in beendet)
+        {
+            x.Einschreibung.Bis = Skoulou.Core.Organisation.SessionRegel.Ende(x.Einschreibung.Bis, x.Ende);
+            x.Einschreibung.Status = EinschreibungsStatus.Terminee;
+        }
+        await db.SaveChangesAsync(ct);
+        return beendet.Count;
+    }
+}
+
 /// <summary>Kleine Abfragen des Bereichs, die mehrere Dienste brauchen.</summary>
 internal static class OrgAbfragen
 {

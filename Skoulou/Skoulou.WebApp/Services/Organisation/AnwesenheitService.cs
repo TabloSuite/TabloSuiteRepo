@@ -51,7 +51,7 @@ public sealed class AnwesenheitService(IDbContextFactory<SkoulouDbContext> dbFac
             var eigene = SchulAbfragen.KlassenDesLehrers(db, a.Id, jahrId);
             q = q.Where(k => eigene.Contains(k.Id));
         }
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, new SchulZeit(zeit).Heute);
         var liste = await q.OrderBy(k => k.Name).Select(k => new { k.Id, k.Name, Anzahl = aktive.Count(e => e.KlasseId == k.Id) }).ToListAsync(ct);
         return liste.Select(k => new AuswahlEintrag(k.Id, k.Name, $"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")}")).ToList();
     }

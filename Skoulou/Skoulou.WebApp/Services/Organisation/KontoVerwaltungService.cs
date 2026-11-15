@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.Core.Rechte;
+using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
 using Skoulou.WebApp.Services.Plattform;
@@ -15,7 +16,7 @@ namespace Skoulou.WebApp.Services.Organisation;
 /// </summary>
 public sealed class KontoVerwaltungService(
     IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, KontoFabrik fabrik,
-    ZugangsAblage ablage, SitzungsPruefung sitzungen)
+    ZugangsAblage ablage, SitzungsPruefung sitzungen, TimeProvider zeit)
 {
     public const string MeldungSelbst = "Pour votre propre compte, utilisez la page « Mon profil ».";
     public const string MeldungDirektor = "Le compte du directeur est géré par l'équipe SKOULOU.";
@@ -90,8 +91,14 @@ public sealed class KontoVerwaltungService(
         var (a, konto) = await ZielAsync(zugriff, db, akteurId, kontoId, ct);
         if (konto.Status == KontoStatus.Archive) return;
         if (konto.Status == KontoStatus.EnAttente) throw new FachFehler("Cette inscription attend votre validation : validez-la ou refusez-la.");
-        if (konto.Rolle == Rollen.Schueler && await SchulAbfragen.AktiveEinschreibungen(db).AnyAsync(e => e.SchuelerId == konto.Id, ct))
-            throw new FachFehler("Cet élève est encore inscrit dans une classe : enregistrez d'abord son départ (« Départ de l'élève »).");
+        if (konto.Rolle == Rollen.Schueler)
+        {
+            // Session-Klasse vorbei (Teilnehmer ohne Wechsel/Austritt, in den Listen « sans classe »): seine Einschreibung
+            // endet mit der Session und hindert das Archivieren nicht.
+            await SessionAbschluss.AbgelaufeneSchliessenAsync(db, db.Einschreibungen.Where(e => e.SchuelerId == konto.Id), new SchulZeit(zeit).Heute, ct);
+            if (await SchulAbfragen.AktiveEinschreibungen(db).AnyAsync(e => e.SchuelerId == konto.Id, ct))
+                throw new FachFehler("Cet élève est encore inscrit dans une classe : enregistrez d'abord son départ (« Départ de l'élève »).");
+        }
         konto.Status = KontoStatus.Archive;
         konto.AktiveSitzungId = Guid.NewGuid();
         audit.Erfasse(db, a.Id, a.SchuleId, AuditAktionen.KontoArchiviert, nameof(Konto), konto.Id, $"{Rollen.Bezeichnung(konto.Rolle)} {konto.VollerName} archivé(e).");

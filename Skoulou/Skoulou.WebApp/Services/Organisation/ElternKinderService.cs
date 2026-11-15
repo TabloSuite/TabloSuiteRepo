@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.Core.Rechte;
+using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
 
@@ -14,7 +15,7 @@ public sealed record KindEintrag(Guid SchuelerId, string Vorname, string Name, s
 /// Kinder eines Elternkontos (gemeinsam für alle Elternseiten: Notes, Bulletins, Présences, Frais …).
 /// Andere Bereiche prüfen pro Abfrage zusätzlich <see cref="SchulAbfragen.IstKindAsync"/>.
 /// </summary>
-public sealed class ElternKinderService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff)
+public sealed class ElternKinderService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, TimeProvider zeit)
 {
     public async Task<IReadOnlyList<KindEintrag>> KinderAsync(Guid akteurId, CancellationToken ct = default)
     {
@@ -23,7 +24,8 @@ public sealed class ElternKinderService(IDbContextFactory<SkoulouDbContext> dbFa
         Zugriff.Pruefe(akteur, Faehigkeit.NotenErfassen);
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        // Aktuelle Klasse = laufende Einschreibung (eine Session-Klasse endet mit ihrer Session).
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, new SchulZeit(zeit).Heute);
         return await (from ek in db.ElternKinder.AsNoTracking()
                       join k in db.Users on ek.SchuelerId equals k.Id
                       where ek.ElternId == akteurId && k.Status != KontoStatus.Archive

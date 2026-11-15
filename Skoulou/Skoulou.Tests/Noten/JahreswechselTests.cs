@@ -124,4 +124,30 @@ public class JahreswechselTests
         Assert.Equal(w.O.PV2, klassen["6e B"]);
         Assert.Null(klassen["6e A"]);
     }
+
+    [Fact]
+    public async Task Vergessener_Session_Teilnehmer_blockiert_den_Jahreswechsel_nicht()
+    {
+        // Gefunden in der Simulation (S3): wer in einer Session-Klasse ohne Wechsel/Austritt blieb, stand ohne Entscheidung in
+        // der Liste des Assistenten und blockierte den Jahreswechsel der Sprachschulen.
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db =>
+        {
+            (await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse6B)).PeriodeId = w.O.P1;
+            (await db.Einschreibungen.SingleAsync(e => e.Id == w.E2)).KlasseId = w.O.Klasse6B;
+        });
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.True(v.Bereit);
+        Assert.DoesNotContain(v.Klassen.SelectMany(k => k.Schueler), s => s.EinschreibungId == w.E2);
+        // « Bulletins non publiés » zählt die Klasse der früheren Session nicht mit (es bleiben 6e A und 5e A).
+        Assert.Contains(v.Warnungen, x => x.StartsWith("2 classe(s)", StringComparison.Ordinal));
+
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(1, ergebnis.Einschreibungen);
+        var alt = await w.MitDbAsync(db => db.Einschreibungen.SingleAsync(e => e.Id == w.E2));
+        Assert.Equal((EinschreibungsStatus.Terminee, (DateOnly?)new DateOnly(2026, 12, 18)), (alt.Status, alt.Bis));
+        Assert.False(await w.MitDbAsync(db => db.Einschreibungen.AnyAsync(e => e.SchuelerId == w.O.SchuelerZiel && e.SchuljahrId == ergebnis.NeuesJahrId)));
+    }
 }

@@ -37,22 +37,8 @@ public sealed class EinschreibungService(
     /// Session-Klassen enden automatisch (<see cref="SessionRegel"/>): eine noch « aktive » Einschreibung, deren Session vor
     /// <paramref name="ab"/> endete, wird bei einer neuen Einschreibung zum Session-Ende abgeschlossen (« Terminée »).
     /// </summary>
-    private static async Task SessionEndenAbschliessenAsync(SkoulouDbContext db, IReadOnlyCollection<Guid> schuelerIds, DateOnly ab, CancellationToken ct)
-    {
-        var beendet = await (from e in SchulAbfragen.AktiveEinschreibungen(db)
-                             where schuelerIds.Contains(e.SchuelerId)
-                             join k in db.Klassen on e.KlasseId equals k.Id
-                             join p in db.Perioden on k.PeriodeId equals (Guid?)p.Id
-                             where p.Ende < ab
-                             select new { Einschreibung = e, p.Ende }).ToListAsync(ct);
-        if (beendet.Count == 0) return;
-        foreach (var x in beendet)
-        {
-            x.Einschreibung.Bis = SessionRegel.Ende(x.Einschreibung.Bis, x.Ende);
-            x.Einschreibung.Status = EinschreibungsStatus.Terminee;
-        }
-        await db.SaveChangesAsync(ct);
-    }
+    private static Task SessionEndenAbschliessenAsync(SkoulouDbContext db, IReadOnlyCollection<Guid> schuelerIds, DateOnly ab, CancellationToken ct)
+        => SessionAbschluss.AbgelaufeneSchliessenAsync(db, db.Einschreibungen.Where(e => schuelerIds.Contains(e.SchuelerId)), ab, ct);
 
     /// <summary>Ende der Session einer Klasse (null = Klasse läuft das ganze Jahr).</summary>
     private static Task<DateOnly?> SessionEndeAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)

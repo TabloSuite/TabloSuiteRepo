@@ -78,8 +78,20 @@ public class SessionTests
         await using var db = await w.Db.CreateDbContextAsync();
         (await db.Klassen.FirstAsync(k => k.Id == w.Org.Klasse6B)).PeriodeId = w.Org.P1;
         (await db.Einschreibungen.FirstAsync(e => e.Id == w.Org.EinschreibungZiel)).KlasseId = w.Org.Klasse6B;
+        db.ElternKinder.Add(new ElternKind { SchuleId = w.Org.SchuleA, ElternId = w.Org.ElternZiel, SchuelerId = w.Org.SchuelerZiel, Beziehung = "Père" });
         await db.SaveChangesAsync();
         return w;
+    }
+
+    /// <summary>Effectif der Session-Klasse in « Classes », in den Auswahllisten (Inscrire, Appel) und Klasse des Kindes bei den Eltern.</summary>
+    private static async Task<(int Classes, string? Inscrire, string? Appel, string? Eltern, string? ElternListe)> SessionKlasseAsync(FinanzWelt w)
+    {
+        var org = w.Org;
+        return ((await org.D.Klassen.KlassenAsync(org.Direktor, org.Jahr)).Single(k => k.Id == org.Klasse6B).Effectif,
+            (await org.D.Klassen.KlassenAuswahlAsync(org.Direktor, org.Jahr)).Single(k => k.Id == org.Klasse6B).Zusatz,
+            (await org.D.Anwesenheit.KlassenAsync(org.Direktor, org.Jahr)).Single(k => k.Id == org.Klasse6B).Zusatz,
+            (await org.D.ElternKinder.KinderAsync(org.ElternZiel)).Single().Klasse,
+            (await org.D.Eltern.SucheAsync(org.Direktor, null, "parentziel", 0, 10)).Eintraege.Single().Kinder.Single().Klasse);
     }
 
     [Fact]
@@ -106,10 +118,20 @@ public class SessionTests
     {
         var org = w.Org;
         Assert.Equal("6e B", (await org.D.Schueler.SucheAsync(org.Direktor, null, null, "eleveziel", 0, 10)).Eintraege.Single().Klasse);
+        var waehrend = await SessionKlasseAsync(w);
+        Assert.Equal((1, "6e B", "6e B"), (waehrend.Classes, waehrend.Eltern, waehrend.ElternListe));
+        Assert.StartsWith("1", waehrend.Inscrire);
+        Assert.StartsWith("1 ", waehrend.Appel);
         w.Heute(new(2027, 1, 5));
         var ohne = await org.D.Schueler.SucheAsync(org.Direktor, SchuelerService.FilterSansClasse, null, null, 0, 50);
         Assert.Contains(ohne.Eintraege, z => z.KontoId == org.SchuelerZiel);
         Assert.Empty((await org.D.Schueler.SucheAsync(org.Direktor, null, org.Klasse6B, null, 0, 50)).Eintraege);
+        // Gefunden in der Simulation (S3): « Classes », die Auswahllisten (Inscrire, Appel) und die Eltern zeigten den
+        // Teilnehmer ohne Wechsel/Austritt nach der Session weiter in der beendeten Klasse.
+        var danach = await SessionKlasseAsync(w);
+        Assert.Equal((0, (string?)null, (string?)null), (danach.Classes, danach.Eltern, danach.ElternListe));
+        Assert.StartsWith("0", danach.Inscrire);
+        Assert.StartsWith("0 ", danach.Appel);
         // Appell der Session-Klasse: nach der Session ohne Teilnehmer, in der Session mit.
         Assert.Empty((await org.D.Anwesenheit.AppellAsync(org.Direktor, org.Klasse6B, new(2027, 1, 5))).Zeilen);
         Assert.Contains((await org.D.Anwesenheit.AppellAsync(org.Direktor, org.Klasse6B, new(2026, 12, 15))).Zeilen, z => z.SchuelerId == org.SchuelerZiel);
@@ -120,6 +142,22 @@ public class SessionTests
         Assert.Equal((EinschreibungsStatus.Terminee, (DateOnly?)S1Ende), (alt.Status, alt.Bis));
         Assert.DoesNotContain((await org.D.Schueler.SucheAsync(org.Direktor, SchuelerService.FilterSansClasse, null, null, 0, 50)).Eintraege,
             z => z.KontoId == org.SchuelerZiel);
+    }
+
+    [Fact]
+    public async Task Vergessener_Session_Teilnehmer_laesst_sich_nach_der_Session_archivieren() => await ArchivierenAsync(await SessionWeltAsync());
+
+    internal static async Task ArchivierenAsync(FinanzWelt w)
+    {
+        // Gefunden in der Simulation (S3): in der Liste « sans classe », beim Archivieren aber « encore inscrit dans une classe ».
+        var org = w.Org;
+        var waehrend = await Assert.ThrowsAsync<FachFehler>(() => org.D.Konten.ArchivierenAsync(org.Direktor, org.SchuelerZiel));
+        Assert.Contains("encore inscrit", waehrend.Message, StringComparison.Ordinal);
+        w.Heute(new(2027, 1, 5));
+        await org.D.Konten.ArchivierenAsync(org.Direktor, org.SchuelerZiel);
+        Assert.Equal(KontoStatus.Archive, await w.MitDbAsync(db => db.Users.Where(k => k.Id == org.SchuelerZiel).Select(k => k.Status).SingleAsync()));
+        var alt = await w.MitDbAsync(db => db.Einschreibungen.SingleAsync(e => e.Id == org.EinschreibungZiel));
+        Assert.Equal((EinschreibungsStatus.Terminee, (DateOnly?)S1Ende), (alt.Status, alt.Bis));
     }
 
     [Fact]
@@ -145,6 +183,26 @@ public class SessionTests
         w.Heute(new(2027, 1, 5));
         await org.D.Einschreibung.EinschreibenAsync(org.Direktor, org.SchuelerZiel, org.Klasse6A, new(2027, 1, 5), false);
         Assert.Contains(s2, await PostenVonAsync(org.SchuelerZiel));
+    }
+
+    [Fact]
+    public async Task Vorjahreskopie_uebernimmt_gleichnamige_Posten_der_anderen_Sessions()
+    {
+        // Gefunden in der Simulation (S3): gab es im neuen Jahr schon « Frais de session » für eine Session, übersprang
+        // « Copier l'année précédente » die gleichnamigen Posten aller anderen Sessions.
+        var w = await SessionWeltAsync();
+        var org = w.Org;
+        foreach (var p in new[] { org.P1, org.P2, org.P3 })
+            await w.Gebuehren.PostenSpeichernAsync(w.D, org.Jahr, null, new PostenEingabe("Frais de session", 15_000, null, null, true, [], p));
+        await w.Gebuehren.PostenSpeichernAsync(w.D, org.JahrVorb, null, new PostenEingabe("Frais de session", 16_000, null, null, true, [], org.PV1));
+
+        // Inscription, Scolarité und die Sessions 2 + 3 werden kopiert; nur die schon vorhandene Session 1 bleibt.
+        Assert.Equal((4, 1), await w.Gebuehren.VorjahrKopierenAsync(w.D, org.JahrVorb));
+        var sessions = (await w.Gebuehren.PostenAsync(w.D, org.JahrVorb)).Where(p => p.Bezeichnung == "Frais de session")
+            .ToDictionary(p => p.PeriodeId!.Value, p => p.Betrag);
+        Assert.Equal(3, sessions.Count);
+        Assert.Equal((16_000L, 15_000L, 15_000L), (sessions[org.PV1], sessions[org.PV2], sessions[org.PV3]));
+        Assert.Equal((0, 5), await w.Gebuehren.VorjahrKopierenAsync(w.D, org.JahrVorb));
     }
 
     [Fact]
@@ -175,5 +233,6 @@ public class SqlSessionTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenban
         await SessionTests.AbrechnungAsync(await WeltAsync());
         await SessionTests.ListenAsync(await WeltAsync());
         await SessionTests.GebuehrenAsync(await WeltAsync());
+        await SessionTests.ArchivierenAsync(await WeltAsync());
     }
 }

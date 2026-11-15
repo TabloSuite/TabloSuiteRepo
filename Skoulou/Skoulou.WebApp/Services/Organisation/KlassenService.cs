@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.Core.Rechte;
+using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
 
@@ -27,7 +28,7 @@ public enum LoeschErgebnis
 }
 
 /// <summary>Stufen (« Niveaux ») und Klassen eines Schuljahres (Bauplan §4.2, §11.11).</summary>
-public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff)
+public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, TimeProvider zeit)
 {
     // ---------------- Stufen ----------------
 
@@ -129,7 +130,8 @@ public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, schreiben: false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         await OrgAbfragen.SchuljahrAsync(db, a, jahrId, ct);
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        // Effectif = laufende Einschreibungen: eine Session-Klasse hat nach ihrer Session keine Teilnehmer mehr.
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, new SchulZeit(zeit).Heute);
         return await db.Klassen.AsNoTracking().Where(k => k.SchuljahrId == jahrId && (mitInaktiven || k.Aktiv))
             .OrderBy(k => db.Stufen.Where(s => s.Id == k.StufeId).Select(s => (int?)s.Reihenfolge).FirstOrDefault() ?? 999)
             .ThenBy(k => k.Name)
@@ -151,7 +153,8 @@ public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, schreiben: false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         await OrgAbfragen.SchuljahrAsync(db, a, jahrId, ct);
-        var aktive = SchulAbfragen.AktiveEinschreibungen(db);
+        // Effectif = laufende Einschreibungen: eine Session-Klasse hat nach ihrer Session keine Teilnehmer mehr.
+        var aktive = SchulAbfragen.LaufendeEinschreibungen(db, new SchulZeit(zeit).Heute);
         var liste = await db.Klassen.AsNoTracking().Where(k => k.SchuljahrId == jahrId && k.Aktiv)
             .OrderBy(k => db.Stufen.Where(s => s.Id == k.StufeId).Select(s => (int?)s.Reihenfolge).FirstOrDefault() ?? 999).ThenBy(k => k.Name)
             .Select(k => new { k.Id, k.Name, k.Kapazitaet, Effectif = aktive.Count(e => e.KlasseId == k.Id) })

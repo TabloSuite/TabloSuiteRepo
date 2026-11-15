@@ -54,14 +54,15 @@ internal sealed class OrgDienste
 
         Schule = new SchulService(db, Zugriff, audit, Speicher);
         Jahre = new SchuljahrService(db, Zugriff, audit, zeit);
-        Klassen = new KlassenService(db, Zugriff);
+        Klassen = new KlassenService(db, Zugriff, zeit);
         Faecher = new FaecherService(db, Zugriff);
         Unterricht = new UnterrichtService(db, Zugriff);
-        Konten = new KontoVerwaltungService(db, Zugriff, audit, fabrik, Ablage, sitzungen);
+        Konten = new KontoVerwaltungService(db, Zugriff, audit, fabrik, Ablage, sitzungen, zeit);
         Personal = new PersonalService(db, Zugriff, audit, fabrik, Ablage, mails);
         Schueler = new SchuelerService(db, Zugriff, audit, fabrik, Ablage, mails, nummern, Speicher, zeit);
         Einschreibung = new EinschreibungService(db, Zugriff, audit, sitzungen, zeit);
-        Eltern = new ElternService(db, Zugriff, audit, fabrik, Ablage, mails);
+        Eltern = new ElternService(db, Zugriff, audit, fabrik, Ablage, mails, zeit);
+        ElternKinder = new ElternKinderService(db, Zugriff, zeit);
         Stundenplan = new StundenplanService(db, Zugriff);
         Anwesenheit = new AnwesenheitService(db, Zugriff, zeit);
         Cockpit = new CockpitService(db, Zugriff, zeit);
@@ -77,6 +78,7 @@ internal sealed class OrgDienste
     public SchulService Schule { get; }
     public SchuljahrService Jahre { get; }
     public KlassenService Klassen { get; }
+    public ElternKinderService ElternKinder { get; }
     public FaecherService Faecher { get; }
     public UnterrichtService Unterricht { get; }
     public KontoVerwaltungService Konten { get; }
