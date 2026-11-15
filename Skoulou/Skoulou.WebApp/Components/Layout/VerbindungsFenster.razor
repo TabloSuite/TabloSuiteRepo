@@ -1,0 +1,23 @@
+@* Fenster bei unterbrochener Verbindung (Handy, schwaches Netz). Ohne dieses Element zeigt Blazor sein eigenes,
+   englisches Fenster (« Rejoining the server… »). Blazor setzt nur die Klassen components-reconnect-* auf das Element;
+   Anzeige über CSS (app.css), Knöpfe über skoulou.js. Steht statisch in App.razor – außerhalb der interaktiven Seite. *@
+<div id="components-reconnect-modal" class="sk-verbindung" role="alertdialog" aria-live="assertive" aria-labelledby="sk-verbindung-titel" data-nosnippet>
+    <div class="sk-verbindung-karte">
+        <span class="sk-spinner sk-verbindung-kreis" aria-hidden="true"></span>
+        <strong id="sk-verbindung-titel" class="sk-verbindung-titel">Connexion interrompue</strong>
+
+        <p class="sk-verbindung-erster">Reconnexion en cours… Vos données enregistrées ne sont pas perdues.</p>
+        <p class="sk-verbindung-wieder">
+            La connexion n'est pas encore rétablie. Nouvel essai dans <span id="components-seconds-to-next-attempt">quelques</span> s.
+        </p>
+        <p class="sk-verbindung-fehler">La connexion n'a pas pu être rétablie. Vérifiez votre connexion Internet, puis réessayez.</p>
+        <p class="sk-verbindung-pause">La session a été mise en pause après une longue inactivité.</p>
+        <p class="sk-verbindung-ende">La session n'a pas pu reprendre. Veuillez recharger la page.</p>
+
+        <div class="sk-verbindung-knoepfe">
+            <button type="button" class="sk-btn sk-btn-primaer sk-verbindung-fehler" data-sk-verbindung="reessayer">Réessayer</button>
+            <button type="button" class="sk-btn sk-btn-primaer sk-verbindung-pause" data-sk-verbindung="reprendre">Reprendre</button>
+            <button type="button" class="sk-btn sk-verbindung-fehler sk-verbindung-ende" data-sk-verbindung="recharger">Recharger la page</button>
+        </div>
+    </div>
+</div>

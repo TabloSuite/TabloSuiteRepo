@@ -37,7 +37,9 @@ button.pl-zeile-titel:hover { color: var(--sk-primaer-text); text-decoration: un
 .pl-banner.wichtig { border-color: var(--sk-warn-rand); background: var(--sk-warn-zart); }
 .pl-banner-icon { color: var(--sk-primaer-text); margin-top: .1rem; }
 .pl-banner.wichtig .pl-banner-icon { color: var(--sk-warn-text); }
-.pl-banner strong { display: block; margin-bottom: .15rem; }
+/* Langer Titel ohne Leerzeichen (z. B. eine Adresse) darf die Seite am Handy nicht verbreitern. */
+.pl-banner > div { min-width: 0; }
+.pl-banner strong { display: block; margin-bottom: .15rem; overflow-wrap: anywhere; }
 .pl-banner-text { font-size: .92rem; overflow-wrap: anywhere; }
 .pl-banner small { color: var(--sk-text-leise); }
 

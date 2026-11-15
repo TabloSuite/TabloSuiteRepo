@@ -158,6 +158,28 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
     border: 2px solid rgba(128, 128, 128, .35); border-top-color: currentColor; animation: sk-drehen .7s linear infinite;
 }
 
+/* ---------------- Verbindung unterbrochen (VerbindungsFenster.razor; Blazor setzt die Klassen components-reconnect-*) ---------------- */
+.sk-verbindung { display: none; position: fixed; inset: 0; z-index: 5000; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 23, 42, .5); }
+.sk-verbindung:is(.components-reconnect-show, .components-reconnect-retrying, .components-reconnect-failed, .components-reconnect-paused, .components-reconnect-resume-failed) { display: flex; }
+.sk-verbindung-karte {
+    display: grid; justify-items: center; gap: .7rem; width: 100%; max-width: 24rem; padding: 1.6rem 1.4rem; text-align: center;
+    background: var(--sk-flaeche); color: var(--sk-text); border-radius: var(--sk-radius-gross); box-shadow: var(--sk-schatten-gross);
+}
+.sk-verbindung-karte p { margin: 0; color: var(--sk-text-leise); }
+.sk-verbindung-titel { font-size: 1.05rem; color: var(--sk-ueberschrift); }
+.sk-verbindung-kreis { width: 1.9rem; height: 1.9rem; border-width: 3px; color: var(--sk-primaer); }
+.sk-verbindung-knoepfe { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
+.sk-verbindung :is(.sk-verbindung-erster, .sk-verbindung-wieder, .sk-verbindung-fehler, .sk-verbindung-pause, .sk-verbindung-ende) { display: none; }
+.sk-verbindung.components-reconnect-show:not(.components-reconnect-retrying, .components-reconnect-failed, .components-reconnect-paused, .components-reconnect-resume-failed) .sk-verbindung-erster,
+.sk-verbindung.components-reconnect-retrying .sk-verbindung-wieder,
+.sk-verbindung.components-reconnect-failed p.sk-verbindung-fehler,
+.sk-verbindung.components-reconnect-paused p.sk-verbindung-pause,
+.sk-verbindung.components-reconnect-resume-failed p.sk-verbindung-ende { display: block; }
+.sk-verbindung.components-reconnect-failed .sk-btn.sk-verbindung-fehler,
+.sk-verbindung.components-reconnect-paused .sk-btn.sk-verbindung-pause,
+.sk-verbindung.components-reconnect-resume-failed .sk-btn.sk-verbindung-ende { display: inline-flex; }
+.sk-verbindung:is(.components-reconnect-failed, .components-reconnect-paused, .components-reconnect-resume-failed) .sk-verbindung-kreis { display: none; }
+
 /* ---------------- Anwendungsrahmen ---------------- */
 .sk-shell { height: 100vh; height: 100dvh; display: flex; overflow: hidden; }
 .sk-inhalt { flex: 1; min-width: 0; display: flex; flex-direction: column; }

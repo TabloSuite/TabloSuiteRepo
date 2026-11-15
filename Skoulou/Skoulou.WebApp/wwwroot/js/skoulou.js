@@ -186,3 +186,46 @@
     // Die Verbindung steht spätestens nach dieser Zeit (sonst zeigt Blazor ohnehin sein Fenster « Reconnexion »).
     setTimeout(function () { beobachter.disconnect(); stand = []; fokus = null; }, 30000);
 })();
+
+// Fenster « Connexion interrompue » (VerbindungsFenster.razor): Blazor zeigt und verbirgt es über Klassen; hier nur die
+// Knöpfe. Kennt der Server die Sitzung nicht mehr (z. B. nach einem Neustart), wird die Seite neu geladen.
+(function () {
+    var fenster = document.getElementById('components-reconnect-modal');
+    if (!fenster) return;
+
+    function neuLaden() { location.reload(); }
+
+    function erneutVerbinden() {
+        if (!window.Blazor || typeof Blazor.reconnect !== 'function') { neuLaden(); return; }
+        Promise.resolve(Blazor.reconnect()).then(function (erfolg) {
+            if (erfolg) return;
+            // Server erreicht, Sitzung aber nicht mehr da: Sitzung fortsetzen oder neu laden.
+            if (typeof Blazor.resumeCircuit !== 'function') { neuLaden(); return; }
+            Promise.resolve(Blazor.resumeCircuit()).then(function (ok) { if (!ok) neuLaden(); }, neuLaden);
+        }, function () { /* Server noch nicht erreichbar – das Fenster bleibt mit « Réessayer » stehen */ });
+    }
+
+    function fortsetzen() {
+        if (!window.Blazor || typeof Blazor.resumeCircuit !== 'function') { neuLaden(); return; }
+        Promise.resolve(Blazor.resumeCircuit()).then(function (ok) { if (!ok) neuLaden(); }, neuLaden);
+    }
+
+    fenster.addEventListener('click', function (e) {
+        var knopf = e.target && e.target.closest ? e.target.closest('[data-sk-verbindung]') : null;
+        if (!knopf) return;
+        var was = knopf.getAttribute('data-sk-verbindung');
+        if (was === 'reessayer') erneutVerbinden();
+        else if (was === 'reprendre') fortsetzen();
+        else neuLaden();
+    });
+
+    fenster.addEventListener('components-reconnect-state-changed', function (e) {
+        var zustand = e.detail && e.detail.state;
+        if (zustand === 'rejected') neuLaden();
+        // Handy wieder entsperrt oder Reiter wieder sichtbar: sofort neu versuchen statt auf den Knopf zu warten.
+        else if (zustand === 'failed') document.addEventListener('visibilitychange', beiSichtbar);
+        else if (zustand === 'hide') document.removeEventListener('visibilitychange', beiSichtbar);
+    });
+
+    function beiSichtbar() { if (document.visibilityState === 'visible') erneutVerbinden(); }
+})();

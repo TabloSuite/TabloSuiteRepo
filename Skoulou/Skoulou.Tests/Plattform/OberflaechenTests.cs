@@ -23,6 +23,50 @@ public partial class OberflaechenTests
     private static partial Regex Formular();
 
     /// <summary>
+    /// Verbindung unterbrochen: eigenes französisches Fenster (sonst zeigt Blazor « Rejoining the server… » auf Englisch).
+    /// Blazor findet es über die Kennung, zeigt es über Klassen; die Knöpfe bedient skoulou.js.
+    /// </summary>
+    [Fact]
+    public void Fenster_Verbindung_unterbrochen_ist_franzoesisch_und_eingebunden()
+    {
+        var fenster = File.ReadAllText(Path.Combine(WebApp(), "Components", "Layout", "VerbindungsFenster.razor"));
+        Assert.Contains("id=\"components-reconnect-modal\"", fenster);
+        Assert.Contains("id=\"components-seconds-to-next-attempt\"", fenster);
+        Assert.Contains("Connexion interrompue", fenster);
+        Assert.Contains("Réessayer", fenster);
+        Assert.Contains("Recharger la page", fenster);
+        Assert.DoesNotMatch(new Regex(@"\b(Rejoin|Retry|Resume|reload the page)\b", RegexOptions.IgnoreCase), fenster);
+
+        // Statisch in App.razor: das Fenster muss auch stehen, wenn die interaktive Seite gerade nicht antwortet.
+        var app = File.ReadAllText(Path.Combine(WebApp(), "Components", "App.razor"));
+        Assert.Contains("<VerbindungsFenster />", app);
+
+        var css = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "app.css"));
+        foreach (var zustand in new[] { "show", "retrying", "failed", "paused", "resume-failed" })
+            Assert.Contains(".components-reconnect-" + zustand, css);
+
+        var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
+        Assert.Contains("components-reconnect-state-changed", js);
+        Assert.Contains("Blazor.reconnect()", js);
+    }
+
+    /// <summary>
+    /// Mehr als zehn unbestätigte Zeichenschritte erlaubt: sonst wartet der Server beim Öffnen einer Seite auf den Browser
+    /// (bei 400 ms Latenz 0,8 s ohne Daten – in S4 ging in dieser Lücke Getipptes verloren).
+    /// </summary>
+    [Fact]
+    public void Verbindung_puffert_genug_Zeichenschritte()
+    {
+        var optionen = new Microsoft.AspNetCore.Components.Server.CircuitOptions();
+        Assert.True(optionen.MaxBufferedUnacknowledgedRenderBatches <= 10, "Standard hat sich geändert – Einstellung prüfen");
+        Skoulou.WebApp.Services.Infrastruktur.InfrastrukturRegistrierung.VerbindungsOptionen(optionen);
+        Assert.True(optionen.MaxBufferedUnacknowledgedRenderBatches >= 40);
+
+        var registrierung = File.ReadAllText(Path.Combine(WebApp(), "Services", "Infrastruktur", "InfrastrukturRegistrierung.cs"));
+        Assert.Contains(".AddInteractiveServerComponents(VerbindungsOptionen)", registrierung);
+    }
+
+    /// <summary>
     /// « value="@x" @oninput » überschreibt bei langsamer Verbindung das Feld mit einem alten Stand (in S4 wurde aus
     /// « Clic2026sim-test » « Clst »). Erlaubt ist nur @bind bzw. @bind:get/@bind:set – dann gleicht Blazor mit dem Browser ab.
     /// </summary>

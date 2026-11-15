@@ -94,10 +94,19 @@ public static class InfrastrukturRegistrierung
 
         services.AddSkoulouRateLimits();
         services.AddRazorComponents()
-            .AddInteractiveServerComponents()
+            .AddInteractiveServerComponents(VerbindungsOptionen)
             .AddHubOptions(o => o.MaximumReceiveMessageSize = 4 * 1024 * 1024);
         return services;
     }
+
+    /// <summary>
+    /// Einstellungen der Blazor-Verbindung. Beim Öffnen einer Seite entstehen mehr als zehn kleine Zeichenschritte
+    /// (Rahmen, Navigation, Banner, Seite, Daten). Mit dem Standard (höchstens 10 unbestätigte Schritte) wartete der Server
+    /// dann auf die Bestätigung des Browsers: bei langsamer Verbindung blieb die Seite einen ganzen Umlauf lang
+    /// (0,8 s bei 400 ms Latenz) ohne ihre Daten – Felder verschwanden kurz, dabei Getipptes ging verloren.
+    /// </summary>
+    public static void VerbindungsOptionen(Microsoft.AspNetCore.Components.Server.CircuitOptions o)
+        => o.MaxBufferedUnacknowledgedRenderBatches = 60;
 
     private static void AddDatenbank(IServiceCollection services, IConfiguration config)
     {
