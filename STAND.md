@@ -7,8 +7,18 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~23:45
 
-**Alles Geplante ist erledigt und gepusht (bis 630ad20). Der Nutzer kann eNOTE und SKOULOU deployen.**
-Keine neue Migration seit dem 14.11. → Azure wurde nicht angefasst und ist aktuell:
+**NÄCHSTE AUFGABE (Nutzer 15.11. abends: « Ja, SKOULOU-Videos neu erstellen » – Start am 16.11., am 15.11. war das Limit
+fast erreicht):** die 9 alten SKOULOU-Lernvideos (alte Oberfläche, KI-Sprecherin, 0:42–2:03) im v3-Stil der eNOTE-Videos neu
+machen. Vollständiger Auftrag (Stil, Pipeline, Aufnahme-Umgebung, Videoliste, Ablauf) im Videoordner:
+`TabloSuite Videos/Skoulou Videos/projekte/lernen-v3/AUFTRAG.md` (unter `C:/ETSE/NETAPPS/`). **Noch nichts produziert.**
+Zuerst den **Pilot** « Préparer l'année scolaire » (Direction) fertigstellen und dem Nutzer zeigen; erst nach seinem OK die
+übrigen (Pakete A–D). Keine Agenten, eine Aufgabe nach der anderen, sparsam arbeiten.
+
+**Beide Apps sind am 15.11. abends deployt** (Stand 630ad20). Kontrolle der öffentlichen Seiten danach in Ordnung: eNOTE
+Startseite « En cinq minutes » + neues Video (22,7 MB, Teilabruf 206), Skript mit Videopositions-Merker, Meldung « Trop de
+tentatives »; SKOULOU Startseite, Ladeanzeige am Anmeldeformular, neue Videoseite, « Page introuvable ». Die angemeldeten
+Bereiche (Menü « Administrateurs », Videos am Handy) prüft der Nutzer selbst.
+Keine neue Migration seit dem 14.11. → Azure-Datenbanken wurden nicht angefasst und sind aktuell:
 eNOTE `ENote-Database` = lokal = `20261114233118_PreisAnpassungEntwarnung`; SKOULOU `Skoulou-Database` = lokal `SkoulouDB` =
 `20261114182350_SessionGebuehrUndHauptAdmin`.
 
