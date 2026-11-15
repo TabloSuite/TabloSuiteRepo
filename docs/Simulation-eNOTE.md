@@ -223,3 +223,29 @@ Volllast (13 Browser + Server auf einem Rechner) maßen die Browser 3–4 s je A
   klarer Meldung ab).
 - EF-Hinweise: Kundenabfrage mit `TOP(@p)` ohne `ORDER BY`; Mehrfach-Include (aus S1 bekannt).
 - Die S1-Daten-Simulation wurde mit dem korrigierten Medienspeicher nicht neu gerechnet (Regressionstest grün).
+
+## W1–W3 – Nutzerwünsche und offene Punkte aus S2
+
+Stand 15.11.2026. Je Punkt Regressionstests, danach Klickprüfung mit der App im Hintergrund (eigener Build, `ENOTEDB_SIM`,
+Port 5291, `Mail__Provider=Aucun` – alle Mails nur in der Warteschlange –, Medien im Temp-Ordner, Seed-Admin aus),
+Playwright/Edge headless, Desktop 1440×900, zweites Tablet 1280×800, Handy 390×844. Bilder: `Pictures\Simulation-eNOTE\w\`.
+
+| Punkt | Umsetzung | Klickprüfung | Commit |
+|---|---|---|---|
+| **W1** Entwarnung bei aufgehobener Tariferhöhung | « Annuler » in Administration › Tarifs öffnet « Annuler le changement de tarif »: vorbelegter, bearbeitbarer Titel/Text (« Bonne nouvelle : la hausse de tarif annoncée n'aura pas lieu », Platzhalter mit den Werten der Ankündigung), Banner-Vorschau, Schalter « Envoyer aussi par e-mail » (an, wenn die Ankündigung per Mail ging). Tarif-Banner der Entwarnung (nur für Konten, die es damals gab), Mail `tarif-annule` (Outbox) an genau die Adressen der Ankündigungsmails, Journal im Verlauf (« Annulé le … · avis … »). Migration `20261114233118_PreisAnpassungEntwarnung` | Admin plant +400 F (52 Mails in der Warteschlange), Besitzer sieht Ankündigung am Handy, Admin hebt auf → 52 Entwarnungen, Besitzer sieht « Bonne nouvelle … », Ankündigung weg; Schalter « aus » → nur App | e3df98a, 424f7a5 |
+| **W2** Land bei der Registrierung | Feld « Pays » (Länder mit Ortszeit oder aktivem Mobile-Money-Anbieter, Westafrika zuerst, Standard Togo), Server prüft vor dem Anlegen; Paramètres › « Pays » (Besitzer) und Land-Knopf in Établissements (Admin) mit Hinweis auf die Folgen (UTC±x, Mobile Money des neuen Landes); Wechsel setzt die Mobile-Money-Auswahl auf alle Anbieter des neuen Landes. Läden ohne Land bleiben Togo. Keine Migration | Registrierung am Handy mit Bénin, Besitzer wechselt Togo → Bénin (Anbieter wechseln zu MTN MoMo/Moov/Celtiis) und zurück, Admin setzt Sénégal; kein Querscrollen | 1062f91 |
+| **W3** Sperre für alle Kassenbuchungen | `KassenSperre` (`sp_getapplock` je Laden in der Transaktion) für Kassenstart, Verkauf, Abschluss, Perte, Retrait Ware/Bargeld, Einlage in die Kasse, « Enregistrer sans encaisser » (+ Rücknahme ins Lager), Erstattung | SQL-Test: 20 Verkäufe + 20 Pertes + 10 Retraits + 10 Erfassungen + 10 Erstattungen gleichzeitig → Bestand exakt; doppelter Kassenstart → eine Kasse; 2 × Bar-Entnahme 10.000 F bei 18.000 F → eine; derselbe Bon doppelt erstattet → einmal; Abschluss mitten in Einlagen/Entnahmen → Soll = Summe der gebuchten Bewegungen. Gegenprobe ohne Sperre rot | 7aa6d0a |
+| **W3** « En caisse » und Abschlussdialog | Bargeldbuchungen melden `AnwesenheitsSignal.KasseGeaendert`; alle Kassen des Ladens laden den Stand aus der DB (auch beim Öffnen von Retrait/Rembourser/Clôturer), offener Abschlussdialog zeigt den neuen Stand mit Hinweis, Abschluss schickt sein Soll mit (`SollGeaendertFehler`) | Zwei Tablets: B verkauft → A zeigt +400 F ohne eigene Aktion; offener Abschlussdialog auf A springt 10.400 → 10.800 F mit Hinweis; Retrait auf A → B zeigt 100 F; Abschluss auf A → B am Kassenstart | 7aa6d0a, 424f7a5 |
+| **W3** Remise, Rembourser, EF-Hinweis | Nom/Condition auch serverseitig begrenzt (120/200), Karten-Schalter nur aktiv/inaktiv; « Rembourser » gesperrt mit Hinweis, wenn der Betrag den Rest des Zahlwegs oder das Bargeld übersteigt; Kundensuche mit fester Reihenfolge vor `TOP` | Erstattung 400 F bar bei 100 F in der Kasse: Knopf aus, « Pas assez d'espèces en caisse (100 F attendus) » | 7aa6d0a |
+
+**Funde der Klickprüfung (behoben, 424f7a5):** Die Entwarnung zählte Ankündigungsmails einer kurz zuvor aufgehobenen
+Ankündigung mit gleichem Titel mit (156 statt 52 Mails); das Gerät, das bar verkaufte, zählte den Betrag doppelt
+(+800 statt +400 F), weil das Signal vor der lokalen Addition eintraf. Server-Log ohne Fehler.
+
+Tests: 435 grün (+ 2 SQL-Tests mit `ENOTE_SIM=1`), Build ohne neue Warnungen.
+
+**Offen:** EF-Hinweis « mehrere Collection-Includes » (Sitzung → Verkäufe → Zahlungen) tritt durch das Nachladen des
+Kassenstands häufiger auf (aus S1 bekannt, ohne messbare Folgen; Kandidat für `AsSplitQuery` bzw. Summen in SQL).
+Migration `20261114233118_PreisAnpassungEntwarnung` lokal auf `ENOTEDB` und `ENOTEDB_SIM` eingespielt, auf Azure
+noch nicht (vor dem nächsten Deploy einspielen). In `ENOTEDB_SIM` liegen aus dem ersten Klicklauf 156 nie versendete
+Entwarnungsmails in der Warteschlange.
