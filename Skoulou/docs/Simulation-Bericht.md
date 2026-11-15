@@ -306,7 +306,8 @@ Zusammen rund 3.000 Klicks, 500 Seitenaufrufe und 290 Eingaben (letzter Stand de
 | Unbekannte Adresse zeigte eine leere 404-Seite | Seite « Page introuvable » (825a1c6) |
 | Getrennte Verbindung: englisches Blazor-Fenster; nach dem Verbindungsstart 0,8 s Seite ohne Daten (Getipptes verloren) | französisches Fenster « Connexion interrompue », Zeichenschritte gepuffert: Lücke 13–28 ms (265d9a2) |
 | Handy: « Enregistrer l'appel » hinter der unteren Navigation (Appell nicht speicherbar); Kalender und Aufklapplisten ragten hinaus; Dialog « Modèle de bulletin » nicht schließbar; lange Wörter in Annoncen | klebende Leisten über der Navigation, Fenster bleiben im Bildschirm, Umbruch (265d9a2, d9a517c) |
-| **Schutzgrenzen je Anschluss zu eng:** 10 Anmeldungen/Minute, 5 Registrierungen und 5 Passwort-Vorgänge je 10 Minuten und IP – eine Klasse am selben Schul-WLAN sperrte sich gegenseitig aus (auch beim Pflichtdialog « Choisissez votre mot de passe ») | 60 / 30 / 20 je Anschluss, eigenes Passwort ändern zählt je Konto; nach einer Ablehnung bleibt der Rücksetz-Link erhalten und die Meldung stimmt (1d27ef1) |
+| **Schutzgrenzen je Anschluss zu eng:** 10 Anmeldungen/Minute, 5 Registrierungen und 5 Passwort-Vorgänge je 10 Minuten und IP – eine Klasse am selben Schul-WLAN sperrte sich gegenseitig aus (auch beim Pflichtdialog « Choisissez votre mot de passe ») | 60 Anmeldungen/Minute, 120 Registrierungs-Anfragen und 20 « oublié »-Vorgänge je 10 Minuten und Anschluss; eigenes Passwort ändern zählt je Konto; nach einer Ablehnung bleibt der Rücksetz-Link erhalten und die Meldung stimmt (1d27ef1) |
+| **Schüler-Selbstregistrierung:** zusätzliche Bremse von 10 erfolgreichen Registrierungen je Anschluss in 24 Stunden – nach dem zehnten Schüler einer Klasse war am selben Schul-WLAN für den Tag Schluss (« Réessayez demain ») | Schüler zählen getrennt von Schulen: 300 je Anschluss und Tag; Schulen weiter 10, je E-Mail-Adresse weiter 3 |
 | Nach 5 Fehlversuchen gesperrt → Passwort per Mail-Link neu gesetzt → trotzdem bis zu 15 Minuten ausgesperrt | Zurücksetzen per Link hebt die Sperre auf (1d27ef1) |
 | Handy, Sprachschule: Gebührenkarte mit langer Geltung (« Classe … · Session 1 seulement ») machte die Seite 414 px breit | Geltung bricht um, Betrag bleibt in der Karte (55abdad) |
 
@@ -327,5 +328,5 @@ Rundgang 0 Befunde, Rest 20 von 20, Server-Log ohne Fehler (zwei bekannte EF-War
 2. QR-Prüfseite: Bulletin-Nummer und Datum zusätzlich anzeigen? (heute bewusst knapp, Test schreibt die Felder fest).
 3. Der Monkey hat in zwei Schulen der SIM-DB Unsinn angelegt (Klassen, Schuljahre 2027-28/2028-29) – nur Testdaten.
 
-Bilder: `C:\Users\etsec\Pictures\Simulation-SKOULOU\`. Teststand nach S4: Build ohne Warnungen, 561 Tests grün (22 übersprungen), mit `SKOULOU_SQL_TESTS=1` 580 grün
+Bilder: `C:\Users\etsec\Pictures\Simulation-SKOULOU\`. Teststand nach S4: Build ohne Warnungen, 562 Tests grün (22 übersprungen), mit `SKOULOU_SQL_TESTS=1` 581 grün
 (3 übersprungen: Simulation).

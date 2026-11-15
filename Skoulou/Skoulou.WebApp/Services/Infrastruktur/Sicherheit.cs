@@ -22,7 +22,7 @@ public static class RateLimits
     public const string Pruefung = "pruefung";
 
     public const int AnmeldungenJeMinute = 60;
-    public const int RegistrierungenJeZehnMinuten = 30;
+    public const int RegistrierungenJeZehnMinuten = 120;
     public const int PasswortJeKontoJeZehnMinuten = 5;
     public const int PasswortOublieJeZehnMinuten = 20;
 

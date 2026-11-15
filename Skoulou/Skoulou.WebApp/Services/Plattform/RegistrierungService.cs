@@ -33,28 +33,32 @@ public sealed record RegistrierungsErgebnis(RegistrierungsArt Art, string Identi
 
 /// <summary>
 /// Bremse gegen Massenregistrierungen (zusätzlich zum Rate-Limiter des Endpunkts): je Verbindung und je
-/// E-Mail-Adresse nur wenige erfolgreiche Registrierungen in 24 Stunden.
+/// E-Mail-Adresse nur wenige erfolgreiche Registrierungen in 24 Stunden. Schulen: 10 je Verbindung. Schüler
+/// registrieren sich klassenweise vom selben Anschluss (Schul-WLAN, Informatikraum) – für sie gilt ein eigener,
+/// großzügiger Zähler, sonst wäre nach dem zehnten Schüler für den ganzen Tag Schluss (S4).
 /// </summary>
 public sealed class RegistrierungsBremse(TimeProvider zeit)
 {
     public const int ProVerbindung = 10;
+    public const int ProVerbindungEleves = 300;
     public const int ProAdresse = 3;
     public static readonly TimeSpan Fenster = TimeSpan.FromHours(24);
     public const string Meldung = "Trop d'inscriptions depuis cette connexion ou avec cette adresse. Réessayez demain ou contactez-nous.";
 
     private readonly ConcurrentDictionary<string, List<DateTimeOffset>> zaehler = new();
 
-    private static IEnumerable<(string Schluessel, int Grenze)> Schluessel(string? ip, string? email)
+    private static IEnumerable<(string Schluessel, int Grenze)> Schluessel(string? ip, string? email, RegistrierungsArt art)
     {
-        if (!string.IsNullOrWhiteSpace(ip)) yield return ("ip:" + ip.Trim(), ProVerbindung);
+        if (!string.IsNullOrWhiteSpace(ip))
+            yield return art == RegistrierungsArt.Eleve ? ("ip-eleve:" + ip.Trim(), ProVerbindungEleves) : ("ip:" + ip.Trim(), ProVerbindung);
         if (!string.IsNullOrWhiteSpace(email)) yield return ("mail:" + email.Trim().ToLowerInvariant(), ProAdresse);
     }
 
     /// <summary>Ist eine weitere Registrierung erlaubt?</summary>
-    public bool IstErlaubt(string? ip, string? email)
+    public bool IstErlaubt(string? ip, string? email, RegistrierungsArt art = RegistrierungsArt.Direction)
     {
         var grenze = zeit.GetUtcNow() - Fenster;
-        foreach (var (s, max) in Schluessel(ip, email))
+        foreach (var (s, max) in Schluessel(ip, email, art))
         {
             if (!zaehler.TryGetValue(s, out var liste)) continue;
             lock (liste)
@@ -67,9 +71,9 @@ public sealed class RegistrierungsBremse(TimeProvider zeit)
     }
 
     /// <summary>Merkt eine erfolgreiche Registrierung.</summary>
-    public void Merken(string? ip, string? email)
+    public void Merken(string? ip, string? email, RegistrierungsArt art = RegistrierungsArt.Direction)
     {
-        foreach (var (s, _) in Schluessel(ip, email))
+        foreach (var (s, _) in Schluessel(ip, email, art))
         {
             var liste = zaehler.GetOrAdd(s, _ => []);
             lock (liste) liste.Add(zeit.GetUtcNow());
@@ -125,7 +129,7 @@ public sealed class RegistrierungService(
     public async Task<RegistrierungsErgebnis> RegistrierenAsync(RegistrierungsEingabe e, string? verbindung, CancellationToken ct = default)
     {
         if (!e.AgbAkzeptiert) throw new FachFehler(MeldungAgb, "agb");
-        if (!bremse.IstErlaubt(verbindung, e.Email)) throw new FachFehler(RegistrierungsBremse.Meldung);
+        if (!bremse.IstErlaubt(verbindung, e.Email, e.Art)) throw new FachFehler(RegistrierungsBremse.Meldung);
 
         var (ergebnis, konto, schulName, ort) = await dbFactory.TransaktionAsync(async db =>
         {
@@ -165,7 +169,7 @@ public sealed class RegistrierungService(
             return (new RegistrierungsErgebnis(e.Art, p.Identifiant, name), neu, name, ortText);
         }, ct, DbArbeit.KontoVersuche);
 
-        bremse.Merken(verbindung, e.Email);
+        bremse.Merken(verbindung, e.Email, e.Art);
         if (e.Art == RegistrierungsArt.Direction)
         {
             await mails.SchuleEingegangenAsync(konto.Email, konto.Vorname, ergebnis.Identifiant, schulName, ct);

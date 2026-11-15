@@ -96,6 +96,26 @@ public class RegistrierungTests
     }
 
     [Fact]
+    public async Task Eine_Klasse_registriert_sich_vom_selben_Anschluss()
+    {
+        // S4: Schul-WLAN/Informatikraum – alle Schüler kommen von EINER Verbindung. Früher war nach 10 für 24 Stunden Schluss.
+        await using var u = new PlattformUmgebung();
+        await u.StartAsync();
+        var schule = await u.Basis.SchuleAsync();
+        for (var i = 0; i < RegistrierungsBremse.ProVerbindung + 5; i++)
+            await u.Registrierung.RegistrierenAsync(PlattformUmgebung.Eleve(schule.Id, $"eleve{i}@exemple.tg") with { Identifiant = $"classe{i}" }, "10.0.0.50");
+
+        // Schüler und Schulen zählen getrennt: die Grenze für Schulen bleibt eng, die für Schüler trägt eine ganze Schule.
+        var bremse = new RegistrierungsBremse(u.Zeit);
+        for (var i = 0; i < RegistrierungsBremse.ProVerbindung; i++) bremse.Merken("1.2.3.4", null, RegistrierungsArt.Direction);
+        Assert.False(bremse.IstErlaubt("1.2.3.4", null, RegistrierungsArt.Direction));
+        Assert.True(bremse.IstErlaubt("1.2.3.4", null, RegistrierungsArt.Eleve));
+        for (var i = 0; i < RegistrierungsBremse.ProVerbindungEleves; i++) bremse.Merken("1.2.3.4", null, RegistrierungsArt.Eleve);
+        Assert.False(bremse.IstErlaubt("1.2.3.4", null, RegistrierungsArt.Eleve));
+        Assert.True(RegistrierungsBremse.ProVerbindungEleves >= 200);
+    }
+
+    [Fact]
     public async Task Schueler_nur_bei_aktiver_Schule_und_Uebergabe_an_die_Direktion()
     {
         await using var u = new PlattformUmgebung();

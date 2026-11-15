@@ -159,7 +159,7 @@ public class InfrastrukturTests
     {
         // Schul-WLAN/Informatikraum/Mobilfunk-NAT: alle Schüler kommen von EINER IP.
         Assert.True(RateLimits.AnmeldungenJeMinute >= 50, "eine Klasse meldet sich innerhalb einer Minute an");
-        Assert.True(RateLimits.RegistrierungenJeZehnMinuten >= 30, "eine Klasse registriert sich selbst");
+        Assert.True(RateLimits.RegistrierungenJeZehnMinuten >= 100, "eine Klasse registriert sich selbst, auch mit Tippfehlern und zweitem Versuch");
         Assert.True(RateLimits.PasswortOublieJeZehnMinuten >= 20);
     }
 
