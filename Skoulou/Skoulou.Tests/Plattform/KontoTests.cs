@@ -109,6 +109,29 @@ public class KontoTests
     }
 
     [Fact]
+    public async Task Zuruecksetzen_per_Link_hebt_die_Sperre_nach_Fehlversuchen_auf()
+    {
+        // S4: 5 falsche Passwörter → 15 Minuten gesperrt → « Mot de passe oublié » → neues Passwort → Anmeldung muss sofort gehen.
+        await using var u = new TestUmgebung();
+        await u.SeedAsync();
+        var schule = await u.SchuleAsync("A");
+        var konto = await u.KontoAsync("parent.c", Rollen.Eltern, schule.Id, email: "parent.c@exemple.tg");
+        // Jede Anfrage hat ihren eigenen Bereich (wie im Betrieb) – Hole<T>() liefert jeweils einen neuen.
+        for (var i = 0; i < 5; i++) await u.Hole<AnmeldeService>().PruefeAsync("parent.c", "faux-" + i);
+        Assert.Equal(AnmeldeErgebnis.Verriegelt, (await u.Hole<AnmeldeService>().PruefeAsync("parent.c", TestUmgebung.Passwort)).Ergebnis);
+
+        var users = u.Hole<Microsoft.AspNetCore.Identity.UserManager<Konto>>();
+        var token = await users.GeneratePasswordResetTokenAsync((await users.FindByIdAsync(konto.Id.ToString()))!);
+        Assert.Null((await u.Hole<PasswortService>().ZuruecksetzenAsync(konto.Id, token, "nouveau9", "nouveau9")).Fehler);
+
+        Assert.Equal(AnmeldeErgebnis.Erlaubt, (await u.Hole<AnmeldeService>().PruefeAsync("parent.c", "nouveau9")).Ergebnis);
+        await using var db = await u.Db.CreateDbContextAsync();
+        var danach = await db.Users.SingleAsync(k => k.Id == konto.Id);
+        Assert.Equal(0, danach.AccessFailedCount);
+        Assert.Null(danach.LockoutEnd);
+    }
+
+    [Fact]
     public async Task Profil_wird_validiert_und_gespeichert()
     {
         await using var u = new TestUmgebung();

@@ -152,6 +152,49 @@ public class InfrastrukturTests
         Assert.Equal("a &lt;b&gt;<br>c", HtmlBereiniger.TextAlsHtml("a <b>\nc"));
     }
 
+    // ---------- Rate-Limits (S4): eine Klasse am selben Anschluss darf sich nicht gegenseitig aussperren ----------
+
+    [Fact]
+    public void RateLimits_tragen_eine_ganze_Klasse_am_selben_Anschluss()
+    {
+        // Schul-WLAN/Informatikraum/Mobilfunk-NAT: alle Schüler kommen von EINER IP.
+        Assert.True(RateLimits.AnmeldungenJeMinute >= 50, "eine Klasse meldet sich innerhalb einer Minute an");
+        Assert.True(RateLimits.RegistrierungenJeZehnMinuten >= 30, "eine Klasse registriert sich selbst");
+        Assert.True(RateLimits.PasswortOublieJeZehnMinuten >= 20);
+    }
+
+    [Fact]
+    public void Passwort_Limit_zaehlt_angemeldet_je_Konto_sonst_je_Anschluss()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        static ClaimsPrincipal Konto(Guid id) => new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "Test"));
+        // Pflichtdialog beim ersten Login: zwei Schüler am selben Anschluss haben getrennte Zähler.
+        Assert.NotEqual(RateLimits.PasswortSchluessel(Konto(a), "10.0.0.7"), RateLimits.PasswortSchluessel(Konto(b), "10.0.0.7"));
+        Assert.Equal(RateLimits.PasswortSchluessel(Konto(a), "10.0.0.7"), RateLimits.PasswortSchluessel(Konto(a), "10.0.0.99"));
+        Assert.Equal("ip:10.0.0.7", RateLimits.PasswortSchluessel(new ClaimsPrincipal(new ClaimsIdentity()), "10.0.0.7"));
+        Assert.Equal("ip:unbekannt", RateLimits.PasswortSchluessel(null, null));
+    }
+
+    [Theory]
+    // Rücksetz-Link: id und token bleiben erhalten (sonst « lien invalide » statt « trop de tentatives »)
+    [InlineData("https://skoulou.test/auth/reinitialiser?id=7b1c&token=Cf%2BDJ8%3D", "/auth/reinitialiser?id=7b1c&token=Cf%2BDJ8%3D&erreur=limite")]
+    // alte Meldungen fallen weg
+    [InlineData("https://skoulou.test/auth/mot-de-passe-oublie?envoye=1", "/auth/mot-de-passe-oublie?erreur=limite")]
+    [InlineData("https://skoulou.test/auth/connexion?erreur=identifiants&identifiant=ama.k", "/auth/connexion?identifiant=ama.k&erreur=limite")]
+    [InlineData("https://skoulou.test/profil?erreur-mdp=1&info=x", "/profil?erreur=limite")]
+    [InlineData("https://skoulou.test/direction", "/direction?erreur=limite")]
+    public void Nach_einer_Ablehnung_geht_es_auf_dieselbe_Seite_mit_ihren_Parametern_zurueck(string seite, string erwartet)
+        => Assert.Equal(erwartet, RateLimits.ZielNachAblehnung(new Uri(seite)));
+
+    [Fact]
+    public void Meldung_zum_Limit_nennt_keine_feste_Minute()
+    {
+        // Fenster: Anmeldung 1 Minute, Passwort/Registrierung 10 Minuten – ein Text für alle Formulare.
+        Assert.Equal(AnmeldeRegeln.MeldungLimite, AnmeldeRegeln.Meldung("limite"));
+        Assert.Contains("quelques minutes", AnmeldeRegeln.MeldungLimite);
+    }
+
     private static ClaimsPrincipal Nutzer(string rolle)
         => new(new ClaimsIdentity([new Claim(ClaimTypes.Role, rolle)], "Test"));
 }

@@ -61,6 +61,9 @@ public static class AnmeldeRegeln
         _ => string.Empty
     };
 
+    /// <summary>Zu viele Versuche vom selben Anschluss bzw. Konto (Fenster 1 bis 10 Minuten, je nach Formular).</summary>
+    public const string MeldungLimite = "Trop de tentatives en peu de temps. Patientez quelques minutes, puis réessayez.";
+
     /// <summary>Französische Meldung zu einem Fehlercode der Anmeldeseite.</summary>
     public static string? Meldung(string? code) => code switch
     {
@@ -71,7 +74,7 @@ public static class AnmeldeRegeln
         "ecole-suspendue" => "L'accès à votre établissement est suspendu. Veuillez contacter la direction de votre établissement.",
         "ecole-en-attente" => "Votre établissement est en cours de validation par SKOULOU. Vous pourrez vous connecter dès sa validation.",
         "ecole-refusee" => "L'inscription de votre établissement n'a pas été acceptée. Contactez SKOULOU pour en savoir plus.",
-        "limite" => "Trop de tentatives en peu de temps. Patientez une minute, puis réessayez.",
+        "limite" => MeldungLimite,
         "session" => "Votre page a expiré. Veuillez réessayer.",
         _ => null
     };

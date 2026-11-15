@@ -36,6 +36,8 @@
     {
         if (Nav.Uri.Contains("erreur-mdp=", StringComparison.Ordinal))
             fehler = "Le mot de passe n'a pas pu être modifié. Vérifiez vos saisies.";
+        else if (Nav.Uri.Contains("erreur=limite", StringComparison.Ordinal))
+            fehler = AnmeldeRegeln.MeldungLimite;
     }
 
     private async Task SpeichernAsync()

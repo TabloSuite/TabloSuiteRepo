@@ -115,6 +115,8 @@ else
         (vorname, nachname, telefon, geschlecht) = (profil.Vorname, profil.Nachname, profil.Telefon, profil.Geschlecht);
         if (Navigation.Uri.Contains("erreur-mdp=", StringComparison.Ordinal))
             mdpFehler = "Le mot de passe n'a pas pu être modifié. Vérifiez vos saisies.";
+        else if (Navigation.Uri.Contains("erreur=limite", StringComparison.Ordinal))
+            mdpFehler = AnmeldeRegeln.MeldungLimite;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

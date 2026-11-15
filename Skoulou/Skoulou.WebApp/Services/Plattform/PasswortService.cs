@@ -101,6 +101,9 @@ public sealed class PasswortService(
             logger.LogInformation("Zurücksetzen abgelehnt: {Codes}", KontoAnlage.Fehlertext(ergebnis));
             return (ergebnis.Errors.Any(e => e.Code == "InvalidToken") ? MeldungUngueltigerLink : PasswortRegel.Pruefe(neu) ?? MeldungUngueltigerLink, null);
         }
+        // Wer nach 5 Fehlversuchen gesperrt ist, greift zu « Mot de passe oublié »: mit dem Link aus seiner Mail hat er sich
+        // ausgewiesen – die 15-Minuten-Sperre fällt, sonst scheitert die Anmeldung direkt nach dem Zurücksetzen.
+        (konto.AccessFailedCount, konto.LockoutEnd) = (0, null);
         await NachWechselAsync(konto, AuditAktionen.PasswortZurueckgesetzt, "Mot de passe réinitialisé par lien e-mail.");
         await BestaetigungAsync(konto, "Mot de passe réinitialisé", "Le mot de passe de votre compte SKOULOU vient d'être réinitialisé.");
         return (null, konto.UserName);

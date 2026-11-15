@@ -59,7 +59,7 @@ public static class AuthEndpunkte
             if (!await AntiforgeryOkAsync(http)) return Results.LocalRedirect("/auth/mot-de-passe-oublie?erreur=session");
             await passwoerter.AnfordernAsync(form["saisie"], http.RequestAborted);
             return Results.LocalRedirect("/auth/mot-de-passe-oublie?envoye=1");
-        }).RequireRateLimiting(RateLimits.Passwort);
+        }).RequireRateLimiting(RateLimits.PasswortOublie);
 
         app.MapPost("/auth/reinitialiser/envoyer", async (HttpContext http, PasswortService passwoerter) =>
         {
@@ -73,7 +73,7 @@ public static class AuthEndpunkte
             return fehler is null
                 ? Results.LocalRedirect($"/auth/connexion?info=mot-de-passe-reinitialise&identifiant={Uri.EscapeDataString(identifiant ?? string.Empty)}")
                 : Results.LocalRedirect(zurueck + "&erreur=" + (fehler == PasswortService.MeldungUngueltigerLink ? "lien" : "saisie"));
-        }).RequireRateLimiting(RateLimits.Passwort);
+        }).RequireRateLimiting(RateLimits.PasswortOublie);
 
         // Alte Adressen (Links in Mails und QR-Codes) bleiben gültig.
         app.MapGet("/auth/login", (HttpContext h) => Results.LocalRedirect("/auth/connexion" + h.Request.QueryString));
