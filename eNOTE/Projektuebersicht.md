@@ -170,3 +170,12 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - **Tarif ändern:** Administration → Tarifs → « Modifier le tarif » → Betrag + Startmonat → Vorschau → Textvorlage → planen (Banner, optional Mail).
 - **Wartung ankündigen:** Administration → Annonces → « Mise à jour planifiée » → Tag + Uhrzeit → Vorlage → veröffentlichen.
 - **Azure-Deploy mit Datenbankänderung:** Migrationshistorie lesen → Skript erzeugen und prüfen → nach OK ausführen → prüfen → Publish (siehe [Deployment-Azure.md](Deployment-Azure.md) §5).
+
+## Schutz der öffentlichen Formulare (15.11.2026)
+
+- **Kontosperre** (Identity): 5 falsche Passwörter → Konto kurz gesperrt; « Mot de passe oublié » + neues Passwort per Mail-Link hebt die Sperre auf.
+- **Anmeldung** (`/auth/login/submit`): höchstens 60 Versuche je Minute und Anschluss (`Schutzgrenzen`), danach `/auth/login?error=limite` mit Meldung.
+- **Registrierung**: je Anschluss 10 und je E-Mail-Adresse 3 erfolgreiche Registrierungen in 24 Stunden (`MissbrauchsBremse`, im Arbeitsspeicher).
+- **« Mot de passe oublié »**: je Anschluss 10 Anfragen in 10 Minuten, je Konto 3 Mails je Stunde – darüber still verworfen (Antwort bleibt neutral).
+- **Kontaktformular**: eigene Bremse in `KontaktService` (Honigtopf-Feld, Grenze je Stunde und je Adresse).
+- **Anschluss des Besuchers** (`Services/Sicherheit/Schutzgrenzen.cs`, `Anschluss.Adresse`): hinter dem Azure-Eingangsserver der letzte Eintrag von « X-Forwarded-For », sonst die Verbindung – gleiche Regel wie in SKOULOU. Tests: `SchutzgrenzenTests`.

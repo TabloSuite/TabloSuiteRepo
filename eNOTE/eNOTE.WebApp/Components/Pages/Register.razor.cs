@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ENote.WebApp.Components.Pages;
 
-public partial class Register(AuthService authService, NavigationManager navigationManager)
+public partial class Register(AuthService authService, NavigationManager navigationManager, IHttpContextAccessor httpZugriff)
 {
     [SupplyParameterFromForm(FormName = "register-form")]
     private RegisterInput? Model { get; set; }
@@ -16,8 +16,11 @@ public partial class Register(AuthService authService, NavigationManager navigat
     private bool cguOffen;
     private IReadOnlyList<Shared.EnoteSelectOption<string>> landOptionen = [];
 
+    private string? anschluss;
+
     protected override async Task OnInitializedAsync()
     {
+        anschluss = Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext);
         landOptionen = (await authService.GetLaenderAsync())
             .Select(l => new Shared.EnoteSelectOption<string> { Value = l, Label = l }).ToList();
     }
@@ -43,7 +46,8 @@ public partial class Register(AuthService authService, NavigationManager navigat
             FormModel.SalonName,
             FormModel.SalonStandort,
             FormModel.Slogan,
-            land: FormModel.Land);
+            land: FormModel.Land,
+            anschluss: anschluss ?? Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext));
 
         isSubmitting = false;
 

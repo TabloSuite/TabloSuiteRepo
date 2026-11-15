@@ -18,7 +18,7 @@ public class AuthService(
     SignInManager<AppUser> signInManager,
     ILogger<AuthService> logger,
     Mails.EmailService emailService,
-    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
+    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null, Sicherheit.MissbrauchsBremse? bremse = null)
 {
     private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
 
@@ -137,11 +137,20 @@ public class AuthService(
         string? salonStandort,
         string? salonSlogan = null,
         CancellationToken cancellationToken = default,
-        string? land = null)
+        string? land = null,
+        string? anschluss = null)
     {
         var bereinigtPseudonym = pseudonym.Trim();
         var bereinigtEmail = email.Trim();
         var bereinigtSalon = salonName.Trim();
+
+        // Bremse gegen Massenregistrierungen: je Anschluss und je E-Mail-Adresse nur wenige erfolgreiche Registrierungen am Tag.
+        if (bremse is not null
+            && (!bremse.IstErlaubt("inscription-anschluss", anschluss, Sicherheit.MissbrauchsBremse.InscriptionJeAnschluss)
+                || !bremse.IstErlaubt("inscription-adresse", bereinigtEmail, Sicherheit.MissbrauchsBremse.InscriptionJeAdresse)))
+        {
+            return (false, Sicherheit.MissbrauchsBremse.MeldungInscription);
+        }
 
         if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
@@ -244,6 +253,8 @@ public class AuthService(
                 string.Join(" · ", new[] { ladenLand, salonStandort?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } ort ? ort : null,
                 cancellationToken);
 
+        bremse?.Merken("inscription-anschluss", anschluss);
+        bremse?.Merken("inscription-adresse", bereinigtEmail);
         return (true, string.Empty);
     }
 }

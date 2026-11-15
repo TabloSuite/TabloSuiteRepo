@@ -1,6 +1,7 @@
 @page "/auth/mot-de-passe-oublie"
 @rendermode InteractiveServer
 @inject ENote.WebApp.Services.KontoWiederherstellung Service
+@inject IHttpContextAccessor HttpZugriff
 
 <PageTitle>Mot de passe oublié</PageTitle>
 <div class="enote-page enote-page-narrow"><section class="enote-card">
@@ -14,10 +15,12 @@
 @code {
     private string pseudonym = "";
     private string? message;
+    private string? anschluss;
+    protected override void OnInitialized() => anschluss = ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext);
     private async Task EnvoyerAsync()
     {
         if (string.IsNullOrWhiteSpace(pseudonym)) { message = "Veuillez indiquer le pseudonyme."; return; }
-        try { await Service.AnfordernAsync(pseudonym); message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables."; }
+        try { await Service.AnfordernAsync(pseudonym, anschluss ?? ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext)); message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables."; }
         catch { message = "La récupération n'est pas disponible pour le moment. Contactez l'administrateur."; }
     }
 }

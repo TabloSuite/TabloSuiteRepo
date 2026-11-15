@@ -20,7 +20,8 @@ public partial class Login
     {
         errorMessage = Error switch
         {
-            "invalid-credentials" => "Adresse e-mail ou mot de passe incorrect, ou compte bloqué.",
+            "invalid-credentials" => "Pseudonyme ou mot de passe incorrect, ou compte bloqué.",
+            "limite" => Services.Sicherheit.Schutzgrenzen.MeldungLimite,
             _ => null
         };
 

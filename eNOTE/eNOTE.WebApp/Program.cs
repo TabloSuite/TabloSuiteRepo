@@ -123,6 +123,9 @@ if (administration is null)
     builder.Services.AddScoped<BestandsService>();
     builder.Services.AddScoped<StornoService>();
     builder.Services.AddSingleton(TimeProvider.System);
+    // Schutz der öffentlichen Formulare: Bremse (Registrierung, « Mot de passe oublié ») und Rate-Limit der Anmeldung.
+    builder.Services.AddSingleton<ENote.WebApp.Services.Sicherheit.MissbrauchsBremse>();
+    ENote.WebApp.Services.Sicherheit.Schutzgrenzen.AddEnoteSchutzgrenzen(builder.Services);
     builder.Services.AddScoped<VertragsService>();
     builder.Services.AddScoped<KassenZugangService>();
     builder.Services.AddHostedService<VertragsSynchronisierungsDienst>();
@@ -227,6 +230,7 @@ app.UseRequestLocalization(optionen =>
     optionen.RequestCultureProviders.Clear();
 });
 app.UseStaticFiles();
+app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
@@ -282,7 +286,7 @@ app.MapPost("/auth/login/submit", async (
         ? returnUrl
         : "/";
     return Results.LocalRedirect(ziel);
-});
+}).RequireRateLimiting(ENote.WebApp.Services.Sicherheit.Schutzgrenzen.Anmeldung);
 
 app.MapPost("/auth/logout", async (AuthService authService) =>
 {
