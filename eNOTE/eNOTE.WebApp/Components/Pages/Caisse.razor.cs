@@ -453,10 +453,8 @@ public partial class Caisse(
             return;
         }
 
-        if (warBar)
-        {
-            anzeigeState.BargeldBewegt(-ergebnis.Betrag);
-        }
+        // « En caisse » aus der DB (eigene Erstattung + was andere Geräte inzwischen gebucht haben; kein Doppelzählen mit dem Signal).
+        if (warBar) await AktualisiereKassenstandAsync();
 
         stornoOffen = false;
         toast.ZeigeErfolg($"Remboursement de {ergebnis.Betrag:N0} F enregistré.");
@@ -519,7 +517,7 @@ public partial class Caisse(
         {
             var ergebnis = await bestandsService.EntnehmeBargeldAsync(aktuellerBenutzerId, aktiveSitzung.Id, retraitPin, retraitBetrag, retraitNotiz);
             if (!ergebnis.Erfolg) { retraitFehler = ergebnis.Fehler; retraitPin = string.Empty; return; }
-            anzeigeState.BargeldBewegt(-retraitBetrag);
+            await AktualisiereKassenstandAsync();
             toast.ZeigeInfo($"Retrait de {retraitBetrag:N0} F enregistré.");
         }
 
@@ -1119,7 +1117,10 @@ public partial class Caisse(
         }
 
         var anteile = Core.Services.Kasse.KassenRechner.Anteile(verkauf);
-        anzeigeState.VerkaufGebucht(anteile.Where(a => a.Art == ZahlungsArt.Bar).Sum(a => a.Betrag));
+        // Zähler hier, Bargeld aus der DB: das Signal « KasseGeaendert » dieses Verkaufs kann vorher eintreffen – lokal
+        // addiert stand er sonst doppelt im Kassenkopf (Klickprüfung W3: + 800 statt + 400).
+        anzeigeState.VerkaufGebucht(0m);
+        await AktualisiereKassenstandAsync();
         letzterVerkauf = new AbgeschlossenerVerkauf(verkauf.Id, verkauf.GesamtSumme, verkauf.Rueckgeld, ZahlungsTexte.Kurz(anteile));
         zahlDialogOffen = false;
 

@@ -35,8 +35,8 @@ public static class LaenderAuswahl
     /// <summary>Folgen eines Wechsels für den Hinweis im Formular (Ortszeit, Mobile Money).</summary>
     public static string Folgen(string land, DateTime utc, bool fuerBesitzer = true)
         => $"En passant à « {land} » : l'heure locale devient {Zeitzonen.VersatzText(land, utc)} pour la caisse, les reçus et les finances, "
-           + "et la caisse propose les opérateurs Mobile Money de ce pays ("
-           + (fuerBesitzer ? "tous ; vous pourrez ensuite en retirer" : "tous ; le propriétaire peut ensuite en retirer dans « Paramètres »")
+           + "et la caisse propose tous les opérateurs Mobile Money de ce pays ("
+           + (fuerBesitzer ? "vous pourrez ensuite en retirer" : "le propriétaire peut ensuite en retirer dans « Paramètres »")
            + "). Les ventes déjà enregistrées ne changent pas.";
 
     /// <summary>

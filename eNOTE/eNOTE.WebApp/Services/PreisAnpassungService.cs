@@ -400,7 +400,9 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
         var titel = await db.Ankuendigungen.AsNoTracking().Where(a => a.Id == anpassung.AnkuendigungId).Select(a => a.Titel).FirstOrDefaultAsync(ct);
         if (titel is null) return [];
         var betreff = EmailService.MitAppName(titel);
-        var ab = anpassung.ErstelltUtc.AddMinutes(-5);
+        // Genau ab der Ankündigung: eine früher aufgehobene Ankündigung mit demselben Titel (gleicher Monat, gleiche
+        // Vorlage) zählt nicht mit – in der Klickprüfung W1 bekam sonst jeder Besitzer drei Entwarnungen.
+        var ab = anpassung.ErstelltUtc;
         var adressen = await db.MailNachrichten.AsNoTracking()
             .Where(m => m.Kategorie == KategorieAnkuendigung && m.Betreff == betreff && m.CreatedAtUtc >= ab)
             .OrderBy(m => m.CreatedAtUtc).ThenBy(m => m.Id).Select(m => m.Empfaenger).ToListAsync(ct);

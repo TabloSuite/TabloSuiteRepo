@@ -240,6 +240,39 @@ public class PreisAnpassungTests
             Assert.Equal(2, await db.MailNachrichten.CountAsync(m => m.Kategorie == PreisAnpassungService.KategorieEntwarnung));
     }
 
+    /// <summary>Klickprüfung W1: Ankündigen, ohne Mail aufheben, gleich wieder ankündigen (gleicher Titel) – die Entwarnung
+    /// geht nur an die Empfänger der letzten Ankündigung, nicht dreifach.</summary>
+    [Fact]
+    public async Task Entwarnung_Zaehlt_Nur_Die_Mails_Der_Aufgehobenen_Ankuendigung()
+    {
+        var w = await BasisAsync();
+        var rolle = new Role { Name = AppRollen.Besitzer, NormalizedName = "BESITZER" };
+        var ama = new AppUser { Id = Guid.NewGuid(), Vorname = "Ama", FullName = "Ama", UserName = "ama", Email = "ama@exemple.com" };
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            db.Roles.Add(rolle);
+            db.Users.Add(ama);
+            db.UserRoles.Add(new AppUserRole { UserId = ama.Id, RoleId = rolle.Id });
+            db.UserSalons.Add(new UserSalon { AppUserId = ama.Id, SalonId = w.Standard.Id });
+            await db.SaveChangesAsync();
+        }
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new ENote.WebApp.Services.Mails.EmailService(config, w.F, NullLogger<ENote.WebApp.Services.Mails.EmailService>.Instance);
+        var service = new PreisAnpassungService(w.F, TimeProvider.System, email);
+        var jetzt = DateTime.UtcNow;
+        var ab = new DateTime(jetzt.Year, jetzt.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(2);
+
+        var erste = await service.PlaneAsync(w.Admin, 4100, ab, perMail: true);
+        await service.AufhebenAsync(w.Admin, erste.Id, new PreisAnpassungService.EntwarnungsText("", "", PerMail: false));
+        await Task.Delay(20);
+        var zweite = await service.PlaneAsync(w.Admin, 4100, ab, perMail: true);
+        Assert.Equal(1, (await service.GetAufhebungsVorschauAsync(w.Admin, zweite.Id)).AnkuendigungsMails);
+        await service.AufhebenAsync(w.Admin, zweite.Id);
+        await using var pruef = await w.F.CreateDbContextAsync();
+        Assert.Equal(2, await pruef.MailNachrichten.CountAsync(m => m.Kategorie == PreisAnpassungService.KategorieAnkuendigung));
+        Assert.Equal(1, await pruef.MailNachrichten.CountAsync(m => m.Kategorie == PreisAnpassungService.KategorieEntwarnung));
+    }
+
     [Fact]
     public async Task Aufheben_Einer_Ankuendigung_Ohne_Mail_Schreibt_Nur_Auf_Wunsch_Und_Nur_Alten_Laeden()
     {
