@@ -1,11 +1,11 @@
-# TabloSuite – Arbeitsstand 15.11.2026, ~23:30
+# TabloSuite – Arbeitsstand 15.11.2026, ~22:30
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~23:30
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~22:30
 
 **Alles Geplante ist erledigt und gepusht (bis 3ac7a37). Der Nutzer kann eNOTE und SKOULOU deployen.**
 Keine neue Migration seit dem 14.11. → Azure wurde nicht angefasst und ist aktuell:
