@@ -1,13 +1,13 @@
-# TabloSuite – Arbeitsstand 15.11.2026, ~22:30
+# TabloSuite – Arbeitsstand 15.11.2026, ~23:15
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~22:30
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~23:15
 
-**Alles Geplante ist erledigt und gepusht (bis 3ac7a37). Der Nutzer kann eNOTE und SKOULOU deployen.**
+**Alles Geplante ist erledigt und gepusht (bis 630ad20). Der Nutzer kann eNOTE und SKOULOU deployen.**
 Keine neue Migration seit dem 14.11. → Azure wurde nicht angefasst und ist aktuell:
 eNOTE `ENote-Database` = lokal = `20261114233118_PreisAnpassungEntwarnung`; SKOULOU `Skoulou-Database` = lokal `SkoulouDB` =
 `20261114182350_SessionGebuehrUndHauptAdmin`.
@@ -21,9 +21,10 @@ alles selbst im Hauptchat, streng nacheinander, nach jedem fertigen Schritt comm
   « où sont passés ces 3.500 F ? »); `/aide/videos` Dauer 5:34.
 - **SKOULOU:** Login DodjiEtse, Menü « Administrateurs », Startseiten-Video; am Handy Ladekreis beim Registrieren/Anmelden;
   bei 0 Konten `az webapp restart -g TabloSuiteRGruppe -n skoulou`.
-- **Offen (SKOULOU, nach dem Deploy klären):** Die Schutzgrenzen zählen je Anschluss (`RemoteIpAddress`). Prüfen, ob die
-  App hinter dem Azure-Proxy die Adresse des Besuchers sieht (weitergeleitete Kopfzeilen / `ASPNETCORE_FORWARDEDHEADERS_ENABLED`);
-  sonst teilen sich alle Nutzer einen Zähler (60 Anmeldungen/Minute plattformweit). Nichts blind umbauen – erst feststellen.
+- **Vidéos d'aide am Handy (beide Apps):** ein Video im Vollbild/Querformat ansehen und schließen – die Seite bleibt beim
+  angesehenen Video; die Nutzerbereiche sind farbige Felder mit « Votre rôle ».
+- **Schutzgrenzen:** nichts zu prüfen nötig – beide Apps bestimmen die Adresse des Besuchers selbst (`Anschluss.Adresse`,
+  auch hinter dem Azure-Eingangsserver).
 
 ### Erledigt am 15.11.
 - **eNOTE fertig** (S1 + S2 + W1–W3, 435 Tests grün).
@@ -41,9 +42,17 @@ alles selbst im Hauptchat, streng nacheinander, nach jedem fertigen Schritt comm
   Schul-WLAN sperrte sich aus: Anmeldung, erstes Passwort, Selbstregistrierung 10/Tag), Sperre nach Fehlversuchen fällt
   beim Zurücksetzen per Link, Gebührenkarte Sprachschule am Handy. Abschlusslauf sauber, keine Seite über 1 s.
 - Berichte: `Skoulou/docs/Simulation-Bericht.md` (§ Simulation S3, § Klick-Simulation S4), `docs/Simulation-eNOTE.md`.
-  Bilder `Pictures\Simulation-SKOULOU\`. Tests SKOULOU: 562 grün (+ SQL 581). `SkoulouDB_SIM` (lokal) behalten.
+  Bilder `Pictures\Simulation-SKOULOU\`. Tests SKOULOU nach S4: 562 grün (+ SQL 581). `SkoulouDB_SIM` (lokal) behalten.
+
+- **Abends nachgereicht (Nutzer 15.11.):** SKOULOU `Anschluss.Adresse` (e77befa); **eNOTE Schutz der öffentlichen Formulare**
+  wie SKOULOU (9652024: Anmeldung 60/Minute je Anschluss, Registrierung 10 je Anschluss + 3 je Adresse am Tag, « Mot de
+  passe oublié » 10 in 10 Minuten je Anschluss + 3 je Stunde je Konto, Sperre fällt beim Zurücksetzen); **« Vidéos d'aide »**
+  in beiden Apps (a9aec4e, 630ad20: Seite sprang am Handy nach einem Video im Querformat nach oben – Position wird gemerkt;
+  Nutzerbereiche als farbige Felder). Tests eNOTE 452, SKOULOU 571 (+ SQL 590). Bilder `Pictures\Videos-d-aide-2026-11-15\`.
 
 ### Offene Ideen (keine Fehler, Entscheidung des Nutzers)
+- **SKOULOU-Lernvideos** sind noch die alten mit der KI-Sprecherin (z. B. « La visite guidée » 2:03, « Suivre votre enfant »
+  0:42) – nach den Regeln des Nutzers (ohne Sprecherin, jeder Klick beschriftet) auf der neuen Oberfläche neu aufnehmen.
 - SKOULOU QR-Prüfseite eines Bulletins zeigt bewusst nur Schule, Schüler, Klasse, Periode, Moyenne – Nummer/Datum ergänzen?
 - SKOULOU « Comptes élèves » rechnet je Seite alle Konten des Jahres (160–170 ms an der größten Schule) – beobachten.
 - Werbevideo-Muster, das dem Nutzer gefiel (Problem → Versprechen → Beweis in der App → Rückbezug), für ein neues
