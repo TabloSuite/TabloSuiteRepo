@@ -200,6 +200,8 @@ button.org-edt-listenzeile { cursor: pointer; }
 .org-minuten .sk-eingabe { width: 5.5rem; }
 .org-bemerkung { flex: 1; min-width: 12rem; }
 .org-appell-fuss { position: sticky; bottom: 0; padding: .75rem 0 .25rem; background: var(--sk-flaeche); }
+/* Am Handy über der unteren Navigation kleben – nicht dahinter (« Enregistrer l'appel » war verdeckt). */
+@media (max-width: 640px) { .org-appell-fuss { bottom: calc(4.35rem + env(safe-area-inset-bottom)); z-index: 5; } }
 @media (max-width: 640px) { .org-appell-zeile { grid-template-columns: minmax(0, 1fr); } }
 .org-rueckblick-werkzeuge { display: grid; grid-template-columns: repeat(2, minmax(9rem, 14rem)); gap: .9rem; margin-bottom: .5rem; }
 .org-verlauf { list-style: none; margin: 0; padding: 0; display: grid; }

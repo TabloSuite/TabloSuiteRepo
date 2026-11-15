@@ -410,13 +410,14 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
 .sk-seitenkopf-aktionen { display: flex; gap: .5rem; flex-wrap: wrap; }
 
 .sk-karte { background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); box-shadow: var(--sk-schatten-klein); margin-bottom: 1.1rem; min-width: 0; }
-.sk-karte-kopf { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.05rem 1.35rem; border-bottom: 1px solid var(--sk-rand); }
+.sk-karte-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; padding: 1.05rem 1.35rem; border-bottom: 1px solid var(--sk-rand); }
 .sk-karte-klapp { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0; border: none; background: none; cursor: pointer; text-align: left; color: inherit; }
 .sk-karte-titel { display: flex; align-items: center; gap: .75rem; min-width: 0; }
 .sk-karte-titel h2 { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--sk-ueberschrift); }
 .sk-karte-titel p { margin: .1rem 0 0; color: var(--sk-text-leise); font-size: .86rem; }
 .sk-karte-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex-shrink: 0; border-radius: .7rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-hell); }
-.sk-karte-aktionen { display: flex; gap: .5rem; }
+/* Knöpfe im Kartenkopf brechen am Handy um (vorher ragten sie über den Bildschirm hinaus). */
+.sk-karte-aktionen { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; }
 .sk-karte-inhalt { padding: 1.25rem 1.35rem; }
 .sk-karte-inhalt > :first-child { margin-top: 0; }
 .sk-karte-inhalt > :last-child { margin-bottom: 0; }
@@ -502,7 +503,8 @@ a.sk-kennzahl:hover { border-color: var(--sk-rand-stark); box-shadow: var(--sk-s
 .sk-bald-etappe { font-size: .84rem; font-weight: 700; color: var(--sk-akzent-text) !important; }
 
 /* ---------------- Formulare ---------------- */
-.sk-formular { display: grid; gap: 1rem; }
+/* Eine Spalte, die schrumpfen darf: lange Beschriftungen brechen um, statt Formular und Dialog am Handy zu verbreitern. */
+.sk-formular { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 .sk-formular-fuss { display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; padding-top: .25rem; }
 .sk-raster-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 @media (max-width: 640px) { .sk-raster-2 { grid-template-columns: minmax(0, 1fr); } }
@@ -574,11 +576,15 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-auswahl-suche:focus { outline: none; border-color: var(--sk-primaer-hell); box-shadow: var(--sk-fokus); }
 .sk-auswahl-liste { max-height: 15rem; overflow-y: auto; padding: .3rem; }
 .sk-auswahl-option { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; width: 100%; padding: .55rem .85rem; border: none; border-radius: .6rem; background: transparent; text-align: left; font-size: .92rem; cursor: pointer; }
+.sk-auswahl-option > span { min-width: 0; overflow-wrap: anywhere; }
 .sk-auswahl-option small { color: var(--sk-text-leise); font-size: .76rem; white-space: nowrap; }
 .sk-auswahl-option:hover { background: var(--sk-flaeche-2); }
 .sk-auswahl-option.aktiv { background: var(--sk-primaer-zart); color: var(--sk-primaer-text); font-weight: 700; }
 .sk-auswahl-leer { padding: .8rem; text-align: center; color: var(--sk-text-leise); font-size: .88rem; }
 .sk-datum-popup { width: 18.5rem; min-width: 0; padding: .85rem; border-radius: var(--sk-radius-gross); }
+/* Am Handy nie breiter als der Bildschirm; skoulou.js schiebt Fenster, die rechts hinausragen, nach links. */
+.sk-auswahl-popup, .sk-datum-popup { max-width: calc(100vw - 1rem); }
+.sk-datum-popup { width: min(18.5rem, calc(100vw - 1rem)); }
 .sk-datum-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
 .sk-datum-kopf strong { font-size: .95rem; text-transform: capitalize; }
 .sk-datum-raster { display: grid; grid-template-columns: repeat(7, 1fr); gap: .15rem; }
@@ -623,7 +629,7 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 
 /* ---------------- Dialoge, Toast, Ladebalken ---------------- */
 .sk-modal-hintergrund { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 23, 42, .5); backdrop-filter: blur(3px); animation: sk-einblenden .15s ease; isolation: isolate; }
-.sk-modal { display: flex; flex-direction: column; width: 100%; max-height: calc(100dvh - 2rem); background: var(--sk-flaeche); border-radius: 1.25rem; box-shadow: var(--sk-schatten-gross); animation: sk-modal-ein .2s cubic-bezier(.2, .9, .3, 1); }
+.sk-modal { display: flex; flex-direction: column; width: 100%; min-width: 0; max-height: calc(100dvh - 2rem); background: var(--sk-flaeche); border-radius: 1.25rem; box-shadow: var(--sk-schatten-gross); animation: sk-modal-ein .2s cubic-bezier(.2, .9, .3, 1); }
 @keyframes sk-modal-ein { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 .sk-modal-sm { max-width: 30rem; }
 .sk-modal-md { max-width: 38rem; }
@@ -631,7 +637,7 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-modal-kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.25rem .55rem 1.5rem; }
 .sk-modal-kopf h2 { margin: 0; font-size: 1.22rem; font-weight: 800; color: var(--sk-ueberschrift); }
 .sk-modal-fehler { padding: .4rem 1.5rem 0; }
-.sk-modal-inhalt { padding: .6rem 1.5rem 1.3rem; overflow-y: auto; }
+.sk-modal-inhalt { padding: .6rem 1.5rem 1.3rem; overflow-y: auto; min-width: 0; }
 .sk-modal-fuss { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; padding: .9rem 1.25rem; border-top: 1px solid var(--sk-rand); background: var(--sk-flaeche-2); border-radius: 0 0 1.25rem 1.25rem; }
 .sk-modal-fuss form { margin: 0; }
 .sk-modal-inhalt > .sk-leise:first-child { margin: 0 0 1rem; }

@@ -235,6 +235,7 @@ html[data-theme="dark"] .sk-rte .ql-snow .ql-picker-options { background: var(--
 .sk-editor-marke { flex: none; padding: .2rem .45rem; border-radius: .4rem; background: var(--sk-primaer-zart); color: var(--sk-primaer-text); font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
 .sk-klein { font-size: .82rem; }
 .sk-editor-fuss { position: sticky; bottom: .75rem; z-index: 10; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .6rem; padding: .7rem 1rem; margin: 1rem 0 0; background: var(--sk-flaeche); border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); box-shadow: var(--sk-schatten-gross); }
+@media (max-width: 640px) { .sk-editor-fuss { bottom: calc(4.9rem + env(safe-area-inset-bottom)); } } /* über der unteren Navigation */
 .sk-editor-fuss .sk-feld-fehler { margin-right: auto; }
 
 /* Mediathek und Formeln */

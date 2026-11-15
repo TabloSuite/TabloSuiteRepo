@@ -229,3 +229,28 @@
 
     function beiSichtbar() { if (document.visibilityState === 'visible') erneutVerbinden(); }
 })();
+
+// Aufklapplisten und Kalender bleiben im Bildschirm (Handy): ragt ein Fenster rechts hinaus, wird es nach links
+// geschoben – sonst verbreitert es die ganze Seite und seine rechte Hälfte ist nicht erreichbar.
+(function () {
+    if (typeof MutationObserver === 'undefined' || !document.body) return;
+    var AUSWAHL = '.sk-auswahl-popup, .sk-datum-popup', RAND = 8;
+
+    function einpassen(fenster) {
+        var breite = document.documentElement.clientWidth;
+        var r = fenster.getBoundingClientRect();
+        var ueber = r.right - (breite - RAND);
+        if (ueber > 0) fenster.style.left = -Math.min(ueber, Math.max(0, r.left - RAND)) + 'px';
+    }
+
+    new MutationObserver(function (aenderungen) {
+        aenderungen.forEach(function (a) {
+            for (var i = 0; i < a.addedNodes.length; i++) {
+                var knoten = a.addedNodes[i];
+                if (knoten.nodeType !== 1) continue;
+                if (knoten.matches(AUSWAHL)) einpassen(knoten);
+                else Array.prototype.forEach.call(knoten.querySelectorAll(AUSWAHL), einpassen);
+            }
+        });
+    }).observe(document.body, { childList: true, subtree: true });
+})();

@@ -51,6 +51,30 @@ public partial class OberflaechenTests
     }
 
     /// <summary>
+    /// Handy (390 px): Leisten, die unten kleben, stehen über der unteren Navigation (« Enregistrer l'appel » war verdeckt);
+    /// Kalender und Aufklapplisten bleiben im Bildschirm; Kartenkopf, Formulare und Annoncen brechen um.
+    /// </summary>
+    [Fact]
+    public void Handy_nichts_verdeckt_und_nichts_ragt_hinaus()
+    {
+        string Css(string datei) => File.ReadAllText(Path.Combine(WebApp(), "wwwroot", datei));
+        var mobil = "@media (max-width: 640px) { ";
+        Assert.Contains(mobil + ".org-appell-fuss { bottom: calc(4.35rem + env(safe-area-inset-bottom));", Css("css/organisation.css"));
+        Assert.Contains(mobil + ".nt-statusleiste { bottom: calc(4.35rem + env(safe-area-inset-bottom));", Css("css/noten.css"));
+        Assert.Contains(mobil + ".sk-editor-fuss { bottom: calc(4.9rem + env(safe-area-inset-bottom));", Css("css/paedagogik.css"));
+
+        var app = Css("app.css");
+        Assert.Contains(".sk-auswahl-popup, .sk-datum-popup { max-width: calc(100vw - 1rem); }", app);
+        Assert.Contains(".sk-formular { display: grid; grid-template-columns: minmax(0, 1fr);", app);
+        Assert.Contains(".sk-karte-aktionen { display: flex; flex-wrap: wrap;", app);
+        Assert.Contains(".pl-banner strong { display: block; margin-bottom: .15rem; overflow-wrap: anywhere; }", Css("css/plattform.css"));
+
+        var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
+        Assert.Contains("function einpassen(fenster)", js);
+        Assert.Contains("'.sk-auswahl-popup, .sk-datum-popup'", js);
+    }
+
+    /// <summary>
     /// Mehr als zehn unbestätigte Zeichenschritte erlaubt: sonst wartet der Server beim Öffnen einer Seite auf den Browser
     /// (bei 400 ms Latenz 0,8 s ohne Daten – in S4 ging in dieser Lücke Getipptes verloren).
     /// </summary>
