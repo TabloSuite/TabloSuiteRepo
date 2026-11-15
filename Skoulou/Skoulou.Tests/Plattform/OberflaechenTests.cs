@@ -81,6 +81,27 @@ public partial class OberflaechenTests
     }
 
     /// <summary>
+    /// « Vidéos d'aide »: am Handy sprang die Seite nach einem Video im Querformat nach oben (die Seite ordnet sich beim Drehen
+    /// um); jeder Nutzerbereich ist ein eigenes, farbig markiertes Feld mit « Votre rôle » bei der eigenen Rolle.
+    /// </summary>
+    [Fact]
+    public void Videoseite_behaelt_ihre_Position_und_trennt_die_Nutzerbereiche()
+    {
+        var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
+        Assert.Contains("window.skVideoPosition", js);
+        Assert.Contains("'orientationchange'", js);
+        Assert.Contains("if (meiner !== lauf) return;", js);
+        var seite = File.ReadAllText(Path.Combine(WebApp(), "Components", "Pages", "Aide", "Videos.razor"));
+        Assert.Contains("\"skVideoPosition.merken\"", seite);
+        Assert.Contains("\"skVideoPosition.zurueck\"", seite);
+        Assert.Contains("class=\"sk-video-gruppe sk-video-rolle-@bereich.Klasse\"", seite);
+        Assert.Contains("Votre rôle", seite);
+        var css = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "app.css"));
+        foreach (var rolle in new[] { "tous", "direction", "enseignant", "eleve", "parent" })
+            Assert.Contains($".sk-video-rolle-{rolle} {{ --vg-rgb:", css);
+    }
+
+    /// <summary>
     /// Mehr als zehn unbestätigte Zeichenschritte erlaubt: sonst wartet der Server beim Öffnen einer Seite auf den Browser
     /// (bei 400 ms Latenz 0,8 s ohne Daten – in S4 ging in dieser Lücke Getipptes verloren).
     /// </summary>

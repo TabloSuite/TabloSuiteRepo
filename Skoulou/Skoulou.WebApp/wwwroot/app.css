@@ -694,6 +694,33 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-agb-sprung { margin-bottom: 1rem; }
 
 /* Lernvideos */
+/* Vidéos d'aide (15.11.2026): jeder Nutzerbereich ist ein eigenes, farbig markiertes Feld – oben ein breiter Farbstreifen,
+   Symbol und Titel der Rolle, rechts Anzahl und Dauer. Farben als rgb-Tripel (ohne Farbmischfunktion – ältere Handy-Browser kennen sie nicht). */
+.sk-video-gruppe { --vg-rgb: 37, 99, 235; --vg-text: #1d4ed8; display: grid; gap: 1rem; margin-bottom: 2.2rem; padding: 1.15rem 1.25rem 1.35rem;
+    border: 1px solid rgba(var(--vg-rgb), .32); border-top: 6px solid rgb(var(--vg-rgb)); border-radius: var(--sk-radius-gross);
+    background: linear-gradient(rgba(var(--vg-rgb), .06), rgba(var(--vg-rgb), .06)), var(--sk-flaeche); }
+.sk-video-rolle-tous { --vg-rgb: 37, 99, 235; --vg-text: #1d4ed8; }
+.sk-video-rolle-direction { --vg-rgb: 217, 119, 6; --vg-text: #b45309; }
+.sk-video-rolle-enseignant { --vg-rgb: 13, 148, 136; --vg-text: #0f766e; }
+.sk-video-rolle-eleve { --vg-rgb: 124, 58, 237; --vg-text: #6d28d9; }
+.sk-video-rolle-parent { --vg-rgb: 190, 24, 93; --vg-text: #be185d; }
+[data-theme="dark"] .sk-video-rolle-tous { --vg-text: #93c5fd; }
+[data-theme="dark"] .sk-video-rolle-direction { --vg-text: #fcd34d; }
+[data-theme="dark"] .sk-video-rolle-enseignant { --vg-text: #5eead4; }
+[data-theme="dark"] .sk-video-rolle-eleve { --vg-text: #c4b5fd; }
+[data-theme="dark"] .sk-video-rolle-parent { --vg-text: #f9a8d4; }
+.sk-video-gruppe-kopf { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem .9rem; padding-bottom: .9rem; border-bottom: 1px dashed rgba(var(--vg-rgb), .45); }
+.sk-video-gruppe-symbol { flex: none; display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: 999px; background: rgb(var(--vg-rgb)); color: #fff; }
+.sk-video-gruppe-titel { flex: 1 1 14rem; min-width: 0; display: grid; gap: .15rem; }
+.sk-video-gruppe-kopf h2 { margin: 0; font-size: 1.3rem; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; color: var(--sk-ueberschrift); }
+.sk-video-gruppe-kopf p { margin: 0; color: var(--sk-text-leise); font-size: .92rem; }
+.sk-video-eigene { font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: .15rem .6rem; border-radius: 999px; background: rgb(var(--vg-rgb)); color: #fff; }
+.sk-video-gruppe-zahl { flex: none; font-size: .82rem; font-weight: 800; padding: .3rem .75rem; border-radius: 999px; border: 1px solid rgba(var(--vg-rgb), .5); color: var(--vg-text); background: var(--sk-flaeche); }
+@media (max-width: 640px) {
+    .sk-video-gruppe { padding: .95rem .8rem 1.05rem; margin-bottom: 1.6rem; }
+    .sk-video-gruppe-kopf h2 { font-size: 1.15rem; }
+    .sk-video-gruppe-symbol { width: 2.5rem; height: 2.5rem; }
+}
 .sk-video-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1rem; }
 .sk-video-karte { display: grid; gap: 0; padding: 0; overflow: hidden; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); text-align: left; cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .sk-video-karte:hover { box-shadow: var(--sk-schatten); transform: translateY(-2px); }
