@@ -61,8 +61,11 @@ public class AdminTests
         Assert.Single(await u.Uebersicht.MeineSchulenAsync(w.Responsable.Id));
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Messagerie.SucheAsync(w.Direktor.Id, Postfach.Eingang, null, null));
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Uebersicht.MeineSchulenAsync(w.Lehrer.Id));
-        // Admin darf alles lesen.
-        Assert.Equal(2, (await u.Schulen.SucheAsync(w.Admin.Id, null, null)).Eintraege.Count);
+        // Admin darf alles lesen; die Zeile nennt das Direktionskonto der Schule (ohne Direktion: leer).
+        var liste = (await u.Schulen.SucheAsync(w.Admin.Id, null, null)).Eintraege;
+        Assert.Equal(2, liste.Count);
+        Assert.Equal("dir@exemple.tg", liste.Single(s => s.Id == w.Eigene.Id).DirektorEmail);
+        Assert.Null(liste.Single(s => s.Id == w.Fremde.Id).DirektorEmail);
         Assert.Equal(2, (await u.Uebersicht.ZahlenAsync(w.Admin.Id)).Schulen.Active);
     }
 

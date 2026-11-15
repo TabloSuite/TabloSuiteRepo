@@ -84,6 +84,11 @@ public sealed class SchulVerwaltungService(
         return await PlattformListen.SeiteAsync(Projektion(db, sortiert), ueberspringen, anzahl, ct);
     }
 
+    /// <summary>
+    /// Zeile der Schulliste. Das Direktionskonto (eines je Schule) wird über MIN(Id) im Index (SchuleId, Rolle) bestimmt und
+    /// dann über den Primärschlüssel gelesen: « TOP 1 … ORDER BY ErstelltAmUtc » ließ SQL Server je Schule zweimal alle
+    /// Konten durchsuchen (Simulation S3: 122.000 Seiten für 32 Schulen, die Liste wuchs mit Schulen × Konten).
+    /// </summary>
     internal static IQueryable<SchulZeile> Projektion(SkoulouDbContext db, IQueryable<Schule> schulen)
         => schulen.Select(s => new SchulZeile(
             s.Id, s.Name, s.Ort, s.Land, s.Status, s.StatusGrund, s.ErstelltAmUtc, s.ResponsableId,
@@ -91,8 +96,10 @@ public sealed class SchulVerwaltungService(
             db.Users.Count(k => k.SchuleId == s.Id && k.Rolle == Rollen.Schueler && k.Status == KontoStatus.Actif),
             db.Users.Count(k => k.SchuleId == s.Id && (k.Rolle == Rollen.Lehrer || k.Rolle == Rollen.Direktor || k.Rolle == Rollen.Koordinator)
                                 && k.Status != KontoStatus.Archive),
-            db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).OrderBy(k => k.ErstelltAmUtc).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefault(),
-            db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).OrderBy(k => k.ErstelltAmUtc).Select(k => k.Email).FirstOrDefault(),
+            db.Users.Where(d => d.Id == db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).Min(k => (Guid?)k.Id))
+                .Select(d => d.Vorname + " " + d.Nachname).FirstOrDefault(),
+            db.Users.Where(d => d.Id == db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).Min(k => (Guid?)k.Id))
+                .Select(d => d.Email).FirstOrDefault(),
             s.JahrespreisOverride));
 
     /// <summary>Schule validieren: Status « Active », wartende Direktionskonten werden aktiv, Mail an die Direktion.</summary>

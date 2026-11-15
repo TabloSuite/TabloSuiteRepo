@@ -80,7 +80,8 @@ public class PlattformSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenb
         }
 
         var schulen = new SchulVerwaltungService(fabrik, zugriff, audit, mails);
-        Assert.Single((await schulen.SucheAsync(admin.Id, kennung, SchulVerwaltungService.FilterActive)).Eintraege);
+        // S3: das Direktionskonto der Zeile kommt über MIN(Id) im Index (vorher Tabellen-Scan je Schule).
+        Assert.Equal("dir@exemple.tg", (await schulen.SucheAsync(admin.Id, kennung, SchulVerwaltungService.FilterActive)).Eintraege.Single().DirektorEmail);
         Assert.True((await schulen.ZaehlerAsync(admin.Id)).Active >= 1);
         Assert.NotEmpty(await schulen.ResponsableOptionenAsync(admin.Id));
 
