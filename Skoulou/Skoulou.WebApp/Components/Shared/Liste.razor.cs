@@ -77,9 +77,9 @@ public partial class Liste<T> : IDisposable
         }
     }
 
-    private async Task SucheGeaendert(ChangeEventArgs e)
+    private async Task SucheGeaendert(string? wert)
     {
-        suche = e.Value?.ToString();
+        suche = wert;
         abbruch?.Cancel();
         abbruch = new CancellationTokenSource();
         var token = abbruch.Token;

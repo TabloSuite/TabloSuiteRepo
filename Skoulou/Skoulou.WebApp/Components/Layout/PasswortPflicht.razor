@@ -6,7 +6,8 @@
 <ModalDialog Open="true" Title="Choisissez votre mot de passe" Oberzeile="Première connexion" Schliessbar="false" Breite="sk-modal-sm" ErrorMessage="@fehler">
     <ChildContent>
         <p class="sk-leise">Pour protéger votre compte, remplacez le mot de passe reçu par un mot de passe personnel que vous seul connaissez.</p>
-        <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" @onsubmit="SpeichernAsync" @onsubmit:preventDefault>
+        <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" novalidate data-ladeanzeige="Enregistrement…"
+              @onsubmit="SpeichernAsync" @onsubmit:preventDefault>
             <AntiforgeryToken />
             <input type="hidden" name="retour" value="@Rueckweg" />
             <PasswortFeld Label="Mot de passe reçu" Name="actuel" @bind-Wert="aktuell" Autocomplete="current-password" Pflicht="true" />
@@ -15,11 +16,11 @@
         </form>
     </ChildContent>
     <Footer>
-        <form method="post" action="/auth/deconnexion">
+        <form method="post" action="/auth/deconnexion" data-ladeanzeige="Déconnexion…">
             <AntiforgeryToken />
             <button type="submit" class="sk-btn sk-btn-ghost">Se déconnecter</button>
         </form>
-        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <button type="submit" form="@formId" class="sk-btn sk-btn-primaer">Enregistrer</button>
     </Footer>
 </ModalDialog>
 
@@ -39,8 +40,12 @@
 
     private async Task SpeichernAsync()
     {
-        if (AuthZustand is null || (await AuthZustand).User.KontoId() is not { } id) return;
+        if (AuthZustand is null || (await AuthZustand).User.KontoId() is not { } id)
+        {
+            await JS.InvokeVoidAsync("skFormularFrei", formId);
+            return;
+        }
         fehler = await Konten.PruefePasswortWechselAsync(id, aktuell, neu, bestaetigung);
-        if (fehler is null) await JS.InvokeVoidAsync("skFormularSenden", formId);
+        await JS.InvokeVoidAsync(fehler is null ? "skFormularSenden" : "skFormularFrei", formId);
     }
 }

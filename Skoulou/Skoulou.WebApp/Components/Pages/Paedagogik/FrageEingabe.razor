@@ -42,8 +42,9 @@
                 if (teil.Nr is { } nr)
                 {
                     var i = nr - 1;
-                    <input class="sk-luecke @LueckeKlasse(i)" aria-label="@($"Trou {nr}")" value="@Luecke(i)" disabled="@Gesperrt"
-                           autocomplete="off" autocapitalize="off" spellcheck="false" @oninput="e => LueckeAsync(i, e.Value?.ToString())" />
+                    <input class="sk-luecke @LueckeKlasse(i)" aria-label="@($"Trou {nr}")" disabled="@Gesperrt"
+                           autocomplete="off" autocapitalize="off" spellcheck="false"
+                           @bind:get="Luecke(i)" @bind:set="wert => LueckeAsync(i, wert)" @bind:event="oninput" />
                 }
                 else
                 {
@@ -75,7 +76,7 @@
     else
     {
         <textarea class="sk-eingabe sk-antwort-text" rows="@(Frage.Typ == FragenTyp.Texte ? 4 : 2)" maxlength="4000" disabled="@Gesperrt"
-                  placeholder="Votre réponse…" aria-label="Votre réponse" value="@Eingabe.Text" @oninput="e => TextAsync(e.Value?.ToString())"></textarea>
+                  placeholder="Votre réponse…" aria-label="Votre réponse" @bind:get="Eingabe.Text" @bind:set="TextAsync" @bind:event="oninput"></textarea>
     }
 
     @if (Stand is { } s)

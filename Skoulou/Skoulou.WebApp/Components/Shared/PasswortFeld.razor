@@ -1,9 +1,9 @@
-@* Passwortfeld mit Auge zum Ein-/Ausblenden (ohne JavaScript). *@
+@* Passwortfeld mit Auge zum Ein-/Ausblenden (ohne JavaScript). @bind:get/@bind:set: kein Zeichenverlust bei langsamer Verbindung. *@
 <Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@Fehler" Pflicht="@Pflicht" CssClass="@CssClass">
     <div class="sk-passwort">
         <input id="@id" class="sk-eingabe" type="@(sichtbar ? "text" : "password")" name="@Name" autocomplete="@Autocomplete"
-               required="@Pflicht" value="@Wert" aria-invalid="@(Fehler is not null ? "true" : null)" spellcheck="false"
-               @oninput="EingabeAsync" @attributes="WeitereAttribute" />
+               required="@Pflicht" aria-invalid="@(Fehler is not null ? "true" : null)" spellcheck="false"
+               @bind:get="Wert" @bind:set="SetzeAsync" @bind:event="oninput" @attributes="WeitereAttribute" />
         <button type="button" class="sk-passwort-auge" tabindex="-1" aria-label="@(sichtbar ? "Masquer le mot de passe" : "Afficher le mot de passe")"
                 @onclick="() => sichtbar = !sichtbar">
             <Icon Name="@(sichtbar ? "eye-off" : "eye")" Groesse="18" />
@@ -26,9 +26,9 @@
     private readonly string id = Feld.NeueId("pw");
     private bool sichtbar;
 
-    private Task EingabeAsync(ChangeEventArgs e)
+    private Task SetzeAsync(string? wert)
     {
-        Wert = e.Value?.ToString();
-        return WertChanged.InvokeAsync(Wert);
+        Wert = wert;
+        return WertChanged.InvokeAsync(wert);
     }
 }

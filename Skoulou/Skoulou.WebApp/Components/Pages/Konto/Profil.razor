@@ -75,7 +75,8 @@ else
             {
                 <Hinweis Art="fehler">@mdpFehler</Hinweis>
             }
-            <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" @onsubmit="PasswortAsync" @onsubmit:preventDefault>
+            <form id="@formId" method="post" action="/auth/changer-mot-de-passe" class="sk-formular" novalidate data-ladeanzeige="Enregistrement…"
+                  @onsubmit="PasswortAsync" @onsubmit:preventDefault>
                 <AntiforgeryToken />
                 <input type="hidden" name="retour" value="/profil" />
                 <PasswortFeld Label="Mot de passe actuel" Name="actuel" @bind-Wert="aktuell" Pflicht="true" />
@@ -83,7 +84,7 @@ else
                 <PasswortFeld Label="Confirmez le nouveau mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
                 <p class="sk-leise">Après le changement, les autres appareils connectés à votre compte sont déconnectés.</p>
                 <div class="sk-formular-fuss">
-                    <AsyncKnopf Text="Changer le mot de passe" BusyText="Enregistrement…" CssClass="sk-btn-primaer" OnClick="PasswortAsync" />
+                    <button type="submit" class="sk-btn sk-btn-primaer">Changer le mot de passe</button>
                 </div>
             </form>
         </Karte>
@@ -139,6 +140,6 @@ else
     private async Task PasswortAsync()
     {
         mdpFehler = await Konten.PruefePasswortWechselAsync(Ich.KontoId, aktuell, neu, bestaetigung);
-        if (mdpFehler is null) await JS.InvokeVoidAsync("skFormularSenden", formId);
+        await JS.InvokeVoidAsync(mdpFehler is null ? "skFormularSenden" : "skFormularFrei", formId);
     }
 }

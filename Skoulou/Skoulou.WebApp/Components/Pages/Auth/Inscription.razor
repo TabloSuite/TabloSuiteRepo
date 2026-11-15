@@ -38,7 +38,8 @@
             <Hinweis Art="fehler">@meldung</Hinweis>
         }
 
-        <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" @onsubmit="WeiterAsync" @onsubmit:preventDefault>
+        <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" novalidate data-ladeanzeige="Création du compte…"
+              @onsubmit="WeiterAsync" @onsubmit:preventDefault>
             <AntiforgeryToken />
             <input type="hidden" name="type" value="@(art == RegistrierungsArt.Eleve ? "eleve" : "direction")" />
 
@@ -101,7 +102,7 @@
                     <span class="sk-feld-fehler" role="alert"><Icon Name="alert" Groesse="14" /> @agbFehler</span>
                 }
             </div>
-            <AsyncKnopf Text="Créer mon compte" BusyText="Création du compte…" Icon="check" CssClass="sk-btn-primaer sk-btn-breit" OnClick="WeiterAsync" />
+            <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit"><Icon Name="check" Groesse="18" /> <span>Créer mon compte</span></button>
         </form>
 
         <div class="sk-auth-links">

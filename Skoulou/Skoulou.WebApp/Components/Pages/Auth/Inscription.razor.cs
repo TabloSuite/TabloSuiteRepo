@@ -74,11 +74,16 @@ public partial class Inscription
 
     /// <summary>
     /// « Créer mon compte »: alles prüfen (ohne Anlage), die Zustimmung zu den Bedingungen verlangen (Kästchen im
-    /// Formular wie bei eNOTE) und das Formular klassisch absenden.
+    /// Formular wie bei eNOTE) und das Formular klassisch absenden. Der Ladekreis des Knopfs erscheint sofort im Browser
+    /// (skoulou.js) und bleibt bis zur neuen Seite; bei einem Fehler gibt « skFormularFrei » den Knopf wieder frei.
     /// </summary>
     private async Task WeiterAsync()
     {
-        if (agbOffen) return;
+        if (agbOffen)
+        {
+            await JS.InvokeVoidAsync("skFormularFrei", formId);
+            return;
+        }
         try
         {
             await Registrierung.PruefeAsync(Eingabe(agb));
@@ -90,6 +95,7 @@ public partial class Inscription
         {
             (fehler, fehlerFeld) = (f.Message, f.Feld);
             meldung = f.Feld is null ? f.Message : null;
+            await JS.InvokeVoidAsync("skFormularFrei", formId);
         }
     }
 

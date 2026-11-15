@@ -19,7 +19,7 @@
     {
         <label class="sk-suche">
             <Icon Name="search" Groesse="18" />
-            <input type="search" placeholder="Nom, identifiant ou matricule…" aria-label="Rechercher un élève" value="@suche" @oninput="SucheAsync" />
+            <input type="search" placeholder="Nom, identifiant ou matricule…" aria-label="Rechercher un élève" @bind:get="suche" @bind:set="SucheAsync" @bind:event="oninput" />
         </label>
         @if (treffer is { Count: > 0 })
         {
@@ -53,9 +53,9 @@
     private List<AuswahlEintrag>? treffer;
     private CancellationTokenSource? abbruch;
 
-    private async Task SucheAsync(ChangeEventArgs e)
+    private async Task SucheAsync(string? wert)
     {
-        suche = e.Value?.ToString();
+        suche = wert;
         abbruch?.Cancel();
         abbruch = new CancellationTokenSource();
         var token = abbruch.Token;

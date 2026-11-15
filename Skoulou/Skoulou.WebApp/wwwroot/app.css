@@ -105,6 +105,8 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
 @keyframes sk-drehen { to { transform: rotate(360deg); } }
 @keyframes sk-gleiten { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+/* Der Ladekreis ist eine Auskunft, kein Schmuck: er dreht sich auch bei « Animationen reduzieren » (nur langsamer). */
+@media (prefers-reduced-motion: reduce) { .sk-spinner, .sk-btn[data-sk-laedt]::before { animation-duration: 1.2s !important; } }
 
 /* ---------------- Knöpfe ---------------- */
 .sk-btn {
@@ -120,6 +122,15 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
 .sk-btn:active { transform: scale(.98); }
 .sk-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 .sk-btn.sk-laedt { cursor: progress; opacity: .85; }
+/* Ladeanzeige klassischer Formulare (skoulou.js, data-ladeanzeige): Ladekreis und Text über Pseudo-Elemente –
+   der von Blazor verwaltete Inhalt des Knopfs bleibt unberührt und wird nur ausgeblendet. */
+.sk-btn[data-sk-laedt] { pointer-events: none; cursor: progress; opacity: .85; font-size: 0; gap: 0; }
+.sk-btn[data-sk-laedt] > * { display: none; }
+.sk-btn[data-sk-laedt]::before {
+    content: ""; flex: none; width: 1rem; height: 1rem; border-radius: 999px;
+    border: 2px solid rgba(128, 128, 128, .35); border-top-color: currentColor; animation: sk-drehen .7s linear infinite;
+}
+.sk-btn[data-sk-laedt]::after { content: attr(data-sk-laedt); margin-left: .5rem; font-size: .92rem; }
 .sk-btn-primaer { background: var(--sk-primaer); border-color: var(--sk-primaer); color: #fff; box-shadow: 0 6px 16px rgba(29, 78, 216, .25); }
 .sk-btn-primaer:hover { background: var(--sk-primaer-dunkel); border-color: var(--sk-primaer-dunkel); }
 .sk-btn-ghost { background: var(--sk-flaeche); }

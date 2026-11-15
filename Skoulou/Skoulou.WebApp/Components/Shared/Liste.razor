@@ -8,7 +8,7 @@
             {
                 <label class="sk-suche">
                     <Icon Name="search" Groesse="18" />
-                    <input type="search" placeholder="@SuchPlatzhalter" aria-label="@SuchPlatzhalter" value="@suche" @oninput="SucheGeaendert" />
+                    <input type="search" placeholder="@SuchPlatzhalter" aria-label="@SuchPlatzhalter" @bind:get="suche" @bind:set="SucheGeaendert" @bind:event="oninput" />
                 </label>
             }
             @if (Filter.Count > 0)

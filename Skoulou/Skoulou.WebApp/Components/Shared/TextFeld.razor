@@ -1,16 +1,30 @@
-@* Textfeld mit Beschriftung, Hinweis und Fehler (auch E-Mail/Telefon/Suche über « Typ », mehrzeilig über « Zeilen »). *@
+@* Textfeld mit Beschriftung, Hinweis und Fehler (auch E-Mail/Telefon/Suche über « Typ », mehrzeilig über « Zeilen »).
+   Immer @bind:get/@bind:set (nie value + @oninput): nur so gleicht Blazor den Wert mit dem Browser ab – bei langsamer
+   Verbindung gingen sonst getippte Zeichen verloren. *@
 <Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@Fehler" Pflicht="@Pflicht" CssClass="@CssClass">
-    @if (Zeilen > 1)
+    @if (Zeilen > 1 && Sofort)
     {
         <textarea id="@id" class="sk-eingabe" name="@Name" rows="@Zeilen" placeholder="@Platzhalter" maxlength="@MaxLaenge"
                   required="@Pflicht" disabled="@Deaktiviert" aria-invalid="@(Fehler is not null ? "true" : null)"
-                  value="@Wert" @onchange="AendernAsync" @oninput="EingabeAsync" @attributes="WeitereAttribute"></textarea>
+                  @bind:get="Wert" @bind:set="SetzeAsync" @bind:event="oninput" @attributes="WeitereAttribute"></textarea>
+    }
+    else if (Zeilen > 1)
+    {
+        <textarea id="@id" class="sk-eingabe" name="@Name" rows="@Zeilen" placeholder="@Platzhalter" maxlength="@MaxLaenge"
+                  required="@Pflicht" disabled="@Deaktiviert" aria-invalid="@(Fehler is not null ? "true" : null)"
+                  @bind:get="Wert" @bind:set="SetzeAsync" @attributes="WeitereAttribute"></textarea>
+    }
+    else if (Sofort)
+    {
+        <input id="@id" class="sk-eingabe" type="@Typ" name="@Name" placeholder="@Platzhalter" maxlength="@MaxLaenge"
+               autocomplete="@Autocomplete" required="@Pflicht" disabled="@Deaktiviert" aria-invalid="@(Fehler is not null ? "true" : null)"
+               @bind:get="Wert" @bind:set="SetzeAsync" @bind:event="oninput" @attributes="WeitereAttribute" />
     }
     else
     {
         <input id="@id" class="sk-eingabe" type="@Typ" name="@Name" placeholder="@Platzhalter" maxlength="@MaxLaenge"
                autocomplete="@Autocomplete" required="@Pflicht" disabled="@Deaktiviert" aria-invalid="@(Fehler is not null ? "true" : null)"
-               value="@Wert" @onchange="AendernAsync" @oninput="EingabeAsync" @attributes="WeitereAttribute" />
+               @bind:get="Wert" @bind:set="SetzeAsync" @attributes="WeitereAttribute" />
     }
 </Feld>
 
@@ -36,9 +50,6 @@
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? WeitereAttribute { get; set; }
 
     private readonly string id = Feld.NeueId("txt");
-
-    private Task AendernAsync(ChangeEventArgs e) => Sofort ? Task.CompletedTask : SetzeAsync(e.Value?.ToString());
-    private Task EingabeAsync(ChangeEventArgs e) => Sofort ? SetzeAsync(e.Value?.ToString()) : Task.CompletedTask;
 
     private Task SetzeAsync(string? wert)
     {
