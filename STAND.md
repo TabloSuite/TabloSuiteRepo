@@ -27,9 +27,12 @@ Nutzers**. Noch NICHT in der App (`einbau.py` + `VideoKatalog.cs` erst nach Frei
 **Zwei Nutzerwünsche für später (16.11.):** (1) SKOULOU-Audio-Aufgaben (Fragetypen `AudioTexte`, `AudioChoixUnique`,
 `AudioChoixMultiple`) mit **Azure-TTS** statt der Browser-Stimme (`paedagogik.js` `vorlesen` → `speechSynthesis`); Sprache
 je Aufgabe wählbar (heute `FragenTypen.Sprachen`: fr, en, de, es). **Vor** den Videos C2 « Leçons et examens » und
-D1 « Apprendre avec SKOULOU » erledigen, weil diese die Audio-Aufgaben zeigen. (2) Modale Fenster: beim Scrollen im Fenster
-rollt die Seite dahinter mit → Hintergrund sperren (`overscroll-behavior: contain` + Seite fest, solange ein Fenster offen
-ist); **vor** den weiteren Video-Aufnahmen erledigen.
+D1 « Apprendre avec SKOULOU » erledigen, weil diese die Audio-Aufgaben zeigen. (2) ✅ **Erledigt 16.11. (24039f0)**:
+Seite hinter offenen Fenstern rollt in eNOTE und SKOULOU nicht mehr mit (CSS `html:has(...)` sperrt Seite/Hauptbereich,
+`overscroll-behavior: contain`; im Browser Computer + Handy geprüft).
+**Pilot freigegeben** (Nutzer 16.11.: « sehr gut, weiter so ausführlich !! … Weitermachen wie es dir passt ») und
+eingebaut (de03adb). Die übrigen Videos ohne Einzel-Freigabe im selben Stil, Reihenfolge: A1, A2, B1–B4, dann Azure-TTS,
+dann C1, C2, D1, D2.
 
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
