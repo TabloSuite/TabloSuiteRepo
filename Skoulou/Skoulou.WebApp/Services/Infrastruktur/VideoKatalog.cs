@@ -36,6 +36,9 @@ public static partial class VideoKatalog
 
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
+        new("skoulou-premiers-pas.mp4", "Premiers pas : se repérer",
+            "Se connecter, choisir son mot de passe, l'accueil, le menu sur ordinateur et sur téléphone, l'année scolaire, votre compte et l'aide.",
+            PourTous, Alle, "5:20"),
         new("skoulou-visite-guidee.mp4", "La visite guidée",
             "Où trouver chaque fonction : direction, enseignants, élèves et parents.", PourTous, Alle, "2:03"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
@@ -61,7 +64,7 @@ public static partial class VideoKatalog
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
-        (PourTous, "Pour bien commencer", "La visite guidée et pourquoi SKOULOU."),
+        (PourTous, "Pour bien commencer", "Premiers pas, la visite guidée et pourquoi SKOULOU."),
         (Direction, "Direction", "Préparer l'année scolaire, l'équipe, les notes, les bulletins et les frais."),
         (Enseignant, "Enseignant", "Créer leçons et examens, suivre la classe et noter."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),

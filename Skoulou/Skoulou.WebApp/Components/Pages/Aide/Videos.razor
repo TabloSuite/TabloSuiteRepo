@@ -83,7 +83,7 @@
         {
             var videos = gruppen.SelectMany(g => g.Videos).ToList();
             var sekunden = videos.Sum(v => v.Dauer.Split(':') is [var m, var s] ? int.Parse(m) * 60 + int.Parse(s) : 0);
-            return $"{videos.Count} vidéos courtes · {sekunden / 60} min au total. Commencez par la visite guidée.";
+            return $"{videos.Count} vidéos · {sekunden / 60} min au total. Commencez par « Premiers pas ».";
         }
     }
 
