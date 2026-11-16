@@ -43,6 +43,9 @@ public static partial class VideoKatalog
             "Qui voit quoi : la direction, la coordination, l'enseignant, l'élève et le parent, chacun avec son accueil et son menu.", PourTous, Alle, "3:57"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
             "Élèves, notes, bulletins vérifiables, paiements et parents : tout votre établissement dans un seul espace.", PourTous, Alle, "1:39"),
+        new("skoulou-direction-concept.mp4", "Le concept : l'année scolaire",
+            "La théorie avant la pratique : le cycle d'une année, les périodes, les niveaux et les classes, les matières et les coefficients, le calcul des moyennes, les bulletins et le passage d'année.",
+            Direction, Leitung, "6:23"),
         new("skoulou-direction-preparer.mp4", "Préparer l'année scolaire",
             "L'année et ses périodes, les niveaux et les classes, les matières et leurs coefficients, les composantes des moyennes, puis le démarrage de l'année.",
             Direction, Leitung, "5:54"),
@@ -68,7 +71,7 @@ public static partial class VideoKatalog
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "Premiers pas, la visite guidée et pourquoi SKOULOU."),
-        (Direction, "Direction", "Préparer l'année scolaire, l'équipe, les notes, les bulletins et les frais."),
+        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, les élèves, l'équipe, les notes, les bulletins et les frais."),
         (Enseignant, "Enseignant", "Créer leçons et examens, suivre la classe et noter."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),
