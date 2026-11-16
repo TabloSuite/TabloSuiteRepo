@@ -38,6 +38,7 @@ dann C1, C2, D1, D2.
 Konto + Hilfe); in der App zuerst unter « Pour bien commencer ». Pipeline-Neuerungen (Handy, `nachOben`, Startskript der
 Aufnahme-App) in `lernen-v3/AUFTRAG.md` §6. Tests SKOULOU 572 grün. **Nächstes: A2 « La visite guidée ».**
 Noch nicht deployt (zusammen mit den übrigen Videos am Ende).
+✅ **Stand 16.11. abends (alles gepusht, noch nicht deployt):** A1 « Premiers pas » 5:20 · A2 « La visite guidée » 3:57 (a3b8d8f) · B1 « Élèves et inscriptions » 4:42 · **K1 « Le concept : l'année scolaire » 6:23** (Folien-Theorievideo, neuer Szenentyp `folie` in `lernen-v3/folie.py`). **Nächstes: B2 « Équipe et emplois du temps »**, dann B3, K2 + B4, Azure-TTS, C1, K3 + C2, D1, D2, danach eNOTE-Konzeptvideos. Einzelheiten und Fallen: `lernen-v3/AUFTRAG.md` §6.
 ✅ **Zwei Nutzerwünsche 16.11. nachmittags** (gepusht, noch zu deployen): (1) **Logo « S » im eNOTE-Blau** statt Blau→Türkis
 (34cfd25: Logo, Favicon SVG/PNG, Mail-Kopf, Firmenseite; 0af1e94: Pilot, « Premiers pas », « Pourquoi SKOULOU ? » +
 Startseiten-Video ohne neue Aufnahme neu gerendert). (2) **Menü « Établissement » in der Reihenfolge des Jahresstarts**
@@ -45,7 +46,7 @@ Startseiten-Video ohne neue Aufnahme neu gerendert). (2) **Menü « Établisseme
 Guide « Démarrer l'année » angeglichen (Classes vor Matières). Kein neues Video (Nutzer).
 
 **NEU 16.11. nachmittags – Theorie-Folienvideos (Nutzer):** « Préparer l'année scolaire » ist « ziemlich gut »; davor soll ein ausführliches Folien-Video (« PowerPoint » als Video, animierte Folien, Stimme Vivienne) die Direktion **theoretisch** auf das Konzept vorbereiten – Umfang **ganzes Schuljahr**. Danach (Nutzer: « bei den anderen großen Prozessen auch und bei eNOTE auch. Du entscheidest, sei kreativ und ausführlich, die Nutzer in Togo usw. sind mit großen Apps nicht vertraut »). **Plan:**
-- SKOULOU: K1 « Le concept : l'année scolaire » (vor dem Pilot; in Arbeit) · K2 « Le concept : frais et paiements » (vor B4) · K3 « Le concept : leçons, exercices et examens » (vor C2) · danach die übrigen Praxisvideos B2–D2 wie geplant.
+- SKOULOU: ✅ K1 « Le concept : l'année scolaire » (6:23, vor dem Pilot, gepusht) · K2 « Le concept : frais et paiements » (vor B4) · K3 « Le concept : leçons, exercices et examens » (vor C2) · danach die übrigen Praxisvideos B2–D2 wie geplant.
 - eNOTE (danach): Konzeptvideos vor den großen Abläufen – Kasse von der Öffnung bis zur Clôture (Écart), Catalogue/Stock/Prix, Clients/Fidélité, Équipe/Droits/Code PIN, Finances. Stil gleich (Folien-Typ `art: "folie"` in `lernen-v3/bau.py`).
 
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
