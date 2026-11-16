@@ -58,6 +58,8 @@ public static class VideoKatalog
             "La théorie avant la pratique : prestation ou produit, les catégories, le prix et la marge, les remises, le stock qui se tient tout seul, les alertes et l'inventaire, qui peut changer quoi.", "Propriétaire", AbBesitzer, "4:40"),
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
             "Les catégories, une prestation, un produit avec prix d'achat, stock et code-barres, étiquettes et pertes, les remises.", "Propriétaire", AbBesitzer, "3:41"),
+        new("enote-proprietaire-concept-equipe.mp4", "Le concept : votre équipe, les droits et les codes PIN",
+            "La théorie avant la pratique : qui fait quoi, les trois clés (mot de passe, code PIN de caisse, code PIN du propriétaire), un nouvel employé, les droits, la zone du propriétaire, la relève à la caisse.", "Propriétaire", AbBesitzer, "3:44"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
             "La page Équipe, ajouter un employé avec son code PIN, ses droits, votre reçu, Mobile Money, salles et postes, votre code PIN.", "Propriétaire", AbBesitzer, "3:42"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
