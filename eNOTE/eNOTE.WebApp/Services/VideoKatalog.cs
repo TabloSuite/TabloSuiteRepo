@@ -42,6 +42,9 @@ public static class VideoKatalog
         new(Werbung, "Pourquoi eNOTE ?",
             "En cinq minutes : le cahier du matin, puis la preuve dans l'application – catalogue et catégories, vente rapide, clients, clôture sans écart, finances et équipe. Pour une boutique, un salon ou un petit cabinet.", Alle_, Alle, "5:34"),
 
+        // 16.11.2026: Konzeptvideos (Folien, Theorie vor der Praxis) jeweils vor dem passenden Praxisvideo
+        new("enote-employe-concept-caisse.mp4", "Le concept : la caisse, de l'ouverture à la clôture",
+            "La théorie avant la pratique : une journée de caisse, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "4:59"),
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
             "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
