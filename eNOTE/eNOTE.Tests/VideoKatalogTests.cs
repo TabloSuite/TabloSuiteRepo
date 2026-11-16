@@ -13,9 +13,9 @@ public class VideoKatalogTests
         : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, rolle)], "test"));
 
     [Theory]
-    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 21)]
-    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 20)]
-    [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 16)]
+    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 22)]
+    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 21)]
+    [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 17)]
     [InlineData(AppRollen.Kassierer, "Pour tous,Employé", 8)]
     public void Gruppen_Je_Rolle_Eigene_Zuerst(string rolle, string gruppen, int anzahl)
     {

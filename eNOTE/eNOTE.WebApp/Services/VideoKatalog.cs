@@ -62,6 +62,8 @@ public static class VideoKatalog
             "La théorie avant la pratique : qui fait quoi, les trois clés (mot de passe, code PIN de caisse, code PIN du propriétaire), un nouvel employé, les droits, la zone du propriétaire, la relève à la caisse.", "Propriétaire", AbBesitzer, "3:44"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
             "La page Équipe, ajouter un employé avec son code PIN, ses droits, votre reçu, Mobile Money, salles et postes, votre code PIN.", "Propriétaire", AbBesitzer, "3:42"),
+        new("enote-proprietaire-concept-chiffres.mp4", "Le concept : vos chiffres",
+            "La théorie avant la pratique : chiffre d'affaires, panier moyen et écart ; ce qui entre, ce qui sort, ce qui reste ; le solde n'est pas le bénéfice ; la clôture du soir ; où regarder ; qui voit quoi.", "Propriétaire", AbBesitzer, "4:18"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
             "Les chiffres du jour sur l'accueil, les finances par période (solde, entrées, dépenses, clôtures), noter une dépense, apport et rapport PDF.", "Propriétaire", AbBesitzer, "3:12"),
         new("enote-proprietaire-concept-clients.mp4", "Le concept : vos clients et leur fidélité",
