@@ -77,12 +77,12 @@ public class LandTests
         var (f, sp, auth) = await BasisAsync();
         await using var _sp = sp;
 
-        var ok = await auth.RegisterBesitzerAsync("Afi", "Hounsou", "afi.cotonou", "afi@exemple.bj", "Init123!ab", "Salon Afi", "Cotonou", land: "Bénin");
+        var ok = await auth.RegisterBesitzerAsync("Afi", "Hounsou", "afi.cotonou", "afi@exemple.bj", "Init123!ab", "Salon Afi", "Cotonou", land: "Bénin", telefon: "+228 90 12 34 56");
         Assert.True(ok.Succeeded, ok.ErrorMessage);
-        var falsch = await auth.RegisterBesitzerAsync("Yao", "Mensah", "yao.x", "yao@exemple.tg", "Init123!ab", "Salon Yao", null, land: "Atlantide");
+        var falsch = await auth.RegisterBesitzerAsync("Yao", "Mensah", "yao.x", "yao@exemple.tg", "Init123!ab", "Salon Yao", null, land: "Atlantide", telefon: "+228 90 12 34 56");
         Assert.False(falsch.Succeeded);
         Assert.Equal("Choisissez un pays dans la liste.", falsch.ErrorMessage);
-        var alt = await auth.RegisterBesitzerAsync("Kofi", "Agbo", "kofi.lome", "kofi@exemple.tg", "Init123!ab", "Salon Kofi", "Lomé");
+        var alt = await auth.RegisterBesitzerAsync("Kofi", "Agbo", "kofi.lome", "kofi@exemple.tg", "Init123!ab", "Salon Kofi", "Lomé", telefon: "+228 90 12 34 56");
         Assert.True(alt.Succeeded, alt.ErrorMessage);
 
         await using var db = await f.CreateDbContextAsync();

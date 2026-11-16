@@ -138,7 +138,8 @@ public class AuthService(
         string? salonSlogan = null,
         CancellationToken cancellationToken = default,
         string? land = null,
-        string? anschluss = null)
+        string? anschluss = null,
+        string? telefon = null)
     {
         var bereinigtPseudonym = pseudonym.Trim();
         var bereinigtEmail = email.Trim();
@@ -155,6 +156,13 @@ public class AuthService(
         if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
             return (false, "Veuillez choisir un pseudonyme.");
+        }
+
+        // Telefon ist Pflicht: wer einen Laden registriert, muss leicht erreichbar sein (Validierung, Rückfragen).
+        var (bereinigtTelefon, telefonFehler) = TelefonRegel.Pruefe(telefon);
+        if (telefonFehler is not null)
+        {
+            return (false, telefonFehler);
         }
 
         // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
@@ -189,6 +197,7 @@ public class AuthService(
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),
             FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            TelefonNummer = bereinigtTelefon,
             EmailConfirmed = true,
             IsSelfRegistered = true,
             // Konto ist nutzbar, aber der Salon bleibt bis zur Freigabe gesperrt.
@@ -249,7 +258,7 @@ public class AuthService(
 
         // Info an das TabloSuite-Team: neues Établissement wartet auf Validierung.
         if (mails is not null)
-            await mails.NeueRegistrierungAsync(bereinigtSalon, $"{vorname.Trim()} {nachname.Trim()}", bereinigtEmail, null,
+            await mails.NeueRegistrierungAsync(bereinigtSalon, $"{vorname.Trim()} {nachname.Trim()}", bereinigtEmail, bereinigtTelefon,
                 string.Join(" · ", new[] { ladenLand, salonStandort?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } ort ? ort : null,
                 cancellationToken);
 

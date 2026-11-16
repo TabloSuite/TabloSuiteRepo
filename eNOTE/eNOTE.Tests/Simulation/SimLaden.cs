@@ -81,20 +81,20 @@ internal sealed partial class Simulation
         switch (l.Kanal)
         {
             case 0:
-                var r = await d.Hole<AuthService>().RegisterBesitzerAsync(vn, nn, l.BesitzerPseudonym, email, l.BesitzerPasswort, l.Name, l.Ort, "Bienvenue chez nous");
+                var r = await d.Hole<AuthService>().RegisterBesitzerAsync(vn, nn, l.BesitzerPseudonym, email, l.BesitzerPasswort, l.Name, l.Ort, "Bienvenue chez nous", telefon: "+228 90 12 34 56");
                 if (!r.Succeeded) { Befund($"Registrierung {l.Name}: {r.ErrorMessage}"); return; }
                 l.Wartend = true;
                 break;
             case 1:
                 var a = await d.Hole<AdminService>().LegeBesitzerMitSalonAnAsync(l.Nr % 2 == 0 ? Admin : Admin2, vn, nn, email, l.BesitzerPasswort,
-                    l.Name, l.Ort, l.Land, benutzername: l.BesitzerPseudonym);
+                    l.Name, l.Ort, l.Land, benutzername: l.BesitzerPseudonym, telefon: "+228 92 34 56 78");
                 if (!a.Erfolg) { Befund($"Admin-Anlage {l.Name}: {a.Fehler}"); return; }
                 l.Freigegeben = true;
                 break;
             default:
                 var po = Responsables[l.Nr % Responsables.Count];
                 var p = await d.Hole<ProduktOwnerService>().LegeSalonSelbstAnAsync(po, vn, nn, l.BesitzerPseudonym, email, l.BesitzerPasswort,
-                    l.Name, l.Ort, l.Land, d.Hole<UserManager<ENote.Core.DataModels.Identity.AppUser>>());
+                    l.Name, l.Ort, l.Land, d.Hole<UserManager<ENote.Core.DataModels.Identity.AppUser>>(), telefon: "+228 91 23 45 67");
                 if (!p.Erfolg) { Befund($"Responsable-Anlage {l.Name}: {p.Fehler}"); return; }
                 l.Responsable = po;
                 l.Wartend = true;

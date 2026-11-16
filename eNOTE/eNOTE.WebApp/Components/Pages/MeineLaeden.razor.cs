@@ -33,6 +33,7 @@ public partial class MeineLaeden(
     private string neuNachname = string.Empty;
     private string neuPseudonym = string.Empty;
     private string neuEmail = string.Empty;
+    private string neuTelefon = string.Empty;
     private string neuPasswort = string.Empty;
     private string neuSalonName = string.Empty;
     private string? neuStandort;
@@ -66,7 +67,7 @@ public partial class MeineLaeden(
 
     private void OeffneAnlegeDialog()
     {
-        neuVorname = neuNachname = neuPseudonym = neuEmail = neuSalonName = string.Empty;
+        neuVorname = neuNachname = neuPseudonym = neuEmail = neuTelefon = neuSalonName = string.Empty;
         neuStandort = null;
         neuLand = "Togo";
         neuPasswort = ErzeugeInitialPasswort();
@@ -78,7 +79,7 @@ public partial class MeineLaeden(
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
             || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail)
-            || string.IsNullOrWhiteSpace(neuSalonName) || string.IsNullOrWhiteSpace(neuPasswort))
+            || string.IsNullOrWhiteSpace(neuSalonName) || string.IsNullOrWhiteSpace(neuPasswort) || string.IsNullOrWhiteSpace(neuTelefon))
         {
             anlegeFehler = "Veuillez remplir tous les champs obligatoires.";
             return;
@@ -86,7 +87,7 @@ public partial class MeineLaeden(
 
         var (erfolg, fehler, salon) = await produktOwnerService.LegeSalonSelbstAnAsync(
             benutzerId, neuVorname, neuNachname, neuPseudonym, neuEmail, neuPasswort,
-            neuSalonName, neuStandort, neuLand, userManager);
+            neuSalonName, neuStandort, neuLand, userManager, telefon: neuTelefon);
         if (!erfolg)
         {
             anlegeFehler = fehler;

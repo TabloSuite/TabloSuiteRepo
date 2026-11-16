@@ -166,6 +166,7 @@ public partial class Admin(
     private string neuNachname = string.Empty;
     private string neuPseudonym = string.Empty;
     private string neuEmail = string.Empty;
+    private string neuTelefon = string.Empty;
     private string neuPasswort = string.Empty;
     private string neuSalonName = string.Empty;
     private string? neuStandort;
@@ -323,7 +324,7 @@ public partial class Admin(
 
     private void OeffneBesitzerDialog()
     {
-        neuVorname = neuNachname = neuPseudonym = neuEmail = neuSalonName = string.Empty;
+        neuVorname = neuNachname = neuPseudonym = neuEmail = neuTelefon = neuSalonName = string.Empty;
         neuStandort = null;
         neuLand = "Togo";
         neuPasswort = ErzeugeInitialPasswort();
@@ -335,7 +336,7 @@ public partial class Admin(
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
             || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail)
-            || string.IsNullOrWhiteSpace(neuSalonName) || string.IsNullOrWhiteSpace(neuPasswort))
+            || string.IsNullOrWhiteSpace(neuSalonName) || string.IsNullOrWhiteSpace(neuPasswort) || string.IsNullOrWhiteSpace(neuTelefon))
         {
             besitzerFehler = "Veuillez remplir tous les champs obligatoires.";
             return;
@@ -344,7 +345,7 @@ public partial class Admin(
         // SuperAdmin-Anlage: Login = eindeutiges Pseudonym, Kontakt-E-Mail darf mehrfach sein.
         var (erfolg, fehler, _) = await adminService.LegeBesitzerMitSalonAnAsync(
             aktuellerBenutzerId, neuVorname, neuNachname, neuEmail, neuPasswort, neuSalonName,
-            neuStandort, neuLand, benutzername: neuPseudonym);
+            neuStandort, neuLand, benutzername: neuPseudonym, telefon: neuTelefon);
         if (!erfolg)
         {
             besitzerFehler = fehler;

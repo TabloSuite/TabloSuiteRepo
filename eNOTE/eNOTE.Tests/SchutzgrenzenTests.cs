@@ -101,23 +101,23 @@ public class SchutzgrenzenTests
         // Dieselbe E-Mail-Adresse (Besitzer mit mehreren Läden): 3 am Tag, dann Schluss – auch von einem anderen Anschluss.
         for (var i = 0; i < MissbrauchsBremse.InscriptionJeAdresse.Max; i++)
         {
-            var ok = await auth.RegisterBesitzerAsync("Ama", "Mensah", $"ama.laden{i}", "ama@exemple.tg", "Init123!ab", $"Salon Ama {i}", "Lomé", land: "Togo", anschluss: "203.0.113.5");
+            var ok = await auth.RegisterBesitzerAsync("Ama", "Mensah", $"ama.laden{i}", "ama@exemple.tg", "Init123!ab", $"Salon Ama {i}", "Lomé", land: "Togo", anschluss: "203.0.113.5", telefon: "+228 90 12 34 56");
             Assert.True(ok.Succeeded, ok.ErrorMessage);
         }
-        var zuViel = await auth.RegisterBesitzerAsync("Ama", "Mensah", "ama.laden9", "AMA@exemple.tg", "Init123!ab", "Salon Ama 9", "Lomé", land: "Togo", anschluss: "198.51.100.9");
+        var zuViel = await auth.RegisterBesitzerAsync("Ama", "Mensah", "ama.laden9", "AMA@exemple.tg", "Init123!ab", "Salon Ama 9", "Lomé", land: "Togo", anschluss: "198.51.100.9", telefon: "+228 90 12 34 56");
         Assert.False(zuViel.Succeeded);
         Assert.Equal(MissbrauchsBremse.MeldungInscription, zuViel.ErrorMessage);
 
         // Derselbe Anschluss mit immer neuen Adressen: 10 am Tag (3 sind schon gezählt), dann Schluss.
         for (var i = 3; i < MissbrauchsBremse.InscriptionJeAnschluss.Max; i++)
         {
-            var ok = await auth.RegisterBesitzerAsync("Kofi", "Agbo", $"kofi.laden{i}", $"kofi{i}@exemple.tg", "Init123!ab", $"Boutique Kofi {i}", "Lomé", land: "Togo", anschluss: "203.0.113.5");
+            var ok = await auth.RegisterBesitzerAsync("Kofi", "Agbo", $"kofi.laden{i}", $"kofi{i}@exemple.tg", "Init123!ab", $"Boutique Kofi {i}", "Lomé", land: "Togo", anschluss: "203.0.113.5", telefon: "+228 90 12 34 56");
             Assert.True(ok.Succeeded, ok.ErrorMessage);
         }
-        var bot = await auth.RegisterBesitzerAsync("Yao", "Tété", "yao.bot", "yao@exemple.tg", "Init123!ab", "Boutique Yao", "Lomé", land: "Togo", anschluss: "203.0.113.5");
+        var bot = await auth.RegisterBesitzerAsync("Yao", "Tété", "yao.bot", "yao@exemple.tg", "Init123!ab", "Boutique Yao", "Lomé", land: "Togo", anschluss: "203.0.113.5", telefon: "+228 90 12 34 56");
         Assert.Equal(MissbrauchsBremse.MeldungInscription, bot.ErrorMessage);
         // Anderer Anschluss, neue Adresse: weiter möglich. Eine abgelehnte Registrierung zählt nicht mit.
-        var anderer = await auth.RegisterBesitzerAsync("Yao", "Tété", "yao.vrai", "yao@exemple.tg", "Init123!ab", "Boutique Yao", "Lomé", land: "Togo", anschluss: "198.51.100.9");
+        var anderer = await auth.RegisterBesitzerAsync("Yao", "Tété", "yao.vrai", "yao@exemple.tg", "Init123!ab", "Boutique Yao", "Lomé", land: "Togo", anschluss: "198.51.100.9", telefon: "+228 90 12 34 56");
         Assert.True(anderer.Succeeded, anderer.ErrorMessage);
     }
 

@@ -47,7 +47,8 @@ public partial class Register(AuthService authService, NavigationManager navigat
             FormModel.SalonStandort,
             FormModel.Slogan,
             land: FormModel.Land,
-            anschluss: anschluss ?? Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext));
+            anschluss: anschluss ?? Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext),
+            telefon: FormModel.Telefon);
 
         isSubmitting = false;
 
@@ -74,6 +75,9 @@ public partial class Register(AuthService authService, NavigationManager navigat
         [Required(ErrorMessage = "Veuillez saisir une adresse e-mail.")]
         [EmailAddress(ErrorMessage = "Adresse e-mail invalide.")]
         public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Veuillez saisir votre numéro de téléphone.")]
+        public string Telefon { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Veuillez saisir un mot de passe.")]
         [MinLength(6, ErrorMessage = "Au moins 6 caractères.")]

@@ -39,7 +39,8 @@ public class AdminService(
         DateTime CreatedAtUtc,
         string? BesitzerName,
         string? BesitzerEmail,
-        string? ProduktOwnerName);
+        string? ProduktOwnerName,
+        string? BesitzerTelefon = null);
 
     public async Task<List<SalonUebersicht>> GetSalonUebersichtAsync(CancellationToken cancellationToken = default)
         => await GetSalonUebersichtGefiltertAsync(null, null, null, null, cancellationToken);
@@ -115,7 +116,8 @@ public class AdminService(
             {
                 g.Key,
                 Name = g.Select(us => us.AppUser.FullName).FirstOrDefault(),
-                Email = g.Select(us => us.AppUser.Email).FirstOrDefault()
+                Email = g.Select(us => us.AppUser.Email).FirstOrDefault(),
+                Telefon = g.Select(us => us.AppUser.TelefonNummer).FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
 
@@ -138,7 +140,8 @@ public class AdminService(
             s.CreatedAtUtc,
             besitzerInfos.FirstOrDefault(x => x.Key == s.Id)?.Name,
             besitzerInfos.FirstOrDefault(x => x.Key == s.Id)?.Email,
-            poNamen.FirstOrDefault(x => x.Key == s.Id)?.Name)).ToList();
+            poNamen.FirstOrDefault(x => x.Key == s.Id)?.Name,
+            besitzerInfos.FirstOrDefault(x => x.Key == s.Id)?.Telefon)).ToList();
     }
 
     public sealed record SalonKennzahlen(int Gesamt, int Wartend, int Probe, int Zahlend, int Deaktiviert);
@@ -510,32 +513,35 @@ public class AdminService(
     public Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
         string vorname, string nachname, string email, string initialPasswort,
         string salonName, string? standort, string? land = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? telefon = null)
         => LegeBesitzerMitSalonAnInternAsync(
             vorname, nachname, email, initialPasswort, salonName, standort,
-            land, cancellationToken, email);
+            land, cancellationToken, email, telefon);
 
     public async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnAsync(
         Guid bearbeiter, string vorname, string nachname, string email,
         string initialPasswort, string salonName, string? standort,
         string? land = null, CancellationToken cancellationToken = default,
-        string? benutzername = null)
+        string? benutzername = null, string? telefon = null)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         await AdminKontenService.PruefeAsync(db, bearbeiter, false, cancellationToken);
         return await LegeBesitzerMitSalonAnInternAsync(
             vorname, nachname, email, initialPasswort, salonName, standort,
-            land, cancellationToken, benutzername ?? email);
+            land, cancellationToken, benutzername ?? email, telefon);
     }
 
     private async Task<(bool Erfolg, string? Fehler, AppUser? Besitzer)> LegeBesitzerMitSalonAnInternAsync(
         string vorname, string nachname, string email, string initialPasswort,
         string salonName, string? standort, string? land,
-        CancellationToken cancellationToken, string benutzername)
+        CancellationToken cancellationToken, string benutzername, string? telefon)
     {
         var bereinigtEmail = email.Trim();
         var bereinigtSalon = salonName.Trim();
         var pseudonym = benutzername.Trim();
+        // Telefon des Besitzers ist Pflicht (wie bei der öffentlichen Registrierung): man muss ihn leicht erreichen können.
+        var (bereinigtTelefon, telefonFehler) = TelefonRegel.Pruefe(telefon, TelefonRegel.MeldungPflichtBesitzer);
+        if (telefonFehler is not null) return (false, telefonFehler, null);
 
         if (string.IsNullOrWhiteSpace(vorname) || string.IsNullOrWhiteSpace(nachname)
             || string.IsNullOrWhiteSpace(bereinigtSalon) || string.IsNullOrWhiteSpace(pseudonym)
@@ -562,6 +568,7 @@ public class AdminService(
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),
             FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            TelefonNummer = bereinigtTelefon,
             EmailConfirmed = true
         };
 

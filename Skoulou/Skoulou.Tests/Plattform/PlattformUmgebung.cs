@@ -69,7 +69,7 @@ internal sealed class PlattformUmgebung : IAsyncDisposable
     }
 
     public static RegistrierungsEingabe Direction(string schule = "Collège Horizon", string email = "dir@exemple.tg") => new(
-        RegistrierungsArt.Direction, "Kossi", "Mensah", null, email, null, "motdepasse1", "motdepasse1", true, schule, "Lomé", null);
+        RegistrierungsArt.Direction, "Kossi", "Mensah", null, email, "+228 90 12 34 56", "motdepasse1", "motdepasse1", true, schule, "Lomé", null);
 
     public static RegistrierungsEingabe Eleve(Guid? schule, string? email = null) => new(
         RegistrierungsArt.Eleve, "Ama", "Dossou", null, email, null, "motdepasse1", "motdepasse1", true, SchuleId: schule,

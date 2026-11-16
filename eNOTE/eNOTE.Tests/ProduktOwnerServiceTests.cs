@@ -187,7 +187,7 @@ public class ProduktOwnerServiceTests
 
         var service = new ProduktOwnerService(factory);
         var (erfolg, fehler, salon) = await service.LegeSalonSelbstAnAsync(
-            poId, "Jean", "Test", "jean.boutique", "kontakt@x.de", "Init123!Ab", "Boutique A", "Lomé", "Togo", userManager);
+            poId, "Jean", "Test", "jean.boutique", "kontakt@x.de", "Init123!Ab", "Boutique A", "Lomé", "Togo", userManager, telefon: "+228 90 12 34 56");
 
         Assert.True(erfolg, fehler);
         Assert.NotNull(salon);

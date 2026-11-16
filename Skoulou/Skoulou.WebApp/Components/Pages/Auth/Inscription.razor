@@ -68,7 +68,9 @@
                 <TextFeld Label="@(art == RegistrierungsArt.Direction ? "Adresse e-mail" : "Adresse e-mail (facultatif)")" Name="email" Typ="email" @bind-Wert="email"
                           MaxLaenge="256" Pflicht="@(art == RegistrierungsArt.Direction)" Autocomplete="email" Fehler="@F("email")"
                           Hinweis="@(art == RegistrierungsArt.Direction ? "Pour la validation, les factures et le mot de passe oublié." : null)" />
-                <TextFeld Label="Téléphone (facultatif)" Name="telephone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Autocomplete="tel" Fehler="@F("telephone")" />
+                <TextFeld Label="@(art == RegistrierungsArt.Direction ? "Téléphone" : "Téléphone (facultatif)")" Name="telephone" Typ="tel" @bind-Wert="telefon"
+                          MaxLaenge="50" Pflicht="@(art == RegistrierungsArt.Direction)" Autocomplete="tel" Fehler="@F("telephone")"
+                          Hinweis="@(art == RegistrierungsArt.Direction ? "Pour vous joindre facilement (appel ou WhatsApp)." : null)" />
             </div>
             @if (art == RegistrierungsArt.Eleve)
             {

@@ -118,10 +118,17 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         string vorname, string nachname, string pseudonym, string email, string initialPasswort,
         string salonName, string? standort, string? land,
         UserManager<AppUser> userManager,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? telefon = null)
     {
         var bereinigtSalon = (salonName ?? string.Empty).Trim();
         var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
+        // Telefon des Besitzers ist Pflicht (wie bei der öffentlichen Registrierung).
+        var (bereinigtTelefon, telefonFehler) = TelefonRegel.Pruefe(telefon, TelefonRegel.MeldungPflichtBesitzer);
+        if (telefonFehler is not null)
+        {
+            return (false, telefonFehler, null);
+        }
         if (bereinigtSalon.Length < 2)
         {
             return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null);
@@ -148,6 +155,7 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
             Vorname = vorname.Trim(),
             Nachname = nachname.Trim(),
             FullName = $"{vorname.Trim()} {nachname.Trim()}",
+            TelefonNummer = bereinigtTelefon,
             EmailConfirmed = true
         };
         var erstellen = await userManager.CreateAsync(besitzer, initialPasswort);

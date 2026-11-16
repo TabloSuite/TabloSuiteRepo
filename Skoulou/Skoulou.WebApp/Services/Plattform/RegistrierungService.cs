@@ -96,6 +96,9 @@ public sealed class RegistrierungService(
 {
     public const string MeldungSchuleVorhanden = "Un établissement portant ce nom est déjà inscrit sur SKOULOU. S'il s'agit du vôtre, contactez-nous.";
     public const string MeldungAgb = "Veuillez accepter les conditions d'utilisation pour finaliser l'inscription.";
+    public const string MeldungTelefonPflicht = "Indiquez votre numéro de téléphone : nous vous appelons en cas de besoin.";
+    public const string MeldungTelefonKurz = "Le numéro de téléphone semble incomplet (au moins 8 chiffres).";
+    public const int TelefonMinZiffern = 8;
     public const string MeldungSchuleWaehlen = "Veuillez choisir votre établissement.";
     public const string MeldungSchuleGeschlossen = "Cet établissement n'accepte pas d'inscriptions en ligne pour le moment.";
 
@@ -205,6 +208,12 @@ public sealed class RegistrierungService(
             throw new FachFehler("L'adresse e-mail n'est pas valide.", "email");
         }
         var telefon = Telefon(e.Telefon, "telephone");
+        // Wer eine Schule registriert, muss erreichbar sein (Validierung, Rückfragen, Rechnungen) – Schüler bleiben frei.
+        if (e.Art == RegistrierungsArt.Direction)
+        {
+            if (telefon is null) throw new FachFehler(MeldungTelefonPflicht, "telephone");
+            if (telefon.Count(char.IsDigit) < TelefonMinZiffern) throw new FachFehler(MeldungTelefonKurz, "telephone");
+        }
         if (PasswortService.PruefeNeues(e.Passwort, e.Bestaetigung) is { } pw)
             throw new FachFehler(pw, pw == PasswortService.MeldungBestaetigung ? "confirmation" : "motdepasse");
 

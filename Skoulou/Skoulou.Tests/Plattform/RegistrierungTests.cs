@@ -62,6 +62,12 @@ public class RegistrierungTests
         Assert.Equal("motdepasse", (await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Passwort = "abc", Bestaetigung = "abc" }))).Feld);
         Assert.Equal("confirmation", (await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Bestaetigung = "autre123" }))).Feld);
         Assert.Equal("ville", (await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Ort = " " }))).Feld);
+        // Telefon ist für die Direktion Pflicht (16.11.2026: man muss sie leicht erreichen können), mindestens 8 Ziffern.
+        var ohneTelefon = await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Telefon = " " }));
+        Assert.Equal(("telephone", RegistrierungService.MeldungTelefonPflicht), (ohneTelefon.Feld, ohneTelefon.Message));
+        var zuKurz = await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Telefon = "90 12 34" }));
+        Assert.Equal(("telephone", RegistrierungService.MeldungTelefonKurz), (zuKurz.Feld, zuKurz.Message));
+        Assert.Equal("telephone", (await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Telefon = "appelez-moi" }))).Feld);
         await u.Basis.KontoAsync("kossi.mensah", Rollen.Lehrer, (await u.Basis.SchuleAsync("Autre")).Id);
         Assert.Equal("identifiant", (await Assert.ThrowsAsync<FachFehler>(() => u.Registrierung.PruefeAsync(gut with { Identifiant = "Kossi.Mensah" }))).Feld);
         await u.Registrierung.PruefeAsync(gut); // ohne Identifiant: Vorschlag « kossi.mensah2 »

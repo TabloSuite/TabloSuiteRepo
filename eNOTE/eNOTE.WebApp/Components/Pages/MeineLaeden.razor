@@ -82,6 +82,7 @@
             </div>
             <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
             <label>Adresse e-mail de contact <input type="email" @bind="neuEmail" /></label>
+            <label>Téléphone du propriétaire <input type="tel" @bind="neuTelefon" autocomplete="off" maxlength="30" placeholder="ex. +228 90 12 34 56" /></label>
             <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
             <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
             <label>Nom de l'établissement <input @bind="neuSalonName" /></label>

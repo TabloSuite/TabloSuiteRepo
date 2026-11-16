@@ -52,6 +52,12 @@
                 </label>
 
                 <label>
+                    Téléphone
+                    <InputText @bind-Value="FormModel.Telefon" type="tel" autocomplete="tel" maxlength="30" placeholder="ex. +228 90 12 34 56" />
+                    <small>Pour vous joindre facilement (appel ou WhatsApp).</small>
+                </label>
+
+                <label>
                     Mot de passe
                     <PasswordInput @bind-Value="FormModel.Passwort" Required="true" Autocomplete="new-password" />
                     <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>

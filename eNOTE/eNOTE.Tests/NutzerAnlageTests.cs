@@ -233,9 +233,9 @@ public class NutzerAnlageTests
         var admin = await NutzerAsync(sp, AppRollen.SuperAdmin, true);
         var service = sp.GetRequiredService<AdminService>();
         await NutzerAsync(sp, AppRollen.Besitzer);
-        Assert.True((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "partage@example.test", "Initial123!Ab", "Boutique A", null, benutzername: "boutique_a")).Erfolg);
-        Assert.True((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "partage@example.test", "Initial123!Ab", "Boutique B", null, benutzername: "boutique_b")).Erfolg);
-        Assert.False((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "autre@example.test", "Initial123!Ab", "Boutique C", null, benutzername: "boutique_a")).Erfolg);
+        Assert.True((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "partage@example.test", "Initial123!Ab", "Boutique A", null, benutzername: "boutique_a", telefon: "+228 90 12 34 56")).Erfolg);
+        Assert.True((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "partage@example.test", "Initial123!Ab", "Boutique B", null, benutzername: "boutique_b", telefon: "+228 90 12 34 56")).Erfolg);
+        Assert.False((await service.LegeBesitzerMitSalonAnAsync(admin.Id, "A", "Test", "autre@example.test", "Initial123!Ab", "Boutique C", null, benutzername: "boutique_a", telefon: "+228 90 12 34 56")).Erfolg);
         await using var db = await factory.CreateDbContextAsync();
         Assert.Equal(2, await db.Users.CountAsync(u => u.Email == "partage@example.test"));
         Assert.Equal(2, await db.UserSalons.CountAsync());
@@ -329,14 +329,14 @@ public class NutzerAnlageTests
         var s = sp.GetRequiredService<AdminService>();
         // ProduktOwner darf keine Besitzer mit Salon anlegen (nur SuperAdmin).
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            s.LegeBesitzerMitSalonAnAsync(po.Id, "Jean", "Test", "p@example.test", "Initial123!Ab", "B", null));
-        var (ok, fehler, besitzer) = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique A", "Lomé", "Togo");
+            s.LegeBesitzerMitSalonAnAsync(po.Id, "Jean", "Test", "p@example.test", "Initial123!Ab", "B", null, telefon: "+228 90 12 34 56"));
+        var (ok, fehler, besitzer) = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique A", "Lomé", "Togo", telefon: "+228 90 12 34 56");
         Assert.True(ok, fehler); Assert.NotNull(besitzer);
         // Gleiche E-Mail erneut (gleiche Person) mit neuem Pseudonym ist erlaubt.
-        var zweites = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique B", null, benutzername: "owner.zweit");
+        var zweites = await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique B", null, benutzername: "owner.zweit", telefon: "+228 90 12 34 56");
         Assert.True(zweites.Erfolg, zweites.Fehler);
         // Gleiches Pseudonym erneut wird abgelehnt.
-        Assert.False((await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique C", null, benutzername: "owner.zweit")).Erfolg);
+        Assert.False((await s.LegeBesitzerMitSalonAnAsync(admin.Id, "Jean", "Test", "owner@example.test", "Initial123!Ab", "Boutique C", null, benutzername: "owner.zweit", telefon: "+228 90 12 34 56")).Erfolg);
         await using var db = await factory.CreateDbContextAsync();
         Assert.Equal(2, await db.Salons.CountAsync());
         Assert.True((await db.Salons.SingleAsync(s2 => s2.Name == "Boutique A")).IstFreigegeben);
