@@ -54,6 +54,8 @@ public static class VideoKatalog
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
             "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
 
+        new("enote-proprietaire-concept-catalogue.mp4", "Le concept : catalogue, stock et prix",
+            "La théorie avant la pratique : prestation ou produit, les catégories, le prix et la marge, les remises, le stock qui se tient tout seul, les alertes et l'inventaire, qui peut changer quoi.", "Propriétaire", AbBesitzer, "4:40"),
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
             "Les catégories, une prestation, un produit avec prix d'achat, stock et code-barres, étiquettes et pertes, les remises.", "Propriétaire", AbBesitzer, "3:41"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
