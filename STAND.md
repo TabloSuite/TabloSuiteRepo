@@ -38,6 +38,11 @@ dann C1, C2, D1, D2.
 Konto + Hilfe); in der App zuerst unter « Pour bien commencer ». Pipeline-Neuerungen (Handy, `nachOben`, Startskript der
 Aufnahme-App) in `lernen-v3/AUFTRAG.md` §6. Tests SKOULOU 572 grün. **Nächstes: A2 « La visite guidée ».**
 Noch nicht deployt (zusammen mit den übrigen Videos am Ende).
+✅ **Zwei Nutzerwünsche 16.11. nachmittags** (gepusht, noch zu deployen): (1) **Logo « S » im eNOTE-Blau** statt Blau→Türkis
+(34cfd25: Logo, Favicon SVG/PNG, Mail-Kopf, Firmenseite; 0af1e94: Pilot, « Premiers pas », « Pourquoi SKOULOU ? » +
+Startseiten-Video ohne neue Aufnahme neu gerendert). (2) **Menü « Établissement » in der Reihenfolge des Jahresstarts**
+(f41e9e9): Année scolaire → Classes → Matières → Équipe → Emplois du temps → Élèves → Parents; Startseiten-Kacheln folgen,
+Guide « Démarrer l'année » angeglichen (Classes vor Matières). Kein neues Video (Nutzer).
 
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT

@@ -40,7 +40,7 @@ public static partial class VideoKatalog
             "Se connecter, choisir son mot de passe, l'accueil, le menu sur ordinateur et sur téléphone, l'année scolaire, votre compte et l'aide.",
             PourTous, Alle, "5:20"),
         new("skoulou-visite-guidee.mp4", "La visite guidée",
-            "Où trouver chaque fonction : direction, enseignants, élèves et parents.", PourTous, Alle, "2:03"),
+            "Qui voit quoi : la direction, la coordination, l'enseignant, l'élève et le parent, chacun avec son accueil et son menu.", PourTous, Alle, "3:57"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
             "Élèves, notes, bulletins vérifiables, paiements et parents : tout votre établissement dans un seul espace.", PourTous, Alle, "1:39"),
         new("skoulou-direction-preparer.mp4", "Préparer l'année scolaire",
