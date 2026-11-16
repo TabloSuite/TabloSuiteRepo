@@ -6,12 +6,12 @@
              ErrorMessage="@Fehlermeldung" OnClose="OnClose">
     <ChildContent>
         <div class="sk-formular">
-            @if (Spalte is null && Komponenten.Count > 0)
+            @if (Spalte is null && KomponentenDerPeriode.Count > 0)
             {
                 <div>
                     <p class="sk-feld-label">Composantes de la période</p>
                     <div class="sk-chips" role="group" aria-label="Composantes">
-                        @foreach (var k in Komponenten)
+                        @foreach (var k in KomponentenDerPeriode)
                         {
                             <button type="button" class="sk-chip @(komponente == k.Id ? "aktiv" : null)" @onclick="() => Uebernehmen(k)">
                                 @k.Titel <span class="sk-chip-zahl">/@k.Bareme.ToString("0.##", SkoulouKultur.Kultur) ×@k.Gewicht.ToString("0.##", SkoulouKultur.Kultur)</span>
@@ -54,6 +54,10 @@
     [Parameter] public string? Oberzeile { get; set; }
     [Parameter] public Guid KlassenfachId { get; set; }
     [Parameter] public Guid PeriodeId { get; set; }
+
+    /// <summary>Nur die Komponenten der gewählten Periode (die Notenseite lädt die des ganzen Jahres; vorher erschien jede
+    /// Komponente einmal je Periode, z. B. 9 statt 3 Vorschläge – bei der Videoaufnahme 16.11. gefunden).</summary>
+    private IReadOnlyList<KomponenteZeile> KomponentenDerPeriode => Komponenten.Where(k => k.PeriodeId == PeriodeId).ToList();
     [Parameter] public RasterSpalte? Spalte { get; set; }
     [Parameter] public IReadOnlyList<KomponenteZeile> Komponenten { get; set; } = [];
     [Parameter] public EventCallback OnClose { get; set; }
