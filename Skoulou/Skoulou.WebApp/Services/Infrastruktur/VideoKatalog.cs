@@ -40,8 +40,9 @@ public static partial class VideoKatalog
             "Où trouver chaque fonction : direction, enseignants, élèves et parents.", PourTous, Alle, "2:03"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
             "Élèves, notes, bulletins vérifiables, paiements et parents : tout votre établissement dans un seul espace.", PourTous, Alle, "1:39"),
-        new("skoulou-direction-preparer.mp4", "Préparer l'établissement",
-            "L'année scolaire, les classes, inscrire un élève, un nouveau mot de passe.", Direction, Leitung, "1:50"),
+        new("skoulou-direction-preparer.mp4", "Préparer l'année scolaire",
+            "L'année et ses périodes, les niveaux et les classes, les matières et leurs coefficients, les composantes des moyennes, puis le démarrage de l'année.",
+            Direction, Leitung, "5:54"),
         new("skoulou-direction-equipe.mp4", "Enseignants et emplois du temps",
             "Ajouter un enseignant, lui confier une classe et une matière, publier l'emploi du temps.", Direction, Leitung, "1:37"),
         new("skoulou-direction-notes.mp4", "Notes et bulletins",
@@ -61,7 +62,7 @@ public static partial class VideoKatalog
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "La visite guidée et pourquoi SKOULOU."),
-        (Direction, "Direction", "Préparer l'établissement, l'équipe, les notes, les bulletins et les frais."),
+        (Direction, "Direction", "Préparer l'année scolaire, l'équipe, les notes, les bulletins et les frais."),
         (Enseignant, "Enseignant", "Créer leçons et examens, suivre la classe et noter."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),
