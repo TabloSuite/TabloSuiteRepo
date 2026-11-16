@@ -14,8 +14,8 @@
     @if (Frage.HatAudio)
     {
         <div class="sk-audio-knoepfe">
-            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OnVorlesen.InvokeAsync((Frage, false))"><Icon Name="play" Groesse="16" /> <span>Écouter</span></button>
-            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => OnVorlesen.InvokeAsync((Frage, true))"><Icon Name="clock" Groesse="16" /> <span>Plus lentement</span></button>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" data-vorlesen @onclick="() => OnVorlesen.InvokeAsync((Frage, false))"><Icon Name="play" Groesse="16" /> <span>Écouter</span></button>
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" data-vorlesen @onclick="() => OnVorlesen.InvokeAsync((Frage, true))"><Icon Name="clock" Groesse="16" /> <span>Plus lentement</span></button>
         </div>
     }
 

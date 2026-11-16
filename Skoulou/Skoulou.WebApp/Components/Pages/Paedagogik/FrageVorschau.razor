@@ -29,7 +29,7 @@
     }
     @if (MitLoesungen && FragenTypen.IstAudio(Frage.Typ) && !string.IsNullOrWhiteSpace(Frage.AudioText))
     {
-        <p class="sk-audio-text"><Icon Name="play" Groesse="14" /> <span class="sk-leise">Texte lu (@Frage.Sprache) :</span> @Frage.AudioText</p>
+        <p class="sk-audio-text"><Icon Name="play" Groesse="14" /> <span class="sk-leise">Texte lu (@Frage.Sprache · niveau @Frage.Niveau) :</span> @Frage.AudioText</p>
     }
     else if (FragenTypen.IstAudio(Frage.Typ))
     {

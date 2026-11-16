@@ -1,6 +1,7 @@
 @* Übungen einer Leçon: eine Frage nach der anderen, sofortige Rückmeldung (Text, Ton, Stimme), Versuche nach Regel. *@
 @inject LernService Lernen
 @inject PaedagogikModul Js
+@inject Skoulou.WebApp.Services.Infrastruktur.Vorlesen.VorleseDienst Vorleser
 @inject ToastService Toast
 
 @if (fragen.Count == 0)
@@ -109,6 +110,12 @@ else
         index = Math.Max(0, fragen.FindIndex(f => !staende.ContainsKey(f.Frage.Id)));
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Modul vorab laden: schon das erste Tippen auf « Écouter » schaltet den Ton frei (iPhone).
+        if (firstRender && fragen.Any(f => f.Frage.HatAudio)) await Js.AufrufAsync("vorlesenVorbereiten");
+    }
+
     private AntwortEingabe Eingabe(Guid id) => eingaben.TryGetValue(id, out var e) ? e : AntwortEingabe.Leer;
 
     private async Task AntwortenAsync(SchuelerFrage frage)
@@ -172,8 +179,9 @@ else
     {
         try
         {
-            var (text, sprache) = await Lernen.AudioTextAsync(SchuelerId, Daten.ZuweisungId, a.Frage.Id);
-            if (!await Js.AufrufAsync<bool>("vorlesen", text, sprache, a.Langsam))
+            var audio = await Lernen.AudioTextAsync(SchuelerId, Daten.ZuweisungId, a.Frage.Id);
+            var adresse = await Vorleser.AdresseAsync(SchuelerId, audio.SchuleId, audio.Text, audio.Sprache, audio.Niveau, a.Langsam);
+            if (!await Js.AufrufAsync<bool>("vorlesen", audio.Text, audio.Sprache, SprechNiveaus.Faktor(audio.Niveau, a.Langsam), adresse))
                 Toast.ZeigeFehler("La lecture audio n'est pas disponible sur cet appareil.");
         }
         catch (Skoulou.Core.Fehler.FachFehler f)

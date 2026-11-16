@@ -1,4 +1,8 @@
 @* Eine Frage im Editor: Typ, Punkte, Text (mit Bildern/Formeln) und die typabhängigen Teile. *@
+@inject InhaltService Inhalte
+@inject PaedagogikModul Js
+@inject ToastService Toast
+@inject Skoulou.WebApp.Services.Infrastruktur.Vorlesen.VorleseDienst Vorleser
 
 <div class="sk-frage-editor">
     @if (Frage.HatAntworten)
@@ -39,11 +43,18 @@
 
     @if (FragenTypen.IstAudio(Frage.Typ))
     {
+        <TextFeld Label="Texte lu à l'élève" Zeilen="2" Wert="@Frage.AudioText" WertChanged="w => Aendern(() => Frage.AudioText = w)"
+                  Hinweis="L'élève l'écoute sans jamais le voir." />
         <div class="sk-raster-2">
-            <TextFeld Label="Texte lu à l'élève" Zeilen="2" Wert="@Frage.AudioText" WertChanged="w => Aendern(() => Frage.AudioText = w)"
-                      Hinweis="L'élève l'écoute (voix du téléphone) sans jamais le voir." />
-            <AuswahlFeld T="string" Label="Langue de lecture" Wert="Frage.Sprache" WertChanged="SpracheAsync"
+            <AuswahlFeld T="string" Label="Langue du texte" Wert="Frage.Sprache" WertChanged="SpracheAsync"
                          Optionen="sprachen" MitSuche="false" />
+            <AuswahlFeld T="string" Label="Niveau" Wert="Frage.Niveau" WertChanged="NiveauAsync"
+                         Optionen="niveaus" MitSuche="false" Hinweis="@SprechNiveaus.Hinweis" />
+        </div>
+        <div class="sk-audio-knoepfe">
+            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" data-vorlesen @onclick="ProbehoerenAsync">
+                <Icon Name="play" Groesse="16" /> <span>Écouter</span>
+            </button>
         </div>
     }
 
@@ -105,12 +116,22 @@
 @code {
     [Parameter, EditorRequired] public FrageFormular Frage { get; set; } = default!;
     [Parameter] public EventCallback Geaendert { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? Auth { get; set; }
 
     private static readonly IReadOnlyList<AuswahlOption<FragenTyp>> typen =
         FragenTypen.Alle.Select(t => new AuswahlOption<FragenTyp>(t, FragenTypen.Bezeichnung(t))).ToList();
 
     private static readonly IReadOnlyList<AuswahlOption<string>> sprachen =
         FragenTypen.Sprachen.Select(s => new AuswahlOption<string>(s.Code, s.Name)).ToList();
+
+    private static readonly IReadOnlyList<AuswahlOption<string>> niveaus =
+        SprechNiveaus.Alle.Select(n => new AuswahlOption<string>(n.Code, n.Name)).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Modul vorab laden: schon das erste Tippen auf « Écouter » schaltet den Ton frei (iPhone).
+        if (firstRender && FragenTypen.IstAudio(Frage.Typ)) await Js.AufrufAsync("vorlesenVorbereiten");
+    }
 
     private Task Aendern(Action aenderung)
     {
@@ -119,6 +140,31 @@
     }
 
     private Task SpracheAsync(string? sprache) => Aendern(() => Frage.Sprache = sprache ?? "fr-FR");
+
+    private Task NiveauAsync(string? niveau) => Aendern(() => Frage.Niveau = SprechNiveaus.Normiert(niveau));
+
+    /// <summary>Die Lehrkraft hört Text, Sprache und Niveau so, wie die Schüler sie hören werden (auch vor dem Speichern).</summary>
+    private async Task ProbehoerenAsync()
+    {
+        var text = Frage.AudioText?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            Toast.ZeigeFehler("Saisissez d'abord le texte lu à l'élève.");
+            return;
+        }
+        try
+        {
+            if ((Auth is null ? null : (await Auth).User.KontoId()) is not { } konto) return;
+            var schule = await Inhalte.VorleseSchuleAsync(konto);
+            var adresse = await Vorleser.AdresseAsync(konto, schule, text, Frage.Sprache, Frage.Niveau, langsam: false);
+            if (!await Js.AufrufAsync<bool>("vorlesen", text, Frage.Sprache, SprechNiveaus.Faktor(Frage.Niveau, false), adresse))
+                Toast.ZeigeFehler("La lecture audio n'est pas disponible sur cet appareil.");
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            Toast.ZeigeFehler(ex.Message);
+        }
+    }
 
     private Task TypAsync(FragenTyp typ) => Aendern(() =>
     {

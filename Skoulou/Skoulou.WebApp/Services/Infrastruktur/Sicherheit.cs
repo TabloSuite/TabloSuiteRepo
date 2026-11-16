@@ -20,11 +20,16 @@ public static class RateLimits
     public const string Kontakt = "kontakt";
     public const string Webhook = "webhook";
     public const string Pruefung = "pruefung";
+    /// <summary>Abruf vorgelesener Audio-Aufgaben (MP3) – je Konto; ein Abspielen kann mehrere Teilanfragen (Range) auslösen.</summary>
+    public const string Vorlesen = "vorlesen";
 
     public const int AnmeldungenJeMinute = 60;
     public const int RegistrierungenJeZehnMinuten = 120;
     public const int PasswortJeKontoJeZehnMinuten = 5;
     public const int PasswortOublieJeZehnMinuten = 20;
+    public const int VorlesenJeKontoJeMinute = 120;
+    /// <summary>Neue Sprachausgaben bei Azure je Konto (Treffer im Zwischenspeicher zählen nicht); darüber liest der Browser.</summary>
+    public const int VorleseSynthesenJeKontoJeZehnMinuten = 60;
 
     /// <summary>Registriert die Regeln; abgelehnte Formulare kehren mit « erreur=limite » auf ihre Seite zurück.</summary>
     public static IServiceCollection AddSkoulouRateLimits(this IServiceCollection services)
@@ -40,6 +45,8 @@ public static class RateLimits
             Regel(o, Kontakt, 5, TimeSpan.FromMinutes(10));
             Regel(o, Webhook, 120, TimeSpan.FromMinutes(1));
             Regel(o, Pruefung, 30, TimeSpan.FromMinutes(1));
+            o.AddPolicy(Vorlesen, http => Fenster(PasswortSchluessel(http.User, Anschluss.Adresse(http)),
+                VorlesenJeKontoJeMinute, TimeSpan.FromMinutes(1)));
             o.OnRejected = (kontext, _) =>
             {
                 var http = kontext.HttpContext;

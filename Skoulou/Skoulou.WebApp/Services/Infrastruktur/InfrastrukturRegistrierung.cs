@@ -5,6 +5,7 @@ using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur.Mails;
 using Skoulou.WebApp.Services.Infrastruktur.Medien;
+using Skoulou.WebApp.Services.Infrastruktur.Vorlesen;
 
 namespace Skoulou.WebApp.Services.Infrastruktur;
 
@@ -57,6 +58,8 @@ public static class InfrastrukturRegistrierung
             .Bind(config.GetSection(SpeicherOptionen.AlterAbschnitt))
             .Bind(config.GetSection(SpeicherOptionen.Abschnitt))
             .ValidateOnStart();
+        // Ohne Key/Region kein Fehler beim Start: dann liest der Browser vor (wie bisher).
+        services.AddOptions<SprachausgabeOptionen>().Bind(config.GetSection(SprachausgabeOptionen.Abschnitt));
 
         AddDatenbank(services, config);
 
@@ -93,6 +96,14 @@ public static class InfrastrukturRegistrierung
         });
 
         services.AddSkoulouRateLimits();
+        // Vorlesen der Audio-Aufgaben (Azure-Sprachausgabe, MP3 im Speicher zwischengelagert)
+        services.AddHttpClient(VorleseDienst.HttpClientName, c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(10);
+            c.MaxResponseContentBufferSize = 8 * 1024 * 1024;
+        });
+        services.AddSingleton<VorleseDienst>();
+
         services.AddRazorComponents()
             .AddInteractiveServerComponents(VerbindungsOptionen)
             .AddHubOptions(o => o.MaximumReceiveMessageSize = 4 * 1024 * 1024);
@@ -170,12 +181,13 @@ public static class InfrastrukturRegistrierung
         });
     }
 
-    /// <summary>Statische Dateien, Lernvideos (Range) und geschützte Medien.</summary>
+    /// <summary>Statische Dateien, Lernvideos (Range), geschützte Medien und vorgelesene Audio-Aufgaben.</summary>
     public static WebApplication MapInfrastrukturEndpunkte(this WebApplication app)
     {
         app.MapStaticAssets();
         app.MapVideoEndpunkt(Path.Combine(app.Environment.ContentRootPath, "Medien", "videos"));
         app.MapMedienEndpunkte();
+        app.MapVorleseEndpunkt();
         return app;
     }
 }

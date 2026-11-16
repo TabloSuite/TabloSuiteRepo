@@ -233,7 +233,7 @@ public sealed class LernService(IDbContextFactory<SkoulouDbContext> dbFactory, Z
     }
 
     /// <summary>Text einer Audio-Frage – nur auf Abruf zum Vorlesen (steht nie im Seiteninhalt).</summary>
-    public async Task<(string Text, string Sprache)> AudioTextAsync(Guid schuelerId, Guid zuweisungId, Guid frageId, CancellationToken ct = default)
+    public async Task<VorleseText> AudioTextAsync(Guid schuelerId, Guid zuweisungId, Guid frageId, CancellationToken ct = default)
     {
         var akteur = await InhaltsRechte.SchuelerAsync(zugriff, schuelerId, ct);
         var jetzt = Jetzt;
@@ -247,7 +247,8 @@ public sealed class LernService(IDbContextFactory<SkoulouDbContext> dbFactory, Z
         if (!erlaubt) throw new KeinZugriffFehler(VersuchsLogik.MeldungNichtZugewiesen);
         var frage = await db.Fragen.AsNoTracking().Where(f => f.Id == frageId).Select(f => new { f.AudioText, f.Sprache }).FirstOrDefaultAsync(ct);
         if (string.IsNullOrWhiteSpace(frage?.AudioText)) throw new FachFehler("Cette question n'a pas d'audio.");
-        return (frage.AudioText, frage.Sprache);
+        var (sprache, niveau) = SprechNiveaus.Trennen(frage.Sprache);
+        return new VorleseText(frage.AudioText, sprache, niveau, akteur.SchuleId);
     }
 
     /// <summary>Blöcke/Fragen des Versuchs (eingefroren) bzw. die aktuellen, wenn noch kein Versuch existiert.</summary>

@@ -72,6 +72,10 @@ public class Frage : Entitaet, ISchulgebunden
     public string TextHtml { get; set; } = string.Empty;
     public decimal Punkte { get; set; } = 1;
     public string? AudioText { get; set; }
+    /// <summary>
+    /// Sprache des vorgelesenen Textes, bei Audio-Fragen mit Sprachniveau: « fr-FR » (Standard B1) bzw. « en-US/A2 »;
+    /// lesen und schreiben nur über <see cref="Skoulou.Core.Paedagogik.SprechNiveaus"/>.
+    /// </summary>
     public string Sprache { get; set; } = "fr-FR";
     public List<string> AkzeptierteAntworten { get; set; } = [];
 

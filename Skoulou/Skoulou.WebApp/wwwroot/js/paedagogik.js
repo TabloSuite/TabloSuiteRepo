@@ -1,5 +1,5 @@
 // SKOULOU – Pädagogik: Editor (Quill 2 + KaTeX, selbst gehostet unter /lib), Formeln, Hochladen in Teilen,
-// gesprochene Rückmeldung (MP3 « Vivienne »), Vorlesen (Browser-Stimme) und Examens-Uhr.
+// gesprochene Rückmeldung (MP3 « Vivienne »), Vorlesen (MP3 der Azure-Sprachausgabe, sonst Browser-Stimme) und Examens-Uhr.
 // Als ES-Modul geladen (import) – keine globalen Skripte in App.razor nötig.
 
 const geladen = {};
@@ -323,14 +323,78 @@ export async function feedback(art, stimme, weiter) {
 
 // ---------------------------------------------------------------- Vorlesen (Audio-Aufgaben)
 
-/** Liest einen Text mit der Browser-Stimme vor (Sprache der Aufgabe, langsamer für Diktate). */
-export function vorlesen(text, sprache, langsam) {
+let vorbereitet = false;
+let wiedergabe = null;   // laufendes <audio> oder AudioBufferSourceNode
+let auftragNr = 0;       // jüngster Auftrag: ältere, noch ladende verwerfen
+
+/**
+ * Einmal je Seite: das Tippen auf « Écouter » (Knopf mit data-vorlesen) schaltet den Ton noch IM Tippen frei –
+ * das iPhone erlaubt es nur dort, die MP3 kommt erst nach der Antwort des Servers.
+ */
+export function vorlesenVorbereiten() {
+    if (vorbereitet) return;
+    vorbereitet = true;
+    document.addEventListener('click', e => {
+        if (e.target instanceof Element && e.target.closest('[data-vorlesen]')) audio();
+    }, true);
+}
+
+/**
+ * Liest den Text der Aufgabe vor: mit adresse die MP3 der Azure-Sprachausgabe, sonst (oder wenn sie nicht
+ * abspielbar ist) die Browser-Stimme in der Sprache der Aufgabe. tempo = Faktor aus Niveau und « Plus lentement »
+ * (1 = natürlich; gleiche Regel wie die Sprachausgabe, siehe SprechNiveaus).
+ */
+export async function vorlesen(text, sprache, tempo, adresse) {
+    vorlesenVorbereiten();
+    vorlesenStoppen();
+    const nr = ++auftragNr;
+    if (adresse && await mp3Abspielen(adresse, nr)) return true;
+    if (nr !== auftragNr) return true;
+    return browserStimme(text, sprache, tempo);
+}
+
+async function mp3Abspielen(adresse, nr) {
+    // 1. <audio>: beginnt sofort (Teilanfragen); Chrome, Edge, Firefox, Android nach einer Interaktion mit der Seite.
+    try {
+        const a = new Audio(adresse);
+        wiedergabe = a;
+        await a.play();
+        if (nr !== auftragNr) a.pause();
+        return true;
+    } catch {
+        if (nr !== auftragNr) return true;
+    }
+    // 2. Web Audio: nach dem Freischalten im Tippen auch auf dem iPhone/Safari.
+    const c = audio();
+    if (!c || c.state !== 'running') return false;
+    try {
+        const r = await fetch(adresse, { credentials: 'same-origin' });
+        if (!r.ok) return false;
+        const daten = await r.arrayBuffer();
+        const puffer = await new Promise((ok, f) => c.decodeAudioData(daten, ok, f));
+        if (nr !== auftragNr) return true;
+        const q = c.createBufferSource();
+        q.buffer = puffer;
+        q.connect(c.destination);
+        q.start();
+        wiedergabe = q;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function browserStimme(text, sprache, tempo) {
     if (!('speechSynthesis' in window) || !text) return false;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = sprache || 'fr-FR';
-    u.rate = langsam ? 0.7 : 0.95;
-    const stimme = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith(u.lang.toLowerCase().slice(0, 2)));
+    u.rate = typeof tempo === 'number' && isFinite(tempo) ? Math.min(1.5, Math.max(0.5, tempo)) : 0.95;
+    // Erst genau die Sprache (zh-CN, nicht zh-HK), sonst dieselbe Sprachfamilie; Android meldet « en_US ».
+    const norm = l => (l || '').toLowerCase().replace('_', '-');
+    const ziel = norm(u.lang);
+    const stimmen = speechSynthesis.getVoices();
+    const stimme = stimmen.find(v => norm(v.lang) === ziel) || stimmen.find(v => norm(v.lang).startsWith(ziel.slice(0, 2)));
     if (stimme) u.voice = stimme;
     speechSynthesis.speak(u);
     return true;
@@ -338,6 +402,13 @@ export function vorlesen(text, sprache, langsam) {
 
 export function vorlesenStoppen() {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    const w = wiedergabe;
+    wiedergabe = null;
+    if (!w) return;
+    try {
+        if (w instanceof HTMLMediaElement) { w.pause(); w.removeAttribute('src'); w.load(); }
+        else w.stop();
+    } catch { /* schon beendet */ }
 }
 
 // ---------------------------------------------------------------- Examens-Uhr

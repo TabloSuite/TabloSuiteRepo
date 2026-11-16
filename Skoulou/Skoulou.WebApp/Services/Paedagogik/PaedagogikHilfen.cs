@@ -83,9 +83,12 @@ internal static class FragenAbbildung
             f.AkzeptierteAntworten, Luecken(f.LueckenJson), f.AkzenteBeachten);
 
     public static AnsichtFrage Ansicht(Frage f, int nr)
-        => new(f.Id, nr, f.Typ, f.TextHtml, f.Punkte, f.AudioText, f.Sprache,
+    {
+        var (sprache, niveau) = SprechNiveaus.Trennen(f.Sprache);
+        return new(f.Id, nr, f.Typ, f.TextHtml, f.Punkte, f.AudioText, sprache, niveau,
             f.Optionen.OrderBy(o => o.Nr).Select(o => new AnsichtOption(o.Id, o.Text, o.Richtig)).ToList(),
             f.AkzeptierteAntworten, Luecken(f.LueckenJson), f.Wortbank, f.Revision);
+    }
 
     /// <summary>Schülersicht: Optionen ohne « richtig », Wortbank stabil gemischt, kein Audiotext.</summary>
     public static SchuelerFrage Schueler(Frage f, int nr)

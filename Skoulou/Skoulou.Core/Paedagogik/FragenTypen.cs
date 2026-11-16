@@ -45,7 +45,13 @@ public static class FragenTypen
         _ => "Écrivez votre réponse."
     };
 
-    /// <summary>Unterstützte Sprachen der Sprachausgabe (Browser).</summary>
+    /// <summary>
+    /// Sprachen des vorgelesenen Textes (Azure-Sprachausgabe, sonst Browser-Stimme); die erste ist der Standard.
+    /// Zu jeder gehört eine Stimme in <c>VorleseRegeln.Stimmen</c> (Test prüft die Vollständigkeit).
+    /// </summary>
     public static readonly IReadOnlyList<(string Code, string Name)> Sprachen =
-        [("fr-FR", "Français"), ("en-US", "Anglais"), ("de-DE", "Allemand"), ("es-ES", "Espagnol")];
+    [
+        ("fr-FR", "Français"), ("en-US", "Anglais"), ("de-DE", "Allemand"), ("es-ES", "Espagnol"),
+        ("it-IT", "Italien"), ("pt-PT", "Portugais"), ("ar-SA", "Arabe"), ("zh-CN", "Chinois (mandarin)")
+    ];
 }

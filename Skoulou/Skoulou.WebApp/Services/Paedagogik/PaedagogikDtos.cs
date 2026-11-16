@@ -33,7 +33,7 @@ public sealed record InhaltKopf(Guid Id, InhaltsArt Art, string Titel, string St
 public sealed record AnsichtOption(Guid Id, string Text, bool Richtig);
 
 public sealed record AnsichtFrage(Guid Id, int Nr, FragenTyp Typ, string TextHtml, decimal Punkte, string? AudioText, string Sprache,
-    IReadOnlyList<AnsichtOption> Optionen, IReadOnlyList<string> Varianten, IReadOnlyList<IReadOnlyList<string>> Luecken,
+    string Niveau, IReadOnlyList<AnsichtOption> Optionen, IReadOnlyList<string> Varianten, IReadOnlyList<IReadOnlyList<string>> Luecken,
     IReadOnlyList<string> Wortbank, int Revision);
 
 public sealed record AnsichtBlock(Guid Id, int Nr, string? Titel, string? Consigne, IReadOnlyList<AnsichtFrage> Fragen);
@@ -58,6 +58,9 @@ public sealed record SchuelerFrage(Guid Id, int Nr, FragenTyp Typ, string TextHt
     IReadOnlyList<SchuelerOption> Optionen, int AnzahlLuecken, IReadOnlyList<string> Wortbank, bool AutomatischBewertet);
 
 public sealed record SchuelerBlock(Guid Id, int Nr, string? Titel, string? Consigne, IReadOnlyList<SchuelerFrage> Fragen);
+
+/// <summary>Text einer Audio-Frage zum Vorlesen mit Sprache, Niveau (Tempo) und der Schule des Schülers (Ablage der Sprachausgabe).</summary>
+public sealed record VorleseText(string Text, string Sprache, string Niveau, Guid? SchuleId);
 
 /// <summary>Lösung einer Frage (nur, wenn die Lösungsregel es erlaubt).</summary>
 public sealed record Loesung(IReadOnlyList<Guid> RichtigeOptionen, IReadOnlyList<string> Antworten, IReadOnlyList<IReadOnlyList<string>> Luecken);

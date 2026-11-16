@@ -47,7 +47,7 @@ public class LernUndPruefungTests
         Assert.True(fragen[0].HatAudio);
         Assert.Empty(lecon.Antworten);
         // Der Audiotext kommt nur auf Abruf (Vorlesen), nie im Inhalt der Seite.
-        Assert.Equal(("Le chat dort", "fr-FR"), await u.Lernen.AudioTextAsync(u.SchuelerA.Id, z, fragen[0].Id));
+        Assert.Equal(new VorleseText("Le chat dort", "fr-FR", SprechNiveaus.Standard, u.Schule), await u.Lernen.AudioTextAsync(u.SchuelerA.Id, z, fragen[0].Id));
         var r = await u.Lernen.AntwortenAsync(u.SchuelerA.Id, z, fragen[0].Id, Satz("le chat dort."));
         Assert.Equal(BewertungsStatus.Richtig, r.Stand.Status);
         Assert.Equal(["Le chat dort"], r.Stand.Loesung!.Antworten);

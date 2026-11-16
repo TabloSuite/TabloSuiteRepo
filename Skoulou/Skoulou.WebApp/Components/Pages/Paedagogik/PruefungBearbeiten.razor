@@ -3,6 +3,7 @@
 @inject PruefungsService Pruefungen
 @inject LernService Lernen
 @inject PaedagogikModul Js
+@inject Skoulou.WebApp.Services.Infrastruktur.Vorlesen.VorleseDienst Vorleser
 @inject ToastService Toast
 
 <div class="sk-pruefung-leiste">
@@ -73,6 +74,7 @@
         if (!firstRender) return;
         selbst = DotNetObjectReference.Create(this);
         await Js.AufrufAsync("uhrStarten", uhr, Sitzung.RestSekunden, selbst);
+        if (Sitzung.Bloecke.Any(b => b.Fragen.Any(f => f.HatAudio))) await Js.AufrufAsync("vorlesenVorbereiten");
     }
 
     private AntwortEingabe Eingabe(Guid id) => eingaben.TryGetValue(id, out var e) ? e : AntwortEingabe.Leer;
@@ -161,8 +163,9 @@
     {
         try
         {
-            var (text, sprache) = await Lernen.AudioTextAsync(SchuelerId, Sitzung.Karte.ZuweisungId, a.Frage.Id);
-            if (!await Js.AufrufAsync<bool>("vorlesen", text, sprache, a.Langsam))
+            var audio = await Lernen.AudioTextAsync(SchuelerId, Sitzung.Karte.ZuweisungId, a.Frage.Id);
+            var adresse = await Vorleser.AdresseAsync(SchuelerId, audio.SchuleId, audio.Text, audio.Sprache, audio.Niveau, a.Langsam);
+            if (!await Js.AufrufAsync<bool>("vorlesen", audio.Text, audio.Sprache, SprechNiveaus.Faktor(audio.Niveau, a.Langsam), adresse))
                 Toast.ZeigeFehler("La lecture audio n'est pas disponible sur cet appareil.");
         }
         catch (Skoulou.Core.Fehler.FachFehler f)

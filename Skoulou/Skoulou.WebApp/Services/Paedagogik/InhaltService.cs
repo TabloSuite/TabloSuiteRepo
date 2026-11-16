@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
+using Skoulou.Core.Paedagogik;
 using Skoulou.Core.Rechte;
 using Skoulou.WebApp.Data;
 using Skoulou.WebApp.Services.Infrastruktur;
@@ -196,7 +197,8 @@ public sealed class InhaltService(IDbContextFactory<SkoulouDbContext> dbFactory,
             Id = a.Block.Id, Titel = a.Block.Titel, Consigne = a.Block.Consigne,
             Fragen = a.Fragen.Select(f => new FrageFormular
             {
-                Id = f.Id, Typ = f.Typ, Punkte = f.Punkte, AudioText = f.AudioText, Sprache = f.Sprache,
+                Id = f.Id, Typ = f.Typ, Punkte = f.Punkte, AudioText = f.AudioText,
+                Sprache = SprechNiveaus.Trennen(f.Sprache).Sprache, Niveau = SprechNiveaus.Trennen(f.Sprache).Niveau,
                 TextHtml = f.Typ == FragenTyp.TexteATrous ? AufgabenAbgleich.LueckenTextZumBearbeiten(f.TextHtml) : f.TextHtml,
                 Varianten = f.AkzeptierteAntworten.ToList(), Wortbank = f.Wortbank.ToList(), AkzenteBeachten = f.AkzenteBeachten,
                 Luecken = FragenAbbildung.Luecken(f.LueckenJson).Select(l => l.ToList()).ToList(),
@@ -381,6 +383,13 @@ public sealed class InhaltService(IDbContextFactory<SkoulouDbContext> dbFactory,
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// « Écouter » im Editor: nur wer Inhalte schreiben darf; liefert die Schule (Ablage der Sprachausgabe, die Schüler
+    /// derselben Schule später wiederverwenden).
+    /// </summary>
+    public async Task<Guid?> VorleseSchuleAsync(Guid akteurId, CancellationToken ct = default)
+        => (await InhaltsRechte.SchreiberAsync(zugriff, akteurId, ct)).SchuleId;
+
     /// <summary>Kopie als Entwurf (« Réutiliser »): Seiten, Blöcke und aktuelle Fragen; optional andere Stufe/anderes Fach.</summary>
     public async Task<Guid> DuplizierenAsync(Guid akteurId, InhaltsArt art, Guid id, CancellationToken ct = default)
     {
@@ -396,7 +405,7 @@ public sealed class InhaltService(IDbContextFactory<SkoulouDbContext> dbFactory,
                 Titel = b.Titel, Consigne = b.Consigne,
                 Fragen = b.Fragen.Select(q => new FrageFormular
                 {
-                    Typ = q.Typ, TextHtml = q.TextHtml, Punkte = q.Punkte, AudioText = q.AudioText, Sprache = q.Sprache,
+                    Typ = q.Typ, TextHtml = q.TextHtml, Punkte = q.Punkte, AudioText = q.AudioText, Sprache = q.Sprache, Niveau = q.Niveau,
                     Varianten = q.Varianten.ToList(), Luecken = q.Luecken.Select(l => l.ToList()).ToList(), Wortbank = q.Wortbank.ToList(),
                     AkzenteBeachten = q.AkzenteBeachten,
                     Optionen = q.Optionen.Select(o => new OptionFormular { Text = o.Text, Richtig = o.Richtig }).ToList()

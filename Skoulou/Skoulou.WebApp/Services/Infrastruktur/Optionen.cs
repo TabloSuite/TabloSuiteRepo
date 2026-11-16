@@ -75,6 +75,32 @@ public sealed class SpeicherOptionen
     public string? LocalDataRootPath { get; set; }
 }
 
+/// <summary>
+/// Abschnitt « AzureSpeech » (Vorlesen der Audio-Aufgaben). Schlüssel nur in den App-Einstellungen bzw. User-Secrets,
+/// nie im Repo. Fehlt Key oder Region, liest der Browser wie bisher mit seiner eigenen Stimme vor.
+/// </summary>
+public sealed class SprachausgabeOptionen
+{
+    public const string Abschnitt = "AzureSpeech";
+
+    public string? Key { get; set; }
+
+    /// <summary>Region der Speech-Ressource, z. B. « westeurope ».</summary>
+    public string? Region { get; set; }
+
+    /// <summary>Optional: andere Stimme je Sprache, Schlüssel = Sprachkürzel (« fr », « en », « de », « es »).</summary>
+    public Dictionary<string, string> Stimmen { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Region in Kleinbuchstaben ohne Leerzeichen am Rand.</summary>
+    public string RegionNormiert => Region?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    /// <summary>Nur Kleinbuchstaben und Ziffern (die Region wird Teil des Rechnernamens).</summary>
+    public static bool IstGueltigeRegion(string? region)
+        => region is { Length: > 1 and <= 40 } && region.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c));
+
+    public bool IstBereit => !string.IsNullOrWhiteSpace(Key) && IstGueltigeRegion(RegionNormiert);
+}
+
 /// <summary>Öffentliche Adressen der Marke.</summary>
 public static class SkoulouMarke
 {

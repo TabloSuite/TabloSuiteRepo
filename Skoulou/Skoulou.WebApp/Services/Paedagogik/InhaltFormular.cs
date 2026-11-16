@@ -1,4 +1,5 @@
 using Skoulou.Core.Entitaeten;
+using Skoulou.Core.Paedagogik;
 
 namespace Skoulou.WebApp.Services.Paedagogik;
 
@@ -70,6 +71,10 @@ public sealed class FrageFormular
     public decimal Punkte { get; set; } = 1;
     public string? AudioText { get; set; }
     public string Sprache { get; set; } = "fr-FR";
+
+    /// <summary>Sprachniveau (GER) des vorgelesenen Textes – bestimmt das Sprechtempo; siehe <see cref="SprechNiveaus"/>.</summary>
+    public string Niveau { get; set; } = SprechNiveaus.Standard;
+
     public List<string> Varianten { get; set; } = [];
     public List<List<string>> Luecken { get; set; } = [];
     public List<string> Wortbank { get; set; } = [];

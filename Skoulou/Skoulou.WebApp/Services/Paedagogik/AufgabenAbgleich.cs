@@ -96,6 +96,8 @@ public sealed class AufgabenAbgleich(InhaltBereiniger bereiniger)
         var sprache = FragenTypen.Sprachen.Any(s => s.Code == f.Sprache) ? f.Sprache : "fr-FR";
         if (FragenTypen.IstAudio(f.Typ))
         {
+            // Niveau im selben Feld (« fr-FR/A2 »; Standard ohne Zusatz – ältere Fragen gelten als unverändert).
+            sprache = SprechNiveaus.Verbinden(sprache, f.Niveau);
             audio = f.AudioText?.Trim();
             if (string.IsNullOrEmpty(audio)) throw new FachFehler($"{ort} : saisissez le texte que l'élève entendra.");
             if (audio.Length > 2000) throw new FachFehler($"{ort} : le texte audio est trop long (2000 caractères au plus).");
