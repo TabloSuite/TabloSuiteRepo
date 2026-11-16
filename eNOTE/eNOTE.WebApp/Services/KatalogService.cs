@@ -447,7 +447,13 @@ public class KatalogService(
         throw new InvalidOperationException("Impossible de générer un code-barres unique. Réessayez.");
     }
 
-    public async Task LoescheLeistungAsync(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Löscht eine Leistung. Zeigen schon Verkäufe, Lagerabgänge (Perte/Retrait), eine Remise oder ein verknüpfter Artikel
+    /// (Stock de base) auf sie, wird sie nur deaktiviert – wie bei den Remises: Belege und Zahlen bleiben richtig, an der
+    /// Kasse erscheint sie nicht mehr. (16.11.2026: vorher scheiterte das Löschen dann an der Datenbank, unbehandelt.)
+    /// </summary>
+    /// <returns><c>true</c> = gelöscht, <c>false</c> = nur deaktiviert.</returns>
+    public async Task<bool> LoescheLeistungAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var leistung = await db.Leistungen.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
@@ -459,6 +465,18 @@ public class KatalogService(
             {
                 throw new ArgumentException("Cette prestation est enregistrée pour un client présent et pas encore payée : encaissez-la ou retirez-la d'abord.");
             }
+
+            var benutzt = await db.VerkaufsPositionen.AnyAsync(p => p.LeistungId == id, cancellationToken)
+                          || await db.LagerAbgaenge.AnyAsync(a => a.LeistungId == id, cancellationToken)
+                          || await db.Rabatte.AnyAsync(r => r.LeistungId == id, cancellationToken)
+                          || await db.Leistungen.AnyAsync(l => l.BasisLeistungId == id, cancellationToken);
+            if (benutzt)
+            {
+                leistung.IstAktiv = false;
+                await db.SaveChangesAsync(cancellationToken);
+                return false;
+            }
+
             foreach (var a in erfasst) a.LeistungId = null;
 
             // Tickets « en attente » verlieren diese Zeile; ein dadurch leeres Ticket verschwindet ganz.
@@ -473,6 +491,7 @@ public class KatalogService(
             db.Leistungen.Remove(leistung);
             await db.SaveChangesAsync(cancellationToken);
         }
+        return true;
     }
 
     /// <summary>

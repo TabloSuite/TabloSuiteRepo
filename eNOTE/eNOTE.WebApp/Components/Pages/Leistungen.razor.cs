@@ -519,8 +519,8 @@ public partial class Leistungen(
         {
             try
             {
-                await katalogService.LoescheLeistungAsync(zuLoeschendeLeistung.Id);
-                toast.ZeigeErfolg("Prestation supprimée.");
+                if (await katalogService.LoescheLeistungAsync(zuLoeschendeLeistung.Id)) toast.ZeigeErfolg("Prestation supprimée.");
+                else toast.ZeigeInfo("Prestation déjà utilisée (ventes, stock ou remise) : elle a été désactivée et n'apparaît plus à la caisse. Vos chiffres restent justes.");
             }
             catch (ArgumentException ex)
             {

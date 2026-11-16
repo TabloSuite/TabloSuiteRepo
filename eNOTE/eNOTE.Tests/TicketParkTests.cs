@@ -166,6 +166,29 @@ public class TicketParkTests
         _ = b;
     }
 
+    /// <summary>16.11.2026: Eine schon verkaufte Leistung scheiterte beim Löschen an der Datenbank (Restrict, unbehandelt) –
+    /// jetzt wird sie wie eine benutzte Remise nur deaktiviert; eine nie benutzte wird weiter gelöscht.</summary>
+    [Fact]
+    public async Task Verkaufte_Leistung_Wird_Beim_Loeschen_Nur_Deaktiviert()
+    {
+        var w = await BasisAsync();
+        await using (var db = await w.F.CreateDbContextAsync())
+        {
+            var v = new Verkauf { KassenSitzungId = Guid.NewGuid(), SalonId = w.Laden.Id, GesamtSumme = 15000m, ZeitUtc = w.Uhr.Jetzt };
+            v.Positionen.Add(new VerkaufsPosition { LeistungId = w.Tresses.Id, LeistungName = w.Tresses.Name, Menge = 1, ZeilenSumme = 15000m });
+            db.Verkaeufe.Add(v);
+            await db.SaveChangesAsync();
+        }
+        var katalog = new KatalogService(w.F, null!, null!);
+
+        Assert.False(await katalog.LoescheLeistungAsync(w.Tresses.Id));   // verkauft → nur deaktiviert
+        Assert.True(await katalog.LoescheLeistungAsync(w.Brushing.Id));   // nie benutzt → gelöscht
+
+        await using var db2 = await w.F.CreateDbContextAsync();
+        Assert.False((await db2.Leistungen.SingleAsync(l => l.Id == w.Tresses.Id)).IstAktiv);
+        Assert.False(await db2.Leistungen.AnyAsync(l => l.Id == w.Brushing.Id));
+    }
+
     [Theory]
     [InlineData("Tresses africaines", new[] { "Tresses africaines" })]
     [InlineData("  tresses   AFRICAINES ", new[] { "Tresses africaines" })]
