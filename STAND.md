@@ -44,6 +44,10 @@ Startseiten-Video ohne neue Aufnahme neu gerendert). (2) **Menü « Établisseme
 (f41e9e9): Année scolaire → Classes → Matières → Équipe → Emplois du temps → Élèves → Parents; Startseiten-Kacheln folgen,
 Guide « Démarrer l'année » angeglichen (Classes vor Matières). Kein neues Video (Nutzer).
 
+**NEU 16.11. nachmittags – Theorie-Folienvideos (Nutzer):** « Préparer l'année scolaire » ist « ziemlich gut »; davor soll ein ausführliches Folien-Video (« PowerPoint » als Video, animierte Folien, Stimme Vivienne) die Direktion **theoretisch** auf das Konzept vorbereiten – Umfang **ganzes Schuljahr**. Danach (Nutzer: « bei den anderen großen Prozessen auch und bei eNOTE auch. Du entscheidest, sei kreativ und ausführlich, die Nutzer in Togo usw. sind mit großen Apps nicht vertraut »). **Plan:**
+- SKOULOU: K1 « Le concept : l'année scolaire » (vor dem Pilot; in Arbeit) · K2 « Le concept : frais et paiements » (vor B4) · K3 « Le concept : leçons, exercices et examens » (vor C2) · danach die übrigen Praxisvideos B2–D2 wie geplant.
+- eNOTE (danach): Konzeptvideos vor den großen Abläufen – Kasse von der Öffnung bis zur Clôture (Écart), Catalogue/Stock/Prix, Clients/Fidélité, Équipe/Droits/Code PIN, Finances. Stil gleich (Folien-Typ `art: "folie"` in `lernen-v3/bau.py`).
+
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
 deployt** → der Nutzer deployt eNOTE und SKOULOU noch einmal (Visual Studio). Danach zu prüfen: Registrierung verlangt
