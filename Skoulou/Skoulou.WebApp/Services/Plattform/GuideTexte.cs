@@ -76,8 +76,8 @@ public static class GuideTexte
         new("demarrer", "Démarrer l'année", "check-square",
         [
             new("1. Année scolaire et périodes", "Créez l'année (ex. 2026-2027), découpez-la en trimestres, semestres ou sessions, puis démarrez-la.", "/direction/annee"),
-            new("2. Matières", "Listez les matières avec leur groupe (lettres, sciences…) et leur ordre sur le bulletin.", "/direction/matieres"),
-            new("3. Classes", "Créez les classes de chaque niveau avec leurs matières et coefficients, leurs enseignants et le professeur principal.", "/direction/classes"),
+            new("2. Classes", "Créez les niveaux, puis les classes de chaque niveau avec leur salle, leur capacité et le professeur principal.", "/direction/classes"),
+            new("3. Matières", "Listez les matières avec leur groupe (lettres, sciences…) et leur ordre sur le bulletin, puis réglez leurs coefficients dans chaque classe (« Matières et enseignants »).", "/direction/matieres"),
             new("4. Équipe", "Ajoutez enseignants et coordinateurs et leurs affectations (classe, matière, heures) ; imprimez la liste des accès pour ceux sans e-mail.", "/direction/equipe"),
             new("5. Élèves", "Ajoutez ou importez les élèves (Excel) dans leur classe et validez les inscriptions en ligne. Changements de classe et départs se font aussi ici.", "/direction/eleves"),
             new("6. Parents", "Créez les accès des parents et liez leurs enfants : ils suivent notes, présences, emploi du temps et frais.", "/direction/parents")

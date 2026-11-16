@@ -109,14 +109,16 @@ public static class NavKarte
         var gruppen = new List<NavGruppe>
         {
             new(null, [new("/direction", "Accueil", "home", Match: NavLinkMatch.All)]),
+            // Reihenfolge wie der Start eines Schuljahrs (Karte « Prochaines étapes »): Jahr → Klassen → Fächer → Team →
+            // (Stundenpläne brauchen Klassen, Fächer und Lehrkräfte) → Schüler → Eltern (brauchen Schüler). Nutzerwunsch 16.11.
             new("Établissement",
             [
-                new("/direction/eleves", "Élèves", "graduation", "Inscriptions, classes et comptes des élèves."),
-                new("/direction/classes", "Classes", "layers", "Classes, niveaux et professeurs principaux."),
-                new("/direction/equipe", "Équipe", "users", "Enseignants, coordination et affectations."),
-                new("/direction/matieres", "Matières", "book", "Matières et coefficients."),
                 new("/direction/annee", "Année scolaire", "calendar", "Périodes, composantes et passage d'année.", "Année"),
+                new("/direction/classes", "Classes", "layers", "Classes, niveaux et professeurs principaux."),
+                new("/direction/matieres", "Matières", "book", "Matières et coefficients."),
+                new("/direction/equipe", "Équipe", "users", "Enseignants, coordination et affectations."),
                 new("/direction/emplois-du-temps", "Emplois du temps", "timetable", "Emplois du temps des classes.", "Horaires"),
+                new("/direction/eleves", "Élèves", "graduation", "Inscriptions, classes et comptes des élèves."),
                 new("/direction/parents", "Parents", "famille", "Comptes des parents et enfants liés."),
             ]),
             new("Pédagogie",
