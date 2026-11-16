@@ -30,6 +30,9 @@ public class AideVideosTests
         var seite = File.ReadAllText(Path.Combine(WebApp(), "Components", "Pages", "AideVideos.razor"));
         Assert.Contains("\"enoteVideoPosition.merken\"", seite);
         Assert.Contains("\"enoteVideoPosition.zurueck\"", seite);
+        // 16.11.2026: Video im gewohnten Dialogfenster wie in SKOULOU (keine eigene Überlagerung, die Seite bleibt ruhig).
+        Assert.Contains("<ModalDialog Open=\"offen is not null\"", seite);
+        Assert.DoesNotContain("lp-video-overlay", seite);
     }
 
     [Fact]

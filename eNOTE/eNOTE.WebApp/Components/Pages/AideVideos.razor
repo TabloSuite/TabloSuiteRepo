@@ -82,16 +82,17 @@
     }
 </div>
 
-@if (offen is { } aktiv)
-{
-    @* Schließen nur über den Knopf – ein Fehlklick neben das Video beendet es nicht. *@
-    <div class="lp-video-overlay">
-        <div class="lp-video-box" @onclick:stopPropagation="true">
-            <button type="button" class="enote-icon-btn lp-video-zu" aria-label="Fermer" @onclick="SchliessenAsync"><Icon Name="x" Groesse="20" /></button>
-            <video src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline></video>
-        </div>
-    </div>
-}
+@* Wie in SKOULOU: das Video öffnet sich im gewohnten Dialogfenster (Titel, Video, Beschreibung). Der Dialog liegt über
+   der Seite, ohne sie zu bewegen – beim Schließen « wackelt » nichts; ein Fehlklick daneben beendet das Video nicht. *@
+<ModalDialog Open="offen is not null" Title="@(offen?.Titel ?? string.Empty)" MaxWidthClass="enote-modal-video" OnClose="SchliessenAsync">
+    <ChildContent>
+        @if (offen is { } aktiv)
+        {
+            <video class="vh-spieler" src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline preload="metadata"></video>
+            <p class="enote-muted vh-spieler-text">@aktiv.Beschreibung</p>
+        }
+    </ChildContent>
+</ModalDialog>
 
 @code {
     private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
