@@ -231,3 +231,58 @@ window.enoteVideoPosition = (function () {
         }
     };
 })();
+
+// Sofortige Rückmeldung für alle Aktionsknöpfe (16.11.2026): der Ladekreis erscheint beim Tippen, ohne auf die Antwort
+// des Servers zu warten – bei langsamer Verbindung verging sonst spürbar Zeit, in der nichts geschah (der Kreis des
+// Servers kommt erst mit seiner Antwort). Er verschwindet mit der ersten Änderung der Seite nach dem Tippen (= Antwort
+// des Servers), spätestens nach einigen Sekunden. Nur über das Attribut data-enote-wartet (CSS) – der Inhalt des Knopfs
+// bleibt unberührt, weil Blazor ihn verwaltet. Kacheln und Tastenfelder der Kasse sind keine « enote-btn » und bleiben
+// frei (schnelles Mehrfachtippen). Ausnahme je Knopf: data-ohne-ladekreis.
+(function () {
+    if (window.__enoteKlickRing) return;
+    window.__enoteKlickRing = true;
+    var VERZUG_MS = 120, NOTFALL_MS = 6000, wartend = null, timer = null, notfall = null, beobachter = null;
+
+    function frei() {
+        clearTimeout(timer); clearTimeout(notfall);
+        if (beobachter) { beobachter.disconnect(); beobachter = null; }
+        if (wartend) { wartend.removeAttribute('data-enote-wartet'); wartend = null; }
+    }
+
+    function passt(knopf) {
+        if (!knopf || knopf.disabled || knopf.hasAttribute('data-enote-wartet') || knopf.hasAttribute('data-ohne-ladekreis')) return false;
+        if (knopf.classList.contains('enote-laedt') || knopf.hasAttribute('onclick')) return false;   // schon beschäftigt bzw. reine Browser-Aktion
+        if (knopf.tagName === 'A') {
+            var ziel = knopf.getAttribute('href') || '';
+            if (!ziel || ziel.charAt(0) === '#' || knopf.target || knopf.hasAttribute('download') || /\/bon\/|\/etiketten|\/rapport|\.pdf(\?|$)|^tel:|^mailto:/.test(ziel)) return false;
+        }
+        var form = knopf.form || knopf.closest('form');
+        if (form && form.hasAttribute('data-ladeanzeige')) return false;   // klassische Formulare: eigene Ladeanzeige (oben)
+        return true;
+    }
+
+    document.addEventListener('click', function (e) {
+        var knopf = e.target && e.target.closest ? e.target.closest('.enote-btn, .btn-primary') : null;
+        if (!passt(knopf)) return;
+        frei();
+        wartend = knopf;
+        // Jede Änderung der Seite nach dem Tippen ist die Antwort des Servers.
+        beobachter = new MutationObserver(function (liste) {
+            for (var i = 0; i < liste.length; i++) {
+                var m = liste[i];
+                if (m.type === 'attributes' && m.target === wartend && m.attributeName === 'data-enote-wartet') continue;
+                // Fokuswechsel beim Tippen (die Überschrift verliert ihr vorübergehendes tabindex) ist keine Antwort des Servers.
+                if (m.type === 'attributes' && m.attributeName === 'tabindex') continue;
+                frei();
+                return;
+            }
+        });
+        beobachter.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        timer = setTimeout(function () {
+            if (!wartend || !document.body.contains(wartend)) { frei(); return; }
+            wartend.setAttribute('data-enote-wartet', (wartend.textContent || '').replace(/\s+/g, ' ').trim());
+        }, VERZUG_MS);
+        notfall = setTimeout(frei, NOTFALL_MS);
+    }, true);
+    window.addEventListener('pageshow', frei);
+})();

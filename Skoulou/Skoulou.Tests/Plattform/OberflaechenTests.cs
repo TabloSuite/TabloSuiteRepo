@@ -81,6 +81,21 @@ public partial class OberflaechenTests
     }
 
     /// <summary>
+    /// Nutzer 16.11.2026: nach dem Tippen muss man sofort etwas sehen. Der Kreis des Servers kommt erst mit seiner Antwort;
+    /// der Klick-Kreis erscheint gleich im Browser, für jeden « sk-btn » der interaktiven Seiten.
+    /// </summary>
+    [Fact]
+    public void Knoepfe_zeigen_den_Kreis_sofort_beim_Tippen()
+    {
+        var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
+        Assert.Contains("window.__skKlickRing", js);
+        Assert.Contains("closest('.sk-btn')", js);
+        Assert.Contains("m.attributeName === 'tabindex'", js);   // Fokuswechsel ist keine Antwort des Servers
+        Assert.Contains("knopf.hasAttribute('data-ohne-ladekreis')", js);
+        Assert.Contains("wartend.setAttribute('data-sk-laedt'", js);   // gleiche Darstellung wie die klassischen Formulare
+    }
+
+    /// <summary>
     /// « Vidéos d'aide »: am Handy sprang die Seite nach einem Video im Querformat nach oben (die Seite ordnet sich beim Drehen
     /// um); jeder Nutzerbereich ist ein eigenes, farbig markiertes Feld mit « Votre rôle » bei der eigenen Rolle.
     /// </summary>

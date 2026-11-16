@@ -22,11 +22,6 @@
             <h1>Inscrire mon établissement</h1>
             <p class="auth-subtitle">Créez votre compte propriétaire et votre établissement.</p>
 
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <div class="alert alert-error">@errorMessage</div>
-            }
-
             <EditForm Model="FormModel" OnValidSubmit="HandleSubmit" FormName="register-form" class="auth-form">
                 <DataAnnotationsValidator />
 
@@ -93,6 +88,14 @@
                     </label>
                     <ValidationMessage For="() => FormModel.CguAcceptees" />
                 </div>
+
+                @* Meldungen direkt über dem Knopf: dort schaut man nach dem Tippen hin (am Handy liegt der Formularkopf
+                   außerhalb des Bildschirms). Fehlende Pflichtfelder wurden vorher gar nicht angezeigt – der Knopf tat nichts. *@
+                <ValidationSummary />
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="alert alert-error" role="alert">@errorMessage</div>
+                }
 
                 <button type="submit" class="btn-primary" disabled="@isSubmitting">
                     @if (isSubmitting)
