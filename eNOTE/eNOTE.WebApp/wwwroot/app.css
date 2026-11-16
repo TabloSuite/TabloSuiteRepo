@@ -2025,6 +2025,7 @@ button.enote-laedt { cursor: progress; }
 .fi .enote-tabs { margin-bottom: 0; justify-self: start; }
 .fi-tabelle { padding: .4rem .6rem; }
 .fi-tabelle .enote-table-scroll { max-height: 30rem; }
+.fi-abschluss-notiz { display: block; max-width: 22rem; margin-top: .15rem; color: var(--enote-text-muted); font-style: italic; white-space: normal; }
 .enote-table tfoot td { font-weight: 800; border-top: 2px solid var(--enote-border); border-bottom: none; background: var(--enote-surface-2); }
 .fi-ventes { display: grid; gap: .75rem; }
 .fi-ventes .enote-filter-leiste { margin: 0; }

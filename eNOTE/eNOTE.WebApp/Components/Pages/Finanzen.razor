@@ -278,7 +278,15 @@
                             {
                                 <tr>
                                     <td>@a.AbgeschlossenUtc?.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm")</td>
-                                    <td>@a.Kassierer.FullName</td>
+                                    <td>
+                                        @a.Kassierer.FullName
+                                        @* 16.11.2026: Die Notiz der Clôture wurde gespeichert, aber nirgends gezeigt – der Besitzer sah nie,
+                                           was zu einem Écart geschrieben wurde. *@
+                                        @if (!string.IsNullOrWhiteSpace(a.AbschlussNotiz))
+                                        {
+                                            <small class="fi-abschluss-notiz">« @a.AbschlussNotiz »</small>
+                                        }
+                                    </td>
                                     <td class="r">@a.BareinnahmenSoll?.ToString("N0") F</td>
                                     <td class="r">@a.EndbestandGezaehlt?.ToString("N0") F</td>
                                     <td class="r"><span class="enote-tag @(a.Differenz < 0 ? "enote-tag-warn" : a.Differenz > 0 ? "" : "enote-tag-ok")">@FormatEcart(a.Differenz) F</span></td>
