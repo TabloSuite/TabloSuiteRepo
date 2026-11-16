@@ -62,6 +62,8 @@ public static class VideoKatalog
             "La page Équipe, ajouter un employé avec son code PIN, ses droits, votre reçu, Mobile Money, salles et postes, votre code PIN.", "Propriétaire", AbBesitzer, "3:42"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
             "Les chiffres du jour sur l'accueil, les finances par période (solde, entrées, dépenses, clôtures), noter une dépense, apport et rapport PDF.", "Propriétaire", AbBesitzer, "3:12"),
+        new("enote-proprietaire-concept-clients.mp4", "Le concept : vos clients et leur fidélité",
+            "La théorie avant la pratique : la fiche client et l'accord pour le téléphone, le client à la caisse, ce que vous apprenez, les clients présents, une remise pour les fidèles, le respect des données.", "Propriétaire", AbBesitzer, "3:23"),
         new("enote-proprietaire-clients.mp4", "Vos clients",
             "Le fichier clients, la fiche avec achats, préférés, note privée et notes de l'équipe, un nouveau client, une remise pour les fidèles.", "Propriétaire", AbBesitzer, "2:36"),
         new("enote-proprietaire-compte.mp4", "Abonnement et compte",
