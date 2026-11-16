@@ -2,8 +2,9 @@
   <title>SKOULOU</title>
   <defs>
 	<linearGradient id="background" x1="18" y1="12" x2="110" y2="120" gradientUnits="userSpaceOnUse">
-	  <stop stop-color="#2563eb" />
-	  <stop offset="1" stop-color="#06b6d4" />
+	  <stop stop-color="#1b3384"/>
+	  <stop offset="0.62" stop-color="#2547b8"/>
+	  <stop offset="1" stop-color="#1a6c9e"/>
 	</linearGradient>
 	<linearGradient id="letter" x1="36" y1="26" x2="92" y2="102" gradientUnits="userSpaceOnUse">
 	  <stop stop-color="#fff" />

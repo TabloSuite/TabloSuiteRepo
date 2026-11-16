@@ -15,6 +15,10 @@ public static partial class MailLayout
     private const string BlauHell = "#2563eb";
     private const string Cyan = "#06b6d4";
     private const string CyanZart = "#bae6fd";
+    // Logo « S » im eNOTE-Blau (Nutzerwunsch 16.11.): wie img/skoulou-logo.svg
+    private const string LogoNavy = "#1b3384";
+    private const string LogoBlau = "#2547b8";
+    private const string LogoTuerkis = "#0f8f86";
     private const string Text = "#0f172a";
     private const string Leise = "#64748b";
     private const string Koerper = "#334155";
@@ -41,7 +45,7 @@ public static partial class MailLayout
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="max-width:620px;background:#ffffff;border-radius:16px;overflow:hidden;">
             <tr><td bgcolor="{Navy}" style="background:{Navy};background-image:linear-gradient(90deg,{Navy} 0%,{Blau} 100%);padding:18px 20px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                <td style="padding-right:12px;" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="38" height="38" style="width:38px;height:38px;background:{BlauHell};background-image:linear-gradient(135deg,{BlauHell} 0%,{Cyan} 100%);border-radius:11px;"><tr><td align="center" valign="middle" style="font-family:{Schrift};font-size:19px;font-weight:800;color:#ffffff;line-height:38px;">S</td></tr></table></td>
+                <td style="padding-right:12px;" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="38" height="38" style="width:38px;height:38px;background:{LogoBlau};background-image:linear-gradient(135deg,{LogoNavy} 0%,{LogoBlau} 62%,{LogoTuerkis} 135%);border:1px solid rgba(255,255,255,.35);border-radius:11px;"><tr><td align="center" valign="middle" style="font-family:{Schrift};font-size:19px;font-weight:800;color:#ffffff;line-height:38px;">S</td></tr></table></td>
                 <td valign="middle"><a href="{SkoulouMarke.Website}" style="font-family:{Schrift};color:#ffffff;font-size:21px;font-weight:800;letter-spacing:.3px;text-decoration:none;">SKOULOU</a></td>
               </tr></table>
             </td></tr>
