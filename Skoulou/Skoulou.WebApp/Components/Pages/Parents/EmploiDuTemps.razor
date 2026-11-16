@@ -20,7 +20,7 @@
 
 @if (!Laedt)
 {
-    <KindAuswahl KontoId="Ich.KontoId" @bind-Gewaehlt="Kind" @bind-Gewaehlt:after="KindGewechseltAsync" />
+    <KindAuswahl KontoId="Ich.KontoId" Gewaehlt="Kind" GewaehltChanged="KindAsync" />
 }
 
 @if (Kind is not null)
@@ -57,17 +57,21 @@
     private DateOnly heute;
     private DateOnly montag;
 
-    protected override Task InitialisierenAsync()
+    protected override async Task InitialisierenAsync()
     {
         heute = new SchulZeit(Uhr).Heute;
         montag = Wochentage.Montag(heute);
-        return Task.CompletedTask;
+        if (Kind is not null) await LadenAsync();
     }
 
-    private async Task KindGewechseltAsync()
+    /// <summary>Wie die übrigen Elternseiten: Kind aus der Auswahl übernehmen und laden. Vorher lud nur ein Wechsel per
+    /// @bind:after – beim ersten Öffnen blieb die Woche leer (16.11., bei der Videoaufnahme gefunden).</summary>
+    private async Task KindAsync(Guid? id)
     {
+        if (id == Kind && woche is not null) return;
+        Kind = id;
         woche = null;
-        await AusfuehrenAsync(LadenAsync);
+        if (id is not null) await AusfuehrenAsync(LadenAsync);
     }
 
     private async Task WocheAsync(DateOnly neuerMontag)
