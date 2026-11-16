@@ -1,5 +1,5 @@
 @page "/finances/frais"
-@page "/finances/frais/comptes"
+@page "/finances/frais/{Ansicht}"
 @attribute [Authorize(Policy = Richtlinien.Finanzen)]
 @inherits JahrSeite
 
@@ -35,7 +35,11 @@ else
         new("/finances/frais/comptes", "Comptes des élèves", "users"),
     ];
 
-    private bool Comptes => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/').EndsWith("comptes", StringComparison.Ordinal);
+    /// <summary>Zweiter Reiter (« comptes »). Als Routenparameter, damit Blazor beim Reiterwechsel neu zeichnet –
+    /// beide Reiter sind dieselbe Seite, aus der Adresse allein würde der Inhalt stehen bleiben (16.11.).</summary>
+    [Parameter] public string? Ansicht { get; set; }
+
+    private bool Comptes => string.Equals(Ansicht, "comptes", StringComparison.Ordinal);
 
     protected override Task JahrLadenAsync() => Task.CompletedTask;
 }

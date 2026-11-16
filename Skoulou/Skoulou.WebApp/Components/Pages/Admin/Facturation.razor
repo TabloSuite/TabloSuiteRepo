@@ -1,5 +1,5 @@
 @page "/admin/facturation"
-@page "/admin/facturation/parts"
+@page "/admin/facturation/{Ansicht}"
 @attribute [Authorize(Policy = Richtlinien.Admin)]
 @inherits SkoulouSeite
 @using Skoulou.WebApp.Components.Pages.Admin.AbrechnungTeile
@@ -40,7 +40,10 @@ else
     private RechnungListe? liste;
     private bool jetzt;
 
-    private bool Parts => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/').EndsWith("parts", StringComparison.Ordinal);
+    /// <summary>Zweiter Reiter (« parts ») als Routenparameter – sonst bleibt der Inhalt beim Reiterwechsel stehen (16.11.).</summary>
+    [Parameter] public string? Ansicht { get; set; }
+
+    private bool Parts => string.Equals(Ansicht, "parts", StringComparison.Ordinal);
 
     private Task AbgerechnetAsync() => liste?.NeuLadenAsync() ?? Task.CompletedTask;
 }
