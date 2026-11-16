@@ -105,8 +105,14 @@ public partial class OberflaechenTests
         var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "skoulou.js"));
         Assert.Contains("window.skVideoPosition", js);
         Assert.Contains("'orientationchange'", js);
-        Assert.Contains("if (meiner !== lauf) return;", js);
+        Assert.Contains("if (meiner === lauf) aus();", js);
+        // 16.11.: am Handy sprang die Seite beim Rollen zurück (Adressleiste = resize) → nur solange der Spieler da ist,
+        // und nach dem Schließen gehört die Position dem Nutzer, sobald er die Seite berührt.
+        Assert.Contains("var SPIELER = '.sk-video-spieler';", js);
+        Assert.Contains("if (!schliessend && !document.querySelector(SPIELER)) { aus(); return; }", js);
+        Assert.Contains("'touchstart', 'wheel', 'pointerdown', 'keydown'", js);
         var seite = File.ReadAllText(Path.Combine(WebApp(), "Components", "Pages", "Aide", "Videos.razor"));
+        Assert.Contains("<video class=\"sk-video-spieler\"", seite);
         Assert.Contains("\"skVideoPosition.merken\"", seite);
         Assert.Contains("\"skVideoPosition.zurueck\"", seite);
         Assert.Contains("class=\"sk-video-gruppe sk-video-rolle-@bereich.Klasse\"", seite);

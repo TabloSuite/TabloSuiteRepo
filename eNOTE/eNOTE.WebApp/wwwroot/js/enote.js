@@ -196,8 +196,13 @@ window.enoteScanner = (function () {
 
 // « Vidéos d'aide »: Position der Seite merken, solange ein Video offen ist. Am Handy dreht das Vollbild ins Querformat;
 // dabei wechselt die Seite ihre Anordnung und stünde nach dem Schließen ganz oben statt beim angesehenen Video.
+// Fehler 16.11. (am Handy): « beim Herunterrollen springt die Seite wieder nach oben ». Jedes Ein-/Ausblenden der Adressleiste
+// ist ein « resize » – blieb das Horchen an (Dialog ohne « Fermer » verlassen, z. B. Zurück-Taste) oder rollte der Nutzer in den
+// 2,5 s nach dem Schließen, setzte jede Bewegung die Seite zurück. Darum: nur solange der Spieler da ist bzw. kurz danach, und
+// sobald der Nutzer die Seite nach dem Schließen berührt, gehört die Position ihm.
 window.enoteVideoPosition = (function () {
-    var gemerkt = null, timer = null, aktiv = false, lauf = 0;
+    var SPIELER = '.vh-spieler';
+    var gemerkt = null, timer = null, aktiv = false, lauf = 0, schliessend = false;
     function rollend() {
         return [document.scrollingElement, document.querySelector('.enote-main')].filter(function (e) { return !!e; });
     }
@@ -210,7 +215,12 @@ window.enoteVideoPosition = (function () {
         });
         html.style.scrollBehavior = vorher;
     }
-    function spaeter() { clearTimeout(timer); timer = setTimeout(setzen, 200); }
+    function aus() { horchen(false); clearTimeout(timer); gemerkt = null; schliessend = false; }
+    function spaeter() {
+        if (!schliessend && !document.querySelector(SPIELER)) { aus(); return; }   // Video ist weg, ohne dass zurueck() kam
+        clearTimeout(timer); timer = setTimeout(setzen, 200);
+    }
+    function nutzer() { if (schliessend) aus(); }
     function horchen(an) {
         if (an === aktiv) return;
         aktiv = an;
@@ -219,15 +229,17 @@ window.enoteVideoPosition = (function () {
         window[f]('orientationchange', spaeter);
         document[f]('fullscreenchange', spaeter);
         document[f]('webkitfullscreenchange', spaeter);
+        ['touchstart', 'wheel', 'pointerdown', 'keydown'].forEach(function (t) { window[f](t, nutzer, { capture: true, passive: true }); });
     }
     return {
-        merken: function () { lauf++; gemerkt = rollend().map(function (e) { return e.scrollTop; }); horchen(true); },
+        merken: function () { lauf++; schliessend = false; gemerkt = rollend().map(function (e) { return e.scrollTop; }); horchen(true); },
         zurueck: function () {
             var meiner = lauf;   // wird gleich das nächste Video geöffnet, darf dieses Aufräumen dessen Stand nicht löschen
+            schliessend = true;
             setzen();
             // Das Zurückdrehen ins Hochformat kann erst nach dem Schließen fertig sein: noch kurz weiter horchen.
             [150, 500, 1200].forEach(function (ms) { setTimeout(function () { if (meiner === lauf) setzen(); }, ms); });
-            setTimeout(function () { if (meiner !== lauf) return; horchen(false); clearTimeout(timer); gemerkt = null; }, 2500);
+            setTimeout(function () { if (meiner === lauf) aus(); }, 2500);
         }
     };
 })();

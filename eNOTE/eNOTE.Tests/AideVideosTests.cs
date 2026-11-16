@@ -26,8 +26,14 @@ public class AideVideosTests
         var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "enote.js"));
         Assert.Contains("window.enoteVideoPosition", js);
         Assert.Contains("'orientationchange'", js);   // Drehen ins Querformat (Vollbild am Handy)
-        Assert.Contains("if (meiner !== lauf) return;", js);   // nächstes Video gleich danach: altes Aufräumen löscht nichts
+        Assert.Contains("if (meiner === lauf) aus();", js);   // nächstes Video gleich danach: altes Aufräumen löscht nichts
+        // 16.11.: am Handy sprang die Seite beim Rollen zurück (Adressleiste = resize) → nur solange der Spieler da ist,
+        // und nach dem Schließen gehört die Position dem Nutzer, sobald er die Seite berührt.
+        Assert.Contains("var SPIELER = '.vh-spieler';", js);
+        Assert.Contains("if (!schliessend && !document.querySelector(SPIELER)) { aus(); return; }", js);
+        Assert.Contains("'touchstart', 'wheel', 'pointerdown', 'keydown'", js);
         var seite = File.ReadAllText(Path.Combine(WebApp(), "Components", "Pages", "AideVideos.razor"));
+        Assert.Contains("<video class=\"vh-spieler\"", seite);
         Assert.Contains("\"enoteVideoPosition.merken\"", seite);
         Assert.Contains("\"enoteVideoPosition.zurueck\"", seite);
         // 16.11.2026: Video im gewohnten Dialogfenster wie in SKOULOU (keine eigene Überlagerung, die Seite bleibt ruhig).
