@@ -1,23 +1,28 @@
-# TabloSuite – Arbeitsstand 15.11.2026, ~23:45
+# TabloSuite – Arbeitsstand 16.11.2026
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 15.11.2026, ~23:45
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 16.11.2026
 
-**NÄCHSTE AUFGABE (Nutzer 15.11. abends: « Ja, SKOULOU-Videos neu erstellen » – Start am 16.11., am 15.11. war das Limit
-fast erreicht):** die 9 alten SKOULOU-Lernvideos (alte Oberfläche, KI-Sprecherin, 0:42–2:03) im v3-Stil der eNOTE-Videos neu
-machen. Vollständiger Auftrag (Stil, Pipeline, Aufnahme-Umgebung, Videoliste, Ablauf) im Videoordner:
-`TabloSuite Videos/Skoulou Videos/projekte/lernen-v3/AUFTRAG.md` (unter `C:/ETSE/NETAPPS/`). **Noch nichts produziert.**
-Zuerst den **Pilot** « Préparer l'année scolaire » (Direction) fertigstellen und dem Nutzer zeigen; erst nach seinem OK die
-übrigen (Pakete A–D). Keine Agenten, eine Aufgabe nach der anderen, sparsam arbeiten.
+**NÄCHSTE AUFGABE im neuen Chat (Nutzer 15.11. abends: « Ja, SKOULOU-Videos neu erstellen »; am 16.11. bestätigt: « danach
+mit dem Stand aus STAND.md weitermachen – es ging um SKOULOU-Videos »):** die 9 alten SKOULOU-Lernvideos (alte Oberfläche,
+KI-Sprecherin, 0:42–2:03) im v3-Stil der eNOTE-Videos neu machen. Vollständiger Auftrag (Stil, Pipeline,
+Aufnahme-Umgebung, Videoliste P/A1–D2, Ablauf) im Videoordner:
+`C:\ETSE\NETAPPS\TabloSuite Videos\Skoulou Videos\projekte\lernen-v3\AUFTRAG.md` – **zuerst ganz lesen**; Vorlage der Pipeline:
+`C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\README.md`. **Noch nichts produziert** (im Ordner
+`Skoulou Videos\projekte\lernen-v3\` liegt nur der Auftrag). Reihenfolge: (1) Pipeline nach `Skoulou Videos\projekte\lernen-v3\`
+kopieren und an SKOULOU anpassen, (2) Aufnahme-Datenbank `SkoulouDB_VIDEO` + Demo-Schule anlegen, (3) **Pilot**
+« Préparer l'année scolaire » (Direction) fertigstellen und dem Nutzer zeigen (Pfad, Länge, Szenenfolge, 2–3 Standbilder),
+(4) erst nach seinem OK die übrigen (Pakete A–D), je Video einbauen + `VideoKatalog.cs` + commit/push.
+Keine Agenten, eine Aufgabe nach der anderen, sparsam arbeiten (Limit).
 
-**Beide Apps sind am 15.11. abends deployt** (Stand 630ad20). Kontrolle der öffentlichen Seiten danach in Ordnung: eNOTE
-Startseite « En cinq minutes » + neues Video (22,7 MB, Teilabruf 206), Skript mit Videopositions-Merker, Meldung « Trop de
-tentatives »; SKOULOU Startseite, Ladeanzeige am Anmeldeformular, neue Videoseite, « Page introuvable ». Die angemeldeten
-Bereiche (Menü « Administrateurs », Videos am Handy) prüft der Nutzer selbst.
+**Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
+**Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
+deployt** → der Nutzer deployt eNOTE und SKOULOU noch einmal (Visual Studio). Danach zu prüfen: Registrierung verlangt
+« Téléphone »; Knöpfe zeigen sofort den Ladekreis; eNOTE « Vidéos d'aide » öffnet das Video im Dialogfenster.
 Keine neue Migration seit dem 14.11. → Azure-Datenbanken wurden nicht angefasst und sind aktuell:
 eNOTE `ENote-Database` = lokal = `20261114233118_PreisAnpassungEntwarnung`; SKOULOU `Skoulou-Database` = lokal `SkoulouDB` =
 `20261114182350_SessionGebuehrUndHauptAdmin`.
@@ -26,15 +31,19 @@ eNOTE `ENote-Database` = lokal = `20261114233118_PreisAnpassungEntwarnung`; SKOU
 alles selbst im Hauptchat, streng nacheinander, nach jedem fertigen Schritt committen + pushen, kurz auf Deutsch berichten.
 (Das 5-Stunden-Limit wurde am 15.11. fünfmal erreicht; Agenten blieben mitten in der Arbeit stehen.)
 
-### Nach dem Deploy prüfen (Nutzer deployt mit Visual Studio, dann melden)
-- **eNOTE:** Startseite zeigt « En cinq minutes » + neues Video « Pourquoi eNOTE ? » (5:34, beginnt mit dem Heft
-  « où sont passés ces 3.500 F ? »); `/aide/videos` Dauer 5:34.
-- **SKOULOU:** Login DodjiEtse, Menü « Administrateurs », Startseiten-Video; am Handy Ladekreis beim Registrieren/Anmelden;
-  bei 0 Konten `az webapp restart -g TabloSuiteRGruppe -n skoulou`.
-- **Vidéos d'aide am Handy (beide Apps):** ein Video im Vollbild/Querformat ansehen und schließen – die Seite bleibt beim
-  angesehenen Video; die Nutzerbereiche sind farbige Felder mit « Votre rôle ».
-- **Schutzgrenzen:** nichts zu prüfen nötig – beide Apps bestimmen die Adresse des Besuchers selbst (`Anschluss.Adresse`,
-  auch hinter dem Azure-Eingangsserver).
+### Erledigt am 16.11. (drei Wünsche des Nutzers, alle gepusht, noch zu deployen)
+- **Telefonnummer Pflicht bei der Registrierung eines Besitzers** (60de7d4): eNOTE auf allen drei Wegen (öffentliche
+  Registrierung, Dialog « Nouvel établissement » des Responsable, « Ajouter un propriétaire » des Administrateur;
+  `TelefonRegel`: mindestens 8 Ziffern; Nummer in der Admin-Übersicht und in der Mail ans Team); SKOULOU bei der
+  Registrierung einer Schule (Schüler bleiben frei). Keine Schemaänderung.
+- **eNOTE « Vidéos d'aide » wie SKOULOU** (5b1b071): Video öffnet im Dialogfenster (Titel, Video, Beschreibung); die Seite
+  bleibt beim Schließen ruhig.
+- **Ladekreis sofort beim Tippen, beide Apps** (d58fd5c): Ursache des « man merkt nichts »: der Kreis kam erst mit der
+  Antwort des Servers (bei 0,7 s Netz-Laufzeit 0,7 s nichts). Jetzt Kreis nach ~0,14 s im Browser für jeden Aktionsknopf
+  (`enote-btn`/`btn-primary`, `sk-btn`; Kassen-Kacheln ausgenommen), per Attribut + CSS (`enoteKlickRing`, `skKlickRing`,
+  Ausnahme `data-ohne-ladekreis`). eNOTE-Registrierung meldet fehlende Pflichtfelder jetzt direkt über dem Knopf.
+- Tests: eNOTE 465 grün, SKOULOU 572 grün (+ SQL 591). Im Browser mit verzögertem Netz geprüft. Bilder
+  `Pictures\Paket-2026-11-16\`. Kontrollinstanzen gestoppt, DB-Kopie gelöscht.
 
 ### Erledigt am 15.11.
 - **eNOTE fertig** (S1 + S2 + W1–W3, 435 Tests grün).
@@ -61,7 +70,7 @@ alles selbst im Hauptchat, streng nacheinander, nach jedem fertigen Schritt comm
   Nutzerbereiche als farbige Felder). Tests eNOTE 452, SKOULOU 571 (+ SQL 590). Bilder `Pictures\Videos-d-aide-2026-11-15\`.
 
 ### Offene Ideen (keine Fehler, Entscheidung des Nutzers)
-- **SKOULOU-Lernvideos** sind noch die alten mit der KI-Sprecherin (z. B. « La visite guidée » 2:03, « Suivre votre enfant »
+- **SKOULOU-Lernvideos** (→ inzwischen die nächste Aufgabe, siehe oben) sind noch die alten mit der KI-Sprecherin (z. B. « La visite guidée » 2:03, « Suivre votre enfant »
   0:42) – nach den Regeln des Nutzers (ohne Sprecherin, jeder Klick beschriftet) auf der neuen Oberfläche neu aufnehmen.
 - SKOULOU QR-Prüfseite eines Bulletins zeigt bewusst nur Schule, Schüler, Klasse, Periode, Moyenne – Nummer/Datum ergänzen?
 - SKOULOU « Comptes élèves » rechnet je Seite alle Konten des Jahres (160–170 ms an der größten Schule) – beobachten.
@@ -184,4 +193,4 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ## 7. Nächste Schritte
 
-Siehe §0 (Deploy durch den Nutzer, danach Kontrolle). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
+Siehe §0: SKOULOU-Lernvideos neu (Pilot zuerst); vorher deployt der Nutzer die Änderungen vom 16.11. Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
