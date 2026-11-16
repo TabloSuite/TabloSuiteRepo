@@ -12,12 +12,24 @@ mit dem Stand aus STAND.md weitermachen – es ging um SKOULOU-Videos »):** die
 KI-Sprecherin, 0:42–2:03) im v3-Stil der eNOTE-Videos neu machen. Vollständiger Auftrag (Stil, Pipeline,
 Aufnahme-Umgebung, Videoliste P/A1–D2, Ablauf) im Videoordner:
 `C:\ETSE\NETAPPS\TabloSuite Videos\Skoulou Videos\projekte\lernen-v3\AUFTRAG.md` – **zuerst ganz lesen**; Vorlage der Pipeline:
-`C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\README.md`. **Noch nichts produziert** (im Ordner
-`Skoulou Videos\projekte\lernen-v3\` liegt nur der Auftrag). Reihenfolge: (1) Pipeline nach `Skoulou Videos\projekte\lernen-v3\`
-kopieren und an SKOULOU anpassen, (2) Aufnahme-Datenbank `SkoulouDB_VIDEO` + Demo-Schule anlegen, (3) **Pilot**
-« Préparer l'année scolaire » (Direction) fertigstellen und dem Nutzer zeigen (Pfad, Länge, Szenenfolge, 2–3 Standbilder),
-(4) erst nach seinem OK die übrigen (Pakete A–D), je Video einbauen + `VideoKatalog.cs` + commit/push.
-Keine Agenten, eine Aufgabe nach der anderen, sparsam arbeiten (Limit).
+`C:\ETSE\NETAPPS\TabloSuite Videos\ENote Videos\projekte\lernen-v3\README.md`. Reihenfolge: (1) Pipeline nach
+`Skoulou Videos\projekte\lernen-v3\` kopieren und an SKOULOU anpassen, (2) Aufnahme-Datenbank `SkoulouDB_VIDEO` +
+Demo-Schule anlegen, (3) **Pilot** « Préparer l'année scolaire » (Direction) fertigstellen und dem Nutzer zeigen (Pfad,
+Länge, Szenenfolge, 2–3 Standbilder), (4) erst nach seinem OK die übrigen (Pakete A–D), je Video einbauen +
+`VideoKatalog.cs` + commit/push. Keine Agenten, eine Aufgabe nach der anderen, sparsam arbeiten (Limit).
+**Stand 16.11. vormittags: (1)–(3) erledigt** – Pipeline + Aufnahme-Umgebung eingerichtet (Einzelheiten AUFTRAG.md §6:
+App `http://localhost:5191` aus `%TEMP%\skoulou-video\build`, DB `SkoulouDB_VIDEO` mit Basis-Sicherung, frische Schule
+« Collège Démo Les Cocotiers », Direktorin `afiwa.kodjovi`); Pilot gerendert (5:54, 6 Schritte), **wartet auf das OK des
+Nutzers**. Noch NICHT in der App (`einbau.py` + `VideoKatalog.cs` erst nach Freigabe). Endfassung
+`Skoulou Videos\projekte\lernen-v3\direction-preparer\renders\skoulou-direction-preparer.mp4` (−16,7 LUFS), Standbilder
+`Pictures\SKOULOU-Videos-v3\pilot\`. Aufnahme-App läuft gerade nicht (bei Bedarf neu starten, siehe AUFTRAG.md §6).
+
+**Zwei Nutzerwünsche für später (16.11.):** (1) SKOULOU-Audio-Aufgaben (Fragetypen `AudioTexte`, `AudioChoixUnique`,
+`AudioChoixMultiple`) mit **Azure-TTS** statt der Browser-Stimme (`paedagogik.js` `vorlesen` → `speechSynthesis`); Sprache
+je Aufgabe wählbar (heute `FragenTypen.Sprachen`: fr, en, de, es). **Vor** den Videos C2 « Leçons et examens » und
+D1 « Apprendre avec SKOULOU » erledigen, weil diese die Audio-Aufgaben zeigen. (2) Modale Fenster: beim Scrollen im Fenster
+rollt die Seite dahinter mit → Hintergrund sperren (`overscroll-behavior: contain` + Seite fest, solange ein Fenster offen
+ist); **vor** den weiteren Video-Aufnahmen erledigen.
 
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
