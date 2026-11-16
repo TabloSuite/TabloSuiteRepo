@@ -33,6 +33,11 @@ Seite hinter offenen Fenstern rollt in eNOTE und SKOULOU nicht mehr mit (CSS `ht
 **Pilot freigegeben** (Nutzer 16.11.: « sehr gut, weiter so ausführlich !! … Weitermachen wie es dir passt ») und
 eingebaut (de03adb). Die übrigen Videos ohne Einzel-Freigabe im selben Stil, Reihenfolge: A1, A2, B1–B4, dann Azure-TTS,
 dann C1, C2, D1, D2.
+✅ **A1 « Premiers pas : se repérer »** (16.11. mittags, 089f369): 5:20, 7 Schritte, Lehrer Yao Kpodar der Demo-Schule
+« Les Palmiers » (Anmeldung, erstes Passwort, Startseite, Menü, **echte Handy-Aufnahme im Gerätrahmen**, Schuljahr oben,
+Konto + Hilfe); in der App zuerst unter « Pour bien commencer ». Pipeline-Neuerungen (Handy, `nachOben`, Startskript der
+Aufnahme-App) in `lernen-v3/AUFTRAG.md` §6. Tests SKOULOU 572 grün. **Nächstes: A2 « La visite guidée ».**
+Noch nicht deployt (zusammen mit den übrigen Videos am Ende).
 
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
