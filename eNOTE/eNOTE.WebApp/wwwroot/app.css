@@ -584,7 +584,19 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
     transition: background .15s, color .15s;
 }
 .enote-icon-btn:hover { background: var(--enote-surface-3); color: var(--enote-text); }
-.enote-modal-body { padding: .75rem 1.5rem 1.25rem; overflow-y: auto; }
+.enote-modal-body { padding: .75rem 1.5rem 1.25rem; overflow-y: auto; overscroll-behavior: contain; }
+/* Fenster offen: die Seite dahinter rollt nicht mit (Nutzer 16.11.2026, wie SKOULOU). Am Handy (≤ 640 px) rollt die
+   Seite selbst, am Computer der Hauptbereich .enote-main – beide werden gesperrt, solange ein Fenster offen ist.
+   Der Platz der Bildlaufleiste von .enote-main ist reserviert (außer im Kassenmodus, dort rollt nichts), damit nichts
+   seitlich springt. Druck unverändert. */
+@media screen {
+    html:has(.enote-modal-backdrop) { overflow: hidden; }
+}
+@media screen and (min-width: 641px) {
+    .enote-shell:not(.enote-kassen-modus) .enote-main { scrollbar-gutter: stable; }
+    html:has(.enote-modal-backdrop) .enote-main { overflow-y: hidden; }
+}
+.enote-modal-backdrop { overscroll-behavior: contain; }
 .enote-modal-error { margin: .5rem 1.5rem 0; }
 .enote-modal-footer {
     padding: .9rem 1.25rem; border-top: 1px solid var(--enote-border);

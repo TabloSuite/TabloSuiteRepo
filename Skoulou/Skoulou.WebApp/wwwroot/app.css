@@ -637,7 +637,18 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-modal-kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.25rem .55rem 1.5rem; }
 .sk-modal-kopf h2 { margin: 0; font-size: 1.22rem; font-weight: 800; color: var(--sk-ueberschrift); }
 .sk-modal-fehler { padding: .4rem 1.5rem 0; }
-.sk-modal-inhalt { padding: .6rem 1.5rem 1.3rem; overflow-y: auto; min-width: 0; }
+.sk-modal-inhalt { padding: .6rem 1.5rem 1.3rem; overflow-y: auto; min-width: 0; overscroll-behavior: contain; }
+/* Fenster oder « Plus »-Blatt offen: die Seite dahinter rollt nicht mit (Nutzer 16.11.2026). Am Handy (≤ 640 px)
+   rollt die Seite selbst, am Computer der Hauptbereich .sk-main – beide werden gesperrt, solange ein Fenster offen ist.
+   Der Platz der Bildlaufleiste von .sk-main ist immer reserviert, damit nichts seitlich springt. Druck unverändert. */
+@media screen {
+    html:has(.sk-modal-hintergrund), html:has(.sk-blatt-hintergrund) { overflow: hidden; }
+}
+@media screen and (min-width: 641px) {
+    .sk-main { scrollbar-gutter: stable; }
+    html:has(.sk-modal-hintergrund) .sk-main { overflow-y: hidden; }
+}
+.sk-modal-hintergrund, .sk-blatt { overscroll-behavior: contain; }
 .sk-modal-fuss { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; padding: .9rem 1.25rem; border-top: 1px solid var(--sk-rand); background: var(--sk-flaeche-2); border-radius: 0 0 1.25rem 1.25rem; }
 .sk-modal-fuss form { margin: 0; }
 .sk-modal-inhalt > .sk-leise:first-child { margin: 0 0 1rem; }
