@@ -74,7 +74,7 @@ public static partial class VideoKatalog
             "Votre emploi du temps, l'appel avec les absences et les retards, le récapitulatif, une nouvelle évaluation et la saisie des notes, les appréciations, et le conseil de votre classe.",
             Enseignant, FuerLehrkraefte, "3:32"),
         new("skoulou-eleve-apprendre.mp4", "Apprendre avec SKOULOU",
-            "Votre espace, les leçons et les exercices, les examens et la correction.", Eleve, FuerSchueler, "1:06"),
+            "Votre accueil, une leçon et ses exercices, une dictée audio, un examen, vos résultats et vos bulletins.", Eleve, FuerSchueler, "3:13"),
         new("skoulou-parent-suivre.mp4", "Suivre votre enfant",
             "Bulletins publiés, absences et retards, frais de scolarité et reçus.", Parent, FuerEltern, "0:42"),
     ];
