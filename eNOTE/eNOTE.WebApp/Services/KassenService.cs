@@ -830,9 +830,24 @@ public class KassenService(
         return (sitzung.Startbestand, Math.Round(barEinnahmen, 2), soll);
     }
 
+    /// <summary>Text des Besitzer-Hinweises bei einer Clôture mit Écart (Notiz gekürzt auf 200 Zeichen).</summary>
+    public static string EcartHinweis(decimal ecart, decimal soll, decimal gezaehlt, string? notiz)
+    {
+        var betrag = (ecart > 0 ? "+" : "−") + Math.Abs(ecart).ToString("N0");
+        var text = ecart < 0
+            ? $"Écart de caisse à la clôture : il manque {Math.Abs(ecart):N0} F ({betrag} F ; attendu {soll:N0} F, compté {gezaehlt:N0} F)."
+            : $"Écart de caisse à la clôture : {betrag} F de plus que prévu (attendu {soll:N0} F, compté {gezaehlt:N0} F).";
+        if (!string.IsNullOrWhiteSpace(notiz))
+        {
+            var n = notiz.Trim();
+            text += $" Note : « {(n.Length > 200 ? n[..200] + "…" : n)} »";
+        }
+        return text;
+    }
+
     /// <summary>
     /// Schließt die offene Sitzung ab (Kassiererwechsel/Tagesende) und dokumentiert
-    /// Soll/Ist und die Differenz.
+    /// Soll/Ist und die Differenz. Bei einem Écart bekommt der Besitzer einen Hinweis (<see cref="EcartHinweis"/>).
     /// </summary>
     /// <param name="erwartetesSoll">Im Dialog angezeigte « Espèces attendues »: weicht der Stand in der Datenbank ab
     /// (anderes Gerät hat inzwischen verkauft/erstattet/entnommen), wird nicht abgeschlossen (<see cref="SollGeaendertFehler"/>).</param>
@@ -868,6 +883,20 @@ public class KassenService(
                 sitzung.EndbestandGezaehlt = Math.Round(endbestandGezaehlt, 2);
                 sitzung.Differenz = KassenRechner.BerechneDifferenz(soll, endbestandGezaehlt);
                 sitzung.AbschlussNotiz = string.IsNullOrWhiteSpace(notiz) ? null : notiz.Trim();
+
+                // 16.11.2026 (Nutzerwunsch): Ein Écart meldet sich beim Besitzer – wie « Divers » als Hinweis auf der Startseite
+                // (dort stehen auch Uhrzeit und Name der Person, die die Kasse geöffnet hat).
+                if (sitzung.Differenz is decimal ecart && ecart != 0)
+                {
+                    var kassierer = await db.Users.FirstOrDefaultAsync(u => u.Id == sitzung.KassiererId, cancellationToken);
+                    db.BesitzerHinweise.Add(new BesitzerHinweis
+                    {
+                        SalonId = sitzung.SalonId,
+                        Text = EcartHinweis(ecart, soll, sitzung.EndbestandGezaehlt ?? 0m, sitzung.AbschlussNotiz),
+                        AusgeloestVonId = sitzung.KassiererId,
+                        AusgeloestVonName = kassierer?.FullName ?? "Employé"
+                    });
+                }
 
                 await db.SaveChangesAsync(cancellationToken);
                 await KassenSperre.BestaetigeAsync(transaktion, cancellationToken);

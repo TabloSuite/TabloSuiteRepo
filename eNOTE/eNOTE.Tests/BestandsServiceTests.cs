@@ -97,6 +97,35 @@ public class BestandsServiceTests
         Assert.Equal(9m, (await db.Leistungen.SingleAsync(l => l.Id == b.Huile.Id)).Stueckzahl);
     }
 
+    /// <summary>16.11.2026 (Nutzerwunsch): Ein Écart bei der Clôture meldet sich beim Besitzer (Hinweis auf der Startseite,
+    /// mit Soll/Ist und Notiz); ohne Écart kein Hinweis.</summary>
+    [Fact]
+    public async Task Ecart_Bei_Der_Cloture_Meldet_Sich_Beim_Besitzer()
+    {
+        var mit = await BasisAsync();
+        var soll = (await mit.Kasse.GetBarSollAsync(mit.SitzungId))!.Value;
+        var (_, _, s) = await mit.Kasse.SchliesseSitzungAsync(mit.SitzungId, soll - 1000m, "  billet abîmé ");
+        Assert.Equal(-1000m, s!.Differenz);
+        await using (var db = await mit.F.CreateDbContextAsync())
+        {
+            var h = await db.BesitzerHinweise.SingleAsync();
+            Assert.Equal(mit.Salon.Id, h.SalonId);
+            Assert.True(h.IstUngelesen);
+            Assert.Contains("il manque", h.Text);
+            Assert.Contains("Note : « billet abîmé »", h.Text);
+        }
+
+        var ohne = await BasisAsync();
+        await ohne.Kasse.SchliesseSitzungAsync(ohne.SitzungId, (await ohne.Kasse.GetBarSollAsync(ohne.SitzungId))!.Value, null);
+        await using (var db = await ohne.F.CreateDbContextAsync())
+        {
+            Assert.Empty(await db.BesitzerHinweise.ToListAsync());
+        }
+
+        Assert.Contains("de plus que prévu", KassenService.EcartHinweis(500m, 10000m, 10500m, null));
+        Assert.DoesNotContain("Note", KassenService.EcartHinweis(500m, 10000m, 10500m, "   "));
+    }
+
     [Fact]
     public async Task Einlage_In_Die_Kasse_Ohne_Offene_Sitzung_Wird_Abgelehnt()
     {
