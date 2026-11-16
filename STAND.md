@@ -51,6 +51,8 @@ Guide « Démarrer l'année » angeglichen (Classes vor Matières). Kein neues V
 
 **OFFEN – am Ende prüfen (Nutzer 16.11. abends):** Auf der Seite « Vidéos d'aide » **springt die Scrollleiste hin und her** – in **beiden Apps** (eNOTE + SKOULOU) prüfen und beheben (Verdacht: Seitensperre bei offenem Fenster `html:has(...)` aus 24039f0 blendet die Scrollleiste aus/ein → Seite verschiebt sich; oder gemerkte Scrollposition aus 630ad20). Am Computer und am Handy testen. **Nutzer-Detail:** am Handy – beim Herunterscrollen springt die Seite wieder nach oben (Verdacht: Adressleiste blendet aus → Fenstergröße ändert sich → gemerkte Position wird zurückgesetzt). Analyse: `skVideoPosition` (skoulou.js ~Z. 258, enote.js ~Z. 200) horcht auf `resize`, solange ein Video offen ist, und hört erst 2,5 s nach `zurueck()` auf – wird das Fenster anders geschlossen (Zurück-Taste, Wischen), bleibt es aktiv und jede Adressleisten-Größenänderung springt zurück. Fix: nur bei echtem Vollbild/Drehung setzen, beim eigenen Scrollen des Nutzers abschalten, Schließen des Dialogs zuverlässig erkennen.
 
+**IN ARBEIT (Agent, seit 16.11. abends, eigene Arbeitskopie):** Azure-TTS für SKOULOU-Audio-Aufgaben (Rückfall Browser-Stimme, Schlüssel später vom Nutzer in Azure eintragen) **+ Nutzerwunsch: Lehrkraft legt die Sprechgeschwindigkeit fest, z. B. nach Sprachniveau A1…C2** – am Ende gemeinsam prüfen, dann zusammenführen.
+
 **Deploy:** Beide Apps wurden am 15.11. abends deployt (Stand 630ad20, öffentliche Seiten danach geprüft: in Ordnung).
 **Die drei Änderungen vom 16.11. (60de7d4, 5b1b071, d58fd5c – siehe « Erledigt am 16.11. ») sind gepusht, aber noch NICHT
 deployt** → der Nutzer deployt eNOTE und SKOULOU noch einmal (Visual Studio). Danach zu prüfen: Registrierung verlangt
