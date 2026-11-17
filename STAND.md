@@ -19,6 +19,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - eNOTE « Retirer le rôle » mit Neuzuweisung der Läden (Sätze/Rechte übernommen). Admin-Video « Piloter la formation » zeigt noch
   den alten Kasten ohne Abstand und die alte « Retirer »-Ansicht → **bei Gelegenheit Szenen regeln/schwach neu aufnehmen**.
 - **Beide Apps müssen deployt werden** (eNOTE: keine neue Migration seit FormationResponsables).
+- **Push offen:** seit 7839898 sind die Commits nur lokal (GitHub verlangt die Anmeldung des Nutzers). Im neuen Chat zuerst `git status -sb` prüfen und pushen.
 
 **>>> NEUESTES (17.11. nachmittags) – « Formation » der Responsables in eNOTE (d14cd90, 61c4761, 5ea83df, gepusht, 533 Tests grün):**
 Nutzerwunsch: Lernpfad + Prüfung für POs, je App (eNOTE zuerst, danach SKOULOU mit eigenem Inhalt). Entscheidungen (Memory
