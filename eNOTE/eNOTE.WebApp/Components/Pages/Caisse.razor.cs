@@ -334,6 +334,8 @@ public partial class Caisse(
     private string aktiverSalonName = string.Empty;
     // « Qui encaisse ? » (17.11.2026): Wer an diesem Gerät kassiert, meldet sich per PIN an; jeder Bon gehört dieser Person.
     private bool kassiererDialogOffen;
+    // Kunden-Display je Gerät (17.11.2026): fester Geräteschlüssel aus dem Browser (localStorage).
+    private string? geraetSchluessel;
     // Eigenes Mitarbeiter-Konto (« Connexion personnelle »): keine Kasse – nur am Gerät des Besitzers mit Name + PIN.
     private bool mitarbeiterKonto;
     private bool kassiererDialogMitInfo;
@@ -884,6 +886,7 @@ public partial class Caisse(
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        await LadeGeraetSchluesselAsync();
         scannerRef = DotNetObjectReference.Create(this);
         try { await js.InvokeVoidAsync("enoteScanner.start", scannerRef); }
         catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { /* ohne JS: Suchfeld genügt */ }
@@ -1040,9 +1043,25 @@ public partial class Caisse(
     }
 
     /// <summary>Sendet den aktuellen Ticket-Stand an das Kunden-Display (falls verbunden).</summary>
+    /// <summary>Geräteschlüssel für das eigene Kunden-Display (ohne JS – z. B. beim Vorrendern – kein Display).</summary>
+    private async Task LadeGeraetSchluesselAsync()
+    {
+        if (geraetSchluessel is not null) return;
+        try { geraetSchluessel = await geraetFavoritService.GetGeraeteSchluesselAsync(); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { geraetSchluessel = null; }
+    }
+
+    /// <summary>Display dieses Geräts auf « Bienvenue » zurücksetzen (Clôture hier oder auf einem anderen Gerät).</summary>
+    private async Task SetzeDisplayZurueckAsync()
+    {
+        if (geraetSchluessel is not { } geraet) return;
+        try { await displayService.TicketAnGeraetAsync(geraet, new DisplayTicket([], 0m, 0m, 0m, Abgeschlossen: false, Rueckgeld: null)); }
+        catch { /* Display darf die Kasse nie blockieren. */ }
+    }
+
     private async Task SendeTicketAnDisplayAsync()
     {
-        if (aktiveSitzung is null)
+        if (aktiveSitzung is null || geraetSchluessel is not { } geraet)
         {
             return;
         }
@@ -1051,7 +1070,7 @@ public partial class Caisse(
         var ticketDto = new DisplayTicket(positionen, zwischensumme, rabattSumme, gesamtSumme, Abgeschlossen: false, Rueckgeld: null);
         try
         {
-            await displayService.TicketAktualisiertAsync(aktiveSitzung.Id, ticketDto);
+            await displayService.TicketAnGeraetAsync(geraet, ticketDto);
         }
         catch
         {
@@ -1183,7 +1202,10 @@ public partial class Caisse(
             verkauf.Positionen.Select(p => new DisplayPosition(p.LeistungName, p.Menge, p.ZeilenSumme)).ToList(),
             verkauf.Zwischensumme, verkauf.RabattSumme, verkauf.GesamtSumme,
             Abgeschlossen: true, Rueckgeld: verkauf.Rueckgeld);
-        _ = displayService.TicketAktualisiertAsync(aktiveSitzung.Id, abgeschlossenesTicket);
+        if (geraetSchluessel is { } geraetFuerDisplay)
+        {
+            _ = displayService.TicketAnGeraetAsync(geraetFuerDisplay, abgeschlossenesTicket);
+        }
 
         SetzeTicketZurueck();
         ticketAufgeklappt = true; // auf Handy/Tablet das Rückgeld sofort zeigen
@@ -1226,7 +1248,14 @@ public partial class Caisse(
             return;
         }
 
-        displayLink = navigationManager.ToAbsoluteUri($"/display/{aktiveSitzung.Id}").ToString();
+        if (geraetSchluessel is null)
+        {
+            toast.ZeigeFehler("L'écran client n'est pas encore prêt sur cet appareil. Réessayez dans un instant.");
+            return;
+        }
+
+        // Display je Gerät: bleibt mit DIESEM Gerät verbunden (auch nach der Clôture, am nächsten Tag) und zeigt nur seine Tickets.
+        displayLink = navigationManager.ToAbsoluteUri($"/display/{aktiveSitzung.SalonId}/{geraetSchluessel}").ToString();
         displayQrDataUrl = ErzeugeQrDataUrl(displayLink);
         displayDialogOffen = true;
     }
@@ -1289,6 +1318,7 @@ public partial class Caisse(
         letzterVerkauf = null;
         SetzeTicketZurueck();
         anzeigeState.SitzungBeendet();
+        await SetzeDisplayZurueckAsync();
         // Andere Geräte des Ladens (zweite Kasse, Empfang) erfahren sofort, dass die Kasse geschlossen ist.
         anwesenheitsSignal.Melde(sitzung.SalonId);
 
@@ -1338,6 +1368,7 @@ public partial class Caisse(
         aktiveSitzung = null;
         letzterVerkauf = null;
         anzeigeState.SitzungBeendet();
+        await SetzeDisplayZurueckAsync();
         toast.ZeigeInfo("La caisse a été clôturée sur un autre appareil. Ouvrez-la à nouveau pour continuer (le ticket en cours est conservé).");
         await ZeigeKassenstartAsync();
         return false;

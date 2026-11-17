@@ -23,6 +23,28 @@ public class UmsatzHub : Hub
 
     public static string GruppenName(string salonId) => $"salon-{salonId}";
     public static string DisplayGruppenName(string sitzungId) => $"display-{sitzungId}";
+
+    /// <summary>
+    /// Kunden-Display je Kassengerät (17.11.2026): Arbeiten zwei Geräte gleichzeitig in derselben Kasse, zeigt jedes Display nur
+    /// das Ticket SEINES Geräts. Schlüssel = fester Geräteschlüssel aus dem Browser (32 Hex-Zeichen, nicht erratbar).
+    /// </summary>
+    public async Task AbonniereGeraetDisplay(string geraet)
+    {
+        if (IstGeraetSchluessel(geraet))
+            await Groups.AddToGroupAsync(Context.ConnectionId, GeraetDisplayGruppenName(geraet));
+    }
+
+    public async Task VerlasseGeraetDisplay(string geraet)
+    {
+        if (IstGeraetSchluessel(geraet))
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, GeraetDisplayGruppenName(geraet));
+    }
+
+    public static string GeraetDisplayGruppenName(string geraet) => $"display-geraet-{geraet.ToLowerInvariant()}";
+
+    /// <summary>Gültiger Geräteschlüssel: genau 32 Hex-Zeichen (Guid « N »).</summary>
+    public static bool IstGeraetSchluessel(string? geraet)
+        => geraet is { Length: 32 } && geraet.All(Uri.IsHexDigit);
 }
 
 /// <summary>Benachrichtigt abonnierte Clients über neue Verkäufe eines Salons.</summary>
@@ -62,6 +84,9 @@ public record DisplayTicket(
 public interface IDisplayBenachrichtigungService
 {
     Task TicketAktualisiertAsync(Guid sitzungId, DisplayTicket ticket, CancellationToken cancellationToken = default);
+
+    /// <summary>Ticket an das Display EINES Kassengeräts (je Gerät eigenes Display).</summary>
+    Task TicketAnGeraetAsync(string geraet, DisplayTicket ticket, CancellationToken cancellationToken = default);
 }
 
 public class DisplayBenachrichtigungService(IHubContext<UmsatzHub> hubContext) : IDisplayBenachrichtigungService
@@ -70,6 +95,14 @@ public class DisplayBenachrichtigungService(IHubContext<UmsatzHub> hubContext) :
     {
         await hubContext.Clients
             .Group(UmsatzHub.DisplayGruppenName(sitzungId.ToString()))
+            .SendAsync("DisplayAktualisiert", ticket, cancellationToken);
+    }
+
+    public async Task TicketAnGeraetAsync(string geraet, DisplayTicket ticket, CancellationToken cancellationToken = default)
+    {
+        if (!UmsatzHub.IstGeraetSchluessel(geraet)) return;
+        await hubContext.Clients
+            .Group(UmsatzHub.GeraetDisplayGruppenName(geraet))
             .SendAsync("DisplayAktualisiert", ticket, cancellationToken);
     }
 }

@@ -991,7 +991,7 @@ else
 <ModalDialog Open="displayDialogOffen" Title="Écran client" OnClose="() => displayDialogOffen = false" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="enote-display-dialog">
-            <p class="enote-muted">Scannez ce code avec une deuxième tablette tournée vers le client : il suit son ticket en direct.</p>
+            <p class="enote-muted">Scannez ce code avec une deuxième tablette tournée vers le client : il suit en direct le ticket de <strong>cet appareil</strong>. L'écran reste connecté à cet appareil, aussi les jours suivants.</p>
             @if (!string.IsNullOrWhiteSpace(displayQrDataUrl))
             {
                 <img src="@displayQrDataUrl" alt="QR-code de l'écran client" class="enote-display-qr" />

@@ -1,4 +1,5 @@
 ﻿@page "/display/{SitzungId:guid}"
+@page "/display/{SalonId:guid}/{Geraet}"
 @attribute [AllowAnonymous]
 @layout Layout.DisplayLayout
 @rendermode InteractiveServer
@@ -25,7 +26,15 @@
         <span class="ds-live @(verbunden ? "an" : "")"><span></span>@(verbunden ? "En direct" : "Connexion…")</span>
     </header>
 
-    @if (!verbunden || ticket is null || ticket.Positionen.Count == 0)
+    @if (veralteterLink)
+    {
+        <section class="ds-willkommen">
+            <span class="ds-willkommen-icon"><Icon Name="refresh" Groesse="44" /></span>
+            <h1>Nouveau lien nécessaire</h1>
+            <p>Cet écran client était lié à une ancienne caisse. À la caisse, touchez « Écran client » et scannez le nouveau code QR : l'écran restera ensuite lié à cet appareil.</p>
+        </section>
+    }
+    else if (!verbunden || ticket is null || ticket.Positionen.Count == 0)
     {
         <section class="ds-willkommen">
             <span class="ds-willkommen-icon"><Icon Name="sparkles" Groesse="44" /></span>
