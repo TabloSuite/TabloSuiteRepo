@@ -234,6 +234,7 @@ public static partial class FormationKatalog
                     "Historique : chaque essai, avec les réponses et les erreurs.",
                     "« Retirer le rôle » : ses établissements n'ont plus de responsable (à réaffecter), il est déconnecté partout ; ses commissions restent."),
                 A("Les leçons suivent l'application : à chaque changement d'eNOTE, les leçons et les questions sont mises à jour."),
+                V("enote-admin-formation.mp4", "L'onglet « Formation » pas à pas : vue d'ensemble, règles, un responsable à surveiller, un excellent, votre parcours."),
                 M("Vous aussi pouvez vous entraîner, sans délai et sans limite : vos résultats ne comptent pas."),
             ],
             [
