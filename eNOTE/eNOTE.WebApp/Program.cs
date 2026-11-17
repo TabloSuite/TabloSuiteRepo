@@ -323,7 +323,7 @@ app.MapGet("/bon/{verkaufId:guid}", async (
     // QR-Ziel: eigener Link des Salons (z. B. WhatsApp/Bewertung), sonst die eNOTE-Seite.
     var qrZiel = BonQr.Ziel(salon, app.Configuration);
 
-    var pdf = BonPdfService.ErzeugeBon(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, logoBytes, qrZiel);
+    var pdf = BonPdfService.ErzeugeBon(verkauf, salon, verkauf.KassiererAnzeige(verkauf.KassenSitzung.Kassierer.FullName), logoBytes, qrZiel);
     httpContext.Response.Headers.CacheControl = "private, no-store";
     return InlinePdfResponse.Create(httpContext.Response, pdf, $"recu-{verkauf.Id.ToString()[..8]}.pdf");
 }).RequireAuthorization();
@@ -406,7 +406,7 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
 
     var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);
     var qrZiel = BonQr.Ziel(salon, app.Configuration);
-    var html = BonDruckHtml.Erzeuge(verkauf, salon, verkauf.KassenSitzung.Kassierer.FullName, qrZiel);
+    var html = BonDruckHtml.Erzeuge(verkauf, salon, verkauf.KassiererAnzeige(verkauf.KassenSitzung.Kassierer.FullName), qrZiel);
     httpContext.Response.Headers.CacheControl = "private, no-store";
     return Results.Content(html, "text/html; charset=utf-8");
 }).RequireAuthorization();

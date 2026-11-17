@@ -67,4 +67,18 @@ public class Verkauf
     public string? StornoErfasstVonName { get; set; }
 
     public bool IstStorno => StornoVonVerkaufId is not null;
+
+    /// <summary>
+    /// Wer den Bon an der Kasse gebucht hat (Nutzerwunsch 17.11.2026 « Qui encaisse ? »): die Person, die sich auf
+    /// diesem Gerät per PIN als Kassierer angemeldet hat. Mehrere Personen können gleichzeitig in derselben offenen
+    /// Kasse arbeiten; so bleibt jeder Bon einer Person zugeordnet. Ältere Bons: null (dann gilt der Kassierer der Sitzung).
+    /// </summary>
+    public Guid? KassiererId { get; set; }
+
+    /// <summary>Name des Kassierers zum Zeitpunkt der Buchung (Kopie, bleibt auch nach Umbenennen/Löschen).</summary>
+    public string? KassiererName { get; set; }
+
+    /// <summary>Anzeigename für Bon, Listen und Auswertungen: gebuchter Kassierer, sonst der Kassierer der Sitzung.</summary>
+    public string KassiererAnzeige(string? sitzungsKassierer)
+        => !string.IsNullOrWhiteSpace(KassiererName) ? KassiererName! : sitzungsKassierer ?? "—";
 }

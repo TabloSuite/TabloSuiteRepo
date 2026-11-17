@@ -2035,6 +2035,8 @@ button.enote-laedt { cursor: progress; }
 .fi-tabelle { padding: .4rem .6rem; }
 .fi-tabelle .enote-table-scroll { max-height: 30rem; }
 .fi-abschluss-notiz { display: block; max-width: 22rem; margin-top: .15rem; color: var(--enote-text-muted); font-style: italic; white-space: normal; }
+.fi-abschluss-personen { margin: .3rem 0 0; padding-left: 1rem; font-size: .82rem; color: var(--enote-text-muted); white-space: normal; }
+.fi-abschluss-personen strong { color: var(--enote-text); }
 .enote-table tfoot td { font-weight: 800; border-top: 2px solid var(--enote-border); border-bottom: none; background: var(--enote-surface-2); }
 .fi-ventes { display: grid; gap: .75rem; }
 .fi-ventes .enote-filter-leiste { margin: 0; }
@@ -3411,3 +3413,14 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .auth-form .validation-errors { list-style: none; margin: 0; padding: .7rem .9rem; border-radius: var(--enote-radius); background: var(--enote-danger-soft); border: 1px solid #f6caca; display: grid; gap: .25rem; }
 .auth-form .validation-errors .validation-message { color: var(--enote-danger); font-size: .92rem; }
 .auth-form .cgu-accept .validation-message { color: var(--enote-danger); font-size: .88rem; }
+
+/* « Qui encaisse ? » (17.11.2026) */
+.kx-kopf-person { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.kx-kassierer-wechsel { border: 1px solid var(--enote-border-strong); background: var(--enote-surface); color: var(--enote-primary); border-radius: 999px; padding: .1rem .6rem; font-size: .78rem; font-weight: 700; cursor: pointer; min-height: 1.8rem; }
+.kx-kassierer-wechsel:hover { background: var(--enote-primary-soft); }
+.kx-kassierer-wechsel.warn { border-color: var(--enote-warning); background: var(--enote-warning-soft); color: var(--enote-warning); }
+.kx-kassierer-dialog { margin: .8rem 0; }
+.kx-abschluss-zeilen > .kx-abschluss-personen { display: grid; justify-content: stretch; gap: .35rem; margin-top: .6rem; padding-top: .6rem; border-top: 1px dashed var(--enote-border-strong); }
+.kx-abschluss-personen > div { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.kx-abschluss-personen-titel { display: flex; justify-content: space-between; font-weight: 700; font-size: .85rem; color: var(--enote-text-muted); }
+.kx-abschluss-personen-titel span:first-child { display: inline-flex; align-items: center; gap: .35rem; }

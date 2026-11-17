@@ -1744,6 +1744,13 @@ namespace ENote.WebApp.Migrations
                     b.Property<Guid>("KassenSitzungId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("KassiererId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("KassiererName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<Guid?>("KundeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1781,11 +1788,11 @@ namespace ENote.WebApp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("KassenSitzungId");
-
                     b.HasIndex("KundeId");
 
                     b.HasIndex("StornoVonVerkaufId");
+
+                    b.HasIndex("KassenSitzungId", "KassiererId");
 
                     b.ToTable("Verkaeufe");
                 });

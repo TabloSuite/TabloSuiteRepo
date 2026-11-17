@@ -191,7 +191,8 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
         {
             var s = suche.Trim();
             abfrage = abfrage.Where(v => v.Positionen.Any(p => p.LeistungName.Contains(s))
-                || (v.KassenSitzung.Kassierer.FullName != null && v.KassenSitzung.Kassierer.FullName.Contains(s)));
+                || (v.KassiererName != null && v.KassiererName.Contains(s))
+                || (v.KassiererName == null && v.KassenSitzung.Kassierer.FullName != null && v.KassenSitzung.Kassierer.FullName.Contains(s)));
         }
 
         var verkaeufe = await abfrage
@@ -215,7 +216,7 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
         return (verkaeufe.Select(v => new VerkaufEintrag(
             v.Id,
             v.ZeitUtc,
-            v.KassenSitzung.Kassierer.FullName,
+            v.KassiererAnzeige(v.KassenSitzung.Kassierer.FullName),
             v.ZahlungsArt,
             v.GesamtSumme,
             string.Join(", ", v.Positionen.Select(p => $"{Math.Abs(p.Menge)}× {p.LeistungName}")),
@@ -223,6 +224,31 @@ public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFact
             v.IstStorno,
             v.StornoGrund,
             erstattet.GetValueOrDefault(v.Id))).ToList(), mehr);
+    }
+
+    /// <summary>
+    /// « Par caissier » für Kassenabschlüsse: je Sitzung, an der MEHR als eine Person kassiert hat, Bons und Einnahmen je Person
+    /// (netto nach Erstattungen). So sieht der Besitzer bei einem Écart, wer wie viel Bargeld angenommen hat.
+    /// </summary>
+    public async Task<Dictionary<Guid, List<KassenService.KassiererAnteil>>> GetAbschlussAnteileAsync(
+        IReadOnlyCollection<Guid> sitzungIds, CancellationToken cancellationToken = default)
+    {
+        if (sitzungIds.Count == 0) return [];
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        // Nur Sitzungen mit mindestens zwei verschiedenen gebuchten Personen laden (meist keine).
+        var mehrere = await db.Verkaeufe.AsNoTracking()
+            .Where(v => sitzungIds.Contains(v.KassenSitzungId) && v.KassiererId != null)
+            .GroupBy(v => v.KassenSitzungId)
+            .Where(g => g.Select(v => v.KassiererId).Distinct().Count() > 1)
+            .Select(g => g.Key)
+            .ToListAsync(cancellationToken);
+        if (mehrere.Count == 0) return [];
+        var sitzungen = await db.KassenSitzungen.AsNoTracking()
+            .Include(k => k.Kassierer)
+            .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
+            .Where(k => mehrere.Contains(k.Id))
+            .ToListAsync(cancellationToken);
+        return sitzungen.ToDictionary(k => k.Id, k => KassenService.NachKassierer(k.Verkaeufe, k.Kassierer?.FullName));
     }
 
     /// <summary>Die letzten Kassenabschlüsse eines Salons.</summary>

@@ -332,7 +332,13 @@ public partial class Caisse(
     // --- Aktive Kasse ---
     private KassenSitzung? aktiveSitzung;
     private string aktiverSalonName = string.Empty;
-    private bool wiederhergestelltModalOffen;
+    // « Qui encaisse ? » (17.11.2026): Wer an diesem Gerät kassiert, meldet sich per PIN an; jeder Bon gehört dieser Person.
+    private bool kassiererDialogOffen;
+    private bool kassiererDialogMitInfo;
+    private List<(Guid UserId, string Name)> kassiererDieserKasse = [];
+    private Guid kassiererWahl = Guid.Empty;
+    private string kassiererPin = string.Empty;
+    private string? kassiererFehler;
     private string? wiederhergestelltKassierer;
     private decimal? wiederhergestelltSoll;
     private DateTime wiederhergestelltGestartet;
@@ -407,6 +413,13 @@ public partial class Caisse(
 
     private async Task OeffneStornoAsync(Guid verkaufId)
     {
+        if (anzeigeState.KassiererFehlt)
+        {
+            historieOffen = false;
+            await OeffneKassiererDialogAsync();
+            return;
+        }
+
         stornoVorlage = null;
         stornoFehler = null;
         stornoMengen = [];
@@ -417,7 +430,7 @@ public partial class Caisse(
         stornoOffen = true;
 
         await AktualisiereKassenstandAsync();
-        stornoVorlage = await stornoService.GetVorlageAsync(verkaufId, aktiveSitzung?.Id, aktuellerBenutzerId);
+        stornoVorlage = await stornoService.GetVorlageAsync(verkaufId, aktiveSitzung?.Id, aktuellerBenutzerId, kassiererId: anzeigeState.AktiverKassiererId);
         if (stornoVorlage is null)
         {
             stornoFehler = "Vente introuvable.";
@@ -445,7 +458,7 @@ public partial class Caisse(
 
         var eingaben = stornoMengen.Where(kv => kv.Value > 0).Select(kv => new StornoService.StornoPositionInput(kv.Key, kv.Value)).ToList();
         var ergebnis = await stornoService.ErstatteAsync(aktuellerBenutzerId, aktiveSitzung.Id, stornoVorlage.VerkaufId, eingaben,
-            stornoWeg, stornoInsLager, stornoGrund, stornoPin);
+            stornoWeg, stornoInsLager, stornoGrund, stornoPin, kassiererId: anzeigeState.AktiverKassiererId);
         if (!ergebnis.Erfolg)
         {
             stornoFehler = ergebnis.Fehler;
@@ -660,7 +673,10 @@ public partial class Caisse(
             wiederhergestelltKassierer = offene.Kassierer.FullName;
             wiederhergestelltSoll = aufstellung?.Soll;
             wiederhergestelltGestartet = offene.GestartetUtc;
-            wiederhergestelltModalOffen = !schonHierOffen;
+            if (!schonHierOffen || anzeigeState.KassiererFehlt)
+            {
+                await OeffneKassiererDialogAsync(mitInfo: true);
+            }
             return;
         }
 
@@ -747,7 +763,8 @@ public partial class Caisse(
         aktiveSitzung = sitzung;
         aktiverSalonName = zuordnung.Salon.Name;
         zone = ENote.Core.Services.Zeitzonen.Fuer(zuordnung.Salon.Land);
-        anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName, sitzung.Startbestand);
+        anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName, sitzung.Startbestand,
+            kassiererId: zuordnung.AppUserId);
         await LadeKatalogAsync(sitzung.SalonId);
 
         pin = string.Empty;
@@ -1034,10 +1051,16 @@ public partial class Caisse(
 
     // ================= Zahlung =================
 
-    private void OeffneZahlung(ZahlModus modus)
+    private async Task OeffneZahlung(ZahlModus modus)
     {
         if (ticket.Count == 0)
         {
+            return;
+        }
+
+        if (anzeigeState.KassiererFehlt)
+        {
+            await OeffneKassiererDialogAsync();
             return;
         }
 
@@ -1075,6 +1098,13 @@ public partial class Caisse(
             return;
         }
 
+        if (anzeigeState.KassiererFehlt)
+        {
+            zahlDialogOffen = false;
+            await OeffneKassiererDialogAsync();
+            return;
+        }
+
         verkaufFehler = null;
         IReadOnlyList<KassenService.ZahlungInput> zahlungen = zahlModus switch
         {
@@ -1097,10 +1127,19 @@ public partial class Caisse(
             p.FreierBetrag,
             p.AufenthaltsPositionId)).ToList();
 
-        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen, kundeId: ticketKunde?.Id);
+        var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen,
+            kundeId: ticketKunde?.Id, kassiererId: anzeigeState.AktiverKassiererId);
         if (!erfolg || verkauf is null)
         {
             verkaufFehler = fehler;
+            if (fehler == KassenService.KassiererUnbekanntFehler)
+            {
+                // Person wurde inzwischen gesperrt/entfernt: neu fragen, wer kassiert (Ticket bleibt).
+                zahlDialogOffen = false;
+                await OeffneKassiererDialogAsync();
+                kassiererFehler = fehler;
+                return;
+            }
             if (fehler == KassenService.AufenthaltGeaendertFehler)
             {
                 await LadeErfassteAsync();
@@ -1277,6 +1316,10 @@ public partial class Caisse(
             anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
                 aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
             toast.ZeigeInfo($"La caisse a été clôturée sur un autre appareil puis rouverte par {offene.Kassierer.FullName}.");
+            if (anzeigeState.KassiererFehlt)
+            {
+                await OeffneKassiererDialogAsync();
+            }
             return true;
         }
 
@@ -1288,6 +1331,53 @@ public partial class Caisse(
         toast.ZeigeInfo("La caisse a été clôturée sur un autre appareil. Ouvrez-la à nouveau pour continuer (le ticket en cours est conservé).");
         await ZeigeKassenstartAsync();
         return false;
+    }
+
+    /// <summary>« Qui encaisse ? » / « Changer » – Personen des Ladens mit PIN zur Auswahl.</summary>
+    private async Task OeffneKassiererDialogAsync(bool mitInfo = false)
+    {
+        if (aktiveSitzung is null) return;
+        kassiererDieserKasse = await kassenService.GetKassiererAsync(aktiveSitzung.SalonId);
+        kassiererDieserKasse = kassiererDieserKasse.OrderBy(k => k.Name).ToList();
+        kassiererWahl = kassiererDieserKasse.Count == 1 ? kassiererDieserKasse[0].UserId : Guid.Empty;
+        kassiererPin = string.Empty;
+        kassiererFehler = null;
+        kassiererDialogMitInfo = mitInfo;
+        kassiererDialogOffen = true;
+    }
+
+    private void WaehleKassiererImDialog(Guid id)
+    {
+        kassiererWahl = id;
+        kassiererPin = string.Empty;
+        kassiererFehler = null;
+    }
+
+    private async Task MeldeKassiererAnAsync()
+    {
+        if (aktiveSitzung is null) return;
+        if (kassiererWahl == Guid.Empty)
+        {
+            kassiererFehler = "Choisissez votre nom.";
+            return;
+        }
+        if (kassiererPin.Length < 4)
+        {
+            kassiererFehler = "Saisissez votre code PIN.";
+            return;
+        }
+
+        var (ok, fehler, name, _) = await kassenService.PruefeKassiererAsync(aktiveSitzung.SalonId, kassiererWahl, kassiererPin);
+        kassiererPin = string.Empty;
+        if (!ok || name is null)
+        {
+            kassiererFehler = fehler;
+            return;
+        }
+
+        anzeigeState.SetzeKassierer(kassiererWahl, name);
+        kassiererDialogOffen = false;
+        toast.ZeigeErfolg($"{name} encaisse sur cet appareil.");
     }
 
     /// <summary>Öffnet den Browserdruck; im eingerichteten Windows-Kioskprofil ohne Druckdialog.</summary>

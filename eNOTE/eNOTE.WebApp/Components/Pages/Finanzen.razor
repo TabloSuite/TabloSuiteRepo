@@ -286,6 +286,16 @@
                                         {
                                             <small class="fi-abschluss-notiz">« @a.AbschlussNotiz »</small>
                                         }
+                                        @* 17.11.2026 « Qui encaisse ? »: Haben mehrere Personen in dieser Kasse kassiert, je Person Bons und Bargeld. *@
+                                        @if (abschlussAnteile.TryGetValue(a.Id, out var anteile))
+                                        {
+                                            <ul class="fi-abschluss-personen" aria-label="Par caissier">
+                                                @foreach (var p in anteile)
+                                                {
+                                                    <li><strong>@p.Name</strong> · @p.Verkaeufe vente(s)@(p.Erstattungen > 0 ? $" · {p.Erstattungen} remb." : "") · espèces @p.Bar.ToString("N0") F@(p.Gesamt != p.Bar ? $" · total {p.Gesamt:N0} F" : "")</li>
+                                                }
+                                            </ul>
+                                        }
                                     </td>
                                     <td class="r">@a.BareinnahmenSoll?.ToString("N0") F</td>
                                     <td class="r">@a.EndbestandGezaehlt?.ToString("N0") F</td>

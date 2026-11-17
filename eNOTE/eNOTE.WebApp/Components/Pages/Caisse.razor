@@ -84,7 +84,19 @@ else
                 <span class="enote-brand-icon">eN</span>
                 <div class="kx-kopf-text">
                     <strong>@aktiverSalonName</strong>
-                    <span><span class="kx-live-punkt"></span>@anzeigeState.KassiererName · depuis @aktiveSitzung.GestartetUtc.ImLaden(zone).ToString("HH:mm")</span>
+                    <span class="kx-kopf-person">
+                        <span class="kx-live-punkt"></span>
+                        @if (anzeigeState.KassiererFehlt)
+                        {
+                            <button type="button" class="kx-kassierer-wechsel warn" @onclick="() => OeffneKassiererDialogAsync()">Qui encaisse ?</button>
+                        }
+                        else
+                        {
+                            <span>@anzeigeState.KassiererName</span>
+                            <button type="button" class="kx-kassierer-wechsel" title="Une autre personne encaisse sur cet appareil" @onclick="() => OeffneKassiererDialogAsync()">Changer</button>
+                        }
+                        <span>· caisse ouverte à @aktiveSitzung.GestartetUtc.ImLaden(zone).ToString("HH:mm")</span>
+                    </span>
                 </div>
             </div>
             <div class="kx-kopf-kasse" title="Espèces attendues en caisse">
@@ -570,6 +582,16 @@ else
                         <div><span><Icon Name="wallet" Groesse="16" /> Retraits du propriétaire</span><span>− @info.EntnahmenBar.ToString("N0") F</span></div>
                     }
                     <div class="kx-abschluss-soll"><span>Espèces attendues</span><strong>@info.BarSoll.ToString("N0") F</strong></div>
+                    @if (info.NachKassierer is { Count: > 1 } personen)
+                    {
+                        <div class="kx-abschluss-personen" aria-label="Par caissier">
+                            <div class="kx-abschluss-personen-titel"><span><Icon Name="users" Groesse="16" /> Par caissier</span><span>Espèces</span></div>
+                            @foreach (var p in personen)
+                            {
+                                <div class="kx-abschluss-neben"><span>@p.Name · @p.Verkaeufe vente(s)@(p.Erstattungen > 0 ? $" · {p.Erstattungen} remb." : "")</span><span>@p.Bar.ToString("N0") F</span></div>
+                            }
+                        </div>
+                    }
                     @if (abschlussHinweis is not null)
                     {
                         <p class="kx-pay-hinweis kx-abschluss-aktuell" role="status"><Icon Name="info" Groesse="16" /> @abschlussHinweis</p>
@@ -613,20 +635,46 @@ else
 </ModalDialog>
 
 @* --- Hinweis: offene Kasse wiederhergestellt --- *@
-<ModalDialog Open="wiederhergestelltModalOffen" Title="Caisse encore ouverte" OnClose="() => wiederhergestelltModalOffen = false" MaxWidthClass="enote-modal-sm">
+@* --- « Qui encaisse ? » (17.11.2026): Person an diesem Gerät per PIN; jeder Bon wird ihr zugeordnet --- *@
+<ModalDialog Open="kassiererDialogOffen" Title="Qui encaisse ?" ErrorMessage="@kassiererFehler" OnClose="() => kassiererDialogOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
-        <div class="enote-wiederhergestellt">
-            <p class="enote-wiederhergestellt-text">La caisse de la session précédente n'a pas été clôturée. Vous pouvez continuer à encaisser.</p>
-            <div class="enote-wiederhergestellt-zeile"><span>Employé</span><strong>@wiederhergestelltKassierer</strong></div>
-            <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ImLaden(zone).ToString("dd.MM.yyyy HH:mm")</strong></div>
-            @if (wiederhergestelltSoll is decimal soll)
+        @if (kassiererDialogMitInfo)
+        {
+            <div class="enote-wiederhergestellt">
+                <p class="enote-wiederhergestellt-text">La caisse est déjà ouverte. Indiquez qui encaisse sur cet appareil : chaque vente sera enregistrée à son nom.</p>
+                <div class="enote-wiederhergestellt-zeile"><span>Ouverte par</span><strong>@wiederhergestelltKassierer</strong></div>
+                <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ImLaden(zone).ToString("dd.MM.yyyy HH:mm")</strong></div>
+                @if (wiederhergestelltSoll is decimal soll)
+                {
+                    <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Espèces attendues</span><strong>@soll.ToString("N0") F</strong></div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="enote-muted">Chaque vente est enregistrée au nom de la personne qui encaisse sur cet appareil. Choisissez votre nom et saisissez votre code PIN.</p>
+        }
+        <div class="kx-kassierer kx-kassierer-dialog">
+            @foreach (var k in kassiererDieserKasse)
             {
-                <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Espèces attendues</span><strong>@soll.ToString("N0") F</strong></div>
+                <button type="button"
+                        class="kx-kassierer-btn @(kassiererWahl == k.UserId ? "gewaehlt" : "")"
+                        aria-pressed="@(kassiererWahl == k.UserId)"
+                        @onclick="() => WaehleKassiererImDialog(k.UserId)">
+                    <span class="enote-avatar">@Initialen(k.Name)</span>
+                    <span class="kx-kassierer-name">@k.Name</span>
+                </button>
             }
         </div>
+        @if (kassiererWahl != Guid.Empty)
+        {
+            <PinEingabe @bind-Wert="kassiererPin" OnBestaetigt="MeldeKassiererAnAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(kassiererFehler))" />
+        }
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-primary" @onclick="() => wiederhergestelltModalOffen = false">Continuer</button>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => kassiererDialogOffen = false">Plus tard</button>
+        <AsyncActionButton Text="Valider" OnClick="MeldeKassiererAnAsync" CssClass="enote-btn-primary"
+                           Disabled="@(kassiererWahl == Guid.Empty || kassiererPin.Length < 4)" />
     </Footer>
 </ModalDialog>
 

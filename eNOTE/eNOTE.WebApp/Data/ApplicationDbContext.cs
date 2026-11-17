@@ -192,6 +192,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Restrict);
             entity.Property(v => v.StornoGrund).HasMaxLength(300);
             entity.Property(v => v.StornoErfasstVonName).HasMaxLength(200);
+            // « Qui encaisse ? »: ohne Fremdschlüssel (Bon bleibt, auch wenn das Konto später gelöscht wird).
+            entity.Property(v => v.KassiererName).HasMaxLength(200);
+            entity.HasIndex(v => new { v.KassenSitzungId, v.KassiererId });
             entity.HasOne(v => v.StornoVonVerkauf)
                 .WithMany()
                 .HasForeignKey(v => v.StornoVonVerkaufId)

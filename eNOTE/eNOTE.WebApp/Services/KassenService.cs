@@ -320,6 +320,48 @@ public class KassenService(
     /// <summary>Sitzung nicht (mehr) offen – z. B. auf einem anderen Gerät geschlossen; die Kasse gleicht dann ihre Ansicht ab.</summary>
     public const string KeineOffeneKasseFehler = "Aucune caisse ouverte.";
 
+    /// <summary>« Qui encaisse ? »: die am Gerät angemeldete Person gehört nicht (mehr) zu den Kassierern des Ladens.</summary>
+    public const string KassiererUnbekanntFehler = "La personne qui encaisse n'a pas (ou plus) accès à cette caisse. Indiquez à nouveau qui encaisse.";
+
+    /// <summary>Name eines Kassierers des Ladens (Kassen- oder Besitzer-PIN, Konto nicht gesperrt), sonst null.</summary>
+    internal static async Task<string?> KassiererNameAsync(ApplicationDbContext db, Guid salonId, Guid kassiererId, CancellationToken ct)
+    {
+        var treffer = await db.UserSalons
+            .Where(us => us.SalonId == salonId && us.AppUserId == kassiererId && (us.KassenPinHash != null || us.BesitzerPinHash != null)
+                && !us.AppUser.IsBlocked)
+            .Select(us => new { us.AppUser.FullName })
+            .FirstOrDefaultAsync(ct);
+        return treffer is null ? null : string.IsNullOrWhiteSpace(treffer.FullName) ? "—" : treffer.FullName;
+    }
+
+    /// <summary>
+    /// Ermittelt, wer einen Bon bucht: die am Gerät per PIN angemeldete Person (geprüft: Kassierer dieses Ladens) oder –
+    /// ohne Angabe (ältere Aufrufer) – die Person, die die Kasse geöffnet hat. (Id, Name) oder null, wenn ungültig.
+    /// </summary>
+    internal static async Task<(Guid Id, string Name)?> BuchenderKassiererAsync(ApplicationDbContext db, KassenSitzung sitzung, Guid? kassiererId, CancellationToken ct)
+    {
+        if (kassiererId is Guid id)
+            return await KassiererNameAsync(db, sitzung.SalonId, id, ct) is string name ? (id, name) : null;
+        var oeffner = await db.Users.Where(u => u.Id == sitzung.KassiererId).Select(u => u.FullName).FirstOrDefaultAsync(ct);
+        return (sitzung.KassiererId, string.IsNullOrWhiteSpace(oeffner) ? "—" : oeffner);
+    }
+
+    /// <summary>
+    /// « Changer de caissier » / « Qui encaisse ? »: PIN einer Person des Ladens der offenen Kasse prüfen (gleiche Sperrlogik
+    /// wie beim Öffnen). Erfolg: (true, Name). Die PIN muss zu genau diesem Laden gehören.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler, string? Name, int VerbleibendeVersuche)> PruefeKassiererAsync(
+        Guid salonId, Guid kassiererId, string pin, CancellationToken cancellationToken = default)
+    {
+        var (erfolg, fehler, zuordnung, verbleibend) = await FindeZuordnungPerPinAsync(kassiererId, pin, cancellationToken);
+        if (!erfolg || zuordnung is null) return (false, fehler, null, verbleibend);
+        if (zuordnung.SalonId != salonId) return (false, "Ce code PIN n'appartient pas à cet établissement.", null, 0);
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await KassiererNameAsync(db, salonId, kassiererId, cancellationToken) is string name
+            ? (true, null, name, 0)
+            : (false, KassiererUnbekanntFehler, null, 0);
+    }
+
     /// <summary>Abschluss: Seit dem Öffnen des Dialogs hat ein anderes Gerät Bargeld bewegt; der Dialog zeigt den neuen Stand.</summary>
     public const string SollGeaendertFehler = "Les espèces attendues ont changé entre-temps (vente ou retrait sur un autre appareil). Vérifiez le montant affiché, recomptez si besoin, puis clôturez.";
 
@@ -359,7 +401,8 @@ public class KassenService(
         IReadOnlyList<VerkaufsPositionInput> positionen,
         IReadOnlyList<ZahlungInput> zahlungen,
         CancellationToken cancellationToken = default,
-        Guid? kundeId = null)
+        Guid? kundeId = null,
+        Guid? kassiererId = null)
     {
         if (positionen.Count == 0)
         {
@@ -370,7 +413,7 @@ public class KassenService(
         try
         {
             return await KassenSperre.MitSitzungAsync(dbContextFactory, kassenSitzungId,
-                (db, transaktion) => BucheVerkaufGesperrtAsync(db, transaktion, kassenSitzungId, positionen, zahlungen, kundeId, cancellationToken),
+                (db, transaktion) => BucheVerkaufGesperrtAsync(db, transaktion, kassenSitzungId, positionen, zahlungen, kundeId, kassiererId, cancellationToken),
                 cancellationToken);
         }
         catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
@@ -386,6 +429,7 @@ public class KassenService(
         IReadOnlyList<VerkaufsPositionInput> positionen,
         IReadOnlyList<ZahlungInput> zahlungen,
         Guid? kundeId,
+        Guid? kassiererId,
         CancellationToken cancellationToken)
     {
         var warnungen = new List<string>();
@@ -400,6 +444,12 @@ public class KassenService(
         if (await PruefeKassenSperreAsync(sitzung.SalonId, synchronisieren: false, cancellationToken) is string sperre)
         {
             return (false, sperre, null, warnungen);
+        }
+
+        // « Qui encaisse ? »: jeder Bon gehört der Person, die an diesem Gerät per PIN angemeldet ist.
+        if (await BuchenderKassiererAsync(db, sitzung, kassiererId, cancellationToken) is not { } buchender)
+        {
+            return (false, KassiererUnbekanntFehler, null, warnungen);
         }
 
         var leistungIds = positionen.Where(p => p.AufenthaltsPositionId is null).Select(p => p.LeistungId).Distinct().ToList();
@@ -450,7 +500,9 @@ public class KassenService(
             KassenSitzungId = sitzung.Id,
             SalonId = sitzung.SalonId,
             ZeitUtc = uhr.GetUtcNow().UtcDateTime,
-            KundeId = kundeId
+            KundeId = kundeId,
+            KassiererId = buchender.Id,
+            KassiererName = buchender.Name
         };
 
         var jetzt = uhr.GetUtcNow().UtcDateTime;
@@ -746,11 +798,32 @@ public class KassenService(
         return null;
     }
 
+    /// <summary>Anteil einer Person an einer Kassensitzung (« Par caissier »): Bons und Einnahmen netto (nach Erstattungen).</summary>
+    public sealed record KassiererAnteil(string Name, int Verkaeufe, int Erstattungen, decimal Bar, decimal Karte, decimal MobileMoney)
+    {
+        public decimal Gesamt => Bar + Karte + MobileMoney;
+    }
+
+    /// <summary>Bons einer Sitzung je Person; ältere Bons ohne Kassierer zählen auf die Person, die geöffnet hat.</summary>
+    public static List<KassiererAnteil> NachKassierer(IEnumerable<Verkauf> verkaeufe, string? sitzungsKassierer)
+        => verkaeufe
+            .GroupBy(v => v.KassiererAnzeige(sitzungsKassierer))
+            .Select(g =>
+            {
+                var anteile = g.SelectMany(KassenRechner.Anteile).ToList();
+                decimal Summe(ZahlungsArt art) => anteile.Where(a => a.Art == art).Sum(a => a.Betrag);
+                return new KassiererAnteil(g.Key, g.Count(v => !v.IstStorno), g.Count(v => v.IstStorno),
+                    Summe(ZahlungsArt.Bar), Summe(ZahlungsArt.Karte), Summe(ZahlungsArt.MobileMoney));
+            })
+            .OrderByDescending(a => a.Gesamt).ThenBy(a => a.Name)
+            .ToList();
+
     /// <summary>Kennzahlen einer offenen Sitzung für den Kassenabschluss.</summary>
     public record SitzungsUebersicht(
         decimal Startbestand, decimal Bar, decimal Karte, decimal MobileMoney,
         IReadOnlyList<(string Anbieter, decimal Betrag)> MobileMoneyNachAnbieter, int AnzahlVerkaeufe,
-        decimal EinlagenBar = 0, decimal EntnahmenBar = 0, decimal Erstattungen = 0, int AnzahlErstattungen = 0, decimal ErstattungenBar = 0)
+        decimal EinlagenBar = 0, decimal EntnahmenBar = 0, decimal Erstattungen = 0, int AnzahlErstattungen = 0, decimal ErstattungenBar = 0,
+        IReadOnlyList<KassiererAnteil>? NachKassierer = null)
     {
         /// <summary>Barverkäufe ohne Rückerstattungen (Bar = Brutto − Bar-Erstattungen).</summary>
         public decimal BarVerkaeufe => Bar + ErstattungenBar;
@@ -770,6 +843,7 @@ public class KassenService(
         var sitzung = await db.KassenSitzungen
             .AsNoTracking()
             .Include(k => k.Verkaeufe).ThenInclude(v => v.Zahlungen)
+            .Include(k => k.Kassierer)
             .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
         if (sitzung is null)
         {
@@ -792,7 +866,8 @@ public class KassenService(
             bewegungen.Where(b => b.Art == Core.DataModels.Finanzen.GeldBewegungArt.EntnahmeBesitzer).Sum(b => b.Betrag),
             -sitzung.Verkaeufe.Where(v => v.IstStorno).Sum(v => v.GesamtSumme),
             sitzung.Verkaeufe.Count(v => v.IstStorno),
-            -sitzung.Verkaeufe.Where(v => v.IstStorno).SelectMany(KassenRechner.Anteile).Where(a => a.Art == ZahlungsArt.Bar).Sum(a => a.Betrag));
+            -sitzung.Verkaeufe.Where(v => v.IstStorno).SelectMany(KassenRechner.Anteile).Where(a => a.Art == ZahlungsArt.Bar).Sum(a => a.Betrag),
+            NachKassierer(sitzung.Verkaeufe, sitzung.Kassierer?.FullName));
     }
 
     /// <summary>Bargeldbewegungen (Einlagen/Entnahmen) in der Kassenschublade einer Sitzung.</summary>

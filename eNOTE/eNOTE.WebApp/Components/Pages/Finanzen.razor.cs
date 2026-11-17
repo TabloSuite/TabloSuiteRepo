@@ -30,6 +30,8 @@ public partial class Finanzen(
     private List<FinanzService.TagesUmsatz> tagesUmsaetze = [];
     private List<FinanzService.VerkaufEintrag> letzteVerkaeufe = [];
     private List<Core.DataModels.Kasse.KassenSitzung> abschluesse = [];
+    /// <summary>« Par caissier » je Clôture, an der mehrere Personen kassiert haben.</summary>
+    private Dictionary<Guid, List<KassenService.KassiererAnteil>> abschlussAnteile = [];
     private FinanzService.FinanzUebersicht? uebersicht;
 
     private HubConnection? hubVerbindung;
@@ -176,6 +178,7 @@ public partial class Finanzen(
         tagesUmsaetze = await finanzService.GetTagesUmsaetzeAsync(salonId, versatz: Versatz);
         await LadeVerkaeufeAsync();
         abschluesse = await finanzService.GetAbschluesseAsync(salonId);
+        abschlussAnteile = await finanzService.GetAbschlussAnteileAsync(abschluesse.Select(a => a.Id).ToList());
         uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
         bewegungen = await bestandsService.GetBewegungenAsync(salonId, StandardZeitraumVon(), DateTime.MaxValue);
 
