@@ -11,10 +11,11 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - Fünf neue Videos über bisher fehlende Abläufe (Pipeline-Notizen `lernen-v3/AUFTRAG.md` §8):
   « S'inscrire et retrouver son accès » 4:10 (Pour tous, f50d891), « Fermer et rouvrir » 3:55 (Direction, f643794),
   « Administrateur : la formation des responsables » 3:25, « Gérer vos contenus » 3:02 (Enseignant),
-  « Finances : vue d'ensemble, catégories et reprise des frais » (Direction) – Stand siehe letzte Commits.
+  « Finances : vue d'ensemble, catégories et reprise des frais » 3:02 (Direction) – Commits f643794, 007dfc7, 0eec2a6, 4c8e960.
 - App-Fixes dabei: Wartesseite « en cours de validation » nennt den Schulnamen; **Gebührenkarten** (« Frais de scolarité »):
   Datum lief bei drei Spalten in den Betrag → Karten min. 22rem, Datum darf umbrechen (finanzen.css). Die betroffene Szene
   in « Frais de scolarité et paiements » und « Une école de langues » wurde neu aufgenommen.
+- **Push offen:** ab f643794 liegen die Commits nur lokal – GitHub verlangt die Anmeldung des Nutzers. Danach pushen.
 - **Nutzer muss SKOULOU deployen** (keine Migration nötig).
 
 **>>> (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
