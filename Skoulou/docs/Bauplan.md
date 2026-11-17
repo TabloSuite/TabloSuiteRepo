@@ -121,7 +121,7 @@ Alle Entitäten: `Id` (Guid, sequenziell erzeugt), `ErstelltAmUtc`, `GeaendertAm
 
 ### 4.1 Plattform
 - `Schule`: Name (eindeutig normalisiert), Ort, Land („Togo“), Status, Zeitzone, `ResponsableId?`, `JahrespreisOverride?` (FCFA je Schüler und Schuljahr), Dokumentdaten (`OffizielleBezeichnung`, `Slogan`, `Adresse`, `Telefon`, `Email`, `Zulassungsnummer`, `Ministerium`, `RepublikZeile`, `StaatsMotto`, `DirectionRegionale`, `Statut`), `LogoMediumId?`, `MatrikelPraefix`, `AbsenzOhneEntschuldigungZaehltNull` (bool, Standard true), `ResponsableProzent?`.
-- `PlattformEinstellung` (eine Zeile): `JahrespreisProSchueler` (Standard 5.000, seit 17.11.2026; vorher 12.500), `ZahlungszielTage` (30), `ResponsableProzentStandard` (0), `AgbVersion`.
+- `PlattformEinstellung` (eine Zeile): `JahrespreisProSchueler` (Standard 3.600, seit 17.11.2026; vorher 12.500), `ZahlungszielTage` (30), `ResponsableProzentStandard` (0), `AgbVersion`.
 - `Nummernkreis` (SchuleId?, Art, Jahr, Letzte) – fortlaufende Nummern: Quittung `REC-2026-00042` (je Schule+Jahr), Écriture `ECR-2026-00042`, Bulletin `BUL-2026-00042`, Plattformrechnung `SKL-2026-0001` (global), Matrikel `{Präfix}{JJ}{0001}`. Vergabe in derselben Transaktion (Update mit Sperre).
 - `Ankuendigung`: Titel, InhaltHtml, Stufe (Info/Wichtig), Zielrollen [Flags], `SchuleId?`, StartUtc, EndeUtc. Gecacht (MemoryCache, Invalidierung beim Speichern).
 - `Nachricht` (Messagerie): Richtung (Eingang/Ausgang), Von, An, Betreff, TextHtml (bereinigt), `SchuleId?` (auto-zugeordnet über bekanntes Absenderkonto), `GelesenAmUtc`, `AntwortAufId?`, `PostmarkId`. Kontaktformular → Nachricht (Eingang) + Mail an Support.

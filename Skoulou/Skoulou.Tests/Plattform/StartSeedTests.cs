@@ -17,7 +17,7 @@ public class StartSeedTests
         await using var db = await u.Db.CreateDbContextAsync();
         Assert.Equal(Rollen.Alle.Count, await db.Roles.CountAsync());
         var einstellung = await db.PlattformEinstellungen.SingleAsync();
-        Assert.Equal(5_000, einstellung.JahrespreisProSchueler);
+        Assert.Equal(3_600, einstellung.JahrespreisProSchueler);
         Assert.Equal(30, einstellung.ZahlungszielTage);
         Assert.Equal(StartSeed.AgbStartVersion, einstellung.AgbVersion);
         Assert.Equal(0, await db.Users.CountAsync());

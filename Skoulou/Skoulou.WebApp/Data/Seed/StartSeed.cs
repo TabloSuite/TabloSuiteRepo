@@ -49,7 +49,7 @@ public sealed class StartSeed(
         db.PlattformEinstellungen.Add(new PlattformEinstellung
         {
             Id = PlattformEinstellung.EinzigeId,
-            JahrespreisProSchueler = 5_000,
+            JahrespreisProSchueler = 3_600,
             ZahlungszielTage = 30,
             ResponsableProzentStandard = 0,
             AgbVersion = AgbStartVersion

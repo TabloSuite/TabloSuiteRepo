@@ -316,7 +316,7 @@ public static partial class FormationKatalog
                 L("Le prix",
                     "SKOULOU coûte un prix annuel par élève (en FCFA), fixé par l'administrateur – parfois un prix propre à l'école.",
                     "Le prix est figé au démarrage de l'année scolaire de l'école ; un nouveau tarif ne vaut qu'à partir de l'année suivante.",
-                    "Le prix annuel est réparti sur les périodes qui comptent, en francs entiers : 6 000 F en 3 trimestres = 2 000 + 2 000 + 2 000 ; 5 000 F = 1 666 + 1 667 + 1 667."),
+                    "Le prix annuel est réparti sur les périodes qui comptent, en francs entiers : 3 600 F en 3 trimestres = 1 200 + 1 200 + 1 200 ; un prix qui ne se divise pas, par exemple 5 000 F, donne 1 666 + 1 667 + 1 667."),
                 L("La facture",
                     "Une facture par école et par période terminée, créée automatiquement chaque nuit.",
                     "Chaque élève inscrit est facturé une seule fois par période, même s'il change de classe.",
