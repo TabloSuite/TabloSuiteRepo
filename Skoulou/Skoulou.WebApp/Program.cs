@@ -2,6 +2,7 @@ using Skoulou.Core.Werkzeuge;
 using Skoulou.WebApp.Components;
 using Skoulou.WebApp.Data.Seed;
 using Skoulou.WebApp.Services.Finanzen;
+using Skoulou.WebApp.Services.Formation;
 using Skoulou.WebApp.Services.Infrastruktur;
 using Skoulou.WebApp.Services.Noten;
 using Skoulou.WebApp.Services.Organisation;
@@ -16,7 +17,7 @@ System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = kultur;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddSkoulouProtokollierung();
 builder.Services.AddSkoulouInfrastruktur(builder.Configuration, builder.Environment);
-builder.Services.AddPlattform().AddOrganisation().AddPaedagogik().AddNoten().AddFinanzen();
+builder.Services.AddPlattform().AddOrganisation().AddPaedagogik().AddNoten().AddFinanzen().AddFormation();
 
 var app = builder.Build();
 if (await StartAufgaben.AusfuehrenAsync(app, args)) return;

@@ -1,0 +1,223 @@
+@page "/formation/lecon/{Id}"
+@attribute [Authorize(Roles = "SuperAdmin,Responsable")]
+@inherits SkoulouSeite
+@inject FormationService Formation
+@inject IWebHostEnvironment Umgebung
+@inject IJSRuntime JS
+
+<PageTitle>@(lektion?.Titel ?? "Leçon") · Formation · SKOULOU</PageTitle>
+
+<div class="fo-seite fo-lektion-seite">
+    <a class="fo-zurueck" href="/formation"><Icon Name="chevron-left" Groesse="18" /> Formation</a>
+
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (!Laedt && lektion is null)
+    {
+        <Karte><p>Cette leçon n'existe pas.</p></Karte>
+    }
+    else if (lektion is not null)
+    {
+        <header class="fo-lektion-kopf">
+            <span class="fo-lektion-kopf-ico" aria-hidden="true"><Icon Name="@lektion.Icon" Groesse="26" /></span>
+            <div>
+                <small>@(adminPfad ? "Parcours administrateur · " : "")Leçon @(index + 1) sur @pfad.Count · @lektion.Minuten min@(gelesen ? " · lue" : "")</small>
+                <h1>@lektion.Titel</h1>
+                <p>@lektion.Kurz</p>
+            </div>
+        </header>
+
+        <article class="fo-inhalt">
+            @foreach (var a in lektion.Abschnitte)
+            {
+                switch (a.Art)
+                {
+                    case LernAbschnittArt.Text:
+                        <section class="fo-abschnitt">
+                            @if (a.Titel is not null) { <h2>@a.Titel</h2> }
+                            <p>@a.Text</p>
+                        </section>
+                        break;
+                    case LernAbschnittArt.Liste:
+                        <section class="fo-abschnitt">
+                            <h2>@a.Titel</h2>
+                            <ul class="fo-liste">@foreach (var punkt in a.Punkte ?? []) { <li>@punkt</li> }</ul>
+                        </section>
+                        break;
+                    case LernAbschnittArt.Schritte:
+                        <section class="fo-abschnitt">
+                            <h2>@a.Titel</h2>
+                            <ol class="fo-schritte">@foreach (var punkt in a.Punkte ?? []) { <li><span>@punkt</span></li> }</ol>
+                        </section>
+                        break;
+                    case LernAbschnittArt.Merke:
+                        <aside class="fo-merke"><Icon Name="star" Groesse="18" /><div><strong>À retenir</strong><p>@a.Text</p></div></aside>
+                        break;
+                    case LernAbschnittArt.Achtung:
+                        <aside class="fo-achtung"><Icon Name="alert" Groesse="18" /><div><strong>Attention</strong><p>@a.Text</p></div></aside>
+                        break;
+                    case LernAbschnittArt.Bild:
+                        <figure class="fo-bild">
+                            <a href="@("/" + a.Datei)" target="_blank" rel="noopener" title="Agrandir l'image"><img src="@("/" + a.Datei)" alt="@a.Text" loading="lazy" /></a>
+                            <figcaption>@a.Text <span class="fo-bild-tipp">· touchez l'image pour l'agrandir</span></figcaption>
+                        </figure>
+                        break;
+                    case LernAbschnittArt.Video:
+                        if (VideoKatalog.Finde(a.Datei!) is { } v)
+                        {
+                            <button type="button" class="fo-video" @onclick="() => OeffnenAsync(v)" disabled="@(!Vorhanden(v))">
+                                <span class="fo-video-bild">
+                                    @if (PosterVorhanden(v)) { <img src="@PosterUrl(v)" alt="" loading="lazy" /> }
+                                    <span class="fo-video-play" aria-hidden="true"><Icon Name="play" Groesse="22" /></span>
+                                </span>
+                                <span class="fo-video-text">
+                                    <small>Vidéo · @v.Dauer</small>
+                                    <strong>@v.Titel</strong>
+                                    <span>@a.Text</span>
+                                </span>
+                            </button>
+                        }
+                        break;
+                }
+            }
+        </article>
+
+        @if (lektion.Uebungen.Count > 0)
+        {
+            <section class="fo-uebungen" aria-labelledby="fo-uebung-titel">
+                <h2 id="fo-uebung-titel"><Icon Name="pen" Groesse="18" /> À vous : petit exercice</h2>
+                <p class="sk-leise">Ces questions ne comptent pas. Elles vous aident à vérifier que vous avez compris.</p>
+                @foreach (var f in lektion.Uebungen)
+                {
+                    var auswahl = Auswahl(f.Id);
+                    var geprueft = geprueftIds.Contains(f.Id);
+                    var richtig = geprueft && f.IstRichtig(auswahl);
+                    <div class="fo-frage-karte @(geprueft ? (richtig ? "richtig" : "falsch") : "")">
+                        <p class="fo-frage-text">@f.Text</p>
+                        @if (f.Mehrfach) { <small class="fo-mehrfach">Plusieurs réponses possibles</small> }
+                        <div class="fo-antworten" role="@(f.Mehrfach ? "group" : "radiogroup")">
+                            @for (var i = 0; i < f.Antworten.Count; i++)
+                            {
+                                var idx = i;
+                                var gewaehlt = auswahl.Contains(idx);
+                                var klasse = !geprueft ? "" : f.Richtig.Contains(idx) ? "loesung" : gewaehlt ? "fehler" : "";
+                                <button type="button" class="fo-antwort @(gewaehlt ? "gewaehlt" : "") @klasse @(f.Mehrfach ? "mehrfach" : "")"
+                                        role="@(f.Mehrfach ? "checkbox" : "radio")" aria-checked="@(gewaehlt ? "true" : "false")"
+                                        disabled="@geprueft" @onclick="() => Waehle(f, idx)">
+                                    <span class="fo-antwort-marke" aria-hidden="true"></span>
+                                    <span>@f.Antworten[idx]</span>
+                                </button>
+                            }
+                        </div>
+                        @if (geprueft)
+                        {
+                            <p class="fo-erklaerung"><strong>@(richtig ? "Bravo !" : "Pas tout à fait.")</strong> @f.Erklaerung</p>
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => Nochmal(f.Id)">Réessayer</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" disabled="@(auswahl.Count == 0)" @onclick="() => geprueftIds.Add(f.Id)">Vérifier</button>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        <nav class="fo-lektion-fuss" aria-label="Leçons">
+            @if (index > 0)
+            {
+                <a class="sk-btn sk-btn-ghost" href="/formation/lecon/@pfad[index - 1].Id"><Icon Name="chevron-left" Groesse="16" /> Précédente</a>
+            }
+            <AsyncKnopf CssClass="sk-btn-primaer sk-btn-gross" OnClick="GelesenUndWeiterAsync"
+                        Text="@(index + 1 < pfad.Count ? (gelesen ? "Leçon suivante" : "J'ai lu – leçon suivante") : (gelesen ? "Retour à la formation" : "J'ai lu – terminer"))" />
+        </nav>
+    }
+</div>
+
+<ModalDialog Open="offen is not null" Title="@(offen?.Titel ?? string.Empty)" Breite="sk-modal-lg" OnClose="SchliessenAsync">
+    @if (offen is { } aktiv)
+    {
+        <video class="sk-video-spieler" src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline preload="metadata"></video>
+        <p class="sk-leise">@aktiv.Beschreibung</p>
+    }
+</ModalDialog>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private LernLektion? lektion;
+    private IReadOnlyList<LernLektion> pfad = [];
+    private bool adminPfad;
+    private int index;
+    private bool gelesen;
+    private VideoKatalog.LernVideo? offen;
+    private readonly Dictionary<string, HashSet<int>> auswahlJeFrage = [];
+    private readonly HashSet<string> geprueftIds = [];
+
+    protected override async Task InitialisierenAsync() => await LadeAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Wechsel zur nächsten Lektion (gleiche Seite, neue Id) – beim ersten Aufruf lädt InitialisierenAsync.
+        if (!Laedt && geladenFuer != Id) await AusfuehrenAsync(LadeAsync);
+    }
+
+    private string? geladenFuer;
+
+    private async Task LadeAsync()
+    {
+        geladenFuer = Id;
+        var stand = await Formation.GetStandAsync(Ich.KontoId);
+        // Lektionen der Administrateure nur im freien Training (SuperAdmin); Navigation innerhalb des eigenen Pfads.
+        adminPfad = stand.IstFrei && Formation.IstAdminLektion(Id);
+        pfad = Formation.Pfad(adminPfad);
+        lektion = pfad.FirstOrDefault(l => l.Id == Id);
+        index = lektion is null ? 0 : pfad.ToList().IndexOf(lektion);
+        gelesen = lektion is not null && stand.Gelesen.Contains(lektion.Id);
+        auswahlJeFrage.Clear();
+        geprueftIds.Clear();
+    }
+
+    private HashSet<int> Auswahl(string frageId) => auswahlJeFrage.TryGetValue(frageId, out var a) ? a : auswahlJeFrage[frageId] = [];
+
+    private void Waehle(LernFrage f, int idx)
+    {
+        var a = Auswahl(f.Id);
+        if (f.Mehrfach) { if (!a.Remove(idx)) a.Add(idx); }
+        else { a.Clear(); a.Add(idx); }
+    }
+
+    private void Nochmal(string frageId)
+    {
+        geprueftIds.Remove(frageId);
+        Auswahl(frageId).Clear();
+    }
+
+    private async Task GelesenUndWeiterAsync()
+    {
+        if (lektion is null) return;
+        await AusfuehrenAsync(() => Formation.MarkiereGelesenAsync(Ich.KontoId, lektion.Id));
+        Navigation.NavigateTo(index + 1 < pfad.Count ? $"/formation/lecon/{pfad[index + 1].Id}" : "/formation");
+        try { await JS.InvokeVoidAsync("scrollTo", 0, 0); } catch (JSException) { }
+    }
+
+    private async Task OeffnenAsync(VideoKatalog.LernVideo v)
+    {
+        try { await JS.InvokeVoidAsync("skVideoPosition.merken"); } catch (JSException) { }
+        offen = v;
+    }
+
+    private async Task SchliessenAsync()
+    {
+        offen = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("skVideoPosition.zurueck"); } catch (JSException) { }
+    }
+
+    private bool Vorhanden(VideoKatalog.LernVideo v) => File.Exists(Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+    private string VideoUrl(VideoKatalog.LernVideo v) => VideoKatalog.MitVersion(v.Url, Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+    private string PosterUrl(VideoKatalog.LernVideo v) => VideoKatalog.MitVersion("/" + v.Poster, Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).PhysicalPath);
+    private bool PosterVorhanden(VideoKatalog.LernVideo v) => Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).Exists;
+}

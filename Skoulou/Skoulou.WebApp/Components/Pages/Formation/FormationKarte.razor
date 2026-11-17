@@ -1,0 +1,40 @@
+@inject FormationService Formation
+@* Startseite des Responsable: Hinweis auf die Formation mit dem Stand der Évaluation. *@
+
+@if (text is not null)
+{
+    <a class="fo-start-karte @(dringend ? "dringend" : offen ? "offen" : "")" href="/formation">
+        <span class="fo-start-ico" aria-hidden="true"><Icon Name="book" Groesse="22" /></span>
+        <span class="fo-start-text">
+            <strong>Formation</strong>
+            <small>@text</small>
+        </span>
+        <Icon Name="chevron-right" Groesse="18" CssClass="fo-pfeil" />
+    </a>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid KontoId { get; set; }
+    private string? text;
+    private bool offen, dringend;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var stand = await Formation.GetStandAsync(KontoId);
+            if (stand.Offen is { } o && o.Uebrig > 0)
+            {
+                offen = true;
+                dringend = o.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist);
+                text = o.Abgegeben == 0 ? $"Évaluation à faire avant le {o.FristUtc:dd/MM/yyyy}" : $"Session en cours · essai {o.Abgegeben}/3 · jusqu'au {o.FristUtc:dd/MM/yyyy}";
+            }
+            else
+            {
+                var gelesen = Formation.Lektionen.Count(l => stand.Gelesen.Contains(l.Id));
+                text = $"{gelesen} / {Formation.Lektionen.Count} leçons lues" + (stand.NaechsteRundeAbUtc is { } n && n > DateTime.UtcNow ? $" · prochaine évaluation le {n:dd/MM/yyyy}" : "");
+            }
+        }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler) { text = null; }
+    }
+}

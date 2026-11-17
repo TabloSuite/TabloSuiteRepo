@@ -1,0 +1,247 @@
+@page "/formation"
+@attribute [Authorize(Roles = "SuperAdmin,Responsable")]
+@inherits SkoulouSeite
+@inject FormationService Formation
+
+<PageTitle>Formation · SKOULOU</PageTitle>
+
+<div class="fo-seite">
+    <SeitenKopf Titel="Formation" Icon="book"
+                Untertitel="@(istFrei ? "Les parcours de formation : les leçons et l'évaluation, en entraînement libre." : "Votre parcours de Responsable SKOULOU : lisez les leçons, puis passez l'évaluation.")" />
+
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (stand is null)
+    {
+        <p class="sk-leise" role="status">Chargement…</p>
+    }
+    else
+    {
+        <section class="fo-pruefung @PruefungsKlasse" aria-label="Évaluation">
+            <div class="fo-pruefung-kopf">
+                <span class="fo-pruefung-ico" aria-hidden="true"><Icon Name="award" Groesse="26" /></span>
+                <div>
+                    <h2>@PruefungsTitel</h2>
+                    <p>@PruefungsText</p>
+                </div>
+            </div>
+
+            @if (stand.Offen is { } o && !istFrei)
+            {
+                <div class="fo-fakten">
+                    <div><small>Jusqu'au</small><strong>@o.FristUtc.ToString("dd/MM/yyyy")</strong><span>@TageText(o.FristUtc)</span></div>
+                    <div><small>Essais</small><strong>@o.Abgegeben / @FormationRunde.MaxVersuche</strong><span>le dernier compte</span></div>
+                    <div><small>Réussite</small><strong>@o.Grenze %</strong><span>@o.FragenAnzahl questions</span></div>
+                    @if (o.LetzterAbgegeben is { } l)
+                    {
+                        <div><small>Dernier essai</small><strong class="@(l.Prozent >= o.Grenze ? "ok" : "nein")">@l.Prozent %</strong><span>@(l.Prozent >= o.Grenze ? "réussi" : "pas encore")</span></div>
+                    }
+                </div>
+            }
+
+            <div class="fo-aktionen">
+                @if (istFrei)
+                {
+                    var laufAdmin = stand.Offen?.Laufend is not null && stand.Offen.AdminPfad;
+                    var laufPo = stand.Offen?.Laufend is not null && !stand.Offen.AdminPfad;
+                    <a class="sk-btn sk-btn-primaer sk-btn-gross" href="/formation/evaluation?parcours=admin">@(laufAdmin ? "Reprendre l'entraînement : parcours administrateur" : "S'entraîner : parcours administrateur")</a>
+                    <a class="sk-btn sk-btn-ghost" href="/formation/evaluation">@(laufPo ? "Reprendre l'entraînement : parcours responsable" : "S'entraîner : parcours responsable")</a>
+                }
+                else if (stand.Offen?.Laufend is { } lauf)
+                {
+                    <a class="sk-btn sk-btn-primaer sk-btn-gross" href="/formation/evaluation">Reprendre l'essai @lauf.Nummer</a>
+                }
+                else if (stand.Offen is { } offen && offen.Uebrig > 0)
+                {
+                    <a class="sk-btn sk-btn-primaer sk-btn-gross" href="/formation/evaluation">@(offen.Abgegeben == 0 ? "Commencer l'évaluation" : $"Nouvel essai ({offen.Abgegeben + 1}/{FormationRunde.MaxVersuche})")</a>
+                }
+                @if (!istFrei && stand.Offen?.LetzterAbgegeben is { } letzter)
+                {
+                    <a class="sk-btn sk-btn-ghost" href="/formation/resultat/@letzter.Id">Voir mon dernier résultat</a>
+                    <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => behaltenOffen = true">Garder ce résultat (@letzter.Prozent %)</button>
+                }
+            </div>
+            @if (istFrei && stand.Offen?.Laufend is not null)
+            {
+                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Un entraînement est en cours (parcours @(stand.Offen.AdminPfad ? "administrateur" : "responsable")). Si vous commencez l'autre parcours, il est abandonné – il ne compte pas.</p>
+            }
+            @if (!istFrei && stand.Offen is { Abgegeben: 0 } && GelesenIn(Formation.Lektionen) < Formation.Lektionen.Count)
+            {
+                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Conseil : lisez d'abord les leçons (@GelesenIn(Formation.Lektionen) / @Formation.Lektionen.Count lues). Vous avez jusqu'au @stand.Offen.FristUtc.ToString("dd/MM/yyyy").</p>
+            }
+        </section>
+
+        @if (istFrei)
+        {
+            @PfadListe("fo-pfad-admin", "Parcours administrateur", "Vos leçons : écoles, comptes, facturation, responsables, communication et formation.", Formation.AdminLektionen)
+            @PfadListe("fo-pfad-po", "Parcours responsable", "Ce que vos responsables apprennent – et ce qui leur est demandé à l'évaluation.", Formation.Lektionen)
+        }
+        else
+        {
+            @PfadListe("fo-pfad-titel", "Les leçons", null, Formation.Lektionen)
+        }
+
+        @if (stand.Verlauf.Count > 0)
+        {
+            <section class="fo-verlauf" aria-labelledby="fo-verlauf-titel">
+                <h2 id="fo-verlauf-titel">@(istFrei ? "Vos entraînements" : "Vos sessions")</h2>
+                <ul>
+                    @foreach (var r in stand.Verlauf)
+                    {
+                        var letzterVersuch = r.LetzterAbgegeben;
+                        <li class="fo-verlauf-zeile">
+                            <span class="fo-status fo-status-@StatusKlasse(r.Status)">@(r.IstFrei ? (r.AdminPfad ? "Administrateur" : "Responsable") : StatusText(r.Status))</span>
+                            <span class="fo-verlauf-text">
+                                <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
+                                <small>@((r.AbgeschlossenUtc ?? r.GeoeffnetUtc).ToString("dd/MM/yyyy"))@(r.IstFrei ? "" : $" · {r.Abgegeben} essai{(r.Abgegeben > 1 ? "s" : "")}")@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                            </span>
+                            @if (letzterVersuch is not null)
+                            {
+                                <a class="sk-btn sk-btn-ghost sk-btn-klein" href="/formation/resultat/@letzterVersuch.Id">Détails</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</div>
+
+<ModalDialog Open="behaltenOffen" Title="Garder ce résultat ?" OnClose="() => behaltenOffen = false" Breite="sk-modal-sm">
+    <ChildContent>
+        <p>Votre dernier essai (<strong>@(stand?.Offen?.LetzterAbgegeben?.Prozent) %</strong>) devient votre note finale et la session se termine.
+            Vous ne pourrez plus faire d'autre essai dans cette session.</p>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => behaltenOffen = false">Annuler</button>
+        <AsyncKnopf Text="Garder ce résultat" CssClass="sk-btn-primaer" OnClick="BehaltenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private FormationService.Stand? stand;
+    private bool istFrei;
+    private bool behaltenOffen;
+
+    protected override async Task InitialisierenAsync() => await LadeAsync();
+
+    private async Task LadeAsync()
+    {
+        stand = await Formation.GetStandAsync(Ich.KontoId);
+        istFrei = stand.IstFrei;
+    }
+
+    private int GelesenIn(IReadOnlyList<LernLektion> liste) => stand is null ? 0 : liste.Count(l => stand.Gelesen.Contains(l.Id));
+
+    private async Task BehaltenAsync()
+    {
+        var fehler = await Formation.BehalteErgebnisAsync(Ich.KontoId);
+        behaltenOffen = false;
+        if (fehler is null) Toast.ZeigeErfolg("Votre note finale est enregistrée.");
+        else Toast.ZeigeFehler(fehler);
+        await AusfuehrenAsync(LadeAsync);
+    }
+
+    private string PruefungsKlasse => istFrei ? "frei" : stand?.Offen is null ? "ruhig"
+        : stand.Offen.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist) ? "dringend" : "offen";
+
+    private string PruefungsTitel => istFrei ? "Entraînement libre"
+        : stand?.Offen is { } o ? (o.Abgegeben == 0 ? "Votre évaluation est ouverte" : "Session d'évaluation en cours")
+        : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow ? "Évaluation en pause"
+        : "Pas d'évaluation pour le moment";
+
+    private string PruefungsText => istFrei
+        ? "Sans délai et sans limite d'essais. Vos résultats ne comptent pas et restent visibles pour vous seul."
+        : stand?.Offen is { } o
+            ? (o.Uebrig > 0 ? $"{o.FragenAnzahl} questions sur toutes les leçons. Après chaque essai, vous voyez votre note et vos erreurs. Vous avez {FormationRunde.MaxVersuche} essais au plus : seul le dernier compte."
+                            : "Vous avez utilisé vos essais.")
+            : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow
+                ? $"L'administrateur a mis votre évaluation en pause jusqu'au {p:dd/MM/yyyy}. Les leçons restent ouvertes."
+                : stand?.NaechsteRundeAbUtc is { } n
+                    ? $"Prochaine évaluation à partir du {n:dd/MM/yyyy} (tous les {stand.IntervallMonate} mois). D'ici là, relisez les leçons quand vous voulez."
+                    : "Les leçons restent ouvertes à tout moment.";
+
+    private static string TageText(DateTime frist)
+    {
+        var tage = (int)Math.Ceiling((frist - DateTime.UtcNow).TotalDays);
+        return tage <= 0 ? "aujourd'hui" : tage == 1 ? "encore 1 jour" : $"encore {tage} jours";
+    }
+
+    internal static string StatusText(FormationRundenStatus s) => s switch
+    {
+        FormationRundenStatus.Bestanden => "Réussie",
+        FormationRundenStatus.NichtBestanden => "Non réussie",
+        FormationRundenStatus.Verpasst => "Manquée",
+        FormationRundenStatus.Erlassen => "Dispensée",
+        _ => "En cours"
+    };
+
+    internal static string StatusKlasse(FormationRundenStatus s) => s switch
+    {
+        FormationRundenStatus.Bestanden => "ok",
+        FormationRundenStatus.NichtBestanden or FormationRundenStatus.Verpasst => "nein",
+        FormationRundenStatus.Erlassen => "neutral",
+        _ => "offen"
+    };
+
+    private RenderFragment PfadListe(string id, string titel, string? untertitel, IReadOnlyList<LernLektion> liste) =>
+    @<section class="fo-pfad" aria-labelledby="@id">
+        @{ var zahl = GelesenIn(liste); }
+        <div class="fo-pfad-kopf">
+            <h2 id="@id">@titel</h2>
+            <span class="fo-fortschritt-text">@zahl / @liste.Count lues</span>
+        </div>
+        @if (untertitel is not null)
+        {
+            <p class="fo-pfad-unter">@untertitel</p>
+        }
+        <div class="fo-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@liste.Count" aria-valuenow="@zahl">
+            <span style="width:@(liste.Count == 0 ? 0 : zahl * 100 / liste.Count)%"></span>
+        </div>
+        <ol class="fo-lektionen">
+            @for (var i = 0; i < liste.Count; i++)
+            {
+                var l = liste[i];
+                var nr = i + 1;
+                var istGelesen = stand!.Gelesen.Contains(l.Id);
+                var naechste = !istGelesen && liste.Take(i).All(x => stand.Gelesen.Contains(x.Id));
+                <li>
+                    <a class="fo-lektion @(istGelesen ? "gelesen" : "") @(naechste ? "naechste" : "")" href="/formation/lecon/@l.Id">
+                        <span class="fo-lektion-nr" aria-hidden="true">
+                            @if (istGelesen)
+                            {
+                                <Icon Name="check" Groesse="18" Strich="2.6" />
+                            }
+                            else
+                            {
+                                @nr
+                            }
+                        </span>
+                        <span class="fo-lektion-text">
+                            <strong>@l.Titel</strong>
+                            <small>@l.Kurz</small>
+                            <span class="fo-lektion-meta">
+                                <span><Icon Name="clock" Groesse="13" /> @l.Minuten min</span>
+                                @if (l.Videos.Any())
+                                {
+                                    <span><Icon Name="video" Groesse="13" /> @l.Videos.Count() vidéo@(l.Videos.Count() > 1 ? "s" : "")</span>
+                                }
+                                @if (istGelesen)
+                                {
+                                    <span class="fo-gelesen-tag">Lue</span>
+                                }
+                                else if (naechste)
+                                {
+                                    <span class="fo-naechste-tag">À lire</span>
+                                }
+                            </span>
+                        </span>
+                        <Icon Name="chevron-right" Groesse="18" CssClass="fo-pfeil" />
+                    </a>
+                </li>
+            }
+        </ol>
+    </section>;
+}

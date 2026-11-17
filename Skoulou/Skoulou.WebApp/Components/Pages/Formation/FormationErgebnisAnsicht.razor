@@ -1,0 +1,73 @@
+@* Note und Fehler eines Versuchs (nach dem Abgeben, im Verlauf und für den Administrateur). *@
+
+<section class="fo-ergebnis @(Ergebnis.Bestanden ? "ok" : "nein")" aria-label="Résultat">
+    <div class="fo-note" style="--note:@Ergebnis.Prozent">
+        <strong>@Ergebnis.Prozent %</strong>
+        <small>@Ergebnis.Richtige / @Ergebnis.Gesamt</small>
+    </div>
+    <div class="fo-ergebnis-text">
+        <h2>@(Ergebnis.Bestanden ? "Réussi !" : "Pas encore réussi")</h2>
+        <p>
+            @if (Ergebnis.IstFrei)
+            {
+                <text>Entraînement libre · parcours @(Ergebnis.AdminPfad ? "administrateur" : "responsable") · réussite à partir de @Ergebnis.Grenze %.</text>
+            }
+            else
+            {
+                <text>Essai @Ergebnis.Nummer sur @FormationRunde.MaxVersuche · réussite à partir de @Ergebnis.Grenze %. </text>
+                @if (Ergebnis.RundeAbgeschlossen)
+                {
+                    <text>La session est terminée : cette note est définitive.</text>
+                }
+                else if (Ergebnis.VersucheUebrig > 0)
+                {
+                    <text>Il reste @Ergebnis.VersucheUebrig essai@(Ergebnis.VersucheUebrig > 1 ? "s" : "") jusqu'au @Ergebnis.FristUtc.ToString("dd/MM/yyyy"). Seul le dernier essai compte.</text>
+                }
+            }
+        </p>
+    </div>
+</section>
+
+@if (Aktionen is not null)
+{
+    <div class="fo-aktionen fo-ergebnis-aktionen">@Aktionen</div>
+}
+
+@{ var fehler = Ergebnis.Fragen.Where(f => !f.Richtig).ToList(); }
+<section class="fo-fehler" aria-labelledby="fo-fehler-titel">
+    <h2 id="fo-fehler-titel">@(fehler.Count == 0 ? "Aucune erreur – bravo !" : fehler.Count == 1 ? "1 erreur à revoir" : $"{fehler.Count} erreurs à revoir")</h2>
+    @foreach (var f in fehler)
+    {
+        <article class="fo-fehler-karte">
+            <p class="fo-frage-text"><span class="fo-frage-nr">@f.Nr</span> @f.Text</p>
+            <dl>
+                <dt>Réponse donnée</dt>
+                <dd class="falsch">@(f.DeineAntworten.Count == 0 ? "Pas de réponse" : string.Join(" · ", f.DeineAntworten))</dd>
+                <dt>Bonne réponse</dt>
+                <dd class="richtig">@string.Join(" · ", f.RichtigeAntworten)</dd>
+            </dl>
+            <p class="fo-erklaerung">@f.Erklaerung</p>
+            @if (f.LektionId is not null)
+            {
+                <a class="fo-lektion-link" href="/formation/lecon/@f.LektionId"><Icon Name="book" Groesse="15" /> Relire : @f.LektionTitel</a>
+            }
+        </article>
+    }
+    @if (Ergebnis.Fragen.Any(f => f.Richtig))
+    {
+        <details class="fo-richtige">
+            <summary>Voir les @Ergebnis.Fragen.Count(f => f.Richtig) bonnes réponses</summary>
+            <ul>
+                @foreach (var f in Ergebnis.Fragen.Where(f => f.Richtig))
+                {
+                    <li><span class="fo-frage-nr">@f.Nr</span> @f.Text <strong>@string.Join(" · ", f.RichtigeAntworten)</strong></li>
+                }
+            </ul>
+        </details>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public FormationService.Ergebnis Ergebnis { get; set; } = null!;
+    [Parameter] public RenderFragment? Aktionen { get; set; }
+}

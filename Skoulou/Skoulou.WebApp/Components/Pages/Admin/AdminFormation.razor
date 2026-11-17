@@ -1,0 +1,328 @@
+@page "/admin/formation"
+@attribute [Authorize(Policy = Richtlinien.Admin)]
+@inherits SkoulouSeite
+@using Skoulou.WebApp.Services.Formation
+@using Skoulou.WebApp.Components.Pages.Formation
+@inject FormationService Formation
+
+<PageTitle>Formation des responsables · SKOULOU</PageTitle>
+
+<SeitenKopf Titel="Formation des responsables" Icon="book"
+            Untertitel="Chaque responsable lit les leçons et passe une évaluation à intervalle régulier (3 essais, le dernier compte). Rien n'est bloqué automatiquement : vous êtes prévenu par e-mail quand une session n'est pas réussie ou manquée, et vous décidez ici.">
+    <Aktionen>
+        <a class="sk-btn sk-btn-ghost" href="/formation"><Icon Name="book" Groesse="18" /> <span>Mon entraînement</span></a>
+    </Aktionen>
+</SeitenKopf>
+
+@if (KeinZugriff)
+{
+    <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+}
+else if (zeilen is null)
+{
+    <p class="sk-leise" role="status">Chargement…</p>
+}
+else
+{
+    <div class="fo-admin-kpis">
+        <div><small>Responsables</small><strong>@zeilen.Count</strong></div>
+        <div><small>Session ouverte</small><strong>@zeilen.Count(z => z.Offen is not null)</strong></div>
+        <div class="@(zeilen.Any(z => z.Schwach) ? "warn" : "")"><small>À surveiller</small><strong>@zeilen.Count(z => z.Schwach)</strong></div>
+        <div><small>Excellents</small><strong>@zeilen.Count(z => z.SehrGut)</strong></div>
+    </div>
+
+    <input class="sk-eingabe fo-admin-suche" placeholder="Rechercher un responsable…" @bind="suche" @bind:event="oninput" />
+
+    @if (zeilen.Count == 0)
+    {
+        <Leerzustand Icon="briefcase" Titel="Aucun responsable actif" Text="Les responsables actifs apparaissent ici avec leur formation." />
+    }
+    <div class="fo-admin-liste">
+        @foreach (var z in Gefiltert)
+        {
+            <button type="button" class="fo-admin-karte @(z.Schwach ? "schwach" : "")" @onclick="() => Oeffne(z)">
+                <span class="fo-admin-kopf">
+                    <strong>@z.Name</strong>
+                    @if (z.Schwach) { <span class="fo-status fo-status-nein">À surveiller</span> }
+                    else if (z.SehrGut) { <span class="fo-status fo-status-ok">Excellent</span> }
+                </span>
+                <span class="fo-admin-zeile">@StatusZeile(z)</span>
+                <span class="fo-admin-meta">
+                    <span><Icon Name="book" Groesse="13" /> @z.Gelesen / @z.LektionenGesamt leçons</span>
+                    <span><Icon Name="calendar" Groesse="13" /> tous les @z.IntervallMonate mois</span>
+                    <span><Icon Name="school" Groesse="13" /> @z.Schulen école@(z.Schulen > 1 ? "s" : "")</span>
+                    @if (z.LetzteGewertete is { } l)
+                    {
+                        <span><Icon Name="award" Groesse="13" /> dernière : @(l.EndNoteProzent is { } n ? $"{n} %" : FormationStart.StatusText(l.Status))</span>
+                    }
+                </span>
+            </button>
+        }
+    </div>
+
+    <Karte Titel="Règles de l'évaluation" Icon="settings" Klappbar="true" AnfangsOffen="false"
+           Untertitel="@($"Réussite {regelGrenze} %, {regelFragen} questions, délai {regelFrist} jours, tous les {regelIntervall} mois")">
+        <p class="sk-leise">Les nouvelles règles valent pour les prochaines sessions. L'intervalle sert pour les nouveaux responsables ; changez-le par personne ci-dessus.</p>
+        <div class="fo-regeln-felder">
+            <label>Réussite à partir de (%)<input class="sk-eingabe" type="number" min="10" max="100" inputmode="numeric" @bind="regelGrenze" /></label>
+            <label>Questions par essai<input class="sk-eingabe" type="number" min="5" max="@MaxFragen" inputmode="numeric" @bind="regelFragen" /></label>
+            <label>Délai (jours)<input class="sk-eingabe" type="number" min="3" max="120" inputmode="numeric" @bind="regelFrist" /></label>
+            <label>Intervalle (mois)<input class="sk-eingabe" type="number" min="1" max="24" inputmode="numeric" @bind="regelIntervall" /></label>
+        </div>
+        <AsyncKnopf Text="Enregistrer les règles" CssClass="sk-btn-primaer" OnClick="SpeichereRegelnAsync" />
+    </Karte>
+}
+
+<ModalDialog Open="auswahl is not null" Title="@(auswahl?.Name ?? "")" ErrorMessage="@fehler" OnClose="Schliessen" Breite="sk-modal-md">
+    <ChildContent>
+        @if (auswahl is { } z)
+        {
+            <p class="fo-admin-zeile">@StatusZeile(z)</p>
+            @if (z.Schwach)
+            {
+                <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Les deux dernières sessions ne sont pas réussies. Ouvrez une nouvelle session, parlez avec lui, ou retirez-lui ses écoles.</p>
+            }
+            else if (z.SehrGut)
+            {
+                <p class="fo-hinweis-ok"><Icon Name="award" Groesse="16" /> Trois sessions réussies à @FormationService.SehrGutAbProzent % ou plus : vous pouvez allonger son intervalle.</p>
+            }
+
+            <div class="fo-admin-aktionen">
+                <section>
+                    <h3>Intervalle</h3>
+                    <div class="sk-chips">
+                        @foreach (var m in new[] { 1, 3, 6, 12 })
+                        {
+                            <button type="button" class="sk-chip @(z.IntervallMonate == m ? "aktiv" : "")" @onclick="() => IntervallAsync(m)">@(m) mois</button>
+                        }
+                    </div>
+                </section>
+
+                @if (z.Offen is { } o)
+                {
+                    <section>
+                        <h3>Session ouverte · jusqu'au @o.FristUtc.ToString("dd/MM/yyyy")</h3>
+                        <div class="fo-zeile-feld">
+                            <DatumFeld @bind-Wert="neueFrist" Min="@Heute" />
+                            <AsyncKnopf Text="Prolonger le délai" CssClass="sk-btn-ghost" Disabled="@(neueFrist is null)" OnClick="FristAsync" />
+                        </div>
+                        <div class="fo-zeile-feld">
+                            <input class="sk-eingabe" placeholder="Motif (facultatif)" maxlength="300" @bind="grund" />
+                            <AsyncKnopf Text="Dispenser cette session" CssClass="sk-btn-ghost" OnClick="ErlassenAsync" />
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <section>
+                        <h3>Nouvelle session</h3>
+                        <AsyncKnopf Text="Ouvrir une session maintenant" CssClass="sk-btn-ghost" OnClick="OeffnenAsync" />
+                    </section>
+                }
+
+                <section>
+                    <h3>Pause</h3>
+                    @if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow)
+                    {
+                        <p class="sk-leise">En pause jusqu'au @p.ToString("dd/MM/yyyy").</p>
+                        <AsyncKnopf Text="Terminer la pause (session tout de suite)" CssClass="sk-btn-ghost" OnClick="() => PauseAsync(null)" />
+                    }
+                    else
+                    {
+                        <p class="sk-leise">Aucune session jusqu'à la date choisie (une session ouverte est dispensée).</p>
+                        <div class="fo-zeile-feld">
+                            <DatumFeld @bind-Wert="pauseBis" Min="@Heute" />
+                            <AsyncKnopf Text="Mettre en pause" CssClass="sk-btn-ghost" Disabled="@(pauseBis is null)" OnClick="() => PauseAsync(pauseBis)" />
+                        </div>
+                    }
+                </section>
+
+                <section>
+                    <h3>Historique</h3>
+                    @if (z.Verlauf.Count == 0)
+                    {
+                        <p class="sk-leise">Pas encore de session.</p>
+                    }
+                    <ul class="fo-admin-verlauf">
+                        @foreach (var r in z.Verlauf)
+                        {
+                            <li>
+                                <span class="fo-status fo-status-@FormationStart.StatusKlasse(r.Status)">@FormationStart.StatusText(r.Status)</span>
+                                <span>
+                                    <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
+                                    <small>@r.GeoeffnetUtc.ToString("dd/MM/yyyy") → @((r.AbgeschlossenUtc ?? r.FristUtc).ToString("dd/MM/yyyy"))@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                                    @if (r.Versuche.Any(v => v.AbgegebenUtc is not null))
+                                    {
+                                        <span class="fo-versuche">
+                                            @foreach (var v in r.Versuche.Where(v => v.AbgegebenUtc is not null))
+                                            {
+                                                <button type="button" class="fo-link" @onclick='() => Navigation.NavigateTo($"/formation/resultat/{v.Id}")'>Essai @v.Nummer : @v.Prozent %</button>
+                                            }
+                                        </span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="fo-gefahr">
+                    <h3>Retirer le rôle de responsable</h3>
+                    <p class="sk-leise">Son compte est bloqué : il est déconnecté partout. Ses parts déjà acquises restent. « Débloquer » dans « Responsables » le réactive.</p>
+                    @if (entziehenBestaetigen)
+                    {
+                        @if (schulenDesPo.Count > 0)
+                        {
+                            @* Neuzuweisung im selben Schritt (Nutzer 17.11.): keine Lücke bei Parts und Kontakt *@
+                            <div class="fo-neuzuweisung">
+                                <p><strong>@(schulenDesPo.Count == 1 ? "Son école : à qui la confier ?" : $"Ses {schulenDesPo.Count} écoles : à qui les confier ?")</strong>
+                                    <small class="sk-leise">Le nouveau responsable suit l'école dès maintenant (part selon le tarif de l'école).</small></p>
+                                <label class="fo-alle">Toutes à :
+                                    <select class="sk-eingabe" @onchange="AlleSetzen">
+                                        <option value="">— choisir —</option>
+                                        @foreach (var a in anderePos) { <option value="@a.Id">@a.Name</option> }
+                                        <option value="ohne">Sans responsable</option>
+                                    </select>
+                                </label>
+                                <ul class="fo-neuzuweisung-liste">
+                                    @foreach (var sch in schulenDesPo)
+                                    {
+                                        <li>
+                                            <span>@sch.Name</span>
+                                            <select class="sk-eingabe" value="@(neuJeSchule.GetValueOrDefault(sch.SchuleId)?.ToString() ?? "")"
+                                                    @onchange="e => neuJeSchule[sch.SchuleId] = Guid.TryParse(e.Value?.ToString(), out var g) ? g : null">
+                                                <option value="">Sans responsable</option>
+                                                @foreach (var a in anderePos) { <option value="@a.Id">@a.Name</option> }
+                                            </select>
+                                        </li>
+                                    }
+                                </ul>
+                                @if (anderePos.Count == 0)
+                                {
+                                    <p class="sk-leise">Aucun autre responsable actif : les écoles resteront sans responsable.</p>
+                                }
+                            </div>
+                        }
+                        <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Confirmez-vous le retrait du rôle de « @z.Name »@(OhneAnzahl > 0 ? $" ? {OhneAnzahl} école(s) resteront sans responsable." : " ?")</p>
+                        <div class="fo-zeile-feld">
+                            <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => entziehenBestaetigen = false">Annuler</button>
+                            <AsyncKnopf Text="Oui, retirer le rôle" CssClass="sk-btn-gefahr" OnClick="EntziehenAsync" />
+                        </div>
+                    }
+                    else
+                    {
+                        <AsyncKnopf CssClass="sk-btn-ghost fo-btn-gefahr" Text="Retirer le rôle…" OnClick="EntziehenVorbereitenAsync" />
+                    }
+                </section>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="Schliessen">Fermer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    private List<FormationService.PoZeile>? zeilen;
+    private FormationService.PoZeile? auswahl;
+    private string suche = "";
+    private string? fehler, grund;
+    private DateOnly? neueFrist, pauseBis;
+    private bool entziehenBestaetigen;
+    private IReadOnlyList<FormationService.SchuleDesPo> schulenDesPo = [];
+    private IReadOnlyList<FormationService.AndererPo> anderePos = [];
+    private readonly Dictionary<Guid, Guid?> neuJeSchule = [];
+    private int OhneAnzahl => schulenDesPo.Count(x => neuJeSchule.GetValueOrDefault(x.SchuleId) is null);
+    private int regelGrenze, regelFragen, regelFrist, regelIntervall;
+    private int MaxFragen => Formation.Lektionen.Sum(l => l.Pruefung.Count);
+    private static DateOnly Heute => DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+
+    private IEnumerable<FormationService.PoZeile> Gefiltert => string.IsNullOrWhiteSpace(suche) ? zeilen ?? []
+        : (zeilen ?? []).Where(z => z.Name.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) || (z.Email?.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task InitialisierenAsync()
+    {
+        var regel = await Formation.GetRegelAsync();
+        (regelGrenze, regelFragen, regelFrist, regelIntervall) = (regel.BestehensGrenzeProzent, regel.FragenJePruefung, regel.FristTage, regel.StandardIntervallMonate);
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        zeilen = await Formation.GetUebersichtAsync(Ich.KontoId);
+        if (auswahl is not null) auswahl = zeilen.FirstOrDefault(z => z.KontoId == auswahl.KontoId);
+    }
+
+    private void Oeffne(FormationService.PoZeile z)
+    {
+        auswahl = z;
+        fehler = null; grund = null; neueFrist = null; pauseBis = null; entziehenBestaetigen = false;
+    }
+
+    private void Schliessen() => auswahl = null;
+
+    private static DateTime Tagesende(DateOnly d) => d.ToDateTime(new TimeOnly(23, 59, 59), DateTimeKind.Utc);
+
+    private async Task FuehreAusAsync(Func<Task<string?>> aktion, string erfolg)
+    {
+        string? f = null;
+        if (await AusfuehrenAsync(async () => f = await aktion()))
+        {
+            fehler = f;
+            if (f is null) Toast.ZeigeErfolg(erfolg);
+            await AusfuehrenAsync(LadeAsync);
+        }
+    }
+
+    private Task IntervallAsync(int monate) => FuehreAusAsync(() => Formation.SetzeIntervallAsync(Ich.KontoId, auswahl!.KontoId, monate), $"Intervalle : tous les {monate} mois.");
+    private Task FristAsync() => FuehreAusAsync(() => Formation.VerlaengereFristAsync(Ich.KontoId, auswahl!.KontoId, Tagesende(neueFrist!.Value)), "Délai prolongé.");
+    private Task ErlassenAsync() => FuehreAusAsync(() => Formation.ErlasseRundeAsync(Ich.KontoId, auswahl!.KontoId, grund), "Session dispensée.");
+    private Task OeffnenAsync() => FuehreAusAsync(() => Formation.OeffneRundeJetztAsync(Ich.KontoId, auswahl!.KontoId), "Nouvelle session ouverte – il reçoit un e-mail.");
+    private Task PauseAsync(DateOnly? bis) => FuehreAusAsync(() => Formation.SetzePauseAsync(Ich.KontoId, auswahl!.KontoId, bis is { } d ? Tagesende(d) : null),
+        bis is null ? "Pause terminée." : $"En pause jusqu'au {bis:dd/MM/yyyy}.");
+
+    private async Task EntziehenVorbereitenAsync()
+    {
+        await AusfuehrenAsync(async () => (schulenDesPo, anderePos) = await Formation.GetNeuzuweisungAsync(Ich.KontoId, auswahl!.KontoId));
+        neuJeSchule.Clear();
+        foreach (var x in schulenDesPo) neuJeSchule[x.SchuleId] = null;
+        entziehenBestaetigen = true;
+    }
+
+    private void AlleSetzen(ChangeEventArgs e)
+    {
+        var wert = e.Value?.ToString();
+        if (string.IsNullOrEmpty(wert)) return;
+        Guid? neu = Guid.TryParse(wert, out var g) ? g : null;
+        foreach (var x in schulenDesPo) neuJeSchule[x.SchuleId] = neu;
+    }
+
+    private async Task EntziehenAsync()
+    {
+        (bool Erfolg, string? Fehler, IReadOnlyList<string> Ohne) r = default;
+        if (!await AusfuehrenAsync(async () => r = await Formation.EntzieheRolleAsync(Ich.KontoId, auswahl!.KontoId, new Dictionary<Guid, Guid?>(neuJeSchule)))) return;
+        if (!r.Erfolg) { fehler = r.Fehler; return; }
+        Toast.ZeigeErfolg(r.Ohne.Count == 0 ? "Rôle retiré, compte bloqué, écoles réattribuées." : $"Rôle retiré, compte bloqué. Sans responsable : {string.Join(", ", r.Ohne)}.");
+        auswahl = null;
+        await AusfuehrenAsync(LadeAsync);
+    }
+
+    private async Task SpeichereRegelnAsync()
+    {
+        string? f = null;
+        if (!await AusfuehrenAsync(async () => f = await Formation.SpeichereRegelAsync(Ich.KontoId, regelGrenze, regelFragen, regelFrist, regelIntervall))) return;
+        if (f is null) Toast.ZeigeErfolg("Règles enregistrées.");
+        else Toast.ZeigeFehler(f);
+    }
+
+    private static string StatusZeile(FormationService.PoZeile z)
+    {
+        if (z.Offen is { } o)
+        {
+            var l = o.LetzterAbgegeben;
+            return $"Session ouverte jusqu'au {o.FristUtc:dd/MM/yyyy} · {o.Abgegeben}/{FormationRunde.MaxVersuche} essais" + (l is null ? "" : $" · dernier {l.Prozent} %");
+        }
+        if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow) return $"En pause jusqu'au {p:dd/MM/yyyy}";
+        return z.NaechsteRundeAbUtc is { } n ? $"Prochaine session le {n:dd/MM/yyyy}" : "Pas encore de session";
+    }
+}

@@ -1,11 +1,12 @@
-@page "/auth/connexion"
+﻿@page "/auth/connexion"
 @layout AuthLayout
 @attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
 @inject NavigationManager Nav
 
 <PageTitle>Connexion · SKOULOU</PageTitle>
 
-<div class="sk-auth-karte">
+<div class="sk-auth-karte" data-statisch>
     <h1>Connexion</h1>
     <p class="sk-auth-unter">Connectez-vous avec l'identifiant reçu de votre établissement.</p>
 

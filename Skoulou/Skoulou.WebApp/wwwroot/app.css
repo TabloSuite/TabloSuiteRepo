@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    SKOULOU – Design-System „Soft Modern" (wie eNOTE, Marke SKOULOU)
    Ruhige Flächen · weiße Karten mit feinen Rändern · Blau + Cyan
    als Marke · große Touch-Ziele · hell und dunkel über [data-theme].
@@ -900,3 +900,12 @@ html[data-theme="dark"] .sk-video-bild img { filter: brightness(.92); }
 .sk-kindauswahl .sk-chip { display: inline-flex; align-items: center; gap: .45rem; }
 .sk-kindauswahl-eins { display: flex; align-items: center; gap: .6rem; margin: 0; color: var(--sk-text-muted); }
 .sk-kindauswahl-eins strong { color: var(--sk-text); }
+
+/* Ladebalken für jedes Tippen (17.11.2026): erscheint nach 0,15 s ohne Antwort des Servers, bis sich die Seite ändert */
+.app-ladebalken { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100000; pointer-events: none; opacity: 0; transition: opacity .15s;
+    background: linear-gradient(90deg, transparent 0%, var(--sk-primaer-hell) 30%, var(--sk-akzent) 60%, transparent 100%); background-size: 50% 100%; background-repeat: no-repeat; }
+.app-ladebalken.aktiv { opacity: 1; animation: app-ladebalken-lauf 1s ease-in-out infinite; }
+@keyframes app-ladebalken-lauf { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+@media (prefers-reduced-motion: reduce) { .app-ladebalken.aktiv { animation: none; background-size: 100% 100%; } }
+
+@media (max-width: 640px) { .sk-btn { white-space: normal; text-align: center; } }

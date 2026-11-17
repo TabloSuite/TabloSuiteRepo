@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 
 <head>
@@ -33,20 +33,32 @@
     <link rel="stylesheet" href="@Assets["css/paedagogik.css"]" />
     <link rel="stylesheet" href="@Assets["css/noten.css"]" />
     <link rel="stylesheet" href="@Assets["css/finanzen.css"]" />
+    <link rel="stylesheet" href="@Assets["css/formation.css"]" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="SKOULOU – la gestion scolaire simple : élèves, classes, notes, bulletins, frais de scolarité et cours en ligne." />
     <link rel="icon" href="@Assets["favicon.svg"]" type="image/svg+xml" />
     <link rel="icon" href="@Assets["favicon.png"]" type="image/png" />
     <link rel="apple-touch-icon" href="@Assets["favicon.png"]" />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet @rendermode="SeitenModus" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveServer" />
+    <Routes @rendermode="SeitenModus" />
     <VerbindungsFenster />
     <script src="_framework/blazor.web.js"></script>
     <script src="@Assets["js/skoulou.js"]"></script>
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    /// <summary>
+    /// Reine Formular-Seiten mit [ExcludeFromInteractiveRouting] (Connexion, Mot de passe oublié) bleiben statisches HTML: sonst baut
+    /// Blazor die vorgerenderte Seite nach dem Verbindungsaufbau neu auf – bei schwachem Netz waren Eingaben und Ladekreis weg
+    /// (Nutzer 17.11.2026, eNOTE). Alle anderen Seiten bleiben interaktiv.
+    /// </summary>
+    private IComponentRenderMode? SeitenModus => HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+}

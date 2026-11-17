@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
@@ -24,6 +24,13 @@ public class SkoulouDbContext(DbContextOptions<SkoulouDbContext> options)
     public DbSet<Medium> Medien => Set<Medium>();
     public DbSet<MedienNutzung> MedienNutzungen => Set<MedienNutzung>();
     public DbSet<ResponsableAnteil> ResponsableAnteile => Set<ResponsableAnteil>();
+
+    // Formation der Responsables (17.11.2026)
+    public DbSet<FormationRegel> FormationRegeln => Set<FormationRegel>();
+    public DbSet<FormationTeilnehmer> FormationTeilnehmer => Set<FormationTeilnehmer>();
+    public DbSet<FormationLektionGelesen> FormationLektionenGelesen => Set<FormationLektionGelesen>();
+    public DbSet<FormationRunde> FormationRunden => Set<FormationRunde>();
+    public DbSet<FormationVersuch> FormationVersuche => Set<FormationVersuch>();
 
     // Organisation
     public DbSet<Schuljahr> Schuljahre => Set<Schuljahr>();
@@ -110,7 +117,7 @@ public class SkoulouDbContext(DbContextOptions<SkoulouDbContext> options)
     }
 
     private static bool IstBestandteil(Type typ)
-        => typ == typeof(LeconSeite) || typ == typeof(FrageOption) || typ == typeof(StundenplanEintrag);
+        => typ == typeof(LeconSeite) || typ == typeof(FrageOption) || typ == typeof(StundenplanEintrag) || typ == typeof(FormationVersuch);
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

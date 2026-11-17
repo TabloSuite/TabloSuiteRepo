@@ -1,4 +1,4 @@
-using Skoulou.Core.Rechte;
+﻿using Skoulou.Core.Rechte;
 using Skoulou.WebApp.Components.Layout;
 
 namespace Skoulou.WebApp.Services.Plattform;
@@ -57,6 +57,11 @@ public static class GuideTexte
             new("Journal des erreurs", "Erreurs techniques des 90 derniers jours. Marquez-les « Traitée » une fois corrigées.", "/admin/journal"),
             new("Audit", "Toutes les actions sensibles (validations, blocages, mots de passe, notes, paiements). Conservé sans limite.", "/admin/audit"),
             new("Médias", "Espace occupé par école ; seuls les fichiers non utilisés peuvent être supprimés.", "/admin/medias")
+        ]),
+        new("formation", "Formation", "book",
+        [
+            new("Formation des responsables", "Chaque responsable lit ses leçons et passe une évaluation à intervalle régulier (3 essais, le dernier compte). Vous voyez les sessions et les résultats ; vous changez l'intervalle, le délai, une pause, ou retirez le rôle (ses écoles passent à un autre responsable).", "/admin/formation"),
+            new("Votre entraînement", "Le parcours administrateur et celui des responsables, en entraînement libre : sans délai et sans limite d'essais.", "/formation")
         ])
     ];
 
@@ -68,6 +73,10 @@ public static class GuideTexte
             new("Facturation", "Factures SKOULOU de vos écoles et leur état de paiement (lecture seule).", "/responsable/facturation"),
             new("Mes parts", "Votre part sur chaque facture payée : à recevoir et déjà versée. Une facture annulée après paiement crée un ajustement négatif.", "/responsable/parts"),
             new("Messagerie", "Messages de vos écoles ; vous pouvez répondre et écrire à leur direction.", "/responsable/messagerie")
+        ]),
+        new("formation", "Formation", "book",
+        [
+            new("Votre formation", "Dix leçons avec images, vidéos et petits exercices, puis une évaluation à intervalle régulier : 3 essais au plus, seul le dernier compte ; après chaque essai, votre note et vos erreurs.", "/formation")
         ])
     ];
 

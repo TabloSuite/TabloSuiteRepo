@@ -1056,6 +1056,209 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.ToTable("FehlerProtokolle");
                 });
 
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationLektionGelesen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GelesenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("KontoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LektionId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KontoId", "LektionId")
+                        .IsUnique();
+
+                    b.ToTable("FormationLektionenGelesen", (string)null);
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationRegel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BestehensGrenzeProzent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FragenJePruefung")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FristTage")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StandardIntervallMonate")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FormationRegeln", (string)null);
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationRunde", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AbgeschlossenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AdminGemeldetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BenachrichtigtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BestehensGrenzeProzent")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EndNoteProzent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ErinnerungUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErlassenGrund")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ErlassenVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FragenAnzahl")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FristUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeoeffnetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstFrei")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("KontoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KontoId", "Status");
+
+                    b.ToTable("FormationRunden", (string)null);
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationTeilnehmer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IntervallMonate")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("KontoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("NaechsteRundeAbUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PausiertBisUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KontoId")
+                        .IsUnique();
+
+                    b.ToTable("FormationTeilnehmer", (string)null);
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationVersuch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AbgegebenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AntwortenJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("BegonnenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FragenAnzahl")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FragenJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Nummer")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Prozent")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Richtige")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RundeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RundeId", "Nummer")
+                        .IsUnique();
+
+                    b.ToTable("FormationVersuche", (string)null);
+                });
+
             modelBuilder.Entity("Skoulou.Core.Entitaeten.FormelFavorit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3747,6 +3950,44 @@ namespace Skoulou.WebApp.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationLektionGelesen", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("KontoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationRunde", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("KontoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationTeilnehmer", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("KontoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationVersuch", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.FormationRunde", "Runde")
+                        .WithMany("Versuche")
+                        .HasForeignKey("RundeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Runde");
+                });
+
             modelBuilder.Entity("Skoulou.Core.Entitaeten.FormelFavorit", b =>
                 {
                     b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
@@ -4522,6 +4763,11 @@ namespace Skoulou.WebApp.Data.Migrations
                         .HasForeignKey("SchuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.FormationRunde", b =>
+                {
+                    b.Navigation("Versuche");
                 });
 
             modelBuilder.Entity("Skoulou.Core.Entitaeten.Frage", b =>

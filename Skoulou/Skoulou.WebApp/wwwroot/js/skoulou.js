@@ -1,4 +1,4 @@
-// SKOULOU – kleine Hilfsfunktionen für Blazor (ohne Bibliotheken).
+﻿// SKOULOU – kleine Hilfsfunktionen für Blazor (ohne Bibliotheken).
 
 // Popups (Auswahl, Kalender, Benutzermenü) schließen bei Klick außerhalb ihres Elements [data-sk-closer="id"].
 (function () {
@@ -361,4 +361,100 @@ window.skVideoPosition = (function () {
         notfall = setTimeout(frei, NOTFALL_MS);
     }, true);
     window.addEventListener('pageshow', frei);
+})();
+
+// Ladebalken für JEDES Tippen (17.11.2026, Nutzer: « einfach überall prüfen »): Blazor Server antwortet erst nach der Rundreise
+// zum Server – bei langsamer Verbindung geschah nach dem Tippen auf Chips, Reiter, Karten, Listenzeilen, Symbolknöpfe usw.
+// sichtbar nichts. Bleibt die Seite nach einem Klick oder einer Auswahl länger als VERZUG_MS unverändert, läuft oben ein
+// schmaler Balken, bis sich die Seite ändert (= Antwort des Servers), spätestens nach NOTFALL_MS. Knöpfe behalten zusätzlich
+// ihren Ladekreis. Eingaben (Tippen in Felder) lösen nichts aus; Ausnahme je Element: data-ohne-ladekreis.
+(function () {
+    if (window.__ladebalken) return;
+    window.__ladebalken = true;
+    var VERZUG_MS = 150, NOTFALL_MS = 8000, timer = null, notfall = null, beobachter = null, balken = null;
+
+    function holeBalken() {
+        if (balken && document.body.contains(balken)) return balken;
+        balken = document.createElement('div');
+        balken.className = 'app-ladebalken';
+        balken.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(balken);
+        return balken;
+    }
+
+    function aus() {
+        clearTimeout(timer); clearTimeout(notfall); timer = notfall = null;
+        if (beobachter) { beobachter.disconnect(); beobachter = null; }
+        if (balken) balken.classList.remove('aktiv');
+    }
+
+    function ignorieren(el) {
+        if (!el || !el.closest) return true;
+        if (el.closest('[data-ohne-ladekreis]')) return true;
+        // Reine Browser-Aktionen ohne Server: Datei-Links, neue Tabs, Anker, Telefon/Mail, Video-Steuerung, Formularfelder zum Tippen
+        var a = el.closest('a');
+        if (a) {
+            var ziel = a.getAttribute('href') || '';
+            if (a.target || a.hasAttribute('download') || ziel.charAt(0) === '#' || /^(tel|mailto|whatsapp|https?):/i.test(ziel) && !ziel.startsWith(location.origin)) return true;
+        }
+        if (el.closest('video, audio, summary, input[type=text], input[type=number], input[type=password], input[type=email], input[type=tel], input[type=search], textarea')) return true;
+        return false;
+    }
+
+    function starte(e) {
+        var el = e.target;
+        if (ignorieren(el)) return;
+        // Nur echte Bedienelemente (Knopf, Link, Auswahl, Rolle « button ») oder Elemente, die wie solche aussehen (Zeiger).
+        var bedien = el.closest && el.closest('button, a[href], select, label, [role=button], [role=radio], [role=checkbox], [role=tab], [tabindex]');
+        if (!bedien && getComputedStyle(el).cursor !== 'pointer') return;
+        aus();
+        beobachter = new MutationObserver(function (liste) {
+            for (var i = 0; i < liste.length; i++) {
+                var m = liste[i];
+                if (balken && (m.target === balken || (m.addedNodes && m.addedNodes[0] === balken))) continue;
+                if (m.type === 'attributes' && (m.attributeName === 'tabindex' || m.attributeName === 'data-enote-wartet' || m.attributeName === 'data-sk-wartet' || m.attributeName === 'aria-busy')) continue;
+                aus();
+                return;
+            }
+        });
+        beobachter.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        timer = setTimeout(function () { holeBalken().classList.add('aktiv'); }, VERZUG_MS);
+        notfall = setTimeout(aus, NOTFALL_MS);
+    }
+
+    document.addEventListener('click', starte, true);
+    document.addEventListener('change', function (e) { if (e.target && e.target.matches && e.target.matches('select, input[type=checkbox], input[type=radio], input[type=date]')) starte(e); }, true);
+    window.addEventListener('pageshow', aus);
+})();
+
+// Prüfung der Formation: die gewählte Antwort sofort zeigen (die Bestätigung des Servers folgt; Blazor übernimmt danach den Zustand).
+(function () {
+    if (window.__foAuswahlSofort) return;
+    window.__foAuswahlSofort = true;
+    document.addEventListener('click', function (e) {
+        var k = e.target && e.target.closest ? e.target.closest('.fo-antwort') : null;
+        if (!k || k.disabled) return;
+        if (k.classList.contains('mehrfach')) { k.classList.toggle('gewaehlt'); k.setAttribute('aria-checked', k.classList.contains('gewaehlt') ? 'true' : 'false'); return; }
+        var gruppe = k.closest('.fo-antworten');
+        if (gruppe) gruppe.querySelectorAll('.fo-antwort.gewaehlt').forEach(function (x) { if (x !== k) { x.classList.remove('gewaehlt'); x.setAttribute('aria-checked', 'false'); } });
+        k.classList.add('gewaehlt');
+        k.setAttribute('aria-checked', 'true');
+    }, true);
+})();
+
+// Passwort-Auge auf statischen Seiten (Connexion ohne Blazor-Verbindung): dort läuft @onclick nicht – Umschalten im Browser.
+(function () {
+    if (window.__skAugeStatisch) return;
+    window.__skAugeStatisch = true;
+    document.addEventListener('click', function (e) {
+        var auge = e.target && e.target.closest ? e.target.closest('.sk-passwort-auge') : null;
+        if (!auge || !auge.closest('[data-statisch]')) return;
+        var feld = auge.parentElement.querySelector('input');
+        if (!feld) return;
+        var zeigen = feld.type === 'password';
+        feld.type = zeigen ? 'text' : 'password';
+        auge.setAttribute('aria-label', zeigen ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        var use = auge.querySelector('use');
+        if (use) use.setAttribute('href', use.getAttribute('href').replace(/#eye(-off)?$/, zeigen ? '#eye-off' : '#eye'));
+    });
 })();

@@ -1,4 +1,4 @@
-@page "/responsable"
+﻿@page "/responsable"
 @attribute [Authorize(Policy = Richtlinien.Responsable)]
 @inherits PlattformSeite
 @inject PlattformUebersicht Uebersicht
@@ -10,6 +10,7 @@
     }
     else if (schulen is not null)
     {
+        <Skoulou.WebApp.Components.Pages.Formation.FormationKarte KontoId="Ich.KontoId" />
         <Abschnitt Titel="Mes écoles" Beschreibung="@($"{schulen.Count} établissement(s) · {SkoulouKultur.Zahl(schulen.Sum(s => s.Schueler))} élève(s) actif(s)")">
             @if (schulen.Count == 0)
             {

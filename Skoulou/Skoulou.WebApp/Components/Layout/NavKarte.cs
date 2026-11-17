@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components.Routing;
+﻿using Microsoft.AspNetCore.Components.Routing;
 using Skoulou.Core.Rechte;
 
 namespace Skoulou.WebApp.Components.Layout;
@@ -65,6 +65,7 @@ public static class NavKarte
             new("/admin/ecoles", "Écoles", "school", "Valider, suspendre, tarif et responsable."),
             new("/admin/comptes", "Comptes", "users", "Tous les comptes de la plateforme."),
             new("/admin/responsables", "Responsables", "briefcase", "Responsables SKOULOU et leurs écoles."),
+            new("/admin/formation", "Formation", "book", "Formation et évaluation des responsables."),
         };
         if (mitVerwaltung)
             plattform.Add(new("/admin/administrateurs", "Administrateurs", "shield", "Ajouter, bloquer ou supprimer les autres administrateurs.", "Admins"));
@@ -100,6 +101,7 @@ public static class NavKarte
             new("/responsable/facturation", "Facturation", "receipt", "Factures SKOULOU de vos écoles."),
             new("/responsable/parts", "Mes parts", "coins", "Vos parts sur les factures payées.", "Parts"),
             new("/responsable/messagerie", "Messagerie", "inbox", "E-mails de vos écoles.", "Messages"),
+            new("/formation", "Formation", "book", "Vos leçons et votre évaluation."),
         ]),
         Hilfe,
     ];

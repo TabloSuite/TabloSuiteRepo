@@ -1,0 +1,41 @@
+@page "/formation/resultat/{VersuchId:guid}"
+@attribute [Authorize(Roles = "SuperAdmin,Responsable")]
+@inherits SkoulouSeite
+@inject FormationService Formation
+
+<PageTitle>Résultat · Formation · SKOULOU</PageTitle>
+
+<div class="fo-seite">
+    <a class="fo-zurueck" href="@(fuerAdmin ? "/admin/formation" : "/formation")"><Icon Name="chevron-left" Groesse="18" /> @(fuerAdmin ? "Formation des responsables" : "Formation")</a>
+    @if (KeinZugriff)
+    {
+        <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
+    }
+    else if (!Laedt && ergebnis is null)
+    {
+        <Karte><p>Ce résultat n'existe pas.</p></Karte>
+    }
+    else if (ergebnis is not null)
+    {
+        <h1 class="fo-titel">@(fuerAdmin && name is not null ? $"Résultat de {name}" : "Votre résultat")</h1>
+        <FormationErgebnisAnsicht Ergebnis="ergebnis" />
+    }
+</div>
+
+@code {
+    [Parameter] public Guid VersuchId { get; set; }
+    private FormationService.Ergebnis? ergebnis;
+    private bool fuerAdmin;
+    private string? name;
+
+    protected override async Task InitialisierenAsync()
+    {
+        ergebnis = await Formation.GetErgebnisAsync(Ich.KontoId, VersuchId);
+        // Der Administrateur sieht die Versuche aller Responsables (Administration › Formation).
+        if (ergebnis is null && Ich.Rolle == Rollen.SuperAdmin)
+        {
+            (ergebnis, name) = await Formation.GetErgebnisFuerAdminAsync(Ich.KontoId, VersuchId);
+            fuerAdmin = ergebnis is not null;
+        }
+    }
+}
