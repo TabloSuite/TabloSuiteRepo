@@ -52,7 +52,9 @@ Bilder `Pictures\eNOTE-Gesamttest-Kasse-2026-11-17\`, `…-Display-je-Geraet-…
 - Verworfen: automatische Kassen-Anmeldung mit eigenem Mitarbeiter-Konto (Sicherheitsrisiko; Patch nur in `%TEMP%`).
 
 **Offen / später:**
-- **TabloSuiteHome deployen** – tablosuite.com zeigt live noch das alte Türkis-Logo (lokal korrekt seit 34cfd25).
+- **TabloSuiteHome deployen** (309bc71, 17.11.): SKOULOU-Karte jetzt Blau `#1d4ed8` statt Türkis `#0f8f86` (Streifen, Untertitel,
+  Haken, Bildhintergrund); Logos/Bilder über `@Assets[...]` mit Fingerabdruck → Browser zeigen nie mehr ein altes/kaputtes Bild
+  aus dem Zwischenspeicher. Live war das neue Logo schon da, nur die Katalogfarbe war noch Türkis. Bilder `Pictures\TabloSuiteHome-SKOULOU-Blau-2026-11-17\`.
 - SKOULOU-Mails: türkiser Streifen unter dem Kopf + Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » so lassen oder blau? (Frage offen.)
 - Videos: Admin « Tarifs et facturation » (neue Provisionen, Mehrfachbestätigung) und evtl. Responsable « Paiements et accompagnement »
   (« Mes commissions ») neu. Die Employé-Videos (`encaisser`, `attente`, `clients`, `cloture`) wurden mit `demo.awa` aufgenommen – bei
