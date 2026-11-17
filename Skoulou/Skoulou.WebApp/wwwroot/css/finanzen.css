@@ -52,7 +52,7 @@
 .fin-summen tfoot th.fin-rechts { text-align: right; }
 
 /* Frais */
-.fin-posten-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: .9rem; align-items: start; }
+.fin-posten-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: .9rem; align-items: start; }
 .fin-posten { margin: 0; padding: 1rem 1.1rem; display: grid; gap: .75rem; align-content: start; }
 .fin-posten-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
 /* Lange Geltung (« Anglais A1 – S1 · Session 1 seulement ») darf umbrechen statt den Betrag aus der Karte zu schieben (Handy). */
@@ -64,7 +64,8 @@
 .fin-posten-raten li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: baseline; padding: .4rem .6rem;
     border-radius: var(--sk-radius-klein); background: var(--sk-flaeche-2); font-size: .9rem; }
 .fin-posten-raten li strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fin-posten-raten li .sk-leise { margin: 0; white-space: nowrap; font-size: .84rem; }
+/* 18.11.: Datum darf umbrechen statt in den Betrag zu laufen (schmale Karte, drei Spalten). */
+.fin-posten-raten li .sk-leise { margin: 0; font-size: .84rem; overflow-wrap: anywhere; }
 .fin-posten-aktionen { justify-content: flex-end; }
 .fin-raten-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap; border-top: 1px solid var(--sk-rand); padding-top: .75rem; }
 .fin-rate { display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: .6rem; }

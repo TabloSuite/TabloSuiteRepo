@@ -5,9 +5,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nachts
 
-**>>> NEUESTES (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
+**>>> NEUESTES (17./18.11. nachts) – SKOULOU-Videos Runde 3 (Nutzer: « alle bitte … ausführliche Videos über alle Themen »):**
+- Fünf neue Videos über bisher fehlende Abläufe (Pipeline-Notizen `lernen-v3/AUFTRAG.md` §8):
+  « S'inscrire et retrouver son accès » 4:10 (Pour tous, f50d891), « Fermer et rouvrir » 3:55 (Direction, f643794),
+  « Administrateur : la formation des responsables » 3:25, « Gérer vos contenus » 3:02 (Enseignant),
+  « Finances : vue d'ensemble, catégories et reprise des frais » (Direction) – Stand siehe letzte Commits.
+- App-Fixes dabei: Wartesseite « en cours de validation » nennt den Schulnamen; **Gebührenkarten** (« Frais de scolarité »):
+  Datum lief bei drei Spalten in den Betrag → Karten min. 22rem, Datum darf umbrechen (finanzen.css). Die betroffene Szene
+  in « Frais de scolarité et paiements » und « Une école de langues » wurde neu aufgenommen.
+- **Nutzer muss SKOULOU deployen** (keine Migration nötig).
+
+**>>> (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
 - **Standardpreis SKOULOU = 3.600 F je Schüler und Schuljahr** (61f55aa; Trimester 1.200, Semester 1.800, 4 Sessions 900).
   **Azure-Wert stellt der Nutzer selbst um: Administration › Tarifs.** Modell bleibt Jahrespreis ÷ Perioden (Nutzer « So lassen »).
   In Videos immer als « exemple ». Aufnahme-DB-Basis steht auf 3.600 (Memory « skoulou-videos-runde2 »).

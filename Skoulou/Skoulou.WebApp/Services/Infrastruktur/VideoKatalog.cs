@@ -101,6 +101,9 @@ public static partial class VideoKatalog
         new("skoulou-enseignant-cours.mp4", "Leçons et examens",
             "Créer une leçon avec ses pages et ses exercices, une dictée audio avec la langue et le niveau, l'attribuer à une classe, puis l'examen et la correction des réponses libres.",
             Enseignant, FuerLehrkraefte, "3:44"),
+        new("skoulou-enseignant-contenus.mp4", "Gérer vos contenus",
+            "Une image de la médiathèque et une formule dans une leçon, réutiliser une leçon par copie, l'imprimer avec ou sans corrigé, modifier une date limite, archiver une attribution ou une leçon – et le transfert par la direction.",
+            Enseignant, FuerLehrkraefte, "3:02"),
         new("skoulou-enseignant-notes.mp4", "Suivre la classe : appel, notes et bulletin",
             "Votre emploi du temps, l'appel avec les absences et les retards, le récapitulatif, une nouvelle évaluation et la saisie des notes, les appréciations, le conseil de votre classe – et ce que tout cela devient sur le bulletin imprimé.",
             Enseignant, FuerLehrkraefte, "4:30"),
@@ -120,17 +123,20 @@ public static partial class VideoKatalog
         new("skoulou-admin-communication.mp4", "Administrateur : annonces, messagerie et surveillance",
             "Publier une annonce, traiter la messagerie, suivre l'audit des actions sensibles, le journal des erreurs et les médias.",
             Administrateur, NurAdmin, "1:45"),
+        new("skoulou-admin-formation.mp4", "Administrateur : la formation des responsables",
+            "Ce que voit le responsable (leçons, évaluation, résultat), puis votre suivi : intervalle, délai, dispense, pause, historique, retrait du rôle avec ses écoles, règles de l'évaluation et votre entraînement.",
+            Administrateur, NurAdmin, "3:25"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "S'inscrire et retrouver son accès, les premiers pas, la visite guidée et pourquoi SKOULOU."),
         (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, les notes, les bulletins, le passage d'année, fermer et rouvrir, les frais et la facture SKOULOU."),
-        (Enseignant, "Enseignant", "Suivre la classe et noter, puis le concept et la pratique des leçons et des examens."),
+        (Enseignant, "Enseignant", "Suivre la classe et noter, puis le concept et la pratique des leçons et des examens, et la gestion de vos contenus."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),
         (Responsable, "Responsable", "Accompagner vos écoles : suivi, facturation, parts et messagerie."),
-        (Administrateur, "Administrateur", "Écoles et comptes, facturation et tarifs, annonces et surveillance."),
+        (Administrateur, "Administrateur", "Écoles et comptes, facturation et tarifs, annonces et surveillance, la formation des responsables."),
     ];
 
     [GeneratedRegex(@"^[a-z0-9-]+\.mp4$")]

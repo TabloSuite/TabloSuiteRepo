@@ -269,6 +269,7 @@ public static partial class FormationKatalog
                     "Historique : chaque essai, avec les réponses et les erreurs.",
                     "« Retirer le rôle » : ses écoles passent tout de suite à un autre responsable (ou restent sans responsable) et son compte est bloqué ; ses parts restent."),
                 A("Les leçons suivent l'application : à chaque changement de SKOULOU, les leçons et les questions sont mises à jour."),
+                V("skoulou-admin-formation.mp4", "La formation des responsables pas à pas : leur parcours, votre suivi, les règles."),
                 M("Vous aussi pouvez vous entraîner, sans délai et sans limite : vos résultats ne comptent pas."),
             ],
             [

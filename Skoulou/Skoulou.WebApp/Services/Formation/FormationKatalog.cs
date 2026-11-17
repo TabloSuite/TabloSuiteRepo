@@ -426,6 +426,7 @@ public static partial class FormationKatalog
                     "Les scores des exercices ne sont pas les notes du bulletin : celles-ci se saisissent dans « Notes »."),
                 B(Bild + "dir-contenus.jpg", "« Contenus » : les leçons et examens des enseignants, vus par la direction."),
                 V("skoulou-enseignant-concept.mp4", "Le concept des leçons, exercices et examens."),
+                V("skoulou-enseignant-contenus.mp4", "Gérer les contenus : images, formules, copie, impression, archives, transfert."),
                 M("Un examen = un seul essai, avec 30 secondes de tolérance technique après la fin."),
             ],
             [
