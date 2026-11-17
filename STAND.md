@@ -9,15 +9,16 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 **>>> NEU 17.11. morgens – 6 Fragen des Nutzers beantwortet, Punkte 5+6 gebaut (cf42099, gepusht, 473 Tests grün):**
 eNOTE-Provision der Responsables (PO) entsteht jetzt **automatisch je bestätigter Zahlung** (Tabelle `PoProvisionen`,
-**neue Migration `20261117053328_PoProvisionen`**, nur CreateTable – lokal ENOTEDB eingespielt, **Azure noch NICHT** →
-**vor dem nächsten eNOTE-Deploy mit OK des Nutzers auf Azure einspielen**, sonst stürzen Facturation/Administration ab).
+**neue Migration `20261117053328_PoProvisionen`**, nur CreateTable – lokal ENOTEDB und **mit OK (« 1 ja ») am 17.11. auch auf
+Azure ENote-Database eingespielt und lesend geprüft: Azure = lokal** → **Nutzer kann eNOTE deployen**).
 Mehrfachbestätigung: Facturation (Zahlungen), Administration › Propriétaires plateforme › « Commissions des responsables »
 (mehrere als versées, Datum + Referenz), Mes établissements › « Mes commissions » (Responsable bestätigt mehrere als reçues
 oder « Pas reçue »). Alte Monatsberechnung (« Calculer les commissions », fror ein) entfernt, alte Einträge bleiben sichtbar.
-Bilder `Pictures\eNOTE-Commissions-2026-11-17\`. **Offene Entscheidungen beim Nutzer:** (a) Dürfen POs Abo-Zahlungen selbst
-bestätigen (Bargeld beim PO)? Im Code liegt dafür ein fertiger, aber nirgends eingebundener Ablauf (`PoAbrechnung.razor`,
-`PoAbrechnungService`, ebenso `BesitzerBetreuungVerwaltung.razor`). (b) Mehrere Kassen je Laden (eigene Schublade/Clôture)
-gewünscht? Heute: eine gemeinsame Kassensitzung je Laden, beliebig viele Geräte. (c) tablosuite.com zeigt live noch das alte
+Bilder `Pictures\eNOTE-Commissions-2026-11-17\`. **Entscheidungen des Nutzers 17.11.:** (a) **Keine Barzahlung an POs** – nur
+der Admin bestätigt Abo-Zahlungen (« So lassen »); der ungenutzte Ablauf `PoAbrechnung.razor`/`PoAbrechnungService`/
+`BesitzerBetreuungVerwaltung.razor` NICHT einbinden. (b) Mehrere Kassen je Laden: Nutzer fragte nach dem Grund für « vorerst
+so lassen » (Antwort gegeben: eine Schublade reicht der Zielgruppe, mehrere Geräte gehen schon, Umbau berührt den
+heikelsten Teil, nur bei echtem Kundenbedarf als Option) – seine Entscheidung steht noch aus. (c) tablosuite.com zeigt live noch das alte
 Türkis-Logo → TabloSuiteHome deployen (lokal korrekt seit 34cfd25). SKOULOU-Seite + Mail-Logo live korrekt.
 Video « Tarifs et facturation » (Admin) zeigt noch die alte Provisionsberechnung → bei Gelegenheit neu.
 
