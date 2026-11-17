@@ -18,9 +18,11 @@ public class AuthService(
     SignInManager<AppUser> signInManager,
     ILogger<AuthService> logger,
     Mails.EmailService emailService,
-    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null, Sicherheit.MissbrauchsBremse? bremse = null)
+    Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null, Sicherheit.MissbrauchsBremse? bremse = null,
+    AnmeldeSitzungen? anmeldeSitzungen = null)
 {
     private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private AnmeldeSitzungen Sitzungen => anmeldeSitzungen ?? new AnmeldeSitzungen(dbContextFactory, uhr);
 
     private const string AppName = "eNOTE";
     private const string AppUrl = "https://enote.tablosuite.com";
@@ -78,10 +80,10 @@ public class AuthService(
             }
         }
 
-        // Eine neue Anmeldung meldet eine frühere Sitzung auf einem anderen Gerät ab.
-        user.ActiveSessionId = Guid.NewGuid();
-        user.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
-        await userManager.UpdateAsync(user);
+        // « Appareils connectés » (17.11.2026): Besitzer bleiben auf ihren anderen Geräten angemeldet (zwei Kassen im Laden);
+        // für alle anderen Konten meldet eine neue Anmeldung die frühere Sitzung ab (neuer Konto-Stempel).
+        var (stempel, geraetSitzung) = await Sitzungen.AnmeldenAsync(user.Id,
+            signInManager.Context.Request.Headers.UserAgent.ToString(), cancellationToken);
 
         await signInManager.SignInAsync(user, dauerhaft);
 
@@ -91,7 +93,8 @@ public class AuthService(
             await signInManager.SignOutAsync();
             var principal = await signInManager.CreateUserPrincipalAsync(user);
             var identity = (ClaimsIdentity)principal.Identity!;
-            identity.AddClaim(new Claim("enote_session", user.ActiveSessionId.Value.ToString()));
+            identity.AddClaim(new Claim("enote_session", stempel.ToString()));
+            identity.AddClaim(new Claim(AnmeldeSitzungen.GeraetClaim, geraetSitzung.ToString()));
             await signInManager.Context.SignInAsync(
                 IdentityConstants.ApplicationScheme,
                 principal,

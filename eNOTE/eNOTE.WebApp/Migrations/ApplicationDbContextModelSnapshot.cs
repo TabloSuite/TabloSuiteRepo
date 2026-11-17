@@ -643,6 +643,39 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("GeldBewegungen");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Identity.AnmeldeSitzung", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("BeendetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Geraet")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("Stempel")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ZuletztUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "BeendetUtc");
+
+                    b.ToTable("AnmeldeSitzungen");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Identity.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2598,6 +2631,17 @@ namespace ENote.WebApp.Migrations
                         .HasForeignKey("SalonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Identity.AnmeldeSitzung", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Identity.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Identity.AppUserRole", b =>

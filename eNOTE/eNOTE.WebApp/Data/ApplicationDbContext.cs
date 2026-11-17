@@ -55,6 +55,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoGeldbewegung> PoGeldbewegungen => Set<PoGeldbewegung>();
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
     public DbSet<PoProvision> PoProvisionen => Set<PoProvision>();
+    public DbSet<AnmeldeSitzung> AnmeldeSitzungen => Set<AnmeldeSitzung>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
     public DbSet<EingangsMail> EingangsMails => Set<EingangsMail>();
@@ -218,6 +219,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         });
         builder.Entity<PoGeldbewegung>(entity => entity.Property(b => b.Betrag).HasPrecision(18, 2));
         builder.Entity<PoAbrechnungsEreignis>(entity => entity.Property(e => e.Betrag).HasPrecision(18, 2));
+        // « Appareils connectés »: eine Zeile je angemeldetem Gerät; verschwindet mit dem Konto.
+        builder.Entity<AnmeldeSitzung>(entity =>
+        {
+            entity.Property(s => s.Geraet).HasMaxLength(120);
+            entity.HasIndex(s => new { s.UserId, s.BeendetUtc });
+            entity.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
         builder.Entity<PoProvision>(entity =>
         {
             entity.Property(p => p.AboBetrag).HasPrecision(18, 2);

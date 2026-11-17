@@ -1,0 +1,94 @@
+@using ENote.WebApp.Services
+@inject AnmeldeSitzungen Sitzungen
+@inject ToastService Toast
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+@* « Appareils connectés » (17.11.2026): Der Besitzer bleibt auf mehreren Geräten angemeldet (z. B. zwei Kassen) und kann
+   jedes Gerät einzeln oder alle anderen auf einmal abmelden. *@
+<section class="enote-card st-karte" aria-labelledby="st-geraete-titel">
+    <div class="st-karte-kopf">
+        <span class="st-ico"><Icon Name="monitor" /></span>
+        <div>
+            <h2 id="st-geraete-titel">Appareils connectés</h2>
+            <p>Votre compte peut rester connecté sur plusieurs appareils, par exemple deux caisses. Déconnectez un appareil perdu, vendu ou que vous n'utilisez plus.</p>
+        </div>
+    </div>
+
+    @if (laedt)
+    {
+        <p role="status">Chargement…</p>
+    }
+    else if (geraete.Count == 0)
+    {
+        <p class="enote-empty" role="status">Aucun appareil connecté.</p>
+    }
+    else
+    {
+        <div class="st-geraete">
+            @foreach (var g in geraete)
+            {
+                <div class="st-geraet @(g.IstDiesesGeraet ? "dieses" : "")" @key="g.Id">
+                    <span class="st-geraet-ico"><Icon Name="@(g.Beschreibung.Contains("Android") || g.Beschreibung.Contains("iPhone") ? "phone" : "monitor")" Groesse="18" /></span>
+                    <div class="st-geraet-text">
+                        <strong>@g.Beschreibung @if (g.IstDiesesGeraet) { <span class="enote-tag enote-tag-ok">Cet appareil</span> }</strong>
+                        <small class="enote-muted">Connecté le @g.ErstelltUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · dernière activité @Relativ(g.ZuletztUtc)</small>
+                    </div>
+                    @if (!g.IstDiesesGeraet)
+                    {
+                        <AsyncActionButton Text="Déconnecter" OnClick="() => AbmeldenAsync(g)" CssClass="enote-btn-ghost enote-btn-sm" />
+                    }
+                </div>
+            }
+        </div>
+        @if (geraete.Any(g => !g.IstDiesesGeraet))
+        {
+            <AsyncActionButton Text="Déconnecter tous les autres appareils" OnClick="AndereAbmeldenAsync" CssClass="enote-btn-ghost st-geraete-alle" />
+        }
+        <p class="enote-muted st-geraete-hinweis">Un appareil déconnecté doit se reconnecter avec votre pseudonyme et votre mot de passe. Changer de mot de passe déconnecte tous les appareils.</p>
+    }
+</section>
+
+@code {
+    private Guid user;
+    private Guid? diesesGeraet;
+    private bool laedt = true;
+    private List<AnmeldeSitzungen.Geraet> geraete = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = (await Auth.GetAuthenticationStateAsync()).User;
+        Guid.TryParse(auth.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out user);
+        diesesGeraet = Guid.TryParse(auth.FindFirst(AnmeldeSitzungen.GeraetClaim)?.Value, out var g) ? g : null;
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        laedt = true;
+        geraete = user == Guid.Empty ? [] : await Sitzungen.GetGeraeteAsync(user, diesesGeraet);
+        laedt = false;
+    }
+
+    private async Task AbmeldenAsync(AnmeldeSitzungen.Geraet g)
+    {
+        if (await Sitzungen.MeldeGeraetAbAsync(user, g.Id))
+            Toast.ZeigeErfolg($"« {g.Beschreibung} » est déconnecté.");
+        await LadeAsync();
+    }
+
+    private async Task AndereAbmeldenAsync()
+    {
+        var anzahl = await Sitzungen.MeldeAndereAbAsync(user, diesesGeraet);
+        Toast.ZeigeErfolg(anzahl == 1 ? "1 autre appareil déconnecté." : $"{anzahl} autres appareils déconnectés.");
+        await LadeAsync();
+    }
+
+    private static string Relativ(DateTime utc)
+    {
+        var d = DateTime.UtcNow - utc;
+        if (d < TimeSpan.FromMinutes(10)) return "à l'instant";
+        if (d < TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
+        if (d < TimeSpan.FromDays(1)) return $"il y a {(int)d.TotalHours} h";
+        return "le " + utc.ToLocalTime().ToString("dd.MM.yyyy");
+    }
+}

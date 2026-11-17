@@ -107,6 +107,26 @@ builder.Services.ConfigureApplicationCookie(options =>
             || user.ActiveSessionId is null
             || sessionValue != user.ActiveSessionId.ToString();
 
+        // « Appareils connectés »: diese Geräte-Sitzung muss offen sein (einzeln abgemeldet → abweisen). Cookies von vor dem
+        // 17.11.2026 haben noch keine Geräte-Sitzung: sie wird angelegt und das Cookie erneuert (niemand muss sich neu anmelden).
+        if (!abweisen && user?.ActiveSessionId is Guid kontoStempel && context.Principal?.Identity is ClaimsIdentity identitaet)
+        {
+            var sitzungen = context.HttpContext.RequestServices.GetRequiredService<AnmeldeSitzungen>();
+            Guid? geraet = Guid.TryParse(context.Principal.FindFirstValue(AnmeldeSitzungen.GeraetClaim), out var g) ? g : null;
+            var (gueltig, neueSitzung) = await sitzungen.PruefeAsync(userId, kontoStempel, geraet,
+                context.HttpContext.Request.Headers.UserAgent.ToString());
+            if (!gueltig)
+            {
+                abweisen = true;
+            }
+            else if (neueSitzung is Guid neu)
+            {
+                identitaet.AddClaim(new Claim(AnmeldeSitzungen.GeraetClaim, neu.ToString()));
+                context.ReplacePrincipal(context.Principal);
+                context.ShouldRenew = true;
+            }
+        }
+
         // « Connexion personnelle » entzogen: Mitarbeiter-Konto wird bei der nächsten Anfrage abgemeldet.
         if (!abweisen && context.Principal is { } p && LadenZugriff.IstMitarbeiterRolle(p.IsInRole(AppRollen.Kassierer),
                 p.IsInRole(AppRollen.Besitzer), p.IsInRole(AppRollen.SuperAdmin) || p.IsInRole(AppRollen.ProduktOwner)))
@@ -127,6 +147,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 if (administration is null)
 {
     builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<AnmeldeSitzungen>();
     builder.Services.AddScoped<KatalogService>();
     builder.Services.AddScoped<KassenService>();
     builder.Services.AddScoped<MobileMoneyService>();
@@ -302,8 +323,14 @@ app.MapPost("/auth/login/submit", async (
     return Results.LocalRedirect(ziel);
 }).RequireRateLimiting(ENote.WebApp.Services.Sicherheit.Schutzgrenzen.Anmeldung);
 
-app.MapPost("/auth/logout", async (AuthService authService) =>
+app.MapPost("/auth/logout", async (AuthService authService, AnmeldeSitzungen sitzungen, HttpContext http) =>
 {
+    // « Appareils connectés »: nur DIESES Gerät abmelden – die anderen Geräte des Besitzers bleiben angemeldet.
+    if (Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var abmeldenderNutzer))
+    {
+        Guid? geraet = Guid.TryParse(http.User.FindFirstValue(AnmeldeSitzungen.GeraetClaim), out var g) ? g : null;
+        await sitzungen.BeendeAsync(abmeldenderNutzer, geraet);
+    }
     await authService.LogoutAsync();
     // Nach der Abmeldung zurück auf die öffentliche Startseite
     return Results.LocalRedirect("/");

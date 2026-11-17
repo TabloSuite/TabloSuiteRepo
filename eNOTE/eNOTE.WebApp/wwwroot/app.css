@@ -3426,3 +3426,12 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .kx-abschluss-personen-titel span:first-child { display: inline-flex; align-items: center; gap: .35rem; }
 .eq-anmeldung-passwort { display: grid; gap: .35rem; margin: .2rem 0 .4rem 2.9rem; font-weight: 600; font-size: .9rem; }
 .enote-pin-links { display: grid; gap: .5rem; margin-top: .6rem; }
+
+/* « Appareils connectés » (17.11.2026) */
+.st-geraete { display: grid; gap: .55rem; margin: .4rem 0 .8rem; }
+.st-geraet { display: flex; align-items: center; gap: .75rem; padding: .65rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius-lg); background: var(--enote-surface); }
+.st-geraet.dieses { border-color: var(--enote-success); background: var(--enote-success-soft); }
+.st-geraet-ico { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; flex-shrink: 0; border-radius: .7rem; background: var(--enote-surface-3); color: var(--enote-primary); }
+.st-geraet-text { display: grid; gap: .15rem; flex: 1; min-width: 0; }
+.st-geraet-text strong { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.st-geraete-hinweis { margin: .6rem 0 0; font-size: .85rem; }
