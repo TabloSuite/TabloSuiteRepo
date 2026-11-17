@@ -83,6 +83,7 @@ public static partial class FormationKatalog
                     "Les élèves qui s'inscrivent en ligne sont validés par la direction de l'école, pas par vous.",
                     "Bloquer le compte du directeur ne suspend jamais l'école : seul le statut de l'école le fait."),
                 B(Bild + "po-ecole-carte.jpg", "La carte d'une école : statut, motif éventuel, élèves, personnel, inscriptions à valider par l'école."),
+                V("skoulou-acces-inscription.mp4", "L'inscription d'une école et d'un élève, l'attente de la validation, pas à pas."),
                 V("skoulou-visite-guidee.mp4", "Qui voit quoi dans SKOULOU, rôle par rôle."),
                 M("Une école « Suspendue » garde toutes ses données : elle redevient accessible dès que l'administrateur la réactive."),
             ],
@@ -474,6 +475,7 @@ public static partial class FormationKatalog
                 A("Ne demandez jamais un mot de passe. Ne vous connectez jamais avec le compte d'une autre personne."),
                 B(Bild + "dir-contact.jpg", "La page « Contact » de la direction : la carte « Votre responsable SKOULOU »."),
                 V("skoulou-premiers-pas.mp4", "Premiers pas : la connexion, le premier mot de passe, le compte."),
+                V("skoulou-acces-inscription.mp4", "Le mot de passe oublié et les nouveaux accès d'une classe, pas à pas."),
                 M("Votre formation revient régulièrement : relisez une leçon dès que SKOULOU change – les leçons sont mises à jour avec l'application."),
             ],
             [

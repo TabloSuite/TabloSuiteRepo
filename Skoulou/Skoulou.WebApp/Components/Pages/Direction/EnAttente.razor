@@ -1,15 +1,23 @@
 @page "/direction/en-attente"
 @attribute [Authorize(Policy = Richtlinien.Direktor)]
 @inject SchulKontext Kontext
+@implements IDisposable
 
 <PageTitle>Validation en cours · SKOULOU</PageTitle>
 
 <div class="sk-seite-schmal">
     <Karte>
         <Leerzustand Icon="clock" Titel="Votre établissement est en cours de validation"
-                     Text="@($"Merci pour votre inscription. L'équipe SKOULOU vérifie « {Kontext.SchulName} ». Vous recevrez un e-mail dès la validation ; vous pourrez alors ajouter votre équipe et vos élèves.")">
+                     Text="@($"Merci pour votre inscription. L'équipe SKOULOU vérifie {(string.IsNullOrWhiteSpace(Kontext.SchulName) ? "votre demande" : $"« {Kontext.SchulName} »")}. Vous recevrez un e-mail dès la validation ; vous pourrez alors ajouter votre équipe et vos élèves.")">
             <a class="sk-btn sk-btn-ghost" href="/aide/videos"><Icon Name="video" Groesse="18" /> Vidéos d'aide</a>
             <a class="sk-btn sk-btn-ghost" href="/contact"><Icon Name="mail" Groesse="18" /> Nous contacter</a>
         </Leerzustand>
     </Karte>
 </div>
+
+@code {
+    // 17.11.: der Schulname kommt erst nach dem ersten Zeichnen (SchulKontext lädt im Layout) → neu zeichnen, sobald er da ist.
+    protected override void OnInitialized() => Kontext.Geaendert += NeuZeichnen;
+    private void NeuZeichnen() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Kontext.Geaendert -= NeuZeichnen;
+}
