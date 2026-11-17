@@ -7,12 +7,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
 
+**>>> NEU 17.11. nachmittags – Kundendisplay je Gerät (dc1d5df) + Gesamttest Kasse (8193d68), 493 Tests grün:** Display-Gruppe je
+Geräteschlüssel (localStorage), Link `/display/{Laden}/{Gerät}`, bleibt über Clôture/Tage verbunden, alter Link zeigt « Nouveau lien ».
+Azure ist mit allen drei Migrationen von heute aktuell (PoProvisionen, VerkaufKassierer, PersoenlicheAnmeldung) → **eNOTE kann
+deployt werden.** Gesamttest im Browser (Tablet + Handy + 2 Displays + Mitarbeiter mit/ohne Login): 40/41 OK; Équipe-Statistik
+korrigiert. **Offener Fund (Entscheidung des Nutzers):** bestehende Regel « eine aktive Sitzung je Konto » (`ActiveSessionId`) – meldet
+sich der Besitzer an Gerät 2 an, ist Gerät 1 abgemeldet (Kasse läuft im offenen Fenster weiter, aber Bon-Druck/PDF/Neuladen →
+Anmeldeseite). Vorschlag: mehrere Geräte je Besitzer-Konto + Liste « Appareils connectés » mit Abmelden. Push von dc1d5df/8193d68
+wartete auf die GitHub-Anmeldung des Nutzers. Bilder `Pictures\eNOTE-Display-je-Geraet-2026-11-17\`, `Pictures\eNOTE-Gesamttest-Kasse-2026-11-17\`.
+
 **>>> NEU 17.11. mittags – « Connexion personnelle » (e8c72cc, gepusht, 483 Tests grün):** Mitarbeitende standardmäßig ohne
 Passwort (kassieren am Gerät des Besitzers mit Name + PIN); eigener Login nur mit neuem Recht `UserSalon.KannSichAnmelden`
 (Équipe › Droits, Passwort beim Einschalten). Mit eigenem Konto: nur Bereiche der übrigen Rechte, keine Kasse, keine
-« Clients présents », nie Besitzer-PIN (auch zentral in `PruefeBesitzerFreigabeAsync`). **Neue Migration
-`20261117075157_PersoenlicheAnmeldung` (bool, Standard aus) – lokal ja, Azure NOCH NICHT (OK nötig) → eNOTE erst danach
-deployen.** Azure hat bereits PoProvisionen + VerkaufKassierer (mit OK eingespielt). **Nächster Vorschlag (wartet auf OK):
+« Clients présents », nie Besitzer-PIN (auch zentral in `PruefeBesitzerFreigabeAsync`). Migration `20261117075157_PersoenlicheAnmeldung` – lokal und Azure (mit OK). Azure hat bereits PoProvisionen + VerkaufKassierer (mit OK eingespielt). **Nächster Vorschlag (wartet auf OK):
 Kundendisplay je Gerät** statt je Sitzung (heute mischen sich bei zwei gleichzeitigen Kassierern die Tickets). Bilder
 `Pictures\eNOTE-Connexion-personnelle-2026-11-17\`. Videos « Équipe » / « Votre équipe, les droits et les codes PIN » später anpassen.
 
