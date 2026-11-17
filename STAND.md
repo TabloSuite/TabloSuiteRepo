@@ -7,6 +7,18 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
 
+**>>> NEUESTES (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
+- **Standardpreis SKOULOU = 3.600 F je Schüler und Schuljahr** (61f55aa; Trimester 1.200, Semester 1.800, 4 Sessions 900).
+  **Azure-Wert stellt der Nutzer selbst um: Administration › Tarifs.** Modell bleibt Jahrespreis ÷ Perioden (Nutzer « So lassen »).
+  In Videos immer als « exemple ». Aufnahme-DB-Basis steht auf 3.600 (Memory « skoulou-videos-runde2 »).
+- Fertig + gepusht: Bulletin mit echtem PDF (768bea3: « Notes et conseil de classe » 5:17, neu « Publier les bulletins » 4:48,
+  Lehrer « Suivre la classe : appel, notes et bulletin » 4:30); « Une école de langues : l'année en sessions » 5:17 (7403753);
+  App-Fix « MOYENNE DE LA SESSION 1 » (7350618, 647 Tests grün).
+- In Arbeit (Texte, Stimme, Abläufe fertig): « La facture SKOULOU » (Aufnahme läuft), « Fin d'année et passage » (Probelauf ok).
+- Danach: « Établissement » + « Cartes d'élève », Responsable, Administrateur, Contenus + Journal. Pipeline-Neuerungen
+  (PDF-Szenen `pdf.py`, `FILME` in lernen3-film.mjs, `App__BaseUrl` der Aufnahme-App) in `lernen-v3/AUFTRAG.md` §7.
+- **SKOULOU muss danach deployt werden** (neue Videos + Preis-Standard + Bulletin-Fix; keine Migration seit FormationResponsables).
+
 **>>> NEUESTES (17.11. spätnachmittags) – SKOULOU-Formation fertig (60c5982) + Fixes beider Apps:**
 - **SKOULOU-Formation** wie eNOTE (Responsable 10 Lektionen/60 Fragen, Admin 6 Lektionen/37 Fragen, `Skoulou.WebApp/Services/Formation/`,
   Seiten `/formation…`, `/admin/formation`, Menü + Guide + Startkarte). « Retirer le rôle » = Schulen im selben Schritt neu zuweisen +
