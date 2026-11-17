@@ -234,7 +234,8 @@ public static partial class FormationKatalog
                     "« Publier les bulletins » : chaque bulletin reçoit un numéro et un code QR ; les notes de la période sont alors verrouillées.",
                     "Une erreur après publication : « Rectifier » avec un motif ; le nouveau bulletin remplace l'ancien numéro."),
                 B(Bild + "dir-notes.jpg", "« Notes » : la classe, la matière, la période, puis la saisie au clavier."),
-                V("skoulou-direction-notes.mp4", "Notes, conseil et bulletins, pas à pas."),
+                V("skoulou-direction-notes.mp4", "Notes et conseil de classe, avec le bulletin imprimé, pas à pas."),
+                V("skoulou-direction-bulletins.mp4", "Publier les bulletins : le bulletin case par case, le QR, la rectification."),
                 M("Le code QR d'un bulletin permet à chacun de vérifier qu'il est authentique (« Bulletin valable »)."),
             ],
             [
