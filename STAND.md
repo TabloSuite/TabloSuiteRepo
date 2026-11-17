@@ -7,6 +7,9 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
 
+**>>> 17.11. zuletzt: eNOTE (« eine Kasse, ein Gerät » + Videos) und TabloSuiteHome sind DEPLOYT.** Der Nutzer macht einen echten
+allgemeinen Test und meldet sich mit Auffälligkeiten. Im neuen Chat: nachfragen, was ihm aufgefallen ist.
+
 **>>> NEUESTES (17.11. spät) – Eine Kasse je Laden, an genau EINEM Gerät (6ca60a3, gepusht, 511 Tests grün):** Nutzer: zweites
 Gerät in der Kasse des ersten = abhängig, « nicht professionell » → zurückgenommen. Kasse läuft am Gerät, das sie öffnet
 (`KassenSitzung.GeraetSchluessel`); andere Geräte: « La caisse est ouverte sur un autre appareil » + « Reprendre la caisse ici »
