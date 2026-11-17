@@ -31,6 +31,9 @@ public static class MailArten
         new("etablissement-statut", "Établissement désactivé / réactivé", "Propriétaire", "Quand l'admin change le statut", false, true),
         new("resiliation", "Résiliation confirmée", "Propriétaire", "Quand le propriétaire résilie son abonnement", false, true),
         new("resiliation-admin", "Résiliation (admin)", "Équipe TabloSuite", "Quand un établissement résilie ou demande la suppression", false, true),
+        new("formation-session", "Évaluation ouverte", "Responsable", "Quand une session d'évaluation de la formation s'ouvre", false, true),
+        new("formation-rappel", "Rappel d'évaluation", "Responsable", $"{ENote.WebApp.Services.Formation.FormationService.ErinnerungTageVorFrist} jours avant la fin du délai, si l'évaluation n'est pas réussie", false, true),
+        new("formation-resultat", "Évaluation non réussie ou manquée", "Équipe TabloSuite", "Quand la session d'un responsable se termine sans réussite", false, true),
         new("email-modifiee", "Adresse e-mail modifiée", "Utilisateur (ancienne adresse)", "Quand l'adresse e-mail du compte change (sécurité)", false, true),
 
         // Abschaltbar – standardmäßig aus (später bei größerem Mail-Kontingent aktivieren)

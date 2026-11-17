@@ -643,6 +643,177 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("GeldBewegungen");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationLektionGelesen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GelesenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LektionId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid>("ProduktOwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProduktOwnerId", "LektionId")
+                        .IsUnique();
+
+                    b.ToTable("FormationLektionenGelesen");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationRegel", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BestehensGrenzeProzent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FragenJePruefung")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FristTage")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GeaendertUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StandardIntervallMonate")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FormationRegeln");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationRunde", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AbgeschlossenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AdminGemeldetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BenachrichtigtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BestehensGrenzeProzent")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EndNoteProzent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ErinnerungUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErlassenGrund")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ErlassenVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("FragenAnzahl")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FristUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeoeffnetUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IstFrei")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ProduktOwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProduktOwnerId", "Status");
+
+                    b.ToTable("FormationRunden");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationTeilnehmer", b =>
+                {
+                    b.Property<Guid>("ProduktOwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IntervallMonate")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NaechsteRundeAbUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PausiertBisUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ProduktOwnerId");
+
+                    b.ToTable("FormationTeilnehmer");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationVersuch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AbgegebenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AntwortenJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("BegonnenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FragenAnzahl")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FragenJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Nummer")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Prozent")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Richtige")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RundeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RundeId", "Nummer")
+                        .IsUnique();
+
+                    b.ToTable("FormationVersuche");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Identity.AnmeldeSitzung", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2637,6 +2808,48 @@ namespace ENote.WebApp.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationLektionGelesen", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ProduktOwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationRunde", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Identity.AppUser", "ProduktOwner")
+                        .WithMany()
+                        .HasForeignKey("ProduktOwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProduktOwner");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationTeilnehmer", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Identity.AppUser", "ProduktOwner")
+                        .WithMany()
+                        .HasForeignKey("ProduktOwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProduktOwner");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationVersuch", b =>
+                {
+                    b.HasOne("ENote.Core.DataModels.Formation.FormationRunde", "Runde")
+                        .WithMany("Versuche")
+                        .HasForeignKey("RundeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Runde");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Identity.AnmeldeSitzung", b =>
                 {
                     b.HasOne("ENote.Core.DataModels.Identity.AppUser", "User")
@@ -3089,6 +3302,11 @@ namespace ENote.WebApp.Migrations
             modelBuilder.Entity("ENote.Core.DataModels.Abo.PoZahlungsanforderung", b =>
                 {
                     b.Navigation("Positionen");
+                });
+
+            modelBuilder.Entity("ENote.Core.DataModels.Formation.FormationRunde", b =>
+                {
+                    b.Navigation("Versuche");
                 });
 
             modelBuilder.Entity("ENote.Core.DataModels.Identity.AppUser", b =>

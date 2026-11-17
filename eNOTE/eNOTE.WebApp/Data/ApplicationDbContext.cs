@@ -1,5 +1,6 @@
 ﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Finanzen;
+using ENote.Core.DataModels.Formation;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Kasse;
@@ -63,6 +64,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
     public DbSet<AnkuendigungGelesen> AnkuendigungenGelesen => Set<AnkuendigungGelesen>();
     public DbSet<PreisAnpassung> PreisAnpassungen => Set<PreisAnpassung>();
+    public DbSet<FormationRegel> FormationRegeln => Set<FormationRegel>();
+    public DbSet<FormationTeilnehmer> FormationTeilnehmer => Set<FormationTeilnehmer>();
+    public DbSet<FormationLektionGelesen> FormationLektionenGelesen => Set<FormationLektionGelesen>();
+    public DbSet<FormationRunde> FormationRunden => Set<FormationRunde>();
+    public DbSet<FormationVersuch> FormationVersuche => Set<FormationVersuch>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -539,6 +545,34 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(a => a.ProduktOwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Formation der Responsables (17.11.2026): Lernpfad + Prüfungsrunden. Persönliche Lerndaten gehen mit dem Konto.
+        builder.Entity<FormationRegel>(entity =>
+        {
+            entity.Property(r => r.Id).ValueGeneratedNever();
+        });
+        builder.Entity<FormationTeilnehmer>(entity =>
+        {
+            entity.HasKey(t => t.ProduktOwnerId);
+            entity.HasOne(t => t.ProduktOwner).WithMany().HasForeignKey(t => t.ProduktOwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<FormationLektionGelesen>(entity =>
+        {
+            entity.Property(l => l.LektionId).HasMaxLength(60);
+            entity.HasIndex(l => new { l.ProduktOwnerId, l.LektionId }).IsUnique();
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(l => l.ProduktOwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<FormationRunde>(entity =>
+        {
+            entity.Property(r => r.ErlassenGrund).HasMaxLength(500);
+            entity.HasIndex(r => new { r.ProduktOwnerId, r.Status });
+            entity.HasOne(r => r.ProduktOwner).WithMany().HasForeignKey(r => r.ProduktOwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<FormationVersuch>(entity =>
+        {
+            entity.HasIndex(v => new { v.RundeId, v.Nummer }).IsUnique();
+            entity.HasOne(v => v.Runde).WithMany(r => r.Versuche).HasForeignKey(v => v.RundeId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

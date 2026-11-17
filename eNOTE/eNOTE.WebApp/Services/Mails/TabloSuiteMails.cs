@@ -241,6 +241,34 @@ public static class TabloSuiteMails
                 Anrede(vorname) + P($"L'établissement <strong>{H(salonName)}</strong> a été désactivé par l'équipe TabloSuite.")
                 + Box("info", "Une question ?", $"Répondez à cet e-mail ou écrivez-nous à {Kontakt}. Vos données sont conservées.") + Gruss());
 
+    // ------------------------------------------------------------------ Formation der Responsables
+
+    /// <summary>Neue Prüfungsrunde für einen Responsable.</summary>
+    public static string FormationOuverte(string vorname, DateTime fristUtc, int grenze, int fragen, string url)
+        => Wrap("Votre évaluation eNOTE est ouverte", $"Jusqu'au {fristUtc:dd.MM.yyyy} · {fragen} questions.",
+            Anrede(vorname)
+            + P("Une nouvelle session d'évaluation de votre formation de responsable est ouverte.")
+            + Tabelle([("Jusqu'au", fristUtc.ToString("dd.MM.yyyy")), ("Questions", fragen.ToString()), ("Réussite à partir de", $"{grenze} %"), ("Essais", "3 au plus – le dernier compte")])
+            + P("Relisez les leçons si besoin : elles sont mises à jour avec l'application. Vous voyez votre note et vos erreurs après chaque essai.")
+            + Knopf("Ouvrir ma formation", url) + Gruss());
+
+    /// <summary>Erinnerung kurz vor der Frist.</summary>
+    public static string FormationRappel(string vorname, DateTime fristUtc, int? note, int grenze, string url)
+        => Wrap("Rappel : votre évaluation eNOTE", $"Encore jusqu'au {fristUtc:dd.MM.yyyy}.",
+            Anrede(vorname)
+            + P(note is null
+                ? $"Votre session d'évaluation se termine le <strong>{fristUtc:dd.MM.yyyy}</strong> et vous ne l'avez pas encore faite."
+                : $"Votre dernier essai a obtenu <strong>{note} %</strong> (réussite à partir de {grenze} %). Vous pouvez encore réessayer jusqu'au <strong>{fristUtc:dd.MM.yyyy}</strong>.")
+            + Knopf("Ouvrir ma formation", url) + Gruss());
+
+    /// <summary>Meldung an das Team: Runde nicht bestanden oder verpasst.</summary>
+    public static string FormationResultatAdmin(string responsable, bool verpasst, int? note, int grenze, string adminUrl)
+        => Wrap(verpasst ? "Évaluation manquée" : "Évaluation non réussie", responsable,
+            P(verpasst ? $"{H(responsable)} n'a pas fait son évaluation avant la fin du délai." : $"{H(responsable)} n'a pas réussi son évaluation.")
+            + Tabelle([("Responsable", responsable), ("Note finale", note is null ? "—" : $"{note} %"), ("Réussite à partir de", $"{grenze} %")])
+            + P("Vous décidez : ouvrir une nouvelle session, prolonger, dispenser, ou retirer le rôle de responsable.")
+            + Knopf("Ouvrir Administration › Formation", adminUrl));
+
     // ------------------------------------------------------------------ Manuelle Nachricht
 
     /// <summary>

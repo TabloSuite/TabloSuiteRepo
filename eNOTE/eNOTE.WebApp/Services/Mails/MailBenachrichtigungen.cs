@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.Services;
 using ENote.WebApp.Data;
@@ -270,6 +270,45 @@ public class MailBenachrichtigungen(
         await db.SaveChangesAsync(ct);
         return anzahl;
     }
+
+    /// <summary>
+    /// Formation der Responsables: Mails « session ouverte », « rappel » (7 Tage vor der Frist) und an das Team bei
+    /// « non réussie » / « manquée ». Jede höchstens einmal (Zeitstempel an der Runde).
+    /// </summary>
+    public async Task<int> PruefeFormationMailsAsync(Formation.FormationService formation, CancellationToken ct = default)
+    {
+        var anzahl = 0;
+        var url = AppUrl + "/formation";
+        await using var db = await factory.CreateDbContextAsync(ct);
+        foreach (var m in await formation.GetOffeneMeldungenAsync(ct))
+        {
+            var po = await db.Users.AsNoTracking().Where(u => u.Id == m.PoId).Select(u => new { u.Email, u.Vorname, u.FullName, u.IsBlocked }).FirstOrDefaultAsync(ct);
+            try
+            {
+                if (po is not null && !po.IsBlocked)
+                {
+                    var gesendet = m.Art switch
+                    {
+                        "ouverte" when po.Email is not null => await email.SendeAsync(po.Email, "Votre évaluation est ouverte",
+                            TabloSuiteMails.FormationOuverte(po.Vorname, m.FristUtc, m.Grenze, m.Fragen, url), "formation-session", ct),
+                        "rappel" when po.Email is not null => await email.SendeAsync(po.Email, "Rappel : votre évaluation",
+                            TabloSuiteMails.FormationRappel(po.Vorname, m.FristUtc, m.Note, m.Grenze, url), "formation-rappel", ct),
+                        "resultat" => await email.SendeAsync(AdminEmpfaenger, $"Formation : {po.FullName}",
+                            TabloSuiteMails.FormationResultatAdmin(po.FullName, m.Note is null, m.Note, m.Grenze, AppUrl + "/admin"), "formation-resultat", ct),
+                        _ => false
+                    };
+                    if (gesendet) anzahl++;
+                }
+                // Auch abgeschaltete Mails / fehlende Adresse: nicht stündlich neu versuchen.
+                await formation.MarkiereGemeldetAsync(m.RundeId, m.Art, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Formation-Mail « {Art} » für {PoId} fehlgeschlagen.", m.Art, m.PoId);
+            }
+        }
+        return anzahl;
+    }
 }
 
 /// <summary>
@@ -299,6 +338,9 @@ public class MailVersandDienst(IServiceScopeFactory scopes, ILogger<MailVersandD
                         letztePruefung = DateTime.UtcNow;
                         var neu = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>().PruefeAboMailsAsync(stoppingToken);
                         if (neu > 0) logger.LogInformation("{Anzahl} Abo-E-Mail(s) versendet.", neu);
+                        var formation = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>()
+                            .PruefeFormationMailsAsync(scope.ServiceProvider.GetRequiredService<Formation.FormationService>(), stoppingToken);
+                        if (formation > 0) logger.LogInformation("{Anzahl} Formation-E-Mail(s) versendet.", formation);
                     }
                 }
             }

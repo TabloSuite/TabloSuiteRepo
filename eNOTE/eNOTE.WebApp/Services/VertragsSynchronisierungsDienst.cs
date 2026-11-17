@@ -28,6 +28,8 @@ public sealed class VertragsSynchronisierungsDienst(
                 {
                     logger.LogWarning(fehler, "Abo-Perioden für Laden {SalonId} konnten nicht erzeugt werden.", salonId);
                 }
+                // Formation der Responsables: abgelaufene Runden abschließen, fällige öffnen (Mails im MailVersandDienst).
+                await scope.ServiceProvider.GetRequiredService<Formation.FormationService>().AktualisiereAlleAsync(stoppingToken);
                 // Kontolöschungen nach Ablauf der 30 Tage Bedenkzeit ausführen.
                 var geloescht = await scope.ServiceProvider.GetRequiredService<KuendigungService>().FuehreFaelligeLoeschungenAusAsync(stoppingToken);
                 if (geloescht > 0) logger.LogInformation("{Anzahl} Laden/Läden nach Ablauf der Bedenkzeit gelöscht.", geloescht);

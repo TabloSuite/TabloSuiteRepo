@@ -177,6 +177,7 @@ if (administration is null)
     builder.Services.AddScoped<KontoWiederherstellung>();
     builder.Services.AddScoped<PoAbrechnungService>();
     builder.Services.AddScoped<PoProvisionService>();
+    builder.Services.AddScoped<ENote.WebApp.Services.Formation.FormationService>();
     builder.Services.AddScoped<BesitzerFinanzService>();
     builder.Services.AddScoped<BesitzerBetreuungsService>();
     builder.Services.AddScoped<KuendigungService>();
