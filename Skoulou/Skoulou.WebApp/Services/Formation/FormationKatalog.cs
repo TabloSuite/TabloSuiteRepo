@@ -287,6 +287,7 @@ public static partial class FormationKatalog
                 B(Bild + "dir-frais.jpg", "« Frais de scolarité » : les frais par niveau ou par classe, avec tranches et réductions."),
                 V("skoulou-direction-concept-frais.mp4", "Le concept des frais et des paiements."),
                 V("skoulou-direction-frais.mp4", "La pratique : frais de scolarité et paiements."),
+                V("skoulou-direction-finances.mp4", "Vue d'ensemble, exonération, catégories, écriture inverse et reprise des frais."),
                 M("Exemple : 90 000 F avec une réduction de 25 % → 67 500 F à payer."),
             ],
             [
