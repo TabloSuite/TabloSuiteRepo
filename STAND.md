@@ -21,6 +21,10 @@ vorher), « non réussie/manquée » ans Team (in E-mails abschaltbar). Seiten `
 **Dazu (1030bea, Nutzer « Lektionen nach Rollen getrennt? » → « Ja bitte »): eigener Lernpfad für Administrateure** (6 Lektionen
 `admin-…`, 36 Fragen `a-…`, Datei `FormationKatalogAdmin.cs`): Admins sehen « Parcours administrateur » + « Parcours responsable » und
 trainieren frei in beiden; POs sehen die Admin-Lektionen nicht. Keine Migration. Bilder `…dmin-pfad\`. 535 Tests grün.
+**Danach (17.11. spätnachmittags):** Testkonto PO « Paul Pamala » auf Azure gelöscht (Nutzer; Azure hat jetzt **keinen PO**, Nutzer legt
+später neue Test-POs an), Trainingsrunden von DodjiEtse auf Azure geleert. Fixes 7bfb749: Admin kann zwischen beiden Trainingspfaden
+wechseln; Lektionsbilder in Handygröße (max. 20rem, antippen = groß). **Neues Lernvideo « Piloter la formation des responsables »**
+(Administrateur, 3:55, a12bb51; README lernen-v3 Abschnitt 17.11. nachmittags). **eNOTE muss erneut deployt werden** (Fixes + Video).
 **Neue Migration `20261117125830_FormationResponsables`** (nur CreateTable, 5 Tabellen) – lokal ENOTEDB und **Azure eingespielt
 (OK « Ja zu Azure », Tabellen lesend geprüft): Azure = lokal → eNOTE kann deployt werden.** Nutzer schaut sich zuerst die Videos an. Nach dem Deploy öffnet sich für **jeden** PO sofort die erste Session
 (30 Tage) und er bekommt die Mail « Évaluation ouverte ». **Nächster Schritt danach: SKOULOU-Formation** (Rolle `Responsable`).
