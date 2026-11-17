@@ -335,7 +335,9 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
             .Where(a => salonIds.Contains(a.SalonId)
                 && a.ZahlungStatus == Core.DataModels.Abo.AboZahlungStatus.Bestaetigt
                 && a.ZahlungBestaetigtUtc >= monatStart && a.ZahlungBestaetigtUtc < monatEnde
-                && !db.PoZahlungseingaenge.Any(e => e.NutzungsAboId == a.Id))
+                && !db.PoZahlungseingaenge.Any(e => e.NutzungsAboId == a.Id)
+                // Seit der automatischen Provision (PoProvision je Zahlung) ebenfalls nicht doppelt.
+                && !db.PoProvisionen.Any(p => p.NutzungsAboId == a.Id && p.ProduktOwnerId == produktOwnerId))
             .GroupBy(a => a.SalonId)
             .Select(g => new { g.Key, Summe = g.Sum(a => a.PreisSnapshot) })
             .ToListAsync(cancellationToken);

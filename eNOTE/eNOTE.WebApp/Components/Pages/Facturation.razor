@@ -28,12 +28,33 @@
         @if (gemeldete.Count > 0)
         {
             <h2 class="enote-section-title">Paiements signalés (@gemeldete.Count)</h2>
+            @if (darfBestaetigen)
+            {
+                <div class="enote-auswahl-leiste">
+                    <label class="enote-auswahl">
+                        <input type="checkbox" checked="@(auswahl.Count == gemeldete.Count)" @onchange="AlleWaehlen" />
+                        <span>Tout sélectionner</span>
+                    </label>
+                    <span class="enote-muted">@auswahl.Count sélectionné(s) · @Auswahlsumme.ToString("N0") F</span>
+                    <button class="enote-btn enote-btn-primary" disabled="@(auswahl.Count == 0)" @onclick="OeffneSammelDialog">Confirmer la sélection (@auswahl.Count)</button>
+                </div>
+            }
             <div class="enote-grid-scroll">
                 @foreach (var a in gemeldete)
                 {
-                    <div class="enote-item enote-item-pending">
+                    <div class="enote-item enote-item-pending @(auswahl.Contains(a.Id) ? "enote-item-gewaehlt" : "")" @key="a.Id">
                         <div class="enote-item-head">
-                            <strong>@a.Salon.Name</strong>
+                            @if (darfBestaetigen)
+                            {
+                                <label class="enote-auswahl">
+                                    <input type="checkbox" checked="@auswahl.Contains(a.Id)" @onchange="e => Waehle(a.Id, e)" aria-label="Sélectionner @a.Salon.Name" />
+                                    <strong>@a.Salon.Name</strong>
+                                </label>
+                            }
+                            else
+                            {
+                                <strong>@a.Salon.Name</strong>
+                            }
                             <span class="enote-price">@a.PreisSnapshot.ToString("N0") F</span>
                         </div>
                         <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd.MM.yyyy")</p>
@@ -97,3 +118,20 @@
         }
     }
 </div>
+
+<ModalDialog Open="sammelDialogOffen" Title="Confirmer plusieurs paiements" OnClose="() => sammelDialogOffen = false" ErrorMessage="@sammelFehler">
+    <ChildContent>
+        <p>Vous confirmez avoir réellement reçu <strong>@auswahl.Count paiement(s)</strong> pour un total de <strong>@Auswahlsumme.ToString("N0") F</strong> :</p>
+        <ul class="enote-sammel-liste">
+            @foreach (var a in gemeldete.Where(a => auswahl.Contains(a.Id)))
+            {
+                <li>@a.Salon.Name · @a.PreisSnapshot.ToString("N0") F@(string.IsNullOrWhiteSpace(a.ZahlungsNotiz) ? "" : " · « " + a.ZahlungsNotiz + " »")</li>
+            }
+        </ul>
+        <p class="enote-muted">Chaque propriétaire reçoit sa confirmation par e-mail. Les commissions des responsables sont créées automatiquement.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => sammelDialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="@($"Confirmer {auswahl.Count} paiement(s)")" OnClick="SammelBestaetigenAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>

@@ -54,6 +54,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PoZahlungsanforderung> PoZahlungsanforderungen => Set<PoZahlungsanforderung>();
     public DbSet<PoGeldbewegung> PoGeldbewegungen => Set<PoGeldbewegung>();
     public DbSet<PoAbrechnungsEreignis> PoAbrechnungsEreignisse => Set<PoAbrechnungsEreignis>();
+    public DbSet<PoProvision> PoProvisionen => Set<PoProvision>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
     public DbSet<EingangsMail> EingangsMails => Set<EingangsMail>();
@@ -214,6 +215,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         });
         builder.Entity<PoGeldbewegung>(entity => entity.Property(b => b.Betrag).HasPrecision(18, 2));
         builder.Entity<PoAbrechnungsEreignis>(entity => entity.Property(e => e.Betrag).HasPrecision(18, 2));
+        builder.Entity<PoProvision>(entity =>
+        {
+            entity.Property(p => p.AboBetrag).HasPrecision(18, 2);
+            entity.Property(p => p.ProzentProvision).HasPrecision(18, 2);
+            entity.Property(p => p.FestProvision).HasPrecision(18, 2);
+            entity.Property(p => p.Betrag).HasPrecision(18, 2);
+            entity.Property(p => p.Laden).HasMaxLength(200);
+            entity.Property(p => p.VersementReferenz).HasMaxLength(200);
+            entity.Property(p => p.NichtErhaltenHinweis).HasMaxLength(500);
+            // Eine Provision je Responsable und Zahlung – auch bei gleichzeitigem Bestätigen auf zwei Geräten.
+            entity.HasIndex(p => new { p.ProduktOwnerId, p.NutzungsAboId }).IsUnique();
+            entity.HasIndex(p => new { p.ProduktOwnerId, p.SalonId, p.ZahlungBestaetigtUtc });
+            entity.HasOne(p => p.ProduktOwner).WithMany().HasForeignKey(p => p.ProduktOwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
         builder.Entity<MonatsPreisStand>(entity => entity.Property(p => p.MonatsPreis).HasPrecision(18, 2));
         builder.Entity<NutzungsAbo>(entity =>
         {

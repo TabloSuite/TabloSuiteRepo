@@ -131,16 +131,56 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
         }
 
         var vorher = abo.ZahlungStatus;
+        if (vorher == status)
+        {
+            return true; // schon so (z. B. auf einem anderen Gerät bestätigt) – keine zweite Mail, keine zweite Provision
+        }
+
         abo.ZahlungStatus = status;
         if (status == AboZahlungStatus.Bestaetigt)
         {
-            abo.ZahlungBestaetigtUtc = uhr.GetUtcNow().UtcDateTime;
+            var jetzt = uhr.GetUtcNow().UtcDateTime;
+            abo.ZahlungBestaetigtUtc = jetzt;
+            // Provision der Responsables des Ladens entsteht automatisch mit der Bestätigung (gleiche Speicherung).
+            await PoProvisionService.ErfasseAsync(db, abo, jetzt, cancellationToken);
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        if (mails is not null && vorher != status)
+        if (mails is not null)
             await mails.ZahlungsStatusAsync(abo.Id, status, cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// SuperAdmin bestätigt mehrere gemeldete Zahlungen auf einmal (je Zahlung eigene Speicherung, Mail und Provision).
+    /// Inzwischen anders behandelte Zahlungen werden übersprungen. Liefert Anzahl und Summe der bestätigten.
+    /// </summary>
+    public async Task<(int Anzahl, decimal Summe)> BestaetigeZahlungenAsync(
+        Guid bearbeiter, IReadOnlyCollection<Guid> aboIds, CancellationToken cancellationToken = default)
+    {
+        if (aboIds.Count == 0) throw new ArgumentException("Sélectionnez au moins un paiement.");
+        await using (var pruefung = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+            await AdminKontenService.PruefeAsync(pruefung, bearbeiter, false, cancellationToken);
+        var anzahl = 0;
+        var summe = 0m;
+        foreach (var id in aboIds.Distinct())
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var abo = await db.NutzungsAbos.AsNoTracking().Where(a => a.Id == id)
+                .Select(a => new { a.ZahlungStatus, a.PreisSnapshot }).FirstOrDefaultAsync(cancellationToken);
+            if (abo is null || abo.ZahlungStatus != AboZahlungStatus.Gemeldet) continue;
+            try
+            {
+                if (!await SetzeZahlungsStatusAsync(id, AboZahlungStatus.Bestaetigt, cancellationToken)) continue;
+            }
+            catch (DbUpdateException)
+            {
+                continue; // gleichzeitig auf einem anderen Gerät bestätigt
+            }
+            anzahl++;
+            summe += abo.PreisSnapshot;
+        }
+        return (anzahl, summe);
     }
 
     /// <summary>Gemeldete (zu bestätigende) Zahlungen aller Salons für den SuperAdmin.</summary>

@@ -1,0 +1,261 @@
+@using ENote.Core.DataModels.Abo
+@using ENote.WebApp.Services
+@inject PoProvisionService Service
+@inject ProduktOwnerService ProduktOwner
+@inject ToastService Toast
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
+
+@* Commissions des responsables: entstehen automatisch je bestätigter Zahlung; der Administrateur markiert mehrere als versées. *@
+<div class="enote-card enote-settings-card">
+    <p class="enote-muted">Chaque paiement confirmé crée automatiquement la commission du responsable de l'établissement (taux fixés dans « Commission »). Sélectionnez les commissions payées, puis indiquez la date et la référence du versement. Le responsable confirme ensuite la réception de son côté.</p>
+    <div class="enote-filter-leiste">
+        <EnoteSelect TValue="Guid?" Value="poFilter" ValueChanged="PoGewaehltAsync" Options="poOptionen" MitSuche="true" Placeholder="Tous les responsables" />
+    </div>
+    <div class="ad-kpis">
+        <div class="ad-kpi"><span>À verser</span><strong class="@(summen.AVerser > 0 ? "warn" : "")">@Geld(summen.AVerser)</strong></div>
+        <div class="ad-kpi"><span>Versées, non confirmées</span><strong>@Geld(summen.Versee)</strong></div>
+        <div class="ad-kpi"><span>Reçues par les responsables</span><strong>@Geld(summen.Recue)</strong></div>
+    </div>
+    <div class="enote-filter-chips" role="group" aria-label="Statut des commissions">
+        <button class="enote-chip @(status == PoProvisionStatus.AVerser ? "enote-chip-aktiv" : "")" @onclick="() => StatusAsync(PoProvisionStatus.AVerser)">À verser (@summen.AnzahlAVerser)</button>
+        <button class="enote-chip @(status == PoProvisionStatus.Versee ? "enote-chip-aktiv" : "")" @onclick="() => StatusAsync(PoProvisionStatus.Versee)">Versées, à confirmer (@summen.AnzahlVersee)</button>
+        <button class="enote-chip @(status == PoProvisionStatus.Recue ? "enote-chip-aktiv" : "")" @onclick="() => StatusAsync(PoProvisionStatus.Recue)">Reçues (@summen.AnzahlRecue)</button>
+        <button class="enote-chip @(status is null ? "enote-chip-aktiv" : "")" @onclick="() => StatusAsync(null)">Toutes</button>
+    </div>
+
+    @if (laedt)
+    {
+        <p role="status">Chargement des commissions…</p>
+    }
+    else if (eintraege.Count == 0)
+    {
+        <p class="enote-empty" role="status">@(status == PoProvisionStatus.AVerser ? "Aucune commission à verser." : "Aucune commission pour cette sélection.")</p>
+    }
+    else
+    {
+        @if (Waehlbar.Any())
+        {
+            <div class="enote-auswahl-leiste">
+                <label class="enote-auswahl">
+                    <input type="checkbox" checked="@(auswahl.Count > 0 && auswahl.Count == Waehlbar.Count())" @onchange="AlleWaehlen" />
+                    <span>Tout sélectionner</span>
+                </label>
+                <span class="enote-muted">@auswahl.Count sélectionnée(s) · @Geld(Auswahlsumme)</span>
+                <button class="enote-btn enote-btn-primary" disabled="@(auswahl.Count == 0)" @onclick="OeffneVersementDialog">Marquer comme versées (@auswahl.Count)</button>
+            </div>
+        }
+        <div class="enote-grid-scroll">
+            @foreach (var e in eintraege)
+            {
+                <div class="enote-item @(e.Status == PoProvisionStatus.AVerser ? "enote-item-pending" : "") @(auswahl.Contains(e.Id) ? "enote-item-gewaehlt" : "")" @key="e.Id">
+                    <div class="enote-item-head">
+                        @if (e.Status == PoProvisionStatus.AVerser)
+                        {
+                            <label class="enote-auswahl">
+                                <input type="checkbox" checked="@auswahl.Contains(e.Id)" @onchange="a => Waehle(e.Id, a)" aria-label="Sélectionner @e.Po · @e.Laden" />
+                                <strong>@e.Po · @e.Laden</strong>
+                            </label>
+                        }
+                        else
+                        {
+                            <strong>@e.Po · @e.Laden</strong>
+                        }
+                        <span class="enote-price">@Geld(e.Betrag)</span>
+                    </div>
+                    <p class="enote-item-desc">Paiement confirmé le @e.BestaetigtUtc.ToLocalTime().ToString("dd/MM/yyyy") · contrat : @e.VonUtc.ToString("dd/MM/yyyy") – @e.BisUtc.ToString("dd/MM/yyyy")</p>
+                    <p class="enote-item-desc">Calcul : @Geld(e.AboBetrag) × @e.Prozent.ToString("0.##") %@(e.Fest > 0 ? " + " + Geld(e.Fest) : "") = @Geld(e.Betrag)</p>
+                    @if (!string.IsNullOrWhiteSpace(e.Hinweis) && e.Status == PoProvisionStatus.AVerser)
+                    {
+                        <p class="alert alert-error" role="note">Le responsable signale un versement non reçu : « @e.Hinweis »</p>
+                    }
+                    <div class="enote-item-meta">
+                        <span class="enote-tag @StatusKlasse(e.Status)">@StatusText(e.Status)</span>
+                        @if (e.VerseeUtc is { } v)
+                        {
+                            <span class="enote-muted">Versée le @v.ToString("dd/MM/yyyy") · référence : @e.Referenz</span>
+                        }
+                        @if (e.ErhaltenUtc is { } r)
+                        {
+                            <span class="enote-muted">· confirmée le @r.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                        }
+                    </div>
+                    @if (e.Status == PoProvisionStatus.Versee)
+                    {
+                        <div class="enote-item-actions">
+                            <AsyncActionButton Text="Annuler le versement" OnClick="() => AnnulierenAsync(e.Id)" CssClass="enote-btn-ghost enote-btn-sm" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        @if (mehr)
+        {
+            <AsyncActionButton CssClass="enote-btn-ghost enote-mehr" BusyText="Chargement…" OnClick="MehrAsync">Afficher plus</AsyncActionButton>
+        }
+    }
+
+    @if (alt.Count > 0)
+    {
+        <details class="enote-alt-provisionen">
+            <summary>Anciennes commissions (calcul mensuel, avant le calcul automatique) · @alt.Count</summary>
+            <div class="enote-table-scroll"><table class="enote-table">
+                <thead><tr><th>Responsable</th><th>Mois</th><th>Détail</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var a in alt)
+                    {
+                        <tr>
+                            <td>@a.Po</td>
+                            <td>@a.Monat.ToString("00")/@a.Jahr</td>
+                            <td><small class="enote-muted" style="white-space:pre-wrap">@a.Aufschluesselung</small></td>
+                            <td><strong>@Geld(a.Betrag)</strong></td>
+                            <td><span class="enote-tag @(a.Bestaetigt ? "" : "enote-tag-warn")">@(a.Bestaetigt ? "Versée" : "À verser")</span></td>
+                            <td>
+                                @if (!a.Bestaetigt)
+                                {
+                                    <AsyncActionButton Text="Confirmer le versement" OnClick="() => AltBestaetigenAsync(a.Id)" CssClass="enote-btn-primary enote-btn-sm" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table></div>
+        </details>
+    }
+</div>
+
+<ModalDialog Open="dialogOffen" Title="Marquer les commissions comme versées" OnClose="() => dialogOffen = false" ErrorMessage="@dialogFehler">
+    <ChildContent>
+        <p><strong>@auswahl.Count commission(s)</strong> pour un total de <strong>@Geld(Auswahlsumme)</strong> :</p>
+        <ul class="enote-sammel-liste">
+            @foreach (var g in eintraege.Where(e => auswahl.Contains(e.Id)).GroupBy(e => e.Po))
+            {
+                <li><strong>@g.Key</strong> · @g.Count() commission(s) · @Geld(g.Sum(e => e.Betrag))</li>
+            }
+        </ul>
+        <div class="enote-form">
+            <label>Date du versement</label>
+            <EnoteDatePicker @bind-Value="datum" />
+            <label>Référence (n° de transaction Mobile Money, virement, « espèces »…)</label>
+            <input @bind="referenz" maxlength="200" />
+        </div>
+        <p class="enote-muted">Chaque responsable voit ensuite ces commissions comme « versées » et confirme leur réception.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => dialogOffen = false">Annuler</button>
+        <AsyncActionButton Text="@($"Marquer {auswahl.Count} commission(s) comme versées")" OnClick="VersementAsync" CssClass="enote-btn-primary" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private Guid user;
+    private bool laedt = true, mehr, dialogOffen;
+    private Guid? poFilter;
+    private PoProvisionStatus? status = PoProvisionStatus.AVerser;
+    private PoProvisionService.Summen summen = new(0, 0, 0, 0, 0, 0);
+    private List<PoProvisionService.Eintrag> eintraege = [];
+    private List<PoProvisionService.AltAuszahlung> alt = [];
+    private List<EnoteSelectOption<Guid?>> poOptionen = [];
+    private HashSet<Guid> auswahl = [];
+    private DateTime? datum = DateTime.Today;
+    private string referenz = "";
+    private string? dialogFehler;
+
+    private IEnumerable<PoProvisionService.Eintrag> Waehlbar => eintraege.Where(e => e.Status == PoProvisionStatus.AVerser);
+    private decimal Auswahlsumme => eintraege.Where(e => auswahl.Contains(e.Id)).Sum(e => e.Betrag);
+    private static string Geld(decimal b) => b.ToString("N0") + " F";
+
+    private static string StatusText(PoProvisionStatus s) => s switch
+    {
+        PoProvisionStatus.AVerser => "À verser",
+        PoProvisionStatus.Versee => "Versée · en attente du responsable",
+        _ => "Reçue par le responsable"
+    };
+
+    private static string StatusKlasse(PoProvisionStatus s) => s switch
+    {
+        PoProvisionStatus.AVerser => "enote-tag-warn",
+        PoProvisionStatus.Versee => "enote-tag-probe",
+        _ => "enote-tag-ok"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out user);
+        try
+        {
+            // Zahlungen, die vor der automatischen Provision bestätigt wurden, einmalig ergänzen (idempotent).
+            await Service.ErgaenzeFehlendeAsync();
+            poOptionen = [new() { Value = null, Label = "Tous les responsables" },
+                .. (await Service.GetResponsablesAsync(user)).Select(p => new EnoteSelectOption<Guid?> { Value = p.Id, Label = p.Name })];
+            alt = await Service.GetAltAuszahlungenAsync(user);
+        }
+        catch (UnauthorizedAccessException) { }
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        laedt = true;
+        try
+        {
+            var u = await Service.GetFuerAdminAsync(user, poFilter, status);
+            summen = u.Summen; eintraege = u.Eintraege; mehr = u.Mehr;
+            auswahl.IntersectWith(Waehlbar.Select(e => e.Id));
+        }
+        catch (UnauthorizedAccessException) { eintraege = []; }
+        finally { laedt = false; }
+    }
+
+    private async Task MehrAsync()
+    {
+        var u = await Service.GetFuerAdminAsync(user, poFilter, status, eintraege.Count);
+        eintraege.AddRange(u.Eintraege); mehr = u.Mehr;
+    }
+
+    private async Task PoGewaehltAsync(Guid? id) { poFilter = id; auswahl.Clear(); await LadeAsync(); }
+    private async Task StatusAsync(PoProvisionStatus? s) { status = s; auswahl.Clear(); await LadeAsync(); }
+
+    private void Waehle(Guid id, ChangeEventArgs e) { if (e.Value is true) auswahl.Add(id); else auswahl.Remove(id); }
+    private void AlleWaehlen(ChangeEventArgs e) => auswahl = e.Value is true ? Waehlbar.Select(x => x.Id).ToHashSet() : [];
+
+    private void OeffneVersementDialog()
+    {
+        dialogFehler = null; datum = DateTime.Today; referenz = "";
+        dialogOffen = auswahl.Count > 0;
+    }
+
+    private async Task VersementAsync()
+    {
+        try
+        {
+            if (datum is null) throw new ArgumentException("Choisissez la date du versement.");
+            var (anzahl, summe) = await Service.MarkiereVerseeAsync(user, auswahl.ToList(), datum.Value, referenz);
+            dialogOffen = false; auswahl.Clear();
+            Toast.ZeigeErfolg($"{anzahl} commission(s) marquée(s) comme versée(s) · {Geld(summe)}.");
+            await LadeAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            dialogFehler = ex.Message;
+        }
+    }
+
+    private async Task AnnulierenAsync(Guid id)
+    {
+        try
+        {
+            await Service.AnnuliereVersementAsync(user, id);
+            Toast.ZeigeInfo("Versement annulé : la commission est à nouveau « à verser ».");
+        }
+        catch (InvalidOperationException ex) { Toast.ZeigeFehler(ex.Message); }
+        await LadeAsync();
+    }
+
+    private async Task AltBestaetigenAsync(Guid id)
+    {
+        await ProduktOwner.BestaetigeAuszahlungAsync(id);
+        Toast.ZeigeErfolg("Versement confirmé.");
+        alt = await Service.GetAltAuszahlungenAsync(user);
+    }
+}

@@ -274,58 +274,9 @@
                         }
                     </div>
 
-                    @* --- Provisions-Auszahlung --- *@
-                    <h2 class="enote-section-title">Commissions des propriétaires plateforme</h2>
-                    <div class="enote-card enote-settings-card">
-                        @if (ausgewaehlterPoId is not null)
-                        {
-                            <div class="enote-commissions-header">
-                                <span class="enote-commissions-po">Commissions pour <strong>@ausgewaehlterPoName</strong></span>
-                            </div>
-                        }
-                        <div class="enote-month-row">
-                            <span class="enote-filter-label">Mois</span>
-                            <EnoteMonthPicker @bind-Value="auszahlungMonat" />
-                            <AsyncActionButton Text="Calculer les commissions" OnClick="BerechneAuszahlungenAsync" CssClass="enote-btn-ghost" />
-                        </div>
-
-                        @if (auszahlungen.Count == 0)
-                        {
-                            <p class="enote-muted">Aucune commission calculée pour ce mois. Cliquez sur é Calculer é.</p>
-                        }
-                        else
-                        {
-                            <table class="enote-table">
-                                <thead><tr><th>Propriétaire</th><th>Détail</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
-                                <tbody>
-                                    @foreach (var a in auszahlungen)
-                                    {
-                                        <tr>
-                                            <td>@a.ProduktOwner.FullName</td>
-                                            <td><small class="enote-muted">@a.Aufschluesselung</small></td>
-                                            <td><strong>@a.Betrag.ToString("N0") F</strong></td>
-                                            <td>
-                                                @if (a.Status == AuszahlungStatus.Bestaetigt)
-                                                {
-                                                    <span class="enote-tag">Versée</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="enote-tag enote-tag-warn">À verser</span>
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (a.Status != AuszahlungStatus.Bestaetigt)
-                                                {
-                                                    <AsyncActionButton Text="Confirmer le versement" OnClick="() => BestaetigeAuszahlungAsync(a.Id)" CssClass="enote-btn-primary enote-btn-sm" />
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
+                    @* --- Provisionen: entstehen automatisch je bestätigter Zahlung --- *@
+                    <h2 class="enote-section-title">Commissions des responsables</h2>
+                    <PoProvisionenAdmin />
                 </Authorized>
             </AuthorizeView>
         }

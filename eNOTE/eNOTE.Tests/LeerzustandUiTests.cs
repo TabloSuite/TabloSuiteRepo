@@ -81,6 +81,7 @@ public class LeerzustandUiTests
         services.AddScoped(_ => new AdminKontenService(factory, null!));
         services.AddSingleton<ProduktOwnerService>();
         services.AddSingleton<PoAbrechnungService>();
+        services.AddSingleton<PoProvisionService>();
         services.AddSingleton(sp => new PreisAnpassungService(factory, TimeProvider.System));
         services.AddSingleton<IComponentActivator>(provider => new KomponentenAktivator(provider, konfigurieren));
         await using var provider = services.BuildServiceProvider();

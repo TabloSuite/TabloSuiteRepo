@@ -144,6 +144,7 @@ if (administration is null)
     // « Mot de passe oublié » / « Réinitialiser » (fehlte – Seite lieferte 500) und die Abrechnungs-Komponenten.
     builder.Services.AddScoped<KontoWiederherstellung>();
     builder.Services.AddScoped<PoAbrechnungService>();
+    builder.Services.AddScoped<PoProvisionService>();
     builder.Services.AddScoped<BesitzerFinanzService>();
     builder.Services.AddScoped<BesitzerBetreuungsService>();
     builder.Services.AddScoped<KuendigungService>();

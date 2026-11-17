@@ -41,8 +41,6 @@ public partial class Admin(
     private decimal? provisionFestbetrag;
     private string ProvisionDialogTitel => "Commission – " + (provisionZuweisung?.SalonName ?? "");
 
-    private DateTime? auszahlungMonat = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private List<ProduktOwnerAuszahlung> auszahlungen = [];
 
     // Suche für Propriétaires plateforme
     private string poSuche = string.Empty;
@@ -446,26 +444,6 @@ public partial class Admin(
         provisionFestbetrag = z.FestbetragProvision;
         provisionFehler = null;
         provisionDialogOffen = true;
-    }
-
-    private async Task BerechneAuszahlungenAsync()
-    {
-        var monat = auszahlungMonat ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        foreach (var po in produktOwners)
-        {
-            await produktOwnerService.BerechneAuszahlungAsync(po.Id, monat.Year, monat.Month);
-        }
-
-        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(monat.Year, monat.Month);
-        toast.ZeigeErfolg("Commissions calculées.");
-    }
-
-    private async Task BestaetigeAuszahlungAsync(Guid auszahlungId)
-    {
-        await produktOwnerService.BestaetigeAuszahlungAsync(auszahlungId);
-        toast.ZeigeErfolg("Versement confirmé.");
-        var monat = auszahlungMonat ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        auszahlungen = await produktOwnerService.GetAuszahlungenAsync(monat.Year, monat.Month);
     }
 
     private async Task OeffneProbeDialogAsync(Guid salonId, string salonName)

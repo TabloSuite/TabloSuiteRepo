@@ -21,6 +21,12 @@ public partial class Facturation(
     private List<NutzungsAbo> alle = [];
     private bool isLoading = true;
 
+    // Mehrfachbestätigung (nur SuperAdmin)
+    private HashSet<Guid> auswahl = [];
+    private bool sammelDialogOffen;
+    private string? sammelFehler;
+    private decimal Auswahlsumme => gemeldete.Where(a => auswahl.Contains(a.Id)).Sum(a => a.PreisSnapshot);
+
     // Suche/Filter
     private string aboSuche = string.Empty;
     private string aboStatusFilter = "alle";
@@ -78,6 +84,7 @@ public partial class Facturation(
         // Fällige Perioden aller Läden erzeugen, damit die Übersicht aktuell ist.
         await vertragsService.SynchronisiereAlleAsync();
         gemeldete = await aboService.GetGemeldeteZahlungenAsync(benutzerId);
+        auswahl.IntersectWith(gemeldete.Select(a => a.Id));
         kennzahlen = await aboService.GetKennzahlenAsync(benutzerId, MonatsAnfangUtc);
         await LadeAbosAsync();
         isLoading = false;
@@ -96,6 +103,37 @@ public partial class Facturation(
         }
 
         toast.ZeigeErfolg(status == AboZahlungStatus.Bestaetigt ? "Paiement confirmé." : "Paiement refusé.");
+        await LadeAsync();
+    }
+
+    private void Waehle(Guid id, ChangeEventArgs e)
+    {
+        if (e.Value is true) auswahl.Add(id); else auswahl.Remove(id);
+    }
+
+    private void AlleWaehlen(ChangeEventArgs e)
+        => auswahl = e.Value is true ? gemeldete.Select(a => a.Id).ToHashSet() : [];
+
+    private void OeffneSammelDialog()
+    {
+        sammelFehler = null;
+        sammelDialogOffen = auswahl.Count > 0;
+    }
+
+    private async Task SammelBestaetigenAsync()
+    {
+        try
+        {
+            var (anzahl, summe) = await aboService.BestaetigeZahlungenAsync(benutzerId, auswahl.ToList());
+            sammelDialogOffen = false;
+            auswahl.Clear();
+            toast.ZeigeErfolg(anzahl == 0 ? "Ces paiements ont déjà été traités." : $"{anzahl} paiement(s) confirmé(s) · {summe:N0} F.");
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or ArgumentException)
+        {
+            sammelFehler = ex.Message;
+            return;
+        }
         await LadeAsync();
     }
 
