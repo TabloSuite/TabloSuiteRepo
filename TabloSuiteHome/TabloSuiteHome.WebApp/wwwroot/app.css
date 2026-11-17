@@ -86,18 +86,18 @@ p { margin: 0; }
 /* --- Kopfbereich (Held) --- */
 .ts-held { position: relative; overflow: hidden; color: #fff; background:
     radial-gradient(60rem 30rem at 85% -10%, rgba(47, 78, 201, .55), transparent 60%),
-    radial-gradient(40rem 26rem at -10% 110%, rgba(13, 148, 136, .35), transparent 60%),
+    radial-gradient(40rem 26rem at -10% 110%, rgba(59, 130, 246, .28), transparent 60%),
     linear-gradient(160deg, #1e3a8a 0%, var(--ts-nacht) 55%, #0b1437 100%); }
 .ts-held-innen { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 3rem; align-items: center; padding: 5rem 0 5.5rem; }
 .ts-kicker { display: inline-flex; align-items: center; gap: .45rem; margin-bottom: 1.1rem; padding: .35rem .8rem; border-radius: 999px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); color: #c7d2fe; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .ts-kicker.dunkel { background: color-mix(in srgb, var(--ts-blau) 10%, #fff); border-color: color-mix(in srgb, var(--ts-blau) 22%, #fff); color: var(--ts-tief); }
 .ts-held h1 { font-size: clamp(2.2rem, 4.6vw, 3.6rem); font-weight: 800; letter-spacing: -0.035em; }
-.ts-held h1 em { font-style: normal; background: linear-gradient(90deg, #93c5fd, #5eead4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ts-held h1 em { font-style: normal; background: linear-gradient(90deg, #bfdbfe, #93c5fd 55%, #a5b4fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ts-held-lead { margin-top: 1.3rem; max-width: 36rem; color: #cbd5e1; font-size: 1.12rem; }
 .ts-held-wege { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
 .ts-held-chips { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 2rem 0 0; padding: 0; list-style: none; color: #cbd5e1; font-size: .92rem; font-weight: 600; }
 .ts-held-chips li { display: inline-flex; align-items: center; gap: .4rem; }
-.ts-held-chips .ts-icon { color: #5eead4; }
+.ts-held-chips .ts-icon { color: #93c5fd; }
 
 .ts-held-bilder { position: relative; min-height: 26rem; }
 .ts-held-bild { position: absolute; width: 88%; border-radius: 16px; overflow: hidden; background: #fff; border: 6px solid rgba(255, 255, 255, .92); box-shadow: 0 30px 70px rgba(0, 0, 0, .45); }
