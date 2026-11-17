@@ -3650,9 +3650,11 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .fo-versuche a, .fo-link { color: var(--enote-primary-text); font-weight: 600; background: none; border: 0; padding: .2rem 0; font: inherit; font-size: .85rem; text-decoration: underline; cursor: pointer; min-height: 2rem; }
 .fo-gefahr h3 { color: var(--enote-danger-text); }
 .fo-btn-gefahr { color: var(--enote-danger-text); border-color: var(--enote-danger-border); width: fit-content; }
-.fo-regeln { margin-top: .5rem; }
+.fo-regeln { margin-top: .5rem; padding: 1rem 1.15rem; }
+.fo-regeln[open] summary { padding-bottom: .6rem; border-bottom: 1px solid var(--enote-border); }
+.fo-regeln > p { margin: .7rem 0 0; }
 .fo-regeln summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: baseline; }
-.fo-regeln-felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .6rem; margin: .7rem 0; }
+.fo-regeln-felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .75rem; margin: .8rem 0 1rem; }
 .fo-regeln-felder label { display: grid; gap: .25rem; font-size: .88rem; font-weight: 600; }
 .fo-regeln-felder input { min-height: 2.75rem; padding: .4rem .6rem; border-radius: var(--enote-radius-sm); border: 1px solid var(--enote-border-strong); background: var(--enote-surface); color: var(--enote-text); font: inherit; }
 
