@@ -7,6 +7,17 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
 
+**>>> NEUESTES (17.11. spät) – Eine Kasse je Laden, an genau EINEM Gerät (6ca60a3, gepusht, 511 Tests grün):** Nutzer: zweites
+Gerät in der Kasse des ersten = abhängig, « nicht professionell » → zurückgenommen. Kasse läuft am Gerät, das sie öffnet
+(`KassenSitzung.GeraetSchluessel`); andere Geräte: « La caisse est ouverte sur un autre appareil » + « Reprendre la caisse ici »
+(Besitzer-PIN), altes Gerät sperrt sich sofort. Behalten: « Qui encaisse ? »/« Changer »/« Par caissier », « Appareils connectés »,
+Display je Gerät. Video « Deux appareils, une caisse » aus dem Katalog. **Neue Migration `20261117103949_KasseEinGeraet`** (eine
+nullable Spalte) – lokal eingespielt, **Azure wartet auf OK des Nutzers**; eNOTE war schon mit dem Stand vom 17.11. deployt → nach
+Azure-Migration neu deployen. **Videos noch anzupassen:** Konzeptvideo « La caisse » (Folie « une seule caisse … tous les appareils
+travaillent dans la même caisse »), Konzeptvideo « Équipe » (Schritt 6/7 « Plusieurs appareils, une caisse » + Zusammenfassung),
+« Votre équipe et vos réglages » (Satz « vos deux caisses »). Praxistest 18/18, Bilder `Pictures\eNOTE-Eine-Kasse-ein-Geraet-2026-11-17\`.
+Prüfliste unten Punkt 2/3 gilt so nicht mehr (zweites Gerät kassiert nicht mit).
+
 **Kurzlage:** Alles vom 17.11. ist fertig, getestet (eNOTE **502 Tests grün**) und **gepusht**. Azure `ENote-Database` = lokal: die vier
 Migrationen des Tages (`PoProvisionen`, `VerkaufKassierer`, `PersoenlicheAnmeldung`, `AnmeldeSitzungen`) sind mit OK eingespielt und
 lesend geprüft. **Der Nutzer deployt eNOTE am 17.11. abends selbst (Visual Studio).** Im neuen Chat zuerst fragen, ob der Deploy durch
