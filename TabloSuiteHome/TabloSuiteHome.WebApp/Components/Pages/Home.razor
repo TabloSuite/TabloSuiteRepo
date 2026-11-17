@@ -26,8 +26,8 @@
             @foreach (var (a, i) in Verfuegbar.Take(2).Select((a, i) => (a, i)))
             {
                 <div class="ts-held-bild ts-held-bild-@i">
-                    <img src="@a.Bild" alt="" width="1280" height="800" />
-                    <span class="ts-held-app"><img src="@a.Logo" alt="" width="28" height="28" />@a.Name</span>
+                    <img src="@Assets[a.Bild]" alt="" width="1280" height="800" />
+                    <span class="ts-held-app"><img src="@Assets[a.Logo]" alt="" width="28" height="28" />@a.Name</span>
                 </div>
             }
         </div>
