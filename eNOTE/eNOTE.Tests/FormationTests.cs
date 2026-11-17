@@ -376,6 +376,8 @@ public class FormationKatalogTests
             Assert.NotEmpty(l.Abschnitte);
             Assert.NotEmpty(l.Uebungen);
             Assert.True(l.Pruefung.Count >= 5, $"{l.Id}: zu wenige Prüfungsfragen");
+            // « Lesen mit Bildern » (Nutzer): jede Lektion mit mindestens einem Bildschirmfoto der App.
+            Assert.Contains(l.Abschnitte, a => a.Art == AbschnittArt.Bild);
         });
         // Drei Versuche à 20 Fragen ohne Wiederholung.
         Assert.True(FormationKatalog.Lektionen.Sum(l => l.Pruefung.Count) >= 60);

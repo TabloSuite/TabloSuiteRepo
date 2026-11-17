@@ -64,7 +64,7 @@
                         break;
                     case AbschnittArt.Bild:
                         <figure class="fo-bild">
-                            <img src="@a.Datei" alt="@a.Text" loading="lazy" />
+                            <img src="@("/" + a.Datei)" alt="@a.Text" loading="lazy" />
                             <figcaption>@a.Text</figcaption>
                         </figure>
                         break;
