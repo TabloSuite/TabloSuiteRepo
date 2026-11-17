@@ -294,7 +294,7 @@ public class MailBenachrichtigungen(
                         "rappel" when po.Email is not null => await email.SendeAsync(po.Email, "Rappel : votre évaluation",
                             TabloSuiteMails.FormationRappel(po.Vorname, m.FristUtc, m.Note, m.Grenze, url), "formation-rappel", ct),
                         "resultat" => await email.SendeAsync(AdminEmpfaenger, $"Formation : {po.FullName}",
-                            TabloSuiteMails.FormationResultatAdmin(po.FullName, m.Note is null, m.Note, m.Grenze, AppUrl + "/admin"), "formation-resultat", ct),
+                            TabloSuiteMails.FormationResultatAdmin(po.FullName, m.Note is null, m.Note, m.Grenze, AppUrl + "/admin?tab=formation"), "formation-resultat", ct),
                         _ => false
                     };
                     if (gesendet) anzahl++;

@@ -1,0 +1,218 @@
+@page "/formation/lecon/{Id}"
+@attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
+@using System.Security.Claims
+@using ENote.WebApp.Services
+@using ENote.WebApp.Services.Formation
+@inject FormationService Formation
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Umgebung
+@inject IJSRuntime JS
+
+<PageTitle>@(lektion?.Titel ?? "Leçon") · Formation</PageTitle>
+
+<div class="enote-page fo-seite fo-lektion-seite">
+    <a class="fo-zurueck" href="/formation"><Icon Name="chevron-left" Groesse="18" /> Formation</a>
+
+    @if (lektion is null)
+    {
+        <div class="enote-card"><p>Cette leçon n'existe pas.</p></div>
+    }
+    else
+    {
+        <header class="fo-lektion-kopf">
+            <span class="fo-lektion-kopf-ico" aria-hidden="true"><Icon Name="@lektion.Icon" Groesse="26" /></span>
+            <div>
+                <small>Leçon @(index + 1) sur @Formation.Lektionen.Count · @lektion.Minuten min@(gelesen ? " · lue" : "")</small>
+                <h1>@lektion.Titel</h1>
+                <p>@lektion.Kurz</p>
+            </div>
+        </header>
+
+        <article class="fo-inhalt">
+            @foreach (var a in lektion.Abschnitte)
+            {
+                switch (a.Art)
+                {
+                    case AbschnittArt.Text:
+                        <section class="fo-abschnitt">
+                            @if (a.Titel is not null) { <h2>@a.Titel</h2> }
+                            <p>@a.Text</p>
+                        </section>
+                        break;
+                    case AbschnittArt.Liste:
+                        <section class="fo-abschnitt">
+                            <h2>@a.Titel</h2>
+                            <ul class="fo-liste">
+                                @foreach (var punkt in a.Punkte ?? []) { <li>@punkt</li> }
+                            </ul>
+                        </section>
+                        break;
+                    case AbschnittArt.Schritte:
+                        <section class="fo-abschnitt">
+                            <h2>@a.Titel</h2>
+                            <ol class="fo-schritte">
+                                @foreach (var punkt in a.Punkte ?? []) { <li><span>@punkt</span></li> }
+                            </ol>
+                        </section>
+                        break;
+                    case AbschnittArt.Merke:
+                        <aside class="fo-merke"><Icon Name="star" Groesse="18" /><div><strong>À retenir</strong><p>@a.Text</p></div></aside>
+                        break;
+                    case AbschnittArt.Achtung:
+                        <aside class="fo-achtung"><Icon Name="alert" Groesse="18" /><div><strong>Attention</strong><p>@a.Text</p></div></aside>
+                        break;
+                    case AbschnittArt.Bild:
+                        <figure class="fo-bild">
+                            <img src="@a.Datei" alt="@a.Text" loading="lazy" />
+                            <figcaption>@a.Text</figcaption>
+                        </figure>
+                        break;
+                    case AbschnittArt.Video:
+                        if (VideoKatalog.Finde(a.Datei!) is { } v)
+                        {
+                            <button type="button" class="fo-video" @onclick="() => OeffnenAsync(v)" disabled="@(!Vorhanden(v))">
+                                <span class="fo-video-bild">
+                                    @if (PosterVorhanden(v)) { <img src="@PosterUrl(v)" alt="" loading="lazy" /> }
+                                    <span class="vh-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg></span>
+                                </span>
+                                <span class="fo-video-text">
+                                    <small>Vidéo · @v.Dauer</small>
+                                    <strong>@v.Titel</strong>
+                                    <span>@a.Text</span>
+                                </span>
+                            </button>
+                        }
+                        break;
+                }
+            }
+        </article>
+
+        @if (lektion.Uebungen.Count > 0)
+        {
+            <section class="fo-uebungen" aria-labelledby="fo-uebung-titel">
+                <h2 id="fo-uebung-titel"><Icon Name="edit" Groesse="18" /> À vous : petit exercice</h2>
+                <p class="enote-muted">Ces questions ne comptent pas. Elles vous aident à vérifier que vous avez compris.</p>
+                @foreach (var f in lektion.Uebungen)
+                {
+                    var auswahl = Auswahl(f.Id);
+                    var geprueft = geprueftIds.Contains(f.Id);
+                    var richtig = geprueft && f.IstRichtig(auswahl);
+                    <div class="fo-frage-karte @(geprueft ? (richtig ? "richtig" : "falsch") : "")">
+                        <p class="fo-frage-text">@f.Text</p>
+                        @if (f.Mehrfach) { <small class="fo-mehrfach">Plusieurs réponses possibles</small> }
+                        <div class="fo-antworten" role="@(f.Mehrfach ? "group" : "radiogroup")">
+                            @for (var i = 0; i < f.Antworten.Count; i++)
+                            {
+                                var idx = i;
+                                var gewaehlt = auswahl.Contains(idx);
+                                var klasse = !geprueft ? "" : f.Richtig.Contains(idx) ? "loesung" : gewaehlt ? "fehler" : "";
+                                <button type="button" class="fo-antwort @(gewaehlt ? "gewaehlt" : "") @klasse @(f.Mehrfach ? "mehrfach" : "")"
+                                        role="@(f.Mehrfach ? "checkbox" : "radio")" aria-checked="@(gewaehlt ? "true" : "false")"
+                                        disabled="@geprueft" @onclick="() => Waehle(f, idx)">
+                                    <span class="fo-antwort-marke" aria-hidden="true"></span>
+                                    <span>@f.Antworten[idx]</span>
+                                </button>
+                            }
+                        </div>
+                        @if (geprueft)
+                        {
+                            <p class="fo-erklaerung"><strong>@(richtig ? "Bravo !" : "Pas tout à fait.")</strong> @f.Erklaerung</p>
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => Nochmal(f.Id)">Réessayer</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" disabled="@(auswahl.Count == 0)" @onclick="() => geprueftIds.Add(f.Id)">Vérifier</button>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        <nav class="fo-lektion-fuss" aria-label="Leçons">
+            @if (index > 0)
+            {
+                <a class="enote-btn enote-btn-ghost" href="/formation/lecon/@Formation.Lektionen[index - 1].Id"><Icon Name="chevron-left" Groesse="16" /> Précédente</a>
+            }
+            <AsyncActionButton CssClass="enote-btn-primary enote-btn-lg" OnClick="GelesenUndWeiterAsync">
+                @(index + 1 < Formation.Lektionen.Count ? (gelesen ? "Leçon suivante" : "J'ai lu – leçon suivante") : (gelesen ? "Retour à la formation" : "J'ai lu – terminer"))
+                <Icon Name="chevron-right" Groesse="16" />
+            </AsyncActionButton>
+        </nav>
+    }
+</div>
+
+<ModalDialog Open="offen is not null" Title="@(offen?.Titel ?? string.Empty)" MaxWidthClass="enote-modal-video" OnClose="SchliessenAsync">
+    <ChildContent>
+        @if (offen is { } aktiv)
+        {
+            <video class="vh-spieler" src="@VideoUrl(aktiv)" poster="@(PosterVorhanden(aktiv) ? PosterUrl(aktiv) : null)" controls autoplay playsinline preload="metadata"></video>
+            <p class="enote-muted vh-spieler-text">@aktiv.Beschreibung</p>
+        }
+    </ChildContent>
+</ModalDialog>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private Lektion? lektion;
+    private int index;
+    private bool gelesen;
+    private Guid userId;
+    private VideoKatalog.LernVideo? offen;
+    private readonly Dictionary<string, HashSet<int>> auswahlJeFrage = [];
+    private readonly HashSet<string> geprueftIds = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        lektion = Formation.Lektionen.FirstOrDefault(l => l.Id == Id);
+        index = lektion is null ? 0 : Formation.Lektionen.ToList().IndexOf(lektion);
+        auswahlJeFrage.Clear();
+        geprueftIds.Clear();
+        var stand = await Formation.GetStandAsync(userId, !user.IsInRole("ProduktOwner"));
+        gelesen = lektion is not null && stand.Gelesen.Contains(lektion.Id);
+    }
+
+    private HashSet<int> Auswahl(string frageId) => auswahlJeFrage.TryGetValue(frageId, out var a) ? a : auswahlJeFrage[frageId] = [];
+
+    private void Waehle(Frage f, int idx)
+    {
+        var a = Auswahl(f.Id);
+        if (f.Mehrfach) { if (!a.Remove(idx)) a.Add(idx); }
+        else { a.Clear(); a.Add(idx); }
+    }
+
+    private void Nochmal(string frageId)
+    {
+        geprueftIds.Remove(frageId);
+        Auswahl(frageId).Clear();
+    }
+
+    private async Task GelesenUndWeiterAsync()
+    {
+        if (lektion is null) return;
+        await Formation.MarkiereGelesenAsync(userId, lektion.Id);
+        Nav.NavigateTo(index + 1 < Formation.Lektionen.Count ? $"/formation/lecon/{Formation.Lektionen[index + 1].Id}" : "/formation");
+        try { await JS.InvokeVoidAsync("scrollTo", 0, 0); } catch (JSException) { }
+    }
+
+    private async Task OeffnenAsync(VideoKatalog.LernVideo v)
+    {
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.merken"); } catch (JSException) { }
+        offen = v;
+    }
+
+    private async Task SchliessenAsync()
+    {
+        offen = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.zurueck"); } catch (JSException) { }
+    }
+
+    private bool Vorhanden(VideoKatalog.LernVideo v) => File.Exists(Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+    private string VideoUrl(VideoKatalog.LernVideo v) => VideoKatalog.MitVersion(v.Url, Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+    private string PosterUrl(VideoKatalog.LernVideo v) => VideoKatalog.MitVersion(v.Poster, Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).PhysicalPath);
+    private bool PosterVorhanden(VideoKatalog.LernVideo v) => Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).Exists;
+}

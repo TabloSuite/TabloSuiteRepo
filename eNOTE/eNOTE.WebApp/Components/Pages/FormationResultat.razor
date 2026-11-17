@@ -1,0 +1,43 @@
+@page "/formation/resultat/{VersuchId:guid}"
+@attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
+@using System.Security.Claims
+@using ENote.WebApp.Services.Formation
+@inject FormationService Formation
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Résultat · Formation</PageTitle>
+
+<div class="enote-page fo-seite">
+    <a class="fo-zurueck" href="@(fuerAdmin ? "/admin?tab=formation" : "/formation")"><Icon Name="chevron-left" Groesse="18" /> @(fuerAdmin ? "Administration" : "Formation")</a>
+    @if (geladen && ergebnis is null)
+    {
+        <div class="enote-card fo-leer"><p>Ce résultat n'existe pas.</p></div>
+    }
+    else if (ergebnis is not null)
+    {
+        <h1 class="fo-titel">@(fuerAdmin && name is not null ? $"Résultat de {name}" : "Votre résultat")</h1>
+        <FormationErgebnisAnsicht Ergebnis="ergebnis" MitLektionsLink="true" />
+    }
+</div>
+
+@code {
+    [Parameter] public Guid VersuchId { get; set; }
+    private FormationService.Ergebnis? ergebnis;
+    private bool geladen, fuerAdmin;
+    private string? name;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        ergebnis = await Formation.GetErgebnisAsync(userId, VersuchId);
+        // Der Administrateur sieht die Versuche aller Responsables (Administration › Formation).
+        if (ergebnis is null && user.IsInRole("SuperAdmin"))
+        {
+            ergebnis = await Formation.GetErgebnisFuerAdminAsync(VersuchId);
+            fuerAdmin = ergebnis is not null;
+            if (fuerAdmin) name = await Formation.GetNameZuVersuchAsync(VersuchId);
+        }
+        geladen = true;
+    }
+}

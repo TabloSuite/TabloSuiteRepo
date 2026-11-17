@@ -363,8 +363,8 @@ public class FormationKatalogTests
             Assert.Equal(f.Richtig.Count, f.Richtig.Distinct().Count());
             Assert.Equal(f.Antworten.Count, f.Antworten.Distinct().Count());
             Assert.False(string.IsNullOrWhiteSpace(f.Erklaerung));
-            // Mehrfachauswahl muss im Text angekündigt sein.
-            Assert.Equal(f.Mehrfach, f.Text.Contains("plusieurs réponses"));
+            // Der Hinweis « Plusieurs réponses possibles » kommt von der Seite, nicht aus dem Fragetext.
+            Assert.DoesNotContain("plusieurs réponses", f.Text);
         });
     }
 

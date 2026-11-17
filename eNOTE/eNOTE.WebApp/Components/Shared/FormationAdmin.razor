@@ -1,0 +1,267 @@
+@using ENote.Core.DataModels.Formation
+@using ENote.WebApp.Services.Formation
+@inject FormationService Formation
+@inject ENote.WebApp.Services.ToastService Toast
+@inject NavigationManager Nav
+@* Administration › Formation: Regeln, Übersicht der Responsables, Aktionen je Person (Intervall, Pause, Frist, erlassen, Rolle entziehen). *@
+
+<h2 class="enote-section-title">Formation des responsables</h2>
+<p class="enote-muted fo-admin-intro">
+    Chaque responsable lit les leçons et passe une évaluation à intervalle régulier (3 essais, le dernier compte). Rien n'est bloqué :
+    vous êtes prévenu par e-mail quand une session n'est pas réussie ou manquée, et vous décidez ici. Les leçons s'ouvrent aussi pour vous dans
+    <a href="/formation">Formation</a> (entraînement libre, sans délai).
+</p>
+
+@if (zeilen is null)
+{
+    <p class="enote-muted" role="status">Chargement…</p>
+}
+else
+{
+    <div class="fo-admin-kpis">
+        <div><small>Responsables</small><strong>@zeilen.Count</strong></div>
+        <div><small>Session ouverte</small><strong>@zeilen.Count(z => z.Offen is not null)</strong></div>
+        <div class="@(zeilen.Any(z => z.Schwach) ? "warn" : "")"><small>À surveiller</small><strong>@zeilen.Count(z => z.Schwach)</strong></div>
+        <div><small>Excellents</small><strong>@zeilen.Count(z => z.SehrGut)</strong></div>
+    </div>
+
+    <input class="enote-filter-suche" placeholder="Rechercher un responsable…" @bind="suche" @bind:event="oninput" />
+
+    @if (zeilen.Count == 0)
+    {
+        <p class="enote-empty" role="status">Aucun responsable pour le moment.</p>
+    }
+    <div class="fo-admin-liste">
+        @foreach (var z in Gefiltert)
+        {
+            <button type="button" class="fo-admin-karte @(z.Schwach ? "schwach" : "")" @onclick="() => Oeffne(z)">
+                <span class="fo-admin-kopf">
+                    <strong>@z.Name</strong>
+                    @if (z.Schwach) { <span class="fo-status fo-status-nein">À surveiller</span> }
+                    else if (z.SehrGut) { <span class="fo-status fo-status-ok">Excellent</span> }
+                </span>
+                <span class="fo-admin-zeile">@StatusZeile(z)</span>
+                <span class="fo-admin-meta">
+                    <span><Icon Name="book" Groesse="13" /> @z.Gelesen / @z.LektionenGesamt leçons</span>
+                    <span><Icon Name="calendar" Groesse="13" /> tous les @z.IntervallMonate mois</span>
+                    @if (z.LetzteGewertete is { } l)
+                    {
+                        <span><Icon Name="award" Groesse="13" /> dernière : @(l.EndNoteProzent is { } n ? $"{n} %" : Formation_StatusText(l.Status))</span>
+                    }
+                </span>
+            </button>
+        }
+    </div>
+
+    @* ------------------------------------------------ Règles *@
+    <details class="enote-card fo-regeln">
+        <summary><strong>Règles de l'évaluation</strong> <small class="enote-muted">réussite @regelGrenze %, @regelFragen questions, délai @regelFrist jours, tous les @regelIntervall mois</small></summary>
+        <p class="enote-muted">Les nouvelles règles valent pour les prochaines sessions. L'intervalle sert pour les nouveaux responsables ; changez-le par personne ci-dessus.</p>
+        <div class="fo-regeln-felder">
+            <label>Réussite à partir de (%)<input type="number" min="10" max="100" inputmode="numeric" @bind="regelGrenze" /></label>
+            <label>Questions par essai<input type="number" min="5" max="@MaxFragen" inputmode="numeric" @bind="regelFragen" /></label>
+            <label>Délai (jours)<input type="number" min="3" max="120" inputmode="numeric" @bind="regelFrist" /></label>
+            <label>Intervalle (mois)<input type="number" min="1" max="24" inputmode="numeric" @bind="regelIntervall" /></label>
+        </div>
+        <AsyncActionButton Text="Enregistrer les règles" CssClass="enote-btn-primary" OnClick="SpeichereRegelnAsync" />
+    </details>
+}
+
+@* ------------------------------------------------ Détail d'un responsable *@
+<ModalDialog Open="auswahl is not null" Title="@(auswahl?.Name ?? "")" ErrorMessage="@fehler" OnClose="Schliessen" MaxWidthClass="enote-modal-md">
+    <ChildContent>
+        @if (auswahl is { } z)
+        {
+            <p class="fo-admin-zeile">@StatusZeile(z)</p>
+            @if (z.Schwach)
+            {
+                <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Les deux dernières sessions ne sont pas réussies. Ouvrez une nouvelle session, parlez avec lui, ou retirez-lui le rôle.</p>
+            }
+            else if (z.SehrGut)
+            {
+                <p class="fo-hinweis-ok"><Icon Name="award" Groesse="16" /> Trois sessions réussies à @FormationService.SehrGutAbProzent % ou plus : vous pouvez allonger son intervalle.</p>
+            }
+
+            <div class="fo-admin-aktionen">
+                <section>
+                    <h3>Intervalle</h3>
+                    <div class="fo-chips">
+                        @foreach (var m in new[] { 1, 3, 6, 12 })
+                        {
+                            <button type="button" class="enote-chip @(z.IntervallMonate == m ? "enote-chip-aktiv" : "")" @onclick="() => IntervallAsync(m)">@(m) mois</button>
+                        }
+                    </div>
+                </section>
+
+                @if (z.Offen is { } o)
+                {
+                    <section>
+                        <h3>Session ouverte · jusqu'au @o.FristUtc.ToString("dd.MM.yyyy")</h3>
+                        <div class="fo-zeile-feld">
+                            <EnoteDatePicker @bind-Value="neueFrist" />
+                            <AsyncActionButton Text="Prolonger le délai" CssClass="enote-btn-ghost" Disabled="@(neueFrist is null)" OnClick="FristAsync" />
+                        </div>
+                        <div class="fo-zeile-feld">
+                            <input class="enote-input" placeholder="Motif (facultatif)" maxlength="300" @bind="grund" />
+                            <AsyncActionButton Text="Dispenser cette session" CssClass="enote-btn-ghost" OnClick="ErlassenAsync" />
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <section>
+                        <h3>Nouvelle session</h3>
+                        <AsyncActionButton Text="Ouvrir une session maintenant" CssClass="enote-btn-ghost" OnClick="OeffnenAsync" />
+                    </section>
+                }
+
+                <section>
+                    <h3>Pause</h3>
+                    @if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow)
+                    {
+                        <p class="enote-muted">En pause jusqu'au @p.ToString("dd.MM.yyyy").</p>
+                        <AsyncActionButton Text="Terminer la pause (session tout de suite)" CssClass="enote-btn-ghost" OnClick="() => PauseAsync(null)" />
+                    }
+                    else
+                    {
+                        <p class="enote-muted">Aucune session jusqu'à la date choisie (une session ouverte est dispensée).</p>
+                        <div class="fo-zeile-feld">
+                            <EnoteDatePicker @bind-Value="pauseBis" />
+                            <AsyncActionButton Text="Mettre en pause" CssClass="enote-btn-ghost" Disabled="@(pauseBis is null)" OnClick="() => PauseAsync(pauseBis)" />
+                        </div>
+                    }
+                </section>
+
+                <section>
+                    <h3>Historique</h3>
+                    @if (z.Verlauf.Count == 0)
+                    {
+                        <p class="enote-muted">Pas encore de session.</p>
+                    }
+                    <ul class="fo-admin-verlauf">
+                        @foreach (var r in z.Verlauf)
+                        {
+                            <li>
+                                <span class="fo-status fo-status-@Formation_StatusKlasse(r.Status)">@Formation_StatusText(r.Status)</span>
+                                <span>
+                                    <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
+                                    <small>@r.GeoeffnetUtc.ToString("dd.MM.yyyy") → @((r.AbgeschlossenUtc ?? r.FristUtc).ToString("dd.MM.yyyy"))@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                                    @if (r.Versuche.Any(v => v.AbgegebenUtc is not null))
+                                    {
+                                        <span class="fo-versuche">
+                                            @foreach (var v in r.Versuche.Where(v => v.AbgegebenUtc is not null))
+                                            {
+                                                <button type="button" class="fo-link" @onclick='() => Nav.NavigateTo($"/formation/resultat/{v.Id}")'>Essai @v.Nummer : @v.Prozent %</button>
+                                            }
+                                        </span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="fo-gefahr">
+                    <h3>Retirer le rôle de responsable</h3>
+                    <p class="enote-muted">Ses établissements n'ont plus de responsable (à réaffecter dans « Propriétaires plateforme »), il est déconnecté partout. Ses commissions restent.</p>
+                    @if (entziehenBestaetigen)
+                    {
+                        <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Confirmez-vous le retrait du rôle de « @z.Name » ?</p>
+                        <div class="fo-zeile-feld">
+                            <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => entziehenBestaetigen = false">Annuler</button>
+                            <AsyncActionButton Text="Oui, retirer le rôle" CssClass="enote-btn-danger" OnClick="EntziehenAsync" />
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="enote-btn enote-btn-ghost fo-btn-gefahr" @onclick="() => entziehenBestaetigen = true">Retirer le rôle…</button>
+                    }
+                </section>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="Schliessen">Fermer</button>
+    </Footer>
+</ModalDialog>
+
+@code {
+    [Parameter] public Guid AdminId { get; set; }
+
+    private List<FormationService.PoZeile>? zeilen;
+    private FormationService.PoZeile? auswahl;
+    private string suche = "";
+    private string? fehler, grund;
+    private DateTime? neueFrist, pauseBis;
+    private bool entziehenBestaetigen;
+    private int regelGrenze, regelFragen, regelFrist, regelIntervall;
+    private int MaxFragen => Formation.Lektionen.Sum(l => l.Pruefung.Count);
+
+    private IEnumerable<FormationService.PoZeile> Gefiltert => string.IsNullOrWhiteSpace(suche) ? zeilen ?? []
+        : (zeilen ?? []).Where(z => z.Name.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) || (z.Email?.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var regel = await Formation.GetRegelAsync();
+        (regelGrenze, regelFragen, regelFrist, regelIntervall) = (regel.BestehensGrenzeProzent, regel.FragenJePruefung, regel.FristTage, regel.StandardIntervallMonate);
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        zeilen = await Formation.GetUebersichtAsync();
+        if (auswahl is not null) auswahl = zeilen.FirstOrDefault(z => z.PoId == auswahl.PoId);
+    }
+
+    private void Oeffne(FormationService.PoZeile z)
+    {
+        auswahl = z;
+        fehler = null; grund = null; neueFrist = null; pauseBis = null; entziehenBestaetigen = false;
+    }
+
+    private void Schliessen() => auswahl = null;
+
+    private async Task FuehreAusAsync(Func<Task<string?>> aktion, string erfolg)
+    {
+        fehler = await aktion();
+        if (fehler is null) Toast.ZeigeErfolg(erfolg);
+        await LadeAsync();
+    }
+
+    private Task IntervallAsync(int monate) => FuehreAusAsync(() => Formation.SetzeIntervallAsync(auswahl!.PoId, monate), $"Intervalle : tous les {monate} mois.");
+    private Task FristAsync() => FuehreAusAsync(() => Formation.VerlaengereFristAsync(auswahl!.PoId, neueFrist!.Value.Date.AddDays(1).AddTicks(-1).ToUniversalTime()), "Délai prolongé.");
+    private Task ErlassenAsync() => FuehreAusAsync(() => Formation.ErlasseRundeAsync(auswahl!.PoId, AdminId, grund), "Session dispensée.");
+    private Task OeffnenAsync() => FuehreAusAsync(() => Formation.OeffneRundeJetztAsync(auswahl!.PoId), "Nouvelle session ouverte – il reçoit un e-mail.");
+    private Task PauseAsync(DateTime? bis) => FuehreAusAsync(() => Formation.SetzePauseAsync(auswahl!.PoId, bis?.Date.AddDays(1).AddTicks(-1).ToUniversalTime(), AdminId),
+        bis is null ? "Pause terminée." : $"En pause jusqu'au {bis:dd.MM.yyyy}.");
+
+    private async Task EntziehenAsync()
+    {
+        var (ok, f, laeden) = await Formation.EntzieheRolleAsync(auswahl!.PoId, AdminId);
+        if (!ok) { fehler = f; return; }
+        Toast.ZeigeErfolg(laeden.Count == 0 ? "Rôle retiré." : $"Rôle retiré. À réaffecter : {string.Join(", ", laeden)}.");
+        auswahl = null;
+        await LadeAsync();
+    }
+
+    private async Task SpeichereRegelnAsync()
+    {
+        var f = await Formation.SpeichereRegelAsync(regelGrenze, regelFragen, regelFrist, regelIntervall);
+        if (f is null) Toast.ZeigeErfolg("Règles enregistrées.");
+        else Toast.ZeigeFehler(f);
+    }
+
+    private static string StatusZeile(FormationService.PoZeile z)
+    {
+        if (z.Offen is { } o)
+        {
+            var l = o.LetzterAbgegeben;
+            return $"Session ouverte jusqu'au {o.FristUtc:dd.MM.yyyy} · {o.Abgegeben}/{FormationRunde.MaxVersuche} essais" + (l is null ? "" : $" · dernier {l.Prozent} %");
+        }
+        if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow) return $"En pause jusqu'au {p:dd.MM.yyyy}";
+        return z.NaechsteRundeAbUtc is { } n ? $"Prochaine session le {n:dd.MM.yyyy}" : "Pas encore de session";
+    }
+
+    private static string Formation_StatusText(FormationRundenStatus s) => ENote.WebApp.Components.Pages.FormationUebersicht.StatusText(s);
+    private static string Formation_StatusKlasse(FormationRundenStatus s) => ENote.WebApp.Components.Pages.FormationUebersicht.StatusKlasse(s);
+}

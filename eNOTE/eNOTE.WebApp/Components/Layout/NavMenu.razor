@@ -185,8 +185,11 @@
             }
 
             // Für alle angemeldeten Rollen: Erklärvideos (Inhalt je Rolle, siehe VideoKatalog)
-            gruppen.Add(new("Aide", [new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos"),
-                new("/contact", "Aide & contact", "help", Kurz: "Contact")]));
+            var aide = new List<NavEintrag> { new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos") };
+            // Formation der Responsables (Lernpfad + Prüfung); Administrateure trainieren frei.
+            if (istProduktOwner || istSuperAdmin) aide.Add(new("/formation", "Formation", "book"));
+            aide.Add(new("/contact", "Aide & contact", "help", Kurz: "Contact"));
+            gruppen.Add(new("Aide", aide));
 
             return gruppen;
         }

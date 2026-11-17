@@ -334,7 +334,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
     public async Task<Ergebnis?> GetErgebnisAsync(Guid userId, Guid versuchId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var v = await db.FormationVersuche.AsNoTracking().Include(x => x.Runde).ThenInclude(r => r.Versuche)
+        var v = await db.FormationVersuche.AsNoTrackingWithIdentityResolution().Include(x => x.Runde).ThenInclude(r => r.Versuche)
             .FirstOrDefaultAsync(x => x.Id == versuchId && x.Runde.ProduktOwnerId == userId, ct);
         return v?.AbgegebenUtc is null ? null : ErgebnisVon(v, v.Runde);
     }
@@ -486,8 +486,15 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
     public async Task<Ergebnis?> GetErgebnisFuerAdminAsync(Guid versuchId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var v = await db.FormationVersuche.AsNoTracking().Include(x => x.Runde).ThenInclude(r => r.Versuche).FirstOrDefaultAsync(x => x.Id == versuchId, ct);
+        var v = await db.FormationVersuche.AsNoTrackingWithIdentityResolution().Include(x => x.Runde).ThenInclude(r => r.Versuche).FirstOrDefaultAsync(x => x.Id == versuchId, ct);
         return v?.AbgegebenUtc is null ? null : ErgebnisVon(v, v.Runde);
+    }
+
+    /// <summary>Name des Responsable zu einem Versuch (Überschrift der Ergebnisseite für den Administrateur).</summary>
+    public async Task<string?> GetNameZuVersuchAsync(Guid versuchId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.FormationVersuche.AsNoTracking().Where(v => v.Id == versuchId).Select(v => v.Runde.ProduktOwner.FullName).FirstOrDefaultAsync(ct);
     }
 
     private async Task<(ApplicationDbContext Db, FormationTeilnehmer T, FormationRunde? Offen)> LadeFuerAdminAsync(Guid poId, CancellationToken ct)

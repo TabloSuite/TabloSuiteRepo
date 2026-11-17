@@ -1,0 +1,239 @@
+@page "/formation"
+@attribute [Authorize(Roles = "SuperAdmin, ProduktOwner")]
+@using System.Security.Claims
+@using ENote.Core.DataModels.Formation
+@using ENote.WebApp.Services.Formation
+@inject FormationService Formation
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ENote.WebApp.Services.ToastService Toast
+
+<PageTitle>Formation</PageTitle>
+
+<div class="enote-page fo-seite">
+    <div class="enote-page-header">
+        <div>
+            <h1>Formation</h1>
+            <p>@(istFrei ? "Le parcours des responsables : les leçons et l'évaluation, en entraînement libre."
+                          : "Votre parcours de responsable : lisez les leçons, puis passez l'évaluation.")</p>
+        </div>
+    </div>
+
+    @if (stand is null)
+    {
+        <p class="enote-muted" role="status">Chargement…</p>
+    }
+    else
+    {
+        @* ------------------------------------------------ Évaluation *@
+        <section class="fo-pruefung @PruefungsKlasse" aria-label="Évaluation">
+            <div class="fo-pruefung-kopf">
+                <span class="fo-pruefung-ico" aria-hidden="true"><Icon Name="award" Groesse="26" /></span>
+                <div>
+                    <h2>@PruefungsTitel</h2>
+                    <p>@PruefungsText</p>
+                </div>
+            </div>
+
+            @if (stand.Offen is { } o && !istFrei)
+            {
+                <div class="fo-fakten">
+                    <div><small>Jusqu'au</small><strong>@o.FristUtc.ToString("dd.MM.yyyy")</strong><span>@TageText(o.FristUtc)</span></div>
+                    <div><small>Essais</small><strong>@o.Abgegeben / @FormationRunde.MaxVersuche</strong><span>le dernier compte</span></div>
+                    <div><small>Réussite</small><strong>@o.Grenze %</strong><span>@o.FragenAnzahl questions</span></div>
+                    @if (o.LetzterAbgegeben is { } l)
+                    {
+                        <div><small>Dernier essai</small><strong class="@(l.Prozent >= o.Grenze ? "ok" : "nein")">@l.Prozent %</strong><span>@(l.Prozent >= o.Grenze ? "réussi" : "pas encore")</span></div>
+                    }
+                </div>
+            }
+
+            <div class="fo-aktionen">
+                @if (stand.Offen?.Laufend is { } lauf)
+                {
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">Reprendre l'essai @lauf.Nummer</a>
+                }
+                else if (istFrei)
+                {
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">Commencer un entraînement</a>
+                }
+                else if (stand.Offen is { } offen && offen.Uebrig > 0)
+                {
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">@(offen.Abgegeben == 0 ? "Commencer l'évaluation" : $"Nouvel essai ({offen.Abgegeben + 1}/{FormationRunde.MaxVersuche})")</a>
+                }
+                @if (!istFrei && stand.Offen?.LetzterAbgegeben is { } letzter)
+                {
+                    <a class="enote-btn enote-btn-ghost" href="/formation/resultat/@letzter.Id">Voir mon dernier résultat</a>
+                    <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => behaltenOffen = true">Garder ce résultat (@letzter.Prozent %)</button>
+                }
+            </div>
+            @if (!istFrei && stand.Offen is { Abgegeben: 0 } && gelesen < Lektionen.Count)
+            {
+                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Conseil : lisez d'abord les leçons (@gelesen / @Lektionen.Count lues). Vous avez jusqu'au @stand.Offen.FristUtc.ToString("dd.MM.yyyy").</p>
+            }
+        </section>
+
+        @* ------------------------------------------------ Lernpfad *@
+        <section class="fo-pfad" aria-labelledby="fo-pfad-titel">
+            <div class="fo-pfad-kopf">
+                <h2 id="fo-pfad-titel">Les leçons</h2>
+                <span class="fo-fortschritt-text">@gelesen / @Lektionen.Count lues</span>
+            </div>
+            <div class="fo-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@Lektionen.Count" aria-valuenow="@gelesen">
+                <span style="width:@(Lektionen.Count == 0 ? 0 : gelesen * 100 / Lektionen.Count)%"></span>
+            </div>
+            <ol class="fo-lektionen">
+                @for (var i = 0; i < Lektionen.Count; i++)
+                {
+                    var l = Lektionen[i];
+                    var istGelesen = stand.Gelesen.Contains(l.Id);
+                    var naechste = !istGelesen && Lektionen.Take(i).All(x => stand.Gelesen.Contains(x.Id));
+                    <li>
+                        <a class="fo-lektion @(istGelesen ? "gelesen" : "") @(naechste ? "naechste" : "")" href="/formation/lecon/@l.Id">
+                            <span class="fo-lektion-nr" aria-hidden="true">
+                                @if (istGelesen)
+                                {
+                                    <Icon Name="check" Groesse="18" Strich="2.6" />
+                                }
+                                else
+                                {
+                                    @(i + 1)
+                                }
+                            </span>
+                            <span class="fo-lektion-text">
+                                <strong>@l.Titel</strong>
+                                <small>@l.Kurz</small>
+                                <span class="fo-lektion-meta">
+                                    <span><Icon Name="clock" Groesse="13" /> @l.Minuten min</span>
+                                    @if (l.Videos.Any())
+                                    {
+                                        <span><Icon Name="monitor" Groesse="13" /> @l.Videos.Count() vidéo@(l.Videos.Count() > 1 ? "s" : "")</span>
+                                    }
+                                    @if (istGelesen)
+                                    {
+                                        <span class="fo-gelesen-tag">Lue</span>
+                                    }
+                                    else if (naechste)
+                                    {
+                                        <span class="fo-naechste-tag">À lire</span>
+                                    }
+                                </span>
+                            </span>
+                            <Icon Name="chevron-right" Groesse="18" CssClass="fo-pfeil" />
+                        </a>
+                    </li>
+                }
+            </ol>
+        </section>
+
+        @* ------------------------------------------------ Verlauf *@
+        @if (stand.Verlauf.Count > 0)
+        {
+            <section class="fo-verlauf" aria-labelledby="fo-verlauf-titel">
+                <h2 id="fo-verlauf-titel">@(istFrei ? "Vos entraînements" : "Vos sessions")</h2>
+                <ul>
+                    @foreach (var r in stand.Verlauf)
+                    {
+                        var letzterVersuch = r.LetzterAbgegeben;
+                        <li class="fo-verlauf-zeile">
+                            <span class="fo-status fo-status-@StatusKlasse(r.Status)">@StatusText(r.Status)</span>
+                            <span class="fo-verlauf-text">
+                                <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
+                                <small>@((r.AbgeschlossenUtc ?? r.GeoeffnetUtc).ToString("dd.MM.yyyy"))@(r.IstFrei ? "" : $" · {r.Abgegeben} essai{(r.Abgegeben > 1 ? "s" : "")}")@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                            </span>
+                            @if (letzterVersuch is not null)
+                            {
+                                <a class="enote-btn enote-btn-ghost enote-btn-sm" href="/formation/resultat/@letzterVersuch.Id">Détails</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</div>
+
+<ModalDialog Open="behaltenOffen" Title="Garder ce résultat ?" OnClose="() => behaltenOffen = false" MaxWidthClass="enote-modal-sm">
+    <ChildContent>
+        <p>Votre dernier essai (<strong>@(stand?.Offen?.LetzterAbgegeben?.Prozent) %</strong>) devient votre note finale et la session se termine.
+            Vous ne pourrez plus faire d'autre essai dans cette session.</p>
+    </ChildContent>
+    <Footer>
+        <button class="enote-btn enote-btn-ghost" @onclick="() => behaltenOffen = false">Annuler</button>
+        <AsyncActionButton Text="Garder ce résultat" CssClass="enote-btn-primary" OnClick="BehaltenAsync" />
+    </Footer>
+</ModalDialog>
+
+@code {
+    private FormationService.Stand? stand;
+    private Guid userId;
+    private bool istFrei;
+    private bool behaltenOffen;
+    private int gelesen;
+    private IReadOnlyList<Lektion> Lektionen => Formation.Lektionen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // Administrateure trainieren frei (ohne Frist, ohne Grenze); wer Responsable ist, macht die echten Runden.
+        istFrei = !user.IsInRole("ProduktOwner");
+        await LadeAsync();
+    }
+
+    private async Task LadeAsync()
+    {
+        stand = await Formation.GetStandAsync(userId, istFrei);
+        gelesen = Lektionen.Count(l => stand.Gelesen.Contains(l.Id));
+    }
+
+    private async Task BehaltenAsync()
+    {
+        var fehler = await Formation.BehalteErgebnisAsync(userId);
+        behaltenOffen = false;
+        if (fehler is null) Toast.ZeigeErfolg("Votre note finale est enregistrée.");
+        else Toast.ZeigeFehler(fehler);
+        await LadeAsync();
+    }
+
+    private string PruefungsKlasse => istFrei ? "frei" : stand?.Offen is null ? "ruhig" : stand.Offen.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist) ? "dringend" : "offen";
+
+    private string PruefungsTitel => istFrei ? "Entraînement libre"
+        : stand?.Offen is { } o ? (o.Abgegeben == 0 ? "Votre évaluation est ouverte" : "Session d'évaluation en cours")
+        : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow ? "Évaluation en pause"
+        : "Pas d'évaluation pour le moment";
+
+    private string PruefungsText => istFrei
+        ? "Sans délai et sans limite d'essais. Vos résultats ne comptent pas et restent visibles pour vous seul."
+        : stand?.Offen is { } o
+            ? (o.Uebrig > 0 ? $"{o.FragenAnzahl} questions sur toutes les leçons. Après chaque essai, vous voyez votre note et vos erreurs. Vous avez {FormationRunde.MaxVersuche} essais au plus : seul le dernier compte."
+                            : "Vous avez utilisé vos essais.")
+            : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow
+                ? $"L'administrateur a mis votre évaluation en pause jusqu'au {p:dd.MM.yyyy}. Les leçons restent ouvertes."
+                : stand?.NaechsteRundeAbUtc is { } n
+                    ? $"Prochaine évaluation à partir du {n:dd.MM.yyyy} (tous les {stand.IntervallMonate} mois). D'ici là, relisez les leçons quand vous voulez."
+                    : "Les leçons restent ouvertes à tout moment.";
+
+    private static string TageText(DateTime frist)
+    {
+        var tage = (int)Math.Ceiling((frist - DateTime.UtcNow).TotalDays);
+        return tage <= 0 ? "aujourd'hui" : tage == 1 ? "encore 1 jour" : $"encore {tage} jours";
+    }
+
+    internal static string StatusText(FormationRundenStatus s) => s switch
+    {
+        FormationRundenStatus.Bestanden => "Réussie",
+        FormationRundenStatus.NichtBestanden => "Non réussie",
+        FormationRundenStatus.Verpasst => "Manquée",
+        FormationRundenStatus.Erlassen => "Dispensée",
+        _ => "En cours"
+    };
+
+    internal static string StatusKlasse(FormationRundenStatus s) => s switch
+    {
+        FormationRundenStatus.Bestanden => "ok",
+        FormationRundenStatus.NichtBestanden or FormationRundenStatus.Verpasst => "nein",
+        FormationRundenStatus.Erlassen => "neutral",
+        _ => "offen"
+    };
+}

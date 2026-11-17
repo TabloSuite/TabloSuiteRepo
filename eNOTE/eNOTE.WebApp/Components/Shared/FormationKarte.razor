@@ -1,0 +1,35 @@
+@using System.Security.Claims
+@using ENote.WebApp.Services.Formation
+@inject FormationService Formation
+@inject AuthenticationStateProvider AuthState
+@* Startseite der Responsables/Administrateure: Kachel « Formation » mit dem Stand der Evaluation. *@
+
+<a class="db-schnell-karte fo-start-karte @(dringend ? "dringend" : offen ? "offen" : "")" href="/formation">
+    <span><Icon Name="book" /></span>
+    <strong>Formation</strong>
+    <small>@text</small>
+</a>
+
+@code {
+    private string text = "Les leçons et l'évaluation";
+    private bool offen, dringend;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
+        if (!user.IsInRole("ProduktOwner")) { text = "Leçons et entraînement libre"; return; }
+        var stand = await Formation.GetStandAsync(userId, istFrei: false);
+        if (stand.Offen is { } o && o.Uebrig > 0)
+        {
+            offen = true;
+            dringend = o.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist);
+            text = o.Abgegeben == 0 ? $"Évaluation à faire avant le {o.FristUtc:dd.MM.yyyy}" : $"Session en cours · essai {o.Abgegeben}/3 · jusqu'au {o.FristUtc:dd.MM.yyyy}";
+        }
+        else
+        {
+            var gelesen = Formation.Lektionen.Count(l => stand.Gelesen.Contains(l.Id));
+            text = $"{gelesen} / {Formation.Lektionen.Count} leçons lues" + (stand.NaechsteRundeAbUtc is { } n && n > DateTime.UtcNow ? $" · prochaine évaluation le {n:dd.MM.yyyy}" : "");
+        }
+    }
+}

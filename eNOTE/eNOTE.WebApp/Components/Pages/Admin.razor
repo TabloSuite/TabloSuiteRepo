@@ -34,6 +34,7 @@
                 <Authorized>
                     <button class="enote-tab @(aktiverTab == "tarifs" ? "aktiv" : "")" @onclick='() => WechsleTab("tarifs")'>Tarifs</button>
                     <button class="enote-tab @(aktiverTab == "mobilemoney" ? "aktiv" : "")" @onclick='() => WechsleTab("mobilemoney")'>Mobile Money</button>
+                    <button class="enote-tab @(aktiverTab == "formation" ? "aktiv" : "")" @onclick='() => WechsleTab("formation")'>Formation</button>
                     @if (istErsterAdmin)
                     {
                         <button class="enote-tab @(aktiverTab == "administrateurs" ? "aktiv" : "")" @onclick='() => WechsleTab("administrateurs")'>Administrateurs</button>
@@ -297,6 +298,14 @@
             <AuthorizeView Roles="SuperAdmin" Context="mmCtx">
                 <Authorized>
                     <MobileMoneyVerwaltung />
+                </Authorized>
+            </AuthorizeView>
+        }
+        else if (aktiverTab == "formation")
+        {
+            <AuthorizeView Roles="SuperAdmin" Context="foCtx">
+                <Authorized>
+                    <FormationAdmin AdminId="aktuellerBenutzerId" />
                 </Authorized>
             </AuthorizeView>
         }

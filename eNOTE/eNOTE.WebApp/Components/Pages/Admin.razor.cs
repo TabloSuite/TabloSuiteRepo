@@ -137,6 +137,9 @@ public partial class Admin(
     // Tabs
     private string aktiverTab = "etablissements";
 
+    /// <summary>Direkter Einstieg in einen Reiter, z. B. aus einer Mail (« /admin?tab=formation »).</summary>
+    [SupplyParameterFromQuery(Name = "tab")] public string? StartTab { get; set; }
+
     // Suche/Filter für Établissements
     private string salonSuche = string.Empty;
     private string salonStatusFilter = "alle"; // alle | validé | attente
@@ -194,6 +197,7 @@ public partial class Admin(
         istSuperAdmin = authState.User.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         Guid.TryParse(userIdValue, out aktuellerBenutzerId);
+        if (istSuperAdmin && StartTab is "formation" or "plateforme" or "tarifs" or "mobilemoney") aktiverTab = StartTab;
         // Nur der Hauptadministrator verwaltet andere Administratoren (Reiter „Administrateurs“).
         istErsterAdmin = istSuperAdmin && await adminKontenService.IstErsterAdminAsync(aktuellerBenutzerId);
         await LadeAsync();
