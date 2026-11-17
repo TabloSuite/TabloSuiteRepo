@@ -14,10 +14,13 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - Fertig + gepusht: Bulletin mit echtem PDF (768bea3: « Notes et conseil de classe » 5:17, neu « Publier les bulletins » 4:48,
   Lehrer « Suivre la classe : appel, notes et bulletin » 4:30); « Une école de langues : l'année en sessions » 5:17 (7403753);
   App-Fix « MOYENNE DE LA SESSION 1 » (7350618, 647 Tests grün).
-- In Arbeit (Texte, Stimme, Abläufe fertig): « La facture SKOULOU » (Aufnahme läuft), « Fin d'année et passage » (Probelauf ok).
-- Danach: « Établissement » + « Cartes d'élève », Responsable, Administrateur, Contenus + Journal. Pipeline-Neuerungen
-  (PDF-Szenen `pdf.py`, `FILME` in lernen3-film.mjs, `App__BaseUrl` der Aufnahme-App) in `lernen-v3/AUFTRAG.md` §7.
-- **SKOULOU muss danach deployt werden** (neue Videos + Preis-Standard + Bulletin-Fix; keine Migration seit FormationResponsables).
+- Ebenfalls fertig + gepusht (e56cfe1): « La facture SKOULOU » 4:01, « Fin d'année et passage » 2:59, « Votre établissement » 3:11,
+  « Les cartes d'élève » 1:58, « Responsable : accompagner vos écoles » 2:44, « Contenus des enseignants et journal » 1:53;
+  « Vidéos d'aide » mit neuen Rubriken Responsable + Administrateur. Drei Admin-Videos (« écoles et comptes », « facturation,
+  tarifs et parts », « annonces, messagerie et surveillance ») – Stand siehe letzter Commit. Pipeline-Neuerungen und Fallen in
+  `lernen-v3/AUFTRAG.md` §7.
+- **SKOULOU muss deployt werden** (neue Videos + Preis-Standard + Bulletin-Fix; keine Migration seit FormationResponsables).
+  Danach prüfen: « Vidéos d'aide » je Rolle (Direction, Enseignant, Responsable, Administrateur), Formation-Lektionen mit den neuen Videos.
 
 **>>> NEUESTES (17.11. spätnachmittags) – SKOULOU-Formation fertig (60c5982) + Fixes beider Apps:**
 - **SKOULOU-Formation** wie eNOTE (Responsable 10 Lektionen/60 Fragen, Admin 6 Lektionen/37 Fragen, `Skoulou.WebApp/Services/Formation/`,

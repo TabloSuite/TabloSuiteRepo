@@ -105,6 +105,15 @@ public static partial class VideoKatalog
         new("skoulou-responsable-ecoles.mp4", "Responsable : accompagner vos écoles",
             "Vos écoles en un coup d'œil, leur facturation SKOULOU, vos parts, la messagerie avec les directions, et votre formation.",
             Responsable, FuerResponsables, "2:44"),
+        new("skoulou-admin-ecoles.mp4", "Administrateur : écoles et comptes",
+            "Le tableau de bord, la validation des écoles, leur responsable, les comptes de la plateforme, les responsables et les administrateurs.",
+            Administrateur, NurAdmin, "2:25"),
+        new("skoulou-admin-facturation.mp4", "Administrateur : facturation, tarifs et parts",
+            "Les tarifs (prix annuel par élève, délai, parts), facturer maintenant, confirmer un paiement, répondre à une contestation, verser les parts des responsables.",
+            Administrateur, NurAdmin, "2:40"),
+        new("skoulou-admin-communication.mp4", "Administrateur : annonces, messagerie et surveillance",
+            "Publier une annonce, traiter la messagerie, suivre l'audit des actions sensibles, le journal des erreurs et les médias.",
+            Administrateur, NurAdmin, "1:45"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =

@@ -27,6 +27,7 @@ public static partial class FormationKatalog
                     "« Responsable » : un seul responsable par école, ou aucun ; seuls les responsables actifs sont proposés.",
                     "Le responsable voit la facturation et les messages de l'école ; la direction voit ses coordonnées sur la page Contact."),
                 A("Bloquer le compte du directeur ne suspend jamais l'école. Pour arrêter une école, utilisez « Suspendre »."),
+                V("skoulou-admin-ecoles.mp4", "Écoles et comptes, pas à pas : valider, responsable, comptes, administrateurs."),
                 M("Suspendre, c'est réversible : les données restent, « Réactiver » rend l'accès."),
             ],
             [
@@ -127,7 +128,8 @@ public static partial class FormationKatalog
                     "« Annuler la facture » avec un motif : ses élèves redeviennent facturables par « Facturer maintenant » ; si elle était payée, la part du responsable est compensée."),
                 A("Une facture impayée ne bloque rien automatiquement. Vous décidez : rappeler, ou suspendre l'école."),
                 B(Bild + "admin-facturation.jpg", "« Facturation » : les factures « À confirmer » et les parts des responsables."),
-                V("skoulou-direction-concept-frais.mp4", "La dernière partie explique la facture SKOULOU côté école."),
+                V("skoulou-admin-facturation.mp4", "Facturation, tarifs et parts, pas à pas."),
+                V("skoulou-direction-facture.mp4", "La facture SKOULOU côté école : calcul, contestation, paiement déclaré."),
                 M("Confirmer = l'argent est arrivé. C'est la seule source des parts des responsables."),
             ],
             [
@@ -215,6 +217,7 @@ public static partial class FormationKatalog
                     "« Audit » : les actions sensibles de toutes les écoles (validations, blocages, mots de passe, notes, bulletins, paiements), gardées sans limite.",
                     "« Médias » : les fichiers stockés par école ; seuls les fichiers non utilisés peuvent être supprimés."),
                 B(Bild + "admin-messagerie.jpg", "« Messagerie » : attribuer un message à une école, répondre."),
+                V("skoulou-admin-communication.mp4", "Annonces, messagerie et surveillance, pas à pas."),
                 M("Attribuer un message à son école, c'est le donner à son responsable."),
             ],
             [
