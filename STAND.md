@@ -7,6 +7,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
 
+**>>> NEUESTES (17.11. spätnachmittags) – SKOULOU-Formation fertig (60c5982) + Fixes beider Apps:**
+- **SKOULOU-Formation** wie eNOTE (Responsable 10 Lektionen/60 Fragen, Admin 6 Lektionen/37 Fragen, `Skoulou.WebApp/Services/Formation/`,
+  Seiten `/formation…`, `/admin/formation`, Menü + Guide + Startkarte). « Retirer le rôle » = Schulen im selben Schritt neu zuweisen +
+  Konto sperren. 661 Tests grün inkl. SQL, Rundgang 20/20. **Migration `20261117151012_FormationResponsables` lokal; Azure
+  `Skoulou-Database` steht auf `SessionGebuehrUndHauptAdmin` → Einspielen braucht OK des Nutzers**, danach SKOULOU deployen.
+  Azure hat 0 aktive Responsables.
+- **Beide Apps (Nutzer: Ladekreis « überall prüfen »):** Anmeldeseite(n) als statisches Formular (`[ExcludeFromInteractiveRouting]`,
+  Rendermodus je Seite in App.razor) – bei schwachem Netz gingen Eingaben + Ladekreis verloren; **Ladebalken oben für jedes Tippen**;
+  Handy-Umbruch langer Knöpfe; Handy-Prüfung aller Seiten ohne Überlauf. eNOTE 55b011d, 7839898 (Abstand « Règles »).
+- eNOTE « Retirer le rôle » mit Neuzuweisung der Läden (Sätze/Rechte übernommen). Admin-Video « Piloter la formation » zeigt noch
+  den alten Kasten ohne Abstand und die alte « Retirer »-Ansicht → **bei Gelegenheit Szenen regeln/schwach neu aufnehmen**.
+- **Beide Apps müssen deployt werden** (eNOTE: keine neue Migration seit FormationResponsables).
+
 **>>> NEUESTES (17.11. nachmittags) – « Formation » der Responsables in eNOTE (d14cd90, 61c4761, 5ea83df, gepusht, 533 Tests grün):**
 Nutzerwunsch: Lernpfad + Prüfung für POs, je App (eNOTE zuerst, danach SKOULOU mit eigenem Inhalt). Entscheidungen (Memory
 « PO-Formation »): Note + Fehler nach jedem Versuch, nächster Versuch neue Fragen; bei Frist/Nichtbestehen **nur Meldung** (keine
