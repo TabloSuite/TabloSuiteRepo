@@ -10,8 +10,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 **>>> NEUESTES (17.11. spätnachmittags) – SKOULOU-Formation fertig (60c5982) + Fixes beider Apps:**
 - **SKOULOU-Formation** wie eNOTE (Responsable 10 Lektionen/60 Fragen, Admin 6 Lektionen/37 Fragen, `Skoulou.WebApp/Services/Formation/`,
   Seiten `/formation…`, `/admin/formation`, Menü + Guide + Startkarte). « Retirer le rôle » = Schulen im selben Schritt neu zuweisen +
-  Konto sperren. 661 Tests grün inkl. SQL, Rundgang 20/20. **Migration `20261117151012_FormationResponsables` lokal; Azure
-  `Skoulou-Database` steht auf `SessionGebuehrUndHauptAdmin` → Einspielen braucht OK des Nutzers**, danach SKOULOU deployen.
+  Konto sperren. 661 Tests grün inkl. SQL, Rundgang 20/20. **Migration `20261117151012_FormationResponsables` lokal und Azure
+  `Skoulou-Database` eingespielt (OK « Ja », Tabellen lesend geprüft) → SKOULOU kann deployt werden.**
   Azure hat 0 aktive Responsables.
 - **Beide Apps (Nutzer: Ladekreis « überall prüfen »):** Anmeldeseite(n) als statisches Formular (`[ExcludeFromInteractiveRouting]`,
   Rendermodus je Seite in App.razor) – bei schwachem Netz gingen Eingaben + Ladekreis verloren; **Ladebalken oben für jedes Tippen**;
