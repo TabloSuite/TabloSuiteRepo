@@ -9,6 +9,21 @@ namespace Skoulou.Core.Noten;
 /// </summary>
 public static class NotenTexte
 {
+    /// <summary>
+    /// Kopf des Moyenne-Kastens im Bulletin, grammatisch passend zum (frei änderbaren) Periodentitel:
+    /// « MOYENNE DU 1ER TRIMESTRE », « MOYENNE DE LA SESSION 1 », « MOYENNE DE L'EXAMEN BLANC », sonst « MOYENNE : … ».
+    /// </summary>
+    public static string MoyenneTitel(string periode)
+    {
+        var t = periode.Trim();
+        var klein = t.ToLowerInvariant();
+        var gross = t.ToUpper(SkoulouKultur.Kultur);
+        if (klein.Contains("trimestre") || klein.Contains("semestre")) return $"MOYENNE DU {gross}";
+        if (klein.StartsWith("session") || klein.StartsWith("période") || klein.StartsWith("periode")) return $"MOYENNE DE LA {gross}";
+        if (klein.Length > 0 && "aeiouyéèêàâîôûh".Contains(klein[0])) return $"MOYENNE DE L'{gross}";
+        return $"MOYENNE : {gross}";
+    }
+
     /// <summary>« 12,50 » (gerundet, fr-FR).</summary>
     public static string Zahl(decimal wert) => NotenRechner.Runde(wert).ToString("0.00", SkoulouKultur.Kultur);
 

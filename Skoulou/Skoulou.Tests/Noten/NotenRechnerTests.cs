@@ -219,4 +219,15 @@ public class NotenRechnerTests
         Assert.False(NotenRechner.IstLetztePeriode(liste, p1));
         Assert.False(NotenRechner.IstLetztePeriode(liste, blanc));
     }
+
+    [Theory]
+    [InlineData("1er trimestre", "MOYENNE DU 1ER TRIMESTRE")]
+    [InlineData("2e semestre", "MOYENNE DU 2E SEMESTRE")]
+    [InlineData("Session 1", "MOYENNE DE LA SESSION 1")]
+    [InlineData("Période 2", "MOYENNE DE LA PÉRIODE 2")]
+    [InlineData("Examen blanc", "MOYENNE DE L'EXAMEN BLANC")]
+    [InlineData("Brevet blanc", "MOYENNE : BREVET BLANC")]
+    public void MoyenneTitel_passt_zum_Periodentitel(string periode, string erwartet)
+        => Assert.Equal(erwartet, NotenTexte.MoyenneTitel(periode));
+
 }

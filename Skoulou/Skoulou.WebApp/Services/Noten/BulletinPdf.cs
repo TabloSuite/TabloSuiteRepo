@@ -241,7 +241,7 @@ public static class BulletinPdf
                     col.Item().Text($"dont justifiées : {i.Anwesenheit.Justifiees}").FontColor(Leise);
                     col.Item().Text($"Retards : {i.Anwesenheit.Retards} ({i.Anwesenheit.Minuten} min)");
                 }));
-            row.RelativeItem(1.3f).Element(e => Kasten(e, $"MOYENNE DU {i.Periode.ToUpper(SkoulouKultur.Kultur)}", l.Farbe, col =>
+            row.RelativeItem(1.3f).Element(e => Kasten(e, Skoulou.Core.Noten.NotenTexte.MoyenneTitel(i.Periode), l.Farbe, col =>
             {
                 col.Item().AlignCenter().Text(i.MoyenneText + (i.Moyenne is null ? "" : " / 20")).FontSize(15).Bold().FontColor(l.Farbe);
                 if (l.ZeigeNoteInWorten && i.MoyenneInWorten is { } w) col.Item().AlignCenter().Text($"({w})").FontSize(6.8f).Italic();
