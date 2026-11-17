@@ -7,12 +7,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
 
+**>>> NEU 17.11. mittags – « Connexion personnelle » (e8c72cc, gepusht, 483 Tests grün):** Mitarbeitende standardmäßig ohne
+Passwort (kassieren am Gerät des Besitzers mit Name + PIN); eigener Login nur mit neuem Recht `UserSalon.KannSichAnmelden`
+(Équipe › Droits, Passwort beim Einschalten). Mit eigenem Konto: nur Bereiche der übrigen Rechte, keine Kasse, keine
+« Clients présents », nie Besitzer-PIN (auch zentral in `PruefeBesitzerFreigabeAsync`). **Neue Migration
+`20261117075157_PersoenlicheAnmeldung` (bool, Standard aus) – lokal ja, Azure NOCH NICHT (OK nötig) → eNOTE erst danach
+deployen.** Azure hat bereits PoProvisionen + VerkaufKassierer (mit OK eingespielt). **Nächster Vorschlag (wartet auf OK):
+Kundendisplay je Gerät** statt je Sitzung (heute mischen sich bei zwei gleichzeitigen Kassierern die Tickets). Bilder
+`Pictures\eNOTE-Connexion-personnelle-2026-11-17\`. Videos « Équipe » / « Votre équipe, les droits et les codes PIN » später anpassen.
+
 **>>> NEU 17.11. vormittags – « Qui encaisse ? » (Option A, Nutzer « Ja A », 09360f8, gepusht, 479 Tests grün):** Jeder Bon
 speichert die kassierende Person (`Verkauf.KassiererId/KassiererName`); jedes Gerät fragt beim Einstieg in die offene Kasse
 Name + PIN, Kopf « Changer »; Erstattungen + Recht « Remboursements » nach angemeldeter Person; Bon « Servi par », Clôture und
-Finances › Clôtures zeigen « Par caissier ». **Neue Migration `20261117064107_VerkaufKassierer`** (2 nullable Spalten + Index-
-Tausch, keine Datenänderung) – lokal eingespielt, **Azure NOCH NICHT (OK des Nutzers nötig)** → **eNOTE erst deployen, wenn sie
-auf Azure ist**, sonst schlagen alle Verkaufsabfragen fehl. Option B (mehrere Kassen/Schubladen) bewusst später; A ist so gebaut,
+Finances › Clôtures zeigen « Par caissier ». Migration `20261117064107_VerkaufKassierer` – lokal und Azure eingespielt (mit OK). Option B (mehrere Kassen/Schubladen) bewusst später; A ist so gebaut,
 dass B bestehende Läden nicht stört (Caisse principale). Bilder `Pictures\eNOTE-Qui-encaisse-2026-11-17\`. Lernvideos zur Kasse
 zeigen den Kopf noch ohne « Changer » (bei Gelegenheit neu).
 
