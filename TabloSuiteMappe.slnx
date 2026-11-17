@@ -8,6 +8,9 @@
     <Project Path="TabloSuiteHome/TabloSuiteHome.Tests/TabloSuiteHome.Tests.csproj" />
     <Project Path="TabloSuiteHome/TabloSuiteHome.WebApp/TabloSuiteHome.WebApp.csproj" />
   </Folder>
+  <Folder Name="/Projektmappenelemente/">
+    <File Path="STAND.md" />
+  </Folder>
   <Folder Name="/Skoulou/">
     <Project Path="Skoulou/Skoulou.Core/Skoulou.Core.csproj" />
     <Project Path="Skoulou/Skoulou.Tests/Skoulou.Tests.csproj" />
