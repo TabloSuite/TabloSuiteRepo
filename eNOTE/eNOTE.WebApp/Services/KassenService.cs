@@ -259,13 +259,14 @@ public class KassenService(
         Guid salonId,
         Guid kassiererId,
         decimal startbestand,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? geraet = null)
     {
         // Unter der Kassensperre: zwei Geräte, die gleichzeitig öffnen, erzeugen nicht zwei offene Kassen.
         try
         {
             return await KassenSperre.MitLadenAsync(dbContextFactory, salonId,
-                (db, transaktion) => StarteSitzungGesperrtAsync(db, transaktion, salonId, kassiererId, startbestand, cancellationToken), cancellationToken);
+                (db, transaktion) => StarteSitzungGesperrtAsync(db, transaktion, salonId, kassiererId, startbestand, geraet, cancellationToken), cancellationToken);
         }
         catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
         {
@@ -274,7 +275,7 @@ public class KassenService(
     }
 
     private async Task<StartErgebnis> StarteSitzungGesperrtAsync(ApplicationDbContext db, IDbContextTransaction? transaktion,
-        Guid salonId, Guid kassiererId, decimal startbestand, CancellationToken cancellationToken)
+        Guid salonId, Guid kassiererId, decimal startbestand, string? geraet, CancellationToken cancellationToken)
     {
         var hatOffene = await db.KassenSitzungen
             .AnyAsync(k => k.SalonId == salonId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
@@ -307,7 +308,8 @@ public class KassenService(
             SalonId = salonId,
             KassiererId = kassiererId,
             Startbestand = Math.Round(startbestand, 2),
-            GestartetUtc = jetzt
+            GestartetUtc = jetzt,
+            GeraetSchluessel = UmsatzHub.IstGeraetSchluessel(geraet) ? geraet : null
         };
 
         db.KassenSitzungen.Add(sitzung);
@@ -316,6 +318,88 @@ public class KassenService(
 
         return new(true, null, sitzung, 0);
     }
+
+    // ================= Eine Kasse, ein Gerät =================
+
+    /// <summary>Buchung von einem Gerät, an dem die Kasse nicht (mehr) läuft – z. B. nach « Reprendre la caisse ici » auf einem anderen Gerät.</summary>
+    public const string AnderesGeraetFehler = "La caisse a été reprise sur un autre appareil. Cet appareil ne peut plus encaisser.";
+
+    public enum GeraetStatus { KeineKasse, DiesesGeraet, AnderesGeraet }
+
+    /// <summary>
+    /// Eine Kasse je Laden, an genau einem Gerät. Prüft beim Betreten der offenen Kasse, ob sie an diesem Gerät läuft.
+    /// Kassen ohne Gerät (von vor der Umstellung) übernimmt das erste Gerät, das sie betritt.
+    /// </summary>
+    public async Task<GeraetStatus> PruefeGeraetAsync(Guid kassenSitzungId, string? geraet, CancellationToken cancellationToken = default)
+    {
+        if (!UmsatzHub.IstGeraetSchluessel(geraet)) return GeraetStatus.AnderesGeraet;
+        try
+        {
+            return await KassenSperre.MitSitzungAsync(dbContextFactory, kassenSitzungId, async (db, transaktion) =>
+            {
+                var sitzung = await db.KassenSitzungen
+                    .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
+                if (sitzung is null) return GeraetStatus.KeineKasse;
+                if (sitzung.GeraetSchluessel == geraet) return GeraetStatus.DiesesGeraet;
+                if (sitzung.GeraetSchluessel is not null) return GeraetStatus.AnderesGeraet;
+                sitzung.GeraetSchluessel = geraet;
+                await db.SaveChangesAsync(cancellationToken);
+                await KassenSperre.BestaetigeAsync(transaktion, cancellationToken);
+                return GeraetStatus.DiesesGeraet;
+            }, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
+        {
+            return GeraetStatus.AnderesGeraet;
+        }
+    }
+
+    /// <summary>
+    /// « Reprendre la caisse ici »: die offene Kasse auf dieses Gerät holen (Tablet defekt, Akku leer, anderer Platz).
+    /// Nur mit Besitzer-Freigabe (Besitzer-PIN; ohne PIN nur das Besitzer-Konto). Das bisherige Gerät kann danach nicht
+    /// mehr kassieren und sperrt sich über <see cref="AnwesenheitsSignal.KassenGeraetGewechselt"/> sofort.
+    /// Liefert eine Fehlermeldung oder null.
+    /// </summary>
+    public async Task<string?> UebernehmeKasseAsync(Guid kassenSitzungId, string? geraet, Guid userId, string? besitzerPin,
+        CancellationToken cancellationToken = default)
+    {
+        if (!UmsatzHub.IstGeraetSchluessel(geraet)) return "Cet appareil n'a pas pu être identifié. Rechargez la page puis réessayez.";
+        Guid salonId;
+        await using (var vorab = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            var offen = await vorab.KassenSitzungen.AsNoTracking()
+                .Where(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen)
+                .Select(k => (Guid?)k.SalonId).FirstOrDefaultAsync(cancellationToken);
+            if (offen is not Guid s) return KeineOffeneKasseFehler;
+            salonId = s;
+        }
+
+        if (await PruefeBesitzerFreigabeAsync(salonId, userId, besitzerPin, cancellationToken) is string pinFehler) return pinFehler;
+
+        try
+        {
+            var fehler = await KassenSperre.MitSitzungAsync(dbContextFactory, kassenSitzungId, async (db, transaktion) =>
+            {
+                var sitzung = await db.KassenSitzungen
+                    .FirstOrDefaultAsync(k => k.Id == kassenSitzungId && k.Status == KassenSitzungStatus.Offen, cancellationToken);
+                if (sitzung is null) return KeineOffeneKasseFehler;
+                sitzung.GeraetSchluessel = geraet;
+                await db.SaveChangesAsync(cancellationToken);
+                await KassenSperre.BestaetigeAsync(transaktion, cancellationToken);
+                return (string?)null;
+            }, cancellationToken);
+            if (fehler is null) anwesenheit?.MeldeKassenGeraet(salonId);
+            return fehler;
+        }
+        catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
+        {
+            return ex.Message;
+        }
+    }
+
+    /// <summary>Buchungen mit Geräteangabe nur an dem Gerät, an dem die Kasse läuft (ohne Angabe: ältere Aufrufer, Tests).</summary>
+    internal static bool GeraetDarfBuchen(KassenSitzung sitzung, string? geraet)
+        => geraet is null || sitzung.GeraetSchluessel is null || sitzung.GeraetSchluessel == geraet;
 
     /// <summary>
     /// Eine Ticketzeile. Mit <paramref name="AufenthaltsPositionId"/>: schon erfasste Leistung eines anwesenden Kunden –
@@ -409,7 +493,8 @@ public class KassenService(
         IReadOnlyList<ZahlungInput> zahlungen,
         CancellationToken cancellationToken = default,
         Guid? kundeId = null,
-        Guid? kassiererId = null)
+        Guid? kassiererId = null,
+        string? geraet = null)
     {
         if (positionen.Count == 0)
         {
@@ -420,7 +505,7 @@ public class KassenService(
         try
         {
             return await KassenSperre.MitSitzungAsync(dbContextFactory, kassenSitzungId,
-                (db, transaktion) => BucheVerkaufGesperrtAsync(db, transaktion, kassenSitzungId, positionen, zahlungen, kundeId, kassiererId, cancellationToken),
+                (db, transaktion) => BucheVerkaufGesperrtAsync(db, transaktion, kassenSitzungId, positionen, zahlungen, kundeId, kassiererId, geraet, cancellationToken),
                 cancellationToken);
         }
         catch (InvalidOperationException ex) when (ex.Message == KassenSperre.BelegtFehler)
@@ -437,6 +522,7 @@ public class KassenService(
         IReadOnlyList<ZahlungInput> zahlungen,
         Guid? kundeId,
         Guid? kassiererId,
+        string? geraet,
         CancellationToken cancellationToken)
     {
         var warnungen = new List<string>();
@@ -446,6 +532,11 @@ public class KassenService(
         if (sitzung is null)
         {
             return (false, KeineOffeneKasseFehler, null, warnungen);
+        }
+
+        if (!GeraetDarfBuchen(sitzung, geraet))
+        {
+            return (false, AnderesGeraetFehler, null, warnungen);
         }
 
         if (await PruefeKassenSperreAsync(sitzung.SalonId, synchronisieren: false, cancellationToken) is string sperre)
@@ -938,7 +1029,8 @@ public class KassenService(
         decimal endbestandGezaehlt,
         string? notiz,
         CancellationToken cancellationToken = default,
-        decimal? erwartetesSoll = null)
+        decimal? erwartetesSoll = null,
+        string? geraet = null)
     {
         // Wartet auf laufende Buchungen des Ladens (Sperre), danach bucht keiner mehr in die geschlossene Kasse.
         try
@@ -951,6 +1043,11 @@ public class KassenService(
                 if (sitzung is null)
                 {
                     return (false, KeineOffeneKasseFehler, (KassenSitzung?)null);
+                }
+
+                if (!GeraetDarfBuchen(sitzung, geraet))
+                {
+                    return (false, AnderesGeraetFehler, (KassenSitzung?)null);
                 }
 
                 var soll = KassenRechner.BerechneBarSoll(sitzung.Startbestand, sitzung.Verkaeufe, await KassenBewegungenAsync(db, sitzung.Id, cancellationToken));

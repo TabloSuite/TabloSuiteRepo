@@ -336,6 +336,16 @@ public partial class Caisse(
     private bool kassiererDialogOffen;
     // Kunden-Display je Gerät (17.11.2026): fester Geräteschlüssel aus dem Browser (localStorage).
     private string? geraetSchluessel;
+    // Eine Kasse je Laden, an genau einem Gerät: null = noch nicht geprüft (Geräteschlüssel kommt erst nach dem ersten Rendern).
+    private KassenService.GeraetStatus? kassenGeraet;
+    // Nach der Geräteprüfung « Qui encaisse ? » zeigen (neue Anmeldung/Schichtwechsel an diesem Gerät).
+    private bool kassiererDialogNachPruefung;
+    // « Reprendre la caisse ici »
+    private bool uebernahmeBrauchtPin;
+    private string uebernahmePin = string.Empty;
+    private string? uebernahmeFehler;
+    // Hier lief die Kasse eben noch – ein anderes Gerät hat sie übernommen (fester Hinweis in der Sperransicht).
+    private bool vonAnderemGeraetUebernommen;
     // Eigenes Mitarbeiter-Konto (« Connexion personnelle »): keine Kasse – nur am Gerät des Besitzers mit Name + PIN.
     private bool mitarbeiterKonto;
     private bool kassiererDialogMitInfo;
@@ -460,6 +470,7 @@ public partial class Caisse(
         stornoFehler = null;
         var warBar = StornoGewaehlterWeg is { Art: ZahlungsArt.Bar };
 
+        if (!await KasseLaeuftHierAsync()) return;
         var eingaben = stornoMengen.Where(kv => kv.Value > 0).Select(kv => new StornoService.StornoPositionInput(kv.Key, kv.Value)).ToList();
         var ergebnis = await stornoService.ErstatteAsync(aktuellerBenutzerId, aktiveSitzung.Id, stornoVorlage.VerkaufId, eingaben,
             stornoWeg, stornoInsLager, stornoGrund, stornoPin, kassiererId: anzeigeState.AktiverKassiererId);
@@ -521,6 +532,7 @@ public partial class Caisse(
     {
         if (aktiveSitzung is null) return;
         retraitFehler = null;
+        if (!await KasseLaeuftHierAsync()) return;
 
         if (retraitWare)
         {
@@ -645,6 +657,7 @@ public partial class Caisse(
         anzeigeState.OnChange += HandleAnzeigeStateChanged;
         anwesenheitsSignal.Geaendert += AnwesenheitGeaendert;
         anwesenheitsSignal.KasseGeaendert += KasseGeaendert;
+        anwesenheitsSignal.KassenGeraetGewechselt += KassenGeraetGewechselt;
 
         var authState = await authStateProvider.GetAuthenticationStateAsync();
         if (!Guid.TryParse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -685,10 +698,8 @@ public partial class Caisse(
             wiederhergestelltKassierer = offene.Kassierer.FullName;
             wiederhergestelltSoll = aufstellung?.Soll;
             wiederhergestelltGestartet = offene.GestartetUtc;
-            if (!schonHierOffen || anzeigeState.KassiererFehlt)
-            {
-                await OeffneKassiererDialogAsync(mitInfo: true);
-            }
+            // « Qui encaisse ? » erst, wenn feststeht, dass die Kasse an diesem Gerät läuft (OnAfterRenderAsync).
+            kassiererDialogNachPruefung = !schonHierOffen || anzeigeState.KassiererFehlt;
             return;
         }
 
@@ -763,8 +774,9 @@ public partial class Caisse(
             return;
         }
 
+        await LadeGeraetSchluesselAsync();
         var (gestartet, startFehlerText, sitzung, _) = await kassenService.StarteSitzungAsync(
-            zuordnung.SalonId, ausgewaehlterKassiererId, startbestand);
+            zuordnung.SalonId, ausgewaehlterKassiererId, startbestand, geraet: geraetSchluessel);
 
         if (!gestartet || sitzung is null)
         {
@@ -773,6 +785,7 @@ public partial class Caisse(
         }
 
         aktiveSitzung = sitzung;
+        kassenGeraet = KassenService.GeraetStatus.DiesesGeraet;
         aktiverSalonName = zuordnung.Salon.Name;
         zone = ENote.Core.Services.Zeitzonen.Fuer(zuordnung.Salon.Land);
         anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, zuordnung.AppUser.FullName, sitzung.Startbestand,
@@ -887,6 +900,11 @@ public partial class Caisse(
     {
         if (!firstRender) return;
         await LadeGeraetSchluesselAsync();
+        if (aktiveSitzung is not null && kassenGeraet is null)
+        {
+            await PruefeKassenGeraetAsync();
+            StateHasChanged();
+        }
         scannerRef = DotNetObjectReference.Create(this);
         try { await js.InvokeVoidAsync("enoteScanner.start", scannerRef); }
         catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { /* ohne JS: Suchfeld genügt */ }
@@ -1157,10 +1175,17 @@ public partial class Caisse(
             p.AufenthaltsPositionId)).ToList();
 
         var (erfolg, fehler, verkauf, warnungen) = await kassenService.BucheVerkaufAsync(aktiveSitzung.Id, positionen, zahlungen,
-            kundeId: ticketKunde?.Id, kassiererId: anzeigeState.AktiverKassiererId);
+            kundeId: ticketKunde?.Id, kassiererId: anzeigeState.AktiverKassiererId, geraet: geraetSchluessel);
         if (!erfolg || verkauf is null)
         {
             verkaufFehler = fehler;
+            if (fehler == KassenService.AnderesGeraetFehler)
+            {
+                // Kasse wurde auf ein anderes Gerät geholt: dieses Gerät sperren (Ticket bleibt für eine Rücknahme erhalten).
+                verkaufFehler = null;
+                await SperreGeraetAsync(gemeldet: true);
+                return;
+            }
             if (fehler == KassenService.KassiererUnbekanntFehler)
             {
                 // Person wurde inzwischen gesperrt/entfernt: neu fragen, wer kassiert (Ticket bleibt).
@@ -1294,10 +1319,16 @@ public partial class Caisse(
         }
 
         var (erfolg, fehler, sitzung) = await kassenService.SchliesseSitzungAsync(aktiveSitzung.Id, endbestandGezaehlt, abschlussNotiz,
-            erwartetesSoll: abschlussInfo?.BarSoll);
+            erwartetesSoll: abschlussInfo?.BarSoll, geraet: geraetSchluessel);
         if (!erfolg || sitzung is null)
         {
             abschlussFehler = fehler;
+            if (fehler == KassenService.AnderesGeraetFehler)
+            {
+                abschlussFehler = null;
+                await SperreGeraetAsync(gemeldet: true);
+                return;
+            }
             if (fehler == KassenService.SollGeaendertFehler)
             {
                 // Stand neu laden; der Dialog zeigt die neuen « Espèces attendues » und das neue Écart.
@@ -1356,11 +1387,11 @@ public partial class Caisse(
             anzeigeState.SitzungGestartet(offene.Id, offene.SalonId, offene.Kassierer.FullName, offene.Startbestand,
                 aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
             toast.ZeigeInfo($"La caisse a été clôturée sur un autre appareil puis rouverte par {offene.Kassierer.FullName}.");
-            if (anzeigeState.KassiererFehlt)
-            {
-                await OeffneKassiererDialogAsync();
-            }
-            return true;
+            // Die neue Kasse läuft an dem Gerät, das sie geöffnet hat: dieses Gerät erneut prüfen (meist gesperrt).
+            kassenGeraet = null;
+            kassiererDialogNachPruefung = anzeigeState.KassiererFehlt;
+            await PruefeKassenGeraetAsync();
+            return kassenGeraet == KassenService.GeraetStatus.DiesesGeraet;
         }
 
         abschlussOffen = false;
@@ -1372,6 +1403,114 @@ public partial class Caisse(
         toast.ZeigeInfo("La caisse a été clôturée sur un autre appareil. Ouvrez-la à nouveau pour continuer (le ticket en cours est conservé).");
         await ZeigeKassenstartAsync();
         return false;
+    }
+
+    // ================= Eine Kasse je Laden, an genau einem Gerät =================
+
+    /// <summary>
+    /// Läuft die offene Kasse an diesem Gerät? Ja: weiter (ggf. « Qui encaisse ? »). Nein: Sperransicht mit
+    /// « Reprendre la caisse ici ». Eine Kasse ohne Gerät (von vor der Umstellung) übernimmt dieses Gerät.
+    /// </summary>
+    private async Task PruefeKassenGeraetAsync()
+    {
+        if (aktiveSitzung is not { } sitzung) return;
+        await LadeGeraetSchluesselAsync();
+        var vorher = kassenGeraet;
+        var status = await kassenService.PruefeGeraetAsync(sitzung.Id, geraetSchluessel);
+        if (aktiveSitzung?.Id != sitzung.Id) return;
+
+        switch (status)
+        {
+            case KassenService.GeraetStatus.DiesesGeraet:
+                kassenGeraet = status;
+                if (kassiererDialogNachPruefung)
+                {
+                    kassiererDialogNachPruefung = false;
+                    await OeffneKassiererDialogAsync(mitInfo: true);
+                }
+                break;
+            case KassenService.GeraetStatus.AnderesGeraet:
+                await SperreGeraetAsync(gemeldet: vorher == KassenService.GeraetStatus.DiesesGeraet);
+                break;
+            default:
+                // Inzwischen geschlossen: Ansicht nachziehen (Kassenstart oder neu geöffnete Kasse prüfen).
+                kassenGeraet = KassenService.GeraetStatus.DiesesGeraet;
+                await GleicheSitzungAbAsync();
+                break;
+        }
+    }
+
+    /// <summary>Vor Buchungen ohne eigene Geräteprüfung im Dienst (Erstattung, Retrait): sperrt, wenn die Kasse anderswo läuft.</summary>
+    private async Task<bool> KasseLaeuftHierAsync()
+    {
+        if (aktiveSitzung is null) return false;
+        await PruefeKassenGeraetAsync();
+        return aktiveSitzung is not null && kassenGeraet == KassenService.GeraetStatus.DiesesGeraet;
+    }
+
+    /// <summary>Dieses Gerät kassiert nicht (mehr): Dialoge zu, Kopfzeile/Vollbild aus, Display auf « Bienvenue ».</summary>
+    private async Task SperreGeraetAsync(bool gemeldet)
+    {
+        kassenGeraet = KassenService.GeraetStatus.AnderesGeraet;
+        kassiererDialogNachPruefung = false;
+        zahlDialogOffen = abschlussOffen = kassiererDialogOffen = stornoOffen = retraitOffen = false;
+        rabattDialogOffen = abbrechenBestaetigungOffen = freierBetragOffen = parkDialogOffen = false;
+        anwesendeOffen = wartendeOffen = displayDialogOffen = historieOffen = false;
+        uebernahmePin = string.Empty;
+        uebernahmeFehler = null;
+        vonAnderemGeraetUebernommen = gemeldet;
+        if (aktiveSitzung is { } s) uebernahmeBrauchtPin = await kassenService.HatBesitzerPinAsync(s.SalonId);
+        anzeigeState.SitzungBeendet();
+        await SetzeDisplayZurueckAsync();
+        if (gemeldet) toast.ZeigeInfo("La caisse a été reprise sur un autre appareil. Cet appareil n'encaisse plus.");
+    }
+
+    /// <summary>« Reprendre la caisse ici » (Besitzer-PIN): die Kasse läuft danach an diesem Gerät, das andere ist gesperrt.</summary>
+    private async Task UebernehmeKasseAsync()
+    {
+        if (aktiveSitzung is not { } sitzung) return;
+        uebernahmeFehler = null;
+        if (uebernahmeBrauchtPin && uebernahmePin.Length < 4)
+        {
+            uebernahmeFehler = "Saisissez le code PIN du propriétaire.";
+            return;
+        }
+
+        await LadeGeraetSchluesselAsync();
+        var fehler = await kassenService.UebernehmeKasseAsync(sitzung.Id, geraetSchluessel, aktuellerBenutzerId,
+            uebernahmeBrauchtPin ? uebernahmePin : null);
+        uebernahmePin = string.Empty;
+        if (fehler == KassenService.KeineOffeneKasseFehler)
+        {
+            kassenGeraet = KassenService.GeraetStatus.DiesesGeraet;
+            await GleicheSitzungAbAsync();
+            return;
+        }
+        if (fehler is not null)
+        {
+            uebernahmeFehler = fehler;
+            return;
+        }
+
+        kassenGeraet = KassenService.GeraetStatus.DiesesGeraet;
+        var aufstellung = await kassenService.GetBarSollAufstellungAsync(sitzung.Id);
+        anzeigeState.SitzungGestartet(sitzung.Id, sitzung.SalonId, sitzung.Kassierer.FullName, sitzung.Startbestand,
+            aufstellung is { } a ? a.Soll - a.Startbestand : 0m);
+        await LadeAnwesendeAsync();
+        await LadeWartendeAsync();
+        toast.ZeigeErfolg("La caisse fonctionne maintenant sur cet appareil.");
+        await OeffneKassiererDialogAsync();
+    }
+
+    /// <summary>Kasse wurde auf ein anderes Gerät geholt: dieses Gerät prüft sich und sperrt sich gegebenenfalls.</summary>
+    private void KassenGeraetGewechselt(Guid salonId)
+    {
+        if (aktiveSitzung?.SalonId != salonId || kassenGeraet != KassenService.GeraetStatus.DiesesGeraet) return;
+        _ = InvokeAsync(async () =>
+        {
+            await PruefeKassenGeraetAsync();
+            StateHasChanged();
+        });
     }
 
     /// <summary>« Qui encaisse ? » / « Changer » – Personen des Ladens mit PIN zur Auswahl.</summary>
@@ -1432,6 +1571,7 @@ public partial class Caisse(
         anzeigeState.OnChange -= HandleAnzeigeStateChanged;
         anwesenheitsSignal.Geaendert -= AnwesenheitGeaendert;
         anwesenheitsSignal.KasseGeaendert -= KasseGeaendert;
+        anwesenheitsSignal.KassenGeraetGewechselt -= KassenGeraetGewechselt;
         if (scannerRef is not null)
         {
             try { await js.InvokeVoidAsync("enoteScanner.stop"); }

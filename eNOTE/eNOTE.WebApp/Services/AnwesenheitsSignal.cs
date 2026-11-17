@@ -15,6 +15,18 @@ public sealed class AnwesenheitsSignal
     /// </summary>
     public event Action<Guid>? KasseGeaendert;
 
+    /// <summary>
+    /// Die offene Kasse eines Ladens wurde auf ein anderes Gerät geholt (« Reprendre la caisse ici »): das bisherige
+    /// Gerät sperrt sich sofort (eine Kasse je Laden, an genau einem Gerät).
+    /// </summary>
+    public event Action<Guid>? KassenGeraetGewechselt;
+
+    public void MeldeKassenGeraet(Guid salonId)
+    {
+        try { KassenGeraetGewechselt?.Invoke(salonId); }
+        catch { /* eine Ansicht darf die anderen nicht stören */ }
+    }
+
     public void Melde(Guid salonId)
     {
         try { Geaendert?.Invoke(salonId); }

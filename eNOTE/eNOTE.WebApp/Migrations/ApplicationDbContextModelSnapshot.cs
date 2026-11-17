@@ -1323,6 +1323,10 @@ namespace ENote.WebApp.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("GeraetSchluessel")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<DateTime>("GestartetUtc")
                         .HasColumnType("datetime2");
 

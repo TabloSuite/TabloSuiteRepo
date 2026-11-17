@@ -170,6 +170,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(k => k.EndbestandGezaehlt).HasPrecision(18, 2);
             entity.Property(k => k.BareinnahmenSoll).HasPrecision(18, 2);
             entity.Property(k => k.Differenz).HasPrecision(18, 2);
+            entity.Property(k => k.GeraetSchluessel).HasMaxLength(32);
             entity.HasOne(k => k.Salon)
                 .WithMany()
                 .HasForeignKey(k => k.SalonId)

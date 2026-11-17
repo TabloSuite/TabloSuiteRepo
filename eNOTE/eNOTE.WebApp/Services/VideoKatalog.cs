@@ -53,9 +53,6 @@ public static class VideoKatalog
             "Noter une arrivée, créer un client, la carte et la fiche, enregistrer sans encaisser, encaisser au départ ou noter le départ.", "Employé", Alle, "4:38"),
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
             "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
-        // 17.11.2026: Mehrere Geräte an einer Kasse (« Qui encaisse ? », « Changer », Écran client je Gerät, Clôture « Par caissier »)
-        new("enote-employe-deux-appareils.mp4", "Deux appareils, une caisse",
-            "Encaisser à plusieurs : le deuxième appareil et « Qui encaisse ? », chaque vente au nom de qui encaisse, « Changer » sur le même appareil, un écran client par appareil, la clôture par caissier.", "Employé", Alle, "3:01"),
 
         new("enote-proprietaire-concept-catalogue.mp4", "Le concept : catalogue, stock et prix",
             "La théorie avant la pratique : prestation ou produit, les catégories, le prix et la marge, les remises, le stock qui se tient tout seul, les alertes et l'inventaire, qui peut changer quoi.", "Propriétaire", AbBesitzer, "4:40"),

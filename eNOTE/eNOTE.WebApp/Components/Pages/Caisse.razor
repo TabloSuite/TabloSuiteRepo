@@ -21,6 +21,46 @@ else if (anzeigeState.IstMinimiert && anzeigeState.AktiveSitzungId is not null)
         <button class="enote-btn enote-btn-primary enote-btn-lg" @onclick="anzeigeState.Wiederherstellen">Rouvrir la caisse</button>
     </div>
 }
+else if (aktiveSitzung is not null && kassenGeraet is null)
+{
+    @* Kurz nach dem Laden: Gerät wird geprüft (eine Kasse je Laden, an genau einem Gerät). *@
+    <div class="kx-hinweis" aria-busy="true">
+        <span class="kx-hinweis-ico"><Icon Name="caisse" Groesse="28" /></span>
+        <p class="enote-muted">Ouverture de la caisse…</p>
+    </div>
+}
+else if (aktiveSitzung is not null && kassenGeraet == ENote.WebApp.Services.KassenService.GeraetStatus.AnderesGeraet)
+{
+    @* --- Eine Kasse je Laden: die Kasse läuft an einem anderen Gerät --- *@
+    <div class="kx-hinweis kx-anderes-geraet">
+        <span class="kx-hinweis-ico"><Icon Name="caisse" Groesse="28" /></span>
+        <h1>La caisse est ouverte sur un autre appareil</h1>
+        @if (vonAnderemGeraetUebernommen)
+        {
+            <div class="alert alert-info" role="status">La caisse vient d'être reprise sur un autre appareil. Cet appareil n'encaisse plus.</div>
+        }
+        <p class="enote-muted">
+            @aktiverSalonName a une seule caisse. Elle a été ouverte par <strong>@aktiveSitzung.Kassierer.FullName</strong>
+            à @aktiveSitzung.GestartetUtc.ImLaden(zone).ToString("HH:mm") et fonctionne sur un autre appareil.
+            Encaissez sur cet appareil-là, ou reprenez la caisse ici (par exemple si l'autre appareil est en panne).
+        </p>
+        <div class="kx-uebernahme">
+            <p class="kx-uebernahme-hinweis"><Icon Name="info" Groesse="16" /> L'autre appareil ne pourra plus encaisser. Les ventes, le fond de caisse et le ticket en attente sont conservés.</p>
+            @if (uebernahmeBrauchtPin)
+            {
+                <label class="kx-uebernahme-label">Code PIN du propriétaire</label>
+                <PinEingabe @bind-Wert="uebernahmePin" OnBestaetigt="UebernehmeKasseAsync" Fehlerhaft="@(!string.IsNullOrWhiteSpace(uebernahmeFehler))" />
+            }
+            @if (!string.IsNullOrWhiteSpace(uebernahmeFehler))
+            {
+                <div class="alert alert-error" role="alert">@uebernahmeFehler</div>
+            }
+            <AsyncActionButton Text="Reprendre la caisse ici" BusyText="Reprise…" OnClick="UebernehmeKasseAsync"
+                               CssClass="enote-btn-primary enote-btn-lg enote-btn-block"
+                               Disabled="@(uebernahmeBrauchtPin && uebernahmePin.Length < 4)" />
+        </div>
+    </div>
+}
 else if (aktiveSitzung is null)
 {
     @* --- Zustand 1: Kassenstart (Kassierer + PIN + Wechselgeld) --- *@

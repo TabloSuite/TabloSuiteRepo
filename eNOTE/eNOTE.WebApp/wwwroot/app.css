@@ -1450,6 +1450,19 @@ button.enote-laedt { cursor: progress; }
     background: var(--enote-primary-soft); color: var(--enote-primary-light);
 }
 
+/* --- Eine Kasse je Laden: Kasse läuft an einem anderen Gerät --- */
+.kx-anderes-geraet { max-width: 34rem; margin: 2.5rem auto; padding: 0 1rem; }
+.kx-uebernahme {
+    width: 100%; display: grid; gap: .75rem; text-align: left; margin-top: .5rem; padding: 1.1rem;
+    border: 1px solid var(--enote-border); border-radius: 1rem; background: var(--enote-surface);
+}
+.kx-uebernahme-hinweis {
+    display: flex; gap: .5rem; align-items: flex-start; font-size: .92rem; color: var(--enote-warning-text);
+    background: var(--enote-warning-soft); border: 1px solid var(--enote-warning-border); border-radius: .75rem; padding: .65rem .8rem;
+}
+.kx-uebernahme-hinweis svg { flex: none; margin-top: .15rem; }
+.kx-uebernahme-label { font-weight: 700; font-size: .95rem; }
+
 /* --- Kassenstart --- */
 .kx-start { max-width: 68rem; margin: 0 auto; display: grid; gap: 1.25rem; }
 .kx-start-kopf { display: flex; align-items: center; gap: 1rem; }
