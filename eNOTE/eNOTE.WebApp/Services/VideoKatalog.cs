@@ -44,7 +44,7 @@ public static class VideoKatalog
 
         // 16.11.2026: Konzeptvideos (Folien, Theorie vor der Praxis) jeweils vor dem passenden Praxisvideo
         new("enote-employe-concept-caisse.mp4", "Le concept : la caisse, de l'ouverture à la clôture",
-            "La théorie avant la pratique : une journée de caisse, « Qui encaisse ? » sur chaque appareil, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "5:05"),
+            "La théorie avant la pratique : une journée de caisse, une seule caisse sur un seul appareil, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "5:10"),
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
             "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
@@ -59,9 +59,9 @@ public static class VideoKatalog
         new("enote-proprietaire-catalogue.mp4", "Préparer votre catalogue",
             "Les catégories, une prestation, un produit avec prix d'achat, stock et code-barres, étiquettes et pertes, les remises.", "Propriétaire", AbBesitzer, "3:41"),
         new("enote-proprietaire-concept-equipe.mp4", "Le concept : votre équipe, les droits et les codes PIN",
-            "La théorie avant la pratique : qui fait quoi, les trois clés (votre mot de passe, code PIN de caisse, code PIN du propriétaire), un employé sans mot de passe, les droits et la connexion personnelle, la zone du propriétaire, plusieurs appareils sur une caisse.", "Propriétaire", AbBesitzer, "4:28"),
+            "La théorie avant la pratique : qui fait quoi, les trois clés (votre mot de passe, code PIN de caisse, code PIN du propriétaire), un employé sans mot de passe, les droits et la connexion personnelle, la zone du propriétaire, une caisse sur un seul appareil et « Reprendre la caisse ici ».", "Propriétaire", AbBesitzer, "4:39"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
-            "La page Équipe, ajouter un employé (sans mot de passe) avec son code PIN, ses droits et la connexion personnelle, votre reçu, Mobile Money, salles et postes, appareils connectés, votre code PIN.", "Propriétaire", AbBesitzer, "4:10"),
+            "La page Équipe, ajouter un employé (sans mot de passe) avec son code PIN, ses droits et la connexion personnelle, votre reçu, Mobile Money, salles et postes, appareils connectés, votre code PIN.", "Propriétaire", AbBesitzer, "4:12"),
         new("enote-proprietaire-concept-chiffres.mp4", "Le concept : vos chiffres",
             "La théorie avant la pratique : chiffre d'affaires, panier moyen et écart ; ce qui entre, ce qui sort, ce qui reste ; le solde n'est pas le bénéfice ; la clôture du soir ; où regarder ; qui voit quoi.", "Propriétaire", AbBesitzer, "4:18"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
