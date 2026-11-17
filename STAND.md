@@ -9,9 +9,10 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 **>>> NEU 17.11. spät – « Appareils connectés » (48d90cf, 502 Tests grün):** Besitzer-Konten bleiben auf mehreren Geräten
 angemeldet (Tabelle `AnmeldeSitzungen`, Stempel = ActiveSessionId, andere Konten weiter eine Anmeldung), Liste in Paramètres mit
-« Déconnecter » / « tous les autres ». Kassen-Gesamttest erneut: Tablet bleibt angemeldet, Bon-Druck ok. **Neue Migration
-`…_AnmeldeSitzungen` – lokal ja, Azure NOCH NICHT (OK nötig). ACHTUNG: eNOTE jetzt NICHT deployen, bevor sie auf Azure ist – die
-Tabelle wird bei JEDER Anfrage gelesen.** Push hing zweimal an der GitHub-Anmeldung des Nutzers (4 Commits ahead).
+« Déconnecter » / « tous les autres ». Kassen-Gesamttest erneut: Tablet bleibt angemeldet, Bon-Druck ok. Migration
+`20261117084016_AnmeldeSitzungen` – lokal und **Azure eingespielt (OK « azuredb aktualisieren », lesend geprüft): Azure = lokal mit
+allen vier Migrationen von heute → Nutzer kann eNOTE deployen.** Alles gepusht. **Danach:** Videos (« Deux appareils, une caisse »,
+« Équipe »/Konzeptvideo Droits mit « Connexion personnelle », Kassenvideos mit « Changer »/« Par caissier », später Admin-Provisionen).
 
 **>>> NEU 17.11. nachmittags – Kundendisplay je Gerät (dc1d5df) + Gesamttest Kasse (8193d68), 493 Tests grün:** Display-Gruppe je
 Geräteschlüssel (localStorage), Link `/display/{Laden}/{Gerät}`, bleibt über Clôture/Tage verbunden, alter Link zeigt « Nouveau lien ».
