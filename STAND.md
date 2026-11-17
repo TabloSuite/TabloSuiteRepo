@@ -7,10 +7,15 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
 
+**>>> NEU 17.11. spät – « Appareils connectés » (48d90cf, 502 Tests grün):** Besitzer-Konten bleiben auf mehreren Geräten
+angemeldet (Tabelle `AnmeldeSitzungen`, Stempel = ActiveSessionId, andere Konten weiter eine Anmeldung), Liste in Paramètres mit
+« Déconnecter » / « tous les autres ». Kassen-Gesamttest erneut: Tablet bleibt angemeldet, Bon-Druck ok. **Neue Migration
+`…_AnmeldeSitzungen` – lokal ja, Azure NOCH NICHT (OK nötig). ACHTUNG: eNOTE jetzt NICHT deployen, bevor sie auf Azure ist – die
+Tabelle wird bei JEDER Anfrage gelesen.** Push hing zweimal an der GitHub-Anmeldung des Nutzers (4 Commits ahead).
+
 **>>> NEU 17.11. nachmittags – Kundendisplay je Gerät (dc1d5df) + Gesamttest Kasse (8193d68), 493 Tests grün:** Display-Gruppe je
 Geräteschlüssel (localStorage), Link `/display/{Laden}/{Gerät}`, bleibt über Clôture/Tage verbunden, alter Link zeigt « Nouveau lien ».
-Azure ist mit allen drei Migrationen von heute aktuell (PoProvisionen, VerkaufKassierer, PersoenlicheAnmeldung) → **eNOTE kann
-deployt werden.** Gesamttest im Browser (Tablet + Handy + 2 Displays + Mitarbeiter mit/ohne Login): 40/41 OK; Équipe-Statistik
+Azure hatte zu diesem Zeitpunkt alle drei Migrationen (PoProvisionen, VerkaufKassierer, PersoenlicheAnmeldung); seit « Appareils connectés » fehlt eine vierte (s. oben). Gesamttest im Browser (Tablet + Handy + 2 Displays + Mitarbeiter mit/ohne Login): 40/41 OK; Équipe-Statistik
 korrigiert. **Offener Fund (Entscheidung des Nutzers):** bestehende Regel « eine aktive Sitzung je Konto » (`ActiveSessionId`) – meldet
 sich der Besitzer an Gerät 2 an, ist Gerät 1 abgemeldet (Kasse läuft im offenen Fenster weiter, aber Bon-Druck/PDF/Neuladen →
 Anmeldeseite). Vorschlag: mehrere Geräte je Besitzer-Konto + Liste « Appareils connectés » mit Abmelden. Push von dc1d5df/8193d68
