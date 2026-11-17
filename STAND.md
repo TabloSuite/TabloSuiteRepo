@@ -67,6 +67,9 @@ Bilder `Pictures\eNOTE-Gesamttest-Kasse-2026-11-17\`, `…-Display-je-Geraet-…
 - **TabloSuiteHome deployen** (309bc71, 17.11.): SKOULOU-Karte jetzt Blau `#1d4ed8` statt Türkis `#0f8f86` (Streifen, Untertitel,
   Haken, Bildhintergrund); Logos/Bilder über `@Assets[...]` mit Fingerabdruck → Browser zeigen nie mehr ein altes/kaputtes Bild
   aus dem Zwischenspeicher. Live war das neue Logo schon da, nur die Katalogfarbe war noch Türkis. Bilder `Pictures\TabloSuiteHome-SKOULOU-Blau-2026-11-17\`.
+  Dazu (bd6b084, 09d573a): SKOULOU-Logo der Firmenseite im Stil des eNOTE-Logos (flach #1e3a8a, « S » so groß wie « eN »), neues
+  Foto `skoulou-tableau-de-bord.webp` (Startseite Direktion, dunkelblaues Logo), Kopfbereich ohne Türkis (« votre activité »,
+  Symbole, Schimmer). Bilder `…\v2\`, `…\v3\`. **Nutzer deployt TabloSuiteHome.**
 - SKOULOU-Mails: türkiser Streifen unter dem Kopf + Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » so lassen oder blau? (Frage offen.)
 - Videos: Admin « Tarifs et facturation » (neue Provisionen, Mehrfachbestätigung) und evtl. Responsable « Paiements et accompagnement »
   (« Mes commissions ») neu. Die Employé-Videos (`encaisser`, `attente`, `clients`, `cloture`) wurden mit `demo.awa` aufgenommen – bei
