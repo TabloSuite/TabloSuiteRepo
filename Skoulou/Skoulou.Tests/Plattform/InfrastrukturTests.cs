@@ -80,6 +80,15 @@ public class InfrastrukturTests
 
         var direktor = Nutzer(Rollen.Direktor);
         Assert.Equal(5, VideoKatalog.FuerNutzer(direktor).Count);
+        Assert.False(VideoKatalog.DarfAbrufen("skoulou-responsable-ecoles.mp4", direktor));
+
+        // 17.11.: eigene Rubriken für Responsables und Administrateurs (an zweiter Stelle nach « Pour bien commencer »)
+        var responsable = Nutzer(Rollen.Responsable);
+        Assert.Equal(VideoKatalog.Responsable, VideoKatalog.FuerNutzer(responsable)[1].Fuer);
+        Assert.True(VideoKatalog.DarfAbrufen("skoulou-responsable-ecoles.mp4", responsable));
+        var admin = Nutzer(Rollen.SuperAdmin);
+        Assert.Equal(VideoKatalog.Administrateur, VideoKatalog.EigeneGruppe(admin));
+        Assert.True(VideoKatalog.DarfAbrufen("skoulou-responsable-ecoles.mp4", admin));
         Assert.False(VideoKatalog.DarfAbrufen("inconnu.mp4", Nutzer(Rollen.SuperAdmin)));
         Assert.DoesNotMatch(VideoKatalog.DateiMuster(), "../secret.mp4");
     }

@@ -27,12 +27,16 @@ public static partial class VideoKatalog
     public const string Enseignant = "Enseignant";
     public const string Eleve = "Élève";
     public const string Parent = "Parent";
+    public const string Responsable = "Responsable";
+    public const string Administrateur = "Administrateur";
 
     private static readonly string[] Leitung = [Rollen.SuperAdmin, Rollen.Responsable, Rollen.Direktor, Rollen.Koordinator];
     private static readonly string[] Alle = [.. Leitung, Rollen.Lehrer, Rollen.Schueler, Rollen.Eltern];
     private static readonly string[] FuerLehrkraefte = [.. Leitung, Rollen.Lehrer];
     private static readonly string[] FuerSchueler = [.. Leitung, Rollen.Lehrer, Rollen.Schueler];
     private static readonly string[] FuerEltern = [.. Leitung, Rollen.Eltern];
+    private static readonly string[] FuerResponsables = [Rollen.SuperAdmin, Rollen.Responsable];
+    private static readonly string[] NurAdmin = [Rollen.SuperAdmin];
 
     public static readonly IReadOnlyList<LernVideo> Videos =
     [
@@ -55,6 +59,12 @@ public static partial class VideoKatalog
         new("skoulou-direction-eleves.mp4", "Élèves et inscriptions",
             "La liste des élèves, inscrire un élève, importer depuis Excel, valider les inscriptions en ligne, changer de classe, le départ, et les accès des élèves et des parents.",
             Direction, Leitung, "4:42"),
+        new("skoulou-direction-etablissement.mp4", "Votre établissement",
+            "L'identité de l'école, l'en-tête des bulletins et des reçus, le logo, les réglages (matricules, absences, notes visibles des parents) et les droits des coordinateurs – avec leur effet sur les documents imprimés.",
+            Direction, Leitung, "3:11"),
+        new("skoulou-direction-cartes.mp4", "Les cartes d'élève",
+            "Imprimer les cartes d'élève d'une classe, lire la carte, vérifier son code QR avec un téléphone, et renouveler une carte perdue.",
+            Direction, Leitung, "1:58"),
         new("skoulou-direction-equipe.mp4", "Équipe et emplois du temps",
             "Les comptes des enseignants et des coordinateurs, les affectations, les matières et les enseignants de chaque classe, l'emploi du temps avec le contrôle des conflits, puis la publication.",
             Direction, Leitung, "4:30"),
@@ -64,12 +74,21 @@ public static partial class VideoKatalog
         new("skoulou-direction-bulletins.mp4", "Publier les bulletins",
             "Publier les bulletins, lire le bulletin imprimé case par case, consigner la remise, vérifier le code QR, rectifier une erreur, et adapter le modèle de bulletin.",
             Direction, Leitung, "4:48"),
+        new("skoulou-direction-passage.mp4", "Fin d'année et passage",
+            "Les décisions de fin d'année au conseil, le bilan annuel sur le dernier bulletin, puis le passage à l'année suivante : nouvelle année, classes recréées, admis au niveau suivant, redoublants, départs – en une seule étape.",
+            Direction, Leitung, "2:59"),
+        new("skoulou-direction-contenus.mp4", "Contenus des enseignants et journal",
+            "Voir toutes les leçons et tous les examens de l'établissement, saisir un contenu pour un enseignant sans appareil, et suivre dans le journal qui a fait quoi, et quand.",
+            Direction, Leitung, "1:53"),
         new("skoulou-direction-concept-frais.mp4", "Le concept : frais et paiements",
             "La théorie avant la pratique : les frais et leurs tranches, les réductions, les paiements et les reçus, les annulations, le journal de caisse, et la facture SKOULOU.",
             Direction, Leitung, "4:16"),
         new("skoulou-direction-frais.mp4", "Frais de scolarité et paiements",
             "Les frais et leurs tranches, le compte de chaque élève, une réduction, encaisser par Mobile Money avec le reçu, annuler un paiement, le journal de caisse et le rapport financier.",
             Direction, Leitung, "4:20"),
+        new("skoulou-direction-facture.mp4", "La facture SKOULOU",
+            "Comment SKOULOU calcule votre facture (prix annuel par élève, figé au démarrage, réparti sur les périodes ; qui est compté), la facture et son PDF, contester, déclarer le paiement, le journal de caisse.",
+            Direction, Leitung, "4:01"),
         new("skoulou-enseignant-concept.mp4", "Le concept : leçons, exercices et examens",
             "La théorie avant la pratique : leçon ou examen, les pages et les exercices, les huit types de questions, l'attribution à une classe, l'examen chronométré, la correction automatique et le score de l'élève.",
             Enseignant, FuerLehrkraefte, "3:47"),
@@ -83,15 +102,20 @@ public static partial class VideoKatalog
             "Votre accueil, une leçon et ses exercices, une dictée audio, un examen, vos résultats et vos bulletins.", Eleve, FuerSchueler, "3:13"),
         new("skoulou-parent-suivre.mp4", "Suivre votre enfant",
             "Sur votre téléphone : vos enfants, les notes et les bulletins, les absences et les retards, l'emploi du temps, les frais et les reçus.", Parent, FuerEltern, "2:41"),
+        new("skoulou-responsable-ecoles.mp4", "Responsable : accompagner vos écoles",
+            "Vos écoles en un coup d'œil, leur facturation SKOULOU, vos parts, la messagerie avec les directions, et votre formation.",
+            Responsable, FuerResponsables, "2:44"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "Premiers pas, la visite guidée et pourquoi SKOULOU."),
-        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, les élèves, l'équipe, les notes, les bulletins et les frais."),
+        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, les notes, les bulletins, le passage d'année, les frais et la facture SKOULOU."),
         (Enseignant, "Enseignant", "Suivre la classe et noter, puis le concept et la pratique des leçons et des examens."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),
+        (Responsable, "Responsable", "Accompagner vos écoles : suivi, facturation, parts et messagerie."),
+        (Administrateur, "Administrateur", "Écoles et comptes, facturation et tarifs, annonces et surveillance."),
     ];
 
     [GeneratedRegex(@"^[a-z0-9-]+\.mp4$")]
@@ -99,7 +123,9 @@ public static partial class VideoKatalog
 
     /// <summary>Gruppe der eigenen Rolle (erscheint nach « Pour bien commencer »).</summary>
     public static string EigeneGruppe(ClaimsPrincipal user)
-        => user.IsInRole(Rollen.Lehrer) ? Enseignant
+        => user.IsInRole(Rollen.SuperAdmin) ? Administrateur
+           : user.IsInRole(Rollen.Responsable) ? Responsable
+           : user.IsInRole(Rollen.Lehrer) ? Enseignant
            : user.IsInRole(Rollen.Schueler) ? Eleve
            : user.IsInRole(Rollen.Eltern) ? Parent
            : Direction;

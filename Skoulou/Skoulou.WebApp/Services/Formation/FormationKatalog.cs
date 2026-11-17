@@ -34,6 +34,7 @@ public static partial class FormationKatalog
                     "Fixer les tarifs et votre part, confirmer les paiements, annuler une facture, marquer vos parts comme versées."),
                 A("Vous ne voyez ni les notes, ni les bulletins, ni les listes d'élèves, ni les contenus pédagogiques de vos écoles. Les données des élèves restent à l'école."),
                 V("skoulou-premiers-pas.mp4", "Se repérer dans SKOULOU : menu, compte, aide."),
+                V("skoulou-responsable-ecoles.mp4", "Votre espace de responsable, pas à pas : écoles, facturation, parts, messagerie."),
                 M("Vous accompagnez, vous expliquez et vous signalez. Les décisions importantes appartiennent à l'administrateur."),
             ],
             [
@@ -237,6 +238,7 @@ public static partial class FormationKatalog
                 B(Bild + "dir-notes.jpg", "« Notes » : la classe, la matière, la période, puis la saisie au clavier."),
                 V("skoulou-direction-notes.mp4", "Notes et conseil de classe, avec le bulletin imprimé, pas à pas."),
                 V("skoulou-direction-bulletins.mp4", "Publier les bulletins : le bulletin case par case, le QR, la rectification."),
+                V("skoulou-direction-passage.mp4", "Fin d'année : décisions, bilan annuel et passage à l'année suivante."),
                 M("Le code QR d'un bulletin permet à chacun de vérifier qu'il est authentique (« Bulletin valable »)."),
             ],
             [
@@ -332,7 +334,7 @@ public static partial class FormationKatalog
                     "En désaccord (élèves partis, doublons…), l'école peut « Contester » une facture « À payer », avec un motif."),
                 A("Une facture impayée ne bloque rien automatiquement. L'administrateur peut décider de suspendre l'école. Rappelez à temps les écoles « En retard »."),
                 B(Bild + "po-facturation.jpg", "Votre « Facturation » : les factures de vos écoles, filtrées par état, en lecture seule."),
-                V("skoulou-direction-concept-frais.mp4", "La dernière partie explique la facture SKOULOU."),
+                V("skoulou-direction-facture.mp4", "La facture SKOULOU pas à pas : calcul, PDF, contestation, paiement déclaré."),
                 M("Seul l'administrateur confirme un paiement. Vous, vous suivez et vous rappelez."),
             ],
             [
