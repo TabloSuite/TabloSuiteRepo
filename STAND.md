@@ -1,11 +1,68 @@
-# TabloSuite – Arbeitsstand 16.11.2026
+# TabloSuite – Arbeitsstand 17.11.2026 (abends)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
+
+**Kurzlage:** Alles vom 17.11. ist fertig, getestet (eNOTE **502 Tests grün**) und **gepusht**. Azure `ENote-Database` = lokal: die vier
+Migrationen des Tages (`PoProvisionen`, `VerkaufKassierer`, `PersoenlicheAnmeldung`, `AnmeldeSitzungen`) sind mit OK eingespielt und
+lesend geprüft. **Der Nutzer deployt eNOTE am 17.11. abends selbst (Visual Studio).** Im neuen Chat zuerst fragen, ob der Deploy durch
+ist, und die Prüfliste unten mit ihm durchgehen.
+
+**Nach dem Deploy prüfen (mit dem Nutzer):**
+1. Besitzer an **zwei Geräten** anmelden → beide bleiben angemeldet; Paramètres › « Appareils connectés » zeigt beide (« Cet appareil »,
+   « Déconnecter », « Déconnecter tous les autres appareils »).
+2. Zweites Gerät › Caisse → Fenster « Qui encaisse ? » (Name + PIN); Kopf mit Name + « Changer »; Bon « Servi par : … »; Clôture mit
+   « Par caissier »; Finances › « Clôtures de caisse » mit Aufstellung je Person; Équipe zählt Verkäufe je Person.
+3. « Écran client » **je Kassengerät einmal neu per QR-Code verbinden** (alter Link zeigt « Nouveau lien nécessaire »); jedes Display zeigt
+   nur das Ticket seines Geräts.
+4. Équipe: « Nouvel employé » ohne Passwort; Recht « Connexion personnelle » ist für **alle aus** → bestehende Mitarbeiter-Logins werden mit
+   Hinweis abgewiesen (gewollt). Mit Recht: nur die gewährten Bereiche, keine Kasse, keine Besitzer-PIN.
+5. Facturation: mehrere gemeldete Zahlungen auf einmal bestätigen; Administration › Propriétaires plateforme › « Commissions des
+   responsables » (entstehen automatisch je bestätigter Zahlung, mehrere als « versées »); Responsable › Mes établissements › « Mes commissions ».
+6. Vidéos d'aide: neu « Deux appareils, une caisse » (Employé); neue Fassungen « Votre équipe et vos réglages » und Konzeptvideos
+   « Votre équipe, les droits et les codes PIN » / « La caisse ».
+
+**Gebaut am 17.11. (Commits, alle gepusht):**
+| Thema | Commit | Migration |
+|---|---|---|
+| Provision der Responsables automatisch + Mehrfachbestätigung (Facturation, Admin, Responsable) | cf42099 | `20261117053328_PoProvisionen` |
+| « Qui encaisse ? » – jeder Bon gehört der kassierenden Person, « Changer », « Par caissier » | 09360f8 | `20261117064107_VerkaufKassierer` |
+| « Connexion personnelle » – Mitarbeitende ohne Passwort, Login nur mit Recht | e8c72cc | `20261117075157_PersoenlicheAnmeldung` |
+| Kundendisplay je Gerät (Geräteschlüssel, `/display/{Laden}/{Gerät}`) | dc1d5df | – |
+| Équipe-Statistik nach kassierender Person | 8193d68 | – |
+| « Appareils connectés » – Besitzer auf mehreren Geräten angemeldet | 48d90cf | `20261117084016_AnmeldeSitzungen` |
+| Videos: « Deux appareils, une caisse » (neu), « Équipe », Konzeptvideos Équipe + Caisse | 332758f, be265d7 | – |
+
+Kassen-Gesamttest im Browser (Tablet + Android-Handy + 2 Displays + Mitarbeiter mit/ohne Login, Kasse bis Dashboard): Skript
+`%TEMP%\enote-shot-tool\e2e-kasse.mjs` (läuft gegen eine Kopie der lokalen DB `ENOTEDB_E2E` auf Port 5299), alle Prüfungen bestanden.
+Bilder `Pictures\eNOTE-Gesamttest-Kasse-2026-11-17\`, `…-Display-je-Geraet-…`, `…-Connexion-personnelle-…`, `…-Qui-encaisse-…`, `…-Commissions-…`.
+
+**Entscheidungen des Nutzers (17.11.):**
+- Abo-Zahlungen bestätigt **nur der Admin**; **keine Barzahlung an Responsables** (vorhandenen Ablauf `PoAbrechnung.razor`/`PoAbrechnungService`/
+  `BesitzerBetreuungVerwaltung.razor` NICHT einbinden).
+- **Mitarbeitende ohne Passwort**; kassiert wird nur an Geräten, an denen der Besitzer angemeldet ist (Name + PIN). Eigener Login nur mit
+  « Connexion personnelle » – dann nur die gewährten Bereiche, **nie Kasse, nie Besitzer-PIN** (siehe Memory « Mitarbeiter ohne Passwort »).
+- **Besitzer-Konto darf auf mehreren Geräten angemeldet sein**; alle anderen Konten eine Anmeldung.
+- **Eine gemeinsame Kasse (Schublade, Fond, Clôture) je Laden** (Option A). Option B (mehrere Kassen mit eigener Schublade) erst bei echtem
+  Kundenbedarf; A ist so gebaut, dass B bestehende Läden nicht stört (« Caisse principale »).
+- Verworfen: automatische Kassen-Anmeldung mit eigenem Mitarbeiter-Konto (Sicherheitsrisiko; Patch nur in `%TEMP%`).
+
+**Offen / später:**
+- **TabloSuiteHome deployen** – tablosuite.com zeigt live noch das alte Türkis-Logo (lokal korrekt seit 34cfd25).
+- SKOULOU-Mails: türkiser Streifen unter dem Kopf + Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » so lassen oder blau? (Frage offen.)
+- Videos: Admin « Tarifs et facturation » (neue Provisionen, Mehrfachbestätigung) und evtl. Responsable « Paiements et accompagnement »
+  (« Mes commissions ») neu. Die Employé-Videos (`encaisser`, `attente`, `clients`, `cloture`) wurden mit `demo.awa` aufgenommen – bei
+  Neuaufnahme mit `demo.proprio` + « Qui encaisse ? » (README lernen-v3, Abschnitt 17.11.).
+- Kleinigkeit: « Appareils connectés » zeigt Zeiten mit `ToLocalTime()` des Servers (Azure = UTC); für Länder mit UTC+1 eine Stunde
+  daneben → bei Gelegenheit auf die Zeitzone des Ladens umstellen.
+- Ungenutzter Code (PoAbrechnung …) könnte entfernt werden – nur nach Rückfrage.
+- « Vor Produktion » (Azure-Upgrades, unten) – unverändert, nur gemeinsam mit dem Nutzer.
+
+### Details 17.11. (neueste zuerst)
 
 **>>> NEU 17.11. abends – Videos (be265d7, 332758f, gepusht):** neu « Deux appareils, une caisse » (Employé, 3:01: « Qui encaisse ? »,
 « Changer », Écran client je Gerät, Clôture « Par caissier »); « Votre équipe et vos réglages » neu (4:10: ohne Passwort,
@@ -59,7 +116,9 @@ heikelsten Teil, nur bei echtem Kundenbedarf als Option) – seine Entscheidung 
 Türkis-Logo → TabloSuiteHome deployen (lokal korrekt seit 34cfd25). SKOULOU-Seite + Mail-Logo live korrekt.
 Video « Tarifs et facturation » (Admin) zeigt noch die alte Provisionsberechnung → bei Gelegenheit neu.
 
-**>>> AKTUELL (16.11. nachts): SKOULOU-Videos fertig + deployt. ALLE 5 eNOTE-KONZEPTVIDEOS FERTIG, eingebaut + gepusht** (Folien wie SKOULOU K1–K3, je vor dem passenden Praxisvideo): « La caisse, de l'ouverture à la clôture » 4:59 (Employé), « Catalogue, stock et prix » 4:40, « Vos clients et leur fidélité » 3:23, « Votre équipe, les droits et les codes PIN » 3:44, « Vos chiffres » 4:18 (Propriétaire). Ablauf in `ENote Videos/projekte/lernen-v3/README.md` (Abschnitt Konzeptvideos). Dabei eNOTE verbessert (gepusht): Clôture-Notiz in Finances › « Clôtures de caisse » sichtbar (ebd221b); schon verkaufte Prestation wird beim Löschen deaktiviert statt an der DB zu scheitern (a05bd72); **Écart bei der Clôture → Hinweis an den Besitzer auf der Startseite** (Nutzer « ja », bd8008a). Tests eNOTE 468 grün. Keine Migration. **Nächster Schritt beim Nutzer: eNOTE deployen** (danach prüfen: « Vidéos d'aide » zeigt die 5 neuen Videos, Clôture mit Écart → Hinweis). Azure-TTS in SKOULOU prüft der Nutzer später beim Testen (Tempi als MP3 schon angehört: « Super »). Optional: « Pourquoi SKOULOU ? » neu im Muster Problem → Beweis → Rückbezug.**
+### Stand 16.11. nachts
+
+**SKOULOU-Videos fertig + deployt. ALLE 5 eNOTE-KONZEPTVIDEOS FERTIG, eingebaut + gepusht** (Folien wie SKOULOU K1–K3, je vor dem passenden Praxisvideo): « La caisse, de l'ouverture à la clôture » 4:59 (Employé), « Catalogue, stock et prix » 4:40, « Vos clients et leur fidélité » 3:23, « Votre équipe, les droits et les codes PIN » 3:44, « Vos chiffres » 4:18 (Propriétaire). Ablauf in `ENote Videos/projekte/lernen-v3/README.md` (Abschnitt Konzeptvideos). Dabei eNOTE verbessert (gepusht): Clôture-Notiz in Finances › « Clôtures de caisse » sichtbar (ebd221b); schon verkaufte Prestation wird beim Löschen deaktiviert statt an der DB zu scheitern (a05bd72); **Écart bei der Clôture → Hinweis an den Besitzer auf der Startseite** (Nutzer « ja », bd8008a). Tests eNOTE 468 grün. Keine Migration. **Nächster Schritt beim Nutzer: eNOTE deployen** (danach prüfen: « Vidéos d'aide » zeigt die 5 neuen Videos, Clôture mit Écart → Hinweis). Azure-TTS in SKOULOU prüft der Nutzer später beim Testen (Tempi als MP3 schon angehört: « Super »). Optional: « Pourquoi SKOULOU ? » neu im Muster Problem → Beweis → Rückbezug.**
 
 **VOR PRODUKTION – GEMEINSAM MIT DEM NUTZER (Nutzer 16.11.: « Vor Produktion machen wir alles zusammen. Wir werden gucken, welche Ressourcen wir upgraden müssen. »)** – nichts davon allein ändern. Bestand am 16.11. (alles France Central, Gruppe TabloSuiteRGruppe):
 - App Service: `ENote-AppServicePlan` **B1** (eNOTE) und `Skoulou-AppServicePlan` **B1** (SKOULOU + tablosuite-home). Zu klären: reicht B1 (1 Kern, 1,75 GB, keine Slots/kein Autoscale) für Blazor Server mit vielen gleichzeitigen Verbindungen?
@@ -288,4 +347,4 @@ beenden; Gebühr je Session ja, keine Anteilsrechnung bei Austritt; stornierte b
 
 ## 7. Nächste Schritte
 
-Siehe §0: SKOULOU-Lernvideos neu (Pilot zuerst); vorher deployt der Nutzer die Änderungen vom 16.11. Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft.
+Siehe §0 (Stand 17.11. abends): Deploy des Nutzers abfragen → Prüfliste nach dem Deploy durchgehen → dann « Offen / später » (TabloSuiteHome-Deploy, Frage SKOULOU-Mailfarben, Admin-/Responsable-Video zu den Provisionen). Zwischendurch dem Nutzer auf Deutsch berichten, was gerade läuft; fertige grüne Schritte committen + pushen; Azure-Migrationen nur mit ausdrücklichem OK.
