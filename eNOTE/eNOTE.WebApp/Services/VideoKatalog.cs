@@ -44,7 +44,7 @@ public static class VideoKatalog
 
         // 16.11.2026: Konzeptvideos (Folien, Theorie vor der Praxis) jeweils vor dem passenden Praxisvideo
         new("enote-employe-concept-caisse.mp4", "Le concept : la caisse, de l'ouverture à la clôture",
-            "La théorie avant la pratique : une journée de caisse, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "4:59"),
+            "La théorie avant la pratique : une journée de caisse, « Qui encaisse ? » sur chaque appareil, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "5:05"),
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
             "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
@@ -53,6 +53,9 @@ public static class VideoKatalog
             "Noter une arrivée, créer un client, la carte et la fiche, enregistrer sans encaisser, encaisser au départ ou noter le départ.", "Employé", Alle, "4:38"),
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
             "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
+        // 17.11.2026: Mehrere Geräte an einer Kasse (« Qui encaisse ? », « Changer », Écran client je Gerät, Clôture « Par caissier »)
+        new("enote-employe-deux-appareils.mp4", "Deux appareils, une caisse",
+            "Encaisser à plusieurs : le deuxième appareil et « Qui encaisse ? », chaque vente au nom de qui encaisse, « Changer » sur le même appareil, un écran client par appareil, la clôture par caissier.", "Employé", Alle, "3:01"),
 
         new("enote-proprietaire-concept-catalogue.mp4", "Le concept : catalogue, stock et prix",
             "La théorie avant la pratique : prestation ou produit, les catégories, le prix et la marge, les remises, le stock qui se tient tout seul, les alertes et l'inventaire, qui peut changer quoi.", "Propriétaire", AbBesitzer, "4:40"),
@@ -61,7 +64,7 @@ public static class VideoKatalog
         new("enote-proprietaire-concept-equipe.mp4", "Le concept : votre équipe, les droits et les codes PIN",
             "La théorie avant la pratique : qui fait quoi, les trois clés (votre mot de passe, code PIN de caisse, code PIN du propriétaire), un employé sans mot de passe, les droits et la connexion personnelle, la zone du propriétaire, plusieurs appareils sur une caisse.", "Propriétaire", AbBesitzer, "4:28"),
         new("enote-proprietaire-equipe.mp4", "Votre équipe et vos réglages",
-            "La page Équipe, ajouter un employé avec son code PIN, ses droits, votre reçu, Mobile Money, salles et postes, votre code PIN.", "Propriétaire", AbBesitzer, "3:42"),
+            "La page Équipe, ajouter un employé (sans mot de passe) avec son code PIN, ses droits et la connexion personnelle, votre reçu, Mobile Money, salles et postes, appareils connectés, votre code PIN.", "Propriétaire", AbBesitzer, "4:10"),
         new("enote-proprietaire-concept-chiffres.mp4", "Le concept : vos chiffres",
             "La théorie avant la pratique : chiffre d'affaires, panier moyen et écart ; ce qui entre, ce qui sort, ce qui reste ; le solde n'est pas le bénéfice ; la clôture du soir ; où regarder ; qui voit quoi.", "Propriétaire", AbBesitzer, "4:18"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
