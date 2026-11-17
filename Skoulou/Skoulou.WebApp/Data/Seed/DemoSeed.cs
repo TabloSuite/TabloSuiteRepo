@@ -70,7 +70,7 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
         var jahr = new Schuljahr
         {
             SchuleId = schule.Id, Bezeichnung = "2026-2027", Beginn = new(2026, 9, 14), Ende = new(2027, 6, 30),
-            Status = SchuljahrStatus.Laufend, PeriodenArt = PeriodenArt.Trimestre, PlattformJahrespreis = 12_500
+            Status = SchuljahrStatus.Laufend, PeriodenArt = PeriodenArt.Trimestre, PlattformJahrespreis = 5_000
         };
         db.Schuljahre.Add(jahr);
         db.Perioden.AddRange(

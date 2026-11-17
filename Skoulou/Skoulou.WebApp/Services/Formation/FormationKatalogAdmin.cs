@@ -117,7 +117,7 @@ public static partial class FormationKatalog
                     "Chaque changement est inscrit dans l'audit."),
                 L("Les factures",
                     "Une facture par école et par période terminée, créée automatiquement chaque nuit (écoles actives ou suspendues).",
-                    "Le prix annuel est réparti sur les périodes qui comptent : 12 500 F en 3 trimestres = 4 166 + 4 167 + 4 167.",
+                    "Le prix annuel est réparti sur les périodes qui comptent : 5 000 F en 3 trimestres = 1 666 + 1 667 + 1 667.",
                     "Chaque élève inscrit est facturé une seule fois par période ; un élève inscrit plus tard donne un « Complément ».",
                     "« Facturer maintenant » : une période déjà commencée, sans attendre la nuit."),
                 S("Le paiement",

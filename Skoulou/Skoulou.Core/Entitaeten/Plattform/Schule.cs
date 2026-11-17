@@ -54,7 +54,7 @@ public class PlattformEinstellung : Entitaet
     /// <summary>Feste Id der einzigen Zeile.</summary>
     public static readonly Guid EinzigeId = new("5c0a1e00-0000-4000-8000-000000000001");
 
-    public long JahrespreisProSchueler { get; set; } = 12_500;
+    public long JahrespreisProSchueler { get; set; } = 5_000;
     public int ZahlungszielTage { get; set; } = 30;
     public decimal ResponsableProzentStandard { get; set; }
 

@@ -4,7 +4,7 @@ namespace Skoulou.Core.Finanzen;
 
 /// <summary>
 /// Plattformanteil je Abrechnungsperiode (Bauplan §5 Regel 7): Jahrespreis P auf n Perioden in ganzen FCFA,
-/// Anteil(i) = ⌊P·i/n⌋ − ⌊P·(i−1)/n⌋ – die Summe ergibt immer genau P (z. B. 4.166 + 4.167 + 4.167).
+/// Anteil(i) = ⌊P·i/n⌋ − ⌊P·(i−1)/n⌋ – die Summe ergibt immer genau P (z. B. 5.000 auf drei Trimester: 1.666 + 1.667 + 1.667).
 /// </summary>
 public static class PlattformAnteil
 {
