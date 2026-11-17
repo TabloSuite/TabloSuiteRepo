@@ -138,6 +138,7 @@ public static partial class FormationKatalog
                 B(Bild + "dir-annee.jpg", "« Année scolaire » chez la direction : l'année en cours, ses périodes et le prix SKOULOU figé au démarrage."),
                 V("skoulou-direction-concept.mp4", "Le concept de l'année scolaire, en images."),
                 V("skoulou-direction-preparer.mp4", "La pratique : préparer l'année scolaire."),
+                V("skoulou-direction-langues.mp4", "École de langues : l'année en sessions, pas à pas."),
                 M("Ordre conseillé à la direction : Année scolaire → Classes → Matières → Équipe → Emplois du temps → Élèves → Parents."),
             ],
             [
