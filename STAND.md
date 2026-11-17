@@ -7,6 +7,14 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
 
+**>>> NEU 17.11. abends – Videos (be265d7, 332758f, gepusht):** neu « Deux appareils, une caisse » (Employé, 3:01: « Qui encaisse ? »,
+« Changer », Écran client je Gerät, Clôture « Par caissier »); « Votre équipe et vos réglages » neu (4:10: ohne Passwort,
+« Connexion personnelle », « Appareils connectés »); Konzeptvideos « Votre équipe, les droits et les codes PIN » (4:28) und « La caisse »
+(5:05) angepasst. Ablauf/Fallen in `ENote Videos/projekte/lernen-v3/README.md` (Abschnitt 17.11.). **Achtung bei Neuaufnahmen der
+Employé-Videos:** sie melden sich als `demo.awa` an – das geht ohne « Connexion personnelle » nicht mehr; mit `demo.proprio` aufnehmen.
+**Nächster Schritt beim Nutzer: eNOTE deployen** (Azure ist aktuell). Offen für später: Admin-Video « Tarifs et facturation »
+(neue Provisionen/Mehrfachbestätigung).
+
 **>>> NEU 17.11. spät – « Appareils connectés » (48d90cf, 502 Tests grün):** Besitzer-Konten bleiben auf mehreren Geräten
 angemeldet (Tabelle `AnmeldeSitzungen`, Stempel = ActiveSessionId, andere Konten weiter eine Anmeldung), Liste in Paramètres mit
 « Déconnecter » / « tous les autres ». Kassen-Gesamttest erneut: Tablet bleibt angemeldet, Bon-Druck ok. Migration
