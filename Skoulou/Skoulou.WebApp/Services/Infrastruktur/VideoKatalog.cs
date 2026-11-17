@@ -80,6 +80,9 @@ public static partial class VideoKatalog
         new("skoulou-direction-passage.mp4", "Fin d'année et passage",
             "Les décisions de fin d'année au conseil, le bilan annuel sur le dernier bulletin, puis le passage à l'année suivante : nouvelle année, classes recréées, admis au niveau suivant, redoublants, départs – en une seule étape.",
             Direction, Leitung, "2:59"),
+        new("skoulou-direction-fermer.mp4", "Fermer et rouvrir",
+            "Fermer une période et la rouvrir pour une note oubliée, retirer un bulletin avec un motif, modifier un emploi du temps déjà publié, clôturer l'année et la rouvrir avec un motif.",
+            Direction, Leitung, "3:55"),
         new("skoulou-direction-contenus.mp4", "Contenus des enseignants et journal",
             "Voir toutes les leçons et tous les examens de l'établissement, saisir un contenu pour un enseignant sans appareil, et suivre dans le journal qui a fait quoi, et quand.",
             Direction, Leitung, "1:53"),
@@ -122,7 +125,7 @@ public static partial class VideoKatalog
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "S'inscrire et retrouver son accès, les premiers pas, la visite guidée et pourquoi SKOULOU."),
-        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, les notes, les bulletins, le passage d'année, les frais et la facture SKOULOU."),
+        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, les notes, les bulletins, le passage d'année, fermer et rouvrir, les frais et la facture SKOULOU."),
         (Enseignant, "Enseignant", "Suivre la classe et noter, puis le concept et la pratique des leçons et des examens."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),

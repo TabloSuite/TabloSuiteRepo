@@ -240,6 +240,7 @@ public static partial class FormationKatalog
                 V("skoulou-direction-notes.mp4", "Notes et conseil de classe, avec le bulletin imprimé, pas à pas."),
                 V("skoulou-direction-bulletins.mp4", "Publier les bulletins : le bulletin case par case, le QR, la rectification."),
                 V("skoulou-direction-passage.mp4", "Fin d'année : décisions, bilan annuel et passage à l'année suivante."),
+                V("skoulou-direction-fermer.mp4", "Fermer et rouvrir : périodes, bulletin retiré, emploi du temps publié, année clôturée."),
                 M("Le code QR d'un bulletin permet à chacun de vérifier qu'il est authentique (« Bulletin valable »)."),
             ],
             [
