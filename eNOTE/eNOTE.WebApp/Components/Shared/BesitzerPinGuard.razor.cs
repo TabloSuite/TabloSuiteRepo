@@ -38,7 +38,12 @@ public partial class BesitzerPinGuard : IDisposable
     private string? vergessenFehler;
     private string? passwort;
     private Guid benutzerId;
-    private bool istGesperrt => ohneKonto || (!ausgenommen && hatBesitzerPin && !PinState.VerwaltungFreigeschaltet);
+    private bool istGesperrt => ohneKonto || mitarbeiterOhneZugang || (!ausgenommen && hatBesitzerPin && !PinState.VerwaltungFreigeschaltet);
+
+    // « Connexion personnelle » (17.11.2026): eigenes Mitarbeiter-Konto – nur Bereiche mit Recht, nie die Besitzer-PIN
+    // (sonst ließe sie sich z. B. von zu Hause durchprobieren).
+    private bool mitarbeiterOhneZugang;
+    private Core.DataModels.Salons.UserSalon? mitarbeiterRechte;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,11 +82,25 @@ public partial class BesitzerPinGuard : IDisposable
         // Sperre ist der Standard, sobald eine Besitzer-PIN konfiguriert ist
         // (damit der Besitzer das Ausschalten nicht vergisst). Erst die korrekte
         // PIN schaltet frei; beim Kassenabschluss wird automatisch wieder gesperrt.
-        if (zuordnung is not null && HatRecht(zuordnung, Recht)
-            && authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Kassierer)
-            && !authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer))
+        if (LadenZugriff.IstMitarbeiterRolle(authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Kassierer),
+                istBesitzer, plattform: false))
         {
-            ausgenommen = true;
+            // Recht « Connexion personnelle » entzogen: sofort zur Anmeldung (das Cookie wird dort abgewiesen).
+            if (!(await KatalogService.GetUserSalonsAsync(userId)).Any(z => z.KannSichAnmelden))
+            {
+                Dienste.GetService<NavigationManager>()?.NavigateTo("/auth/login", forceLoad: true);
+                return;
+            }
+
+            mitarbeiterRechte = zuordnung;
+            if (zuordnung is not null && HatRecht(zuordnung, Recht))
+            {
+                ausgenommen = true;
+            }
+            else
+            {
+                mitarbeiterOhneZugang = true;
+            }
             laedt = false;
             return;
         }

@@ -32,7 +32,9 @@ public class TeamService(
         string? Pseudonym = null,
         DateTime? LetzteKasseUtc = null,
         int VerkaeufeMonat = 0,
-        bool KannErstatten = false);
+        bool KannErstatten = false,
+        bool KannSichAnmelden = false,
+        bool HatPasswort = false);
 
     /// <summary>Alle Mitglieder eines Salons inklusive ihrer Rechte.</summary>
     public async Task<List<TeamMitglied>> GetTeamAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -75,13 +77,15 @@ public class TeamService(
             us.AppUser.UserName,
             letzteKasse.TryGetValue(us.AppUserId, out var letzte) ? letzte : null,
             verkaeufe.GetValueOrDefault(us.AppUserId),
-            us.KannErstatten)).ToList();
+            us.KannErstatten,
+            us.KannSichAnmelden,
+            us.AppUser.PasswordHash != null)).ToList();
     }
 
     /// <summary>
-    /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon
-    /// mit einer Kassen-PIN zu. Login ist das eindeutige Pseudonym; die E-Mail ist
-    /// nur Kontaktadresse und darf mehrfach verwendet werden. Das Passwort ist ein Initialpasswort.
+    /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon mit einer Kassen-PIN zu. Die E-Mail ist nur
+    /// Kontaktadresse und darf mehrfach verwendet werden. Seit 17.11.2026 standardmäßig OHNE Passwort: Der Mitarbeiter kassiert
+    /// am Gerät des Besitzers mit Name + PIN. Mit <paramref name="initialPasswort"/> erhält er zugleich « Connexion personnelle ».
     /// </summary>
     public async Task<(bool Erfolg, string? Fehler, AppUser? Kassierer)> LegeKassiererAnAsync(
         Guid salonId,
@@ -89,7 +93,7 @@ public class TeamService(
         string nachname,
         string pseudonym,
         string email,
-        string initialPasswort,
+        string? initialPasswort,
         string kassenPin,
         CancellationToken cancellationToken = default)
     {
@@ -121,7 +125,10 @@ public class TeamService(
             EmailConfirmed = true
         };
 
-        var erstellen = await userManager.CreateAsync(kassierer, initialPasswort);
+        var mitAnmeldung = !string.IsNullOrWhiteSpace(initialPasswort);
+        var erstellen = mitAnmeldung
+            ? await userManager.CreateAsync(kassierer, initialPasswort!)
+            : await userManager.CreateAsync(kassierer);
         if (!erstellen.Succeeded)
         {
             var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
@@ -136,7 +143,8 @@ public class TeamService(
         {
             AppUserId = kassierer.Id,
             SalonId = salonId,
-            KassenPinHash = KassenPinService.HashPin(kassenPin)
+            KassenPinHash = KassenPinService.HashPin(kassenPin),
+            KannSichAnmelden = mitAnmeldung
         });
         await db.SaveChangesAsync(cancellationToken);
 
@@ -210,6 +218,52 @@ public class TeamService(
         return true;
     }
 
+    /// <summary>
+    /// « Connexion personnelle » ein- oder ausschalten. Einschalten: Hat das Konto noch kein Passwort, ist eines nötig; mit
+    /// <paramref name="neuesPasswort"/> wird es (neu) gesetzt. Ausschalten: Der Mitarbeiter wird sofort abgemeldet.
+    /// </summary>
+    public async Task<(bool Erfolg, string? Fehler)> SetzeAnmeldungAsync(
+        Guid userSalonId, bool erlaubt, string? neuesPasswort, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var zuordnung = await db.UserSalons.Include(us => us.AppUser).FirstOrDefaultAsync(us => us.Id == userSalonId, cancellationToken);
+        if (zuordnung is null) return (false, "Membre introuvable.");
+        if (await db.UserRoles.AnyAsync(ur => ur.UserId == zuordnung.AppUserId
+                && db.Roles.Any(r => r.Id == ur.RoleId && r.Name == AppRollen.Besitzer), cancellationToken))
+            return (false, "Le propriétaire se connecte toujours avec son compte.");
+
+        if (erlaubt)
+        {
+            var konto = await userManager.FindByIdAsync(zuordnung.AppUserId.ToString());
+            if (konto is null) return (false, "Membre introuvable.");
+            if (!string.IsNullOrWhiteSpace(neuesPasswort))
+            {
+                if (await userManager.HasPasswordAsync(konto))
+                {
+                    var entfernt = await userManager.RemovePasswordAsync(konto);
+                    if (!entfernt.Succeeded) return (false, string.Join(" ", entfernt.Errors.Select(e => e.Description)));
+                }
+                var gesetzt = await userManager.AddPasswordAsync(konto, neuesPasswort.Trim());
+                if (!gesetzt.Succeeded) return (false, string.Join(" ", gesetzt.Errors.Select(e => e.Description)));
+            }
+            else if (!await userManager.HasPasswordAsync(konto))
+            {
+                return (false, "Choisissez un mot de passe pour la connexion personnelle.");
+            }
+            zuordnung.KannSichAnmelden = true;
+        }
+        else
+        {
+            zuordnung.KannSichAnmelden = false;
+            // Laufende Anmeldung beenden (Cookie wird bei der nächsten Anfrage abgewiesen).
+            zuordnung.AppUser.ActiveSessionId = null;
+            zuordnung.AppUser.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
     /// <summary>Entfernt ein Mitglied aus dem Salon (das Identity-Konto bleibt bestehen).</summary>
     public async Task<bool> EntferneMitgliedAsync(Guid userSalonId, CancellationToken cancellationToken = default)
     {
@@ -221,6 +275,12 @@ public class TeamService(
         }
 
         db.UserSalons.Remove(zuordnung);
+        // Eine eigene Anmeldung dieses Mitarbeiters endet sofort (kein Zugriff mehr auf den Laden).
+        if (await db.Users.FirstOrDefaultAsync(u => u.Id == zuordnung.AppUserId, cancellationToken) is { } konto
+            && await LadenZugriff.IstMitarbeiterKontoAsync(db, konto.Id, cancellationToken))
+        {
+            konto.ActiveSessionId = null;
+        }
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

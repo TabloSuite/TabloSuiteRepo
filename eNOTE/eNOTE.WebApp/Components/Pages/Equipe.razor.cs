@@ -50,13 +50,16 @@ public partial class Equipe(
     private string neuNachname = string.Empty;
     private string neuPseudonym = string.Empty;
     private string neuEmail = string.Empty;
-    private string neuPasswort = string.Empty;
     private string neuPin = string.Empty;
 
     private bool rechteFinanzen;
     private bool rechteLeistungen;
     private bool rechteRabatte;
     private bool rechteErstatten;
+    // « Connexion personnelle » (17.11.2026): eigenes Konto nur mit diesem Recht; Passwort erst beim Einschalten.
+    private bool rechteAnmeldung;
+    private string anmeldungPasswort = string.Empty;
+    private bool AnmeldungPasswortNoetig => rechteAnmeldung && aktivesMitglied is { } m && (!m.KannSichAnmelden || !m.HatPasswort);
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,7 +118,6 @@ public partial class Equipe(
     private void NeuAnlegen()
     {
         neuVorname = neuNachname = neuPseudonym = neuEmail = neuPin = string.Empty;
-        neuPasswort = ErzeugeInitialPasswort();
         dialogFehler = null;
         anlegedialogOffen = true;
     }
@@ -123,15 +125,14 @@ public partial class Equipe(
     private async Task LegeKassiererAnAsync()
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
-            || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail)
-            || string.IsNullOrWhiteSpace(neuPasswort))
+            || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail))
         {
             dialogFehler = "Veuillez remplir tous les champs.";
             return;
         }
 
         var (erfolg, fehler, _) = await teamService.LegeKassiererAnAsync(
-            salonId, neuVorname, neuNachname, neuPseudonym, neuEmail, neuPasswort, neuPin);
+            salonId, neuVorname, neuNachname, neuPseudonym, neuEmail, null, neuPin);
 
         if (!erfolg)
         {
@@ -140,7 +141,7 @@ public partial class Equipe(
         }
 
         anlegedialogOffen = false;
-        toast.ZeigeErfolg("Employé créé. Communiquez-lui son mot de passe initial et son code PIN.");
+        toast.ZeigeErfolg("Employé créé. Communiquez-lui son code PIN : il encaisse sur l'appareil de l'établissement.");
         await LadeAsync();
     }
 
@@ -178,6 +179,9 @@ public partial class Equipe(
         rechteLeistungen = mitglied.KannLeistungenVerwalten;
         rechteRabatte = mitglied.KannRabatteVerwalten;
         rechteErstatten = mitglied.KannErstatten;
+        rechteAnmeldung = mitglied.KannSichAnmelden;
+        anmeldungPasswort = string.Empty;
+        dialogFehler = null;
         rechteDialogOffen = true;
     }
 
@@ -188,11 +192,38 @@ public partial class Equipe(
             return;
         }
 
+        if (AnmeldungPasswortNoetig && string.IsNullOrWhiteSpace(anmeldungPasswort))
+        {
+            dialogFehler = "Choisissez un mot de passe pour la connexion personnelle.";
+            return;
+        }
+
         await teamService.SetzeRechteAsync(
             aktivesMitglied.UserSalonId, rechteFinanzen, rechteLeistungen, rechteRabatte, rechteErstatten);
+        if (rechteAnmeldung != aktivesMitglied.KannSichAnmelden || !string.IsNullOrWhiteSpace(anmeldungPasswort))
+        {
+            var (ok, fehler) = await teamService.SetzeAnmeldungAsync(aktivesMitglied.UserSalonId, rechteAnmeldung,
+                rechteAnmeldung ? anmeldungPasswort : null);
+            if (!ok)
+            {
+                dialogFehler = fehler;
+                await LadeAsync();
+                return;
+            }
+        }
         rechteDialogOffen = false;
         toast.ZeigeErfolg("Droits enregistrés.");
         await LadeAsync();
+    }
+
+    private static string PseudonymText(TeamService.TeamMitglied m)
+        => m.Pseudonym is { Length: > 0 } p ? "@" + p : "pseudonyme";
+
+    private void AnmeldungUmschalten(bool wert)
+    {
+        rechteAnmeldung = wert;
+        dialogFehler = null;
+        anmeldungPasswort = AnmeldungPasswortNoetig ? ErzeugeInitialPasswort() : string.Empty;
     }
 
     private void OeffneEntfernenDialog(TeamService.TeamMitglied mitglied)

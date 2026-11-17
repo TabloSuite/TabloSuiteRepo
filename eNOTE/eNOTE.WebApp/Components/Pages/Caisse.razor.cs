@@ -334,6 +334,8 @@ public partial class Caisse(
     private string aktiverSalonName = string.Empty;
     // « Qui encaisse ? » (17.11.2026): Wer an diesem Gerät kassiert, meldet sich per PIN an; jeder Bon gehört dieser Person.
     private bool kassiererDialogOffen;
+    // Eigenes Mitarbeiter-Konto (« Connexion personnelle »): keine Kasse – nur am Gerät des Besitzers mit Name + PIN.
+    private bool mitarbeiterKonto;
     private bool kassiererDialogMitInfo;
     private List<(Guid UserId, string Name)> kassiererDieserKasse = [];
     private Guid kassiererWahl = Guid.Empty;
@@ -649,6 +651,14 @@ public partial class Caisse(
         }
 
         aktuellerBenutzerId = userId;
+
+        mitarbeiterKonto = LadenZugriff.IstMitarbeiterRolle(authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Kassierer),
+            authState.User.IsInRole(Core.DataModels.Identity.AppRollen.Besitzer),
+            authState.User.IsInRole(Core.DataModels.Identity.AppRollen.SuperAdmin) || authState.User.IsInRole(Core.DataModels.Identity.AppRollen.ProduktOwner));
+        if (mitarbeiterKonto)
+        {
+            return;
+        }
 
         // Offene Sitzung eines der dem Nutzer zugeordneten Läden wiederherstellen.
         var zuordnungen = await katalogService.GetUserSalonsAsync(userId);

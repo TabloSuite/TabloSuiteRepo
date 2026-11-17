@@ -7,7 +7,11 @@
 
 <PageTitle>Caisse</PageTitle>
 
-@if (anzeigeState.IstMinimiert && anzeigeState.AktiveSitzungId is not null)
+@if (mitarbeiterKonto)
+{
+    <MitarbeiterKassenHinweis />
+}
+else if (anzeigeState.IstMinimiert && anzeigeState.AktiveSitzungId is not null)
 {
     @* Minimiert: nur der schwebende Button (in MainLayout gerendert). *@
     <div class="kx-hinweis">

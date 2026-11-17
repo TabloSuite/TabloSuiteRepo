@@ -199,6 +199,13 @@ public class KassenService(
     /// </summary>
     public async Task<string?> PruefeBesitzerFreigabeAsync(Guid salonId, Guid userId, string? besitzerPin, CancellationToken cancellationToken = default)
     {
+        // Nie von einem Mitarbeiter-Konto aus (z. B. eigener Login von zu Hause): dort ließe sich die PIN durchprobieren.
+        await using (var pruef = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            if (await LadenZugriff.IstMitarbeiterKontoAsync(pruef, userId, cancellationToken))
+                return LadenZugriff.BesitzerPinNurBeimBesitzerText;
+        }
+
         if (await HatBesitzerPinAsync(salonId, cancellationToken))
         {
             if (string.IsNullOrWhiteSpace(besitzerPin)) return "Saisissez le code PIN du propriétaire.";

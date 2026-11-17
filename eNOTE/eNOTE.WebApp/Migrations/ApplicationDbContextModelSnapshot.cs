@@ -2363,6 +2363,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("KannRabatteVerwalten")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("KannSichAnmelden")
+                        .HasColumnType("bit");
+
                     b.Property<string>("KassenPinHash")
                         .HasColumnType("nvarchar(max)");
 

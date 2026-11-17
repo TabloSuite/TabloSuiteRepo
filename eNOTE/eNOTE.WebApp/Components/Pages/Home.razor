@@ -16,7 +16,7 @@
                         <p class="enote-muted">@ladenName</p>
                     }
                 </div>
-                <AuthorizeView Roles="Besitzer, Kassierer" Context="kasseCtx">
+                <AuthorizeView Roles="Besitzer" Context="kasseCtx">
                     <Authorized>
                         @if (!wartetAufFreigabe)
                         {
@@ -201,13 +201,14 @@
                 }
                 else
                 {
+                    @* 17.11.2026 « Connexion personnelle »: Mit eigenem Mitarbeiter-Konto keine Kasse – nur die gewährten Bereiche. *@
                     <AuthorizeView Roles="Kassierer" Context="kCtx">
                         <Authorized>
                             <div class="db-hinweis-karte">
-                                <span class="db-hinweis-ico"><Icon Name="caisse" Groesse="24" /></span>
+                                <span class="db-hinweis-ico"><Icon Name="user" Groesse="24" /></span>
                                 <div>
-                                    <h2>Prêt à encaisser ?</h2>
-                                    <p>Ouvrez la caisse avec votre code PIN. Vos ventes sont enregistrées automatiquement.</p>
+                                    <h2>Votre compte personnel</h2>
+                                    <p>Vous gérez ici les zones que le propriétaire vous a accordées (menu à gauche). Pour encaisser, utilisez l'appareil de l'établissement, connecté par le propriétaire, avec votre nom et votre code PIN.</p>
                                 </div>
                             </div>
                         </Authorized>

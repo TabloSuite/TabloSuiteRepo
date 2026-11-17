@@ -21,6 +21,7 @@ public partial class Login
         errorMessage = Error switch
         {
             "invalid-credentials" => "Pseudonyme ou mot de passe incorrect, ou compte bloqué.",
+            "employe-sans-connexion" => Services.LadenZugriff.AnmeldungNurAmGeraetText,
             "limite" => Services.Sicherheit.Schutzgrenzen.MeldungLimite,
             _ => null
         };

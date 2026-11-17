@@ -126,8 +126,8 @@ public static class TabloSuiteMails
             Anrede(vorname)
             + P($"{H(besitzerName)} vous a ajouté(e) comme employé(e) de <strong>{H(salonName)}</strong> sur eNOTE.")
             + Tabelle([("Identifiant", pseudonym), ("Établissement", salonName)])
-            + P("Votre mot de passe et votre code PIN de caisse vous sont remis par le propriétaire. Ne les communiquez à personne.")
-            + Knopf("Ouvrir eNOTE", appUrl)
+            + P("Vous encaissez sur l'appareil de l'établissement : choisissez votre nom, puis saisissez votre code PIN. "
+                + "Le propriétaire vous remet votre code PIN. Ne le communiquez à personne.")
             + Gruss());
 
     // ------------------------------------------------------------------ Administration

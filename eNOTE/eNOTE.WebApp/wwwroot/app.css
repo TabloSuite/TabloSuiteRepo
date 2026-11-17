@@ -3424,3 +3424,5 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .kx-abschluss-personen > div { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
 .kx-abschluss-personen-titel { display: flex; justify-content: space-between; font-weight: 700; font-size: .85rem; color: var(--enote-text-muted); }
 .kx-abschluss-personen-titel span:first-child { display: inline-flex; align-items: center; gap: .35rem; }
+.eq-anmeldung-passwort { display: grid; gap: .35rem; margin: .2rem 0 .4rem 2.9rem; font-weight: 600; font-size: .9rem; }
+.enote-pin-links { display: grid; gap: .5rem; margin-top: .6rem; }

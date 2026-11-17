@@ -102,10 +102,21 @@ builder.Services.ConfigureApplicationCookie(options =>
         var sessionValue = context.Principal?.FindFirstValue("enote_session");
 
         // Konto gesperrt/gelöscht oder Sitzung durch eine neuere Anmeldung ersetzt.
-        if (user is null
+        var abweisen = user is null
             || user.IsBlocked
             || user.ActiveSessionId is null
-            || sessionValue != user.ActiveSessionId.ToString())
+            || sessionValue != user.ActiveSessionId.ToString();
+
+        // « Connexion personnelle » entzogen: Mitarbeiter-Konto wird bei der nächsten Anfrage abgemeldet.
+        if (!abweisen && context.Principal is { } p && LadenZugriff.IstMitarbeiterRolle(p.IsInRole(AppRollen.Kassierer),
+                p.IsInRole(AppRollen.Besitzer), p.IsInRole(AppRollen.SuperAdmin) || p.IsInRole(AppRollen.ProduktOwner)))
+        {
+            var factory = context.HttpContext.RequestServices.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var db = await factory.CreateDbContextAsync();
+            abweisen = !await LadenZugriff.DarfSichAnmeldenAsync(db, userId);
+        }
+
+        if (abweisen)
         {
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
@@ -275,10 +286,12 @@ app.MapPost("/auth/login/submit", async (
     var rememberMe = string.Equals(form["rememberMe"], "true", StringComparison.OrdinalIgnoreCase);
     var returnUrl = form["returnUrl"].ToString();
 
-    var (succeeded, _) = await authService.LoginAsync(pseudonym, passwort, rememberMe, httpContext.RequestAborted);
+    var (succeeded, loginFehler) = await authService.LoginAsync(pseudonym, passwort, rememberMe, httpContext.RequestAborted);
     if (!succeeded)
     {
-        return Results.LocalRedirect("/auth/login?error=invalid-credentials");
+        // « employe-sans-connexion » erst nach richtigem Passwort – sonst immer die neutrale Meldung.
+        var code = loginFehler == "employe-sans-connexion" ? loginFehler : "invalid-credentials";
+        return Results.LocalRedirect("/auth/login?error=" + code);
     }
 
     var ziel = !string.IsNullOrWhiteSpace(returnUrl)

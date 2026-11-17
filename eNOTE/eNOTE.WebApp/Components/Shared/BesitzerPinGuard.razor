@@ -9,9 +9,36 @@
 {
     @* Noch am Prüfen – nichts zeigen, damit die PIN-Karte nicht aufblitzt. *@
 }
-else if (PinState.VerwaltungFreigeschaltet || !istGesperrt)
+else if (!mitarbeiterOhneZugang && (PinState.VerwaltungFreigeschaltet || !istGesperrt))
 {
     @ChildContent
+}
+else if (mitarbeiterOhneZugang)
+{
+    @* Eigenes Mitarbeiter-Konto ohne Recht für diesen Bereich: keine PIN-Eingabe, nur die erlaubten Bereiche. *@
+    <div class="enote-pin-sperre">
+        <div class="enote-pin-sperre-card">
+            <span class="enote-pin-dialog-ico"><Icon Name="lock" Groesse="26" /></span>
+            <h2>Zone réservée au propriétaire</h2>
+            <p class="enote-muted">Avec votre compte personnel, vous accédez seulement aux zones que le propriétaire vous a accordées. La caisse s'utilise sur l'appareil de l'établissement, avec votre nom et votre code PIN.</p>
+            @if (mitarbeiterRechte is { } r && (r.KannLeistungenVerwalten || r.KannRabatteVerwalten || r.KannFinanzenSehen))
+            {
+                <div class="enote-pin-links">
+                    @if (r.KannLeistungenVerwalten) { <a class="enote-btn enote-btn-ghost enote-btn-block" href="/services"><Icon Name="tag" Groesse="16" /> Prestations</a> }
+                    @if (r.KannRabatteVerwalten) { <a class="enote-btn enote-btn-ghost enote-btn-block" href="/remises"><Icon Name="percent" Groesse="16" /> Remises</a> }
+                    @if (r.KannFinanzenSehen)
+                    {
+                        <a class="enote-btn enote-btn-ghost enote-btn-block" href="/finances"><Icon Name="chart" Groesse="16" /> Finances</a>
+                        <a class="enote-btn enote-btn-ghost enote-btn-block" href="/ausgaben"><Icon Name="wallet" Groesse="16" /> Dépenses</a>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="enote-muted enote-pin-hinweis">Aucune zone ne vous est accordée pour le moment.</p>
+            }
+        </div>
+    </div>
 }
 else
 {

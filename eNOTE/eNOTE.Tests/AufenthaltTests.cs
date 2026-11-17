@@ -269,7 +269,7 @@ public class AufenthaltTests
     }
 
     [Fact]
-    public async Task Mit_Besitzer_Pin_Darf_Mitarbeiterin_Zuruecknehmen()
+    public async Task Mit_Besitzer_Pin_Am_Geraet_Des_Besitzers_Zuruecknehmen()
     {
         var w = await MitAnkunftAsync(besitzerPin: true);
         await w.Konto.ErfasseAsync(w.Awa, w.Laden.Id, w.Kunde, [new(w.Consultation.Id, 1)]);
@@ -277,9 +277,15 @@ public class AufenthaltTests
         Assert.True(konto.BrauchtPin);
         var zeile = Assert.Single(konto.Zeilen);
 
-        var falsch = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => w.Konto.NimmZurueckAsync(w.Kofi, zeile.Id, "Prestation non réalisée", false, "1111"));
+        // 17.11.2026 « Connexion personnelle »: Vom eigenen Mitarbeiter-Konto aus gilt die Besitzer-PIN nie (Schutz vor
+        // Durchprobieren von zu Hause) – auch nicht die richtige.
+        var mitarbeiter = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => w.Konto.NimmZurueckAsync(w.Kofi, zeile.Id, "Prestation non réalisée", false, "4826"));
+        Assert.Equal(LadenZugriff.BesitzerPinNurBeimBesitzerText, mitarbeiter.Message);
+
+        // Am Gerät, an dem der Besitzer angemeldet ist, gibt die Mitarbeiterin die Besitzer-PIN ein.
+        var falsch = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => w.Konto.NimmZurueckAsync(w.Besitzer, zeile.Id, "Prestation non réalisée", false, "1111"));
         Assert.Contains("incorrect", falsch.Message);
-        await w.Konto.NimmZurueckAsync(w.Kofi, zeile.Id, "Prestation non réalisée", false, "4826");
+        await w.Konto.NimmZurueckAsync(w.Besitzer, zeile.Id, "Prestation non réalisée", false, "4826");
         Assert.Equal(0m, (await w.Konto.GetKontoAsync(w.Kofi, w.Laden.Id, w.Kunde)).Summe);
     }
 

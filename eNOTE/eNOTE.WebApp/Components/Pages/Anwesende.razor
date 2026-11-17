@@ -163,6 +163,12 @@
         aktiverSalon.OnChange += SalonGewechselt;
         signal.Geaendert += AnwesenheitGeaendert;
         var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
+        // « Clients présents » gehört zur Kasse: mit eigenem Mitarbeiter-Konto nicht (Hinweis auf der Kassenseite).
+        if (LadenZugriff.IstMitarbeiterRolle(user.IsInRole("Kassierer"), user.IsInRole("Besitzer"), user.IsInRole("SuperAdmin") || user.IsInRole("ProduktOwner")))
+        {
+            nav.NavigateTo("/caisse");
+            return;
+        }
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzer);
         if (!aktiverSalon.IstGeladen) await aktiverSalon.InitialisiereAsync(benutzer);
         await LadeAsync();

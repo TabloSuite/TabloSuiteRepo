@@ -68,6 +68,16 @@ public class AuthService(
             return (false, "invalid-credentials");
         }
 
+        // « Connexion personnelle »: Mitarbeiter-Konten nur mit diesem Recht (sonst kassieren sie am Gerät des Besitzers).
+        // Erst nach dem richtigen Passwort geprüft – Fremde erfahren so nicht, dass es ein Mitarbeiter-Konto ist.
+        await using (var db = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            if (!await LadenZugriff.DarfSichAnmeldenAsync(db, user.Id, cancellationToken))
+            {
+                return (false, "employe-sans-connexion");
+            }
+        }
+
         // Eine neue Anmeldung meldet eine frühere Sitzung auf einem anderen Gerät ab.
         user.ActiveSessionId = Guid.NewGuid();
         user.UpdatedAtUtc = uhr.GetUtcNow().UtcDateTime;

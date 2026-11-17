@@ -31,5 +31,12 @@ public class UserSalon
     /// <summary>Darf an der Kasse Kunden erstatten (« Rembourser ») ohne Freigabe durch den Besitzer.</summary>
     public bool KannErstatten { get; set; }
 
+    /// <summary>
+    /// « Connexion personnelle » (Nutzerwunsch 17.11.2026): Der Mitarbeiter darf sich mit eigenem Konto (Pseudonym + Passwort)
+    /// anmelden – auch von zu Hause – und nutzt dann NUR die Bereiche seiner übrigen Rechte. Nie die Kasse, nie die Besitzer-PIN.
+    /// Standard aus: Mitarbeitende kassieren am Gerät, an dem der Besitzer angemeldet ist, mit Name + PIN.
+    /// </summary>
+    public bool KannSichAnmelden { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

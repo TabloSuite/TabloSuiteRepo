@@ -91,6 +91,7 @@
                             @if (m.KannLeistungenVerwalten) { <span class="eq-recht"><Icon Name="tag" Groesse="13" /> Prestations</span> }
                             @if (m.KannRabatteVerwalten) { <span class="eq-recht"><Icon Name="percent" Groesse="13" /> Remises</span> }
                             @if (m.KannErstatten) { <span class="eq-recht"><Icon Name="undo" Groesse="13" /> Remboursements</span> }
+                            @if (m.KannSichAnmelden && !m.IstBesitzer) { <span class="eq-recht"><Icon Name="user" Groesse="13" /> Connexion personnelle</span> }
                         </div>
 
                         <div class="eq-aktivitaet">
@@ -118,15 +119,9 @@
                 <label>Prénom <input @bind="neuVorname" autocomplete="off" /></label>
                 <label>Nom <input @bind="neuNachname" autocomplete="off" /></label>
             </div>
-            <label>Pseudonyme <small class="enote-muted">(identifiant de connexion)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
+            <label>Pseudonyme <small class="enote-muted">(identifiant unique)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
             <label>Adresse e-mail <input type="email" @bind="neuEmail" autocomplete="off" /></label>
-            <label>Mot de passe initial
-                <span class="eq-passwort">
-                    <input type="text" @bind="neuPasswort" autocomplete="off" />
-                    <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => neuPasswort = ErzeugeInitialPasswort()" title="Générer un autre mot de passe"><Icon Name="refresh" Groesse="16" /> Générer</button>
-                </span>
-            </label>
-            <small class="enote-muted eq-hinweis">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule. Notez-le et remettez-le à l'employé.</small>
+            <small class="enote-muted eq-hinweis">L'employé n'a pas de mot de passe : il encaisse sur l'appareil de l'établissement, connecté par vous, avec son nom et son code PIN. Une connexion personnelle (depuis son propre appareil) peut être accordée ensuite dans « Droits ».</small>
         </div>
         <div class="eq-pin-feld eq-pin-neu">
             <span class="enote-betrag-label">Code PIN caisse (4 à 6 chiffres)</span>
@@ -155,9 +150,9 @@
 </ModalDialog>
 
 @* Rechte *@
-<ModalDialog Open="rechteDialogOffen" Title="@("Droits – " + aktivesMitglied?.Name)" OnClose="SchliesseDialoge" MaxWidthClass="enote-modal-md">
+<ModalDialog Open="rechteDialogOffen" Title="@("Droits – " + aktivesMitglied?.Name)" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge" MaxWidthClass="enote-modal-md">
     <ChildContent>
-        <p class="enote-muted eq-rechte-intro">La caisse est toujours autorisée. Ajoutez seulement ce dont la personne a besoin.</p>
+        <p class="enote-muted eq-rechte-intro">La caisse est toujours autorisée, sur l'appareil de l'établissement connecté par vous (nom + code PIN). Ajoutez seulement ce dont la personne a besoin.</p>
         <div class="eq-recht-liste">
             <div class="eq-recht-zeile">
                 <span class="eq-recht-icon"><Icon Name="chart" Groesse="18" /></span>
@@ -179,6 +174,25 @@
                 <div class="eq-recht-text"><strong>Rembourser les clients</strong><small>À la caisse, sans le code PIN du propriétaire. Chaque remboursement reste visible dans les finances.</small></div>
                 <EnoteCheckbox @bind-Value="rechteErstatten" Label="" />
             </div>
+            @if (aktivesMitglied is { IstBesitzer: false } mitglied)
+            {
+                <div class="eq-recht-zeile">
+                    <span class="eq-recht-icon"><Icon Name="user" Groesse="18" /></span>
+                    <div class="eq-recht-text"><strong>Connexion personnelle</strong><small>Se connecter avec son propre compte (@PseudonymText(mitglied) + mot de passe), aussi depuis chez soi – uniquement pour les droits ci-dessus. Jamais la caisse ni la zone du propriétaire.</small></div>
+                    <EnoteCheckbox Value="rechteAnmeldung" ValueChanged="AnmeldungUmschalten" Label="" />
+                </div>
+                @if (rechteAnmeldung)
+                {
+                    <label class="eq-anmeldung-passwort">
+                        @(AnmeldungPasswortNoetig ? "Mot de passe à remettre à l'employé" : "Nouveau mot de passe (facultatif)")
+                        <span class="eq-passwort">
+                            <input type="text" @bind="anmeldungPasswort" autocomplete="off" placeholder="@(AnmeldungPasswortNoetig ? "" : "inchangé")" />
+                            <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => anmeldungPasswort = ErzeugeInitialPasswort()" title="Générer un mot de passe"><Icon Name="refresh" Groesse="16" /> Générer</button>
+                        </span>
+                        <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+                    </label>
+                }
+            }
         </div>
     </ChildContent>
     <Footer>
