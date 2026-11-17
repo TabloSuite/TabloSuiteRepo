@@ -38,7 +38,7 @@
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="SeitenModus" />
     <script src="_framework/blazor.web.js"></script>
     <script src="@Assets["js/enote.js"]"></script>
     <script>
@@ -49,3 +49,14 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    /// <summary>
+    /// Seiten mit [ExcludeFromInteractiveRouting] (Anmeldung) bleiben reines HTML-Formular: sonst baut Blazor die vorgerenderte
+    /// Seite nach dem Verbindungsaufbau neu auf – am Handy mit schwachem Netz waren dabei eingetippte Daten und der Ladekreis
+    /// des Knopfs weg (Nutzer 17.11.2026). Alle anderen Seiten bleiben interaktiv wie bisher.
+    /// </summary>
+    private IComponentRenderMode? SeitenModus => HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
+}

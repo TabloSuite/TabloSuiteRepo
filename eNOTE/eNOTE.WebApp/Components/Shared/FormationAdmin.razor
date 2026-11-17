@@ -163,10 +163,42 @@ else
 
                 <section class="fo-gefahr">
                     <h3>Retirer le rôle de responsable</h3>
-                    <p class="enote-muted">Ses établissements n'ont plus de responsable (à réaffecter dans « Propriétaires plateforme »), il est déconnecté partout. Ses commissions restent.</p>
+                    <p class="enote-muted">Il est déconnecté partout et ne voit plus ses établissements. Ses commissions déjà créées restent.</p>
                     @if (entziehenBestaetigen)
                     {
-                        <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Confirmez-vous le retrait du rôle de « @z.Name » ?</p>
+                        @if (laedenDesPo.Count > 0)
+                        {
+                            @* Neuzuweisung im selben Schritt (Nutzer 17.11.): keine Lücke bei Provisionen und Kontakt *@
+                            <div class="fo-neuzuweisung">
+                                <p><strong>@(laedenDesPo.Count == 1 ? "Son établissement : à qui le confier ?" : $"Ses {laedenDesPo.Count} établissements : à qui les confier ?")</strong>
+                                    <small class="enote-muted">Le nouveau responsable reprend les mêmes commissions et droits (modifiables ensuite).</small></p>
+                                <label class="fo-alle">Tous à :
+                                    <select class="enote-input" @onchange="AlleSetzen">
+                                        <option value="">— choisir —</option>
+                                        @foreach (var a in anderePos) { <option value="@a.Id">@a.Name</option> }
+                                        <option value="ohne">Sans responsable</option>
+                                    </select>
+                                </label>
+                                <ul class="fo-neuzuweisung-liste">
+                                    @foreach (var l in laedenDesPo)
+                                    {
+                                        <li>
+                                            <span>@l.Name</span>
+                                            <select class="enote-input" value="@(neuJeLaden.GetValueOrDefault(l.SalonId)?.ToString() ?? "")"
+                                                    @onchange="e => neuJeLaden[l.SalonId] = Guid.TryParse(e.Value?.ToString(), out var g) ? g : null">
+                                                <option value="">Sans responsable</option>
+                                                @foreach (var a in anderePos) { <option value="@a.Id">@a.Name</option> }
+                                            </select>
+                                        </li>
+                                    }
+                                </ul>
+                                @if (anderePos.Count == 0)
+                                {
+                                    <p class="enote-muted">Aucun autre responsable : les établissements resteront sans responsable.</p>
+                                }
+                            </div>
+                        }
+                        <p class="fo-warnung"><Icon Name="alert" Groesse="16" /> Confirmez-vous le retrait du rôle de « @z.Name »@(OhneAnzahl > 0 ? $" ? {OhneAnzahl} établissement(s) resteront sans responsable." : " ?")</p>
                         <div class="fo-zeile-feld">
                             <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => entziehenBestaetigen = false">Annuler</button>
                             <AsyncActionButton Text="Oui, retirer le rôle" CssClass="enote-btn-danger" OnClick="EntziehenAsync" />
@@ -174,7 +206,7 @@ else
                     }
                     else
                     {
-                        <button type="button" class="enote-btn enote-btn-ghost fo-btn-gefahr" @onclick="() => entziehenBestaetigen = true">Retirer le rôle…</button>
+                        <AsyncActionButton CssClass="enote-btn-ghost fo-btn-gefahr" Text="Retirer le rôle…" OnClick="EntziehenVorbereitenAsync" />
                     }
                 </section>
             </div>
@@ -194,6 +226,10 @@ else
     private string? fehler, grund;
     private DateTime? neueFrist, pauseBis;
     private bool entziehenBestaetigen;
+    private IReadOnlyList<FormationService.LadenDesPo> laedenDesPo = [];
+    private IReadOnlyList<FormationService.AndererPo> anderePos = [];
+    private readonly Dictionary<Guid, Guid?> neuJeLaden = [];
+    private int OhneAnzahl => laedenDesPo.Count(l => neuJeLaden.GetValueOrDefault(l.SalonId) is null);
     private int regelGrenze, regelFragen, regelFrist, regelIntervall;
     private int MaxFragen => Formation.Lektionen.Sum(l => l.Pruefung.Count);
 
@@ -235,11 +271,27 @@ else
     private Task PauseAsync(DateTime? bis) => FuehreAusAsync(() => Formation.SetzePauseAsync(auswahl!.PoId, bis?.Date.AddDays(1).AddTicks(-1).ToUniversalTime(), AdminId),
         bis is null ? "Pause terminée." : $"En pause jusqu'au {bis:dd.MM.yyyy}.");
 
+    private async Task EntziehenVorbereitenAsync()
+    {
+        (laedenDesPo, anderePos) = await Formation.GetNeuzuweisungAsync(auswahl!.PoId);
+        neuJeLaden.Clear();
+        foreach (var l in laedenDesPo) neuJeLaden[l.SalonId] = null;
+        entziehenBestaetigen = true;
+    }
+
+    private void AlleSetzen(ChangeEventArgs e)
+    {
+        var wert = e.Value?.ToString();
+        if (string.IsNullOrEmpty(wert)) return;
+        Guid? neu = Guid.TryParse(wert, out var g) ? g : null;
+        foreach (var l in laedenDesPo) neuJeLaden[l.SalonId] = neu;
+    }
+
     private async Task EntziehenAsync()
     {
-        var (ok, f, laeden) = await Formation.EntzieheRolleAsync(auswahl!.PoId, AdminId);
+        var (ok, f, ohne) = await Formation.EntzieheRolleAsync(auswahl!.PoId, AdminId, new Dictionary<Guid, Guid?>(neuJeLaden));
         if (!ok) { fehler = f; return; }
-        Toast.ZeigeErfolg(laeden.Count == 0 ? "Rôle retiré." : $"Rôle retiré. À réaffecter : {string.Join(", ", laeden)}.");
+        Toast.ZeigeErfolg(ohne.Count == 0 ? "Rôle retiré, établissements réaffectés." : $"Rôle retiré. Sans responsable : {string.Join(", ", ohne)}.");
         auswahl = null;
         await LadeAsync();
     }

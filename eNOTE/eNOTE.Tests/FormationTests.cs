@@ -290,6 +290,37 @@ public class FormationTests
     }
 
     [Fact]
+    public async Task Rolle_Entziehen_Weist_Laeden_Im_Selben_Schritt_Neu_Zu()
+    {
+        var d = await BasisAsync();
+        var po2 = new AppUser { Id = Guid.NewGuid(), FullName = "Ama Neue" };
+        await using (var db = await d.Factory.CreateDbContextAsync())
+        {
+            var rolle = await db.Roles.FirstAsync(r => r.Name == AppRollen.ProduktOwner);
+            db.Users.Add(po2);
+            db.UserRoles.Add(new AppUserRole { UserId = po2.Id, RoleId = rolle.Id });
+            var z = await db.ProduktOwnerSalons.FirstAsync(x => x.ProduktOwnerId == d.Po);
+            z.ProzentProvision = 12; z.FestbetragProvision = 300;
+            await db.SaveChangesAsync();
+        }
+        var (laeden, andere) = await d.Dienst.GetNeuzuweisungAsync(d.Po);
+        Assert.Equal("Boutique A", Assert.Single(laeden).Name);
+        Assert.Equal(po2.Id, Assert.Single(andere).Id);
+
+        // Ungültig: neuer Responsable = derselbe
+        Assert.False((await d.Dienst.EntzieheRolleAsync(d.Po, d.Admin, new Dictionary<Guid, Guid?> { [d.Salon] = d.Po })).Erfolg);
+
+        var (ok, _, ohne) = await d.Dienst.EntzieheRolleAsync(d.Po, d.Admin, new Dictionary<Guid, Guid?> { [d.Salon] = po2.Id });
+        Assert.True(ok);
+        Assert.Empty(ohne);
+        await using var db2 = await d.Factory.CreateDbContextAsync();
+        var neu = await db2.ProduktOwnerSalons.SingleAsync(x => x.SalonId == d.Salon);
+        Assert.Equal(po2.Id, neu.ProduktOwnerId);
+        Assert.Equal(12, neu.ProzentProvision);
+        Assert.Equal(300, neu.FestbetragProvision);
+    }
+
+    [Fact]
     public async Task Admin_Trainiert_Frei_Ohne_Frist_Und_Ohne_Grenze_Der_Versuche()
     {
         var d = await BasisAsync();

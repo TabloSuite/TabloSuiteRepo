@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ENote.Core.DataModels.Formation;
 using ENote.Core.DataModels.Identity;
+using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -631,19 +632,53 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
         return null;
     }
 
+    public sealed record LadenDesPo(Guid SalonId, string Name);
+    public sealed record AndererPo(Guid Id, string Name);
+
+    /// <summary>Läden eines Responsable und die übrigen Responsables (für die Neuzuweisung beim Entziehen der Rolle).</summary>
+    public async Task<(IReadOnlyList<LadenDesPo> Laeden, IReadOnlyList<AndererPo> Andere)> GetNeuzuweisungAsync(Guid poId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var laeden = await db.ProduktOwnerSalons.AsNoTracking().Where(z => z.ProduktOwnerId == poId && z.GueltigBisUtc == null)
+            .OrderBy(z => z.Salon.Name).Select(z => new LadenDesPo(z.SalonId, z.Salon.Name)).ToListAsync(ct);
+        var ids = (await PoIdsAsync(ct)).Where(id => id != poId).ToList();
+        var andere = await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id) && !u.IsBlocked)
+            .OrderBy(u => u.FullName).Select(u => new AndererPo(u.Id, u.FullName)).ToListAsync(ct);
+        return (laeden, andere);
+    }
+
     /// <summary>
-    /// Entzieht die Rolle « Responsable »: Rolle weg, Zuweisungen der Läden enden (Provisionen bleiben), alle Anmeldungen enden,
-    /// eine offene Runde wird erlassen. Liefert die Namen der Läden, die einen neuen Responsable brauchen.
+    /// Entzieht die Rolle « Responsable » und weist die Läden im selben Schritt neu zu (Nutzer 17.11.: keine Lücke bei den Provisionen):
+    /// <paramref name="neuzuweisung"/> = Laden → neuer Responsable (null = ohne Responsable). Die neue Zuweisung übernimmt Provisionssätze
+    /// und Rechte der alten. Danach: Rolle weg, alle Anmeldungen enden, offene Runde erlassen; bisherige Provisionen bleiben.
+    /// Liefert die Läden, die ohne Responsable bleiben.
     /// </summary>
-    public async Task<(bool Erfolg, string? Fehler, IReadOnlyList<string> Laeden)> EntzieheRolleAsync(Guid poId, Guid adminId, CancellationToken ct = default)
+    public async Task<(bool Erfolg, string? Fehler, IReadOnlyList<string> OhneResponsable)> EntzieheRolleAsync(Guid poId, Guid adminId,
+        IReadOnlyDictionary<Guid, Guid?>? neuzuweisung = null, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var rolle = await db.Roles.FirstOrDefaultAsync(r => r.Name == AppRollen.ProduktOwner, ct);
         var zuordnung = rolle is null ? null : await db.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == poId && ur.RoleId == rolle.Id, ct);
         if (zuordnung is null) return (false, "Ce compte n'est pas responsable.", []);
 
+        var gueltigeNeue = rolle is null ? [] : (await db.UserRoles.Where(ur => ur.RoleId == rolle.Id && ur.UserId != poId).Select(ur => ur.UserId).ToListAsync(ct)).ToHashSet();
+        if (neuzuweisung is not null && neuzuweisung.Values.Any(v => v is { } id && !gueltigeNeue.Contains(id)))
+            return (false, "Choisissez un autre responsable (actif) pour chaque établissement.", []);
+
         var zuweisungen = await db.ProduktOwnerSalons.Include(z => z.Salon).Where(z => z.ProduktOwnerId == poId && z.GueltigBisUtc == null).ToListAsync(ct);
-        var laeden = zuweisungen.Select(z => z.Salon.Name).OrderBy(n => n).ToList();
+        var ohne = new List<string>();
+        foreach (var z in zuweisungen)
+        {
+            if (neuzuweisung is not null && neuzuweisung.TryGetValue(z.SalonId, out var neuerPo) && neuerPo is { } neuId)
+            {
+                db.ProduktOwnerSalons.Add(new ProduktOwnerSalon
+                {
+                    ProduktOwnerId = neuId, SalonId = z.SalonId, KannLadenUmsatzSehen = z.KannLadenUmsatzSehen, KannPlattformUmsatzSehen = z.KannPlattformUmsatzSehen,
+                    ProzentProvision = z.ProzentProvision, FestbetragProvision = z.FestbetragProvision, CreatedAtUtc = Jetzt
+                });
+            }
+            else ohne.Add(z.Salon.Name);
+        }
         db.ProduktOwnerSalons.RemoveRange(zuweisungen);
         db.UserRoles.Remove(zuordnung);
 
@@ -657,7 +692,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
         if (offen is not null && t is not null) Erlasse(offen, adminId, "Rôle de responsable retiré", t, null);
 
         await db.SaveChangesAsync(ct);
-        return (true, null, laeden);
+        return (true, null, ohne.OrderBy(n => n).ToList());
     }
 
     // ------------------------------------------------------------------ Benachrichtigungen (Hintergrunddienst)

@@ -3648,6 +3648,13 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .fo-admin-verlauf small { color: var(--enote-text-muted); }
 .fo-versuche { display: flex; flex-wrap: wrap; gap: .3rem .8rem; font-size: .85rem; }
 .fo-versuche a, .fo-link { color: var(--enote-primary-text); font-weight: 600; background: none; border: 0; padding: .2rem 0; font: inherit; font-size: .85rem; text-decoration: underline; cursor: pointer; min-height: 2rem; }
+.fo-neuzuweisung { display: grid; gap: .6rem; padding: .8rem; border-radius: var(--enote-radius); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+.fo-neuzuweisung p { margin: 0; display: grid; gap: .15rem; }
+.fo-alle { display: grid; gap: .25rem; font-weight: 600; font-size: .9rem; }
+.fo-neuzuweisung-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.fo-neuzuweisung-liste li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 14rem); gap: .5rem; align-items: center; }
+.fo-neuzuweisung select { min-height: 2.6rem; }
+@media (max-width: 640px) { .fo-neuzuweisung-liste li { grid-template-columns: 1fr; } }
 .fo-gefahr h3 { color: var(--enote-danger-text); }
 .fo-btn-gefahr { color: var(--enote-danger-text); border-color: var(--enote-danger-border); width: fit-content; }
 .fo-regeln { margin-top: .5rem; padding: 1rem 1.15rem; }
@@ -3671,3 +3678,13 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
     .fo-lektion-fuss { flex-direction: column-reverse; }
     .fo-lektion-fuss .enote-btn { width: 100%; justify-content: center; }
 }
+
+/* Ladebalken für jedes Tippen (17.11.2026): erscheint nach 0,15 s ohne Antwort des Servers, bis sich die Seite ändert */
+.app-ladebalken { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100000; pointer-events: none; opacity: 0; transition: opacity .15s;
+    background: linear-gradient(90deg, transparent 0%, var(--enote-primary-light) 30%, var(--enote-accent) 60%, transparent 100%); background-size: 50% 100%; background-repeat: no-repeat; }
+.app-ladebalken.aktiv { opacity: 1; animation: app-ladebalken-lauf 1s ease-in-out infinite; }
+@keyframes app-ladebalken-lauf { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+@media (prefers-reduced-motion: reduce) { .app-ladebalken.aktiv { animation: none; background-size: 100% 100%; } }
+
+/* Handy: lange Knopftexte umbrechen statt die Seite zu verbreitern (Nutzer 17.11.: Formation am Handy zu breit) */
+@media (max-width: 640px) { .enote-btn, .btn-primary { white-space: normal; text-align: center; } .fo-seite { min-width: 0; overflow-wrap: break-word; } }
