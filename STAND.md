@@ -7,6 +7,21 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026 abends
 
+**>>> NEUESTES (17.11. nachmittags) – « Formation » der Responsables in eNOTE (d14cd90, 61c4761, 5ea83df, gepusht, 533 Tests grün):**
+Nutzerwunsch: Lernpfad + Prüfung für POs, je App (eNOTE zuerst, danach SKOULOU mit eigenem Inhalt). Entscheidungen (Memory
+« PO-Formation »): Note + Fehler nach jedem Versuch, nächster Versuch neue Fragen; bei Frist/Nichtbestehen **nur Meldung** (keine
+Sperre); Inhalte **fest im Code** (`Services/Formation/FormationKatalog.cs`, bei jeder App-Änderung mitpflegen!); **Handy zuerst**;
+Admins trainieren frei (ohne Frist, ohne Grenze). Gebaut: 10 Lektionen (Text, Schritte, 12 App-Fotos, Videos im Dialog, Übungen),
+62 Prüfungsfragen; Runde alle 3 Monate, Frist 30 Tage, 3 Versuche, der letzte zählt, 20 Fragen, bestanden ab 70 % (Regeln in
+Administration › Formation änderbar); Admin je PO: Intervall, Frist verlängern, dispenser, Pause, neue Session, Historique mit allen
+Versuchen, **Rolle entziehen** (Zuweisungen enden, abgemeldet, Provisionen bleiben); Mails « Évaluation ouverte », « Rappel » (7 Tage
+vorher), « non réussie/manquée » ans Team (in E-mails abschaltbar). Seiten `/formation`, `/formation/lecon/{id}`, `/formation/evaluation`,
+`/formation/resultat/{id}`, Kachel auf der Startseite, Menü Aide › Formation. Browser-Rundgang Handy + PC 28/28 (dabei SQL-Fehler
+« zyklisches Include » gefunden und behoben). Bilder `Pictures\eNOTE-Formation-2026-11-17\`.
+**Neue Migration `20261117125830_FormationResponsables`** (nur CreateTable, 5 Tabellen) – lokal ENOTEDB eingespielt, **Azure fehlt
+(OK des Nutzers nötig)**, erst danach eNOTE deployen. Nach dem Deploy öffnet sich für **jeden** PO sofort die erste Session
+(30 Tage) und er bekommt die Mail « Évaluation ouverte ». **Nächster Schritt danach: SKOULOU-Formation** (Rolle `Responsable`).
+
 **>>> 17.11. zuletzt: eNOTE (« eine Kasse, ein Gerät » + Videos) und TabloSuiteHome sind DEPLOYT.** Der Nutzer macht einen echten
 allgemeinen Test und meldet sich mit Auffälligkeiten. Im neuen Chat: nachfragen, was ihm aufgefallen ist.
 
