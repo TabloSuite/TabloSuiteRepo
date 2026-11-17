@@ -64,8 +64,8 @@
                         break;
                     case AbschnittArt.Bild:
                         <figure class="fo-bild">
-                            <img src="@("/" + a.Datei)" alt="@a.Text" loading="lazy" />
-                            <figcaption>@a.Text</figcaption>
+                            <a href="@("/" + a.Datei)" target="_blank" rel="noopener" title="Agrandir l'image"><img src="@("/" + a.Datei)" alt="@a.Text" loading="lazy" /></a>
+                            <figcaption>@a.Text <span class="fo-bild-tipp">· touchez l'image pour l'agrandir</span></figcaption>
                         </figure>
                         break;
                     case AbschnittArt.Video:

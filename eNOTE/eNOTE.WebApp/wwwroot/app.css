@@ -3529,9 +3529,12 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .fo-merke { background: var(--enote-primary-soft); border-color: var(--enote-primary-light); color: var(--enote-primary-text); }
 .fo-achtung { background: var(--enote-warning-soft); border-color: var(--enote-warning); color: var(--enote-warning-text); }
 .fo-merke p, .fo-achtung p { margin: .15rem 0 0; color: var(--enote-text); }
-.fo-bild { margin: 0; display: grid; gap: .35rem; }
-.fo-bild img { width: 100%; height: auto; border-radius: var(--enote-radius); border: 1px solid var(--enote-border); box-shadow: var(--enote-neu-out); }
-.fo-bild figcaption { font-size: .85rem; color: var(--enote-text-muted); }
+.fo-bild { margin: 0; display: grid; gap: .45rem; justify-items: center; padding: .9rem; border-radius: var(--enote-radius-lg); background: var(--enote-surface-2); border: 1px solid var(--enote-border); }
+/* Handyfotos in Handygröße zeigen – nie auf die volle Textbreite strecken (Nutzer: « zu groß gezoomt ») */
+.fo-bild img { display: block; width: 100%; max-width: 20rem; height: auto; border-radius: 1rem; border: 1px solid var(--enote-border-strong); box-shadow: var(--enote-neu-out); }
+.fo-bild > a { display: block; width: 100%; max-width: 20rem; }
+.fo-bild-tipp { color: var(--enote-text-subtle); white-space: nowrap; }
+.fo-bild figcaption { font-size: .85rem; color: var(--enote-text-muted); text-align: center; max-width: 30rem; }
 .fo-video { display: flex; gap: .8rem; align-items: center; width: 100%; padding: .55rem; text-align: left; border-radius: var(--enote-radius); background: var(--enote-surface); border: 1px solid var(--enote-border); color: var(--enote-text); cursor: pointer; font: inherit; }
 .fo-video:hover { border-color: var(--enote-border-strong); box-shadow: var(--enote-neu-out); }
 .fo-video:disabled { opacity: .55; cursor: default; }

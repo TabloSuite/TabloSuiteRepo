@@ -49,14 +49,18 @@
             }
 
             <div class="fo-aktionen">
-                @if (stand.Offen?.Laufend is { } lauf)
+                @if (istFrei)
                 {
-                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="@(stand.Offen.AdminPfad ? "/formation/evaluation?parcours=admin" : "/formation/evaluation")">@(istFrei ? $"Reprendre l'entraînement ({PfadName(stand.Offen.AdminPfad)})" : $"Reprendre l'essai {lauf.Nummer}")</a>
+                    // Beide Pfade immer wählbar (Nutzer 17.11.: nach dem Training « responsable » kam man nicht mehr zum Admin-Pfad).
+                    // Ein angefangenes Training des anderen Pfads wird beim Wechsel verworfen (zählt ohnehin nicht).
+                    var laufAdmin = stand.Offen?.Laufend is not null && stand.Offen.AdminPfad;
+                    var laufPo = stand.Offen?.Laufend is not null && !stand.Offen.AdminPfad;
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation?parcours=admin">@(laufAdmin ? "Reprendre l'entraînement : parcours administrateur" : "S'entraîner : parcours administrateur")</a>
+                    <a class="enote-btn enote-btn-ghost" href="/formation/evaluation">@(laufPo ? "Reprendre l'entraînement : parcours responsable" : "S'entraîner : parcours responsable")</a>
                 }
-                else if (istFrei)
+                else if (stand.Offen?.Laufend is { } lauf)
                 {
-                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation?parcours=admin">S'entraîner : parcours administrateur</a>
-                    <a class="enote-btn enote-btn-ghost" href="/formation/evaluation">S'entraîner : parcours responsable</a>
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">Reprendre l'essai @lauf.Nummer</a>
                 }
                 else if (stand.Offen is { } offen && offen.Uebrig > 0)
                 {
@@ -68,6 +72,10 @@
                     <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => behaltenOffen = true">Garder ce résultat (@letzter.Prozent %)</button>
                 }
             </div>
+            @if (istFrei && stand.Offen?.Laufend is not null)
+            {
+                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Un entraînement est en cours (parcours @(stand.Offen.AdminPfad ? "administrateur" : "responsable")). Si vous commencez l'autre parcours, il est abandonné – il ne compte pas.</p>
+            }
             @if (!istFrei && stand.Offen is { Abgegeben: 0 } && gelesen < Lektionen.Count)
             {
                 <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Conseil : lisez d'abord les leçons (@gelesen / @Lektionen.Count lues). Vous avez jusqu'au @stand.Offen.FristUtc.ToString("dd.MM.yyyy").</p>
