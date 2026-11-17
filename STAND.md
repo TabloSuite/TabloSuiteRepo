@@ -7,10 +7,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 17.11.2026
 
+**>>> NEU 17.11. vormittags – « Qui encaisse ? » (Option A, Nutzer « Ja A », 09360f8, gepusht, 479 Tests grün):** Jeder Bon
+speichert die kassierende Person (`Verkauf.KassiererId/KassiererName`); jedes Gerät fragt beim Einstieg in die offene Kasse
+Name + PIN, Kopf « Changer »; Erstattungen + Recht « Remboursements » nach angemeldeter Person; Bon « Servi par », Clôture und
+Finances › Clôtures zeigen « Par caissier ». **Neue Migration `20261117064107_VerkaufKassierer`** (2 nullable Spalten + Index-
+Tausch, keine Datenänderung) – lokal eingespielt, **Azure NOCH NICHT (OK des Nutzers nötig)** → **eNOTE erst deployen, wenn sie
+auf Azure ist**, sonst schlagen alle Verkaufsabfragen fehl. Option B (mehrere Kassen/Schubladen) bewusst später; A ist so gebaut,
+dass B bestehende Läden nicht stört (Caisse principale). Bilder `Pictures\eNOTE-Qui-encaisse-2026-11-17\`. Lernvideos zur Kasse
+zeigen den Kopf noch ohne « Changer » (bei Gelegenheit neu).
+
 **>>> NEU 17.11. morgens – 6 Fragen des Nutzers beantwortet, Punkte 5+6 gebaut (cf42099, gepusht, 473 Tests grün):**
 eNOTE-Provision der Responsables (PO) entsteht jetzt **automatisch je bestätigter Zahlung** (Tabelle `PoProvisionen`,
 **neue Migration `20261117053328_PoProvisionen`**, nur CreateTable – lokal ENOTEDB und **mit OK (« 1 ja ») am 17.11. auch auf
-Azure ENote-Database eingespielt und lesend geprüft: Azure = lokal** → **Nutzer kann eNOTE deployen**).
+Azure ENote-Database eingespielt und lesend geprüft: Azure = lokal**; Deploy aber erst nach VerkaufKassierer, s. oben).
 Mehrfachbestätigung: Facturation (Zahlungen), Administration › Propriétaires plateforme › « Commissions des responsables »
 (mehrere als versées, Datum + Referenz), Mes établissements › « Mes commissions » (Responsable bestätigt mehrere als reçues
 oder « Pas reçue »). Alte Monatsberechnung (« Calculer les commissions », fror ein) entfernt, alte Einträge bleiben sichtbar.
