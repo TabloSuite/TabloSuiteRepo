@@ -12,7 +12,7 @@
         <p>
             @if (Ergebnis.IstFrei)
             {
-                <text>Entraînement libre · réussite à partir de @Ergebnis.Grenze %.</text>
+                <text>Entraînement libre · parcours @(Ergebnis.AdminPfad ? "administrateur" : "responsable") · réussite à partir de @Ergebnis.Grenze %.</text>
             }
             else
             {

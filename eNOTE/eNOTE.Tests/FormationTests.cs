@@ -49,7 +49,7 @@ public class FormationTests
         var i = 0;
         foreach (var f in v.Fragen)
         {
-            var frage = dienst.Lektionen.SelectMany(l => l.Pruefung).First(x => x.Id == f.Id);
+            var frage = dienst.Lektionen.Concat(dienst.AdminLektionen).SelectMany(l => l.Pruefung).First(x => x.Id == f.Id);
             // Anzeige-Positionen der richtigen Antworten: Text vergleichen.
             var richtigeTexte = frage.Richtig.Select(r => frage.Antworten[r]).ToHashSet();
             var auswahl = i++ < richtig
@@ -310,6 +310,44 @@ public class FormationTests
     }
 
     [Fact]
+    public async Task Admin_Pfad_Zieht_Nur_Admin_Fragen_Und_Wechsel_Verwirft_Das_Andere_Training()
+    {
+        var d = await BasisAsync();
+        var adminIds = d.Dienst.AdminLektionen.SelectMany(l => l.Pruefung).Select(f => f.Id).ToHashSet();
+
+        var (va, _) = await d.Dienst.StarteVersuchAsync(d.Admin, istFrei: true, adminPfad: true);
+        Assert.True(va!.AdminPfad);
+        Assert.Equal(20, va.Fragen.Count);
+        Assert.All(va.Fragen, f => Assert.Contains(f.Id, adminIds));
+        // Gleichmäßig über die 6 Admin-Lektionen (20 Fragen → 3 oder 4 je Lektion).
+        var lektionJeFrage = d.Dienst.AdminLektionen.SelectMany(l => l.Pruefung.Select(f => (f.Id, l.Id))).ToDictionary(x => x.Item1, x => x.Item2);
+        Assert.All(va.Fragen.GroupBy(f => lektionJeFrage[f.Id]), g => Assert.InRange(g.Count(), 3, 4));
+
+        // Wechsel zum Pfad der Responsables: das angefangene Admin-Training fällt weg.
+        var (vp, _) = await d.Dienst.StarteVersuchAsync(d.Admin, istFrei: true, adminPfad: false);
+        Assert.False(vp!.AdminPfad);
+        Assert.DoesNotContain(vp.Fragen, f => adminIds.Contains(f.Id));
+        Assert.Null(await d.Dienst.GetVersuchAsync(d.Admin, va.Id));
+
+        await BeantworteAsync(d.Dienst, d.Admin, vp, 20);
+        var (e, _) = await d.Dienst.GibAbAsync(d.Admin, vp.Id);
+        Assert.False(e!.AdminPfad);
+        var stand = await d.Dienst.GetStandAsync(d.Admin, true);
+        Assert.False(Assert.Single(stand.Verlauf).AdminPfad);
+    }
+
+    [Fact]
+    public async Task Responsable_Pruefung_Enthaelt_Nie_Admin_Fragen_Auch_Mit_AdminPfad()
+    {
+        var d = await BasisAsync();
+        var adminIds = d.Dienst.AdminLektionen.SelectMany(l => l.Pruefung).Select(f => f.Id).ToHashSet();
+        // Ein Responsable kann den Admin-Pfad nicht anfordern: echte Runde, Pool der Responsables.
+        var (v, _) = await d.Dienst.StarteVersuchAsync(d.Po, istFrei: false, adminPfad: true);
+        Assert.False(v!.AdminPfad);
+        Assert.DoesNotContain(v.Fragen, f => adminIds.Contains(f.Id));
+    }
+
+    [Fact]
     public async Task Fremder_Versuch_Ist_Nicht_Zugaenglich()
     {
         var d = await BasisAsync();
@@ -348,12 +386,16 @@ public class FormationTests
 /// <summary>Der fest im Code geschriebene Lernpfad bleibt gültig (Nutzer: « immer anpassen, falls sich was geändert hat »).</summary>
 public class FormationKatalogTests
 {
-    private static IEnumerable<Frage> AlleFragen => FormationKatalog.Lektionen.SelectMany(l => l.Uebungen.Concat(l.Pruefung));
+    private static IEnumerable<Frage> AlleFragen => FormationKatalog.AlleLektionen.SelectMany(l => l.Uebungen.Concat(l.Pruefung));
 
     [Fact]
     public void Ids_Sind_Eindeutig_Und_Antworten_Gueltig()
     {
-        Assert.Equal(FormationKatalog.Lektionen.Count, FormationKatalog.Lektionen.Select(l => l.Id).Distinct().Count());
+        Assert.Equal(FormationKatalog.AlleLektionen.Count(), FormationKatalog.AlleLektionen.Select(l => l.Id).Distinct().Count());
+        // Pfad an der ID erkennbar (Admin-Lektionen « admin- », Admin-Fragen « a- »).
+        Assert.All(FormationKatalog.AdminLektionen, l => Assert.StartsWith("admin-", l.Id));
+        Assert.All(FormationKatalog.AdminLektionen.SelectMany(l => l.Uebungen.Concat(l.Pruefung)), f => Assert.StartsWith("a-", f.Id));
+        Assert.All(FormationKatalog.Lektionen.SelectMany(l => l.Uebungen.Concat(l.Pruefung)), f => Assert.False(f.Id.StartsWith("a-")));
         Assert.Equal(AlleFragen.Count(), AlleFragen.Select(f => f.Id).Distinct().Count());
         Assert.All(AlleFragen, f =>
         {
@@ -371,7 +413,7 @@ public class FormationKatalogTests
     [Fact]
     public void Jede_Lektion_Hat_Inhalt_Uebung_Und_Genug_Pruefungsfragen()
     {
-        Assert.All(FormationKatalog.Lektionen, l =>
+        Assert.All(FormationKatalog.AlleLektionen, l =>
         {
             Assert.NotEmpty(l.Abschnitte);
             Assert.NotEmpty(l.Uebungen);
@@ -381,14 +423,15 @@ public class FormationKatalogTests
         });
         // Drei Versuche à 20 Fragen ohne Wiederholung.
         Assert.True(FormationKatalog.Lektionen.Sum(l => l.Pruefung.Count) >= 60);
+        Assert.True(FormationKatalog.AdminLektionen.Sum(l => l.Pruefung.Count) >= 30);
     }
 
     [Fact]
     public void Videos_Stehen_Im_VideoKatalog_Und_Bilder_Existieren()
     {
-        Assert.All(FormationKatalog.Lektionen.SelectMany(l => l.Videos), v => Assert.NotNull(VideoKatalog.Finde(v)));
+        Assert.All(FormationKatalog.AlleLektionen.SelectMany(l => l.Videos), v => Assert.NotNull(VideoKatalog.Finde(v)));
         var wwwroot = Path.Combine(FindeWebApp(), "wwwroot");
-        Assert.All(FormationKatalog.Lektionen.SelectMany(l => l.Abschnitte).Where(a => a.Art == AbschnittArt.Bild),
+        Assert.All(FormationKatalog.AlleLektionen.SelectMany(l => l.Abschnitte).Where(a => a.Art == AbschnittArt.Bild),
             a => Assert.True(File.Exists(Path.Combine(wwwroot, a.Datei!.Replace('/', Path.DirectorySeparatorChar))), a.Datei));
     }
 
@@ -398,6 +441,9 @@ public class FormationKatalogTests
         var po = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
             [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, AppRollen.ProduktOwner)], "test"));
         Assert.All(FormationKatalog.Lektionen.SelectMany(l => l.Videos), v => Assert.True(VideoKatalog.Finde(v)!.DarfSehen(po), v));
+        var admin = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+            [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, AppRollen.SuperAdmin)], "test"));
+        Assert.All(FormationKatalog.AdminLektionen.SelectMany(l => l.Videos), v => Assert.True(VideoKatalog.Finde(v)!.DarfSehen(admin), v));
     }
 
     private static string FindeWebApp()

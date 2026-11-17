@@ -3481,6 +3481,7 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 /* Lernpfad */
 .fo-pfad { display: grid; gap: .6rem; }
 .fo-pfad-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.fo-pfad-unter { margin: -.3rem 0 0; color: var(--enote-text-muted); font-size: .9rem; }
 .fo-fortschritt-text { font-size: .85rem; color: var(--enote-text-muted); font-weight: 600; }
 .fo-fortschritt { height: .5rem; border-radius: 99px; background: var(--enote-border); overflow: hidden; }
 .fo-fortschritt span { display: block; height: 100%; background: var(--enote-success); border-radius: inherit; transition: width .3s; }

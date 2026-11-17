@@ -18,7 +18,13 @@
     {
         var user = (await AuthState.GetAuthenticationStateAsync()).User;
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
-        if (!user.IsInRole("ProduktOwner")) { text = "Leçons et entraînement libre"; return; }
+        if (!user.IsInRole("ProduktOwner"))
+        {
+            var frei = await Formation.GetStandAsync(userId, istFrei: true);
+            var adminGelesen = Formation.AdminLektionen.Count(l => frei.Gelesen.Contains(l.Id));
+            text = $"Parcours administrateur : {adminGelesen} / {Formation.AdminLektionen.Count} leçons lues";
+            return;
+        }
         var stand = await Formation.GetStandAsync(userId, istFrei: false);
         if (stand.Offen is { } o && o.Uebrig > 0)
         {

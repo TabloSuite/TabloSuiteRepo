@@ -23,7 +23,7 @@
         <header class="fo-lektion-kopf">
             <span class="fo-lektion-kopf-ico" aria-hidden="true"><Icon Name="@lektion.Icon" Groesse="26" /></span>
             <div>
-                <small>Leçon @(index + 1) sur @Formation.Lektionen.Count · @lektion.Minuten min@(gelesen ? " · lue" : "")</small>
+                <small>@(pfad == Formation.AdminLektionen ? "Parcours administrateur · " : "")Leçon @(index + 1) sur @pfad.Count · @lektion.Minuten min@(gelesen ? " · lue" : "")</small>
                 <h1>@lektion.Titel</h1>
                 <p>@lektion.Kurz</p>
             </div>
@@ -132,10 +132,10 @@
         <nav class="fo-lektion-fuss" aria-label="Leçons">
             @if (index > 0)
             {
-                <a class="enote-btn enote-btn-ghost" href="/formation/lecon/@Formation.Lektionen[index - 1].Id"><Icon Name="chevron-left" Groesse="16" /> Précédente</a>
+                <a class="enote-btn enote-btn-ghost" href="/formation/lecon/@pfad[index - 1].Id"><Icon Name="chevron-left" Groesse="16" /> Précédente</a>
             }
             <AsyncActionButton CssClass="enote-btn-primary enote-btn-lg" OnClick="GelesenUndWeiterAsync">
-                @(index + 1 < Formation.Lektionen.Count ? (gelesen ? "Leçon suivante" : "J'ai lu – leçon suivante") : (gelesen ? "Retour à la formation" : "J'ai lu – terminer"))
+                @(index + 1 < pfad.Count ? (gelesen ? "Leçon suivante" : "J'ai lu – leçon suivante") : (gelesen ? "Retour à la formation" : "J'ai lu – terminer"))
                 <Icon Name="chevron-right" Groesse="16" />
             </AsyncActionButton>
         </nav>
@@ -156,6 +156,7 @@
     [Parameter] public string Id { get; set; } = "";
 
     private Lektion? lektion;
+    private IReadOnlyList<Lektion> pfad = [];
     private int index;
     private bool gelesen;
     private Guid userId;
@@ -167,8 +168,11 @@
     {
         var user = (await AuthState.GetAuthenticationStateAsync()).User;
         userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        lektion = Formation.Lektionen.FirstOrDefault(l => l.Id == Id);
-        index = lektion is null ? 0 : Formation.Lektionen.ToList().IndexOf(lektion);
+        // Lektionen der Administrateure nur für SuperAdmin; Navigation innerhalb des eigenen Pfads.
+        var admin = Formation.IstAdminLektion(Id) && user.IsInRole("SuperAdmin");
+        pfad = admin ? Formation.AdminLektionen : Formation.Lektionen;
+        lektion = pfad.FirstOrDefault(l => l.Id == Id);
+        index = lektion is null ? 0 : pfad.ToList().IndexOf(lektion);
         auswahlJeFrage.Clear();
         geprueftIds.Clear();
         var stand = await Formation.GetStandAsync(userId, !user.IsInRole("ProduktOwner"));
@@ -194,7 +198,7 @@
     {
         if (lektion is null) return;
         await Formation.MarkiereGelesenAsync(userId, lektion.Id);
-        Nav.NavigateTo(index + 1 < Formation.Lektionen.Count ? $"/formation/lecon/{Formation.Lektionen[index + 1].Id}" : "/formation");
+        Nav.NavigateTo(index + 1 < pfad.Count ? $"/formation/lecon/{pfad[index + 1].Id}" : "/formation");
         try { await JS.InvokeVoidAsync("scrollTo", 0, 0); } catch (JSException) { }
     }
 

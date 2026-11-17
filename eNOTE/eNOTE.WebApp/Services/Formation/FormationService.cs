@@ -17,10 +17,16 @@ namespace ENote.WebApp.Services.Formation;
 /// <item>Administrateure trainieren frei: ohne Frist, beliebig oft, nicht in der Übersicht.</item>
 /// </list>
 /// </summary>
-public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory, TimeProvider? uhr = null, IReadOnlyList<Lektion>? katalog = null)
+public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory, TimeProvider? uhr = null, IReadOnlyList<Lektion>? katalog = null,
+    IReadOnlyList<Lektion>? adminKatalog = null)
 {
     private readonly TimeProvider zeit = uhr ?? TimeProvider.System;
+    /// <summary>Lernpfad der Responsables (Prüfungsrunden).</summary>
     public IReadOnlyList<Lektion> Lektionen { get; } = katalog ?? FormationKatalog.Lektionen;
+    /// <summary>Lernpfad der Administrateure (nur freies Training, nur für SuperAdmin sichtbar).</summary>
+    public IReadOnlyList<Lektion> AdminLektionen { get; } = adminKatalog ?? FormationKatalog.AdminLektionen;
+    public IReadOnlyList<Lektion> Pfad(bool admin) => admin ? AdminLektionen : Lektionen;
+    public bool IstAdminLektion(string? id) => AdminLektionen.Any(l => l.Id == id);
 
     /// <summary>Ende eines freien Trainings (« ohne Frist »).</summary>
     public static readonly DateTime OhneFrist = new(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
@@ -39,7 +45,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
     public sealed record VersuchKurz(Guid Id, int Nummer, DateTime BegonnenUtc, DateTime? AbgegebenUtc, int? Prozent, int? Richtige, int FragenAnzahl);
 
     public sealed record RundeKurz(Guid Id, DateTime GeoeffnetUtc, DateTime FristUtc, DateTime? AbgeschlossenUtc, FormationRundenStatus Status,
-        int? EndNoteProzent, int Grenze, int FragenAnzahl, bool IstFrei, string? ErlassenGrund, IReadOnlyList<VersuchKurz> Versuche)
+        int? EndNoteProzent, int Grenze, int FragenAnzahl, bool IstFrei, string? ErlassenGrund, IReadOnlyList<VersuchKurz> Versuche, bool AdminPfad = false)
     {
         public VersuchKurz? Laufend => Versuche.FirstOrDefault(v => v.AbgegebenUtc is null);
         public VersuchKurz? LetzterAbgegeben => Versuche.Where(v => v.AbgegebenUtc is not null).MaxBy(v => v.Nummer);
@@ -53,7 +59,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
 
     public sealed record AntwortAnzeige(int Index, string Text);
     public sealed record FrageAnzeige(int Nr, string Id, string Text, bool Mehrfach, IReadOnlyList<AntwortAnzeige> Antworten, IReadOnlyList<int> Auswahl);
-    public sealed record VersuchAnsicht(Guid Id, Guid RundeId, int Nummer, bool IstFrei, DateTime FristUtc, IReadOnlyList<FrageAnzeige> Fragen)
+    public sealed record VersuchAnsicht(Guid Id, Guid RundeId, int Nummer, bool IstFrei, DateTime FristUtc, IReadOnlyList<FrageAnzeige> Fragen, bool AdminPfad = false)
     {
         public int Beantwortet => Fragen.Count(f => f.Auswahl.Count > 0);
     }
@@ -61,7 +67,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
     public sealed record FrageErgebnis(int Nr, string Text, bool Richtig, IReadOnlyList<string> DeineAntworten, IReadOnlyList<string> RichtigeAntworten,
         string Erklaerung, string? LektionId, string? LektionTitel);
     public sealed record Ergebnis(Guid VersuchId, int Nummer, int Prozent, int Richtige, int Gesamt, int Grenze, bool Bestanden, bool IstFrei,
-        bool RundeAbgeschlossen, int VersucheUebrig, DateTime FristUtc, IReadOnlyList<FrageErgebnis> Fragen);
+        bool RundeAbgeschlossen, int VersucheUebrig, DateTime FristUtc, IReadOnlyList<FrageErgebnis> Fragen, bool AdminPfad = false);
 
     /// <summary>Zeile der Übersicht für den Administrateur.</summary>
     public sealed record PoZeile(Guid PoId, string Name, string? Email, int IntervallMonate, DateTime? PausiertBisUtc, DateTime? NaechsteRundeAbUtc,
@@ -184,7 +190,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
 
     public async Task MarkiereGelesenAsync(Guid userId, string lektionId, CancellationToken ct = default)
     {
-        if (Lektionen.All(l => l.Id != lektionId)) return;
+        if (Lektionen.All(l => l.Id != lektionId) && !IstAdminLektion(lektionId)) return;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (await db.FormationLektionenGelesen.AnyAsync(g => g.ProduktOwnerId == userId && g.LektionId == lektionId, ct)) return;
         db.FormationLektionenGelesen.Add(new FormationLektionGelesen { ProduktOwnerId = userId, LektionId = lektionId, GelesenUtc = Jetzt });
@@ -219,17 +225,20 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
             offen?.BestehensGrenzeProzent ?? regel.BestehensGrenzeProzent, offen?.FragenAnzahl ?? regel.FragenJePruefung);
     }
 
-    private static RundeKurz Kurz(FormationRunde r) => new(r.Id, r.GeoeffnetUtc, r.FristUtc, r.AbgeschlossenUtc, r.Status, r.EndNoteProzent,
+    private RundeKurz Kurz(FormationRunde r) => new(r.Id, r.GeoeffnetUtc, r.FristUtc, r.AbgeschlossenUtc, r.Status, r.EndNoteProzent,
         r.BestehensGrenzeProzent, r.FragenAnzahl, r.IstFrei, r.ErlassenGrund,
-        r.Versuche.OrderBy(v => v.Nummer).Select(v => new VersuchKurz(v.Id, v.Nummer, v.BegonnenUtc, v.AbgegebenUtc, v.Prozent, v.Richtige, v.FragenAnzahl)).ToList());
+        r.Versuche.OrderBy(v => v.Nummer).Select(v => new VersuchKurz(v.Id, v.Nummer, v.BegonnenUtc, v.AbgegebenUtc, v.Prozent, v.Richtige, v.FragenAnzahl)).ToList(),
+        r.Versuche.Any(IstAdminVersuch));
 
     // ------------------------------------------------------------------ Versuch
 
     /// <summary>
     /// Startet einen Versuch (oder liefert den angefangenen). Fehlertext, wenn keine Runde offen ist oder keine Versuche übrig sind.
     /// </summary>
-    public async Task<(VersuchAnsicht? Versuch, string? Fehler)> StarteVersuchAsync(Guid userId, bool istFrei, CancellationToken ct = default)
+    /// <param name="adminPfad">Nur im freien Training: Fragen aus dem Pfad der Administrateure statt der Responsables.</param>
+    public async Task<(VersuchAnsicht? Versuch, string? Fehler)> StarteVersuchAsync(Guid userId, bool istFrei, CancellationToken ct = default, bool adminPfad = false)
     {
+        if (!istFrei) adminPfad = false;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var regel = await RegelAsync(db, ct);
         FormationRunde? runde;
@@ -237,6 +246,13 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
         {
             runde = await db.FormationRunden.Include(r => r.Versuche)
                 .FirstOrDefaultAsync(r => r.ProduktOwnerId == userId && r.IstFrei && r.Status == FormationRundenStatus.Offen, ct);
+            // Angefangenes Training des anderen Pfads verwerfen (freies Training zählt nicht).
+            if (runde is not null && runde.Versuche.Any(v => IstAdminVersuch(v) != adminPfad))
+            {
+                db.FormationRunden.Remove(runde);
+                await db.SaveChangesAsync(ct);
+                runde = null;
+            }
             if (runde is null)
             {
                 runde = new FormationRunde
@@ -262,7 +278,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
             if (!runde.IstFrei && runde.Versuche.Count >= FormationRunde.MaxVersuche)
                 return (null, "Vous avez utilisé vos trois essais pour cette session.");
             var gesehen = runde.Versuche.SelectMany(v => LeseFragen(v).Select(f => f.Id)).ToHashSet();
-            var fragen = ZieheFragen(runde.FragenAnzahl, gesehen);
+            var fragen = ZieheFragen(runde.FragenAnzahl, gesehen, Pfad(adminPfad));
             laufend = new FormationVersuch
             {
                 RundeId = runde.Id, Nummer = runde.Versuche.Count + 1, BegonnenUtc = Jetzt,
@@ -365,10 +381,10 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
     /// Zieht <paramref name="anzahl"/> Prüfungsfragen gleichmäßig über die Lektionen (Lektionen in zufälliger Folge, je Durchgang
     /// eine Frage je Lektion), zuerst Fragen, die in dieser Runde noch nicht vorkamen. Antworten in zufälliger Reihenfolge.
     /// </summary>
-    public List<GezogeneFrage> ZieheFragen(int anzahl, IReadOnlySet<string> schonGesehen)
+    public List<GezogeneFrage> ZieheFragen(int anzahl, IReadOnlySet<string> schonGesehen, IReadOnlyList<Lektion>? quelle = null)
     {
         var zufall = Random.Shared;
-        var stapel = Lektionen
+        var stapel = (quelle ?? Lektionen)
             .Where(l => l.Pruefung.Count > 0)
             .Select(l => new Queue<Frage>(l.Pruefung.OrderBy(f => schonGesehen.Contains(f.Id)).ThenBy(_ => zufall.Next())))
             .OrderBy(_ => zufall.Next())
@@ -390,7 +406,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
 
     private (Frage Frage, Lektion Lektion)? Finde(string frageId)
     {
-        foreach (var l in Lektionen)
+        foreach (var l in Lektionen.Concat(AdminLektionen))
         {
             var f = l.Pruefung.FirstOrDefault(x => x.Id == frageId);
             if (f is not null) return (f, l);
@@ -400,6 +416,13 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
 
     private static List<GezogeneFrage> LeseFragen(FormationVersuch v) => JsonSerializer.Deserialize<List<GezogeneFrage>>(v.FragenJson) ?? [];
     private static Dictionary<string, int[]> LeseAntworten(FormationVersuch v) => JsonSerializer.Deserialize<Dictionary<string, int[]>>(v.AntwortenJson) ?? [];
+
+    /// <summary>Gehört der Versuch zum Pfad der Administrateure? (an den gezogenen Fragen erkennbar – keine eigene Spalte nötig)</summary>
+    private bool IstAdminVersuch(FormationVersuch v)
+    {
+        var erste = LeseFragen(v).FirstOrDefault()?.Id;
+        return erste is not null && AdminLektionen.Any(l => l.Pruefung.Any(f => f.Id == erste));
+    }
 
     /// <summary>Auswahl wird in Anzeige-Positionen gespeichert; zurück auf die Indizes des Katalogs.</summary>
     private static int[] OriginalIndizes(GezogeneFrage g, int[] anzeige) => anzeige.Where(i => i >= 0 && i < g.Reihenfolge.Length).Select(i => g.Reihenfolge[i]).ToArray();
@@ -428,7 +451,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
                 g.Reihenfolge.Select((orig, pos) => new AntwortAnzeige(pos, treffer.Frage.Antworten[orig])).ToList(),
                 antworten.TryGetValue(g.Id, out var a) ? a : []));
         }
-        return new VersuchAnsicht(v.Id, runde.Id, v.Nummer, runde.IstFrei, runde.FristUtc, fragen);
+        return new VersuchAnsicht(v.Id, runde.Id, v.Nummer, runde.IstFrei, runde.FristUtc, fragen, IstAdminVersuch(v));
     }
 
     private Ergebnis ErgebnisVon(FormationVersuch v, FormationRunde runde)
@@ -449,7 +472,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
         var uebrig = runde.IstFrei ? int.MaxValue : Math.Max(0, FormationRunde.MaxVersuche - runde.Versuche.Count);
         return new Ergebnis(v.Id, v.Nummer, v.Prozent ?? 0, v.Richtige ?? 0, v.FragenAnzahl, runde.BestehensGrenzeProzent,
             (v.Prozent ?? 0) >= runde.BestehensGrenzeProzent, runde.IstFrei, runde.Status != FormationRundenStatus.Offen,
-            runde.Status == FormationRundenStatus.Offen ? uebrig : 0, runde.FristUtc, liste);
+            runde.Status == FormationRundenStatus.Offen ? uebrig : 0, runde.FristUtc, liste, IstAdminVersuch(v));
     }
 
     // ------------------------------------------------------------------ Administrateur

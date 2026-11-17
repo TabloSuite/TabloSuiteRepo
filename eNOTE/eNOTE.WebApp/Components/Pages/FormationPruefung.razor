@@ -45,7 +45,7 @@
         var f = versuch.Fragen[pos];
         <header class="fo-pruefung-leiste">
             <div class="fo-pruefung-leiste-text">
-                <strong>@(versuch.IstFrei ? "Entraînement" : $"Essai {versuch.Nummer}/{FormationRunde.MaxVersuche}")</strong>
+                <strong>@(versuch.IstFrei ? (versuch.AdminPfad ? "Entraînement · administrateur" : "Entraînement · responsable") : $"Essai {versuch.Nummer}/{FormationRunde.MaxVersuche}")</strong>
                 <span>Question @(pos + 1) / @versuch.Fragen.Count · @Beantwortet répondue@(Beantwortet > 1 ? "s" : "")</span>
             </div>
             <div class="fo-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@versuch.Fragen.Count" aria-valuenow="@Beantwortet">
@@ -126,6 +126,9 @@
 </ModalDialog>
 
 @code {
+    /// <summary>« admin » = freies Training im Pfad der Administrateure (nur SuperAdmin).</summary>
+    [SupplyParameterFromQuery(Name = "parcours")] public string? Parcours { get; set; }
+
     private Guid userId;
     private bool istFrei;
     private FormationService.VersuchAnsicht? versuch;
@@ -147,7 +150,7 @@
 
     private async Task StarteAsync()
     {
-        (versuch, fehler) = await Formation.StarteVersuchAsync(userId, istFrei);
+        (versuch, fehler) = await Formation.StarteVersuchAsync(userId, istFrei, adminPfad: istFrei && Parcours == "admin");
         ergebnis = null;
         auswahl.Clear();
         if (versuch is null) return;

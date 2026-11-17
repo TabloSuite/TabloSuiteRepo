@@ -9,7 +9,7 @@ namespace ENote.WebApp.Services.Formation;
 /// Fragen-IDs nie wiederverwenden: alte Versuche verweisen darauf. Eine geänderte Frage bekommt eine neue ID.</para>
 /// <para>Tests (<c>FormationKatalogTests</c>) prüfen: IDs eindeutig, Antworten gültig, Videos im <see cref="VideoKatalog"/>, Bilder vorhanden.</para>
 /// </summary>
-public static class FormationKatalog
+public static partial class FormationKatalog
 {
     private static Frage F(string id, string text, string[] antworten, int[] richtig, string erklaerung) => new(id, text, antworten, richtig, erklaerung);
 

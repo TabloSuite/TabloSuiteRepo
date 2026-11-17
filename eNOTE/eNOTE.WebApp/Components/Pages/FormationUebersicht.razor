@@ -51,11 +51,12 @@
             <div class="fo-aktionen">
                 @if (stand.Offen?.Laufend is { } lauf)
                 {
-                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">Reprendre l'essai @lauf.Nummer</a>
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="@(stand.Offen.AdminPfad ? "/formation/evaluation?parcours=admin" : "/formation/evaluation")">@(istFrei ? $"Reprendre l'entraînement ({PfadName(stand.Offen.AdminPfad)})" : $"Reprendre l'essai {lauf.Nummer}")</a>
                 }
                 else if (istFrei)
                 {
-                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation">Commencer un entraînement</a>
+                    <a class="enote-btn enote-btn-primary enote-btn-lg" href="/formation/evaluation?parcours=admin">S'entraîner : parcours administrateur</a>
+                    <a class="enote-btn enote-btn-ghost" href="/formation/evaluation">S'entraîner : parcours responsable</a>
                 }
                 else if (stand.Offen is { } offen && offen.Uebrig > 0)
                 {
@@ -73,58 +74,16 @@
             }
         </section>
 
-        @* ------------------------------------------------ Lernpfad *@
-        <section class="fo-pfad" aria-labelledby="fo-pfad-titel">
-            <div class="fo-pfad-kopf">
-                <h2 id="fo-pfad-titel">Les leçons</h2>
-                <span class="fo-fortschritt-text">@gelesen / @Lektionen.Count lues</span>
-            </div>
-            <div class="fo-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@Lektionen.Count" aria-valuenow="@gelesen">
-                <span style="width:@(Lektionen.Count == 0 ? 0 : gelesen * 100 / Lektionen.Count)%"></span>
-            </div>
-            <ol class="fo-lektionen">
-                @for (var i = 0; i < Lektionen.Count; i++)
-                {
-                    var l = Lektionen[i];
-                    var istGelesen = stand.Gelesen.Contains(l.Id);
-                    var naechste = !istGelesen && Lektionen.Take(i).All(x => stand.Gelesen.Contains(x.Id));
-                    <li>
-                        <a class="fo-lektion @(istGelesen ? "gelesen" : "") @(naechste ? "naechste" : "")" href="/formation/lecon/@l.Id">
-                            <span class="fo-lektion-nr" aria-hidden="true">
-                                @if (istGelesen)
-                                {
-                                    <Icon Name="check" Groesse="18" Strich="2.6" />
-                                }
-                                else
-                                {
-                                    @(i + 1)
-                                }
-                            </span>
-                            <span class="fo-lektion-text">
-                                <strong>@l.Titel</strong>
-                                <small>@l.Kurz</small>
-                                <span class="fo-lektion-meta">
-                                    <span><Icon Name="clock" Groesse="13" /> @l.Minuten min</span>
-                                    @if (l.Videos.Any())
-                                    {
-                                        <span><Icon Name="monitor" Groesse="13" /> @l.Videos.Count() vidéo@(l.Videos.Count() > 1 ? "s" : "")</span>
-                                    }
-                                    @if (istGelesen)
-                                    {
-                                        <span class="fo-gelesen-tag">Lue</span>
-                                    }
-                                    else if (naechste)
-                                    {
-                                        <span class="fo-naechste-tag">À lire</span>
-                                    }
-                                </span>
-                            </span>
-                            <Icon Name="chevron-right" Groesse="18" CssClass="fo-pfeil" />
-                        </a>
-                    </li>
-                }
-            </ol>
-        </section>
+        @* ------------------------------------------------ Lernpfad(e) *@
+        @if (istFrei)
+        {
+            @PfadListe("fo-pfad-admin", "Parcours administrateur", "Vos leçons : établissements, paiements, tarifs, responsables, formation et communication.", Formation.AdminLektionen)
+            @PfadListe("fo-pfad-po", "Parcours responsable", "Ce que vos responsables apprennent – et ce qui leur est demandé à l'évaluation.", Lektionen)
+        }
+        else
+        {
+            @PfadListe("fo-pfad-titel", "Les leçons", null, Lektionen)
+        }
 
         @* ------------------------------------------------ Verlauf *@
         @if (stand.Verlauf.Count > 0)
@@ -136,7 +95,7 @@
                     {
                         var letzterVersuch = r.LetzterAbgegeben;
                         <li class="fo-verlauf-zeile">
-                            <span class="fo-status fo-status-@StatusKlasse(r.Status)">@StatusText(r.Status)</span>
+                            <span class="fo-status fo-status-@StatusKlasse(r.Status)">@(r.IstFrei ? PfadName(r.AdminPfad) : StatusText(r.Status))</span>
                             <span class="fo-verlauf-text">
                                 <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
                                 <small>@((r.AbgeschlossenUtc ?? r.GeoeffnetUtc).ToString("dd.MM.yyyy"))@(r.IstFrei ? "" : $" · {r.Abgegeben} essai{(r.Abgegeben > 1 ? "s" : "")}")@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
@@ -171,6 +130,68 @@
     private bool behaltenOffen;
     private int gelesen;
     private IReadOnlyList<Lektion> Lektionen => Formation.Lektionen;
+
+    private static string PfadName(bool admin) => admin ? "Administrateur" : "Responsable";
+
+    /// <summary>Liste eines Lernpfads mit Fortschritt (Responsables: ein Pfad; Administrateure: ihr eigener + der der Responsables).</summary>
+    private RenderFragment PfadListe(string id, string titel, string? untertitel, IReadOnlyList<Lektion> liste) =>
+    @<section class="fo-pfad" aria-labelledby="@id">
+        @{ var zahl = liste.Count(l => stand!.Gelesen.Contains(l.Id)); }
+        <div class="fo-pfad-kopf">
+            <h2 id="@id">@titel</h2>
+            <span class="fo-fortschritt-text">@zahl / @liste.Count lues</span>
+        </div>
+        @if (untertitel is not null)
+        {
+            <p class="fo-pfad-unter">@untertitel</p>
+        }
+        <div class="fo-fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="@liste.Count" aria-valuenow="@zahl">
+            <span style="width:@(liste.Count == 0 ? 0 : zahl * 100 / liste.Count)%"></span>
+        </div>
+        <ol class="fo-lektionen">
+            @for (var i = 0; i < liste.Count; i++)
+            {
+                var l = liste[i];
+                var nr = i + 1;
+                var istGelesen = stand!.Gelesen.Contains(l.Id);
+                var naechste = !istGelesen && liste.Take(i).All(x => stand.Gelesen.Contains(x.Id));
+                <li>
+                    <a class="fo-lektion @(istGelesen ? "gelesen" : "") @(naechste ? "naechste" : "")" href="/formation/lecon/@l.Id">
+                        <span class="fo-lektion-nr" aria-hidden="true">
+                            @if (istGelesen)
+                            {
+                                <Icon Name="check" Groesse="18" Strich="2.6" />
+                            }
+                            else
+                            {
+                                @nr
+                            }
+                        </span>
+                        <span class="fo-lektion-text">
+                            <strong>@l.Titel</strong>
+                            <small>@l.Kurz</small>
+                            <span class="fo-lektion-meta">
+                                <span><Icon Name="clock" Groesse="13" /> @l.Minuten min</span>
+                                @if (l.Videos.Any())
+                                {
+                                    <span><Icon Name="monitor" Groesse="13" /> @l.Videos.Count() vidéo@(l.Videos.Count() > 1 ? "s" : "")</span>
+                                }
+                                @if (istGelesen)
+                                {
+                                    <span class="fo-gelesen-tag">Lue</span>
+                                }
+                                else if (naechste)
+                                {
+                                    <span class="fo-naechste-tag">À lire</span>
+                                }
+                            </span>
+                        </span>
+                        <Icon Name="chevron-right" Groesse="18" CssClass="fo-pfeil" />
+                    </a>
+                </li>
+            }
+        </ol>
+    </section>;
 
     protected override async Task OnInitializedAsync()
     {
