@@ -18,8 +18,8 @@ Versuchen, **Rolle entziehen** (Zuweisungen enden, abgemeldet, Provisionen bleib
 vorher), « non réussie/manquée » ans Team (in E-mails abschaltbar). Seiten `/formation`, `/formation/lecon/{id}`, `/formation/evaluation`,
 `/formation/resultat/{id}`, Kachel auf der Startseite, Menü Aide › Formation. Browser-Rundgang Handy + PC 28/28 (dabei SQL-Fehler
 « zyklisches Include » gefunden und behoben). Bilder `Pictures\eNOTE-Formation-2026-11-17\`.
-**Neue Migration `20261117125830_FormationResponsables`** (nur CreateTable, 5 Tabellen) – lokal ENOTEDB eingespielt, **Azure fehlt
-(OK des Nutzers nötig)**, erst danach eNOTE deployen. Nach dem Deploy öffnet sich für **jeden** PO sofort die erste Session
+**Neue Migration `20261117125830_FormationResponsables`** (nur CreateTable, 5 Tabellen) – lokal ENOTEDB und **Azure eingespielt
+(OK « Ja zu Azure », Tabellen lesend geprüft): Azure = lokal → eNOTE kann deployt werden.** Nutzer schaut sich zuerst die Videos an. Nach dem Deploy öffnet sich für **jeden** PO sofort die erste Session
 (30 Tage) und er bekommt die Mail « Évaluation ouverte ». **Nächster Schritt danach: SKOULOU-Formation** (Rolle `Responsable`).
 
 **>>> 17.11. zuletzt: eNOTE (« eine Kasse, ein Gerät » + Videos) und TabloSuiteHome sind DEPLOYT.** Der Nutzer macht einen echten
