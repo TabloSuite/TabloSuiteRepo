@@ -130,6 +130,30 @@ public class PersoenlicheAnmeldungTests
     }
 
     [Fact]
+    public async Task Equipe_Zaehlt_Verkaeufe_Fuer_Die_Kassierende_Person()
+    {
+        // « Qui encaisse ? »: Awa öffnet die Kasse, Kofi kassiert an einem zweiten Gerät – der Verkauf zählt für Kofi.
+        var factory = TestDbContextFactory.Create();
+        var (provider, team, _, salon, _) = await BasisAsync(factory);
+        await using var _ = provider;
+        var (_, _, awa) = await team.LegeKassiererAnAsync(salon, "Awa", "Koffi", "awa", "awa@example.test", null, "2222");
+        var (_, _, kofi) = await team.LegeKassiererAnAsync(salon, "Kofi", "Agbeko", "kofi", "kofi@example.test", null, "3333");
+        var artikel = new ENote.Core.DataModels.Katalog.Leistung { SalonId = salon, Name = "Café", Preis = 500, IstAktiv = true };
+        await using (var db = await factory.CreateDbContextAsync()) { db.Leistungen.Add(artikel); await db.SaveChangesAsync(); }
+        var kasse = new KassenService(factory, new FakeUmsatzBenachrichtigungService());
+        var sitzung = (await kasse.StarteSitzungAsync(salon, awa!.Id, 1000)).Sitzung!;
+        var (ok, fehler, _, _) = await kasse.BucheVerkaufAsync(sitzung.Id, [new KassenService.VerkaufsPositionInput(artikel.Id, 1, null, false)],
+            [new KassenService.ZahlungInput(ENote.Core.DataModels.Kasse.ZahlungsArt.Bar, Gegeben: 500)], kassiererId: kofi!.Id);
+        Assert.True(ok, fehler);
+
+        var mitglieder = await team.GetTeamAsync(salon);
+        var k = mitglieder.Single(m => m.UserId == kofi.Id);
+        Assert.Equal(1, k.VerkaeufeMonat);
+        Assert.NotNull(k.LetzteKasseUtc); // eingestiegen, nicht geöffnet – zählt trotzdem als Aktivität
+        Assert.Equal(0, mitglieder.Single(m => m.UserId == awa.Id).VerkaeufeMonat);
+    }
+
+    [Fact]
     public async Task Anlage_Mit_Passwort_Gibt_Gleich_Die_Persoenliche_Anmeldung()
     {
         var factory = TestDbContextFactory.Create();

@@ -63,11 +63,21 @@ public class TeamService(
             .GroupBy(k => k.KassiererId)
             .Select(g => new { g.Key, Letzte = g.Max(k => k.GestartetUtc) })
             .ToDictionaryAsync(x => x.Key, x => x.Letzte, cancellationToken);
+        // « Qui encaisse ? » (17.11.2026): Verkäufe zählen für die Person, die den Bon gebucht hat (ältere Bons ohne
+        // Kassierer: Person, die die Kasse geöffnet hat). Wer nur in eine offene Kasse eingestiegen ist, zählt so auch.
         var verkaeufe = await db.Verkaeufe.AsNoTracking()
             .Where(v => v.SalonId == salonId && v.ZeitUtc >= monatsAnfang && v.StornoVonVerkaufId == null)
-            .GroupBy(v => v.KassenSitzung.KassiererId)
+            .GroupBy(v => v.KassiererId ?? v.KassenSitzung.KassiererId)
             .Select(g => new { g.Key, Anzahl = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Anzahl, cancellationToken);
+        // « Dernière caisse »: auch Kassieren in einer von jemand anderem geöffneten Kasse zählt als Aktivität.
+        var letzteBons = await db.Verkaeufe.AsNoTracking()
+            .Where(v => v.SalonId == salonId && v.KassiererId != null && userIds.Contains(v.KassiererId.Value))
+            .GroupBy(v => v.KassiererId!.Value)
+            .Select(g => new { g.Key, Letzte = g.Max(v => v.ZeitUtc) })
+            .ToDictionaryAsync(x => x.Key, x => x.Letzte, cancellationToken);
+        foreach (var (id, zeit) in letzteBons)
+            if (!letzteKasse.TryGetValue(id, out var bisher) || zeit > bisher) letzteKasse[id] = zeit;
 
         return zuordnungen.Select(us => new TeamMitglied(
             us.Id, us.AppUserId, us.AppUser.FullName, us.AppUser.Email ?? string.Empty,
