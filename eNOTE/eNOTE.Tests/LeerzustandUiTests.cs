@@ -80,7 +80,6 @@ public class LeerzustandUiTests
         services.AddScoped<AdminService>();
         services.AddScoped(_ => new AdminKontenService(factory, null!));
         services.AddSingleton<ProduktOwnerService>();
-        services.AddSingleton<PoAbrechnungService>();
         services.AddSingleton<PoProvisionService>();
         services.AddSingleton(sp => new PreisAnpassungService(factory, TimeProvider.System));
         services.AddSingleton<IComponentActivator>(provider => new KomponentenAktivator(provider, konfigurieren));
@@ -161,32 +160,5 @@ public class LeerzustandUiTests
             Assert.DoesNotContain("Aucune option disponible.", html);
         }
         else Assert.Contains("Aucune option disponible.", html);
-    }
-
-    [Fact]
-    public async Task PoAbrechnung_Leerer_Kontostand_Zeigt_Hinweis()
-    {
-        var factory = TestDbContextFactory.Create();
-        var user = new AppUser();
-        await using (var db = await factory.CreateDbContextAsync())
-        {
-            var rolle = new Role { Name = AppRollen.SuperAdmin };
-            db.Users.Add(user);
-            db.Roles.Add(rolle);
-            db.UserRoles.Add(new AppUserRole { UserId = user.Id, RoleId = rolle.Id });
-            await db.SaveChangesAsync();
-        }
-        var html = await RenderAsync<PoAbrechnung>(factory, user.Id);
-        Assert.Contains("Aucun compte responsable disponible pour cette sélection.", html);
-        Assert.DoesNotContain("Le chargement du suivi a échoué.", html);
-        Assert.DoesNotContain("Chargement des comptes…", html);
-    }
-
-    [Fact]
-    public async Task PoAbrechnung_Ladefehler_Zeigt_Keinen_Falschen_Leerhinweis()
-    {
-        var html = await RenderAsync<PoAbrechnung>(TestDbContextFactory.Create(), Guid.NewGuid());
-        Assert.Contains("Le chargement du suivi a échoué.", html);
-        Assert.DoesNotContain("Aucun compte responsable disponible", html);
     }
 }

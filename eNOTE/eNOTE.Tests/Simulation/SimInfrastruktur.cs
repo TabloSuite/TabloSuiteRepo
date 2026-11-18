@@ -264,10 +264,8 @@ internal sealed class SimDienste : IAsyncDisposable
         s.AddScoped<AnkuendigungService>();
         s.AddScoped<PreisAnpassungService>();
         s.AddScoped<AboService>();
-        s.AddScoped<PoAbrechnungService>();
         s.AddScoped<PoProvisionService>();
         s.AddScoped<BesitzerFinanzService>();
-        s.AddScoped<BesitzerBetreuungsService>();
         s.AddScoped<ExceptionLogService>();
         s.AddScoped<IUmsatzBenachrichtigungService, FakeUmsatzBenachrichtigungService>();
         s.AddScoped<EmailService>();

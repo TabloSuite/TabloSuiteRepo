@@ -270,7 +270,7 @@ internal sealed partial class Simulation
         await Messe("Facturation: Kennzahlen", () => d.Hole<AboService>().GetKennzahlenAsync(admin, new DateTime(bis.Year, bis.Month, 1, 0, 0, 0, DateTimeKind.Utc)));
         await Messe("Facturation: Zahlungen 12 Monate", () => d.Hole<VertragsService>().GetZahlungenAsync(admin, bis.AddMonths(-12), bis));
         await Messe("Responsable: Mes établissements", () => d.Hole<ProduktOwnerService>().GetDashboardAsync(po));
-        await Messe("Admin: Abrechnung Responsables", () => d.Hole<PoAbrechnungService>().GetKontenAsync(admin, bis.Date));
+        await Messe("Admin: Commissions des responsables", () => d.Hole<PoProvisionService>().GetFuerAdminAsync(admin, null, null));
         await Messe("Admin: Bericht Besitzer (12 Monate)", () => d.Hole<BesitzerFinanzService>().GetBerichtAsync(admin, besitzer, groesster, bis.AddMonths(-12), bis));
 
         // Kasse auf vollen Daten: öffnen, verkaufen, schließen (wie ein Klick « Encaisser »).

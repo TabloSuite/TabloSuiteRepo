@@ -39,11 +39,6 @@ internal sealed partial class Simulation
                     await SollAsync("Zahlung ablehnen", () => d.Hole<AboService>().SetzeZahlungsStatusAsync(Admin, a.Id, AboZahlungStatus.Abgelehnt));
                     Zaehle("Zahlungen abgelehnt (« Paiement non retrouvé »)");
                 }
-                else if (l.Responsable is Guid po && l.Nr % 2 == 1)
-                {
-                    await SollAsync("Eingang beim Responsable", () => d.Hole<PoAbrechnungService>().BestaetigeEingangAsync(po, a.Id, jetzt.Date, "Reçu en espèces"));
-                    Zaehle("Zahlungen bestätigt (Responsable)");
-                }
                 else
                 {
                     await SollAsync("Zahlung bestätigen", () => d.Hole<AboService>().SetzeZahlungsStatusAsync(l.Nr % 3 == 0 ? Admin2 : Admin, a.Id, AboZahlungStatus.Bestaetigt));
@@ -228,39 +223,6 @@ internal sealed partial class Simulation
 
     private async Task ProvisionenAsync(DateOnly tag)
     {
-        var abrechnung = d.Hole<PoAbrechnungService>();
-        var stichtag = tag.AddDays(-tag.Day).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var konten = await SollAsync("Konten", () => abrechnung.GetKontenAsync(Admin, stichtag));
-        if (konten is null) return;
-        var positionen = konten.SelectMany(k => k.Eingaenge.Where(e => e.AnforderungId == null && e.EingangUtc < k.BisExklusiv)).Select(e => e.Id).ToList();
-        if (positionen.Count > 0)
-        {
-            await SollAsync("Reversement anfordern", () => abrechnung.FordereAsync(Admin, Guid.NewGuid(), stichtag, Uhr.Jetzt.Date.AddDays(10), positionen));
-            Zaehle("Reversements angefordert");
-        }
-        konten = await abrechnung.GetKontenAsync(Admin, stichtag);
-        foreach (var k in konten)
-        {
-            foreach (var a in k.Anforderungen)
-            {
-                var bezahlt = k.Bewegungen.Where(b => b.AnforderungId == a.Id && b.Status != PoBewegungsStatus.Abgelehnt).Sum(b => b.Betrag);
-                var offen = a.NettoBetrag - bezahlt;
-                if (offen <= 0) continue;
-                var referenz = $"REV-{a.Id.ToString()[..8]}";
-                await SollAsync("Reversement melden", () => abrechnung.MeldeBewegungAsync(k.Id, k.Id, a.Id, false, offen, Uhr.Jetzt.Date, referenz));
-                await EntscheideAsync(Admin, k.Id, referenz, false);
-                Zaehle("Reversements reçus");
-            }
-            var aktuell = (await abrechnung.GetKontenAsync(Admin, stichtag)).First(x => x.Id == k.Id);
-            if (aktuell.ProvisionOffen > 0)
-            {
-                var referenz = $"COM-{tag:yyyyMM}-{k.Id.ToString()[..6]}";
-                await SollAsync("Provision auszahlen", () => abrechnung.MeldeBewegungAsync(Admin, k.Id, null, true, aktuell.ProvisionOffen, Uhr.Jetzt.Date, referenz));
-                await EntscheideAsync(k.Id, k.Id, referenz, true);
-                Zaehle("Commissions versées");
-            }
-        }
-
         // Altes Modell: monatliche Provision aus vom Admin bestätigten Zahlungen.
         var vormonat = tag.AddMonths(-1);
         foreach (var po in Responsables)
@@ -272,14 +234,6 @@ internal sealed partial class Simulation
                 Zaehle("Auszahlungen (Modell Admin-Bestätigung)");
             }
         }
-    }
-
-    private async Task EntscheideAsync(Guid wer, Guid po, string referenz, bool provision)
-    {
-        var id = await d.MitDbAsync(db => db.PoGeldbewegungen.Where(b => b.ProduktOwnerId == po && b.Referenz == referenz && b.IstProvision == provision)
-            .Select(b => b.Id).SingleOrDefaultAsync());
-        if (id == Guid.Empty) { Befund($"Bewegung {referenz} fehlt."); return; }
-        await SollAsync("Bewegung bestätigen", () => d.Hole<PoAbrechnungService>().EntscheideAsync(wer, id, true, null));
     }
 
     // ------------------------------------------------------------------ Rechte (Stichproben)
@@ -299,7 +253,7 @@ internal sealed partial class Simulation
         await VerweigertAsync("Employé sieht Anwesende eines fremden Ladens", () => d.Hole<KundenBesuchService>().GetAnwesendeAsync(emp, b.Id));
         await VerweigertAsync("Employé sieht geparkte Tickets eines fremden Ladens", () => d.Hole<TicketParkService>().GetAsync(emp, b.Id));
         await VerweigertAsync("Employé sieht Aufenthalte eines fremden Ladens", () => d.Hole<AufenthaltService>().GetStaendeAsync(emp, b.Id));
-        await VerweigertAsync("Employé sieht Responsable-Abrechnung", () => d.Hole<PoAbrechnungService>().GetMeldungenAsync(emp));
+        await VerweigertAsync("Employé sieht Provisionen eines Responsable", () => d.Hole<PoProvisionService>().GetFuerPoAsync(emp, null));
         await VerweigertAsync("Besitzer liest Kundenfiche eines fremden Ladens", () => d.Hole<KundenService>().GetDetailAsync(a.Besitzer, kundeB));
         await VerweigertAsync("Besitzer sieht Vertrag eines fremden Ladens", () => d.Hole<VertragsService>().GetLadenVertragAsync(a.Besitzer, b.Id));
         await VerweigertAsync("Besitzer kündigt fremden Laden", () => d.Hole<KuendigungService>().KuendigeAsync(a.Besitzer, b.Id, null));
