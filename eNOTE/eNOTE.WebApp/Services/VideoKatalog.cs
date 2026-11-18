@@ -35,10 +35,13 @@ public static class VideoKatalog
         // Für alle (12.11.2026: Lernvideos mit Sprecherin; ab 14.11.2026 nach und nach im v3-Stil ohne Sprecherin:
         // Premiers pas + alle Employé-Videos (Paket A), Propriétaire (Paket B), Responsable + Administrateur (Paket C),
         // Visite guidée + Werbevideo (Paket D))
+        // 18.11.2026: S'inscrire et retrouver son accès (Registrierung, Freigabe, « Mot de passe oublié »)
+        new("enote-acces-inscription.mp4", "S'inscrire et retrouver son accès",
+            "Inscrire votre établissement, le formulaire pas à pas, la validation par l'administrateur, et le mot de passe oublié.", Alle_, Alle, "2:57"),
         new("enote-premiers-pas.mp4", "Premiers pas : se repérer",
-            "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:14"),
+            "Se connecter, l'accueil, le menu, les boutons et les fenêtres, votre compte, la zone du propriétaire.", Alle_, Alle, "4:20"),
         new("enote-visite-guidee.mp4", "La visite guidée",
-            "Qui voit quoi et où se trouve chaque fonction : accueil, caisse, clients présents, zone du propriétaire, responsable et administrateur.", Alle_, Alle, "5:32"),
+            "Qui voit quoi et où se trouve chaque fonction : accueil, caisse, clients présents, zone du propriétaire, responsable et administrateur.", Alle_, Alle, "5:50"),
         new(Werbung, "Pourquoi eNOTE ?",
             "En cinq minutes : le cahier du matin, puis la preuve dans l'application – catalogue et catégories, vente rapide, clients, clôture sans écart, finances et équipe. Pour une boutique, un salon ou un petit cabinet.", Alle_, Alle, "5:34"),
 
@@ -46,13 +49,16 @@ public static class VideoKatalog
         new("enote-employe-concept-caisse.mp4", "Le concept : la caisse, de l'ouverture à la clôture",
             "La théorie avant la pratique : une journée de caisse, une seule caisse sur un seul appareil, ouvrir avec son code PIN, vendre et encaisser, le ticket en attente, le remboursement, la clôture et l'écart, qui fait quoi.", "Employé", Alle, "5:10"),
         new("enote-employe-encaisser.mp4", "Ouvrir la caisse et encaisser",
-            "Ouvrir la caisse, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:24"),
+            "Ouvrir la caisse avec votre nom et votre code PIN, l'écran de caisse, remplir le ticket, client et remise, encaisser en espèces, Mobile Money ou carte.", "Employé", Alle, "5:50"),
         new("enote-employe-attente.mp4", "Mettre un ticket en attente",
-            "Garder un ticket pour plus tard, le reprendre ou le supprimer ; pour un client présent : « Enregistrer sans encaisser ».", "Employé", Alle, "3:07"),
+            "Garder un ticket pour plus tard, le reprendre ou le supprimer ; pour un client présent : « Enregistrer sans encaisser ».", "Employé", Alle, "3:06"),
         new("enote-employe-clients.mp4", "Accueillir les clients",
             "Noter une arrivée, créer un client, la carte et la fiche, enregistrer sans encaisser, encaisser au départ ou noter le départ.", "Employé", Alle, "4:38"),
         new("enote-employe-cloture.mp4", "Rembourser et clôturer la caisse",
-            "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir et écart de caisse.", "Employé", Alle, "3:43"),
+            "Retrouver une vente, réimprimer, rembourser, retrait du propriétaire, clôture du soir avec les espèces par caissier, et écart de caisse.", "Employé", Alle, "3:58"),
+        // 18.11.2026: Eine Kasse, ein Gerät – « Changer », « Reprendre la caisse ici », Écran client
+        new("enote-employe-appareils.mp4", "Les appareils de la caisse",
+            "Une seule caisse sur un seul appareil, « Changer » quand une collègue prend la relève, « Reprendre la caisse ici » si l'appareil tombe en panne, et l'écran client.", "Employé", Alle, "3:12"),
 
         new("enote-proprietaire-concept-catalogue.mp4", "Le concept : catalogue, stock et prix",
             "La théorie avant la pratique : prestation ou produit, les catégories, le prix et la marge, les remises, le stock qui se tient tout seul, les alertes et l'inventaire, qui peut changer quoi.", "Propriétaire", AbBesitzer, "4:40"),
@@ -65,7 +71,7 @@ public static class VideoKatalog
         new("enote-proprietaire-concept-chiffres.mp4", "Le concept : vos chiffres",
             "La théorie avant la pratique : chiffre d'affaires, panier moyen et écart ; ce qui entre, ce qui sort, ce qui reste ; le solde n'est pas le bénéfice ; la clôture du soir ; où regarder ; qui voit quoi.", "Propriétaire", AbBesitzer, "4:18"),
         new("enote-proprietaire-activite.mp4", "Suivre votre activité",
-            "Les chiffres du jour sur l'accueil, les finances par période (solde, entrées, dépenses, clôtures), noter une dépense, apport et rapport PDF.", "Propriétaire", AbBesitzer, "3:12"),
+            "Les chiffres du jour sur l'accueil, les finances par période (solde, entrées, dépenses, clôtures), noter une dépense, apport et rapport PDF.", "Propriétaire", AbBesitzer, "3:15"),
         new("enote-proprietaire-concept-clients.mp4", "Le concept : vos clients et leur fidélité",
             "La théorie avant la pratique : la fiche client et l'accord pour le téléphone, le client à la caisse, ce que vous apprenez, les clients présents, une remise pour les fidèles, le respect des données.", "Propriétaire", AbBesitzer, "3:23"),
         new("enote-proprietaire-clients.mp4", "Vos clients",
@@ -74,12 +80,15 @@ public static class VideoKatalog
             "Essai gratuit et formule, factures et « J'ai payé », résiliation et suppression, votre profil et votre mot de passe.", "Propriétaire", AbBesitzer, "2:41"),
 
         new("enote-responsable-etablissements.mp4", "Vos établissements",
-            "L'accueil, vos établissements avec leurs ventes et votre commission, inscrire un commerçant, valider une inscription, l'essai et les demandes à l'administrateur.", "Responsable", Plattform, "3:41"),
+            "L'accueil, vos établissements avec leurs ventes, vos commissions et leur réception, inscrire un commerçant, valider une inscription, l'essai et les demandes à l'administrateur.", "Responsable", Plattform, "4:42"),
         new("enote-responsable-paiements.mp4", "Paiements et accompagnement",
-            "La facturation et les paiements signalés, votre profil avec votre téléphone, et la page « Aide & contact » de vos commerçants.", "Responsable", Plattform, "2:46"),
+            "La facturation et les paiements signalés, votre profil avec votre téléphone, et la page « Aide & contact » de vos commerçants.", "Responsable", Plattform, "2:48"),
+        // 18.11.2026: die Formation aus Sicht des Responsable (Lektion, Prüfung, Ergebnis)
+        new("enote-responsable-formation.mp4", "Votre formation",
+            "Où trouver la formation, les règles de l'évaluation, une leçon avec sa vidéo et son exercice, passer l'évaluation, et lire votre résultat.", "Responsable", Plattform, "3:27"),
 
         new("enote-admin-etablissements.mp4", "Gérer les établissements",
-            "Vue d'ensemble et recherche, valider une inscription, période d'essai, tarif personnalisé, désactiver, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "3:31"),
+            "Vue d'ensemble et recherche, le pays d'un établissement, valider une inscription, période d'essai, tarif personnalisé, désactiver, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "3:55"),
         new("enote-admin-tarifs.mp4", "Tarifs et facturation",
             "Tarif général et historique, changer le tarif avec message aux propriétaires, responsables et taux de commission, Mobile Money, confirmer les paiements, et les commissions créées automatiquement puis versées.", "Administrateur", Plattform, "4:38"),
         new("enote-admin-communication.mp4", "Communiquer",
@@ -91,10 +100,10 @@ public static class VideoKatalog
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
-        (Alle_, "Pour bien commencer", "Les premiers pas, la visite guidée et pourquoi eNOTE."),
-        ("Employé", "Employé", "Encaisser, mettre un ticket en attente, accueillir les clients et clôturer la caisse."),
+        (Alle_, "Pour bien commencer", "S'inscrire, les premiers pas, la visite guidée et pourquoi eNOTE."),
+        ("Employé", "Employé", "Encaisser, mettre un ticket en attente, accueillir les clients, clôturer la caisse et les appareils de la caisse."),
         ("Propriétaire", "Propriétaire", "Préparer le catalogue et l'équipe, suivre l'activité, fidéliser les clients."),
-        ("Responsable", "Responsable", "Accompagner vos établissements."),
+        ("Responsable", "Responsable", "Accompagner vos établissements, et votre formation."),
         ("Administrateur", "Administrateur", "Piloter la plateforme."),
     ];
 

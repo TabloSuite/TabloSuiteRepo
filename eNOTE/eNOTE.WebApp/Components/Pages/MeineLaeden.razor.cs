@@ -38,6 +38,10 @@ public partial class MeineLaeden(
     private string neuSalonName = string.Empty;
     private string? neuStandort;
     private string? neuLand = "Togo";
+    private static readonly IReadOnlyList<ENote.WebApp.Components.Shared.EnoteSelectOption<string>> landOptionen =
+        ENote.Core.DataModels.Salons.Laender.Alle
+            .Select(l => new ENote.WebApp.Components.Shared.EnoteSelectOption<string> { Value = l, Label = l })
+            .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -95,7 +99,7 @@ public partial class MeineLaeden(
         }
 
         anlegedialogOffen = false;
-        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé avec un nouveau compte propriétaire. Il sera activé après validation par l'administrateur.");
+        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé avec un nouveau compte propriétaire. Il sera activé après la validation.");
         await LadeAsync();
     }
 

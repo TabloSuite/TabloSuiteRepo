@@ -24,6 +24,29 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   `lernen-v3/aufnahme/app-starten.ps1 [-Bauen]` aus PowerShell aufrufen, nicht über eine Pipe). eNOTE-Aufnahme-App ist gestoppt
   (Start: ENote `lernen-v3/aufnahme/app-starten.ps1`, danach Demo-Daten aufräumen – README 18.11.).
 
+**>>> (18.11. vormittags, Nutzer: « alles gut umsetzen ») – IN ARBEIT:**
+- SKOULOU-Werbevideo « Pourquoi SKOULOU ? » v4 (3:07) eingebaut (a1b507f, Poster = Titelkarte 40 s, Startseite « En un peu plus
+  de trois minutes »). **SKOULOU muss deployt werden** (keine Migration).
+- eNOTE-Fixes: c954050 Kasse hing bei « Ouverture de la caisse… » (Accueil → Caisse); df02b37 « Mot de passe oublié ? » verlinkt +
+  Wiederherstellungsseiten im Anmelde-Design. Push hing zuletzt (GitHub-Anmeldung) → `git status -sb`, ggf. pushen.
+- eNOTE-Videos laut Liste unten: Texte/Stimme/Abläufe für alle 13 fertig (README lernen-v3 « 18.11.2026 (vormittags) »).
+  Aufgenommen: encaisser, attente, clients; Runde 2 (cloture … acces-inscription) lief; `responsable-formation` erst NACH dem Einbau
+  von `appareils` aufnehmen (Lektion « La caisse » zeigt dessen Videokarte mit Dauer). Danach `bash render.sh …`, einbau.py-LISTE
+  ergänzen, `VideoKatalog.cs` (Platzhalter « ?:?? » durch Dauern ersetzen!), Tests (Zahlen 26/24/19/10 schon angepasst),
+  FormationKatalog-Videokarten (schon ergänzt, uncommitted), Commit → Nutzer deployt eNOTE. Am Ende: Formation-Zeilen der 4 Demo-Konten
+  und AnmeldeSitzungen DEMO.PROPRIO von heute löschen, Aufnahme-App stoppen.
+- **Danach (Nutzer 18.11.): Formation-Lernpfad eNOTE UND SKOULOU prüfen** – Aufbau und Inhalte (Lektionen, Schritte, Fragen, Bilder,
+  Videokarten; Responsable + Administrateur) gegen die heutige App, wenn nötig anpassen (`Services/Formation/FormationKatalog*.cs`).
+  Nutzer 18.11.: « Aktuell in AzureDB, nur der Admin DodjiEtse hat Lektionen gelesen. Du kannst das löschen » → nach den Änderungen
+  Formation-Zeilen von DodjiEtse auf Azure löschen (vorher lesend prüfen, dass nur er Zeilen hat; eNOTE + SKOULOU).
+
+**>>> NÄCHSTE AUFGABE (Nutzer 18.11., entschieden): SKOULOU « Essai »-Zeitraum einbauen** – in Abrechnungsperioden des
+ERSTEN Schuljahres, 0–4 (begrenzt auf die Periodenzahl des Jahres; Standard 1), nur solange die Schule noch keine SKOULOU-Rechnung
+hat (danach fest). Ändern dürfen Admin UND Responsable (nur eigene Schulen); Änderungen des Responsable → Audit + Mail an den Admin,
+Admin kann überschreiben. Probe-Perioden: keine Rechnung, keine Part; Zeile « offert (essai) » in Facturation SKOULOU; Direktion
+(Accueil), Responsable (Mes écoles), Admin (Écoles › « Essai ») sehen es. Mit nachziehen: Formation, CGU, Startseite, Videos
+(facture, admin-facturation, responsable).
+
 **>>> (18.11. vormittags) Empfehlung 2 erledigt, Empfehlung 3 vorbereitet:**
 - Live-Stichprobe OK: SKOULOU alle 31 Vorschaubilder 200, Lernvideos ohne Anmeldung 401, Werbevideo öffentlich 206; Prüfseite
   `/verification/…` anonym erreichbar (« Bulletin introuvable » bei fremdem Code) – Azure hat noch **0 Bulletins**, daher Nummer/Datum

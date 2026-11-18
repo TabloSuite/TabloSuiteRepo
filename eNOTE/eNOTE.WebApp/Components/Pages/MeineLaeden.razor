@@ -79,7 +79,7 @@
 <ModalDialog Open="anlegedialogOffen" Title="Nouvel établissement" ErrorMessage="@anlegeFehler" OnClose="() => anlegedialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">L'établissement sera activé après validation par l'administrateur. Un nouveau compte propriétaire (pseudonyme + mot de passe) est créé ; l'adresse e-mail peut être la même que pour un autre établissement.</p>
+            <p class="enote-muted">L'établissement sera activé après la validation (par vous, dans « Administration », ou par l'administrateur). Un nouveau compte propriétaire (pseudonyme + mot de passe) est créé ; l'adresse e-mail peut être la même que pour un autre établissement.</p>
             <div class="enote-form-grid">
                 <label>Prénom du propriétaire <input @bind="neuVorname" /></label>
                 <label>Nom du propriétaire <input @bind="neuNachname" /></label>
@@ -91,7 +91,9 @@
             <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
             <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
-            <label>Pays (facultatif) <input @bind="neuLand" /></label>
+            @* 18.11.2026: Auswahlliste wie bei Registrierung und Admin – vorher freier Text ohne Prüfung (Ortszeit, Mobile Money). *@
+            <label>Pays <EnoteSelect TValue="string" @bind-Value="neuLand" Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" /></label>
+            <small class="enote-muted" style="margin-top:-.5rem;">@ENote.WebApp.Services.LaenderAuswahl.Hinweis</small>
         </div>
     </ChildContent>
     <Footer>
