@@ -10,8 +10,9 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 **>>> ZUERST LESEN – was offen ist (18.11. mittags):**
 - **Azure-Migration SKOULOU `20261118084334_SchuleEssaiPerioden` eingespielt** (18.11. mittags, OK « ok », lesend geprüft:
   Azure = lokal, 0 Schulen auf Azure). eNOTE hat keine neue Migration.
-- **Jetzt deployt der Nutzer beide Apps** (SKOULOU: Werbevideo v4, Rechnung ohne Schülerliste für Responsables, Probezeit, Formation;
-  eNOTE: 13 Videos, Kassen-Fix, « Mot de passe oublié ? », Länderliste, Formation).
+- **Beide Apps deployt (18.11. mittags) und live geprüft:** eNOTE Anmeldeseite mit « Mot de passe oublié ? », neue Wiederherstellungsseite,
+  25 Vorschaubilder 200 (neue byte-gleich), Videos ohne Anmeldung 401; SKOULOU Werbevideo v4 live (11,06 MB), Startseite « En un peu plus
+  de trois minutes », CGU mit Probezeit, 31 Vorschaubilder 200 / Videos 401. Erster Aufruf nach dem Deploy ~34 s (Kaltstart).
 - Git: `git status -sb` – mehrere Commits warteten auf die GitHub-Anmeldung; ggf. pushen.
 - Nicht bestätigt (nachfragen): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
 - Später, nur gemeinsam: Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS) – Memory « vor-produktion ».
@@ -33,11 +34,9 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Direktion sieht es unter « Facturation SKOULOU ». CGU + Formation ergänzt. 652 Tests grün.
 
 **>>> EMPFEHLUNGEN für den nächsten Chat:**
-1. Nach dem Deploy beider Apps: Live-Stichprobe (Videos 200/401,
-   SKOULOU Admin › Écoles « Essai », eNOTE Anmeldeseite mit « Mot de passe oublié ? »).
-2. SKOULOU-Videos mit der Probezeit nachziehen (sichtbar: Admin « Écoles et comptes » / « facturation » – neuer Knopf « Essai »;
+1. SKOULOU-Videos mit der Probezeit nachziehen (sichtbar: Admin « Écoles et comptes » / « facturation » – neuer Knopf « Essai »;
    « Responsable : accompagner vos écoles » – Zeile « Essai » auf der Karte; « La facture SKOULOU » – Hinweis der Direktion).
-3. Beobachten: SKOULOU « Comptes élèves » (160–170 ms an der größten Schule).
+2. Beobachten: SKOULOU « Comptes élèves » (160–170 ms an der größten Schule).
 
 **>>> (18.11. vormittags) Empfehlung 2 erledigt, Empfehlung 3 vorbereitet:**
 - Live-Stichprobe OK: SKOULOU alle 31 Vorschaubilder 200, Lernvideos ohne Anmeldung 401, Werbevideo öffentlich 206; Prüfseite
