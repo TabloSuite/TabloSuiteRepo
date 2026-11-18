@@ -7,7 +7,27 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nach dem SKOULOU-Deploy
 
-**>>> NEUESTES (18.11. später) – drei Nutzerpunkte + öffentlicher Preis, gepusht, NOCH NICHT DEPLOYT (alle drei Apps!):**
+**>>> NEUESTES (18.11. nachmittags) – Klicktest eNOTE vor dem Testabend des Nutzers (4–6 Personen), alles gepusht, NOCH NICHT DEPLOYT:**
+- Testliste für den Abend: `C:\ETSE\NETAPPS\Test TabloSuite\Test Daten\Daten Nutzer und Leistungen.txt` (3 Läden: A Salon Lomé, B Barbershop
+  Kara, C Boutique Cotonou; Responsable; Ablauf in 14 Schritten). Nutzer: nur Liste, Azure bleibt unberührt.
+- Klicktest (Playwright, `%TEMP%\skoulou-shot-tool\enote-e2e\abend.mjs` + `lib.mjs`; App `%TEMP%\enote-e2e\app-starten.ps1` Port 5297,
+  DB `ENOTE_E2E_ABEND`, `db-neu.ps1`; Mail aus): Phasen 1 Registrierung/Freigabe, 2 Einrichtung, 3 Kasse (3 Geräte, Übernahme, Écran
+  client, Clôture mit Écart, Erstattung), 4 Responsable + Abo über Monate + Sammelbestätigung, 5 Geräte/Passwort vergessen/Connexion personnelle.
+  **Ergebnis nach den Fixes: 146/146 Schritte grün, 0 Befunde** (Phasen 1–4: 138, Phase 5: 8). Geprüft u. a.: Teilrechnung A 18.–30.11.
+  = Monatspreis × 13/30; B mit Essai-Ende 15.08. → 4 Rechnungen; Sammelbestätigung; 5 Provisionen à 10 % (1.422 F); Clôture-Écart −500 F
+  mit Hinweis; PC sperrt sich nach « Reprendre la caisse ici » am Handy; Ama (ohne E-Mail) mit « Connexion personnelle »: Login ok, keine
+  Kasse – bleibt aber in « Qui encaisse ? » am Gerät des Besitzers (KassenService.GetKassiererAsync: alle mit Kassen-PIN).
+  Testapp-Mails: SMTP absichtlich 127.0.0.1:1 → nur Warteschlange (0 gesendet).
+- Offene Frage an den Nutzer: Hinweis auf « Mot de passe oublié » für Mitarbeitende (« demandez au propriétaire … Équipe › Droits »),
+  weil Kassierer-Konten dort bewusst keinen Link bekommen und die Seite neutral « envoyé » meldet.
+- **Gefundene und behobene App-Fehler:** (1) Kategorien am Handy/Tablet hochkant nicht anlegbar → « Gérer les catégories » (cb3cf94);
+  (2) « Nouvel employé » verlangte Pseudonyme + E-Mail → freiwillig, Vorschlag « prenom.nom » (cb3cf94); (3) Registrierung zeigte bei leerem
+  Formular nur eine Browser-Sprechblase (cb3cf94); (4) JS « exception invoking 'SchliesseVonAussen' » bei jedem Klick (cb3cf94);
+  (5) neue Remises waren inaktiv und fehlten in der Kasse → sofort aktiv (944cd44). Tests eNOTE 522 grün.
+- Simulation S1 (18 Monate, 39 Läden, 110.985 Verkäufe) ohne echte App-Fehler; veraltete Teile an die Regeln vom 17.11. angepasst (944cd44).
+- SKOULOU: 7 Videos mit Preis-Hinweis neu eingebaut (db018cc); Pipeline-Fix bau.py (`python -I`), AUFTRAG.md §10.
+
+**>>> (18.11. später) – drei Nutzerpunkte + öffentlicher Preis, gepusht, NOCH NICHT DEPLOYT (alle drei Apps!):**
 - eNOTE-Kasse: Symbol `ticket-pause` (Bon + Pause) für « En attente » statt zwei Balken (« sah aus wie wartende Kunden »), 4d393f9.
   Kein neues Video (Nutzer). Bild `Pictures\eNOTE-Symbol-En-attente-2026-11-18\`.
 - SKOULOU « Conditions d'utilisation » bei der ersten Anmeldung: lokal nicht nachvollziehbar (Registrierung Schule → Wartesseite →
