@@ -33,9 +33,15 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Standard 0 – der Admin entscheidet bei jeder neuen Schule (Nutzer 18.11.; Mail bei Anmeldung erinnert daran); Admin und Responsable (eigene Schulen, Mail an Admins) ändern, solange keine Rechnung existiert;
   Direktion sieht es unter « Facturation SKOULOU ». CGU + Formation ergänzt. 652 Tests grün.
 
+**>>> (18.11. nachmittags) SKOULOU-Videos mit der Probezeit nachgezogen (Commit nach fc2882d, NOCH NICHT DEPLOYT):**
+- « Administrateur : écoles et comptes » 3:05 (neue Szene « La période d'essai », 6 Schritte), « Responsable : accompagner vos
+  écoles » 2:59 (Zeile « Essai » + Fenster; Messagerie-Szene in drei Sätze geteilt – vorher kam der Zeiger dort bis 9 s zu spät).
+  « La facture SKOULOU » und « Facturation, tarifs et parts » sehen ohne Probezeit unverändert aus (nicht neu aufgenommen).
+- Video-DB: Basis-Sicherung `SkoulouDB_VIDEO_basis.bak` erneuert (mit Spalte EssaiPerioden) – AUFTRAG.md §9.
+- **SKOULOU muss erneut deployt werden** (nur Videos + Katalog/Formation-Texte, keine Migration).
+
 **>>> EMPFEHLUNGEN für den nächsten Chat:**
-1. SKOULOU-Videos mit der Probezeit nachziehen (sichtbar: Admin « Écoles et comptes » / « facturation » – neuer Knopf « Essai »;
-   « Responsable : accompagner vos écoles » – Zeile « Essai » auf der Karte; « La facture SKOULOU » – Hinweis der Direktion).
+1. Nach dem Deploy: SKOULOU « Vidéos d'aide » – Vorschaubilder der zwei Videos live (200).
 2. Beobachten: SKOULOU « Comptes élèves » (160–170 ms an der größten Schule).
 
 **>>> (18.11. vormittags) Empfehlung 2 erledigt, Empfehlung 3 vorbereitet:**

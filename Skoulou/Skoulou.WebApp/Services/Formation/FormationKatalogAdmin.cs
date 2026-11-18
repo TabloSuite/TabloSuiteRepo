@@ -27,7 +27,7 @@ public static partial class FormationKatalog
                     "« Responsable » : un seul responsable par école, ou aucun ; seuls les responsables actifs sont proposés.",
                     "Le responsable voit la facturation et les messages de l'école ; la direction voit ses coordonnées sur la page Contact."),
                 A("Bloquer le compte du directeur ne suspend jamais l'école. Pour arrêter une école, utilisez « Suspendre »."),
-                V("skoulou-admin-ecoles.mp4", "Écoles et comptes, pas à pas : valider, responsable, comptes, administrateurs."),
+                V("skoulou-admin-ecoles.mp4", "Écoles et comptes, pas à pas : valider, responsable, période d'essai, comptes, administrateurs."),
                 M("Suspendre, c'est réversible : les données restent, « Réactiver » rend l'accès."),
             ],
             [

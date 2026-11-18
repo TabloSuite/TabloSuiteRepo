@@ -35,7 +35,7 @@ public static partial class FormationKatalog
                     "Fixer les tarifs et votre part, confirmer les paiements, annuler une facture, marquer vos parts comme versées."),
                 A("Vous ne voyez ni les notes, ni les bulletins, ni les listes d'élèves, ni les contenus pédagogiques de vos écoles – sur les factures SKOULOU, seulement le nombre d'élèves facturés. Les données des élèves restent à l'école."),
                 V("skoulou-premiers-pas.mp4", "Se repérer dans SKOULOU : menu, compte, aide."),
-                V("skoulou-responsable-ecoles.mp4", "Votre espace de responsable, pas à pas : écoles, facturation, parts, messagerie."),
+                V("skoulou-responsable-ecoles.mp4", "Votre espace de responsable, pas à pas : écoles et leur essai, facturation, parts, messagerie."),
                 M("Vous accompagnez, vous expliquez et vous signalez. Les décisions importantes appartiennent à l'administrateur."),
             ],
             [
