@@ -76,7 +76,7 @@ public static partial class VideoKatalog
             Direction, Leitung, "5:17"),
         new("skoulou-direction-bulletins.mp4", "Publier les bulletins",
             "Publier les bulletins, lire le bulletin imprimé case par case, consigner la remise, vérifier le code QR, rectifier une erreur, et adapter le modèle de bulletin.",
-            Direction, Leitung, "4:48"),
+            Direction, Leitung, "4:52"),
         new("skoulou-direction-passage.mp4", "Fin d'année et passage",
             "Les décisions de fin d'année au conseil, le bilan annuel sur le dernier bulletin, puis le passage à l'année suivante : nouvelle année, classes recréées, admis au niveau suivant, redoublants, départs – en une seule étape.",
             Direction, Leitung, "2:59"),
