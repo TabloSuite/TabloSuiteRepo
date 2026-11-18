@@ -149,7 +149,7 @@ else
             </div>
             <nav class="kx-kopf-aktionen" aria-label="Actions de caisse">
                 <button class="kx-aktion kx-aktion-praesenz" @onclick="OeffneAnwesendeAsync" title="Clients présents"><Icon Name="user-check" /><span>Présents</span>@if (anwesende.Count > 0) { <span class="kx-badge" aria-label="@($"{anwesende.Count} présents")">@anwesende.Count</span> }</button>
-                <button class="kx-aktion kx-aktion-wartend" @onclick="OeffneWartendeAsync" title="Tickets en attente (non encaissés)"><Icon Name="pause" /><span>En attente</span>@if (wartende.Count > 0) { <span class="kx-badge warte" aria-label="@($"{wartende.Count} en attente")">@wartende.Count</span> }</button>
+                <button class="kx-aktion kx-aktion-wartend" @onclick="OeffneWartendeAsync" title="Tickets en attente (non encaissés)"><Icon Name="ticket-pause" /><span>En attente</span>@if (wartende.Count > 0) { <span class="kx-badge warte" aria-label="@($"{wartende.Count} en attente")">@wartende.Count</span> }</button>
                 <button class="kx-aktion" @onclick="OeffneHistorieAsync" title="Ventes récentes"><Icon Name="history" /><span>Ventes</span></button>
                 <button class="kx-aktion" @onclick="OeffneDisplayDialog" title="Écran client"><Icon Name="monitor" /><span>Écran client</span></button>
                 <button class="kx-aktion" @onclick="OeffneRetrait" title="Retrait du propriétaire (espèces ou marchandise)"><Icon Name="wallet" /><span>Retrait</span></button>
@@ -309,7 +309,7 @@ else
                                 @if (wartende.Count > 0)
                                 {
                                     <button type="button" class="kx-wartend-hinweis" @onclick="OeffneWartendeAsync">
-                                        <Icon Name="pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente" : $"{wartende.Count} tickets en attente") · Reprendre
+                                        <Icon Name="ticket-pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente" : $"{wartende.Count} tickets en attente") · Reprendre
                                     </button>
                                 }
                             </div>
@@ -407,7 +407,7 @@ else
                         <div class="kx-fuss-links">
                             @if (!KundeIstAnwesend)
                             {
-                                <button type="button" class="kx-mixte" @onclick="OeffneParken" title="Garder ce ticket pour plus tard (client parti un instant…)"><Icon Name="pause" Groesse="16" /> Mettre en attente</button>
+                                <button type="button" class="kx-mixte" @onclick="OeffneParken" title="Garder ce ticket pour plus tard (client parti un instant…)"><Icon Name="ticket-pause" Groesse="16" /> Mettre en attente</button>
                             }
                             <button type="button" class="kx-mixte" @onclick="() => OeffneZahlung(ZahlModus.Mixte)"><Icon Name="split" Groesse="16" /> Paiement mixte</button>
                         </div>
@@ -658,7 +658,7 @@ else
                 }
                 @if (wartende.Count > 0)
                 {
-                    <p class="kx-abschluss-notiz"><Icon Name="pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente reste disponible" : $"{wartende.Count} tickets en attente restent disponibles") pour la prochaine ouverture de caisse.</p>
+                    <p class="kx-abschluss-notiz"><Icon Name="ticket-pause" Groesse="16" /> @(wartende.Count == 1 ? "1 ticket en attente reste disponible" : $"{wartende.Count} tickets en attente restent disponibles") pour la prochaine ouverture de caisse.</p>
                 }
                 <BetragEingabe @bind-Wert="endbestandGezaehlt" Label="Espèces comptées" Kompakt="true" Hervorheben="true" />
                 <div class="kx-ecart @(Ecart < 0 ? "minus" : Ecart > 0 ? "plus" : "null")">

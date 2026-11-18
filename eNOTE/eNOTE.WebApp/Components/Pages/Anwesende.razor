@@ -91,7 +91,7 @@
                     }
                     @if (wartend.TryGetValue(a.KundeId, out var wt))
                     {
-                        <p class="pz-wartend" title="@wt.Zeilen"><Icon Name="pause" Groesse="14" /> Ticket en attente · @wt.Artikel article(s) · @wt.Summe.ToString("N0") F</p>
+                        <p class="pz-wartend" title="@wt.Zeilen"><Icon Name="ticket-pause" Groesse="14" /> Ticket en attente · @wt.Artikel article(s) · @wt.Summe.ToString("N0") F</p>
                     }
                     @if (a.Vergessen)
                     {
