@@ -3043,6 +3043,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("ErstelltAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("EssaiPerioden")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 

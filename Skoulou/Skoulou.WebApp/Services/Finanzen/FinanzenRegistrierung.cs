@@ -20,6 +20,7 @@ public static class FinanzenRegistrierung
         services.AddScoped<BerichtService>();
         services.AddScoped<PlattformAbrechnung>();
         services.AddScoped<RechnungService>();
+        services.AddScoped<EssaiService>();
         services.AddScoped<AnteilService>();
         services.AddScoped<TarifService>();
         services.AddScoped<FamilienFinanzService>();

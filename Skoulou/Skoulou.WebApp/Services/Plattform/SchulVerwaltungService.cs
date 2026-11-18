@@ -11,7 +11,8 @@ namespace Skoulou.WebApp.Services.Plattform;
 /// <summary>Zeile der Schulliste im /admin.</summary>
 public sealed record SchulZeile(
     Guid Id, string Name, string Ort, string Land, SchulStatus Status, string? StatusGrund, DateTime ErstelltAmUtc,
-    Guid? ResponsableId, string? Responsable, int Schueler, int Personal, string? Direktor, string? DirektorEmail, long? PreisOverride);
+    Guid? ResponsableId, string? Responsable, int Schueler, int Personal, string? Direktor, string? DirektorEmail, long? PreisOverride,
+    int EssaiPerioden = 0);
 
 /// <summary>Anzahl Schulen je Status.</summary>
 public sealed record SchulZaehler(int Alle, int EnAttente, int Active, int Suspendue, int Refusee);
@@ -100,7 +101,8 @@ public sealed class SchulVerwaltungService(
                 .Select(d => d.Vorname + " " + d.Nachname).FirstOrDefault(),
             db.Users.Where(d => d.Id == db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).Min(k => (Guid?)k.Id))
                 .Select(d => d.Email).FirstOrDefault(),
-            s.JahrespreisOverride));
+            s.JahrespreisOverride,
+            s.EssaiPerioden));
 
     /// <summary>Schule validieren: Status « Active », wartende Direktionskonten werden aktiv, Mail an die Direktion.</summary>
     public Task ValidierenAsync(Guid akteurId, Guid schuleId, CancellationToken ct = default)

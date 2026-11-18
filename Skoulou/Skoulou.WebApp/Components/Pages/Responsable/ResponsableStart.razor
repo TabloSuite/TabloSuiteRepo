@@ -43,6 +43,10 @@
                                     <StatusBadge Text="@($"{s.SchuelerAValider} inscription(s) à valider par l'école")" Art="warn" />
                                 }
                             </div>
+                            <div class="pl-schule-essai">
+                                <span><Icon Name="sparkles" Groesse="14" /> Essai : @Skoulou.WebApp.Services.Finanzen.EssaiService.Kurz(s.EssaiPerioden)</span>
+                                <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => essaiFuer = s.Id">Modifier</button>
+                            </div>
                             <div class="pl-kontakte">
                                 @if (s.Direktion.Count == 0)
                                 {
@@ -76,8 +80,17 @@
     }
 </RollenStart>
 
+<EssaiDialog SchuleId="essaiFuer" Responsable="true" OnClose="() => essaiFuer = null" OnGespeichert="EssaiGespeichertAsync" />
+
 @code {
     private IReadOnlyList<BetreuteSchule>? schulen;
+    private Guid? essaiFuer;
+
+    private async Task EssaiGespeichertAsync(Skoulou.WebApp.Services.Finanzen.EssaiStand neu)
+    {
+        essaiFuer = null;
+        schulen = await Uebersicht.MeineSchulenAsync(Ich.KontoId);
+    }
 
     protected override async Task InitialisierenAsync() => schulen = await Uebersicht.MeineSchulenAsync(Ich.KontoId);
 }

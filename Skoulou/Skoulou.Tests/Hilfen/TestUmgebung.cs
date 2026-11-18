@@ -78,7 +78,7 @@ internal sealed class TestUmgebung : IAsyncDisposable
     public async Task<Schule> SchuleAsync(string name = "Collège Test", SchulStatus status = SchulStatus.Active, Guid? responsable = null)
     {
         await using var db = await Db.CreateDbContextAsync();
-        var schule = new Schule { Name = name, NameNormalisiert = name.ToLowerInvariant(), Ort = "Lomé", Status = status, ResponsableId = responsable };
+        var schule = new Schule { Name = name, NameNormalisiert = name.ToLowerInvariant(), Ort = "Lomé", Status = status, ResponsableId = responsable, EssaiPerioden = 0 };
         db.Schulen.Add(schule);
         await db.SaveChangesAsync();
         return schule;

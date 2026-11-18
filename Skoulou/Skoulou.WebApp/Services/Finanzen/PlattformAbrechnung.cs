@@ -37,6 +37,12 @@ public sealed class PlattformAbrechnung(
             if (jahr.Status == SchuljahrStatus.Vorbereitung) throw new FachFehler("L'année scolaire n'a pas encore démarré : le prix n'est pas encore figé.");
             if (p.Beginn > Heute) throw new FachFehler("Cette période n'a pas encore commencé : elle ne peut pas encore être facturée.");
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == p.SchuleId, ct);
+            // Probezeit (18.11.2026): diese Perioden stellt SKOULOU nicht in Rechnung – auch nicht über « Facturer maintenant ».
+            if ((await EssaiService.ProbePeriodenAsync(db, schule, ct)).Contains(p.Id))
+            {
+                if (manuell) throw new FachFehler("Cette période fait partie de la période d'essai de l'établissement : elle n'est pas facturée.");
+                return null;
+            }
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 
             var (anteil, _, _) = await AnteilAsync(db, jahr, p, schule, einstellung, ct);

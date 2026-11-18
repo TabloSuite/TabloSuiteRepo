@@ -19,6 +19,7 @@ public static class PlattformAudit
     public const string SchuleRegistriert = "schule.registriert";
     public const string MediumGeloescht = "medium.geloescht";
     public const string NachrichtZugeordnet = "nachricht.zugeordnet";
+    public const string EssaiGeaendert = "schule.essai";
 }
 
 /// <summary>Rechteprüfung des Bereichs: Administration (SuperAdmin) bzw. Betreuung (SuperAdmin + Responsable).</summary>

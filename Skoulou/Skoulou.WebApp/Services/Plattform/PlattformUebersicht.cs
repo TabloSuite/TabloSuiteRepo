@@ -15,7 +15,7 @@ public sealed record PlattformZahlen(
 /// <summary>Eine Schule des Responsable (« Mes écoles »): Status, Schüler, Direktion (Name, E-Mail) und Telefon der Schule.</summary>
 public sealed record BetreuteSchule(
     Guid Id, string Name, string Ort, SchulStatus Status, string? StatusGrund, int Schueler, int Personal, int SchuelerAValider,
-    string? SchulTelefon, string? SchulEmail, IReadOnlyList<DirektionKontakt> Direktion);
+    string? SchulTelefon, string? SchulEmail, IReadOnlyList<DirektionKontakt> Direktion, int EssaiPerioden = 0);
 
 /// <summary>Kontakt der Direktion (keine private Telefonnummer).</summary>
 public sealed record DirektionKontakt(string Name, string Rolle, string? Email);
@@ -57,7 +57,7 @@ public sealed class PlattformUebersicht(IDbContextFactory<SkoulouDbContext> dbFa
         var schulen = await db.Schulen.AsNoTracking().Where(s => s.ResponsableId == akteur.Id).OrderBy(s => s.Name)
             .Select(s => new
             {
-                s.Id, s.Name, s.Ort, s.Status, s.StatusGrund, s.Telefon, s.Email,
+                s.Id, s.Name, s.Ort, s.Status, s.StatusGrund, s.Telefon, s.Email, s.EssaiPerioden,
                 Schueler = db.Users.Count(k => k.SchuleId == s.Id && k.Rolle == Rollen.Schueler && k.Status == KontoStatus.Actif),
                 Personal = db.Users.Count(k => k.SchuleId == s.Id && (k.Rolle == Rollen.Lehrer || k.Rolle == Rollen.Direktor || k.Rolle == Rollen.Koordinator)
                                               && k.Status == KontoStatus.Actif),
@@ -71,6 +71,6 @@ public sealed class PlattformUebersicht(IDbContextFactory<SkoulouDbContext> dbFa
                 .Select(k => new { k.SchuleId, Name = k.Vorname + " " + k.Nachname, k.Rolle, k.Email }).ToListAsync(ct))
             .ToLookup(k => k.SchuleId!.Value);
         return schulen.Select(s => new BetreuteSchule(s.Id, s.Name, s.Ort, s.Status, s.StatusGrund, s.Schueler, s.Personal, s.AValider, s.Telefon, s.Email,
-            direktion[s.Id].Select(d => new DirektionKontakt(d.Name, Rollen.Bezeichnung(d.Rolle), d.Email)).ToList())).ToList();
+            direktion[s.Id].Select(d => new DirektionKontakt(d.Name, Rollen.Bezeichnung(d.Rolle), d.Email)).ToList(), s.EssaiPerioden)).ToList();
     }
 }

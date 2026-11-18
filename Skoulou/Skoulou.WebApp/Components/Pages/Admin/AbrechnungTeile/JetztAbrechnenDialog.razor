@@ -19,8 +19,8 @@
                     {
                         <li>
                             <span><strong>@p.Titel @p.Schuljahr</strong> <small class="sk-leise">@Geld.Datum(p.Beginn) – @Geld.Datum(p.Ende)@(p.Beendet ? " · terminée" : p.Begonnen(Heute) ? " · en cours" : " · à venir")</small><br />
-                                <small>@(p.Abrechenbar == 0 ? "Tous les élèves sont déjà facturés." : $"{p.Abrechenbar} élève(s) à facturer × {Geld.F(p.ProSchueler)} = {Geld.F(p.Abrechenbar * p.ProSchueler)}")</small></span>
-                            <AsyncKnopf Text="Facturer" Icon="receipt" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(p.Abrechenbar == 0 || !p.Begonnen(Heute))" OnClick="() => AbrechnenAsync(p)" />
+                                <small>@(p.Essai ? "Période d'essai : pas de facture SKOULOU." : p.Abrechenbar == 0 ? "Tous les élèves sont déjà facturés." : $"{p.Abrechenbar} élève(s) à facturer × {Geld.F(p.ProSchueler)} = {Geld.F(p.Abrechenbar * p.ProSchueler)}")</small></span>
+                            <AsyncKnopf Text="Facturer" Icon="receipt" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(p.Essai || p.Abrechenbar == 0 || !p.Begonnen(Heute))" OnClick="() => AbrechnenAsync(p)" />
                         </li>
                     }
                 </ul>

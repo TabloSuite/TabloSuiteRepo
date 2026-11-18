@@ -27,7 +27,7 @@ public static class AgbTexte
     public static readonly AgbAbschnitt Responsable = new("responsable", "Responsables SKOULOU",
     [
         "En tant que responsable SKOULOU, vous accompagnez uniquement les établissements qui vous sont attribués. Votre rôle porte sur l'accompagnement et le suivi de la facturation ; il ne vous donne pas accès aux contenus pédagogiques ni aux données des élèves.",
-        "Votre rémunération est un pourcentage des factures SKOULOU de vos établissements dont le paiement a été confirmé. Le pourcentage et le montant sont figés au moment de la confirmation ; si une facture confirmée est annulée, une part négative de compensation est enregistrée. Les versements sont marqués par l'administrateur avec leur date et leur référence.",
+        "Votre rémunération est un pourcentage des factures SKOULOU de vos établissements dont le paiement a été confirmé. Le pourcentage et le montant sont figés au moment de la confirmation ; si une facture confirmée est annulée, une part négative de compensation est enregistrée. Les versements sont marqués par l'administrateur avec leur date et leur référence. Les périodes d'essai ne sont pas facturées et ne donnent donc pas de part.",
     ],
     [
         "Accès limité aux établissements attribués.",
@@ -38,7 +38,7 @@ public static class AgbTexte
     public static readonly AgbAbschnitt Direction = new("direction", "Direction et coordination",
     [
         "Vous administrez votre établissement et êtes responsable des comptes des enseignants, des élèves et des parents, de l'organisation de l'année scolaire, des notes, des bulletins et, selon vos droits, des finances.",
-        "SKOULOU facture l'établissement par période, selon le nombre d'élèves inscrits et le tarif annuel en vigueur au début de l'année scolaire. Une facture impayée ne bloque pas automatiquement l'accès ; après relance, l'administrateur peut suspendre l'établissement.",
+        "SKOULOU facture l'établissement par période, selon le nombre d'élèves inscrits et le tarif annuel en vigueur au début de l'année scolaire. Un nouvel établissement peut bénéficier d'une période d'essai : les premières périodes de sa première année scolaire (une par défaut, quatre au plus) ne sont pas facturées. Une facture impayée ne bloque pas automatiquement l'accès ; après relance, l'administrateur peut suspendre l'établissement.",
         "Contactez SKOULOU pour une difficulté technique ou une suggestion. Les demandes des élèves et des parents sont d'abord traitées par l'établissement.",
     ],
     [

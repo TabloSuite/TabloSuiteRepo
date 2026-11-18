@@ -158,8 +158,8 @@ internal sealed class OrgWelt
         Admin = Konto(db, Rollen.SuperAdmin, "admin", null);
         await db.SaveChangesAsync();
 
-        var a = new Schule { Name = SchulNameA, NameNormalisiert = TextNormalisierung.Schluessel(SchulNameA), Ort = "Lomé", Status = SchulStatus.Active, ResponsableId = Responsable, MatrikelPraefix = "CA" };
-        var b = new Schule { Name = "Collège Beta " + Kennung, NameNormalisiert = TextNormalisierung.Schluessel("Collège Beta " + Kennung), Ort = "Kara", Status = SchulStatus.Active };
+        var a = new Schule { Name = SchulNameA, NameNormalisiert = TextNormalisierung.Schluessel(SchulNameA), Ort = "Lomé", Status = SchulStatus.Active, ResponsableId = Responsable, MatrikelPraefix = "CA", EssaiPerioden = 0 };
+        var b = new Schule { Name = "Collège Beta " + Kennung, NameNormalisiert = TextNormalisierung.Schluessel("Collège Beta " + Kennung), Ort = "Kara", Status = SchulStatus.Active, EssaiPerioden = 0 };
         db.Schulen.AddRange(a, b);
         await db.SaveChangesAsync();
         SchuleA = a.Id;

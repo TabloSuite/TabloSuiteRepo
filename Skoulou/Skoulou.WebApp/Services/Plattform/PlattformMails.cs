@@ -63,6 +63,13 @@ public sealed class PlattformMails(MailAusgangService mails, IOptions<AppOptione
             + MailLayout.Knopf(Anmeldung, "Se connecter à SKOULOU"), "responsable-cree", ct);
 
     /// <summary>Freie Nachricht der Messagerie (Text bereits als sicheres HTML).</summary>
+    /// <summary>18.11.2026: Ein Responsable hat die Probezeit einer seiner Schulen geändert (Meldung an jeden Admin).</summary>
+    public Task EssaiGeaendertAnAdminAsync(string an, string schule, string responsable, string vorher, string nachher, CancellationToken ct = default)
+        => SendeAsync(an, $"Période d'essai modifiée : {schule}", MailLayout.Absatz("Bonjour,")
+            + MailLayout.Absatz($"{Fett(responsable)} a modifié la période d'essai de « {schule} » : {vorher} → {Fett(nachher)}.")
+            + MailLayout.Absatz("Vous pouvez la corriger tant que l'établissement n'a pas encore de facture SKOULOU.")
+            + MailLayout.Knopf(app.Value.Url("/admin/ecoles"), "Voir les écoles"), "admin-essai", ct);
+
     public Task<Guid?> NachrichtAsync(string an, string betreff, string textHtml, CancellationToken ct = default)
         => mails.EinreihenAsync(an, betreff, $"<div style=\"margin:0 0 14px;\">{textHtml}</div>", "messagerie", ct: ct);
 

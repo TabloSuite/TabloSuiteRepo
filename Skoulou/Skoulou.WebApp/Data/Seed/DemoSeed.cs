@@ -56,7 +56,8 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
             Slogan = "Apprendre, grandir, réussir", Adresse = "Quartier Démo, Lomé", Telefon = "+228 00 00 00 00",
             Email = "contact@" + Domain, RepublikZeile = "RÉPUBLIQUE TOGOLAISE", StaatsMotto = "Travail – Liberté – Patrie",
             Ministerium = "Ministère des Enseignements Primaire et Secondaire", DirectionRegionale = "Direction régionale de l'éducation Golfe-Lomé",
-            Statut = "Privé laïc"
+            Statut = "Privé laïc",
+            EssaiPerioden = 0   // Demo-Schule hat schon Rechnungen (2025-2026) – keine Probezeit
         };
         db.Schulen.Add(schule);
         await db.SaveChangesAsync(ct);

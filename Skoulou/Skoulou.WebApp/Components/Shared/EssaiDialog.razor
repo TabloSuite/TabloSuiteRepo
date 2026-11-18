@@ -1,0 +1,90 @@
+@* Probezeit einer Schule (18.11.2026): die ersten Abrechnungsperioden des ersten Schuljahres ohne SKOULOU-Rechnung.
+   Für den Administrateur (alle Schulen) und den Responsable (seine Schulen); änderbar, solange es keine Rechnung gibt. *@
+@using Skoulou.WebApp.Services.Finanzen
+@using Skoulou.WebApp.Services.Infrastruktur
+@inject EssaiService Essai
+
+<ModalDialog Open="SchuleId is not null" Title="Période d'essai" Oberzeile="@stand?.Schule" Breite="sk-modal-sm" ErrorMessage="@fehler" OnClose="OnClose">
+    <ChildContent>
+        <p class="sk-leise">Pendant l'essai, SKOULOU ne facture pas les premières périodes de la première année scolaire de l'établissement (au plus 4, ou toute l'année). Elle se règle tant qu'aucune facture SKOULOU n'existe.</p>
+        @if (stand is null)
+        {
+            <LadeIndikator />
+        }
+        else
+        {
+            @if (!stand.Aenderbar)
+            {
+                <Hinweis Art="info">L'établissement a déjà une facture SKOULOU : la période d'essai ne peut plus être modifiée.</Hinweis>
+            }
+            <AuswahlFeld T="int" Label="Périodes offertes" @bind-Wert="gewaehlt" Optionen="optionen" Deaktiviert="@(!stand.Aenderbar)"
+                         Hinweis="@(stand.Min > 0 ? $"{EssaiService.Kurz(stand.Min)} d'essai déjà passée(s) : on ne peut pas descendre en dessous." : null)" />
+            <div class="es-vorschau" role="status">
+                <Icon Name="@(gewaehlt > 0 ? "sparkles" : "receipt")" Groesse="18" />
+                <span>@EssaiService.Text(gewaehlt, stand.Kandidaten.Take(gewaehlt).ToList())</span>
+            </div>
+            @if (Responsable && stand.Aenderbar)
+            {
+                <Hinweis Art="info">L'administrateur est prévenu de chaque changement.</Hinweis>
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">@(stand?.Aenderbar == false ? "Fermer" : "Annuler")</button>
+        @if (stand?.Aenderbar == true)
+        {
+            <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        }
+    </Footer>
+</ModalDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+    /// <summary>Offen, solange gesetzt.</summary>
+    [Parameter] public Guid? SchuleId { get; set; }
+    /// <summary>Hinweis « L'administrateur est prévenu » zeigen.</summary>
+    [Parameter] public bool Responsable { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<EssaiStand> OnGespeichert { get; set; }
+
+    private EssaiStand? stand;
+    private int gewaehlt;
+    private string? fehler;
+    private Guid? letzte;
+    private IReadOnlyList<AuswahlOption<int>> optionen = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SchuleId == letzte) return;
+        letzte = SchuleId;
+        (stand, fehler) = (null, null);
+        if (SchuleId is not { } id || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            stand = await Essai.StandAsync(ich, id);
+            gewaehlt = stand.Perioden;
+            optionen = Enumerable.Range(stand.Min, Math.Max(stand.Perioden, stand.Max) - stand.Min + 1)
+                .Select(n => new AuswahlOption<int>(n, n == 0 ? "Aucune (facturation dès la première période)" : EssaiService.Kurz(n),
+                    n > 0 && n <= stand.Kandidaten.Count ? string.Join(", ", stand.Kandidaten.Take(n).Select(p => p.Titel)) : null))
+                .ToList();
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+
+    private async Task SpeichernAsync()
+    {
+        if (SchuleId is not { } id || AuthZustand is null || (await AuthZustand).User.KontoId() is not { } ich) return;
+        try
+        {
+            var neu = await Essai.SetzenAsync(ich, id, gewaehlt);
+            await OnGespeichert.InvokeAsync(neu);
+        }
+        catch (Exception ex) when (ex is Skoulou.Core.Fehler.FachFehler or Skoulou.Core.Fehler.KeinZugriffFehler)
+        {
+            fehler = ex.Message;
+        }
+    }
+}

@@ -7,6 +7,23 @@
 <SeitenKopf Titel="Facturation SKOULOU" Icon="receipt"
             Untertitel="Après chaque période, SKOULOU facture chaque élève inscrit une seule fois (part du prix annuel figé). Virez le montant, puis déclarez le paiement ici." />
 
+@if (essai is { Perioden: > 0 } e)
+{
+    @* 18.11.2026: Probezeit der Schule (erste Perioden des ersten Schuljahres ohne SKOULOU-Rechnung) *@
+    <Hinweis Art="erfolg">@e.Text</Hinweis>
+}
+
 <Hinweis Art="info">Une facture impayée ne bloque rien. En cas d'erreur (élève parti, doublon), contestez la facture : l'administrateur vous répond ici.</Hinweis>
 
 <RechnungListe Modus="schule" DarfHandeln="Kontext.HatRecht(KoordinatorRechte.RechnungSkoulou)" />
+
+@code {
+    [Inject] private Skoulou.WebApp.Services.Finanzen.EssaiService Essai { get; set; } = default!;
+    private Skoulou.WebApp.Services.Finanzen.EssaiStand? essai;
+
+    protected override async Task InitialisierenAsync()
+    {
+        try { essai = await Essai.EigeneSchuleAsync(Ich.KontoId); }
+        catch (Skoulou.Core.Fehler.KeinZugriffFehler) { essai = null; }
+    }
+}

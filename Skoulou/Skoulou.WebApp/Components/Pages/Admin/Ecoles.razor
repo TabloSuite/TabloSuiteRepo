@@ -48,6 +48,10 @@ else if (zaehler is not null)
                     {
                         <a href="/admin/tarifs" title="Tarif spécifique (voir Tarifs)"><Icon Name="tag" Groesse="14" /> @SkoulouKultur.Fcfa(preis)</a>
                     }
+                    @if (s.EssaiPerioden > 0)
+                    {
+                        <span title="Période d'essai : périodes sans facture SKOULOU"><Icon Name="sparkles" Groesse="14" /> Essai : @Skoulou.WebApp.Services.Finanzen.EssaiService.Kurz(s.EssaiPerioden)</span>
+                    }
                 </div>
                 <div class="pl-zeile-aktionen">
                     @switch (s.Status)
@@ -67,6 +71,7 @@ else if (zaehler is not null)
                             break;
                     }
                     <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => responsableFuer = s"><Icon Name="briefcase" Groesse="16" /> <span>Responsable</span></button>
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => essaiFuer = s.Id"><Icon Name="sparkles" Groesse="16" /> <span>Essai</span></button>
                 </div>
             </div>
         </Zeile>
@@ -75,6 +80,7 @@ else if (zaehler is not null)
 
 <SchulAktionDialog Anfrage="anfrage" OnClose="() => anfrage = null" OnErledigt="ErledigtAsync" />
 <ResponsableDialog Schule="responsableFuer" OnClose="() => responsableFuer = null" OnGespeichert="ResponsableGespeichertAsync" />
+<EssaiDialog SchuleId="essaiFuer" OnClose="() => essaiFuer = null" OnGespeichert="EssaiGespeichertAsync" />
 
 @code {
     [SupplyParameterFromQuery(Name = "filtre")] public string? Filtre { get; set; }
@@ -101,6 +107,15 @@ else if (zaehler is not null)
         anfrage = null;
         Toast.ZeigeErfolg(meldung);
         await AusfuehrenAsync(async () => zaehler = await Schulen.ZaehlerAsync(Ich.KontoId));
+        if (liste is not null) await liste.NeuLadenAsync();
+    }
+
+    private Guid? essaiFuer;
+
+    private async Task EssaiGespeichertAsync(Skoulou.WebApp.Services.Finanzen.EssaiStand neu)
+    {
+        essaiFuer = null;
+        Toast.ZeigeErfolg($"Période d'essai : {Skoulou.WebApp.Services.Finanzen.EssaiService.Kurz(neu.Perioden)}.");
         if (liste is not null) await liste.NeuLadenAsync();
     }
 

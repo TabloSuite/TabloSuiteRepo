@@ -24,7 +24,8 @@ public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadO
     IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer, bool SchuelerVerborgen = false);
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
-public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler)
+public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler,
+    bool Essai = false)
 {
     public bool Begonnen(DateOnly heute) => Beginn <= heute;
 }
@@ -332,13 +333,14 @@ public sealed class RechnungService(
         var jahre = await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schuleId && j.Status != SchuljahrStatus.Vorbereitung)
             .OrderByDescending(j => j.Beginn).Take(2).ToListAsync(ct);
         var heute = Heute;
+        var probe = await EssaiService.ProbePeriodenAsync(db, schule, ct);
         var liste = new List<AbrechenbarePeriode>();
         foreach (var jahr in jahre)
             foreach (var p in await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr).OrderBy(p => p.Beginn).ToListAsync(ct))
             {
                 var (anteil, _, _) = await PlattformAbrechnung.AnteilAsync(db, jahr, p, schule, einstellung, ct);
                 var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, mitStornierten: false, ct);
-                liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil));
+                liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id)));
             }
         return liste;
     }
