@@ -1,10 +1,11 @@
 @using ENote.WebApp.Services
 @inject AnmeldeSitzungen Sitzungen
 @inject ToastService Toast
+@inject AktiverSalonState AktiverSalon
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider Auth
 
 @* « Appareils connectés » (17.11.2026): Der Besitzer bleibt auf mehreren Geräten angemeldet (z. B. zwei Kassen) und kann
-   jedes Gerät einzeln oder alle anderen auf einmal abmelden. *@
+   jedes Gerät einzeln oder alle anderen auf einmal abmelden. Zeiten in der Ortszeit des aktiven Ladens (Server läuft in UTC). *@
 <section class="enote-card st-karte" aria-labelledby="st-geraete-titel">
     <div class="st-karte-kopf">
         <span class="st-ico"><Icon Name="monitor" /></span>
@@ -31,7 +32,7 @@
                     <span class="st-geraet-ico"><Icon Name="@(g.Beschreibung.Contains("Android") || g.Beschreibung.Contains("iPhone") ? "phone" : "monitor")" Groesse="18" /></span>
                     <div class="st-geraet-text">
                         <strong>@g.Beschreibung @if (g.IstDiesesGeraet) { <span class="enote-tag enote-tag-ok">Cet appareil</span> }</strong>
-                        <small class="enote-muted">Connecté le @g.ErstelltUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · dernière activité @Relativ(g.ZuletztUtc)</small>
+                        <small class="enote-muted">Connecté le @g.ErstelltUtc.ImLaden(AktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm") · dernière activité @Relativ(g.ZuletztUtc)</small>
                     </div>
                     @if (!g.IstDiesesGeraet)
                     {
@@ -83,12 +84,12 @@
         await LadeAsync();
     }
 
-    private static string Relativ(DateTime utc)
+    private string Relativ(DateTime utc)
     {
         var d = DateTime.UtcNow - utc;
         if (d < TimeSpan.FromMinutes(10)) return "à l'instant";
         if (d < TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
         if (d < TimeSpan.FromDays(1)) return $"il y a {(int)d.TotalHours} h";
-        return "le " + utc.ToLocalTime().ToString("dd.MM.yyyy");
+        return "le " + utc.ImLaden(AktiverSalon.Zeitzone).ToString("dd.MM.yyyy");
     }
 }
