@@ -7,6 +7,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nachts
 
+**>>> NEUESTES (18.11. früh) – Punkte 5–8 des Nutzers:**
+- SKOULOU Bulletin-Prüfseite (QR) zeigt jetzt Nummer, « Délivré le » und beim Rectificatif die ersetzte Nummer (5ba2192);
+  Video « Publier les bulletins » mit neuer QR-Szene (4:52, 44368fe). Bilder: `Pictures\SKOULOU-Pruefseite\`.
+- eNOTE « Piloter la formation » (3:58) und « Tarifs et facturation » (4:38, neuer Schritt 6 « Les commissions des responsables »:
+  Provision entsteht beim Bestätigen der Zahlung, « Marquer comme versées ») – a81a06c. Lokale ENOTEDB danach wieder im Ausgangszustand
+  (Formation- und Provisionstabellen 0). Notizen: ENote `lernen-v3/README.md` Abschnitt 18.11.
+- **Neues Werbevideo « Pourquoi SKOULOU ? » (Entwurf, NICHT eingebaut)**: `Skoulou Videos/projekte/lernen-v3/pourquoi-v4/renders/
+  skoulou-pourquoi-v4.mp4` (~3:07): Sorgen am Trimesterende → Versprechen → 5 Beweise in der App (Noten, Bulletin + PDF + QR am Handy,
+  Eltern am Handy, Kasse mit Reçu, Accueil/Finances) → abgehakte Liste → « skoulou.tablosuite.com ». Standbilder
+  `Pictures\SKOULOU-Pourquoi-v4\`. **Wartet auf Freigabe des Nutzers**; danach als skoulou-pourquoi.mp4 + skoulou-presentation.mp4
+  einbauen (einbau.py, VideoKatalog-Dauer, Startseite « En moins de … minutes »).
+- Nutzer muss SKOULOU und eNOTE deployen (keine Migration).
+
 **>>> NEUESTES (17./18.11. nachts) – SKOULOU-Videos Runde 3 (Nutzer: « alle bitte … ausführliche Videos über alle Themen »):**
 - Fünf neue Videos über bisher fehlende Abläufe (Pipeline-Notizen `lernen-v3/AUFTRAG.md` §8):
   « S'inscrire et retrouver son accès » 4:10 (Pour tous, f50d891), « Fermer et rouvrir » 3:55 (Direction, f643794),
