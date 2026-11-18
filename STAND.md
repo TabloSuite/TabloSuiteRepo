@@ -19,7 +19,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - **Anzeige bei Google** (9068b3b): Startseiten aller drei Apps mit Suchtitel, Beschreibung, Canonical, Open Graph/Twitter-Karte
   (eigene Vorschaubilder `img/partage.jpg` 1200×630, `Pictures\Google-Anzeige-2026-11-18\`), JSON-LD (WebSite + SoftwareApplication
   mit aktuellem Preis; tablosuite.com Organization + WebSite), robots.txt + sitemap.xml (eNOTE, SKOULOU), Favicons 192 px.
-  **Beim Nutzer (Google-Konto nötig):** Search Console → Domain-Property `tablosuite.com` (TXT-Eintrag bei IONOS) → Sitemaps
+  **Search Console: Domain-Property `tablosuite.com` per TXT bei IONOS bestätigt (18.11., Nutzer).** Noch offen nach dem Deploy: Sitemaps
   `https://tablosuite.com/sitemap.xml`, `https://enote.tablosuite.com/sitemap.xml`, `https://skoulou.tablosuite.com/sitemap.xml` einreichen.
 - SKOULOU-Lernvideos mit den neuen Preis-Hinweisen: in Arbeit (preparer, fermer, passage, facture ganz; langues `l-annee`,
   admin-facturation `ad-tarifs`, acces-inscription `s-ecole`) – danach einbau.py, VideoKatalog-Dauern, commit.
