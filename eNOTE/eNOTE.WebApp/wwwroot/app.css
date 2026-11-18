@@ -234,6 +234,10 @@ h1:focus, h2:focus, h3:focus, h4:focus, [tabindex="-1"]:focus { outline: none; }
 .auth-footer { margin-top: 1.4rem; font-size: .9rem; color: var(--enote-text-muted); text-align: center; }
 .auth-footer a { color: var(--enote-heading-accent); font-weight: 700; text-decoration: none; }
 .auth-footer a:hover { text-decoration: underline; }
+.auth-vergessen { margin: .9rem 0 0; text-align: center; font-size: .9rem; }
+.auth-vergessen a { color: var(--enote-heading-accent); font-weight: 600; text-decoration: none; }
+.auth-vergessen a:hover { text-decoration: underline; }
+.auth-weiter { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; margin-top: .4rem; }
 
 /* Handy: Hero ausblenden, Formular zentrieren */
 @media (max-width: 860px) {

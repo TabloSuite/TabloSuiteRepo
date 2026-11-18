@@ -1,26 +1,73 @@
 @page "/auth/mot-de-passe-oublie"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
 @rendermode InteractiveServer
 @inject ENote.WebApp.Services.KontoWiederherstellung Service
 @inject IHttpContextAccessor HttpZugriff
 
+@* 18.11.2026: im Design der Anmeldeseite (vorher ungestaltet, weil die Seite nirgends verlinkt war). *@
 <PageTitle>Mot de passe oublié</PageTitle>
-<div class="enote-page enote-page-narrow"><section class="enote-card">
-<h1>Mot de passe oublié</h1>
-<p>Indiquez le pseudonyme du compte. Plusieurs comptes peuvent utiliser la même adresse e-mail ; chaque lien ne concerne qu'un seul compte.</p>
-@if (message is not null) { <p role="status">@message</p> }
-<div class="enote-form"><label>Pseudonyme</label><input @bind="pseudonym" autocomplete="username" maxlength="256" /></div>
-<AsyncActionButton Text="Envoyer le lien" OnClick="EnvoyerAsync" CssClass="enote-btn-primary" />
-<a class="enote-btn enote-btn-ghost" href="/auth/login">Retour à la connexion</a>
-</section></div>
+
+<div class="auth-page">
+    <div class="auth-hero">
+        <a href="/" class="auth-hero-logo" title="Retour à l'accueil">eN</a>
+        <h1>Retrouvez l'accès à votre compte.</h1>
+        <p>Indiquez votre pseudonyme : un lien pour choisir un nouveau mot de passe part à l'adresse e-mail du compte.</p>
+        <ul class="auth-hero-points">
+            <li><span class="check">✓</span> Un lien pour un seul compte</li>
+            <li><span class="check">✓</span> Regardez aussi les courriers indésirables</li>
+            <li><span class="check">✓</span> Employés : pas de mot de passe, seulement un code PIN</li>
+        </ul>
+    </div>
+
+    <div class="auth-panel">
+        <a href="/auth/login" class="auth-zurueck"><span aria-hidden="true">←</span> Retour à la connexion</a>
+        <div class="auth-card">
+            <h1>Mot de passe oublié</h1>
+            <p class="auth-subtitle">Indiquez le pseudonyme du compte. Plusieurs comptes peuvent utiliser la même adresse e-mail ; chaque lien ne concerne qu'un seul compte.</p>
+            @if (message is not null)
+            {
+                <div class="alert @(erfolg ? "alert-success" : "alert-error")" role="status">@message</div>
+            }
+            <div class="auth-form">
+                <label>
+                    Pseudonyme
+                    <input @bind="pseudonym" autocomplete="username" maxlength="256" />
+                </label>
+                <button type="button" class="btn-primary" disabled="@laeuft" @onclick="EnvoyerAsync">
+                    @if (laeuft)
+                    {
+                        <span class="btn-spinner"></span>
+                        <span>Envoi…</span>
+                    }
+                    else
+                    {
+                        <span>Envoyer le lien</span>
+                    }
+                </button>
+            </div>
+            <p class="auth-footer">Vous vous souvenez ? <a href="/auth/login">Se connecter</a></p>
+        </div>
+    </div>
+</div>
+
 @code {
     private string pseudonym = "";
     private string? message;
+    private bool erfolg, laeuft;
     private string? anschluss;
     protected override void OnInitialized() => anschluss = ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext);
     private async Task EnvoyerAsync()
     {
-        if (string.IsNullOrWhiteSpace(pseudonym)) { message = "Veuillez indiquer le pseudonyme."; return; }
-        try { await Service.AnfordernAsync(pseudonym, anschluss ?? ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext)); message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables."; }
-        catch { message = "La récupération n'est pas disponible pour le moment. Contactez l'administrateur."; }
+        if (string.IsNullOrWhiteSpace(pseudonym)) { erfolg = false; message = "Veuillez indiquer le pseudonyme."; return; }
+        laeuft = true;
+        try
+        {
+            await Service.AnfordernAsync(pseudonym, anschluss ?? ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext));
+            erfolg = true;
+            message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables.";
+        }
+        catch { erfolg = false; message = "La récupération n'est pas disponible pour le moment. Contactez l'administrateur."; }
+        finally { laeuft = false; }
     }
 }

@@ -1,31 +1,83 @@
 @page "/auth/reinitialiser"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
 @rendermode InteractiveServer
 @inject ENote.WebApp.Services.KontoWiederherstellung Service
 
+@* 18.11.2026: im Design der Anmeldeseite (vorher ungestaltet). *@
 <PageTitle>Nouveau mot de passe</PageTitle>
-<div class="enote-page enote-page-narrow"><section class="enote-card">
-<h1>Choisir un nouveau mot de passe</h1>
-<p>Ce lien concerne uniquement le compte pour lequel la récupération a été demandée.</p>
-@if (message is not null) { <p role="status">@message</p> }
-<div class="enote-form"><label>Nouveau mot de passe</label><PasswordInput @bind-Value="passwort" Autocomplete="new-password" />
-<label>Confirmer le mot de passe</label><PasswordInput @bind-Value="confirmation" Autocomplete="new-password" /></div>
-<AsyncActionButton Text="Enregistrer" OnClick="EnregistrerAsync" CssClass="enote-btn-primary" />
-<a class="enote-btn enote-btn-ghost" href="/auth/login">Connexion</a>
-</section></div>
+
+<div class="auth-page">
+    <div class="auth-hero">
+        <a href="/" class="auth-hero-logo" title="Retour à l'accueil">eN</a>
+        <h1>Choisissez un nouveau mot de passe.</h1>
+        <p>Ce lien concerne uniquement le compte pour lequel la récupération a été demandée.</p>
+        <ul class="auth-hero-points">
+            <li><span class="check">✓</span> Au moins 6 caractères</li>
+            <li><span class="check">✓</span> Dont un chiffre et une lettre minuscule</li>
+            <li><span class="check">✓</span> Ensuite : connexion avec votre pseudonyme</li>
+        </ul>
+    </div>
+
+    <div class="auth-panel">
+        <a href="/auth/login" class="auth-zurueck"><span aria-hidden="true">←</span> Retour à la connexion</a>
+        <div class="auth-card">
+            <h1>Nouveau mot de passe</h1>
+            <p class="auth-subtitle">Tapez deux fois le même mot de passe.</p>
+            @if (message is not null)
+            {
+                <div class="alert @(ok ? "alert-success" : "alert-error")" role="status">@message</div>
+            }
+            @if (ok)
+            {
+                <a class="btn-primary auth-weiter" href="/auth/login">Se connecter</a>
+            }
+            else
+            {
+                <div class="auth-form">
+                    <label>
+                        Nouveau mot de passe
+                        <PasswordInput @bind-Value="passwort" Autocomplete="new-password" />
+                        <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
+                    </label>
+                    <label>
+                        Confirmer le mot de passe
+                        <PasswordInput @bind-Value="confirmation" Autocomplete="new-password" />
+                    </label>
+                    <button type="button" class="btn-primary" disabled="@laeuft" @onclick="EnregistrerAsync">
+                        @if (laeuft)
+                        {
+                            <span class="btn-spinner"></span>
+                            <span>Enregistrement…</span>
+                        }
+                        else
+                        {
+                            <span>Enregistrer</span>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
 @code {
     [SupplyParameterFromQuery(Name = "compte")] public Guid Compte { get; set; }
     [SupplyParameterFromQuery(Name = "code")] public string? Code { get; set; }
     private string passwort = "", confirmation = "";
     private string? message;
+    private bool ok, laeuft;
     private async Task EnregistrerAsync()
     {
         if (passwort.Length < 6 || passwort != confirmation) { message = "Les mots de passe doivent correspondre et respecter les règles : au moins 6 caractères, un chiffre et une minuscule."; return; }
+        laeuft = true;
         try
         {
-            var ok = !string.IsNullOrWhiteSpace(Code) && await Service.ReinitialiseAsync(Compte, Code, passwort);
+            ok = !string.IsNullOrWhiteSpace(Code) && await Service.ReinitialiseAsync(Compte, Code, passwort);
             message = ok ? "Mot de passe modifié. Connectez-vous avec votre pseudonyme." : "Lien invalide ou expiré, ou mot de passe non conforme. Demandez un nouveau lien.";
             if (ok) { passwort = confirmation = ""; }
         }
         catch { message = "La réinitialisation a échoué. Veuillez réessayer."; }
+        finally { laeuft = false; }
     }
 }
