@@ -379,7 +379,8 @@ internal sealed partial class Simulation
         if (z.Prozent(3) && soll - startbestand > 20000)
         {
             var betrag = Math.Floor((soll - startbestand) / 2 / 1000) * 1000;
-            var r = await d.Hole<BestandsService>().EntnehmeBargeldAsync(kassierer.Id, sitzung, l.BesitzerPin, betrag, "Dépôt à la banque");
+            // Besitzer-PIN gilt nur am Gerät, an dem der Besitzer angemeldet ist (17.11.2026) → handelnde Person = Besitzer.
+            var r = await d.Hole<BestandsService>().EntnehmeBargeldAsync(l.Besitzer, sitzung, l.BesitzerPin, betrag, "Dépôt à la banque");
             if (r.Erfolg) { soll -= betrag; Zaehle("Retraits (Entnahmen)"); } else Befund($"{l.Name}: Retrait: {r.Fehler}");
         }
         if (z.Prozent(2))
@@ -563,7 +564,7 @@ internal sealed partial class Simulation
         var menge = z.Prozent(50) ? pos.Offen : 1;
         var weg = z.Wahl(wege);
         var insLager = pos.HatLager && z.Prozent(70);
-        var r = await storno.ErstatteAsync(m.Id, sitzung, original.Id, [new StornoService.StornoPositionInput(pos.PositionId, menge)], weg.Schluessel,
+        var r = await storno.ErstatteAsync(vorlage.BrauchtPin ? l.Besitzer : m.Id, sitzung, original.Id, [new StornoService.StornoPositionInput(pos.PositionId, menge)], weg.Schluessel,
             insLager, z.Wahl(StornoService.GrundVorschlaege), vorlage.BrauchtPin ? l.BesitzerPin : null);
         if (!r.Erfolg)
         {
@@ -662,7 +663,7 @@ internal sealed partial class Simulation
         var produkte = l.Katalog.Where(a => a.Produkt && l.Lager[a.Id] > 5).ToList();
         if (produkte.Count == 0) return;
         var a = z.Wahl(produkte);
-        var r = await d.Hole<BestandsService>().EntnehmeWareAsync(m.Id, sitzung, l.BesitzerPin, a.Id, 1, "Usage personnel");
+        var r = await d.Hole<BestandsService>().EntnehmeWareAsync(l.Besitzer, sitzung, l.BesitzerPin, a.Id, 1, "Usage personnel");
         if (r.Erfolg) { l.Lager[a.Id] -= 1; Zaehle("Entnahmen Ware"); } else Befund($"{l.Name}: Entnahme Ware: {r.Fehler}");
     }
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Finanzen;
 using ENote.Core.DataModels.Kasse;
@@ -175,27 +175,34 @@ internal sealed partial class Simulation
             if (g.Count() > 1) Verletzt($"Festbetrag mehrfach im Monat: {g.First().Laden}.");
         var anforderungen = await d.MitDbAsync(db => db.PoZahlungsanforderungen.AsNoTracking().Select(a => new { a.Id, a.Betrag, Summe = db.PoZahlungseingaenge.Where(e => e.AnforderungId == a.Id).Sum(e => e.Betrag) }).ToListAsync());
         foreach (var a in anforderungen.Where(a => a.Betrag != a.Summe)) Verletzt($"Anforderung {a.Id}: {a.Betrag:N0} ≠ Summe der Positionen {a.Summe:N0}.");
-        var auszahlungen = await d.MitDbAsync(db => db.ProduktOwnerAuszahlungen.AsNoTracking().ToListAsync());
-        foreach (var a in auszahlungen)
+        // Seit 17.11.2026: Provision je bestätigter Zahlung (PoProvisionen) – Betrag, Eindeutigkeit, Festbetrag je Monat, Vollständigkeit.
+        var provisionen = await d.MitDbAsync(db => db.PoProvisionen.AsNoTracking().ToListAsync());
+        var aboStand = await d.MitDbAsync(db => db.NutzungsAbos.AsNoTracking().Select(n => new { n.Id, n.SalonId, n.ZahlungStatus, n.PreisSnapshot, n.ZahlungBestaetigtUtc }).ToListAsync());
+        var aboNachId = aboStand.ToDictionary(n => n.Id);
+        foreach (var pr in provisionen)
         {
-            var von = new DateTime(a.Jahr, a.Monat, 1, 0, 0, 0, DateTimeKind.Utc);
-            var erwartet = await d.MitDbAsync(async db =>
-            {
-                var zuweisungen = await db.ProduktOwnerSalons.AsNoTracking().Where(p => p.ProduktOwnerId == a.ProduktOwnerId && p.CreatedAtUtc < von.AddMonths(1)
-                    && (p.GueltigBisUtc == null || p.GueltigBisUtc >= von)).ToListAsync();
-                decimal summe = 0;
-                foreach (var z in zuweisungen)
-                {
-                    var einnahmen = await db.NutzungsAbos.Where(n => n.SalonId == z.SalonId && n.ZahlungStatus == AboZahlungStatus.Bestaetigt
-                        && n.ZahlungBestaetigtUtc >= von && n.ZahlungBestaetigtUtc < von.AddMonths(1) && !db.PoZahlungseingaenge.Any(e => e.NutzungsAboId == n.Id))
-                        .SumAsync(n => (decimal?)n.PreisSnapshot) ?? 0;
-                    if (einnahmen > 0) summe += Math.Round(einnahmen * (z.ProzentProvision ?? 0) / 100 + (z.FestbetragProvision ?? 0), 2);
-                }
-                return summe;
-            });
-            if (a.Betrag != erwartet) Verletzt($"Auszahlung {a.Monat:00}/{a.Jahr}: {a.Betrag:N2} F ≠ {erwartet:N2} F aus bestätigten Zahlungen.");
+            if (!aboNachId.TryGetValue(pr.NutzungsAboId, out var abo) || abo.ZahlungStatus != AboZahlungStatus.Bestaetigt) Verletzt($"Provision {pr.Laden}: Zahlung nicht bestätigt.");
+            else if (pr.AboBetrag != abo.PreisSnapshot) Verletzt($"Provision {pr.Laden}: Abo-Betrag {pr.AboBetrag:N0} ≠ Rechnung {abo.PreisSnapshot:N0}.");
+            var soll = Math.Round(pr.AboBetrag * pr.ProzentProvision / 100m + pr.FestProvision, 0, MidpointRounding.AwayFromZero);
+            if (pr.Betrag != soll) Verletzt($"Provision {pr.Laden}: {pr.Betrag:N0} F ≠ {soll:N0} F ({pr.ProzentProvision} % + {pr.FestProvision}).");
+            if (pr.ErhaltenUtc is not null && pr.VerseeUtc is null) Verletzt($"Provision {pr.Laden}: « reçue » ohne « versée ».");
         }
-        Invariante($"Provisionen ({eingaenge.Count} Eingänge, {anforderungen.Count} Anforderungen, {auszahlungen.Count} Auszahlungen) nur aus bestätigten Zahlungen", v);
+        foreach (var g in provisionen.GroupBy(p => (p.ProduktOwnerId, p.NutzungsAboId)).Where(g => g.Count() > 1))
+            Verletzt($"Provision doppelt: {g.First().Laden} ({g.Count()}×).");
+        foreach (var g in provisionen.Where(p => p.FestProvision > 0).GroupBy(p => (p.ProduktOwnerId, p.SalonId, p.ZahlungBestaetigtUtc.Year, p.ZahlungBestaetigtUtc.Month)).Where(g => g.Count() > 1))
+            Verletzt($"Festbetrag mehrfach im Monat: {g.First().Laden}.");
+        var zuordnungenAlle = await d.MitDbAsync(db => db.ProduktOwnerSalons.AsNoTracking().ToListAsync());
+        var mitProvision = provisionen.Select(p => (p.ProduktOwnerId, p.NutzungsAboId)).ToHashSet();
+        var ohne = 0;
+        foreach (var abo in aboStand.Where(n => n.ZahlungStatus == AboZahlungStatus.Bestaetigt && n.ZahlungBestaetigtUtc is not null && n.PreisSnapshot > 0))
+        {
+            var t = abo.ZahlungBestaetigtUtc!.Value;
+            foreach (var z in zuordnungenAlle.Where(z => z.SalonId == abo.SalonId && z.CreatedAtUtc <= t && (z.GueltigBisUtc == null || z.GueltigBisUtc > t)
+                && ((z.ProzentProvision ?? 0) > 0 || (z.FestbetragProvision ?? 0) > 0)))
+                if (!mitProvision.Contains((z.ProduktOwnerId, abo.Id))) ohne++;
+        }
+        if (ohne > 0) Verletzt($"{ohne} bestätigte Zahlung(en) betreuter Läden ohne Provision.");
+        Invariante($"Provisionen ({provisionen.Count} automatisch je Zahlung, {provisionen.Count(p => p.VerseeUtc != null)} versées, {provisionen.Count(p => p.ErhaltenUtc != null)} reçues): Betrag, eindeutig, Festbetrag je Monat, vollständig", v);
 
         // 10) Kündigung/Löschung: keine Kasse nach dem Stichtag; gelöschter Laden ohne Personendaten.
         v = Verletzungen.Count;

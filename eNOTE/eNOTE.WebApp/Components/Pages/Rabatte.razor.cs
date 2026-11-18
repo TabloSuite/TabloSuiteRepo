@@ -123,7 +123,8 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
         istNeueRemise = true;
         // Id leer = neu anlegen (der Dienst legt nur mit Guid.Empty an; das Modell vergibt sonst schon eine Id
         // und das Speichern liefe in den Aktualisierungszweig: « Rabatt nicht gefunden »)
-        bearbeitungsRabatt = new Rabatt { Id = Guid.Empty, SalonId = salonId, IstAktiv = false, Art = RabattArt.Prozent };
+        // Neu = sofort « Active » wie neue Prestations (18.11.2026, Klicktest: inaktive Remises fehlten in der Kasse ohne Hinweis).
+        bearbeitungsRabatt = new Rabatt { Id = Guid.Empty, SalonId = salonId, IstAktiv = true, Art = RabattArt.Prozent };
         ausgewaehlteLeistungId = string.Empty;
         hatGueltigkeit = false;
         gueltigVon = null;

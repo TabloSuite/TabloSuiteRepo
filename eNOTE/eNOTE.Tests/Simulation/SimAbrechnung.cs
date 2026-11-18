@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Infrastruktur;
 using ENote.Core.DataModels.Kasse;
 using ENote.WebApp.Services;
@@ -223,15 +223,20 @@ internal sealed partial class Simulation
 
     private async Task ProvisionenAsync(DateOnly tag)
     {
-        // Altes Modell: monatliche Provision aus vom Admin bestätigten Zahlungen.
-        var vormonat = tag.AddMonths(-1);
-        foreach (var po in Responsables)
+        // Seit 17.11.2026: Provision entsteht automatisch je bestätigter Zahlung (PoProvisionen). Am 5. markiert der Admin die
+        // Provisionen des Vormonats als « versées », der Responsable bestätigt den Erhalt (selten « Pas reçue »).
+        var dienst = d.Hole<PoProvisionService>();
+        var stichtag = tag.AddDays(-tag.Day + 1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var offen = await d.MitDbAsync(db => db.PoProvisionen.Where(p => p.VerseeUtc == null && p.ZahlungBestaetigtUtc < stichtag)
+            .Select(p => new { p.Id, p.ProduktOwnerId }).ToListAsync());
+        if (offen.Count > 0)
         {
-            var aus = await SollAsync("Auszahlung berechnen", () => d.Hole<ProduktOwnerService>().BerechneAuszahlungAsync(po, vormonat.Year, vormonat.Month));
-            if (aus is { Betrag: > 0 })
+            await SollAsync("Commissions versées", () => dienst.MarkiereVerseeAsync(Admin, offen.Select(o => o.Id).ToList(), Uhr.Jetzt.Date, $"VIR-{tag:yyyyMM}"));
+            Zaehle("Commissions versées (Admin)");
+            foreach (var g in offen.GroupBy(o => o.ProduktOwnerId))
             {
-                await SollAsync("Auszahlung bestätigen", () => d.Hole<ProduktOwnerService>().BestaetigeAuszahlungAsync(aus.Id));
-                Zaehle("Auszahlungen (Modell Admin-Bestätigung)");
+                await SollAsync("Commission reçue", () => dienst.BestaetigeErhaltAsync(g.Key, g.Select(o => o.Id).ToList()));
+                Zaehle("Commissions reçues (Responsable)");
             }
         }
     }
