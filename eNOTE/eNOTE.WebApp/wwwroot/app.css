@@ -3706,3 +3706,6 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 
 /* Handy: lange Knopftexte umbrechen statt die Seite zu verbreitern (Nutzer 17.11.: Formation am Handy zu breit) */
 @media (max-width: 640px) { .enote-btn, .btn-primary { white-space: normal; text-align: center; } .fo-seite { min-width: 0; overflow-wrap: break-word; } }
+
+/* « Mot de passe oublié »: Hinweis für Mitarbeitende (18.11.2026) */
+.auth-hinweis-employe { margin: 1rem 0 0; padding: .7rem .9rem; border-radius: var(--enote-radius-sm, .6rem); background: var(--enote-surface-2, #f1f5f9); color: var(--enote-text-muted, #475569); font-size: .88rem; line-height: 1.5; }
