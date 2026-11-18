@@ -215,7 +215,7 @@ internal sealed class SimDienste : IAsyncDisposable
         {
             sql.EnableRetryOnFailure(maxRetryCount: 6, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
             sql.CommandTimeout(120);
-        }).AddInterceptors(sp.GetRequiredService<SimZeitInterceptor>()));
+        }).AddInterceptors(sp.GetRequiredService<SimZeitInterceptor>(), new IsolationsRuecksetzer()));
         s.AddTransient(sp => sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
         s.Configure<PasswordHasherOptions>(o => o.IterationCount = 1_000);
         s.AddIdentityCore<AppUser>(o =>

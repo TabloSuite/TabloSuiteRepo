@@ -56,7 +56,9 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     })
     // Kassen-Transaktionen verwerfen bei Fehlern alles und brauchen keine Savepoints; mit MARS (lokal) käme sonst je
     // Verkauf die Warnung « Savepoints are disabled because MARS is enabled » ins Log.
-    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqlServerEventId.SavepointsDisabledBecauseOfMARS)));
+    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqlServerEventId.SavepointsDisabledBecauseOfMARS))
+    // Nach Serializable-Transaktionen Isolationsstufe zurücksetzen, sonst erbt die nächste Abfrage sie aus dem Pool (18.11.2026).
+    .AddInterceptors(new ENote.WebApp.Data.IsolationsRuecksetzer()));
 
 builder.Services.AddTransient<ApplicationDbContext>(provider =>
     provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
