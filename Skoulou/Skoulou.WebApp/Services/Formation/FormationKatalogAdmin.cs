@@ -114,7 +114,7 @@ public static partial class FormationKatalog
             [
                 L("« Tarifs »",
                     "« Prix annuel par élève » (FCFA), « Délai de paiement » (jours) et « Part standard des responsables » (%).",
-                    "« Tarifs par établissement » : un prix ou une part propre à une école ; vide = valeurs standard.",
+                    "« Tarifs par établissement » : un prix ou une part propre à une école, pour adapter le tarif de façon juste (par exemple selon sa taille) ; vide = valeurs standard.",
                     "Un nouveau tarif vaut à partir du prochain démarrage d'année : le prix est figé pour chaque école au démarrage de son année scolaire.",
                     "Chaque changement est inscrit dans l'audit."),
                 L("Les factures",

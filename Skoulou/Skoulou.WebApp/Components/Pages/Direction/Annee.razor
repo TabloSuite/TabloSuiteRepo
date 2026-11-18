@@ -32,7 +32,7 @@ else
 {
     @if (!jahre.Any(j => j.Status == SchuljahrStatus.Laufend))
     {
-        <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève est alors figé pour l'année.</Hinweis>
+        <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève est alors figé pour l'année. Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille).</Hinweis>
     }
     <div class="org-jahre">
         @foreach (var j in jahre)

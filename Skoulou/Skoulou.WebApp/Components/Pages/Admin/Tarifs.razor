@@ -16,7 +16,7 @@
 }
 else if (standard is not null)
 {
-    <Karte Titel="Tarif de la plateforme" Icon="settings" Untertitel="Facturé par période : le prix annuel est réparti sur les périodes de l'année (ex. 3.600 FCFA en 3 trimestres : 1.200 + 1.200 + 1.200).">
+    <Karte Titel="Tarif de la plateforme" Icon="settings" Untertitel="Facturé par période : le prix annuel est réparti sur les périodes de l'année (ex. 3.600 FCFA en 3 trimestres : 1.200 + 1.200 + 1.200). C'est le prix standard : il peut être adapté de façon juste à chaque école dans « Tarifs par établissement ».">
         <div class="sk-formular">
             <div class="fin-tarif-raster">
                 <BetragFeld Label="Prix annuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis" Pflicht="true" />
@@ -29,7 +29,7 @@ else if (standard is not null)
         </div>
     </Karte>
 
-    <Abschnitt Titel="Tarifs par établissement" Beschreibung="Un prix ou une part propre à un établissement remplace la valeur standard.">
+    <Abschnitt Titel="Tarifs par établissement" Beschreibung="Un prix ou une part propre à un établissement remplace la valeur standard – pour adapter le tarif de façon juste, par exemple selon la taille de l'école.">
         <Liste T="SchulTarifZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Établissement ou ville…" LeerIcon="school" LeerTitel="Aucun établissement">
             <Zeile Context="s">
                 <div class="fin-zeile">
