@@ -119,8 +119,8 @@
                 <label>Prénom <input @bind="neuVorname" autocomplete="off" /></label>
                 <label>Nom <input @bind="neuNachname" autocomplete="off" /></label>
             </div>
-            <label>Pseudonyme <small class="enote-muted">(identifiant unique)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
-            <label>Adresse e-mail <input type="email" @bind="neuEmail" autocomplete="off" /></label>
+            <label>Pseudonyme <small class="enote-muted">(facultatif – vide : proposé automatiquement, ex. awa.koffi)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
+            <label>Adresse e-mail <small class="enote-muted">(facultatif)</small> <input type="email" @bind="neuEmail" autocomplete="off" /></label>
             <small class="enote-muted eq-hinweis">L'employé n'a pas de mot de passe : il encaisse sur l'appareil de l'établissement, connecté par vous, avec son nom et son code PIN. Une connexion personnelle (depuis son propre appareil) peut être accordée ensuite dans « Droits ».</small>
         </div>
         <div class="eq-pin-feld eq-pin-neu">

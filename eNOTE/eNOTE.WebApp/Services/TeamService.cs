@@ -97,6 +97,32 @@ public class TeamService(
     /// Kontaktadresse und darf mehrfach verwendet werden. Seit 17.11.2026 standardmäßig OHNE Passwort: Der Mitarbeiter kassiert
     /// am Gerät des Besitzers mit Name + PIN. Mit <paramref name="initialPasswort"/> erhält er zugleich « Connexion personnelle ».
     /// </summary>
+    /// <summary>« prenom.nom » ohne Akzente (nur a–z, 0–9, Punkt); belegt → « prenom.nom2 », « prenom.nom3 » …</summary>
+    private async Task<string> FreierPseudonymAsync(string? vorname, string? nachname)
+    {
+        static string Teil(string? t)
+        {
+            var normal = (t ?? string.Empty).Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in normal)
+            {
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+                if (char.IsAsciiLetterOrDigit(c)) sb.Append(c);
+                else if (sb.Length > 0 && sb[^1] != '-') sb.Append('-');
+            }
+            return sb.ToString().Trim('-');
+        }
+        var basis = string.Join('.', new[] { Teil(vorname), Teil(nachname) }.Where(t => t.Length > 0));
+        if (basis.Length == 0) return string.Empty;
+        if (basis.Length > 40) basis = basis[..40];
+        for (var i = 1; i < 1000; i++)
+        {
+            var kandidat = i == 1 ? basis : basis + i;
+            if (await userManager.FindByNameAsync(kandidat) is null) return kandidat;
+        }
+        return basis + "." + Guid.NewGuid().ToString("N")[..6];
+    }
+
     public async Task<(bool Erfolg, string? Fehler, AppUser? Kassierer)> LegeKassiererAnAsync(
         Guid salonId,
         string vorname,
@@ -112,10 +138,16 @@ public class TeamService(
             return (false, "Le code PIN doit contenir 4 à 6 chiffres.", null);
         }
 
-        var bereinigtPseudonym = pseudonym.Trim();
+        var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {
-            return (false, "Veuillez saisir un pseudonyme.", null);
+            // 18.11.2026: Mitarbeitende ohne Passwort brauchen keinen selbst erdachten Pseudonym –
+            // eNOTE schlägt « prenom.nom » vor (bei Kollision mit Zahl), wie SKOULOU.
+            bereinigtPseudonym = await FreierPseudonymAsync(vorname, nachname);
+            if (bereinigtPseudonym.Length == 0)
+            {
+                return (false, "Veuillez saisir le prénom et le nom.", null);
+            }
         }
 
         // Login = Pseudonym (eindeutig); E-Mail ist nur Kontaktadresse und darf mehrfach sein.
@@ -124,7 +156,8 @@ public class TeamService(
             return (false, "Ce pseudonyme est déjà utilisé.", null);
         }
 
-        var bereinigtEmail = email.Trim();
+        // E-Mail freiwillig (viele Angestellte haben keine); leer = null, nicht "".
+        var bereinigtEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         var kassierer = new AppUser
         {
             UserName = bereinigtPseudonym,
@@ -158,7 +191,7 @@ public class TeamService(
         });
         await db.SaveChangesAsync(cancellationToken);
 
-        if (mails is not null)
+        if (mails is not null && bereinigtEmail is not null)
             await mails.KassiererAngelegtAsync(bereinigtEmail, kassierer.Vorname, kassierer.UserName ?? "", salonId, cancellationToken);
 
         return (true, null, kassierer);

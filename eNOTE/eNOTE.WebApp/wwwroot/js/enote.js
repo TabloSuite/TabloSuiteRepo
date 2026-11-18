@@ -70,21 +70,30 @@ window.enoteRegisterUserMenu = function (dotNetRef) {
 
 // Generischer Popup-Closer: registriert ein offenes Element (datepicker/select2).
 // Bei Klick außerhalb wird das .NET-Objekt benachrichtigt.
+// 18.11.2026: Komponenten melden sich beim Entsorgen ab (enoteUnregisterElementCloser); ein Aufruf an eine bereits
+// entsorgte Referenz (z. B. Auswahlliste in einem geschlossenen Fenster) entfernt den Eintrag, statt bei jedem Klick
+// « There was an exception invoking 'SchliesseVonAussen' » in die Konsole zu schreiben.
+function enoteGleicheRef(a, b) { return a === b || (!!a && !!b && a._id !== undefined && a._id === b._id); }
 window.enoteRegisterElementCloser = function (dotNetRef, cssKlasse) {
-    // Pro Instanz ein Handler; wir merken sie in einer Map.
     window.__enoteClosers = window.__enoteClosers || [];
-    window.__enoteClosers.push({ dotNetRef: dotNetRef, cssKlasse: cssKlasse });
+    if (!window.__enoteClosers.some(function (c) { return enoteGleicheRef(c.dotNetRef, dotNetRef); }))
+        window.__enoteClosers.push({ dotNetRef: dotNetRef, cssKlasse: cssKlasse });
 
     if (window.__enoteCloserGlobalHandler) return;
     window.__enoteCloserGlobalHandler = function (e) {
-        (window.__enoteClosers || []).forEach(function (c) {
+        (window.__enoteClosers || []).slice().forEach(function (c) {
             var el = document.querySelector('.enote-' + c.cssKlasse + '.offen');
             if (el && !el.contains(e.target)) {
-                c.dotNetRef.invokeMethodAsync('SchliesseVonAussen');
+                c.dotNetRef.invokeMethodAsync('SchliesseVonAussen').catch(function () {
+                    window.enoteUnregisterElementCloser(c.dotNetRef);
+                });
             }
         });
     };
     document.addEventListener('click', window.__enoteCloserGlobalHandler);
+};
+window.enoteUnregisterElementCloser = function (dotNetRef) {
+    window.__enoteClosers = (window.__enoteClosers || []).filter(function (c) { return !enoteGleicheRef(c.dotNetRef, dotNetRef); });
 };
 
 // Schneidet ein Bild quadratisch zu (Mitte) und skaliert es. Gibt eine JPEG-Data-URL zurück.

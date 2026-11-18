@@ -83,7 +83,7 @@ public partial class Register(AuthService authService, NavigationManager navigat
         [MinLength(6, ErrorMessage = "Au moins 6 caractères.")]
         public string Passwort { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Veuillez indiquer le nom de votre salon.")]
+        [Required(ErrorMessage = "Veuillez indiquer le nom de votre établissement.")]
         public string SalonName { get; set; } = string.Empty;
 
         public string? SalonStandort { get; set; }

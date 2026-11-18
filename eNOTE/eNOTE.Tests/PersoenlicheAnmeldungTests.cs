@@ -167,4 +167,30 @@ public class PersoenlicheAnmeldungTests
         Assert.True(mitglied.KannSichAnmelden);
         Assert.True(mitglied.HatPasswort);
     }
+
+    /// <summary>18.11.2026 (Klicktest): Pseudonyme und E-Mail sind freiwillig – eNOTE schlägt « prenom.nom » vor.</summary>
+    [Fact]
+    public async Task Mitarbeiter_Ohne_Pseudonym_Und_Email_Bekommt_Vorschlag_Prenom_Nom()
+    {
+        var factory = TestDbContextFactory.Create();
+        var (provider, team, users, salon, _) = await BasisAsync(factory);
+        await using var _p = provider;
+
+        var (ok1, fehler1, ama) = await team.LegeKassiererAnAsync(salon, "Ama", "Mensah", "", "", null, "2468");
+        Assert.True(ok1, fehler1);
+        Assert.Equal("ama.mensah", ama!.UserName);
+        Assert.Null(ama.Email);
+
+        var (ok2, fehler2, ama2) = await team.LegeKassiererAnAsync(salon, "Ama", "Mensah", "  ", "  ", null, "1357");
+        Assert.True(ok2, fehler2);
+        Assert.Equal("ama.mensah2", ama2!.UserName);
+
+        var (ok3, fehler3, delali) = await team.LegeKassiererAnAsync(salon, "Délali", "d'Almeida Sossou", "", "", null, "9090");
+        Assert.True(ok3, fehler3);
+        Assert.Equal("delali.d-almeida-sossou", delali!.UserName);
+
+        var (ok4, fehler4, _) = await team.LegeKassiererAnAsync(salon, " ", " ", "", "", null, "9091");
+        Assert.False(ok4);
+        Assert.Contains("prénom", fehler4);
+    }
 }

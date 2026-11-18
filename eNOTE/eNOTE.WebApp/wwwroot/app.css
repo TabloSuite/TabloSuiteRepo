@@ -2100,6 +2100,19 @@ button.enote-laedt { cursor: progress; }
 .pr-kat-aktionen button.gefahr:hover { color: var(--enote-danger); }
 .pr-kat-neu { display: flex; gap: .4rem; align-items: center; margin-top: .5rem; padding-top: .6rem; border-top: 1px solid var(--enote-border); }
 .pr-kat-neu.pr-kat-unter { margin-top: .2rem; padding-top: .2rem; border-top: none; }
+/* Fenster « Catégories » (Handy/Tablet hochkant): Aktionen immer sichtbar, große Tippflächen – 18.11.2026 */
+.pr-kat-verwalten { display: none; color: var(--enote-primary); }
+.pr-verw { display: grid; gap: .25rem; }
+.pr-verw-zeile { display: flex; align-items: center; gap: .55rem; padding: .35rem .2rem; border-bottom: 1px solid var(--enote-border); }
+.pr-verw-zeile.unter { padding-left: 1.6rem; }
+.pr-verw-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pr-verw-zeile.unter .pr-verw-name { font-weight: 500; }
+.pr-verw-aktionen { display: flex; gap: .15rem; flex-shrink: 0; }
+.pr-verw-aktionen button { width: 2.4rem; height: 2.4rem; border: none; border-radius: .5rem; background: var(--enote-surface-2); color: var(--enote-text-muted); display: grid; place-items: center; cursor: pointer; }
+.pr-verw-aktionen button.gefahr { color: var(--enote-danger); }
+.pr-verw-neu { display: flex; gap: .4rem; align-items: center; margin-top: .6rem; }
+.pr-verw-neu.unter { margin: .2rem 0 .4rem 1.6rem; }
+.pr-verw-neu .enote-input { flex: 1; min-width: 0; }
 
 .pr-liste { display: grid; gap: .8rem; min-width: 0; }
 .pr-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: .6rem; }
@@ -2132,7 +2145,8 @@ button.pr-kat-chip:hover { border-color: var(--enote-border-strong); color: var(
 @media (max-width: 900px) {
     .pr-layout { grid-template-columns: minmax(0, 1fr); }
     .pr-kats { position: static; max-height: none; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding: .5rem; }
-    .pr-kats-kopf, .pr-kat-aktionen, .pr-kat-neu, .pr-kat-unter, .pr-kat-auf { display: none !important; }
+    .pr-kats .pr-kats-kopf, .pr-kats .pr-kat-aktionen, .pr-kats .pr-kat-neu, .pr-kats .pr-kat-unter, .pr-kats .pr-kat-auf { display: none !important; }
+    .pr-kats .pr-kat-verwalten { display: inline-flex; }
     .pr-kat { border: 1px solid var(--enote-border); border-radius: 999px; }
 }
 @media (max-width: 640px) {

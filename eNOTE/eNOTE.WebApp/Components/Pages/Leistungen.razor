@@ -35,6 +35,11 @@
                 <button type="button" class="pr-kat @(string.IsNullOrEmpty(kategorieFilter) ? "aktiv" : "")" @onclick='() => kategorieFilter = string.Empty'>
                     <Icon Name="grid" Groesse="16" /><span class="pr-kat-name">Toutes</span><span class="enote-baum-anzahl">@leistungen.Count(l => !l.IstStandardArtikel)</span>
                 </button>
+                @if (darfVerwalten)
+                {
+                    @* Am Handy/Tablet hochkant fehlen Anlegen/Ändern/Löschen in der Leiste (18.11.2026) → eigenes Fenster *@
+                    <button type="button" class="pr-kat pr-kat-verwalten" @onclick="() => kategorienVerwaltenOffen = true"><Icon Name="settings" Groesse="16" /><span class="pr-kat-name">Gérer les catégories</span></button>
+                }
                 @foreach (var knoten in kategorieBaum)
                 {
                     var hatUnter = knoten.Unterkategorien.Count > 0;
@@ -100,6 +105,59 @@
                     </div>
                 }
             </aside>
+
+            <ModalDialog Open="kategorienVerwaltenOffen" Title="Catégories" OnClose="() => kategorienVerwaltenOffen = false" MaxWidthClass="enote-modal-sm">
+                <ChildContent>
+                    <div class="pr-verw">
+                        @if (kategorieBaum.Count == 0)
+                        {
+                            <p class="enote-muted">Aucune catégorie. Créez-en une ci-dessous (ex. Coiffure, Soins, Produits).</p>
+                        }
+                        @foreach (var knoten in kategorieBaum)
+                        {
+                            <div class="pr-verw-zeile">
+                                <span class="kx-kat-punkt" style="background: @KategorieFarbe(knoten.Kategorie.Id)" aria-hidden="true"></span>
+                                <span class="pr-verw-name">@knoten.Kategorie.Name</span>
+                                <span class="pr-verw-aktionen">
+                                    <button type="button" aria-label="Ajouter une sous-catégorie" title="Ajouter une sous-catégorie" @onclick="() => OeffneUnterkategorieDialog(knoten.Kategorie.Id)"><Icon Name="plus" Groesse="16" /></button>
+                                    <button type="button" aria-label="Modifier la catégorie" title="Modifier (nom, couleur)" @onclick="() => OeffneKategorieUmbenennen(knoten.Kategorie)"><Icon Name="edit" Groesse="16" /></button>
+                                    <button type="button" class="gefahr" aria-label="Supprimer" title="Supprimer" @onclick="() => LoescheKategorieFragen(knoten.Kategorie)"><Icon Name="trash" Groesse="16" /></button>
+                                </span>
+                            </div>
+                            @foreach (var unter in knoten.Unterkategorien)
+                            {
+                                <div class="pr-verw-zeile unter">
+                                    <span class="kx-kat-punkt" style="background: @KategorieFarbe(unter.Id)" aria-hidden="true"></span>
+                                    <span class="pr-verw-name">@unter.Name</span>
+                                    <span class="pr-verw-aktionen">
+                                        <button type="button" aria-label="Modifier la sous-catégorie" title="Modifier (nom, couleur)" @onclick="() => OeffneKategorieUmbenennen(unter)"><Icon Name="edit" Groesse="16" /></button>
+                                        <button type="button" class="gefahr" aria-label="Supprimer" title="Supprimer" @onclick="() => LoescheKategorieFragen(unter)"><Icon Name="trash" Groesse="16" /></button>
+                                    </span>
+                                </div>
+                            }
+                            @if (unterkategorieParentId == knoten.Kategorie.Id)
+                            {
+                                <div class="pr-verw-neu unter">
+                                    <input @bind="neueUnterkategorieName" placeholder="Nom de la sous-catégorie…" class="enote-input" />
+                                    <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+                                    <button type="button" class="enote-icon-btn" aria-label="Annuler" @onclick="SchliesseUnterkategorieDialog"><Icon Name="x" Groesse="16" /></button>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(unterkategorieFehler))
+                                {
+                                    <div class="alert alert-error">@unterkategorieFehler</div>
+                                }
+                            }
+                        }
+                        <div class="pr-verw-neu">
+                            <input @bind="neueKategorieName" placeholder="Nouvelle catégorie…" class="enote-input" />
+                            <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" />
+                        </div>
+                    </div>
+                </ChildContent>
+                <Footer>
+                    <button class="enote-btn enote-btn-ghost" @onclick="() => kategorienVerwaltenOffen = false">Fermer</button>
+                </Footer>
+            </ModalDialog>
 
             @* RECHTS: Artikel *@
             <section class="pr-liste">

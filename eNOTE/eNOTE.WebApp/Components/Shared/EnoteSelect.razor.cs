@@ -87,9 +87,16 @@ public partial class EnoteSelect<TValue> : IAsyncDisposable
         await ValueChanged.InvokeAsync(wert);
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
+        // Abmelden aus der globalen Klick-Liste (enote.js), sonst ruft sie die entsorgte Referenz weiter auf (18.11.2026).
+        if (selfRef is not null && closerRegistriert)
+        {
+            try { await Js.InvokeVoidAsync("enoteUnregisterElementCloser", selfRef); }
+            catch (JSDisconnectedException) { }
+            catch (InvalidOperationException) { }
+            catch (TaskCanceledException) { }
+        }
         selfRef?.Dispose();
-        return ValueTask.CompletedTask;
     }
 }

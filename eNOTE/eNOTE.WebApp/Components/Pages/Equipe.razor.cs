@@ -124,10 +124,10 @@ public partial class Equipe(
 
     private async Task LegeKassiererAnAsync()
     {
-        if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
-            || string.IsNullOrWhiteSpace(neuPseudonym) || string.IsNullOrWhiteSpace(neuEmail))
+        // Pseudonyme und E-Mail sind freiwillig (18.11.2026): leer → eNOTE schlägt « prenom.nom » vor.
+        if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname))
         {
-            dialogFehler = "Veuillez remplir tous les champs.";
+            dialogFehler = "Veuillez saisir le prénom et le nom.";
             return;
         }
 

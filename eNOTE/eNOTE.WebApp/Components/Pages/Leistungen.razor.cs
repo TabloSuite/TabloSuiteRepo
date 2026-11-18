@@ -105,6 +105,7 @@ public partial class Leistungen(
 
     private Guid? aufgeklappteKategorieId;
     private Guid? unterkategorieParentId; // für das Anlegen einer Unterkategorie
+    private bool kategorienVerwaltenOffen; // Fenster « Catégories » (Handy/Tablet hochkant, 18.11.2026)
     private string neueUnterkategorieName = string.Empty;
     private string? unterkategorieFehler;
 
