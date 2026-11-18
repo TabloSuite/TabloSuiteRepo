@@ -1,13 +1,29 @@
-# TabloSuite – Arbeitsstand 18.11.2026 (nach dem SKOULOU-Deploy)
+# TabloSuite – Arbeitsstand 18.11.2026 (abends, vor dem Testabend)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nach dem SKOULOU-Deploy
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 abends
 
-**>>> NEUESTES (18.11. nachmittags) – Klicktest eNOTE vor dem Testabend des Nutzers (4–6 Personen), alles gepusht, NOCH NICHT DEPLOYT:**
+**>>> ZUERST (18.11. abends):**
+- **Alle drei Apps deployt (18.11. nachmittags) und live geprüft:** Titel/og:image/JSON-LD/robots/sitemap 200 auf tablosuite.com, eNOTE
+  (Preis 2.500), SKOULOU (Preis 3.600, Abschnitt « Tarifs », `/tarifs/public`); tablosuite.com-Karte zeigt 3.600 FCFA live; eNOTE-Fixes
+  aus dem Klicktest online (CSS « Gérer les catégories », Hinweis « Mot de passe oublié »). Kein Azure-DB-Eingriff nötig.
+- **Search Console:** Domain-Property `tablosuite.com` bestätigt (TXT bei IONOS), 3 Sitemaps eingereicht und « Erfolgreich » gelesen
+  (SKOULOU 5, eNOTE 4, tablosuite.com 1 Seiten). Optional: « URL-Prüfung » → « Indexierung beantragen » für die drei Startseiten.
+- **Nutzer testet heute Abend eNOTE mit 4–6 Personen** (Liste `C:\ETSE\NETAPPS\Test TabloSuite\Test Daten\Daten Nutzer und Leistungen.txt`).
+  Im neuen Chat zuerst nach Auffälligkeiten fragen (Uhrzeit, Gerät, Bildschirmfoto).
+- **Deadlock-Ursache gefunden + behoben (8ba0e5b, NOCH NICHT DEPLOYT, Push hing an der GitHub-Anmeldung):** SQL Server behält die
+  Isolationsstufe gepoolter Verbindungen – nach `VertragsService.SynchronisiereAsync` (Serializable) liefen spätere Abfragen (auch Verkäufe)
+  Serializable → Bereichssperren auf PK_Leistungen, 10–22 Deadlocks je 18-Monats-Simulation (automatisch wiederholt, keine Datenfehler).
+  Fix: EF-Interceptor `Data/IsolationsRuecksetzer.cs` (setzt nach strengen Transaktionen READ COMMITTED), SQL-Test
+  `IsolationsRuecksetzerSqlTests` (ENOTE_SIM=1). Kontroll-Simulation lief am 18.11. abends; Deadlock-Aufzeichnung = XE-Sitzung
+  `enote_deadlocks` (danach wieder entfernen: `DROP EVENT SESSION enote_deadlocks ON SERVER`). Mit dem nächsten eNOTE-Deploy ausliefern.
+- Mitarbeitende: E-Mail freiwillig (Nutzer: « so lassen »); eigener Login = keine Kasse, am Gerät des Besitzers kassieren sie mit Name + PIN.
+
+**>>> (18.11. nachmittags) – Klicktest eNOTE vor dem Testabend des Nutzers (4–6 Personen), gepusht und deployt:**
 - Testliste für den Abend: `C:\ETSE\NETAPPS\Test TabloSuite\Test Daten\Daten Nutzer und Leistungen.txt` (3 Läden: A Salon Lomé, B Barbershop
   Kara, C Boutique Cotonou; Responsable; Ablauf in 14 Schritten). Nutzer: nur Liste, Azure bleibt unberührt.
 - Klicktest (Playwright, `%TEMP%\skoulou-shot-tool\enote-e2e\abend.mjs` + `lib.mjs`; App `%TEMP%\enote-e2e\app-starten.ps1` Port 5297,
