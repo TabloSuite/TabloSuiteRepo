@@ -1,13 +1,30 @@
-# TabloSuite – Arbeitsstand 17.11.2026 (abends)
+# TabloSuite – Arbeitsstand 18.11.2026 (morgens)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nachts
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 morgens
 
-**>>> NEUESTES (18.11. früh) – Punkte 5–8 des Nutzers:**
+**>>> ZUERST LESEN – was offen ist (18.11. morgens):**
+- **Beide Apps sind deployt** (SKOULOU und eNOTE, 18.11. morgens durch den Nutzer – inkl. Runde 3 und Punkte 5–8 unten).
+- **Einzige offene Entscheidung des Nutzers: Werbevideo « Pourquoi SKOULOU ? » v4** (Entwurf, 3:07,
+  `TabloSuite Videos\Skoulou Videos\projekte\lernen-v3\pourquoi-v4\renders\skoulou-pourquoi-v4.mp4`, Standbilder
+  `Pictures\SKOULOU-Pourquoi-v4\`). Der Nutzer wählt: (1) passt → einbauen, (2) Änderungswünsche → anpassen und wieder zeigen,
+  (3) altes 1:39-Video behalten. **Nichts einbauen ohne sein OK.**
+  Einbau bei (1): in `lernen-v3/einbau.py` die Werbevideo-Zeilen auf `pourquoi-v4/renders/skoulou-pourquoi-v4.mp4` umstellen
+  (unter beiden Namen `skoulou-pourquoi.mp4` und `skoulou-presentation.mp4`, Poster aus der Titelkarte ~30 s), `VideoKatalog.cs`
+  (Dauer 3:07, Beschreibung), `Components/Shared/Startseite.razor` (« En moins de deux minutes » → passend, z. B. « En un peu plus
+  de trois minutes »), Tests, Commit/Push → Nutzer deployt SKOULOU. Ablauf/Fallen: `lernen-v3/AUFTRAG.md` §8 (pourquoi-v4).
+- Nicht bestätigt (nachfragen, nicht selbst tun): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
+- Später, nur gemeinsam mit dem Nutzer: Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS) – Memory « vor-produktion ».
+- Git: im neuen Chat zuerst `git status -sb`; liegt ein Commit nur lokal (GitHub wollte zuletzt wieder die Anmeldung), pushen.
+- Aufnahme-Umgebungen: SKOULOU-Aufnahme-App läuft evtl. noch (Port 5191, PID in `%TEMP%\skoulou-video\app.pid`; Neustart
+  `lernen-v3/aufnahme/app-starten.ps1 [-Bauen]` aus PowerShell aufrufen, nicht über eine Pipe). eNOTE-Aufnahme-App ist gestoppt
+  (Start: ENote `lernen-v3/aufnahme/app-starten.ps1`, danach Demo-Daten aufräumen – README 18.11.).
+
+**>>> (18.11. früh) – Punkte 5–8 des Nutzers (erledigt, deployt):**
 - SKOULOU Bulletin-Prüfseite (QR) zeigt jetzt Nummer, « Délivré le » und beim Rectificatif die ersetzte Nummer (5ba2192);
   Video « Publier les bulletins » mit neuer QR-Szene (4:52, 44368fe). Bilder: `Pictures\SKOULOU-Pruefseite\`.
 - eNOTE « Piloter la formation » (3:58) und « Tarifs et facturation » (4:38, neuer Schritt 6 « Les commissions des responsables »:
@@ -18,9 +35,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Eltern am Handy, Kasse mit Reçu, Accueil/Finances) → abgehakte Liste → « skoulou.tablosuite.com ». Standbilder
   `Pictures\SKOULOU-Pourquoi-v4\`. **Wartet auf Freigabe des Nutzers**; danach als skoulou-pourquoi.mp4 + skoulou-presentation.mp4
   einbauen (einbau.py, VideoKatalog-Dauer, Startseite « En moins de … minutes »).
-- Nutzer muss SKOULOU und eNOTE deployen (keine Migration).
 
-**>>> NEUESTES (17./18.11. nachts) – SKOULOU-Videos Runde 3 (Nutzer: « alle bitte … ausführliche Videos über alle Themen »):**
+**>>> (17./18.11. nachts) – SKOULOU-Videos Runde 3 (Nutzer: « alle bitte … ausführliche Videos über alle Themen »):**
 - Fünf neue Videos über bisher fehlende Abläufe (Pipeline-Notizen `lernen-v3/AUFTRAG.md` §8):
   « S'inscrire et retrouver son accès » 4:10 (Pour tous, f50d891), « Fermer et rouvrir » 3:55 (Direction, f643794),
   « Administrateur : la formation des responsables » 3:25, « Gérer vos contenus » 3:02 (Enseignant),
@@ -28,8 +44,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - App-Fixes dabei: Wartesseite « en cours de validation » nennt den Schulnamen; **Gebührenkarten** (« Frais de scolarité »):
   Datum lief bei drei Spalten in den Betrag → Karten min. 22rem, Datum darf umbrechen (finanzen.css). Die betroffene Szene
   in « Frais de scolarité et paiements » und « Une école de langues » wurde neu aufgenommen.
-- Alles gepusht (bis e7c21c1, 18.11.).
-- **Nutzer muss SKOULOU deployen** (keine Migration nötig).
+- Alles gepusht und deployt.
 
 **>>> (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
 - **Standardpreis SKOULOU = 3.600 F je Schüler und Schuljahr** (61f55aa; Trimester 1.200, Semester 1.800, 4 Sessions 900).
@@ -73,7 +88,7 @@ vorher), « non réussie/manquée » ans Team (in E-mails abschaltbar). Seiten `
 « zyklisches Include » gefunden und behoben). Bilder `Pictures\eNOTE-Formation-2026-11-17\`.
 **Dazu (1030bea, Nutzer « Lektionen nach Rollen getrennt? » → « Ja bitte »): eigener Lernpfad für Administrateure** (6 Lektionen
 `admin-…`, 36 Fragen `a-…`, Datei `FormationKatalogAdmin.cs`): Admins sehen « Parcours administrateur » + « Parcours responsable » und
-trainieren frei in beiden; POs sehen die Admin-Lektionen nicht. Keine Migration. Bilder `…dmin-pfad\`. 535 Tests grün.
+trainieren frei in beiden; POs sehen die Admin-Lektionen nicht. Keine Migration. Bilder `…\admin-pfad\`. 535 Tests grün.
 **Danach (17.11. spätnachmittags):** Testkonto PO « Paul Pamala » auf Azure gelöscht (Nutzer; Azure hat jetzt **keinen PO**, Nutzer legt
 später neue Test-POs an), Trainingsrunden von DodjiEtse auf Azure geleert. Fixes 7bfb749: Admin kann zwischen beiden Trainingspfaden
 wechseln; Lektionsbilder in Handygröße (max. 20rem, antippen = groß). **Neues Lernvideo « Piloter la formation des responsables »**
