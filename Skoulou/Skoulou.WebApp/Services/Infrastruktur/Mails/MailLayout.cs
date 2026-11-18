@@ -12,13 +12,14 @@ public static partial class MailLayout
     public const string Marker = "<!-- SKOULOU-MAIL-LAYOUT -->";
     private const string Navy = "#0b1b3a";
     private const string Blau = "#1d4ed8";
-    private const string BlauHell = "#2563eb";
-    private const string Cyan = "#06b6d4";
-    private const string CyanZart = "#bae6fd";
-    // Logo « S » im eNOTE-Blau (Nutzerwunsch 16.11.): wie img/skoulou-logo.svg
+    // Streifen unter dem Kopf, Spruch und Fußtext in Blautönen statt Türkis/Cyan (Nutzer 18.11.)
+    private const string StreifenBlau = "#3b82f6";
+    private const string StreifenHell = "#93c5fd";
+    private const string BlauZart = "#bfdbfe";
+    // Logo « S » im eNOTE-Blau (Nutzerwunsch 16.11.): Verlauf genau wie img/skoulou-logo.svg
     private const string LogoNavy = "#1b3384";
     private const string LogoBlau = "#2547b8";
-    private const string LogoTuerkis = "#0f8f86";
+    private const string LogoStahlblau = "#1a6c9e";
     private const string Text = "#0f172a";
     private const string Leise = "#64748b";
     private const string Koerper = "#334155";
@@ -45,11 +46,11 @@ public static partial class MailLayout
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="max-width:620px;background:#ffffff;border-radius:16px;overflow:hidden;">
             <tr><td bgcolor="{Navy}" style="background:{Navy};background-image:linear-gradient(90deg,{Navy} 0%,{Blau} 100%);padding:18px 20px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                <td style="padding-right:12px;" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="38" height="38" style="width:38px;height:38px;background:{LogoBlau};background-image:linear-gradient(135deg,{LogoNavy} 0%,{LogoBlau} 62%,{LogoTuerkis} 135%);border:1px solid rgba(255,255,255,.35);border-radius:11px;"><tr><td align="center" valign="middle" style="font-family:{Schrift};font-size:19px;font-weight:800;color:#ffffff;line-height:38px;">S</td></tr></table></td>
+                <td style="padding-right:12px;" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="38" height="38" style="width:38px;height:38px;background:{LogoBlau};background-image:linear-gradient(135deg,{LogoNavy} 0%,{LogoBlau} 62%,{LogoStahlblau} 100%);border:1px solid rgba(255,255,255,.35);border-radius:11px;"><tr><td align="center" valign="middle" style="font-family:{Schrift};font-size:19px;font-weight:800;color:#ffffff;line-height:38px;">S</td></tr></table></td>
                 <td valign="middle"><a href="{SkoulouMarke.Website}" style="font-family:{Schrift};color:#ffffff;font-size:21px;font-weight:800;letter-spacing:.3px;text-decoration:none;">SKOULOU</a></td>
               </tr></table>
             </td></tr>
-            <tr><td bgcolor="{Cyan}" style="height:4px;line-height:4px;font-size:0;background:{Cyan};background-image:linear-gradient(90deg,{Cyan} 0%,{BlauHell} 100%);">&nbsp;</td></tr>
+            <tr><td bgcolor="{StreifenBlau}" style="height:4px;line-height:4px;font-size:0;background:{StreifenBlau};background-image:linear-gradient(90deg,{StreifenBlau} 0%,{StreifenHell} 100%);">&nbsp;</td></tr>
             <tr><td bgcolor="{Tonung}" style="background:{Tonung};padding:26px 20px 24px;">
               <h1 style="margin:0 0 18px;font-family:{Schrift};font-size:22px;line-height:1.3;font-weight:800;color:{Navy};">{t}</h1>
               <div style="font-family:{Schrift};font-size:15px;line-height:1.75;color:{Koerper};">{inhaltHtml}</div>
@@ -58,9 +59,9 @@ public static partial class MailLayout
               </div>
             </td></tr>
             <tr><td bgcolor="{Navy}" style="background:{Navy};background-image:linear-gradient(135deg,{Navy} 0%,{Blau} 100%);padding:24px 20px 22px;font-family:{Schrift};">
-              <div style="color:{Cyan};font-size:11px;font-weight:700;letter-spacing:1.4px;">APPRENDRE. PROGRESSER. RÉUSSIR.</div>
+              <div style="color:{StreifenHell};font-size:11px;font-weight:700;letter-spacing:1.4px;">APPRENDRE. PROGRESSER. RÉUSSIR.</div>
               <div style="margin-top:5px;color:#ffffff;font-size:20px;font-weight:800;">SKOULOU</div>
-              <div style="margin-top:9px;color:{CyanZart};font-size:13px;line-height:1.6;">La gestion scolaire qui rapproche la direction, les enseignants, les élèves et les parents.</div>
+              <div style="margin-top:9px;color:{BlauZart};font-size:13px;line-height:1.6;">La gestion scolaire qui rapproche la direction, les enseignants, les élèves et les parents.</div>
               <div style="margin-top:18px;font-size:13px;line-height:1.9;color:#e2eefc;">
                 <a href="{SkoulouMarke.Website}" style="color:#e2eefc;text-decoration:none;">{SkoulouMarke.Domain}</a><br>
                 <a href="mailto:{SkoulouMarke.KontaktEmail}" style="color:#e2eefc;text-decoration:none;">{SkoulouMarke.KontaktEmail}</a><br>{SkoulouMarke.Ort}
