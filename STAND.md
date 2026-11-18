@@ -24,6 +24,18 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   `lernen-v3/aufnahme/app-starten.ps1 [-Bauen]` aus PowerShell aufrufen, nicht über eine Pipe). eNOTE-Aufnahme-App ist gestoppt
   (Start: ENote `lernen-v3/aufnahme/app-starten.ps1`, danach Demo-Daten aufräumen – README 18.11.).
 
+**>>> EMPFEHLUNGEN für den nächsten Chat (Nutzer 18.11.: « damit machen wir deine Empfehlungen weiter ») – Reihenfolge:**
+1. **Werbevideo « Pourquoi SKOULOU ? » v4**: Nutzer schaut es an → bei OK einbauen (Schritte oben), sonst Änderungen umsetzen.
+   Erst fragen, nicht von selbst einbauen.
+2. **Live-Stichprobe nach dem Deploy** (nur lesen): `skoulou.tablosuite.com` – Vorschaubilder der neuen Videos (200), Video ohne
+   Anmeldung 401, öffentliche Prüfseite `/verification/…` zeigt Nummer + Datum; eNOTE – « Vidéos d'aide » Admin zeigt die neuen
+   Dauern (3:58 / 4:38).
+3. **eNOTE-Videos prüfen wie bei SKOULOU** (Abdeckung + aktuelle Oberfläche): alle Abläufe je Rolle mit `VideoKatalog.cs` und den
+   Seiten vergleichen; Videos mit veralteter Oberfläche **ganz** neu aufnehmen (Quell-Aufnahmen älterer Videos sind aufgeräumt).
+   Dem Nutzer zuerst eine Liste « fehlt / veraltet » vorlegen, dann auf sein OK arbeiten.
+4. Beobachten: SKOULOU « Comptes élèves » (160–170 ms an der größten Schule) – nur bei Bedarf optimieren.
+5. Vor Produktion gemeinsam: Azure-Upgrades (SQL Basic, B1, Speech S0, Blob LRS); Azure-Tarif 3.600 F bestätigen lassen.
+
 **>>> (18.11. früh) – Punkte 5–8 des Nutzers (erledigt, deployt):**
 - SKOULOU Bulletin-Prüfseite (QR) zeigt jetzt Nummer, « Délivré le » und beim Rectificatif die ersetzte Nummer (5ba2192);
   Video « Publier les bulletins » mit neuer QR-Szene (4:52, 44368fe). Bilder: `Pictures\SKOULOU-Pruefseite\`.
