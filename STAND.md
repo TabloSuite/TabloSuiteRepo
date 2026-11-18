@@ -1,51 +1,45 @@
-# TabloSuite – Arbeitsstand 18.11.2026 (morgens)
+# TabloSuite – Arbeitsstand 18.11.2026 (mittags)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 morgens
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 mittags
 
-**>>> ZUERST LESEN – was offen ist (18.11. morgens):**
-- **Beide Apps sind deployt** (SKOULOU und eNOTE, 18.11. morgens durch den Nutzer – inkl. Runde 3 und Punkte 5–8 unten).
-- **Einzige offene Entscheidung des Nutzers: Werbevideo « Pourquoi SKOULOU ? » v4** (Entwurf, 3:07,
-  `TabloSuite Videos\Skoulou Videos\projekte\lernen-v3\pourquoi-v4\renders\skoulou-pourquoi-v4.mp4`, Standbilder
-  `Pictures\SKOULOU-Pourquoi-v4\`). Der Nutzer wählt: (1) passt → einbauen, (2) Änderungswünsche → anpassen und wieder zeigen,
-  (3) altes 1:39-Video behalten. **Nichts einbauen ohne sein OK.**
-  Einbau bei (1): in `lernen-v3/einbau.py` die Werbevideo-Zeilen auf `pourquoi-v4/renders/skoulou-pourquoi-v4.mp4` umstellen
-  (unter beiden Namen `skoulou-pourquoi.mp4` und `skoulou-presentation.mp4`, Poster aus der Titelkarte ~30 s), `VideoKatalog.cs`
-  (Dauer 3:07, Beschreibung), `Components/Shared/Startseite.razor` (« En moins de deux minutes » → passend, z. B. « En un peu plus
-  de trois minutes »), Tests, Commit/Push → Nutzer deployt SKOULOU. Ablauf/Fallen: `lernen-v3/AUFTRAG.md` §8 (pourquoi-v4).
-- Nicht bestätigt (nachfragen, nicht selbst tun): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
-- Später, nur gemeinsam mit dem Nutzer: Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS) – Memory « vor-produktion ».
-- Git: im neuen Chat zuerst `git status -sb`; liegt ein Commit nur lokal (GitHub wollte zuletzt wieder die Anmeldung), pushen.
-- Aufnahme-Umgebungen: SKOULOU-Aufnahme-App läuft evtl. noch (Port 5191, PID in `%TEMP%\skoulou-video\app.pid`; Neustart
-  `lernen-v3/aufnahme/app-starten.ps1 [-Bauen]` aus PowerShell aufrufen, nicht über eine Pipe). eNOTE-Aufnahme-App ist gestoppt
-  (Start: ENote `lernen-v3/aufnahme/app-starten.ps1`, danach Demo-Daten aufräumen – README 18.11.).
+**>>> ZUERST LESEN – was offen ist (18.11. mittags):**
+- **Azure-Migration SKOULOU `20261118084334_SchuleEssaiPerioden` (eine int-Spalte, Bestand 0) – wartet auf das OK des Nutzers.**
+  Lokal (SkoulouDB, SkoulouDB_VIDEO) eingespielt. Azure steht auf `20261117151012_FormationResponsables`. Einspielen per
+  `dotnet ef database update --project Skoulou/Skoulou.WebApp --connection "…Database=Skoulou-Database;Authentication=Active Directory Default…"`
+  (Memory « skoulou-azure »), danach lesend prüfen. eNOTE hat KEINE neue Migration.
+- **Danach deployt der Nutzer beide Apps** (SKOULOU: Werbevideo v4, Rechnung ohne Schülerliste für Responsables, Probezeit, Formation;
+  eNOTE: 13 Videos, Kassen-Fix, « Mot de passe oublié ? », Länderliste, Formation).
+- Git: `git status -sb` – mehrere Commits warteten auf die GitHub-Anmeldung; ggf. pushen.
+- Nicht bestätigt (nachfragen): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
+- Später, nur gemeinsam: Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS) – Memory « vor-produktion ».
+- Aufnahme-Apps sind gestoppt, Aufnahme-Builds gelöscht (eNOTE: vorher `dotnet publish … -o %TEMP%\enote-video-app`, README lernen-v3).
 
-**>>> (18.11. vormittags, Nutzer: « alles gut umsetzen ») – IN ARBEIT:**
-- SKOULOU-Werbevideo « Pourquoi SKOULOU ? » v4 (3:07) eingebaut (a1b507f, Poster = Titelkarte 40 s, Startseite « En un peu plus
-  de trois minutes »). **SKOULOU muss deployt werden** (keine Migration).
-- eNOTE-Fixes: c954050 Kasse hing bei « Ouverture de la caisse… » (Accueil → Caisse); df02b37 « Mot de passe oublié ? » verlinkt +
-  Wiederherstellungsseiten im Anmelde-Design. Push hing zuletzt (GitHub-Anmeldung) → `git status -sb`, ggf. pushen.
-- eNOTE-Videos laut Liste unten: Texte/Stimme/Abläufe für alle 13 fertig (README lernen-v3 « 18.11.2026 (vormittags) »).
-  Aufgenommen: encaisser, attente, clients; Runde 2 (cloture … acces-inscription) lief; `responsable-formation` erst NACH dem Einbau
-  von `appareils` aufnehmen (Lektion « La caisse » zeigt dessen Videokarte mit Dauer). Danach `bash render.sh …`, einbau.py-LISTE
-  ergänzen, `VideoKatalog.cs` (Platzhalter « ?:?? » durch Dauern ersetzen!), Tests (Zahlen 26/24/19/10 schon angepasst),
-  FormationKatalog-Videokarten (schon ergänzt, uncommitted), Commit → Nutzer deployt eNOTE. Am Ende: Formation-Zeilen der 4 Demo-Konten
-  und AnmeldeSitzungen DEMO.PROPRIO von heute löschen, Aufnahme-App stoppen.
-- **Danach (Nutzer 18.11.): Formation-Lernpfad eNOTE UND SKOULOU prüfen** – Aufbau und Inhalte (Lektionen, Schritte, Fragen, Bilder,
-  Videokarten; Responsable + Administrateur) gegen die heutige App, wenn nötig anpassen (`Services/Formation/FormationKatalog*.cs`).
-  Nutzer 18.11.: « Aktuell in AzureDB, nur der Admin DodjiEtse hat Lektionen gelesen. Du kannst das löschen » → nach den Änderungen
-  Formation-Zeilen von DodjiEtse auf Azure löschen (vorher lesend prüfen, dass nur er Zeilen hat; eNOTE + SKOULOU).
+**>>> ERLEDIGT am 18.11. (Nutzer: « alles gut umsetzen », « weiter bis alles fertig ist »):**
+- SKOULOU-Werbevideo « Pourquoi SKOULOU ? » v4 (3:07) eingebaut (a1b507f).
+- eNOTE-Fixes: Kasse hing bei « Ouverture de la caisse… » (c954050); « Mot de passe oublié ? » verlinkt + Seiten gestaltet (df02b37);
+  « Nouvel établissement » (Responsable) mit Länderliste + Hinweis « après la validation » (in 7970e93).
+- **eNOTE-Videos (7970e93):** neu aufgenommen premiers-pas 4:20, visite-guidee 5:50, encaisser 5:50, attente 3:06, clients 4:38,
+  cloture 3:58, activite 3:15, responsable-etablissements 4:42, responsable-paiements 2:48, admin-etablissements 3:55; neu
+  acces-inscription 2:57, appareils 3:12, responsable-formation 3:27. Pipeline-Notizen: ENote `lernen-v3/README.md` « 18.11.2026 (vormittags) »
+  (Gerät-Falle `kasseFrei`, Fenstertitel jetzt maskiert, `render.sh`, `katalog-dauer.py`).
+- **Formation geprüft und nachgezogen:** eNOTE (in 7970e93) und SKOULOU (c679979); Azure eNOTE: Formation-Zeilen von DodjiEtse
+  gelöscht (Nutzer-OK), alle Formation-Tabellen 0; SKOULOU Azure hatte keine.
+- **SKOULOU: Responsable sieht auf Rechnungen keine Schülerliste** (439d001, Nutzerentscheidung « Empfehlung umsetzen »); Rückfallpreis 3.600.
+- **SKOULOU: Probezeit « Période d'essai »** (f8be337): 0–4 erste Abrechnungsperioden des ersten Schuljahres ohne Rechnung/Part,
+  neue Schulen 1, Bestand 0; Admin und Responsable (eigene Schulen, Mail an Admins) ändern, solange keine Rechnung existiert;
+  Direktion sieht es unter « Facturation SKOULOU ». CGU + Formation ergänzt. 652 Tests grün.
 
-**>>> NÄCHSTE AUFGABE (Nutzer 18.11., entschieden): SKOULOU « Essai »-Zeitraum einbauen** – in Abrechnungsperioden des
-ERSTEN Schuljahres, 0–4 (begrenzt auf die Periodenzahl des Jahres; Standard 1), nur solange die Schule noch keine SKOULOU-Rechnung
-hat (danach fest). Ändern dürfen Admin UND Responsable (nur eigene Schulen); Änderungen des Responsable → Audit + Mail an den Admin,
-Admin kann überschreiben. Probe-Perioden: keine Rechnung, keine Part; Zeile « offert (essai) » in Facturation SKOULOU; Direktion
-(Accueil), Responsable (Mes écoles), Admin (Écoles › « Essai ») sehen es. Mit nachziehen: Formation, CGU, Startseite, Videos
-(facture, admin-facturation, responsable).
+**>>> EMPFEHLUNGEN für den nächsten Chat:**
+1. Azure-Migration SKOULOU einspielen (nur mit OK), dann deployt der Nutzer beide Apps; danach Live-Stichprobe (Videos 200/401,
+   SKOULOU Admin › Écoles « Essai », eNOTE Anmeldeseite mit « Mot de passe oublié ? »).
+2. SKOULOU-Videos mit der Probezeit nachziehen (sichtbar: Admin « Écoles et comptes » / « facturation » – neuer Knopf « Essai »;
+   « Responsable : accompagner vos écoles » – Zeile « Essai » auf der Karte; « La facture SKOULOU » – Hinweis der Direktion).
+3. Beobachten: SKOULOU « Comptes élèves » (160–170 ms an der größten Schule).
 
 **>>> (18.11. vormittags) Empfehlung 2 erledigt, Empfehlung 3 vorbereitet:**
 - Live-Stichprobe OK: SKOULOU alle 31 Vorschaubilder 200, Lernvideos ohne Anmeldung 401, Werbevideo öffentlich 206; Prüfseite
