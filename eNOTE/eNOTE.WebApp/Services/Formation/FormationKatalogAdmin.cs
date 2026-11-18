@@ -85,7 +85,7 @@ public static partial class FormationKatalog
                     "Un rappel part par e-mail 3 jours avant la suspension.",
                     "Filtrez « Abonnements récents » par statut pour relancer à temps."),
                 A("Ne confirmez jamais sur parole. Les responsables n'encaissent jamais d'abonnement : un « paiement au responsable » n'est pas un paiement."),
-                V("enote-admin-tarifs.mp4", "La dernière étape montre la confirmation des paiements."),
+                V("enote-admin-tarifs.mp4", "L'étape 5 montre la confirmation des paiements, l'étape 6 les commissions qui en découlent."),
                 M("Confirmer = l'argent est arrivé. C'est la seule source des commissions."),
             ],
             [
@@ -179,7 +179,7 @@ public static partial class FormationKatalog
                     "« Commissions des responsables » : cochez celles que vous avez payées.",
                     "Indiquez la date et la référence du versement (Mobile Money, virement…).",
                     "Le responsable les voit « versées » et confirme la réception – ou « Pas reçue » avec un message : elle redevient « à verser »."),
-                V("enote-admin-tarifs.mp4", "L'étape 3 montre les responsables et la commission. (Le calcul mensuel de la vidéo est remplacé par la création automatique.)"),
+                V("enote-admin-tarifs.mp4", "Les étapes 3 et 6 : le taux de commission, puis la commission créée à chaque paiement confirmé et son versement."),
                 A("Ne versez rien sans paiement confirmé : la commission n'existe qu'après la confirmation."),
                 M("Un établissement, un responsable. Commission = automatique ; versement = vous, avec date et référence."),
             ],

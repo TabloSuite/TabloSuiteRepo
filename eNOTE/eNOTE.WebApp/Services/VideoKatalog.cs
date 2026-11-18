@@ -81,12 +81,12 @@ public static class VideoKatalog
         new("enote-admin-etablissements.mp4", "Gérer les établissements",
             "Vue d'ensemble et recherche, valider une inscription, période d'essai, tarif personnalisé, désactiver, nouveau propriétaire avec son établissement.", "Administrateur", Plattform, "3:31"),
         new("enote-admin-tarifs.mp4", "Tarifs et facturation",
-            "Tarif général et historique, changer le tarif avec message aux propriétaires, responsables et commissions, Mobile Money, confirmer les paiements.", "Administrateur", Plattform, "3:49"),
+            "Tarif général et historique, changer le tarif avec message aux propriétaires, responsables et taux de commission, Mobile Money, confirmer les paiements, et les commissions créées automatiquement puis versées.", "Administrateur", Plattform, "4:38"),
         new("enote-admin-communication.mp4", "Communiquer",
             "E-mails aux propriétaires et responsables, envois automatiques et modèles, annonces dans l'application, journaux d'erreurs.", "Administrateur", NurAdmin, "3:24"),
         // 17.11.2026: Formation der Responsables steuern (Administration › Formation)
         new("enote-admin-formation.mp4", "Piloter la formation des responsables",
-            "L'onglet « Formation » : chaque responsable et sa session, les règles de l'évaluation, un responsable à surveiller, l'intervalle, le délai et les résultats, votre propre parcours.", "Administrateur", NurAdmin, "3:55"),
+            "L'onglet « Formation » : chaque responsable et sa session, les règles de l'évaluation, un responsable à surveiller, l'intervalle, le délai et les résultats, votre propre parcours.", "Administrateur", NurAdmin, "3:58"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
