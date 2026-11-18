@@ -7,7 +7,25 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nach dem SKOULOU-Deploy
 
-**>>> NEUESTES (18.11., Nutzer: « deine 3 Punkte ») – drei Aufräumpunkte erledigt, gepusht, NOCH NICHT DEPLOYT:**
+**>>> NEUESTES (18.11. später) – drei Nutzerpunkte + öffentlicher Preis, gepusht, NOCH NICHT DEPLOYT (alle drei Apps!):**
+- eNOTE-Kasse: Symbol `ticket-pause` (Bon + Pause) für « En attente » statt zwei Balken (« sah aus wie wartende Kunden »), 4d393f9.
+  Kein neues Video (Nutzer). Bild `Pictures\eNOTE-Symbol-En-attente-2026-11-18\`.
+- SKOULOU « Conditions d'utilisation » bei der ersten Anmeldung: lokal nicht nachvollziehbar (Registrierung Schule → Wartesseite →
+  Freigabe → Startseite, nirgends ein Fenster; CGU-Version wird bei der Registrierung gespeichert). Nutzer: « vielleicht bereits
+  entfernt ». Falls es wieder auftaucht: Bildschirmfoto erbitten.
+- **SKOULOU-Preis öffentlich** (45b78b3): Startseite Abschnitt « Tarifs » (Jahrespreis aus der DB, Aufteilung 3/2/4 Perioden,
+  fairer Hinweis), Menü « Tarifs »; Endpunkt `GET /tarifs/public`; tablosuite.com-Karte holt den Preis live (`TarifAbfrage`,
+  3 s, Cache 30 min; ohne Antwort nur Hinweis), Registrierungslink jetzt `/auth/inscription`. Bilder `Pictures\SKOULOU-Tarifs-oeffentlich-2026-11-18\`.
+- **Anzeige bei Google** (9068b3b): Startseiten aller drei Apps mit Suchtitel, Beschreibung, Canonical, Open Graph/Twitter-Karte
+  (eigene Vorschaubilder `img/partage.jpg` 1200×630, `Pictures\Google-Anzeige-2026-11-18\`), JSON-LD (WebSite + SoftwareApplication
+  mit aktuellem Preis; tablosuite.com Organization + WebSite), robots.txt + sitemap.xml (eNOTE, SKOULOU), Favicons 192 px.
+  **Beim Nutzer (Google-Konto nötig):** Search Console → Domain-Property `tablosuite.com` (TXT-Eintrag bei IONOS) → Sitemaps
+  `https://tablosuite.com/sitemap.xml`, `https://enote.tablosuite.com/sitemap.xml`, `https://skoulou.tablosuite.com/sitemap.xml` einreichen.
+- SKOULOU-Lernvideos mit den neuen Preis-Hinweisen: in Arbeit (preparer, fermer, passage, facture ganz; langues `l-annee`,
+  admin-facturation `ad-tarifs`, acces-inscription `s-ecole`) – danach einbau.py, VideoKatalog-Dauern, commit.
+- Tests: eNOTE 521, SKOULOU 652, TabloSuiteHome 8 grün. Keine Migration.
+
+**>>> (18.11., Nutzer: « deine 3 Punkte ») – drei Aufräumpunkte erledigt, gepusht, NOCH NICHT DEPLOYT:**
 - SKOULOU-Mails ohne Türkis (f7c8d2f): Streifen unter dem Kopf, Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » und Fußtext in Blau,
   Logo-Verlauf wie `skoulou-logo.svg`. Bild `Pictures\SKOULOU-Mail-Blau-2026-11-18\mail-blau.png`. Mail-Tests 18 grün.
 - eNOTE « Appareils connectés » (48881b4): Zeiten in der Ortszeit des aktiven Ladens (`ImLaden(AktiverSalon.Zeitzone)`) statt `ToLocalTime()`.
