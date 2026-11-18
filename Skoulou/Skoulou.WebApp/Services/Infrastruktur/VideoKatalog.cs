@@ -49,7 +49,7 @@ public static partial class VideoKatalog
         new("skoulou-visite-guidee.mp4", "La visite guidée",
             "Qui voit quoi : la direction, la coordination, l'enseignant, l'élève et le parent, chacun avec son accueil et son menu.", PourTous, Alle, "3:57"),
         new("skoulou-pourquoi.mp4", "Pourquoi SKOULOU ?",
-            "Élèves, notes, bulletins vérifiables, paiements et parents : tout votre établissement dans un seul espace.", PourTous, Alle, "1:39"),
+            "Les soucis de fin de trimestre, puis la preuve dans l'application : des moyennes justes, des bulletins vérifiables par QR code, des parents informés, une caisse claire et l'école d'un coup d'œil.", PourTous, Alle, "3:07"),
         new("skoulou-direction-concept.mp4", "Le concept : l'année scolaire",
             "La théorie avant la pratique : le cycle d'une année, les périodes, les niveaux et les classes, les matières et les coefficients, le calcul des moyennes, les bulletins et le passage d'année.",
             Direction, Leitung, "6:23"),
