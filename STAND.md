@@ -17,6 +17,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   PoZahlungsanforderungen, PoGeldbewegungen bleiben; Löschen nur per Migration mit OK). Simulation S1 auf `PoProvisionService` umgestellt
   (kompiliert; der lange Simulationslauf selbst nicht wiederholt). eNOTE 521 Tests grün (−11 entfernte Tests der gelöschten Teile).
 - **Nächster Schritt beim Nutzer: eNOTE und SKOULOU deployen** (keine Azure-Migration nötig).
+- Azure-Tarif SKOULOU steht jetzt auf 3.600 F (siehe unten). Allgemeiner eNOTE-Test des Nutzers: bisher nichts aufgefallen.
 - Gefunden, nicht geändert: weitere `ToLocalTime()` auf Admin-Seiten (Admin, AdminAnnonces, AdminEmails, Facturation, PoProvisionen…,
   Journaux) – plattformweit, Server = UTC = Lomé, daher dort unkritisch.
 
@@ -27,7 +28,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   25 Vorschaubilder 200 (neue byte-gleich), Videos ohne Anmeldung 401; SKOULOU Werbevideo v4 live (11,06 MB), Startseite « En un peu plus
   de trois minutes », CGU mit Probezeit, 31 Vorschaubilder 200 / Videos 401. Erster Aufruf nach dem Deploy ~34 s (Kaltstart).
 - Git: `git status -sb` – mehrere Commits warteten auf die GitHub-Anmeldung; ggf. pushen.
-- Nicht bestätigt (nachfragen): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
+- ✅ Azure-Tarif SKOULOU auf 3.600 F (18.11., auf Nutzerwunsch per SQL: 12.500 → 3.600, Zahlungsziel 30 j und 0 % unverändert,
+  Prüfprotokoll-Eintrag `plattform.tarife` im Namen von DodjiEtse; Azure = lokal).
 - Später, nur gemeinsam: Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS) – Memory « vor-produktion ».
 - Aufnahme-Apps sind gestoppt, Aufnahme-Builds gelöscht (eNOTE: vorher `dotnet publish … -o %TEMP%\enote-video-app`, README lernen-v3).
 
