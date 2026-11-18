@@ -173,7 +173,10 @@ public class BulletinTests
         var p = (await w.Lesen.PruefenAsync(token.ToUpperInvariant()))!;
         Assert.Equal(BulletinStatus.Publie, p.Status);
         Assert.Equal("Test eleve", p.Schueler);
-        Assert.Equal(["Schule", "Schueler", "Klasse", "Periode", "Moyenne", "Status"],
+        Assert.StartsWith("BUL-", p.Nummer);
+        Assert.False(string.IsNullOrWhiteSpace(p.Datum));
+        Assert.Null(p.ErsetztNummer);
+        Assert.Equal(["Schule", "Schueler", "Klasse", "Periode", "Moyenne", "Status", "Nummer", "Datum", "ErsetztNummer"],
             typeof(BulletinPruefung).GetProperties().Where(x => x.Name != "EqualityContract").Select(x => x.Name));
     }
 

@@ -15,7 +15,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - App-Fixes dabei: Wartesseite « en cours de validation » nennt den Schulnamen; **Gebührenkarten** (« Frais de scolarité »):
   Datum lief bei drei Spalten in den Betrag → Karten min. 22rem, Datum darf umbrechen (finanzen.css). Die betroffene Szene
   in « Frais de scolarité et paiements » und « Une école de langues » wurde neu aufgenommen.
-- **Push offen:** ab f643794 liegen die Commits nur lokal – GitHub verlangt die Anmeldung des Nutzers. Danach pushen.
+- Alles gepusht (bis e7c21c1, 18.11.).
 - **Nutzer muss SKOULOU deployen** (keine Migration nötig).
 
 **>>> (17.11. spätabends) – SKOULOU-Videos Runde 2 (Nutzer: « viele Sachen fehlen/werden übersprungen »):**
@@ -45,7 +45,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - eNOTE « Retirer le rôle » mit Neuzuweisung der Läden (Sätze/Rechte übernommen). Admin-Video « Piloter la formation » zeigt noch
   den alten Kasten ohne Abstand und die alte « Retirer »-Ansicht → **bei Gelegenheit Szenen regeln/schwach neu aufnehmen**.
 - **Beide Apps müssen deployt werden** (eNOTE: keine neue Migration seit FormationResponsables).
-- **Push offen:** seit 7839898 sind die Commits nur lokal (GitHub verlangt die Anmeldung des Nutzers). Im neuen Chat zuerst `git status -sb` prüfen und pushen.
+- (Push von 7839898 ff. erledigt.)
 
 **>>> NEUESTES (17.11. nachmittags) – « Formation » der Responsables in eNOTE (d14cd90, 61c4761, 5ea83df, gepusht, 533 Tests grün):**
 Nutzerwunsch: Lernpfad + Prüfung für POs, je App (eNOTE zuerst, danach SKOULOU mit eigenem Inhalt). Entscheidungen (Memory

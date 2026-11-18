@@ -24,7 +24,9 @@ public sealed record LiveFach(string Fach, decimal Koeffizient, IReadOnlyList<Li
 public sealed record LiveNoten(bool Erlaubt, string? Klasse, IReadOnlyList<PeriodeAuswahl> Perioden, Guid? PeriodeId, IReadOnlyList<LiveFach> Faecher, string? Moyenne);
 
 /// <summary>Öffentliche Prüfung: nur Schule, Name, Klasse, Periode, Moyenne und Status – nichts weiter.</summary>
-public sealed record BulletinPruefung(string Schule, string Schueler, string Klasse, string Periode, string Moyenne, BulletinStatus Status);
+/// <summary>Öffentliche QR-Prüfung: nur, was auch auf dem Papier steht (Nummer und Datum zum Vergleich, Nutzer 18.11.).</summary>
+public sealed record BulletinPruefung(string Schule, string Schueler, string Klasse, string Periode, string Moyenne, BulletinStatus Status,
+    string Nummer, string Datum, string? ErsetztNummer);
 
 public sealed record KlassenStandZeile(Guid KlasseId, string Klasse, int Bewertungen, int Noten, int Erwartet, bool Veroeffentlicht)
 {
@@ -177,10 +179,15 @@ public sealed partial class BulletinLeseService(IDbContextFactory<SkoulouDbConte
         var t = (token ?? string.Empty).Trim().ToLowerInvariant();
         if (!TokenMuster().IsMatch(t)) return null;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var b = await db.Bulletins.AsNoTracking().Where(x => x.PruefToken == t).Select(x => new { x.SnapshotJson, x.Status }).FirstOrDefaultAsync(ct);
+        var b = await db.Bulletins.AsNoTracking().Where(x => x.PruefToken == t)
+            .Select(x => new { x.SnapshotJson, x.Status, x.Nummer, x.VeroeffentlichtAmUtc }).FirstOrDefaultAsync(ct);
         if (b is null) return null;
-        var i = BulletinSnapshot.AusJson(b.SnapshotJson).Inhalt;
-        return new BulletinPruefung(i.Schule.Name, $"{i.Schueler.Vorname} {i.Schueler.Nachname}".Trim(), i.Klasse, $"{i.Periode} · {i.Jahr}", i.MoyenneText, b.Status);
+        var s = BulletinSnapshot.AusJson(b.SnapshotJson);
+        var i = s.Inhalt;
+        // Nummer und Datum wie gedruckt (Snapshot); ältere Snapshots ohne Dokumentdaten: aus der Zeile
+        var datum = s.Dokument?.Datum ?? SkoulouKultur.Datum(DateOnly.FromDateTime(b.VeroeffentlichtAmUtc));
+        return new BulletinPruefung(i.Schule.Name, $"{i.Schueler.Vorname} {i.Schueler.Nachname}".Trim(), i.Klasse, $"{i.Periode} · {i.Jahr}", i.MoyenneText, b.Status,
+            s.Dokument?.Nummer ?? b.Nummer, datum, s.Dokument?.ErsetztNummer);
     }
 
     // ---------- PDF-Daten ----------

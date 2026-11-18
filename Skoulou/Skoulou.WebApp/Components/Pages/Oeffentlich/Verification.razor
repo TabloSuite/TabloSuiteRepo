@@ -38,8 +38,14 @@
                 <div><dt>Classe</dt><dd>@pruefung.Klasse</dd></div>
                 <div><dt>Période</dt><dd>@pruefung.Periode</dd></div>
                 <div><dt>Moyenne</dt><dd>@pruefung.Moyenne</dd></div>
+                <div><dt>N° du bulletin</dt><dd><code>@pruefung.Nummer</code></dd></div>
+                <div><dt>Délivré le</dt><dd>@pruefung.Datum</dd></div>
+                @if (pruefung.ErsetztNummer is { } alt)
+                {
+                    <div><dt>Rectificatif</dt><dd>remplace le bulletin n° <code>@alt</code></dd></div>
+                }
             </dl>
-            <p class="sk-leise">Comparez ces informations avec le document papier. En cas de doute, contactez directement l'établissement.</p>
+            <p class="sk-leise">Comparez ces informations avec le document papier, en particulier le numéro et la date. En cas de doute, contactez directement l'établissement.</p>
         }
     </Karte>
 </div>
