@@ -6,6 +6,25 @@
 @inject IWebHostEnvironment Umgebung
 @inject IJSRuntime JS
 
+@* Anzeige bei Google und beim Teilen (WhatsApp, Facebook): Titel, Beschreibung, Bild, strukturierte Daten (18.11.2026). *@
+<PageTitle>@SuchTitel</PageTitle>
+<HeadContent>
+    <meta name="description" content="@SuchBeschreibung" />
+    <link rel="canonical" href="https://enote.tablosuite.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="eNOTE" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="@SuchTitel" />
+    <meta property="og:description" content="@SuchBeschreibung" />
+    <meta property="og:url" content="https://enote.tablosuite.com/" />
+    <meta property="og:image" content="https://enote.tablosuite.com/img/partage.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="eNOTE, la caisse simple pour salons, boutiques et cabinets" />
+    <meta name="twitter:card" content="summary_large_image" />
+    @((MarkupString)StrukturDaten)
+</HeadContent>
+
 <div class="lp">
     @* ---------- Hero ---------- *@
     <section class="lp-hero">
@@ -262,6 +281,41 @@
     private sealed record Anbieter(string Name, string Farbe);
 
     private decimal monatsPreis;
+
+    private const string SuchTitel = "eNOTE – Caisse et gestion pour salons, boutiques et cabinets";
+    private const string SuchBeschreibung = "eNOTE, la caisse simple pour salons de coiffure, instituts, boutiques et cabinets : espèces, Mobile Money, stock, équipe et finances, sur tablette et téléphone.";
+
+    /// <summary>JSON-LD (WebSite + SoftwareApplication) – Name, Herausgeber und aktueller Monatspreis für Google.</summary>
+    private string StrukturDaten
+    {
+        get
+        {
+            const string url = "https://enote.tablosuite.com/";
+            var herausgeber = new Dictionary<string, object> { ["@type"] = "Organization", ["@id"] = "https://tablosuite.com/#organisation", ["name"] = "TabloSuite", ["url"] = "https://tablosuite.com/" };
+            var app = new Dictionary<string, object>
+            {
+                ["@type"] = "SoftwareApplication", ["name"] = "eNOTE", ["url"] = url, ["description"] = SuchBeschreibung,
+                ["applicationCategory"] = "BusinessApplication", ["operatingSystem"] = "Web, Android, iOS, Windows",
+                ["image"] = url + "img/partage.jpg", ["inLanguage"] = "fr", ["publisher"] = herausgeber,
+            };
+            if (monatsPreis > 0)
+                app["offers"] = new Dictionary<string, object>
+                {
+                    ["@type"] = "Offer", ["price"] = monatsPreis.ToString("0", System.Globalization.CultureInfo.InvariantCulture), ["priceCurrency"] = "XOF",
+                    ["description"] = "Abonnement mensuel par établissement, 3 mois d'essai gratuit",
+                };
+            var daten = new Dictionary<string, object>
+            {
+                ["@context"] = "https://schema.org",
+                ["@graph"] = new object[]
+                {
+                    new Dictionary<string, object> { ["@type"] = "WebSite", ["@id"] = url + "#site", ["name"] = "eNOTE", ["alternateName"] = "eNOTE par TabloSuite", ["url"] = url, ["inLanguage"] = "fr", ["publisher"] = herausgeber },
+                    app,
+                },
+            };
+            return "<script type=\"application/ld+json\">" + System.Text.Json.JsonSerializer.Serialize(daten) + "</script>";
+        }
+    }
     private List<Anbieter> anbieter = [];
     private bool videoOffen;
 

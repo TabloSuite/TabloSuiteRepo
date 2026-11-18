@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /display/
+Disallow: /auth/reinitialiser
+Disallow: /api/
+
+Sitemap: https://enote.tablosuite.com/sitemap.xml

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /verification/
+Disallow: /auth/reinitialiser
+Disallow: /vorlesen/
+
+Sitemap: https://skoulou.tablosuite.com/sitemap.xml
