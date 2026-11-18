@@ -266,7 +266,7 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
                 throw new FachFehler("Ajoutez au moins une période qui compte pour l'année avant de démarrer.");
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == a.SchuleId, ct);
             var standard = await db.PlattformEinstellungen.AsNoTracking().Where(p => p.Id == PlattformEinstellung.EinzigeId)
-                .Select(p => (long?)p.JahrespreisProSchueler).FirstOrDefaultAsync(ct) ?? 12_500;
+                .Select(p => (long?)p.JahrespreisProSchueler).FirstOrDefaultAsync(ct) ?? new PlattformEinstellung().JahrespreisProSchueler;   // 18.11.: Standard 3.600 statt Altwert 12.500
             jahr.PlattformJahrespreis = schule.JahrespreisOverride ?? standard;
             jahr.Status = SchuljahrStatus.Laufend;
             audit.Erfasse(db, a.Id, a.SchuleId, OrgAudit.SchuljahrGestartet, nameof(Schuljahr), jahr.Id,

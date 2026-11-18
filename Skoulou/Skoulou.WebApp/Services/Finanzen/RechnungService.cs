@@ -19,8 +19,9 @@ public sealed record RechnungZeile(Guid Id, string Nummer, Guid SchuleId, string
 public sealed record PositionZeile(string Name, string? Matrikel, string? Klasse, long Betrag, string? StorniertGrund);
 public sealed record MeldungZeile(long Betrag, DateOnly Datum, string? Referenz, Guid? BuchungId, bool HatBeleg, string GemeldetVon, DateTime AmUtc);
 public sealed record AnteilKurz(string Responsable, decimal Prozent, long Betrag, DateTime? AusgezahltAmUtc);
+/// <summary>SchuelerVerborgen: für den Responsable ohne Namensliste (nur Anzahl) – er sieht keine Schülerdaten (Formation, CGU).</summary>
 public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadOnlyList<PositionZeile> Positionen, IReadOnlyList<MeldungZeile> Meldungen,
-    IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer);
+    IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer, bool SchuelerVerborgen = false);
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
 public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler)
@@ -124,13 +125,16 @@ public sealed class RechnungService(
 
     public async Task<RechnungDetail> DetailAsync(Guid akteurId, Guid rechnungId, CancellationToken ct = default)
     {
-        var (_, schulen) = await SichtAsync(akteurId, ct);
+        var (akteur, schulen) = await SichtAsync(akteurId, ct);
+        // 18.11.2026: Der Responsable sieht keine Schülerdaten (Formation « Ce que vous ne voyez pas », CGU) – auch nicht die
+        // Namensliste der Rechnung; Anzahl und Betrag genügen ihm. Die Liste lädt der Server für ihn gar nicht erst.
+        var ohneSchueler = akteur.Rolle == Rollen.Responsable;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var kopf = await Projektion(db, db.Plattformrechnungen.Where(r => r.Id == rechnungId)).FirstOrDefaultAsync(ct)
                    ?? throw new FachFehler("Cette facture est introuvable.");
         if (schulen is not null && !schulen.Contains(kopf.SchuleId)) throw new KeinZugriffFehler(Zugriff.MeldungAndereSchule);
         var r = await db.Plattformrechnungen.AsNoTracking().FirstAsync(x => x.Id == rechnungId, ct);
-        var positionen = await (from p in db.Rechnungspositionen
+        var positionen = ohneSchueler ? [] : await (from p in db.Rechnungspositionen
                                 where p.RechnungId == rechnungId
                                 join k in db.Users on p.SchuelerId equals k.Id
                                 join e in db.Einschreibungen on p.EinschreibungId equals e.Id
@@ -153,7 +157,8 @@ public sealed class RechnungService(
                              select new AnteilKurz(k.Vorname + " " + k.Nachname, a.Prozent, a.Betrag, a.AusgezahltAmUtc)).ToListAsync(ct);
         var bestaetigt = r.BestaetigtVonId is { } b ? await db.Users.Where(k => k.Id == b).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefaultAsync(ct) : null;
         var ergaenzt = r.ErgaenztId is { } eid ? await db.Plattformrechnungen.Where(x => x.Id == eid).Select(x => x.Nummer).FirstOrDefaultAsync(ct) : null;
-        return new RechnungDetail(kopf, r.Anzahl == 0 ? 0 : r.Betrag / r.Anzahl, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt);
+        return new RechnungDetail(kopf, r.Anzahl == 0 ? 0 : r.Betrag / r.Anzahl, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt,
+            SchuelerVerborgen: ohneSchueler);
     }
 
     public async Task<Organisation.Druck.PdfDatei> PdfAsync(Guid akteurId, Guid rechnungId, CancellationToken ct = default)

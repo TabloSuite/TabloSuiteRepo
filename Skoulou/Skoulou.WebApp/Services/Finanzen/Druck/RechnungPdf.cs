@@ -54,6 +54,11 @@ internal static class RechnungPdf
                         c.Item().Text($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {SkoulouKultur.Fcfa(d.ProSchueler)} (part de la période du prix annuel figé)").FontSize(8.5f);
                     });
                 });
+                // Für den Responsable ohne Namensliste (RechnungDetail.SchuelerVerborgen)
+                if (d.SchuelerVerborgen)
+                    col.Item().Text($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} facturé{(k.Anzahl > 1 ? "s" : "")} · liste nominative réservée à l'établissement et à l'administrateur.")
+                        .FontSize(8.5f).FontColor(DruckStil.Leise);
+                else
                 col.Item().Table(t =>
                 {
                     t.ColumnsDefinition(c => { c.ConstantColumn(10, Unit.Millimetre); c.RelativeColumn(4); c.RelativeColumn(2); c.RelativeColumn(2); c.RelativeColumn(2); });

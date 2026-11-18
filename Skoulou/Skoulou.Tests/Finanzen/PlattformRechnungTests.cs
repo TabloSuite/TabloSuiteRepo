@@ -29,6 +29,27 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Responsable_sieht_auf_der_Rechnung_keine_Schuelerliste()
+    {
+        // 18.11.2026: Formation und CGU versprechen, dass der Responsable keine Schülerdaten sieht – Rechnung nur mit Anzahl.
+        var w = await FinanzWelt.ErstelleAsync();
+        w.Heute(NachP1);
+        await w.Abrechnung.FaelligeAbrechnenAsync();
+        var r = await EinzigeAsync(w);
+        var po = await w.Rechnungen.DetailAsync(w.Org.Responsable, r.Id);
+        Assert.True(po.SchuelerVerborgen);
+        Assert.Empty(po.Positionen);
+        Assert.Equal((2, 8_332L), (po.Kopf.Anzahl, po.Kopf.Betrag));
+        Assert.Equal("%PDF"u8.ToArray(), (await w.Rechnungen.PdfAsync(w.Org.Responsable, r.Id)).Inhalt[..4]);
+        foreach (var mitListe in new[] { w.D, w.Org.Admin })
+        {
+            var d = await w.Rechnungen.DetailAsync(mitListe, r.Id);
+            Assert.False(d.SchuelerVerborgen);
+            Assert.Equal(2, d.Positionen.Count);
+        }
+    }
+
+    [Fact]
     public async Task Klassenwechsel_einmal_und_Nachtrag_fuer_rueckwirkende_Einschreibung()
     {
         var w = await FinanzWelt.ErstelleAsync();

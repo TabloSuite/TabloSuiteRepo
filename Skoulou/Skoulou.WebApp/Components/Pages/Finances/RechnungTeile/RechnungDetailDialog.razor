@@ -46,6 +46,13 @@
                     }
                 </ul>
             }
+            @if (d.SchuelerVerborgen)
+            {
+                <h3 class="fin-unterkopf">Élèves facturés (@d.Kopf.Anzahl)</h3>
+                <p class="sk-leise">La liste nominative des élèves est réservée à l'établissement et à l'administrateur.</p>
+            }
+            else
+            {
             <h3 class="fin-unterkopf">Élèves facturés (@d.Positionen.Count)</h3>
             <div class="sk-tabelle-rahmen fin-positionen">
                 <table class="sk-tabelle">
@@ -58,6 +65,7 @@
                     </tbody>
                 </table>
             </div>
+            }
         }
     </ChildContent>
     <Footer>
