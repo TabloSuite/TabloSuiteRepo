@@ -895,16 +895,22 @@ public partial class Caisse(
     }
 
     private DotNetObjectReference<Caisse>? scannerRef;
+    private bool geraetPruefungLaeuft;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        await LadeGeraetSchluesselAsync();
-        if (aktiveSitzung is not null && kassenGeraet is null)
+        // 18.11.2026: Geräteprüfung nach JEDEM Rendern, solange sie aussteht – nicht nur beim ersten. OnInitializedAsync lädt
+        // die offene Kasse asynchron und ist beim ersten Rendern oft noch nicht fertig (z. B. Accueil → Caisse bei offener
+        // Kasse); dann wurde nie geprüft und die Seite blieb dauerhaft bei « Ouverture de la caisse… ».
+        if (aktiveSitzung is not null && kassenGeraet is null && !geraetPruefungLaeuft)
         {
-            await PruefeKassenGeraetAsync();
+            geraetPruefungLaeuft = true;
+            try { await PruefeKassenGeraetAsync(); }
+            finally { geraetPruefungLaeuft = false; }
             StateHasChanged();
         }
+        if (!firstRender) return;
+        await LadeGeraetSchluesselAsync();
         scannerRef = DotNetObjectReference.Create(this);
         try { await js.InvokeVoidAsync("enoteScanner.start", scannerRef); }
         catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { /* ohne JS: Suchfeld genügt */ }
