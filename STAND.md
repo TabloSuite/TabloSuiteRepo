@@ -1,11 +1,24 @@
-# TabloSuite – Arbeitsstand 18.11.2026 (mittags)
+# TabloSuite – Arbeitsstand 18.11.2026 (nach dem SKOULOU-Deploy)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 mittags
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 nach dem SKOULOU-Deploy
+
+**>>> NEUESTES (18.11., Nutzer: « deine 3 Punkte ») – drei Aufräumpunkte erledigt, gepusht, NOCH NICHT DEPLOYT:**
+- SKOULOU-Mails ohne Türkis (f7c8d2f): Streifen unter dem Kopf, Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » und Fußtext in Blau,
+  Logo-Verlauf wie `skoulou-logo.svg`. Bild `Pictures\SKOULOU-Mail-Blau-2026-11-18\mail-blau.png`. Mail-Tests 18 grün.
+- eNOTE « Appareils connectés » (48881b4): Zeiten in der Ortszeit des aktiven Ladens (`ImLaden(AktiverSalon.Zeitzone)`) statt `ToLocalTime()`.
+- eNOTE ungenutzter Barzahlungs-Ablauf entfernt (cf6489b): `PoAbrechnung.razor`, `PoAbrechnungService`, `BesitzerBetreuungVerwaltung.razor`
+  (+ deren Tests). `BesitzerBetreuungsService` bleibt als statische Ergänzung neuer Läden (Hintergrunddienst `VertragsAktualisierung`);
+  `VertragsService`/`KontaktService` lesen `BesitzerBetreuungen` weiter. **Tabellen unverändert, keine Migration** (PoZahlungseingaenge,
+  PoZahlungsanforderungen, PoGeldbewegungen bleiben; Löschen nur per Migration mit OK). Simulation S1 auf `PoProvisionService` umgestellt
+  (kompiliert; der lange Simulationslauf selbst nicht wiederholt). eNOTE 521 Tests grün (−11 entfernte Tests der gelöschten Teile).
+- **Nächster Schritt beim Nutzer: eNOTE und SKOULOU deployen** (keine Azure-Migration nötig).
+- Gefunden, nicht geändert: weitere `ToLocalTime()` auf Admin-Seiten (Admin, AdminAnnonces, AdminEmails, Facturation, PoProvisionen…,
+  Journaux) – plattformweit, Server = UTC = Lomé, daher dort unkritisch.
 
 **>>> ZUERST LESEN – was offen ist (18.11. mittags):**
 - **Azure-Migration SKOULOU `20261118084334_SchuleEssaiPerioden` eingespielt** (18.11. mittags, OK « ok », lesend geprüft:
@@ -209,13 +222,12 @@ Bilder `Pictures\eNOTE-Gesamttest-Kasse-2026-11-17\`, `…-Display-je-Geraet-…
   Dazu (bd6b084, 09d573a): SKOULOU-Logo der Firmenseite im Stil des eNOTE-Logos (flach #1e3a8a, « S » so groß wie « eN »), neues
   Foto `skoulou-tableau-de-bord.webp` (Startseite Direktion, dunkelblaues Logo), Kopfbereich ohne Türkis (« votre activité »,
   Symbole, Schimmer). Bilder `…\v2\`, `…\v3\`. **Nutzer deployt TabloSuiteHome.**
-- SKOULOU-Mails: türkiser Streifen unter dem Kopf + Spruch « APPRENDRE. PROGRESSER. RÉUSSIR. » so lassen oder blau? (Frage offen.)
+- ✅ SKOULOU-Mails blau (18.11., f7c8d2f).
 - Videos: Admin « Tarifs et facturation » (neue Provisionen, Mehrfachbestätigung) und evtl. Responsable « Paiements et accompagnement »
   (« Mes commissions ») neu. Die Employé-Videos (`encaisser`, `attente`, `clients`, `cloture`) wurden mit `demo.awa` aufgenommen – bei
   Neuaufnahme mit `demo.proprio` + « Qui encaisse ? » (README lernen-v3, Abschnitt 17.11.).
-- Kleinigkeit: « Appareils connectés » zeigt Zeiten mit `ToLocalTime()` des Servers (Azure = UTC); für Länder mit UTC+1 eine Stunde
-  daneben → bei Gelegenheit auf die Zeitzone des Ladens umstellen.
-- Ungenutzter Code (PoAbrechnung …) könnte entfernt werden – nur nach Rückfrage.
+- ✅ « Appareils connectés » in der Zeitzone des Ladens (18.11., 48881b4).
+- ✅ Ungenutzter Code (PoAbrechnung …) entfernt (18.11., cf6489b; Tabellen bleiben).
 - « Vor Produktion » (Azure-Upgrades, unten) – unverändert, nur gemeinsam mit dem Nutzer.
 
 ### Details 17.11. (neueste zuerst)
