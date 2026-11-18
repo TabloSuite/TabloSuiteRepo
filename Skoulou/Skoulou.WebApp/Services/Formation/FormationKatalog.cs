@@ -332,7 +332,7 @@ public static partial class FormationKatalog
                     "Le prix est figé au démarrage de l'année scolaire de l'école ; un nouveau tarif ne vaut qu'à partir de l'année suivante.",
                     "Le prix annuel est réparti sur les périodes qui comptent, en francs entiers : 3 600 F en 3 trimestres = 1 200 + 1 200 + 1 200 ; 2 semestres = 1 800 F chacun ; 4 sessions = 900 F chacune ; un prix qui ne se divise pas, par exemple 5 000 F, donne 1 666 + 1 667 + 1 667."),
                 L("La période d'essai",
-                    "Un nouvel établissement ne paie pas ses premières périodes : une par défaut, jusqu'à quatre (au plus toute la première année scolaire).",
+                    "Un nouvel établissement peut recevoir une période d'essai : ses premières périodes ne sont pas facturées, jusqu'à quatre (au plus toute la première année scolaire). Par défaut, il n'y en a pas : l'administrateur décide pour chaque nouvelle école.",
                     "Vous la réglez pour vos écoles : « Mes écoles » › « Essai » › « Modifier » – tant que l'école n'a aucune facture SKOULOU ; l'administrateur est prévenu.",
                     "Une période d'essai déjà passée reste offerte. Pas de facture, donc pas de part pour vous.",
                     "La direction le voit dans « Facturation SKOULOU »."),

@@ -128,7 +128,7 @@ public static partial class FormationKatalog
                     "Une « Contestée » : vous examinez, puis « Répondre et maintenir » (elle redevient « À payer » avec votre réponse).",
                     "« Annuler la facture » avec un motif : ses élèves redeviennent facturables par « Facturer maintenant » ; si elle était payée, la part du responsable est compensée."),
                 L("Bon à savoir",
-                    "Période d'essai : « Écoles » › « Essai » – 0 à 4 premières périodes de la première année sans facture (1 pour une nouvelle école), réglable tant qu'aucune facture n'existe. Le responsable peut aussi la régler pour ses écoles ; vous recevez un e-mail.",
+                    "Période d'essai : « Écoles » › « Essai » – 0 à 4 premières périodes de la première année sans facture. Par défaut aucune : vous décidez pour chaque nouvelle école, tant qu'aucune facture n'existe. Le responsable peut aussi la régler pour ses écoles ; vous recevez un e-mail.",
                     "Une contestation justifiée : « Annuler la facture », puis « Facturer maintenant ».",
                     "« Confirmer le paiement reçu » marche aussi sans déclaration de l'école (par exemple un virement reçu directement)."),
                 A("Une facture impayée ne bloque rien automatiquement. Vous décidez : rappeler, ou suspendre l'école."),

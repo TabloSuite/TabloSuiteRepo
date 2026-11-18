@@ -29,7 +29,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   gelöscht (Nutzer-OK), alle Formation-Tabellen 0; SKOULOU Azure hatte keine.
 - **SKOULOU: Responsable sieht auf Rechnungen keine Schülerliste** (439d001, Nutzerentscheidung « Empfehlung umsetzen »); Rückfallpreis 3.600.
 - **SKOULOU: Probezeit « Période d'essai »** (f8be337): 0–4 erste Abrechnungsperioden des ersten Schuljahres ohne Rechnung/Part,
-  neue Schulen 1, Bestand 0; Admin und Responsable (eigene Schulen, Mail an Admins) ändern, solange keine Rechnung existiert;
+  Standard 0 – der Admin entscheidet bei jeder neuen Schule (Nutzer 18.11.; Mail bei Anmeldung erinnert daran); Admin und Responsable (eigene Schulen, Mail an Admins) ändern, solange keine Rechnung existiert;
   Direktion sieht es unter « Facturation SKOULOU ». CGU + Formation ergänzt. 652 Tests grün.
 
 **>>> EMPFEHLUNGEN für den nächsten Chat:**

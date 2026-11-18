@@ -89,5 +89,5 @@ public class EssaiTests
     }
 
     [Fact]
-    public void Neue_Schulen_haben_eine_Probe_Periode() => Assert.Equal(1, new Schule().EssaiPerioden);
+    public void Neue_Schulen_ohne_Probezeit_der_Admin_entscheidet() => Assert.Equal(0, new Schule().EssaiPerioden);
 }

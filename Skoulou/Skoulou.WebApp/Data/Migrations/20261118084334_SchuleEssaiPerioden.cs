@@ -10,7 +10,7 @@ namespace Skoulou.WebApp.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // 18.11.2026 Probezeit: bestehende Schulen 0 (ihre Abrechnung bleibt unverändert), neue Schulen 1 (Entität).
+            // 18.11.2026 Probezeit: Standard 0 – der Admin (oder der Responsable der Schule) legt sie je Schule fest.
             migrationBuilder.AddColumn<int>(
                 name: "EssaiPerioden",
                 table: "Schulen",

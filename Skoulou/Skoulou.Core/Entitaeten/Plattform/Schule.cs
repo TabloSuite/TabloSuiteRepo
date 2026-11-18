@@ -25,9 +25,9 @@ public class Schule : Entitaet
     /// <summary>
     /// Probezeit (18.11.2026): so viele Abrechnungsperioden zu Beginn des ersten Schuljahres stellt SKOULOU nicht in Rechnung
     /// (0–4, höchstens die Periodenzahl des Jahres). Änderbar durch Admin und Responsable, solange die Schule keine Rechnung hat.
-    /// Neue Schulen: 1; beim Einführen bestehende Schulen: 0 (Migration).
+    /// Standard 0 (Nutzer 18.11.2026: keine automatische Probezeit – der Admin entscheidet bei jeder neuen Schule).
     /// </summary>
-    public int EssaiPerioden { get; set; } = 1;
+    public int EssaiPerioden { get; set; }
 
     // Dokumentdaten (Bulletin, Quittung, Karten)
     public string? OffizielleBezeichnung { get; set; }

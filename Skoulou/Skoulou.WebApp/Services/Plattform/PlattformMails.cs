@@ -25,6 +25,7 @@ public sealed class PlattformMails(MailAusgangService mails, IOptions<AppOptione
     public Task NeueSchuleAnAdminAsync(string an, string schule, string ort, string direktor, CancellationToken ct = default)
         => SendeAsync(an, $"Nouvel établissement à valider : {schule}", MailLayout.Absatz("Bonjour,")
             + MailLayout.Absatz($"Un nouvel établissement vient de s'inscrire : « {schule} » ({ort}), direction : {direktor}.")
+            + MailLayout.Absatz("Après la validation, décidez de sa période d'essai : « Écoles » › « Essai » (par défaut, aucune).")
             + MailLayout.Knopf(app.Value.Url("/admin/ecoles?filtre=en-attente"), "Vérifier et valider"), "admin-nouvelle-ecole", ct);
 
     public Task SchuleValidiertAsync(string? an, string vorname, string schule, CancellationToken ct = default)
