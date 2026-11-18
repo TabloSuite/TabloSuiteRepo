@@ -24,6 +24,21 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   `lernen-v3/aufnahme/app-starten.ps1 [-Bauen]` aus PowerShell aufrufen, nicht über eine Pipe). eNOTE-Aufnahme-App ist gestoppt
   (Start: ENote `lernen-v3/aufnahme/app-starten.ps1`, danach Demo-Daten aufräumen – README 18.11.).
 
+**>>> (18.11. vormittags) Empfehlung 2 erledigt, Empfehlung 3 vorbereitet:**
+- Live-Stichprobe OK: SKOULOU alle 31 Vorschaubilder 200, Lernvideos ohne Anmeldung 401, Werbevideo öffentlich 206; Prüfseite
+  `/verification/…` anonym erreichbar (« Bulletin introuvable » bei fremdem Code) – Azure hat noch **0 Bulletins**, daher Nummer/Datum
+  dort nicht an echtem Code prüfbar. eNOTE: Poster `enote-admin-tarifs/formation.jpg` live mit Zeitstempel 18.11. 04:45 = lokal.
+- eNOTE-Videoliste « veraltet / fehlt » dem Nutzer vorgelegt, **wartet auf sein OK** (nichts aufnehmen ohne OK):
+  Veraltet (ganz neu, aufgenommen 14.11. vor « Qui encaisse ? », Mitarbeiter ohne Passwort, Provisionen, Formation):
+  premiers-pas, visite-guidee, encaisser, attente, clients, cloture, activite (Clôtures mit Notiz + « Par caissier »),
+  responsable-etablissements (Startseite/Menü Formation, Provision), responsable-paiements (« PoProvisionenPo » fehlt),
+  admin-etablissements (sagt « quatre onglets », jetzt + Formation/Administrateurs, Land).
+  Passt noch: catalogue, fidelite, compte, admin-communication (nur neue Formation-Mails), alle Konzeptvideos, equipe,
+  admin-tarifs, admin-formation; Werbevideo nur Kassenkopf ohne « Changer ».
+  Fehlt: « S'inscrire et mot de passe oublié » (Pour tous), « Les appareils de la caisse » (Changer, Reprendre la caisse ici,
+  Écran client per QR – seit deux-appareils raus in keinem Praxisvideo), Responsable « Votre formation » (Lektion, Prüfung,
+  Ergebnis am Handy); Reiter « Administrateurs » in admin-etablissements mit aufnehmen.
+
 **>>> EMPFEHLUNGEN für den nächsten Chat (Nutzer 18.11.: « damit machen wir deine Empfehlungen weiter ») – Reihenfolge:**
 1. **Werbevideo « Pourquoi SKOULOU ? » v4**: Nutzer schaut es an → bei OK einbauen (Schritte oben), sonst Änderungen umsetzen.
    Erst fragen, nicht von selbst einbauen.
