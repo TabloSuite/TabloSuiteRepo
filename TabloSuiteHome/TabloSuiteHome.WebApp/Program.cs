@@ -9,6 +9,11 @@ builder.Services.AddOptions<TabloSuiteOptionen>()
     .Validate(o => o.Pruefe().Count == 0, "Catalogue TabloSuite invalide (voir TabloSuiteOptionen.Pruefe).")
     .ValidateOnStart();
 
+// Aktueller Preis der Apps für die Karten (z. B. SKOULOU /tarifs/public), kurz zwischengespeichert.
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient(TarifAbfrage.Client, c => c.Timeout = TimeSpan.FromSeconds(3));
+builder.Services.AddSingleton<TarifAbfrage>();
+
 // Nur statisches Server-Rendering: keine Verbindung (SignalR) nötig, schnell auch bei schwachem Netz.
 builder.Services.AddRazorComponents();
 

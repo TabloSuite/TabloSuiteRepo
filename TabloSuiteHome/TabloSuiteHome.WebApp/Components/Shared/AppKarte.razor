@@ -1,4 +1,5 @@
-@* Eine App der TabloSuiteMappe: Bild, Logo, Zielgruppe, Beschreibung, Punkte, Wege in die App. *@
+@* Eine App der TabloSuiteMappe: Bild, Logo, Zielgruppe, Beschreibung, Punkte, Preis, Wege in die App. *@
+@inject TarifAbfrage Tarife
 <article id="@App.Id" class="ts-app @(Gespiegelt ? "gespiegelt" : "") @(App.IstVerfuegbar ? "" : "bald")" style="--app-farbe: @App.Farbe">
     <div class="ts-app-bild">
         @if (!string.IsNullOrWhiteSpace(App.Bild))
@@ -28,6 +29,23 @@
                 }
             </ul>
         }
+        @if (App.IstVerfuegbar && (preis is not null || !string.IsNullOrWhiteSpace(App.TarifHinweis)))
+        {
+            <div class="ts-app-tarif">
+                @if (preis is { } p)
+                {
+                    <p><strong>@TarifAbfrage.Zahl(p) FCFA</strong> @App.TarifEinheit</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(App.TarifHinweis))
+                {
+                    <p class="ts-app-tarif-hinweis">@App.TarifHinweis</p>
+                }
+                @if (App.TarifSeiteUrl is { } seite)
+                {
+                    <a href="@seite" rel="noopener">Voir les tarifs</a>
+                }
+            </div>
+        }
         @if (App.IstVerfuegbar)
         {
             <div class="ts-app-wege">
@@ -54,4 +72,11 @@
 
     /// <summary>Bild rechts statt links (abwechselnd untereinander).</summary>
     [Parameter] public bool Gespiegelt { get; set; }
+
+    private long? preis;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (App.IstVerfuegbar) preis = await Tarife.PreisAsync(App);
+    }
 }

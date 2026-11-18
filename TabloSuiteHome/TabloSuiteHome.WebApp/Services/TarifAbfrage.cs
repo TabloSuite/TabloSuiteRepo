@@ -1,0 +1,52 @@
+using System.Globalization;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace TabloSuiteHome.WebApp.Services;
+
+/// <summary>
+/// Holt den aktuellen Standardpreis einer App über ihren öffentlichen Endpunkt (z. B. SKOULOU « /tarifs/public »),
+/// damit tablosuite.com nie einen veralteten Preis zeigt. Zwischengespeichert (30 min, nach Fehlern 2 min);
+/// antwortet die App nicht (z. B. Kaltstart), zeigt die Karte nur den Hinweis ohne Zahl.
+/// </summary>
+public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache, ILogger<TarifAbfrage> logger)
+{
+    public const string Client = "tarife";
+
+    private sealed record Antwort(long JahrespreisProSchueler, string? Waehrung);
+
+    public async Task<long?> PreisAsync(TabloSuiteApp app, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(app.TarifQuelle)) return null;
+        var schluessel = "tarif:" + app.TarifQuelle;
+        if (cache.TryGetValue(schluessel, out long? preis)) return preis;
+        try
+        {
+            using var antwort = await clients.CreateClient(Client).GetAsync(app.TarifQuelle, ct);
+            preis = antwort.IsSuccessStatusCode && antwort.StatusCode != System.Net.HttpStatusCode.NoContent
+                ? (await antwort.Content.ReadFromJsonAsync<Antwort>(ct))?.JahrespreisProSchueler
+                : null;
+            if (preis is not > 0) preis = null;
+            cache.Set(schluessel, preis, preis is null ? TimeSpan.FromMinutes(2) : TimeSpan.FromMinutes(30));
+            return preis;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Tarif de {App} non disponible : {Meldung}", app.Id, ex.Message);
+            cache.Set(schluessel, (long?)null, TimeSpan.FromMinutes(2));
+            return null;
+        }
+    }
+
+    private static readonly CultureInfo Kultur = Erzeuge();
+
+    private static CultureInfo Erzeuge()
+    {
+        var k = (CultureInfo)CultureInfo.GetCultureInfo("fr-FR").Clone();
+        k.NumberFormat.NumberGroupSeparator = ".";
+        return k;
+    }
+
+    /// <summary>« 3.600 » – Tausenderpunkt wie in den Apps.</summary>
+    public static string Zahl(long wert) => wert.ToString("N0", Kultur);
+}

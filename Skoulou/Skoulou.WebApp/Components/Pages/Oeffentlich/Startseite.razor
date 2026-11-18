@@ -80,6 +80,42 @@
         </div>
     </section>
 
+    @if (jahrespreis is { } preis)
+    {
+        <section class="lp-abschnitt" id="tarifs">
+            <div class="lp-abschnitt-kopf">
+                <p class="sk-oberzeile">Tarifs</p>
+                <h2>Un prix simple, par élève</h2>
+                <p>Vous payez uniquement pour les élèves inscrits, à la fin de chaque période. Les comptes de la direction, des enseignants et des parents ne coûtent rien de plus.</p>
+            </div>
+            <div class="lp-preise">
+                <article class="lp-preis haupt">
+                    <span class="lp-preis-titel">Par élève et par an</span>
+                    <strong>@SkoulouKultur.Zahl(preis) <small>FCFA</small></strong>
+                    <span>réparti sur les périodes de l'année scolaire</span>
+                </article>
+                @foreach (var (titel, anzahl, einheit) in Aufteilungen)
+                {
+                    <article class="lp-preis">
+                        <span class="lp-preis-titel">@titel</span>
+                        <strong>@Anteil(preis, anzahl) <small>FCFA</small></strong>
+                        <span>par élève et par @einheit</span>
+                    </article>
+                }
+            </div>
+            <div class="lp-preis-inklusive">
+                <span><Icon Name="check" Groesse="16" Strich="2.5" /> Facturé seulement pour les élèves inscrits</span>
+                <span><Icon Name="check" Groesse="16" Strich="2.5" /> Enseignants et parents sans supplément</span>
+                <span><Icon Name="check" Groesse="16" Strich="2.5" /> Période d'essai possible pour un nouvel établissement</span>
+                <span><Icon Name="check" Groesse="16" Strich="2.5" /> Mises à jour comprises</span>
+            </div>
+            <p class="lp-preis-hinweis">
+                <Icon Name="info" Groesse="16" />
+                <span>Ce prix vaut pour la plupart des établissements. Il peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année scolaire démarrée, il ne change plus jusqu'à sa fin.</span>
+            </p>
+        </section>
+    }
+
     <section class="lp-schritte" id="etapes">
         <div>
             <p class="sk-oberzeile">Démarrer</p>
@@ -108,6 +144,23 @@
     [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
 
     private StartseitenStatistik.Zahlen? zahlen;
+    private long? jahrespreis;
+
+    // Beispiele der Aufteilung (gleiche Regel wie die Rechnung: ganze FCFA, Summe = Jahrespreis).
+    private static readonly (string, int, string)[] Aufteilungen =
+    [
+        ("Année en 3 trimestres", 3, "trimestre"),
+        ("Année en 2 semestres", 2, "semestre"),
+        ("Année en 4 sessions", 4, "session"),
+    ];
+
+    /// <summary>« 1.200 » oder bei ungerader Teilung « 1.666 à 1.667 ».</summary>
+    private static string Anteil(long preis, int anzahl)
+    {
+        var anteile = Skoulou.Core.Finanzen.PlattformAnteil.Anteile(preis, anzahl);
+        var (min, max) = (anteile.Min(), anteile.Max());
+        return min == max ? SkoulouKultur.Zahl(min) : $"{SkoulouKultur.Zahl(min)} à {SkoulouKultur.Zahl(max)}";
+    }
 
     private static readonly (string, string, string)[] Funktionen =
     [
@@ -149,5 +202,6 @@
             return;
         }
         zahlen = await Statistik.LadeAsync();
+        jahrespreis = await Statistik.JahrespreisAsync();
     }
 }

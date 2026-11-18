@@ -35,6 +35,18 @@ public sealed class TabloSuiteApp
     /// <summary>Kurzer Zusatz unter den Knöpfen, z. B. « 3 mois d'essai offerts ».</summary>
     public string? Hinweis { get; set; }
 
+    /// <summary>Öffentlicher Preis-Endpunkt der App (https, JSON « jahrespreisProSchueler »), z. B. SKOULOU « /tarifs/public ».</summary>
+    public string? TarifQuelle { get; set; }
+
+    /// <summary>Einheit hinter dem Preis, z. B. « par élève et par an ».</summary>
+    public string? TarifEinheit { get; set; }
+
+    /// <summary>Hinweis unter dem Preis, z. B. faire Anpassung je Einrichtung.</summary>
+    public string? TarifHinweis { get; set; }
+
+    /// <summary>Pfad der Preisseite in der App, z. B. « /#tarifs ».</summary>
+    public string? TarifSeite { get; set; }
+
     /// <summary>Logo und Bildschirmbild relativ zu wwwroot.</summary>
     public string Logo { get; set; } = string.Empty;
     public string Bild { get; set; } = string.Empty;
@@ -48,6 +60,7 @@ public sealed class TabloSuiteApp
     public bool IstVerfuegbar => Status == AppStatus.Disponible;
     public string Domain => Uri.TryCreate(Url, UriKind.Absolute, out var u) ? u.Host : Url;
     public string? RegistrierungUrl => string.IsNullOrWhiteSpace(Registrierung) ? null : Url.TrimEnd('/') + "/" + Registrierung.TrimStart('/');
+    public string? TarifSeiteUrl => string.IsNullOrWhiteSpace(TarifSeite) ? null : Url.TrimEnd('/') + "/" + TarifSeite.TrimStart('/');
 }
 
 /// <summary>Firmenangaben und App-Katalog (Abschnitt « TabloSuite » in appsettings.json).</summary>
@@ -85,6 +98,10 @@ public sealed class TabloSuiteOptionen
             if (string.IsNullOrWhiteSpace(a.Logo)) fehler.Add($"« {name} » : logo manquant.");
             if (a.IstVerfuegbar && !(Uri.TryCreate(a.Url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps))
                 fehler.Add($"« {name} » : adresse https manquante.");
+            if (!string.IsNullOrWhiteSpace(a.TarifQuelle) && !(Uri.TryCreate(a.TarifQuelle, UriKind.Absolute, out var t) && t.Scheme == Uri.UriSchemeHttps))
+                fehler.Add($"« {name} » : source du tarif https invalide.");
+            if (!string.IsNullOrWhiteSpace(a.TarifQuelle) && string.IsNullOrWhiteSpace(a.TarifEinheit))
+                fehler.Add($"« {name} » : unité du tarif manquante.");
         }
         return fehler;
     }

@@ -812,14 +812,28 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .lp-vertrauen > div { display: flex; gap: .8rem; align-items: flex-start; padding: 1.1rem; border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); border: 1px solid var(--sk-rand); }
 .lp-vertrauen > div > span { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; flex-shrink: 0; border-radius: .8rem; background: var(--sk-akzent-zart); color: var(--sk-akzent-text); }
 .lp-vertrauen p { margin: .2rem 0 0; color: var(--sk-text-leise); font-size: .9rem; }
-@media (max-width: 1100px) { .lp-rollen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lp-preise { display: grid; grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.lp-preis { display: grid; gap: .35rem; align-content: start; padding: 1.4rem; border-radius: var(--sk-radius-gross); background: var(--sk-flaeche); border: 1px solid var(--sk-rand); }
+.lp-preis-titel { font-size: .82rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--sk-text-leise); }
+.lp-preis strong { font-size: 1.7rem; font-weight: 800; color: var(--sk-ueberschrift); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.lp-preis strong small { font-size: .9rem; font-weight: 700; }
+.lp-preis > span:last-child { color: var(--sk-text-leise); font-size: .9rem; }
+.lp-preis.haupt { background: var(--sk-verlauf-tief); border-color: transparent; color: #fff; }
+.lp-preis.haupt .lp-preis-titel, .lp-preis.haupt > span:last-child { color: rgba(255, 255, 255, .85); }
+.lp-preis.haupt strong { color: #fff; font-size: 2.2rem; }
+.lp-preis-inklusive { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; font-size: .93rem; font-weight: 600; }
+.lp-preis-inklusive span { display: inline-flex; align-items: center; gap: .4rem; }
+.lp-preis-inklusive .sk-icon { color: var(--sk-erfolg); }
+.lp-preis-hinweis { display: flex; gap: .55rem; align-items: flex-start; margin: 0; padding: .9rem 1.1rem; border-radius: var(--sk-radius); background: var(--sk-primaer-zart); color: var(--sk-text); font-size: .93rem; line-height: 1.55; max-width: 52rem; }
+.lp-preis-hinweis .sk-icon { flex-shrink: 0; margin-top: .15rem; color: var(--sk-primaer-hell); }
+@media (max-width: 1100px) { .lp-rollen, .lp-preise { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 960px) {
     .lp { gap: 2.75rem; padding-top: 1.5rem; }
     .lp-hero, .lp-video, .lp-schritte { grid-template-columns: minmax(0, 1fr); }
     .lp-funktionen, .lp-vertrauen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
-    .lp-funktionen, .lp-vertrauen, .lp-rollen, .lp-schritte ol { grid-template-columns: minmax(0, 1fr); }
+    .lp-funktionen, .lp-vertrauen, .lp-rollen, .lp-schritte ol, .lp-preise { grid-template-columns: minmax(0, 1fr); }
     .lp-video, .lp-schritte { padding: 1.4rem; }
     .lp-knoepfe .sk-btn { width: 100%; }
     .sk-oeffentlich-kopf .sk-marke-name { font-size: 1rem; }

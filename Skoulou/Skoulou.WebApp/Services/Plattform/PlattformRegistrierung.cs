@@ -89,6 +89,13 @@ public static class PlattformRegistrierung
         app.MapAuthEndpunkte();
         app.MapKommunikationsEndpunkte();
         app.MapInscriptionEndpunkt();
+        // Öffentlicher Standardpreis für die Firmenseite tablosuite.com (nur die Zahl, zwischengespeichert).
+        app.MapGet("/tarifs/public", async (StartseitenStatistik statistik, HttpContext http) =>
+        {
+            var preis = await statistik.JahrespreisAsync(http.RequestAborted);
+            http.Response.Headers.CacheControl = "public, max-age=600";
+            return preis is { } p ? Results.Json(new { jahrespreisProSchueler = p, waehrung = "FCFA" }) : Results.NoContent();
+        }).AllowAnonymous().RequireRateLimiting(Infrastruktur.RateLimits.Pruefung);
         return app;
     }
 }

@@ -144,6 +144,12 @@ p { margin: 0; }
 .ts-app-punkte { display: grid; gap: .55rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
 .ts-app-punkte li { display: flex; align-items: flex-start; gap: .6rem; font-weight: 600; }
 .ts-haken { display: grid; place-items: center; flex: none; width: 1.4rem; height: 1.4rem; margin-top: .1rem; border-radius: 50%; background: color-mix(in srgb, var(--app-farbe) 14%, #fff); color: var(--app-farbe); }
+.ts-app-tarif { display: grid; gap: .3rem; justify-items: start; margin-top: 1.4rem; padding: .9rem 1.1rem; border-radius: 14px; background: color-mix(in srgb, var(--app-farbe) 7%, #fff); border: 1px solid color-mix(in srgb, var(--app-farbe) 18%, #fff); }
+.ts-app-tarif p { margin: 0; color: var(--ts-text-2); }
+.ts-app-tarif strong { color: var(--ts-nacht); font-size: 1.15rem; font-weight: 800; }
+.ts-app-tarif-hinweis { font-size: .9rem; }
+.ts-app-tarif a { color: var(--app-farbe); font-weight: 700; font-size: .92rem; text-decoration: none; }
+.ts-app-tarif a:hover { text-decoration: underline; }
 .ts-app-wege { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.75rem; }
 .ts-app-hinweis { margin-top: .8rem; color: var(--ts-text-3); font-size: .9rem; font-weight: 600; }
 .ts-weitere { display: flex; align-items: center; justify-content: center; gap: .5rem; margin-top: 2.25rem; color: var(--ts-text-3); font-weight: 600; }

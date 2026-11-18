@@ -32,6 +32,10 @@ public class AppKatalogTests
         Assert.All(o.SortierteApps, a => Assert.True(a.IstVerfuegbar));
         Assert.Equal("https://enote.tablosuite.com/auth/register", o.SortierteApps[0].RegistrierungUrl);
         Assert.Equal("skoulou.tablosuite.com", o.SortierteApps[1].Domain);
+        Assert.Equal("https://skoulou.tablosuite.com/auth/inscription", o.SortierteApps[1].RegistrierungUrl);
+        Assert.Equal("https://skoulou.tablosuite.com/tarifs/public", o.SortierteApps[1].TarifQuelle);
+        Assert.Equal("https://skoulou.tablosuite.com/#tarifs", o.SortierteApps[1].TarifSeiteUrl);
+        Assert.Contains("de façon juste", o.SortierteApps[1].TarifHinweis);
         Assert.Equal("contact@tablosuite.com", o.KontaktEmail);
     }
 

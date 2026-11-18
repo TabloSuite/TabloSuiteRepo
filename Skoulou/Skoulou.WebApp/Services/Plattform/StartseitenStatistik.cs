@@ -5,7 +5,7 @@ using Skoulou.WebApp.Data;
 
 namespace Skoulou.WebApp.Services.Plattform;
 
-/// <summary>Zähler der Startseite (aktive Schulen, eingeschriebene Schüler), 10 Minuten zwischengespeichert.</summary>
+/// <summary>Zähler der Startseite (aktive Schulen, eingeschriebene Schüler) und Standardpreis, 10 Minuten zwischengespeichert.</summary>
 public sealed class StartseitenStatistik(IDbContextFactory<SkoulouDbContext> dbFactory, IMemoryCache cache, ILogger<StartseitenStatistik> logger)
 {
     public sealed record Zahlen(int Schulen, int Schueler);
@@ -29,6 +29,25 @@ public sealed class StartseitenStatistik(IDbContextFactory<SkoulouDbContext> dbF
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning("Zähler der Startseite nicht verfügbar: {Meldung}", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>Standard-Jahrespreis je Schüler (Administration › Tarifs) für Startseite und tablosuite.com; null bei Fehler/ohne Tarif.</summary>
+    public async Task<long?> JahrespreisAsync(CancellationToken ct = default)
+    {
+        if (cache.TryGetValue("startseite:jahrespreis", out long? preis)) return preis;
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            preis = await db.PlattformEinstellungen.Select(e => (long?)e.JahrespreisProSchueler).FirstOrDefaultAsync(ct);
+            if (preis is not > 0) preis = null;
+            cache.Set("startseite:jahrespreis", preis, TimeSpan.FromMinutes(10));
+            return preis;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning("Tarif de la page d'accueil non disponible : {Meldung}", ex.Message);
             return null;
         }
     }
