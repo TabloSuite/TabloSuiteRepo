@@ -8,11 +8,9 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 mittags
 
 **>>> ZUERST LESEN – was offen ist (18.11. mittags):**
-- **Azure-Migration SKOULOU `20261118084334_SchuleEssaiPerioden` (eine int-Spalte, Bestand 0) – wartet auf das OK des Nutzers.**
-  Lokal (SkoulouDB, SkoulouDB_VIDEO) eingespielt. Azure steht auf `20261117151012_FormationResponsables`. Einspielen per
-  `dotnet ef database update --project Skoulou/Skoulou.WebApp --connection "…Database=Skoulou-Database;Authentication=Active Directory Default…"`
-  (Memory « skoulou-azure »), danach lesend prüfen. eNOTE hat KEINE neue Migration.
-- **Danach deployt der Nutzer beide Apps** (SKOULOU: Werbevideo v4, Rechnung ohne Schülerliste für Responsables, Probezeit, Formation;
+- **Azure-Migration SKOULOU `20261118084334_SchuleEssaiPerioden` eingespielt** (18.11. mittags, OK « ok », lesend geprüft:
+  Azure = lokal, 0 Schulen auf Azure). eNOTE hat keine neue Migration.
+- **Jetzt deployt der Nutzer beide Apps** (SKOULOU: Werbevideo v4, Rechnung ohne Schülerliste für Responsables, Probezeit, Formation;
   eNOTE: 13 Videos, Kassen-Fix, « Mot de passe oublié ? », Länderliste, Formation).
 - Git: `git status -sb` – mehrere Commits warteten auf die GitHub-Anmeldung; ggf. pushen.
 - Nicht bestätigt (nachfragen): Azure-Tarif SKOULOU auf 3.600 F (Administration › Tarifs, macht der Nutzer selbst).
@@ -35,7 +33,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Direktion sieht es unter « Facturation SKOULOU ». CGU + Formation ergänzt. 652 Tests grün.
 
 **>>> EMPFEHLUNGEN für den nächsten Chat:**
-1. Azure-Migration SKOULOU einspielen (nur mit OK), dann deployt der Nutzer beide Apps; danach Live-Stichprobe (Videos 200/401,
+1. Nach dem Deploy beider Apps: Live-Stichprobe (Videos 200/401,
    SKOULOU Admin › Écoles « Essai », eNOTE Anmeldeseite mit « Mot de passe oublié ? »).
 2. SKOULOU-Videos mit der Probezeit nachziehen (sichtbar: Admin « Écoles et comptes » / « facturation » – neuer Knopf « Essai »;
    « Responsable : accompagner vos écoles » – Zeile « Essai » auf der Karte; « La facture SKOULOU » – Hinweis der Direktion).
