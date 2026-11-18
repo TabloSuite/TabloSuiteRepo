@@ -18,6 +18,10 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (kompiliert; der lange Simulationslauf selbst nicht wiederholt). eNOTE 521 Tests grün (−11 entfernte Tests der gelöschten Teile).
 - **Nächster Schritt beim Nutzer: eNOTE und SKOULOU deployen** (keine Azure-Migration nötig).
 - Azure-Tarif SKOULOU steht jetzt auf 3.600 F (siehe unten). Allgemeiner eNOTE-Test des Nutzers: bisher nichts aufgefallen.
+- SKOULOU-Hinweis « Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) » (Nutzer 18.11.) auf
+  Année scolaire (Karte + Hinweis), Facturation SKOULOU, CGU Direction, Admin › Tarifs, Formation Responsable/Admin. Kein Versprechen
+  « annoncé à l'avance » (SKOULOU kündigt Schulpreise nicht automatisch an) – nur: gilt ab Jahresstart, danach fest. Bilder
+  `Pictures\SKOULOU-Preis-fair-2026-11-18\` (PC + Handy, kein Überlauf). 652 Tests grün. Videos zeigen die alten Untertitel (unwesentlich).
 - Gefunden, nicht geändert: weitere `ToLocalTime()` auf Admin-Seiten (Admin, AdminAnnonces, AdminEmails, Facturation, PoProvisionen…,
   Journaux) – plattformweit, Server = UTC = Lomé, daher dort unkritisch.
 
