@@ -107,12 +107,19 @@ public sealed class KiHilfeDienst(IKiClient client, KiNutzungsZaehler zaehler, I
         return string.Join('\n', zeilen.Where(z => z.Length > 0)).Trim();
     }
 
-    /// <summary>Lernvideos, deren genauer Titel in der Antwort steht (höchstens drei, Reihenfolge des Katalogs).</summary>
+    /// <summary>
+    /// Lernvideos, deren genauer Titel in Anführungszeichen in der Antwort steht (« titre exact », höchstens drei, Reihenfolge
+    /// des Katalogs). Ohne Anführungszeichen zählt ein Titel nicht – kurze Titel kämen sonst in gewöhnlichen Sätzen vor.
+    /// </summary>
     internal static IReadOnlyList<VideoKatalog.LernVideo> PassendeVideos(string antwort, IReadOnlyList<VideoKatalog.LernVideo> erlaubt)
     {
         var a = Vergleich(antwort);
-        return [.. erlaubt.Where(v => a.Contains(Vergleich(v.Titel), StringComparison.Ordinal)).Take(3)];
+        return [.. erlaubt.Where(v => Zitiert(a, Vergleich(v.Titel))).Take(3)];
     }
+
+    private static bool Zitiert(string text, string titel)
+        => text.Contains("«" + titel + "»", StringComparison.Ordinal) || text.Contains("\"" + titel + "\"", StringComparison.Ordinal)
+           || text.Contains("“" + titel + "”", StringComparison.Ordinal);
 
     /// <summary>Die Zeile « Vidéo : « … » » entfällt, wenn das Video als Knopf darunter erscheint.</summary>
     private static string OhneVideoZeile(string antwort, IReadOnlyList<VideoKatalog.LernVideo> videos)
@@ -121,13 +128,14 @@ public sealed class KiHilfeDienst(IKiClient client, KiNutzungsZaehler zaehler, I
         var titel = videos.Select(v => Vergleich(v.Titel)).ToList();
         var zeilen = antwort.Replace("\r", string.Empty).Split('\n')
             .Where(z => !(z.TrimStart('*', ' ', '-').StartsWith("Vid", StringComparison.OrdinalIgnoreCase)
-                          && titel.Any(t => Vergleich(z).Contains(t, StringComparison.Ordinal))));
+                          && titel.Any(t => Zitiert(Vergleich(z), t))));
         return string.Join('\n', zeilen).Trim();
     }
 
+    /// <summary>Kleinbuchstaben, ein Apostroph, Leerraum zusammengefasst, Leerzeichen innerhalb von « » entfernt.</summary>
     private static string Vergleich(string s)
-        => string.Join(' ', s.ToLowerInvariant().Replace('’', '\'').Replace(' ', ' ').Replace(' ', ' ')
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        => string.Join(' ', s.ToLowerInvariant().Replace('’', '\'').Replace('\u00a0', ' ').Replace('\u202f', ' ')
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)).Replace("« ", "«").Replace(" »", "»");
 
     private KiErgebnis Meldung(string meldung, string konto) => new(false, null, meldung, [], zaehler.Verbleibend(konto));
 

@@ -100,6 +100,13 @@ public class KiHilfeTests
         Assert.Equal([eigenes], e.Videos);
         Assert.DoesNotContain("Vidéo :", e.Antwort);
         Assert.Contains(fremd.Titel, e.Antwort);
+
+        // Ohne Anführungszeichen ist ein Titel gewöhnlicher Text: « Vos clients » steht in vielen Sätzen.
+        var kurz = KiWissensbasis.Videos(Besitzer).Single(v => v.Titel == "Vos clients");
+        w.Antwort = "Ouvrez Vente › Clients pour voir vos clients.";
+        Assert.Empty((await w.Dienst.FrageAsync(KontoA, Besitzer, "Clients ?")).Videos);
+        w.Antwort = "Ouvrez Vente › Clients.\nVidéo : \"Vos clients\"";
+        Assert.Equal([kurz], (await w.Dienst.FrageAsync(KontoA, Besitzer, "Clients ?")).Videos);
     }
 
     [Fact]
