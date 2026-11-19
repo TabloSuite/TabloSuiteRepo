@@ -1,6 +1,7 @@
 ﻿@page "/auth/register"
 @layout Layout.AuthLayout
 @attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
 
 <PageTitle>Inscription</PageTitle>
 
@@ -22,105 +23,100 @@
             <h1>Inscrire mon établissement</h1>
             <p class="auth-subtitle">Créez votre compte propriétaire et votre établissement.</p>
 
-            <EditForm Model="FormModel" OnValidSubmit="HandleSubmit" FormName="register-form" class="auth-form">
+            @* Reines HTML-Formular wie die Anmeldeseite (Testabend 18.11.2026): interaktiv vorgerendert verlor die Seite bei schwachem Netz
+               alles Getippte, sobald Blazor sie nach dem Verbindungsaufbau neu zeichnete, und wer vorher tippte, schickte ein leeres Formular ab.
+               Jetzt prüft und speichert der Server beim Absenden; der Knopf ist gesperrt, bis alle Felder mit * ausgefüllt sind (enote.js,
+               data-pflicht-sperre), und zeigt sofort den Ladekreis (data-ladeanzeige). *@
+            <EditForm Model="Model" OnValidSubmit="HandleSubmit" FormName="register-form" class="auth-form" method="post"
+                      data-ladeanzeige="Inscription en cours…" data-pflicht-sperre>
                 <DataAnnotationsValidator />
 
                 <div class="enote-form-grid">
                     <label>
-                        Prénom
-                        <InputText @bind-Value="FormModel.Vorname" />
+                        <span class="enote-pflicht">Prénom</span>
+                        <InputText @bind-Value="Model!.Vorname" required autocomplete="given-name" />
                     </label>
                     <label>
-                        Nom
-                        <InputText @bind-Value="FormModel.Nachname" />
+                        <span class="enote-pflicht">Nom</span>
+                        <InputText @bind-Value="Model!.Nachname" required autocomplete="family-name" />
                     </label>
                 </div>
 
                 <label>
-                    Pseudonyme (identifiant de connexion)
-                    <InputText @bind-Value="FormModel.Pseudonym" autocomplete="username" />
+                    <span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span>
+                    <InputText @bind-Value="Model!.Pseudonym" required autocomplete="username" autocapitalize="none" />
                 </label>
 
                 <label>
-                    Adresse e-mail de contact
-                    <InputText @bind-Value="FormModel.Email" type="email" />
+                    <span class="enote-pflicht">Adresse e-mail de contact</span>
+                    <InputText @bind-Value="Model!.Email" type="email" required autocomplete="email" />
                 </label>
 
                 <label>
-                    Téléphone
-                    <InputText @bind-Value="FormModel.Telefon" type="tel" autocomplete="tel" maxlength="30" placeholder="ex. +228 90 12 34 56" />
+                    <span class="enote-pflicht">Téléphone</span>
+                    <InputText @bind-Value="Model!.Telefon" type="tel" required autocomplete="tel" maxlength="30" placeholder="ex. +228 90 12 34 56" />
                     <small>Pour vous joindre facilement (appel ou WhatsApp).</small>
                 </label>
 
                 <label>
-                    Mot de passe
-                    @* Kein « required » im Browser: sonst zeigt er nur eine Sprechblase am Passwort, und die App-Meldungen aller leeren Felder erscheinen nie (18.11.2026). *@
-                    <PasswordInput @bind-Value="FormModel.Passwort" Autocomplete="new-password" />
+                    <span class="enote-pflicht">Mot de passe</span>
+                    <PasswordInput @bind-Value="Model!.Passwort" Name="Model.Passwort" Required="true" Autocomplete="new-password" />
                     <small>Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
                 </label>
 
                 <label>
-                    Nom de l'établissement
-                    <InputText @bind-Value="FormModel.SalonName" />
+                    <span class="enote-pflicht">Nom de l'établissement</span>
+                    <InputText @bind-Value="Model!.SalonName" required autocomplete="organization" />
                 </label>
 
                 <div class="enote-form-grid">
                     <label>
-                        Pays
-                        <EnoteSelect TValue="string" Value="FormModel.Land" ValueChanged="(string? l) => FormModel.Land = l ?? FormModel.Land"
-                                     Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
+                        <span class="enote-pflicht">Pays</span>
+                        <InputSelect @bind-Value="Model!.Land" class="auth-select" required>
+                            @foreach (var l in laender)
+                            {
+                                <option value="@l">@l</option>
+                            }
+                        </InputSelect>
                     </label>
                     <label>
                         Ville / quartier (facultatif)
-                        <InputText @bind-Value="FormModel.SalonStandort" />
+                        <InputText @bind-Value="Model!.SalonStandort" autocomplete="address-level2" />
                     </label>
                 </div>
                 <small class="enote-muted auth-land-hinweis">@ENote.WebApp.Services.LaenderAuswahl.Hinweis Modifiable ensuite dans « Paramètres ».</small>
 
                 <label>
                     Slogan (facultatif)
-                    <InputText @bind-Value="FormModel.Slogan" placeholder="ex. In God we trust" />
+                    <InputText @bind-Value="Model!.Slogan" placeholder="ex. In God we trust" />
                 </label>
 
                 <div class="cgu-accept">
                     <label class="checkbox">
-                        <InputCheckbox @bind-Value="FormModel.CguAcceptees" />
-                        <span>J'ai lu et j'accepte les <button type="button" class="cgu-link" @onclick="() => cguOffen = true" @onclick:preventDefault>Conditions Générales d'Utilisation</button></span>
+                        <InputCheckbox @bind-Value="Model!.CguAcceptees" required />
+                        <span class="enote-pflicht">J'ai lu et j'accepte les Conditions Générales d'Utilisation</span>
                     </label>
-                    <ValidationMessage For="() => FormModel.CguAcceptees" />
+                    <details class="cgu-details">
+                        <summary>Lire les Conditions Générales d'Utilisation</summary>
+                        <div class="cgu-text"><ConditionsGenerales /></div>
+                    </details>
+                    <ValidationMessage For="() => Model!.CguAcceptees" />
                 </div>
 
-                @* Meldungen direkt über dem Knopf: dort schaut man nach dem Tippen hin (am Handy liegt der Formularkopf
-                   außerhalb des Bildschirms). Fehlende Pflichtfelder wurden vorher gar nicht angezeigt – der Knopf tat nichts. *@
+                @* Meldungen direkt über dem Knopf: dort schaut man nach dem Tippen hin (am Handy liegt der Formularkopf außerhalb des Bildschirms). *@
                 <ValidationSummary />
                 @if (!string.IsNullOrWhiteSpace(errorMessage))
                 {
                     <div class="alert alert-error" role="alert">@errorMessage</div>
                 }
 
-                <button type="submit" class="btn-primary" disabled="@isSubmitting">
-                    @if (isSubmitting)
-                    {
-                        <span class="btn-spinner"></span>
-                        <span>Inscription en cours…</span>
-                    }
-                    else
-                    {
-                        <span>S'inscrire</span>
-                    }
+                <button type="submit" class="btn-primary">
+                    <span class="btn-text">S'inscrire</span>
                 </button>
+                <small class="enote-muted auth-pflicht-hinweis">Les champs marqués d'un <span class="enote-pflicht"></span> sont obligatoires.</small>
             </EditForm>
 
             <p class="auth-footer">Déjà un compte ? <a href="/auth/login">Se connecter</a></p>
         </div>
     </div>
 </div>
-
-<ModalDialog Open="cguOffen" Title="Conditions Générales d'Utilisation" OnClose="() => cguOffen = false" MaxWidthClass="enote-modal-wide">
-    <ChildContent>
-        <ConditionsGenerales />
-    </ChildContent>
-    <Footer>
-        <button type="button" class="enote-btn enote-btn-primary" @onclick="() => { FormModel.CguAcceptees = true; cguOffen = false; }">J'accepte</button>
-    </Footer>
-</ModalDialog>

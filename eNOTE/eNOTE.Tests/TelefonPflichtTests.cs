@@ -75,7 +75,7 @@ public class TelefonPflichtTests
         var ordner = new DirectoryInfo(AppContext.BaseDirectory);
         while (ordner is not null && !Directory.Exists(Path.Combine(ordner.FullName, "eNOTE", "eNOTE.WebApp"))) ordner = ordner.Parent;
         var seiten = Path.Combine(ordner!.FullName, "eNOTE", "eNOTE.WebApp", "Components", "Pages");
-        Assert.Contains("@bind-Value=\"FormModel.Telefon\"", File.ReadAllText(Path.Combine(seiten, "Register.razor")));
+        Assert.Contains("@bind-Value=\"Model!.Telefon\"", File.ReadAllText(Path.Combine(seiten, "Register.razor")));
         Assert.Contains("@bind=\"neuTelefon\"", File.ReadAllText(Path.Combine(seiten, "MeineLaeden.razor")));
         Assert.Contains("@bind=\"neuTelefon\"", File.ReadAllText(Path.Combine(seiten, "Admin.razor")));
         Assert.Contains("telefon: neuTelefon", File.ReadAllText(Path.Combine(seiten, "MeineLaeden.razor.cs")));

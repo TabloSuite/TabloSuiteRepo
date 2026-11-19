@@ -6,55 +6,48 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class Register(AuthService authService, NavigationManager navigationManager, IHttpContextAccessor httpZugriff)
 {
+    // Statisches Formular (siehe Register.razor): Feldnamen « Model.… » kommen aus den Bindungen an Model.
     [SupplyParameterFromForm(FormName = "register-form")]
     private RegisterInput? Model { get; set; }
 
-    private RegisterInput FormModel => Model ??= new RegisterInput();
-
     private string? errorMessage;
-    private bool isSubmitting;
-    private bool cguOffen;
-    private IReadOnlyList<Shared.EnoteSelectOption<string>> landOptionen = [];
-
-    private string? anschluss;
+    private IReadOnlyList<string> laender = [];
 
     protected override async Task OnInitializedAsync()
     {
-        anschluss = Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext);
-        landOptionen = (await authService.GetLaenderAsync())
-            .Select(l => new Shared.EnoteSelectOption<string> { Value = l, Label = l }).ToList();
+        Model ??= new RegisterInput();
+        laender = await authService.GetLaenderAsync();
+        if (!laender.Contains(Model.Land)) Model.Land = laender.FirstOrDefault() ?? ENote.WebApp.Services.LaenderAuswahl.Standard;
     }
 
     private async Task HandleSubmit()
     {
-        isSubmitting = true;
         errorMessage = null;
-
-        if (!FormModel.CguAcceptees)
+        var m = Model!;
+        if (!m.CguAcceptees)
         {
-            isSubmitting = false;
             errorMessage = "Veuillez accepter les Conditions Générales d'Utilisation.";
             return;
         }
 
         var (succeeded, error) = await authService.RegisterBesitzerAsync(
-            FormModel.Vorname,
-            FormModel.Nachname,
-            FormModel.Pseudonym,
-            FormModel.Email,
-            FormModel.Passwort,
-            FormModel.SalonName,
-            FormModel.SalonStandort,
-            FormModel.Slogan,
-            land: FormModel.Land,
-            anschluss: anschluss ?? Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext),
-            telefon: FormModel.Telefon);
-
-        isSubmitting = false;
+            m.Vorname,
+            m.Nachname,
+            m.Pseudonym,
+            m.Email,
+            m.Passwort,
+            m.SalonName,
+            m.SalonStandort,
+            m.Slogan,
+            land: m.Land,
+            anschluss: Services.Sicherheit.Anschluss.Adresse(httpZugriff.HttpContext),
+            telefon: m.Telefon);
 
         if (succeeded)
         {
-            navigationManager.NavigateTo("/auth/login?info=registered");
+            // Testabend 18.11.2026: ohne vollständiges Neuladen zeigte der interaktive Router « Not found »
+            // (die Anmeldeseite ist rein statisch). Hier antwortet der Server ohnehin mit einer Weiterleitung.
+            navigationManager.NavigateTo("/auth/login?info=registered", forceLoad: true);
             return;
         }
 

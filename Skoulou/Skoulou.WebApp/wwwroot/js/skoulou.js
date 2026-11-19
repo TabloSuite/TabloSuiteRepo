@@ -54,10 +54,27 @@
     document.addEventListener('submit', function (e) {
         var form = e.target;
         if (!form || !form.hasAttribute || !form.hasAttribute('data-ladeanzeige')) return;
+        // Zweiter Durchgang (unten über requestSubmit ausgelöst): jetzt wirklich senden.
+        if (form.dataset.skGezeichnet === '1') { delete form.dataset.skGezeichnet; return; }
         // Doppeltipp oder Entertaste während des Sendens: nichts ein zweites Mal absenden.
         if (form.dataset.skSendet === '1') { e.preventDefault(); e.stopImmediatePropagation(); return; }
         if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
         sperren(form, e.submitter);
+        // Erst zeichnen, dann senden (Nutzer 19.11.2026: « Se connecter » zeigte nur am Handy keinen Ladekreis). Safari am
+        // iPhone zeichnet nach dem Start des Absendens nichts mehr – der Kreis kam dort nie auf den Bildschirm.
+        e.preventDefault();
+        var absender = e.submitter && e.submitter.form === form ? e.submitter : null;
+        var gesendet = false;
+        function senden() {
+            if (gesendet) return;
+            gesendet = true;
+            form.dataset.skGezeichnet = '1';
+            if (typeof form.requestSubmit === 'function') form.requestSubmit(absender || undefined);
+            else HTMLFormElement.prototype.submit.call(form);
+            delete form.dataset.skGezeichnet;   // bei einem Prüffehler des Browsers kam kein zweiter Durchgang
+        }
+        requestAnimationFrame(function () { setTimeout(senden, 40); });
+        setTimeout(senden, 400);   // falls kein Bild gezeichnet wird (Tab im Hintergrund)
     }, true);
 
     // Formular nach der Prüfung in Blazor klassisch absenden (Cookie-Änderungen brauchen eine HTTP-Antwort).

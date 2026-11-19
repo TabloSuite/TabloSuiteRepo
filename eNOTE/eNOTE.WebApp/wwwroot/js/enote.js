@@ -22,9 +22,12 @@ window.enoteTogglePassword = function (button) {
     document.addEventListener('submit', function (e) {
         var form = e.target;
         if (!form || !form.hasAttribute || !form.hasAttribute('data-ladeanzeige') || e.defaultPrevented) return;
+        // Zweiter Durchgang (unten über requestSubmit ausgelöst): jetzt wirklich senden.
+        if (form.dataset.enoteGezeichnet === '1') { delete form.dataset.enoteGezeichnet; return; }
         if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
         var btn = e.submitter || form.querySelector('[type="submit"]');
-        if (!btn || btn.classList.contains('enote-laedt')) return;
+        if (!btn) return;
+        if (btn.classList.contains('enote-laedt')) { e.preventDefault(); return; }   // Doppeltipp: nur einmal senden
 
         btn.classList.add('enote-laedt');
         btn.setAttribute('aria-busy', 'true');
@@ -37,8 +40,24 @@ window.enoteTogglePassword = function (button) {
         btn.innerHTML = '';
         btn.appendChild(spinner);
         btn.appendChild(text);
-        // Erst nach dem Absenden sperren, sonst verwerfen manche Browser den Submit.
-        setTimeout(function () { btn.disabled = true; }, 0);
+        // Erst zeichnen, dann senden (Nutzer 19.11.2026: « Se connecter » zeigte nur am Handy keinen Ladekreis). Safari am iPhone
+        // zeichnet nach dem Start des Absendens nichts mehr – der Kreis kam dort nie auf den Bildschirm. Deshalb das Absenden
+        // anhalten, ein Bild zeichnen lassen und dann mit demselben Knopf erneut absenden (requestSubmit behält name/value).
+        e.preventDefault();
+        var absender = e.submitter && e.submitter.form === form ? e.submitter : null;
+        var gesendet = false;
+        function senden() {
+            if (gesendet) return;
+            gesendet = true;
+            form.dataset.enoteGezeichnet = '1';
+            if (typeof form.requestSubmit === 'function') form.requestSubmit(absender || undefined);
+            else HTMLFormElement.prototype.submit.call(form);
+            delete form.dataset.enoteGezeichnet;   // bei einem Prüffehler des Browsers kam kein zweiter Durchgang
+            // Erst nach dem Absenden sperren, sonst verwerfen manche Browser den Submit.
+            setTimeout(function () { btn.disabled = true; }, 0);
+        }
+        requestAnimationFrame(function () { setTimeout(senden, 40); });
+        setTimeout(senden, 400);   // falls kein Bild gezeichnet wird (Tab im Hintergrund)
     }, true);
 
     // « Zurück » auf dem Handy (bfcache) zeigt sonst einen dauerhaft drehenden, gesperrten Knopf.
@@ -50,6 +69,42 @@ window.enoteTogglePassword = function (button) {
             if (btn.dataset.enoteInhalt !== undefined) { btn.innerHTML = btn.dataset.enoteInhalt; delete btn.dataset.enoteInhalt; }
         });
     });
+})();
+
+// Pflichtfelder statischer Formulare (Registrierung): <form data-pflicht-sperre> – der Absende-Knopf bleibt gesperrt, solange ein
+// Feld mit « required » leer bzw. ein Pflicht-Häkchen nicht gesetzt ist (Nutzer 19.11.2026: « Buttons deaktivieren, wenn Angaben
+// noch nicht vorhanden sind »). Läuft ohne Blazor-Verbindung. Automatisches Ausfüllen des Browsers meldet nicht immer « input »,
+// deshalb zusätzlich regelmäßig nachprüfen (wenige Felder, billig).
+(function () {
+    if (window.__enotePflichtSperre) return;
+    window.__enotePflichtSperre = true;
+
+    function leer(feld) {
+        if (feld.disabled) return false;
+        if (feld.type === 'checkbox' || feld.type === 'radio') return !feld.checked;
+        return !(feld.value || '').trim();
+    }
+
+    function pruefe(form) {
+        var fehlt = Array.prototype.some.call(form.querySelectorAll('[required]'), leer);
+        form.querySelectorAll('button[type="submit"]').forEach(function (knopf) {
+            if (knopf.classList.contains('enote-laedt')) return;
+            if (knopf.disabled !== fehlt) knopf.disabled = fehlt;
+            if (fehlt) knopf.title = "Remplissez d'abord les champs marqués d'un *"; else knopf.removeAttribute('title');
+        });
+    }
+
+    function alle() { document.querySelectorAll('form[data-pflicht-sperre]').forEach(pruefe); }
+
+    ['input', 'change'].forEach(function (art) {
+        document.addEventListener(art, function (e) {
+            var form = e.target && e.target.form;
+            if (form && form.hasAttribute('data-pflicht-sperre')) pruefe(form);
+        }, true);
+    });
+    window.addEventListener('pageshow', alle);
+    setInterval(alle, 800);
+    alle();
 })();
 
 // User-Menü (Avatar-Dropdown) schließt bei Klick außerhalb.

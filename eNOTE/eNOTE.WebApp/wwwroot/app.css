@@ -3717,3 +3717,15 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .enote-fehlergrenze { display: flex; gap: .9rem; align-items: flex-start; max-width: 40rem; margin: 1.5rem auto; padding: 1.1rem 1.25rem;
     border: 1px solid var(--enote-danger-border); border-radius: var(--enote-radius); background: var(--enote-danger-soft); color: var(--enote-danger-text); }
 .enote-fehlergrenze p { margin: .3rem 0 .8rem; color: var(--enote-text); }
+
+/* Registrierung als statisches Formular (19.11.2026): Länderauswahl, CGU zum Aufklappen, gesperrter Knopf bis alles mit * da ist */
+.auth-form select.auth-select {
+    width: 100%; padding: .85rem 1.1rem; font-size: 1rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius-pill);
+    background: var(--enote-surface); color: var(--enote-text); box-shadow: 0 1px 3px rgba(23, 37, 84, .06);
+}
+.auth-form select.auth-select:focus { outline: none; border-color: var(--enote-primary-light); box-shadow: 0 0 0 3px rgba(30, 58, 138, .18); }
+.cgu-details { margin-top: .5rem; font-size: .88rem; }
+.cgu-details summary { cursor: pointer; color: var(--enote-primary-light); font-weight: 700; text-decoration: underline; }
+.cgu-details .cgu-text { max-height: 18rem; overflow-y: auto; margin-top: .5rem; padding: .6rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: var(--enote-surface-2); }
+.btn-primary:disabled:not(.enote-laedt) { opacity: .5; box-shadow: none; }
+.auth-pflicht-hinweis { margin-top: -.5rem; text-align: center; font-size: .8rem; }
