@@ -120,6 +120,19 @@ Es wird kein zusätzlicher Key-Vault-/Blob-Schlüsselring-Dienst eingeführt. Di
 
 Verhalten: Jede Mail wird zuerst in `MailNachrichten` gespeichert und sofort versendet; fehlgeschlagene Mails wiederholt der Hintergrunddienst alle 5 Minuten (max. 5 Versuche, 3 Tage). Stündlich prüft er Rechnungen (neue Rechnung, Erinnerung 3 Tage vor der Kassensperre, Sperrhinweis) und das Probe-Ende (7 Tage vorher) – jeweils einmal pro Datensatz. Rechnungen, die beim ersten Einschalten älter als 3 Tage sind, lösen keine Rechnungsmail mehr aus. Ohne Konfiguration bleiben Mails nur in der Queue.
 
+### KI-Hilfe « Poser une question » (optional, seit 19.11.2026)
+
+Hilfe-Assistent (Claude Haiku 5.5 über das offizielle Anthropic-SDK) im Menü « Aide » für alle angemeldeten Rollen. Ohne Schlüssel sind Menüeintrag und Seite `/aide/question` unsichtbar; nichts sonst ändert sich.
+
+| Name | Wert |
+| --- | --- |
+| `Ki__AnthropicApiKey` | **Geheim** – API-Schlüssel aus der Anthropic Console. Nur als App Setting (oder Key-Vault-Referenz), nie in appsettings oder ins Repository |
+| `Ki__Modell` | optional, Standard `claude-haiku-5-5` |
+| `Ki__FragenJeTag` | optional, Tagesgrenze der ganzen App, Standard `300` (je Konto fest 20 Fragen/Tag) |
+| `Ki__MaxTokens` / `Ki__TimeoutSekunden` | optional, Standard `2048` / `20` |
+
+Datenschutz: an Anthropic gehen nur die festen Hilfetexte der Rolle, die Rolle und die Frage – keine Namen, keine Daten des Ladens. Die Frage wird weder gespeichert noch protokolliert; im Log stehen nur Rolle, Token-Verbrauch und Tageszähler. Die Zähler liegen im Speicher (eine Instanz; nach einem Neustart beginnt die Zählung neu). Fehler des Dienstes zeigen eine freundliche Meldung, die App läuft weiter.
+
 ## 4. Private Medien und Rechte
 
 - Alle UI-URLs lauten `/media/{Salon-GUID}/{Datei-GUID.ext}` (bzw. registrierte globale Assets), niemals öffentliche Azure-URLs.
