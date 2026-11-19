@@ -70,7 +70,7 @@ public static partial class VideoKatalog
             Direction, Leitung, "1:58"),
         new("skoulou-direction-equipe.mp4", "Équipe et emplois du temps",
             "Les comptes des enseignants et des coordinateurs, les affectations, les matières et les enseignants de chaque classe, l'emploi du temps avec le contrôle des conflits, puis la publication.",
-            Direction, Leitung, "4:30"),
+            Direction, Leitung, "4:40"),
         new("skoulou-direction-notes.mp4", "Notes et conseil de classe",
             "Saisir les notes, les appréciations et les absences, préparer le conseil de classe – et voir, pour chaque saisie, où elle apparaît sur le bulletin imprimé.",
             Direction, Leitung, "5:17"),

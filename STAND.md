@@ -17,7 +17,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   kein gesperrter Schalter mehr unter Pflichtfächern; « Tous / Aucun » nur bei ungesperrten Schülern. Tests SKOULOU 707 grün.
 - **Beim Nutzer: SKOULOU deployen** (neues Video + Fixes). eNOTE/Home unverändert. Offen wie unten: iPhone-Login, KI-Schlüssel je App
   (Code ist live, ohne `Ki__AnthropicApiKey` unsichtbar – Nutzer fragte am 19.11. danach).
-- Idee, nicht gemacht: « Équipe et emplois du temps » (B2, Szene `b2-classe`) zeigt den Fächer-Dialog noch ohne Schalter « Matière facultative ».
+- « Équipe et emplois du temps » (4:40): Szene `b2-classe` neu mit dem Schalter « Matière facultative » (Nutzer « mache das »).
 
 
 **>>> ALLES DEPLOYT UND LIVE GEPRÜFT (19.11., ~16:50 UTC) – nichts offen außer den Videos:**
