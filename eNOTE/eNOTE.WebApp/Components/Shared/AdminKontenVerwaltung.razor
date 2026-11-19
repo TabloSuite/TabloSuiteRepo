@@ -1,17 +1,28 @@
-@using ENote.WebApp.Services
+﻿@using ENote.WebApp.Services
 @inject AdminKontenService Service
 @inject AuthenticationStateProvider Auth
 @inject ToastService toast
 
-@* Administratoren verwalten – nur der Hauptadministrator (erster Admin): anlegen, bearbeiten, sperren, löschen. *@
+@* Administratoren: alle Admins sehen die Liste (Nutzer 19.11.2026: « Onglet Administrateurs fehlt »), anlegen, bearbeiten,
+   sperren und löschen darf nur der Hauptadministrator (erster Admin) – der Dienst prüft das zusätzlich. *@
 
 <section class="ak">
     <div class="ak-kopf">
         <div>
             <h2 class="enote-section-title">Administrateurs</h2>
-            <p class="enote-muted">Vous êtes l'administrateur principal : vous seul pouvez ajouter, modifier, bloquer ou supprimer les autres administrateurs.</p>
+            @if (IstHauptAdmin)
+            {
+                <p class="enote-muted">Vous êtes l'administrateur principal : vous seul pouvez ajouter, modifier, bloquer ou supprimer les autres administrateurs.</p>
+            }
+            else
+            {
+                <p class="enote-muted">Seul l'administrateur principal peut ajouter, modifier, bloquer ou supprimer des administrateurs.</p>
+            }
         </div>
-        <button class="enote-btn enote-btn-primary" @onclick="Neu"><Icon Name="plus" Groesse="16" /> Ajouter un administrateur</button>
+        @if (IstHauptAdmin)
+        {
+            <button class="enote-btn enote-btn-primary" @onclick="Neu"><Icon Name="plus" Groesse="16" /> Ajouter un administrateur</button>
+        }
     </div>
 
     @if (fehler is not null)
@@ -38,6 +49,11 @@
                         <span class="ak-tag haupt"><Icon Name="shield" Groesse="14" /> Administrateur principal</span>
                         <span></span>
                     }
+                    else if (!IstHauptAdmin)
+                    {
+                        <span class="ak-tag @(k.Gesperrt ? "aus" : "an")">@(k.Gesperrt ? "Bloqué" : "Actif")</span>
+                        <span></span>
+                    }
                     else
                     {
                         <span class="ak-tag @(k.Gesperrt ? "aus" : "an")">@(k.Gesperrt ? "Bloqué" : "Actif")</span>
@@ -58,14 +74,14 @@
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
-                <label>Prénom <input @bind="vorname" maxlength="100" /></label>
-                <label>Nom <input @bind="nachname" maxlength="100" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="vorname" @bind:event="oninput" maxlength="100" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="nachname" @bind:event="oninput" maxlength="100" /></label>
             </div>
-            <label>Adresse e-mail <input type="email" @bind="email" maxlength="256" /></label>
+            <label><span class="enote-pflicht">Adresse e-mail</span> <input type="email" @bind="email" @bind:event="oninput" maxlength="256" /></label>
             @if (ziel is null)
             {
-                <label>Pseudonyme (pour la connexion) <input @bind="pseudonym" autocomplete="off" /></label>
-                <label>Mot de passe initial <PasswordInput @bind-Value="passwort" /></label>
+                <label>Pseudonyme (pour la connexion ; sinon l'adresse e-mail) <input @bind="pseudonym" autocomplete="off" /></label>
+                <label><span class="enote-pflicht">Mot de passe initial</span> <PasswordInput @bind-Value="passwort" /></label>
                 <small class="enote-muted">Communiquez ce mot de passe à la personne avant de fermer cette fenêtre ; elle pourra le changer dans « Mon profil ».</small>
             }
             else
@@ -76,7 +92,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => offen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" OnClick="SpeichereAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" OnClick="SpeichereAsync" CssClass="enote-btn-primary" Disabled="@(!Vollstaendig)" />
     </Footer>
 </ModalDialog>
 
@@ -89,6 +105,12 @@
 </ModalDialog>
 
 @code {
+    /// <summary>Nur der Hauptadministrator verwaltet; die anderen Admins sehen die Liste lesend.</summary>
+    [Parameter] public bool IstHauptAdmin { get; set; }
+
+    private bool Vollstaendig => !string.IsNullOrWhiteSpace(vorname) && !string.IsNullOrWhiteSpace(nachname) && !string.IsNullOrWhiteSpace(email)
+        && (ziel is not null || !string.IsNullOrWhiteSpace(passwort));
+
     private List<AdminKontenService.AdminKonto> konten = [];
     private Guid user;
     private Guid? ziel;

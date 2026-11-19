@@ -105,19 +105,41 @@ public static class TabloSuiteMails
             + Tabelle([("Établissement", salonName), ("Propriétaire", besitzerName), ("Date", Datum(datumUtc)), ("Motif", string.IsNullOrWhiteSpace(grund) ? "—" : grund)])
             + Knopf("Ouvrir l'administration", adminUrl));
 
-    /// <summary>Vom Admin angelegtes Besitzerkonto.</summary>
-    public static string KontoErstellt(string vorname, string pseudonym, string salonName, string appUrl, string? passwortLink)
+    /// <summary>Vom Admin oder von einem Responsable (<paramref name="erstelltVon"/>) angelegtes Besitzerkonto.</summary>
+    public static string KontoErstellt(string vorname, string pseudonym, string salonName, string appUrl, string? passwortLink, string? erstelltVon = null)
         => Wrap("Votre compte eNOTE est prêt", $"Votre établissement « {salonName} » a été créé.",
             Anrede(vorname)
-            + P($"L'équipe TabloSuite a créé votre compte pour l'établissement <strong>{H(salonName)}</strong>.")
+            + P(erstelltVon is { Length: > 0 }
+                ? $"Votre responsable <strong>{H(erstelltVon)}</strong> a créé votre compte pour l'établissement <strong>{H(salonName)}</strong>. Vous pourrez encaisser dès que l'établissement est validé."
+                : $"L'équipe TabloSuite a créé votre compte pour l'établissement <strong>{H(salonName)}</strong>.")
             + Tabelle([("Identifiant", pseudonym), ("Établissement", salonName)])
+            + (passwortLink is null
+                ? P(erstelltVon is { Length: > 0 }
+                    ? "Votre mot de passe provisoire vous est communiqué par votre responsable. Changez-le après la première connexion (« Mon profil »)."
+                    : "Votre mot de passe provisoire vous a été communiqué par notre équipe. Changez-le après la première connexion (« Mon profil »).")
+                  + Knopf("Se connecter", appUrl)
+                : P("Pour commencer, choisissez votre mot de passe personnel :")
+                  + Knopf("Choisir mon mot de passe", passwortLink)
+                  + LinkHinweis(passwortLink))
+            + PinHinweis()
+            + Gruss());
+
+    /// <summary>Vom Admin angelegtes Konto « Responsable plateforme » (Testabend 18.11.2026: bisher kam gar keine Mail).</summary>
+    public static string ResponsableKontoErstellt(string vorname, string pseudonym, string appUrl, string? passwortLink)
+        => Wrap("Bienvenue parmi les responsables eNOTE", "Votre compte de responsable plateforme est prêt.",
+            Anrede(vorname)
+            + P("L'équipe TabloSuite a créé votre compte de <strong>responsable plateforme</strong> sur eNOTE. Vous accompagnez les établissements qui vous sont confiés : vous pouvez en créer, les valider et suivre vos commissions.")
+            + Tabelle([("Identifiant", pseudonym), ("Rôle", "Responsable plateforme")])
             + (passwortLink is null
                 ? P("Votre mot de passe provisoire vous a été communiqué par notre équipe. Changez-le après la première connexion (« Mon profil »).")
                   + Knopf("Se connecter", appUrl)
                 : P("Pour commencer, choisissez votre mot de passe personnel :")
                   + Knopf("Choisir mon mot de passe", passwortLink)
                   + LinkHinweis(passwortLink))
-            + PinHinweis()
+            + Liste("Pour bien démarrer :", [
+                "Connectez-vous avec votre identifiant.",
+                "Suivez votre formation : menu « Aide › Formation ».",
+                "Retrouvez et créez vos établissements dans « Mes établissements »."])
             + Gruss());
 
     /// <summary>Willkommen für einen neuen Kassierer (ohne Passwort – das gibt der Besitzer weiter).</summary>

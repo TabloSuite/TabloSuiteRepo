@@ -46,6 +46,14 @@
                             <span class="enote-tag enote-tag-warn">En attente</span>
                         }
                     </div>
+                    @if (!l.IstFreigegeben)
+                    {
+                        @* Nutzer 19.11.2026: der Responsable darf seine Läden selbst freigeben – der Knopf stand bisher nur unter « Administration ». *@
+                        <div class="enote-po-freigabe">
+                            <p class="enote-muted">Cet établissement attend sa validation. Validez-le pour que le propriétaire puisse encaisser.</p>
+                            <AsyncActionButton Text="Valider l'établissement" BusyText="Validation…" CssClass="enote-btn-primary enote-btn-sm" OnClick="() => ValidiereAsync(l)" />
+                        </div>
+                    }
 
                     @if (l.KannLadenUmsatzSehen)
                     {
@@ -79,17 +87,17 @@
 <ModalDialog Open="anlegedialogOffen" Title="Nouvel établissement" ErrorMessage="@anlegeFehler" OnClose="() => anlegedialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <p class="enote-muted">L'établissement sera activé après la validation (par vous, dans « Administration », ou par l'administrateur). Un nouveau compte propriétaire (pseudonyme + mot de passe) est créé ; l'adresse e-mail peut être la même que pour un autre établissement.</p>
+            <p class="enote-muted">L'établissement est activé dès qu'il est validé : vous pouvez le valider vous-même juste après, sur sa carte (« Valider l'établissement »). Un nouveau compte propriétaire (pseudonyme + mot de passe) est créé ; l'adresse e-mail peut être la même que pour un autre établissement.</p>
             <div class="enote-form-grid">
-                <label>Prénom du propriétaire <input @bind="neuVorname" /></label>
-                <label>Nom du propriétaire <input @bind="neuNachname" /></label>
+                <label><span class="enote-pflicht">Prénom du propriétaire</span> <input @bind="neuVorname" @bind:event="oninput" /></label>
+                <label><span class="enote-pflicht">Nom du propriétaire</span> <input @bind="neuNachname" @bind:event="oninput" /></label>
             </div>
-            <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
-            <label>Adresse e-mail de contact <input type="email" @bind="neuEmail" /></label>
-            <label>Téléphone du propriétaire <input type="tel" @bind="neuTelefon" autocomplete="off" maxlength="30" placeholder="ex. +228 90 12 34 56" /></label>
-            <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
+            <label><span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span> <input @bind="neuPseudonym" @bind:event="oninput" autocomplete="username" /></label>
+            <label><span class="enote-pflicht">Adresse e-mail de contact</span> <input type="email" @bind="neuEmail" @bind:event="oninput" /></label>
+            <label><span class="enote-pflicht">Téléphone du propriétaire</span> <input type="tel" @bind="neuTelefon" @bind:event="oninput" autocomplete="off" maxlength="30" placeholder="ex. +228 90 12 34 56" /></label>
+            <label><span class="enote-pflicht">Mot de passe initial</span> <input type="text" @bind="neuPasswort" @bind:event="oninput" /></label>
             <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
-            <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
+            <label><span class="enote-pflicht">Nom de l'établissement</span> <input @bind="neuSalonName" @bind:event="oninput" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
             @* 18.11.2026: Auswahlliste wie bei Registrierung und Admin – vorher freier Text ohne Prüfung (Ortszeit, Mobile Money). *@
             <label>Pays <EnoteSelect TValue="string" @bind-Value="neuLand" Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" /></label>
@@ -98,7 +106,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => anlegedialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="LegeSalonSelbstAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Créer" OnClick="LegeSalonSelbstAnAsync" CssClass="enote-btn-primary" Disabled="@(!AnlageVollstaendig)" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

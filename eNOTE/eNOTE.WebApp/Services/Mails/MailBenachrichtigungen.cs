@@ -110,9 +110,14 @@ public class MailBenachrichtigungen(
                 TabloSuiteMails.EtablissementStatut(b.Vorname, b.SalonName, aktiv, AppUrl), "etablissement-statut", ct);
         });
 
-    public Task KontoErstelltAsync(string empfaenger, string vorname, string pseudonym, string salonName, string? passwortLink, CancellationToken ct = default)
+    public Task KontoErstelltAsync(string empfaenger, string vorname, string pseudonym, string salonName, string? passwortLink, CancellationToken ct = default,
+        string? erstelltVon = null)
         => SicherAsync("compte-cree", () => email.SendeAsync(empfaenger, "Votre compte eNOTE est prêt",
-            TabloSuiteMails.KontoErstellt(vorname, pseudonym, salonName, AppUrl, passwortLink), "compte-cree", ct));
+            TabloSuiteMails.KontoErstellt(vorname, pseudonym, salonName, AppUrl, passwortLink, erstelltVon), "compte-cree", ct));
+
+    public Task ResponsableAngelegtAsync(string empfaenger, string vorname, string pseudonym, string? passwortLink, CancellationToken ct = default)
+        => SicherAsync("compte-responsable", () => email.SendeAsync(empfaenger, "Votre compte de responsable est prêt",
+            TabloSuiteMails.ResponsableKontoErstellt(vorname, pseudonym, AppUrl, passwortLink), "compte-responsable", ct));
 
     public Task KassiererAngelegtAsync(string empfaenger, string vorname, string pseudonym, Guid salonId, CancellationToken ct = default)
         => SicherAsync("caissier-bienvenue", async () =>

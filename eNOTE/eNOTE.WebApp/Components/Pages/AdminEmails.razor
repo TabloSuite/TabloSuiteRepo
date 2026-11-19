@@ -157,8 +157,8 @@
             <section class="enote-card em-karte">
                 <h2>2. Message</h2>
                 <div class="enote-form">
-                    <label>Objet <input @bind="betreff" @bind:event="oninput" maxlength="150" placeholder="ex. Nouveauté : les remboursements en caisse" /></label>
-                    <label>Message
+                    <label><span class="enote-pflicht">Objet</span> <input @bind="betreff" @bind:event="oninput" maxlength="150" placeholder="ex. Nouveauté : les remboursements en caisse" /></label>
+                    <label><span class="enote-pflicht">Message</span>
                         <textarea rows="8" @bind="nachricht" @bind:event="oninput" maxlength="5000" placeholder="« Bonjour Prénom, » est ajouté automatiquement. Laissez une ligne vide pour un nouveau paragraphe."></textarea>
                     </label>
                     <EnoteCheckbox @bind-Value="mitKnopf" Label="Ajouter un bouton (lien)" />
@@ -187,7 +187,7 @@
 
             <section class="enote-card em-karte em-vorschau-karte">
                 <h2>Aperçu</h2>
-                <iframe class="em-vorschau" title="Aperçu du message" srcdoc="@NachrichtVorschau" sandbox=""></iframe>
+                <iframe class="em-vorschau" title="Aperçu du message" srcdoc="@NurAnsicht(NachrichtVorschau)" sandbox=""></iframe>
             </section>
         </div>
     }
@@ -232,7 +232,7 @@
                         </button>
                     }
                 </div>
-                <iframe class="em-vorschau" title="Aperçu de l'e-mail" srcdoc="@AktuelleVorschau" sandbox=""></iframe>
+                <iframe class="em-vorschau" title="Aperçu de l'e-mail" srcdoc="@NurAnsicht(AktuelleVorschau)" sandbox=""></iframe>
             </div>
         </section>
     }
@@ -275,7 +275,7 @@
                         @if (offenerVerlauf == m.Id)
                         {
                             @* Inhalt der Mail, isoliert dargestellt (sandbox: keine Skripte, keine Formulare) *@
-                            <iframe class="em-inhalt" title="Contenu de l'e-mail" srcdoc="@offenerInhalt" sandbox=""></iframe>
+                            <iframe class="em-inhalt" title="Contenu de l'e-mail" srcdoc="@NurAnsicht(offenerInhalt)" sandbox=""></iframe>
                         }
                     }
                     @if (verlaufMehr)
@@ -316,14 +316,14 @@
                         {
                             <div class="em-eingang-text">@m.Text</div>
                             <div class="enote-form em-antwort">
-                                <label>Votre réponse (envoyée à @m.Absender)
+                                <label><span class="enote-pflicht">Votre réponse (envoyée à @m.Absender)</span>
                                     <textarea rows="5" maxlength="@PostEingangService.AntwortMax" @bind="antwortText" @bind:event="oninput"></textarea>
                                 </label>
                                 @if (!string.IsNullOrWhiteSpace(antwortFehler))
                                 {
                                     <div class="alert alert-error" role="alert">@antwortFehler</div>
                                 }
-                                <div><AsyncActionButton Text="Envoyer la réponse" BusyText="Envoi…" OnClick="() => AntwortenAsync(m.Id)" CssClass="enote-btn-primary" /></div>
+                                <div><AsyncActionButton Text="Envoyer la réponse" BusyText="Envoi…" OnClick="() => AntwortenAsync(m.Id)" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(antwortText)" /></div>
                             </div>
                         }
                     }
@@ -352,6 +352,19 @@
 </ModalDialog>
 
 @code {
+    /// <summary>
+    /// Vorschau nur zum Ansehen (Nutzer 19.11.2026): Knöpfe und Links der Mail waren in der Vorschau klickbar und öffneten die Seite
+    /// im kleinen Fenster. Ein Stil am Anfang der Mail schaltet Klicks ab (das Fenster ist ohnehin ohne Skripte, sandbox="").
+    /// </summary>
+    private static string NurAnsicht(string? html)
+    {
+        const string stil = "<style>a,button,input,label{pointer-events:none!important;cursor:default!important}</style>";
+        html ??= "";
+        // Im <head> einfügen: vor <!DOCTYPE> würde der Browser in den Quirks-Modus wechseln (andere Darstellung).
+        var kopfEnde = html.IndexOf("</head>", StringComparison.OrdinalIgnoreCase);
+        return kopfEnde >= 0 ? html.Insert(kopfEnde, stil) : stil + html;
+    }
+
     [Inject] private EmailService email { get; set; } = default!;
     [Inject] private MailBenachrichtigungen mails { get; set; } = default!;
     [Inject] private NachrichtenService nachrichten { get; set; } = default!;
@@ -635,6 +648,7 @@
     private IReadOnlyList<Vorlage> Vorlagen => [
         new("reinitialisation", "Mot de passe oublié", () => TabloSuiteMails.Reinitialisation("ama.mensah", mails.AppUrl + "/auth/reinitialiser?exemple")),
         new("compte-cree", "Compte créé par l'admin", () => TabloSuiteMails.KontoErstellt("Ama", "ama.mensah", "Salon Élégance", mails.AppUrl, mails.AppUrl + "/auth/reinitialiser?exemple")),
+        new("compte-responsable", "Compte responsable créé", () => TabloSuiteMails.ResponsableKontoErstellt("Kodjo", "kodjo.responsable", mails.AppUrl, mails.AppUrl + "/auth/reinitialiser?exemple")),
         new("inscription-validee", "Établissement validé", () => TabloSuiteMails.InscriptionValidee("Ama", "eNOTE", mails.AppUrl)),
         new("facture", "Nouvelle facture", () => TabloSuiteMails.NouvelleFacture("Ama", "Salon Élégance", "Mensuel", DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddMonths(1).AddDays(-1), 5000, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(15), mails.AppUrl + "/abonnement")),
         new("caisse-suspendue", "Caisse suspendue", () => TabloSuiteMails.CaisseSuspendue("Ama", "Salon Élégance", 5000, mails.AppUrl + "/abonnement")),

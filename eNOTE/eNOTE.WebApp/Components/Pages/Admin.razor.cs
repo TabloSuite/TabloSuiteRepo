@@ -334,6 +334,12 @@ public partial class Admin(
         besitzerDialogOffen = true;
     }
 
+    /// <summary>Pflichtangaben « Ajouter un propriétaire » (wie die Prüfung unten): alles außer Ville/quartier.</summary>
+    private bool BesitzerVollstaendig => new[] { neuVorname, neuNachname, neuPseudonym, neuEmail, neuPasswort, neuSalonName, neuTelefon }
+        .All(w => !string.IsNullOrWhiteSpace(w));
+
+    private bool PoVollstaendig => new[] { poVorname, poNachname, poPseudonym, poEmail, poPasswort }.All(w => !string.IsNullOrWhiteSpace(w));
+
     private async Task LegeBesitzerAnAsync()
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)

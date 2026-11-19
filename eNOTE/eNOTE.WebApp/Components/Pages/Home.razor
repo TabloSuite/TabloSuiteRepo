@@ -40,6 +40,12 @@
                 <AuthorizeView Roles="SuperAdmin, ProduktOwner" Context="adminCtx">
                     <Authorized>
                         <div class="db-schnell">
+                            @* Nutzer 19.11.2026: Karte « Mes établissements » auf der Startseite des Responsables. *@
+                            <AuthorizeView Roles="ProduktOwner" Context="poKarteCtx">
+                                <Authorized>
+                                    <a class="db-schnell-karte" href="/mes-etablissements"><span><Icon Name="store" /></span><strong>Mes établissements</strong><small>Vos établissements, validations, commissions</small></a>
+                                </Authorized>
+                            </AuthorizeView>
                             <a class="db-schnell-karte" href="/admin"><span><Icon Name="shield" /></span><strong>Administration</strong><small>Établissements, validations, comptes</small></a>
                             <a class="db-schnell-karte" href="/admin/facturation"><span><Icon Name="receipt" /></span><strong>Facturation</strong><small>Abonnements et paiements</small></a>
                             <FormationKarte />

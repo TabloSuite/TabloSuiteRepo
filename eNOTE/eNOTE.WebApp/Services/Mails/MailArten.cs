@@ -13,7 +13,8 @@ public static class MailArten
     [
         // Immer – ohne diese Mails kommen Nutzer nicht an ihr Konto oder verpassen eine Zahlung.
         new("reinitialisation", "Mot de passe oublié", "Utilisateur", "Sur demande, depuis la page de connexion", true, true),
-        new("compte-cree", "Compte créé par l'admin", "Propriétaire", "Quand l'admin ajoute un propriétaire", true, true),
+        new("compte-cree", "Compte créé par l'admin", "Propriétaire", "Quand l'admin ou un responsable ajoute un propriétaire", true, true),
+        new("compte-responsable", "Compte responsable créé", "Responsable", "Quand l'admin ajoute un responsable plateforme", true, true),
         new("inscription-validee", "Établissement validé", "Propriétaire", "Quand l'admin valide l'inscription", true, true),
         new("facture", "Nouvelle facture", "Propriétaire", "Dès qu'une période d'abonnement est facturée", true, true),
         new("caisse-suspendue", "Caisse suspendue", "Propriétaire", "Le jour de la suspension pour impayé", true, true),

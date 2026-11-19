@@ -9,6 +9,8 @@ namespace ENote.WebApp.Components.Pages;
 
 public partial class MeineLaeden(
     ProduktOwnerService produktOwnerService,
+    AdminService adminService,
+    ENote.WebApp.Services.Mails.MailBenachrichtigungen mails,
     AuthenticationStateProvider authStateProvider,
     UserManager<AppUser> userManager,
     ToastService toast,
@@ -79,6 +81,24 @@ public partial class MeineLaeden(
         anlegedialogOffen = true;
     }
 
+    private bool AnlageVollstaendig => new[] { neuVorname, neuNachname, neuPseudonym, neuEmail, neuPasswort, neuSalonName, neuTelefon }
+        .All(w => !string.IsNullOrWhiteSpace(w));
+
+    /// <summary>Freigabe durch den Responsable selbst (gleiche Prüfung wie unter « Administration »: nur eigene Läden, nur freigeben).</summary>
+    private async Task ValidiereAsync(ProduktOwnerService.DashboardLaden laden)
+    {
+        try
+        {
+            await adminService.SetzeFreigabeAsync(benutzerId, laden.SalonId, true);
+            toast.ZeigeErfolg($"« {laden.SalonName} » est validé : le propriétaire peut maintenant se connecter et encaisser.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            toast.ZeigeFehler(ex.Message);
+        }
+        await LadeAsync();
+    }
+
     private async Task LegeSalonSelbstAnAsync()
     {
         if (string.IsNullOrWhiteSpace(neuVorname) || string.IsNullOrWhiteSpace(neuNachname)
@@ -98,8 +118,19 @@ public partial class MeineLaeden(
             return;
         }
 
+        // Zugangsmail an den neuen Besitzer (bisher nur bei Anlage durch den Admin) – mit Link zum eigenen Passwort.
+        var besitzer = await userManager.FindByNameAsync(neuPseudonym.Trim());
+        if (besitzer is not null && !string.IsNullOrWhiteSpace(besitzer.Email))
+        {
+            string? link = null;
+            try { link = $"{mails.AppUrl}/auth/reinitialiser?compte={besitzer.Id}&code={Uri.EscapeDataString(await userManager.GeneratePasswordResetTokenAsync(besitzer))}"; }
+            catch (InvalidOperationException) { }
+            var ich = await userManager.FindByIdAsync(benutzerId.ToString());
+            await mails.KontoErstelltAsync(besitzer.Email, besitzer.Vorname, besitzer.UserName ?? "", salon!.Name, link, erstelltVon: ich?.FullName);
+        }
+
         anlegedialogOffen = false;
-        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé avec un nouveau compte propriétaire. Il sera activé après la validation.");
+        toast.ZeigeErfolg($"Établissement « {salon!.Name} » créé avec un nouveau compte propriétaire. Validez-le sur sa carte pour l'activer.");
         await LadeAsync();
     }
 

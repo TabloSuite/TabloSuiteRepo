@@ -29,16 +29,15 @@
     {
         <div class="enote-tabs">
             <button class="enote-tab @(aktiverTab == "etablissements" ? "aktiv" : "")" @onclick='() => WechsleTab("etablissements")'>Établissements</button>
-            <button class="enote-tab @(aktiverTab == "plateforme" ? "aktiv" : "")" @onclick='() => WechsleTab("plateforme")'>Propriétaires plateforme</button>
             <AuthorizeView Roles="SuperAdmin" Context="mmTabCtx">
                 <Authorized>
+                    @* Nutzer 19.11.2026: Responsables sahen diesen Reiter leer – er ist nur für Admins. *@
+                    <button class="enote-tab @(aktiverTab == "plateforme" ? "aktiv" : "")" @onclick='() => WechsleTab("plateforme")'>Propriétaires plateforme</button>
                     <button class="enote-tab @(aktiverTab == "tarifs" ? "aktiv" : "")" @onclick='() => WechsleTab("tarifs")'>Tarifs</button>
                     <button class="enote-tab @(aktiverTab == "mobilemoney" ? "aktiv" : "")" @onclick='() => WechsleTab("mobilemoney")'>Mobile Money</button>
                     <button class="enote-tab @(aktiverTab == "formation" ? "aktiv" : "")" @onclick='() => WechsleTab("formation")'>Formation</button>
-                    @if (istErsterAdmin)
-                    {
-                        <button class="enote-tab @(aktiverTab == "administrateurs" ? "aktiv" : "")" @onclick='() => WechsleTab("administrateurs")'>Administrateurs</button>
-                    }
+                    @* Nutzer 19.11.2026 (« Onglet Administrateurs fehlt »): alle Admins sehen die Liste, ändern darf nur der Hauptadministrator. *@
+                    <button class="enote-tab @(aktiverTab == "administrateurs" ? "aktiv" : "")" @onclick='() => WechsleTab("administrateurs")'>Administrateurs</button>
                 </Authorized>
             </AuthorizeView>
         </div>
@@ -181,12 +180,12 @@
                     <div class="enote-card enote-settings-card">
                         <div class="enote-item-head">
                             <strong>Propriétaires plateforme (@produktOwners.Count)</strong>
-                            <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="OeffnePoAnlegeDialog">+ Ajouter</button>
+                            <button class="enote-btn enote-btn-primary enote-btn-sm" @onclick="OeffnePoAnlegeDialog">+ Ajouter un responsable plateforme</button>
                         </div>
                         <input class="enote-filter-suche" placeholder="Rechercher (nom, e-mail)…" @bind="poSuche" @bind:event="oninput" />
                         @if (!GefilterteProduktOwners().Any())
                         {
-                            <p class="enote-empty" role="status">@(produktOwners.Count == 0 ? "Aucun propriétaire plateforme pour le moment. Cliquez sur « Ajouter » pour créer un compte." : "Aucun propriétaire plateforme ne correspond à votre recherche.")</p>
+                            <p class="enote-empty" role="status">@(produktOwners.Count == 0 ? "Aucun propriétaire plateforme pour le moment. Cliquez sur « Ajouter un responsable plateforme » pour créer un compte." : "Aucun propriétaire plateforme ne correspond à votre recherche.")</p>
                         }
                         <div class="enote-po-auswahl">
                             @foreach (var po in GefilterteProduktOwners())
@@ -281,9 +280,9 @@
                 </Authorized>
             </AuthorizeView>
         }
-        else if (aktiverTab == "administrateurs" && istErsterAdmin)
+        else if (aktiverTab == "administrateurs" && istSuperAdmin)
         {
-            <AdminKontenVerwaltung />
+            <AdminKontenVerwaltung IstHauptAdmin="istErsterAdmin" />
         }
         else if (aktiverTab == "tarifs")
         {
@@ -318,15 +317,15 @@
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
-                <label>Prénom <input @bind="neuVorname" /></label>
-                <label>Nom <input @bind="neuNachname" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="neuVorname" @bind:event="oninput" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="neuNachname" @bind:event="oninput" /></label>
             </div>
-            <label>Pseudonyme (identifiant de connexion) <input @bind="neuPseudonym" autocomplete="username" /></label>
-            <label>Adresse e-mail de contact <input type="email" @bind="neuEmail" /></label>
-            <label>Téléphone du propriétaire <input type="tel" @bind="neuTelefon" autocomplete="off" maxlength="30" placeholder="ex. +228 90 12 34 56" /></label>
-            <label>Mot de passe initial <input type="text" @bind="neuPasswort" /></label>
+            <label><span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span> <input @bind="neuPseudonym" @bind:event="oninput" autocomplete="username" /></label>
+            <label><span class="enote-pflicht">Adresse e-mail de contact</span> <input type="email" @bind="neuEmail" @bind:event="oninput" /></label>
+            <label><span class="enote-pflicht">Téléphone du propriétaire</span> <input type="tel" @bind="neuTelefon" @bind:event="oninput" autocomplete="off" maxlength="30" placeholder="ex. +228 90 12 34 56" /></label>
+            <label><span class="enote-pflicht">Mot de passe initial</span> <input type="text" @bind="neuPasswort" @bind:event="oninput" /></label>
             <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
-            <label>Nom de l'établissement <input @bind="neuSalonName" /></label>
+            <label><span class="enote-pflicht">Nom de l'établissement</span> <input @bind="neuSalonName" @bind:event="oninput" /></label>
             <label>Ville / quartier (facultatif) <input @bind="neuStandort" /></label>
             <label>Pays</label>
             <EnoteSelect TValue="string" @bind-Value="neuLand" Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
@@ -335,27 +334,27 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => besitzerDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="LegeBesitzerAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Créer" OnClick="LegeBesitzerAnAsync" CssClass="enote-btn-primary" Disabled="@(!BesitzerVollstaendig)" />
     </Footer>
 </ModalDialog>
 
 @* ProduktOwner anlegen *@
-<ModalDialog Open="poAnlegeDialogOffen" Title="Ajouter un propriétaire plateforme" ErrorMessage="@poFehler" OnClose="() => poAnlegeDialogOffen = false">
+<ModalDialog Open="poAnlegeDialogOffen" Title="Ajouter un responsable plateforme" ErrorMessage="@poFehler" OnClose="() => poAnlegeDialogOffen = false">
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
-                <label>Prénom <input @bind="poVorname" /></label>
-                <label>Nom <input @bind="poNachname" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="poVorname" @bind:event="oninput" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="poNachname" @bind:event="oninput" /></label>
             </div>
-            <label>Pseudonyme (identifiant de connexion) <input @bind="poPseudonym" autocomplete="username" /></label>
-            <label>Adresse e-mail <input type="email" @bind="poEmail" /></label>
-            <label>Mot de passe initial <input type="text" @bind="poPasswort" /></label>
+            <label><span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span> <input @bind="poPseudonym" @bind:event="oninput" autocomplete="username" /></label>
+            <label><span class="enote-pflicht">Adresse e-mail</span> <input type="email" @bind="poEmail" @bind:event="oninput" /></label>
+            <label><span class="enote-pflicht">Mot de passe initial</span> <input type="text" @bind="poPasswort" @bind:event="oninput" /></label>
             <small class="enote-muted" style="margin-top:-.5rem;">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => poAnlegeDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Créer" OnClick="LegeProduktOwnerAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Créer" OnClick="LegeProduktOwnerAnAsync" CssClass="enote-btn-primary" Disabled="@(!PoVollstaendig)" />
     </Footer>
 </ModalDialog>
 
@@ -458,14 +457,14 @@
     <ChildContent>
         <div class="enote-form">
             <p class="enote-muted">Pour protéger les établissements, les actions importantes (désactiver, retirer l'essai, changer le tarif…) sont faites par l'administrateur. Il reçoit votre demande par e-mail.</p>
-            <label>Objet de la demande</label>
+            <label><span class="enote-pflicht">Objet de la demande</span></label>
             <EnoteSelect TValue="string" @bind-Value="anfrageAnliegen" Options="anfrageOptionen" Placeholder="Choisir…" />
             <label>Message (facultatif) <textarea rows="3" maxlength="500" @bind="anfrageGrund" placeholder="ex. Le propriétaire a fermé sa boutique."></textarea></label>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => anfrageDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Envoyer la demande" BusyText="Envoi…" OnClick="SendeAnfrageAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Envoyer la demande" BusyText="Envoi…" OnClick="SendeAnfrageAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(anfrageAnliegen)" />
     </Footer>
 </ModalDialog>
 
@@ -478,7 +477,7 @@
             <p>Tarif général : <strong>@tarif.Global.ToString("N0") F CFA / mois</strong></p>
             <p>Tarif actuellement appliqué : <strong>@((tarif.Individuell ?? tarif.Global).ToString("N0")) F CFA / mois</strong> · @(tarif.Individuell is null ? "tarif général" : "tarif personnalisé")</p>
             <p class="enote-muted">Un tarif personnalisé remplace le tarif général pour cet établissement, sans jamais être inférieur à celui-ci. Les remises sont calculées automatiquement. Les périodes déjà facturées ne changent pas.</p>
-            <div class="enote-form"><label>Montant mensuel (F CFA)</label><input type="number" min="@tarif.Global" step="100" @bind="tarifPreis" /></div>
+            <div class="enote-form"><label><span class="enote-pflicht">Montant mensuel (F CFA)</span></label><input type="number" min="@tarif.Global" step="100" @bind="tarifPreis" @bind:event="oninput" /></div>
             @if (tarifPreis is > 0)
             {
                 @foreach (var i in VertragsRegeln.Intervalle) { <p>@VertragsRegeln.Bezeichnung(i) : @VertragsRegeln.Preis(tarifPreis.Value, i).ToString("N0") F · @VertragsRegeln.Rabatt(i) %</p> }
@@ -487,7 +486,7 @@
         }
     </ChildContent>
     <Footer>
-        <AsyncActionButton Text="Appliquer le tarif personnalisé" OnClick="() => SpeichereTarifAsync(false)" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Appliquer le tarif personnalisé" OnClick="() => SpeichereTarifAsync(false)" CssClass="enote-btn-primary" Disabled="@(tarifPreis is not > 0)" />
         <AsyncActionButton Text="Revenir au tarif général" OnClick="() => SpeichereTarifAsync(true)" CssClass="enote-btn-ghost" />
     </Footer>
 </ModalDialog>

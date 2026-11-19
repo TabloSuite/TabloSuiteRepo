@@ -3729,3 +3729,6 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .cgu-details .cgu-text { max-height: 18rem; overflow-y: auto; margin-top: .5rem; padding: .6rem .8rem; border: 1px solid var(--enote-border); border-radius: var(--enote-radius); background: var(--enote-surface-2); }
 .btn-primary:disabled:not(.enote-laedt) { opacity: .5; box-shadow: none; }
 .auth-pflicht-hinweis { margin-top: -.5rem; text-align: center; font-size: .8rem; }
+.enote-po-freigabe { display: grid; gap: .5rem; margin-top: .6rem; padding-top: .6rem; border-top: 1px dashed var(--enote-border); }
+.enote-po-freigabe p { margin: 0; font-size: .85rem; }
+.enote-po-freigabe .enote-btn { justify-self: start; }

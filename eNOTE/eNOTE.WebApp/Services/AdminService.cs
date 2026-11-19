@@ -661,6 +661,22 @@ public class AdminService(
         }
 
         await UserManager.AddToRoleAsync(po, AppRollen.ProduktOwner);
+
+        // Zugangsmail an den neuen Responsable (Testabend 18.11.2026: bisher keine) – mit Link zum eigenen Passwort.
+        if (MailDienst is { } m && !string.IsNullOrWhiteSpace(po.Email))
+        {
+            string? link = null;
+            try
+            {
+                var token = await UserManager.GeneratePasswordResetTokenAsync(po);
+                link = $"{m.AppUrl}/auth/reinitialiser?compte={po.Id}&code={Uri.EscapeDataString(token)}";
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Passwort-Link für neuen Responsable konnte nicht erzeugt werden.");
+            }
+            await m.ResponsableAngelegtAsync(po.Email, po.Vorname, po.UserName ?? "", link, cancellationToken);
+        }
         return (true, null, po);
     }
 
