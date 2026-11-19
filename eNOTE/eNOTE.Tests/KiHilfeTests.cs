@@ -143,8 +143,8 @@ public class KiHilfeTests
     [Fact]
     public void Rolle_aus_Anmeldung_und_Rechten_des_Mitarbeiters()
     {
-        var recht = new UserSalon { KannFinanzenSehen = true, KannRabatteVerwalten = true };
-        Assert.Equal(new KiRolle(AppRollen.Kassierer, Remises: true, Finances: true), KiRolle.Aus(Nutzer(AppRollen.Kassierer), recht));
+        var recht = new UserSalon { KannFinanzenSehen = true, KannRabatteVerwalten = true, KannKundenAktenFuehren = true };
+        Assert.Equal(new KiRolle(AppRollen.Kassierer, Remises: true, Finances: true, Clients: true), KiRolle.Aus(Nutzer(AppRollen.Kassierer), recht));
         Assert.Equal(new KiRolle(AppRollen.Besitzer), KiRolle.Aus(Nutzer(AppRollen.Besitzer), recht)); // Rechte nur für Mitarbeitende
         Assert.Equal(AppRollen.ProduktOwner, KiRolle.Aus(Nutzer(AppRollen.ProduktOwner), null).Rolle);
         Assert.Equal(AppRollen.SuperAdmin, KiRolle.Aus(Nutzer(AppRollen.SuperAdmin), null).Rolle);
@@ -160,6 +160,7 @@ public class KiHilfeTests
         yield return Besitzer;
         yield return Employe;
         yield return new KiRolle(AppRollen.Kassierer, Prestations: true, Remises: true, Finances: true);
+        yield return new KiRolle(AppRollen.Kassierer, Clients: true);
     }
 
     [Fact]
@@ -189,6 +190,11 @@ public class KiHilfeTests
         Assert.Equal(["/", "/services", "/remises", "/finances", "/ausgaben", "/aide/videos", "/contact"],
             Ziele(new KiRolle(AppRollen.Kassierer, true, true, true)));
         Assert.Equal(["/", "/finances", "/ausgaben", "/aide/videos", "/contact"], Ziele(new KiRolle(AppRollen.Kassierer, Finances: true)));
+        // « Dossiers clients » (angestellter Arzt im Büro): nur « Clients » dazu, mit der Lektion zu den Clients.
+        var arzt = new KiRolle(AppRollen.Kassierer, Clients: true);
+        Assert.Equal(["/", "/clients", "/aide/videos", "/contact"], Ziele(arzt));
+        Assert.Contains(KiWissensbasis.Lektionen(arzt), l => l.Id == KiWissensbasis.LektionClients);
+        Assert.DoesNotContain(KiWissensbasis.Lektionen(Employe), l => l.Id == KiWissensbasis.LektionClients);
         Assert.DoesNotContain(KiWissensbasis.Lektionen(Employe), l => l.Id is "chiffres" or "catalogue" or "equipe" or "abonnement");
         Assert.Contains(KiWissensbasis.Lektionen(Employe), l => l.Id == KiWissensbasis.LektionCaisse);
 

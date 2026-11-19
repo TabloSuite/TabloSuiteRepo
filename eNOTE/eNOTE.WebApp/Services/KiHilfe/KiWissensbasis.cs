@@ -11,7 +11,7 @@ namespace ENote.WebApp.Services.KiHilfe;
 /// Rolle für die KI-Hilfe: nur die Rolle und – beim Mitarbeiterkonto (« Connexion personnelle ») – die Bereiche seiner Rechte.
 /// Keine Namen, keine Daten des Ladens.
 /// </summary>
-public sealed record KiRolle(string Rolle, bool Prestations = false, bool Remises = false, bool Finances = false)
+public sealed record KiRolle(string Rolle, bool Prestations = false, bool Remises = false, bool Finances = false, bool Clients = false)
 {
     /// <summary>Aus der Anmeldung (Rangfolge wie bei den Lernvideos) und – nur für Mitarbeitende – der Zuordnung zum Laden.</summary>
     public static KiRolle Aus(ClaimsPrincipal user, UserSalon? zuordnung)
@@ -19,7 +19,7 @@ public sealed record KiRolle(string Rolle, bool Prestations = false, bool Remise
            : user.IsInRole(AppRollen.ProduktOwner) ? new(AppRollen.ProduktOwner)
            : user.IsInRole(AppRollen.Besitzer) ? new(AppRollen.Besitzer)
            : new(AppRollen.Kassierer, zuordnung?.KannLeistungenVerwalten == true, zuordnung?.KannRabatteVerwalten == true,
-               zuordnung?.KannFinanzenSehen == true);
+               zuordnung?.KannFinanzenSehen == true, zuordnung?.KannKundenAktenFuehren == true);
 
     public bool IstPlattform => Rolle is AppRollen.SuperAdmin or AppRollen.ProduktOwner;
 
@@ -32,7 +32,7 @@ public sealed record KiRolle(string Rolle, bool Prestations = false, bool Remise
     };
 
     /// <summary>Schlüssel der Wissensbasis (gleiche Rolle und Rechte = gleicher Text = Cache-Treffer).</summary>
-    public string Schluessel => $"{Rolle}|{Prestations}|{Remises}|{Finances}";
+    public string Schluessel => $"{Rolle}|{Prestations}|{Remises}|{Finances}|{Clients}";
 }
 
 /// <summary>Ein Menüpunkt mit kurzer Erklärung (der « Guide » der KI-Hilfe; eNOTE hat keine eigene Guide-Seite).</summary>
@@ -56,6 +56,7 @@ public static class KiWissensbasis
     internal const string LektionCaisse = "caisse";
     internal const string LektionCatalogue = "catalogue";
     internal const string LektionChiffres = "chiffres";
+    internal const string LektionClients = "clients";
 
     private static readonly ConcurrentDictionary<string, string> Fertig = new(StringComparer.Ordinal);
 
@@ -131,6 +132,7 @@ public static class KiWissensbasis
             var vente = new List<KiMenuePunkt>();
             if (r.Prestations) vente.Add(Prestations);
             if (r.Remises) vente.Add(Remises);
+            if (r.Clients) vente.Add(Clients); // « Dossiers clients » (19.11.2026)
             if (vente.Count > 0) gruppen.Add(new("Vente", vente));
             if (r.Finances) gruppen.Add(new("Gestion", [Finances, Depenses]));
         }
@@ -237,6 +239,7 @@ public static class KiWissensbasis
             ids.Add(LektionCaisse); // kassiert am Gerät des Propriétaire
             if (rolle.Prestations || rolle.Remises) ids.Add(LektionCatalogue);
             if (rolle.Finances) ids.Add(LektionChiffres);
+            if (rolle.Clients) ids.Add(LektionClients);
         }
         return [.. FormationKatalog.Lektionen.Where(l => ids.Contains(l.Id))];
     }
