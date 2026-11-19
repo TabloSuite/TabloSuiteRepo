@@ -1,0 +1,16 @@
+@page "/Error"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+
+@* 19.11.2026: In Produktion leitet UseExceptionHandler("/Error") hierher – die Seite fehlte, Nutzer sahen nur « Not found ». *@
+<PageTitle>Erreur · eNOTE</PageTitle>
+
+<div class="enote-hinweisseite">
+    <div class="enote-card enote-hinweisseite-karte">
+        <span class="enote-hinweisseite-icon"><Icon Name="alert" Groesse="28" /></span>
+        <h1>Une erreur inattendue s'est produite.</h1>
+        <p>L'erreur a été enregistrée et sera examinée. Ce qui était déjà enregistré n'est pas perdu. Réessayez dans un instant.</p>
+        <a class="enote-btn enote-btn-primary" href="/">Retour à l'accueil</a>
+    </div>
+</div>

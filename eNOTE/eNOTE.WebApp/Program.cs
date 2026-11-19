@@ -255,6 +255,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
+// 404 der Server-Seiten zeigen « Page introuvable » (wie SKOULOU), nicht die leere Standardantwort.
+app.UseStatusCodePagesWithReExecute("/introuvable");
 
 app.UseHttpsRedirection();
 // Jede Anfrage (auch die Blazor-Verbindung) in derselben Kultur, unabhängig von Browser und Server.

@@ -1,0 +1,15 @@
+@page "/introuvable"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
+
+@* 19.11.2026: eigene Seite statt des englischen « Not found » (Router NotFoundPage + 404 der Server-Seiten). *@
+<PageTitle>Page introuvable · eNOTE</PageTitle>
+
+<div class="enote-hinweisseite">
+    <div class="enote-card enote-hinweisseite-karte">
+        <span class="enote-hinweisseite-icon"><Icon Name="search" Groesse="28" /></span>
+        <h1>Page introuvable</h1>
+        <p>L'adresse demandée n'existe pas ou a changé.</p>
+        <a class="enote-btn enote-btn-primary" href="/">Retour à l'accueil</a>
+    </div>
+</div>

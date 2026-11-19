@@ -3735,3 +3735,10 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .enote-po-freigabe { display: grid; gap: .5rem; margin-top: .6rem; padding-top: .6rem; border-top: 1px dashed var(--enote-border); }
 .enote-po-freigabe p { margin: 0; font-size: .85rem; }
 .enote-po-freigabe .enote-btn { justify-self: start; }
+
+/* Fehlerseite « /Error » und « Page introuvable » (19.11.2026) */
+.enote-hinweisseite { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: var(--enote-bg, var(--enote-surface-2)); }
+.enote-hinweisseite-karte { max-width: 30rem; text-align: center; display: grid; gap: .8rem; justify-items: center; padding: 2rem 1.5rem; }
+.enote-hinweisseite-karte h1 { margin: 0; font-size: 1.35rem; }
+.enote-hinweisseite-karte p { margin: 0; color: var(--enote-text-muted); line-height: 1.5; }
+.enote-hinweisseite-icon { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 50%; background: var(--enote-primary-soft); color: var(--enote-primary-text); }
