@@ -13,7 +13,7 @@ public sealed record PeriodeZeile(Guid Id, int Nr, string Titel, DateOnly Beginn
     bool ZaehltFuerJahr, PeriodenStatus Status, bool Benutzt);
 
 public sealed record SchuljahrZeile(Guid Id, string Bezeichnung, DateOnly Beginn, DateOnly Ende, SchuljahrStatus Status,
-    PeriodenArt PeriodenArt, long? PlattformJahrespreis, DateTime? AbgeschlossenAmUtc, string? WiedereroeffnetGrund,
+    PeriodenArt PeriodenArt, long? PlattformMonatspreis, DateTime? AbgeschlossenAmUtc, string? WiedereroeffnetGrund,
     int AnzahlKlassen, int AnzahlEinschreibungen, IReadOnlyList<PeriodeZeile> Perioden)
 {
     public Zeitraum Zeitraum => new(Beginn, Ende);
@@ -25,7 +25,7 @@ public sealed record PeriodeEingabe(string? Titel, DateOnly? Beginn, DateOnly? E
 
 /// <summary>
 /// Schuljahre und Perioden (Bauplan §4.2): eindeutige Bezeichnung, keine Überlappung, höchstens ein
-/// laufendes Jahr, Jahrespreis beim Start eingefroren, Abschluss/Wiedereröffnung mit Audit.
+/// laufendes Jahr, Preis je Schüler und Monat beim Start eingefroren, Abschluss/Wiedereröffnung mit Audit.
 /// </summary>
 public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, TimeProvider zeit)
 {
@@ -37,13 +37,13 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
             .OrderByDescending(j => j.Beginn)
             .Select(j => new
             {
-                j.Id, j.Bezeichnung, j.Beginn, j.Ende, j.Status, j.PeriodenArt, j.PlattformJahrespreis, j.AbgeschlossenAmUtc, j.WiedereroeffnetGrund,
+                j.Id, j.Bezeichnung, j.Beginn, j.Ende, j.Status, j.PeriodenArt, j.PlattformMonatspreis, j.AbgeschlossenAmUtc, j.WiedereroeffnetGrund,
                 Klassen = db.Klassen.Count(k => k.SchuljahrId == j.Id && k.Aktiv),
                 Einschreibungen = db.Einschreibungen.Count(e => e.SchuljahrId == j.Id && e.StorniertAmUtc == null && e.Status == EinschreibungsStatus.Active)
             }).ToListAsync(ct);
         var ids = jahre.Select(j => j.Id).ToList();
         var perioden = await PeriodenAbfrage(db, ids).ToListAsync(ct);
-        return jahre.Select(j => new SchuljahrZeile(j.Id, j.Bezeichnung, j.Beginn, j.Ende, j.Status, j.PeriodenArt, j.PlattformJahrespreis,
+        return jahre.Select(j => new SchuljahrZeile(j.Id, j.Bezeichnung, j.Beginn, j.Ende, j.Status, j.PeriodenArt, j.PlattformMonatspreis,
                 j.AbgeschlossenAmUtc, j.WiedereroeffnetGrund, j.Klassen, j.Einschreibungen,
                 perioden.Where(p => p.SchuljahrId == j.Id).OrderBy(p => p.Zeile.Beginn).ThenBy(p => p.Zeile.Nr).Select(p => p.Zeile).ToList()))
             .ToList();
@@ -64,6 +64,24 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
             db.Bewertungen.Any(b => b.PeriodeId == p.Id) || db.Klassen.Any(k => k.PeriodeId == p.Id) || db.GebuehrenPosten.Any(g => g.PeriodeId == p.Id)
             || db.PeriodenKomponenten.Any(k => k.PeriodeId == p.Id) || db.Plattformrechnungen.Any(r => r.PeriodeId == p.Id)
             || db.KlassenVeroeffentlichungen.Any(v => v.PeriodeId == p.Id) || db.Bulletins.Any(b => b.PeriodeId == p.Id), ct);
+
+    /// <summary>
+    /// Für die eigene Schule gültiger Preis je Schüler und Monat (abweichender Schulpreis, sonst Plattformpreis) – Preis-Hinweis
+    /// beim Anlegen eines Jahres (JahrDialog) und auf der Seite « Année scolaire ».
+    /// </summary>
+    public async Task<long> MonatspreisAsync(Guid akteurId, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.SchuljahrVerwalten, schreiben: false, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await GueltigerMonatspreisAsync(db, a.SchuleId, ct);
+    }
+
+    private static async Task<long> GueltigerMonatspreisAsync(SkoulouDbContext db, Guid schuleId, CancellationToken ct)
+    {
+        var schulPreis = await db.Schulen.AsNoTracking().Where(s => s.Id == schuleId).Select(s => s.MonatspreisOverride).FirstOrDefaultAsync(ct);
+        return schulPreis ?? await db.PlattformEinstellungen.AsNoTracking().Where(p => p.Id == PlattformEinstellung.EinzigeId)
+            .Select(p => (long?)p.MonatspreisProSchueler).FirstOrDefaultAsync(ct) ?? new PlattformEinstellung().MonatspreisProSchueler;
+    }
 
     /// <summary>Vorschlag für ein neues Jahr: nach dem letzten Jahr, sonst 1. September – 30. Juni.</summary>
     public async Task<SchuljahrEingabe> VorschlagAsync(Guid akteurId, CancellationToken ct = default)
@@ -97,7 +115,7 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
             foreach (var v in vorschlaege)
                 db.Perioden.Add(new Periode { SchuleId = a.SchuleId, SchuljahrId = jahr.Id, Nr = v.Nr, Titel = v.Titel, Beginn = v.Beginn, Ende = v.Ende });
             audit.Erfasse(db, a.Id, a.SchuleId, OrgAudit.SchuljahrAngelegt, nameof(Schuljahr), jahr.Id,
-                $"Année {bezeichnung} créée ({zeitraum}, {PeriodenPlan.Bezeichnung(e.PeriodenArt).ToLowerInvariant()}).");
+                $"Année {bezeichnung} créée ({zeitraum}, {PeriodenPlan.Bezeichnung(e.PeriodenArt, vorschlaege.Count).ToLowerInvariant()}).");
             await db.SaveChangesAsync(ct);
             return jahr.Id;
         }, ct);
@@ -250,7 +268,7 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Jahr starten: höchstens ein laufendes Jahr; Jahrespreis je Schüler wird eingefroren.</summary>
+    /// <summary>Jahr starten: höchstens ein laufendes Jahr; der Preis je Schüler und Monat wird eingefroren.</summary>
     public async Task JahrStartenAsync(Guid akteurId, Guid jahrId, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.SchuljahrVerwalten, ct: ct);
@@ -264,13 +282,11 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
                 throw new FachFehler($"L'année {laufend} est encore en cours : clôturez-la (passage d'année) avant de démarrer {jahr.Bezeichnung}.");
             if (!await db.Perioden.AnyAsync(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr, ct))
                 throw new FachFehler("Ajoutez au moins une période qui compte pour l'année avant de démarrer.");
-            var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == a.SchuleId, ct);
-            var standard = await db.PlattformEinstellungen.AsNoTracking().Where(p => p.Id == PlattformEinstellung.EinzigeId)
-                .Select(p => (long?)p.JahrespreisProSchueler).FirstOrDefaultAsync(ct) ?? new PlattformEinstellung().JahrespreisProSchueler;   // 18.11.: Standard 3.600 statt Altwert 12.500
-            jahr.PlattformJahrespreis = schule.JahrespreisOverride ?? standard;
+            // Schulpreis, sonst Plattformpreis (ohne Einstellungszeile der Standard 500 je Schüler und Monat).
+            jahr.PlattformMonatspreis = await GueltigerMonatspreisAsync(db, a.SchuleId, ct);
             jahr.Status = SchuljahrStatus.Laufend;
             audit.Erfasse(db, a.Id, a.SchuleId, OrgAudit.SchuljahrGestartet, nameof(Schuljahr), jahr.Id,
-                $"Année {jahr.Bezeichnung} démarrée ; prix annuel par élève figé à {SkoulouKultur.Fcfa(jahr.PlattformJahrespreis.Value)}.");
+                $"Année {jahr.Bezeichnung} démarrée ; prix par élève et par mois figé à {SkoulouKultur.Fcfa(jahr.PlattformMonatspreis.Value)}.");
             await db.SaveChangesAsync(ct);
         }, ct);
     }

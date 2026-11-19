@@ -150,7 +150,7 @@ internal sealed class OrgWelt
             if (!await db.Roles.AnyAsync(r => r.Name == name))
                 db.Roles.Add(new Rolle { Id = Guid.NewGuid(), Name = name, NormalizedName = name.ToUpperInvariant(), ConcurrencyStamp = Guid.NewGuid().ToString() });
         if (!await db.PlattformEinstellungen.AnyAsync(p => p.Id == PlattformEinstellung.EinzigeId))
-            db.PlattformEinstellungen.Add(new PlattformEinstellung { Id = PlattformEinstellung.EinzigeId, JahrespreisProSchueler = 12_500, AgbVersion = string.Empty });
+            db.PlattformEinstellungen.Add(new PlattformEinstellung { Id = PlattformEinstellung.EinzigeId, MonatspreisProSchueler = 1_250, AgbVersion = string.Empty });
         await db.SaveChangesAsync();
         rollen = await db.Roles.ToDictionaryAsync(r => r.Name!, r => r.Id);
 
@@ -183,7 +183,7 @@ internal sealed class OrgWelt
         var jahr = new Schuljahr
         {
             SchuleId = SchuleA, Bezeichnung = "2026-2027", Beginn = new(2026, 9, 1), Ende = new(2027, 6, 30),
-            Status = SchuljahrStatus.Laufend, PeriodenArt = PeriodenArt.Trimestre, PlattformJahrespreis = 12_500
+            Status = SchuljahrStatus.Laufend, PeriodenArt = PeriodenArt.Trimestre, PlattformMonatspreis = 1_250   // je Schüler und Monat: P1 4 Monate (5.000), P2/P3 je 3 Monate (3.750)
         };
         var vorb = new Schuljahr { SchuleId = SchuleA, Bezeichnung = "2027-2028", Beginn = new(2027, 9, 1), Ende = new(2028, 6, 30), PeriodenArt = PeriodenArt.Trimestre };
         db.Schuljahre.AddRange(jahr, vorb);

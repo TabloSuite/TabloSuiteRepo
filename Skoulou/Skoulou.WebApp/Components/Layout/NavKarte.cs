@@ -76,7 +76,7 @@ public static class NavKarte
             new("Facturation",
             [
                 new("/admin/facturation", "Facturation", "receipt", "Factures SKOULOU de toutes les écoles."),
-                new("/admin/tarifs", "Tarifs", "tag", "Prix annuel par élève et délai de paiement."),
+                new("/admin/tarifs", "Tarifs", "tag", "Prix mensuel par élève et délai de paiement."),
             ]),
             new("Communication",
             [

@@ -17,8 +17,8 @@ public class Schule : Entitaet
     /// <summary>Betreuender Responsable SKOULOU.</summary>
     public Guid? ResponsableId { get; set; }
 
-    /// <summary>Abweichender Jahrespreis je Schüler (FCFA); null = Plattformpreis.</summary>
-    public long? JahrespreisOverride { get; set; }
+    /// <summary>Abweichender Preis je Schüler und Monat (FCFA); null = Plattformpreis.</summary>
+    public long? MonatspreisOverride { get; set; }
 
     /// <summary>Abweichender Anteil des Responsable in %; null = Plattformstandard.</summary>
     public decimal? ResponsableProzent { get; set; }
@@ -60,7 +60,8 @@ public class PlattformEinstellung : Entitaet
     /// <summary>Feste Id der einzigen Zeile.</summary>
     public static readonly Guid EinzigeId = new("5c0a1e00-0000-4000-8000-000000000001");
 
-    public long JahrespreisProSchueler { get; set; } = 3_600;
+    /// <summary>Preis je Schüler und Monat (FCFA), seit 19.11.2026 Standard 500 (≈ 5.000 für ein ganzes Schuljahr); vorher Jahrespreis.</summary>
+    public long MonatspreisProSchueler { get; set; } = 500;
     public int ZahlungszielTage { get; set; } = 30;
     public decimal ResponsableProzentStandard { get; set; }
 

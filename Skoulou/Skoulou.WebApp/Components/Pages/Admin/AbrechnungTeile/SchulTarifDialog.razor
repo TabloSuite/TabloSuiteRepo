@@ -6,13 +6,13 @@
              ErrorMessage="@Fehlermeldung" OnClose="OnClose">
     <ChildContent>
         <div class="sk-formular">
-            <BetragFeld Label="Prix annuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis"
-                        Hinweis="@($"Vide = prix de la plateforme ({Geld.F(Standard?.Jahrespreis ?? 0)}). S'applique à partir du prochain démarrage d'année.")" />
+            <BetragFeld Label="Prix mensuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis"
+                        Hinweis="@($"Vide = prix de la plateforme ({Geld.F(Standard?.Monatspreis ?? 0)} par mois). S'applique à partir du prochain démarrage d'année.")" />
             <ZahlFeld Label="Part du responsable" @bind-Wert="prozent" Min="0" Max="100" Einheit="%"
                       Hinweis="@($"Vide = part standard ({(Standard?.ResponsableProzent ?? 0):0.##} %).")" />
             @if (Schule?.Eingefroren is { } e)
             {
-                <Hinweis Art="info">Le prix de l'année en cours (@Schule.LaufendesJahr) reste figé à @Geld.F(e).</Hinweis>
+                <Hinweis Art="info">Le prix de l'année en cours (@Schule.LaufendesJahr) reste figé à @Geld.F(e) par élève et par mois.</Hinweis>
             }
         </div>
     </ChildContent>

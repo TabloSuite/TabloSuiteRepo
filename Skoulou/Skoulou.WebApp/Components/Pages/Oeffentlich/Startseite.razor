@@ -96,26 +96,26 @@
         </div>
     </section>
 
-    @if (jahrespreis is { } preis)
+    @if (monatspreis is { } preis)
     {
         <section class="lp-abschnitt" id="tarifs">
             <div class="lp-abschnitt-kopf">
                 <p class="sk-oberzeile">Tarifs</p>
                 <h2>Un prix simple, par élève</h2>
-                <p>Vous payez uniquement pour les élèves inscrits, à la fin de chaque période. Les comptes de la direction, des enseignants et des parents ne coûtent rien de plus.</p>
+                <p>Vous payez uniquement pour les élèves inscrits et pour les mois de cours, à la fin de chaque période. Les comptes de la direction, des enseignants et des parents ne coûtent rien de plus.</p>
             </div>
             <div class="lp-preise">
                 <article class="lp-preis haupt">
-                    <span class="lp-preis-titel">Par élève et par an</span>
+                    <span class="lp-preis-titel">Par élève et par mois</span>
                     <strong>@SkoulouKultur.Zahl(preis) <small>FCFA</small></strong>
-                    <span>réparti sur les périodes de l'année scolaire</span>
+                    <span>facturé à la fin de chaque période, selon ses mois</span>
                 </article>
-                @foreach (var (titel, anzahl, einheit) in Aufteilungen)
+                @foreach (var (titel, monate, text) in Beispiele)
                 {
                     <article class="lp-preis">
                         <span class="lp-preis-titel">@titel</span>
-                        <strong>@Anteil(preis, anzahl) <small>FCFA</small></strong>
-                        <span>par élève et par @einheit</span>
+                        <strong>@(monate == JahrMonate ? "≈ " : null)@SkoulouKultur.Zahl(monate * preis) <small>FCFA</small></strong>
+                        <span>@text</span>
                     </article>
                 }
             </div>
@@ -127,7 +127,7 @@
             </div>
             <p class="lp-preis-hinweis">
                 <Icon Name="info" Groesse="16" />
-                <span>Ce prix vaut pour la plupart des établissements. Il peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année scolaire démarrée, il ne change plus jusqu'à sa fin.</span>
+                <span>Ce prix vaut pour la plupart des établissements : environ @SkoulouKultur.Zahl(JahrMonate * preis) FCFA par élève pour une année scolaire complète. Il peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année scolaire démarrée, il ne change plus jusqu'à sa fin.</span>
             </p>
         </section>
     }
@@ -160,12 +160,12 @@
     [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
 
     private StartseitenStatistik.Zahlen? zahlen;
-    private long? jahrespreis;
+    private long? monatspreis;
 
     private const string SuchTitel = "SKOULOU – Gestion scolaire : notes, bulletins et frais";
     private const string SuchBeschreibung = "SKOULOU, la gestion scolaire simple pour écoles, collèges, lycées et centres de formation : élèves, notes, bulletins PDF, frais de scolarité et parents en ligne.";
 
-    /// <summary>JSON-LD (WebSite + SoftwareApplication) – Name, Herausgeber und aktueller Jahrespreis je Schüler für Google.</summary>
+    /// <summary>JSON-LD (WebSite + SoftwareApplication) – Name, Herausgeber und aktueller Preis je Schüler und Monat für Google.</summary>
     private string StrukturDaten
     {
         get
@@ -178,12 +178,21 @@
                 ["applicationCategory"] = "EducationalApplication", ["operatingSystem"] = "Web, Android, iOS, Windows",
                 ["image"] = url + "img/partage.jpg", ["inLanguage"] = "fr", ["publisher"] = herausgeber,
             };
-            if (jahrespreis is { } p)
+            if (monatspreis is { } p)
+            {
+                var preisText = p.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 app["offers"] = new Dictionary<string, object>
                 {
-                    ["@type"] = "Offer", ["price"] = p.ToString(System.Globalization.CultureInfo.InvariantCulture), ["priceCurrency"] = "XOF",
-                    ["description"] = "Prix par élève et par an, adapté de façon juste à chaque établissement",
+                    ["@type"] = "Offer", ["price"] = preisText, ["priceCurrency"] = "XOF",
+                    // Einheit: je Schüler und Monat (UN/CEFACT-Code « MON »)
+                    ["priceSpecification"] = new Dictionary<string, object>
+                    {
+                        ["@type"] = "UnitPriceSpecification", ["price"] = preisText, ["priceCurrency"] = "XOF", ["unitCode"] = "MON",
+                        ["unitText"] = "par élève et par mois",
+                    },
+                    ["description"] = $"Prix par élève et par mois de cours (environ {SkoulouKultur.Zahl(JahrMonate * p)} FCFA pour une année scolaire complète), adapté de façon juste à chaque établissement",
                 };
+            }
             var daten = new Dictionary<string, object>
             {
                 ["@context"] = "https://schema.org",
@@ -197,21 +206,16 @@
         }
     }
 
-    // Beispiele der Aufteilung (gleiche Regel wie die Rechnung: ganze FCFA, Summe = Jahrespreis).
-    private static readonly (string, int, string)[] Aufteilungen =
-    [
-        ("Année en 3 trimestres", 3, "trimestre"),
-        ("Année en 2 semestres", 2, "semestre"),
-        ("Année en 4 sessions", 4, "session"),
-    ];
+    /// <summary>Monate einer « année scolaire complète » (Orientierung « environ 5.000 » bei 500 je Monat).</summary>
+    private const int JahrMonate = Skoulou.Core.Finanzen.PlattformAnteil.MonateJeSchuljahr;
 
-    /// <summary>« 1.200 » oder bei ungerader Teilung « 1.666 à 1.667 ».</summary>
-    private static string Anteil(long preis, int anzahl)
-    {
-        var anteile = Skoulou.Core.Finanzen.PlattformAnteil.Anteile(preis, anzahl);
-        var (min, max) = (anteile.Min(), anteile.Max());
-        return min == max ? SkoulouKultur.Zahl(min) : $"{SkoulouKultur.Zahl(min)} à {SkoulouKultur.Zahl(max)}";
-    }
+    // Beispiele (gleiche Regel wie die Rechnung: Monatspreis × Monate der Periode).
+    private static readonly (string, int, string)[] Beispiele =
+    [
+        ("Trimestre de 3 mois", 3, "par élève et par trimestre"),
+        ("Cycle de 3 mois (école de langues)", 3, "par élève et par cycle"),
+        ("Année scolaire complète", JahrMonate, "par élève, pour 10 mois de cours"),
+    ];
 
     private static readonly (string, string, string)[] Funktionen =
     [
@@ -253,6 +257,6 @@
             return;
         }
         zahlen = await Statistik.LadeAsync();
-        jahrespreis = await Statistik.JahrespreisAsync();
+        monatspreis = await Statistik.MonatspreisAsync();
     }
 }

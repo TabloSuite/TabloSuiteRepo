@@ -28,6 +28,35 @@ public class SchuljahrRegelnTests
     }
 
     [Fact]
+    public void Eine_Periode_ist_Libre_mit_Anzahl_1_und_eigenem_Titel()
+    {
+        // 19.11.2026: « 1 période (un seul bulletin à la fin) » ohne neuen Enum-Wert.
+        var perioden = PeriodenPlan.Erzeuge(PeriodenArt.Libre, 1, new(2026, 9, 1), new(2027, 6, 30));
+        Assert.Equal(PeriodenPlan.EinePeriodeTitel, Assert.Single(perioden).Titel);
+        Assert.Equal("MOYENNE DE L'ANNÉE SCOLAIRE", Skoulou.Core.Noten.NotenTexte.MoyenneTitel(perioden[0].Titel));
+        Assert.True(PeriodenPlan.IstEinePeriode(PeriodenArt.Libre, 1));
+        Assert.False(PeriodenPlan.IstEinePeriode(PeriodenArt.Session, 1));
+        Assert.Equal("1 période", PeriodenPlan.Bezeichnung(PeriodenArt.Libre, 1));
+        Assert.Equal("Périodes libres", PeriodenPlan.Bezeichnung(PeriodenArt.Libre, 4));
+        Assert.Equal("Trimestres", PeriodenPlan.Bezeichnung(PeriodenArt.Trimestre, 3));
+        Assert.Equal(["Période 1", "Période 2"], PeriodenPlan.Erzeuge(PeriodenArt.Libre, 2, new(2026, 9, 1), new(2027, 6, 30)).Select(p => p.Titel));
+    }
+
+    [Fact]
+    public async Task Gueltiger_Monatspreis_der_Schule_fuer_den_Hinweis()
+    {
+        var w = await OrgWelt.ErstelleAsync();
+        Assert.Equal(1_250, await w.D.Jahre.MonatspreisAsync(w.Direktor));
+        await w.MitDbAsync(async db =>
+        {
+            db.Schulen.Single(s => s.Id == w.SchuleA).MonatspreisOverride = 400;
+            return await db.SaveChangesAsync();
+        });
+        Assert.Equal(400, await w.D.Jahre.MonatspreisAsync(w.Koordinator));
+        await Assert.ThrowsAsync<KeinZugriffFehler>(() => w.D.Jahre.MonatspreisAsync(w.Lehrer));
+    }
+
+    [Fact]
     public void Periodenpruefung_erlaubt_Examen_blanc_innerhalb_einer_Periode()
     {
         var jahr = new Zeitraum(new(2026, 9, 1), new(2027, 6, 30));
@@ -47,7 +76,7 @@ public class SchuljahrRegelnTests
         var jahr = (await w.D.Jahre.JahreAsync(w.Direktor)).Single(j => j.Id == id);
         Assert.Equal(SchuljahrStatus.Vorbereitung, jahr.Status);
         Assert.Equal(2, jahr.Perioden.Count);
-        Assert.Null(jahr.PlattformJahrespreis);
+        Assert.Null(jahr.PlattformMonatspreis);
 
         var doppelt = await Assert.ThrowsAsync<FachFehler>(() => w.D.Jahre.JahrAnlegenAsync(w.Direktor,
             new SchuljahrEingabe("2028-2029", new(2029, 9, 1), new(2030, 6, 30), PeriodenArt.Trimestre, 3)));
@@ -69,27 +98,27 @@ public class SchuljahrRegelnTests
 
         await w.MitDbAsync(async db =>
         {
-            db.PlattformEinstellungen.Single().JahrespreisProSchueler = 15_000;
+            db.PlattformEinstellungen.Single().MonatspreisProSchueler = 1_500;
             return await db.SaveChangesAsync();
         });
         await w.D.Jahre.JahrAbschliessenAsync(w.Koordinator, w.Jahr);
         await w.D.Jahre.JahrStartenAsync(w.Koordinator, w.JahrVorb);
         var vorb = await w.MitDbAsync(db => db.Schuljahre.SingleAsync(j => j.Id == w.JahrVorb));
         Assert.Equal(SchuljahrStatus.Laufend, vorb.Status);
-        Assert.Equal(15_000, vorb.PlattformJahrespreis);
+        Assert.Equal(1_500, vorb.PlattformMonatspreis);
 
         // Spätere Preisänderungen ändern das laufende Jahr nicht; ein Schulpreis hat Vorrang beim nächsten Start.
         await w.MitDbAsync(async db =>
         {
-            db.PlattformEinstellungen.Single().JahrespreisProSchueler = 20_000;
-            db.Schulen.Single(s => s.Id == w.SchuleA).JahrespreisOverride = 9_000;
+            db.PlattformEinstellungen.Single().MonatspreisProSchueler = 2_000;
+            db.Schulen.Single(s => s.Id == w.SchuleA).MonatspreisOverride = 900;
             return await db.SaveChangesAsync();
         });
-        Assert.Equal(15_000, (await w.MitDbAsync(db => db.Schuljahre.SingleAsync(j => j.Id == w.JahrVorb))).PlattformJahrespreis);
+        Assert.Equal(1_500, (await w.MitDbAsync(db => db.Schuljahre.SingleAsync(j => j.Id == w.JahrVorb))).PlattformMonatspreis);
         var neu = await w.D.Jahre.JahrAnlegenAsync(w.Direktor, new SchuljahrEingabe("2028-2029", new(2028, 9, 1), new(2029, 6, 30), PeriodenArt.Trimestre, 3));
         await w.D.Jahre.JahrAbschliessenAsync(w.Direktor, w.JahrVorb);
         await w.D.Jahre.JahrStartenAsync(w.Direktor, neu);
-        Assert.Equal(9_000, (await w.MitDbAsync(db => db.Schuljahre.SingleAsync(j => j.Id == neu))).PlattformJahrespreis);
+        Assert.Equal(900, (await w.MitDbAsync(db => db.Schuljahre.SingleAsync(j => j.Id == neu))).PlattformMonatspreis);
         Assert.Equal(2, await w.MitDbAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == OrgAudit.SchuljahrGestartet)));
     }
 

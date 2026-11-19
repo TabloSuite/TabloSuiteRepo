@@ -8,7 +8,7 @@
 
 <PageTitle>Tarifs · SKOULOU</PageTitle>
 
-<SeitenKopf Titel="Tarifs" Icon="tag" Untertitel="Prix annuel par élève, délai de paiement des factures et part des responsables. Le prix est figé pour chaque établissement au démarrage de son année scolaire." />
+<SeitenKopf Titel="Tarifs" Icon="tag" Untertitel="Prix mensuel par élève, délai de paiement des factures et part des responsables. Le prix est figé pour chaque établissement au démarrage de son année scolaire." />
 
 @if (KeinZugriff)
 {
@@ -16,10 +16,10 @@
 }
 else if (standard is not null)
 {
-    <Karte Titel="Tarif de la plateforme" Icon="settings" Untertitel="Facturé par période : le prix annuel est réparti sur les périodes de l'année (ex. 3.600 FCFA en 3 trimestres : 1.200 + 1.200 + 1.200). C'est le prix standard : il peut être adapté de façon juste à chaque école dans « Tarifs par établissement ».">
+    <Karte Titel="Tarif de la plateforme" Icon="settings" Untertitel="@TarifUntertitel">
         <div class="sk-formular">
             <div class="fin-tarif-raster">
-                <BetragFeld Label="Prix annuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis" Pflicht="true" Sofort="true" />
+                <BetragFeld Label="Prix mensuel par élève" @bind-Wert="preis" Min="1" Max="TarifService.MaxPreis" Pflicht="true" Sofort="true" />
                 <ZahlFeld Label="Délai de paiement" @bind-Wert="ziel" Min="0" Max="365" Stellen="0" Einheit="jours" Pflicht="true" Sofort="true" />
                 <ZahlFeld Label="Part standard des responsables" @bind-Wert="prozent" Min="0" Max="100" Einheit="%" />
             </div>
@@ -37,10 +37,10 @@ else if (standard is not null)
                     <div class="fin-zeile-haupt">
                         <strong>@s.Name</strong>
                         <span class="fin-zeile-meta"><span>@s.Ort</span><span>@(s.Responsable ?? "sans responsable")</span>
-                            @if (s.LaufendesJahr is not null) {<span>@s.LaufendesJahr : @Geld.F(s.Eingefroren ?? 0) figé</span>}</span>
+                            @if (s.LaufendesJahr is not null) {<span>@s.LaufendesJahr : @Geld.F(s.Eingefroren ?? 0) / mois figé</span>}</span>
                     </div>
                     <span class="fin-zeile-info">
-                        <StatusBadge Text="@(s.Preis is { } p ? Geld.F(p) : "Prix standard")" Art="@(s.Preis is null ? "neutral" : "info")" />
+                        <StatusBadge Text="@(s.Preis is { } p ? $"{Geld.F(p)} / mois" : "Prix standard")" Art="@(s.Preis is null ? "neutral" : "info")" />
                         <StatusBadge Text="@(s.Prozent is { } r ? $"{r:0.##} %" : "Part standard")" Art="@(s.Prozent is null ? "neutral" : "info")" />
                     </span>
                     <div class="fin-zeile-aktionen">
@@ -61,10 +61,21 @@ else if (standard is not null)
     private long? preis;
     private decimal? ziel, prozent;
 
+    // 19.11.2026: Preis je Schüler und Monat; Beispiel mit dem eingegebenen Preis (Trimester von 3 Monaten, ganzes Schuljahr ≈ 10 Monate).
+    private string TarifUntertitel
+    {
+        get
+        {
+            var p = preis is > 0 ? preis.Value : 500;
+            return $"Facturé à la fin de chaque période : prix mensuel × nombre de mois de la période (ex. trimestre de 3 mois : {Geld.F(3 * p)} ; environ {Geld.F(Skoulou.Core.Finanzen.PlattformAnteil.MonateJeSchuljahr * p)} pour une année scolaire complète). "
+                   + "C'est le prix standard : il peut être adapté de façon juste à chaque école dans « Tarifs par établissement ».";
+        }
+    }
+
     protected override async Task InitialisierenAsync()
     {
         standard = await Tarife.EinstellungAsync(Ich.KontoId);
-        (preis, ziel, prozent) = (standard.Jahrespreis, standard.ZahlungszielTage, standard.ResponsableProzent);
+        (preis, ziel, prozent) = (standard.Monatspreis, standard.ZahlungszielTage, standard.ResponsableProzent);
     }
 
     private async Task<(IReadOnlyList<SchulTarifZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)

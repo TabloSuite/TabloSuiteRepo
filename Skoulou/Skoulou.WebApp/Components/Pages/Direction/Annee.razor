@@ -7,7 +7,7 @@
 <PageTitle>Année scolaire · SKOULOU</PageTitle>
 
 <SeitenKopf Titel="Année scolaire" Icon="calendar"
-            Untertitel="Créez l'année, découpez-la en périodes (trimestres, semestres, sessions), démarrez-la, puis clôturez-la par le passage d'année.">
+            Untertitel="Créez l'année, découpez-la en périodes (une seule, trimestres, semestres, sessions), démarrez-la, puis clôturez-la par le passage d'année.">
     <Aktionen>
         <a class="sk-btn sk-btn-ghost" href="/direction/annee/passage"><Icon Name="arrow-right" Groesse="18" /> <span>Passage d'année</span></a>
         <button type="button" class="sk-btn sk-btn-primaer" @onclick="NeuOeffnen"><Icon Name="plus" Groesse="18" /> <span>Nouvelle année</span></button>
@@ -32,7 +32,7 @@ else
 {
     @if (!jahre.Any(j => j.Status == SchuljahrStatus.Laufend))
     {
-        <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève est alors figé pour l'année. Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille).</Hinweis>
+        <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève et par mois de cours@(monatspreis is { } preis ? $" ({SkoulouKultur.Fcfa(preis)}, soit environ {SkoulouKultur.Fcfa(preis * Skoulou.Core.Finanzen.PlattformAnteil.MonateJeSchuljahr)} pour une année scolaire complète)" : null) est alors figé pour l'année. Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille).</Hinweis>
     }
     <div class="org-jahre">
         @foreach (var j in jahre)
@@ -44,7 +44,7 @@ else
 }
 <Skoulou.WebApp.Components.Pages.Direction.KomponentenTeile.KomponentenKarte />
 
-<JahrDialog Open="jahrDialog" Modus="modus" Jahr="gewaehlt" OnClose="() => jahrDialog = false" OnGespeichert="JahrGespeichertAsync" />
+<JahrDialog Open="jahrDialog" Modus="modus" Jahr="gewaehlt" Monatspreis="monatspreis" OnClose="() => jahrDialog = false" OnGespeichert="JahrGespeichertAsync" />
 <PeriodeDialog Open="periodeDialog" Jahr="gewaehlt" Periode="periode" OnClose="() => periodeDialog = false" OnGespeichert="PeriodeGespeichertAsync" />
 
 @code {
@@ -53,8 +53,13 @@ else
     private JahrDialogModus modus;
     private SchuljahrZeile? gewaehlt;
     private PeriodeZeile? periode;
+    private long? monatspreis;
 
-    protected override async Task InitialisierenAsync() => jahre = (await Schuljahre.JahreAsync(Ich.KontoId)).ToList();
+    protected override async Task InitialisierenAsync()
+    {
+        jahre = (await Schuljahre.JahreAsync(Ich.KontoId)).ToList();
+        monatspreis = await Schuljahre.MonatspreisAsync(Ich.KontoId);   // 19.11.2026: Preis je Schüler und Monat (Hinweis + JahrDialog)
+    }
 
     private void NeuOeffnen() => (gewaehlt, modus, jahrDialog) = (null, JahrDialogModus.Neu, true);
 

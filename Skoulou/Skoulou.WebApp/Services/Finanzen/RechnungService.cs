@@ -19,9 +19,17 @@ public sealed record RechnungZeile(Guid Id, string Nummer, Guid SchuleId, string
 public sealed record PositionZeile(string Name, string? Matrikel, string? Klasse, long Betrag, string? StorniertGrund);
 public sealed record MeldungZeile(long Betrag, DateOnly Datum, string? Referenz, Guid? BuchungId, bool HatBeleg, string GemeldetVon, DateTime AmUtc);
 public sealed record AnteilKurz(string Responsable, decimal Prozent, long Betrag, DateTime? AusgezahltAmUtc);
-/// <summary>SchuelerVerborgen: für den Responsable ohne Namensliste (nur Anzahl) – er sieht keine Schülerdaten (Formation, CGU).</summary>
+/// <summary>
+/// SchuelerVerborgen: für den Responsable ohne Namensliste (nur Anzahl) – er sieht keine Schülerdaten (Formation, CGU).
+/// Monate/Monatspreis: Aufschlüsselung « 3 mois × 500 F » des Betrags je Schüler (Monatspreis null = passt nicht, z. B. Rechnung nach altem Jahrespreis).
+/// </summary>
 public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadOnlyList<PositionZeile> Positionen, IReadOnlyList<MeldungZeile> Meldungen,
-    IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer, bool SchuelerVerborgen = false);
+    IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer, bool SchuelerVerborgen = false,
+    int Monate = 0, long? Monatspreis = null)
+{
+    /// <summary>« (3 mois × 500 FCFA) » oder leer.</summary>
+    public string Aufschluesselung => Monatspreis is { } m ? $"({Monate} mois × {SkoulouKultur.Fcfa(m)})" : string.Empty;
+}
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
 public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler,
@@ -158,8 +166,15 @@ public sealed class RechnungService(
                              select new AnteilKurz(k.Vorname + " " + k.Nachname, a.Prozent, a.Betrag, a.AusgezahltAmUtc)).ToListAsync(ct);
         var bestaetigt = r.BestaetigtVonId is { } b ? await db.Users.Where(k => k.Id == b).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefaultAsync(ct) : null;
         var ergaenzt = r.ErgaenztId is { } eid ? await db.Plattformrechnungen.Where(x => x.Id == eid).Select(x => x.Nummer).FirstOrDefaultAsync(ct) : null;
-        return new RechnungDetail(kopf, r.Anzahl == 0 ? 0 : r.Betrag / r.Anzahl, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt,
-            SchuelerVerborgen: ohneSchueler);
+        var proSchueler = r.Anzahl == 0 ? 0 : r.Betrag / r.Anzahl;
+        // « 3 mois × 500 F » nur, wenn der Betrag zum eingefrorenen Monatspreis passt (ältere Rechnungen nach Jahrespreis ohne Aufschlüsselung).
+        var basis = await (from p in db.Perioden where p.Id == r.PeriodeId
+                           join j in db.Schuljahre on p.SchuljahrId equals j.Id
+                           select new { p.Beginn, p.Ende, j.PlattformMonatspreis }).FirstAsync(ct);
+        var monate = PlattformAnteil.Monate(basis.Beginn, basis.Ende);
+        var monatspreis = basis.PlattformMonatspreis is { } preis && preis * monate == proSchueler ? preis : (long?)null;
+        return new RechnungDetail(kopf, proSchueler, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt,
+            SchuelerVerborgen: ohneSchueler, Monate: monate, Monatspreis: monatspreis);
     }
 
     public async Task<Organisation.Druck.PdfDatei> PdfAsync(Guid akteurId, Guid rechnungId, CancellationToken ct = default)
@@ -338,7 +353,7 @@ public sealed class RechnungService(
         foreach (var jahr in jahre)
             foreach (var p in await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr).OrderBy(p => p.Beginn).ToListAsync(ct))
             {
-                var (anteil, _, _) = await PlattformAbrechnung.AnteilAsync(db, jahr, p, schule, einstellung, ct);
+                var (anteil, _, _) = PlattformAbrechnung.Anteil(jahr, p, schule, einstellung);
                 var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, mitStornierten: false, ct);
                 liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id)));
             }

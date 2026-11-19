@@ -46,7 +46,7 @@ else if (zaehler is not null)
                     <span><Icon Name="briefcase" Groesse="14" /> @(s.Responsable ?? "Sans responsable")</span>
                     @if (s.PreisOverride is { } preis)
                     {
-                        <a href="/admin/tarifs" title="Tarif spécifique (voir Tarifs)"><Icon Name="tag" Groesse="14" /> @SkoulouKultur.Fcfa(preis)</a>
+                        <a href="/admin/tarifs" title="Tarif spécifique par élève et par mois (voir Tarifs)"><Icon Name="tag" Groesse="14" /> @SkoulouKultur.Fcfa(preis) / mois</a>
                     }
                     @if (s.EssaiPerioden > 0)
                     {

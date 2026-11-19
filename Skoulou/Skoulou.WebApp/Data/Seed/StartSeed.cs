@@ -20,7 +20,11 @@ public sealed class StartSeed(
     IOptions<SeedOptionen> seed,
     ILogger<StartSeed> logger)
 {
-    public const string AgbStartVersion = "2026-11-13";
+    /// <summary>
+    /// Version der Nutzungsbedingungen (AgbTexte) für neue Datenbanken; neue Konten speichern sie bei der Registrierung.
+    /// Bei inhaltlicher Änderung erhöhen und bestehende Datenbanken per Migration nachziehen (19.11.2026: Preis je Monat).
+    /// </summary>
+    public const string AgbStartVersion = "2026-11-19";
 
     public async Task AusfuehrenAsync(CancellationToken ct = default)
     {
@@ -49,7 +53,7 @@ public sealed class StartSeed(
         db.PlattformEinstellungen.Add(new PlattformEinstellung
         {
             Id = PlattformEinstellung.EinzigeId,
-            JahrespreisProSchueler = 3_600,
+            MonatspreisProSchueler = 500,   // 19.11.2026: Preis je Schüler und Monat (vorher Jahrespreis 3.600)
             ZahlungszielTage = 30,
             ResponsableProzentStandard = 0,
             AgbVersion = AgbStartVersion

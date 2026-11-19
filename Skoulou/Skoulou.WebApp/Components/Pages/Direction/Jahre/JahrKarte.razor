@@ -7,12 +7,14 @@
         <div>
             <h2>@Jahr.Bezeichnung <StatusBadge Text="@StatusText" Art="@StatusArt" /></h2>
             <p class="sk-leise">
-                Du @SkoulouKultur.Datum(Jahr.Beginn) au @SkoulouKultur.Datum(Jahr.Ende) · @PeriodenPlan.Bezeichnung(Jahr.PeriodenArt)
+                Du @SkoulouKultur.Datum(Jahr.Beginn) au @SkoulouKultur.Datum(Jahr.Ende) · @PeriodenPlan.Bezeichnung(Jahr.PeriodenArt, Jahr.Perioden.Count(p => p.ZaehltFuerJahr))
                 · @Jahr.AnzahlKlassen classe@(Jahr.AnzahlKlassen > 1 ? "s" : "") · @Jahr.AnzahlEinschreibungen élève@(Jahr.AnzahlEinschreibungen > 1 ? "s" : "") inscrit@(Jahr.AnzahlEinschreibungen > 1 ? "s" : "")
             </p>
-            @if (Jahr.PlattformJahrespreis is { } preis)
+            @if (Jahr.PlattformMonatspreis is { } preis)
             {
-                <p class="sk-leise">Prix SKOULOU figé au démarrage : <strong>@SkoulouKultur.Fcfa(preis)</strong> par élève et par an. Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année démarrée, il ne change plus.</p>
+                @* 19.11.2026: Preis je Schüler und Monat; die Orientierung zählt die Monate der Perioden, die abgerechnet werden. *@
+                var monate = Jahr.Perioden.Where(p => p.ZaehltFuerJahr).Sum(p => Skoulou.Core.Finanzen.PlattformAnteil.Monate(p.Beginn, p.Ende));
+                <p class="sk-leise">Prix SKOULOU figé au démarrage : <strong>@SkoulouKultur.Fcfa(preis)</strong> par élève et par mois de cours, facturé à la fin de chaque période (cette année ≈ @monate mois : environ @SkoulouKultur.Fcfa(preis * monate) par élève). Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année démarrée, il ne change plus.</p>
             }
             @if (Jahr.WiedereroeffnetGrund is { } grund)
             {
@@ -127,7 +129,7 @@
 
     private string FrageText => frage switch
     {
-        Frage.Starten => "L'année devient l'année en cours. Le prix SKOULOU par élève est figé pour toute l'année ; les périodes qui comptent pour l'année ne pourront plus être ajoutées ni supprimées.",
+        Frage.Starten => "L'année devient l'année en cours. Le prix SKOULOU par élève et par mois est figé pour toute l'année ; les périodes qui comptent pour l'année ne pourront plus être ajoutées ni supprimées.",
         Frage.Abschliessen => "Toutes les périodes seront fermées et plus rien ne pourra être modifié (classes, inscriptions, présences). Seul le directeur peut rouvrir l'année, avec un motif. Pour passer à l'année suivante, utilisez de préférence le passage d'année.",
         Frage.Loeschen => "L'année et ses périodes sont supprimées. Possible seulement tant qu'elle ne contient ni classe ni inscription.",
         _ => "La période est supprimée définitivement."

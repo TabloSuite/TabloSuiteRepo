@@ -51,7 +51,8 @@ internal static class RechnungPdf
                     {
                         c.Item().Text("Objet").FontSize(8).FontColor(DruckStil.Leise);
                         c.Item().Text($"Utilisation de SKOULOU – {k.Periode} {k.Schuljahr}").FontSize(10).SemiBold();
-                        c.Item().Text($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {SkoulouKultur.Fcfa(d.ProSchueler)} (part de la période du prix annuel figé)").FontSize(8.5f);
+                        // 19.11.2026: Preis je Schüler und Monat × Monate der Periode, z. B. « 120 élèves × 1.500 FCFA (3 mois × 500 FCFA) ».
+                        c.Item().Text($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {SkoulouKultur.Fcfa(d.ProSchueler)} {(d.Monatspreis is null ? "(part de la période)" : d.Aufschluesselung)}").FontSize(8.5f);
                     });
                 });
                 // Für den Responsable ohne Namensliste (RechnungDetail.SchuelerVerborgen)

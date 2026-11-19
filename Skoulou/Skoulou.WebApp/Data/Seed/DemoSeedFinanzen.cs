@@ -133,7 +133,7 @@ public static class DemoSeedFinanzen
         var vorjahr = new Schuljahr
         {
             SchuleId = schuleId, Bezeichnung = "2025-2026", Beginn = new(2025, 9, 15), Ende = new(2026, 6, 30), Status = SchuljahrStatus.Abgeschlossen,
-            PeriodenArt = PeriodenArt.Trimestre, PlattformJahrespreis = 12_000, AbgeschlossenAmUtc = new DateTime(2026, 7, 10, 10, 0, 0, DateTimeKind.Utc)
+            PeriodenArt = PeriodenArt.Trimestre, PlattformMonatspreis = 500, AbgeschlossenAmUtc = new DateTime(2026, 7, 10, 10, 0, 0, DateTimeKind.Utc)
         };
         db.Schuljahre.Add(vorjahr);
         var perioden = new[]
@@ -162,7 +162,7 @@ public static class DemoSeedFinanzen
         await zahlen(vorjahr.Id, "Sossou", 40_000, new(2026, 1, 9));
         await zahlen(vorjahr.Id, "Ahadji", 20_000, new(2026, 3, 2)); // 20.000 bleiben offen → « Reste année précédente »
 
-        // Plattformrechnungen je Trimester: 3 Schüler × 4.000 (12.000 / 3), T1 und T2 bezahlt und bestätigt, T3 gemeldet.
+        // Plattformrechnungen je Trimester: 3 Schüler × (500 je Monat × 3 Monate = 1.500), T1 und T2 bezahlt und bestätigt, T3 gemeldet.
         var schule = await db.Schulen.FirstAsync(s => s.Id == schuleId, ct);
         schule.ResponsableProzent ??= 10;
         var admin = await db.Users.Where(k => k.Rolle == Rollen.SuperAdmin).Select(k => (Guid?)k.Id).FirstOrDefaultAsync(ct);
@@ -176,15 +176,16 @@ public static class DemoSeedFinanzen
         for (var i = 0; i < perioden.Length; i++)
         {
             var (datum, status, meldung, ausgezahlt) = daten[i];
+            var anteil = PlattformAnteil.Anteil(vorjahr.PlattformMonatspreis!.Value, perioden[i].Beginn, perioden[i].Ende);
             var r = new Plattformrechnung
             {
                 Nummer = await nummern.NaechsteNummerAsync(db, null, NummernArt.Plattformrechnung, datum.Year, ct: ct),
                 SchuleId = schuleId, SchuljahrId = vorjahr.Id, PeriodeId = perioden[i].Id, Datum = datum, Faellig = datum.AddDays(30),
-                Anzahl = einschreibungen.Count, Betrag = 4_000L * einschreibungen.Count, Status = status, Erinnerungen = 0
+                Anzahl = einschreibungen.Count, Betrag = anteil * einschreibungen.Count, Status = status, Erinnerungen = 0
             };
             db.Plattformrechnungen.Add(r);
             foreach (var (schuelerId, einschreibungId) in einschreibungen)
-                db.Rechnungspositionen.Add(new Rechnungsposition { RechnungId = r.Id, PeriodeId = perioden[i].Id, SchuelerId = schuelerId, EinschreibungId = einschreibungId, Betrag = 4_000 });
+                db.Rechnungspositionen.Add(new Rechnungsposition { RechnungId = r.Id, PeriodeId = perioden[i].Id, SchuelerId = schuelerId, EinschreibungId = einschreibungId, Betrag = anteil });
             var buchung = new Buchung
             {
                 SchuleId = schuleId, Datum = meldung, Richtung = BuchungsRichtung.Depense, KategorieId = kategorie.Id, Betrag = r.Betrag,

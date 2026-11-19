@@ -33,16 +33,16 @@ public sealed class StartseitenStatistik(IDbContextFactory<SkoulouDbContext> dbF
         }
     }
 
-    /// <summary>Standard-Jahrespreis je Schüler (Administration › Tarifs) für Startseite und tablosuite.com; null bei Fehler/ohne Tarif.</summary>
-    public async Task<long?> JahrespreisAsync(CancellationToken ct = default)
+    /// <summary>Standardpreis je Schüler und Monat (Administration › Tarifs) für Startseite und tablosuite.com; null bei Fehler/ohne Tarif.</summary>
+    public async Task<long?> MonatspreisAsync(CancellationToken ct = default)
     {
-        if (cache.TryGetValue("startseite:jahrespreis", out long? preis)) return preis;
+        if (cache.TryGetValue("startseite:monatspreis", out long? preis)) return preis;
         try
         {
             await using var db = await dbFactory.CreateDbContextAsync(ct);
-            preis = await db.PlattformEinstellungen.Select(e => (long?)e.JahrespreisProSchueler).FirstOrDefaultAsync(ct);
+            preis = await db.PlattformEinstellungen.Select(e => (long?)e.MonatspreisProSchueler).FirstOrDefaultAsync(ct);
             if (preis is not > 0) preis = null;
-            cache.Set("startseite:jahrespreis", preis, TimeSpan.FromMinutes(10));
+            cache.Set("startseite:monatspreis", preis, TimeSpan.FromMinutes(10));
             return preis;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

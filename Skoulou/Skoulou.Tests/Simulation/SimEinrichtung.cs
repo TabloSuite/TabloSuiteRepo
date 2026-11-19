@@ -149,7 +149,7 @@ internal sealed partial class Simulation
     }
 
     private Task<long> PreisAsync(Guid jahrId)
-        => d.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == jahrId).Select(j => j.PlattformJahrespreis ?? 0).SingleAsync());
+        => d.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == jahrId).Select(j => j.PlattformMonatspreis ?? 0).SingleAsync());
 
     private async Task<SimJahr> JahrAnlegenAsync(SimSchule s, int startJahr)
     {

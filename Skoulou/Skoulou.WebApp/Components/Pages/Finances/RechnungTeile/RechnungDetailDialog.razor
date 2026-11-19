@@ -14,7 +14,7 @@
         {
             var k = d.Kopf;
             <div class="fin-kennzahlen">
-                <KennzahlKachel Bezeichnung="Montant" Wert="@Geld.F(k.Betrag)" Icon="receipt" Haupt="true" Zusatz="@($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {Geld.F(d.ProSchueler)}")" />
+                <KennzahlKachel Bezeichnung="Montant" Wert="@Geld.F(k.Betrag)" Icon="receipt" Haupt="true" Zusatz="@($"{k.Anzahl} élève{(k.Anzahl > 1 ? "s" : "")} × {Geld.F(d.ProSchueler)} {d.Aufschluesselung}".TrimEnd())" />
                 <KennzahlKachel Bezeichnung="Date" Wert="@Geld.Datum(k.Datum)" Icon="calendar" Zusatz="@(d.ErgaenztNummer is null ? null : $"Complément de {d.ErgaenztNummer}")" />
                 <KennzahlKachel Bezeichnung="Échéance" Wert="@Geld.Datum(k.Faellig)" Icon="clock" Zusatz="@(k.Ueberfaellig(heute) ? "Dépassée" : null)" />
                 <div class="sk-kennzahl"><span class="sk-kennzahl-label">Statut</span><StatusBadge Text="@Geld.Status(k.Status)" Art="@Geld.StatusArt(k.Status)" />

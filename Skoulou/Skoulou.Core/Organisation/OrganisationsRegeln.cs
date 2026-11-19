@@ -28,11 +28,21 @@ public sealed record PeriodenVorschlag(int Nr, string Titel, DateOnly Beginn, Da
 
 /// <summary>
 /// Periodenstruktur eines Schuljahres: Trimestre (3), Semestre (2), Session (frei, Standard 4), Libre (frei).
+/// « 1 période » (ein Bulletin am Jahresende) = Libre mit Anzahl 1, Titel <see cref="EinePeriodeTitel"/> (19.11.2026, ohne neuen Enum-Wert).
 /// Die Perioden teilen das Jahr lückenlos in gleich lange Abschnitte; Daten sind danach frei änderbar.
 /// </summary>
 public static class PeriodenPlan
 {
     public const int MaxPerioden = 12;
+
+    /// <summary>Titel der einzigen Periode eines Jahres mit « 1 période » (Bulletin « MOYENNE DE L'ANNÉE SCOLAIRE »).</summary>
+    public const string EinePeriodeTitel = "Année scolaire";
+
+    /// <summary>Jahr mit genau einer Periode (Libre, Anzahl 1) – im Dialog die Option « 1 période ».</summary>
+    public static bool IstEinePeriode(PeriodenArt art, int anzahl) => art == PeriodenArt.Libre && anzahl == 1;
+
+    /// <summary>Bezeichnung mit Anzahl der zählenden Perioden: « 1 période » statt « Périodes libres ».</summary>
+    public static string Bezeichnung(PeriodenArt art, int anzahl) => IstEinePeriode(art, anzahl) ? "1 période" : Bezeichnung(art);
 
     public static int StandardAnzahl(PeriodenArt art) => art switch
     {
@@ -76,7 +86,7 @@ public static class PeriodenPlan
         {
             var von = beginn.AddDays((int)((long)tage * i / n));
             var bis = beginn.AddDays((int)((long)tage * (i + 1) / n) - 1);
-            liste.Add(new PeriodenVorschlag(i + 1, Titel(art, i + 1), von, bis));
+            liste.Add(new PeriodenVorschlag(i + 1, IstEinePeriode(art, n) ? EinePeriodeTitel : Titel(art, i + 1), von, bis));
         }
         return liste;
     }

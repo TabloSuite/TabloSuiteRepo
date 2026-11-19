@@ -97,7 +97,7 @@ public class SqlFinanzenTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenba
         await w.Quittungen.PdfAsync(w.Org.Eltern, (await w.Zahlungen.SucheAsync(w.D, j, null, null, 0, 1)).Eintraege[0].Id);
 
         // Plattformrechnung, Meldung, Bestätigung, Anteil, Auszahlung, Tarife.
-        await w.Tarife.EinstellungSpeichernAsync(w.Org.Admin, new TarifEinstellung(12_500, 30, 10));
+        await w.Tarife.EinstellungSpeichernAsync(w.Org.Admin, new TarifEinstellung(1_250, 30, 10));
         w.Heute(new(2026, 12, 19));
         Assert.True(await w.Abrechnung.FaelligeAbrechnenAsync() >= 1); // andere Testschulen derselben DB zählen mit
         Assert.Equal(0, await w.Abrechnung.FaelligeAbrechnenAsync());
@@ -111,12 +111,12 @@ public class SqlFinanzenTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenba
         await w.Rechnungen.AbrechenbareAsync(w.Org.Admin, w.Org.SchuleA);
         await w.Rechnungen.SchulenAsync(w.Org.Admin);
         var anteile = await w.Anteile.ListeAsync(w.Org.Responsable, null, AnteilService.FilterOffen, 0, 50);
-        Assert.Equal(833, anteile.Eintraege.Single().Betrag);
+        Assert.Equal(1_000, anteile.Eintraege.Single().Betrag);   // 10 % von 2 × (4 Monate × 1.250)
         await w.Anteile.ResponsablesAsync(w.Org.Admin);
         Assert.Equal(1, await w.Anteile.AuszahlenAsync(w.Org.Admin, [anteile.Eintraege[0].Id], new(2026, 12, 19), "OM-1"));
         await w.Tarife.SchulenAsync(w.Org.Admin, "Alpha", 0, 50);
         await w.Rechnungen.StornierenAsync(w.Org.Admin, rechnung.Id, "Essai");
-        Assert.Equal(-833, (await w.Anteile.SummenAsync(w.Org.Responsable, null)).Offen);
+        Assert.Equal(-1_000, (await w.Anteile.SummenAsync(w.Org.Responsable, null)).Offen);
         await w.Familie.KontoAsync(w.Org.Eltern, w.Org.Schueler);
     }
 }

@@ -35,6 +35,10 @@
                 @if (preis is { } p)
                 {
                     <p><strong>@TarifAbfrage.Zahl(p) FCFA</strong> @App.TarifEinheit</p>
+                    @if (App.TarifJahrMonate is { } monate)
+                    {
+                        <p class="ts-app-tarif-hinweis">Soit environ @TarifAbfrage.Zahl(p * monate) FCFA par élève pour une année scolaire complète.</p>
+                    }
                 }
                 @if (!string.IsNullOrWhiteSpace(App.TarifHinweis))
                 {

@@ -219,7 +219,7 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         await AdminVerwaltungAbgelehntAsync();
 
         var tarife = api.Tarife;
-        await tarife.EinstellungSpeichernAsync(Admin, new TarifEinstellung(12_500, 30, 10));
+        await tarife.EinstellungSpeichernAsync(Admin, new TarifEinstellung(1_250, 30, 10));   // je Schüler und Monat (19.11.2026)
         foreach (var (vor, nach) in new[] { ("Edem", "Kpodar"), ("Mawuena", "Akakpo"), ("Ibrahim", "Bouraïma") })
         {
             var zugang = await api.AdminKonten.ResponsableAnlegenAsync(Admin, new ResponsableEingabe(vor, nach, null,
@@ -273,8 +273,8 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         new("Lycée Les Cocotiers", "Lomé", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 30, 45),
         new("Lycée Mono", "Notsé", SchulTyp.Lycee, PeriodenArt.Trimestre, 1, 30, 45),
         new("Lycée de la Kozah", "Kara", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 35, 50),
-        new("Institut de langues Le Pont", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 18, Preis: 8_000, Gebuehr: SessionGebuehr.JeSession),
-        new("Centre de langues Horizon", "Kara", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 15, Preis: 8_000),
+        new("Institut de langues Le Pont", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 18, Preis: 800, Gebuehr: SessionGebuehr.JeSession),
+        new("Centre de langues Horizon", "Kara", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 15, Preis: 800),
         // S3: acht weitere Schulen (zwei je Typ), darunter zwei Sprachschulen mit Gebühr je Session.
         new("EPP Hédzranawoé", "Lomé", SchulTyp.Primaire, PeriodenArt.Trimestre, 2, 28, 40),
         new("École primaire Saint-Michel", "Sokodé", SchulTyp.Primaire, PeriodenArt.Trimestre, 1, 20, 34),
@@ -282,8 +282,8 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
         new("Collège moderne de Tabligbo", "Tabligbo", SchulTyp.College, PeriodenArt.Trimestre, 2, 30, 45, Prozent: 12),
         new("Lycée d'Atakpamé", "Atakpamé", SchulTyp.Lycee, PeriodenArt.Trimestre, 2, 35, 50),
         new("Lycée technique de Lomé", "Lomé", SchulTyp.Lycee, PeriodenArt.Semestre, 2, 30, 45),
-        new("École de langues Arc-en-ciel", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 16, Preis: 8_000, Gebuehr: SessionGebuehr.GleicheBezeichnung),
-        new("Centre linguistique du Sahel", "Dapaong", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 14, Preis: 7_500, Gebuehr: SessionGebuehr.JeSession),
+        new("École de langues Arc-en-ciel", "Lomé", SchulTyp.Langues, PeriodenArt.Session, 1, 10, 16, Preis: 800, Gebuehr: SessionGebuehr.GleicheBezeichnung),
+        new("Centre linguistique du Sahel", "Dapaong", SchulTyp.Langues, PeriodenArt.Session, 1, 8, 14, Preis: 750, Gebuehr: SessionGebuehr.JeSession),
     ];
 
     /// <summary>
@@ -361,7 +361,7 @@ internal sealed partial class Simulation(SimDienste d, double faktor)
             Notiere("Collège Les Palmiers réactivé.");
         }
         if (tag == new DateOnly(2025, 6, 15))
-            await SollAsync("Tarif 13.000", () => api.Tarife.EinstellungSpeichernAsync(Admin3, new TarifEinstellung(13_000, 30, 10)));
+            await SollAsync("Tarif 1.300", () => api.Tarife.EinstellungSpeichernAsync(Admin3, new TarifEinstellung(1_300, 30, 10)));
         await AdminEreignisseAsync(tag);
     }
 }

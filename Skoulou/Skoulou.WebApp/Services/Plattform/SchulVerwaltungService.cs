@@ -101,7 +101,7 @@ public sealed class SchulVerwaltungService(
                 .Select(d => d.Vorname + " " + d.Nachname).FirstOrDefault(),
             db.Users.Where(d => d.Id == db.Users.Where(k => k.SchuleId == s.Id && k.Rolle == Rollen.Direktor).Min(k => (Guid?)k.Id))
                 .Select(d => d.Email).FirstOrDefault(),
-            s.JahrespreisOverride,
+            s.MonatspreisOverride,
             s.EssaiPerioden));
 
     /// <summary>Schule validieren: Status « Active », wartende Direktionskonten werden aktiv, Mail an die Direktion.</summary>

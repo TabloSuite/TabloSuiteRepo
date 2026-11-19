@@ -10,8 +10,8 @@ public class Schuljahr : Entitaet, ISchulgebunden
     public SchuljahrStatus Status { get; set; }
     public PeriodenArt PeriodenArt { get; set; }
 
-    /// <summary>Jahrespreis je Schüler, beim Start des Jahres eingefroren.</summary>
-    public long? PlattformJahrespreis { get; set; }
+    /// <summary>Preis je Schüler und Monat, beim Start des Jahres eingefroren.</summary>
+    public long? PlattformMonatspreis { get; set; }
 
     public DateTime? AbgeschlossenAmUtc { get; set; }
     public string? WiedereroeffnetGrund { get; set; }

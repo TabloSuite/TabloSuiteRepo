@@ -45,7 +45,7 @@ public static class GuideTexte
         new("facturation", "Facturation", "receipt",
         [
             new("Factures SKOULOU", "Une facture par école et par période. Vérifiez chaque paiement déclaré avant de le confirmer, traitez les contestations et versez les parts des responsables. « Facturer maintenant » crée sans attendre les factures des périodes terminées.", "/admin/facturation"),
-            new("Tarifs", "Prix annuel par élève, délai de paiement et part des responsables. Le prix est figé pour chaque école au démarrage de son année scolaire.", "/admin/tarifs")
+            new("Tarifs", "Prix mensuel par élève, délai de paiement et part des responsables. Le prix est figé pour chaque école au démarrage de son année scolaire.", "/admin/tarifs")
         ]),
         new("communication", "Communication", "megaphone",
         [
@@ -84,7 +84,7 @@ public static class GuideTexte
     [
         new("demarrer", "Démarrer l'année", "check-square",
         [
-            new("1. Année scolaire et périodes", "Créez l'année (ex. 2026-2027), découpez-la en trimestres, semestres ou sessions, puis démarrez-la.", "/direction/annee"),
+            new("1. Année scolaire et périodes", "Créez l'année (ex. 2026-2027), choisissez le nombre de périodes (1 période, 2 semestres, 3 trimestres ou sessions), puis démarrez-la.", "/direction/annee"),
             new("2. Classes", "Créez les niveaux, puis les classes de chaque niveau avec leur salle, leur capacité et le professeur principal.", "/direction/classes"),
             new("3. Matières", "Listez les matières avec leur groupe (lettres, sciences…) et leur ordre sur le bulletin, puis réglez leurs coefficients dans chaque classe (« Matières et enseignants »).", "/direction/matieres"),
             new("4. Équipe", "Ajoutez enseignants et coordinateurs et leurs affectations (classe, matière, heures) ; imprimez la liste des accès pour ceux sans e-mail.", "/direction/equipe"),

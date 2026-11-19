@@ -91,7 +91,7 @@ public class RechteFinanzenTests
         await MatrixAsync(w, "DKRA", a => w.Rechnungen.PdfAsync(a, id));
         await MatrixAsync(w, "DK", a => w.Rechnungen.AnfechtenAsync(a, id, "Motif"));
         await MatrixAsync(w, "A", a => w.Rechnungen.AufrechterhaltenAsync(a, id, "Réponse"));
-        await MatrixAsync(w, "DK", a => w.Rechnungen.MeldenAsync(a, id, new MeldungEingabe(8_332, new(2026, 11, 13), "VIR"), null));
+        await MatrixAsync(w, "DK", a => w.Rechnungen.MeldenAsync(a, id, new MeldungEingabe(10_000, new(2026, 11, 13), "VIR"), null));
         await MatrixAsync(w, "A", a => w.Rechnungen.BestaetigenAsync(a, id));
         await MatrixAsync(w, "A", a => w.Rechnungen.StornierenAsync(a, id, "Motif"));
         await MatrixAsync(w, "A", a => w.Rechnungen.JetztAbrechnenAsync(a, w.Org.P2));

@@ -8,12 +8,14 @@ namespace TabloSuiteHome.WebApp.Services;
 /// Holt den aktuellen Standardpreis einer App über ihren öffentlichen Endpunkt (z. B. SKOULOU « /tarifs/public »),
 /// damit tablosuite.com nie einen veralteten Preis zeigt. Zwischengespeichert (30 min, nach Fehlern 2 min);
 /// antwortet die App nicht (z. B. Kaltstart), zeigt die Karte nur den Hinweis ohne Zahl.
+/// Seit 19.11.2026 liefert SKOULOU den Preis je Schüler und Monat (« monatspreisProSchueler »); eine ältere Antwort
+/// ohne dieses Feld (nur « jahrespreisProSchueler ») zählt als « kein Preis », damit nie ein Jahrespreis als Monatspreis erscheint.
 /// </summary>
 public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache, ILogger<TarifAbfrage> logger)
 {
     public const string Client = "tarife";
 
-    private sealed record Antwort(long JahrespreisProSchueler, string? Waehrung);
+    private sealed record Antwort(long MonatspreisProSchueler, string? Waehrung);
 
     public async Task<long?> PreisAsync(TabloSuiteApp app, CancellationToken ct = default)
     {
@@ -24,7 +26,7 @@ public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache,
         {
             using var antwort = await clients.CreateClient(Client).GetAsync(app.TarifQuelle, ct);
             preis = antwort.IsSuccessStatusCode && antwort.StatusCode != System.Net.HttpStatusCode.NoContent
-                ? (await antwort.Content.ReadFromJsonAsync<Antwort>(ct))?.JahrespreisProSchueler
+                ? (await antwort.Content.ReadFromJsonAsync<Antwort>(ct))?.MonatspreisProSchueler
                 : null;
             if (preis is not > 0) preis = null;
             cache.Set(schluessel, preis, preis is null ? TimeSpan.FromMinutes(2) : TimeSpan.FromMinutes(30));
@@ -47,6 +49,6 @@ public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache,
         return k;
     }
 
-    /// <summary>« 3.600 » – Tausenderpunkt wie in den Apps.</summary>
+    /// <summary>« 5.000 » – Tausenderpunkt wie in den Apps.</summary>
     public static string Zahl(long wert) => wert.ToString("N0", Kultur);
 }

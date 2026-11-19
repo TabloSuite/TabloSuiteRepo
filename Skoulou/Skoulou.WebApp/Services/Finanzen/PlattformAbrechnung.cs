@@ -45,7 +45,7 @@ public sealed class PlattformAbrechnung(
             }
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 
-            var (anteil, _, _) = await AnteilAsync(db, jahr, p, schule, einstellung, ct);
+            var (anteil, monate, monatspreis) = Anteil(jahr, p, schule, einstellung);
             var kandidaten = await KandidatenAsync(db, p, mitStornierten: !manuell, ct);
             if (kandidaten.Count == 0) return null;
 
@@ -62,7 +62,7 @@ public sealed class PlattformAbrechnung(
             foreach (var k in kandidaten)
                 db.Rechnungspositionen.Add(new Rechnungsposition { RechnungId = rechnung.Id, PeriodeId = p.Id, SchuelerId = k.SchuelerId, EinschreibungId = k.EinschreibungId, Betrag = anteil });
             audit.Erfasse(db, akteurId, schule.Id, FinanzAudit.RechnungErstellt, nameof(Plattformrechnung), rechnung.Id,
-                $"Facture {rechnung.Nummer}{(haupt is null ? "" : " (complément)")} : {p.Titel} {jahr.Bezeichnung}, {kandidaten.Count} élève(s) × {SkoulouKultur.Fcfa(anteil)} = {SkoulouKultur.Fcfa(rechnung.Betrag)}{(manuell ? " – facturée par l'administrateur" : "")}.");
+                $"Facture {rechnung.Nummer}{(haupt is null ? "" : " (complément)")} : {p.Titel} {jahr.Bezeichnung}, {kandidaten.Count} élève(s) × {SkoulouKultur.Fcfa(anteil)} ({monate} mois × {SkoulouKultur.Fcfa(monatspreis)}) = {SkoulouKultur.Fcfa(rechnung.Betrag)}{(manuell ? " – facturée par l'administrateur" : "")}.");
             await db.SaveChangesAsync(ct);
             return new NeueRechnung(rechnung.Id, rechnung.Nummer, schule.Name, rechnung.SchuleId, $"{p.Titel} {jahr.Bezeichnung}", rechnung.Anzahl, rechnung.Betrag, rechnung.Faellig);
         }, ct);
@@ -72,15 +72,14 @@ public sealed class PlattformAbrechnung(
         return ergebnis.Id;
     }
 
-    /// <summary>Anteil je Schüler für die Periode (eingefrorener Jahrespreis, Regel 7) sowie Nr und Anzahl der Abrechnungsperioden.</summary>
-    internal static async Task<(long Anteil, int Nr, int Anzahl)> AnteilAsync(SkoulouDbContext db, Schuljahr jahr, Periode p, Schule schule,
-        PlattformEinstellung einstellung, CancellationToken ct)
+    /// <summary>
+    /// Anteil je Schüler für die Periode (Regel 7, seit 19.11.2026): eingefrorener Monatspreis × Monate der Periode,
+    /// sowie die Monate und der Monatspreis (für Audit, Rechnung und PDF).
+    /// </summary>
+    internal static (long Anteil, int Monate, long Monatspreis) Anteil(Schuljahr jahr, Periode p, Schule schule, PlattformEinstellung einstellung)
     {
-        var preis = jahr.PlattformJahrespreis ?? schule.JahrespreisOverride ?? einstellung.JahrespreisProSchueler;
-        var perioden = await db.Perioden.Where(x => x.SchuljahrId == jahr.Id && x.ZaehltFuerJahr)
-            .OrderBy(x => x.Beginn).ThenBy(x => x.Nr).Select(x => x.Id).ToListAsync(ct);
-        var nr = perioden.IndexOf(p.Id) + 1;
-        return (PlattformAnteil.Anteil(preis, nr, perioden.Count), nr, perioden.Count);
+        var preis = jahr.PlattformMonatspreis ?? schule.MonatspreisOverride ?? einstellung.MonatspreisProSchueler;
+        return (PlattformAnteil.Anteil(preis, p.Beginn, p.Ende), PlattformAnteil.Monate(p.Beginn, p.Ende), preis);
     }
 
     /// <summary>Abrechnungspflichtige, noch nicht abgerechnete Schüler der Periode.</summary>

@@ -12,7 +12,7 @@ using Skoulou.WebApp.Services.Infrastruktur.Mails;
 namespace Skoulou.Tests.Finanzen;
 
 /// <summary>
-/// Testwelt des Bereichs Finanzen auf der <see cref="OrgWelt"/> (Collège Alpha, Jahr 2026-2027, drei Trimester, Preis 12.500):
+/// Testwelt des Bereichs Finanzen auf der <see cref="OrgWelt"/> (Collège Alpha, Jahr 2026-2027, drei Trimester, Preis 1.250 je Schüler und Monat – P1 = 4 Monate = 5.000):
 /// Posten « Inscription » (10.000, fällig 01/09/2026, alle) und « Scolarité 6e » (60.000 in drei Raten: 01/10/2026,
 /// 10/01/2027, 10/04/2027). KoordZiel hat alle Finanzrechte, Koordinator keine. Heute = 13/11/2026.
 /// </summary>

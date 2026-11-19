@@ -2640,7 +2640,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("JahrespreisProSchueler")
+                    b.Property<long>("MonatspreisProSchueler")
                         .HasColumnType("bigint");
 
                     b.Property<decimal>("ResponsableProzentStandard")
@@ -3049,9 +3049,6 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<long?>("JahrespreisOverride")
-                        .HasColumnType("bigint");
-
                     b.Property<string>("Land")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -3067,6 +3064,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<string>("Ministerium")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
+
+                    b.Property<long?>("MonatspreisOverride")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -3173,7 +3173,7 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<int>("PeriodenArt")
                         .HasColumnType("int");
 
-                    b.Property<long?>("PlattformJahrespreis")
+                    b.Property<long?>("PlattformMonatspreis")
                         .HasColumnType("bigint");
 
                     b.Property<Guid>("SchuleId")

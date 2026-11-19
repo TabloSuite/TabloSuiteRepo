@@ -3,21 +3,32 @@ using Skoulou.Core.Organisation;
 namespace Skoulou.Core.Finanzen;
 
 /// <summary>
-/// Plattformanteil je Abrechnungsperiode (Bauplan §5 Regel 7): Jahrespreis P auf n Perioden in ganzen FCFA,
-/// Anteil(i) = ⌊P·i/n⌋ − ⌊P·(i−1)/n⌋ – die Summe ergibt immer genau P (z. B. 5.000 auf drei Trimester: 1.666 + 1.667 + 1.667).
+/// Plattformanteil je Abrechnungsperiode (Bauplan §5 Regel 7, Nutzerentscheidung 19.11.2026): Preis je Schüler und Monat ×
+/// Monate der Periode, in ganzen FCFA. Monate = max(1, round(Tage / 30,4375)), Tage = Ende − Beginn + 1 (beide eingeschlossen);
+/// z. B. 01.10.–20.12. (81 Tage) = 3, 01.10.–15.02. (138 Tage) = 5. Ferien zwischen den Perioden kosten damit nichts.
 /// </summary>
 public static class PlattformAnteil
 {
-    public static long Anteil(long jahrespreis, int nr, int anzahl)
+    /// <summary>Mittlere Monatslänge (365,25 / 12).</summary>
+    public const decimal TageJeMonat = 30.4375m;
+
+    /// <summary>Monate einer « année scolaire complète » für die Orientierung « environ 10 × Monatspreis » (z. B. 5.000 bei 500).</summary>
+    public const int MonateJeSchuljahr = 10;
+
+    /// <summary>Monate eines Zeitraums [beginn, ende]: kaufmännisch gerundet, mindestens 1.</summary>
+    public static int Monate(DateOnly beginn, DateOnly ende)
     {
-        if (jahrespreis < 0) throw new ArgumentOutOfRangeException(nameof(jahrespreis));
-        if (anzahl < 1) throw new ArgumentOutOfRangeException(nameof(anzahl));
-        if (nr < 1 || nr > anzahl) throw new ArgumentOutOfRangeException(nameof(nr));
-        return jahrespreis * nr / anzahl - jahrespreis * (nr - 1) / anzahl;
+        if (ende < beginn) throw new ArgumentOutOfRangeException(nameof(ende));
+        var tage = ende.DayNumber - beginn.DayNumber + 1;
+        return Math.Max(1, (int)Math.Round(tage / TageJeMonat, MidpointRounding.AwayFromZero));
     }
 
-    public static IReadOnlyList<long> Anteile(long jahrespreis, int anzahl)
-        => Enumerable.Range(1, anzahl).Select(i => Anteil(jahrespreis, i, anzahl)).ToList();
+    /// <summary>Anteil je Schüler für eine Periode = Monatspreis × Monate der Periode.</summary>
+    public static long Anteil(long monatspreis, DateOnly beginn, DateOnly ende)
+    {
+        if (monatspreis < 0) throw new ArgumentOutOfRangeException(nameof(monatspreis));
+        return monatspreis * Monate(beginn, ende);
+    }
 }
 
 /// <summary>

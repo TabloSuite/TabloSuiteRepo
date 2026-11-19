@@ -36,6 +36,7 @@ public class AppKatalogTests
         Assert.Equal("https://skoulou.tablosuite.com/tarifs/public", o.SortierteApps[1].TarifQuelle);
         Assert.Equal("https://skoulou.tablosuite.com/#tarifs", o.SortierteApps[1].TarifSeiteUrl);
         Assert.Contains("de façon juste", o.SortierteApps[1].TarifHinweis);
+        Assert.Equal(("/ élève / mois", 10), (o.SortierteApps[1].TarifEinheit, o.SortierteApps[1].TarifJahrMonate));   // 19.11.2026: Preis je Monat
         Assert.Equal("contact@tablosuite.com", o.KontaktEmail);
     }
 

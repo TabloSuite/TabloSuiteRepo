@@ -6,32 +6,49 @@ namespace Skoulou.Tests.Finanzen;
 
 public class PlattformAnteilTests
 {
-    [Fact]
-    public void Jahrespreis_auf_drei_Trimester()
-        => Assert.Equal([4_166L, 4_167L, 4_167L], PlattformAnteil.Anteile(12_500, 3));
-
+    // Nutzerentscheidung 19.11.2026: Preis je Schüler und Monat; Monate = max(1, round(Tage / 30,4375)), Tage = Ende − Beginn + 1.
     [Theory]
-    [InlineData(12_500, 1)]
-    [InlineData(12_500, 2)]
-    [InlineData(12_500, 3)]
-    [InlineData(10_001, 4)]
-    [InlineData(7, 3)]
-    [InlineData(0, 3)]
-    [InlineData(999_999, 7)]
-    public void Summe_ergibt_immer_den_Jahrespreis(long preis, int perioden)
+    [InlineData("2026-10-01", "2026-12-20", 81, 3)]
+    [InlineData("2026-09-15", "2026-12-20", 97, 3)]
+    [InlineData("2027-01-05", "2027-03-31", 86, 3)]
+    [InlineData("2026-10-01", "2027-02-15", 138, 5)]
+    [InlineData("2026-09-01", "2027-06-30", 303, 10)]   // ganzes Schuljahr ≈ 10 Monate (≈ 5.000 bei 500)
+    [InlineData("2026-09-01", "2026-12-18", 109, 4)]
+    [InlineData("2026-11-02", "2026-11-03", 2, 1)]      // mindestens 1 Monat
+    [InlineData("2026-11-02", "2026-11-02", 1, 1)]
+    public void Monate_der_Periode(string beginn, string ende, int tage, int monate)
     {
-        var anteile = PlattformAnteil.Anteile(preis, perioden);
-        Assert.Equal(preis, anteile.Sum());
-        Assert.True(anteile.Max() - anteile.Min() <= 1, "Anteile unterscheiden sich höchstens um 1 FCFA.");
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var (b, e) = (DateOnly.Parse(beginn, inv), DateOnly.Parse(ende, inv));
+        Assert.Equal(tage, e.DayNumber - b.DayNumber + 1);
+        Assert.Equal(monate, PlattformAnteil.Monate(b, e));
+    }
+
+    [Fact]
+    public void Monate_runden_kaufmaennisch_an_der_Grenze()
+    {
+        // 45 Tage = 1,478 Monate → 1; 46 Tage = 1,511 → 2 (Grenze 45,66 Tage).
+        Assert.Equal(1, PlattformAnteil.Monate(new(2027, 1, 1), new(2027, 2, 14)));
+        Assert.Equal(2, PlattformAnteil.Monate(new(2027, 1, 1), new(2027, 2, 15)));
+    }
+
+    [Fact]
+    public void Anteil_ist_Monatspreis_mal_Monate()
+    {
+        Assert.Equal(1_500, PlattformAnteil.Anteil(500, new(2026, 10, 1), new(2026, 12, 20)));   // Trimester von 3 Monaten
+        Assert.Equal(2_500, PlattformAnteil.Anteil(500, new(2026, 10, 1), new(2027, 2, 15)));    // 5 Monate
+        Assert.Equal(5_000, PlattformAnteil.Anteil(500, new(2026, 9, 1), new(2027, 6, 30)));     // 1 Periode über das ganze Jahr
+        Assert.Equal(0, PlattformAnteil.Anteil(0, new(2026, 9, 1), new(2026, 9, 30)));
+        // Ferien zwischen den Perioden kosten nichts: drei Trimester mit Pausen = 3 + 3 + 3 Monate, nicht 10.
+        var trimester = new[] { (new DateOnly(2026, 10, 1), new DateOnly(2026, 12, 20)), (new(2027, 1, 5), new(2027, 3, 31)), (new(2027, 4, 12), new(2027, 6, 30)) };
+        Assert.Equal(4_500, trimester.Sum(t => PlattformAnteil.Anteil(500, t.Item1, t.Item2)));
     }
 
     [Fact]
     public void Ungueltige_Angaben_werden_abgelehnt()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Anteil(12_500, 0, 3));
-        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Anteil(12_500, 4, 3));
-        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Anteil(12_500, 1, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Anteil(-1, 1, 3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Monate(new(2026, 12, 20), new(2026, 10, 1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => PlattformAnteil.Anteil(-1, new(2026, 10, 1), new(2026, 12, 20)));
     }
 
     [Fact]

@@ -87,7 +87,7 @@ public class GebuehrenTests
         var w = await FinanzWelt.ErstelleAsync();
         await using (var db = await w.Db.CreateDbContextAsync())
         {
-            var vorjahr = new Schuljahr { SchuleId = w.Org.SchuleA, Bezeichnung = "2025-2026", Beginn = new(2025, 9, 1), Ende = new(2026, 6, 30), Status = SchuljahrStatus.Abgeschlossen, PlattformJahrespreis = 12_000 };
+            var vorjahr = new Schuljahr { SchuleId = w.Org.SchuleA, Bezeichnung = "2025-2026", Beginn = new(2025, 9, 1), Ende = new(2026, 6, 30), Status = SchuljahrStatus.Abgeschlossen, PlattformMonatspreis = 1_200 };
             var klasse = new Klasse { SchuleId = w.Org.SchuleA, SchuljahrId = vorjahr.Id, Name = "CM2" };
             var posten = new GebuehrenPosten { SchuleId = w.Org.SchuleA, SchuljahrId = vorjahr.Id, Bezeichnung = "Scolarité", Betrag = 50_000 };
             db.AddRange(vorjahr, klasse, posten);

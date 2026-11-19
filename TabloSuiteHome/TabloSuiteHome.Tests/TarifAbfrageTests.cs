@@ -24,7 +24,7 @@ public class TarifAbfrageTests
         public HttpClient CreateClient(string name) => new(h, disposeHandler: false);
     }
 
-    private static readonly TabloSuiteApp Skoulou = new() { Id = "skoulou", TarifQuelle = "https://skoulou.test/tarifs/public", TarifEinheit = "par élève et par an" };
+    private static readonly TabloSuiteApp Skoulou = new() { Id = "skoulou", TarifQuelle = "https://skoulou.test/tarifs/public", TarifEinheit = "/ élève / mois", TarifJahrMonate = 10 };
 
     private static (TarifAbfrage, Antworten) Neu(Func<HttpResponseMessage> antwort)
     {
@@ -32,14 +32,27 @@ public class TarifAbfrageTests
         return (new TarifAbfrage(new Fabrik(h), new MemoryCache(new MemoryCacheOptions()), NullLogger<TarifAbfrage>.Instance), h);
     }
 
+    private static HttpResponseMessage Json(string inhalt)
+        => new(HttpStatusCode.OK) { Content = new StringContent(inhalt, System.Text.Encoding.UTF8, "application/json") };
+
     [Fact]
-    public async Task Liest_Den_Preis_Und_Speichert_Ihn_Zwischen()
+    public async Task Liest_Den_Monatspreis_Und_Speichert_Ihn_Zwischen()
     {
-        var (t, h) = Neu(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"jahrespreisProSchueler":3600,"waehrung":"FCFA"}""", System.Text.Encoding.UTF8, "application/json") });
-        Assert.Equal(3600, await t.PreisAsync(Skoulou));
-        Assert.Equal(3600, await t.PreisAsync(Skoulou));
+        // 19.11.2026: SKOULOU liefert den Preis je Schüler und Monat (Karte « 500 FCFA / élève / mois »).
+        var (t, h) = Neu(() => Json("""{"monatspreisProSchueler":500,"waehrung":"FCFA"}"""));
+        Assert.Equal(500, await t.PreisAsync(Skoulou));
+        Assert.Equal(500, await t.PreisAsync(Skoulou));
         Assert.Equal(1, h.Aufrufe);
-        Assert.Equal("3.600", TarifAbfrage.Zahl(3600));
+        Assert.Equal("500", TarifAbfrage.Zahl(500));
+        Assert.Equal("5.000", TarifAbfrage.Zahl(500 * Skoulou.TarifJahrMonate!.Value));
+    }
+
+    [Fact]
+    public async Task Alte_Antwort_Mit_Jahrespreis_Gilt_Als_Kein_Preis()
+    {
+        // Noch nicht neu verteiltes SKOULOU: kein Jahrespreis als Monatspreis auf der Karte, nur der Hinweis.
+        var (t, _) = Neu(() => Json("""{"jahrespreisProSchueler":3600,"waehrung":"FCFA"}"""));
+        Assert.Null(await t.PreisAsync(Skoulou));
     }
 
     [Fact]
@@ -67,5 +80,7 @@ public class TarifAbfrageTests
         var o = new TabloSuiteOptionen { Apps = [new() { Id = "x", Name = "X", Kategorie = "K", Beschreibung = "B", Logo = "l.svg", Url = "https://x.test", TarifQuelle = "http://x.test/t" }] };
         Assert.Contains(o.Pruefe(), f => f.Contains("source du tarif"));
         Assert.Contains(o.Pruefe(), f => f.Contains("unité du tarif"));
+        o.Apps[0].TarifJahrMonate = 13;
+        Assert.Contains(o.Pruefe(), f => f.Contains("nombre de mois"));
     }
 }

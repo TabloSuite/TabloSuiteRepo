@@ -44,13 +44,13 @@ internal sealed partial class Simulation
         }
     }
 
-    // ---------- 1 + 2: Jahrespreis je Schüler, höchstens einmal je Periode, Vollständigkeit
+    // ---------- 1 + 2: Preis je Schüler und Monat × Monate der Periode, höchstens einmal je Periode, Vollständigkeit
 
     private async Task PlattformanteileAsync()
     {
         var daten = await d.MitDbAsync(async db => new
         {
-            Jahre = await db.Schuljahre.Select(j => new { j.Id, j.SchuleId, j.Status, j.PlattformJahrespreis, j.Bezeichnung }).ToListAsync(),
+            Jahre = await db.Schuljahre.Select(j => new { j.Id, j.SchuleId, j.Status, j.PlattformMonatspreis, j.Bezeichnung }).ToListAsync(),
             Perioden = await db.Perioden.Where(p => p.ZaehltFuerJahr).Select(p => new { p.Id, p.SchuljahrId, p.Nr, p.Beginn, p.Ende, p.Titel }).ToListAsync(),
             Rechnungen = await db.Plattformrechnungen.Select(r => new { r.Id, r.Nummer, r.PeriodeId, r.SchuljahrId, r.Status, r.Betrag, r.Anzahl }).ToListAsync(),
             Positionen = await db.Rechnungspositionen.Select(p => new { p.RechnungId, p.PeriodeId, p.SchuelerId, p.Betrag, p.StorniertGrund }).ToListAsync(),
@@ -72,20 +72,24 @@ internal sealed partial class Simulation
             .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Beginn).ThenBy(p => p.Nr).ToList());
         var gueltig = daten.Positionen.Where(p => p.StorniertGrund == null).ToList();
 
-        foreach (var j in daten.Jahre.Where(j => j.PlattformJahrespreis is not null))
+        foreach (var j in daten.Jahre.Where(j => j.PlattformMonatspreis is not null))
         {
-            var preis = j.PlattformJahrespreis!.Value;
+            var preis = j.PlattformMonatspreis!.Value;
             var perioden = periodenJeJahr.GetValueOrDefault(j.Id) ?? [];
             if (perioden.Count == 0) continue;
-            Pruefe(PlattformAnteil.Anteile(preis, perioden.Count).Sum() == preis, $"Aufteilung von {preis} auf {perioden.Count} Perioden ergibt nicht den Jahrespreis.");
-            var anteil = perioden.Select((p, i) => (p.Id, Betrag: PlattformAnteil.Anteil(preis, i + 1, perioden.Count))).ToDictionary(x => x.Id, x => x.Betrag);
+            // Unabhängig nachgerechnet: Monate = max(1, round(Tage / 30,4375)), Anteil = Monatspreis × Monate.
+            var monate = perioden.ToDictionary(p => p.Id, p => Math.Max(1, (int)Math.Round((p.Ende.DayNumber - p.Beginn.DayNumber + 1) / 30.4375m, MidpointRounding.AwayFromZero)));
+            foreach (var p in perioden)
+                Pruefe(PlattformAnteil.Monate(p.Beginn, p.Ende) == monate[p.Id], $"Monate von {p.Titel} ({j.Bezeichnung}): {PlattformAnteil.Monate(p.Beginn, p.Ende)} statt {monate[p.Id]}.");
+            var anteil = perioden.ToDictionary(p => p.Id, p => preis * monate[p.Id]);
             var jePosition = gueltig.Where(p => anteil.ContainsKey(p.PeriodeId)).ToList();
             foreach (var p in jePosition)
-                Pruefe(p.Betrag == anteil[p.PeriodeId], $"Position {p.Betrag} statt {anteil[p.PeriodeId]} (Jahr {j.Bezeichnung}, Preis {preis}).");
+                Pruefe(p.Betrag == anteil[p.PeriodeId], $"Position {p.Betrag} statt {anteil[p.PeriodeId]} (Jahr {j.Bezeichnung}, Monatspreis {preis}).");
+            var jahresMonate = monate.Values.Sum();
             foreach (var g in jePosition.GroupBy(p => p.SchuelerId).Where(g => g.Select(p => p.PeriodeId).Distinct().Count() == perioden.Count))
-                Pruefe(g.Sum(p => p.Betrag) == preis, $"Schüler {g.Key}: Summe {g.Sum(p => p.Betrag)} ≠ Jahrespreis {preis} ({j.Bezeichnung}).");
+                Pruefe(g.Sum(p => p.Betrag) == preis * jahresMonate, $"Schüler {g.Key}: Summe {g.Sum(p => p.Betrag)} ≠ {jahresMonate} Monate × {preis} ({j.Bezeichnung}).");
         }
-        Geprueft.Add($"Jahrespreis-Aufteilung: {daten.Jahre.Count(j => j.PlattformJahrespreis is not null)} Schuljahre, {gueltig.Count} gültige Positionen");
+        Geprueft.Add($"Monatspreis × Monate: {daten.Jahre.Count(j => j.PlattformMonatspreis is not null)} Schuljahre, {gueltig.Count} gültige Positionen");
 
         foreach (var g in gueltig.GroupBy(p => (p.PeriodeId, p.SchuelerId)).Where(g => g.Count() > 1))
             Pruefe(false, $"Schüler {g.Key.SchuelerId} in Periode {g.Key.PeriodeId} {g.Count()}× abgerechnet.");

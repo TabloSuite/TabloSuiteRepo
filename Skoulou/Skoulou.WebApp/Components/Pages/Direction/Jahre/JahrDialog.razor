@@ -15,10 +15,12 @@
         }
         @if (Modus != JahrDialogModus.Aendern)
         {
-            <RadioGruppe T="PeriodenArt" Label="Découpage de l'année" @bind-Wert="art" Optionen="ArtOptionen" />
-            @if (PeriodenPlan.AnzahlFrei(art))
+            <RadioGruppe T="Aufteilung" Label="Combien de périodes / trimestres ?" Wert="aufteilung" WertChanged="AufteilungGewaehlt" Optionen="AufteilungOptionen"
+                         Hinweis="1 période = un bulletin à la fin de l'année ; 3 trimestres = trois bulletins et une moyenne annuelle." />
+            @if (aufteilung is Aufteilung.Sessions or Aufteilung.Andere)
             {
-                <ZahlFeld Label="Nombre de périodes" Wert="anzahl" WertChanged="v => anzahl = v ?? 1" Min="1" Max="PeriodenPlan.MaxPerioden" Stellen="0" />
+                <ZahlFeld Label="@(aufteilung == Aufteilung.Sessions ? "Nombre de sessions" : "Nombre de périodes")" Wert="anzahl" WertChanged="v => anzahl = v ?? MinAnzahl"
+                          Min="MinAnzahl" Max="PeriodenPlan.MaxPerioden" Stellen="0" />
             }
             <p class="sk-leise">
                 Les périodes sont créées à intervalles égaux ; vous ajusterez ensuite leurs dates (vacances) et pourrez ajouter des examens blancs.
@@ -27,6 +29,17 @@
                     <strong>Les périodes actuelles seront remplacées.</strong>
                 }
             </p>
+        }
+        @if (Preis is { } preis)
+        {
+            @* 19.11.2026: Preis je Schüler und Monat, live aus Beginn/Ende des Jahres; abgerechnet wird am Ende jeder Periode. *@
+            <Hinweis Art="info">
+                Prix SKOULOU : @SkoulouKultur.Fcfa(preis) par élève et par mois de cours (adaptable selon l'établissement).
+                @if (JahresMonate is { } monate)
+                {
+                    <span>Pour cette année (≈ @monate mois) : environ @monate × @SkoulouKultur.Fcfa(preis) = <strong>@SkoulouKultur.Fcfa(monate * preis)</strong> par élève, facturés à la fin de chaque période.</span>
+                }
+            </Hinweis>
         }
     </div>
     </ChildContent>
@@ -43,19 +56,61 @@
     [Parameter] public SchuljahrZeile? Jahr { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<Guid> OnGespeichert { get; set; }
+    /// <summary>Für die Schule gültiger Preis je Schüler und Monat (Seite « Année scolaire »); null = Hinweis ausblenden.</summary>
+    [Parameter] public long? Monatspreis { get; set; }
 
-    private static readonly IReadOnlyList<AuswahlOption<PeriodenArt>> ArtOptionen =
+    // Auswahl im Dialog (19.11.2026): « 1 période » = Libre mit Anzahl 1, « Autre nombre » = Libre mit frei gewählter Anzahl (≥ 2).
+    private enum Aufteilung { EinePeriode, Semestres, Trimestres, Sessions, Andere }
+
+    private static readonly IReadOnlyList<AuswahlOption<Aufteilung>> AufteilungOptionen =
     [
-        new(PeriodenArt.Trimestre, "3 trimestres"), new(PeriodenArt.Semestre, "2 semestres"),
-        new(PeriodenArt.Session, "Sessions"), new(PeriodenArt.Libre, "Périodes libres"),
+        new(Aufteilung.EinePeriode, "1 période (un seul bulletin à la fin)"), new(Aufteilung.Semestres, "2 semestres"),
+        new(Aufteilung.Trimestres, "3 trimestres"), new(Aufteilung.Sessions, "Sessions"), new(Aufteilung.Andere, "Autre nombre de périodes"),
     ];
 
     private string? bezeichnung;
     private DateOnly? beginn, ende;
-    private PeriodenArt art = PeriodenArt.Trimestre;
+    private Aufteilung aufteilung = Aufteilung.Trimestres;
     private decimal anzahl = 3;
     private string? feld;
     private bool warOffen;
+
+    private decimal MinAnzahl => aufteilung == Aufteilung.Andere ? 2 : 1;
+
+    private PeriodenArt Art => aufteilung switch
+    {
+        Aufteilung.Trimestres => PeriodenArt.Trimestre,
+        Aufteilung.Semestres => PeriodenArt.Semestre,
+        Aufteilung.Sessions => PeriodenArt.Session,
+        _ => PeriodenArt.Libre
+    };
+
+    private int Anzahl => aufteilung switch
+    {
+        Aufteilung.EinePeriode => 1,
+        Aufteilung.Sessions or Aufteilung.Andere => (int)anzahl,
+        _ => PeriodenPlan.StandardAnzahl(Art)
+    };
+
+    private static Aufteilung AusArt(PeriodenArt art, int anzahl) => art switch
+    {
+        PeriodenArt.Trimestre => Aufteilung.Trimestres,
+        PeriodenArt.Semestre => Aufteilung.Semestres,
+        PeriodenArt.Session => Aufteilung.Sessions,
+        _ => PeriodenPlan.IstEinePeriode(art, anzahl) ? Aufteilung.EinePeriode : Aufteilung.Andere
+    };
+
+    /// <summary>Bei einem gestarteten Jahr der eingefrorene Preis, sonst der gültige Preis der Schule.</summary>
+    private long? Preis => (Modus == JahrDialogModus.Neu ? null : Jahr?.PlattformMonatspreis) ?? Monatspreis;
+
+    /// <summary>Monate des Jahres (gleiche Regel wie die Abrechnung) oder null ohne gültige Daten.</summary>
+    private int? JahresMonate => beginn is { } b && ende is { } e && e > b ? Skoulou.Core.Finanzen.PlattformAnteil.Monate(b, e) : null;
+
+    private void AufteilungGewaehlt(Aufteilung wahl)
+    {
+        aufteilung = wahl;
+        if (anzahl < MinAnzahl) anzahl = MinAnzahl;
+    }
 
     private string Titel => Modus switch
     {
@@ -79,12 +134,14 @@
             if (Modus == JahrDialogModus.Neu)
             {
                 var v = await Schuljahre.VorschlagAsync(Ich.KontoId);
-                (bezeichnung, beginn, ende, art, anzahl) = (v.Bezeichnung, v.Beginn, v.Ende, v.PeriodenArt, v.AnzahlPerioden);
+                (bezeichnung, beginn, ende, anzahl) = (v.Bezeichnung, v.Beginn, v.Ende, v.AnzahlPerioden);
+                aufteilung = AusArt(v.PeriodenArt, v.AnzahlPerioden);
             }
             else if (Jahr is { } j)
             {
-                (bezeichnung, beginn, ende, art) = (j.Bezeichnung, j.Beginn, j.Ende, j.PeriodenArt);
+                (bezeichnung, beginn, ende) = (j.Bezeichnung, j.Beginn, j.Ende);
                 anzahl = Math.Max(1, j.Perioden.Count(p => p.ZaehltFuerJahr));
+                aufteilung = AusArt(j.PeriodenArt, (int)anzahl);
             }
         }
         else if (!Open)
@@ -102,12 +159,12 @@
             switch (Modus)
             {
                 case JahrDialogModus.Neu:
-                    id = await Schuljahre.JahrAnlegenAsync(Ich.KontoId, new SchuljahrEingabe(bezeichnung, beginn, ende, art, (int)anzahl));
+                    id = await Schuljahre.JahrAnlegenAsync(Ich.KontoId, new SchuljahrEingabe(bezeichnung, beginn, ende, Art, Anzahl));
                     Toast.ZeigeErfolg($"L'année {bezeichnung} est créée avec ses périodes.");
                     break;
                 case JahrDialogModus.Struktur:
                     id = Jahr!.Id;
-                    await Schuljahre.StrukturNeuAsync(Ich.KontoId, id, art, (int)anzahl);
+                    await Schuljahre.StrukturNeuAsync(Ich.KontoId, id, Art, Anzahl);
                     Toast.ZeigeErfolg("Les périodes ont été recréées.");
                     break;
                 default:

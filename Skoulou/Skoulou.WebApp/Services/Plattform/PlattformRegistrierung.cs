@@ -89,12 +89,13 @@ public static class PlattformRegistrierung
         app.MapAuthEndpunkte();
         app.MapKommunikationsEndpunkte();
         app.MapInscriptionEndpunkt();
-        // Öffentlicher Standardpreis für die Firmenseite tablosuite.com (nur die Zahl, zwischengespeichert).
+        // Öffentlicher Standardpreis je Schüler und Monat für die Firmenseite tablosuite.com (nur die Zahl, zwischengespeichert).
+        // Seit 19.11.2026 « monatspreisProSchueler » statt « jahrespreisProSchueler » (einziger Leser: TabloSuiteHome TarifAbfrage).
         app.MapGet("/tarifs/public", async (StartseitenStatistik statistik, HttpContext http) =>
         {
-            var preis = await statistik.JahrespreisAsync(http.RequestAborted);
+            var preis = await statistik.MonatspreisAsync(http.RequestAborted);
             http.Response.Headers.CacheControl = "public, max-age=600";
-            return preis is { } p ? Results.Json(new { jahrespreisProSchueler = p, waehrung = "FCFA" }) : Results.NoContent();
+            return preis is { } p ? Results.Json(new { monatspreisProSchueler = p, waehrung = "FCFA" }) : Results.NoContent();
         }).AllowAnonymous().RequireRateLimiting(Infrastruktur.RateLimits.Pruefung);
         return app;
     }

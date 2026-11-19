@@ -35,11 +35,17 @@ public sealed class TabloSuiteApp
     /// <summary>Kurzer Zusatz unter den Knöpfen, z. B. « 3 mois d'essai offerts ».</summary>
     public string? Hinweis { get; set; }
 
-    /// <summary>Öffentlicher Preis-Endpunkt der App (https, JSON « jahrespreisProSchueler »), z. B. SKOULOU « /tarifs/public ».</summary>
+    /// <summary>Öffentlicher Preis-Endpunkt der App (https, JSON « monatspreisProSchueler »), z. B. SKOULOU « /tarifs/public ».</summary>
     public string? TarifQuelle { get; set; }
 
-    /// <summary>Einheit hinter dem Preis, z. B. « par élève et par an ».</summary>
+    /// <summary>Einheit hinter dem Preis, z. B. « / élève / mois ».</summary>
     public string? TarifEinheit { get; set; }
+
+    /// <summary>
+    /// Monate einer vollen Nutzung für die Orientierung unter dem Preis (SKOULOU: 10 → « environ 5.000 FCFA par élève pour une
+    /// année scolaire complète » bei 500 je Monat); leer = keine Zeile.
+    /// </summary>
+    public int? TarifJahrMonate { get; set; }
 
     /// <summary>Hinweis unter dem Preis, z. B. faire Anpassung je Einrichtung.</summary>
     public string? TarifHinweis { get; set; }
@@ -102,6 +108,8 @@ public sealed class TabloSuiteOptionen
                 fehler.Add($"« {name} » : source du tarif https invalide.");
             if (!string.IsNullOrWhiteSpace(a.TarifQuelle) && string.IsNullOrWhiteSpace(a.TarifEinheit))
                 fehler.Add($"« {name} » : unité du tarif manquante.");
+            if (a.TarifJahrMonate is < 1 or > 12)
+                fehler.Add($"« {name} » : nombre de mois du tarif invalide (1 à 12).");
         }
         return fehler;
     }
