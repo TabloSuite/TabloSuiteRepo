@@ -1,0 +1,98 @@
+@* « Matières facultatives » einer Klasse: Häkchen Schüler × Wahlfach (Entwurf im Elterndialog, gespeichert mit « Enregistrer »).
+   Handy zuerst: je Schüler eine Zeile mit Umschaltknöpfen, die umbrechen – nie breiter als der Bildschirm (360 px). *@
+@using Skoulou.Core.Noten
+
+<div class="org-wahl">
+    <p class="sk-leise">La direction indique qui suit chaque matière facultative pour toute l'année. Seuls ces élèves sont notés dans la matière et la voient sur leur bulletin.</p>
+    <div class="org-wahl-faecher">
+        @foreach (var f in Uebersicht.Faecher)
+        {
+            var anzahl = Uebersicht.Schueler.Count(s => Entwurf.Contains((f.KlassenfachId, s.SchuelerId)));
+            <div class="org-wahl-fach" @key="f.KlassenfachId">
+                <div class="org-wahl-fach-text">
+                    <strong>@f.Fach</strong>
+                    <small class="sk-leise">@NotenTexte.WahlfachText(f.Regel) · @anzahl / @Uebersicht.Schueler.Count élève@(Uebersicht.Schueler.Count > 1 ? "s" : "")</small>
+                </div>
+                @if (Offen && Uebersicht.Schueler.Count > 0)
+                {
+                    <div class="org-wahl-fach-knoepfe">
+                        <button type="button" class="sk-link-knopf" @onclick="() => AlleAsync(f, true)">Tous</button>
+                        <button type="button" class="sk-link-knopf" @onclick="() => AlleAsync(f, false)">Aucun</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    @if (Uebersicht.Schueler.Count == 0)
+    {
+        <Leerzustand Icon="users" Titel="Aucun élève inscrit dans cette classe" Text="Inscrivez d'abord les élèves, puis indiquez leurs matières facultatives." />
+    }
+    else
+    {
+        @if (Uebersicht.Schueler.Count > 10)
+        {
+            <TextFeld Label="Rechercher un élève" Typ="search" Wert="@suche" WertChanged="v => suche = v" Sofort="true" Platzhalter="Nom ou matricule" CssClass="org-wahl-suche" />
+        }
+        <ul class="org-wahl-liste">
+            @foreach (var s in Gefiltert)
+            {
+                <li class="org-wahl-schueler" @key="s.SchuelerId">
+                    <div class="org-wahl-name">
+                        <strong>@s.Name</strong>
+                        @if (s.Matrikel is not null)
+                        {
+                            <small class="sk-leise">@s.Matrikel</small>
+                        }
+                    </div>
+                    <div class="sk-chips org-wahl-chips">
+                        @foreach (var f in Uebersicht.Faecher)
+                        {
+                            var an = Entwurf.Contains((f.KlassenfachId, s.SchuelerId));
+                            <button type="button" class="sk-chip @(an ? "aktiv" : null)" aria-pressed="@(an ? "true" : "false")" disabled="@(!Offen)"
+                                    aria-label="@($"{f.Fach} pour {s.Name}")" @onclick="() => UmschaltenAsync(f, s)">
+                                <Icon Name="@(an ? "check" : "plus")" Groesse="16" /> <span>@f.Fach</span>
+                            </button>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+        @if (!Gefiltert.Any())
+        {
+            <p class="sk-leise">Aucun élève ne correspond à « @suche ».</p>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FachwahlUebersicht Uebersicht { get; set; } = default!;
+    /// <summary>Entwurf der Häkchen (KlassenfachId, SchuelerId); wird hier geändert, gespeichert vom Elterndialog.</summary>
+    [Parameter, EditorRequired] public HashSet<(Guid KlassenfachId, Guid SchuelerId)> Entwurf { get; set; } = default!;
+    [Parameter] public bool Offen { get; set; } = true;
+    [Parameter] public EventCallback OnGeaendert { get; set; }
+
+    private string? suche;
+
+    private IEnumerable<FachwahlSchueler> Gefiltert => string.IsNullOrWhiteSpace(suche)
+        ? Uebersicht.Schueler
+        : Uebersicht.Schueler.Where(s => s.Name.Contains(suche.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                                         || (s.Matrikel?.Contains(suche.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false));
+
+    private Task UmschaltenAsync(WahlfachSpalte f, FachwahlSchueler s)
+    {
+        if (!Offen) return Task.CompletedTask;
+        if (!Entwurf.Remove((f.KlassenfachId, s.SchuelerId))) Entwurf.Add((f.KlassenfachId, s.SchuelerId));
+        return OnGeaendert.InvokeAsync();
+    }
+
+    /// <summary>« Tous » / « Aucun »: nur die gerade sichtbaren Schüler (Suche beachtet).</summary>
+    private Task AlleAsync(WahlfachSpalte f, bool an)
+    {
+        foreach (var s in Gefiltert)
+        {
+            if (an) Entwurf.Add((f.KlassenfachId, s.SchuelerId));
+            else Entwurf.Remove((f.KlassenfachId, s.SchuelerId));
+        }
+        return OnGeaendert.InvokeAsync();
+    }
+}

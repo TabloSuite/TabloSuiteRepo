@@ -1,11 +1,17 @@
-@* Ein Fach einer Klasse: Koeffizient (speichert beim Verlassen), Lehrkräfte mit Wochenstunden, Entfernen. *@
+@* Ein Fach einer Klasse: Koeffizient (speichert beim Verlassen), Lehrkräfte mit Wochenstunden, Entfernen,
+   « Matière facultative » mit Regel für die Moyenne (Entwurf + « Enregistrer », Bauplan §5 Regel 2a). *@
 @inherits SkoulouSeite
 @inject UnterrichtService Unterricht
+@using Skoulou.Core.Noten
 
 <div class="org-kf">
     <div class="org-kf-fach">
         <strong>@Fach.Fach</strong>
         <small class="sk-leise">@(Fach.Kuerzel ?? "") @FaecherService.GruppenText(Fach.Gruppe)</small>
+        @if (Fach.IstWahlfach)
+        {
+            <StatusBadge Text="Facultative" Art="info" />
+        }
     </div>
     <div class="org-kf-koeff">
         <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen)" />
@@ -42,6 +48,22 @@
     {
         <button type="button" class="sk-icon-knopf" title="Retirer la matière de la classe" aria-label="Retirer @Fach.Fach" @onclick="() => OnEntfernen.InvokeAsync(Fach)"><Icon Name="trash" Groesse="16" /></button>
     }
+    @if (Offen || Fach.IstWahlfach)
+    {
+        <div class="org-kf-wahl">
+            <Schalter Wert="wahlAn" WertChanged="v => wahlAn = v" Label="Matière facultative" Deaktiviert="@(!Offen)"
+                      Hinweis="@(Fach.IstWahlfach ? $"Choisie par {Fach.AnzahlGewaehlt} élève{(Fach.AnzahlGewaehlt > 1 ? "s" : "")}" : "Notée seulement pour les élèves qui la choisissent")" />
+            @if (wahlAn)
+            {
+                <AuswahlFeld T="WahlfachRegel?" Label="Compte dans la moyenne" @bind-Wert="regel" Optionen="RegelOptionen" Pflicht="true" Deaktiviert="@(!Offen)"
+                             Hinweis="@RegelHinweis" />
+            }
+            @if (Offen && Geaendert)
+            {
+                <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(wahlAn && regel is null)" OnClick="WahlfachAsync" />
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -54,6 +76,45 @@
     private bool neu;
     private Guid? lehrerId;
     private decimal? stunden;
+
+    // Entwurf der Wahlfach-Einstellung (gespeichert erst mit « Enregistrer »)
+    private bool wahlAn;
+    private WahlfachRegel? regel;
+    private (bool, WahlfachRegel)? geladen;
+
+    private static readonly IReadOnlyList<AuswahlOption<WahlfachRegel?>> RegelOptionen =
+    [
+        new(WahlfachRegel.PunkteUeber10, NotenTexte.WahlfachText(WahlfachRegel.PunkteUeber10), "Standard"),
+        new(WahlfachRegel.WieNormal, NotenTexte.WahlfachText(WahlfachRegel.WieNormal)),
+        new(WahlfachRegel.NurInformation, NotenTexte.WahlfachText(WahlfachRegel.NurInformation)),
+    ];
+
+    private string? RegelHinweis => regel switch
+    {
+        WahlfachRegel.PunkteUeber10 => "Ex. : 16/20 en coef. 2 ajoute (16 − 10) × 2 = 12 points ; sous 10, rien n'est retiré.",
+        WahlfachRegel.WieNormal => "Avec son coefficient, comme les autres matières.",
+        WahlfachRegel.NurInformation => "Figure sur le bulletin, sans effet sur la moyenne.",
+        _ => null
+    };
+
+    private bool Geaendert => wahlAn != Fach.IstWahlfach || (wahlAn && regel != Fach.WahlfachRegel);
+
+    protected override void OnParametersSet()
+    {
+        if (geladen != (Fach.IstWahlfach, Fach.WahlfachRegel))
+        {
+            geladen = (Fach.IstWahlfach, Fach.WahlfachRegel);
+            (wahlAn, regel) = (Fach.IstWahlfach, Fach.WahlfachRegel);
+        }
+    }
+
+    private async Task WahlfachAsync()
+    {
+        var r = regel ?? WahlfachRegel.PunkteUeber10;
+        var meldung = wahlAn ? $"{Fach.Fach} est facultative : {NotenTexte.WahlfachText(r).ToLower(SkoulouKultur.Kultur)}." : $"{Fach.Fach} redevient obligatoire.";
+        if (await AusfuehrenAsync(() => Unterricht.WahlfachSetzenAsync(Ich.KontoId, Fach.Id, wahlAn, r), meldung))
+            await OnGeaendert.InvokeAsync();
+    }
 
     private IReadOnlyList<AuswahlOption<Guid?>> LehrerOptionen =>
         Lehrkraefte.Where(l => Fach.Lehrer.All(x => x.LehrerId != l.Id)).Select(l => new AuswahlOption<Guid?>(l.Id, l.Name, l.Zusatz)).ToList();

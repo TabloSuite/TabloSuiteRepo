@@ -1,4 +1,5 @@
-@* Fächer, Koeffizienten und Lehraufträge einer Klasse; Koeffizienten kopieren bzw. auf das Niveau übertragen. *@
+@* Fächer, Koeffizienten und Lehraufträge einer Klasse; Koeffizienten kopieren bzw. auf das Niveau übertragen.
+   Mit Wahlfächern zweiter Reiter « Matières facultatives »: Häkchen je Schüler (Entwurf bleibt beim Reiterwechsel erhalten). *@
 @inherits SkoulouSeite
 @inject UnterrichtService Unterricht
 @inject FaecherService Faecher
@@ -6,9 +7,32 @@
 <ModalDialog Open="Klasse is not null" Title="@($"Matières et enseignants · {Klasse?.Name}")" Oberzeile="@Klasse?.StufeName" Breite="sk-modal-lg"
              SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="SchliessenAsync">
     <ChildContent>
-        @if (faecher is null)
+        @if (faecher is not null && faecher.Any(f => f.IstWahlfach))
+        {
+            <div class="sk-reiter org-kf-reiter" role="tablist" aria-label="Sections">
+                <button type="button" role="tab" class="sk-reiter-link @(wahlReiter ? null : "aktiv")" aria-selected="@(wahlReiter ? "false" : "true")" @onclick="() => ReiterAsync(false)">
+                    <Icon Name="book" Groesse="16" /> <span>Matières</span>
+                </button>
+                <button type="button" role="tab" class="sk-reiter-link @(wahlReiter ? "aktiv" : null)" aria-selected="@(wahlReiter ? "true" : "false")" @onclick="() => ReiterAsync(true)">
+                    <Icon Name="check-square" Groesse="16" /> <span>Matières facultatives</span>
+                    @if (AnzahlAenderungen > 0)
+                    {
+                        <span class="sk-reiter-zahl" title="Modifications non enregistrées">@AnzahlAenderungen</span>
+                    }
+                </button>
+            </div>
+        }
+        @if (faecher is null || (wahlReiter && wahl is null))
         {
             <div class="sk-skelett"><div></div><div></div></div>
+        }
+        else if (wahlReiter && wahl is not null)
+        {
+            @if (schliessenWarnung)
+            {
+                <Hinweis Art="warn" Titel="Choix non enregistrés">Enregistrez-les, ou cliquez encore une fois sur « Terminé » pour les abandonner.</Hinweis>
+            }
+            <FachwahlenAnsicht Uebersicht="wahl" Entwurf="entwurf" Offen="@(Offen && wahl.Offen)" OnGeaendert="() => schliessenWarnung = false" />
         }
         else
         {
@@ -54,7 +78,20 @@
         }
     </ChildContent>
     <Footer>
-        <button type="button" class="sk-btn sk-btn-primaer" @onclick="SchliessenAsync">Terminé</button>
+        @if (wahlReiter && wahl is not null && Offen && wahl.Offen)
+        {
+            @if (AnzahlAenderungen > 0)
+            {
+                <button type="button" class="sk-btn sk-btn-ghost" @onclick="Verwerfen">Annuler les modifications</button>
+            }
+            <AsyncKnopf Text="@(AnzahlAenderungen > 0 ? $"Enregistrer ({AnzahlAenderungen})" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer"
+                        Disabled="@(AnzahlAenderungen == 0)" OnClick="WahlenSpeichernAsync" />
+            <button type="button" class="sk-btn sk-btn-ghost" @onclick="SchliessenAsync">Terminé</button>
+        }
+        else
+        {
+            <button type="button" class="sk-btn sk-btn-primaer" @onclick="SchliessenAsync">Terminé</button>
+        }
     </Footer>
 </ModalDialog>
 
@@ -63,6 +100,8 @@
     [Parameter] public IReadOnlyList<KlasseZeile> AlleKlassen { get; set; } = [];
     [Parameter] public IReadOnlyList<AuswahlEintrag> Lehrkraefte { get; set; } = [];
     [Parameter] public bool Offen { get; set; } = true;
+    /// <summary>Gleich mit dem Reiter « Matières facultatives » öffnen (Knopf auf der Klassenkarte).</summary>
+    [Parameter] public bool StartFacultatives { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     /// <summary>Etwas wurde geändert (Klassenliste beim Schließen neu laden).</summary>
     [Parameter] public EventCallback OnGeaendert { get; set; }
@@ -72,6 +111,16 @@
     private Guid? neuesFach, quelle, geladenFuer;
     private decimal? neuerKoeff = 1;
     private bool geaendert;
+
+    // Reiter « Matières facultatives »: gespeicherter Stand und Entwurf der Häkchen
+    private bool wahlReiter, schliessenWarnung;
+    private FachwahlUebersicht? wahl;
+    private HashSet<(Guid KlassenfachId, Guid SchuelerId)> entwurf = [];
+
+    private HashSet<(Guid, Guid)> Gespeichert => wahl is null ? []
+        : wahl.Schueler.SelectMany(s => s.Gewaehlt.Select(k => (k, s.SchuelerId))).ToHashSet();
+
+    private int AnzahlAenderungen => wahl is null ? 0 : entwurf.Except(Gespeichert).Count() + Gespeichert.Except(entwurf).Count();
 
     private IReadOnlyList<AuswahlOption<Guid?>> FachOptionen =>
         alleFaecher.Where(f => f.Aktiv && (faecher ?? []).All(k => k.FachId != f.Id))
@@ -87,11 +136,13 @@
         {
             geladenFuer = k.Id;
             (faecher, quelle, neuesFach, neuerKoeff, geaendert) = (null, null, null, 1, false);
+            (wahlReiter, schliessenWarnung, wahl, entwurf) = (false, false, null, []);
             await AusfuehrenAsync(async () =>
             {
                 alleFaecher = (await Faecher.FaecherAsync(Ich.KontoId, mitInaktiven: false)).ToList();
                 await LadenAsync();
             });
+            if (StartFacultatives && faecher?.Any(f => f.IstWahlfach) == true) await ReiterAsync(true);
         }
         else if (Klasse is null)
         {
@@ -110,6 +161,56 @@
     {
         geaendert = true;
         await AusfuehrenAsync(LadenAsync);
+        if (faecher?.Any(f => f.IstWahlfach) != true)
+        {
+            (wahlReiter, wahl, entwurf) = (false, null, []);
+        }
+        else if (wahl is not null && Klasse is { } k)
+        {
+            // Wahlfach ein/aus oder Regel geändert: Stand neu laden, offene Häkchen der weiterhin facultativen Fächer behalten.
+            var neu = entwurf.Except(Gespeichert).ToList();
+            var weg = Gespeichert.Except(entwurf).ToList();
+            await AusfuehrenAsync(async () =>
+            {
+                wahl = await Unterricht.FachwahlenAsync(Ich.KontoId, k.Id);
+                var gueltig = wahl.Faecher.Select(f => f.KlassenfachId).ToHashSet();
+                entwurf = Gespeichert.Union(neu.Where(x => gueltig.Contains(x.Item1))).Except(weg).ToHashSet();
+            });
+        }
+    }
+
+    /// <summary>Reiter wechseln; « Matières facultatives » lädt beim ersten Öffnen den gespeicherten Stand.</summary>
+    private async Task ReiterAsync(bool facultatives)
+    {
+        wahlReiter = facultatives;
+        if (facultatives && wahl is null && Klasse is { } k)
+        {
+            await AusfuehrenAsync(async () =>
+            {
+                wahl = await Unterricht.FachwahlenAsync(Ich.KontoId, k.Id);
+                entwurf = Gespeichert;
+            });
+            if (wahl is null) wahlReiter = false;
+        }
+    }
+
+    private void Verwerfen() => (entwurf, schliessenWarnung) = (Gespeichert, false);
+
+    private async Task WahlenSpeichernAsync()
+    {
+        if (Klasse is not { } k || wahl is null) return;
+        var anzahl = 0;
+        var stand = entwurf.ToList();
+        if (!await AusfuehrenAsync(async () => anzahl = await Unterricht.FachwahlenSpeichernAsync(Ich.KontoId, k.Id, stand))) return;
+        Toast.ZeigeErfolg(anzahl == 0 ? "Rien à enregistrer." : $"Matières facultatives enregistrées ({anzahl} changement{(anzahl > 1 ? "s" : "")}).");
+        schliessenWarnung = false;
+        geaendert = true;
+        await AusfuehrenAsync(async () =>
+        {
+            wahl = await Unterricht.FachwahlenAsync(Ich.KontoId, k.Id);
+            entwurf = Gespeichert;
+            await LadenAsync();
+        });
     }
 
     private async Task FachHinzufuegenAsync()
@@ -160,6 +261,12 @@
 
     private async Task SchliessenAsync()
     {
+        // Ungespeicherte Häkchen: erst warnen (Reiter zeigen), beim zweiten Mal verwerfen.
+        if (AnzahlAenderungen > 0 && !schliessenWarnung)
+        {
+            (wahlReiter, schliessenWarnung) = (true, true);
+            return;
+        }
         if (geaendert) await OnGeaendert.InvokeAsync();
         await OnClose.InvokeAsync();
     }

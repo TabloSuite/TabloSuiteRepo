@@ -83,10 +83,18 @@ else
                         {
                             <StatusBadge Text="@($"{k.FaecherOhneLehrer} sans enseignant")" Art="warn" />
                         }
+                        @if (k.AnzahlWahlfaecher > 0)
+                        {
+                            <StatusBadge Text="@($"{k.AnzahlWahlfaecher} facultative{(k.AnzahlWahlfaecher > 1 ? "s" : "")}")" Art="info" />
+                        }
                     </dd>
                 </dl>
                 <div class="sk-knopfzeile">
-                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => faecherKlasse = k"><Icon Name="book" Groesse="16" /> <span>Matières et enseignants</span></button>
+                    <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => FaecherOeffnen(k, false)"><Icon Name="book" Groesse="16" /> <span>Matières et enseignants</span></button>
+                    @if (k.AnzahlWahlfaecher > 0)
+                    {
+                        <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => FaecherOeffnen(k, true)"><Icon Name="check-square" Groesse="16" /> <span>Matières facultatives</span></button>
+                    }
                     <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/direction/eleves?classe={k.Id}")"><Icon Name="graduation" Groesse="16" /> <span>Élèves</span></a>
                     <a class="sk-btn sk-btn-ghost sk-btn-klein" href="@($"/direction/cartes/{k.Id}")" target="_blank" rel="noopener"><Icon Name="qr" Groesse="16" /> <span>Cartes</span></a>
                     @if (JahrOffen)
@@ -117,7 +125,8 @@ else
                   OnClose="() => klasseDialog = false" OnGespeichert="GespeichertAsync" />
 }
 <StufenDialog Open="stufenDialog" OnClose="() => stufenDialog = false" OnGeaendert="NachStufenAsync" />
-<KlassenfaecherDialog Klasse="faecherKlasse" AlleKlassen="klassen ?? []" Lehrkraefte="lehrkraefte" Offen="JahrOffen" OnClose="() => faecherKlasse = null" OnGeaendert="KlassenLadenAsync" />
+<KlassenfaecherDialog Klasse="faecherKlasse" AlleKlassen="klassen ?? []" Lehrkraefte="lehrkraefte" Offen="JahrOffen" StartFacultatives="facultatives"
+                      OnClose="() => faecherKlasse = null" OnGeaendert="KlassenLadenAsync" />
 <BestaetigungsDialog Open="loeschen is not null" Titel="@($"Supprimer la classe {loeschen?.Name} ?")" BestaetigenText="Supprimer" Gefahr="true"
                      Text="Une classe encore vide est supprimée. Si elle a déjà des élèves, un emploi du temps, des notes ou des frais, elle est seulement désactivée."
                      OnBestaetigen="LoeschenAsync" OnAbbrechen="() => loeschen = null" />
@@ -127,8 +136,11 @@ else
     private List<StufeZeile> stufen = [];
     private List<AuswahlEintrag> lehrkraefte = [];
     private List<PeriodeZeile> perioden = [];
-    private bool klasseDialog, stufenDialog, mitInaktiven;
+    private bool klasseDialog, stufenDialog, mitInaktiven, facultatives;
     private KlasseZeile? bearbeitet, faecherKlasse, loeschen;
+
+    /// <summary>« Matières et enseignants » öffnen – auf Wunsch gleich mit dem Reiter « Matières facultatives ».</summary>
+    private void FaecherOeffnen(KlasseZeile k, bool wahl) => (facultatives, faecherKlasse) = (wahl, k);
 
     private bool JahrOffen => Jahr is { Status: not SchuljahrStatus.Abgeschlossen };
     private IEnumerable<KlasseZeile> Sichtbar => (klassen ?? []).Where(k => k.Aktiv || mitInaktiven);

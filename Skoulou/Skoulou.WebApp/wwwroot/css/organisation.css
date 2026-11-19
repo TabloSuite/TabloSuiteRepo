@@ -173,6 +173,27 @@ button.org-edt-listenzeile { cursor: pointer; }
     .org-kf, .org-kf-werkzeuge, .org-kf-kopie { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* 19.11.2026: « Matières facultatives » – Schalter + Regel je Klassenfach, Häkchen je Schüler (Handy zuerst, kein Überlauf bei 360 px) */
+.org-kf-fach { justify-items: start; gap: .15rem; }
+.org-kf-wahl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: flex-end; min-width: 0; padding-top: .55rem; border-top: 1px dashed var(--sk-rand); }
+.org-kf-wahl > .sk-schalter-zeile { flex: 1 1 14rem; min-width: 0; }
+.org-kf-wahl > .sk-feld { flex: 2 1 16rem; min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); } /* langer Regeltext kürzt statt zu überlaufen */
+.org-kf-reiter { margin-bottom: 1rem; }
+button.sk-reiter-link { border: 0; background: transparent; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.org-wahl { display: grid; gap: .85rem; min-width: 0; }
+.org-wahl > .sk-leise { margin: 0; }
+.org-wahl-faecher, .org-wahl-liste { display: grid; gap: .45rem; min-width: 0; }
+.org-wahl-fach { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .75rem; padding: .55rem .75rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); background: var(--sk-flaeche-2); }
+.org-wahl-fach-text, .org-wahl-name { display: grid; min-width: 0; }
+.org-wahl-fach-knoepfe { display: flex; gap: .25rem; }
+.org-wahl-liste { list-style: none; margin: 0; padding: 0; }
+.org-wahl-schueler { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .45rem .75rem; align-items: center; padding: .5rem .75rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius); }
+.org-wahl-name { flex: 1 1 9rem; }
+.org-wahl-name strong, .org-wahl-chips .sk-chip span { overflow-wrap: anywhere; }
+.org-wahl-chips { flex: 0 1 auto; justify-content: flex-end; min-width: 0; max-width: 100%; }
+.org-wahl-chips .sk-chip { max-width: 100%; }
+.org-wahl-chips .sk-chip[disabled] { cursor: default; opacity: .75; }
+
 /* Élèves: Dossier */
 .org-akte-kopf { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; }
 .org-akte-kopf > div { display: grid; gap: .5rem; flex: 1; min-width: 14rem; justify-items: start; }
