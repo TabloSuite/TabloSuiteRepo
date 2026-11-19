@@ -2417,7 +2417,8 @@ namespace ENote.WebApp.Migrations
                         .HasFilter("[GueltigBisUtc] IS NULL");
 
                     b.HasIndex("ProduktOwnerId", "SalonId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[GueltigBisUtc] IS NULL");
 
                     b.ToTable("ProduktOwnerSalons");
                 });

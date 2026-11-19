@@ -1,0 +1,41 @@
+@* Fehlergrenze um den Seiteninhalt (Testabend 18.11.2026: ein Datenbankfehler beim Zuweisen eines Responsables beendete die
+   ganze Blazor-Verbindung – « l'app se bloque, il faut tout recharger »). Jetzt zeigt nur der Seiteninhalt einen Hinweis,
+   Menü und Anmeldung bleiben bedienbar. Der Fehler wird wie bisher protokolliert (ErrorBoundary → ILogger → ExceptionLogs).
+   Beim Wechsel der Seite verschwindet der Hinweis von selbst. *@
+@inherits ErrorBoundary
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <div class="enote-fehlergrenze" role="alert">
+        <Icon Name="alert" Groesse="22" />
+        <div>
+            <strong>Un problème est survenu.</strong>
+            <p>L'action n'a pas abouti. Ce qui était déjà enregistré n'est pas perdu.</p>
+            <div class="enote-item-actions">
+                <button type="button" class="enote-btn enote-btn-primary" @onclick="Recover">Réessayer</button>
+                <button type="button" class="enote-btn enote-btn-ghost" onclick="location.reload()">Recharger la page</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Navigation.LocationChanged += BeiSeitenwechsel;
+    }
+
+    private void BeiSeitenwechsel(object? sender, LocationChangedEventArgs e)
+    {
+        if (CurrentException is not null) _ = InvokeAsync(Recover);
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= BeiSeitenwechsel;
+}

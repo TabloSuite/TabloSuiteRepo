@@ -496,7 +496,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<ProduktOwnerSalon>(entity =>
         {
-            entity.HasIndex(p => new { p.ProduktOwnerId, p.SalonId }).IsUnique();
+            // Je PO und Laden höchstens EINE aktive Zuordnung; archivierte (GueltigBisUtc gesetzt) dürfen sich wiederholen –
+            // sonst scheiterte die erneute Zuweisung an einen früheren PO (Testabend 18.11.2026: App blockierte).
+            entity.HasIndex(p => new { p.ProduktOwnerId, p.SalonId }).IsUnique().HasFilter("[GueltigBisUtc] IS NULL");
             // Ein Laden hat genau einen aktiven verantwortlichen PO (eindeutige Provision/Abrechnung).
             // Archivierte Zuordnungen (GueltigBisUtc gesetzt) bleiben für die Historie erhalten.
             entity.HasIndex(p => p.SalonId).IsUnique().HasFilter("[GueltigBisUtc] IS NULL");

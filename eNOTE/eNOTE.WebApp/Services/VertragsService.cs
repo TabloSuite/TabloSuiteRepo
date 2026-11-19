@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.Services;
@@ -323,7 +323,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         var besitzer = await HatRolleAsync(db, user, AppRollen.Besitzer, ct);
         if (!admin && !po && !besitzer) throw new UnauthorizedAccessException();
         var ids = await db.Salons.Where(s => admin
-            || (po && db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == user && p.SalonId == s.Id))
+            || (po && db.ProduktOwnerSalons.Any(p => p.ProduktOwnerId == user && p.SalonId == s.Id && p.GueltigBisUtc == null))
             || (besitzer && db.UserSalons.Any(us => us.AppUserId == user && us.SalonId == s.Id)))
             .Select(s => s.Id).ToListAsync(ct);
         foreach (var id in ids) await SynchronisiereAsync(id, ct);

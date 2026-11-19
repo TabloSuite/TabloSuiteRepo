@@ -401,7 +401,6 @@ public partial class Admin(
         ausgewaehlterPoId = poId;
         ausgewaehlterPoName = name;
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);
-        await LadePoSalonsAsync();
     }
 
     private async Task ToggleZuweisungAsync(Guid salonId, bool zugewiesen)
@@ -411,17 +410,31 @@ public partial class Admin(
             return;
         }
 
-        if (zugewiesen)
+        try
         {
-            await produktOwnerService.WeiseSalonZuAsync(poId, salonId, kannLadenUmsatz: true, kannPlattformUmsatz: false);
-        }
-        else
-        {
-            var z = zuweisungen.FirstOrDefault(x => x.SalonId == salonId);
-            if (z is not null)
+            if (zugewiesen)
             {
-                await produktOwnerService.EntferneZuweisungAsync(z.ZuweisungId);
+                // Ein Laden hat genau einen Responsable: war er bei einem anderen, wechselt er (Hinweis statt stillem Wechsel).
+                var laden = poSalons.FirstOrDefault(s => s.SalonId == salonId);
+                await produktOwnerService.WeiseSalonZuAsync(poId, salonId, kannLadenUmsatz: true, kannPlattformUmsatz: false);
+                if (laden is { ProduktOwnerName: { Length: > 0 } bisher } && bisher != ausgewaehlterPoName)
+                    toast.ZeigeInfo($"« {laden.Name} » était suivi par {bisher} : il est maintenant suivi par {ausgewaehlterPoName}.");
             }
+            else
+            {
+                var z = zuweisungen.FirstOrDefault(x => x.SalonId == salonId);
+                if (z is not null)
+                {
+                    await produktOwnerService.EntferneZuweisungAsync(z.ZuweisungId);
+                }
+            }
+            // Spalte « PO » der geladenen Liste nachziehen (ohne neu zu laden – « Afficher plus » bleibt erhalten).
+            var i = poSalons.FindIndex(s => s.SalonId == salonId);
+            if (i >= 0) poSalons[i] = poSalons[i] with { ProduktOwnerName = zugewiesen ? ausgewaehlterPoName : null };
+        }
+        catch (Exception ex) when (ex is Microsoft.EntityFrameworkCore.DbUpdateException or InvalidOperationException)
+        {
+            toast.ZeigeFehler("L'affectation n'a pas pu être enregistrée. Rechargez la page et réessayez.");
         }
 
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);

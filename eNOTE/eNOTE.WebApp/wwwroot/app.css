@@ -3712,3 +3712,8 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 
 /* « Mot de passe oublié »: Hinweis für Mitarbeitende (18.11.2026) */
 .auth-hinweis-employe { margin: 1rem 0 0; padding: .7rem .9rem; border-radius: var(--enote-radius-sm, .6rem); background: var(--enote-surface-2, #f1f5f9); color: var(--enote-text-muted, #475569); font-size: .88rem; line-height: 1.5; }
+
+/* Fehlergrenze um den Seiteninhalt (FehlerGrenze.razor, 19.11.2026) */
+.enote-fehlergrenze { display: flex; gap: .9rem; align-items: flex-start; max-width: 40rem; margin: 1.5rem auto; padding: 1.1rem 1.25rem;
+    border: 1px solid var(--enote-danger-border); border-radius: var(--enote-radius); background: var(--enote-danger-soft); color: var(--enote-danger-text); }
+.enote-fehlergrenze p { margin: .3rem 0 .8rem; color: var(--enote-text); }

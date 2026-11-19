@@ -1,4 +1,4 @@
-using ENote.Core.DataModels.Identity;
+﻿using ENote.Core.DataModels.Identity;
 using ENote.Core.DataModels.Salons;
 using ENote.WebApp.Data;
 using Microsoft.AspNetCore.Identity;
@@ -201,16 +201,21 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
         return (true, null, salon);
     }
 
+    /// <summary>
+    /// Beendet eine Zuweisung (« Décocher » beim Admin). Archiviert statt zu löschen – wie beim PO-Wechsel –, damit die
+    /// Provisionen weiter wissen, wer den Laden wann betreut hat. Eine spätere neue Zuweisung an denselben PO ist erlaubt
+    /// (eindeutiger Index nur über aktive Zuordnungen, Migration ProduktOwnerSalonVerlauf).
+    /// </summary>
     public async Task<bool> EntferneZuweisungAsync(Guid zuweisungId, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var z = await db.ProduktOwnerSalons.FirstOrDefaultAsync(p => p.Id == zuweisungId, cancellationToken);
+        var z = await db.ProduktOwnerSalons.FirstOrDefaultAsync(p => p.Id == zuweisungId && p.GueltigBisUtc == null, cancellationToken);
         if (z is null)
         {
             return false;
         }
 
-        db.ProduktOwnerSalons.Remove(z);
+        z.GueltigBisUtc = uhr.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
