@@ -17,7 +17,7 @@
                     <strong>@f.Fach</strong>
                     <small class="sk-leise">@NotenTexte.WahlfachText(f.Regel) · @anzahl / @Uebersicht.Schueler.Count élève@(Uebersicht.Schueler.Count > 1 ? "s" : "")</small>
                 </div>
-                @if (Offen && Uebersicht.Schueler.Count > 0)
+                @if (Offen && Uebersicht.Schueler.Any(s => !s.Gesperrt))
                 {
                     <div class="org-wahl-fach-knoepfe">
                         <button type="button" class="sk-link-knopf" @onclick="() => AlleAsync(f, true)">Tous</button>

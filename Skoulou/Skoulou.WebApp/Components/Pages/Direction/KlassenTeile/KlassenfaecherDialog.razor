@@ -62,7 +62,8 @@
                         <KlassenfachEintrag @key="f.Id" Fach="f" Lehrkraefte="Lehrkraefte" Offen="Offen" OnGeaendert="GeaendertAsync" OnEntfernen="FachEntfernenAsync" />
                     }
                 </div>
-                <p class="sk-leise">Total : @faecher.Count matière@(faecher.Count > 1 ? "s" : ""), coefficients @SkoulouKultur.Zahl(faecher.Sum(f => f.Koeffizient)), @SkoulouKultur.Zahl(faecher.Sum(f => f.Lehrer.Sum(l => l.Wochenstunden)), 1) h par semaine.</p>
+                @* 19.11.2026: Koeffizienten wie die Zeile « TOTAUX » des Bulletins – ohne Wahlfächer (zählen je Schüler und Regel). *@
+                <p class="sk-leise">Total : @faecher.Count matière@(faecher.Count > 1 ? "s" : ""), coefficients @SkoulouKultur.Zahl(faecher.Where(f => !f.IstWahlfach).Sum(f => f.Koeffizient))@(faecher.Any(f => f.IstWahlfach) ? " (sans les matières facultatives)" : ""), @SkoulouKultur.Zahl(faecher.Sum(f => f.Lehrer.Sum(l => l.Wochenstunden)), 1) h par semaine.</p>
             }
             @if (Offen)
             {

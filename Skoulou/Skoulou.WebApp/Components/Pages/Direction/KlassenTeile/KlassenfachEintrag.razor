@@ -48,7 +48,8 @@
     {
         <button type="button" class="sk-icon-knopf" title="Retirer la matière de la classe" aria-label="Retirer @Fach.Fach" @onclick="() => OnEntfernen.InvokeAsync(Fach)"><Icon Name="trash" Groesse="16" /></button>
     }
-    @if (Offen || Fach.IstWahlfach)
+    @* 19.11.2026: nach der ersten Veröffentlichung nur noch bei Wahlfächern (Schalter fest) – sonst stand der Sperrhinweis unter jedem Fach. *@
+    @if (Fach.IstWahlfach || Aenderbar)
     {
         <div class="org-kf-wahl">
             <Schalter Wert="wahlAn" WertChanged="v => wahlAn = v" Label="Matière facultative" Deaktiviert="@(!Aenderbar)"
