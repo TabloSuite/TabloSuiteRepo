@@ -1795,8 +1795,11 @@ button.enote-laedt { cursor: progress; }
 /* --- Kasse responsiv --- */
 @media (max-width: 1199px) {
     .kx-body { grid-template-columns: minmax(0, 1fr) 21rem; }
-    .kx-aktion span { display: none; }
+    /* Nur die Beschriftung ausblenden – die Zahl-Plakette (« Présents », « En attente ») ist auch ein span und fehlte
+       dadurch unter 1200 px (Nutzer 19.11.2026: « Anzahl Tickets en attente wird oben nicht angezeigt »). */
+    .kx-aktion span:not(.kx-badge) { display: none; }
     .kx-aktion { min-width: 3rem; }
+    .kx-aktion .kx-badge { top: -.1rem; right: -.1rem; }
     .kx-start-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kx-start-grid > :first-child { grid-column: 1 / -1; }
 }
