@@ -16,6 +16,13 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - Azure-Skript eNOTE fertig: `%TEMP%\enote-scripts\azure-enote-19-11.sql` (idempotent: ProduktOwnerSalonVerlauf + KundenAktenRecht;
   nur Index-Tausch + neue Spalte) – **wartet auf OK**. SKOULOU-Skript erst nach der Wahlfach-Migration (Preis + Wahlfächer zusammen).
 - 8db4570 SKOULOU Encaisser: Platzhalter « facultatif » bei Pflicht-Référence (Virement) behoben.
+- ✅ **KI-Hilfe « Poser une question » übernommen** (7e7e894 … e1b0b1a + 715220e « Dossiers clients » in der eNOTE-Wissensbasis),
+  Worktree entfernt, gepusht. Tests eNOTE 539, SKOULOU 684 grün. Seite `/aide/question` (beide Apps), ohne `Ki__AnthropicApiKey`
+  unsichtbar (→ `/introuvable`). Grenzen: 20/Konto/Tag fest, App 300/Tag (`Ki__FragenJeTag`); Zähler nur im Speicher.
+  Kosten laut Schätzung ≈ 0,03–0,2 US-Cent je Frage, schlimmstenfalls ≈ 0,60 $/Tag. Doku: `Skoulou/docs/Bauplan.md` §2.1,
+  `eNOTE/Deployment-Azure.md`. **Noch nie mit echtem Schlüssel/Bildschirm geprüft** → nach dem Freischalten Sichtprüfung + echte Fragen.
+  Offene Fragen an den Nutzer: eNOTE-Datenschutztext nennt « Aide & contact » statt Guide (eNOTE hat keinen Guide); 300/20 ok?;
+  ein Schlüssel je App (Kostenübersicht)?
 
 **>>> (19.11. abends, Sitzung endete) – Reihenfolge:**
 1. **Zwei Agenten-Arbeitskopien prüfen und übernehmen** (liefen beim Sitzungsende noch; Ergebnis evtl. unvollständig/uncommittet):
