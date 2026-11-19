@@ -1,13 +1,31 @@
-# TabloSuite – Arbeitsstand 19.11.2026 abends (nach dem Testabend)
+# TabloSuite – Arbeitsstand 19.11.2026 spätabends (alles deployt)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends)
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends, nach dem Deploy)
 
-**>>> AKTUELL (19.11. spätabends, zuletzt):**
+**>>> ALLES DEPLOYT UND LIVE GEPRÜFT (19.11., ~16:50 UTC) – nichts offen außer den Videos:**
+- Nutzer hat **eNOTE, SKOULOU und TabloSuiteHome deployt**. Azure-DBs beider Apps = lokal (alle Migrationen bis
+  `KundenAktenRecht` bzw. `Wahlfaecher`). Git: alles gepusht.
+- Live geprüft (nur lesend): alle drei Startseiten 200; `skoulou…/tarifs/public` → `{"monatspreisProSchueler":500,"waehrung":"FCFA"}`;
+  SKOULOU-Startseite « Tarifs » 500 F/mois + « ≈ 5.000 FCFA » (auch JSON-LD, unitCode MON); tablosuite.com-Karte « 500 FCFA / élève /
+  mois » + « environ 5.000 FCFA » (beim allerersten Aufruf nach dem Kaltstart nur Hinweis – Fehlschlag 2 min gemerkt, dann korrekt);
+  eNOTE 2.500 F; Anmelde-/Registrierungsseiten beider Apps 200 (eNOTE `/auth/register` mit Knopf-Sperre); eNOTE « Page introuvable »
+  bei 404; `/aide/question` ohne Anmeldung → Login (beide Apps).
+- Fehlerprotokolle nach dem Deploy: **SKOULOU 0**. **eNOTE 10**: 9× `BadImageFormatException` 16:33:13–17 UTC (Anfragen genau
+  während des Datei-Austauschs beim Zip-Deploy, danach nie wieder – kein App-Fehler) + 1× SQL-Anmeldefehler 35 um 16:43 beim
+  Aufwachen der DB (Wiederholung aus fb24965 griff, Seite kam mit 200). Bis 16:51 UTC keine weiteren. Einträge NICHT gelöscht.
+  Idee für später (nur mit Nutzer, Azure-Einstellung): `WEBSITE_RUN_FROM_PACKAGE=1` verhindert die Deploy-Fehler (vorher prüfen,
+  ob die App in ihr Verzeichnis schreibt).
+- **Beim Nutzer offen (am Gerät):** iPhone-Login (Ladekreis « Se connecter »), eine Registrierung, eNOTE erneute Zuweisung an einen
+  früheren Responsable (Fatal 1 vom Testabend), Mail an neuen Responsable. KI-Hilfe: erst nach Schlüssel (`Ki__AnthropicApiKey`
+  je App) – dann Seite ansehen + echte Fragen testen (nur Admin/PO sichtbar).
+- **NÄCHSTER SCHRITT: Videos (Nutzer: « später », « sehr informationsreich »)** – siehe Punkt unten « Danach: Videos ».
+
+**>>> (19.11. spätabends) Verlauf der Sitzung:**
 - ✅ Beide Agenten-Arbeiten übernommen, Worktrees entfernt, alles gepusht (bis 5f3ebca). Tests: eNOTE 540, SKOULOU 704
   (mit `SKOULOU_SQL_TESTS=1`: 725).
 - ✅ **Azure eNOTE eingespielt** (OK « azuredb ok »): ProduktOwnerSalonVerlauf + KundenAktenRecht, lesend geprüft → Azure = lokal.
@@ -27,14 +45,11 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - **Danach: Videos sehr informationsreich** (Nutzer 19.11.): neu « Les matières facultatives » (Direction), Szenen in
   « Préparer l'année » (Matières et enseignants) und « Publier les bulletins » (Vorlage « Groupes de matières »). Vorher
   SkoulouDB_VIDEO migrieren + Basis-Sicherung erneuern.
-- **SKOULOU-Azure-Skript bereit:** `%TEMP%\enote-scripts\azure-skoulou-19-11.sql` (PreisJeSchuelerUndMonat + Wahlfaecher,
-  idempotent). Auf Wegwerf-DB zweimal geprobt: 3.600 → 500, CGU 2026-11-19, Spalten/Tabelle da, 2. Lauf ändert nichts.
-  Anwenden: `azure-anwenden.ps1 -Skript … -Db Skoulou-Database` (jetzt mit XACT_ABORT + Abbruch beim ersten Fehler).
-  Falle: `sqlcmd` nur mit `-I` (QUOTED_IDENTIFIER), sonst scheitert das UPDATE auf Schuljahre und die Migration wird trotzdem eingetragen.
-- Danach: Nutzer deployt alle drei Apps. Offene Fragen Wahlfächer (Agent): Gruppenköpfe bei Schulen mit « Groupes de matières »
-  jetzt sichtbar ok?; Schalter auch bei Sprachschulen ausblenden?; nachträglich facultative → alte Noten Nicht-Wählender bleiben
-  gespeichert, zählen nicht; Wahl jedes Jahr neu; Wahlfach in veröffentlichten Bulletins ändert deren Hash (Rectification).
-  Evtl. veraltete Videos: direction-preparer (Schalter je Fach), direction-bulletins (« Groupes de matières »), direction-concept (Lücke).
+- SKOULOU-Azure-Skript wurde vorher auf einer Wegwerf-DB zweimal geprobt (eingespielt + Skript gelöscht). Werkzeug:
+  `azure-anwenden.ps1 -Skript … -Datenbank Skoulou-Database` (XACT_ABORT + Abbruch beim ersten Fehler; `-Db` geht nicht, Konflikt mit
+  `-Debug`). Falle: `sqlcmd` nur mit `-I` (QUOTED_IDENTIFIER), sonst scheitert das UPDATE auf Schuljahre und die Migration wird
+  trotzdem eingetragen. Spalten-Umbenennungen immer **unmittelbar vor dem Deploy** einspielen.
+- Wahlfach-Fragen 1–5 entschieden (Nutzer « ja für alle », siehe Punkt « Wahlfach-Regeln 3–5 » oben).
 
 **>>> STAND 19.11. spätabends (neue Sitzung, Anfang):**
 - Beide Agenten-Arbeitskopien waren **unfertig und uncommittet** (Wahlfächer: Core/Daten/Dienste fertig, Oberfläche/Bulletin/
