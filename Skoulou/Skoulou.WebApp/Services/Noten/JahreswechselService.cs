@@ -400,7 +400,12 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var kf = ziel.FirstOrDefault(z => z.FachId == q.FachId);
             if (kf is null)
             {
-                kf = new Klassenfach { SchuleId = schuleId, KlasseId = zielId, FachId = q.FachId, Koeffizient = q.Koeffizient, Reihenfolge = q.Reihenfolge };
+                // Wahlfach-Einstellung wandert mit; die Wahl der Schüler gilt nur für ein Schuljahr und wird neu getroffen.
+                kf = new Klassenfach
+                {
+                    SchuleId = schuleId, KlasseId = zielId, FachId = q.FachId, Koeffizient = q.Koeffizient, Reihenfolge = q.Reihenfolge,
+                    IstWahlfach = q.IstWahlfach, WahlfachRegel = q.WahlfachRegel
+                };
                 db.Klassenfaecher.Add(kf);
                 ziel.Add(kf);
             }

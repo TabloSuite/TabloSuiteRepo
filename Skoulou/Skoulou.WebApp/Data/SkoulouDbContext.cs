@@ -39,6 +39,7 @@ public class SkoulouDbContext(DbContextOptions<SkoulouDbContext> options)
     public DbSet<Klasse> Klassen => Set<Klasse>();
     public DbSet<Fach> Faecher => Set<Fach>();
     public DbSet<Klassenfach> Klassenfaecher => Set<Klassenfach>();
+    public DbSet<Fachwahl> Fachwahlen => Set<Fachwahl>();
     public DbSet<Lehrauftrag> Lehrauftraege => Set<Lehrauftrag>();
     public DbSet<SchuelerProfil> SchuelerProfile => Set<SchuelerProfil>();
     public DbSet<Einschreibung> Einschreibungen => Set<Einschreibung>();

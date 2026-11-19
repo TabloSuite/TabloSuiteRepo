@@ -97,6 +97,9 @@ public class RechteMatrixOrganisationTests
         ["Lehrauftrag.Entfernen"] = F((w, a) => w.D.Unterricht.LehrauftragEntfernenAsync(a, w.Auftrag6B), fremd: true),
         ["Auftraege.Lehrer"] = F((w, a) => w.D.Unterricht.AuftraegeDesLehrersAsync(a, w.Lehrer, w.Jahr), fremd: true),
         ["Klassenfaecher.Jahr"] = F((w, a) => w.D.Unterricht.KlassenfaecherDesJahresAsync(a, w.Jahr), fremd: true),
+        ["Wahlfach.Setzen"] = F((w, a) => w.D.Unterricht.WahlfachSetzenAsync(a, w.Kf6AFr, true, WahlfachRegel.PunkteUeber10), fremd: true),
+        ["Fachwahlen"] = F((w, a) => w.D.Unterricht.FachwahlenAsync(a, w.Klasse6A), fremd: true),
+        ["Fachwahlen.Speichern"] = F((w, a) => w.D.Unterricht.FachwahlenSpeichernAsync(a, w.Klasse6A, []), fremd: true),
 
         // KontoVerwaltungService (Koordinatoren nur der Direktor)
         ["Konto.Vorschlag"] = F((w, a) => w.D.Konten.IdentifiantVorschlagAsync(a, "Ama", "Mensah")),

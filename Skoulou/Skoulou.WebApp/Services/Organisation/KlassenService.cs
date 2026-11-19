@@ -13,7 +13,8 @@ public sealed record StufeZeile(Guid Id, string Name, int Reihenfolge, Zyklus? Z
 public sealed record StufeEingabe(string? Name, Zyklus? Zyklus, Guid? NachfolgerId);
 
 public sealed record KlasseZeile(Guid Id, string Name, Guid? StufeId, string? StufeName, Guid? PeriodeId, string? PeriodeTitel, int? Kapazitaet,
-    Guid? KlassenlehrerId, string? KlassenlehrerName, string? Raum, bool Aktiv, int Effectif, int AnzahlFaecher, int FaecherOhneLehrer);
+    Guid? KlassenlehrerId, string? KlassenlehrerName, string? Raum, bool Aktiv, int Effectif, int AnzahlFaecher, int FaecherOhneLehrer,
+    int AnzahlWahlfaecher = 0);
 
 public sealed record KlasseEingabe(string? Name, Guid? StufeId, Guid? PeriodeId, int? Kapazitaet, Guid? KlassenlehrerId, string? Raum);
 
@@ -143,7 +144,8 @@ public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory
                 k.Raum, k.Aktiv,
                 aktive.Count(e => e.KlasseId == k.Id),
                 db.Klassenfaecher.Count(kf => kf.KlasseId == k.Id),
-                db.Klassenfaecher.Count(kf => kf.KlasseId == k.Id && !db.Lehrauftraege.Any(l => l.KlassenfachId == kf.Id))))
+                db.Klassenfaecher.Count(kf => kf.KlasseId == k.Id && !db.Lehrauftraege.Any(l => l.KlassenfachId == kf.Id)),
+                db.Klassenfaecher.Count(kf => kf.KlasseId == k.Id && kf.IstWahlfach)))
             .ToListAsync(ct);
     }
 
@@ -238,6 +240,7 @@ public sealed class KlassenService(IDbContextFactory<SkoulouDbContext> dbFactory
                 return LoeschErgebnis.Deaktiviert;
             }
             db.Lehrauftraege.RemoveRange(await db.Lehrauftraege.Where(l => kfIds.Contains(l.KlassenfachId)).ToListAsync(ct));
+            db.Fachwahlen.RemoveRange(await db.Fachwahlen.Where(w => kfIds.Contains(w.KlassenfachId)).ToListAsync(ct));
             await db.SaveChangesAsync(ct);
             db.Klassenfaecher.RemoveRange(await db.Klassenfaecher.Where(kf => kf.KlasseId == klasse.Id).ToListAsync(ct));
             await db.SaveChangesAsync(ct);

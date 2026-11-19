@@ -10,9 +10,19 @@ namespace Skoulou.WebApp.Services.Organisation;
 public sealed record LehrauftragKurz(Guid Id, Guid LehrerId, string Lehrer, decimal Wochenstunden);
 
 public sealed record KlassenfachZeile(Guid Id, Guid FachId, string Fach, string? Kuerzel, FachGruppe Gruppe, decimal Koeffizient,
-    int Reihenfolge, IReadOnlyList<LehrauftragKurz> Lehrer);
+    int Reihenfolge, IReadOnlyList<LehrauftragKurz> Lehrer, bool IstWahlfach = false, WahlfachRegel WahlfachRegel = WahlfachRegel.PunkteUeber10,
+    int AnzahlGewaehlt = 0);
 
 public sealed record LehrauftragZeile(Guid Id, Guid KlassenfachId, Guid KlasseId, string Klasse, string Fach, decimal Wochenstunden);
+
+/// <summary>Wahlfach einer Klasse (Spalte der Ansicht « Matières facultatives »).</summary>
+public sealed record WahlfachSpalte(Guid KlassenfachId, string Fach, WahlfachRegel Regel);
+
+/// <summary>Schüler der Klasse mit seinen gewählten Wahlfächern (KlassenfachIds).</summary>
+public sealed record FachwahlSchueler(Guid SchuelerId, string Name, string? Matrikel, IReadOnlySet<Guid> Gewaehlt);
+
+/// <summary>Ansicht « Matières facultatives » einer Klasse: Wahlfächer × Schüler (Häkchen).</summary>
+public sealed record FachwahlUebersicht(Guid KlasseId, string Klasse, bool Offen, IReadOnlyList<WahlfachSpalte> Faecher, IReadOnlyList<FachwahlSchueler> Schueler);
 
 /// <summary>
 /// Klassenfächer (Koeffizienten) und Lehraufträge – der Lehrauftrag ist die einzige Quelle dafür, wer
@@ -31,7 +41,11 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var faecher = await (from kf in db.Klassenfaecher.AsNoTracking()
                              join f in db.Faecher on kf.FachId equals f.Id
                              where kf.KlasseId == klasseId
-                             select new { kf.Id, kf.FachId, f.Name, f.Kuerzel, f.Gruppe, kf.Koeffizient, Reihenfolge = kf.Reihenfolge ?? f.Reihenfolge })
+                             select new
+                             {
+                                 kf.Id, kf.FachId, f.Name, f.Kuerzel, f.Gruppe, kf.Koeffizient, Reihenfolge = kf.Reihenfolge ?? f.Reihenfolge,
+                                 kf.IstWahlfach, kf.WahlfachRegel, Gewaehlt = db.Fachwahlen.Count(w => w.KlassenfachId == kf.Id)
+                             })
             .ToListAsync(ct);
         var ids = faecher.Select(f => f.Id).ToList();
         var auftraege = await (from l in db.Lehrauftraege.AsNoTracking()
@@ -42,8 +56,108 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             .ToListAsync(ct);
         return faecher.OrderBy(f => f.Reihenfolge).ThenBy(f => f.Name)
             .Select(f => new KlassenfachZeile(f.Id, f.FachId, f.Name, f.Kuerzel, f.Gruppe, f.Koeffizient, f.Reihenfolge,
-                auftraege.Where(x => x.KlassenfachId == f.Id).Select(x => x.Kurz).ToList()))
+                auftraege.Where(x => x.KlassenfachId == f.Id).Select(x => x.Kurz).ToList(), f.IstWahlfach, f.WahlfachRegel, f.Gewaehlt))
             .ToList();
+    }
+
+    /// <summary>
+    /// « Matière facultative » ein/aus und Regel für die Moyenne (Bauplan §5 Regel 2a). Bestehende Wahlen bleiben gespeichert
+    /// (ausgeschaltet zählen sie nicht), damit ein versehentliches Ausschalten nichts verliert.
+    /// </summary>
+    public async Task WahlfachSetzenAsync(Guid akteurId, Guid klassenfachId, bool istWahlfach, WahlfachRegel regel, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, ct: ct);
+        if (!Enum.IsDefined(regel)) throw new FachFehler("Choisissez comment la matière facultative compte dans la moyenne.", "regel");
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var kf = await KlassenfachAsync(db, a, klassenfachId, ct);
+        await PruefeJahrOffenAsync(db, await db.Klassen.Where(k => k.Id == kf.KlasseId).Select(k => k.SchuljahrId).FirstAsync(ct), ct);
+        kf.IstWahlfach = istWahlfach;
+        kf.WahlfachRegel = regel;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Ansicht « Matières facultatives »: Wahlfächer der Klasse und ihre Schüler (aktiv bzw. am Jahresende) mit Häkchen.</summary>
+    public async Task<FachwahlUebersicht> FachwahlenAsync(Guid akteurId, Guid klasseId, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, schreiben: false, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var klasse = await OrgAbfragen.KlasseAsync(db, a, klasseId, ct);
+        var jahr = await db.Schuljahre.AsNoTracking().FirstAsync(j => j.Id == klasse.SchuljahrId, ct);
+        var faecher = await (from kf in db.Klassenfaecher.AsNoTracking()
+                             join f in db.Faecher on kf.FachId equals f.Id
+                             where kf.KlasseId == klasse.Id && kf.IstWahlfach
+                             orderby kf.Reihenfolge ?? f.Reihenfolge, f.Name
+                             select new WahlfachSpalte(kf.Id, f.Name, kf.WahlfachRegel)).ToListAsync(ct);
+        var schueler = await SchuelerDerKlasseAsync(db, klasse.Id, ct);
+        var ids = faecher.Select(f => f.KlassenfachId).ToList();
+        var wahlen = await db.Fachwahlen.AsNoTracking().Where(w => ids.Contains(w.KlassenfachId)).Select(w => new { w.KlassenfachId, w.SchuelerId }).ToListAsync(ct);
+        return new FachwahlUebersicht(klasse.Id, klasse.Name, jahr.Status != SchuljahrStatus.Abgeschlossen, faecher,
+            schueler.Select(s => new FachwahlSchueler(s.Id, s.Name, s.Matrikel,
+                wahlen.Where(w => w.SchuelerId == s.Id).Select(w => w.KlassenfachId).ToHashSet())).ToList());
+    }
+
+    /// <summary>
+    /// Speichert die Häkchen der Ansicht « Matières facultatives » (vollständiger Stand für die Schüler der Klasse): fehlende
+    /// Wahlen werden angelegt, abgewählte entfernt. Wahlen ehemaliger Schüler (Klassenwechsel) bleiben unberührt. Anzahl Änderungen.
+    /// </summary>
+    public async Task<int> FachwahlenSpeichernAsync(Guid akteurId, Guid klasseId, IReadOnlyCollection<(Guid KlassenfachId, Guid SchuelerId)> gewaehlt,
+        CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, ct: ct);
+        return await dbFactory.TransaktionAsync(async db =>
+        {
+            var klasse = await OrgAbfragen.KlasseAsync(db, a, klasseId, ct);
+            await PruefeJahrOffenAsync(db, klasse.SchuljahrId, ct);
+            var wahlfaecher = await db.Klassenfaecher.Where(kf => kf.KlasseId == klasse.Id && kf.IstWahlfach).Select(kf => kf.Id).ToListAsync(ct);
+            var schueler = (await SchuelerDerKlasseAsync(db, klasse.Id, ct)).Select(s => s.Id).ToHashSet();
+            var soll = gewaehlt.Distinct().ToHashSet();
+            if (soll.Any(w => !wahlfaecher.Contains(w.KlassenfachId)))
+                throw new FachFehler("Une des matières n'est pas (ou plus) facultative dans cette classe. Rechargez la page.");
+            if (soll.Any(w => !schueler.Contains(w.SchuelerId)))
+                throw new FachFehler("Un des élèves n'est pas (ou plus) inscrit dans cette classe. Rechargez la page.");
+            var ist = await db.Fachwahlen.Where(w => wahlfaecher.Contains(w.KlassenfachId) && schueler.Contains(w.SchuelerId)).ToListAsync(ct);
+            var weg = ist.Where(w => !soll.Contains((w.KlassenfachId, w.SchuelerId))).ToList();
+            var neu = soll.Where(s => !ist.Any(w => w.KlassenfachId == s.KlassenfachId && w.SchuelerId == s.SchuelerId)).ToList();
+            db.Fachwahlen.RemoveRange(weg);
+            foreach (var (kfId, schuelerId) in neu)
+                db.Fachwahlen.Add(new Fachwahl { SchuleId = a.SchuleId, KlassenfachId = kfId, SchuelerId = schuelerId, ErfasstVonId = a.Id });
+            await db.SaveChangesAsync(ct);
+            return weg.Count + neu.Count;
+        }, ct);
+    }
+
+    /// <summary>
+    /// Klassenwechsel (Bauplan §11.6): die Wahlen der alten Klasse gelten für dasselbe Fach der neuen Klasse, wenn es dort auch
+    /// Wahlfach ist (sonst entfallen sie dort). Die Wahl in der alten Klasse bleibt für deren Perioden bestehen.
+    /// </summary>
+    internal static async Task FachwahlenUebernehmenAsync(SkoulouDbContext db, Guid schuleId, Guid schuelerId, Guid alteKlasseId, Guid neueKlasseId,
+        Guid akteurId, CancellationToken ct)
+    {
+        var faecher = await (from w in db.Fachwahlen
+                             join kf in db.Klassenfaecher on w.KlassenfachId equals kf.Id
+                             where w.SchuelerId == schuelerId && kf.KlasseId == alteKlasseId && kf.IstWahlfach
+                             select kf.FachId).ToListAsync(ct);
+        if (faecher.Count == 0) return;
+        var ziele = await db.Klassenfaecher.Where(kf => kf.KlasseId == neueKlasseId && kf.IstWahlfach && faecher.Contains(kf.FachId))
+            .Select(kf => kf.Id).ToListAsync(ct);
+        var vorhanden = await db.Fachwahlen.Where(w => w.SchuelerId == schuelerId && ziele.Contains(w.KlassenfachId)).Select(w => w.KlassenfachId).ToListAsync(ct);
+        foreach (var ziel in ziele.Except(vorhanden))
+            db.Fachwahlen.Add(new Fachwahl { SchuleId = schuleId, KlassenfachId = ziel, SchuelerId = schuelerId, ErfasstVonId = akteurId });
+    }
+
+    private sealed record KlassenSchueler(Guid Id, string Name, string? Matrikel);
+
+    /// <summary>Schüler der Klasse: aktive Einschreibungen (nach dem Jahresabschluss die beendeten), sortiert nach Name.</summary>
+    private static async Task<List<KlassenSchueler>> SchuelerDerKlasseAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
+    {
+        var liste = await (from e in SchulAbfragen.GueltigeEinschreibungen(db).AsNoTracking()
+                           join u in db.Users on e.SchuelerId equals u.Id
+                           where e.KlasseId == klasseId && (e.Status == EinschreibungsStatus.Active || e.Status == EinschreibungsStatus.Terminee)
+                           select new { u.Id, u.Vorname, u.Nachname, Matrikel = db.SchuelerProfile.Where(p => p.KontoId == u.Id).Select(p => p.Matrikel).FirstOrDefault() })
+            .ToListAsync(ct);
+        return liste.DistinctBy(s => s.Id)
+            .Select(s => new KlassenSchueler(s.Id, $"{s.Nachname.ToUpperInvariant()} {s.Vorname}".Trim(), s.Matrikel))
+            .OrderBy(s => s.Name, StringComparer.Create(Skoulou.Core.Werkzeuge.SkoulouKultur.Kultur, true)).ToList();
     }
 
     /// <summary>Fächer einer Klasse hinzufügen (vorhandene bleiben unverändert). Anzahl neu.</summary>
@@ -89,6 +203,7 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             if (await db.StundenplanEintraege.AnyAsync(e => auftragIds.Contains(e.LehrauftragId), ct))
                 throw new FachFehler("Cette matière figure dans l'emploi du temps de la classe : retirez d'abord ces cours.");
             db.Lehrauftraege.RemoveRange(auftraege);
+            db.Fachwahlen.RemoveRange(await db.Fachwahlen.Where(w => w.KlassenfachId == kf.Id).ToListAsync(ct));
             await db.SaveChangesAsync(ct);
             db.Klassenfaecher.Remove(kf);
             await db.SaveChangesAsync(ct);
@@ -134,10 +249,16 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             {
                 z.Koeffizient = q.Koeffizient;
                 z.Reihenfolge = q.Reihenfolge;
+                z.IstWahlfach = q.IstWahlfach;
+                z.WahlfachRegel = q.WahlfachRegel;
             }
             else
             {
-                db.Klassenfaecher.Add(new Klassenfach { SchuleId = schuleId, KlasseId = ziel, FachId = q.FachId, Koeffizient = q.Koeffizient, Reihenfolge = q.Reihenfolge });
+                db.Klassenfaecher.Add(new Klassenfach
+                {
+                    SchuleId = schuleId, KlasseId = ziel, FachId = q.FachId, Koeffizient = q.Koeffizient, Reihenfolge = q.Reihenfolge,
+                    IstWahlfach = q.IstWahlfach, WahlfachRegel = q.WahlfachRegel
+                });
             }
         }
         return quellFaecher.Count;

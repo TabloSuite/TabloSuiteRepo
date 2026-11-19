@@ -996,6 +996,44 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.ToTable("FachBemerkungen");
                 });
 
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.Fachwahl", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ErfasstVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ErstelltAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeaendertAmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("KlassenfachId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchuelerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SchuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ErfasstVonId");
+
+                    b.HasIndex("SchuelerId");
+
+                    b.HasIndex("SchuleId");
+
+                    b.HasIndex("KlassenfachId", "SchuelerId")
+                        .IsUnique();
+
+                    b.ToTable("Fachwahlen", (string)null);
+                });
+
             modelBuilder.Entity("Skoulou.Core.Entitaeten.FehlerProtokoll", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1700,6 +1738,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IstWahlfach")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("KlasseId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1712,6 +1753,9 @@ namespace Skoulou.WebApp.Data.Migrations
 
                     b.Property<Guid>("SchuleId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WahlfachRegel")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -3943,6 +3987,33 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.HasOne("Skoulou.Core.Entitaeten.Periode", null)
                         .WithMany()
                         .HasForeignKey("PeriodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Schule", null)
+                        .WithMany()
+                        .HasForeignKey("SchuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Skoulou.Core.Entitaeten.Fachwahl", b =>
+                {
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("ErfasstVonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Klassenfach", null)
+                        .WithMany()
+                        .HasForeignKey("KlassenfachId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Skoulou.Core.Entitaeten.Konto", null)
+                        .WithMany()
+                        .HasForeignKey("SchuelerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

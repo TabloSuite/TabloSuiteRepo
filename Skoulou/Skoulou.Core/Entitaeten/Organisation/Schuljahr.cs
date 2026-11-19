@@ -78,7 +78,7 @@ public class Fach : Entitaet, ISchulgebunden
     public bool Aktiv { get; set; } = true;
 }
 
-/// <summary>Fach in einer Klasse mit Koeffizient.</summary>
+/// <summary>Fach in einer Klasse mit Koeffizient; optional « Matière facultative » (Wahlfach) mit Regel für die Moyenne.</summary>
 public class Klassenfach : Entitaet, ISchulgebunden
 {
     public Guid SchuleId { get; set; }
@@ -86,6 +86,25 @@ public class Klassenfach : Entitaet, ISchulgebunden
     public Guid FachId { get; set; }
     public decimal Koeffizient { get; set; } = 1;
     public int? Reihenfolge { get; set; }
+
+    /// <summary>« Matière facultative »: zählt nur für Schüler mit einer <see cref="Fachwahl"/> (19.11.2026).</summary>
+    public bool IstWahlfach { get; set; }
+
+    /// <summary>Regel des Wahlfachs für die Moyenne (nur wirksam mit <see cref="IstWahlfach"/>).</summary>
+    public WahlfachRegel WahlfachRegel { get; set; }
+}
+
+/// <summary>
+/// Wahl einer « Matière facultative » durch einen Schüler: gilt für das ganze Schuljahr in dieser Klasse; eindeutig je
+/// (Klassenfach, Schüler). Beim Klassenwechsel wird sie auf dasselbe Fach der neuen Klasse übertragen, wenn es dort auch
+/// Wahlfach ist (sonst entfällt sie dort); die Wahl in der alten Klasse bleibt für deren Perioden bestehen.
+/// </summary>
+public class Fachwahl : Entitaet, ISchulgebunden
+{
+    public Guid SchuleId { get; set; }
+    public Guid KlassenfachId { get; set; }
+    public Guid SchuelerId { get; set; }
+    public Guid ErfasstVonId { get; set; }
 }
 
 /// <summary>

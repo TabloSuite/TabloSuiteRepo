@@ -14,7 +14,10 @@ public enum MittelStatus
     Dispense = 2,
 
     /// <summary>Mindestens eine erwartete Note fehlt (« Notes incomplètes »).</summary>
-    Incomplet = 3
+    Incomplet = 3,
+
+    /// <summary>« Matière facultative » vom Schüler nicht gewählt – zählt gar nicht (Anzeige « — »).</summary>
+    NonChoisi = 4
 }
 
 /// <summary>Ungerundeter Mittelwert mit Status; Anzeige, Rang und Schwellen nutzen <see cref="Gerundet"/>.</summary>
@@ -23,6 +26,7 @@ public readonly record struct Mittel(MittelStatus Status, decimal? Wert)
     public static readonly Mittel NonEvalue = new(MittelStatus.NonEvalue, null);
     public static readonly Mittel Dispense = new(MittelStatus.Dispense, null);
     public static readonly Mittel Incomplet = new(MittelStatus.Incomplet, null);
+    public static readonly Mittel NonChoisi = new(MittelStatus.NonChoisi, null);
 
     public static Mittel Von(decimal wert) => new(MittelStatus.Wert, wert);
 
@@ -45,6 +49,9 @@ public readonly record struct Wertung(decimal Bareme, decimal Gewicht, NotenStat
     /// <summary>Hat der Schüler hier eine (nicht entfernte) Note?</summary>
     public bool HatNote => Status is { } s && s != NotenStatus.Leer;
 }
+
+/// <summary>Fach in der Moyenne: Mittel, Koeffizient und – nur bei « Matières facultatives » – die Regel (null = Pflichtfach).</summary>
+public readonly record struct FachBeitrag(Mittel Mittel, decimal Koeffizient, WahlfachRegel? Wahlfach = null);
 
 /// <summary>Zentrale Rechenregeln der Noten (Bauplan §5 Regeln 1–4), rein und ohne Datenbank.</summary>
 public static class NotenRechner
@@ -101,19 +108,56 @@ public static class NotenRechner
     /// « Non évalué »/« Dispensé » zählen nicht; ohne Fach mit Wert → nicht bewertet.
     /// </summary>
     public static Mittel MoyenneGenerale(IEnumerable<(Mittel Mittel, decimal Koeffizient)> faecher)
+        => MoyenneGenerale(faecher.Select(f => new FachBeitrag(f.Mittel, f.Koeffizient)));
+
+    /// <summary>
+    /// Moyenne générale mit « Matières facultatives » (Regel 2a, 19.11.2026):
+    /// Moyenne = (Σ Punkte der Pflichtfächer + Σ Punkte « comme une matière normale » + Σ Bonus) / (Σ Koeff. der Pflichtfächer
+    /// + Σ Koeff. « comme une matière normale »), höchstens 20.
+    /// <list type="bullet">
+    /// <item>« Seuls les points au-dessus de 10 comptent »: Bonus = (Fachmittel − 10) × Koeffizient, nur wenn &gt; 0 (ungerundet wie
+    /// Regel 4); der Koeffizient zählt NICHT zur Summe. Beispiel: Pflicht 64 Punkte / 5 Koeff. = 12,80; Ewe 16 (coef 2) → Bonus 12 →
+    /// (64 + 12) / 5 = 15,20. Ewe 8 → Bonus 0 → 12,80.</item>
+    /// <item>« Compte comme une matière normale »: wie ein Pflichtfach.</item>
+    /// <item>« Ne compte pas »: wird übersprungen (auch wenn unvollständig).</item>
+    /// <item>Nicht gewählt (<see cref="MittelStatus.NonChoisi"/>): zählt gar nicht.</item>
+    /// </list>
+    /// Ein unvollständiges Fach, das zählt (Pflicht, « normale » oder Bonus), macht die Moyenne unvollständig.
+    /// </summary>
+    public static Mittel MoyenneGenerale(IEnumerable<FachBeitrag> faecher)
     {
-        decimal summe = 0, koeffizienten = 0;
+        decimal summe = 0, koeffizienten = 0, bonus = 0;
         var unvollstaendig = false;
-        foreach (var (mittel, koeff) in faecher)
+        foreach (var f in faecher)
         {
-            if (koeff <= 0) throw new ArgumentOutOfRangeException(nameof(faecher), "Le coefficient doit être positif.");
-            if (mittel.Status == MittelStatus.Incomplet) { unvollstaendig = true; continue; }
-            if (!mittel.HatWert) continue;
-            summe += mittel.Wert!.Value * koeff;
-            koeffizienten += koeff;
+            if (f.Koeffizient <= 0) throw new ArgumentOutOfRangeException(nameof(faecher), "Le coefficient doit être positif.");
+            if (f.Wahlfach == WahlfachRegel.NurInformation || f.Mittel.Status == MittelStatus.NonChoisi) continue;
+            if (f.Mittel.Status == MittelStatus.Incomplet) { unvollstaendig = true; continue; }
+            if (!f.Mittel.HatWert) continue;
+            if (f.Wahlfach == WahlfachRegel.PunkteUeber10)
+            {
+                bonus += Bonus(f.Mittel.Wert!.Value, f.Koeffizient);
+                continue;
+            }
+            summe += f.Mittel.Wert!.Value * f.Koeffizient;
+            koeffizienten += f.Koeffizient;
         }
         if (unvollstaendig) return Mittel.Incomplet;
-        return koeffizienten == 0 ? Mittel.NonEvalue : Mittel.Von(summe / koeffizienten);
+        return koeffizienten == 0 ? Mittel.NonEvalue : Mittel.Von(Math.Min(20, (summe + bonus) / koeffizienten));
+    }
+
+    /// <summary>Bonus eines Wahlfachs « points au-dessus de 10 »: (Fachmittel − 10) × Koeffizient, nur wenn &gt; 0.</summary>
+    public static decimal Bonus(decimal fachmittel, decimal koeffizient) => Math.Max(0, fachmittel - 10) * koeffizient;
+
+    /// <summary>
+    /// Beitrag eines Fachs zur Zeile « TOTAUX » (Punkte, zählt der Koeffizient?): Pflicht/« normale » = Mittel × Koeff.;
+    /// Bonus-Regel = Bonus ohne Koeffizient; « Ne compte pas » und ohne Wert = nichts.
+    /// </summary>
+    public static (decimal? Punkte, bool ZaehltKoeffizient) Beitrag(FachBeitrag f)
+    {
+        if (!f.Mittel.HatWert || f.Wahlfach == WahlfachRegel.NurInformation) return (null, false);
+        var w = f.Mittel.Wert!.Value;
+        return f.Wahlfach == WahlfachRegel.PunkteUeber10 ? (Bonus(w, f.Koeffizient), false) : (w * f.Koeffizient, true);
     }
 
     /// <summary>

@@ -158,6 +158,7 @@ public sealed class EinschreibungService(
                 Status = EinschreibungsStatus.Active, IstWiederholer = alt.IstWiederholer
             };
             db.Einschreibungen.Add(neu);
+            await UnterrichtService.FachwahlenUebernehmenAsync(db, a.SchuleId, konto.Id, alt.KlasseId, neueKlasse.Id, a.Id, ct);
             audit.Erfasse(db, a.Id, a.SchuleId, OrgAudit.KlasseGewechselt, nameof(Konto), konto.Id,
                 $"{konto.VollerName} : {altName} → {neueKlasse.Name} à partir du {SkoulouKultur.Datum(datum)}.");
             await db.SaveChangesAsync(ct);

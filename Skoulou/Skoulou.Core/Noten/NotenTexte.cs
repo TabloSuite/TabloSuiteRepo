@@ -30,13 +30,30 @@ public static class NotenTexte
     /// <summary>Punkte einer Note ohne unnötige Nullen: « 12 », « 12,5 », « 12,25 ».</summary>
     public static string Punkte(decimal punkte) => punkte.ToString("0.##", SkoulouKultur.Kultur);
 
-    /// <summary>Anzeige eines Mittels: Wert oder « Non évalué » / « Dispensé » / « Notes incomplètes ».</summary>
+    /// <summary>Anzeige eines Mittels: Wert oder « Non évalué » / « Dispensé » / « Notes incomplètes »; nicht gewähltes Wahlfach « — ».</summary>
     public static string Mittel(Mittel m) => m.Status switch
     {
         MittelStatus.Wert when m.Wert is { } w => Zahl(w),
         MittelStatus.Dispense => "Dispensé",
         MittelStatus.Incomplet => "Notes incomplètes",
+        MittelStatus.NonChoisi => "—",
         _ => "Non évalué"
+    };
+
+    /// <summary>Regel einer « Matière facultative » für Auswahllisten (Klassen › Matières et enseignants).</summary>
+    public static string WahlfachText(WahlfachRegel regel) => regel switch
+    {
+        WahlfachRegel.WieNormal => "Compte comme une matière normale",
+        WahlfachRegel.NurInformation => "Ne compte pas (information seulement)",
+        _ => "Seuls les points au-dessus de 10 comptent"
+    };
+
+    /// <summary>Kurze Angabe der Regel auf dem Bulletin (Kopfzeile « MATIÈRES FACULTATIVES » bzw. unter dem Fach).</summary>
+    public static string WahlfachKurz(WahlfachRegel regel) => regel switch
+    {
+        WahlfachRegel.WieNormal => "comptent comme les autres matières",
+        WahlfachRegel.NurInformation => "à titre d'information, ne comptent pas",
+        _ => "points au-dessus de 10 ajoutés"
     };
 
     /// <summary>Kurzform für Tabellen: Wert oder « — » / « disp. » / « incomplet ».</summary>

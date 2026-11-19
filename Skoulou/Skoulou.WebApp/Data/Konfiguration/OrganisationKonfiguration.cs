@@ -86,6 +86,21 @@ internal sealed class KlassenfachKonfiguration : IEntityTypeConfiguration<Klasse
     }
 }
 
+/// <summary>Wahl einer « Matière facultative » (19.11.2026): eindeutig je Klassenfach und Schüler, nie kaskadierend.</summary>
+internal sealed class FachwahlKonfiguration : IEntityTypeConfiguration<Fachwahl>
+{
+    public void Configure(EntityTypeBuilder<Fachwahl> b)
+    {
+        b.ToTable("Fachwahlen");
+        b.Schulgebunden();
+        b.HasIndex(x => new { x.KlassenfachId, x.SchuelerId }).IsUnique();
+        b.HasIndex(x => x.SchuelerId);
+        b.Fk<Fachwahl, Klassenfach>(x => x.KlassenfachId);
+        b.KontoFk(x => x.SchuelerId);
+        b.KontoFk(x => x.ErfasstVonId);
+    }
+}
+
 internal sealed class LehrauftragKonfiguration : IEntityTypeConfiguration<Lehrauftrag>
 {
     public void Configure(EntityTypeBuilder<Lehrauftrag> b)

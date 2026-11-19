@@ -1,10 +1,18 @@
+using Skoulou.Core.Entitaeten;
+
 namespace Skoulou.Core.Noten;
 
-/// <summary>Fach einer Klasse mit Koeffizient.</summary>
-public sealed record FachSpalte(Guid FachId, decimal Koeffizient);
+/// <summary>Fach einer Klasse mit Koeffizient; <see cref="Wahlfach"/> = Regel einer « Matière facultative » (null = Pflichtfach).</summary>
+public sealed record FachSpalte(Guid FachId, decimal Koeffizient, WahlfachRegel? Wahlfach = null);
 
-/// <summary>Wertungen eines Schülers je Fach (fehlendes Fach = keine Bewertung).</summary>
-public sealed record SchuelerWertungen(Guid Id, IReadOnlyDictionary<Guid, IReadOnlyList<Wertung>> JeFach);
+/// <summary>
+/// Wertungen eines Schülers je Fach (fehlendes Fach = keine Bewertung); <see cref="Wahl"/> = gewählte Wahlfächer (FachIds).
+/// Ein Wahlfach, das nicht in <see cref="Wahl"/> steht, zählt für ihn gar nicht (« — »).
+/// </summary>
+public sealed record SchuelerWertungen(Guid Id, IReadOnlyDictionary<Guid, IReadOnlyList<Wertung>> JeFach, IReadOnlySet<Guid>? Wahl = null)
+{
+    public bool HatGewaehlt(FachSpalte f) => f.Wahlfach is null || (Wahl?.Contains(f.FachId) ?? false);
+}
 
 public sealed record FachErgebnis(Mittel Mittel, RangInfo Rang);
 
@@ -21,15 +29,18 @@ public sealed record JahresErgebnis(Guid Id, Mittel Moyenne, RangInfo Rang, IRea
 
 /// <summary>
 /// Rechnet eine ganze Klasse in einem Durchgang (Daten einmal laden, keine N²-Abfragen – Fachkonzept 04 §7.4):
-/// Fachmittel (Regel 1), Moyenne (Regel 2), Ränge über die Kohorte (Regel 5), Statistik.
+/// Fachmittel (Regel 1), Moyenne (Regel 2, mit Wahlfächern Regel 2a), Ränge über die Kohorte (Regel 5), Statistik.
+/// Wahlfächer: Fachmittel, Fachrang und Fachstatistik nur über die Schüler, die das Fach gewählt haben.
 /// </summary>
 public static class KlassenRechner
 {
     public static KlassenErgebnis Berechne(IReadOnlyList<FachSpalte> faecher, IReadOnlyList<SchuelerWertungen> schueler, bool absentZaehltNull)
     {
         var fachMittel = schueler.ToDictionary(s => s.Id, s => faecher.ToDictionary(f => f.FachId,
-            f => s.JeFach.TryGetValue(f.FachId, out var w) ? NotenRechner.Fachmittel(w, absentZaehltNull) : Mittel.NonEvalue));
-        var moyennes = schueler.ToDictionary(s => s.Id, s => NotenRechner.MoyenneGenerale(faecher.Select(f => (fachMittel[s.Id][f.FachId], f.Koeffizient))));
+            f => !s.HatGewaehlt(f) ? Mittel.NonChoisi
+                : s.JeFach.TryGetValue(f.FachId, out var w) ? NotenRechner.Fachmittel(w, absentZaehltNull) : Mittel.NonEvalue));
+        var moyennes = schueler.ToDictionary(s => s.Id, s => NotenRechner.MoyenneGenerale(faecher.Select(f =>
+            new FachBeitrag(fachMittel[s.Id][f.FachId], f.Koeffizient, f.Wahlfach))));
         var raenge = RangRechner.AusMitteln(moyennes.Select(m => (m.Key, m.Value)));
         var fachRaenge = faecher.ToDictionary(f => f.FachId, f => RangRechner.AusMitteln(schueler.Select(s => (s.Id, fachMittel[s.Id][f.FachId]))));
 
@@ -37,13 +48,15 @@ public static class KlassenRechner
                 faecher.ToDictionary(f => f.FachId, f => new FachErgebnis(fachMittel[s.Id][f.FachId], fachRaenge[f.FachId][s.Id])),
                 moyennes[s.Id], raenge[s.Id]))
             .ToList();
-        var jeFach = faecher.ToDictionary(f => f.FachId, f => KlassenStatistik.Berechne(schueler.Select(s => fachMittel[s.Id][f.FachId]).ToList()));
+        var jeFach = faecher.ToDictionary(f => f.FachId, f => KlassenStatistik.Berechne(schueler.Where(s => s.HatGewaehlt(f))
+            .Select(s => fachMittel[s.Id][f.FachId]).ToList()));
         return new KlassenErgebnis(ergebnisse, KlassenStatistik.Berechne(moyennes.Values.ToList()), jeFach);
     }
 
     /// <summary>
     /// « Bilan de fin d'année »: Jahresmittel (Regel 3) und Fach-Jahresmittel je Schüler aus den Periodenergebnissen,
-    /// Jahresrang über die Kohorte. Perioden: (Ergebnis, Jahresgewicht, zählt fürs Jahr).
+    /// Jahresrang über die Kohorte. Perioden: (Ergebnis, Jahresgewicht, zählt fürs Jahr). Die Wahlfach-Regeln wirken über
+    /// die Periodenmoyennes; ein in keiner Periode gewähltes Wahlfach bleibt « non choisi ».
     /// </summary>
     public static IReadOnlyDictionary<Guid, JahresErgebnis> Bilan(IReadOnlyList<Guid> kohorte, IReadOnlyList<Guid> fachIds,
         IReadOnlyList<(KlassenErgebnis Ergebnis, decimal Gewicht, bool ZaehltFuerJahr)> perioden)
@@ -52,11 +65,14 @@ public static class KlassenRechner
             (p.Ergebnis.Fuer(id)?.Moyenne ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr))));
         var raenge = RangRechner.AusMitteln(jahr.Select(j => (j.Key, j.Value)));
         return kohorte.ToDictionary(id => id, id => new JahresErgebnis(id, jahr[id], raenge[id],
-            fachIds.ToDictionary(f => f, f => NotenRechner.FachJahresmittel(perioden.Select(p =>
-                (p.Ergebnis.Fuer(id)?.Faecher.GetValueOrDefault(f)?.Mittel ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr))))));
+            fachIds.ToDictionary(f => f, f =>
+            {
+                var je = perioden.Select(p => (p.Ergebnis.Fuer(id)?.Faecher.GetValueOrDefault(f)?.Mittel ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr)).ToList();
+                return je.Count > 0 && je.All(x => x.Item1.Status == MittelStatus.NonChoisi) ? Mittel.NonChoisi : NotenRechner.FachJahresmittel(je);
+            })));
     }
 
-    /// <summary>Fachgruppen-Bilan (Lettres, Sciences …): Σ(Moy·Coef)/ΣCoef über Fächer mit Wert.</summary>
+    /// <summary>Fachgruppen-Bilan (Lettres, Sciences …): Σ(Moy·Coef)/ΣCoef über Fächer mit Wert (nur Pflichtfächer übergeben).</summary>
     public static Mittel GruppenMittel(IEnumerable<(Mittel Mittel, decimal Koeffizient)> faecher)
         => NotenRechner.MoyenneGenerale(faecher.Where(f => f.Mittel.Status != MittelStatus.Incomplet));
 }

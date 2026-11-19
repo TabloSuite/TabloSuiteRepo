@@ -42,6 +42,25 @@ public enum FachGruppe
     Autres = 3
 }
 
+/// <summary>
+/// Regel einer « Matière facultative » (Wahlfach je Klasse) für die Moyenne générale – Bauplan §5 Regel 2a.
+/// Nur Schüler mit einer <see cref="Fachwahl"/> werden darin benotet; für alle anderen zählt das Fach gar nicht.
+/// </summary>
+public enum WahlfachRegel
+{
+    /// <summary>
+    /// « Seuls les points au-dessus de 10 comptent » (Standard): Bonus = (Fachmittel − 10) × Koeffizient, nur wenn &gt; 0,
+    /// wird zu den Punkten addiert; der Koeffizient zählt NICHT zur Summe der Koeffizienten.
+    /// </summary>
+    PunkteUeber10 = 0,
+
+    /// <summary>« Compte comme une matière normale »: wie ein Pflichtfach, mit Koeffizient.</summary>
+    WieNormal = 1,
+
+    /// <summary>« Ne compte pas (information seulement) »: steht auf dem Bulletin, zählt nicht für die Moyenne.</summary>
+    NurInformation = 2
+}
+
 /// <summary>Zustand einer Einschreibung; höchstens eine « Active » je Schüler.</summary>
 public enum EinschreibungsStatus
 {
