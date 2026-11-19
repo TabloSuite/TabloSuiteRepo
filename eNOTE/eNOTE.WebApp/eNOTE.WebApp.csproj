@@ -36,6 +36,8 @@
 	<PackageReference Include="QRCoder" />
 	<PackageReference Include="System.Security.Cryptography.Pkcs" />
 	<PackageReference Include="QuestPDF" />
+	<!-- KI-Hilfe « Poser une question » (Claude Haiku 5.5) -->
+	<PackageReference Include="Anthropic" />
 	<PackageReference Include="Serilog.AspNetCore" />
 	<PackageReference Include="Serilog.Sinks.Console" />
 	<PackageReference Include="ZXing.Net" />

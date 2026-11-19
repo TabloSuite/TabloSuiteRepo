@@ -208,6 +208,11 @@ if (administration is null)
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.NachrichtenService>();
     builder.Services.AddHostedService<ENote.WebApp.Services.Mails.MailVersandDienst>();
     builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
+    // KI-Hilfe « Poser une question » (Claude Haiku 5.5, 19.11.2026): ohne Ki:AnthropicApiKey registriert, aber unsichtbar.
+    builder.Services.AddOptions<ENote.WebApp.Services.KiHilfe.KiHilfeOptionen>().Bind(builder.Configuration.GetSection(ENote.WebApp.Services.KiHilfe.KiHilfeOptionen.Abschnitt));
+    builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.KiNutzungsZaehler>();
+    builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.IKiClient, ENote.WebApp.Services.KiHilfe.AnthropicKiClient>();
+    builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.KiHilfeDienst>();
 }
 else
     builder.Services.AddDataProtection(); // Einmalprozess benötigt weder Storage noch persistente Runtime-Schlüssel.

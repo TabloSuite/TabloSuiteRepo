@@ -3373,6 +3373,28 @@ html[data-theme="dark"] .an-banner.an-wartung.laeuft { --an-farbe: #fbbf24; }
 .kt-formular p { margin: 0; }
 .kt-formular label { display: grid; gap: .35rem; width: 100%; }
 .kt-formular textarea { width: 100%; max-width: none; box-sizing: border-box; resize: vertical; min-height: 8rem; }
+/* 19.11.2026: KI-Hilfe « Poser une question » – Handy zuerst, lange Wörter brechen um (kein Überlauf bei 360 px) */
+.aq-seite { display: grid; gap: 1rem; max-width: 46rem; }
+.aq-seite .enote-page-header { margin-bottom: 0; }
+.aq-karte { display: grid; gap: .9rem; padding: 1.1rem 1.2rem; min-width: 0; }
+.aq-karte textarea { max-width: none; box-sizing: border-box; }
+.aq-datenschutz { align-items: flex-start; flex-wrap: nowrap; font-weight: 500; line-height: 1.45; }
+.aq-datenschutz .enote-icon { flex: none; margin-top: .1rem; }
+.aq-fuss { display: flex; align-items: center; justify-content: space-between; gap: .6rem 1rem; flex-wrap: wrap; }
+.aq-rest { color: var(--enote-text-muted); font-size: .88rem; }
+.aq-ergebnis { scroll-margin-top: 5rem; }
+.aq-antwort { overflow-wrap: anywhere; }
+.aq-antwort h2 { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: 1.05rem; }
+.aq-antwort p { margin: 0; line-height: 1.55; }
+.aq-frage { display: grid; gap: .15rem; padding: .6rem .8rem; border-radius: var(--enote-radius-sm); background: var(--enote-surface-2); white-space: pre-line; }
+.aq-frage small { color: var(--enote-text-muted); font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; white-space: normal; }
+.aq-liste { display: grid; gap: .4rem; margin: 0; padding-left: 1.4rem; line-height: 1.5; }
+.aq-videos { display: grid; gap: .45rem; }
+.aq-video { justify-content: flex-start; width: 100%; white-space: normal; text-align: left; }
+.aq-video span { flex: 1 1 auto; min-width: 0; }
+.aq-video small { flex: none; color: var(--enote-text-muted); font-weight: 600; }
+.aq-vorsicht { color: var(--enote-text-muted); font-size: .82rem; }
+@media (max-width: 560px) { .aq-fuss .enote-btn { width: 100%; } .aq-karte { padding: 1rem; } }
 
 /* ============================================================ E-mails › Boîte de réception */
 .em-eingang-kopf { display: grid; gap: .1rem; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; min-width: 0; }

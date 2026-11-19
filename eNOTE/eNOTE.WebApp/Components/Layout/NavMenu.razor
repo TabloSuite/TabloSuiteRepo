@@ -2,6 +2,7 @@
 @inject ENote.WebApp.Services.KassenService KassenService
 @inject ENote.WebApp.Services.AktiverSalonState AktiverSalon
 @inject ENote.WebApp.Services.ToastService Toast
+@inject ENote.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
 @inject NavigationManager Nav
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @using System.Security.Claims
@@ -187,6 +188,8 @@
 
             // Für alle angemeldeten Rollen: Erklärvideos (Inhalt je Rolle, siehe VideoKatalog)
             var aide = new List<NavEintrag> { new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos") };
+            // KI-Hilfe « Poser une question » (19.11.2026): nur mit konfiguriertem Schlüssel (Ki:AnthropicApiKey), sonst unsichtbar.
+            if (KiHilfe.IstVerfuegbar) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, "Poser une question", "sparkles", Kurz: "Question"));
             // Formation der Responsables (Lernpfad + Prüfung); Administrateure trainieren frei.
             if (istProduktOwner || istSuperAdmin) aide.Add(new("/formation", "Formation", "book"));
             aide.Add(new("/contact", "Aide & contact", "help", Kurz: "Contact"));

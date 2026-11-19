@@ -441,3 +441,9 @@ window.enoteVideoPosition = (function () {
         k.setAttribute('aria-checked', 'true');
     }, true);
 })();
+
+// « Poser une question » (19.11.2026): die Antwort liegt am Handy unter dem Formular – nach dem Eintreffen sichtbar machen.
+window.enoteZeige = function (id) {
+    var el = document.getElementById(id);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};

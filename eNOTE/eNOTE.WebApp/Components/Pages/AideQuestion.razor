@@ -1,0 +1,232 @@
+@page "/aide/question"
+@attribute [Authorize]
+@implements IDisposable
+@using System.Security.Claims
+@using ENote.WebApp.Services
+@using ENote.WebApp.Services.KiHilfe
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AktiverSalonState AktiverSalon
+@inject KiHilfeDienst KiHilfe
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Umgebung
+@inject IJSRuntime JS
+
+@* KI-Hilfe « Poser une question » (19.11.2026): nur Bedienungshilfe aus Menü, Formation und Lernvideos der Rolle.
+   Ohne Ki:AnthropicApiKey gibt es die Seite nicht (Weiterleitung auf « Page introuvable »). Die Frage wird nicht gespeichert. *@
+
+<PageTitle>Poser une question</PageTitle>
+
+@if (verfuegbar)
+{
+    <div class="enote-page aq-seite">
+        <div class="enote-page-header">
+            <div>
+                <h1>Poser une question</h1>
+                <p>L'assistant vous indique où trouver une fonction d'eNOTE et quelles étapes suivre.</p>
+            </div>
+        </div>
+
+        <section class="enote-card aq-karte" aria-label="Votre question">
+            <div class="alert alert-info aq-datenschutz" role="note">
+                <Icon Name="info" Groesse="18" />
+                <span>@Datenschutz</span>
+            </div>
+            <div class="enote-form">
+                <label>
+                    Votre question
+                    <textarea rows="4" maxlength="@KiHilfeOptionen.MaxFrageZeichen" @bind="frage" @bind:event="oninput"
+                              placeholder="@Beispiel" disabled="@(verbleibend == 0)"></textarea>
+                </label>
+                <small class="enote-muted">@Laenge / @KiHilfeOptionen.MaxFrageZeichen caractères</small>
+                <div class="aq-fuss">
+                    <span class="aq-rest" role="status">@RestText</span>
+                    <AsyncActionButton Text="Poser la question" BusyText="Recherche de la réponse…" OnClick="FragenAsync"
+                                       CssClass="enote-btn-primary" Disabled="@(!KannFragen)" />
+                </div>
+            </div>
+        </section>
+
+        @if (ergebnis is not null)
+        {
+            <div id="@antwortId" class="aq-ergebnis">
+                @if (ergebnis.Erfolg)
+                {
+                    <section class="enote-card aq-karte aq-antwort" aria-label="Réponse">
+                        <h2><Icon Name="sparkles" Groesse="20" /> Réponse</h2>
+                        @if (gestellt is not null)
+                        {
+                            <p class="aq-frage"><small>Votre question</small><span>@gestellt</span></p>
+                        }
+                        @foreach (var block in ergebnis.Bloecke)
+                        {
+                            @switch (block.Art)
+                            {
+                                case KiBlockArt.Schritte:
+                                    <ol class="aq-liste">
+                                        @foreach (var z in block.Zeilen)
+                                        {
+                                            <li>@z</li>
+                                        }
+                                    </ol>
+                                    break;
+                                case KiBlockArt.Punkte:
+                                    <ul class="aq-liste">
+                                        @foreach (var z in block.Zeilen)
+                                        {
+                                            <li>@z</li>
+                                        }
+                                    </ul>
+                                    break;
+                                default:
+                                    @foreach (var z in block.Zeilen)
+                                    {
+                                        <p>@z</p>
+                                    }
+                                    break;
+                            }
+                        }
+                        @if (ergebnis.Videos.Count > 0)
+                        {
+                            <div class="aq-videos">
+                                <strong>Vidéo d'aide</strong>
+                                @foreach (var video in ergebnis.Videos)
+                                {
+                                    <button type="button" class="enote-btn enote-btn-ghost aq-video" @onclick="() => OeffnenAsync(video)">
+                                        <Icon Name="monitor" Groesse="18" />
+                                        <span>@video.Titel</span>
+                                        <small>@video.Dauer</small>
+                                    </button>
+                                }
+                            </div>
+                        }
+                        <p class="aq-vorsicht">Réponse générée automatiquement : en cas de doute, consultez les <a href="/aide/videos">vidéos d'aide</a> ou la page <a href="/contact">Aide &amp; contact</a>.</p>
+                    </section>
+                }
+                else
+                {
+                    <div class="alert alert-info" role="status">@ergebnis.Meldung</div>
+                }
+            </div>
+        }
+    </div>
+
+    @* Wie « Vidéos d'aide »: das Video öffnet sich im gewohnten Dialogfenster. *@
+    <ModalDialog Open="offen is not null" Title="@(offen?.Titel ?? string.Empty)" MaxWidthClass="enote-modal-video" OnClose="SchliessenAsync">
+        <ChildContent>
+            @if (offen is { } aktiv)
+            {
+                <video class="vh-spieler" src="@VideoUrl(aktiv)" poster="@PosterUrl(aktiv)" controls autoplay playsinline preload="metadata"></video>
+                <p class="enote-muted vh-spieler-text">@aktiv.Beschreibung</p>
+            }
+        </ChildContent>
+    </ModalDialog>
+}
+
+@code {
+    // eNOTE hat keine Guide-Seite: statt « le guide » die Vidéos d'aide und « Aide & contact ».
+    internal const string Datenschutz = "Votre question est envoyée à un service d'intelligence artificielle (Anthropic). N'y écrivez pas de noms ni de données personnelles. Les réponses peuvent contenir des erreurs : en cas de doute, consultez les vidéos d'aide ou la page « Aide & contact ».";
+
+    private readonly string antwortId = "aq-antwort-" + Guid.NewGuid().ToString("N")[..8];
+    private readonly CancellationTokenSource abbruch = new();
+    private bool verfuegbar;
+    private Guid kontoId;
+    private KiRolle rolle = new(ENote.Core.DataModels.Identity.AppRollen.Kassierer);
+    private string? frage;
+    private string? gestellt;
+    private int verbleibend;
+    private KiErgebnis? ergebnis;
+    private bool zeigeAntwort;
+    private VideoKatalog.LernVideo? offen;
+
+    private int Laenge => frage?.Length ?? 0;
+    private bool KannFragen => RendererInfo.IsInteractive && verbleibend > 0 && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
+
+    private string RestText => verbleibend switch
+    {
+        0 => $"Vous avez posé vos {KiHilfeOptionen.FragenJeKontoUndTag} questions d'aujourd'hui.",
+        1 => "Il vous reste 1 question aujourd'hui.",
+        _ => $"Il vous reste {verbleibend} questions aujourd'hui."
+    };
+
+    /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
+    private string Beispiel => rolle.Rolle switch
+    {
+        ENote.Core.DataModels.Identity.AppRollen.SuperAdmin => "ex. Où confirmer le paiement d'un abonnement ?",
+        ENote.Core.DataModels.Identity.AppRollen.ProduktOwner => "ex. Comment prolonger l'essai gratuit d'un établissement ?",
+        ENote.Core.DataModels.Identity.AppRollen.Besitzer => "ex. Comment donner un code PIN à un nouvel employé ?",
+        _ => "ex. Comment clôturer la caisse le soir ?"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        verfuegbar = KiHilfe.IstVerfuegbar;
+        if (!verfuegbar)
+        {
+            Nav.NavigateTo("/introuvable", replace: true);
+            return;
+        }
+        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out kontoId)) return;
+        // Rechte des Mitarbeiterkontos (nur die Bereiche, die der Propriétaire freigegeben hat).
+        if (!AktiverSalon.IstGeladen) await AktiverSalon.InitialisiereAsync(kontoId);
+        rolle = KiRolle.Aus(user, AktiverSalon.Aktiv);
+        verbleibend = KiHilfe.Verbleibend(kontoId);
+    }
+
+    private async Task FragenAsync()
+    {
+        var text = frage;
+        ergebnis = null;
+        try
+        {
+            ergebnis = await KiHilfe.FrageAsync(kontoId, rolle, text, abbruch.Token);
+        }
+        catch (OperationCanceledException) when (abbruch.IsCancellationRequested)
+        {
+            return; // Seite verlassen
+        }
+        verbleibend = ergebnis.Verbleibend;
+        if (ergebnis.Erfolg)
+        {
+            gestellt = KiHilfeDienst.Normalisiere(text);
+            frage = string.Empty;
+        }
+        zeigeAntwort = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!zeigeAntwort) return;
+        zeigeAntwort = false;
+        // Am Handy liegt die Antwort unter dem Formular – sichtbar machen.
+        try { await JS.InvokeVoidAsync("enoteZeige", antwortId); } catch (JSException) { } catch (JSDisconnectedException) { }
+    }
+
+    private async Task OeffnenAsync(VideoKatalog.LernVideo v)
+    {
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.merken"); } catch (JSException) { }
+        offen = v;
+    }
+
+    private async Task SchliessenAsync()
+    {
+        offen = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("enoteVideoPosition.zurueck"); } catch (JSException) { }
+    }
+
+    private string VideoUrl(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion(v.Url, Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private string? PosterUrl(VideoKatalog.LernVideo v)
+    {
+        var datei = Umgebung.WebRootFileProvider.GetFileInfo(v.Poster);
+        return datei.Exists ? VideoKatalog.MitVersion(v.Poster, datei.PhysicalPath) : null;
+    }
+
+    public void Dispose()
+    {
+        abbruch.Cancel();
+        abbruch.Dispose();
+    }
+}
