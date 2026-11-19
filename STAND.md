@@ -1,11 +1,29 @@
-# TabloSuite – Arbeitsstand 19.11.2026 nachts (Videos Wahlfächer fertig, SKOULOU-Deploy offen)
+# TabloSuite – Arbeitsstand 19.11.2026 nachts (alles deployt, KI-Schlüssel gesetzt – morgen weiter)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends, nach dem Deploy)
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 nachts (Sitzungsende, Nutzer: « wir machen morgen weiter »)
+
+**>>> MORGEN (20.11.) ZUERST – Reihenfolge:**
+1. **KI-Hilfe « Poser une question »**: Nutzer nach seinem Test als Admin fragen (beide Apps, Aide › « Poser une question »; nur Admin +
+   Responsable/PO sichtbar, `Ki__AlleRollen=false`). Testfragen aus dem Chat: SKOULOU Wahlfach anlegen/Schüler wählen, Note nach der
+   Veröffentlichung korrigieren, Preis für 300 Schüler (500 F/Monat, ≈ 5.000 F/an); eNOTE Mobile Money kassieren, Kasse auf anderem Gerät
+   übernehmen, Mitarbeiter ohne Passwort; Frage außerhalb des Themas. Danach Fehlerprotokolle lesen (`%TEMP%\enote-lesen\lesen.ps1`,
+   Spalten eNOTE `ExceptionLogs`: ZeitUtc/Nachricht/Ausnahme/Pfad; SKOULOU `FehlerProtokolle`: ZeitUtc/Stufe/Typ/Nachricht/Details/Pfad) und
+   bei falschen/unklaren Antworten die Wissensbasis (`Services/KiHilfe` je App) nachziehen. Ich kenne das Admin-Passwort nicht → Nutzer testet.
+   Erinnern: Ausgabelimit in der Anthropic Console (App hat keine Fragen-Grenze). `Ki__AlleRollen=true` erst nach Rücksprache.
+2. **Beim Nutzer offen (am Gerät):** iPhone-Login (Ladekreis « Se connecter »), eine Registrierung, eNOTE erneute Zuweisung an einen früheren
+   Responsable (Fatal 1 vom Testabend), Mail an neuen Responsable.
+3. Später / nur gemeinsam: `WEBSITE_RUN_FROM_PACKAGE=1` gegen Deploy-Fehler (vorher prüfen, ob die Apps in ihr Verzeichnis schreiben);
+   Azure-Upgrades vor Produktion (SQL Basic, B1, Speech S0, Blob LRS – Memory « vor-produktion »); Vorschläge aus dem Funktionsvergleich
+   eNOTE↔SKOULOU (siehe « ERLEDIGT 19.11. », Nutzerpunkt 5).
+
+**Stand Git/Azure (19.11. ~21:45 UTC):** alles gepusht (bis 3906333 + dieser STAND). Alle drei Apps deployt, Azure-DBs = lokal (keine offene
+Migration). Video-DB `SkoulouDB_VIDEO`: Basis mit `Wahlfaecher` gesichert. Aufnahme-App gestoppt, Temp-Dateien im Papierkorb.
+
 
 **>>> (19.11. ~21:40 UTC) SKOULOU deployt + KI-Schlüssel gesetzt (Nutzer):** `Ki__AnthropicApiKey` und `Ki__AlleRollen=false` in eNOTE + SKOULOU.
 - Live geprüft (lesend): SKOULOU-Startseite 200 (erster Aufruf nach dem Neustart > 90 s Kaltstart), Vorschaubild `skoulou-direction-facultatives.jpg`
