@@ -83,4 +83,45 @@ public class NotenSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenbank>
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal(2, ergebnis.Einschreibungen);
     }
+
+    /// <summary>« Matières facultatives »: eindeutige Wahl je (Klassenfach, Schüler) und Übersetzbarkeit aller neuen Abfragen.</summary>
+    [SqlFact]
+    public async Task Wahlfaecher_eindeutiger_Index_und_Abfragen()
+    {
+        var w = await WeltAsync();
+        var u = w.O.D.Unterricht;
+        await u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.PunkteUeber10);
+        Assert.Equal(1, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler)]));
+        await using (var db = datenbank.Kontext())
+        {
+            db.Fachwahlen.Add(new Fachwahl { SchuleId = w.O.SchuleA, KlassenfachId = w.O.Kf6AFr, SchuelerId = w.O.Schueler, ErfasstVonId = w.D });
+            await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        }
+        await using (var db = datenbank.Kontext())
+        {
+            // anderer Schüler im selben Wahlfach und derselbe Schüler in einem anderen Klassenfach sind erlaubt
+            db.Fachwahlen.Add(new Fachwahl { SchuleId = w.O.SchuleA, KlassenfachId = w.O.Kf6AFr, SchuelerId = w.O.SchuelerZiel, ErfasstVonId = w.D });
+            db.Fachwahlen.Add(new Fachwahl { SchuleId = w.O.SchuleA, KlassenfachId = w.O.Kf6AMath, SchuelerId = w.O.Schueler, ErfasstVonId = w.D });
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(1, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler)]));
+
+        var math = await w.BewertungAsync(w.O.Kf6AMath);
+        var fr = await w.BewertungAsync(w.O.Kf6AFr);
+        await w.NoteAsync(math, w.E1, "15");
+        await w.NoteAsync(math, w.E2, "11");
+        await w.NoteAsync(fr, w.E1, "16");
+        Assert.Single((await w.Noten.RasterAsync(w.D, w.O.Kf6AFr, w.O.P1)).Zeilen);
+        Assert.Equal(2, (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Count);
+        Assert.Equal(1, (await w.O.D.Klassen.KlassenAsync(w.D, w.O.Jahr)).Single(k => k.Id == w.O.Klasse6A).AnzahlWahlfaecher);
+        Assert.Equal(3, (await w.Lesen.VollstaendigkeitAsync(w.D, w.O.Jahr, w.O.P1)).Single(k => k.KlasseId == w.O.Klasse6A).Erwartet);
+        var uebersicht = await w.Conseil.UebersichtAsync(w.D, w.O.Klasse6A, w.O.P1);
+        Assert.Equal(19m, uebersicht.Zeilen.Single(z => z.EinschreibungId == w.E1).Moyenne.Wert);
+        await w.AendernAsync(async db => (await db.Schulen.SingleAsync(s => s.Id == w.O.SchuleA)).ElternSehenNotenLive = true);
+        Assert.Equal(2, (await w.Lesen.LiveNotenAsync(w.O.Eltern, w.O.Schueler, w.O.P1)).Faecher.Count);
+        await w.O.D.Unterricht.FaecherHinzufuegenAsync(w.D, w.O.Klasse6B, [w.O.FachFr]);
+        await u.KoeffizientenKopierenAsync(w.D, w.O.Klasse6A, w.O.Klasse6B);
+        await w.O.D.Einschreibung.KlasseWechselnAsync(w.D, w.O.Schueler, w.O.Klasse6B, new(2026, 11, 2));
+        Assert.Equal(2, await w.MitDbAsync(db => db.Fachwahlen.CountAsync(x => x.SchuelerId == w.O.Schueler && x.KlassenfachId != w.O.Kf6AMath)));
+    }
 }
