@@ -86,7 +86,7 @@ public static class GuideTexte
         [
             new("1. Année scolaire et périodes", "Créez l'année (ex. 2026-2027), choisissez le nombre de périodes (1 période, 2 semestres, 3 trimestres ou sessions), puis démarrez-la.", "/direction/annee"),
             new("2. Classes", "Créez les niveaux, puis les classes de chaque niveau avec leur salle, leur capacité et le professeur principal.", "/direction/classes"),
-            new("3. Matières", "Listez les matières avec leur groupe (lettres, sciences…) et leur ordre sur le bulletin, puis réglez leurs coefficients dans chaque classe (« Matières et enseignants »).", "/direction/matieres"),
+            new("3. Matières", "Listez les matières avec leur groupe (lettres, sciences…) et leur ordre sur le bulletin, puis réglez leurs coefficients dans chaque classe (« Matières et enseignants »). Une matière peut y être facultative (ex. Ewe, Culture) : choisissez comment elle compte, puis cochez les élèves qui la suivent (« Matières facultatives »).", "/direction/matieres"),
             new("4. Équipe", "Ajoutez enseignants et coordinateurs et leurs affectations (classe, matière, heures) ; imprimez la liste des accès pour ceux sans e-mail.", "/direction/equipe"),
             new("5. Élèves", "Ajoutez ou importez les élèves (Excel) dans leur classe et validez les inscriptions en ligne. Changements de classe et départs se font aussi ici.", "/direction/eleves"),
             new("6. Parents", "Créez les accès des parents et liez leurs enfants : ils suivent notes, présences, emploi du temps et frais.", "/direction/parents")
@@ -131,7 +131,7 @@ public static class GuideTexte
         new("classe", "Ma classe", "users",
         [
             new("Appel", "Faites l'appel de vos classes : tout le monde est présent par défaut, signalez seulement les absents et les retards.", "/presences"),
-            new("Notes", "Saisissez les notes dans la grille : « abs » absent, « aj » absence justifiée, « disp » dispensé.", "/notes"),
+            new("Notes", "Saisissez les notes dans la grille : « abs » absent, « aj » absence justifiée, « disp » dispensé. Dans une matière facultative, seuls les élèves qui l'ont choisie apparaissent.", "/notes"),
             new("Bulletins", "Professeur principal : préparez le conseil de classe et consultez les bulletins de votre classe.", "/bulletins"),
             new("Emploi du temps", "Votre semaine, classe par classe.", "/enseignant/emploi-du-temps")
         ])

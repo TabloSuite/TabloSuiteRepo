@@ -158,6 +158,15 @@ SuperAdmin/ProduktOwner haben ohne `UserSchool` zur Schule keinen Zugriff auf No
 - Fehlende Noten zählen **nie** als 0 (Test `NotenBerechnungTests`).
 - Ungültige Eingaben (Barème ≤0, Gewicht ≤0, Punkte außerhalb, Note >20, Coef ≤0) werfen `ArgumentOutOfRange`.
 
+### 3.7a « Matières facultatives » (Neubau, 19.11.2026 – gab es in der Alt-App nicht)
+Vom Nutzer freigegeben für Togo (Culture, Ewe …); Schulen ohne Wahlfächer (z. B. Sprachschulen) merken nichts davon. Formeln: Bauplan §5 Regel 2a.
+1. **Einstellung je Klassenfach** (Direktion, Classes › « Matières et enseignants »): Schalter « Matière facultative » und Pflichtauswahl « Compte dans la moyenne »: « Seuls les points au-dessus de 10 comptent » (Standard), « Compte comme une matière normale », « Ne compte pas (information seulement) ». Wird mit Koeffizienten kopiert, auf das Niveau übertragen und beim Jahreswechsel übernommen.
+2. **Wahl je Schüler fürs ganze Schuljahr** (Reiter « Matières facultatives »): Häkchen Schüler × Wahlfach, « Tous » / « Aucun », « Enregistrer ». Nur Schüler der Klasse und nur Wahlfächer der Klasse; im abgeschlossenen Jahr nur lesen. Klassenwechsel überträgt die Wahl auf dasselbe Wahlfach der neuen Klasse.
+3. **Notenerfassung:** im Wahlfach erscheinen nur die Wählenden (Hinweis « Matière facultative »); für andere wird weder Note noch Appréciation angenommen, und sie fehlen nie in « Notes incomplètes ». Cockpit-Vollständigkeit zählt im Wahlfach nur die Wählenden.
+4. **Rechnen:** Bonus-Regel: (Fachmittel − 10) × Koeff., nur positiv, Koeffizient nicht in der Summe; Moyenne höchstens 20. Beispiel: 64 Punkte / 5 Koeff. = 12,80; Ewe 16 (coef 2) → (64 + 12) / 5 = 15,20; Ewe 8 → 12,80. Fachrang und Fachstatistik nur über die Wählenden.
+5. **Bulletin:** nicht gewählte Wahlfächer erscheinen beim Schüler gar nicht; gewählte stehen im Bereich « MATIÈRES FACULTATIVES » mit kurzer Regel (« points au-dessus de 10 ajoutés » …; bei verschiedenen Regeln unter jedem Fach), Bonus in « MOY × COEF » als « +12,00 », « TOTAUX » mit Bonus ohne dessen Koeffizienten. Gruppenköpfe (« MATIÈRES LITTÉRAIRES », « MATIÈRES SCIENTIFIQUES », « AUTRES MATIÈRES ») und Gruppen-Bilan nur mit der Vorlage « Groupes de matières » (`ZeigeFachGruppen`, Standard aus), nur über Pflichtfächer. Ohne Wahlfächer bleiben Snapshot-JSON und Hash unverändert (kein neues Feld).
+6. **Eltern (Live-Noten):** nur gewählte Wahlfächer, mit Hinweis auf die Regel; Moyenne nach derselben Regel.
+
 ### 3.8 Rundung und Anzeige
 - Intern wird **ungerundet** gerechnet und gespeichert (Snapshot enthält volle decimal-Werte).
 - Anzeige: `Round(x, 2, AwayFromZero)`, Format `0.00` fr-FR (Komma) – NB:31, BT:64-65.
