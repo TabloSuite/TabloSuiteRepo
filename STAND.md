@@ -19,8 +19,11 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   ersten Veröffentlichung (Schalter/Regel fest, Wahl nur in Rectification, Neuankömmlinge frei); Jahreswechsel übernimmt die Wahl.
   Punkte 1+2 bleiben wie gebaut (Kopfzeilen bei « Groupes de matières », Schalter auch bei Sprachschulen). Keine neue Migration.
   Tests 707 / SQL 728. Oberfläche nur über Dienst-Tests geprüft, nicht im Browser angesehen.
-- **OK für das SKOULOU-Azure-Skript liegt vor (« ja für alle »)** – aber erst **direkt vor dem Deploy** einspielen: das Skript
-  benennt Preisspalten um, die die live laufende SKOULOU-Version noch liest (Preis-Seiten/Registrierung fielen sonst bis zum Deploy aus).
+- ✅ **Azure SKOULOU eingespielt** (19.11. spätabends, direkt vor dem Deploy, Nutzer « ja jetzt deploy »): PreisJeSchuelerUndMonat +
+  Wahlfaecher, lesend geprüft (500 F, CGU 2026-11-19, 4 Spalten, Fachwahlen mit eindeutigem Index) → **Azure = lokal (beide Apps)**.
+  **Nutzer deployt jetzt eNOTE, SKOULOU, TabloSuiteHome.** Bis zum SKOULOU-Deploy zeigen Preis-Seiten/Registrierung auf Azure Fehler.
+  Nach dem Deploy prüfen: skoulou.tablosuite.com Abschnitt « Tarifs » (500 F/mois), tablosuite.com-Karte, `/tarifs/public`,
+  iPhone-Login (Ladekreis), Registrierung, Zuweisung an früheren Responsable (eNOTE), KI-Menü unsichtbar (noch kein Schlüssel).
 - **Danach: Videos sehr informationsreich** (Nutzer 19.11.): neu « Les matières facultatives » (Direction), Szenen in
   « Préparer l'année » (Matières et enseignants) und « Publier les bulletins » (Vorlage « Groupes de matières »). Vorher
   SkoulouDB_VIDEO migrieren + Basis-Sicherung erneuern.
