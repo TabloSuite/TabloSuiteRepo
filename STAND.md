@@ -25,7 +25,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
      (`git worktree remove --force …`, `git branch -D …`). Unfertiges selbst zu Ende bauen.
 2. **Push**: 2 Commits warteten beim Sitzungsende auf die GitHub-Anmeldung (f3570c0 u. a.) – `git status -sb`, ggf. `git push`.
 3. **Migrationen** (lokal + Azure, Azure NUR mit ausdrücklichem OK des Nutzers): eNOTE `20261119101000_ProduktOwnerSalonVerlauf`
-   (Index, lokal SCHON drauf; Skript `%TEMP%\enote-scriptszure-ProduktOwnerSalonVerlauf.sql`), eNOTE `20261119131056_KundenAktenRecht`
+   (Index, lokal SCHON drauf; Skript `%TEMP%\enote-scripts\azure-ProduktOwnerSalonVerlauf.sql`), eNOTE `20261119131056_KundenAktenRecht`
    (neue Spalte, lokal noch NICHT), SKOULOU `20261119113708_PreisJeSchuelerUndMonat` (Spalten umbenennen + Werte ÷ 10/3.600→500,
    CGU-Version; lokal SkoulouDB noch NICHT, SkoulouDB_VIDEO schon), dazu die Wahlfach-Migration aus Punkt 1. Idempotente Skripte mit
    `dotnet ef migrations script <von> <bis> --idempotent`; Azure-Stand vorher lesen (`%TEMP%\enote-lesen\lesen.ps1`).
