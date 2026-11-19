@@ -7,7 +7,24 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends)
 
-**>>> STAND 19.11. spätabends (neue Sitzung):**
+**>>> AKTUELL (19.11. spätabends, zuletzt):**
+- ✅ Beide Agenten-Arbeiten übernommen, Worktrees entfernt, alles gepusht (bis 5f3ebca). Tests: eNOTE 540, SKOULOU 704
+  (mit `SKOULOU_SQL_TESTS=1`: 725).
+- ✅ **Azure eNOTE eingespielt** (OK « azuredb ok »): ProduktOwnerSalonVerlauf + KundenAktenRecht, lesend geprüft → Azure = lokal.
+- ✅ **KI-Hilfe auf Nutzerwunsch: keine Fragen-Grenzen, zunächst nur Admin + Responsable/PO** (1d8cd16); `Ki__AlleRollen=true`
+  schaltet später alle frei. Kosten begrenzt das Ausgabelimit des Schlüssels in der Anthropic Console.
+- ✅ **Matières facultatives übernommen** (54b56f1 … 5f3ebca), Migration `20261119151242_Wahlfaecher` lokal SkoulouDB eingespielt
+  (SkoulouDB_VIDEO noch nicht – vor der nächsten Videoaufnahme mitziehen + Basis-Sicherung erneuern, AUFTRAG.md §9).
+- **SKOULOU-Azure-Skript bereit, wartet auf OK:** `%TEMP%\enote-scripts\azure-skoulou-19-11.sql` (PreisJeSchuelerUndMonat + Wahlfaecher,
+  idempotent). Auf Wegwerf-DB zweimal geprobt: 3.600 → 500, CGU 2026-11-19, Spalten/Tabelle da, 2. Lauf ändert nichts.
+  Anwenden: `azure-anwenden.ps1 -Skript … -Db Skoulou-Database` (jetzt mit XACT_ABORT + Abbruch beim ersten Fehler).
+  Falle: `sqlcmd` nur mit `-I` (QUOTED_IDENTIFIER), sonst scheitert das UPDATE auf Schuljahre und die Migration wird trotzdem eingetragen.
+- Danach: Nutzer deployt alle drei Apps. Offene Fragen Wahlfächer (Agent): Gruppenköpfe bei Schulen mit « Groupes de matières »
+  jetzt sichtbar ok?; Schalter auch bei Sprachschulen ausblenden?; nachträglich facultative → alte Noten Nicht-Wählender bleiben
+  gespeichert, zählen nicht; Wahl jedes Jahr neu; Wahlfach in veröffentlichten Bulletins ändert deren Hash (Rectification).
+  Evtl. veraltete Videos: direction-preparer (Schalter je Fach), direction-bulletins (« Groupes de matières »), direction-concept (Lücke).
+
+**>>> STAND 19.11. spätabends (neue Sitzung, Anfang):**
 - Beide Agenten-Arbeitskopien waren **unfertig und uncommittet** (Wahlfächer: Core/Daten/Dienste fertig, Oberfläche/Bulletin/
   Migration/Tests fehlten; KI-Hilfe: nur SKOULOU-Dienste). Je ein neuer Agent baut in **derselben** Arbeitskopie fertig und committet
   dort im Branch. Danach: prüfen, bauen, Tests, cherry-pick, Worktree entfernen (siehe Punkt 1 unten).
