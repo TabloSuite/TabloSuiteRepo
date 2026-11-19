@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 18.11.2026 (abends, vor dem Testabend)
+# TabloSuite – Arbeitsstand 19.11.2026 (nach dem Testabend)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -6,6 +6,43 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ---
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 abends
+
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026
+
+**>>> ZUERST (19.11.) – Testabend-Ergebnisse 1–13 umgesetzt, alles gepusht (86193a6 … 9bd72e5), NOCH NICHT DEPLOYT:**
+- **Offen beim Nutzer:** (1) OK für Azure-Migration eNOTE `20261119101000_ProduktOwnerSalonVerlauf` (nur Index neu, Skript
+  `%TEMP%\enote-scriptszure-ProduktOwnerSalonVerlauf.sql`, idempotent, mit `azure-anwenden.ps1`); lokal ENOTEDB schon drauf.
+  Reihenfolge egal (neuer Code ohne Migration: Meldung statt Absturz), voll behoben erst mit Migration. (2) Dann eNOTE + SKOULOU
+  deployen (eNOTE enthält auch den Deadlock-Fix 8ba0e5b). (3) Mail-Art « Bienvenue » ist in Administration › E-mails
+  standardmäßig AUS (Postmark-Kontingent, seit 10.11.) – darum bekam der selbst registrierte Besitzer « Salon B2 » keine
+  Willkommensmail; einschalten = Nutzerentscheidung. (4) Punkte 14 (Video Drucker/Scanner/Papier) und 15 (SKOULOU-Gebühren
+  pro Abschnitt statt Jahrespreis) besprechen – Vorschlag im Chat 19.11.
+- Lesewerkzeug Azure (nur SELECT): `%TEMP%\enote-lesen\lesen.ps1 -Sql "SELECT …" [-Db ENote-Database]` (az-Token). Fehler stehen
+  in `ExceptionLogs`, Mails in `MailNachrichten`.
+- **Fatal 1** (Zuweisung an Poa blockierte die App, Azure-Protokoll 14× 19:02–19:23 UTC): eindeutiger Index (PO, Laden) ohne
+  Filter → erneute Zuweisung an einen früheren PO = duplicate key → Blazor-Verbindung tot. Fix 9c9a229: Index nur über aktive
+  Zeilen (Migration), « Décocher » archiviert, Hinweis beim PO-Wechsel, **FehlerGrenze** um den Seiteninhalt (MainLayout),
+  SQL-Test `PoZuweisungSqlTests` (ENOTE_SIM=1).
+- **Fatal 2** (Fehlerseite nach « S'inscrire »): Weiterleitung zur statischen Anmeldeseite ohne forceLoad → « Not found ».
+  Dazu verlor die Registrierung bei schwachem Netz alle Eingaben. Fix 2dc89b6: Registrierung = statisches Formular
+  ([ExcludeFromInteractiveRouting], native Länderauswahl, CGU als <details>, Knopf-Sperre per enote.js `data-pflicht-sperre`).
+  Mit Proxy 700 ms geprüft (sofort/später tippen, Fehlerfall behält Eingaben).
+- **Punkt 13** (Ladekreis « Se connecter » nur am Handy fehlt): beide Apps senden klassische Formulare jetzt zweistufig
+  (erst zeichnen, dann requestSubmit) – Safari/iPhone zeichnete nach dem Absenden nichts mehr. In Chromium geprüft; **am iPhone
+  vom Nutzer nach dem Deploy bestätigen lassen** (kein WebKit lokal).
+- Punkt 2 (Sterne + gesperrte Knöpfe): eNOTE d8d770d + eigene Dateien (Admin, Administrateurs, Mes établissements, E-mails,
+  Registrierung), SKOULOU 611e1aa (53 Dateien, `Sofort`-Modus für ZahlFeld/BetragFeld, Wächter-Tests). CSS `.enote-pflicht`
+  (Text im Label in `<span class="enote-pflicht">` fassen). Offene Kleinigkeiten aus dem SKOULOU-Bericht: Encaisser/Virement
+  Platzhalter « facultatif » obwohl Pflicht; Uhrzeitfelder Stundenplan nicht mit Proxy geprüft.
+- Punkt 1: Reiter « Administrateurs » für alle Admins (nur Hauptadmin ändert); « + Ajouter un responsable plateforme ».
+  Punkt 3: Mail « compte-responsable » (immer aktiv) + Zugangsmail für vom PO angelegte Besitzer. Punkte 4/5: Reiter
+  « Propriétaires plateforme » nur Admin, Startkarte « Mes établissements », Knopf « Valider l'établissement » dort (4232ea2).
+  Punkt 8: Mail-Vorschauen ohne klickbare Links. Punkt 12: Zahl-Plaketten der Kasse unter 1200 px sichtbar (9bd72e5).
+- Punkte 6/7/9 (nicht nachstellbar): Mails sind 4–5 KB ohne Bilder, mit Textfassung – Anzeige hängt an der Mail-App.
+  Cursor: automatische Prüfung hell + dunkel aller Eingabefelder beider Apps ohne Befund; verschwindender Mauszeiger beim
+  Tippen = Windows « Zeiger während der Eingabe ausblenden » bzw. weißes Zeigerschema. Sperr-Knopf: im Block « En attente »
+  gibt es nur Valider/Refuser, PO sieht « Demande » statt Schloss.
+
 
 **>>> ZUERST (18.11. abends):**
 - **Alle drei Apps deployt (18.11. nachmittags) und live geprüft:** Titel/og:image/JSON-LD/robots/sitemap 200 auf tablosuite.com, eNOTE
