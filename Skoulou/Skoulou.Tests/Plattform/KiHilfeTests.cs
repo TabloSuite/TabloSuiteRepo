@@ -156,6 +156,12 @@ public sealed class KiHilfeTests
         Assert.DoesNotContain("Vidéo :", e.Antwort);  // Zeile entfällt, das Video steht als Knopf darunter
         Assert.Contains(fremd.Titel, e.Antwort);      // fremdes Video bleibt Text, kein Knopf
         Assert.All(eigene, v => Assert.Contains(Rollen.Eltern, v.Rollen));
+
+        // Ohne Anführungszeichen ist ein Titel gewöhnlicher Text (kurze Titel kämen sonst in jedem Satz vor).
+        w.Antwort = $"Regardez {video.Titel} dans le menu.";
+        Assert.Empty((await w.Dienst.FrageAsync(KontoA, Eltern, "Notes ?")).Videos);
+        w.Antwort = $"Vidéo : «{video.Titel}»";
+        Assert.Equal([video], (await w.Dienst.FrageAsync(KontoA, Eltern, "Notes ?")).Videos);
     }
 
     [Fact]
