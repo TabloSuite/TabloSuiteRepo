@@ -9,6 +9,15 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026
 
+**>>> NEUE NUTZERPUNKTE (19.11. nachmittags) – VOR Migration/Deploy erledigen (Nutzer: « merken für später vor Migrations und Deployen »):**
+1. Fehlerprotokolle in den DBs lesen (eNOTE `ExceptionLogs`, SKOULOU `FehlerProtokolle`; Azure + lokal), Ursachen beheben, danach aus der DB löschen.
+2. eNOTE für Arztpraxen: Kann ein Mitarbeiter/Arzt im Büro eNOTE öffnen und Patienten-Notizen bearbeiten, während die Kasse läuft?
+3. SKOULOU-Bulletin: Bereich « Matières facultatives » fehlt (Togo: Culture, Ewe … nach Wahl des Schülers) – Umsetzung vorschlagen.
+4. KI nur als Hilfe, um sich schnell in der App zurechtzufinden – möglich? Kosten?
+5. Was ist in SKOULOU umgesetzt und in eNOTE nicht – und umgekehrt?
+6. HyperFrames-Abo kündigen? Können wir ohne weiter wie jetzt Videos machen?
+Stand: Punkt 15 (Monatspreis) Code fertig (0c76619, ea3505b), 7 Videos neu aufgenommen, Rendern läuft; danach einbauen.
+
 **>>> ZUERST (19.11.) – Testabend-Ergebnisse 1–13 umgesetzt, alles gepusht (86193a6 … 9bd72e5), NOCH NICHT DEPLOYT:**
 - **Offen beim Nutzer:** (1) OK für Azure-Migration eNOTE `20261119101000_ProduktOwnerSalonVerlauf` (nur Index neu, Skript
   `%TEMP%\enote-scripts\azure-ProduktOwnerSalonVerlauf.sql`, idempotent, mit `azure-anwenden.ps1`); lokal ENOTEDB schon drauf.
