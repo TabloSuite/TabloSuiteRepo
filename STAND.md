@@ -11,7 +11,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 **>>> ZUERST (19.11.) – Testabend-Ergebnisse 1–13 umgesetzt, alles gepusht (86193a6 … 9bd72e5), NOCH NICHT DEPLOYT:**
 - **Offen beim Nutzer:** (1) OK für Azure-Migration eNOTE `20261119101000_ProduktOwnerSalonVerlauf` (nur Index neu, Skript
-  `%TEMP%\enote-scriptszure-ProduktOwnerSalonVerlauf.sql`, idempotent, mit `azure-anwenden.ps1`); lokal ENOTEDB schon drauf.
+  `%TEMP%\enote-scripts\azure-ProduktOwnerSalonVerlauf.sql`, idempotent, mit `azure-anwenden.ps1`); lokal ENOTEDB schon drauf.
   Reihenfolge egal (neuer Code ohne Migration: Meldung statt Absturz), voll behoben erst mit Migration. (2) Dann eNOTE + SKOULOU
   deployen (eNOTE enthält auch den Deadlock-Fix 8ba0e5b). (3) Mail-Art « Bienvenue » ist in Administration › E-mails
   standardmäßig AUS (Postmark-Kontingent, seit 10.11.) – darum bekam der selbst registrierte Besitzer « Salon B2 » keine
