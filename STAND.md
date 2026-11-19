@@ -15,7 +15,16 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   schaltet später alle frei. Kosten begrenzt das Ausgabelimit des Schlüssels in der Anthropic Console.
 - ✅ **Matières facultatives übernommen** (54b56f1 … 5f3ebca), Migration `20261119151242_Wahlfaecher` lokal SkoulouDB eingespielt
   (SkoulouDB_VIDEO noch nicht – vor der nächsten Videoaufnahme mitziehen + Basis-Sicherung erneuern, AUFTRAG.md §9).
-- **SKOULOU-Azure-Skript bereit, wartet auf OK:** `%TEMP%\enote-scripts\azure-skoulou-19-11.sql` (PreisJeSchuelerUndMonat + Wahlfaecher,
+- ✅ **Wahlfach-Regeln 3–5 umgesetzt** (797495e, Nutzer « ja für alle »): Hinweis auf vorhandene Noten ohne Wahl; Sperre nach der
+  ersten Veröffentlichung (Schalter/Regel fest, Wahl nur in Rectification, Neuankömmlinge frei); Jahreswechsel übernimmt die Wahl.
+  Punkte 1+2 bleiben wie gebaut (Kopfzeilen bei « Groupes de matières », Schalter auch bei Sprachschulen). Keine neue Migration.
+  Tests 707 / SQL 728. Oberfläche nur über Dienst-Tests geprüft, nicht im Browser angesehen.
+- **OK für das SKOULOU-Azure-Skript liegt vor (« ja für alle »)** – aber erst **direkt vor dem Deploy** einspielen: das Skript
+  benennt Preisspalten um, die die live laufende SKOULOU-Version noch liest (Preis-Seiten/Registrierung fielen sonst bis zum Deploy aus).
+- **Danach: Videos sehr informationsreich** (Nutzer 19.11.): neu « Les matières facultatives » (Direction), Szenen in
+  « Préparer l'année » (Matières et enseignants) und « Publier les bulletins » (Vorlage « Groupes de matières »). Vorher
+  SkoulouDB_VIDEO migrieren + Basis-Sicherung erneuern.
+- **SKOULOU-Azure-Skript bereit:** `%TEMP%\enote-scripts\azure-skoulou-19-11.sql` (PreisJeSchuelerUndMonat + Wahlfaecher,
   idempotent). Auf Wegwerf-DB zweimal geprobt: 3.600 → 500, CGU 2026-11-19, Spalten/Tabelle da, 2. Lauf ändert nichts.
   Anwenden: `azure-anwenden.ps1 -Skript … -Db Skoulou-Database` (jetzt mit XACT_ABORT + Abbruch beim ersten Fehler).
   Falle: `sqlcmd` nur mit `-I` (QUOTED_IDENTIFIER), sonst scheitert das UPDATE auf Schuljahre und die Migration wird trotzdem eingetragen.
