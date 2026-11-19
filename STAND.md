@@ -5,11 +5,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 abends
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends)
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026
+**>>> STAND 19.11. spätabends (neue Sitzung):**
+- Beide Agenten-Arbeitskopien waren **unfertig und uncommittet** (Wahlfächer: Core/Daten/Dienste fertig, Oberfläche/Bulletin/
+  Migration/Tests fehlten; KI-Hilfe: nur SKOULOU-Dienste). Je ein neuer Agent baut in **derselben** Arbeitskopie fertig und committet
+  dort im Branch. Danach: prüfen, bauen, Tests, cherry-pick, Worktree entfernen (siehe Punkt 1 unten).
+- Push war schon erledigt. Lokal eingespielt: eNOTE `KundenAktenRecht` (ENOTEDB), SKOULOU `PreisJeSchuelerUndMonat` (SkoulouDB: 500 F,
+  CGU 2026-11-19). Azure lesend: eNOTE auf `FormationResponsables`, SKOULOU auf `SchuleEssaiPerioden` (3.600 F, 0 Schuljahre).
+- Azure-Skript eNOTE fertig: `%TEMP%\enote-scripts\azure-enote-19-11.sql` (idempotent: ProduktOwnerSalonVerlauf + KundenAktenRecht;
+  nur Index-Tausch + neue Spalte) – **wartet auf OK**. SKOULOU-Skript erst nach der Wahlfach-Migration (Preis + Wahlfächer zusammen).
+- 8db4570 SKOULOU Encaisser: Platzhalter « facultatif » bei Pflicht-Référence (Virement) behoben.
 
-**>>> HIER WEITERMACHEN (19.11. abends, Sitzung endete) – Reihenfolge:**
+**>>> (19.11. abends, Sitzung endete) – Reihenfolge:**
 1. **Zwei Agenten-Arbeitskopien prüfen und übernehmen** (liefen beim Sitzungsende noch; Ergebnis evtl. unvollständig/uncommittet):
    - `.claude/worktrees/agent-ae86b4675452b3aff` (Branch `worktree-agent-ae86b4675452b3aff`): **SKOULOU « Matières facultatives »**
      (Nutzerpunkt 3, freigegeben): Klassenfach « facultative » mit Regel (Standard « nur Punkte über 10 zählen », sonst normal/
