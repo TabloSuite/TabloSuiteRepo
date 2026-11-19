@@ -7,7 +7,15 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends, nach dem Deploy)
 
-**>>> NEUESTES (19.11. nachts) – Videos « sehr informationsreich » erledigt, gepusht (3b9b840), SKOULOU noch NICHT deployt:**
+**>>> (19.11. ~21:40 UTC) SKOULOU deployt + KI-Schlüssel gesetzt (Nutzer):** `Ki__AnthropicApiKey` und `Ki__AlleRollen=false` in eNOTE + SKOULOU.
+- Live geprüft (lesend): SKOULOU-Startseite 200 (erster Aufruf nach dem Neustart > 90 s Kaltstart), Vorschaubild `skoulou-direction-facultatives.jpg`
+  200 und byte-gleich, Video ohne Anmeldung 401, `/aide/question` beider Apps → Login. Fehlerprotokolle seit 16:52 UTC: je 2 Einträge
+  21:29–21:31 UTC (SQL-Zeitüberschreitung in Hintergrunddiensten: eNOTE Mail-Dienst, SKOULOU automatische Abgabe) genau beim Neustart
+  durch die neuen Einstellungen – danach keine weiteren; nicht gelöscht.
+- **KI noch nicht mit echtem Konto angesehen** (Admin-Passwort kenne ich nicht): Nutzer testet als Admin (Testfragen im Chat 19.11.), danach
+  Fehlerprotokolle lesen.
+
+**>>> (19.11. nachts) – Videos « sehr informationsreich » erledigt, gepusht (3b9b840, efbcfe2), SKOULOU inzwischen deployt:**
 - Neu **« Les matières facultatives »** (Direction, 5:37, `skoulou-direction-facultatives.mp4`, im Katalog nach « Publier les bulletins »):
   2 Folien (Prinzip, drei Regeln), Ewe facultative (Standardregel), Culture « Ne compte pas », Wahl je Schüler, Noten nur Wählende,
   Bulletin Mawuli 16,00 → 16,92 (+12), Dela +0, Abla ohne Block, Sperre nach der Veröffentlichung.
@@ -15,7 +23,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   « Matière facultative » unter jedem Fach. Pipeline-Notizen: `lernen-v3/AUFTRAG.md` §12. Video-DB: Basis mit Migration `Wahlfaecher` erneuert.
 - App-Kleinigkeiten (gleicher Commit, keine Migration): Fächer-Dialog « Total … coefficients » ohne Wahlfächer; nach der Veröffentlichung
   kein gesperrter Schalter mehr unter Pflichtfächern; « Tous / Aucun » nur bei ungesperrten Schülern. Tests SKOULOU 707 grün.
-- **Beim Nutzer: SKOULOU deployen** (neues Video + Fixes). eNOTE/Home unverändert. Offen wie unten: iPhone-Login, KI-Schlüssel je App
+- ~~Beim Nutzer: SKOULOU deployen~~ erledigt (siehe oben). eNOTE/Home unverändert. Offen wie unten: iPhone-Login, KI-Schlüssel je App
   (Code ist live, ohne `Ki__AnthropicApiKey` unsichtbar – Nutzer fragte am 19.11. danach).
 - « Équipe et emplois du temps » (4:40): Szene `b2-classe` neu mit dem Schalter « Matière facultative » (Nutzer « mache das »).
 
