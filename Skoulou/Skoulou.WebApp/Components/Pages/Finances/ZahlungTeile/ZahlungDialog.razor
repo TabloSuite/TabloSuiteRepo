@@ -82,7 +82,7 @@
                 <RadioGruppe T="ZahlungsKanal" Label="Moyen de paiement" @bind-Wert="kanal" Optionen="Geld.Kanaele" />
                 <div class="sk-raster-2">
                     <TextFeld Label="@(kanal == ZahlungsKanal.MobileMoney ? "Référence de la transaction" : "Référence")" @bind-Wert="referenz" MaxLaenge="100" Pflicht="@(kanal != ZahlungsKanal.Especes)" Sofort="true"
-                              Platzhalter="@(kanal == ZahlungsKanal.MobileMoney ? "ex. ID T-Money / Flooz" : kanal == ZahlungsKanal.Cheque ? "N° du chèque" : "facultatif")"
+                              Platzhalter="@(kanal switch { ZahlungsKanal.MobileMoney => "ex. ID T-Money / Flooz", ZahlungsKanal.Cheque => "N° du chèque", ZahlungsKanal.Virement => "ex. référence du virement", _ => "facultatif" })"
                               Fehler="@(feld == "referenz" ? Fehlermeldung : null)" />
                     <TextFeld Label="Remarque" @bind-Wert="bemerkung" MaxLaenge="300" Platzhalter="facultatif" />
                 </div>
