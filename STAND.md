@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 19.11.2026 (nach dem Testabend)
+# TabloSuite – Arbeitsstand 19.11.2026 abends (nach dem Testabend)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -8,6 +8,45 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 18.11.2026 abends
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026
+
+**>>> HIER WEITERMACHEN (19.11. abends, Sitzung endete) – Reihenfolge:**
+1. **Zwei Agenten-Arbeitskopien prüfen und übernehmen** (liefen beim Sitzungsende noch; Ergebnis evtl. unvollständig/uncommittet):
+   - `.claude/worktrees/agent-ae86b4675452b3aff` (Branch `worktree-agent-ae86b4675452b3aff`): **SKOULOU « Matières facultatives »**
+     (Nutzerpunkt 3, freigegeben): Klassenfach « facultative » mit Regel (Standard « nur Punkte über 10 zählen », sonst normal/
+     nur Info), Wahl je Schüler fürs ganze Jahr (Direktion, an der Klasse), Noten nur für Wählende, Bulletin: Bereich
+     « MATIÈRES FACULTATIVES » nur wenn gewählt; Gruppen-Kopfzeilen (« MATIÈRES LITTÉRAIRES » …) NUR wenn Vorlage
+     `ZeigeFachGruppen` an (Standard aus) – **ohne Bereiche muss weiter gehen (Sprachschulen, Nutzer)**. Migration nur erzeugt.
+   - `.claude/worktrees/agent-af053356bc40b5189` (Branch `worktree-agent-af053356bc40b5189`): **KI-Hilfe « Poser une question »**
+     (Nutzerpunkt 4, freigegeben: **Claude Haiku 5.5** `claude-haiku-5-5`) in eNOTE + SKOULOU: Wissensbasis aus Menü/Guide/
+     Formation/Videos, nur Hilfetexte + Frage an Anthropic, 20 Fragen/Konto/Tag, ohne Schlüssel `Ki:AnthropicApiKey` unsichtbar.
+     Nutzer braucht ein Anthropic-API-Konto + Schlüssel (Azure-Einstellung `Ki__AnthropicApiKey`); vor Freischalten mit echten
+     Fragen testen. Kosten Haiku 5.5 ≈ < 1 F je Frage (siehe Chat 19.11.).
+   - Je Branch: `git log`, Diff prüfen, bauen, Tests (eNOTE 525, SKOULOU 659), `git cherry-pick`, Worktree entfernen
+     (`git worktree remove --force …`, `git branch -D …`). Unfertiges selbst zu Ende bauen.
+2. **Push**: 2 Commits warteten beim Sitzungsende auf die GitHub-Anmeldung (f3570c0 u. a.) – `git status -sb`, ggf. `git push`.
+3. **Migrationen** (lokal + Azure, Azure NUR mit ausdrücklichem OK des Nutzers): eNOTE `20261119101000_ProduktOwnerSalonVerlauf`
+   (Index, lokal SCHON drauf; Skript `%TEMP%\enote-scriptszure-ProduktOwnerSalonVerlauf.sql`), eNOTE `20261119131056_KundenAktenRecht`
+   (neue Spalte, lokal noch NICHT), SKOULOU `20261119113708_PreisJeSchuelerUndMonat` (Spalten umbenennen + Werte ÷ 10/3.600→500,
+   CGU-Version; lokal SkoulouDB noch NICHT, SkoulouDB_VIDEO schon), dazu die Wahlfach-Migration aus Punkt 1. Idempotente Skripte mit
+   `dotnet ef migrations script <von> <bis> --idempotent`; Azure-Stand vorher lesen (`%TEMP%\enote-lesen\lesen.ps1`).
+4. **Dann deployt der Nutzer alle drei Apps** (eNOTE, SKOULOU, TabloSuiteHome – Preis-Karte braucht SKOULOU + Home zusammen).
+   Danach: Login am iPhone (Ladekreis), Registrierung, Zuweisung an früheren Responsable, Mail an neuen Responsable prüfen.
+
+**>>> ERLEDIGT 19.11. (nachmittags/abends), alles committet:**
+- Punkt 15 SKOULOU **500 F je Schüler und Monat** (0c76619, Memory « skoulou-preis-monat »), Formation-Bilder (ea3505b),
+  **7 Videos neu** (68c85cf; Pipeline-Notizen AUFTRAG.md §11: Videos-Ordner jetzt unter `TabloSuiteData`, Aufnahmen aus
+  `%TEMP%\skoulou-shot-tool` starten, Video-Basis-DB neu auf 500).
+- Punkt 14 (Drucker/Scanner/Papier): Kaufberatung im Chat; Video erst mit echten Geräten. eNOTE-Bon = 80 mm, Etikett 62×29 mm
+  (Brother QL) oder A4-Raster (noch an keinen Standardbogen angepasst – Format vom Nutzer erfragen), Scanner HID + Enter, 2D, AZERTY.
+- Nutzerpunkt 1 Fehlerprotokolle: Fehler 35 (Azure-SQL-Anmeldung) wird jetzt wiederholt (fb24965); Protokolle gelöscht
+  (Azure eNOTE 27, SKOULOU 24, lokal 19 + 25). Lösch-Werkzeug `%TEMP%\enote-lesen\protokolle-loeschen.ps1` (nur DELETE auf Protokolle).
+- Nutzerpunkt 2 eNOTE-Recht **« Dossiers clients »** (f3570c0): angestellter Arzt mit « Connexion personnelle » sieht/bearbeitet
+  Kundenkarten + Notizen, nie Kasse/Löschen/PIN.
+- Nutzerpunkt 5: eNOTE-Fehlerseite « /Error » + « Page introuvable » (1d7cdab), toter Dienst VertragsAktualisierung entfernt.
+  Funktionsvergleich eNOTE↔SKOULOU im Chat; Vorschläge für ein späteres Paket: eNOTE Sicherheits-Header/Rate-Limits/Honeypot,
+  Neuprüfung offener Verbindungen, Audit, Startpasswort-Pflichtwechsel + Kontenliste; SKOULOU Mail-Schalter/Historique,
+  Wartungsannonce, Kündigung/Löschung mit Bedenkzeit.
+- Nutzerpunkt 6: HyperFrames-Abo kann gekündigt werden (lokales Rendern ist Open Source, Apache-2.0; Avatare nutzen wir nicht).
 
 **>>> NEUE NUTZERPUNKTE (19.11. nachmittags) – VOR Migration/Deploy erledigen (Nutzer: « merken für später vor Migrations und Deployen »):**
 1. Fehlerprotokolle in den DBs lesen (eNOTE `ExceptionLogs`, SKOULOU `FehlerProtokolle`; Azure + lokal), Ursachen beheben, danach aus der DB löschen.
