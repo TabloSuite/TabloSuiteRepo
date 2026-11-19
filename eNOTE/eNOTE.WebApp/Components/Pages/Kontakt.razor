@@ -42,21 +42,21 @@
 
             <div class="enote-form">
                 <div class="kt-zwei">
-                    <label>Votre nom <input @bind="oName" maxlength="80" autocomplete="name" /></label>
-                    <label>Votre e-mail <input type="email" @bind="oEmail" maxlength="200" autocomplete="email" /></label>
+                    <label><span class="enote-pflicht">Votre nom</span> <input @bind="oName" @bind:event="oninput" maxlength="80" autocomplete="name" /></label>
+                    <label><span class="enote-pflicht">Votre e-mail</span> <input type="email" @bind="oEmail" @bind:event="oninput" maxlength="200" autocomplete="email" /></label>
                 </div>
                 <label>Téléphone / WhatsApp <small class="enote-muted">(facultatif)</small>
                     <input type="tel" inputmode="tel" @bind="oTelefon" maxlength="30" autocomplete="tel" placeholder="+228 90 00 00 00" /></label>
                 @* Fangfeld für Bots: für Menschen unsichtbar, bleibt leer *@
                 <input class="kt-falle" type="text" name="site_web" tabindex="-1" autocomplete="off" aria-hidden="true" @bind="falle" />
-                <label>Sujet</label>
+                <label><span class="enote-pflicht">Sujet</span></label>
                 <EnoteSelect TValue="string" @bind-Value="thema" Options="themenOptionen" Placeholder="Choisir le sujet…" />
                 <label>
-                    Votre message
+                    <span class="enote-pflicht">Votre message</span>
                     <textarea rows="6" maxlength="@KontaktService.NachrichtMax" @bind="nachricht" @bind:event="oninput"
                               placeholder="Expliquez simplement votre question."></textarea>
                 </label>
-                <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenOeffentlichAsync" CssClass="enote-btn-primary" />
+                <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenOeffentlichAsync" CssClass="enote-btn-primary" Disabled="@(!OeffentlichVollstaendig)" />
             </div>
         </section>
     }
@@ -123,15 +123,15 @@
                 }
 
                 <div class="enote-form">
-                    <label>Sujet</label>
+                    <label><span class="enote-pflicht">Sujet</span></label>
                     <EnoteSelect TValue="string" @bind-Value="thema" Options="themenOptionen" Placeholder="Choisir le sujet…" />
                     <label>
-                        Votre message
+                        <span class="enote-pflicht">Votre message</span>
                         <textarea rows="6" maxlength="@KontaktService.NachrichtMax" @bind="nachricht" @bind:event="oninput"
                                   placeholder="Expliquez simplement votre question ou votre problème."></textarea>
                     </label>
                     <small class="enote-muted">@((nachricht ?? "").Length) / @KontaktService.NachrichtMax caractères</small>
-                    <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenAsync" CssClass="enote-btn-primary" />
+                    <AsyncActionButton Text="Envoyer le message" BusyText="Envoi…" OnClick="SendenAsync" CssClass="enote-btn-primary" Disabled="@(!NachrichtVollstaendig)" />
                 </div>
             </section>
         }
@@ -157,6 +157,10 @@
     private string? oEmail;
     private string? oTelefon;
     private string? falle;
+
+    // Pflichtangaben (wie KontaktService): Sujet und Message; öffentlich zusätzlich Nom und E-Mail.
+    private bool NachrichtVollstaendig => !string.IsNullOrWhiteSpace(thema) && !string.IsNullOrWhiteSpace(nachricht);
+    private bool OeffentlichVollstaendig => NachrichtVollstaendig && !string.IsNullOrWhiteSpace(oName) && !string.IsNullOrWhiteSpace(oEmail);
 
     private async Task SendenOeffentlichAsync()
     {

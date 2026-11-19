@@ -285,15 +285,15 @@
                 <li><Icon Name="calendar" Groesse="16" /> <span>Le <strong>@Datum(DateTime.UtcNow.AddDays(KuendigungsRegeln.LoeschFristTage))</strong>, toutes ses données sont supprimées définitivement.</span></li>
                 <li><Icon Name="undo" Groesse="16" /> <span>D'ici là, vous pouvez annuler dans « Abonnement ».</span></li>
             </ul>
-            <label>Mot de passe actuel
+            <label><span class="enote-pflicht">Mot de passe actuel</span>
                 <PasswordInput @bind-Value="loeschPasswort" Required="true" Autocomplete="current-password" />
             </label>
-            <EnoteCheckbox @bind-Value="loeschVerstanden" Label="J'ai compris : après 30 jours, les données ne pourront plus être récupérées." />
+            <EnoteCheckbox @bind-Value="loeschVerstanden" Pflicht="true" Label="J'ai compris : après 30 jours, les données ne pourront plus être récupérées." />
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => loeschungOffen = false">Annuler</button>
-        <AsyncActionButton Text="Supprimer le compte" BusyText="…" CssClass="enote-btn-danger" Disabled="!loeschVerstanden" OnClick="BeantrageLoeschungAsync" />
+        <AsyncActionButton Text="Supprimer le compte" BusyText="…" CssClass="enote-btn-danger" Disabled="@(!loeschVerstanden || string.IsNullOrWhiteSpace(loeschPasswort))" OnClick="BeantrageLoeschungAsync" />
     </Footer>
 </ModalDialog>
 

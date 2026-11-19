@@ -128,7 +128,7 @@
     <ChildContent>
         <div class="enote-form pz-neu">
             <div class="pz-neu-kunde">
-                <span class="kv-label">Client</span>
+                <span class="kv-label"><span class="enote-pflicht">Client</span></span>
                 <KundenAuswahl SalonId="salonId" BenutzerId="benutzer" @bind-Kunde="neuKunde" Platzhalter="Nom ou téléphone du client" Optional="false"
                                AnlegenText="Créer le client" AnlegenHinweis="Créer ce client" />
             </div>
@@ -137,7 +137,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => neuOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer l'arrivée" BusyText="…" CssClass="enote-btn-primary" Disabled="neuKunde is null" OnClick="AnkunftAsync" />
+        <AsyncActionButton Text="Enregistrer l'arrivée" BusyText="…" CssClass="enote-btn-primary" Disabled="@(neuKunde is null || string.IsNullOrWhiteSpace(neuGrund))" OnClick="AnkunftAsync" />
     </Footer>
 </ModalDialog>
 

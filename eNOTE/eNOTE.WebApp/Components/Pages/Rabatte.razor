@@ -107,12 +107,12 @@
 <ModalDialog Open="editorOffen" Title="@(istNeueRemise ? "Nouvelle remise" : "Modifier la remise")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="enote-form">
-            <label>Nom <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="@ENote.WebApp.Services.KatalogService.RabattNameMax" /></label>
+            <label><span class="enote-pflicht">Nom</span> <input @bind="bearbeitungsRabatt.Name" @bind:event="oninput" placeholder="ex. Fidélité" maxlength="@ENote.WebApp.Services.KatalogService.RabattNameMax" /></label>
 
             <label>Type de remise</label>
             <EnoteRadioGroup TValue="RabattArt" @bind-Value="bearbeitungsRabatt.Art" Options="rabattArtOptionen" />
 
-            <label>@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "Pourcentage (%)" : "Montant (F)")
+            <label><span class="enote-pflicht">@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "Pourcentage (%)" : "Montant (F)")</span>
                 <input type="number" min="0" step="@(bearbeitungsRabatt.Art == RabattArt.Prozent ? "1" : "50")" @bind="bearbeitungsRabatt.Wert" @bind:event="oninput" />
             </label>
             @if (bearbeitungsRabatt.Art == RabattArt.Prozent)
@@ -152,7 +152,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseEditor">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" Disabled="@(!RabattVollstaendig)" />
     </Footer>
 </ModalDialog>
 

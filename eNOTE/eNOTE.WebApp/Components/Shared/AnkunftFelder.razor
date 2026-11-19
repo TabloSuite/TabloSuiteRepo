@@ -6,7 +6,7 @@
 
 <div class="kv-ankunft">
     <label>
-        Présent pour
+        <span class="enote-pflicht">Présent pour</span>
         <input @bind:get="Grund" @bind:set="GrundGeaendert" @bind:event="oninput" maxlength="@KundenBesuchRegeln.GrundMax"
                placeholder="ex. coupe, consultation, pansement, retouche…" list="@(Vorschlaege?.Katalog is { Count: > 0 } ? listeId : null)" autocomplete="off" />
     </label>

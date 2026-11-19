@@ -36,7 +36,7 @@
                 <EnoteCheckbox @bind-Value="einwilligung" Label="Le client est d'accord pour enregistrer son numéro" />
             }
             @if (fehler is not null) { <small class="ku-fehler">@fehler</small> }
-            <AsyncActionButton Text="@AnlegenText" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="LegeAnAsync" />
+            <AsyncActionButton Text="@AnlegenText" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(name)" OnClick="LegeAnAsync" />
         </div>
     }
     else

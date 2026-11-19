@@ -163,6 +163,9 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     /// </summary>
     public static string? Pruefe(Rabatt rabatt) => KatalogService.PruefeRabatt(rabatt);
 
+    /// <summary>Pflichtangaben für den Knopf « Enregistrer »: Nom und ein Wert über 0 (Rest meldet <see cref="Pruefe"/>).</summary>
+    private bool RabattVollstaendig => !string.IsNullOrWhiteSpace(bearbeitungsRabatt.Name) && bearbeitungsRabatt.Wert > 0;
+
     private async Task SpeichernAsync()
     {
         if (Pruefe(bearbeitungsRabatt) is string fehler)

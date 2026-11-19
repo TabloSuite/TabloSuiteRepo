@@ -3,7 +3,7 @@
 <div class="enote-betrag @(Kompakt ? "kompakt" : "")">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
-        <span class="enote-betrag-label">@Label</span>
+        <span class="enote-betrag-label @(Pflicht ? "enote-pflicht" : null)">@Label</span>
     }
     <label class="enote-betrag-anzeige @(Hervorheben ? "hervor" : "")">
         <input class="enote-betrag-feld"
@@ -54,6 +54,9 @@
     [Parameter] public bool MitZiffernblock { get; set; } = true;
     [Parameter] public bool Kompakt { get; set; }
     [Parameter] public bool Hervorheben { get; set; }
+
+    /// <summary>Pflichtfeld: Stern an der Beschriftung (Nutzer 19.11.2026: « Pflichtfelder immer mit Stern »).</summary>
+    [Parameter] public bool Pflicht { get; set; }
     [Parameter] public EventCallback OnBestaetigt { get; set; }
 
     /// <summary>Inhalt zwischen Schnellbeträgen und Ziffernblock (z. B. das Rückgeld – wichtiger als die Tasten).</summary>

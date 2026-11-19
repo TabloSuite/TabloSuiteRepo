@@ -16,7 +16,7 @@
             <div class="enote-form pk-retrait">
                 <p class="pk-retrait-zeile"><strong>@rz.Menge× @rz.Name</strong> · @AufenthaltRegeln.Tag(rz.ErbrachtAm) · @rz.Summe.ToString("N0") F</p>
                 <label class="kx-pay-ref">
-                    <span>Motif du retrait</span>
+                    <span class="enote-pflicht">Motif du retrait</span>
                     <input class="enote-input" @bind="rueckGrund" @bind:event="oninput" maxlength="@AufenthaltRegeln.GrundMax" placeholder="Pourquoi retirer cette ligne ?" />
                 </label>
                 <div class="enote-betrag-schnell">

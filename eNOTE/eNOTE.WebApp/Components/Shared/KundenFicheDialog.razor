@@ -29,7 +29,7 @@
                                 <AnkunftFelder @bind-Grund="grund" @bind-Raum="raum" MitNotiz="false" Vorschlaege="vorschlaege" />
                                 <div class="kf-knoepfe">
                                     <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => bearbeiten = false">Annuler</button>
-                                    <AsyncActionButton Text="Enregistrer" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="AendereAsync" />
+                                    <AsyncActionButton Text="Enregistrer" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(grund)" OnClick="AendereAsync" />
                                 </div>
                             </div>
                         }
@@ -55,7 +55,7 @@
                             <AnkunftFelder @bind-Grund="grund" @bind-Raum="raum" @bind-Notiz="notiz" Vorschlaege="vorschlaege" />
                             <div class="kf-knoepfe">
                                 <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => ankunftOffen = false">Annuler</button>
-                                <AsyncActionButton Text="Enregistrer l'arrivée" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" OnClick="AnkunftAsync" />
+                                <AsyncActionButton Text="Enregistrer l'arrivée" BusyText="…" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(grund)" OnClick="AnkunftAsync" />
                             </div>
                         </div>
                     </div>

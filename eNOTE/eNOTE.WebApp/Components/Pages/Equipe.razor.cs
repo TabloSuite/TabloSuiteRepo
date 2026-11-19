@@ -52,6 +52,9 @@ public partial class Equipe(
     private string neuEmail = string.Empty;
     private string neuPin = string.Empty;
 
+    /// <summary>Pflichtangaben « Nouvel employé » (wie TeamService.LegeKassiererAnAsync): Prénom, Nom, PIN mit 4–6 Ziffern.</summary>
+    private bool KassiererVollstaendig => !string.IsNullOrWhiteSpace(neuVorname) && !string.IsNullOrWhiteSpace(neuNachname) && neuPin.Length >= 4;
+
     private bool rechteFinanzen;
     private bool rechteLeistungen;
     private bool rechteRabatte;

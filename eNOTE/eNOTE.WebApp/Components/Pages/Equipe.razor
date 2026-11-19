@@ -116,21 +116,21 @@
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
-                <label>Prénom <input @bind="neuVorname" autocomplete="off" /></label>
-                <label>Nom <input @bind="neuNachname" autocomplete="off" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="neuVorname" @bind:event="oninput" autocomplete="off" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="neuNachname" @bind:event="oninput" autocomplete="off" /></label>
             </div>
             <label>Pseudonyme <small class="enote-muted">(facultatif – vide : proposé automatiquement, ex. awa.koffi)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
             <label>Adresse e-mail <small class="enote-muted">(facultatif)</small> <input type="email" @bind="neuEmail" autocomplete="off" /></label>
             <small class="enote-muted eq-hinweis">L'employé n'a pas de mot de passe : il encaisse sur l'appareil de l'établissement, connecté par vous, avec son nom et son code PIN. Une connexion personnelle (depuis son propre appareil) peut être accordée ensuite dans « Droits ».</small>
         </div>
         <div class="eq-pin-feld eq-pin-neu">
-            <span class="enote-betrag-label">Code PIN caisse (4 à 6 chiffres)</span>
+            <span class="enote-betrag-label"><span class="enote-pflicht">Code PIN caisse (4 à 6 chiffres)</span></span>
             <PinEingabe @bind-Wert="neuPin" MaxLaenge="6" />
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
-        <AsyncActionButton Text="Créer l'employé" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Créer l'employé" OnClick="LegeKassiererAnAsync" CssClass="enote-btn-primary" Disabled="@(!KassiererVollstaendig)" />
     </Footer>
 </ModalDialog>
 
@@ -138,7 +138,7 @@
 <ModalDialog Open="pinDialogOffen" Title="@("Code PIN – " + aktivesMitglied?.Name)" ErrorMessage="@dialogFehler" OnClose="SchliesseDialoge" MaxWidthClass="enote-modal-sm">
     <ChildContent>
         <div class="eq-pin-feld">
-            <span class="enote-betrag-label">Nouveau code PIN (4 à 6 chiffres)</span>
+            <span class="enote-betrag-label"><span class="enote-pflicht">Nouveau code PIN (4 à 6 chiffres)</span></span>
             <PinEingabe @bind-Wert="neuPin" MaxLaenge="6" OnBestaetigt="SetzePinAsync" />
             <small class="enote-muted">L'employé l'utilise pour ouvrir la caisse.</small>
         </div>
@@ -184,9 +184,9 @@
                 @if (rechteAnmeldung)
                 {
                     <label class="eq-anmeldung-passwort">
-                        @(AnmeldungPasswortNoetig ? "Mot de passe à remettre à l'employé" : "Nouveau mot de passe (facultatif)")
+                        <span class="@(AnmeldungPasswortNoetig ? "enote-pflicht" : null)">@(AnmeldungPasswortNoetig ? "Mot de passe à remettre à l'employé" : "Nouveau mot de passe (facultatif)")</span>
                         <span class="eq-passwort">
-                            <input type="text" @bind="anmeldungPasswort" autocomplete="off" placeholder="@(AnmeldungPasswortNoetig ? "" : "inchangé")" />
+                            <input type="text" @bind="anmeldungPasswort" @bind:event="oninput" autocomplete="off" placeholder="@(AnmeldungPasswortNoetig ? "" : "inchangé")" />
                             <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="() => anmeldungPasswort = ErzeugeInitialPasswort()" title="Générer un mot de passe"><Icon Name="refresh" Groesse="16" /> Générer</button>
                         </span>
                         <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
@@ -197,7 +197,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="SchliesseDialoge">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SetzeRechteAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer" OnClick="SetzeRechteAsync" CssClass="enote-btn-primary" Disabled="@(AnmeldungPasswortNoetig && string.IsNullOrWhiteSpace(anmeldungPasswort))" />
     </Footer>
 </ModalDialog>
 

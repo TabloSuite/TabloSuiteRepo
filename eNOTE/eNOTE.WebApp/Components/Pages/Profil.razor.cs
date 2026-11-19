@@ -28,6 +28,12 @@ public partial class Profil(
     private bool DatenGeaendert => profil is not null
         && (vorname.Trim() != profil.Vorname || nachname.Trim() != profil.Nachname || telefon.Trim() != (profil.Telefon ?? ""));
 
+    // Pflichtangaben je Formular (wie KontoProfilService/AuthService): Knopf erst frei, wenn alles ausgefüllt ist.
+    private bool DatenVollstaendig => !string.IsNullOrWhiteSpace(vorname) && !string.IsNullOrWhiteSpace(nachname);
+    private bool EmailVollstaendig => !string.IsNullOrWhiteSpace(neueEmail) && !string.IsNullOrWhiteSpace(emailPasswort);
+    private bool PseudonymVollstaendig => !string.IsNullOrWhiteSpace(neuesPseudonym) && !string.IsNullOrWhiteSpace(pseudonymPasswort);
+    private bool PasswortVollstaendig => !string.IsNullOrWhiteSpace(aktuellesPasswort) && !string.IsNullOrWhiteSpace(neuesPasswort);
+
     private bool emailDialogOffen;
     private string neueEmail = string.Empty;
     private string emailPasswort = string.Empty;

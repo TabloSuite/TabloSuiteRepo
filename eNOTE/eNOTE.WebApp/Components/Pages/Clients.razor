@@ -104,7 +104,7 @@
 
                 <div class="enote-form">
                     <div class="enote-form-grid">
-                        <label>Nom <input @bind="bName" maxlength="@KundenService.NameMax" /></label>
+                        <label><span class="enote-pflicht">Nom</span> <input @bind="bName" @bind:event="oninput" maxlength="@KundenService.NameMax" /></label>
                         <label>Téléphone <small class="enote-muted">(facultatif)</small> <input @bind="bTelefon" @bind:event="oninput" inputmode="tel" maxlength="30" /></label>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(bTelefon) && KundenService.Ziffern(bTelefon) != KundenService.Ziffern(d.Telefon))
@@ -145,7 +145,7 @@
     <Footer>
         <button class="enote-btn enote-btn-ghost ku-loeschen" @onclick="() => loeschenOffen = true"><Icon Name="trash" Groesse="16" /> Supprimer</button>
         <button class="enote-btn enote-btn-ghost" @onclick="() => detail = null">Fermer</button>
-        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="SpeichereAsync" />
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="SpeichereAsync" Disabled="@string.IsNullOrWhiteSpace(bName)" />
     </Footer>
 </ModalDialog>
 
@@ -161,7 +161,7 @@
 <ModalDialog Open="neuOffen" Title="Nouveau client" OnClose="() => neuOffen = false" ErrorMessage="@neuFehler">
     <ChildContent>
         <div class="enote-form">
-            <label>Nom <input @bind="nName" maxlength="@KundenService.NameMax" /></label>
+            <label><span class="enote-pflicht">Nom</span> <input @bind="nName" @bind:event="oninput" maxlength="@KundenService.NameMax" /></label>
             <label>Téléphone <small class="enote-muted">(facultatif)</small> <input @bind="nTelefon" @bind:event="oninput" inputmode="tel" maxlength="30" /></label>
             @if (!string.IsNullOrWhiteSpace(nTelefon))
             {
@@ -172,7 +172,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => neuOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="LegeAnAsync" />
+        <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="LegeAnAsync" Disabled="@string.IsNullOrWhiteSpace(nName)" />
     </Footer>
 </ModalDialog>
 

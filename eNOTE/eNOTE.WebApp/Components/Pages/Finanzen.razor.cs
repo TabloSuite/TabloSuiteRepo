@@ -242,6 +242,9 @@ public partial class Finanzen(
     private string? apportNotiz;
     private DateTime? apportDatum = DateTime.Today;
     private string? apportFehler;
+
+    /// <summary>Pflichtangaben des Apports (wie BestandsService.ErfasseEinlageAsync): Betrag und Provenance.</summary>
+    private bool ApportVollstaendig => apportBetrag > 0 && !string.IsNullOrWhiteSpace(apportHerkunft);
     private static readonly string[] HerkunftVorschlaege = ["Aide familiale", "Microcrédit / prêt", "Apport personnel", "Subvention", "Tontine"];
 
     /// <summary>Name des Kassierers der offenen Kasse (null = keine Kasse offen → « Dans la caisse » gesperrt).</summary>

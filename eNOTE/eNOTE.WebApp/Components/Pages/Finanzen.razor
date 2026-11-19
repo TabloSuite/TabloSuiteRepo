@@ -313,10 +313,10 @@
     <ChildContent>
         <div class="kx-pay">
             <p class="enote-muted kx-frei-text">Argent reçu pour l'établissement (aide, prêt, apport personnel). Il augmente le solde mais n'est jamais compté comme vente.</p>
-            <BetragEingabe @bind-Wert="apportBetrag" Label="Montant" Kompakt="true" MitZiffernblock="false" />
+            <BetragEingabe @bind-Wert="apportBetrag" Label="Montant" Pflicht="true" Kompakt="true" MitZiffernblock="false" />
             <label class="kx-pay-ref">
-                <span>Provenance</span>
-                <input class="enote-input" @bind="apportHerkunft" maxlength="120" placeholder="ex. aide familiale" />
+                <span class="enote-pflicht">Provenance</span>
+                <input class="enote-input" @bind="apportHerkunft" @bind:event="oninput" maxlength="120" placeholder="ex. aide familiale" />
             </label>
             <div class="enote-betrag-schnell">
                 @foreach (var h in HerkunftVorschlaege)
@@ -350,7 +350,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => apportOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer l'apport" OnClick="SpeichereApportAsync" CssClass="enote-btn-primary" Disabled="@(apportBetrag <= 0)" />
+        <AsyncActionButton Text="Enregistrer l'apport" OnClick="SpeichereApportAsync" CssClass="enote-btn-primary" Disabled="@(!ApportVollstaendig)" />
     </Footer>
 </ModalDialog>
 </BesitzerPinGuard>

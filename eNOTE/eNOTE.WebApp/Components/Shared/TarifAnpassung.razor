@@ -80,7 +80,7 @@
         <div class="enote-form ta-form">
             <div class="enote-form-grid">
                 <label>
-                    Nouveau tarif mensuel (F)
+                    <span class="enote-pflicht">Nouveau tarif mensuel (F)</span>
                     <input type="number" min="1" step="100" @bind:get="neuerPreis" @bind:set="PreisGeaendertAsync" @bind:event="oninput" />
                 </label>
                 <label>
@@ -146,8 +146,8 @@
                             }
                         </div>
                     </div>
-                    <label>Titre <input @bind="titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
-                    <label>Message <textarea rows="5" @bind="text" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
+                    <label><span class="enote-pflicht">Titre</span> <input @bind="titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
+                    <label><span class="enote-pflicht">Message</span> <textarea rows="5" @bind="text" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
                     <small class="enote-muted ta-platzhalter">
                         Remplacés automatiquement :
                         @foreach (var (platzhalter, bedeutung) in PreisAnpassungService.Platzhalter)
@@ -174,7 +174,7 @@
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => offen = false">Annuler</button>
         <AsyncActionButton Text="@(abWahl == Sofort ? "Appliquer maintenant" : "Planifier le changement")" BusyText="Enregistrement…"
-                           OnClick="SpeichernAsync" CssClass="enote-btn-primary" Disabled="@(vorschau is null || vorschau.Differenz == 0)" />
+                           OnClick="SpeichernAsync" CssClass="enote-btn-primary" Disabled="@(vorschau is null || vorschau.Differenz == 0 || string.IsNullOrWhiteSpace(titel) || string.IsNullOrWhiteSpace(text))" />
     </Footer>
 </ModalDialog>
 
@@ -201,8 +201,8 @@
 
                 <div class="ta-text">
                     <span class="ta-liste-titel">Message aux propriétaires</span>
-                    <label>Titre <input @bind="entwarnTitel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
-                    <label>Message <textarea rows="5" @bind="entwarnText" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
+                    <label><span class="enote-pflicht">Titre</span> <input @bind="entwarnTitel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" /></label>
+                    <label><span class="enote-pflicht">Message</span> <textarea rows="5" @bind="entwarnText" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"></textarea></label>
                     <small class="enote-muted ta-platzhalter">
                         Remplacés automatiquement (valeurs de l'annonce) :
                         @foreach (var (platzhalter, bedeutung) in PreisAnpassungService.Platzhalter)

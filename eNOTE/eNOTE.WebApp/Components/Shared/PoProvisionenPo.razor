@@ -109,13 +109,13 @@
         <p>@nichtErhalten?.Laden · @Geld(nichtErhalten?.Betrag ?? 0) · versée le @nichtErhalten?.VerseeUtc?.ToString("dd/MM/yyyy") (référence @nichtErhalten?.Referenz)</p>
         <p class="enote-muted">La commission redevient « à recevoir » et l'administrateur voit votre message.</p>
         <div class="enote-form">
-            <label>Que s'est-il passé ? (obligatoire)</label>
-            <textarea @bind="grund" maxlength="500" rows="3"></textarea>
+            <label><span class="enote-pflicht">Que s'est-il passé ?</span></label>
+            <textarea @bind="grund" @bind:event="oninput" maxlength="500" rows="3"></textarea>
         </div>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => nichtErhalten = null">Annuler</button>
-        <AsyncActionButton Text="Signaler" OnClick="NichtErhaltenAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Signaler" OnClick="NichtErhaltenAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(grund)" />
     </Footer>
 </ModalDialog>
 

@@ -135,8 +135,8 @@
 <ModalDialog Open="ausgabeDialogOffen" Title="Nouvelle dépense" ErrorMessage="@ausgabeFehler" OnClose="() => ausgabeDialogOffen = false" MaxWidthClass="enote-modal-md">
     <ChildContent>
         <div class="kx-pay">
-            <BetragEingabe @bind-Wert="neuBetrag" Label="Montant" Kompakt="true" MitZiffernblock="false" />
-            <span class="enote-betrag-label">Catégorie</span>
+            <BetragEingabe @bind-Wert="neuBetrag" Label="Montant" Pflicht="true" Kompakt="true" MitZiffernblock="false" />
+            <span class="enote-betrag-label"><span class="enote-pflicht">Catégorie</span></span>
             @if (kategorienOptionen.Count <= 10)
             {
                 <div class="enote-betrag-schnell">

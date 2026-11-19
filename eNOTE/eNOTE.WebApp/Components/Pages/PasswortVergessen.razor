@@ -31,10 +31,10 @@
             }
             <div class="auth-form">
                 <label>
-                    Pseudonyme
-                    <input @bind="pseudonym" autocomplete="username" maxlength="256" />
+                    <span class="enote-pflicht">Pseudonyme</span>
+                    <input @bind="pseudonym" @bind:event="oninput" autocomplete="username" maxlength="256" />
                 </label>
-                <button type="button" class="btn-primary" disabled="@laeuft" @onclick="EnvoyerAsync">
+                <button type="button" class="btn-primary" disabled="@(laeuft || string.IsNullOrWhiteSpace(pseudonym))" @onclick="EnvoyerAsync">
                     @if (laeuft)
                     {
                         <span class="btn-spinner"></span>

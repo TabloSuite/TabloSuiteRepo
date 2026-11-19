@@ -133,16 +133,16 @@
             }
         </ul>
         <div class="enote-form">
-            <label>Date du versement</label>
+            <label><span class="enote-pflicht">Date du versement</span></label>
             <EnoteDatePicker @bind-Value="datum" />
-            <label>Référence (n° de transaction Mobile Money, virement, « espèces »…)</label>
-            <input @bind="referenz" maxlength="200" />
+            <label><span class="enote-pflicht">Référence (n° de transaction Mobile Money, virement, « espèces »…)</span></label>
+            <input @bind="referenz" @bind:event="oninput" maxlength="200" />
         </div>
         <p class="enote-muted">Chaque responsable voit ensuite ces commissions comme « versées » et confirme leur réception.</p>
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => dialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="@($"Marquer {auswahl.Count} commission(s) comme versées")" OnClick="VersementAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="@($"Marquer {auswahl.Count} commission(s) comme versées")" OnClick="VersementAsync" CssClass="enote-btn-primary" Disabled="@(datum is null || string.IsNullOrWhiteSpace(referenz))" />
     </Footer>
 </ModalDialog>
 

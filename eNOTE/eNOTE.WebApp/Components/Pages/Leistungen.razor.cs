@@ -49,6 +49,10 @@ public partial class Leistungen(
     private bool istSammelArtikel;
     private string basisLeistungIdText = string.Empty;
     private decimal? basisAbzugMenge;
+
+    /// <summary>Pflichtangaben des Editors (wie SpeichernAsync): Nom; beim Sammel-Artikel Stock de base und Menge &gt; 0.</summary>
+    private bool LeistungVollstaendig => !string.IsNullOrWhiteSpace(bearbeitungsLeistung.Name)
+        && (!istSammelArtikel || (Guid.TryParse(basisLeistungIdText, out _) && basisAbzugMenge > 0));
     private IReadOnlyList<EnoteSelectOption<string>> basisOptionen = [];
     private IReadOnlyList<EnoteSelectOption<string>> kategorieOptionen = [];
     private IReadOnlyList<EnoteSelectOption<string>> kategorieZuordnungOptionen = [];
@@ -75,6 +79,9 @@ public partial class Leistungen(
     private Core.DataModels.Katalog.AbschreibungsGrund verlustGrund = Core.DataModels.Katalog.AbschreibungsGrund.Casse;
     private string? verlustNotiz;
     private string? verlustFehler;
+
+    /// <summary>Raison « Autre »: die Note ist Pflicht (wie BestandsService.SchreibeAbAsync).</summary>
+    private bool VerlustNotizNoetig => verlustGrund == Core.DataModels.Katalog.AbschreibungsGrund.Autre;
 
     private void OeffneVerlust(Leistung leistung)
     {

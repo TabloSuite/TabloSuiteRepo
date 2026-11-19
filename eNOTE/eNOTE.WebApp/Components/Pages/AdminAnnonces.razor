@@ -32,9 +32,9 @@
                 @if (IstWartung)
                 {
                     <div class="an-fenster">
-                        <label>Jour <input type="date" @bind="neu.Tag" min="@DateTime.UtcNow.ToString("yyyy-MM-dd")" /></label>
-                        <label>De <input type="time" step="300" @bind="neu.Von" /></label>
-                        <label>À <input type="time" step="300" @bind="neu.Bis2" /></label>
+                        <label><span class="enote-pflicht">Jour</span> <input type="date" @bind="neu.Tag" @bind:event="oninput" min="@DateTime.UtcNow.ToString("yyyy-MM-dd")" /></label>
+                        <label><span class="enote-pflicht">De</span> <input type="time" step="300" @bind="neu.Von" @bind:event="oninput" /></label>
+                        <label><span class="enote-pflicht">À</span> <input type="time" step="300" @bind="neu.Bis2" @bind:event="oninput" /></label>
                     </div>
                     <small class="enote-muted">Heure de Lomé (GMT) – au Bénin, une heure de plus. L'annonce s'affiche dès maintenant et disparaît après la mise à jour.</small>
                     <div class="ta-text-kopf">
@@ -48,9 +48,9 @@
                         </div>
                     </div>
                 }
-                <label>Titre <input @bind="neu.Titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" placeholder="ex. Nouvelle version d'eNOTE disponible" /></label>
+                <label><span class="enote-pflicht">Titre</span> <input @bind="neu.Titel" @bind:event="oninput" maxlength="@AnkuendigungService.TitelMax" placeholder="ex. Nouvelle version d'eNOTE disponible" /></label>
                 <label>
-                    Message
+                    <span class="enote-pflicht">Message</span>
                     <textarea rows="5" @bind="neu.Text" @bind:event="oninput" maxlength="@AnkuendigungService.TextMax"
                               placeholder="ex. Nouveau : remboursements depuis l'historique des ventes et mode sombre. Rechargez la page pour en profiter."></textarea>
                 </label>
@@ -113,7 +113,7 @@
             }
 
             <div class="an-fuss">
-                <AsyncActionButton Text="Publier l'annonce" BusyText="Publication…" OnClick="VeroeffentlicheAsync" CssClass="enote-btn-primary" />
+                <AsyncActionButton Text="Publier l'annonce" BusyText="Publication…" OnClick="VeroeffentlicheAsync" CssClass="enote-btn-primary" Disabled="@(!AnnonceVollstaendig)" />
             </div>
         </section>
 
@@ -203,6 +203,9 @@
         [AnkuendigungArt.Maintenance, AnkuendigungArt.Nouveaute, AnkuendigungArt.Information, AnkuendigungArt.Tarif];
 
     private bool IstWartung => neu.Art == AnkuendigungArt.Maintenance;
+
+    /// <summary>Pflichtangaben (wie AnkuendigungService): Titre und Message; bei « Maintenance » Jour, De und À.</summary>
+    private bool AnnonceVollstaendig => !string.IsNullOrWhiteSpace(neu.Titel) && !string.IsNullOrWhiteSpace(neu.Text) && (!IstWartung || Fenster is not null);
 
     private (DateTime Von, DateTime Bis)? Fenster => neu.Tag is DateTime tag && neu.Von is TimeOnly von && neu.Bis2 is TimeOnly bis
         ? (DateTime.SpecifyKind(tag.Date + von.ToTimeSpan(), DateTimeKind.Utc),

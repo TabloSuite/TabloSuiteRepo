@@ -94,8 +94,8 @@
                     <p class="enote-muted">Votre nom apparaît dans l'équipe, sur les reçus et dans les messages d'eNOTE.</p>
                     <div class="enote-form">
                         <div class="pf-zwei">
-                            <label>Prénom <input @bind="vorname" @bind:event="oninput" autocomplete="given-name" maxlength="60" /></label>
-                            <label>Nom <input @bind="nachname" @bind:event="oninput" autocomplete="family-name" maxlength="60" /></label>
+                            <label><span class="enote-pflicht">Prénom</span> <input @bind="vorname" @bind:event="oninput" autocomplete="given-name" maxlength="60" /></label>
+                            <label><span class="enote-pflicht">Nom</span> <input @bind="nachname" @bind:event="oninput" autocomplete="family-name" maxlength="60" /></label>
                         </div>
                         <label>
                             <span>Téléphone <span class="enote-muted pf-optional">(facultatif)</span></span>
@@ -109,7 +109,7 @@
                         {
                             <div class="alert alert-error" role="alert">@datenFehler</div>
                         }
-                        <div><AsyncActionButton Text="Enregistrer" OnClick="SpeichereDatenAsync" CssClass="enote-btn-primary" Disabled="!DatenGeaendert" /></div>
+                        <div><AsyncActionButton Text="Enregistrer" OnClick="SpeichereDatenAsync" CssClass="enote-btn-primary" Disabled="@(!DatenGeaendert || !DatenVollstaendig)" /></div>
                     </div>
                 </section>
 
@@ -152,15 +152,15 @@
 
                 <EditForm Model="this" OnValidSubmit="AenderePasswortAsync" FormName="pw-form" class="enote-form">
                     <label>
-                        Mot de passe actuel
+                        <span class="enote-pflicht">Mot de passe actuel</span>
                         <PasswordInput @bind-Value="aktuellesPasswort" Required="true" Autocomplete="current-password" />
                     </label>
                     <label>
-                        Nouveau mot de passe
+                        <span class="enote-pflicht">Nouveau mot de passe</span>
                         <PasswordInput @bind-Value="neuesPasswort" Required="true" Autocomplete="new-password" />
                         <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
                     </label>
-                    <div><AsyncActionButton Text="Changer le mot de passe" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" /></div>
+                    <div><AsyncActionButton Text="Changer le mot de passe" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" Disabled="@(!PasswortVollstaendig)" /></div>
                 </EditForm>
             </section>
             </div>
@@ -171,9 +171,9 @@
 <ModalDialog Open="emailDialogOffen" Title="Changer l'adresse e-mail" ErrorMessage="@emailFehler" OnClose="() => emailDialogOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <label>Nouvelle adresse e-mail <input @bind="neueEmail" @bind:event="oninput" type="email" autocomplete="email" maxlength="256" /></label>
+            <label><span class="enote-pflicht">Nouvelle adresse e-mail</span> <input @bind="neueEmail" @bind:event="oninput" type="email" autocomplete="email" maxlength="256" /></label>
             <label>
-                Mot de passe actuel
+                <span class="enote-pflicht">Mot de passe actuel</span>
                 <PasswordInput @bind-Value="emailPasswort" Required="true" Autocomplete="current-password" />
             </label>
             <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Un message de sécurité est envoyé à l'ancienne adresse.</p>
@@ -181,7 +181,7 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => emailDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="AendereEmailAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer" OnClick="AendereEmailAsync" CssClass="enote-btn-primary" Disabled="@(!EmailVollstaendig)" />
     </Footer>
 </ModalDialog>
 
@@ -189,12 +189,12 @@
     <ChildContent>
         <div class="enote-form">
             <label>
-                Nouvel identifiant
+                <span class="enote-pflicht">Nouvel identifiant</span>
                 <input @bind="neuesPseudonym" @bind:event="oninput" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" />
                 <small class="enote-muted">3 à 64 caractères : lettres, chiffres, point, tiret ou soulignement.</small>
             </label>
             <label>
-                Mot de passe actuel
+                <span class="enote-pflicht">Mot de passe actuel</span>
                 <PasswordInput @bind-Value="pseudonymPasswort" Required="true" Autocomplete="current-password" />
             </label>
             <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Vous serez ensuite déconnecté et vous reconnecterez avec le nouvel identifiant.</p>
@@ -202,6 +202,6 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => pseudonymDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Changer l'identifiant" OnClick="AenderePseudonymAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Changer l'identifiant" OnClick="AenderePseudonymAsync" CssClass="enote-btn-primary" Disabled="@(!PseudonymVollstaendig)" />
     </Footer>
 </ModalDialog>

@@ -174,9 +174,9 @@
                     }
 
                     <div class="enote-form">
-                        <label>@(hatBesitzerPin ? "Nouveau code PIN" : "Code PIN") <small class="enote-muted">(4 à 6 chiffres)</small></label>
+                        <label><span class="enote-pflicht">@(hatBesitzerPin ? "Nouveau code PIN" : "Code PIN")</span> <small class="enote-muted">(4 à 6 chiffres)</small></label>
                         <div class="enote-pin-zeile">
-                            <input type="text" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin"
+                            <input type="text" inputmode="numeric" maxlength="6" @bind="neueBesitzerPin" @bind:event="oninput"
                                    autocomplete="off" name="enote-pin" data-lpignore="true" data-form-type="other"
                                    class="@(pinSichtbar ? "" : "enote-pin-masked")" />
                             <button type="button" class="enote-pin-eye" title="@(pinSichtbar ? "Masquer" : "Afficher")" @onclick="() => pinSichtbar = !pinSichtbar">
@@ -184,7 +184,7 @@
                             </button>
                         </div>
                         <small class="enote-muted">@(hatBesitzerPin ? "Un code est déjà défini. Saisissez-en un nouveau pour le changer." : "Aucun code défini : la gestion est accessible sans code.")</small>
-                        <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" />
+                        <AsyncActionButton Text="Enregistrer le code PIN" OnClick="SpeichereBesitzerPinAsync" CssClass="enote-btn-primary" Disabled="@string.IsNullOrWhiteSpace(neueBesitzerPin)" />
                     </div>
                 </section>
             </div>
@@ -229,14 +229,14 @@
         <div class="enote-form">
             <p class="enote-muted">Le nouvel établissement sera activé après validation par l'administrateur. Un nouveau compte (pseudonyme + mot de passe) est créé pour cet établissement ; l'adresse e-mail peut être la même que celle du premier établissement.</p>
             <div class="enote-form-grid">
-                <label>Nom de l'établissement <input @bind="neuerLadenName" placeholder="ex. Salon B" /></label>
+                <label><span class="enote-pflicht">Nom de l'établissement</span> <input @bind="neuerLadenName" @bind:event="oninput" placeholder="ex. Salon B" /></label>
                 <label>Ville / quartier <input @bind="neuerLadenStandort" placeholder="ex. Lomé" /></label>
-                <label>Prénom <input @bind="neuerLadenVorname" placeholder="ex. Jean" /></label>
-                <label>Nom <input @bind="neuerLadenNachname" placeholder="ex. Dupont" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="neuerLadenVorname" @bind:event="oninput" placeholder="ex. Jean" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="neuerLadenNachname" @bind:event="oninput" placeholder="ex. Dupont" /></label>
             </div>
-            <label>Pseudonyme (identifiant de connexion) <input @bind="neuerLadenPseudonym" placeholder="ex. jean.salonb" autocomplete="username" /></label>
-            <label>Adresse e-mail de contact <input type="email" @bind="neuerLadenEmail" placeholder="ex. contact@exemple.com" autocomplete="email" /></label>
-            <label>Mot de passe initial <PasswordInput @bind-Value="neuerLadenPasswort" Autocomplete="new-password" /></label>
+            <label><span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span> <input @bind="neuerLadenPseudonym" @bind:event="oninput" placeholder="ex. jean.salonb" autocomplete="username" /></label>
+            <label><span class="enote-pflicht">Adresse e-mail de contact</span> <input type="email" @bind="neuerLadenEmail" @bind:event="oninput" placeholder="ex. contact@exemple.com" autocomplete="email" /></label>
+            <label><span class="enote-pflicht">Mot de passe initial</span> <PasswordInput @bind-Value="neuerLadenPasswort" Autocomplete="new-password" /></label>
             <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
         </div>
     </ChildContent>

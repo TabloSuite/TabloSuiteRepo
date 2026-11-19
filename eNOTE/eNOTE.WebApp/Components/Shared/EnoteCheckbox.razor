@@ -10,6 +10,6 @@
     </button>
     @if (!string.IsNullOrWhiteSpace(Label))
     {
-        <span class="enote-toggle-label" @onclick="ToggleAsync">@Label</span>
+        <span class="enote-toggle-label @(Pflicht ? "enote-pflicht" : null)" @onclick="ToggleAsync">@Label</span>
     }
 </div>

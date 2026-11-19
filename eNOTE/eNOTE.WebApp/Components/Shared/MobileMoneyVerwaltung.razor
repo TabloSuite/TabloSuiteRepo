@@ -36,8 +36,8 @@
         @if (bearbeitung is { } b)
         {
             <div class="enote-form">
-                <label>Nom <input @bind="b.Name" maxlength="80" placeholder="ex. Flooz" /></label>
-                <label>Pays</label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="b.Name" @bind:event="oninput" maxlength="80" placeholder="ex. Flooz" /></label>
+                <label><span class="enote-pflicht">Pays</span></label>
                 <EnoteSelect TValue="string" @bind-Value="b.Land" Options="landOptionen" MitSuche="true" />
                 <div class="enote-form-grid">
                     <label>Couleur de marque <input type="color" @bind="b.Farbe" class="mm-farbe" /></label>
@@ -53,7 +53,8 @@
     </ChildContent>
     <Footer>
         <button class="enote-btn enote-btn-ghost" @onclick="() => bearbeitung = null">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary" />
+        <AsyncActionButton Text="Enregistrer" OnClick="SpeichernAsync" CssClass="enote-btn-primary"
+                           Disabled="@(bearbeitung is null || string.IsNullOrWhiteSpace(bearbeitung.Name) || string.IsNullOrWhiteSpace(bearbeitung.Land))" />
     </Footer>
 </ModalDialog>
 

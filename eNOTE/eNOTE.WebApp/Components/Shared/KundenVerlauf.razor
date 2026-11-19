@@ -7,7 +7,7 @@
 
 <section class="kv" aria-label="Passages et notes">
     <div class="kv-neu">
-        <label class="kv-label" for="kv-text-@Fiche.KundeId">Ajouter une note</label>
+        <label class="kv-label" for="kv-text-@Fiche.KundeId"><span class="enote-pflicht">Ajouter une note</span></label>
         <textarea id="kv-text-@Fiche.KundeId" rows="2" @bind="text" @bind:event="oninput" maxlength="@KundenBesuchRegeln.NotizMax"
                   placeholder="ex. couleur 6.3, préfère l'eau tiède, revient dans 3 semaines"></textarea>
         @if (Fiche.Offen is { } offen)
