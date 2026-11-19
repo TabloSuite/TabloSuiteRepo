@@ -174,15 +174,22 @@ public static class BulletinPdf
                 if (l.ZeigeAppreciation) K("APPRÉCIATIONS");
                 if (l.ZeigeSignaturSpalte) K("SIGNATURE");
             });
-            var gruppen = l.ZeigeFachGruppen ? i.Faecher.GroupBy(f => f.Gruppe ?? string.Empty).ToList() : [i.Faecher.GroupBy(_ => string.Empty).First()];
-            if (i.Faecher.Count == 0) gruppen = [];
-            foreach (var g in gruppen)
+            foreach (var b in Bloecke(i))
             {
-                foreach (var f in g) Zeile(t, l, bilan, f);
-                if (l.ZeigeFachGruppen && g.Key.Length > 0 && i.Gruppen.FirstOrDefault(x => x.Name == g.Key) is { } gr)
+                if (b.Kopf is { } kopf)
+                {
+                    t.Cell().ColumnSpan((uint)Spalten(l, bilan)).Border(0.5f).BorderColor(Rand).PaddingHorizontal(1.5f, Unit.Millimetre).PaddingVertical(0.7f, Unit.Millimetre)
+                        .Text(x =>
+                        {
+                            x.Span(kopf).FontSize(7f).Bold().FontColor(l.Farbe).LetterSpacing(0.03f);
+                            if (b.Regel is { } regel) x.Span($" — {regel}").FontSize(6.8f).Italic().FontColor(Leise);
+                        });
+                }
+                foreach (var f in b.Faecher) Zeile(t, l, bilan, f, regelJeFach: b.Wahlfaecher && b.Regel is null);
+                if (b.Bilan is { } gr)
                 {
                     t.Cell().ColumnSpan((uint)Spalten(l, bilan)).Background(Zart).Border(0.5f).BorderColor(Rand).PaddingHorizontal(1.5f, Unit.Millimetre).PaddingVertical(0.6f, Unit.Millimetre)
-                        .Text($"Bilan {g.Key} : {gr.Moyenne} (coef. {gr.Koeffizienten:0.##})").FontSize(6.8f).SemiBold().Italic();
+                        .Text($"Bilan {gr.Name} : {gr.Moyenne} (coef. {gr.Koeffizienten:0.##})").FontSize(6.8f).SemiBold().Italic();
                 }
             }
             if (l.ZeigeKoeffizienten && l.ZeigePunkte)
@@ -202,18 +209,61 @@ public static class BulletinPdf
         => 2 + (l.ZeigeTeilnoten ? 1 : 0) + (l.ZeigeKoeffizienten ? 1 : 0) + (l.ZeigeKoeffizienten && l.ZeigePunkte ? 1 : 0) + (l.ZeigeFachRang ? 1 : 0)
            + (bilan ? 1 : 0) + (l.ZeigeAppreciation ? 1 : 0) + (l.ZeigeSignaturSpalte ? 1 : 0);
 
-    private static void Zeile(TableDescriptor t, SnapshotLayout l, bool bilan, SnapshotFach f)
+    /// <summary>Block der Notentabelle: Kopfzeile (null = ohne), Regel der Wahlfächer, Fächer, Gruppen-Bilan darunter.</summary>
+    public sealed record TabellenBlock(string? Kopf, string? Regel, IReadOnlyList<SnapshotFach> Faecher, SnapshotGruppe? Bilan, bool Wahlfaecher);
+
+    /// <summary>
+    /// Gliederung der Notentabelle: Pflichtfächer – mit der Vorlage « ZeigeFachGruppen » je Gruppe mit Kopf (« MATIÈRES LITTÉRAIRES » …)
+    /// und Bilan, sonst ein Block ohne Kopf –, danach nur bei gewählten Wahlfächern der Block « MATIÈRES FACULTATIVES » mit der Regel
+    /// (gleiche Regel für alle: im Kopf, sonst unter jedem Fach). Ohne Wahlfächer und Gruppen bleibt die Tabelle wie bisher.
+    /// </summary>
+    public static IReadOnlyList<TabellenBlock> Bloecke(BulletinInhalt i)
+    {
+        var pflicht = i.Faecher.Where(f => f.Wahlfach is null).ToList();
+        var wahl = i.Faecher.Where(f => f.Wahlfach is not null).ToList();
+        var bloecke = new List<TabellenBlock>();
+        if (i.Layout.ZeigeFachGruppen)
+        {
+            foreach (var g in pflicht.GroupBy(f => f.Gruppe ?? string.Empty))
+                bloecke.Add(new TabellenBlock(g.Key.Length > 0 ? GruppenKopf(g.Key) : null, null, g.ToList(),
+                    g.Key.Length > 0 ? i.Gruppen.FirstOrDefault(x => x.Name == g.Key) : null, false));
+        }
+        else if (pflicht.Count > 0)
+        {
+            bloecke.Add(new TabellenBlock(null, null, pflicht, null, false));
+        }
+        if (wahl.Count > 0)
+        {
+            var regeln = wahl.Select(f => f.Wahlfach!.Value).Distinct().ToList();
+            bloecke.Add(new TabellenBlock("MATIÈRES FACULTATIVES", regeln.Count == 1 ? Core.Noten.NotenTexte.WahlfachKurz(regeln[0]) : null, wahl, null, true));
+        }
+        return bloecke;
+    }
+
+    /// <summary>Kopfzeile einer Fachgruppe (Name wie im Snapshot: « Lettres », « Sciences », « Autres »).</summary>
+    public static string GruppenKopf(string gruppe) => gruppe switch
+    {
+        "Lettres" => "MATIÈRES LITTÉRAIRES",
+        "Sciences" => "MATIÈRES SCIENTIFIQUES",
+        "Autres" => "AUTRES MATIÈRES",
+        _ => gruppe.ToUpper(SkoulouKultur.Kultur)
+    };
+
+    private static void Zeile(TableDescriptor t, SnapshotLayout l, bool bilan, SnapshotFach f, bool regelJeFach)
     {
         IContainer Zelle() => t.Cell().Border(0.5f).BorderColor(Rand).PaddingHorizontal(1.2f, Unit.Millimetre).PaddingVertical(0.8f, Unit.Millimetre);
         Zelle().Column(col =>
         {
             col.Item().Text(f.Name).SemiBold();
+            if (regelJeFach && f.Wahlfach is { } r) col.Item().Text(Core.Noten.NotenTexte.WahlfachText(r)).FontSize(6.3f).Italic().FontColor(Leise);
             if (l.ZeigeLehrkraefte && f.Lehrer is { } le) col.Item().Text(le).FontSize(6.3f).FontColor(Leise);
         });
         if (l.ZeigeTeilnoten) Zelle().AlignCenter().AlignMiddle().Text(f.Teilnoten ?? "").FontSize(6.6f).FontColor(Leise);
         Zelle().AlignCenter().AlignMiddle().Text(f.MoyenneText).Bold();
-        if (l.ZeigeKoeffizienten) Zelle().AlignCenter().AlignMiddle().Text(f.Koeffizient.ToString("0.##", SkoulouKultur.Kultur));
-        if (l.ZeigeKoeffizienten && l.ZeigePunkte) Zelle().AlignCenter().AlignMiddle().Text(f.Punkte is { } p ? Zahl(p) : "—");
+        if (l.ZeigeKoeffizienten)
+            Zelle().AlignCenter().AlignMiddle().Text(f.Wahlfach == WahlfachRegel.NurInformation ? "—" : f.Koeffizient.ToString("0.##", SkoulouKultur.Kultur));
+        if (l.ZeigeKoeffizienten && l.ZeigePunkte)
+            Zelle().AlignCenter().AlignMiddle().Text(f.Punkte is not { } p ? "—" : f.Wahlfach == WahlfachRegel.PunkteUeber10 ? $"+{Zahl(p)}" : Zahl(p));
         if (l.ZeigeFachRang) Zelle().AlignCenter().AlignMiddle().Text(f.Rang ?? "—");
         if (bilan) Zelle().AlignCenter().AlignMiddle().Text(f.JahresMoyenne ?? "—");
         if (l.ZeigeAppreciation) Zelle().AlignMiddle().Text(f.Appreciation ?? "").FontSize(6.8f).Italic();

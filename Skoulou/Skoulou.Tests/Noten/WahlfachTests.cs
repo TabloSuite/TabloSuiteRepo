@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
+using Skoulou.WebApp.Services.Noten;
 
 namespace Skoulou.Tests.Noten;
 
@@ -94,6 +95,125 @@ public class WahlfachTests
         Assert.Empty((await u.FachwahlenAsync(w.D, w.O.Klasse6A)).Schueler);
         Assert.Equal(0, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, []));
         Assert.Equal(3, await w.MitDbAsync(db => db.Fachwahlen.CountAsync()));
+    }
+
+    /// <summary>Français als Wahlfach, nur eleve wählt; Mathématiques eleve 15 / eleveziel 11, Français eleve 16.</summary>
+    private static async Task<(NotenWelt W, Guid Fr)> BenotetAsync(WahlfachRegel regel = WahlfachRegel.PunkteUeber10)
+    {
+        var w = await MitWahlfachAsync(regel);
+        await w.O.D.Unterricht.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler)]);
+        var math = await w.BewertungAsync(w.O.Kf6AMath, titel: "Interrogation");
+        var fr = await w.BewertungAsync(w.O.Kf6AFr, titel: "Dictée");
+        await w.NoteAsync(math, w.E1, "15");
+        await w.NoteAsync(math, w.E2, "11");
+        await w.NoteAsync(fr, w.E1, "16");
+        return (w, fr);
+    }
+
+    [Fact]
+    public async Task Notenerfassung_zeigt_im_Wahlfach_nur_die_Waehlenden()
+    {
+        var (w, fr) = await BenotetAsync();
+        var raster = await w.Noten.RasterAsync(w.D, w.O.Kf6AFr, w.O.P1);
+        Assert.Equal(WahlfachRegel.PunkteUeber10, raster.Wahlfach);
+        Assert.Equal(w.E1, Assert.Single(raster.Zeilen).EinschreibungId);
+        Assert.Equal((1, 1), (raster.Erwartet, raster.Erfasst));
+        var math = await w.Noten.RasterAsync(w.D, w.O.Kf6AMath, w.O.P1);
+        Assert.Equal((2, (WahlfachRegel?)null), (math.Zeilen.Count, math.Wahlfach));
+
+        Assert.Equal(NotenService.MeldungNichtGewaehlt, (await Assert.ThrowsAsync<FachFehler>(() => w.NoteAsync(fr, w.E2, "12"))).Message);
+        await Assert.ThrowsAsync<FachFehler>(() => w.Noten.BemerkungSpeichernAsync(w.D, w.O.Kf6AFr, w.O.P1, w.E2, "Bien"));
+        await w.Noten.BemerkungSpeichernAsync(w.D, w.O.Kf6AFr, w.O.P1, w.E1, "Très bien");
+
+        // Cockpit: im Wahlfach nur der Wählende erwartet → 2 (Mathématiques) + 1 (Français) = 3
+        var stand = (await w.Lesen.VollstaendigkeitAsync(w.D, w.O.Jahr, w.O.P1)).Single(k => k.KlasseId == w.O.Klasse6A);
+        Assert.Equal((3, 3, 100), (stand.Erwartet, stand.Noten, stand.Prozent));
+    }
+
+    [Fact]
+    public async Task Conseil_und_Bulletin_rechnen_den_Bonus_nur_fuer_den_Waehlenden()
+    {
+        var (w, _) = await BenotetAsync();
+        var u = await w.Conseil.UebersichtAsync(w.D, w.O.Klasse6A, w.O.P1);
+        Assert.Empty(u.Fehlend); // eleveziel wird in Français nicht erwartet
+        Assert.Equal(0, u.NonClasses);
+        Assert.Equal(19m, u.Zeilen.Single(z => z.EinschreibungId == w.E1).Moyenne.Wert); // (15·3 + (16 − 10)·2) / 3
+        Assert.Equal(11m, u.Zeilen.Single(z => z.EinschreibungId == w.E2).Moyenne.Wert);
+
+        await w.VeroeffentlichenAsync();
+        var json = await w.MitDbAsync(db => db.Bulletins.ToDictionaryAsync(b => b.EinschreibungId, b => b.SnapshotJson));
+        var eleve = BulletinSnapshot.AusJson(json[w.E1]).Inhalt;
+        var fr = eleve.Faecher.Single(f => f.Name == "Français");
+        Assert.Equal((WahlfachRegel.PunkteUeber10, 12m, "16,00", "1er"), (fr.Wahlfach!.Value, fr.Punkte!.Value, fr.MoyenneText, fr.Rang));
+        Assert.Null(eleve.Faecher.Single(f => f.Name == "Mathématiques").Wahlfach);
+        Assert.Equal((3m, 57m, "19,00"), (eleve.SummeKoeffizienten, eleve.SummePunkte!.Value, eleve.MoyenneText));
+        var bloecke = BulletinPdf.Bloecke(eleve);
+        Assert.Equal([null, "MATIÈRES FACULTATIVES"], bloecke.Select(b => b.Kopf));
+        Assert.Equal("points au-dessus de 10 ajoutés", bloecke[1].Regel);
+
+        // eleveziel: Français erscheint gar nicht, der Snapshot kennt kein Wahlfach-Feld, kein Bereich « facultatives »
+        var ziel = BulletinSnapshot.AusJson(json[w.E2]).Inhalt;
+        Assert.Equal(["Mathématiques"], ziel.Faecher.Select(f => f.Name));
+        Assert.DoesNotContain("Wahlfach", json[w.E2]);
+        Assert.Null(Assert.Single(BulletinPdf.Bloecke(ziel)).Kopf);
+
+        // PDF des Schülers mit Bereich und der ganzen Klasse
+        var id = await w.MitDbAsync(db => db.Bulletins.Where(b => b.EinschreibungId == w.E1).Select(b => b.Id).SingleAsync());
+        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString((await w.Pdf.BulletinAsync(w.O.Schueler, id, "https://localhost")).Inhalt, 0, 4));
+        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString((await w.Pdf.KlasseAsync(w.D, w.O.Klasse6A, w.O.P1, "https://localhost")).Inhalt, 0, 4));
+    }
+
+    [Theory]
+    [InlineData(WahlfachRegel.WieNormal, "15,40", 5, 77)]       // (15·3 + 16·2) / 5
+    [InlineData(WahlfachRegel.NurInformation, "15,00", 3, 45)]  // 15·3 / 3, Français nur zur Information
+    public async Task Andere_Regeln_im_Bulletin(WahlfachRegel regel, string moyenne, int koeffizienten, int punkte)
+    {
+        var (w, _) = await BenotetAsync(regel);
+        var d = await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P1, w.E1);
+        var i = d.Snapshot.Inhalt;
+        Assert.Equal((moyenne, (decimal)koeffizienten, (decimal)punkte), (i.MoyenneText, i.SummeKoeffizienten, i.SummePunkte!.Value));
+        Assert.Equal(regel, i.Faecher.Single(f => f.Name == "Français").Wahlfach);
+    }
+
+    [Fact]
+    public async Task Live_Noten_der_Eltern_nur_mit_gewaehlten_Wahlfaechern()
+    {
+        var (w, _) = await BenotetAsync();
+        await w.AendernAsync(async db => (await db.Schulen.SingleAsync(s => s.Id == w.O.SchuleA)).ElternSehenNotenLive = true);
+        var live = await w.Lesen.LiveNotenAsync(w.O.Eltern, w.O.Schueler, w.O.P1);
+        Assert.Equal("19,00", live.Moyenne);
+        Assert.Equal("Matière facultative · Seuls les points au-dessus de 10 comptent", live.Faecher.Single(f => f.Fach == "Français").Facultative);
+        var ziel = await w.Lesen.LiveNotenAsync(w.O.SchuelerZiel, w.O.SchuelerZiel, w.O.P1);
+        Assert.Equal(["Mathématiques"], ziel.Faecher.Select(f => f.Fach));
+        Assert.Equal("11,00", ziel.Moyenne);
+    }
+
+    [Fact]
+    public void Tabelle_ohne_Wahlfaecher_und_Gruppen_bleibt_wie_bisher()
+    {
+        var schule = new Schule { Name = "Collège Test", Ort = "Lomé", Adresse = "BP 1", Telefon = "+228 00", Ministerium = "Ministère", RepublikZeile = "RÉPUBLIQUE TOGOLAISE" };
+        var standard = VorlagenService.Beispiel(schule, new BulletinVorlage { SchuleId = schule.Id });
+        // Hash des Beispiel-Bulletins vor der Einführung der Wahlfächer (19.11.2026): Inhalt und JSON unverändert.
+        Assert.Equal("475b0af7a9223d19bab59d27c1bbb045d6a752e0a1eb0dbedcd2146fd8b0827b", BulletinSnapshot.HashVon(standard));
+        Assert.DoesNotContain("Wahlfach", new BulletinSnapshot(1, standard, null).AlsJson());
+        var block = Assert.Single(BulletinPdf.Bloecke(standard));
+        Assert.Equal((null, 6, null), (block.Kopf, block.Faecher.Count, block.Bilan));
+
+        // Mit Gruppen: Kopf und Bilan je Gruppe; Wahlfächer immer im eigenen Bereich am Ende, auch ohne Gruppen.
+        var gruppen = VorlagenService.Beispiel(schule, new BulletinVorlage { SchuleId = schule.Id, ZeigeFachGruppen = true });
+        Assert.Equal(["MATIÈRES LITTÉRAIRES", "MATIÈRES SCIENTIFIQUES", "AUTRES MATIÈRES"], BulletinPdf.Bloecke(gruppen).Select(b => b.Kopf));
+        Assert.Equal("Lettres", BulletinPdf.Bloecke(gruppen)[0].Bilan!.Name);
+        SnapshotFach Wahl(string name, WahlfachRegel r) => new(name, "Lettres", null, 2, 16, "16,00", 12, "1er", null, null, null, r);
+        var mitWahl = gruppen with { Faecher = [.. gruppen.Faecher, Wahl("Ewe", WahlfachRegel.PunkteUeber10), Wahl("Culture", WahlfachRegel.NurInformation)] };
+        var b = BulletinPdf.Bloecke(mitWahl);
+        Assert.Equal(["MATIÈRES LITTÉRAIRES", "MATIÈRES SCIENTIFIQUES", "AUTRES MATIÈRES", "MATIÈRES FACULTATIVES"], b.Select(x => x.Kopf));
+        Assert.Equal((null, 2), (b[^1].Regel, b[^1].Faecher.Count)); // verschiedene Regeln: je Fach statt im Kopf
+        Assert.Equal(3, b[0].Faecher.Count); // Ewe zählt nicht zu den Lettres
+        var ohneGruppen = standard with { Faecher = [.. standard.Faecher, Wahl("Ewe", WahlfachRegel.PunkteUeber10)] };
+        Assert.Equal([null, "MATIÈRES FACULTATIVES"], BulletinPdf.Bloecke(ohneGruppen).Select(x => x.Kopf));
+        Assert.Contains("\"Wahlfach\":0", new BulletinSnapshot(1, ohneGruppen, null).AlsJson());
+        Assert.Equal(WahlfachRegel.PunkteUeber10, BulletinSnapshot.AusJson(new BulletinSnapshot(1, ohneGruppen, null).AlsJson()).Inhalt.Faecher[^1].Wahlfach);
+        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(BulletinPdf.Erzeuge([new BulletinSeite(new BulletinSnapshot(1, mitWahl, null), null, null, BulletinStatus.Publie, null)]), 0, 4));
     }
 
     [Fact]

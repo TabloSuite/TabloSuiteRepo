@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Skoulou.Core.Entitaeten;
 
 namespace Skoulou.WebApp.Services.Noten;
@@ -14,8 +15,14 @@ public sealed record SnapshotSchueler(string Nachname, string Vorname, string? M
     public string Name => $"{Nachname.ToUpperInvariant()} {Vorname}".Trim();
 }
 
+/// <summary>
+/// Fach im Bulletin. <see cref="Wahlfach"/> = Regel einer « Matière facultative » (null = Pflichtfach; dann fehlt die Angabe im JSON,
+/// damit Inhalt und Hash bisheriger Bulletins gleich bleiben). Bei Wahlfächern ist <see cref="Punkte"/> der Beitrag zur Zeile
+/// « TOTAUX » (Bonus ohne Koeffizient bzw. nichts bei « Ne compte pas »).
+/// </summary>
 public sealed record SnapshotFach(string Name, string? Gruppe, string? Lehrer, decimal Koeffizient, decimal? Moyenne, string MoyenneText, decimal? Punkte,
-    string? Rang, string? Teilnoten, string? Appreciation, string? JahresMoyenne);
+    string? Rang, string? Teilnoten, string? Appreciation, string? JahresMoyenne,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WahlfachRegel? Wahlfach = null);
 
 public sealed record SnapshotGruppe(string Name, string Moyenne, decimal Koeffizienten);
 

@@ -49,6 +49,10 @@ else if (kind is not null)
                     {
                         <section class="nt-live-fach">
                             <header><strong>@f.Fach</strong><span class="nt-zahl">@f.Mittel</span></header>
+                            @if (f.Facultative is not null)
+                            {
+                                <p class="sk-leise">@f.Facultative</p>
+                            }
                             @if (f.Noten.Count == 0)
                             {
                                 <p class="sk-leise">Aucune évaluation.</p>

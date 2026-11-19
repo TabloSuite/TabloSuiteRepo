@@ -28,8 +28,10 @@ public sealed record RasterZelle(Guid BewertungId, NotenStatus? Status, decimal?
 public sealed record RasterZeile(Guid EinschreibungId, Guid SchuelerId, string Name, string? Matrikel, string? Hinweis, IReadOnlyList<RasterZelle> Zellen,
     string? Bemerkung, Mittel Mittel);
 
+/// <summary>Raster eines Klassenfachs; <see cref="Wahlfach"/> = Regel einer « Matière facultative » (dann nur die Schüler mit Wahl).</summary>
 public sealed record NotenRaster(Guid KlassenfachId, Guid PeriodeId, string Klasse, string Fach, string Periode, decimal Koeffizient, bool Schreibbar,
-    string? Sperre, string? StrukturSperre, bool AbsentZaehltNull, IReadOnlyList<RasterSpalte> Spalten, IReadOnlyList<RasterZeile> Zeilen)
+    string? Sperre, string? StrukturSperre, bool AbsentZaehltNull, IReadOnlyList<RasterSpalte> Spalten, IReadOnlyList<RasterZeile> Zeilen,
+    WahlfachRegel? Wahlfach = null)
 {
     public int Erwartet => Zeilen.Sum(z => z.Zellen.Count(c => c.Erwartet));
     public int Erfasst => Zeilen.Sum(z => z.Zellen.Count(c => c.Erwartet && c.HatNote));
@@ -99,6 +101,12 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
             .Select(b => new RasterSpalte(b.Id, b.Titel, b.Art, b.Datum, b.Bareme, b.Gewicht, db.Noten.Count(n => n.BewertungId == b.Id), b.KomponenteId))
             .ToListAsync(ct);
         var schueler = await SchuelerDerPeriodeAsync(db, k.Klasse, periode, ct);
+        if (k.Kf.IstWahlfach)
+        {
+            // « Matière facultative »: nur wer sie gewählt hat, wird erwartet und benotet (Bauplan §5 Regel 2a).
+            var waehlende = await WaehlendeAsync(db, k.Kf.Id, ct);
+            schueler = schueler.Where(s => waehlende.Contains(s.SchuelerId)).ToList();
+        }
         var bewIds = spalten.Select(s => s.BewertungId).ToList();
         var noten = await db.Noten.AsNoTracking().Where(n => bewIds.Contains(n.BewertungId))
             .Select(n => new { n.BewertungId, n.EinschreibungId, n.Status, n.Punkte }).ToListAsync(ct);
@@ -118,7 +126,21 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
         }).ToList();
 
         return new NotenRaster(k.Kf.Id, periode.Id, k.Klasse.Name, k.Fach, periode.Titel, k.Kf.Koeffizient, k.Schreiben,
-            NotenSperren.Noten(k.Jahr, periode, status), NotenSperren.Struktur(k.Jahr, periode, status), absentNull, spalten, zeilen);
+            NotenSperren.Noten(k.Jahr, periode, status), NotenSperren.Struktur(k.Jahr, periode, status), absentNull, spalten, zeilen,
+            k.Kf.IstWahlfach ? k.Kf.WahlfachRegel : null);
+    }
+
+    public const string MeldungNichtGewaehlt = "Cet élève n'a pas choisi cette matière facultative : il n'y est pas noté.";
+
+    /// <summary>Schüler mit Wahl dieses Klassenfachs (« Matière facultative »).</summary>
+    private static async Task<HashSet<Guid>> WaehlendeAsync(SkoulouDbContext db, Guid klassenfachId, CancellationToken ct)
+        => (await db.Fachwahlen.AsNoTracking().Where(w => w.KlassenfachId == klassenfachId).Select(w => w.SchuelerId).ToListAsync(ct)).ToHashSet();
+
+    /// <summary>Wahlfach ohne Wahl des Schülers → Fehler (keine Note, keine Appréciation).</summary>
+    private static async Task PruefeGewaehltAsync(SkoulouDbContext db, Klassenfach kf, Guid schuelerId, CancellationToken ct)
+    {
+        if (kf.IstWahlfach && !await db.Fachwahlen.AnyAsync(w => w.KlassenfachId == kf.Id && w.SchuelerId == schuelerId, ct))
+            throw new FachFehler(MeldungNichtGewaehlt);
     }
 
     /// <summary>Ist eine Bewertung für die Einschreibung erwartet? Ohne Datum immer; sonst nur innerhalb der Einschreibung.</summary>
@@ -160,6 +182,7 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
             var einschreibung = await db.Einschreibungen.AsNoTracking().FirstOrDefaultAsync(e => e.Id == einschreibungId && e.StorniertAmUtc == null, ct);
             if (einschreibung is null || einschreibung.KlasseId != k.Klasse.Id || einschreibung.Von > periode.Ende || (einschreibung.Bis is { } bis && bis < periode.Beginn))
                 throw new FachFehler("Cet élève n'est pas inscrit dans cette classe pendant la période.");
+            await PruefeGewaehltAsync(db, k.Kf, einschreibung.SchuelerId, ct);
 
             var neu = NotenEingabe.Lese(eingabe, bewertung.Bareme);
             var note = await db.Noten.FirstOrDefaultAsync(n => n.BewertungId == bewertung.Id && n.EinschreibungId == einschreibungId, ct);
@@ -216,8 +239,9 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
             var (a, k) = await zugriff.KlassenfachAsync(db, akteurId, klassenfachId, schreiben: true, ct);
             var periode = await NotenRechte.PeriodeAsync(db, k.Klasse, periodeId, ct);
             if (NotenSperren.Noten(k.Jahr, periode, await NotenSperren.StatusAsync(db, k.Klasse.Id, periode.Id, ct)) is { } sperre) throw new FachFehler(sperre);
-            if (!await db.Einschreibungen.AnyAsync(e => e.Id == einschreibungId && e.KlasseId == k.Klasse.Id && e.StorniertAmUtc == null, ct))
-                throw new FachFehler("Cet élève n'est pas inscrit dans cette classe.");
+            var schuelerId = await db.Einschreibungen.Where(e => e.Id == einschreibungId && e.KlasseId == k.Klasse.Id && e.StorniertAmUtc == null)
+                .Select(e => (Guid?)e.SchuelerId).FirstOrDefaultAsync(ct) ?? throw new FachFehler("Cet élève n'est pas inscrit dans cette classe.");
+            await PruefeGewaehltAsync(db, k.Kf, schuelerId, ct);
             var vorhanden = await db.FachBemerkungen.FirstOrDefaultAsync(b => b.KlassenfachId == k.Kf.Id && b.PeriodeId == periode.Id && b.EinschreibungId == einschreibungId, ct);
             if (t is null)
             {

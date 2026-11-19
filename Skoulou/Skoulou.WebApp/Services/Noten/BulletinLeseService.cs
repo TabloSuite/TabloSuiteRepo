@@ -19,7 +19,8 @@ public sealed record EigenesBulletin(Guid Id, string Nummer, string Jahr, string
 
 public sealed record LiveNote(string Titel, DateOnly? Datum, string Note, decimal Bareme);
 
-public sealed record LiveFach(string Fach, decimal Koeffizient, IReadOnlyList<LiveNote> Noten, string Mittel);
+/// <summary>Fach der Live-Noten; <see cref="Facultative"/> = Hinweis bei einer gewählten « Matière facultative » (Regel).</summary>
+public sealed record LiveFach(string Fach, decimal Koeffizient, IReadOnlyList<LiveNote> Noten, string Mittel, string? Facultative = null);
 
 public sealed record LiveNoten(bool Erlaubt, string? Klasse, IReadOnlyList<PeriodeAuswahl> Perioden, Guid? PeriodeId, IReadOnlyList<LiveFach> Faecher, string? Moyenne);
 
@@ -125,11 +126,13 @@ public sealed partial class BulletinLeseService(IDbContextFactory<SkoulouDbConte
         var klasse = await db.Klassen.AsNoTracking().Where(k => k.Id == aktuell.KlasseId).Select(k => k.Name).FirstAsync(ct);
         var ids = eigene.Select(e => e.Id).ToList();
         var klassen = eigene.Select(e => e.KlasseId).Distinct().ToList();
+        // Wahlfächer nur, wenn das Kind sie gewählt hat (sonst erscheinen sie gar nicht, Bauplan §5 Regel 2a).
         var faecher = await (from kf in db.Klassenfaecher.AsNoTracking()
                              join f in db.Faecher on kf.FachId equals f.Id
                              where kf.KlasseId == aktuell.KlasseId
+                                   && (!kf.IstWahlfach || db.Fachwahlen.Any(w => w.KlassenfachId == kf.Id && w.SchuelerId == schuelerId))
                              orderby kf.Reihenfolge ?? f.Reihenfolge, f.Name
-                             select new { kf.FachId, f.Name, kf.Koeffizient }).ToListAsync(ct);
+                             select new { kf.FachId, f.Name, kf.Koeffizient, Wahlfach = kf.IstWahlfach ? (WahlfachRegel?)kf.WahlfachRegel : null }).ToListAsync(ct);
         var bewertungen = await (from b in db.Bewertungen.AsNoTracking()
                                  join kf in db.Klassenfaecher on b.KlassenfachId equals kf.Id
                                  where b.PeriodeId == periode.Id && klassen.Contains(kf.KlasseId)
@@ -146,9 +149,10 @@ public sealed partial class BulletinLeseService(IDbContextFactory<SkoulouDbConte
                 b.KlasseId != aktuell.KlasseId || NotenService.Erwartet(b.Datum, aktuell.Von, aktuell.Bis))), schule.AbsenzOhneEntschuldigungZaehltNull);
             return (Fach: new LiveFach(f.Name, f.Koeffizient,
                 liste.Select(b => new LiveNote(b.Titel, b.Datum, b.Note is null || b.Note.Status == NotenStatus.Leer ? "—" : NotenTexte.Note(b.Note.Status, b.Note.Punkte), b.Bareme)).ToList(),
-                NotenTexte.Mittel(mittel)), Mittel: mittel, f.Koeffizient);
+                NotenTexte.Mittel(mittel), f.Wahlfach is { } r ? $"Matière facultative · {NotenTexte.WahlfachText(r)}" : null),
+                Beitrag: new FachBeitrag(mittel, f.Koeffizient, f.Wahlfach));
         }).ToList();
-        var moyenne = NotenRechner.MoyenneGenerale(ergebnis.Select(x => (x.Mittel, x.Koeffizient)));
+        var moyenne = NotenRechner.MoyenneGenerale(ergebnis.Select(x => x.Beitrag));
         return new LiveNoten(true, klasse, perioden, periode.Id, ergebnis.Select(x => x.Fach).ToList(), NotenTexte.Mittel(moyenne));
     }
 
@@ -262,11 +266,27 @@ public sealed partial class BulletinLeseService(IDbContextFactory<SkoulouDbConte
             {
                 k.Id, k.Name,
                 Bewertungen = db.Bewertungen.Count(b => b.PeriodeId == pid && db.Klassenfaecher.Any(kf => kf.Id == b.KlassenfachId && kf.KlasseId == k.Id)),
+                Pflicht = db.Bewertungen.Count(b => b.PeriodeId == pid && db.Klassenfaecher.Any(kf => kf.Id == b.KlassenfachId && kf.KlasseId == k.Id && !kf.IstWahlfach)),
                 Noten = db.Noten.Count(n => n.Status != NotenStatus.Leer && db.Bewertungen.Any(b => b.Id == n.BewertungId && b.PeriodeId == pid
                     && db.Klassenfaecher.Any(kf => kf.Id == b.KlassenfachId && kf.KlasseId == k.Id))),
                 Schueler = aktive.Count(e => e.KlasseId == k.Id),
                 Pub = db.KlassenVeroeffentlichungen.Any(v => v.KlasseId == k.Id && v.PeriodeId == pid)
             }).ToListAsync(ct);
-        return liste.Select(k => new KlassenStandZeile(k.Id, k.Name, k.Bewertungen, k.Noten, k.Bewertungen * k.Schueler, k.Pub)).ToList();
+        // « Matières facultatives »: je Bewertung nur die aktiven Schüler mit Wahl erwartet (ohne Wahlfach: keine weitere Abfrage).
+        var wahlErwartet = new Dictionary<Guid, int>();
+        if (liste.Any(k => k.Pflicht != k.Bewertungen))
+        {
+            var ids = liste.Where(k => k.Pflicht != k.Bewertungen).Select(k => k.Id).ToList();
+            var jeFach = await (from kf in db.Klassenfaecher.AsNoTracking()
+                                where ids.Contains(kf.KlasseId) && kf.IstWahlfach
+                                select new
+                                {
+                                    kf.KlasseId,
+                                    Bewertungen = db.Bewertungen.Count(b => b.PeriodeId == pid && b.KlassenfachId == kf.Id),
+                                    Waehlende = db.Fachwahlen.Count(w => w.KlassenfachId == kf.Id && aktive.Any(e => e.KlasseId == kf.KlasseId && e.SchuelerId == w.SchuelerId))
+                                }).ToListAsync(ct);
+            wahlErwartet = jeFach.GroupBy(x => x.KlasseId).ToDictionary(g => g.Key, g => g.Sum(x => x.Bewertungen * x.Waehlende));
+        }
+        return liste.Select(k => new KlassenStandZeile(k.Id, k.Name, k.Bewertungen, k.Noten, k.Pflicht * k.Schueler + wahlErwartet.GetValueOrDefault(k.Id), k.Pub)).ToList();
     }
 }

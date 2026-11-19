@@ -17,12 +17,16 @@ public sealed record KohortenSchueler(Guid EinschreibungId, Guid SchuelerId, str
 
 public sealed record FehlendeNote(Guid EinschreibungId, string Schueler, string Fach, string Bewertung, DateOnly? Datum);
 
-internal sealed record FachInfo(Guid FachId, Guid KlassenfachId, string Name, FachGruppe Gruppe, int Reihenfolge, decimal Koeffizient, string? Lehrer);
+/// <summary>Fach der Klasse; <see cref="Wahlfach"/> = Regel einer « Matière facultative » (null = Pflichtfach).</summary>
+internal sealed record FachInfo(Guid FachId, Guid KlassenfachId, string Name, FachGruppe Gruppe, int Reihenfolge, decimal Koeffizient, string? Lehrer,
+    WahlfachRegel? Wahlfach = null);
 
 /// <summary>
 /// Lädt alles für eine Klasse und Periode einmal (Fachkonzept 04 §7.4) und rechnet mit den Core-Rechnern: Ergebnisse der
 /// Periode und der früheren zählenden Perioden, Bilan in der letzten Periode, fehlende Noten, Conseil, Anwesenheit, Vorlage.
 /// Klassenwechsel (Bauplan §11.6): Kohorte = Klasse am Periodenende; Noten aus früheren Klassen desselben Fachs zählen mit.
+/// « Matières facultatives » (Regel 2a): nur Schüler mit Wahl werden darin erwartet und bewertet; für alle anderen zählt das
+/// Fach nicht, erscheint nicht auf ihrem Bulletin und steht nicht in der Liste der fehlenden Noten.
 /// </summary>
 internal sealed class BulletinBerechnung
 {
@@ -44,6 +48,9 @@ internal sealed class BulletinBerechnung
     public required IReadOnlyDictionary<Guid, (AnwesenheitsSumme Summe, bool Erfasst)> Anwesenheit { get; init; }
     public required BulletinVorlage Vorlage { get; init; }
     public required string? Klassenlehrer { get; init; }
+
+    /// <summary>Gewählte Wahlfächer (FachIds der Klasse) je Schüler; fehlt ein Schüler, hat er keines gewählt.</summary>
+    public required IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> Wahlen { get; init; }
 
     public KlassenErgebnis Ergebnis => Ergebnisse[Periode.Id];
 
@@ -74,29 +81,47 @@ internal sealed class BulletinBerechnung
                                  join kf in db.Klassenfaecher on b.KlassenfachId equals kf.Id
                                  where periodenIds.Contains(b.PeriodeId) && klassenIds.Contains(kf.KlasseId) && fachIds.Contains(kf.FachId)
                                  orderby b.Datum, b.ErstelltAmUtc
-                                 select new { b.Id, b.PeriodeId, kf.KlasseId, kf.FachId, b.Titel, b.Datum, b.Bareme, b.Gewicht }).ToListAsync(ct);
+                                 select new { b.Id, b.PeriodeId, kf.KlasseId, kf.FachId, b.Titel, b.Datum, b.Bareme, b.Gewicht, b.KlassenfachId, kf.IstWahlfach })
+            .ToListAsync(ct);
         var bewIds = bewertungen.Select(b => b.Id).ToList();
         var noten = (await db.Noten.AsNoTracking().Where(n => bewIds.Contains(n.BewertungId) && einschreibungIds.Contains(n.EinschreibungId))
                 .Select(n => new { n.BewertungId, n.EinschreibungId, n.Status, n.Punkte }).ToListAsync(ct))
             .ToDictionary(n => (n.BewertungId, n.EinschreibungId));
 
+        // Wahlfächer: Wahl je (Klassenfach, Schüler) – auch in früheren Klassen (Klassenwechsel). Ohne Wahlfach keine Abfrage.
+        var gewaehlt = new HashSet<(Guid KlassenfachId, Guid SchuelerId)>();
+        if (faecher.Any(f => f.Wahlfach is not null) || bewertungen.Any(b => b.IstWahlfach))
+            gewaehlt = (await (from w in db.Fachwahlen.AsNoTracking()
+                               join kf in db.Klassenfaecher on w.KlassenfachId equals kf.Id
+                               where klassenIds.Contains(kf.KlasseId) && kf.IstWahlfach && schuelerIds.Contains(w.SchuelerId)
+                               select new { w.KlassenfachId, w.SchuelerId }).ToListAsync(ct))
+                .Select(w => (w.KlassenfachId, w.SchuelerId)).ToHashSet();
+        var wahlen = kohorte.Select(s => (s.SchuelerId, Faecher: (IReadOnlySet<Guid>)faecher
+                .Where(f => f.Wahlfach is not null && gewaehlt.Contains((f.KlassenfachId, s.SchuelerId))).Select(f => f.FachId).ToHashSet()))
+            .Where(x => x.Faecher.Count > 0).ToDictionary(x => x.SchuelerId, x => x.Faecher);
+
         var ergebnisse = new Dictionary<Guid, KlassenErgebnis>();
         var fehlend = new List<FehlendeNote>();
         var teilnoten = new Dictionary<(Guid, Guid), string>();
-        var spalten = faecher.Select(f => new FachSpalte(f.FachId, f.Koeffizient)).ToList();
+        var spalten = faecher.Select(f => new FachSpalte(f.FachId, f.Koeffizient, f.Wahlfach)).ToList();
         foreach (var p in relevant)
         {
             var werte = new List<SchuelerWertungen>();
             foreach (var s in kohorte)
             {
                 var eigene = einschreibungen.Where(e => e.SchuelerId == s.SchuelerId).ToList();
+                var wahl = wahlen.GetValueOrDefault(s.SchuelerId);
                 var jeFach = new Dictionary<Guid, IReadOnlyList<Wertung>>();
                 foreach (var f in faecher)
                 {
+                    // Nicht gewähltes Wahlfach: keine Wertungen, nichts « incomplet » (KlassenRechner setzt « non choisi »).
+                    if (f.Wahlfach is not null && !(wahl?.Contains(f.FachId) ?? false)) continue;
                     var liste = new List<Wertung>();
                     var texte = new List<string>();
                     foreach (var b in bewertungen.Where(b => b.PeriodeId == p.Id && b.FachId == f.FachId))
                     {
+                        // Bewertung eines Wahlfachs (auch in einer früheren Klasse) gilt nur für Schüler, die es dort gewählt haben.
+                        if (b.IstWahlfach && !gewaehlt.Contains((b.KlassenfachId, s.SchuelerId))) continue;
                         var inKlasse = eigene.Where(e => e.KlasseId == b.KlasseId).ToList();
                         var note = inKlasse.Select(e => noten.GetValueOrDefault((b.Id, e.Id))).FirstOrDefault(n => n is not null && n.Status != NotenStatus.Leer);
                         if (note is not null)
@@ -117,7 +142,7 @@ internal sealed class BulletinBerechnung
                     if (liste.Count > 0) jeFach[f.FachId] = liste;
                     if (p.Id == periode.Id && texte.Count > 0) teilnoten[(s.SchuelerId, f.FachId)] = string.Join(" · ", texte);
                 }
-                werte.Add(new SchuelerWertungen(s.SchuelerId, jeFach));
+                werte.Add(new SchuelerWertungen(s.SchuelerId, jeFach, wahl));
             }
             ergebnisse[p.Id] = KlassenRechner.Berechne(spalten, werte, schule.AbsenzOhneEntschuldigungZaehltNull);
         }
@@ -154,7 +179,8 @@ internal sealed class BulletinBerechnung
         {
             Schule = schule, Jahr = jahr, Klasse = klasse, Periode = periode, Perioden = perioden, Faecher = faecher, Kohorte = kohorte,
             Ergebnisse = ergebnisse, Bilan = bilan, IstLetztePeriode = istLetzte, Fehlend = fehlend, Teilnoten = teilnoten, Bemerkungen = bemerkungen,
-            Conseil = conseil, Entscheidungen = entscheidungen, Anwesenheit = anwesenheit, Vorlage = vorlage, Klassenlehrer = klassenlehrer
+            Conseil = conseil, Entscheidungen = entscheidungen, Anwesenheit = anwesenheit, Vorlage = vorlage, Klassenlehrer = klassenlehrer,
+            Wahlen = wahlen
         };
     }
 
@@ -163,7 +189,8 @@ internal sealed class BulletinBerechnung
         var faecher = await (from kf in db.Klassenfaecher.AsNoTracking()
                              join f in db.Faecher on kf.FachId equals f.Id
                              where kf.KlasseId == klasseId
-                             select new { kf.Id, kf.FachId, f.Name, f.Gruppe, Reihenfolge = kf.Reihenfolge ?? f.Reihenfolge, kf.Koeffizient }).ToListAsync(ct);
+                             select new { kf.Id, kf.FachId, f.Name, f.Gruppe, Reihenfolge = kf.Reihenfolge ?? f.Reihenfolge, kf.Koeffizient, kf.IstWahlfach, kf.WahlfachRegel })
+            .ToListAsync(ct);
         var ids = faecher.Select(f => f.Id).ToList();
         var lehrer = await (from l in db.Lehrauftraege.AsNoTracking()
                             join u in db.Users on l.LehrerId equals u.Id
@@ -171,7 +198,8 @@ internal sealed class BulletinBerechnung
                             select new { l.KlassenfachId, Name = u.Vorname + " " + u.Nachname }).ToListAsync(ct);
         return faecher.OrderBy(f => f.Reihenfolge).ThenBy(f => f.Name)
             .Select(f => new FachInfo(f.FachId, f.Id, f.Name, f.Gruppe, f.Reihenfolge, f.Koeffizient,
-                string.Join(", ", lehrer.Where(l => l.KlassenfachId == f.Id).Select(l => l.Name.Trim()).Distinct()) is { Length: > 0 } t ? t : null))
+                string.Join(", ", lehrer.Where(l => l.KlassenfachId == f.Id).Select(l => l.Name.Trim()).Distinct()) is { Length: > 0 } t ? t : null,
+                f.IstWahlfach ? f.WahlfachRegel : null))
             .ToList();
     }
 
@@ -193,24 +221,41 @@ internal sealed class BulletinBerechnung
     public Distinktion DistinktionVon(KohortenSchueler s)
         => Conseil.TryGetValue(s.EinschreibungId, out var c) && c.Distinktion is { } d ? d : NotenTexte.DistinktionVorschlag(ErgebnisVon(s.SchuelerId).Moyenne.Wert);
 
-    /// <summary>Inhalt des Bulletins eines Schülers der Kohorte.</summary>
+    /// <summary>Fächer des Schülers: alle Pflichtfächer und nur die Wahlfächer, die er gewählt hat.</summary>
+    public IReadOnlyList<FachInfo> FaecherVon(Guid schuelerId)
+    {
+        var wahl = Wahlen.GetValueOrDefault(schuelerId);
+        return Faecher.Where(f => f.Wahlfach is null || (wahl?.Contains(f.FachId) ?? false)).ToList();
+    }
+
+    /// <summary>
+    /// Inhalt des Bulletins eines Schülers der Kohorte. Nicht gewählte Wahlfächer fehlen ganz; gewählte tragen ihre Regel und
+    /// zählen in « TOTAUX » mit ihrem Beitrag (Bonus ohne Koeffizient, Bauplan §5 Regel 2a); Fachgruppen nur über Pflichtfächer.
+    /// Ohne Wahlfächer ist der Inhalt (und damit der Hash) genau der bisherige.
+    /// </summary>
     public BulletinInhalt Inhalt(KohortenSchueler s)
     {
         var e = ErgebnisVon(s.SchuelerId);
         var layout = SnapshotLayout.Aus(Vorlage);
         var bilan = Bilan?.GetValueOrDefault(s.SchuelerId);
-        var faecher = Faecher.Select(f =>
+        var eigene = FaecherVon(s.SchuelerId);
+        var faecher = eigene.Select(f =>
         {
             var fe = e.Faecher[f.FachId];
             var wert = fe.Mittel.Gerundet;
             var bemerkung = Bemerkungen.GetValueOrDefault((s.SchuelerId, f.FachId)) ?? (wert is { } w ? NotenTexte.Appreciation(w) : null);
+            var punkte = f.Wahlfach is null
+                ? fe.Mittel.Wert is { } m ? m * f.Koeffizient : null
+                : NotenRechner.Beitrag(new FachBeitrag(fe.Mittel, f.Koeffizient, f.Wahlfach)).Punkte;
             return new SnapshotFach(f.Name, Gruppe(f.Gruppe), f.Lehrer, f.Koeffizient, fe.Mittel.Wert, NotenTexte.MittelKurz(fe.Mittel),
-                fe.Mittel.Wert is { } m ? m * f.Koeffizient : null, fe.Mittel.HatWert ? fe.Rang.Text : null,
+                punkte, fe.Mittel.HatWert ? fe.Rang.Text : null,
                 Teilnoten.GetValueOrDefault((s.SchuelerId, f.FachId)), bemerkung,
-                bilan is null ? null : NotenTexte.MittelKurz(bilan.JeFach.GetValueOrDefault(f.FachId)));
+                bilan is null ? null : NotenTexte.MittelKurz(bilan.JeFach.GetValueOrDefault(f.FachId)), f.Wahlfach);
         }).ToList();
-        var mitWert = Faecher.Where(f => e.Faecher[f.FachId].Mittel.HatWert).ToList();
-        var gruppen = Faecher.Where(f => f.Gruppe != FachGruppe.Aucune).GroupBy(f => f.Gruppe).OrderBy(g => g.Key)
+        var beitraege = eigene.Select(f => (f.Koeffizient, Beitrag: NotenRechner.Beitrag(new FachBeitrag(e.Faecher[f.FachId].Mittel, f.Koeffizient, f.Wahlfach))))
+            .ToList();
+        var mitPunkten = beitraege.Where(b => b.Beitrag.Punkte is not null).ToList();
+        var gruppen = eigene.Where(f => f.Wahlfach is null && f.Gruppe != FachGruppe.Aucune).GroupBy(f => f.Gruppe).OrderBy(g => g.Key)
             .Select(g => new SnapshotGruppe(Gruppe(g.Key)!, NotenTexte.MittelKurz(KlassenRechner.GruppenMittel(g.Select(f => (e.Faecher[f.FachId].Mittel, f.Koeffizient)))),
                 g.Sum(f => f.Koeffizient)))
             .ToList();
@@ -229,7 +274,7 @@ internal sealed class BulletinBerechnung
             new SnapshotSchueler(s.Nachname, s.Vorname, s.Matrikel, s.Geburtsdatum is { } g ? SkoulouKultur.Datum(g) : null, s.Geburtsort,
                 s.Geschlecht switch { Geschlecht.Maennlich => "M", Geschlecht.Weiblich => "F", _ => null }, s.Nationalitaet, s.Interne, s.Affecte, s.Wiederholer),
             faecher, gruppen, e.Moyenne.Wert, NotenTexte.Mittel(e.Moyenne), e.Moyenne.Gerundet is { } mg ? NoteInWorten.Text(mg) : null, e.Rang.Text,
-            mitWert.Sum(f => f.Koeffizient), mitWert.Count == 0 ? null : mitWert.Sum(f => e.Faecher[f.FachId].Mittel.Wert!.Value * f.Koeffizient),
+            beitraege.Where(b => b.Beitrag.ZaehltKoeffizient).Sum(b => b.Koeffizient), mitPunkten.Count == 0 ? null : mitPunkten.Sum(b => b.Beitrag.Punkte!.Value),
             e.Moyenne.Gerundet is { } ma ? NotenTexte.Appreciation(ma) : null,
             stat.Klassiert == 0 ? null : new SnapshotStatistik(NotenTexte.Zahl(stat.Mittel!.Value), NotenTexte.Zahl(stat.Min!.Value), NotenTexte.Zahl(stat.Max!.Value),
                 NotenTexte.Zahl(stat.ProzentUeber10!.Value), stat.Klassiert),

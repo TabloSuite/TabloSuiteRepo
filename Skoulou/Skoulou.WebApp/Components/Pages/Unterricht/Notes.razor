@@ -86,6 +86,12 @@ else
             {
                 <Hinweis Art="info" Titel="Lecture seule">Vous consultez cette matière comme professeur principal de la classe.</Hinweis>
             }
+            @if (raster.Wahlfach is { } regel)
+            {
+                <Hinweis Art="info" Titel="Matière facultative">
+                    Seuls les élèves qui l'ont choisie sont notés (@NotenTexte.WahlfachText(regel).ToLower(SkoulouKultur.Kultur)). La direction gère les choix dans Classes › Matières facultatives.
+                </Hinweis>
+            }
             @if (raster.Spalten.Count == 0)
             {
                 <Leerzustand Icon="clipboard" Titel="Aucune évaluation pour cette période"
