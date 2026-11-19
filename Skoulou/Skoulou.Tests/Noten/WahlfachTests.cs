@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.WebApp.Services.Noten;
+using Skoulou.WebApp.Services.Organisation;
 
 namespace Skoulou.Tests.Noten;
 
@@ -214,6 +215,89 @@ public class WahlfachTests
         Assert.Contains("\"Wahlfach\":0", new BulletinSnapshot(1, ohneGruppen, null).AlsJson());
         Assert.Equal(WahlfachRegel.PunkteUeber10, BulletinSnapshot.AusJson(new BulletinSnapshot(1, ohneGruppen, null).AlsJson()).Inhalt.Faecher[^1].Wahlfach);
         Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(BulletinPdf.Erzeuge([new BulletinSeite(new BulletinSnapshot(1, mitWahl, null), null, null, BulletinStatus.Publie, null)]), 0, 4));
+    }
+
+    [Fact]
+    public async Task Nachtraeglich_facultative_Noten_bleiben_und_werden_im_Dialog_gezaehlt()
+    {
+        // Nutzer 19.11.2026: Noten wurden schon erfasst, dann wird das Fach facultative – nichts geht verloren, der Dialog sagt es.
+        var w = await NotenWelt.ErstelleAsync();
+        var u = w.O.D.Unterricht;
+        var fr = await w.BewertungAsync(w.O.Kf6AFr, titel: "Dictée");
+        await w.NoteAsync(fr, w.E1, "16");
+        await w.NoteAsync(fr, w.E2, "12");
+        async Task<int> OhneWahl() => (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == w.O.Kf6AFr).NotenOhneWahl;
+
+        Assert.Equal(2, await OhneWahl());                       // Pflichtfach: vor dem Einschalten zählt der Dialog alle Noten
+        await u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.PunkteUeber10);
+        Assert.Equal(2, await OhneWahl());                       // noch niemand gewählt
+        await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler)]);
+        Assert.Equal(1, await OhneWahl());                       // nur noch die Note von eleveziel
+        Assert.Equal(2, await w.MitDbAsync(db => db.Noten.CountAsync()));
+        Assert.Equal(0, (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == w.O.Kf6AMath).NotenOhneWahl);
+    }
+
+    [Fact]
+    public async Task Nach_der_Veroeffentlichung_sind_Regel_und_Wahl_gesperrt_ausser_Rectification_und_Neuankoemmling()
+    {
+        var (w, _) = await BenotetAsync();
+        var u = w.O.D.Unterricht;
+        Assert.False((await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == w.O.Kf6AFr).WahlfachGesperrt);
+        await w.VeroeffentlichenAsync();
+
+        // Schalter und Regel: Struktur – fest, auch in einer Rectification; unveränderter Stand wird still angenommen.
+        Assert.True((await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == w.O.Kf6AFr).WahlfachGesperrt);
+        Assert.Equal(UnterrichtService.MeldungWahlfachGesperrt,
+            (await Assert.ThrowsAsync<FachFehler>(() => u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.WieNormal))).Message);
+        await Assert.ThrowsAsync<FachFehler>(() => u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, false, WahlfachRegel.PunkteUeber10));
+        await u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.PunkteUeber10);
+
+        // Wahl der Schüler mit Bulletin: fest; gleicher Stand speichert ohne Fehler.
+        var ansicht = await u.FachwahlenAsync(w.D, w.O.Klasse6A);
+        Assert.All(ansicht.Schueler, s => Assert.True(s.Gesperrt));
+        Assert.Equal(UnterrichtService.MeldungWahlGesperrt, ansicht.Sperrhinweis);
+        Assert.Equal(UnterrichtService.MeldungWahlGesperrt, (await Assert.ThrowsAsync<FachFehler>(() =>
+            u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler), (w.O.Kf6AFr, w.O.SchuelerZiel)]))).Message);
+        await Assert.ThrowsAsync<FachFehler>(() => u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, []));
+        Assert.Equal(0, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler)]));
+
+        // Neu angekommener Schüler ohne Bulletin wählt frei.
+        await w.O.D.Einschreibung.EinschreibenAsync(w.D, w.O.SchuelerOhne, w.O.Klasse6A, new(2026, 11, 2), false);
+        Assert.False((await u.FachwahlenAsync(w.D, w.O.Klasse6A)).Schueler.Single(s => s.SchuelerId == w.O.SchuelerOhne).Gesperrt);
+        Assert.Equal(1, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler), (w.O.Kf6AFr, w.O.SchuelerOhne)]));
+
+        // Während einer Rectification ist die Wahl korrigierbar (wie eine Note), die Regel bleibt fest.
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Choix oublié");
+        var offen = await u.FachwahlenAsync(w.D, w.O.Klasse6A);
+        Assert.All(offen.Schueler, s => Assert.False(s.Gesperrt));
+        Assert.Null(offen.Sperrhinweis);
+        Assert.Equal(1, await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A,
+            [(w.O.Kf6AFr, w.O.Schueler), (w.O.Kf6AFr, w.O.SchuelerOhne), (w.O.Kf6AFr, w.O.SchuelerZiel)]));
+        await Assert.ThrowsAsync<FachFehler>(() => u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.NurInformation));
+    }
+
+    [Fact]
+    public async Task Jahreswechsel_uebernimmt_die_Wahl_wo_das_Fach_facultative_bleibt()
+    {
+        var w = await MitWahlfachAsync();
+        var u = w.O.D.Unterricht;
+        await u.FachwahlenSpeichernAsync(w.D, w.O.Klasse6A, [(w.O.Kf6AFr, w.O.Schueler), (w.O.Kf6AFr, w.O.SchuelerZiel)]);
+        // 5e A (Ziel der Admis) hat Français als Pflichtfach; die neue 6e A (Ziel der Redoublants) übernimmt das Wahlfach der alten.
+        await u.FaecherHinzufuegenAsync(w.D, w.O.Klasse5A, [w.O.FachFr], 2);
+        await w.Conseil.EntscheidungSpeichernAsync(w.D, w.O.P3, w.E1, new EntscheidungEingabe(JahresEntscheidungsArt.Admis, null, null));
+        await w.Conseil.EntscheidungSpeichernAsync(w.D, w.O.P3, w.E2, new EntscheidungEingabe(JahresEntscheidungsArt.Redouble, null, null));
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.Namen[w.O.Klasse6B] = "6e B bis";
+        await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+
+        var neu = await w.MitDbAsync(db => (from f in db.Fachwahlen
+                                            join kf in db.Klassenfaecher on f.KlassenfachId equals kf.Id
+                                            join k in db.Klassen on kf.KlasseId equals k.Id
+                                            where k.SchuljahrId == w.O.JahrVorb
+                                            select new { f.SchuelerId, k.Name, kf.FachId, f.ErfasstVonId }).ToListAsync());
+        var wahl = Assert.Single(neu);                           // eleve (5e A, Français Pflicht) bekommt keine Wahl
+        Assert.Equal((w.O.SchuelerZiel, "6e A", w.O.FachFr, w.D), (wahl.SchuelerId, wahl.Name, wahl.FachId, wahl.ErfasstVonId));
+        Assert.Equal(2, await w.MitDbAsync(db => db.Fachwahlen.CountAsync(f => f.KlassenfachId == w.O.Kf6AFr))); // Vorjahr unverändert
     }
 
     [Fact]

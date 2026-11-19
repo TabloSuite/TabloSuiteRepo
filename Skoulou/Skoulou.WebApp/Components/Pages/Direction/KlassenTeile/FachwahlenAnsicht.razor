@@ -3,7 +3,11 @@
 @using Skoulou.Core.Noten
 
 <div class="org-wahl">
-    <p class="sk-leise">La direction indique qui suit chaque matière facultative pour toute l'année. Seuls ces élèves sont notés dans la matière et la voient sur leur bulletin.</p>
+    <p class="sk-leise">La direction indique qui suit chaque matière facultative pour toute l'année. Seuls ces élèves sont notés dans la matière et la voient sur leur bulletin. Au passage à l'année suivante, le choix est repris lorsque la matière reste facultative.</p>
+    @if (Uebersicht.Sperrhinweis is { } sperre)
+    {
+        <Hinweis Art="info">@sperre</Hinweis>
+    }
     <div class="org-wahl-faecher">
         @foreach (var f in Uebersicht.Faecher)
         {
@@ -43,12 +47,17 @@
                         {
                             <small class="sk-leise">@s.Matrikel</small>
                         }
+                        @if (s.Gesperrt)
+                        {
+                            <small class="sk-leise org-wahl-gesperrt"><Icon Name="lock" Groesse="14" /> Bulletin publié : choix fixé</small>
+                        }
                     </div>
                     <div class="sk-chips org-wahl-chips">
                         @foreach (var f in Uebersicht.Faecher)
                         {
                             var an = Entwurf.Contains((f.KlassenfachId, s.SchuelerId));
-                            <button type="button" class="sk-chip @(an ? "aktiv" : null)" aria-pressed="@(an ? "true" : "false")" disabled="@(!Offen)"
+                            <button type="button" class="sk-chip @(an ? "aktiv" : null)" aria-pressed="@(an ? "true" : "false")" disabled="@(!Offen || s.Gesperrt)"
+                                    title="@(s.Gesperrt ? "Bulletin déjà publié : le choix ne se corrige que pendant une rectification." : null)"
                                     aria-label="@($"{f.Fach} pour {s.Name}")" @onclick="() => UmschaltenAsync(f, s)">
                                 <Icon Name="@(an ? "check" : "plus")" Groesse="16" /> <span>@f.Fach</span>
                             </button>
@@ -80,15 +89,15 @@
 
     private Task UmschaltenAsync(WahlfachSpalte f, FachwahlSchueler s)
     {
-        if (!Offen) return Task.CompletedTask;
+        if (!Offen || s.Gesperrt) return Task.CompletedTask;
         if (!Entwurf.Remove((f.KlassenfachId, s.SchuelerId))) Entwurf.Add((f.KlassenfachId, s.SchuelerId));
         return OnGeaendert.InvokeAsync();
     }
 
-    /// <summary>« Tous » / « Aucun »: nur die gerade sichtbaren Schüler (Suche beachtet).</summary>
+    /// <summary>« Tous » / « Aucun »: nur die gerade sichtbaren Schüler (Suche beachtet), nie gesperrte (Bulletin veröffentlicht).</summary>
     private Task AlleAsync(WahlfachSpalte f, bool an)
     {
-        foreach (var s in Gefiltert)
+        foreach (var s in Gefiltert.Where(s => !s.Gesperrt))
         {
             if (an) Entwurf.Add((f.KlassenfachId, s.SchuelerId));
             else Entwurf.Remove((f.KlassenfachId, s.SchuelerId));

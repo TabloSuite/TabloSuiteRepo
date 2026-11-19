@@ -178,6 +178,11 @@ button.org-edt-listenzeile { cursor: pointer; }
 .org-kf-wahl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: flex-end; min-width: 0; padding-top: .55rem; border-top: 1px dashed var(--sk-rand); }
 .org-kf-wahl > .sk-schalter-zeile { flex: 1 1 14rem; min-width: 0; }
 .org-kf-wahl > .sk-feld { flex: 2 1 16rem; min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); } /* langer Regeltext kürzt statt zu überlaufen */
+/* 19.11.2026: Hinweis auf vorhandene Noten und Sperre nach der Veröffentlichung – volle Breite, bricht um (360 px) */
+.org-kf-wahl > .sk-hinweis, .org-kf-sperre { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
+.org-kf-sperre { display: flex; gap: .35rem; align-items: flex-start; }
+.org-kf-sperre .sk-icon { flex: none; margin-top: .15rem; }
+.org-wahl-gesperrt { display: flex; gap: .4rem; align-items: flex-start; }
 .org-kf-reiter { margin-bottom: 1rem; }
 button.sk-reiter-link { border: 0; background: transparent; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
 .org-wahl { display: grid; gap: .85rem; min-width: 0; }

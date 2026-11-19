@@ -9,20 +9,23 @@ namespace Skoulou.WebApp.Services.Organisation;
 
 public sealed record LehrauftragKurz(Guid Id, Guid LehrerId, string Lehrer, decimal Wochenstunden);
 
+/// <param name="WahlfachGesperrt">Bulletins der Klasse veröffentlicht: Schalter und Regel sind für dieses Jahr fest.</param>
+/// <param name="NotenOhneWahl">Erfasste Noten von Schülern ohne diese Wahl (zählen nicht, bleiben gespeichert) – Hinweis im Dialog.</param>
 public sealed record KlassenfachZeile(Guid Id, Guid FachId, string Fach, string? Kuerzel, FachGruppe Gruppe, decimal Koeffizient,
     int Reihenfolge, IReadOnlyList<LehrauftragKurz> Lehrer, bool IstWahlfach = false, WahlfachRegel WahlfachRegel = WahlfachRegel.PunkteUeber10,
-    int AnzahlGewaehlt = 0);
+    int AnzahlGewaehlt = 0, bool WahlfachGesperrt = false, int NotenOhneWahl = 0);
 
 public sealed record LehrauftragZeile(Guid Id, Guid KlassenfachId, Guid KlasseId, string Klasse, string Fach, decimal Wochenstunden);
 
 /// <summary>Wahlfach einer Klasse (Spalte der Ansicht « Matières facultatives »).</summary>
 public sealed record WahlfachSpalte(Guid KlassenfachId, string Fach, WahlfachRegel Regel);
 
-/// <summary>Schüler der Klasse mit seinen gewählten Wahlfächern (KlassenfachIds).</summary>
-public sealed record FachwahlSchueler(Guid SchuelerId, string Name, string? Matrikel, IReadOnlySet<Guid> Gewaehlt);
+/// <summary>Schüler der Klasse mit seinen gewählten Wahlfächern (KlassenfachIds); <see cref="Gesperrt"/> = hat schon ein Bulletin.</summary>
+public sealed record FachwahlSchueler(Guid SchuelerId, string Name, string? Matrikel, IReadOnlySet<Guid> Gewaehlt, bool Gesperrt = false);
 
-/// <summary>Ansicht « Matières facultatives » einer Klasse: Wahlfächer × Schüler (Häkchen).</summary>
-public sealed record FachwahlUebersicht(Guid KlasseId, string Klasse, bool Offen, IReadOnlyList<WahlfachSpalte> Faecher, IReadOnlyList<FachwahlSchueler> Schueler);
+/// <summary>Ansicht « Matières facultatives » einer Klasse: Wahlfächer × Schüler (Häkchen); <see cref="Sperrhinweis"/> bei gesperrten Schülern.</summary>
+public sealed record FachwahlUebersicht(Guid KlasseId, string Klasse, bool Offen, IReadOnlyList<WahlfachSpalte> Faecher, IReadOnlyList<FachwahlSchueler> Schueler,
+    string? Sperrhinweis = null);
 
 /// <summary>
 /// Klassenfächer (Koeffizienten) und Lehraufträge – der Lehrauftrag ist die einzige Quelle dafür, wer
@@ -32,6 +35,14 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
 {
     public const decimal MaxKoeffizient = 100;
     public const decimal MaxWochenstunden = 40;
+
+    /// <summary>Schalter/Regel nach der ersten Veröffentlichung der Klasse (wie Bewertungen: Struktur, auch in einer Rectification fest).</summary>
+    public const string MeldungWahlfachGesperrt =
+        "Des bulletins sont déjà publiés pour cette classe : la matière facultative et sa règle ne peuvent plus changer cette année.";
+
+    /// <summary>Wahl eines Schülers mit Bulletin (wie eine Note: nur während einer Rectification korrigierbar).</summary>
+    public const string MeldungWahlGesperrt =
+        "Des bulletins sont publiés pour cette classe : le choix d'un élève qui a déjà un bulletin ne peut être corrigé que pendant une rectification.";
 
     public async Task<IReadOnlyList<KlassenfachZeile>> KlassenfaecherAsync(Guid akteurId, Guid klasseId, CancellationToken ct = default)
     {
@@ -44,9 +55,17 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
                              select new
                              {
                                  kf.Id, kf.FachId, f.Name, f.Kuerzel, f.Gruppe, kf.Koeffizient, Reihenfolge = kf.Reihenfolge ?? f.Reihenfolge,
-                                 kf.IstWahlfach, kf.WahlfachRegel, Gewaehlt = db.Fachwahlen.Count(w => w.KlassenfachId == kf.Id)
+                                 kf.IstWahlfach, kf.WahlfachRegel, Gewaehlt = db.Fachwahlen.Count(w => w.KlassenfachId == kf.Id),
+                                 // Noten von Schülern ohne diese Wahl (vor dem Einschalten: alle Noten des Fachs) – zählen nicht, bleiben gespeichert.
+                                 OhneWahl = (from n in db.Noten
+                                             join b in db.Bewertungen on n.BewertungId equals b.Id
+                                             join e in db.Einschreibungen on n.EinschreibungId equals e.Id
+                                             where b.KlassenfachId == kf.Id && n.Status != NotenStatus.Leer
+                                                   && !db.Fachwahlen.Any(w => w.KlassenfachId == kf.Id && w.SchuelerId == e.SchuelerId)
+                                             select n.Id).Count()
                              })
             .ToListAsync(ct);
+        var gesperrt = await db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == klasseId, ct);
         var ids = faecher.Select(f => f.Id).ToList();
         var auftraege = await (from l in db.Lehrauftraege.AsNoTracking()
                                join u in db.Users on l.LehrerId equals u.Id
@@ -56,13 +75,16 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             .ToListAsync(ct);
         return faecher.OrderBy(f => f.Reihenfolge).ThenBy(f => f.Name)
             .Select(f => new KlassenfachZeile(f.Id, f.FachId, f.Name, f.Kuerzel, f.Gruppe, f.Koeffizient, f.Reihenfolge,
-                auftraege.Where(x => x.KlassenfachId == f.Id).Select(x => x.Kurz).ToList(), f.IstWahlfach, f.WahlfachRegel, f.Gewaehlt))
+                auftraege.Where(x => x.KlassenfachId == f.Id).Select(x => x.Kurz).ToList(), f.IstWahlfach, f.WahlfachRegel, f.Gewaehlt,
+                gesperrt, f.OhneWahl))
             .ToList();
     }
 
     /// <summary>
     /// « Matière facultative » ein/aus und Regel für die Moyenne (Bauplan §5 Regel 2a). Bestehende Wahlen bleiben gespeichert
-    /// (ausgeschaltet zählen sie nicht), damit ein versehentliches Ausschalten nichts verliert.
+    /// (ausgeschaltet zählen sie nicht), damit ein versehentliches Ausschalten nichts verliert. Nach der ersten Veröffentlichung
+    /// der Klasse gesperrt (Nutzer 19.11.2026): die Regel ändert die Moyenne wie ein Koeffizient – Eltern hätten sonst ein
+    /// Bulletin, das die App später anders rechnet.
     /// </summary>
     public async Task WahlfachSetzenAsync(Guid akteurId, Guid klassenfachId, bool istWahlfach, WahlfachRegel regel, CancellationToken ct = default)
     {
@@ -71,6 +93,8 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var kf = await KlassenfachAsync(db, a, klassenfachId, ct);
         await PruefeJahrOffenAsync(db, await db.Klassen.Where(k => k.Id == kf.KlasseId).Select(k => k.SchuljahrId).FirstAsync(ct), ct);
+        if (kf.IstWahlfach == istWahlfach && kf.WahlfachRegel == regel) return;
+        if (await db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == kf.KlasseId, ct)) throw new FachFehler(MeldungWahlfachGesperrt);
         kf.IstWahlfach = istWahlfach;
         kf.WahlfachRegel = regel;
         await db.SaveChangesAsync(ct);
@@ -91,9 +115,25 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var schueler = await SchuelerDerKlasseAsync(db, klasse.Id, ct);
         var ids = faecher.Select(f => f.KlassenfachId).ToList();
         var wahlen = await db.Fachwahlen.AsNoTracking().Where(w => ids.Contains(w.KlassenfachId)).Select(w => new { w.KlassenfachId, w.SchuelerId }).ToListAsync(ct);
+        var gesperrt = await GesperrteWahlenAsync(db, klasse.Id, ct);
         return new FachwahlUebersicht(klasse.Id, klasse.Name, jahr.Status != SchuljahrStatus.Abgeschlossen, faecher,
             schueler.Select(s => new FachwahlSchueler(s.Id, s.Name, s.Matrikel,
-                wahlen.Where(w => w.SchuelerId == s.Id).Select(w => w.KlassenfachId).ToHashSet())).ToList());
+                wahlen.Where(w => w.SchuelerId == s.Id).Select(w => w.KlassenfachId).ToHashSet(), gesperrt.Contains(s.Id))).ToList(),
+            schueler.Any(s => gesperrt.Contains(s.Id)) ? MeldungWahlGesperrt : null);
+    }
+
+    /// <summary>
+    /// Schüler der Klasse, deren Wahl nicht mehr geändert werden darf (Nutzer 19.11.2026): wer in dieser Klasse schon ein
+    /// gültiges Bulletin hat (veröffentlicht oder berichtigt, nicht zurückgezogen) – außer während einer offenen Rectification
+    /// der Klasse (wie Noten). Neu angekommene Schüler ohne Bulletin wählen immer.
+    /// </summary>
+    private static async Task<HashSet<Guid>> GesperrteWahlenAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
+    {
+        if (await db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == klasseId && v.Status == VeroeffentlichungsStatus.EnRectification, ct)) return [];
+        return (await (from b in db.Bulletins
+                       join e in db.Einschreibungen on b.EinschreibungId equals e.Id
+                       where e.KlasseId == klasseId && b.Status != BulletinStatus.Retire
+                       select e.SchuelerId).Distinct().ToListAsync(ct)).ToHashSet();
     }
 
     /// <summary>
@@ -118,6 +158,12 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             var ist = await db.Fachwahlen.Where(w => wahlfaecher.Contains(w.KlassenfachId) && schueler.Contains(w.SchuelerId)).ToListAsync(ct);
             var weg = ist.Where(w => !soll.Contains((w.KlassenfachId, w.SchuelerId))).ToList();
             var neu = soll.Where(s => !ist.Any(w => w.KlassenfachId == s.KlassenfachId && w.SchuelerId == s.SchuelerId)).ToList();
+            if (weg.Count + neu.Count > 0)
+            {
+                var gesperrt = await GesperrteWahlenAsync(db, klasse.Id, ct);
+                if (weg.Any(w => gesperrt.Contains(w.SchuelerId)) || neu.Any(n => gesperrt.Contains(n.SchuelerId)))
+                    throw new FachFehler(MeldungWahlGesperrt);
+            }
             db.Fachwahlen.RemoveRange(weg);
             foreach (var (kfId, schuelerId) in neu)
                 db.Fachwahlen.Add(new Fachwahl { SchuleId = a.SchuleId, KlassenfachId = kfId, SchuelerId = schuelerId, ErfasstVonId = a.Id });
@@ -143,6 +189,38 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var vorhanden = await db.Fachwahlen.Where(w => w.SchuelerId == schuelerId && ziele.Contains(w.KlassenfachId)).Select(w => w.KlassenfachId).ToListAsync(ct);
         foreach (var ziel in ziele.Except(vorhanden))
             db.Fachwahlen.Add(new Fachwahl { SchuleId = schuleId, KlassenfachId = ziel, SchuelerId = schuelerId, ErfasstVonId = akteurId });
+    }
+
+    /// <summary>
+    /// Jahreswechsel (Nutzer 19.11.2026): die Wahl des Vorjahres wird übernommen, wenn dasselbe Fach in der neuen Klasse auch
+    /// Wahlfach ist – die Direktion ändert danach nur die Ausnahmen. Ein Durchgang für alle Schüler (keine Abfrage je Schüler);
+    /// die neuen Klassenfächer müssen gespeichert sein. Anzahl übernommener Wahlen.
+    /// </summary>
+    internal static async Task<int> FachwahlenVorjahrUebernehmenAsync(SkoulouDbContext db, Guid schuleId,
+        IReadOnlyCollection<(Guid SchuelerId, Guid AlteKlasseId, Guid NeueKlasseId)> wechsel, Guid akteurId, CancellationToken ct)
+    {
+        if (wechsel.Count == 0) return 0;
+        var alteKlassen = wechsel.Select(w => w.AlteKlasseId).Distinct().ToList();
+        var schueler = wechsel.Select(w => w.SchuelerId).Distinct().ToList();
+        var alt = (await (from w in db.Fachwahlen
+                          join kf in db.Klassenfaecher on w.KlassenfachId equals kf.Id
+                          where alteKlassen.Contains(kf.KlasseId) && kf.IstWahlfach && schueler.Contains(w.SchuelerId)
+                          select new { w.SchuelerId, kf.KlasseId, kf.FachId }).ToListAsync(ct))
+            .ToLookup(x => (x.SchuelerId, x.KlasseId), x => x.FachId);
+        if (alt.Count == 0) return 0;
+        var neueKlassen = wechsel.Select(w => w.NeueKlasseId).Distinct().ToList();
+        var ziele = (await db.Klassenfaecher.Where(kf => neueKlassen.Contains(kf.KlasseId) && kf.IstWahlfach)
+                .Select(kf => new { kf.Id, kf.KlasseId, kf.FachId }).ToListAsync(ct))
+            .ToDictionary(kf => (kf.KlasseId, kf.FachId), kf => kf.Id);
+        var n = 0;
+        foreach (var (schuelerId, alteKlasseId, neueKlasseId) in wechsel.DistinctBy(w => w.SchuelerId))
+            foreach (var fachId in alt[(schuelerId, alteKlasseId)])
+                if (ziele.TryGetValue((neueKlasseId, fachId), out var ziel))
+                {
+                    db.Fachwahlen.Add(new Fachwahl { SchuleId = schuleId, KlassenfachId = ziel, SchuelerId = schuelerId, ErfasstVonId = akteurId });
+                    n++;
+                }
+        return n;
     }
 
     private sealed record KlassenSchueler(Guid Id, string Name, string? Matrikel);

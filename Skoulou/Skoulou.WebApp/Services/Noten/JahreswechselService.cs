@@ -237,6 +237,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var schonImNeuenJahr = await db.Einschreibungen.Where(e => e.SchuljahrId == neu.Id && e.StorniertAmUtc == null && schuelerIds.Contains(e.SchuelerId))
                 .Select(e => e.SchuelerId).ToListAsync(ct);
             var neueEinschreibungen = new Dictionary<Guid, Guid>();
+            var klassenWechsel = new List<(Guid SchuelerId, Guid AlteKlasseId, Guid NeueKlasseId)>();
             foreach (var p in plaene.Where(p => p.Ziel is not null))
             {
                 var e = alte[p.EinschreibungId];
@@ -248,7 +249,10 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
                 };
                 db.Einschreibungen.Add(n);
                 neueEinschreibungen[e.SchuelerId] = n.Id;
+                klassenWechsel.Add((e.SchuelerId, e.KlasseId, n.KlasseId));
             }
+            // « Matières facultatives »: Wahl des Vorjahres übernehmen, wo dasselbe Fach auch im neuen Jahr Wahlfach ist.
+            await UnterrichtService.FachwahlenVorjahrUebernehmenAsync(db, a.SchuleId, klassenWechsel, a.Id, ct);
             await db.SaveChangesAsync(ct);
 
             if (plan.KomponentenKopieren) await KomponentenKopierenAsync(db, a.SchuleId, alt.Id, neuePerioden, ct);
@@ -400,7 +404,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var kf = ziel.FirstOrDefault(z => z.FachId == q.FachId);
             if (kf is null)
             {
-                // Wahlfach-Einstellung wandert mit; die Wahl der Schüler gilt nur für ein Schuljahr und wird neu getroffen.
+                // Wahlfach-Einstellung wandert mit; die Wahl der Schüler übernimmt der Übergang (FachwahlenVorjahrUebernehmenAsync).
                 kf = new Klassenfach
                 {
                     SchuleId = schuleId, KlasseId = zielId, FachId = q.FachId, Koeffizient = q.Koeffizient, Reihenfolge = q.Reihenfolge,

@@ -166,6 +166,15 @@ Vom Nutzer freigegeben für Togo (Culture, Ewe …); Schulen ohne Wahlfächer (z
 4. **Rechnen:** Bonus-Regel: (Fachmittel − 10) × Koeff., nur positiv, Koeffizient nicht in der Summe; Moyenne höchstens 20. Beispiel: 64 Punkte / 5 Koeff. = 12,80; Ewe 16 (coef 2) → (64 + 12) / 5 = 15,20; Ewe 8 → 12,80. Fachrang und Fachstatistik nur über die Wählenden.
 5. **Bulletin:** nicht gewählte Wahlfächer erscheinen beim Schüler gar nicht; gewählte stehen im Bereich « MATIÈRES FACULTATIVES » mit kurzer Regel (« points au-dessus de 10 ajoutés » …; bei verschiedenen Regeln unter jedem Fach), Bonus in « MOY × COEF » als « +12,00 », « TOTAUX » mit Bonus ohne dessen Koeffizienten. Gruppenköpfe (« MATIÈRES LITTÉRAIRES », « MATIÈRES SCIENTIFIQUES », « AUTRES MATIÈRES ») und Gruppen-Bilan nur mit der Vorlage « Groupes de matières » (`ZeigeFachGruppen`, Standard aus), nur über Pflichtfächer. Ohne Wahlfächer bleiben Snapshot-JSON und Hash unverändert (kein neues Feld).
 6. **Eltern (Live-Noten):** nur gewählte Wahlfächer, mit Hinweis auf die Regel; Moyenne nach derselben Regel.
+7. **Ergänzt 19.11.2026 (Nutzer « ja für alle »):**
+   - *Vorhandene Noten:* wird ein Fach erst nachträglich facultative, bleiben alle Noten gespeichert; sie zählen nur für Wählende
+     und erscheinen wieder, sobald der Schüler gewählt wird. Der Dialog nennt die Zahl (`KlassenfachZeile.NotenOhneWahl`).
+   - *Sperre nach der Veröffentlichung:* sobald für die Klasse ein Bulletin veröffentlicht ist, sind Schalter und Regel fest
+     (Struktur – wie Bewertungen, auch in einer Rectification). Die Wahl eines Schülers mit gültigem Bulletin in dieser Klasse
+     (nicht zurückgezogen) ist fest, außer während einer offenen Rectification der Klasse (wie Noten). Neu angekommene Schüler
+     ohne Bulletin wählen immer. Gleicher Stand speichert ohne Fehler.
+   - *Jahreswechsel:* die Wahl des Vorjahres wird übernommen, wenn dasselbe Fach in der neuen Klasse auch Wahlfach ist
+     (`UnterrichtService.FachwahlenVorjahrUebernehmenAsync`, ein Durchgang); sonst entfällt sie. Die Direktion ändert nur die Ausnahmen.
 
 ### 3.8 Rundung und Anzeige
 - Intern wird **ungerundet** gerechnet und gespeichert (Snapshot enthält volle decimal-Werte).

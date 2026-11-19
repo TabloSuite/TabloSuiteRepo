@@ -136,7 +136,7 @@ public static partial class FormationKatalog
                 L("Classes, matières, affectations",
                     "Une classe appartient à une seule année ; elle a un niveau, une salle, une capacité et un professeur principal.",
                     "Les matières ont un coefficient par classe (par exemple français 3, anglais 2, EPS 1).",
-                    "Une matière peut être « facultative » dans une classe (par exemple Ewe ou culture) : la direction coche, pour toute l'année, les élèves qui la suivent ; les autres n'y sont ni notés ni classés.",
+                    "Une matière peut être « facultative » dans une classe (par exemple Ewe ou culture) : la direction coche, pour toute l'année, les élèves qui la suivent ; les autres n'y sont ni notés ni classés. Dès les premiers bulletins publiés, la règle et les choix sont fixés (correction par rectification) ; au passage à l'année suivante, les choix sont repris.",
                     "L'affectation (classe + matière + enseignant) décide tout : sans affectation, un enseignant ne voit aucune classe."),
                 B(Bild + "dir-annee.jpg", "« Année scolaire » chez la direction : l'année en cours, ses périodes et le prix SKOULOU figé au démarrage."),
                 V("skoulou-direction-concept.mp4", "Le concept de l'année scolaire, en images."),

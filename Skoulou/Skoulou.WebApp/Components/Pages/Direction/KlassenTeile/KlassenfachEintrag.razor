@@ -51,14 +51,23 @@
     @if (Offen || Fach.IstWahlfach)
     {
         <div class="org-kf-wahl">
-            <Schalter Wert="wahlAn" WertChanged="v => wahlAn = v" Label="Matière facultative" Deaktiviert="@(!Offen)"
+            <Schalter Wert="wahlAn" WertChanged="v => wahlAn = v" Label="Matière facultative" Deaktiviert="@(!Aenderbar)"
                       Hinweis="@(Fach.IstWahlfach ? $"Choisie par {Fach.AnzahlGewaehlt} élève{(Fach.AnzahlGewaehlt > 1 ? "s" : "")}" : "Notée seulement pour les élèves qui la choisissent")" />
             @if (wahlAn)
             {
-                <AuswahlFeld T="WahlfachRegel?" Label="Compte dans la moyenne" @bind-Wert="regel" Optionen="RegelOptionen" Pflicht="true" Deaktiviert="@(!Offen)"
+                <AuswahlFeld T="WahlfachRegel?" Label="Compte dans la moyenne" @bind-Wert="regel" Optionen="RegelOptionen" Pflicht="true" Deaktiviert="@(!Aenderbar)"
                              Hinweis="@RegelHinweis" />
+                @if (Fach.NotenOhneWahl > 0)
+                {
+                    @* Nutzer 19.11.2026: vorhandene Noten bleiben, zählen aber nur für Wählende – sichtbar sagen, nicht still ausblenden. *@
+                    <Hinweis Art="info">@NotenHinweis</Hinweis>
+                }
             }
-            @if (Offen && Geaendert)
+            @if (Offen && Fach.WahlfachGesperrt)
+            {
+                <small class="sk-leise org-kf-sperre"><Icon Name="lock" Groesse="14" /> @UnterrichtService.MeldungWahlfachGesperrt</small>
+            }
+            @if (Aenderbar && Geaendert)
             {
                 <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(wahlAn && regel is null)" OnClick="WahlfachAsync" />
             }
@@ -98,6 +107,13 @@
     };
 
     private bool Geaendert => wahlAn != Fach.IstWahlfach || (wahlAn && regel != Fach.WahlfachRegel);
+
+    /// <summary>Schalter und Regel änderbar: Jahr offen und noch keine Bulletins der Klasse veröffentlicht.</summary>
+    private bool Aenderbar => Offen && !Fach.WahlfachGesperrt;
+
+    private string NotenHinweis => Fach.NotenOhneWahl == 1
+        ? "1 note est déjà saisie pour un élève qui n'a pas choisi cette matière : elle reste enregistrée, mais ne compte que s'il la choisit (onglet « Matières facultatives »)."
+        : $"{Fach.NotenOhneWahl} notes sont déjà saisies pour des élèves qui n'ont pas choisi cette matière : elles restent enregistrées, mais ne comptent que pour les élèves qui la choisissent (onglet « Matières facultatives »).";
 
     protected override void OnParametersSet()
     {

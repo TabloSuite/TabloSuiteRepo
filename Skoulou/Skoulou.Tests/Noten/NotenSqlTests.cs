@@ -3,6 +3,7 @@ using Skoulou.Core.Entitaeten;
 using Skoulou.Tests.Organisation;
 using Skoulou.Tests.Sql;
 using Skoulou.WebApp.Services.Noten;
+using Skoulou.WebApp.Services.Organisation;
 
 namespace Skoulou.Tests.Noten;
 
@@ -113,6 +114,8 @@ public class NotenSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenbank>
         await w.NoteAsync(fr, w.E1, "16");
         Assert.Single((await w.Noten.RasterAsync(w.D, w.O.Kf6AFr, w.O.P1)).Zeilen);
         Assert.Equal(2, (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Count);
+        Assert.Equal(0, (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == w.O.Kf6AFr).NotenOhneWahl);
+        Assert.Null((await u.FachwahlenAsync(w.D, w.O.Klasse6A)).Sperrhinweis); // Sperrabfrage über Bulletins übersetzt
         Assert.Equal(1, (await w.O.D.Klassen.KlassenAsync(w.D, w.O.Jahr)).Single(k => k.Id == w.O.Klasse6A).AnzahlWahlfaecher);
         Assert.Equal(3, (await w.Lesen.VollstaendigkeitAsync(w.D, w.O.Jahr, w.O.P1)).Single(k => k.KlasseId == w.O.Klasse6A).Erwartet);
         var uebersicht = await w.Conseil.UebersichtAsync(w.D, w.O.Klasse6A, w.O.P1);
@@ -121,6 +124,12 @@ public class NotenSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenbank>
         Assert.Equal(2, (await w.Lesen.LiveNotenAsync(w.O.Eltern, w.O.Schueler, w.O.P1)).Faecher.Count);
         await w.O.D.Unterricht.FaecherHinzufuegenAsync(w.D, w.O.Klasse6B, [w.O.FachFr]);
         await u.KoeffizientenKopierenAsync(w.D, w.O.Klasse6A, w.O.Klasse6B);
+        await using (var db = datenbank.Kontext())
+        {
+            // Jahreswechsel-Übernahme (beide Abfragen mit Listen-Parametern) – nur übersetzen, nicht speichern.
+            Assert.Equal(1, await UnterrichtService.FachwahlenVorjahrUebernehmenAsync(db, w.O.SchuleA,
+                [(w.O.Schueler, w.O.Klasse6A, w.O.Klasse6B)], w.D, CancellationToken.None));
+        }
         await w.O.D.Einschreibung.KlasseWechselnAsync(w.D, w.O.Schueler, w.O.Klasse6B, new(2026, 11, 2));
         Assert.Equal(2, await w.MitDbAsync(db => db.Fachwahlen.CountAsync(x => x.SchuelerId == w.O.Schueler && x.KlassenfachId != w.O.Kf6AMath)));
     }
