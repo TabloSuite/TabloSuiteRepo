@@ -6,7 +6,6 @@ public static class KiHilfeRegistrierung
     public static IServiceCollection AddKiHilfe(this IServiceCollection services, IConfiguration config)
     {
         services.AddOptions<KiHilfeOptionen>().Bind(config.GetSection(KiHilfeOptionen.Abschnitt));
-        services.AddSingleton<KiNutzungsZaehler>();
         services.AddSingleton<IKiClient, AnthropicKiClient>();
         services.AddSingleton<KiHilfeDienst>();
         return services;

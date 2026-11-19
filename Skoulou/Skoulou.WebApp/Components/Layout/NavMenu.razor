@@ -67,7 +67,7 @@
 @code {
     private bool mehrOffen;
 
-    private IReadOnlyList<NavGruppe> Gruppen => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin, KiHilfe.IstVerfuegbar);
+    private IReadOnlyList<NavGruppe> Gruppen => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin, KiHilfe.IstVerfuegbarFuer(Kontext.Rolle));
     private IReadOnlyList<NavEintrag> Mobil => NavKarte.Mobil(Kontext.Rolle, Kontext.HatRecht);
 
     protected override void OnInitialized()

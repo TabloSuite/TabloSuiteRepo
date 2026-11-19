@@ -122,16 +122,18 @@ Verhalten: Jede Mail wird zuerst in `MailNachrichten` gespeichert und sofort ver
 
 ### KI-Hilfe « Poser une question » (optional, seit 19.11.2026)
 
-Hilfe-Assistent (Claude Haiku 5.5 über das offizielle Anthropic-SDK) im Menü « Aide » für alle angemeldeten Rollen. Ohne Schlüssel sind Menüeintrag und Seite `/aide/question` unsichtbar; nichts sonst ändert sich.
+Hilfe-Assistent (Claude Haiku 5.5 über das offizielle Anthropic-SDK) im Menü « Aide », **zunächst nur für Administrateurs und Responsables** (Nutzer 19.11.2026), ohne Fragen-Grenzen. Ohne Schlüssel – und für alle anderen Rollen – sind Menüeintrag und Seite `/aide/question` unsichtbar; nichts sonst ändert sich.
 
 | Name | Wert |
 | --- | --- |
 | `Ki__AnthropicApiKey` | **Geheim** – API-Schlüssel aus der Anthropic Console. Nur als App Setting (oder Key-Vault-Referenz), nie in appsettings oder ins Repository |
+| `Ki__AlleRollen` | optional, `true` = für alle Rollen freischalten (Standard `false`: nur Admin + Responsable) |
 | `Ki__Modell` | optional, Standard `claude-haiku-5-5` |
-| `Ki__FragenJeTag` | optional, Tagesgrenze der ganzen App, Standard `300` (je Konto fest 20 Fragen/Tag) |
 | `Ki__MaxTokens` / `Ki__TimeoutSekunden` | optional, Standard `2048` / `20` |
 
-Datenschutz: an Anthropic gehen nur die festen Hilfetexte der Rolle, die Rolle und die Frage – keine Namen, keine Daten des Ladens. Die Frage wird weder gespeichert noch protokolliert; im Log stehen nur Rolle, Token-Verbrauch und Tageszähler. Die Zähler liegen im Speicher (eine Instanz; nach einem Neustart beginnt die Zählung neu). Fehler des Dienstes zeigen eine freundliche Meldung, die App läuft weiter.
+Kosten begrenzt man in der Anthropic Console (Ausgabelimit des Schlüssels), nicht in der App.
+
+Datenschutz: an Anthropic gehen nur die festen Hilfetexte der Rolle, die Rolle und die Frage – keine Namen, keine Daten des Ladens. Die Frage wird weder gespeichert noch protokolliert; im Log stehen nur Rolle und Token-Verbrauch. Fehler des Dienstes zeigen eine freundliche Meldung, die App läuft weiter.
 
 ## 4. Private Medien und Rechte
 

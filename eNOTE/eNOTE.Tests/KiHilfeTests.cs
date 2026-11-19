@@ -13,13 +13,12 @@ using Xunit;
 namespace ENote.Tests;
 
 /// <summary>
-/// KI-Hilfe « Poser une question » (19.11.2026): Dienst mit Fake-Client (nie echte Aufrufe), Kontingente, Datenschutz
-/// (Frage nie im Log), Wissensbasis je Rolle ohne fremde Rollen, Anfrage-Parameter und Unsichtbarkeit ohne Schlüssel.
+/// KI-Hilfe « Poser une question » (19.11.2026): Dienst mit Fake-Client (nie echte Aufrufe), keine Fragen-Grenzen, zunächst
+/// nur Administrateur/Responsable, Datenschutz (Frage nie im Log), Wissensbasis je Rolle ohne fremde Rollen, Anfrage-Parameter
+/// und Unsichtbarkeit ohne Schlüssel.
 /// </summary>
 public class KiHilfeTests
 {
-    private static readonly Guid KontoA = Guid.Parse("11111111-1111-1111-1111-111111111111");
-    private static readonly Guid KontoB = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly KiRolle Besitzer = new(AppRollen.Besitzer);
     private static readonly KiRolle Employe = new(AppRollen.Kassierer);
 
@@ -29,43 +28,53 @@ public class KiHilfeTests
     public async Task Leere_und_zu_lange_Fragen_gehen_nicht_an_den_Dienst()
     {
         var w = new Welt();
-        Assert.Equal(KiHilfeDienst.MeldungLeer, (await w.Dienst.FrageAsync(KontoA, Besitzer, " \n ")).Meldung);
-        var lang = await w.Dienst.FrageAsync(KontoA, Besitzer, new string('a', KiHilfeOptionen.MaxFrageZeichen + 1));
+        Assert.Equal(KiHilfeDienst.MeldungLeer, (await w.Dienst.FrageAsync(Besitzer, " \n ")).Meldung);
+        var lang = await w.Dienst.FrageAsync(Besitzer, new string('a', KiHilfeOptionen.MaxFrageZeichen + 1));
         Assert.Equal(KiHilfeDienst.MeldungZuLang, lang.Meldung);
         Assert.Empty(w.Client.Anfragen);
-        Assert.Equal(KiHilfeOptionen.FragenJeKontoUndTag, w.Dienst.Verbleibend(KontoA));
-        Assert.True((await w.Dienst.FrageAsync(KontoA, Besitzer, new string('a', KiHilfeOptionen.MaxFrageZeichen))).Erfolg);
+        Assert.True((await w.Dienst.FrageAsync(Besitzer, new string('a', KiHilfeOptionen.MaxFrageZeichen))).Erfolg);
     }
 
     [Fact]
-    public async Task Tagesgrenze_je_Konto_und_der_App()
+    public async Task Keine_Fragen_Grenzen()
     {
+        // Nutzer 19.11.2026: « nicht limitieren » – auch viele Fragen hintereinander gehen alle an den Dienst.
         var w = new Welt();
-        for (var i = 0; i < KiHilfeOptionen.FragenJeKontoUndTag; i++)
-            Assert.True((await w.Dienst.FrageAsync(KontoA, Besitzer, $"Question {i}")).Erfolg);
-        var zuViel = await w.Dienst.FrageAsync(KontoA, Besitzer, "Encore ?");
-        Assert.Equal(KiHilfeDienst.MeldungKontoGrenze, zuViel.Meldung);
-        Assert.Equal(0, zuViel.Verbleibend);
-        Assert.True((await w.Dienst.FrageAsync(KontoB, Besitzer, "Et moi ?")).Erfolg);
-        w.Zeit.Jetzt += TimeSpan.FromDays(1);
-        Assert.Equal(KiHilfeOptionen.FragenJeKontoUndTag, w.Dienst.Verbleibend(KontoA));
-
-        var app = new Welt(o => o.FragenJeTag = 1);
-        Assert.True((await app.Dienst.FrageAsync(KontoA, Besitzer, "Une")).Erfolg);
-        Assert.Equal(KiHilfeDienst.MeldungAppGrenze, (await app.Dienst.FrageAsync(KontoB, Besitzer, "Deux")).Meldung);
-        Assert.Single(app.Client.Anfragen);
+        var admin = new KiRolle(AppRollen.SuperAdmin);
+        for (var i = 0; i < 100; i++)
+            Assert.True((await w.Dienst.FrageAsync(admin, $"Question {i}")).Erfolg);
+        Assert.Equal(100, w.Client.Anfragen.Count);
     }
 
     [Fact]
-    public async Task Fehler_des_Dienstes_freundliche_Meldung_und_Frage_zaehlt_nicht()
+    public async Task Zunaechst_nur_fuer_Administrateur_und_Responsable()
+    {
+        var w = new Welt(o => o.AlleRollen = false);
+        Assert.True(w.Dienst.IstVerfuegbarFuer(AppRollen.SuperAdmin));
+        Assert.True(w.Dienst.IstVerfuegbarFuer(AppRollen.ProduktOwner));
+        foreach (var rolle in new[] { AppRollen.Besitzer, AppRollen.Kassierer, string.Empty })
+        {
+            Assert.False(w.Dienst.IstVerfuegbarFuer(rolle));
+            // Auch ein direkter Aufruf (z. B. alte Seite offen) geht nicht an den Dienst.
+            Assert.Equal(KiHilfeDienst.MeldungIndisponible, (await w.Dienst.FrageAsync(new KiRolle(rolle), "Question")).Meldung);
+        }
+        Assert.Empty(w.Client.Anfragen);
+        Assert.True((await w.Dienst.FrageAsync(new KiRolle(AppRollen.ProduktOwner), "Question")).Erfolg);
+
+        // Später für alle: Ki:AlleRollen = true. Ohne Schlüssel nie.
+        Assert.True(new Welt(o => o.AlleRollen = true).Dienst.IstVerfuegbarFuer(AppRollen.Kassierer));
+        Assert.False(new Welt(o => o.AnthropicApiKey = null).Dienst.IstVerfuegbarFuer(AppRollen.SuperAdmin));
+    }
+
+    [Fact]
+    public async Task Fehler_des_Dienstes_freundliche_Meldung()
     {
         foreach (var fehler in new Exception[] { new KiDienstFehler(KiFehlerArt.Ueberlastet, "429"), new KiDienstFehler(KiFehlerArt.Konfiguration, "401"), new HttpRequestException("x") })
         {
             var w = new Welt { Fehler = fehler };
-            var e = await w.Dienst.FrageAsync(KontoA, Besitzer, "Où sont les finances ?");
+            var e = await w.Dienst.FrageAsync(Besitzer, "Où sont les finances ?");
             Assert.False(e.Erfolg);
             Assert.Equal(KiHilfeDienst.MeldungIndisponible, e.Meldung);
-            Assert.Equal(KiHilfeOptionen.FragenJeKontoUndTag, w.Dienst.Verbleibend(KontoA));
         }
     }
 
@@ -73,21 +82,21 @@ public class KiHilfeTests
     public async Task Ablehnung_abgeschnitten_und_leer()
     {
         var w = new Welt { Stopp = KiStopp.Abgelehnt };
-        var abgelehnt = await w.Dienst.FrageAsync(KontoA, Besitzer, "Écris mon business plan");
+        var abgelehnt = await w.Dienst.FrageAsync(Besitzer, "Écris mon business plan");
         Assert.Equal(KiHilfeDienst.MeldungAbgelehnt, abgelehnt.Meldung);
         Assert.Contains("eNOTE", abgelehnt.Meldung);
         Assert.DoesNotContain("SKOULOU", abgelehnt.Meldung);
 
         w.Stopp = KiStopp.Abgeschnitten;
         w.Antwort = "1. Ouvrez la caisse.\n2. Touchez";
-        var ab = await w.Dienst.FrageAsync(KontoA, Besitzer, "Caisse ?");
+        var ab = await w.Dienst.FrageAsync(Besitzer, "Caisse ?");
         Assert.True(ab.Erfolg);
         Assert.EndsWith(" …", ab.Antwort);
         Assert.Equal(KiBlockArt.Schritte, Assert.Single(ab.Bloecke).Art);
 
         w.Stopp = KiStopp.Fertig;
         w.Antwort = "  ";
-        Assert.Equal(KiHilfeDienst.MeldungOhneText, (await w.Dienst.FrageAsync(KontoA, Besitzer, "?")).Meldung);
+        Assert.Equal(KiHilfeDienst.MeldungOhneText, (await w.Dienst.FrageAsync(Besitzer, "?")).Meldung);
     }
 
     [Fact]
@@ -96,7 +105,7 @@ public class KiHilfeTests
         var eigenes = KiWissensbasis.Videos(Employe).First(v => v.Fuer == "Employé");
         var fremd = VideoKatalog.Videos.First(v => !v.Rollen.Contains(AppRollen.Kassierer));
         var w = new Welt { Antwort = $"Ouvrez la caisse.\nVidéo : « {eigenes.Titel} »\nAussi : « {fremd.Titel} »." };
-        var e = await w.Dienst.FrageAsync(KontoA, Employe, "Encaisser ?");
+        var e = await w.Dienst.FrageAsync(Employe, "Encaisser ?");
         Assert.Equal([eigenes], e.Videos);
         Assert.DoesNotContain("Vidéo :", e.Antwort);
         Assert.Contains(fremd.Titel, e.Antwort);
@@ -104,21 +113,20 @@ public class KiHilfeTests
         // Ohne Anführungszeichen ist ein Titel gewöhnlicher Text: « Vos clients » steht in vielen Sätzen.
         var kurz = KiWissensbasis.Videos(Besitzer).Single(v => v.Titel == "Vos clients");
         w.Antwort = "Ouvrez Vente › Clients pour voir vos clients.";
-        Assert.Empty((await w.Dienst.FrageAsync(KontoA, Besitzer, "Clients ?")).Videos);
+        Assert.Empty((await w.Dienst.FrageAsync(Besitzer, "Clients ?")).Videos);
         w.Antwort = "Ouvrez Vente › Clients.\nVidéo : \"Vos clients\"";
-        Assert.Equal([kurz], (await w.Dienst.FrageAsync(KontoA, Besitzer, "Clients ?")).Videos);
+        Assert.Equal([kurz], (await w.Dienst.FrageAsync(Besitzer, "Clients ?")).Videos);
     }
 
     [Fact]
     public async Task An_den_Dienst_gehen_nur_Hilfetext_Rolle_und_Frage_nie_ins_Log()
     {
         var w = new Welt();
-        await w.Dienst.FrageAsync(KontoA, Besitzer, "Le client <Ama Mensah> doit 5 000 F, où le noter ?");
+        await w.Dienst.FrageAsync(Besitzer, "Le client <Ama Mensah> doit 5 000 F, où le noter ?");
         var a = Assert.Single(w.Client.Anfragen);
         Assert.Same(KiWissensbasis.SystemText(Besitzer), a.SystemText);
         Assert.Contains("Rôle de l'utilisateur : Propriétaire", a.NutzerText);
         Assert.Contains("‹Ama Mensah›", a.NutzerText);
-        Assert.DoesNotContain(KontoA.ToString("N"), a.SystemText + a.NutzerText);
         Assert.NotEmpty(w.Log.Eintraege);
         Assert.All(w.Log.Eintraege, l => { Assert.DoesNotContain("Mensah", l); Assert.DoesNotContain("5 000", l); Assert.DoesNotContain(w.Antwort, l); });
     }
@@ -128,7 +136,7 @@ public class KiHilfeTests
     {
         var w = new Welt(o => o.AnthropicApiKey = null);
         Assert.False(w.Dienst.IstVerfuegbar);
-        Assert.Equal(KiHilfeDienst.MeldungIndisponible, (await w.Dienst.FrageAsync(KontoA, Besitzer, "Question")).Meldung);
+        Assert.Equal(KiHilfeDienst.MeldungIndisponible, (await w.Dienst.FrageAsync(Besitzer, "Question")).Meldung);
         Assert.Empty(w.Client.Anfragen);
 
         var echt = new AnthropicKiClient(Options.Create(new KiHilfeOptionen()));
@@ -259,17 +267,18 @@ public class KiHilfeTests
     public void Menue_und_Seite_nur_mit_Schluessel()
     {
         var nav = File.ReadAllText(Path.Combine(WebApp(), "Components", "Layout", "NavMenu.razor"));
-        Assert.Contains("if (KiHilfe.IstVerfuegbar) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, \"Poser une question\"", nav);
+        Assert.Contains("if (KiHilfe.IstVerfuegbarFuer(kiRolle)) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, \"Poser une question\"", nav);
         Assert.Equal("/aide/question", KiHilfeDienst.SeitenAdresse);
 
         var seite = File.ReadAllText(Path.Combine(WebApp(), "Components", "Pages", "AideQuestion.razor"));
         Assert.Contains("@page \"/aide/question\"", seite);
         Assert.Contains("@attribute [Authorize]", seite);
-        Assert.Contains("Nav.NavigateTo(\"/introuvable\", replace: true);", seite);   // ohne Schlüssel: « Page introuvable »
+        Assert.Contains("if (!verfuegbar) Nav.NavigateTo(\"/introuvable\", replace: true);", seite);   // ohne Schlüssel/Rolle: « Page introuvable »
+        Assert.Contains("verfuegbar = KiHilfe.IstVerfuegbarFuer(rolle.Rolle);", seite);
         Assert.Contains("@if (verfuegbar)", seite);
         Assert.Contains("maxlength=\"@KiHilfeOptionen.MaxFrageZeichen\"", seite);
         Assert.Contains("<AsyncActionButton Text=\"Poser la question\"", seite);   // Ladekreis und Sperre wie überall
-        Assert.Contains("Il vous reste {verbleibend} questions aujourd'hui.", seite);
+        Assert.DoesNotContain("Il vous reste", seite);                             // keine Fragen-Grenzen
         Assert.Contains("Votre question est envoyée à un service d'intelligence artificielle (Anthropic).", seite);
         Assert.Contains("<video class=\"vh-spieler\"", seite);   // gewohnter Video-Dialog
 
@@ -300,16 +309,9 @@ public class KiHilfeTests
 
     // ---------------- Hilfen ----------------
 
-    private sealed class Uhr : TimeProvider
-    {
-        public DateTimeOffset Jetzt { get; set; } = new(2026, 11, 19, 9, 0, 0, TimeSpan.Zero);
-        public override DateTimeOffset GetUtcNow() => Jetzt;
-    }
-
     private sealed class Welt
     {
         public FakeKiClient Client { get; } = new();
-        public Uhr Zeit { get; } = new();
         public ListenLogger Log { get; } = new();
         public KiHilfeDienst Dienst { get; }
 
@@ -319,10 +321,10 @@ public class KiHilfeTests
 
         public Welt(Action<KiHilfeOptionen>? anpassen = null)
         {
-            var o = new KiHilfeOptionen { AnthropicApiKey = "sk-test" };
+            // Die Dienst-Tests nutzen Besitzer-/Mitarbeiter-Wissensbasen → alle Rollen frei; die Rollensperre prüft ein eigener Test.
+            var o = new KiHilfeOptionen { AnthropicApiKey = "sk-test", AlleRollen = true };
             anpassen?.Invoke(o);
-            var optionen = Options.Create(o);
-            Dienst = new KiHilfeDienst(Client, new KiNutzungsZaehler(optionen, Zeit), optionen, Log);
+            Dienst = new KiHilfeDienst(Client, Options.Create(o), Log);
         }
     }
 

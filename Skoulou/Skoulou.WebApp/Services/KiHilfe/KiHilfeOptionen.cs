@@ -10,9 +10,6 @@ public sealed class KiHilfeOptionen
     public const string Abschnitt = "Ki";
     public const string StandardModell = "claude-haiku-5-5";
 
-    /// <summary>Höchstens so viele Fragen je Konto und Tag (Kostengrenze, fest).</summary>
-    public const int FragenJeKontoUndTag = 20;
-
     /// <summary>Längste erlaubte Frage in Zeichen.</summary>
     public const int MaxFrageZeichen = 500;
 
@@ -21,8 +18,11 @@ public sealed class KiHilfeOptionen
     /// <summary>Modell-ID (Standard Claude Haiku 5.5).</summary>
     public string? Modell { get; set; } = StandardModell;
 
-    /// <summary>Tagesgrenze für die ganze App (alle Konten zusammen, im Speicher gezählt – Azure läuft mit einer Instanz).</summary>
-    public int FragenJeTag { get; set; } = 300;
+    /// <summary>
+    /// Für alle Rollen freischalten (Azure: <c>Ki__AlleRollen=true</c>). Standard aus: zunächst nur Administrateurs und
+    /// Responsables (Nutzer 19.11.2026: « nicht limitieren und zunächst nur für Admins und POs »). Keine Fragen-Grenzen.
+    /// </summary>
+    public bool AlleRollen { get; set; }
 
     /// <summary>
     /// Obergrenze der Antwort einschließlich Denken (Haiku 5.5 denkt adaptiv, das zählt mit). Die Antwort selbst ist kurz

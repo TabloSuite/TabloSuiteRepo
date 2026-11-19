@@ -8,7 +8,8 @@
 @inject IJSRuntime JS
 
 @* KI-Hilfe « Poser une question » (19.11.2026): nur Bedienungshilfe aus Menü, Guide, Formation und Lernvideos der Rolle.
-   Ohne Ki:AnthropicApiKey gibt es die Seite nicht (Weiterleitung auf « Page introuvable »). Die Frage wird nicht gespeichert. *@
+   Ohne Ki:AnthropicApiKey – und zunächst für alle außer Administrateur/Responsable – gibt es die Seite nicht (Weiterleitung auf
+   « Page introuvable »). Keine Fragen-Grenzen. Die Frage wird nicht gespeichert. *@
 
 <PageTitle>Poser une question · SKOULOU</PageTitle>
 
@@ -22,9 +23,8 @@
             <Hinweis Art="info">@Datenschutz</Hinweis>
             <div class="sk-formular">
                 <TextFeld Label="Votre question" Zeilen="4" MaxLaenge="@KiHilfeOptionen.MaxFrageZeichen" Sofort="true"
-                          @bind-Wert="frage" Platzhalter="@Beispiel" Hinweis="@Zaehler" Deaktiviert="@(verbleibend == 0)" />
+                          @bind-Wert="frage" Platzhalter="@Beispiel" Hinweis="@Zaehler" />
                 <div class="pl-ki-fuss">
-                    <span class="pl-ki-rest" role="status">@RestText</span>
                     <AsyncKnopf Text="Poser la question" BusyText="Recherche de la réponse…" Icon="send" CssClass="sk-btn-primaer"
                                 Disabled="@(!KannFragen)" OnClick="FragenAsync" />
                 </div>
@@ -113,21 +113,13 @@
     private bool verfuegbar;
     private string? frage;
     private string? gestellt;
-    private int verbleibend;
     private KiErgebnis? ergebnis;
     private bool zeigeAntwort;
     private VideoKatalog.LernVideo? aktuell;
 
     private int Laenge => frage?.Length ?? 0;
     private string Zaehler => $"{Laenge} / {KiHilfeOptionen.MaxFrageZeichen} caractères";
-    private bool KannFragen => RendererInfo.IsInteractive && verbleibend > 0 && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
-
-    private string RestText => verbleibend switch
-    {
-        0 => $"Vous avez posé vos {KiHilfeOptionen.FragenJeKontoUndTag} questions d'aujourd'hui.",
-        1 => "Il vous reste 1 question aujourd'hui.",
-        _ => $"Il vous reste {verbleibend} questions aujourd'hui."
-    };
+    private bool KannFragen => RendererInfo.IsInteractive && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
 
     /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
     private string Beispiel => Ich.Rolle switch
@@ -142,13 +134,9 @@
 
     protected override Task InitialisierenAsync()
     {
-        verfuegbar = KiHilfe.IstVerfuegbar;
-        if (!verfuegbar)
-        {
-            Navigation.NavigateTo(InfrastrukturRegistrierung.NichtGefundenPfad, replace: true);
-            return Task.CompletedTask;
-        }
-        verbleibend = KiHilfe.Verbleibend(Ich.KontoId);
+        // Zunächst nur Administrateur und Responsable (Nutzer 19.11.2026); andere Rollen sehen « Page introuvable ».
+        verfuegbar = KiHilfe.IstVerfuegbarFuer(Ich.Rolle);
+        if (!verfuegbar) Navigation.NavigateTo(InfrastrukturRegistrierung.NichtGefundenPfad, replace: true);
         return Task.CompletedTask;
     }
 
@@ -158,13 +146,12 @@
         ergebnis = null;
         try
         {
-            ergebnis = await KiHilfe.FrageAsync(Ich.KontoId, KiRolle.Aus(Kontext), text, abbruch.Token);
+            ergebnis = await KiHilfe.FrageAsync(KiRolle.Aus(Kontext), text, abbruch.Token);
         }
         catch (OperationCanceledException) when (abbruch.IsCancellationRequested)
         {
             return; // Seite verlassen
         }
-        verbleibend = ergebnis.Verbleibend;
         if (ergebnis.Erfolg)
         {
             gestellt = KiHilfeDienst.Normalisiere(text);

@@ -12,7 +12,8 @@
 @inject IJSRuntime JS
 
 @* KI-Hilfe « Poser une question » (19.11.2026): nur Bedienungshilfe aus Menü, Formation und Lernvideos der Rolle.
-   Ohne Ki:AnthropicApiKey gibt es die Seite nicht (Weiterleitung auf « Page introuvable »). Die Frage wird nicht gespeichert. *@
+   Ohne Ki:AnthropicApiKey – und zunächst für alle außer Administrateur/Responsable – gibt es die Seite nicht (Weiterleitung auf
+   « Page introuvable »). Keine Fragen-Grenzen. Die Frage wird nicht gespeichert. *@
 
 <PageTitle>Poser une question</PageTitle>
 
@@ -35,11 +36,10 @@
                 <label>
                     Votre question
                     <textarea rows="4" maxlength="@KiHilfeOptionen.MaxFrageZeichen" @bind="frage" @bind:event="oninput"
-                              placeholder="@Beispiel" disabled="@(verbleibend == 0)"></textarea>
+                              placeholder="@Beispiel"></textarea>
                 </label>
                 <small class="enote-muted">@Laenge / @KiHilfeOptionen.MaxFrageZeichen caractères</small>
                 <div class="aq-fuss">
-                    <span class="aq-rest" role="status">@RestText</span>
                     <AsyncActionButton Text="Poser la question" BusyText="Recherche de la réponse…" OnClick="FragenAsync"
                                        CssClass="enote-btn-primary" Disabled="@(!KannFragen)" />
                 </div>
@@ -129,24 +129,15 @@
     private readonly string antwortId = "aq-antwort-" + Guid.NewGuid().ToString("N")[..8];
     private readonly CancellationTokenSource abbruch = new();
     private bool verfuegbar;
-    private Guid kontoId;
     private KiRolle rolle = new(ENote.Core.DataModels.Identity.AppRollen.Kassierer);
     private string? frage;
     private string? gestellt;
-    private int verbleibend;
     private KiErgebnis? ergebnis;
     private bool zeigeAntwort;
     private VideoKatalog.LernVideo? offen;
 
     private int Laenge => frage?.Length ?? 0;
-    private bool KannFragen => RendererInfo.IsInteractive && verbleibend > 0 && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
-
-    private string RestText => verbleibend switch
-    {
-        0 => $"Vous avez posé vos {KiHilfeOptionen.FragenJeKontoUndTag} questions d'aujourd'hui.",
-        1 => "Il vous reste 1 question aujourd'hui.",
-        _ => $"Il vous reste {verbleibend} questions aujourd'hui."
-    };
+    private bool KannFragen => RendererInfo.IsInteractive && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
 
     /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
     private string Beispiel => rolle.Rolle switch
@@ -159,18 +150,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        verfuegbar = KiHilfe.IstVerfuegbar;
-        if (!verfuegbar)
+        if (KiHilfe.IstVerfuegbar)
         {
-            Nav.NavigateTo("/introuvable", replace: true);
-            return;
+            var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+            if (Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var kontoId))
+            {
+                // Rechte des Mitarbeiterkontos (nur die Bereiche, die der Propriétaire freigegeben hat).
+                if (!AktiverSalon.IstGeladen) await AktiverSalon.InitialisiereAsync(kontoId);
+                rolle = KiRolle.Aus(user, AktiverSalon.Aktiv);
+                // Zunächst nur Administrateur und Responsable (Nutzer 19.11.2026).
+                verfuegbar = KiHilfe.IstVerfuegbarFuer(rolle.Rolle);
+            }
         }
-        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out kontoId)) return;
-        // Rechte des Mitarbeiterkontos (nur die Bereiche, die der Propriétaire freigegeben hat).
-        if (!AktiverSalon.IstGeladen) await AktiverSalon.InitialisiereAsync(kontoId);
-        rolle = KiRolle.Aus(user, AktiverSalon.Aktiv);
-        verbleibend = KiHilfe.Verbleibend(kontoId);
+        if (!verfuegbar) Nav.NavigateTo("/introuvable", replace: true);
     }
 
     private async Task FragenAsync()
@@ -179,13 +171,12 @@
         ergebnis = null;
         try
         {
-            ergebnis = await KiHilfe.FrageAsync(kontoId, rolle, text, abbruch.Token);
+            ergebnis = await KiHilfe.FrageAsync(rolle, text, abbruch.Token);
         }
         catch (OperationCanceledException) when (abbruch.IsCancellationRequested)
         {
             return; // Seite verlassen
         }
-        verbleibend = ergebnis.Verbleibend;
         if (ergebnis.Erfolg)
         {
             gestellt = KiHilfeDienst.Normalisiere(text);

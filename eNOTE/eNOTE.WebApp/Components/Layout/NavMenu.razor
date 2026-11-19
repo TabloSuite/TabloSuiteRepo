@@ -188,8 +188,11 @@
 
             // Für alle angemeldeten Rollen: Erklärvideos (Inhalt je Rolle, siehe VideoKatalog)
             var aide = new List<NavEintrag> { new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos") };
-            // KI-Hilfe « Poser une question » (19.11.2026): nur mit konfiguriertem Schlüssel (Ki:AnthropicApiKey), sonst unsichtbar.
-            if (KiHilfe.IstVerfuegbar) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, "Poser une question", "sparkles", Kurz: "Question"));
+            // KI-Hilfe « Poser une question » (19.11.2026): nur mit konfiguriertem Schlüssel (Ki:AnthropicApiKey), sonst unsichtbar;
+            // zunächst nur für Administrateurs und Responsables (Nutzer 19.11.2026), mit Ki:AlleRollen für alle.
+            var kiRolle = istSuperAdmin ? ENote.Core.DataModels.Identity.AppRollen.SuperAdmin
+                : istProduktOwner ? ENote.Core.DataModels.Identity.AppRollen.ProduktOwner : string.Empty; // Laden-Rollen: nur mit Ki:AlleRollen
+            if (KiHilfe.IstVerfuegbarFuer(kiRolle)) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, "Poser une question", "sparkles", Kurz: "Question"));
             // Formation der Responsables (Lernpfad + Prüfung); Administrateure trainieren frei.
             if (istProduktOwner || istSuperAdmin) aide.Add(new("/formation", "Formation", "book"));
             aide.Add(new("/contact", "Aide & contact", "help", Kurz: "Contact"));

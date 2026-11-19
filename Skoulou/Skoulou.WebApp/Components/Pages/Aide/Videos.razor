@@ -6,7 +6,7 @@
 
 <PageTitle>Vidéos d'aide · SKOULOU</PageTitle>
 
-<SeitenKopf Titel="Vidéos d'aide" Icon="video" Untertitel="@Untertitel" Aktionen="@(KiHilfe.IstVerfuegbar ? KiKnopf : null)" />
+<SeitenKopf Titel="Vidéos d'aide" Icon="video" Untertitel="@Untertitel" Aktionen="@(kiSichtbar ? KiKnopf : null)" />
 
 @if (gruppen.Count == 0)
 {
@@ -68,6 +68,7 @@
     private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
     private VideoKatalog.LernVideo? aktuell;
     private string eigene = string.Empty;
+    private bool kiSichtbar;
 
     /// <summary>Farbe (CSS-Klasse) und Symbol je Nutzerbereich.</summary>
     private static (string Klasse, string Icon) Bereich(string fuer) => fuer switch
@@ -100,6 +101,7 @@
         var nutzer = (await AuthZustand).User;
         gruppen = VideoKatalog.FuerNutzer(nutzer);
         eigene = VideoKatalog.EigeneGruppe(nutzer);
+        kiSichtbar = KiHilfe.IstVerfuegbarFuer(nutzer);
     }
 
     /// <summary>

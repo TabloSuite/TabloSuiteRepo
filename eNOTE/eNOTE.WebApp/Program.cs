@@ -210,7 +210,6 @@ if (administration is null)
     builder.Services.AddEnoteInfrastruktur(builder.Configuration, builder.Environment, connectionString);
     // KI-Hilfe « Poser une question » (Claude Haiku 5.5, 19.11.2026): ohne Ki:AnthropicApiKey registriert, aber unsichtbar.
     builder.Services.AddOptions<ENote.WebApp.Services.KiHilfe.KiHilfeOptionen>().Bind(builder.Configuration.GetSection(ENote.WebApp.Services.KiHilfe.KiHilfeOptionen.Abschnitt));
-    builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.KiNutzungsZaehler>();
     builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.IKiClient, ENote.WebApp.Services.KiHilfe.AnthropicKiClient>();
     builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.KiHilfeDienst>();
 }

@@ -14,7 +14,7 @@
         <a class="sk-chip" href="/aide/guide#@k.Id"><Icon Name="@k.Icon" Groesse="14" /> @k.Titel</a>
     }
     <a class="sk-chip" href="/aide/videos"><Icon Name="video" Groesse="14" /> Vidéos d'aide</a>
-    @if (KiHilfe.IstVerfuegbar)
+    @if (KiHilfe.IstVerfuegbarFuer(Ich.Rolle))
     {
         <a class="sk-chip" href="@NavKarte.KiFrageHref"><Icon Name="sparkles" Groesse="14" /> Poser une question</a>
     }
@@ -44,7 +44,7 @@
 }
 
 <Hinweis Art="info" Titel="Une question reste sans réponse ?">
-    @if (KiHilfe.IstVerfuegbar)
+    @if (KiHilfe.IstVerfuegbarFuer(Ich.Rolle))
     {
         <span>Posez-la à l'assistant sur la page <a href="@NavKarte.KiFrageHref">Poser une question</a>, ou écrivez-nous depuis la page <a href="/contact">Contact</a> : l'équipe SKOULOU vous répond par e-mail.</span>
     }
