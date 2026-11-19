@@ -48,10 +48,12 @@ var administration = DatenbankAdministration.Pruefe(args, builder.Configuration,
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions =>
     {
+        // Fehler 35 (« … erreur pendant le processus d'ouverture de session », Verbindung beim Anmelden an Azure SQL zurückgesetzt)
+        // gilt für EF nicht als vorübergehend – auf Azure trat er in beiden Apps auf (19.11.2026) und brach die Seite ab.
         sqlOptions.EnableRetryOnFailure(
             maxRetryCount: 6,
             maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null);
+            errorNumbersToAdd: [35]);
         sqlOptions.CommandTimeout(60);
     })
     // Kassen-Transaktionen verwerfen bei Fehlern alles und brauchen keine Savepoints; mit MARS (lokal) käme sonst je

@@ -128,7 +128,9 @@ public static class InfrastrukturRegistrierung
 
         services.AddDbContextFactory<SkoulouDbContext>(o => o.UseSqlServer(verbindung, sql =>
         {
-            sql.EnableRetryOnFailure(maxRetryCount: 6, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+            // Fehler 35 (Verbindung beim Anmelden an Azure SQL zurückgesetzt) gilt für EF nicht als vorübergehend – auf Azure
+            // 18× protokolliert (16.–19.11.2026: « Aide › Vidéos », Start-Seed, Hintergrunddienste). Jetzt wird er wiederholt.
+            sql.EnableRetryOnFailure(maxRetryCount: 6, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: [35]);
             sql.CommandTimeout(60);
         }));
         // Für die Identity-Stores (je Anfrage ein eigener Kontext); Services nutzen die Factory.
