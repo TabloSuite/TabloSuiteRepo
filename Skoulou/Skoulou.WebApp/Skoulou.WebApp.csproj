@@ -38,6 +38,8 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
+    <!-- KI-Hilfe « Poser une question » (Claude Haiku 5.5) -->
+    <PackageReference Include="Anthropic" />
     <!-- Organisation (E3): PDFs (Zugangsliste, Karten, Stundenplan), QR, XLSX-Import. -->
     <PackageReference Include="QuestPDF" />
     <PackageReference Include="QRCoder" />

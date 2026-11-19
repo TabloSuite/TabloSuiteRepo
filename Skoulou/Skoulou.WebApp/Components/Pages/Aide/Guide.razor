@@ -1,6 +1,7 @@
 @page "/aide/guide"
 @attribute [Authorize]
 @inherits SkoulouSeite
+@inject Skoulou.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
 
 <PageTitle>Guide utilisateur · SKOULOU</PageTitle>
 
@@ -13,6 +14,10 @@
         <a class="sk-chip" href="/aide/guide#@k.Id"><Icon Name="@k.Icon" Groesse="14" /> @k.Titel</a>
     }
     <a class="sk-chip" href="/aide/videos"><Icon Name="video" Groesse="14" /> Vidéos d'aide</a>
+    @if (KiHilfe.IstVerfuegbar)
+    {
+        <a class="sk-chip" href="@NavKarte.KiFrageHref"><Icon Name="sparkles" Groesse="14" /> Poser une question</a>
+    }
 </nav>
 
 @foreach (var k in kapitel)
@@ -39,7 +44,14 @@
 }
 
 <Hinweis Art="info" Titel="Une question reste sans réponse ?">
-    Écrivez-nous depuis la page <a href="/contact">Contact</a> : l'équipe SKOULOU vous répond par e-mail.
+    @if (KiHilfe.IstVerfuegbar)
+    {
+        <span>Posez-la à l'assistant sur la page <a href="@NavKarte.KiFrageHref">Poser une question</a>, ou écrivez-nous depuis la page <a href="/contact">Contact</a> : l'équipe SKOULOU vous répond par e-mail.</span>
+    }
+    else
+    {
+        <span>Écrivez-nous depuis la page <a href="/contact">Contact</a> : l'équipe SKOULOU vous répond par e-mail.</span>
+    }
 </Hinweis>
 
 @code {

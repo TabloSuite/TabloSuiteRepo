@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject SchulKontext Kontext
 @inject NavigationManager Nav
+@inject Skoulou.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
 
 <aside class="sk-seitenleiste" aria-label="Navigation principale">
     <a class="sk-seitenleiste-marke" href="@Rollen.Startseite(Kontext.Rolle)" aria-label="SKOULOU – Accueil">
@@ -66,7 +67,7 @@
 @code {
     private bool mehrOffen;
 
-    private IReadOnlyList<NavGruppe> Gruppen => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin);
+    private IReadOnlyList<NavGruppe> Gruppen => NavKarte.Fuer(Kontext.Rolle, Kontext.HatRecht, Kontext.IstHauptAdmin, KiHilfe.IstVerfuegbar);
     private IReadOnlyList<NavEintrag> Mobil => NavKarte.Mobil(Kontext.Rolle, Kontext.HatRecht);
 
     protected override void OnInitialized()

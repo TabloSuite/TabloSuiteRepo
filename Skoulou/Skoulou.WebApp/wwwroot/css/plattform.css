@@ -118,3 +118,18 @@ button.pl-zeile-titel:hover { color: var(--sk-primaer-text); text-decoration: un
 .es-vorschau { display: flex; align-items: flex-start; gap: .5rem; margin-top: .75rem; padding: .7rem .85rem; border-radius: 12px;
     background: var(--sk-flaeche-zart, rgba(37, 99, 235, .06)); color: var(--sk-text, inherit); font-size: .92rem; line-height: 1.4; }
 .es-vorschau .sk-icon { flex: none; margin-top: .1rem; color: var(--sk-primaer, #2563eb); }
+/* 19.11.2026: KI-Hilfe « Poser une question » – Handy zuerst, lange Wörter brechen um (kein Überlauf bei 360 px) */
+.pl-ki-fuss { display: flex; align-items: center; justify-content: space-between; gap: .6rem 1rem; flex-wrap: wrap; }
+.pl-ki-rest { color: var(--sk-text-leise); font-size: .88rem; }
+.pl-ki-ergebnis { scroll-margin-top: 5rem; }
+.pl-ki-antwort { display: grid; gap: .75rem; min-width: 0; overflow-wrap: anywhere; }
+.pl-ki-antwort p { margin: 0; line-height: 1.55; }
+.pl-ki-frage { display: grid; gap: .15rem; padding: .6rem .8rem; border-radius: var(--sk-radius-klein); background: var(--sk-flaeche-2); white-space: pre-line; }
+.pl-ki-frage small { color: var(--sk-text-leise); font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; white-space: normal; }
+.pl-ki-liste { display: grid; gap: .4rem; margin: 0; padding-left: 1.4rem; line-height: 1.5; }
+.pl-ki-videos { display: grid; gap: .45rem; }
+.pl-ki-video { justify-content: flex-start; width: 100%; white-space: normal; text-align: left; }
+.pl-ki-video span { flex: 1 1 auto; min-width: 0; }
+.pl-ki-video small { flex: none; color: var(--sk-text-leise); font-weight: 600; }
+.pl-ki-vorsicht { color: var(--sk-text-leise); font-size: .82rem; }
+@media (max-width: 560px) { .pl-ki-fuss .sk-btn { width: 100%; } }

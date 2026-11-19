@@ -475,3 +475,9 @@ window.skVideoPosition = (function () {
         if (use) use.setAttribute('href', use.getAttribute('href').replace(/#eye(-off)?$/, zeigen ? '#eye-off' : '#eye'));
     });
 })();
+
+// « Poser une question » (19.11.2026): die Antwort liegt am Handy unter dem Formular – nach dem Eintreffen sichtbar machen.
+window.skZeige = function (id) {
+    var el = document.getElementById(id);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};

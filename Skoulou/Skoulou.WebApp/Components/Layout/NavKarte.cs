@@ -26,8 +26,22 @@ public static class NavKarte
         new("/contact", "Contact", "mail", "Écrire à l'équipe SKOULOU."),
     ]);
 
+    /// <summary>KI-Hilfe « Poser une question » – nur mit konfiguriertem Schlüssel (Ki:AnthropicApiKey), sonst unsichtbar.</summary>
+    public const string KiFrageHref = "/aide/question";
+
+    private static readonly NavGruppe HilfeMitKi = new(Hilfe.Titel,
+        [.. Hilfe.Eintraege.Take(2), new(KiFrageHref, "Poser une question", "sparkles", "Réponse rapide : où trouver une fonction.", "Question"),
+         .. Hilfe.Eintraege.Skip(2)]);
+
     /// <param name="hauptAdmin">Hauptadministrator: zusätzlich « Administrateurs » (nur er verwaltet die anderen Administratoren).</param>
-    public static IReadOnlyList<NavGruppe> Fuer(string rolle, Func<KoordinatorRechte, bool> hatRecht, bool hauptAdmin = false) => rolle switch
+    /// <param name="kiHilfe">« Poser une question » in der Gruppe « Aide » zeigen (KI-Hilfe eingerichtet).</param>
+    public static IReadOnlyList<NavGruppe> Fuer(string rolle, Func<KoordinatorRechte, bool> hatRecht, bool hauptAdmin = false, bool kiHilfe = false)
+    {
+        var gruppen = OhneKi(rolle, hatRecht, hauptAdmin);
+        return kiHilfe ? [.. gruppen.Select(g => ReferenceEquals(g, Hilfe) ? HilfeMitKi : g)] : gruppen;
+    }
+
+    private static IReadOnlyList<NavGruppe> OhneKi(string rolle, Func<KoordinatorRechte, bool> hatRecht, bool hauptAdmin) => rolle switch
     {
         Rollen.SuperAdmin => hauptAdmin ? AdminMitVerwaltung : Admin,
         Rollen.Responsable => Responsable,

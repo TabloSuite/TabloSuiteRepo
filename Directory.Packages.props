@@ -25,5 +25,7 @@
     <PackageVersion Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.17" />
     <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.10" />
+    <!-- KI-Hilfe « Poser une question » (offizielles Anthropic-SDK, Claude Haiku 5.5) -->
+    <PackageVersion Include="Anthropic" Version="13.10.0" />
   </ItemGroup>
 </Project>

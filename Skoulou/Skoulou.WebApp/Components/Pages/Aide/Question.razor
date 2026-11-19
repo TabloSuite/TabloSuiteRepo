@@ -1,0 +1,208 @@
+@page "/aide/question"
+@attribute [Authorize]
+@inherits SkoulouSeite
+@implements IDisposable
+@using Skoulou.WebApp.Services.KiHilfe
+@inject KiHilfeDienst KiHilfe
+@inject IWebHostEnvironment Umgebung
+@inject IJSRuntime JS
+
+@* KI-Hilfe « Poser une question » (19.11.2026): nur Bedienungshilfe aus Menü, Guide, Formation und Lernvideos der Rolle.
+   Ohne Ki:AnthropicApiKey gibt es die Seite nicht (Weiterleitung auf « Page introuvable »). Die Frage wird nicht gespeichert. *@
+
+<PageTitle>Poser une question · SKOULOU</PageTitle>
+
+@if (verfuegbar)
+{
+    <div class="sk-seite-schmal">
+        <SeitenKopf Titel="Poser une question" Icon="sparkles" Oberzeile="@Rollen.Bezeichnung(Ich.Rolle)"
+                    Untertitel="L'assistant vous indique où trouver une fonction de SKOULOU et quelles étapes suivre." />
+
+        <Karte Titel="Demander à l'assistant" Icon="help">
+            <Hinweis Art="info">@Datenschutz</Hinweis>
+            <div class="sk-formular">
+                <TextFeld Label="Votre question" Zeilen="4" MaxLaenge="@KiHilfeOptionen.MaxFrageZeichen" Sofort="true"
+                          @bind-Wert="frage" Platzhalter="@Beispiel" Hinweis="@Zaehler" Deaktiviert="@(verbleibend == 0)" />
+                <div class="pl-ki-fuss">
+                    <span class="pl-ki-rest" role="status">@RestText</span>
+                    <AsyncKnopf Text="Poser la question" BusyText="Recherche de la réponse…" Icon="send" CssClass="sk-btn-primaer"
+                                Disabled="@(!KannFragen)" OnClick="FragenAsync" />
+                </div>
+            </div>
+        </Karte>
+
+        @if (ergebnis is not null)
+        {
+            <div id="@antwortId" class="pl-ki-ergebnis">
+                @if (ergebnis.Erfolg)
+                {
+                    <Karte Titel="Réponse" Icon="sparkles">
+                        <div class="pl-ki-antwort">
+                            @if (gestellt is not null)
+                            {
+                                <p class="pl-ki-frage"><small>Votre question</small><span>@gestellt</span></p>
+                            }
+                            @foreach (var block in ergebnis.Bloecke)
+                            {
+                                @switch (block.Art)
+                                {
+                                    case KiBlockArt.Schritte:
+                                        <ol class="pl-ki-liste">
+                                            @foreach (var z in block.Zeilen)
+                                            {
+                                                <li>@z</li>
+                                            }
+                                        </ol>
+                                        break;
+                                    case KiBlockArt.Punkte:
+                                        <ul class="pl-ki-liste">
+                                            @foreach (var z in block.Zeilen)
+                                            {
+                                                <li>@z</li>
+                                            }
+                                        </ul>
+                                        break;
+                                    default:
+                                        @foreach (var z in block.Zeilen)
+                                        {
+                                            <p>@z</p>
+                                        }
+                                        break;
+                                }
+                            }
+                            @if (ergebnis.Videos.Count > 0)
+                            {
+                                <div class="pl-ki-videos">
+                                    <strong>Vidéo d'aide</strong>
+                                    @foreach (var video in ergebnis.Videos)
+                                    {
+                                        <button type="button" class="sk-btn sk-btn-ghost pl-ki-video" @onclick="() => OeffnenAsync(video)">
+                                            <Icon Name="play" Groesse="18" />
+                                            <span>@video.Titel</span>
+                                            <small>@video.Dauer</small>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            <p class="pl-ki-vorsicht">Réponse générée automatiquement : en cas de doute, consultez le <a href="/aide/guide">guide</a> ou les <a href="/aide/videos">vidéos d'aide</a>.</p>
+                        </div>
+                    </Karte>
+                }
+                else
+                {
+                    <Hinweis Art="warn">@ergebnis.Meldung</Hinweis>
+                }
+            </div>
+        }
+    </div>
+
+    <ModalDialog Open="aktuell is not null" Title="@(aktuell?.Titel ?? string.Empty)" Breite="sk-modal-lg" OnClose="SchliessenAsync">
+        @if (aktuell is not null)
+        {
+            <video class="sk-video-spieler" src="@Quelle(aktuell)" poster="@Poster(aktuell)" controls autoplay playsinline preload="metadata"></video>
+            <p class="sk-leise">@aktuell.Beschreibung</p>
+        }
+    </ModalDialog>
+}
+
+@code {
+    internal const string Datenschutz = "Votre question est envoyée à un service d'intelligence artificielle (Anthropic). N'y écrivez pas de noms ni de données personnelles. Les réponses peuvent contenir des erreurs : en cas de doute, consultez le guide ou les vidéos.";
+
+    private readonly string antwortId = Feld.NeueId("ki-antwort");
+    private readonly CancellationTokenSource abbruch = new();
+    private bool verfuegbar;
+    private string? frage;
+    private string? gestellt;
+    private int verbleibend;
+    private KiErgebnis? ergebnis;
+    private bool zeigeAntwort;
+    private VideoKatalog.LernVideo? aktuell;
+
+    private int Laenge => frage?.Length ?? 0;
+    private string Zaehler => $"{Laenge} / {KiHilfeOptionen.MaxFrageZeichen} caractères";
+    private bool KannFragen => RendererInfo.IsInteractive && verbleibend > 0 && !string.IsNullOrWhiteSpace(frage) && Laenge <= KiHilfeOptionen.MaxFrageZeichen;
+
+    private string RestText => verbleibend switch
+    {
+        0 => $"Vous avez posé vos {KiHilfeOptionen.FragenJeKontoUndTag} questions d'aujourd'hui.",
+        1 => "Il vous reste 1 question aujourd'hui.",
+        _ => $"Il vous reste {verbleibend} questions aujourd'hui."
+    };
+
+    /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
+    private string Beispiel => Ich.Rolle switch
+    {
+        Rollen.SuperAdmin => "ex. Où valider une nouvelle école ?",
+        Rollen.Responsable => "ex. Où voir mes parts sur les factures payées ?",
+        Rollen.Lehrer => "ex. Comment saisir les notes d'une évaluation ?",
+        Rollen.Schueler => "ex. Où trouver mes résultats d'examen ?",
+        Rollen.Eltern => "ex. Où voir le bulletin de mon enfant ?",
+        _ => "ex. Comment inscrire un nouvel élève ?"
+    };
+
+    protected override Task InitialisierenAsync()
+    {
+        verfuegbar = KiHilfe.IstVerfuegbar;
+        if (!verfuegbar)
+        {
+            Navigation.NavigateTo(InfrastrukturRegistrierung.NichtGefundenPfad, replace: true);
+            return Task.CompletedTask;
+        }
+        verbleibend = KiHilfe.Verbleibend(Ich.KontoId);
+        return Task.CompletedTask;
+    }
+
+    private async Task FragenAsync()
+    {
+        var text = frage;
+        ergebnis = null;
+        try
+        {
+            ergebnis = await KiHilfe.FrageAsync(Ich.KontoId, KiRolle.Aus(Kontext), text, abbruch.Token);
+        }
+        catch (OperationCanceledException) when (abbruch.IsCancellationRequested)
+        {
+            return; // Seite verlassen
+        }
+        verbleibend = ergebnis.Verbleibend;
+        if (ergebnis.Erfolg)
+        {
+            gestellt = KiHilfeDienst.Normalisiere(text);
+            frage = string.Empty;
+        }
+        zeigeAntwort = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!zeigeAntwort) return;
+        zeigeAntwort = false;
+        // Am Handy liegt die Antwort unter dem Formular – sichtbar machen.
+        try { await JS.InvokeVoidAsync("skZeige", antwortId); } catch (JSException) { } catch (JSDisconnectedException) { }
+    }
+
+    private async Task OeffnenAsync(VideoKatalog.LernVideo video)
+    {
+        try { await JS.InvokeVoidAsync("skVideoPosition.merken"); } catch (JSException) { }
+        aktuell = video;
+    }
+
+    private async Task SchliessenAsync()
+    {
+        aktuell = null;
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("skVideoPosition.zurueck"); } catch (JSException) { }
+    }
+
+    private string Quelle(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion(v.Url, Path.Combine(Umgebung.ContentRootPath, "Medien", "videos", v.Datei));
+
+    private string Poster(VideoKatalog.LernVideo v)
+        => VideoKatalog.MitVersion("/" + v.Poster, Umgebung.WebRootFileProvider.GetFileInfo(v.Poster).PhysicalPath);
+
+    public void Dispose()
+    {
+        abbruch.Cancel();
+        abbruch.Dispose();
+    }
+}

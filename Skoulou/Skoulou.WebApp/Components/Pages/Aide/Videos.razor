@@ -2,10 +2,11 @@
 @attribute [Authorize]
 @inject IWebHostEnvironment Umgebung
 @inject IJSRuntime JS
+@inject Skoulou.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
 
 <PageTitle>Vidéos d'aide · SKOULOU</PageTitle>
 
-<SeitenKopf Titel="Vidéos d'aide" Icon="video" Untertitel="@Untertitel" />
+<SeitenKopf Titel="Vidéos d'aide" Icon="video" Untertitel="@Untertitel" Aktionen="@(KiHilfe.IstVerfuegbar ? KiKnopf : null)" />
 
 @if (gruppen.Count == 0)
 {
@@ -59,6 +60,10 @@
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    /// <summary>Verweis auf die KI-Hilfe (nur mit konfiguriertem Schlüssel).</summary>
+    private static readonly RenderFragment KiKnopf =
+        @<a class="sk-btn sk-btn-ghost sk-btn-klein" href="@NavKarte.KiFrageHref"><Icon Name="sparkles" Groesse="16" /> Poser une question</a>;
 
     private IReadOnlyList<VideoKatalog.Gruppe> gruppen = [];
     private VideoKatalog.LernVideo? aktuell;
