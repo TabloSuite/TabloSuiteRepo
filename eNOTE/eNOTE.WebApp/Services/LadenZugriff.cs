@@ -38,6 +38,12 @@ public static class LadenZugriff
         => !await IstMitarbeiterKontoAsync(db, benutzerId, ct)
             || await db.UserSalons.AnyAsync(us => us.AppUserId == benutzerId && us.KannSichAnmelden && us.Salon.IstAktiv, ct);
 
+    /// <summary>Besitzer oder Mitglied mit dem Recht « Dossiers clients » (Kundenliste, Kundenkarte, Notizen).</summary>
+    public static async Task<bool> HatKundenRechtAsync(ApplicationDbContext db, Guid benutzerId, Guid salonId, CancellationToken ct = default)
+        => await IstBesitzerAsync(db, benutzerId, salonId, ct)
+            || await db.UserSalons.AnyAsync(us => us.AppUserId == benutzerId && us.SalonId == salonId && us.KannKundenAktenFuehren
+                && !us.AppUser.IsBlocked && us.Salon.IstAktiv, ct);
+
     public static Task<bool> IstBesitzerAsync(ApplicationDbContext db, Guid benutzerId, Guid salonId, CancellationToken ct = default)
         => db.UserSalons.AnyAsync(us => us.AppUserId == benutzerId && us.SalonId == salonId
             && !us.AppUser.IsBlocked && us.Salon.IstAktiv && db.UserRoles.Any(ur => ur.UserId == benutzerId

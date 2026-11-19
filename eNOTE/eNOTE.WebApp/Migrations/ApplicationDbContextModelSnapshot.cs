@@ -2566,6 +2566,9 @@ namespace ENote.WebApp.Migrations
                     b.Property<bool>("KannFinanzenSehen")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("KannKundenAktenFuehren")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("KannLeistungenVerwalten")
                         .HasColumnType("bit");
 

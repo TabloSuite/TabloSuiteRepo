@@ -163,6 +163,7 @@ public partial class BesitzerPinGuard : IDisposable
         "finanzen" => zuordnung.KannFinanzenSehen,
         "leistungen" => zuordnung.KannLeistungenVerwalten,
         "rabatte" => zuordnung.KannRabatteVerwalten,
+        "kunden" => zuordnung.KannKundenAktenFuehren,
         _ => false
     };
 

@@ -83,7 +83,7 @@
                         </div>
 
                         <div class="eq-rechte">
-                            @if (!m.KannFinanzenSehen && !m.KannLeistungenVerwalten && !m.KannRabatteVerwalten && !m.KannErstatten)
+                            @if (!m.KannFinanzenSehen && !m.KannLeistungenVerwalten && !m.KannRabatteVerwalten && !m.KannErstatten && !m.KannKundenAktenFuehren)
                             {
                                 <span class="eq-recht neutral"><Icon Name="caisse" Groesse="13" /> Caisse uniquement</span>
                             }
@@ -91,6 +91,7 @@
                             @if (m.KannLeistungenVerwalten) { <span class="eq-recht"><Icon Name="tag" Groesse="13" /> Prestations</span> }
                             @if (m.KannRabatteVerwalten) { <span class="eq-recht"><Icon Name="percent" Groesse="13" /> Remises</span> }
                             @if (m.KannErstatten) { <span class="eq-recht"><Icon Name="undo" Groesse="13" /> Remboursements</span> }
+                            @if (m.KannKundenAktenFuehren) { <span class="eq-recht"><Icon Name="user" Groesse="13" /> Dossiers clients</span> }
                             @if (m.KannSichAnmelden && !m.IstBesitzer) { <span class="eq-recht"><Icon Name="user" Groesse="13" /> Connexion personnelle</span> }
                         </div>
 
@@ -173,6 +174,11 @@
                 <span class="eq-recht-icon"><Icon Name="undo" Groesse="18" /></span>
                 <div class="eq-recht-text"><strong>Rembourser les clients</strong><small>À la caisse, sans le code PIN du propriétaire. Chaque remboursement reste visible dans les finances.</small></div>
                 <EnoteCheckbox @bind-Value="rechteErstatten" Label="" />
+            </div>
+            <div class="eq-recht-zeile">
+                <span class="eq-recht-icon"><Icon Name="user" Groesse="18" /></span>
+                <div class="eq-recht-text"><strong>Dossiers clients</strong><small>Voir et modifier les fiches clients, leurs notes et leur historique – par exemple un médecin depuis son bureau, pendant que la caisse tourne à l'accueil. Sans la caisse ni la suppression.</small></div>
+                <EnoteCheckbox @bind-Value="rechteKunden" Label="" />
             </div>
             @if (aktivesMitglied is { IstBesitzer: false } mitglied)
             {

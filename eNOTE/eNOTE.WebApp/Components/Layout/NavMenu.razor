@@ -160,6 +160,7 @@
                 var vente = new List<NavEintrag>();
                 if (recht.KannLeistungenVerwalten) vente.Add(new("/services", "Prestations", "tag"));
                 if (recht.KannRabatteVerwalten) vente.Add(new("/remises", "Remises", "percent"));
+                if (recht.KannKundenAktenFuehren) vente.Add(new("/clients", "Clients", "user"));   // « Dossiers clients » (19.11.2026)
                 if (vente.Count > 0) gruppen.Add(new("Vente", vente));
                 if (recht.KannFinanzenSehen) gruppen.Add(new("Gestion", [Finances, new("/ausgaben", "Dépenses", "wallet")]));
             }

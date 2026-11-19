@@ -12,7 +12,7 @@
 
 <PageTitle>Clients</PageTitle>
 
-<BesitzerPinGuard>
+<BesitzerPinGuard Recht="kunden">
 <div class="enote-page">
     <div class="enote-page-header">
         <div>
@@ -143,7 +143,10 @@
         }
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost ku-loeschen" @onclick="() => loeschenOffen = true"><Icon Name="trash" Groesse="16" /> Supprimer</button>
+        @if (!mitarbeiterKonto)
+        {
+            <button class="enote-btn enote-btn-ghost ku-loeschen" @onclick="() => loeschenOffen = true"><Icon Name="trash" Groesse="16" /> Supprimer</button>
+        }
         <button class="enote-btn enote-btn-ghost" @onclick="() => detail = null">Fermer</button>
         <AsyncActionButton Text="Enregistrer" BusyText="Enregistrement…" CssClass="enote-btn-primary" OnClick="SpeichereAsync" Disabled="@string.IsNullOrWhiteSpace(bName)" />
     </Footer>
@@ -187,12 +190,17 @@
     private bool loeschenOffen, neuOffen, bEinwilligung, nEinwilligung;
     private string bName = "", bTelefon = "", bNotiz = "", nName = "", nTelefon = "";
     private int abfrage;
+    private bool mitarbeiterKonto;
 
     protected override async Task OnInitializedAsync()
     {
         aktiverSalon.OnChange += SalonGewechselt;
         var user = (await authStateProvider.GetAuthenticationStateAsync()).User;
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out benutzer);
+        // Eigenes Mitarbeiter-Konto mit « Dossiers clients »: alles außer Löschen (nur der Besitzer).
+        mitarbeiterKonto = LadenZugriff.IstMitarbeiterRolle(user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.Kassierer),
+            user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.Besitzer),
+            user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin) || user.IsInRole(ENote.Core.DataModels.Identity.AppRollen.ProduktOwner));
         if (!aktiverSalon.IstGeladen) await aktiverSalon.InitialisiereAsync(benutzer);
         await LadeAsync();
     }
@@ -209,7 +217,7 @@
             zahlen = await kunden.GetKennzahlenAsync(benutzer, salonId);
             (liste, mehr) = await kunden.SucheListeAsync(benutzer, salonId, suche, 0);
         }
-        catch (UnauthorizedAccessException) { fehler = "Seul le propriétaire peut consulter la liste des clients."; }
+        catch (UnauthorizedAccessException) { fehler = "Seul le propriétaire (ou un membre avec le droit « Dossiers clients ») peut consulter la liste des clients."; }
     }
 
     // Suchfeld über @bind (nicht value + @oninput) – keine veralteten Zeichen bei langsamer Verbindung (Klick-Simulation S2).

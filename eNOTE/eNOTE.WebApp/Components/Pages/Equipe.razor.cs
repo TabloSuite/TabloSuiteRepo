@@ -59,6 +59,7 @@ public partial class Equipe(
     private bool rechteLeistungen;
     private bool rechteRabatte;
     private bool rechteErstatten;
+    private bool rechteKunden;
     // « Connexion personnelle » (17.11.2026): eigenes Konto nur mit diesem Recht; Passwort erst beim Einschalten.
     private bool rechteAnmeldung;
     private string anmeldungPasswort = string.Empty;
@@ -182,6 +183,7 @@ public partial class Equipe(
         rechteLeistungen = mitglied.KannLeistungenVerwalten;
         rechteRabatte = mitglied.KannRabatteVerwalten;
         rechteErstatten = mitglied.KannErstatten;
+        rechteKunden = mitglied.KannKundenAktenFuehren;
         rechteAnmeldung = mitglied.KannSichAnmelden;
         anmeldungPasswort = string.Empty;
         dialogFehler = null;
@@ -202,7 +204,7 @@ public partial class Equipe(
         }
 
         await teamService.SetzeRechteAsync(
-            aktivesMitglied.UserSalonId, rechteFinanzen, rechteLeistungen, rechteRabatte, rechteErstatten);
+            aktivesMitglied.UserSalonId, rechteFinanzen, rechteLeistungen, rechteRabatte, rechteErstatten, kannKundenAktenFuehren: rechteKunden);
         if (rechteAnmeldung != aktivesMitglied.KannSichAnmelden || !string.IsNullOrWhiteSpace(anmeldungPasswort))
         {
             var (ok, fehler) = await teamService.SetzeAnmeldungAsync(aktivesMitglied.UserSalonId, rechteAnmeldung,

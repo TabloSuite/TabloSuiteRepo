@@ -32,6 +32,12 @@ public class UserSalon
     public bool KannErstatten { get; set; }
 
     /// <summary>
+    /// « Dossiers clients » (Nutzer 19.11.2026, z. B. angestellter Arzt in der Praxis): Kundenkarten, Notizen und Verlauf sehen und
+    /// bearbeiten – mit « Connexion personnelle » auch vom Büro aus, während die Kasse am Empfang läuft. Nie Kasse, Löschen oder Besitzer-PIN.
+    /// </summary>
+    public bool KannKundenAktenFuehren { get; set; }
+
+    /// <summary>
     /// « Connexion personnelle » (Nutzerwunsch 17.11.2026): Der Mitarbeiter darf sich mit eigenem Konto (Pseudonym + Passwort)
     /// anmelden – auch von zu Hause – und nutzt dann NUR die Bereiche seiner übrigen Rechte. Nie die Kasse, nie die Besitzer-PIN.
     /// Standard aus: Mitarbeitende kassieren am Gerät, an dem der Besitzer angemeldet ist, mit Name + PIN.

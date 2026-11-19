@@ -56,9 +56,17 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         return (n, t, z);
     }
 
-    private static async Task PruefeZugangAsync(ApplicationDbContext db, Guid user, Guid salonId, bool besitzer, CancellationToken ct)
+    /// <summary>Wer darf was: jedes Mitglied (Kasse: suchen, anlegen), « Dossiers clients » (Liste, Karte, Notizen) oder nur der Besitzer (löschen).</summary>
+    private enum Stufe { Mitglied, KundenAkte, Besitzer }
+
+    private static async Task PruefeZugangAsync(ApplicationDbContext db, Guid user, Guid salonId, Stufe stufe, CancellationToken ct)
     {
-        var ok = besitzer ? await LadenZugriff.IstBesitzerAsync(db, user, salonId, ct) : await LadenZugriff.HatZugangAsync(db, user, salonId, ct);
+        var ok = stufe switch
+        {
+            Stufe.Besitzer => await LadenZugriff.IstBesitzerAsync(db, user, salonId, ct),
+            Stufe.KundenAkte => await LadenZugriff.HatKundenRechtAsync(db, user, salonId, ct),
+            _ => await LadenZugriff.HatZugangAsync(db, user, salonId, ct)
+        };
         if (!ok) throw new UnauthorizedAccessException("Accès refusé.");
     }
 
@@ -71,7 +79,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     public async Task<List<Kurz>> SucheAsync(Guid user, Guid salonId, string text, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeZugangAsync(db, user, salonId, false, ct);
+        await PruefeZugangAsync(db, user, salonId, Stufe.Mitglied, ct);
         var s = (text ?? "").Trim();
         if (s.Length == 0) return [];
         var ziffern = Ziffern(s);
@@ -98,7 +106,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     public async Task<Kurz?> GetKurzAsync(Guid user, Guid salonId, Guid kundeId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeZugangAsync(db, user, salonId, false, ct);
+        await PruefeZugangAsync(db, user, salonId, Stufe.Mitglied, ct);
         var k = await db.Kunden.AsNoTracking().Where(x => x.Id == kundeId && x.SalonId == salonId)
             .Select(x => new { x.Id, x.Name, x.TelefonZiffern }).FirstOrDefaultAsync(ct);
         if (k is null) return null;
@@ -112,7 +120,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     {
         var (n, t, z) = Pruefe(name, telefon, einwilligung);
         await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeZugangAsync(db, user, salonId, false, ct);
+        await PruefeZugangAsync(db, user, salonId, Stufe.Mitglied, ct);
         if (z is not null && await db.Kunden.AsNoTracking().FirstOrDefaultAsync(k => k.SalonId == salonId && k.TelefonZiffern == z, ct) is { } vorhanden)
             throw new ArgumentException($"Ce numéro est déjà enregistré pour « {vorhanden.Name} ».");
         var jetzt = zeit.GetUtcNow().UtcDateTime;
@@ -131,7 +139,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     public async Task<Kennzahlen> GetKennzahlenAsync(Guid user, Guid salonId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeZugangAsync(db, user, salonId, true, ct);
+        await PruefeZugangAsync(db, user, salonId, Stufe.KundenAkte, ct);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
         var monatsBeginn = new DateTime(jetzt.Year, jetzt.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var kunden = await db.Kunden.CountAsync(k => k.SalonId == salonId, ct);
@@ -156,7 +164,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         int ueberspringen, int anzahl = 50, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeZugangAsync(db, user, salonId, true, ct);
+        await PruefeZugangAsync(db, user, salonId, Stufe.KundenAkte, ct);
         var q = db.Kunden.AsNoTracking().Where(k => k.SalonId == salonId);
         if (!string.IsNullOrWhiteSpace(suche))
         {
@@ -198,7 +206,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.AsNoTracking().FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
-        await PruefeZugangAsync(db, user, k.SalonId, true, ct);
+        await PruefeZugangAsync(db, user, k.SalonId, Stufe.KundenAkte, ct);
         // Kennzahlen und Lieblinge per Datenbank-Aggregat; geladen werden nur die letzten 10 Käufe mit Positionen.
         var alle = db.Verkaeufe.AsNoTracking().Where(v => v.SalonId == k.SalonId && v.KundeId == k.Id);
         var echteAnzahl = await alle.CountAsync(v => v.StornoVonVerkaufId == null, ct);
@@ -222,7 +230,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
-        await PruefeZugangAsync(db, user, k.SalonId, true, ct);
+        await PruefeZugangAsync(db, user, k.SalonId, Stufe.KundenAkte, ct);
         // Bereits gespeicherte Nummer: Zustimmung liegt vor, solange sie unverändert bleibt
         var unveraendert = Ziffern(telefon) is { } zNeu && zNeu == k.TelefonZiffern;
         var (n, t, z) = Pruefe(name, telefon, einwilligung || unveraendert);
@@ -242,7 +250,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var k = await db.Kunden.FirstOrDefaultAsync(x => x.Id == kundeId, ct) ?? throw new ArgumentException("Client introuvable.");
-        await PruefeZugangAsync(db, user, k.SalonId, true, ct);
+        await PruefeZugangAsync(db, user, k.SalonId, Stufe.Besitzer, ct);
         if (await AufenthaltService.OffenHinweisAsync(db, k.SalonId, k.Id, ct) is { } offen) throw new ArgumentException(offen);
         foreach (var v in await db.Verkaeufe.Where(v => v.KundeId == k.Id).ToListAsync(ct)) v.KundeId = null;
         db.AufenthaltsPositionen.RemoveRange(await db.AufenthaltsPositionen.Where(a => a.KundeId == k.Id).ToListAsync(ct));

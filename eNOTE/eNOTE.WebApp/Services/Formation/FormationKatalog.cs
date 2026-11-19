@@ -329,6 +329,7 @@ public static partial class FormationKatalog
                     "« Gérer les prestations » : prix, stock, codes-barres, pertes.",
                     "« Gérer les remises ».",
                     "« Rembourser les clients » : sans le code PIN du propriétaire.",
+                    "« Dossiers clients » : voir et modifier les fiches clients, leurs notes et l'historique – par exemple un médecin depuis son bureau pendant que la caisse tourne à l'accueil (avec sa « Connexion personnelle »). Supprimer un client reste réservé au propriétaire.",
                     "« Connexion personnelle » : avec un mot de passe donné par le propriétaire, l'employé se connecte aussi depuis chez lui – seulement pour ces droits. Jamais la caisse, jamais la zone du propriétaire.",
                     "Sur la tablette du propriétaire, l'employé a la caisse (et « Rembourser les clients » s'il a ce droit) ; finances, prestations et remises s'ouvrent seulement avec sa « Connexion personnelle » ou le code PIN du propriétaire."),
                 L("La zone du propriétaire",

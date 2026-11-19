@@ -34,7 +34,8 @@ public class TeamService(
         int VerkaeufeMonat = 0,
         bool KannErstatten = false,
         bool KannSichAnmelden = false,
-        bool HatPasswort = false);
+        bool HatPasswort = false,
+        bool KannKundenAktenFuehren = false);
 
     /// <summary>Alle Mitglieder eines Salons inklusive ihrer Rechte.</summary>
     public async Task<List<TeamMitglied>> GetTeamAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -89,7 +90,8 @@ public class TeamService(
             verkaeufe.GetValueOrDefault(us.AppUserId),
             us.KannErstatten,
             us.KannSichAnmelden,
-            us.AppUser.PasswordHash != null)).ToList();
+            us.AppUser.PasswordHash != null,
+            us.KannKundenAktenFuehren)).ToList();
     }
 
     /// <summary>
@@ -244,6 +246,7 @@ public class TeamService(
         bool kannLeistungenVerwalten,
         bool kannRabatteVerwalten,
         bool kannErstatten = false,
+        bool kannKundenAktenFuehren = false,
         CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -257,6 +260,7 @@ public class TeamService(
         zuordnung.KannLeistungenVerwalten = kannLeistungenVerwalten;
         zuordnung.KannRabatteVerwalten = kannRabatteVerwalten;
         zuordnung.KannErstatten = kannErstatten;
+        zuordnung.KannKundenAktenFuehren = kannKundenAktenFuehren;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
