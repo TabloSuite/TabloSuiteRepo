@@ -1,8 +1,19 @@
-@* Zahlenfeld (Dezimalkomma wie in Frankreich, Punkt wird ebenfalls angenommen). *@
+@* Zahlenfeld (Dezimalkomma wie in Frankreich, Punkt wird ebenfalls angenommen).
+   « Sofort »: Wert schon beim Tippen übernehmen (für Knöpfe, die bis zur Eingabe gesperrt sind) – wie TextFeld immer
+   @bind:get/@bind:set, nie value + @oninput (sonst gehen bei langsamer Verbindung Zeichen verloren). *@
 <Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@(eigenerFehler ?? Fehler)" Pflicht="@Pflicht" CssClass="@CssClass">
     <div class="sk-eingabe-mit-einheit">
-        <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name" value="@Anzeige"
-               placeholder="@Platzhalter" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        @if (Sofort)
+        {
+            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name"
+                   placeholder="@Platzhalter" disabled="@Deaktiviert"
+                   @bind:get="text" @bind:set="TippenAsync" @bind:event="oninput" @onchange="Verlassen" />
+        }
+        else
+        {
+            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name" value="@Anzeige"
+                   placeholder="@Platzhalter" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        }
         @if (Einheit is not null)
         {
             <span class="sk-einheit">@Einheit</span>
@@ -26,31 +37,63 @@
     [Parameter] public bool Deaktiviert { get; set; }
     [Parameter] public string? CssClass { get; set; }
 
+    /// <summary>Wert schon beim Tippen übernehmen (Standard: beim Verlassen des Feldes); Meldung und Formatierung beim Verlassen.</summary>
+    [Parameter] public bool Sofort { get; set; }
+
     private readonly string id = Feld.NeueId("zahl");
     private string? eigenerFehler;
 
+    // Nur « Sofort »: der Text, wie getippt, und der zuletzt daraus übernommene Wert.
+    private string? text;
+    private decimal? textWert;
+
     private string Anzeige => Wert is null ? string.Empty : Wert.Value.ToString("0.##", SkoulouKultur.Kultur);
+
+    protected override void OnParametersSet()
+    {
+        // Wert von außen geändert (Laden, Zurücksetzen): neu anzeigen. Der eigene, noch getippte Text bleibt stehen.
+        if (Sofort && (text is null || Wert != textWert)) (text, textWert) = (Anzeige, Wert);
+    }
+
+    /// <summary>Liest die Eingabe: gültig (leer = null) oder Meldung.</summary>
+    private (bool Ok, decimal? Wert, string? Fehler) Lies(string? eingabe)
+    {
+        var text = eingabe?.Trim().Replace(" ", string.Empty).Replace('.', ',') ?? string.Empty;
+        if (text.Length == 0) return (true, null, null);
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.Number, SkoulouKultur.Kultur, out var z))
+            return (false, null, "Saisissez un nombre valide.");
+        var wert = Math.Round(z, Stellen, MidpointRounding.AwayFromZero);
+        if ((Min is not null && wert < Min) || (Max is not null && wert > Max))
+            return (false, null, $"La valeur doit être comprise entre {Min?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"} et {Max?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"}.");
+        return (true, wert, null);
+    }
 
     private async Task AendernAsync(ChangeEventArgs e)
     {
-        var text = e.Value?.ToString()?.Trim().Replace(" ", string.Empty).Replace('.', ',') ?? string.Empty;
-        eigenerFehler = null;
-        decimal? wert = null;
-        if (text.Length > 0)
-        {
-            if (!decimal.TryParse(text, System.Globalization.NumberStyles.Number, SkoulouKultur.Kultur, out var z))
-            {
-                eigenerFehler = "Saisissez un nombre valide.";
-                return;
-            }
-            wert = Math.Round(z, Stellen, MidpointRounding.AwayFromZero);
-            if ((Min is not null && wert < Min) || (Max is not null && wert > Max))
-            {
-                eigenerFehler = $"La valeur doit être comprise entre {Min?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"} et {Max?.ToString("0.##", SkoulouKultur.Kultur) ?? "…"}.";
-                return;
-            }
-        }
+        var (ok, wert, fehler) = Lies(e.Value?.ToString());
+        eigenerFehler = fehler;
+        if (!ok) return;
         Wert = wert;
         await WertChanged.InvokeAsync(wert);
+    }
+
+    // « Sofort », jeder Tastendruck: ungültig oder außerhalb der Grenzen zählt als leer; die Meldung kommt beim Verlassen.
+    private async Task TippenAsync(string? eingabe)
+    {
+        text = eingabe;
+        var (ok, wert, _) = Lies(eingabe);
+        if (ok) eigenerFehler = null;
+        textWert = ok ? wert : null;
+        if (textWert == Wert) return;
+        Wert = textWert;
+        await WertChanged.InvokeAsync(Wert);
+    }
+
+    // « Sofort », beim Verlassen: Meldung zeigen, gültige Zahl einheitlich schreiben.
+    private void Verlassen()
+    {
+        var (ok, _, fehler) = Lies(text);
+        eigenerFehler = fehler;
+        if (ok) text = Anzeige;
     }
 }

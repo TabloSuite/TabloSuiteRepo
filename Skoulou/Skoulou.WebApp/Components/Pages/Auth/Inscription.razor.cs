@@ -37,6 +37,14 @@ public partial class Inscription
     /// <summary>Fehlermeldung für ein Feld (Name wie im Service).</summary>
     private string? F(string feld) => fehlerFeld == feld ? fehler : null;
 
+    /// <summary>
+    /// « Créer mon compte » gesperrt, solange eine Pflichtangabe (Stern) fehlt. Nur interaktiv: vorgerendert (noch ohne
+    /// Verbindung) bleibt der Knopf frei, das klassische Absenden prüft dann der Server. Die Zustimmung zu den Bedingungen
+    /// sperrt nicht – dafür gibt es die Meldung am Kästchen.
+    /// </summary>
+    private bool Gesperrt => RendererInfo.IsInteractive && !(Feld.Ausgefuellt(vorname, nachname, passwort, bestaetigung)
+        && (art == RegistrierungsArt.Direction ? Feld.Ausgefuellt(schulName, ort, email, telefon) : schule is not null));
+
     protected override void OnParametersSet()
     {
         if (Envoye is "direction" or "eleve") gesendet = Envoye == "eleve" ? RegistrierungsArt.Eleve : RegistrierungsArt.Direction;

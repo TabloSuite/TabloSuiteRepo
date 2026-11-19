@@ -9,7 +9,7 @@
         {
             <div class="sk-formular">
                 <p>Une rectification rouvre les notes et le conseil de cette période pour cette classe. Les bulletins déjà remis restent valables jusqu'à la publication des bulletins rectifiés, qui reçoivent un nouveau numéro et la mention « remplace le n° … ».</p>
-                <TextFeld Label="Motif de la rectification" @bind-Wert="grund" Pflicht="true" MaxLaenge="300" Platzhalter="Erreur de report en mathématiques…" />
+                <TextFeld Label="Motif de la rectification" @bind-Wert="grund" Pflicht="true" Sofort="true" MaxLaenge="300" Platzhalter="Erreur de report en mathématiques…" />
             </div>
         }
         else if (vorschau is null)
@@ -46,7 +46,7 @@
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
         @if (!Offen)
         {
-            <AsyncKnopf Text="Ouvrir la rectification" Icon="edit" CssClass="sk-btn-primaer" OnClick="OeffnenAsync" />
+            <AsyncKnopf Text="Ouvrir la rectification" Icon="edit" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(grund))" OnClick="OeffnenAsync" />
         }
         else
         {

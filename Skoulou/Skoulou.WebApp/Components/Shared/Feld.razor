@@ -29,4 +29,10 @@
 
     /// <summary>Neue eindeutige Feld-Id.</summary>
     public static string NeueId(string praefix = "f") => praefix + "-" + Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>
+    /// Alle Pflichttexte ausgefüllt (nur Leerzeichen zählt als leer) – für Anlegen-/Speichern-Knöpfe, die bis dahin gesperrt sind.
+    /// Die Felder dazu brauchen « Sofort », sonst geht der Klick direkt nach dem Tippen verloren.
+    /// </summary>
+    public static bool Ausgefuellt(params string?[] werte) => werte.All(w => !string.IsNullOrWhiteSpace(w));
 }

@@ -20,14 +20,14 @@
                     </div>
                 </div>
             }
-            <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="120" Pflicht="true" Platzhalter="Interrogation 1, Devoir surveillé…" />
+            <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="120" Pflicht="true" Sofort="true" Platzhalter="Interrogation 1, Devoir surveillé…" />
             <div class="sk-raster-2">
                 <AuswahlFeld T="BewertungsArt" Label="Type" @bind-Wert="art" Optionen="ArtOptionen" />
                 <DatumFeld Label="Date (facultatif)" @bind-Wert="datum" Hinweis="Sert à savoir quels élèves étaient inscrits." />
             </div>
             <div class="sk-raster-2">
-                <ZahlFeld Label="Barème (noté sur)" @bind-Wert="bareme" Min="0.01m" Max="1000" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true" />
-                <ZahlFeld Label="Poids dans la moyenne" @bind-Wert="gewicht" Min="0.01m" Max="100" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true"
+                <ZahlFeld Label="Barème (noté sur)" @bind-Wert="bareme" Min="0.01m" Max="1000" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true" Sofort="true" />
+                <ZahlFeld Label="Poids dans la moyenne" @bind-Wert="gewicht" Min="0.01m" Max="100" Deaktiviert="@(Spalte?.AnzahlNoten > 0)" Pflicht="true" Sofort="true"
                           Hinweis="2 = compte double (ex. composition)." />
             </div>
             @if (Spalte?.AnzahlNoten > 0)
@@ -42,7 +42,8 @@
             <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
         }
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(titel) || bareme is null || gewicht is null)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

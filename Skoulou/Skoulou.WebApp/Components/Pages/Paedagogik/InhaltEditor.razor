@@ -28,7 +28,7 @@ else
 
         <Karte Titel="Informations" Icon="edit" CssClass="sk-oben-abstand">
             <div class="sk-formular">
-                <TextFeld Label="Titre" Pflicht="true" MaxLaenge="200" Wert="@f.Titel" WertChanged="w => f.Titel = w ?? string.Empty"
+                <TextFeld Label="Titre" Pflicht="true" Sofort="true" MaxLaenge="200" Wert="@f.Titel" WertChanged="w => f.Titel = w ?? string.Empty"
                           Fehler="@FeldFehler("Titel")" Platzhalter="@(Art == InhaltsArt.Lecon ? "Ex. : Les fractions" : "Ex. : Devoir n° 1 – Fractions")" />
                 <div class="sk-raster-2">
                     <AuswahlFeld T="string" Label="Niveau et matière" Pflicht="true" Wert="@StufeFachSchluessel" WertChanged="StufeFachAsync"
@@ -108,7 +108,8 @@ else
                 <span class="sk-feld-fehler"><Icon Name="alert" Groesse="15" /> @Fehlermeldung</span>
             }
             <a class="sk-btn sk-btn-ghost" href="@ZurueckHref">Fermer</a>
-            <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+            <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
+                        Disabled="@(!Feld.Ausgefuellt(f.Titel) || StufeFachSchluessel is null)" OnClick="SpeichernAsync" />
         </div>
     </CascadingValue>
 

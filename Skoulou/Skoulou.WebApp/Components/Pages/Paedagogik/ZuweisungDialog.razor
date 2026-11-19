@@ -47,7 +47,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Attribuer" Icon="send" CssClass="sk-btn-primaer" Disabled="@(klassen is null || klassen.Count == 0)" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Attribuer" Icon="send" CssClass="sk-btn-primaer"
+                    Disabled="@(klassen is null || klassen.Count == 0 || klasseId is null || (Art == InhaltsArt.Pruefung && fristDatum is null))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

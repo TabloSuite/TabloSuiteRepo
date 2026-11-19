@@ -38,7 +38,7 @@
             }
             <div class="sk-oben-abstand">
                 <TextFeld Label="@($"Répondre à {(detail.Richtung == NachrichtRichtung.Eingang ? detail.Von : detail.An)}")" @bind-Wert="antwort" Zeilen="5" MaxLaenge="10000"
-                          Hinweis="Envoyé depuis contact@tablosuite.com avec « [SKOULOU] » dans l'objet." />
+                          Pflicht="true" Sofort="true" Hinweis="Envoyé depuis contact@tablosuite.com avec « [SKOULOU] » dans l'objet." />
             </div>
         }
     </ChildContent>

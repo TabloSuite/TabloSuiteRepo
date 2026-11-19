@@ -14,8 +14,8 @@
         {
             <div class="sk-formular">
                 <div class="sk-raster-2">
-                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("vorname")" />
-                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nachname")" />
+                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("vorname")" />
+                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("nachname")" />
                 </div>
                 <div class="sk-raster-2">
                     <RadioGruppe T="Geschlecht" Label="Sexe" @bind-Wert="geschlecht" Optionen="GeschlechtOptionen" />
@@ -58,7 +58,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@(SchuelerId is null ? "Créer l'élève" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="@(SchuelerId is null ? "Créer l'élève" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(vorname, nachname))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

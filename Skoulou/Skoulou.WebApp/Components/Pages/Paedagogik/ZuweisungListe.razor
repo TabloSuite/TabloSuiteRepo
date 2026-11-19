@@ -63,7 +63,7 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => frist = null">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" OnClick="FristSpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" Disabled="@(Art == InhaltsArt.Pruefung && fristDatum is null)" OnClick="FristSpeichernAsync" />
     </Footer>
 </ModalDialog>
 

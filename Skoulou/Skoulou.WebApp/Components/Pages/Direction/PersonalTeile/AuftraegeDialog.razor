@@ -14,7 +14,7 @@
             @if (Offen)
             {
                 <div class="org-kf-werkzeuge">
-                    <AuswahlFeld T="Guid?" Label="Classe et matière" @bind-Wert="klassenfach" Optionen="Optionen" Platzhalter="Choisir…" />
+                    <AuswahlFeld T="Guid?" Label="Classe et matière" @bind-Wert="klassenfach" Optionen="Optionen" Platzhalter="Choisir…" Pflicht="true" />
                     <ZahlFeld Label="Heures par semaine" @bind-Wert="stunden" Min="0.5m" Max="40" Stellen="1" Einheit="h" />
                     <AsyncKnopf Text="Affecter" Icon="plus" CssClass="sk-btn-primaer" Disabled="@(klassenfach is null)" OnClick="ZuweisenAsync" />
                 </div>

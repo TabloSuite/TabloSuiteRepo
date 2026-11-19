@@ -31,7 +31,7 @@
                 }
                 @if (a.Art is EinschreibungsAktion.Austritt or EinschreibungsAktion.Stornieren)
                 {
-                    <TextFeld Label="@(a.Art == EinschreibungsAktion.Austritt ? "Motif du départ" : "Motif de l'annulation")" @bind-Wert="grund" Zeilen="2" MaxLaenge="300" Pflicht="true"
+                    <TextFeld Label="@(a.Art == EinschreibungsAktion.Austritt ? "Motif du départ" : "Motif de l'annulation")" @bind-Wert="grund" Zeilen="2" MaxLaenge="300" Pflicht="true" Sofort="true"
                               Platzhalter="@(a.Art == EinschreibungsAktion.Austritt ? "Déménagement, changement d'école…" : "Erreur de classe…")" Fehler="@(feld == "grund" ? Fehlermeldung : null)" />
                 }
                 @if (a.Art == EinschreibungsAktion.Austritt)
@@ -47,7 +47,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@Knopf" Icon="check" CssClass="@(Anfrage?.Art is EinschreibungsAktion.Stornieren or EinschreibungsAktion.Austritt ? "sk-btn-gefahr" : "sk-btn-primaer")" OnClick="AusfuehrenAsync" />
+        <AsyncKnopf Text="@Knopf" Icon="check" CssClass="@(Anfrage?.Art is EinschreibungsAktion.Stornieren or EinschreibungsAktion.Austritt ? "sk-btn-gefahr" : "sk-btn-primaer")"
+                    Disabled="@(!Vollstaendig)" OnClick="AusfuehrenAsync" />
     </Footer>
 </ModalDialog>
 
@@ -64,6 +65,12 @@
     private bool wiederholer, archivieren;
     private string? grund, feld;
     private EinschreibungsAnfrage? geladen;
+
+    // Pflichtangaben (Stern) der jeweiligen Aktion vollständig: Klasse, Datum, Grund.
+    private bool Vollstaendig => Anfrage is { } a
+        && (a.Art is not (EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Wechsel or EinschreibungsAktion.Sammel) || klasseId is not null)
+        && (a.Art == EinschreibungsAktion.Stornieren || datum is not null)
+        && (a.Art is not (EinschreibungsAktion.Austritt or EinschreibungsAktion.Stornieren) || Feld.Ausgefuellt(grund));
 
     private IReadOnlyList<AuswahlOption<Guid?>> KlassenOptionen => Klassen.Where(k => k.Name != Anfrage?.AktuelleKlasse)
         .Select(k => new AuswahlOption<Guid?>(k.Id, k.Name, k.Zusatz)).ToList();

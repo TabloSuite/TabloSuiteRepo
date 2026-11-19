@@ -7,7 +7,7 @@
     <ChildContent>
         <div class="sk-formel">
             <div class="sk-formel-eingabe">
-                <label class="sk-feld-label" for="formel-latex">Formule (LaTeX)</label>
+                <label class="sk-feld-label" for="formel-latex">Formule (LaTeX)<span class="sk-pflicht" aria-hidden="true"> *</span></label>
                 <textarea id="formel-latex" class="sk-eingabe sk-formel-text" rows="3" maxlength="1000" spellcheck="false"
                           @bind="latex" @bind:event="oninput" @bind:after="VorschauAsync" placeholder="Exemple : \frac{a}{b} ou x^{2}"></textarea>
                 <div class="sk-formel-vorschau" aria-label="Aperçu"><div @ref="vorschau"></div></div>

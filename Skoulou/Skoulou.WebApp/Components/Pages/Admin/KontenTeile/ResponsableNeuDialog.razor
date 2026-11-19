@@ -5,10 +5,10 @@
     <ChildContent>
         <div class="sk-formular">
             <div class="sk-raster-2">
-                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("prenom")" />
-                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nom")" />
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("prenom")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("nom")" />
             </div>
-            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("email")"
+            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Sofort="true" Fehler="@FeldFehler("email")"
                       Hinweis="Pour les factures, les messages de la plateforme et le mot de passe oublié." />
             <div class="sk-raster-2">
                 <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Fehler="@FeldFehler("telephone")"
@@ -20,7 +20,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Créer le compte" BusyText="Création…" Icon="user-plus" CssClass="sk-btn-primaer" OnClick="AnlegenAsync" />
+        <AsyncKnopf Text="Créer le compte" BusyText="Création…" Icon="user-plus" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(vorname, nachname, email))" OnClick="AnlegenAsync" />
     </Footer>
 </ModalDialog>
 

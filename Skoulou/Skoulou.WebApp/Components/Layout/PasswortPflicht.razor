@@ -20,7 +20,7 @@
             <AntiforgeryToken />
             <button type="submit" class="sk-btn sk-btn-ghost">Se déconnecter</button>
         </form>
-        <button type="submit" form="@formId" class="sk-btn sk-btn-primaer">Enregistrer</button>
+        <button type="submit" form="@formId" class="sk-btn sk-btn-primaer" disabled="@Gesperrt">Enregistrer</button>
     </Footer>
 </ModalDialog>
 
@@ -29,6 +29,9 @@
 
     private readonly string formId = Feld.NeueId("mdp");
     private string? aktuell, neu, bestaetigung, fehler;
+
+    // Gesperrt, solange ein Pflichtfeld leer ist – nur interaktiv (vorgerendert sendet das Formular klassisch, der Server prüft).
+    private bool Gesperrt => RendererInfo.IsInteractive && !Feld.Ausgefuellt(aktuell, neu, bestaetigung);
 
     private string Rueckweg => "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0];
 

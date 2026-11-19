@@ -6,7 +6,7 @@
              SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
     <ChildContent>
     <div class="sk-formular">
-        <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Platzhalter="1er trimestre, Examen blanc…" Fehler="@FeldFehler("titel")" />
+        <TextFeld Label="Titre" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Sofort="true" Platzhalter="1er trimestre, Examen blanc…" Fehler="@FeldFehler("titel")" />
         <div class="sk-raster-2">
             <DatumFeld Label="Début" @bind-Wert="beginn" Pflicht="true" Min="Jahr?.Beginn" Max="Jahr?.Ende" Fehler="@FeldFehler("beginn")" />
             <DatumFeld Label="Fin" @bind-Wert="ende" Pflicht="true" Min="beginn ?? Jahr?.Beginn" Max="Jahr?.Ende" Fehler="@FeldFehler("ende")" />
@@ -15,7 +15,7 @@
                   Hinweis="Désactivé = « examen blanc » : notes à part, ni moyenne annuelle ni facturation SKOULOU." />
         @if (zaehlt)
         {
-            <ZahlFeld Label="Poids dans la moyenne annuelle" @bind-Wert="gewicht" Min="0.01m" Max="100" Hinweis="1 = même poids que les autres périodes." Fehler="@FeldFehler("gewicht")" />
+            <ZahlFeld Label="Poids dans la moyenne annuelle" @bind-Wert="gewicht" Min="0.01m" Max="100" Pflicht="true" Sofort="true" Hinweis="1 = même poids que les autres périodes." Fehler="@FeldFehler("gewicht")" />
         }
         @if (Jahr?.Status == SchuljahrStatus.Laufend)
         {
@@ -25,7 +25,7 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" Disabled="@(!Vollstaendig)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 
@@ -44,6 +44,9 @@
     private bool warOffen;
 
     private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    // Pflichtangaben (Stern) vollständig; das Gewicht nur, wenn die Periode für das Jahr zählt (leer = 0 lehnt der Service ab).
+    private bool Vollstaendig => Feld.Ausgefuellt(titel) && beginn is not null && ende is not null && (!zaehlt || gewicht is not null);
 
     protected override void OnParametersSet()
     {

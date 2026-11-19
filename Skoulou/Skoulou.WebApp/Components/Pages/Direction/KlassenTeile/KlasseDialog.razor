@@ -7,7 +7,7 @@
     <ChildContent>
         <div class="sk-formular">
             <div class="sk-raster-2">
-                <TextFeld Label="Nom de la classe" @bind-Wert="name" MaxLaenge="60" Pflicht="true" Platzhalter="6e A" Fehler="@FeldFehler("name")" />
+                <TextFeld Label="Nom de la classe" @bind-Wert="name" MaxLaenge="60" Pflicht="true" Sofort="true" Platzhalter="6e A" Fehler="@FeldFehler("name")" />
                 <AuswahlFeld T="Guid?" Label="Niveau" @bind-Wert="stufeId" Optionen="StufenOptionen" Platzhalter="Sans niveau" Fehler="@FeldFehler("stufe")"
                              Hinweis="Sert au passage d'année et aux coefficients communs." />
             </div>
@@ -27,7 +27,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@(Klasse is null ? "Créer la classe" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="@(Klasse is null ? "Créer la classe" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(name))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

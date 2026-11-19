@@ -55,8 +55,8 @@ else
         <Karte Titel="Mes informations" Icon="edit">
             <div class="sk-formular">
                 <div class="sk-raster-2">
-                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Autocomplete="given-name" />
-                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Autocomplete="family-name" />
+                    <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Autocomplete="given-name" />
+                    <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Autocomplete="family-name" />
                 </div>
                 <TextFeld Label="Téléphone" Typ="tel" @bind-Wert="telefon" MaxLaenge="50" Autocomplete="tel" Platzhalter="+228 …" />
                 <RadioGruppe T="Geschlecht" Label="Genre" @bind-Wert="geschlecht" Optionen="GeschlechtOptionen" />
@@ -65,7 +65,7 @@ else
                     <Hinweis Art="fehler">@Fehlermeldung</Hinweis>
                 }
                 <div class="sk-formular-fuss">
-                    <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" Icon="check" OnClick="SpeichernAsync" />
+                    <AsyncKnopf Text="Enregistrer" CssClass="sk-btn-primaer" Icon="check" Disabled="@(!Feld.Ausgefuellt(vorname, nachname))" OnClick="SpeichernAsync" />
                 </div>
             </div>
         </Karte>
@@ -84,7 +84,7 @@ else
                 <PasswortFeld Label="Confirmez le nouveau mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
                 <p class="sk-leise">Après le changement, les autres appareils connectés à votre compte sont déconnectés.</p>
                 <div class="sk-formular-fuss">
-                    <button type="submit" class="sk-btn sk-btn-primaer">Changer le mot de passe</button>
+                    <button type="submit" class="sk-btn sk-btn-primaer" disabled="@MdpGesperrt">Changer le mot de passe</button>
                 </div>
             </form>
         </Karte>
@@ -105,6 +105,9 @@ else
     private ProfilDaten? profil;
     private SchulZeit zeit = default!;
     private string? vorname, nachname, telefon, aktuell, neu, bestaetigung, mdpFehler;
+
+    // Passwortwechsel gesperrt, solange ein Pflichtfeld leer ist – nur interaktiv (vorgerendert sendet das Formular klassisch).
+    private bool MdpGesperrt => RendererInfo.IsInteractive && !Feld.Ausgefuellt(aktuell, neu, bestaetigung);
     private Geschlecht geschlecht;
     private string thema = "auto";
 

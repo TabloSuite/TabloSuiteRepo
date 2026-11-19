@@ -9,7 +9,7 @@
                              Platzhalter="Choisir une école" Pflicht="@(!IstAdmin)" Fehler="@FeldFehler("ecole")" />
                 @if (IstAdmin)
                 {
-                    <TextFeld Label="Destinataire (e-mail)" Typ="email" @bind-Wert="an" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("destinataire")" />
+                    <TextFeld Label="Destinataire (e-mail)" Typ="email" @bind-Wert="an" MaxLaenge="256" Pflicht="true" Sofort="true" Fehler="@FeldFehler("destinataire")" />
                 }
                 else
                 {
@@ -26,14 +26,15 @@
                     }
                 </div>
             }
-            <TextFeld Label="Objet" @bind-Wert="betreff" MaxLaenge="250" Pflicht="true" Fehler="@FeldFehler("objet")" />
-            <TextFeld Label="Message" @bind-Wert="text" Zeilen="8" MaxLaenge="10000" Pflicht="true" Fehler="@FeldFehler("message")"
+            <TextFeld Label="Objet" @bind-Wert="betreff" MaxLaenge="250" Pflicht="true" Sofort="true" Fehler="@FeldFehler("objet")" />
+            <TextFeld Label="Message" @bind-Wert="text" Zeilen="8" MaxLaenge="10000" Pflicht="true" Sofort="true" Fehler="@FeldFehler("message")"
                       Hinweis="Envoyé depuis contact@tablosuite.com ; « [SKOULOU] » est ajouté à l'objet." />
         </div>
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Envoyer" BusyText="Envoi…" Icon="send" CssClass="sk-btn-primaer" OnClick="SendenAsync" />
+        <AsyncKnopf Text="Envoyer" BusyText="Envoi…" Icon="send" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(an, betreff, text) || (!IstAdmin && schuleId is null))" OnClick="SendenAsync" />
     </Footer>
 </ModalDialog>
 

@@ -78,10 +78,10 @@ else
     <ChildContent>
         <div class="sk-formular">
             <div class="sk-raster-2">
-                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("prenom")" />
-                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nom")" />
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("prenom")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("nom")" />
             </div>
-            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Fehler="@FeldFehler("email")"
+            <TextFeld Label="Adresse e-mail" Typ="email" @bind-Wert="email" MaxLaenge="256" Pflicht="true" Sofort="true" Fehler="@FeldFehler("email")"
                       Hinweis="Pour les messages de la plateforme et le mot de passe oublié." />
             @if (ziel is null)
             {
@@ -92,7 +92,8 @@ else
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => offen = false">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(vorname, nachname, email))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

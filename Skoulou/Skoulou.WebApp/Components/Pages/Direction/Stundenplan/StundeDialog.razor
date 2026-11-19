@@ -33,7 +33,8 @@
             <button type="button" class="sk-btn sk-btn-ghost org-edt-links" @onclick="OnLoeschen"><Icon Name="trash" Groesse="18" /> <span>Retirer ce cours</span></button>
         }
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" Disabled="Optionen.Count == 0" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(Optionen.Count == 0 || lehrauftragId is null || beginn is null || ende is null)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

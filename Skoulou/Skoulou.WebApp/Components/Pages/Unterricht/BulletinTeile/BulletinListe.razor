@@ -55,19 +55,19 @@
                 </ol>
             }
             <RadioGruppe T="UebergabeArt" Label="Consigner" @bind-Wert="art" Optionen="ArtOptionen" />
-            <TextFeld Label="À qui et comment" @bind-Wert="vermerk" MaxLaenge="300" Pflicht="true" Platzhalter="Remis au père en main propre, appel à la mère…" />
+            <TextFeld Label="À qui et comment" @bind-Wert="vermerk" MaxLaenge="300" Pflicht="true" Sofort="true" Platzhalter="Remis au père en main propre, appel à la mère…" />
         </div>
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => uebergabe = null">Fermer</button>
-        <AsyncKnopf Text="Consigner" Icon="check" CssClass="sk-btn-primaer" OnClick="UebergabeSpeichernAsync" />
+        <AsyncKnopf Text="Consigner" Icon="check" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(vermerk))" OnClick="UebergabeSpeichernAsync" />
     </Footer>
 </ModalDialog>
 
 <BestaetigungsDialog Open="rueckzug is not null" Titel="Retirer ce bulletin ?" Gefahr="true" BestaetigenText="Retirer" Fehler="@Fehlermeldung"
-                     OnAbbrechen="() => rueckzug = null" OnBestaetigen="ZurueckziehenAsync">
+                     Gesperrt="@(!Feld.Ausgefuellt(grund))" OnAbbrechen="() => rueckzug = null" OnBestaetigen="ZurueckziehenAsync">
     <p>Le bulletin n° <strong>@rueckzug?.Nummer</strong> de <strong>@rueckzug?.Schueler</strong> ne sera plus valable ; son QR code l'indiquera. Une rectification de la classe permet d'en publier un nouveau.</p>
-    <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="300" Pflicht="true" />
+    <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="300" Pflicht="true" Sofort="true" />
 </BestaetigungsDialog>
 
 @code {

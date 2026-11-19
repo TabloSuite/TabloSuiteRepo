@@ -15,7 +15,7 @@
             @if (Offen)
             {
                 <div class="org-kf-werkzeuge">
-                    <AuswahlFeld T="Guid?" Label="Ajouter une matière" @bind-Wert="neuesFach" Optionen="FachOptionen" Platzhalter="Choisir…" />
+                    <AuswahlFeld T="Guid?" Label="Ajouter une matière" @bind-Wert="neuesFach" Optionen="FachOptionen" Platzhalter="Choisir…" Pflicht="true" />
                     <ZahlFeld Label="Coefficient" @bind-Wert="neuerKoeff" Min="0.01m" Max="100" Stellen="2" />
                     <div class="sk-knopfzeile">
                         <AsyncKnopf Text="Ajouter" Icon="plus" CssClass="sk-btn-primaer" Disabled="@(neuesFach is null)" OnClick="FachHinzufuegenAsync" />
@@ -43,7 +43,7 @@
             @if (Offen)
             {
                 <div class="org-kf-kopie">
-                    <AuswahlFeld T="Guid?" Label="Copier matières et coefficients depuis" @bind-Wert="quelle" Optionen="QuellOptionen" Platzhalter="Autre classe…" />
+                    <AuswahlFeld T="Guid?" Label="Copier matières et coefficients depuis" @bind-Wert="quelle" Optionen="QuellOptionen" Platzhalter="Autre classe…" Pflicht="true" />
                     <AsyncKnopf Text="Copier" Icon="layers" CssClass="sk-btn-ghost" Disabled="@(quelle is null)" OnClick="KopierenAsync" />
                     @if (Klasse?.StufeId is not null && faecher.Count > 0)
                     {

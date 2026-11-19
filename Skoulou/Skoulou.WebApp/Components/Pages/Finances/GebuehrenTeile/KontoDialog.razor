@@ -25,17 +25,18 @@
                         <div class="sk-raster-2">
                             @if (art == ErmaessigungsArt.Pourcentage)
                             {
-                                <ZahlFeld Label="Pourcentage" @bind-Wert="wert" Min="0" Max="100" Einheit="%" Pflicht="true" />
+                                <ZahlFeld Label="Pourcentage" @bind-Wert="wert" Min="0" Max="100" Einheit="%" Pflicht="true" Sofort="true" />
                             }
                             else
                             {
-                                <BetragFeld Label="Montant" Wert="@(wert is { } w ? (long)w : null)" WertChanged="b => wert = b" Min="1" Pflicht="true" />
+                                <BetragFeld Label="Montant" Wert="@(wert is { } w ? (long)w : null)" WertChanged="b => wert = b" Min="1" Pflicht="true" Sofort="true" />
                             }
-                            <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="200" Pflicht="true" Platzhalter="Bourse, Fratrie, Enfant du personnel…" />
+                            <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="200" Pflicht="true" Sofort="true" Platzhalter="Bourse, Fratrie, Enfant du personnel…" />
                         </div>
                         <div class="sk-knopfzeile">
                             <button type="button" class="sk-btn sk-btn-ghost sk-btn-klein" @onclick="() => neu = false">Annuler</button>
-                            <AsyncKnopf Text="Ajouter la réduction" Icon="check" CssClass="sk-btn-primaer sk-btn-klein" OnClick="AnlegenAsync" />
+                            <AsyncKnopf Text="Ajouter la réduction" Icon="check" CssClass="sk-btn-primaer sk-btn-klein"
+                                        Disabled="@(wert is null || !Feld.Ausgefuellt(grund))" OnClick="AnlegenAsync" />
                         </div>
                     </div>
                 }

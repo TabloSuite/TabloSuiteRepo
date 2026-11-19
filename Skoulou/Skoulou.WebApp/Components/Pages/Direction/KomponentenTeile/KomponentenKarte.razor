@@ -52,11 +52,11 @@
              SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="() => periodeId = null">
     <ChildContent>
         <div class="sk-formular">
-            <TextFeld Label="Intitulé" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Platzhalter="Interrogation, Devoir, Composition…" />
+            <TextFeld Label="Intitulé" @bind-Wert="titel" MaxLaenge="80" Pflicht="true" Sofort="true" Platzhalter="Interrogation, Devoir, Composition…" />
             <AuswahlFeld T="BewertungsArt" Label="Type" @bind-Wert="art" Optionen="ArtOptionen" />
             <div class="sk-raster-2">
-                <ZahlFeld Label="Barème" @bind-Wert="bareme" Min="0.01m" Max="1000" />
-                <ZahlFeld Label="Poids" @bind-Wert="gewicht" Min="0.01m" Max="100" />
+                <ZahlFeld Label="Barème" @bind-Wert="bareme" Min="0.01m" Max="1000" Pflicht="true" Sofort="true" />
+                <ZahlFeld Label="Poids" @bind-Wert="gewicht" Min="0.01m" Max="100" Pflicht="true" Sofort="true" />
             </div>
             @if (komponente?.Nutzung > 0)
             {
@@ -70,7 +70,8 @@
             <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
         }
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => periodeId = null">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(titel) || bareme is null || gewicht is null)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

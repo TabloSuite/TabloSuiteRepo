@@ -9,11 +9,11 @@
             <RadioGruppe T="BuchungsRichtung" Label="Type" Wert="richtung" WertChanged="RichtungAsync" Optionen="richtungen" />
             <div class="sk-raster-2">
                 <AuswahlFeld T="Guid?" Label="Catégorie" @bind-Wert="kategorie" Optionen="Optionen" Pflicht="true" />
-                <BetragFeld Label="Montant" @bind-Wert="betrag" Min="1" Pflicht="true" />
+                <BetragFeld Label="Montant" @bind-Wert="betrag" Min="1" Pflicht="true" Sofort="true" />
             </div>
             <div class="sk-raster-2">
                 <DatumFeld Label="Date" @bind-Wert="datum" Max="@heute" Pflicht="true" />
-                <TextFeld Label="Libellé" @bind-Wert="text" MaxLaenge="300" Pflicht="true" Platzhalter="ex. Facture d'électricité d'octobre" />
+                <TextFeld Label="Libellé" @bind-Wert="text" MaxLaenge="300" Pflicht="true" Sofort="true" Platzhalter="ex. Facture d'électricité d'octobre" />
             </div>
             <div class="sk-feld">
                 <span class="sk-feld-label">Justificatif (facultatif)</span>
@@ -27,7 +27,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer l'écriture" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer l'écriture" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(kategorie is null || betrag is null || datum is null || !Feld.Ausgefuellt(text))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

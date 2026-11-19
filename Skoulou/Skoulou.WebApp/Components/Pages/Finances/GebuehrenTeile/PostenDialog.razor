@@ -7,8 +7,8 @@
     <ChildContent>
         <div class="sk-formular">
             <div class="sk-raster-2">
-                <TextFeld Label="Libellé" @bind-Wert="bezeichnung" MaxLaenge="120" Pflicht="true" Platzhalter="ex. Scolarité, Inscription, APE, Tenue" />
-                <BetragFeld Label="Montant par élève" @bind-Wert="betrag" Min="1" Pflicht="true" />
+                <TextFeld Label="Libellé" @bind-Wert="bezeichnung" MaxLaenge="120" Pflicht="true" Sofort="true" Platzhalter="ex. Scolarité, Inscription, APE, Tenue" />
+                <BetragFeld Label="Montant par élève" @bind-Wert="betrag" Min="1" Pflicht="true" Sofort="true" />
             </div>
             <div class="sk-raster-2">
                 <AuswahlFeld T="string" Label="Concerne" @bind-Wert="geltung" Optionen="geltungen" />
@@ -44,7 +44,7 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(bezeichnung) || betrag is null)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

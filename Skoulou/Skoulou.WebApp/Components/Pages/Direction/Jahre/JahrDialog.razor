@@ -7,7 +7,7 @@
     <div class="sk-formular">
         @if (Modus != JahrDialogModus.Struktur)
         {
-            <TextFeld Label="Nom de l'année" @bind-Wert="bezeichnung" MaxLaenge="80" Pflicht="true" Platzhalter="2026-2027" Fehler="@FeldFehler("bezeichnung")" />
+            <TextFeld Label="Nom de l'année" @bind-Wert="bezeichnung" MaxLaenge="80" Pflicht="true" Sofort="true" Platzhalter="2026-2027" Fehler="@FeldFehler("bezeichnung")" />
             <div class="sk-raster-2">
                 <DatumFeld Label="Début" @bind-Wert="beginn" Pflicht="true" Fehler="@FeldFehler("beginn")" />
                 <DatumFeld Label="Fin" @bind-Wert="ende" Pflicht="true" Min="beginn" Fehler="@FeldFehler("ende")" />
@@ -32,7 +32,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@(Modus == JahrDialogModus.Neu ? "Créer l'année" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="@(Modus == JahrDialogModus.Neu ? "Créer l'année" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Vollstaendig)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 
@@ -64,6 +65,9 @@
     };
 
     private string? FeldFehler(string f) => feld == f ? Fehlermeldung : null;
+
+    // Pflichtangaben (Stern) vollständig; der Neuzuschnitt der Perioden hat keine.
+    private bool Vollstaendig => Modus == JahrDialogModus.Struktur || (Feld.Ausgefuellt(bezeichnung) && beginn is not null && ende is not null);
 
     protected override async Task OnParametersSetAsync()
     {

@@ -53,15 +53,15 @@
             <form id="@formId" method="post" action="/contact/envoyer" class="sk-formular" novalidate data-ladeanzeige="Envoi…" @onsubmit="SendenAsync" @onsubmit:preventDefault>
                 <AntiforgeryToken />
                 <div class="sk-raster-2">
-                    <TextFeld Label="Votre nom" Name="nom" @bind-Wert="name" Autocomplete="name" MaxLaenge="100" Pflicht="true" />
-                    <TextFeld Label="Votre e-mail" Name="email" Typ="email" @bind-Wert="email" Autocomplete="email" MaxLaenge="256" Pflicht="true" />
+                    <TextFeld Label="Votre nom" Name="nom" @bind-Wert="name" Autocomplete="name" MaxLaenge="100" Pflicht="true" Sofort="true" />
+                    <TextFeld Label="Votre e-mail" Name="email" Typ="email" @bind-Wert="email" Autocomplete="email" MaxLaenge="256" Pflicht="true" Sofort="true" />
                 </div>
-                <TextFeld Label="Sujet" Name="sujet" @bind-Wert="sujet" MaxLaenge="150" Pflicht="true" />
-                <TextFeld Label="Message" Name="message" Zeilen="6" @bind-Wert="nachricht" MaxLaenge="5000" Pflicht="true"
+                <TextFeld Label="Sujet" Name="sujet" @bind-Wert="sujet" MaxLaenge="150" Pflicht="true" Sofort="true" />
+                <TextFeld Label="Message" Name="message" Zeilen="6" @bind-Wert="nachricht" MaxLaenge="5000" Pflicht="true" Sofort="true"
                           Hinweis="Au moins 10 caractères." />
                 <label class="sk-honigtopf" aria-hidden="true">Site web <input type="text" name="site" tabindex="-1" autocomplete="off" /></label>
                 <div class="sk-formular-fuss">
-                    <button type="submit" class="sk-btn sk-btn-primaer"><Icon Name="send" Groesse="18" /> <span>Envoyer le message</span></button>
+                    <button type="submit" class="sk-btn sk-btn-primaer" disabled="@Gesperrt"><Icon Name="send" Groesse="18" /> <span>Envoyer le message</span></button>
                 </div>
             </form>
         </Karte>
@@ -72,6 +72,9 @@
     private readonly string formId = Feld.NeueId("contact");
     private string? name, email, sujet, nachricht;
     private bool gesendet;
+
+    // Gesperrt, solange ein Pflichtfeld leer ist – nur interaktiv (vorgerendert sendet das Formular klassisch, der Server prüft).
+    private bool Gesperrt => RendererInfo.IsInteractive && !Feld.Ausgefuellt(name, email, sujet, nachricht);
     private ResponsableKontakt? responsable;
 
     protected override async Task InitialisierenAsync()

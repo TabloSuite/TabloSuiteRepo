@@ -2,10 +2,10 @@
 @inject SchulVerwaltungService Schulen
 
 <BestaetigungsDialog Open="Anfrage is not null" Titel="@Titel" Text="@Text" BestaetigenText="@Knopf" Gefahr="@Gefahr" Fehler="@fehler"
-                     OnBestaetigen="AusfuehrenAsync" OnAbbrechen="SchliessenAsync">
+                     Gesperrt="@(MitGrund && !Feld.Ausgefuellt(grund))" OnBestaetigen="AusfuehrenAsync" OnAbbrechen="SchliessenAsync">
     @if (MitGrund)
     {
-        <TextFeld Label="Motif (envoyé à la direction)" @bind-Wert="grund" Zeilen="3" MaxLaenge="500" Pflicht="true"
+        <TextFeld Label="Motif (envoyé à la direction)" @bind-Wert="grund" Zeilen="3" MaxLaenge="500" Pflicht="true" Sofort="true"
                   Platzhalter="@(Anfrage?.Aktion == SchulAktion.Ablehnen ? "ex. Informations incomplètes, établissement introuvable…" : "ex. Factures impayées depuis plus de 60 jours")" />
     }
 </BestaetigungsDialog>

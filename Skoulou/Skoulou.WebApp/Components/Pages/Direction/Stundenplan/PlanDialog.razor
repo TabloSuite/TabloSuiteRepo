@@ -17,7 +17,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@(Neu ? "Créer le brouillon" : "Enregistrer")" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="@(Neu ? "Créer le brouillon" : "Enregistrer")" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Neu && ab is null)" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

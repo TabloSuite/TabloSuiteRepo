@@ -9,10 +9,10 @@
         <div class="sk-formular">
             <p class="fin-dialog-text">Indiquez le virement effectué vers SKOULOU. Il est inscrit comme dépense « Facture SKOULOU » dans votre journal de caisse ; l'administrateur confirme ensuite la réception.</p>
             <div class="sk-raster-2">
-                <BetragFeld Label="Montant viré" @bind-Wert="betrag" Min="1" Pflicht="true" />
+                <BetragFeld Label="Montant viré" @bind-Wert="betrag" Min="1" Pflicht="true" Sofort="true" />
                 <DatumFeld Label="Date du virement" @bind-Wert="datum" Max="@heute" Pflicht="true" />
             </div>
-            <TextFeld Label="Référence du virement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Platzhalter="ex. n° d'opération bancaire ou Mobile Money" />
+            <TextFeld Label="Référence du virement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Sofort="true" Platzhalter="ex. n° d'opération bancaire ou Mobile Money" />
             <div class="sk-feld">
                 <span class="sk-feld-label">Preuve (facultatif)</span>
                 <label class="fin-datei">
@@ -25,7 +25,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Déclarer le paiement" Icon="send" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Déclarer le paiement" Icon="send" CssClass="sk-btn-primaer"
+                    Disabled="@(betrag is null || datum is null || !Feld.Ausgefuellt(referenz))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

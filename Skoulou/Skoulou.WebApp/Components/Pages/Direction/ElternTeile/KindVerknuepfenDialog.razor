@@ -5,7 +5,7 @@
 <ModalDialog Open="ElternTeil is not null" Title="Lier un enfant" Oberzeile="@ElternTeil?.Name" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
     <ChildContent>
         <div class="sk-formular">
-            <SchuelerSuche AkteurId="Ich.KontoId" Label="Élève" @bind-Gewaehlt="kind" />
+            <SchuelerSuche AkteurId="Ich.KontoId" Label="Élève" Pflicht="true" @bind-Gewaehlt="kind" />
             <RadioGruppe T="string" Label="Lien de parenté" @bind-Wert="beziehung" Optionen="ElternDialog.BeziehungsOptionen" />
             <p class="sk-leise">Un compte parent peut suivre jusqu'à @ElternService.MaxKinder enfants de l'établissement.</p>
         </div>

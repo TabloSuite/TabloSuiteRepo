@@ -46,10 +46,10 @@
             <p class="pl-abschnitt-titel">Votre établissement</p>
             @if (art == RegistrierungsArt.Direction)
             {
-                <TextFeld Label="Nom de l'établissement" Name="ecole-nom" @bind-Wert="schulName" MaxLaenge="200" Pflicht="true" Fehler="@F("ecole-nom")"
+                <TextFeld Label="Nom de l'établissement" Name="ecole-nom" @bind-Wert="schulName" MaxLaenge="200" Pflicht="true" Sofort="true" Fehler="@F("ecole-nom")"
                           Platzhalter="ex. Collège Les Palmiers" />
                 <div class="sk-raster-2">
-                    <TextFeld Label="Ville" Name="ville" @bind-Wert="ort" MaxLaenge="120" Pflicht="true" Fehler="@F("ville")" />
+                    <TextFeld Label="Ville" Name="ville" @bind-Wert="ort" MaxLaenge="120" Pflicht="true" Sofort="true" Fehler="@F("ville")" />
                     <TextFeld Label="Pays" Name="pays" @bind-Wert="land" MaxLaenge="120" Fehler="@F("pays")" />
                 </div>
             }
@@ -61,15 +61,15 @@
 
             <p class="pl-abschnitt-titel">@(art == RegistrierungsArt.Direction ? "Directeur ou directrice" : "Vos informations")</p>
             <div class="sk-raster-2">
-                <TextFeld Label="Prénom" Name="prenom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Autocomplete="given-name" Fehler="@F("prenom")" />
-                <TextFeld Label="Nom" Name="nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Autocomplete="family-name" Fehler="@F("nom")" />
+                <TextFeld Label="Prénom" Name="prenom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Autocomplete="given-name" Fehler="@F("prenom")" />
+                <TextFeld Label="Nom" Name="nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Autocomplete="family-name" Fehler="@F("nom")" />
             </div>
             <div class="sk-raster-2">
                 <TextFeld Label="@(art == RegistrierungsArt.Direction ? "Adresse e-mail" : "Adresse e-mail (facultatif)")" Name="email" Typ="email" @bind-Wert="email"
-                          MaxLaenge="256" Pflicht="@(art == RegistrierungsArt.Direction)" Autocomplete="email" Fehler="@F("email")"
+                          MaxLaenge="256" Pflicht="@(art == RegistrierungsArt.Direction)" Sofort="true" Autocomplete="email" Fehler="@F("email")"
                           Hinweis="@(art == RegistrierungsArt.Direction ? "Pour la validation, les factures et le mot de passe oublié." : null)" />
                 <TextFeld Label="@(art == RegistrierungsArt.Direction ? "Téléphone" : "Téléphone (facultatif)")" Name="telephone" Typ="tel" @bind-Wert="telefon"
-                          MaxLaenge="50" Pflicht="@(art == RegistrierungsArt.Direction)" Autocomplete="tel" Fehler="@F("telephone")"
+                          MaxLaenge="50" Pflicht="@(art == RegistrierungsArt.Direction)" Sofort="true" Autocomplete="tel" Fehler="@F("telephone")"
                           Hinweis="@(art == RegistrierungsArt.Direction ? "Pour vous joindre facilement (appel ou WhatsApp)." : null)" />
             </div>
             @if (art == RegistrierungsArt.Eleve)
@@ -104,7 +104,7 @@
                     <span class="sk-feld-fehler" role="alert"><Icon Name="alert" Groesse="14" /> @agbFehler</span>
                 }
             </div>
-            <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit"><Icon Name="check" Groesse="18" /> <span>Créer mon compte</span></button>
+            <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit" disabled="@Gesperrt"><Icon Name="check" Groesse="18" /> <span>Créer mon compte</span></button>
         </form>
 
         <div class="sk-auth-links">

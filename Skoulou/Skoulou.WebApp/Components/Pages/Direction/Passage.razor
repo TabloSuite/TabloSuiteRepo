@@ -55,9 +55,9 @@ else
         @if (v.NeuesJahrId is null)
         {
             <div class="nt-auswahl-zeile">
-                <TextFeld Label="Nom" Wert="@plan.Bezeichnung" WertChanged="t => AendernAsync(() => plan.Bezeichnung = t)" MaxLaenge="80" />
-                <DatumFeld Label="Début" Wert="plan.Beginn" WertChanged="d => AendernAsync(() => plan.Beginn = d)" />
-                <DatumFeld Label="Fin" Wert="plan.Ende" WertChanged="d => AendernAsync(() => plan.Ende = d)" />
+                <TextFeld Label="Nom" Wert="@plan.Bezeichnung" WertChanged="t => AendernAsync(() => plan.Bezeichnung = t)" MaxLaenge="80" Pflicht="true" />
+                <DatumFeld Label="Début" Wert="plan.Beginn" WertChanged="d => AendernAsync(() => plan.Beginn = d)" Pflicht="true" />
+                <DatumFeld Label="Fin" Wert="plan.Ende" WertChanged="d => AendernAsync(() => plan.Ende = d)" Pflicht="true" />
             </div>
         }
         <div class="nt-optionen">

@@ -84,11 +84,11 @@
 <ModalDialog Open="frage == Frage.Wiedereroeffnen" Title="@($"Rouvrir l'année {Jahr.Bezeichnung}")" SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="Abbrechen">
     <ChildContent>
     <p class="sk-leise">La réouverture est journalisée. Elle n'est possible que si aucune autre année n'est en cours.</p>
-    <TextFeld Label="Motif de la réouverture" @bind-Wert="grund" Zeilen="3" MaxLaenge="500" Pflicht="true" />
+    <TextFeld Label="Motif de la réouverture" @bind-Wert="grund" Zeilen="3" MaxLaenge="500" Pflicht="true" Sofort="true" />
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="Abbrechen">Annuler</button>
-        <AsyncKnopf Text="Rouvrir l'année" Icon="refresh" CssClass="sk-btn-primaer" OnClick="WiedereroeffnenAsync" />
+        <AsyncKnopf Text="Rouvrir l'année" Icon="refresh" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(grund))" OnClick="WiedereroeffnenAsync" />
     </Footer>
 </ModalDialog>
 

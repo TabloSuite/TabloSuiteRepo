@@ -27,7 +27,7 @@
             <input type="hidden" name="token" value="@Token" />
             <PasswortFeld Label="Nouveau mot de passe" Name="nouveau" @bind-Wert="neu" Autocomplete="new-password" Hinweis="@PasswortRegel.Hinweis" Pflicht="true" />
             <PasswortFeld Label="Confirmez le mot de passe" Name="confirmation" @bind-Wert="bestaetigung" Autocomplete="new-password" Pflicht="true" />
-            <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit">Enregistrer le mot de passe</button>
+            <button type="submit" class="sk-btn sk-btn-primaer sk-btn-breit" disabled="@Gesperrt">Enregistrer le mot de passe</button>
         </form>
         <div class="sk-auth-links">
             <a href="/auth/connexion"><Icon Name="arrow-left" Groesse="14" /> Aller à la connexion</a>
@@ -42,6 +42,9 @@
 
     private readonly string formId = Feld.NeueId("reset");
     private string? neu, bestaetigung, fehler;
+
+    // Gesperrt, solange ein Pflichtfeld leer ist – nur interaktiv (vorgerendert sendet das Formular klassisch, der Server prüft).
+    private bool Gesperrt => RendererInfo.IsInteractive && !Feld.Ausgefuellt(neu, bestaetigung);
 
     protected override void OnInitialized()
         => fehler = Erreur switch

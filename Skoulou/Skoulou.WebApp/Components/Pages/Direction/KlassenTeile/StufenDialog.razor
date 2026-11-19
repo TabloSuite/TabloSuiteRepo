@@ -6,11 +6,12 @@
     <ChildContent>
         <p class="sk-leise">Un niveau regroupe les classes parallèles (6e A, 6e B…). Le « niveau suivant » sert de proposition au passage d'année.</p>
         <div class="org-stufe-form">
-            <TextFeld Label="@(bearbeitet is null ? "Nouveau niveau" : $"Modifier « {bearbeitet.Name} »")" @bind-Wert="name" MaxLaenge="60" Platzhalter="6e, CP1, Terminale D…" />
+            <TextFeld Label="@(bearbeitet is null ? "Nouveau niveau" : $"Modifier « {bearbeitet.Name} »")" @bind-Wert="name" MaxLaenge="60" Platzhalter="6e, CP1, Terminale D…"
+                      Pflicht="true" Sofort="true" />
             <AuswahlFeld T="Zyklus?" Label="Cycle" @bind-Wert="zyklus" Optionen="ZyklusOptionen" Platzhalter="—" />
             <AuswahlFeld T="Guid?" Label="Niveau suivant" @bind-Wert="nachfolger" Optionen="NachfolgerOptionen" Platzhalter="Aucun" />
             <div class="sk-knopfzeile">
-                <AsyncKnopf Text="@(bearbeitet is null ? "Ajouter" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+                <AsyncKnopf Text="@(bearbeitet is null ? "Ajouter" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(name))" OnClick="SpeichernAsync" />
                 @if (bearbeitet is not null)
                 {
                     <button type="button" class="sk-btn sk-btn-ghost" @onclick="Leeren">Annuler</button>

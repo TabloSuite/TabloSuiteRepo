@@ -13,7 +13,8 @@
         {
             <FrageVorschau Frage="detail.Frage" Eingabe="detail.Eingabe" MitLoesungen="true" />
             <div class="sk-korrektur-formular">
-                <ZahlFeld Label="@($"Points (sur {ScoreRechner.Punkte(detail.Frage.Punkte)})")" Wert="punkte" WertChanged="w => punkte = w" Min="0" Max="detail.Frage.Punkte" />
+                <ZahlFeld Label="@($"Points (sur {ScoreRechner.Punkte(detail.Frage.Punkte)})")" Wert="punkte" WertChanged="w => punkte = w" Min="0" Max="detail.Frage.Punkte"
+                          Pflicht="true" Sofort="true" />
                 <div class="sk-knopfzeile sk-punkte-schnell">
                     <button type="button" class="sk-chip" @onclick="() => punkte = 0">0</button>
                     <button type="button" class="sk-chip" @onclick="() => punkte = Math.Round(detail.Frage.Punkte / 2, 2)">Moitié</button>

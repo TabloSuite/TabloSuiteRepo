@@ -8,7 +8,7 @@
         {
             <div class="sk-formular">
                 <div class="sk-raster-2">
-                    <TextFeld Label="Nom du modèle" @bind-Wert="v.Name" MaxLaenge="120" Pflicht="true" />
+                    <TextFeld Label="Nom du modèle" @bind-Wert="v.Name" MaxLaenge="120" Pflicht="true" Sofort="true" />
                     <AuswahlFeld T="Guid?" Label="S'applique à" @bind-Wert="v.StufeId" Optionen="StufenOptionen" />
                 </div>
                 <div class="nt-vorlage-reihe">
@@ -53,7 +53,7 @@
             <AsyncKnopf Text="Supprimer" Icon="trash" CssClass="sk-btn-ghost nt-links" OnClick="LoeschenAsync" />
         }
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="Enregistrer" Icon="check" CssClass="sk-btn-primaer" Disabled="@(!Feld.Ausgefuellt(Vorlage?.Name))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

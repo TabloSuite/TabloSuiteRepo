@@ -66,12 +66,12 @@ else
     <ChildContent>
         <div class="sk-formular">
             <DatumFeld Label="Date du versement" @bind-Wert="datum" Max="@heute" Pflicht="true" />
-            <TextFeld Label="Référence du versement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Platzhalter="ex. virement, Mobile Money" />
+            <TextFeld Label="Référence du versement" @bind-Wert="referenz" MaxLaenge="100" Pflicht="true" Sofort="true" Platzhalter="ex. virement, Mobile Money" />
         </div>
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="() => auszahlen = false">Annuler</button>
-        <AsyncKnopf Text="Confirmer le versement" Icon="check" CssClass="sk-btn-primaer" OnClick="AuszahlenAsync" />
+        <AsyncKnopf Text="Confirmer le versement" Icon="check" CssClass="sk-btn-primaer" Disabled="@(datum is null || !Feld.Ausgefuellt(referenz))" OnClick="AuszahlenAsync" />
     </Footer>
 </ModalDialog>
 

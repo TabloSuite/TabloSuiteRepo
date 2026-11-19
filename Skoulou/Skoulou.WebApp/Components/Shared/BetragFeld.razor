@@ -1,8 +1,20 @@
-@* Betrag in ganzen FCFA: Anzeige mit Tausenderpunkt (« 150.000 »), Eingabe nur Ziffern. *@
+@* Betrag in ganzen FCFA: Anzeige mit Tausenderpunkt (« 150.000 »), Eingabe nur Ziffern.
+   « Sofort »: Wert schon beim Tippen übernehmen (für Knöpfe, die bis zur Eingabe gesperrt sind) – wie TextFeld immer
+   @bind:get/@bind:set, nie value + @oninput (sonst gehen bei langsamer Verbindung Zeichen verloren). Der Tausenderpunkt
+   kommt erst beim Verlassen dazu, damit der Text beim Tippen nicht springt. *@
 <Feld Label="@Label" Id="@id" Hinweis="@Hinweis" Fehler="@(eigenerFehler ?? Fehler)" Pflicht="@Pflicht" CssClass="@CssClass">
     <div class="sk-eingabe-mit-einheit">
-        <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="numeric" name="@Name" value="@Anzeige"
-               placeholder="0" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        @if (Sofort)
+        {
+            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="numeric" name="@Name"
+                   placeholder="0" disabled="@Deaktiviert"
+                   @bind:get="text" @bind:set="TippenAsync" @bind:event="oninput" @onchange="Verlassen" />
+        }
+        else
+        {
+            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="numeric" name="@Name" value="@Anzeige"
+                   placeholder="0" disabled="@Deaktiviert" @onchange="AendernAsync" />
+        }
         <span class="sk-einheit">FCFA</span>
     </div>
 </Feld>
@@ -20,28 +32,63 @@
     [Parameter] public bool Deaktiviert { get; set; }
     [Parameter] public string? CssClass { get; set; }
 
+    /// <summary>Wert schon beim Tippen übernehmen (Standard: beim Verlassen des Feldes); Meldung und Formatierung beim Verlassen.</summary>
+    [Parameter] public bool Sofort { get; set; }
+
     private readonly string id = Feld.NeueId("betrag");
     private string? eigenerFehler;
 
+    // Nur « Sofort »: der Text, wie getippt, und der zuletzt daraus übernommene Wert.
+    private string? text;
+    private long? textWert;
+
     private string Anzeige => Wert is null ? string.Empty : SkoulouKultur.Zahl(Wert.Value);
+
+    protected override void OnParametersSet()
+    {
+        // Wert von außen geändert (Laden, Zurücksetzen): neu anzeigen. Der eigene, noch getippte Text bleibt stehen.
+        if (Sofort && (text is null || Wert != textWert)) (text, textWert) = (Anzeige, Wert);
+    }
 
     private async Task AendernAsync(ChangeEventArgs e)
     {
-        var text = e.Value?.ToString() ?? string.Empty;
-        eigenerFehler = null;
+        var (ok, wert, fehler) = Lies(e.Value?.ToString());
+        eigenerFehler = fehler;
+        if (!ok) return;
+        Wert = wert;
+        await WertChanged.InvokeAsync(wert);
+    }
+
+    // « Sofort », jeder Tastendruck: ungültig oder außerhalb der Grenzen zählt als leer; die Meldung kommt beim Verlassen.
+    private async Task TippenAsync(string? eingabe)
+    {
+        text = eingabe;
+        var (ok, wert, _) = Lies(eingabe);
+        if (ok) eigenerFehler = null;
+        textWert = ok ? wert : null;
+        if (textWert == Wert) return;
+        Wert = textWert;
+        await WertChanged.InvokeAsync(Wert);
+    }
+
+    // « Sofort », beim Verlassen: Meldung zeigen, gültigen Betrag mit Tausenderpunkt schreiben.
+    private void Verlassen()
+    {
+        var (ok, _, fehler) = Lies(text);
+        eigenerFehler = fehler;
+        if (ok) text = Anzeige;
+    }
+
+    /// <summary>Liest die Eingabe: gültig (leer = null) oder Meldung.</summary>
+    private (bool Ok, long? Wert, string? Fehler) Lies(string? eingabe)
+    {
+        var text = eingabe ?? string.Empty;
         if (text.Any(c => !(char.IsDigit(c) || c is '.' or ' ' or ' ' or ' ')))
-        {
-            eigenerFehler = "Saisissez un montant entier en FCFA (sans centimes).";
-            return;
-        }
+            return (false, null, "Saisissez un montant entier en FCFA (sans centimes).");
         var ziffern = new string(text.Where(char.IsDigit).ToArray());
         long? wert = ziffern.Length == 0 ? null : long.TryParse(ziffern, out var z) ? z : null;
         if (ziffern.Length > 0 && (wert is null || wert < Min || wert > Max))
-        {
-            eigenerFehler = $"Le montant doit être compris entre {SkoulouKultur.Fcfa(Min)} et {SkoulouKultur.Fcfa(Max)}.";
-            return;
-        }
-        Wert = wert;
-        await WertChanged.InvokeAsync(wert);
+            return (false, null, $"Le montant doit être compris entre {SkoulouKultur.Fcfa(Min)} et {SkoulouKultur.Fcfa(Max)}.");
+        return (true, wert, null);
     }
 }

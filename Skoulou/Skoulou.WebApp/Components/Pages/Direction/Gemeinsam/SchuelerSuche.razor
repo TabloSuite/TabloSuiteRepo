@@ -5,7 +5,10 @@
 <div class="sk-feld org-suche-feld">
     @if (Label is not null)
     {
-        <span class="sk-feld-label">@Label</span>
+        <span class="sk-feld-label">@Label@if (Pflicht)
+            {
+                <span class="sk-pflicht" aria-hidden="true"> *</span>
+            }</span>
     }
     @if (Gewaehlt is not null)
     {
@@ -46,6 +49,10 @@
 @code {
     [Parameter, EditorRequired] public Guid AkteurId { get; set; }
     [Parameter] public string? Label { get; set; }
+
+    /// <summary>Pflichtauswahl: Stern an der Beschriftung (wie Feld).</summary>
+    [Parameter] public bool Pflicht { get; set; }
+
     [Parameter] public AuswahlEintrag? Gewaehlt { get; set; }
     [Parameter] public EventCallback<AuswahlEintrag?> GewaehltChanged { get; set; }
 

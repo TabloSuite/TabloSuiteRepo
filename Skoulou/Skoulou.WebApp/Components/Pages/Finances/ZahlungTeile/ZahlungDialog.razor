@@ -24,7 +24,7 @@
         {
             <div class="sk-formular">
                 <div class="sk-feld">
-                    <span class="sk-feld-label">Élève <span class="sk-pflicht">*</span></span>
+                    <span class="sk-feld-label">Élève<span class="sk-pflicht" aria-hidden="true"> *</span></span>
                     @if (schueler is { } s)
                     {
                         <div class="fin-gewaehlt">
@@ -65,7 +65,7 @@
                     }
                 </div>
                 <div class="sk-raster-2 fin-oben">
-                    <BetragFeld Label="Montant reçu" @bind-Wert="betrag" Min="1" Pflicht="true" Fehler="@(feld == "betrag" ? Fehlermeldung : null)" />
+                    <BetragFeld Label="Montant reçu" @bind-Wert="betrag" Min="1" Pflicht="true" Sofort="true" Fehler="@(feld == "betrag" ? Fehlermeldung : null)" />
                     <DatumFeld Label="Date du paiement" @bind-Wert="datum" Pflicht="true" Max="@heute" Fehler="@(feld == "datum" ? Fehlermeldung : null)" />
                 </div>
                 @if (schueler is { Offen: > 0 } s2)
@@ -81,7 +81,7 @@
                 }
                 <RadioGruppe T="ZahlungsKanal" Label="Moyen de paiement" @bind-Wert="kanal" Optionen="Geld.Kanaele" />
                 <div class="sk-raster-2">
-                    <TextFeld Label="@(kanal == ZahlungsKanal.MobileMoney ? "Référence de la transaction" : "Référence")" @bind-Wert="referenz" MaxLaenge="100" Pflicht="@(kanal != ZahlungsKanal.Especes)"
+                    <TextFeld Label="@(kanal == ZahlungsKanal.MobileMoney ? "Référence de la transaction" : "Référence")" @bind-Wert="referenz" MaxLaenge="100" Pflicht="@(kanal != ZahlungsKanal.Especes)" Sofort="true"
                               Platzhalter="@(kanal == ZahlungsKanal.MobileMoney ? "ex. ID T-Money / Flooz" : kanal == ZahlungsKanal.Cheque ? "N° du chèque" : "facultatif")"
                               Fehler="@(feld == "referenz" ? Fehlermeldung : null)" />
                     <TextFeld Label="Remarque" @bind-Wert="bemerkung" MaxLaenge="300" Platzhalter="facultatif" />
@@ -99,7 +99,8 @@
         {
             <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
             <AsyncKnopf Text="Enregistrer le paiement" BusyText="Enregistrement…" Icon="check" CssClass="sk-btn-primaer"
-                        Disabled="@(schueler is null || betrag is null || (feld == "guthaben" && !guthaben))" OnClick="SpeichernAsync" />
+                        Disabled="@(schueler is null || betrag is null || datum is null || (kanal != ZahlungsKanal.Especes && !Feld.Ausgefuellt(referenz))
+                                    || (feld == "guthaben" && !guthaben))" OnClick="SpeichernAsync" />
         }
         else
         {

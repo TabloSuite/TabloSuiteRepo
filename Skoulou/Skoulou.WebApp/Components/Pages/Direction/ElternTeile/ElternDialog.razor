@@ -16,8 +16,8 @@
                 }
             }
             <div class="sk-raster-2">
-                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("vorname")" />
-                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Fehler="@FeldFehler("nachname")" />
+                <TextFeld Label="Prénom" @bind-Wert="vorname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("vorname")" />
+                <TextFeld Label="Nom" @bind-Wert="nachname" MaxLaenge="100" Pflicht="true" Sofort="true" Fehler="@FeldFehler("nachname")" />
             </div>
             <div class="org-identifiant">
                 <TextFeld Label="Identifiant de connexion" @bind-Wert="identifiant" MaxLaenge="40" Fehler="@FeldFehler("identifiant")" Hinweis="Vide = prenom.nom" />
@@ -32,7 +32,8 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Annuler</button>
-        <AsyncKnopf Text="@(ElternId is null ? "Créer l'accès" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer" OnClick="SpeichernAsync" />
+        <AsyncKnopf Text="@(ElternId is null ? "Créer l'accès" : "Enregistrer")" Icon="check" CssClass="sk-btn-primaer"
+                    Disabled="@(!Feld.Ausgefuellt(vorname, nachname))" OnClick="SpeichernAsync" />
     </Footer>
 </ModalDialog>
 

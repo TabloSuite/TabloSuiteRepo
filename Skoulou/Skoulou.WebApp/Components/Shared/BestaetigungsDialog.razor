@@ -14,7 +14,7 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="AbbrechenAsync">Annuler</button>
-        <AsyncKnopf Text="@BestaetigenText" CssClass="@(Gefahr ? "sk-btn-gefahr" : "sk-btn-primaer")" OnClick="BestaetigenAsync" />
+        <AsyncKnopf Text="@BestaetigenText" CssClass="@(Gefahr ? "sk-btn-gefahr" : "sk-btn-primaer")" Disabled="@Gesperrt" OnClick="BestaetigenAsync" />
     </Footer>
 </ModalDialog>
 
@@ -24,6 +24,10 @@
     [Parameter] public string? Text { get; set; }
     [Parameter] public string BestaetigenText { get; set; } = "Confirmer";
     [Parameter] public bool Gefahr { get; set; }
+
+    /// <summary>Bestätigen gesperrt, solange eine Pflichtangabe im Inhalt fehlt (z. B. der Grund).</summary>
+    [Parameter] public bool Gesperrt { get; set; }
+
     [Parameter] public string? Fehler { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback OnBestaetigen { get; set; }

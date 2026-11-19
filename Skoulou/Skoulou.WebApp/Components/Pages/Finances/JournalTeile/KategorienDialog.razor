@@ -28,7 +28,7 @@
             <div class="fin-erm-form">
                 <h3 class="fin-unterkopf">Nouvelle catégorie</h3>
                 <div class="sk-raster-2">
-                    <TextFeld Label="Nom" @bind-Wert="name" MaxLaenge="100" Platzhalter="ex. Cantine, Sorties scolaires" />
+                    <TextFeld Label="Nom" @bind-Wert="name" MaxLaenge="100" Platzhalter="ex. Cantine, Sorties scolaires" Pflicht="true" Sofort="true" />
                     <RadioGruppe T="BuchungsRichtung" Label="Type" @bind-Wert="richtung" Optionen="richtungen" />
                 </div>
                 <AsyncKnopf Text="Ajouter la catégorie" Icon="plus" CssClass="sk-btn-ghost sk-btn-klein" Disabled="@string.IsNullOrWhiteSpace(name)" OnClick="AnlegenAsync" />

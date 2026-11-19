@@ -22,6 +22,17 @@ public partial class OberflaechenTests
     [GeneratedRegex(@"<form\b[^>]*>", RegexOptions.Singleline)]
     private static partial Regex Formular();
 
+    [GeneratedRegex(@"Feld\.Ausgefuellt\(([^()]*)\)")]
+    private static partial Regex Ausgefuellt();
+
+    [GeneratedRegex("<button\\b[^>]*type=\"submit\"[^>]*disabled=\"@(\\w+)\"")]
+    private static partial Regex GesperrterAbsendeKnopf();
+
+    /// <summary>Razor-Datei samt Code-Behind (.razor.cs), falls vorhanden.</summary>
+    private static IEnumerable<(string Datei, string Text)> KomponentenMitCode()
+        => Directory.EnumerateFiles(Path.Combine(WebApp(), "Components"), "*.razor", SearchOption.AllDirectories)
+            .Select(d => (Path.GetRelativePath(WebApp(), d), File.ReadAllText(d) + (File.Exists(d + ".cs") ? "\n" + File.ReadAllText(d + ".cs") : "")));
+
     /// <summary>
     /// Verbindung unterbrochen: eigenes französisches Fenster (sonst zeigt Blazor « Rejoining the server… » auf Englisch).
     /// Blazor findet es über die Kennung, zeigt es über Klassen; die Knöpfe bedient skoulou.js.
@@ -196,5 +207,55 @@ public partial class OberflaechenTests
         var css = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "app.css"));
         Assert.Contains(".sk-btn[data-sk-laedt]::before", css);
         Assert.DoesNotContain("color-mix", css);
+    }
+
+    /// <summary>
+    /// Anlegen/Speichern bleibt gesperrt, bis die Pflichttexte da sind (« Feld.Ausgefuellt », Nutzer 19.11.2026). Diese
+    /// Felder übernehmen den Wert schon beim Tippen (« Sofort »): sonst tippt man das letzte Feld aus, tippt direkt auf den
+    /// Knopf – und der Klick trifft noch den gesperrten Knopf (Verlassen → Server → neu zeichnen kommt zu spät).
+    /// </summary>
+    [Fact]
+    public void Pflichttexte_vor_gesperrtem_Knopf_gelten_schon_beim_Tippen()
+    {
+        var gefunden = 0;
+        var verstoesse = new List<string>();
+        foreach (var (datei, text) in KomponentenMitCode())
+        {
+            var namen = Ausgefuellt().Matches(text)
+                .SelectMany(m => m.Groups[1].Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                .Distinct();
+            foreach (var name in namen)
+            {
+                foreach (var bindung in new[] { $"@bind-Wert=\"{name}\"", $" Wert=\"@{name}\"" })
+                {
+                    for (var pos = text.IndexOf(bindung, StringComparison.Ordinal); pos >= 0; pos = text.IndexOf(bindung, pos + 1, StringComparison.Ordinal))
+                    {
+                        var anfang = text.LastIndexOf('<', pos);
+                        var ende = text.IndexOf("/>", pos, StringComparison.Ordinal);
+                        if (anfang < 0 || ende < 0 || !text.AsSpan(anfang).StartsWith("<TextFeld", StringComparison.Ordinal)) continue;
+                        gefunden++;
+                        if (!text[anfang..ende].Contains("Sofort=\"true\"", StringComparison.Ordinal)) verstoesse.Add($"{datei} ({name})");
+                    }
+                }
+            }
+        }
+        Assert.True(gefunden >= 30, $"Pflichttexte vor gesperrten Knöpfen nicht gefunden ({gefunden})");
+        Assert.True(verstoesse.Count == 0, "Pflichtfeld ohne Sofort=\"true\" vor gesperrtem Knopf: " + string.Join(", ", verstoesse.Distinct()));
+    }
+
+    /// <summary>
+    /// Klassische Formulare mit Prüfung in Blazor sperren ihren Absende-Knopf nur interaktiv: vorgerendert – noch ohne
+    /// Verbindung – sendet das Formular weiter klassisch, und der Server prüft.
+    /// </summary>
+    [Fact]
+    public void Klassische_Formulare_sperren_den_Knopf_nur_interaktiv()
+    {
+        var gesperrt = KomponentenMitCode()
+            .Where(k => k.Text.Contains("data-ladeanzeige", StringComparison.Ordinal))
+            .SelectMany(k => GesperrterAbsendeKnopf().Matches(k.Text).Select(m => (k.Datei, k.Text, Name: m.Groups[1].Value)))
+            .ToList();
+        Assert.True(gesperrt.Count >= 5, $"gesperrte Absende-Knöpfe nicht gefunden ({gesperrt.Count})");
+        foreach (var (datei, text, name) in gesperrt)
+            Assert.True(Regex.IsMatch(text, $@"bool {name} => RendererInfo\.IsInteractive &&"), $"{datei} : {name} sperrt auch ohne Verbindung");
     }
 }
