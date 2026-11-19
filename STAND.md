@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 19.11.2026 spätabends (alles deployt)
+# TabloSuite – Arbeitsstand 19.11.2026 nachts (Videos Wahlfächer fertig, SKOULOU-Deploy offen)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -6,6 +6,19 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ---
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 (spätabends, nach dem Deploy)
+
+**>>> NEUESTES (19.11. nachts) – Videos « sehr informationsreich » erledigt, gepusht (3b9b840), SKOULOU noch NICHT deployt:**
+- Neu **« Les matières facultatives »** (Direction, 5:37, `skoulou-direction-facultatives.mp4`, im Katalog nach « Publier les bulletins »):
+  2 Folien (Prinzip, drei Regeln), Ewe facultative (Standardregel), Culture « Ne compte pas », Wahl je Schüler, Noten nur Wählende,
+  Bulletin Mawuli 16,00 → 16,92 (+12), Dela +0, Abla ohne Block, Sperre nach der Veröffentlichung.
+- **« Publier les bulletins »** 5:07: Modell mit « Groupes de matières » (Titel + Bilan); **« Préparer l'année »** 6:20: Schalter
+  « Matière facultative » unter jedem Fach. Pipeline-Notizen: `lernen-v3/AUFTRAG.md` §12. Video-DB: Basis mit Migration `Wahlfaecher` erneuert.
+- App-Kleinigkeiten (gleicher Commit, keine Migration): Fächer-Dialog « Total … coefficients » ohne Wahlfächer; nach der Veröffentlichung
+  kein gesperrter Schalter mehr unter Pflichtfächern; « Tous / Aucun » nur bei ungesperrten Schülern. Tests SKOULOU 707 grün.
+- **Beim Nutzer: SKOULOU deployen** (neues Video + Fixes). eNOTE/Home unverändert. Offen wie unten: iPhone-Login, KI-Schlüssel je App
+  (Code ist live, ohne `Ki__AnthropicApiKey` unsichtbar – Nutzer fragte am 19.11. danach).
+- Idee, nicht gemacht: « Équipe et emplois du temps » (B2, Szene `b2-classe`) zeigt den Fächer-Dialog noch ohne Schalter « Matière facultative ».
+
 
 **>>> ALLES DEPLOYT UND LIVE GEPRÜFT (19.11., ~16:50 UTC) – nichts offen außer den Videos:**
 - Nutzer hat **eNOTE, SKOULOU und TabloSuiteHome deployt**. Azure-DBs beider Apps = lokal (alle Migrationen bis
