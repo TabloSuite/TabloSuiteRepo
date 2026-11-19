@@ -705,6 +705,9 @@ button.enote-laedt { cursor: progress; }
 .enote-form label { display: grid; gap: .4rem; font-weight: 700; font-size: .86rem; color: var(--enote-text); }
 .enote-form label > small { margin-top: -.35rem; font-weight: 600; }
 .enote-form label.enote-btn { display: inline-flex; font-size: .82rem; }
+/* Pflichtfeld (Nutzer 19.11.2026: « Pflichtfelder immer mit Stern »): den Beschriftungstext in <span class="enote-pflicht"> fassen –
+   das Label ist ein Grid, ein eigenes Stern-Element landete sonst in einer eigenen Zeile. */
+.enote-pflicht::after { content: "\00a0*"; color: var(--enote-danger); font-weight: 800; }
 .enote-form input, .enote-select, .enote-form textarea, .enote-input {
     width: 100%; max-width: 32rem; min-height: 2.9rem; padding: .7rem .95rem; border: 1px solid var(--enote-border-strong);
     border-radius: var(--enote-radius); font-size: 1rem;
