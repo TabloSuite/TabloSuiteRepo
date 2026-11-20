@@ -17,7 +17,9 @@
 {
     <div class="sk-seite-schmal">
         <SeitenKopf Titel="Poser une question" Icon="sparkles" Oberzeile="@Rollen.Bezeichnung(Ich.Rolle)"
-                    Untertitel="L'assistant vous indique où trouver une fonction de SKOULOU et quelles étapes suivre." />
+                    Untertitel="@(Ich.Rolle is Rollen.SuperAdmin or Rollen.Responsable
+                        ? "L'assistant vous indique où trouver une fonction de SKOULOU et quelles étapes suivre – pour votre rôle et pour tous les autres (direction, enseignant, élève, parent…), par exemple pour aider une école."
+                        : "L'assistant vous indique où trouver une fonction de SKOULOU et quelles étapes suivre.")" />
 
         <Karte Titel="Demander à l'assistant" Icon="help">
             <Hinweis Art="info">@Datenschutz</Hinweis>
@@ -124,8 +126,8 @@
     /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
     private string Beispiel => Ich.Rolle switch
     {
-        Rollen.SuperAdmin => "ex. Où valider une nouvelle école ?",
-        Rollen.Responsable => "ex. Où voir mes parts sur les factures payées ?",
+        Rollen.SuperAdmin => "ex. Comment la direction publie-t-elle les bulletins ?",
+        Rollen.Responsable => "ex. Comment un enseignant saisit-il les notes d'une évaluation ?",
         Rollen.Lehrer => "ex. Comment saisir les notes d'une évaluation ?",
         Rollen.Schueler => "ex. Où trouver mes résultats d'examen ?",
         Rollen.Eltern => "ex. Où voir le bulletin de mon enfant ?",

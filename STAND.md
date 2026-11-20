@@ -17,6 +17,18 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (12:02, kurzer Verbindungsabbruch zur DB beim Anmelden, vorübergehend, nicht KI). → Punkt 1 unten: nur noch der KI-Test des Nutzers
   (macht er später; Beispielfragen mit erwarteten Antworten stehen im Chat vom 20.11. nachmittags und unten in Punkt 1). Punkt 3 später.
 
+**>>> 20.11. abends – KI-Hilfe: Admin und PO dürfen alles fragen (gebaut, Deploy beider Apps nötig):**
+- Nutzer: « nur Admin und PO benutzen die KI zunächst, aber sie dürfen alles fragen »; « die KI bei POs soll nichts von Admin-Menüs
+  kennen »; « Besitzer soll später, wenn die KI frei ist, auch nichts von Admin/PO wissen » – Prinzip **nach unten**.
+- Umgesetzt (nur Wissen der KI, Menüs/Rechte in der App unverändert): **Administrateur** kennt Menü + Hinweise/Guide **aller** Rollen,
+  **Responsable/PO** alle **außer dem Administrateur**; eigene Rolle zuerst, Regel 3 « dis pour quel rôle vaut ta réponse ».
+  Laden-/Schulrollen unverändert (nur das eigene). Seite « Poser une question »: Untertitel + Beispielfrage für Admin/PO.
+  Code: `KiWissensbasis` (`AlleRollenFuerPlattform`, `PlattformReihenfolge`, `Regel3Plattform`) in beiden Apps; Tests grün
+  (eNOTE 545, SKOULOU 708, Home 9).
+- **Später bei Freigabe für alle:** gleiches Prinzip nach unten (z. B. Propriétaire + Employé; Direction + Coordinateur, Enseignant,
+  Élève, Parent) – vorher mit dem Nutzer festlegen. Statt `Ki__AlleRollen` ein **Schalter im Admin-Bereich** (Nutzerwunsch,
+  braucht Migration: SKOULOU Spalte in `PlattformEinstellung`, eNOTE neue Einstellung/Tabelle).
+
 **>>> ZUERST – beim Nutzer offen (Reihenfolge):**
 1. **KI-Hilfe:** ~~`Ki__WorkspaceId` setzen~~ erledigt (Nutzer 20.11., in beiden Apps geprüft: mit Schlüssel + Workspace HTTP 200).
    Offen: **beide Apps deployen** (Code bf3caf5 schickt dann den Header

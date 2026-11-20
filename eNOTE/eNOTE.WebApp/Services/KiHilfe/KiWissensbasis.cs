@@ -61,11 +61,33 @@ public static class KiWissensbasis
     private static readonly ConcurrentDictionary<string, string> Fertig = new(StringComparer.Ordinal);
 
     /// <summary>Anweisungen und Wissensbasis als ein System-Text (zuerst, mit Cache-Marke; die Frage folgt danach).</summary>
-    public static string SystemText(KiRolle rolle) => Fertig.GetOrAdd(rolle.Schluessel, _ => Anweisungen + "\n\n" + Baue(rolle));
+    public static string SystemText(KiRolle rolle) => Fertig.GetOrAdd(rolle.Schluessel, _ => AnweisungenFuer(rolle) + "\n\n" + Baue(rolle));
+
+    /// <summary>
+    /// Rollen, deren Menü und Hinweise Administrateur und Responsable eNOTE zusätzlich kennen – Nutzer 20.11.2026: « Admin und PO
+    /// dürfen alles fragen » (z. B. um einem Laden am Telefon zu helfen). Das Mitarbeiterkonto mit allen Rechten, damit jede
+    /// mögliche Rubrik beschrieben ist. Die eigene Rolle steht in der Wissensbasis immer zuerst.
+    /// </summary>
+    internal static readonly IReadOnlyList<KiRolle> AlleRollenFuerPlattform =
+    [
+        new(AppRollen.SuperAdmin), new(AppRollen.ProduktOwner), new(AppRollen.Besitzer),
+        new(AppRollen.Kassierer, Prestations: true, Remises: true, Finances: true, Clients: true)
+    ];
 
     /// <summary>Lernvideos, die diese Rolle sehen darf (für Verweise in der Antwort).</summary>
     public static IReadOnlyList<VideoKatalog.LernVideo> Videos(KiRolle rolle)
         => [.. VideoKatalog.Videos.Where(v => v.Rollen.Contains(rolle.Rolle))];
+
+    /// <summary>Regel 3 für Rollen im Laden: nur das eigene Menü.</summary>
+    internal const string Regel3Laden =
+        "3. Le menu décrit est celui du rôle de l'utilisateur. Si une fonction n'est pas dans son menu, dis que son rôle n'y a pas accès et, si la base le dit, qui s'en charge.";
+
+    /// <summary>Regel 3 für Administrateur und Responsable eNOTE: Fragen zu allen Rollen erlaubt (Nutzer 20.11.2026).</summary>
+    internal const string Regel3Plattform =
+        "3. L'utilisateur fait partie de l'équipe de la plateforme (administrateur ou responsable eNOTE) : il peut poser des questions sur les autres rôles, par exemple pour aider un propriétaire ou un employé. La base décrit le menu de ces rôles. Dis toujours pour quel rôle vaut ta réponse (par exemple « Chez le propriétaire : »). Si la question porte sur ce que l'utilisateur fait lui-même et que son rôle n'y a pas accès, dis-le et indique qui s'en charge.";
+
+    /// <summary>Anweisungen je Rolle: nur Regel 3 unterscheidet sich (Plattform darf alles fragen).</summary>
+    internal static string AnweisungenFuer(KiRolle rolle) => rolle.IstPlattform ? Anweisungen.Replace(Regel3Laden, Regel3Plattform) : Anweisungen;
 
     private const string Anweisungen =
         """
@@ -176,14 +198,42 @@ public static class KiWissensbasis
         _ => "l'essentiel du jour pour votre rôle."
     };
 
-    /// <summary>Hinweise je Rolle, die in keinem Menüpunkt stehen (Zone propriétaire, Mitarbeiterkonto, Rollen der Plattform).</summary>
+    /// <summary>Hinweise je Rolle, die in keinem Menüpunkt stehen; Plattform: die allgemeinen und die aller Rollen (mit Rollenname).</summary>
     private static IEnumerable<string> BonASavoir(KiRolle r)
+    {
+        foreach (var h in BonASavoirAllgemein()) yield return h;
+        if (!r.IstPlattform)
+        {
+            foreach (var h in BonASavoirRolle(r.Rolle)) yield return h;
+            yield break;
+        }
+        foreach (var andere in PlattformReihenfolge(r))
+            foreach (var h in BonASavoirRolle(andere.Rolle))
+                yield return andere.Bezeichnung + (andere.Rolle == r.Rolle ? " (votre rôle)" : string.Empty) + " – " + h;
+    }
+
+    /// <summary>
+    /// Rollen, deren Menü und Hinweise die KI kennt: die eigene zuerst, dann die übrigen in fester Reihenfolge. Der
+    /// Administrateur kennt alle; der Responsable alle außer dem Administrateur (Nutzer 20.11.2026: « die KI bei POs soll
+    /// nichts von Admin-Menüs kennen »).
+    /// </summary>
+    internal static IEnumerable<KiRolle> PlattformReihenfolge(KiRolle eigene)
+        => AlleRollenFuerPlattform.Where(r => r.Rolle == eigene.Rolle)
+            .Concat(AlleRollenFuerPlattform.Where(r => r.Rolle != eigene.Rolle
+                && (eigene.Rolle == AppRollen.SuperAdmin || r.Rolle != AppRollen.SuperAdmin)));
+
+    private static IEnumerable<string> BonASavoirAllgemein()
     {
         yield return "Sur ordinateur, le menu est à gauche (sur tablette : une barre d'icônes). Sur téléphone, la barre du bas montre les rubriques principales et « Plus » ouvre toutes les autres, rangées par groupe comme ci-dessus.";
         yield return "Le menu du compte (votre nom, en haut à droite) contient : Mon profil (informations personnelles, photo, adresse e-mail et mot de passe), Apparence (Clair, Sombre, Auto), Vidéos d'aide, Aide & contact et Déconnexion.";
         // 20.11.2026: Kaufberatung Scanner/Drucker (wie das Lernvideo « Scanner et imprimantes », Bon-Drucken.md)
         yield return "Matériel (facultatif, eNOTE marche sans) : un scanner de codes-barres 2D en « mode clavier » (HID), avec la touche Entrée à la fin, marche sans application, partout sur l'écran de caisse ; un scanner 1D (« CCD » ou « laser ») ne lit pas les codes QR. Réglez le scanner sur la langue du clavier de l'appareil (AZERTY), sinon il écrit des signes au lieu des chiffres. Le reçu (80 mm, bouton « Imprimer le reçu » après la vente) s'imprime par le navigateur : sur ordinateur Windows, une imprimante thermique 80 mm en USB avec son pilote ; sur iPhone ou iPad, seulement une imprimante compatible AirPrint ; sur Android, une imprimante dont le fabricant fournit un service d'impression. Étiquettes : Vente › Prestations, bouton avec l'imprimante sur la carte de l'article – feuille A4 de 24 étiquettes 70 × 37 mm (imprimer en « Taille réelle », 100 %) ou rouleau 62 × 29 mm pour une imprimante d'étiquettes.";
-        switch (r.Rolle)
+    }
+
+    /// <summary>Hinweise nur für eine Rolle (« vous » = die Person dieser Rolle).</summary>
+    private static IEnumerable<string> BonASavoirRolle(string rolle)
+    {
+        switch (rolle)
         {
             case AppRollen.Besitzer:
                 yield return "Zone propriétaire : si un code PIN du propriétaire est défini (Compte › Paramètres › Code PIN propriétaire), les groupes Vente, Gestion et Compte sont verrouillés. La carte « Zone propriétaire » en bas du menu (sur téléphone : en haut de « Plus ») les ouvre avec ce code PIN et les reverrouille. Sans code PIN, ils restent ouverts.";
@@ -206,12 +256,28 @@ public static class KiWissensbasis
         var sb = new StringBuilder();
         sb.Append("=== BASE DE CONNAISSANCES eNOTE – rôle de l'utilisateur : ").Append(rolle.Bezeichnung).AppendLine(" ===");
 
-        sb.AppendLine().AppendLine("## 1. Menu de ce rôle (avec ce que contient chaque page)");
-        foreach (var g in Menue(rolle))
-            foreach (var p in g.Punkte)
-                sb.Append("- ").Append(g.Titel is null ? p.Label : g.Titel + " › " + p.Label).Append(" : ").AppendLine(p.Erklaerung);
+        if (rolle.IstPlattform)
+        {
+            // Nutzer 20.11.2026: Administrateur und Responsable dürfen alles fragen → Menü jeder Rolle, die eigene zuerst.
+            sb.AppendLine("Équipe de la plateforme : cette base décrit l'application pour tous les rôles, pour pouvoir aider les établissements.");
+            sb.AppendLine().AppendLine("## 1. Menu de chaque rôle (avec ce que contient chaque page)");
+            foreach (var r in PlattformReihenfolge(rolle))
+            {
+                sb.AppendLine().Append("### Menu : ").Append(r.Bezeichnung).AppendLine(r.Rolle == rolle.Rolle ? " (votre rôle)" : string.Empty);
+                if (r.Rolle == AppRollen.Kassierer)
+                    sb.AppendLine("Compte personnel d'un employé : chaque rubrique ci-dessous seulement avec le droit accordé par le propriétaire (Gestion › Équipe : Prestations, Remises, Dossiers clients, Finances). Sans compte personnel, l'employé encaisse seulement sur l'appareil du propriétaire, avec son nom et son code PIN de caisse.");
+                MenueZeilen(sb, r);
+            }
+        }
+        else
+        {
+            sb.AppendLine().AppendLine("## 1. Menu de ce rôle (avec ce que contient chaque page)");
+            MenueZeilen(sb, rolle);
+        }
 
-        sb.AppendLine().AppendLine("## 2. Bon à savoir");
+        sb.AppendLine().AppendLine(rolle.IstPlattform
+            ? "## 2. Bon à savoir (un rôle nommé au début : « vous » y désigne la personne de ce rôle)"
+            : "## 2. Bon à savoir");
         foreach (var h in BonASavoir(rolle)) sb.Append("- ").AppendLine(h);
 
         sb.AppendLine().AppendLine("## 3. Vidéos d'aide (Aide › Vidéos d'aide) – titres exacts");
@@ -227,6 +293,13 @@ public static class KiWissensbasis
             foreach (var l in lektionen) Lektion(sb, l, rolle);
         }
         return sb.ToString().TrimEnd();
+    }
+
+    private static void MenueZeilen(StringBuilder sb, KiRolle r)
+    {
+        foreach (var g in Menue(r))
+            foreach (var p in g.Punkte)
+                sb.Append("- ").Append(g.Titel is null ? p.Label : g.Titel + " › " + p.Label).Append(" : ").AppendLine(p.Erklaerung);
     }
 
     /// <summary>Lektionen je Rolle: Plattform alle ihres Pfads; im Laden nur die Abläufe, die die Rolle selbst betreffen.</summary>

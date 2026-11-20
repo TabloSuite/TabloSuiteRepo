@@ -23,7 +23,9 @@
         <div class="enote-page-header">
             <div>
                 <h1>Poser une question</h1>
-                <p>L'assistant vous indique où trouver une fonction d'eNOTE et quelles étapes suivre.</p>
+                <p>@(rolle.IstPlattform
+                    ? "L'assistant vous indique où trouver une fonction d'eNOTE et quelles étapes suivre – pour votre rôle et pour tous les autres (propriétaire, employé…), par exemple pour aider un établissement."
+                    : "L'assistant vous indique où trouver une fonction d'eNOTE et quelles étapes suivre.")</p>
             </div>
         </div>
 
@@ -142,8 +144,8 @@
     /// <summary>Beispielfrage je Rolle (nur Platzhalter).</summary>
     private string Beispiel => rolle.Rolle switch
     {
-        ENote.Core.DataModels.Identity.AppRollen.SuperAdmin => "ex. Où confirmer le paiement d'un abonnement ?",
-        ENote.Core.DataModels.Identity.AppRollen.ProduktOwner => "ex. Comment prolonger l'essai gratuit d'un établissement ?",
+        ENote.Core.DataModels.Identity.AppRollen.SuperAdmin => "ex. Comment un propriétaire rembourse-t-il un client ?",
+        ENote.Core.DataModels.Identity.AppRollen.ProduktOwner => "ex. Comment un employé ouvre-t-il la caisse le matin ?",
         ENote.Core.DataModels.Identity.AppRollen.Besitzer => "ex. Comment donner un code PIN à un nouvel employé ?",
         _ => "ex. Comment clôturer la caisse le soir ?"
     };

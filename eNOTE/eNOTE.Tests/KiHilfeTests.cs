@@ -232,6 +232,62 @@ public class KiHilfeTests
         }
     }
 
+    /// <summary>
+    /// Nutzer 20.11.2026: Administrateur und Responsable dürfen alles fragen – ihre Wissensbasis kennt die anderen Rollen;
+    /// der Responsable aber nichts vom Administrateur (« die KI bei POs soll nichts von Admin-Menüs kennen »).
+    /// </summary>
+    [Fact]
+    public void Plattform_kennt_Menue_und_Hinweise_der_anderen_Rollen_Responsable_nichts_vom_Admin()
+    {
+        static List<string> Zeilen(KiRolle r) => [.. KiWissensbasis.Menue(r).SelectMany(g => g.Punkte.Select(p => "- " + (g.Titel is null ? p.Label : g.Titel + " › " + p.Label) + " : " + p.Erklaerung))];
+        Assert.Contains(KiWissensbasis.AlleRollenFuerPlattform, r => r.Rolle == AppRollen.Kassierer && r.Prestations && r.Remises && r.Finances && r.Clients);
+
+        foreach (var eigene in new[] { new KiRolle(AppRollen.SuperAdmin), new KiRolle(AppRollen.ProduktOwner) })
+        {
+            var text = KiWissensbasis.SystemText(eigene);
+            var bekannt = KiWissensbasis.PlattformReihenfolge(eigene).ToList();
+            Assert.Equal(eigene.Rolle, bekannt[0].Rolle);
+            Assert.Equal(eigene.Rolle == AppRollen.SuperAdmin ? 4 : 3, bekannt.Count);
+            Assert.Contains(KiWissensbasis.Regel3Plattform, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Laden, text);
+            foreach (var r in bekannt)
+            {
+                Assert.Contains("### Menu : " + r.Bezeichnung, text);
+                foreach (var z in Zeilen(r)) Assert.Contains(z, text);
+            }
+            // eigene Rolle zuerst und markiert
+            Assert.Contains("### Menu : " + eigene.Bezeichnung + " (votre rôle)", text);
+            Assert.True(text.IndexOf("### Menu : " + eigene.Bezeichnung, StringComparison.Ordinal)
+                < bekannt.Skip(1).Min(r => text.IndexOf("### Menu : " + r.Bezeichnung, StringComparison.Ordinal)));
+            // Hinweise des Propriétaire und des Mitarbeiters mit Rollenname
+            Assert.Contains("Propriétaire – Zone propriétaire :", text);
+            Assert.Contains("Employé (connexion personnelle) – Votre compte personnel ne donne jamais accès à la caisse", text);
+            Assert.True(text.Length < 100_000, $"{eigene.Schluessel}: {text.Length} Zeichen");
+        }
+
+        // Responsable: kein Menü des Administrateurs, keine Admin-Seiten (Journaux, E-mails, Annonces, Admin-Tabs)
+        var po = KiWissensbasis.SystemText(new KiRolle(AppRollen.ProduktOwner));
+        Assert.DoesNotContain("### Menu : Administrateur", po);
+        var poZeilen = KiWissensbasis.PlattformReihenfolge(new KiRolle(AppRollen.ProduktOwner)).SelectMany(Zeilen).ToHashSet();
+        var nurAdmin = Zeilen(new KiRolle(AppRollen.SuperAdmin)).Where(z => !poZeilen.Contains(z)).ToList();
+        Assert.NotEmpty(nurAdmin);
+        foreach (var z in nurAdmin) Assert.DoesNotContain(z, po);
+        Assert.DoesNotContain("Journaux", po);
+        Assert.DoesNotContain("Propriétaires plateforme", po);
+
+        // Rollen im Laden: Regel 3 unverändert, kein fremdes Menü und keine fremden Hinweise
+        foreach (var r in new[] { Besitzer, Employe })
+        {
+            var text = KiWissensbasis.SystemText(r);
+            Assert.Contains(KiWissensbasis.Regel3Laden, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, text);
+            Assert.DoesNotContain("### Menu : ", text);
+            Assert.DoesNotContain("Équipe de la plateforme", text);
+        }
+        Assert.DoesNotContain("Votre compte personnel ne donne jamais accès", KiWissensbasis.SystemText(Besitzer));
+        Assert.DoesNotContain("Zone propriétaire :", KiWissensbasis.SystemText(Employe));
+    }
+
     [Fact]
     public void Lektionen_der_Wissensbasis_existieren()
     {

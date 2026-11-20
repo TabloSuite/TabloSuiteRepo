@@ -8,6 +8,7 @@ using Skoulou.WebApp.Components.Layout;
 using Skoulou.WebApp.Services.Formation;
 using Skoulou.WebApp.Services.Infrastruktur;
 using Skoulou.WebApp.Services.KiHilfe;
+using Skoulou.WebApp.Services.Plattform;
 
 namespace Skoulou.Tests.Plattform;
 
@@ -259,6 +260,7 @@ public sealed class KiHilfeTests
         foreach (var r in AlleRollen().Where(r => r.Rolle != Rollen.SuperAdmin))
         {
             var text = KiWissensbasis.SystemText(r);
+            // Kein Admin-Wissen – auch nicht beim Responsable, der sonst alle Rollen kennt (Nutzer 20.11.2026).
             foreach (var b in adminNur) Assert.DoesNotContain(b, text);
             Assert.DoesNotContain("Administrateurs", text);
             // Videos anderer Rollen: weder in der Liste noch als Verweis einer Lektion (gleichlautende Knopfnamen sind erlaubt).
@@ -284,6 +286,60 @@ public sealed class KiHilfeTests
         Assert.All(finanzen.Where(e => e.Beschreibung is not null), e => Assert.DoesNotContain(e.Beschreibung!, ohne));
         Assert.DoesNotContain(KiWissensbasis.Lektionen(new KiRolle(Rollen.Koordinator)), l => l.Id == KiWissensbasis.LektionFrais);
         Assert.Contains(KiWissensbasis.Lektionen(new KiRolle(Rollen.Koordinator, KoordinatorRechte.FinanzenEinsehen)), l => l.Id == KiWissensbasis.LektionFrais);
+    }
+
+    /// <summary>
+    /// Nutzer 20.11.2026: Administrateur und Responsable dürfen alles fragen – ihre Wissensbasis kennt Menü und Guide der anderen
+    /// Rollen; der Responsable aber nichts vom Administrateur. Die Schulrollen behalten nur ihr eigenes Wissen.
+    /// </summary>
+    [Fact]
+    public void Plattform_kennt_Menue_und_Guide_der_anderen_Rollen_Responsable_nichts_vom_Admin()
+    {
+        Assert.Equal(Rollen.Alle.OrderBy(r => r), KiWissensbasis.AlleRollenFuerPlattform.Select(r => r.Rolle).OrderBy(r => r));
+
+        foreach (var eigene in new[] { new KiRolle(Rollen.SuperAdmin, HauptAdmin: true), new KiRolle(Rollen.SuperAdmin), new KiRolle(Rollen.Responsable) })
+        {
+            var text = KiWissensbasis.SystemText(eigene);
+            var bekannt = KiWissensbasis.PlattformReihenfolge(eigene).ToList();
+            Assert.Equal(eigene, bekannt[0]);
+            Assert.Equal(eigene.Rolle == Rollen.SuperAdmin ? 7 : 6, bekannt.Count);
+            Assert.Contains(KiWissensbasis.Regel3Plattform, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Schule, text);
+            foreach (var r in bekannt)
+            {
+                Assert.Contains("### Menu : " + r.Bezeichnung, text);
+                Assert.Contains("### Guide : " + r.Bezeichnung, text);
+                foreach (var e in NavKarte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin).SelectMany(g => g.Eintraege).Where(e => e.Beschreibung is { Length: > 0 }))
+                    Assert.Contains(e.Beschreibung!, text);
+                foreach (var s in GuideTexte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin).SelectMany(k => k.Schritte))
+                    Assert.Contains("- " + s.Titel + " : " + s.Text, text);
+            }
+            // eigene Rolle zuerst und markiert
+            Assert.Contains("### Menu : " + eigene.Bezeichnung + " (votre rôle)", text);
+            Assert.True(text.IndexOf("### Menu : " + eigene.Bezeichnung, StringComparison.Ordinal)
+                < bekannt.Skip(1).Min(r => text.IndexOf("### Menu : " + r.Bezeichnung, StringComparison.Ordinal)));
+            Assert.True(text.Length < 200_000, $"{eigene.Schluessel}: {text.Length} Zeichen");
+        }
+
+        // Responsable: kein Menü und kein Guide des Administrateurs
+        var po = KiWissensbasis.SystemText(new KiRolle(Rollen.Responsable));
+        Assert.DoesNotContain("### Menu : Administrateur", po);
+        Assert.DoesNotContain("### Guide : Administrateur", po);
+        var poKapitel = KiWissensbasis.PlattformReihenfolge(new KiRolle(Rollen.Responsable))
+            .SelectMany(r => GuideTexte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin)).Select(k => k.Titel).ToHashSet();
+        var nurAdmin = GuideTexte.Fuer(Rollen.SuperAdmin, _ => true, true).Where(k => !poKapitel.Contains(k.Titel)).ToList();
+        Assert.NotEmpty(nurAdmin);
+        foreach (var k in nurAdmin) Assert.DoesNotContain("#### " + k.Titel + "\n", po.Replace("\r\n", "\n"));
+
+        // Schulrollen: Regel 3 unverändert, kein fremdes Menü
+        foreach (var r in AlleRollen().Where(r => !r.IstPlattform))
+        {
+            var text = KiWissensbasis.SystemText(r);
+            Assert.Contains(KiWissensbasis.Regel3Schule, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, text);
+            Assert.DoesNotContain("### Menu : ", text);
+            Assert.DoesNotContain("Équipe de la plateforme", text);
+        }
     }
 
     [Fact]
