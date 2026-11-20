@@ -503,3 +503,39 @@ window.enoteZeige = function (id) {
     new MutationObserver(pruefe).observe(document.documentElement, { childList: true, subtree: true });
     pruefe();
 })();
+
+// Bis die interaktive Verbindung steht, ist eine Seite nur vorgerendert (Klicktest 20.11.2026, langsames Netz): bei 700 ms
+// Verzögerung war die Kasse nach 3 s zu sehen, aber erst nach 13 s bedienbar (bei 300 ms: 1,3 s / 5,9 s). Tippen auf « Ama »,
+// PIN-Tasten usw. ging in dieser Zeit still verloren, Eingaben in Felder wurden beim Verbindungsaufbau wieder geleert.
+// Routes.razor zeichnet dann [data-enote-vorgerendert] (« Connexion en cours… »); solange es da ist, werden Tippen und
+// Tastatureingaben abgefangen und der Hinweis sofort gezeigt. Links (echte Seitenwechsel) und klassische Formulare
+// (Connexion, Déconnexion) funktionieren ohne Verbindung und bleiben frei.
+(function () {
+    if (window.__enoteVorgerendert) return;
+    window.__enoteVorgerendert = true;
+
+    function hinweis() { return document.querySelector('[data-enote-vorgerendert]'); }
+
+    function abfangen(e) {
+        var h = hinweis();
+        if (!h) return;
+        var el = e.target;
+        if (!el || !el.closest) return;
+        if (el.closest('a[href]') && !el.closest('button')) return;
+        var form = el.closest('form');
+        if (form && form.hasAttribute('data-ladeanzeige')) return;
+        if (e.type === 'keydown') {
+            if (e.key === 'Tab' || e.key === 'Escape' || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (!el.closest('input, textarea, select, [contenteditable]') && e.key !== 'Enter' && e.key !== ' ') return;
+        } else if (e.type === 'beforeinput') {
+            if (!el.closest('input, textarea, [contenteditable]')) return;
+        } else if (!el.closest('button, select, label, input, textarea, [role], [tabindex], [onclick]') && getComputedStyle(el).cursor !== 'pointer') {
+            return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        h.classList.add('sichtbar');
+    }
+
+    ['click', 'keydown', 'beforeinput'].forEach(function (typ) { window.addEventListener(typ, abfangen, true); });
+})();

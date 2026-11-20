@@ -1,4 +1,10 @@
-﻿
+﻿@* Klicktest 20.11.2026 (langsames Netz): solange eine interaktive Seite nur vorgerendert ist, sind Klicks wirkungslos.
+   Hinweis zeigen; enote.js fängt bis dahin Tippen/Eingaben ab (statt sie still zu verlieren). Statische Seiten
+   (Connexion, Inscription) haben keine Render-Mode-Zuweisung und zeigen ihn nie. *@
+@if (AssignedRenderMode is not null && !RendererInfo.IsInteractive)
+{
+    <div class="enote-verbindung-aufbau" data-enote-vorgerendert role="status" aria-live="polite"><span class="enote-verbindung-kreis" aria-hidden="true"></span> Connexion en cours…</div>
+}
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NichtGefunden)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />

@@ -43,6 +43,20 @@ public class KlicktestFundeTests
     }
 
     [Fact]
+    public void Vorgerenderte_Seiten_Zeigen_Verbindungsaufbau_Und_Fangen_Klicks_Ab()
+    {
+        // Langsames Netz (700 ms): Kasse nach 3 s sichtbar, erst nach 13 s bedienbar – Tippen ging still verloren.
+        var routes = File.ReadAllText(Path.Combine(WebApp(), "Components", "Routes.razor"));
+        Assert.Contains("AssignedRenderMode is not null && !RendererInfo.IsInteractive", routes);
+        Assert.Contains("data-enote-vorgerendert", routes);
+        Assert.Contains("Connexion en cours…", routes);
+        var js = File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "js", "enote.js"));
+        Assert.Contains("document.querySelector('[data-enote-vorgerendert]')", js);
+        Assert.Contains("window.addEventListener(typ, abfangen, true)", js);
+        Assert.Contains(".enote-verbindung-aufbau.sichtbar", File.ReadAllText(Path.Combine(WebApp(), "wwwroot", "app.css")));
+    }
+
+    [Fact]
     public void Admin_Responsable_Waehlen_Laedt_Die_Zuweisbaren_Laeden()
     {
         // Seit 9c9a229 blieb « établissements de … » leer (« Aucun établissement disponible pour une affectation »),

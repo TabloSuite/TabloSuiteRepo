@@ -3765,3 +3765,15 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 .enote-hinweisseite-karte h1 { margin: 0; font-size: 1.35rem; }
 .enote-hinweisseite-karte p { margin: 0; color: var(--enote-text-muted); line-height: 1.5; }
 .enote-hinweisseite-icon { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 50%; background: var(--enote-primary-soft); color: var(--enote-primary-text); }
+
+/* « Connexion en cours… » solange die Seite nur vorgerendert ist (Klicktest 20.11.2026, langsames Netz; siehe enote.js).
+   Erscheint von selbst nach 1,5 s, sofort beim Tippen; verschwindet, sobald die Verbindung steht (Blazor zeichnet neu). */
+.enote-verbindung-aufbau { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 100001;
+  display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1rem; border-radius: 999px; background: #0f172a; color: #fff;
+  font-size: .9rem; font-weight: 600; box-shadow: 0 8px 24px rgba(15, 23, 42, .25); pointer-events: none; opacity: 0;
+  animation: enote-verbindung-ein .2s ease-out 1.5s forwards; }
+.enote-verbindung-aufbau.sichtbar { animation: none; opacity: 1; }
+.enote-verbindung-kreis { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: enote-verbindung-dreh .8s linear infinite; }
+@keyframes enote-verbindung-ein { to { opacity: 1; } }
+@keyframes enote-verbindung-dreh { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .enote-verbindung-kreis { animation: none; } }
