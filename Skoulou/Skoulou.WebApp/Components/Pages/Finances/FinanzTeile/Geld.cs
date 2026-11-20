@@ -4,7 +4,7 @@ using Skoulou.WebApp.Services.Finanzen;
 
 namespace Skoulou.WebApp.Components.Pages.Finances.FinanzTeile;
 
-/// <summary>Anzeigeformate des Bereichs Finanzen (Beträge « 150.000 FCFA », Kanäle, Status).</summary>
+/// T <summary>Anzeigeformate des Bereichs Finanzen (Beträge « 150.000 FCFA », Kanäle, Status).</summary>
 public static class Geld
 {
     /// <summary>Betrag wie überall in SKOULOU (Eingabefelder, PDF): « 150.000 FCFA ».</summary>
