@@ -14,6 +14,12 @@ public sealed class KiHilfeOptionen
     public const int MaxFrageZeichen = 500;
 
     public string? AnthropicApiKey { get; set; }
+    /// <summary>
+    /// Workspace der Anthropic-Konsole (Azure: <c>Ki__WorkspaceId</c>, z. B. « wrkspc_… »), nur für Schlüssel, die keinem
+    /// Workspace gehören (Benutzer- oder Service-Schlüssel « sk-ant-usr… » / « sk-ant-svc… »): Anthropic verlangt dann den
+    /// Header <c>anthropic-workspace-id</c> (20.11.2026, sonst 400 « not scoped to a workspace »). Workspace-Schlüssel brauchen ihn nicht.
+    /// </summary>
+    public string? WorkspaceId { get; set; }
 
     /// <summary>Modell-ID (Standard Claude Haiku 5.5).</summary>
     public string? Modell { get; set; } = StandardModell;

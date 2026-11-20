@@ -92,12 +92,16 @@ public sealed class AnthropicKiClient(IOptions<KiHilfeOptionen> optionen) : IKiC
     {
         lock (sperre)
         {
-            return client ??= new AnthropicClient
+            return client ??= new AnthropicClient(new Anthropic.Core.ClientOptions
             {
                 ApiKey = o.AnthropicApiKey!.Trim(),
                 MaxRetries = 1,
                 Timeout = TimeSpan.FromSeconds(Math.Clamp(o.TimeoutSekunden, 5, 60)),
-            };
+                // Schlüssel ohne Workspace (« sk-ant-usr… », « sk-ant-svc… ») brauchen den Workspace im Header (20.11.2026)
+                ExtraHeaders = string.IsNullOrWhiteSpace(o.WorkspaceId)
+                    ? new Dictionary<string, string>()
+                    : new Dictionary<string, string> { ["anthropic-workspace-id"] = o.WorkspaceId.Trim() },
+            });
         }
     }
 }

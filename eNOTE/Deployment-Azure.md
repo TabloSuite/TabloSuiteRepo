@@ -127,6 +127,7 @@ Hilfe-Assistent (Claude Haiku 5.5 über das offizielle Anthropic-SDK) im Menü �
 | Name | Wert |
 | --- | --- |
 | `Ki__AnthropicApiKey` | **Geheim** – API-Schlüssel aus der Anthropic Console. Nur als App Setting (oder Key-Vault-Referenz), nie in appsettings oder ins Repository |
+| `Ki__WorkspaceId` | Nur bei Schlüsseln **ohne** Workspace (`sk-ant-usr…` Benutzer-, `sk-ant-svc…` Service-Schlüssel): ID des Workspace aus der Anthropic Console (`wrkspc_…`), wird als Header `anthropic-workspace-id` gesendet. Workspace-Schlüssel (`sk-ant-api03-…`) brauchen ihn nicht. Ohne ihn antwortet Anthropic sonst 400 « not scoped to a workspace » (20.11.2026) |
 | `Ki__AlleRollen` | optional, `true` = für alle Rollen freischalten (Standard `false`: nur Admin + Responsable) |
 | `Ki__Modell` | optional, Standard `claude-haiku-5-5` |
 | `Ki__MaxTokens` / `Ki__TimeoutSekunden` | optional, Standard `2048` / `20` |
