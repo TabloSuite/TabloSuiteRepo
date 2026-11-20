@@ -117,8 +117,8 @@
     <ChildContent>
         <div class="enote-form">
             <div class="enote-form-grid">
-                <label><span class="enote-pflicht">Prénom</span> <input @bind="neuVorname" @bind:event="oninput" autocomplete="off" /></label>
-                <label><span class="enote-pflicht">Nom</span> <input @bind="neuNachname" @bind:event="oninput" autocomplete="off" /></label>
+                <label><span class="enote-pflicht">Prénom</span> <input @bind="neuVorname" @bind:event="oninput" autocomplete="off" maxlength="@ENote.WebApp.Services.KontoProfilService.MaxNamenLaenge" /></label>
+                <label><span class="enote-pflicht">Nom</span> <input @bind="neuNachname" @bind:event="oninput" autocomplete="off" maxlength="@ENote.WebApp.Services.KontoProfilService.MaxNamenLaenge" /></label>
             </div>
             <label>Pseudonyme <small class="enote-muted">(facultatif – vide : proposé automatiquement, ex. awa.koffi)</small> <input @bind="neuPseudonym" autocomplete="off" placeholder="ex. awa.koffi" /></label>
             <label>Adresse e-mail <small class="enote-muted">(facultatif)</small> <input type="email" @bind="neuEmail" autocomplete="off" /></label>

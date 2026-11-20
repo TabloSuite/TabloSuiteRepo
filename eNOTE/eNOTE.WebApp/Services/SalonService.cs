@@ -184,6 +184,9 @@ public class SalonService(
         {
             return (false, "Veuillez saisir un nom d'établissement (au moins 2 caractères).", null, null);
         }
+        // Klicktest 20.11.2026: überlange Namen scheitern sonst an der Datenbank bzw. später an jedem Verkauf.
+        if (KontoProfilService.PruefeNamen(vorname, nachname, pflicht: false) is { } namensFehler) return (false, namensFehler, null, null);
+        if (bereinigtName.Length > AuthService.LadenNameMax) return (false, $"Nom de l'établissement : {AuthService.LadenNameMax} caractères au maximum.", null, null);
 
         if (!await DarfWeiterenLadenAnlegenAsync(bestehenderBesitzerId, cancellationToken))
         {

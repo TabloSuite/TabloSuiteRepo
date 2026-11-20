@@ -542,6 +542,9 @@ public class AdminService(
         // Telefon des Besitzers ist Pflicht (wie bei der öffentlichen Registrierung): man muss ihn leicht erreichen können.
         var (bereinigtTelefon, telefonFehler) = TelefonRegel.Pruefe(telefon, TelefonRegel.MeldungPflichtBesitzer);
         if (telefonFehler is not null) return (false, telefonFehler, null);
+        // Klicktest 20.11.2026: überlange Namen scheitern sonst an der Datenbank bzw. später an jedem Verkauf.
+        if (KontoProfilService.PruefeNamen(vorname, nachname, pflicht: false) is { } namensFehler) return (false, namensFehler, null);
+        if (bereinigtSalon.Length > AuthService.LadenNameMax) return (false, $"Nom de l'établissement : {AuthService.LadenNameMax} caractères au maximum.", null);
 
         if (string.IsNullOrWhiteSpace(vorname) || string.IsNullOrWhiteSpace(nachname)
             || string.IsNullOrWhiteSpace(bereinigtSalon) || string.IsNullOrWhiteSpace(pseudonym)

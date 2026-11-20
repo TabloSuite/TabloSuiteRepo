@@ -140,6 +140,12 @@ public class TeamService(
             return (false, "Le code PIN doit contenir 4 à 6 chiffres.", null);
         }
 
+        // Länge begrenzen (Pflicht prüft weiter unten der Pseudonym-Vorschlag wie bisher).
+        if (KontoProfilService.PruefeNamen(vorname, nachname, pflicht: false) is { } namensFehler)
+        {
+            return (false, namensFehler, null);
+        }
+
         var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(bereinigtPseudonym))
         {

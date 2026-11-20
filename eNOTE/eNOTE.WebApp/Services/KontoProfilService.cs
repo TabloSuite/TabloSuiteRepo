@@ -15,6 +15,21 @@ public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigung
     public const int MaxNamenLaenge = 60;
     public const int MaxTelefonLaenge = 30;
 
+    /// <summary>
+    /// Prénom/Nom beim Anlegen eines Kontos (Mitarbeiter, Besitzer durch Admin/Responsable, zweiter Laden): Pflicht und höchstens
+    /// <see cref="MaxNamenLaenge"/> Zeichen. Klicktest 20.11.2026: eine Mitarbeiterin mit 270 Zeichen Namen ließ sich anlegen,
+    /// jeder Verkauf scheiterte danach am Kassierernamen des Bons (Spalte 200 Zeichen) – « Un problème est survenu ».
+    /// Null = in Ordnung, sonst die französische Meldung.
+    /// </summary>
+    public static string? PruefeNamen(string? vorname, string? nachname, bool pflicht = true)
+    {
+        var v = (vorname ?? string.Empty).Trim();
+        var n = (nachname ?? string.Empty).Trim();
+        if (pflicht && (v.Length == 0 || n.Length == 0)) return "Veuillez saisir le prénom et le nom.";
+        if (v.Length > MaxNamenLaenge || n.Length > MaxNamenLaenge) return $"Le prénom et le nom sont limités à {MaxNamenLaenge} caractères.";
+        return null;
+    }
+
     public record KontoProfil(string Vorname, string Nachname, string Name, string Pseudonym, string Email, string? Telefon, IList<string> Rollen);
 
     public async Task<KontoProfil?> GetAsync(Guid id)

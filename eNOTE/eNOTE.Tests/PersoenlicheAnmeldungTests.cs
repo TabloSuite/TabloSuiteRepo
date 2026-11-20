@@ -56,6 +56,24 @@ public class PersoenlicheAnmeldungTests
     }
 
     [Fact]
+    public async Task Mitarbeiter_Mit_Ueberlangem_Namen_Wird_Abgelehnt()
+    {
+        // Klicktest 20.11.2026: 170 + 100 Zeichen ließen sich anlegen, danach scheiterte jeder Verkauf am Kassierernamen (200 Zeichen).
+        var factory = TestDbContextFactory.Create();
+        var (provider, team, _, salon, _) = await BasisAsync(factory);
+        await using var _p = provider;
+        var lang = "Marie-Joséphine-Akossiwa-" + string.Concat(Enumerable.Repeat("Ablavi-", 20));
+        var (ok, fehler, _) = await team.LegeKassiererAnAsync(salon, lang, "Agbéssi", "", "", null, "8642");
+        Assert.False(ok);
+        Assert.Contains("60 caractères", fehler);
+        var (ok60, fehler60, k) = await team.LegeKassiererAnAsync(salon, new string('A', 60), new string('B', 60), "", "", null, "8643");
+        Assert.True(ok60, fehler60);
+        Assert.True(k!.FullName.Length <= 200);   // passt in Verkaeufe.KassiererName
+        await using var db = await factory.CreateDbContextAsync();
+        Assert.Equal(1, await db.UserSalons.CountAsync(us => us.SalonId == salon && us.AppUserId != Guid.Empty) - 1);
+    }
+
+    [Fact]
     public async Task Neuer_Mitarbeiter_Ohne_Passwort_Darf_Sich_Nicht_Anmelden_Besitzer_Schon()
     {
         var factory = TestDbContextFactory.Create();
