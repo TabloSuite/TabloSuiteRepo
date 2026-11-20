@@ -134,7 +134,7 @@
         catch (JSException) { }
     }
 
-    private bool userMenuOffen;
+    private bool userMenuOffen, userMenuRegistriert;
     private DotNetObjectReference<MainLayout>? selfRef;
 
     /// <summary>Aktive, nicht minimierte Kasse belegt den ganzen Bildschirm (ohne Navigation/Topbar).</summary>
@@ -149,17 +149,18 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (userMenuRegistriert) return;
+        selfRef ??= DotNetObjectReference.Create(this);
+        try
         {
-            selfRef = DotNetObjectReference.Create(this);
-            try
-            {
-                await JS.InvokeVoidAsync("enoteRegisterUserMenu", selfRef);
-            }
-            catch (InvalidOperationException)
-            {
-                // JS noch nicht verfügbar (Prerendering) – wird beim nächsten Render erneut versucht.
-            }
+            await JS.InvokeVoidAsync("enoteRegisterUserMenu", selfRef);
+            userMenuRegistriert = true;
+        }
+        catch (Exception e) when (e is InvalidOperationException or Microsoft.JSInterop.JSException
+                                       or Microsoft.JSInterop.JSDisconnectedException or TaskCanceledException)
+        {
+            // JS noch nicht verfügbar (Prerendering) oder enote.js noch nicht geladen (Kaltstart) – beim nächsten Render erneut.
+            // 20.11.2026: eine JSException « 'enoteRegisterUserMenu' is not a function » beendete sonst die ganze Verbindung.
         }
     }
 
