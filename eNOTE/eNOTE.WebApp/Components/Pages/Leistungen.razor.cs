@@ -144,8 +144,8 @@ public partial class Leistungen(
     private string etikettFormat = "a4";
     private readonly IReadOnlyList<EnoteRadioOption<string>> etikettFormatOptionen =
     [
-        new() { Value = "a4", Label = "Feuille A4 (plusieurs)" },
-        new() { Value = "einzel", Label = "Étiquette 62×29 mm" }
+        new() { Value = "a4", Label = "Feuille A4 – 24 étiquettes 70 × 37 mm" },
+        new() { Value = "einzel", Label = "Rouleau 62 × 29 mm (imprimante d'étiquettes)" }
     ];
 
     protected override async Task OnInitializedAsync()

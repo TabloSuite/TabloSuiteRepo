@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using ENote.WebApp.Services;
 using Xunit;
 
@@ -40,6 +40,24 @@ public class EtikettPdfServiceTests
         var etikett = new EtikettPdfService.Etikett("X9", "Test", null);
         var pdf = EtikettPdfService.ErzeugeA4Bogen(Enumerable.Repeat(etikett, 48).ToList());
         Assert.True(pdf.Length > 500);
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(24, 1)]
+    [InlineData(25, 2)]
+    [InlineData(48, 2)]
+    public void A4Bogen_hat_24_Etiketten_je_Seite(int anzahl, int seiten)
+    {
+        // Handelsüblicher Bogen 70 × 37 mm, 3 × 8 (Nutzer 20.11.2026) – füllt A4 genau.
+        Assert.Equal(24, EtikettPdfService.BogenEtiketten);
+        Assert.Equal(210f, EtikettPdfService.BogenSpalten * EtikettPdfService.BogenBreiteMm);
+        Assert.True(EtikettPdfService.BogenReihen * EtikettPdfService.BogenHoeheMm <= 297f);
+
+        var etikett = new EtikettPdfService.Etikett("2001234567893", "Savon karité", "1 500 F");
+        var pdf = EtikettPdfService.ErzeugeA4Bogen(Enumerable.Repeat(etikett, anzahl).ToList());
+        var text = System.Text.Encoding.Latin1.GetString(pdf);
+        Assert.Equal(seiten, System.Text.RegularExpressions.Regex.Matches(text, @"/Type\s*/Page(?!s)").Count);
     }
 
     [Fact]

@@ -7,56 +7,66 @@ using ZXing.Common;
 namespace ENote.WebApp.Services;
 
 /// <summary>
-/// Erzeugt Barcode-Etiketten als PDF: A4-Bogen mit Raster (für jeden Drucker +
-/// Etikettenpapier) oder Einzel-Etiketten 62×29 mm (für Thermo-Etikettendrucker).
+/// Erzeugt Barcode-Etiketten als PDF: A4-Etikettenbogen 70×37 mm (24 je Bogen, für jeden Drucker)
+/// oder Einzel-Etiketten 62×29 mm (für Thermo-Etikettendrucker).
 /// </summary>
 public static class EtikettPdfService
 {
     /// <summary>Eine Etikette: Code + Anzeige-Texte.</summary>
     public record Etikett(string Code, string Name, string? PreisText);
 
-    /// <summary>A4-Bogen mit Etiketten-Raster (3 Spalten × 8 Reihen, je 62×29 mm).</summary>
+    /// <summary>Handelsüblicher A4-Bogen (Nutzer 20.11.2026): 3 Spalten × 8 Reihen, je 70×37 mm, ohne Rand – 24 Etiketten.</summary>
+    public const int BogenSpalten = 3, BogenReihen = 8, BogenEtiketten = BogenSpalten * BogenReihen;
+    public const float BogenBreiteMm = 70, BogenHoeheMm = 37;
+
+    /// <summary>
+    /// A4-Etikettenbogen 70×37 mm (3 × 8 = 24 je Seite, mehr Etiketten → weitere Seiten). Die Felder liegen genau auf den
+    /// vorgestanzten Etiketten (3 × 70 = 210 mm Breite, 8 × 37 = 296 mm Höhe, oben 0,5 mm); gedruckt wird in « Taille réelle »
+    /// (100 %). Ohne Rahmenlinien – sie würden bei kleinem Versatz auf dem Nachbar-Etikett landen. Der Inhalt hält Abstand
+    /// zum Rand, weil Drucker die äußersten Millimeter des Blatts nicht bedrucken.
+    /// </summary>
     public static byte[] ErzeugeA4Bogen(IReadOnlyList<Etikett> etiketten)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
+        var seiten = etiketten.Chunk(BogenEtiketten).ToList();
         var dokument = Document.Create(container =>
         {
-            container.Page(page =>
+            foreach (var seite in seiten)
             {
-                page.Size(PageSizes.A4);
-                page.Margin(0.7f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(8));
-
-                page.Content().Table(table =>
+                container.Page(page =>
                 {
-                    const int spalten = 3;
-                    table.ColumnsDefinition(cols =>
+                    // Exakt 210 × 297 mm (PageSizes.A4 rechnet mit 595 pt – drei feste 70-mm-Spalten passten dann nicht);
+                    // die drei gleichen Spalten (RelativeItem) sind damit genau 70 mm breit.
+                    page.Size(BogenSpalten * BogenBreiteMm, 297, Unit.Millimetre);
+                    page.MarginTop(0.5f, Unit.Millimetre);
+                    page.MarginBottom(0);
+                    page.MarginHorizontal(0);
+                    page.DefaultTextStyle(x => x.FontSize(8));
+
+                    page.Content().Column(spalte =>
                     {
-                        for (var i = 0; i < spalten; i++)
+                        for (var reihe = 0; reihe < BogenReihen; reihe++)
                         {
-                            cols.RelativeColumn();
+                            var start = reihe * BogenSpalten;
+                            spalte.Item().Height(BogenHoeheMm, Unit.Millimetre).Row(zeile =>
+                            {
+                                for (var s = 0; s < BogenSpalten; s++)
+                                {
+                                    var index = start + s;
+                                    var feld = zeile.RelativeItem().Height(BogenHoeheMm, Unit.Millimetre);
+                                    if (index < seite.Length)
+                                    {
+                                        var etikett = seite[index];
+                                        feld.PaddingVertical(4, Unit.Millimetre).PaddingHorizontal(5, Unit.Millimetre)
+                                            .Element(c => EtikettInhalt(c, etikett, gross: true));
+                                    }
+                                }
+                            });
                         }
                     });
-
-                    for (var i = 0; i < etiketten.Count; i += spalten)
-                    {
-                        for (var spalte = 0; spalte < spalten; spalte++)
-                        {
-                            var index = i + spalte;
-                            if (index < etiketten.Count)
-                            {
-                                var etikett = etiketten[index];
-                                table.Cell().Element(c => EtikettZelle(c, etikett));
-                            }
-                            else
-                            {
-                                table.Cell().Element(c => c.Height(29, Unit.Millimetre));
-                            }
-                        }
-                    }
                 });
-            });
+            }
         });
 
         return dokument.GeneratePdf();
@@ -86,28 +96,32 @@ public static class EtikettPdfService
     }
 
     private static void EtikettZelle(IContainer container, Etikett etikett)
-    {
-        var barcode = ErzeugeCode128(etikett.Code);
-
-        container
+        => container
             .Border(0.5f)
             .BorderColor(Colors.Grey.Lighten2)
             .Padding(2)
-            .Column(col =>
+            .Element(c => EtikettInhalt(c, etikett, gross: false));
+
+    /// <summary>Name, Preis, Strich- oder QR-Code und Code in Klarschrift (größer auf dem 70×37-mm-Bogen).</summary>
+    private static void EtikettInhalt(IContainer container, Etikett etikett, bool gross)
+    {
+        var barcode = ErzeugeCode128(etikett.Code);
+
+        container.Column(col =>
+        {
+            col.Item().AlignCenter().Text(etikett.Name).FontSize(gross ? 8.5f : 7).Bold().ClampLines(1);
+            if (!string.IsNullOrWhiteSpace(etikett.PreisText))
             {
-                col.Item().AlignCenter().Text(etikett.Name).FontSize(7).Bold();
-                if (!string.IsNullOrWhiteSpace(etikett.PreisText))
-                {
-                    col.Item().AlignCenter().Text(etikett.PreisText).FontSize(6.5f).FontColor(Colors.Grey.Darken1);
-                }
+                col.Item().AlignCenter().Text(etikett.PreisText).FontSize(gross ? 8 : 6.5f).FontColor(Colors.Grey.Darken1);
+            }
 
-                if (barcode is not null)
-                {
-                    col.Item().AlignCenter().MaxHeight(12, Unit.Millimetre).Svg(barcode).FitArea();
-                }
+            if (barcode is not null)
+            {
+                col.Item().AlignCenter().MaxHeight(gross ? 16 : 12, Unit.Millimetre).Svg(barcode).FitArea();
+            }
 
-                col.Item().AlignCenter().Text(etikett.Code.Length > 32 ? etikett.Code[..32] + "…" : etikett.Code).FontSize(5.5f).FontColor(Colors.Grey.Darken1);
-            });
+            col.Item().AlignCenter().Text(etikett.Code.Length > 32 ? etikett.Code[..32] + "…" : etikett.Code).FontSize(gross ? 6.5f : 5.5f).FontColor(Colors.Grey.Darken1);
+        });
     }
 
     /// <summary>Erzeugt einen Code-128-Barcode als plattformunabhängige SVG-Grafik.</summary>

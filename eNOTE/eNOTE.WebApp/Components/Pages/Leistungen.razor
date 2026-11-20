@@ -565,6 +565,11 @@
             <label>Nombre d'étiquettes (1–48) <input type="number" min="1" max="48" @bind="etikettAnzahl" /></label>
             <label>Format</label>
             <EnoteRadioGroup TValue="string" @bind-Value="etikettFormat" Options="etikettFormatOptionen" />
+            <small class="enote-muted">
+                @(etikettFormat == "einzel"
+                    ? "Une étiquette par page de 62 × 29 mm, pour une imprimante d'étiquettes thermique."
+                    : "Planches A4 autocollantes de 24 étiquettes 70 × 37 mm (3 × 8). Dans la fenêtre d'impression, choisissez « Taille réelle » (100 %), sinon les étiquettes se décalent.")
+            </small>
         </div>
     </ChildContent>
     <Footer>
