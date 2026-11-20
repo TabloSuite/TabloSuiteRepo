@@ -176,6 +176,32 @@ public class WahlfachTests
         Assert.Equal(regel, i.Faecher.Single(f => f.Name == "Français").Wahlfach);
     }
 
+    /// <summary>
+    /// Klicktest 20.11.2026: « Bilan Lettres : 9,75 (coef. 5) », obwohl Anglais (coef. 2) nicht bewertet war und nur Français
+    /// (coef. 3) zählte; ein nicht klassierter Schüler hatte « Rang : Non classé sur 3 ».
+    /// </summary>
+    [Fact]
+    public async Task Gruppen_Bilan_zaehlt_nur_bewertete_Faecher_und_Non_classe_ohne_sur()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db => (await db.Faecher.SingleAsync(f => f.Id == w.O.FachFr)).Gruppe = FachGruppe.Sciences);
+        var v = await w.Vorlagen.VorlageAsync(w.D, null);
+        v.Name = "Groupes";
+        v.ZeigeFachGruppen = true;
+        await w.Vorlagen.SpeichernAsync(w.D, v);
+        await w.NoteAsync(await w.BewertungAsync(w.O.Kf6AMath), w.E1, "15");   // Français (coef. 2) ohne Bewertung
+
+        var i = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P1, w.E1)).Snapshot.Inhalt;
+        var g = Assert.Single(i.Gruppen);
+        Assert.Equal(("Sciences", "15,00", 3m), (g.Name, g.Moyenne, g.Koeffizienten));
+        Assert.Equal("Bilan Sciences : 15,00 (coef. 3)", BulletinPdf.BilanZeile(g));
+        Assert.Equal("Bilan Lettres : —", BulletinPdf.BilanZeile(new SnapshotGruppe("Lettres", "—", 0)));
+        Assert.Equal("Rang : 1er sur 2", BulletinPdf.RangZeile(i));
+
+        var ohne = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P1, w.E2)).Snapshot.Inhalt;
+        Assert.Equal("Rang : Non classé", BulletinPdf.RangZeile(ohne));
+    }
+
     [Fact]
     public async Task Live_Noten_der_Eltern_nur_mit_gewaehlten_Wahlfaechern()
     {

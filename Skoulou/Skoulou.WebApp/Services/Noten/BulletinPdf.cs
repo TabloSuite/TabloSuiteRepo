@@ -189,7 +189,7 @@ public static class BulletinPdf
                 if (b.Bilan is { } gr)
                 {
                     t.Cell().ColumnSpan((uint)Spalten(l, bilan)).Background(Zart).Border(0.5f).BorderColor(Rand).PaddingHorizontal(1.5f, Unit.Millimetre).PaddingVertical(0.6f, Unit.Millimetre)
-                        .Text($"Bilan {gr.Name} : {gr.Moyenne} (coef. {gr.Koeffizienten:0.##})").FontSize(6.8f).SemiBold().Italic();
+                        .Text(BilanZeile(gr)).FontSize(6.8f).SemiBold().Italic();
                 }
             }
             if (l.ZeigeKoeffizienten && l.ZeigePunkte)
@@ -239,6 +239,14 @@ public static class BulletinPdf
         }
         return bloecke;
     }
+
+    /// <summary>« Bilan Lettres : 14,85 (coef. 5) »; ohne bewertetes Fach nur « Bilan Sciences : — ».</summary>
+    public static string BilanZeile(SnapshotGruppe gr)
+        => gr.Koeffizienten > 0 ? $"Bilan {gr.Name} : {gr.Moyenne} (coef. {gr.Koeffizienten.ToString("0.##", SkoulouKultur.Kultur)})" : $"Bilan {gr.Name} : {gr.Moyenne}";
+
+    /// <summary>« Rang : 2e sur 5 »; nicht klassiert nur « Rang : Non classé » (vorher « Non classé sur 3 »).</summary>
+    public static string RangZeile(BulletinInhalt i)
+        => i.Rang == Core.Noten.NotenTexte.Rang(Core.Noten.RangInfo.NonClasse) ? $"Rang : {i.Rang}" : $"Rang : {i.Rang} sur {i.Effectif}";
 
     /// <summary>Kopfzeile einer Fachgruppe (Name wie im Snapshot: « Lettres », « Sciences », « Autres »).</summary>
     public static string GruppenKopf(string gruppe) => gruppe switch
@@ -295,7 +303,7 @@ public static class BulletinPdf
             {
                 col.Item().AlignCenter().Text(i.MoyenneText + (i.Moyenne is null ? "" : " / 20")).FontSize(15).Bold().FontColor(l.Farbe);
                 if (l.ZeigeNoteInWorten && i.MoyenneInWorten is { } w) col.Item().AlignCenter().Text($"({w})").FontSize(6.8f).Italic();
-                if (l.ZeigeRang) col.Item().AlignCenter().Text($"Rang : {i.Rang} sur {i.Effectif}").SemiBold();
+                if (l.ZeigeRang) col.Item().AlignCenter().Text(RangZeile(i)).SemiBold();
                 if (i.Appreciation is { } ap) col.Item().AlignCenter().Text(ap).Italic().FontColor(Leise);
                 if (l.ZeigeVorperioden && i.Bilan is null && i.Vorperioden.Count > 0)
                     col.Item().PaddingTop(1, Unit.Millimetre).AlignCenter().Text(string.Join("   ", i.Vorperioden.Select(v => $"{v.Titel} : {v.Moyenne} ({v.Rang})"))).FontSize(6.5f).FontColor(Leise);

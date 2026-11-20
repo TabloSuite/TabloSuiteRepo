@@ -255,9 +255,11 @@ internal sealed class BulletinBerechnung
         var beitraege = eigene.Select(f => (f.Koeffizient, Beitrag: NotenRechner.Beitrag(new FachBeitrag(e.Faecher[f.FachId].Mittel, f.Koeffizient, f.Wahlfach))))
             .ToList();
         var mitPunkten = beitraege.Where(b => b.Beitrag.Punkte is not null).ToList();
+        // Koeffizienten des Bilans = nur die Fächer, die darin mitrechnen (mit Wert) – sonst stand « Bilan Lettres : 9,75 (coef. 5) »,
+        // obwohl nur Français (coef. 3) bewertet war (Klicktest 20.11.2026).
         var gruppen = eigene.Where(f => f.Wahlfach is null && f.Gruppe != FachGruppe.Aucune).GroupBy(f => f.Gruppe).OrderBy(g => g.Key)
             .Select(g => new SnapshotGruppe(Gruppe(g.Key)!, NotenTexte.MittelKurz(KlassenRechner.GruppenMittel(g.Select(f => (e.Faecher[f.FachId].Mittel, f.Koeffizient)))),
-                g.Sum(f => f.Koeffizient)))
+                g.Where(f => e.Faecher[f.FachId].Mittel.HatWert).Sum(f => f.Koeffizient)))
             .ToList();
         var vorperioden = Perioden.Where(p => p.ZaehltFuerJahr && p.Ende < Periode.Ende && Ergebnisse.ContainsKey(p.Id))
             .Select(p => Ergebnisse[p.Id].Fuer(s.SchuelerId)!)
