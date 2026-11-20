@@ -13,8 +13,8 @@ public class VideoKatalogTests
         : new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, rolle)], "test"));
 
     [Theory]
-    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 26)]
-    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 24)]
+    [InlineData(AppRollen.SuperAdmin, "Pour tous,Administrateur,Employé,Propriétaire,Responsable", 27)]   // + « Scanner et imprimantes » (20.11.2026)
+    [InlineData(AppRollen.ProduktOwner, "Pour tous,Responsable,Employé,Propriétaire,Administrateur", 25)]
     [InlineData(AppRollen.Besitzer, "Pour tous,Propriétaire,Employé", 19)]
     [InlineData(AppRollen.Kassierer, "Pour tous,Employé", 10)]
     public void Gruppen_Je_Rolle_Eigene_Zuerst(string rolle, string gruppen, int anzahl)
@@ -36,6 +36,10 @@ public class VideoKatalogTests
         Assert.True(VideoKatalog.DarfAbrufen("enote-visite-guidee.mp4", Mit(AppRollen.Kassierer)));
         Assert.False(VideoKatalog.DarfAbrufen("enote-proprietaire-catalogue.mp4", Mit(AppRollen.Kassierer)));
         Assert.True(VideoKatalog.DarfAbrufen("enote-employe-attente.mp4", Mit(AppRollen.Kassierer)));
+        // Kaufberatung Scanner/Drucker: Administrateurs und Responsables (sie beraten die Läden), nicht die Läden selbst
+        Assert.True(VideoKatalog.DarfAbrufen("enote-admin-materiel.mp4", Mit(AppRollen.SuperAdmin)));
+        Assert.True(VideoKatalog.DarfAbrufen("enote-admin-materiel.mp4", Mit(AppRollen.ProduktOwner)));
+        Assert.False(VideoKatalog.DarfAbrufen("enote-admin-materiel.mp4", Mit(AppRollen.Besitzer)));
     }
 
     [Fact]

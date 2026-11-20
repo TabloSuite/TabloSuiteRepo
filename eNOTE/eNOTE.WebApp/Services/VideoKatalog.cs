@@ -96,6 +96,9 @@ public static class VideoKatalog
         // 17.11.2026: Formation der Responsables steuern (Administration › Formation)
         new("enote-admin-formation.mp4", "Piloter la formation des responsables",
             "L'onglet « Formation » : chaque responsable et sa session, les règles de l'évaluation, un responsable à surveiller, l'intervalle, le délai et les résultats, votre propre parcours.", "Administrateur", NurAdmin, "3:58"),
+        // 20.11.2026: Kaufberatung für die Läden (Nutzerwunsch: « was ich immer für Scanner und Drucker brauche, und warum »)
+        new("enote-admin-materiel.mp4", "Scanner et imprimantes : quel matériel, et pourquoi",
+            "Le matériel à conseiller aux établissements : le scanner 2D et ses réglages, l'imprimante du reçu selon l'appareil de caisse, les réglages d'impression, les étiquettes A4 ou en rouleau, et l'essai avant l'achat.", "Administrateur", Plattform, "7:20"),
     ];
 
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
