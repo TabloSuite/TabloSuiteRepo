@@ -565,6 +565,13 @@ public partial class Admin(
             return;
         }
 
+        // Klicktest 20.11.2026: « 1.500 » im Zahlenfeld = 1,5 – feste Commission in ganzen Francs.
+        if (provisionFestbetrag is decimal fest && PreisEingabe.Pruefe(fest) is { } ganze)
+        {
+            provisionFehler = ganze;
+            return;
+        }
+
         var erfolg = await produktOwnerService.SetzeProvisionAsync(provisionZuweisung.ZuweisungId, provisionProzent, provisionFestbetrag);
         if (!erfolg)
         {

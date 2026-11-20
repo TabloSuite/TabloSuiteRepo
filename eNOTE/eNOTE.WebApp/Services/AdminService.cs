@@ -479,6 +479,9 @@ public class AdminService(
         if (preis is <= 0)
             throw new ArgumentOutOfRangeException(nameof(preis),
                 "Veuillez saisir un montant positif.");
+        // Klicktest 20.11.2026: « 2.500 » im Zahlenfeld = 2,5 – ganze Francs wie im Katalog.
+        if (preis is decimal p && PreisEingabe.Pruefe(p) is { } ganze)
+            throw new ArgumentOutOfRangeException(nameof(preis), ganze);
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)

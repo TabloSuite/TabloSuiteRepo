@@ -325,6 +325,25 @@ public class PreisAnpassungTests
         Assert.Equal((ab, 7500m), await PreisAnpassungService.KommenderPreisAsync(db, w.Standard.Id, DateTime.UtcNow, default));
     }
 
+    /// <summary>Klicktest 20.11.2026: « 2.500 » im Zahlenfeld des Browsers = 2,5 – Tarife nur in ganzen Francs.</summary>
+    [Fact]
+    public async Task Tarife_Nur_In_Ganzen_Francs()
+    {
+        var w = await BasisAsync();
+        var service = new PreisAnpassungService(w.F, new Uhr(Heute));
+        var vorschau = await Assert.ThrowsAsync<ArgumentException>(() => service.GetVorschauAsync(w.Admin, 2.5m, null));
+        Assert.Equal(PreisEingabe.MeldungGanzeFrancs, vorschau.Message);
+        var plan = await Assert.ThrowsAsync<ArgumentException>(() => service.PlaneAsync(w.Admin, 4100.5m, Dezember, false));
+        Assert.Equal(PreisEingabe.MeldungGanzeFrancs, plan.Message);
+        await using (var db = await w.F.CreateDbContextAsync())
+            Assert.Empty(await db.PreisAnpassungen.ToListAsync());
+
+        var admin = new AdminService(w.F, null!, NullLogger<AdminService>.Instance, null!);
+        var individuell = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => admin.SetzeIndividuellenPreisAsync(w.Standard.Id, 7000.5m));
+        Assert.StartsWith(PreisEingabe.MeldungGanzeFrancs, individuell.Message);
+        Assert.True(await admin.SetzeIndividuellenPreisAsync(w.Standard.Id, 7000m));
+    }
+
     [Fact]
     public async Task Eigener_Text_Mit_Platzhaltern_Wird_Zum_Banner()
     {

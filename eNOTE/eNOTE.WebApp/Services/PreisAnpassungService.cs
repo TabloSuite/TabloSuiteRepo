@@ -189,6 +189,8 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
     private async Task<Vorschau> BerechneAsync(ApplicationDbContext db, decimal neuerStandard, DateTime? abUtc, CancellationToken ct)
     {
         if (neuerStandard <= 0) throw new ArgumentException("Veuillez saisir un montant positif.");
+        // Klicktest 20.11.2026: « 2.500 » im Zahlenfeld = 2,5 → sonst ein Standardtarif von 2,50 F für alle Läden.
+        if (PreisEingabe.Pruefe(neuerStandard) is { } ganze) throw new ArgumentException(ganze);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
         var stichtag = abUtc ?? jetzt;
         var alt = await StandardAmAsync(db, stichtag, ct);
@@ -213,6 +215,8 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
     public async Task<Ergebnis> PlaneAsync(Guid bearbeiter, decimal neuerStandard, DateTime? abUtc, bool perMail,
         string? titel = null, string? text = null, CancellationToken ct = default)
     {
+        // Klicktest 20.11.2026: ganze Francs (« 2.500 » im Zahlenfeld = 2,5) – auch hier, nicht nur in der Vorschau.
+        if (neuerStandard > 0 && PreisEingabe.Pruefe(neuerStandard) is { } ganze) throw new ArgumentException(ganze);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
         PreisAnpassung anpassung;
         List<LadenPreis> geaendert;
