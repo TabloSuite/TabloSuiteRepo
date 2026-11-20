@@ -34,22 +34,23 @@
                 <div class="enote-form-grid">
                     <label>
                         <span class="enote-pflicht">Prénom</span>
-                        <InputText @bind-Value="Model!.Vorname" required autocomplete="given-name" />
+                        <InputText @bind-Value="Model!.Vorname" required autocomplete="given-name" maxlength="@ENote.WebApp.Services.KontoProfilService.MaxNamenLaenge" />
                     </label>
                     <label>
                         <span class="enote-pflicht">Nom</span>
-                        <InputText @bind-Value="Model!.Nachname" required autocomplete="family-name" />
+                        <InputText @bind-Value="Model!.Nachname" required autocomplete="family-name" maxlength="@ENote.WebApp.Services.KontoProfilService.MaxNamenLaenge" />
                     </label>
                 </div>
 
                 <label>
                     <span class="enote-pflicht">Pseudonyme (identifiant de connexion)</span>
-                    <InputText @bind-Value="Model!.Pseudonym" required autocomplete="username" autocapitalize="none" />
+                    <InputText @bind-Value="Model!.Pseudonym" required autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="@ENote.WebApp.Services.AuthService.PseudonymMax" />
+                    <small>Sans espace ni accent, ex. kofi.mensah</small>
                 </label>
 
                 <label>
                     <span class="enote-pflicht">Adresse e-mail de contact</span>
-                    <InputText @bind-Value="Model!.Email" type="email" required autocomplete="email" />
+                    <InputText @bind-Value="Model!.Email" type="email" required autocomplete="email" maxlength="@ENote.WebApp.Services.AuthService.EmailMax" />
                 </label>
 
                 <label>
@@ -66,7 +67,7 @@
 
                 <label>
                     <span class="enote-pflicht">Nom de l'établissement</span>
-                    <InputText @bind-Value="Model!.SalonName" required autocomplete="organization" />
+                    <InputText @bind-Value="Model!.SalonName" required autocomplete="organization" maxlength="@ENote.WebApp.Services.AuthService.LadenNameMax" />
                 </label>
 
                 <div class="enote-form-grid">

@@ -26,6 +26,33 @@ public class AuthService(
 
     private const string AppName = "eNOTE";
     private const string AppUrl = "https://enote.tablosuite.com";
+
+    /// <summary>Höchstlängen der Registrierung (Spalten UserName/Email: 256, Salons.Name: 450; Namen wie in « Mon profil »).</summary>
+    public const int PseudonymMax = 64, EmailMax = 256, LadenNameMax = 120;
+
+    /// <summary>Zeichen, die ASP.NET Identity in Pseudonymen zulässt (Standard von UserOptions.AllowedUserNameCharacters).</summary>
+    private const string PseudonymZeichen = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+
+    /// <summary>
+    /// Prüft Länge und Zeichen der Registrierungsfelder, bevor ein Konto entsteht. Null = in Ordnung, sonst eine französische
+    /// Meldung (vorher: Datenbankfehler « HTTP 500 » bzw. die englische Meldung von Identity).
+    /// </summary>
+    public static string? PruefeRegistrierungsFelder(string? vorname, string? nachname, string pseudonym, string email, string salonName)
+    {
+        if (string.IsNullOrWhiteSpace(vorname) || string.IsNullOrWhiteSpace(nachname))
+            return "Veuillez saisir votre prénom et votre nom.";
+        if (vorname.Trim().Length > KontoProfilService.MaxNamenLaenge || nachname.Trim().Length > KontoProfilService.MaxNamenLaenge)
+            return $"Le prénom et le nom sont limités à {KontoProfilService.MaxNamenLaenge} caractères.";
+        if (pseudonym.Length > PseudonymMax)
+            return $"Pseudonyme : {PseudonymMax} caractères au maximum.";
+        if (pseudonym.Any(c => !PseudonymZeichen.Contains(c)))
+            return "Le pseudonyme ne peut contenir que des lettres sans accent, des chiffres et les signes . - _ @ + (sans espace). Exemple : kofi.mensah";
+        if (email.Length > EmailMax)
+            return $"Adresse e-mail : {EmailMax} caractères au maximum.";
+        if (salonName.Length > LadenNameMax)
+            return $"Nom de l'établissement : {LadenNameMax} caractères au maximum.";
+        return null;
+    }
     /// <summary>
     /// Ende der kostenlosen Probezeit: 3 Kalendermonate, wobei das aktuelle
     /// Monat als erstes zählt. Start am 3. November → Probe bis 31. Januar
@@ -171,6 +198,13 @@ public class AuthService(
             return (false, "Veuillez choisir un pseudonyme.");
         }
 
+        // Klicktest 20.11.2026: zu lange Eingaben endeten in « HTTP 500 » (Spaltenlänge der Datenbank) und ließen ein Konto
+        // ohne Laden zurück (Pseudonym danach blockiert); Leerzeichen/Akzente im Pseudonym ergaben eine englische Meldung.
+        if (PruefeRegistrierungsFelder(vorname, nachname, bereinigtPseudonym, bereinigtEmail, bereinigtSalon) is { } feldFehler)
+        {
+            return (false, feldFehler);
+        }
+
         // Telefon ist Pflicht: wer einen Laden registriert, muss leicht erreichbar sein (Validierung, Rückfragen).
         var (bereinigtTelefon, telefonFehler) = TelefonRegel.Pruefe(telefon);
         if (telefonFehler is not null)
@@ -217,15 +251,23 @@ public class AuthService(
             IsBlocked = false
         };
 
-        var erstellen = await userManager.CreateAsync(besitzer, passwort);
+        IdentityResult erstellen;
+        try
+        {
+            erstellen = await userManager.CreateAsync(besitzer, passwort);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Gleichzeitige Registrierung mit demselben Pseudonym (eindeutiger Index) – keine Fehlerseite.
+            logger.LogWarning(ex, "Besitzer-Registrierung: Konto {Pseudonym} konnte nicht gespeichert werden.", bereinigtPseudonym);
+            return (false, "Ce pseudonyme est déjà utilisé.");
+        }
         if (!erstellen.Succeeded)
         {
             var fehler = string.Join(" ", erstellen.Errors.Select(e => e.Description));
             logger.LogWarning("Besitzer-Registrierung fehlgeschlagen für {Email}: {Fehler}", bereinigtEmail, fehler);
             return (false, string.IsNullOrWhiteSpace(fehler) ? "L'inscription a échoué." : fehler);
         }
-
-        await userManager.AddToRoleAsync(besitzer, AppRollen.Besitzer);
 
         var salon = new Salon
         {
@@ -238,19 +280,42 @@ public class AuthService(
             ProbeBisUtc = BerechneProbeEnde(uhr.GetUtcNow().UtcDateTime)
         };
 
-        db.Salons.Add(salon);
-        await db.SaveChangesAsync(cancellationToken);
-
-        db.UserSalons.Add(new UserSalon
+        try
         {
-            AppUserId = besitzer.Id,
-            SalonId = salon.Id,
-            // Besitzer hat alle salonbezogenen Rechte.
-            KannFinanzenSehen = true,
-            KannLeistungenVerwalten = true,
-            KannRabatteVerwalten = true
-        });
-        await db.SaveChangesAsync(cancellationToken);
+            await userManager.AddToRoleAsync(besitzer, AppRollen.Besitzer);
+
+            db.Salons.Add(salon);
+            await db.SaveChangesAsync(cancellationToken);
+
+            db.UserSalons.Add(new UserSalon
+            {
+                AppUserId = besitzer.Id,
+                SalonId = salon.Id,
+                // Besitzer hat alle salonbezogenen Rechte.
+                KannFinanzenSehen = true,
+                KannLeistungenVerwalten = true,
+                KannRabatteVerwalten = true
+            });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Laden ließ sich nicht speichern (z. B. gleichzeitig derselbe Name): Konto wieder entfernen, sonst bliebe ein
+            // Besitzer ohne Laden zurück und das Pseudonym wäre für einen neuen Versuch blockiert.
+            logger.LogWarning(ex, "Besitzer-Registrierung: Laden {Salon} konnte nicht gespeichert werden – Konto wird entfernt.", bereinigtSalon);
+            if (db.Entry(salon).State == EntityState.Unchanged)
+            {
+                // Laden gespeichert, Zuordnung nicht: Laden über einen frischen Context wieder entfernen.
+                await using var aufraeumen = await dbContextFactory.CreateDbContextAsync(CancellationToken.None);
+                if (await aufraeumen.Salons.FindAsync([salon.Id], CancellationToken.None) is { } gespeichert)
+                {
+                    aufraeumen.Salons.Remove(gespeichert);
+                    try { await aufraeumen.SaveChangesAsync(CancellationToken.None); } catch (DbUpdateException) { }
+                }
+            }
+            await userManager.DeleteAsync(besitzer);
+            return (false, "L'inscription n'a pas pu être enregistrée. Vérifiez le nom de l'établissement (il existe peut-être déjà) et réessayez.");
+        }
 
         logger.LogInformation("Neuer Salon registriert (freizugeben): {Salon} durch {Email}", bereinigtSalon, bereinigtEmail);
 

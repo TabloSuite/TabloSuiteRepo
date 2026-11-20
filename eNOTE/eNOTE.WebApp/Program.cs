@@ -82,7 +82,9 @@ builder.Services
     .AddRoles<Role>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    // Meldungen von Identity auf Französisch (Klicktest 20.11.2026: Registrierung zeigte englische Passwort-Regeln).
+    .AddErrorDescriber<ENote.WebApp.Services.Sicherheit.FranzoesischeIdentityFehler>();
 
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddIdentityCookies();
