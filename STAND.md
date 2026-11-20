@@ -7,6 +7,17 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 nachts (Sitzungsende, Nutzer: « wir machen morgen weiter »)
 
+**>>> (20.11. ~09:40) KI – ZWEITE Ursache nach dem Schlüsseltausch:** Der neue Schlüssel ist gültig, aber **an keinen Workspace gebunden**.
+  SKOULOU 08:26 UTC: Anthropic 400 « This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id
+  header … or use an API key that is scoped to a workspace ». Console zeigte 0 $ / keine Aktivität. **Lösung ohne Code:** in
+  platform.claude.com/settings/keys › « Create key » den Schlüssel auf den **Default Workspace** beschränken, in beiden Apps als
+  `Ki__AnthropicApiKey` eintragen, alten Schlüssel löschen. (Alternative wäre Header `anthropic-workspace-id` per Code – nicht gewählt.)
+  Danach `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (Mini-Anfrage) oder Nutzer testet als Admin.
+- eNOTE 08:17 UTC beim Kaltstart: JSException « enoteRegisterUserMenu is not a function » beendete die Blazor-Verbindung → behoben
+  (73c9c6b, MainLayout fängt JS-Fehler ab, Browser-Test mit blockiertem enote.js). **eNOTE muss dafür deployt werden.**
+- Hinweis: am 20.11. arbeiteten zwei Chat-Sitzungen parallel im Repo (f1cccf0, dfc5807 + uncommittete Bon-/Barcode-/Video-Änderungen der
+  anderen Sitzung) – fremde Änderungen nicht mitcommitten.
+
 **>>> (20.11. vormittags) Nutzerpunkte 1–3 + Gerätekauf:**
 - **KI-Test schlug fehl (« momentanément indisponible »): Ursache = falscher Wert in `Ki__AnthropicApiKey`** (eNOTE + SKOULOU gleich):
   31 Zeichen, beginnt NICHT mit `sk-ant-api` → Anthropic antwortet 401. Echte Schlüssel beginnen mit `sk-ant-api03-` und sind ~108
