@@ -8,8 +8,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 20.11.2026 mittags
 
 **>>> ZUERST – beim Nutzer offen (Reihenfolge):**
-1. **KI-Hilfe:** In Azure bei **eNOTE und SKOULOU** die App-Einstellung `Ki__WorkspaceId = wrkspc_01JfujuGvN9AzxanMQNRh3uS` setzen
-   (Schlüssel `Ki__AnthropicApiKey` bleibt wie er ist) und **beide Apps deployen** (Code bf3caf5 schickt dann den Header
+1. **KI-Hilfe:** ~~`Ki__WorkspaceId` setzen~~ erledigt (Nutzer 20.11., in beiden Apps geprüft: mit Schlüssel + Workspace HTTP 200).
+   Offen: **beide Apps deployen** (Code bf3caf5 schickt dann den Header
    `anthropic-workspace-id`). Danach prüfen: `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (liest `Ki__WorkspaceId` mit) und
    Nutzer testet als Admin Aide › « Poser une question » (Testfragen siehe unten « MORGEN (20.11.) ZUERST », Punkt 1). Danach das Prüfskript
    `%TEMP%\ki-pruefen` in den Papierkorb (die übrigen Proben sind schon weg).
