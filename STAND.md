@@ -7,6 +7,22 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 nachts (Sitzungsende, Nutzer: « wir machen morgen weiter »)
 
+**>>> (20.11. vormittags) Nutzerpunkte 1–3 + Gerätekauf:**
+- **KI-Test schlug fehl (« momentanément indisponible »): Ursache = falscher Wert in `Ki__AnthropicApiKey`** (eNOTE + SKOULOU gleich):
+  31 Zeichen, beginnt NICHT mit `sk-ant-api` → Anthropic antwortet 401. Echte Schlüssel beginnen mit `sk-ant-api03-` und sind ~108
+  Zeichen lang (nur einmal beim Erstellen sichtbar). **Nutzer: neuen Schlüssel in console.anthropic.com › API Keys erzeugen, in beiden
+  Apps eintragen, Guthaben (Billing) prüfen.** Prüfwerkzeug (zeigt den Schlüssel nie): `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou`
+  (Mini-Anfrage, gibt HTTP-Status + Fehlertext aus) – danach löschen. Code: Konfigurationsfehler (401/403/404/400) jetzt mit Ausnahme
+  geloggt → stehen künftig in Journaux/Fehlerjournal (vorher nirgends).
+- **Menü-Blatt « Plus » am Handy**: Seite dahinter rollte mit, Ziehen nach unten lud die Seite neu (iPhone, Google-App). Fix in beiden
+  Apps: `html:has(…backdrop)` overflow hidden + overscroll-behavior none, Wisch-Sperre in `enote.js`/`skoulou.js` (touchmove nur
+  blockiert, solange Blatt/Fenster/Video offen; rollbare Bereiche + Eingabefelder bleiben frei). Playwright-Touch-Test (CDP) grün;
+  **am iPhone vom Nutzer nach dem Deploy bestätigen lassen** (kein WebKit lokal).
+- Video Drucker/Scanner: **noch nicht angelegt** (erst mit echten Geräten). Ort dann: `TabloSuite Videos\ENote Videos\projekte\lernen-v3\<name>`.
+- Gerätewahl des Nutzers (20.11.): Scanner NETUM NT-1228BC (**nur 1D/CCD – liest keine QR-Codes**, eNOTE nutzt QR für Hersteller-
+  codes und Etiketten > 40 Zeichen → 2D-Modell empfohlen), Bondrucker Bisofice 80 mm USB+LAN ESC/POS (am Windows-PC mit Treiber ok,
+  vom iPhone kein Druck – kein AirPrint; Android nur mit Druckdienst-App). Siehe `eNOTE/Bon-Drucken.md`.
+
 **>>> MORGEN (20.11.) ZUERST – Reihenfolge:**
 1. **KI-Hilfe « Poser une question »**: Nutzer nach seinem Test als Admin fragen (beide Apps, Aide › « Poser une question »; nur Admin +
    Responsable/PO sichtbar, `Ki__AlleRollen=false`). Testfragen aus dem Chat: SKOULOU Wahlfach anlegen/Schüler wählen, Note nach der

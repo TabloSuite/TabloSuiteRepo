@@ -481,3 +481,59 @@ window.skZeige = function (id) {
     var el = document.getElementById(id);
     if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+
+// Menü-Blatt oder Fenster offen: Wischen geht nicht an die Seite dahinter (Nutzer 20.11.2026). Sonst rollt die Seite mit,
+// und der Handy-Browser (Safari, Google-App …) lädt beim Ziehen nach unten die Seite neu. Das CSS (overflow,
+// overscroll-behavior) reicht dafür in iPhone-Browsern nicht immer. Gerollt wird nur noch ein Bereich unter dem Finger,
+// der in diese Richtung wirklich weiterrollen kann; Eingabefelder und Editoren bleiben unberührt. Der blockierende
+// touchmove-Handler hängt nur, solange eine solche Ebene offen ist – sonst würde er jedes Rollen der App bremsen.
+(function () {
+    if (window.__skWischSperre) return;
+    window.__skWischSperre = true;
+    var EBENEN = '.sk-blatt-hintergrund, .sk-modal-hintergrund';
+    var x = 0, y = 0, aktiv = false;
+
+    function kannRollen(el, senkrecht, richtung) {
+        var st = getComputedStyle(el), ov = senkrecht ? st.overflowY : st.overflowX;
+        if (ov !== 'auto' && ov !== 'scroll') return false;
+        if (senkrecht) {
+            if (el.scrollHeight <= el.clientHeight + 1) return false;
+            return richtung > 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+        }
+        if (el.scrollWidth <= el.clientWidth + 1) return false;
+        return richtung > 0 ? el.scrollLeft > 0 : el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    }
+
+    function beiStart(e) {
+        if (e.touches.length === 1) { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+    }
+
+    function beiBewegung(e) {
+        if (!e.cancelable || e.touches.length !== 1) return;
+        var t = e.touches[0], dx = t.clientX - x, dy = t.clientY - y;
+        x = t.clientX; y = t.clientY;
+        var ziel = e.target instanceof Element ? e.target : null;
+        if (ziel && ziel.closest('input, textarea, select, [contenteditable="true"]')) return;
+        var senkrecht = Math.abs(dy) >= Math.abs(dx), richtung = senkrecht ? dy : dx; // > 0: Finger nach unten/rechts
+        if (richtung === 0) return;
+        for (var el = ziel; el && el !== document.body && el !== document.documentElement; el = el.parentElement)
+            if (kannRollen(el, senkrecht, richtung)) return;
+        e.preventDefault();
+    }
+
+    function pruefe() {
+        var offen = !!document.querySelector(EBENEN);
+        if (offen === aktiv) return;
+        aktiv = offen;
+        if (offen) {
+            document.addEventListener('touchstart', beiStart, { passive: true });
+            document.addEventListener('touchmove', beiBewegung, { passive: false });
+        } else {
+            document.removeEventListener('touchstart', beiStart, { passive: true });
+            document.removeEventListener('touchmove', beiBewegung, { passive: false });
+        }
+    }
+
+    new MutationObserver(pruefe).observe(document.documentElement, { childList: true, subtree: true });
+    pruefe();
+})();

@@ -274,7 +274,7 @@ h1:focus, h2:focus, h3:focus, [tabindex="-1"]:focus { outline: none; }
 
 /* Handy-Navigation */
 .sk-nav-mobil { display: none; }
-.sk-blatt-hintergrund { position: fixed; inset: 0; z-index: 1290; background: rgba(15, 23, 42, .38); animation: sk-einblenden .15s ease; }
+.sk-blatt-hintergrund { position: fixed; inset: 0; z-index: 1290; background: rgba(15, 23, 42, .38); animation: sk-einblenden .15s ease; touch-action: none; }
 .sk-blatt {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1300; max-height: 80vh; overflow-y: auto;
     background: var(--sk-flaeche); border-radius: 1.4rem 1.4rem 0 0; padding: .6rem 1rem calc(6rem + env(safe-area-inset-bottom));
@@ -640,9 +640,10 @@ textarea.sk-eingabe { resize: vertical; line-height: 1.45; }
 .sk-modal-inhalt { padding: .6rem 1.5rem 1.3rem; overflow-y: auto; min-width: 0; overscroll-behavior: contain; }
 /* Fenster oder « Plus »-Blatt offen: die Seite dahinter rollt nicht mit (Nutzer 16.11.2026). Am Handy (≤ 640 px)
    rollt die Seite selbst, am Computer der Hauptbereich .sk-main – beide werden gesperrt, solange ein Fenster offen ist.
-   Der Platz der Bildlaufleiste von .sk-main ist immer reserviert, damit nichts seitlich springt. Druck unverändert. */
+   Der Platz der Bildlaufleiste von .sk-main ist immer reserviert, damit nichts seitlich springt. Druck unverändert.
+   Dazu (20.11.2026): kein « Zum Aktualisieren ziehen » mehr – overscroll-behavior hier, Wisch-Sperre in skoulou.js. */
 @media screen {
-    html:has(.sk-modal-hintergrund), html:has(.sk-blatt-hintergrund) { overflow: hidden; }
+    html:has(.sk-modal-hintergrund), html:has(.sk-blatt-hintergrund) { overflow: hidden; overscroll-behavior: none; }
 }
 @media screen and (min-width: 641px) {
     .sk-main { scrollbar-gutter: stable; }

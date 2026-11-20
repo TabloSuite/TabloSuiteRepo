@@ -58,9 +58,10 @@ public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> op
         }
         catch (KiDienstFehler f)
         {
-            // Nur Art und Typ – nie Frage, Antwort oder Schlüssel.
+            // Nur Art und Typ – nie Frage, Antwort oder Schlüssel. Konfigurationsfehler mit Ausnahme, damit sie im
+            // Fehlerjournal der Administration erscheinen (20.11.2026: ungültiger Schlüssel → 401 stand vorher nirgends).
             if (f.Art == KiFehlerArt.Konfiguration)
-                log.LogError("KI-Hilfe: Anfrage abgewiesen ({Art}: {Beschreibung}) – Ki:AnthropicApiKey und Ki:Modell prüfen.", f.Art, f.Message);
+                log.LogError(f, "KI-Hilfe: Anfrage abgewiesen ({Art}: {Beschreibung}) – Ki:AnthropicApiKey und Ki:Modell prüfen.", f.Art, f.Message);
             else
                 log.LogWarning("KI-Hilfe nicht erreichbar ({Art}: {Beschreibung}).", f.Art, f.Message);
             return Meldung(MeldungIndisponible);
