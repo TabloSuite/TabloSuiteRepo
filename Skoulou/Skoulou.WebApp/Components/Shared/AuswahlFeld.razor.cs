@@ -67,8 +67,7 @@ public partial class AuswahlFeld<T> : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (selbst is null) return;
-        try { await JS.InvokeVoidAsync("skCloserEntfernen", id); }
-        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException) { }
+        await JsAufraeumen.VersuchenAsync(JS, "skCloserEntfernen", id);
         selbst.Dispose();
     }
 }

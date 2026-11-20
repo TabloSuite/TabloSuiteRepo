@@ -102,8 +102,7 @@
         Nav.LocationChanged -= Navigiert;
         Kontext.Geaendert -= Aktualisieren;
         if (selbst is null) return;
-        try { await JS.InvokeVoidAsync("skCloserEntfernen", "benutzermenue"); }
-        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException) { }
+        await JsAufraeumen.VersuchenAsync(JS, "skCloserEntfernen", "benutzermenue");
         selbst.Dispose();
     }
 }
