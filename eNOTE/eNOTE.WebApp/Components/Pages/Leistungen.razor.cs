@@ -460,6 +460,13 @@ public partial class Leistungen(
             return;
         }
 
+        // Klicktest 20.11.2026: « 1.500 » (Punkt als Tausendertrenner) wurde als 1,50 F gespeichert und als « 2 F » angezeigt.
+        if (PreisEingabe.Pruefe(bearbeitungsLeistung.Preis, bearbeitungsLeistung.Kaufpreis) is { } preisFehler)
+        {
+            editorFehler = preisFehler;
+            return;
+        }
+
         // Sammel-Artikel auflösen/validieren.
         if (istSammelArtikel)
         {
