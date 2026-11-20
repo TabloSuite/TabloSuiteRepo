@@ -32,6 +32,7 @@ Projektmappe `TabloSuiteMappe.slnx`, .NET 10, Blazor (Interactive Server), EF Co
 | `Skoulou/` | Schulverwaltung SKOULOU (Neubau seit 13.11.2026) | verbindlich `Skoulou/docs/Bauplan.md` und `Skoulou/docs/fachkonzept/01…05` |
 | `TabloSuiteHome/` | Firmenseite tablosuite.com (statisch, ohne Datenbank) | `TabloSuiteHome/README.md` |
 | `scripts/` | Hilfsskripte, u. a. lokale Datenbanken anlegen | – |
+| `docs/` | Allgemeine Anleitungen, u. a. Claude in Visual Studio einrichten | `docs/Claude-in-Visual-Studio-einrichten.md` |
 
 - `STAND.md` ist der Arbeitsstand von Chris – nur nach Absprache ändern.
 - `.github/copilot-instructions.md` beschreibt überwiegend das frühere SKOULOUAPP, das nicht mehr im Repository ist.
