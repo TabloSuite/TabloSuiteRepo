@@ -76,7 +76,7 @@ public static class BarcodeRegeln
             var art = code.Length switch { 13 => Art.Ean13, 12 => Art.UpcA, _ => Art.Ean8 };
             var name = art switch { Art.Ean13 => "EAN-13", Art.UpcA => "UPC-A", _ => "EAN-8" };
             if (!HatGueltigePruefziffer(code))
-                return new(art, code, $"Format {name}, mais la chiffre de contrôle ne correspond pas : vérifiez la saisie (enregistrement possible).", false, true);
+                return new(art, code, $"Format {name}, mais le chiffre de contrôle ne correspond pas : vérifiez la saisie (enregistrement possible).", false, true);
             var intern = art == Art.Ean13 && code[0] == '2';
             return new(intern ? Art.Intern : art, code, intern ? "Code interne de l'établissement (EAN-13 valide)." : $"Code fabricant {name} valide.", false, false);
         }

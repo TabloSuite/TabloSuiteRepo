@@ -81,6 +81,12 @@ public static class BonDruckHtml
   .foot { text-align: center; font-style: italic; margin-top: 10px; font-size: 11px; }
   @media print { .no-print { display: none; } }
   .no-print { width: 72mm; margin: 8px 0; text-align: center; }
+  /* Am Bildschirm (20.11.2026): der Bon mittig als Papierstreifen auf grauem Grund statt klein oben links; Druck unverändert */
+  @media screen {
+    html { width: auto; min-height: 100%; background: #e9edf3; }
+    body { margin: 24px auto; padding: 0 1mm 4mm; box-shadow: 0 10px 30px rgba(16, 26, 51, .16); border-radius: 3px; }
+    .no-print { margin: 0 auto; padding-top: 10px; }
+  }
   .no-print button { padding: 10px 18px; font-size: 14px; border: none; border-radius: 8px; background: #1e3a8a; color: #fff; cursor: pointer; }
 </style>
 </head>

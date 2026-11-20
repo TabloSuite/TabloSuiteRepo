@@ -181,6 +181,8 @@ public static class KiWissensbasis
     {
         yield return "Sur ordinateur, le menu est à gauche (sur tablette : une barre d'icônes). Sur téléphone, la barre du bas montre les rubriques principales et « Plus » ouvre toutes les autres, rangées par groupe comme ci-dessus.";
         yield return "Le menu du compte (votre nom, en haut à droite) contient : Mon profil (informations personnelles, photo, adresse e-mail et mot de passe), Apparence (Clair, Sombre, Auto), Vidéos d'aide, Aide & contact et Déconnexion.";
+        // 20.11.2026: Kaufberatung Scanner/Drucker (wie das Lernvideo « Scanner et imprimantes », Bon-Drucken.md)
+        yield return "Matériel (facultatif, eNOTE marche sans) : un scanner de codes-barres 2D en « mode clavier » (HID), avec la touche Entrée à la fin, marche sans application, partout sur l'écran de caisse ; un scanner 1D (« CCD » ou « laser ») ne lit pas les codes QR. Réglez le scanner sur la langue du clavier de l'appareil (AZERTY), sinon il écrit des signes au lieu des chiffres. Le reçu (80 mm, bouton « Imprimer le reçu » après la vente) s'imprime par le navigateur : sur ordinateur Windows, une imprimante thermique 80 mm en USB avec son pilote ; sur iPhone ou iPad, seulement une imprimante compatible AirPrint ; sur Android, une imprimante dont le fabricant fournit un service d'impression. Étiquettes : Vente › Prestations, bouton avec l'imprimante sur la carte de l'article – feuille A4 de 24 étiquettes 70 × 37 mm (imprimer en « Taille réelle », 100 %) ou rouleau 62 × 29 mm pour une imprimante d'étiquettes.";
         switch (r.Rolle)
         {
             case AppRollen.Besitzer:
