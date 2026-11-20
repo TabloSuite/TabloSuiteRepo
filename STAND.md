@@ -14,7 +14,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 - Neu: `scripts\Datenbanken-anlegen.cmd` (lokale DBs eNOTE + SKOULOU per Doppelklick), `docs\Claude-in-Visual-Studio-einrichten.md`.
   Sados persönliche Anleitung: `C:\ETSE\NETAPPS\TabloSuiteData\Infos\Sado-Einrichtung.md` (außerhalb des Repos).
 - **Deploy erledigt:** eNOTE 10:04, SKOULOU 10:06 (Ortszeit, nach bf3caf5). Fehlerprotokolle seit Deploy: SKOULOU 0, eNOTE 1
-  (12:02, kurzer Verbindungsabbruch zur DB beim Anmelden, vorübergehend, nicht KI). → Punkt 1 unten: nur noch der KI-Test des Nutzers.
+  (12:02, kurzer Verbindungsabbruch zur DB beim Anmelden, vorübergehend, nicht KI). → Punkt 1 unten: nur noch der KI-Test des Nutzers
+  (macht er später; Beispielfragen mit erwarteten Antworten stehen im Chat vom 20.11. nachmittags und unten in Punkt 1). Punkt 3 später.
 
 **>>> ZUERST – beim Nutzer offen (Reihenfolge):**
 1. **KI-Hilfe:** ~~`Ki__WorkspaceId` setzen~~ erledigt (Nutzer 20.11., in beiden Apps geprüft: mit Schlüssel + Workspace HTTP 200).
@@ -22,7 +23,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
    `anthropic-workspace-id`). Danach prüfen: `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (liest `Ki__WorkspaceId` mit) und
    Nutzer testet als Admin Aide › « Poser une question » (Testfragen siehe unten « MORGEN (20.11.) ZUERST », Punkt 1). Danach das Prüfskript
    `%TEMP%\ki-pruefen` in den Papierkorb (die übrigen Proben sind schon weg).
-2. **Nach dem Deploy am iPhone bestätigen:** Menü « Plus » – Seite dahinter rollt nicht mehr / lädt nicht neu (beide Apps); eNOTE-Reçu
+2. ~~**Nach dem Deploy am iPhone bestätigen:**~~ **erledigt – Nutzer 20.11.: « War OK ».** Menü « Plus » – Seite dahinter rollt nicht mehr / lädt nicht neu (beide Apps); eNOTE-Reçu
    mittig; neues Video unter Vidéos d'aide › Administrateur. Weiter offen von gestern: iPhone-Login (Ladekreis), Registrierung,
    erneute Zuweisung an früheren Responsable, Mail an neuen Responsable.
 3. **Gerätekauf:** Scanner NETUM NT-1228BC ist **1D/CCD – liest keine QR-Codes** → 2D-Modell empfohlen; Bondrucker Bisofice 80 mm
