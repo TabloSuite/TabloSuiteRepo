@@ -28,6 +28,7 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
     public void Emit(LogEvent logEvent)
     {
         if (logEvent.Exception is null || logEvent.Level < LogEventLevel.Error) return;
+        if (IstVerlasseneVerbindung(logEvent.Exception)) return;
         try
         {
             var kontext = http.HttpContext;
@@ -51,6 +52,16 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
     }
 
     private static string Kuerze(string? text, int max) => text is null ? string.Empty : text.Length > max ? text[..max] : text;
+
+    /// <summary>
+    /// Navigation einer schon getrennten Verbindung: wird eine Sitzung auf einem anderen Gerät ersetzt, schickt die
+    /// Sitzungsprüfung (60 s) auch die verlassene Verbindung zur Anmeldung (ZugriffUmleitung). Ohne Browser bricht der
+    /// JS-Aufruf ab, Blazor meldet « Navigation failed … » und « Unhandled exception in circuit » – je ein Eintrag im
+    /// Fehlerjournal pro verlassenem Gerät (Klicktest 20.11.2026: 26 von 34 Einträgen). Kein Fehler der App, nicht protokolliert.
+    /// </summary>
+    public static bool IstVerlasseneVerbindung(Exception ex)
+        => ex is OperationCanceledException or Microsoft.JSInterop.JSDisconnectedException
+           && ex.StackTrace?.Contains("RemoteNavigationManager", StringComparison.Ordinal) == true;
 }
 
 /// <summary>Schreibt den Puffer im Hintergrund stapelweise in die Datenbank.</summary>
