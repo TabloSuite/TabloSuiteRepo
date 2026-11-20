@@ -17,6 +17,23 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (12:02, kurzer Verbindungsabbruch zur DB beim Anmelden, vorübergehend, nicht KI). → Punkt 1 unten: nur noch der KI-Test des Nutzers
   (macht er später; Beispielfragen mit erwarteten Antworten stehen im Chat vom 20.11. nachmittags und unten in Punkt 1). Punkt 3 später.
 
+**>>> 20.11. abends – Klicktest « wie ein Mensch » beider Apps (vor dem Nacht-Test des Nutzers mit Sado):**
+- Zwei Agenten (Worktrees, eigene Test-DBs `ENOTE_E2E_2011` / `SKOULOU_E2E_2011`, Berichte `%TEMP%\e2e-2011\<app>\BERICHT.md`).
+  Regeln seit heute: nur klicken, nach jedem Schritt sichtbaren Inhalt prüfen (Lehre aus Fatal 2), Normaltest + Fehlersuche.
+- **SKOULOU** (534 Schritte, ganzes Schuljahr bis Jahresbilanz + Semester-Schule): Bulletin-Zahlen alle richtig (Bildschirm + PDF).
+  Behoben: Koeffizient nach Veröffentlichung fest (107c08f), Gruppen-Bilan nur bewertete Fächer + « Rang : Non classé » (936a28c),
+  Fehlerjournal ohne Abbrüche verlassener Verbindungen (cf4779d, 76f2f4b).
+- **eNOTE** (285 Schritte Endlauf): behoben Admin-Zuweisung an Responsable (Liste leer, Regression aus 9c9a229; 34ab14e),
+  Registrierung lange Eingaben/englische Meldungen (91fd0bd), überlange Mitarbeiternamen blockierten Kasse (b88d1b4),
+  Preis « 1.500 » = 1,50 F (0ca14fe; dazu Tarife/Commission 2aab421), langsames Netz « Connexion en cours… » (7e7582e).
+  Produktion lesend: keine Namen > 60, keine Preise mit Nachkomma.
+- Tests: eNOTE 565, SKOULOU 718, Home 9 grün. **Alles nur lokal committet (Nutzer: « pushen wenn ich wieder da bin »).**
+- **Offene Fragen an den Nutzer:** SKOULOU Datumsfeld nur Monatsblättern (Geburtsdatum = 152 Klicks) → Jahr/Monat-Wahl?;
+  Koeffizient ganzes Jahr fest oder in Rectification änderbar?; Registrierung bei Serverablehnung am langsamen Netz Eingaben merken
+  (nach Deploy); Rectification nur geänderte Bulletins?; Schulstart mitten im Jahr. eNOTE: F1 Commission geht bei erneuter Zuweisung
+  an früheren PO verloren (übernehmen?); Mailversand über Warteschlange statt im Klick?; « Déconnecter » Gerät sofort aussperren?;
+  Registrierungsbremse 10/Tag je Anschluss (Mobilfunk-NAT)?; PO darf Reçus öffnen?; Ticket nach F5 leer.
+
 **>>> 20.11. abends – KI-Hilfe: Admin und PO dürfen alles fragen (gebaut, Deploy beider Apps nötig):**
 - Nutzer: « nur Admin und PO benutzen die KI zunächst, aber sie dürfen alles fragen »; « die KI bei POs soll nichts von Admin-Menüs
   kennen »; « Besitzer soll später, wenn die KI frei ist, auch nichts von Admin/PO wissen » – Prinzip **nach unten**.
