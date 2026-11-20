@@ -407,6 +407,9 @@ public partial class Admin(
         ausgewaehlterPoId = poId;
         ausgewaehlterPoName = name;
         zuweisungen = await produktOwnerService.GetZuweisungenAsync(poId);
+        // Klicktest 20.11.2026: seit 9c9a229 fehlte das Laden der Läden – die Liste « établissements de … » blieb leer
+        // (« Aucun établissement disponible pour une affectation »), bis man etwas ins Suchfeld tippte.
+        await LadePoSalonsAsync();
     }
 
     private async Task ToggleZuweisungAsync(Guid salonId, bool zugewiesen)
