@@ -9,7 +9,7 @@ namespace Skoulou.WebApp.Services.Organisation;
 
 public sealed record LehrauftragKurz(Guid Id, Guid LehrerId, string Lehrer, decimal Wochenstunden);
 
-/// <param name="WahlfachGesperrt">Bulletins der Klasse veröffentlicht: Schalter und Regel sind für dieses Jahr fest.</param>
+/// <param name="WahlfachGesperrt">Bulletins der Klasse veröffentlicht: Schalter, Regel und Koeffizient sind für dieses Jahr fest.</param>
 /// <param name="NotenOhneWahl">Erfasste Noten von Schülern ohne diese Wahl (zählen nicht, bleiben gespeichert) – Hinweis im Dialog.</param>
 public sealed record KlassenfachZeile(Guid Id, Guid FachId, string Fach, string? Kuerzel, FachGruppe Gruppe, decimal Koeffizient,
     int Reihenfolge, IReadOnlyList<LehrauftragKurz> Lehrer, bool IstWahlfach = false, WahlfachRegel WahlfachRegel = WahlfachRegel.PunkteUeber10,
@@ -39,6 +39,14 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
     /// <summary>Schalter/Regel nach der ersten Veröffentlichung der Klasse (wie Bewertungen: Struktur, auch in einer Rectification fest).</summary>
     public const string MeldungWahlfachGesperrt =
         "Des bulletins sont déjà publiés pour cette classe : la matière facultative et sa règle ne peuvent plus changer cette année.";
+
+    /// <summary>
+    /// Koeffizienten (auch per Kopie oder « Appliquer au niveau ») nach der ersten Veröffentlichung der Klasse: fest wie die
+    /// Wahlfach-Regel (Klicktest 20.11.2026: sonst rechnet der Conseil der veröffentlichten Periode andere Moyennes als die
+    /// Bulletins der Familien, und eine spätere Rectification ersetzt still alle Bulletins mit dem neuen Koeffizienten).
+    /// </summary>
+    public const string MeldungKoeffizientGesperrt =
+        "Des bulletins sont déjà publiés pour cette classe : ses matières et coefficients ne peuvent plus changer cette année.";
 
     /// <summary>Wahl eines Schülers mit Bulletin (wie eine Note: nur während einer Rectification korrigierbar).</summary>
     public const string MeldungWahlGesperrt =
@@ -263,9 +271,15 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var kf = await KlassenfachAsync(db, a, klassenfachId, ct);
         await PruefeJahrOffenAsync(db, await db.Klassen.Where(k => k.Id == kf.KlasseId).Select(k => k.SchuljahrId).FirstAsync(ct), ct);
+        if (kf.Koeffizient == koeff) return;
+        if (await IstVeroeffentlichtAsync(db, kf.KlasseId, ct)) throw new FachFehler(MeldungKoeffizientGesperrt);
         kf.Koeffizient = koeff;
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>Hat die Klasse in diesem Jahr schon veröffentlichte Bulletins (auch in Rectification)?</summary>
+    private static Task<bool> IstVeroeffentlichtAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
+        => db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == klasseId, ct);
 
     /// <summary>Fach aus der Klasse entfernen, solange keine Noten/Appréciations und kein Stundenplan daran hängen.</summary>
     public async Task KlassenfachEntfernenAsync(Guid akteurId, Guid klassenfachId, CancellationToken ct = default)
@@ -297,6 +311,7 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         await OrgAbfragen.KlasseAsync(db, a, quelleKlasseId, ct);
         var ziel = await OrgAbfragen.KlasseAsync(db, a, zielKlasseId, ct);
         await PruefeJahrOffenAsync(db, ziel.SchuljahrId, ct);
+        if (await IstVeroeffentlichtAsync(db, ziel.Id, ct)) throw new FachFehler(MeldungKoeffizientGesperrt);
         var anzahl = await KopiereInAsync(db, a.SchuleId, quelleKlasseId, ziel.Id, ct);
         await db.SaveChangesAsync(ct);
         return anzahl;
@@ -310,7 +325,9 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var quelle = await OrgAbfragen.KlasseAsync(db, a, quelleKlasseId, ct);
         if (quelle.StufeId is null) throw new FachFehler("Cette classe n'a pas de niveau : choisissez d'abord son niveau.");
         await PruefeJahrOffenAsync(db, quelle.SchuljahrId, ct);
-        var ziele = await db.Klassen.Where(k => k.SchuljahrId == quelle.SchuljahrId && k.StufeId == quelle.StufeId && k.Id != quelle.Id && k.Aktiv)
+        // Klassen mit veröffentlichten Bulletins behalten ihre Fächer, Koeffizienten und Wahlfach-Regeln (MeldungKoeffizientGesperrt).
+        var ziele = await db.Klassen.Where(k => k.SchuljahrId == quelle.SchuljahrId && k.StufeId == quelle.StufeId && k.Id != quelle.Id && k.Aktiv
+                                               && !db.KlassenVeroeffentlichungen.Any(v => v.KlasseId == k.Id))
             .Select(k => k.Id).ToListAsync(ct);
         foreach (var ziel in ziele) await KopiereInAsync(db, a.SchuleId, quelle.Id, ziel, ct);
         await db.SaveChangesAsync(ct);

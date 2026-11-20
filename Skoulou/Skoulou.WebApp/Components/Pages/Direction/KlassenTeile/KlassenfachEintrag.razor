@@ -14,7 +14,7 @@
         }
     </div>
     <div class="org-kf-koeff">
-        <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen)" />
+        <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen || Fach.WahlfachGesperrt)" Hinweis="@(Offen && Fach.WahlfachGesperrt ? "Fixé : bulletins publiés" : null)" />
     </div>
     <div class="org-kf-lehrer">
         @foreach (var l in Fach.Lehrer)

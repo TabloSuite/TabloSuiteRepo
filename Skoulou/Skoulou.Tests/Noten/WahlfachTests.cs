@@ -276,6 +276,39 @@ public class WahlfachTests
         await Assert.ThrowsAsync<FachFehler>(() => u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.NurInformation));
     }
 
+    /// <summary>
+    /// Klicktest 20.11.2026: nach der Veröffentlichung ließ sich der Koeffizient noch ändern (direkt, per Kopie oder « Appliquer au
+    /// niveau » – Letzteres überschrieb sogar die gesperrte Wahlfach-Regel). Danach zeigte der Conseil der veröffentlichten Periode
+    /// andere Moyennes als die Bulletins der Familien. Jetzt: fest wie die Wahlfach-Regel; unveränderter Wert speichert still.
+    /// </summary>
+    [Fact]
+    public async Task Nach_der_Veroeffentlichung_sind_Koeffizienten_fest_auch_beim_Kopieren()
+    {
+        var (w, _) = await BenotetAsync();
+        var u = w.O.D.Unterricht;
+        await w.VeroeffentlichenAsync();
+        async Task<Klassenfach> Kf(Guid id) => await w.MitDbAsync(db => db.Klassenfaecher.AsNoTracking().SingleAsync(k => k.Id == id));
+        var vorher = await Kf(w.O.Kf6AMath);
+
+        Assert.Equal(UnterrichtService.MeldungKoeffizientGesperrt,
+            (await Assert.ThrowsAsync<FachFehler>(() => u.KoeffizientSetzenAsync(w.D, w.O.Kf6AMath, vorher.Koeffizient + 1))).Message);
+        await u.KoeffizientSetzenAsync(w.D, w.O.Kf6AMath, vorher.Koeffizient);
+
+        // 6e B (nicht veröffentlicht) als Quelle: Kopie in die 6e A abgewiesen, « Appliquer au niveau » lässt die 6e A aus.
+        await u.KoeffizientSetzenAsync(w.D, w.O.Kf6BMath, 7);
+        Assert.Equal(UnterrichtService.MeldungKoeffizientGesperrt,
+            (await Assert.ThrowsAsync<FachFehler>(() => u.KoeffizientenKopierenAsync(w.D, w.O.Klasse6B, w.O.Klasse6A))).Message);
+        Assert.Equal(0, await u.KoeffizientenAufStufeAsync(w.D, w.O.Klasse6B));
+        var nachher = await Kf(w.O.Kf6AMath);
+        Assert.Equal(vorher.Koeffizient, nachher.Koeffizient);
+        Assert.Equal((true, WahlfachRegel.PunkteUeber10), ((await Kf(w.O.Kf6AFr)).IstWahlfach, (await Kf(w.O.Kf6AFr)).WahlfachRegel));
+        Assert.True((await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).All(f => f.WahlfachGesperrt));
+
+        // Die 6e A als Quelle für noch offene Klassen bleibt erlaubt.
+        Assert.Equal(1, await u.KoeffizientenAufStufeAsync(w.D, w.O.Klasse6A));
+        Assert.Equal(vorher.Koeffizient, (await Kf(w.O.Kf6BMath)).Koeffizient);
+    }
+
     [Fact]
     public async Task Jahreswechsel_uebernimmt_die_Wahl_wo_das_Fach_facultative_bleibt()
     {
