@@ -1,38 +1,45 @@
-# TabloSuite – Arbeitsstand 19.11.2026 nachts (alles deployt, KI-Schlüssel gesetzt – morgen weiter)
+# TabloSuite – Arbeitsstand 20.11.2026 mittags (KI läuft mit Workspace-Header – Einstellung + Deploy beim Nutzer)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 19.11.2026 nachts (Sitzungsende, Nutzer: « wir machen morgen weiter »)
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 20.11.2026 mittags
 
-**>>> (20.11. ~09:40) KI – ZWEITE Ursache nach dem Schlüsseltausch:** Der neue Schlüssel ist gültig, aber **an keinen Workspace gebunden**.
-  SKOULOU 08:26 UTC: Anthropic 400 « This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id
-  header … or use an API key that is scoped to a workspace ». Console zeigte 0 $ / keine Aktivität. **Lösung ohne Code:** in
-  platform.claude.com/settings/keys › « Create key » den Schlüssel auf den **Default Workspace** beschränken, in beiden Apps als
-  `Ki__AnthropicApiKey` eintragen, alten Schlüssel löschen. (Alternative wäre Header `anthropic-workspace-id` per Code – nicht gewählt.)
-  Danach `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (Mini-Anfrage) oder Nutzer testet als Admin.
-- eNOTE 08:17 UTC beim Kaltstart: JSException « enoteRegisterUserMenu is not a function » beendete die Blazor-Verbindung → behoben
-  (73c9c6b, MainLayout fängt JS-Fehler ab, Browser-Test mit blockiertem enote.js). **eNOTE muss dafür deployt werden.**
-- Hinweis: am 20.11. arbeiteten zwei Chat-Sitzungen parallel im Repo (f1cccf0, dfc5807 + uncommittete Bon-/Barcode-/Video-Änderungen der
-  anderen Sitzung) – fremde Änderungen nicht mitcommitten.
+**>>> ZUERST – beim Nutzer offen (Reihenfolge):**
+1. **KI-Hilfe:** In Azure bei **eNOTE und SKOULOU** die App-Einstellung `Ki__WorkspaceId = wrkspc_01JfujuGvN9AzxanMQNRh3uS` setzen
+   (Schlüssel `Ki__AnthropicApiKey` bleibt wie er ist) und **beide Apps deployen** (Code bf3caf5 schickt dann den Header
+   `anthropic-workspace-id`). Danach prüfen: `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (liest `Ki__WorkspaceId` mit) und
+   Nutzer testet als Admin Aide › « Poser une question » (Testfragen siehe unten « MORGEN (20.11.) ZUERST », Punkt 1). Danach Prüfskript
+   + `%TEMP%\sdk-probe`, `%TEMP%\etikett-probe`, `%TEMP%\materiel-video` in den Papierkorb.
+2. **Nach dem Deploy am iPhone bestätigen:** Menü « Plus » – Seite dahinter rollt nicht mehr / lädt nicht neu (beide Apps); eNOTE-Reçu
+   mittig; neues Video unter Vidéos d'aide › Administrateur. Weiter offen von gestern: iPhone-Login (Ladekreis), Registrierung,
+   erneute Zuweisung an früheren Responsable, Mail an neuen Responsable.
+3. **Gerätekauf:** Scanner NETUM NT-1228BC ist **1D/CCD – liest keine QR-Codes** → 2D-Modell empfohlen; Bondrucker Bisofice 80 mm
+   USB+LAN passt nur am Windows-PC (vom iPhone kein Druck, kein AirPrint). Etiketten: A4 70 × 37 mm, 24 je Bogen.
 
-**>>> (20.11. vormittags) Nutzerpunkte 1–3 + Gerätekauf:**
-- **KI-Test schlug fehl (« momentanément indisponible »): Ursache = falscher Wert in `Ki__AnthropicApiKey`** (eNOTE + SKOULOU gleich):
-  31 Zeichen, beginnt NICHT mit `sk-ant-api` → Anthropic antwortet 401. Echte Schlüssel beginnen mit `sk-ant-api03-` und sind ~108
-  Zeichen lang (nur einmal beim Erstellen sichtbar). **Nutzer: neuen Schlüssel in console.anthropic.com › API Keys erzeugen, in beiden
-  Apps eintragen, Guthaben (Billing) prüfen.** Prüfwerkzeug (zeigt den Schlüssel nie): `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou`
-  (Mini-Anfrage, gibt HTTP-Status + Fehlertext aus) – danach löschen. Code: Konfigurationsfehler (401/403/404/400) jetzt mit Ausnahme
-  geloggt → stehen künftig in Journaux/Fehlerjournal (vorher nirgends).
-- **Menü-Blatt « Plus » am Handy**: Seite dahinter rollte mit, Ziehen nach unten lud die Seite neu (iPhone, Google-App). Fix in beiden
-  Apps: `html:has(…backdrop)` overflow hidden + overscroll-behavior none, Wisch-Sperre in `enote.js`/`skoulou.js` (touchmove nur
-  blockiert, solange Blatt/Fenster/Video offen; rollbare Bereiche + Eingabefelder bleiben frei). Playwright-Touch-Test (CDP) grün;
-  **am iPhone vom Nutzer nach dem Deploy bestätigen lassen** (kein WebKit lokal).
-- Video Drucker/Scanner: **noch nicht angelegt** (erst mit echten Geräten). Ort dann: `TabloSuite Videos\ENote Videos\projekte\lernen-v3\<name>`.
-- Gerätewahl des Nutzers (20.11.): Scanner NETUM NT-1228BC (**nur 1D/CCD – liest keine QR-Codes**, eNOTE nutzt QR für Hersteller-
-  codes und Etiketten > 40 Zeichen → 2D-Modell empfohlen), Bondrucker Bisofice 80 mm USB+LAN ESC/POS (am Windows-PC mit Treiber ok,
-  vom iPhone kein Druck – kein AirPrint; Android nur mit Druckdienst-App). Siehe `eNOTE/Bon-Drucken.md`.
+**>>> ERLEDIGT 20.11. (alles committet und gepusht bis c427071; zwei Chat-Sitzungen arbeiteten parallel, alles zusammengeführt):**
+- **KI-Fehler « momentanément indisponible » – drei Ursachen nacheinander:** (a) erster Wert war gar kein Schlüssel (31 Zeichen) → 401;
+  (b) dann Service-Schlüssel `sk-ant-svc…`, (c) dann Benutzer-Schlüssel `sk-ant-usr…` – beide **ohne Workspace** → 400 « not scoped to
+  a workspace ». **Gelöst per Code (bf3caf5):** optionale Einstellung `Ki__WorkspaceId` → Header `anthropic-workspace-id`
+  (`ClientOptions.ExtraHeaders`, beide Apps). Mit dem Schlüssel aus Azure + Workspace `wrkspc_01JfujuGvN9AzxanMQNRh3uS` direkt geprüft:
+  **HTTP 200, Haiku 5.5 antwortet.** Konfigurationsfehler (401/403/404/400) werden jetzt mit Ausnahme geloggt → Journaux/Fehlerjournal
+  (f1cccf0). Doku: `eNOTE/Deployment-Azure.md`, `Skoulou/docs/Bauplan.md` §2.1.
+- **Menü-Blatt « Plus » am Handy** (f1cccf0, beide Apps): Seite dahinter rollte mit, Ziehen nach unten lud die Seite neu (iPhone,
+  Google-App) → `html:has(…backdrop)` overflow hidden + overscroll-behavior none, Wisch-Sperre in `enote.js`/`skoulou.js` (touchmove
+  nur blockiert, solange Blatt/Fenster/Video offen). Playwright-Touch-Test (CDP) grün; am iPhone noch bestätigen.
+- **eNOTE Kaltstart-Absturz** (73c9c6b, andere Sitzung): JSException « enoteRegisterUserMenu is not a function » beendete die
+  Blazor-Verbindung → MainLayout fängt JS-Fehler ab.
+- **eNOTE Étiquettes** (dfc5807, Nutzerentscheidung): A4-Bogen exakt **70 × 37 mm, 3 × 8 = 24** (vorher eigenes Raster, passte auf keinen
+  Bogen), ohne Rahmenlinien, Dialog nennt Bogen + « Taille réelle (100 %) ». Reçu am Bildschirm mittig als Papierstreifen (421d33a,
+  Druck unverändert). « le chiffre de contrôle » (statt « la »). KI-Wissensbasis « Bon à savoir » kennt die Hardware-Empfehlung.
+- **Neues Lernvideo « Scanner et imprimantes : quel matériel, et pourquoi »** (c427071, 7:20, Administrateur + Responsable, Nutzer:
+  « sehr ausführlich ») – erstes gemischtes Video (Folien + Aufnahmen), Projekt `lernen-v3/admin-materiel`, Notizen README lernen-v3
+  « 20.11.2026 ». Inhalt = `eNOTE/Bon-Drucken.md` « Empfehlung für die Läden ». Pipeline-Fallen behoben: Video-Ordner-Pfad in
+  `lernen3-film.mjs`/`render.sh` (seit 19.11. unter TabloSuiteData); Folien-Videos mit `python bau.py` (ohne `-I`) bauen.
+  Aufnahme-App gestoppt; lokale DB zurückgesetzt (Prüfzeile: Code/Bestand wie vorher, keine Kasse offen).
+- Tests: eNOTE 544, SKOULOU 707 grün. Keine Migration.
 
 **>>> MORGEN (20.11.) ZUERST – Reihenfolge:**
 1. **KI-Hilfe « Poser une question »**: Nutzer nach seinem Test als Admin fragen (beide Apps, Aide › « Poser une question »; nur Admin +
