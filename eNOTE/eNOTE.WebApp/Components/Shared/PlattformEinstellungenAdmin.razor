@@ -60,5 +60,11 @@
             kiFuerAlle = !wert;
             Toast.ZeigeFehler(ex.Message);
         }
+        catch (Exception ex) when (ex is Microsoft.EntityFrameworkCore.DbUpdateException or Microsoft.Data.SqlClient.SqlException)
+        {
+            // z. B. Tabelle PlattformEinstellungen noch nicht angelegt (Migration fehlt): Seite bleibt bedienbar.
+            kiFuerAlle = !wert;
+            Toast.ZeigeFehler("Le réglage n'a pas pu être enregistré. Réessayez plus tard.");
+        }
     }
 }
