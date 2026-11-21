@@ -51,7 +51,7 @@ public class KontenTests
         Assert.Equal("CA260004", detail.Daten.Matrikel);
         Assert.Matches("^CA26[0-9]{4}$", detail.Daten.Matrikel!);
         Assert.Equal("6e A", detail.Aktive!.Klasse);
-        Assert.Equal(OrgWelt.Heute, detail.Aktive.Von);
+        Assert.Equal(new DateOnly(2026, 9, 1), detail.Aktive.Von);   // Standard: Beginn des Schuljahres (21.11.2026)
         Assert.Equal("6e A", erster.Zugaenge[0].Zusatz);
 
         // Manuell vergebene Nummer wird von der Automatik übersprungen; manuelle Dubletten werden abgewiesen.

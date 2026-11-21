@@ -1,4 +1,4 @@
-@* Einschreiben (einzeln oder mehrere), « Changer de classe », « Départ de l'élève », Einschreibung annulieren. *@
+@* Einschreiben (einzeln oder mehrere), « Changer de classe », « Départ de l'élève », Einschreibung annulieren, Beginn korrigieren. *@
 @inherits SkoulouSeite
 @inject EinschreibungService Einschreibungen
 @inject TimeProvider Uhr
@@ -14,7 +14,7 @@
                 }
                 @if (a.AktuelleKlasse is not null)
                 {
-                    <p class="sk-leise">Classe actuelle : <strong>@a.AktuelleKlasse</strong>@(a.AktivSeit is { } seit ? $" depuis le {SkoulouKultur.Datum(seit)}" : "")</p>
+                    <p class="sk-leise">@(a.Art == EinschreibungsAktion.Beginn ? "Classe" : "Classe actuelle") : <strong>@a.AktuelleKlasse</strong>@(a.AktivSeit is { } seit ? $" depuis le {SkoulouKultur.Datum(seit)}" : "")</p>
                 }
                 @if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Wechsel or EinschreibungsAktion.Sammel)
                 {
@@ -22,8 +22,7 @@
                 }
                 @if (a.Art != EinschreibungsAktion.Stornieren)
                 {
-                    <DatumFeld Label="@DatumLabel" @bind-Wert="datum" Pflicht="true" Min="JahrBeginn" Max="JahrEnde" Fehler="@(feld == "datum" ? Fehlermeldung : null)"
-                               Hinweis="@(a.Art == EinschreibungsAktion.Wechsel ? "L'ancienne inscription se termine la veille ; les notes déjà saisies restent attachées à l'ancienne classe." : null)" />
+                    <DatumFeld Label="@DatumLabel" @bind-Wert="datum" Pflicht="true" Min="@DatumMin" Max="@DatumMax" Fehler="@(feld == "datum" ? Fehlermeldung : null)" Hinweis="@DatumHinweis" />
                 }
                 @if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel)
                 {
@@ -57,6 +56,8 @@
     [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
     [Parameter] public DateOnly? JahrBeginn { get; set; }
     [Parameter] public DateOnly? JahrEnde { get; set; }
+    /// <summary>Schuljahr der Klassenauswahl (für die Vorgabe « Inscrit(e) depuis le »).</summary>
+    [Parameter] public Guid? JahrId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnErledigt { get; set; }
 
@@ -84,6 +85,7 @@
         EinschreibungsAktion.Austritt => "Départ de l'élève",
         EinschreibungsAktion.Stornieren => "Annuler l'inscription",
         EinschreibungsAktion.Sammel => $"Inscrire {Name} dans une classe",
+        EinschreibungsAktion.Beginn => "Corriger la date d'inscription",
         _ => "Inscrire dans une classe"
     };
 
@@ -91,26 +93,57 @@
     {
         EinschreibungsAktion.Wechsel => "Dans la nouvelle classe à partir du",
         EinschreibungsAktion.Austritt => "Dernier jour dans l'établissement",
-        _ => "Inscrit(e) à partir du"
+        _ => "Inscrit(e) depuis le"
     };
+
+    private string? DatumHinweis => Anfrage?.Art switch
+    {
+        EinschreibungsAktion.Wechsel => "L'ancienne inscription se termine la veille ; les notes déjà saisies restent attachées à l'ancienne classe.",
+        EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel => HinweisBeginn,
+        EinschreibungsAktion.Beginn => "Les évaluations antérieures à cette date ne sont pas attendues pour l'élève (« Arrivé(e) le … » dans le cahier de notes).",
+        _ => null
+    };
+
+    /// <summary>Hinweis zum Feld « Inscrit(e) depuis le » (auch Anlage und Validierung).</summary>
+    public const string HinweisBeginn = "Par défaut : début de l'année scolaire. Pour un élève arrivé en cours d'année, indiquez son premier jour.";
+
+    private bool IstBeginnFeld => Anfrage?.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel or EinschreibungsAktion.Beginn;
+
+    private DateOnly? DatumMin => Anfrage?.Art == EinschreibungsAktion.Beginn ? Anfrage.Min : JahrBeginn;
+
+    // « Inscrit(e) depuis le »: höchstens heute (laufendes Jahr) bzw. Jahresende; Wechsel und Départ: bis Jahresende.
+    private DateOnly? DatumMax => Anfrage?.Art == EinschreibungsAktion.Beginn ? Anfrage.Max
+        : IstBeginnFeld && JahrBeginn is { } b && JahrEnde is { } e ? EinschreibungsBeginn.Hoechstens(b, e, new SchulZeit(Uhr).Heute) : JahrEnde;
 
     private string Knopf => Anfrage?.Art switch
     {
         EinschreibungsAktion.Wechsel => "Changer de classe",
         EinschreibungsAktion.Austritt => "Enregistrer le départ",
         EinschreibungsAktion.Stornieren => "Annuler l'inscription",
+        EinschreibungsAktion.Beginn => "Enregistrer la date",
         _ => "Inscrire"
     };
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Anfrage is not null && !ReferenceEquals(Anfrage, geladen))
+        if (Anfrage is { } a && !ReferenceEquals(Anfrage, geladen))
         {
             geladen = Anfrage;
             var heute = new SchulZeit(Uhr).Heute;
             if (JahrBeginn is { } b && heute < b) heute = b;
             if (JahrEnde is { } e && heute > e) heute = e;
             (klasseId, datum, wiederholer, archivieren, grund, feld, Fehlermeldung) = (null, heute, false, false, null, null, null);
+            if (a.Art == EinschreibungsAktion.Beginn)
+            {
+                datum = a.AktivSeit;
+            }
+            else if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel)
+            {
+                // Standard: Beginn des Schuljahres (bzw. Tag nach dem Ende einer früheren Einschreibung desselben Jahres).
+                datum = JahrBeginn;
+                if (JahrId is { } jahr)
+                    await AusfuehrenAsync(async () => datum = await Einschreibungen.VorgabeBeginnAsync(Ich.KontoId, jahr, a.SchuelerIds));
+            }
         }
         else if (Anfrage is null)
         {
@@ -141,6 +174,10 @@
                 case EinschreibungsAktion.Stornieren:
                     await Einschreibungen.StornierenAsync(Ich.KontoId, a.EinschreibungId!.Value, grund);
                     Toast.ZeigeErfolg("L'inscription est annulée.");
+                    break;
+                case EinschreibungsAktion.Beginn:
+                    await Einschreibungen.BeginnKorrigierenAsync(Ich.KontoId, a.EinschreibungId!.Value, Pflicht(datum));
+                    Toast.ZeigeErfolg($"Date d'inscription corrigée : depuis le {SkoulouKultur.Datum(datum!.Value)}.");
                     break;
                 default:
                     var r = await Einschreibungen.MehrereEinschreibenAsync(Ich.KontoId, Pflicht(klasseId), a.SchuelerIds, Pflicht(datum), wiederholer);

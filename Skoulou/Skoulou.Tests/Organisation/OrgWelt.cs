@@ -101,6 +101,9 @@ internal sealed class OrgDienste
 internal sealed class OrgWelt
 {
     public static readonly DateOnly Heute = new(2026, 11, 13);
+
+    /// <summary>Anmeldung der Testschulen bei SKOULOU (vor dem Schuljahr 2026-2027).</summary>
+    public static readonly DateTime Angemeldet = new(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
     public static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 1, 2, 3, 4];
 
     private OrgWelt(OrgDienste d, string kennung)
@@ -158,8 +161,9 @@ internal sealed class OrgWelt
         Admin = Konto(db, Rollen.SuperAdmin, "admin", null);
         await db.SaveChangesAsync();
 
-        var a = new Schule { Name = SchulNameA, NameNormalisiert = TextNormalisierung.Schluessel(SchulNameA), Ort = "Lomé", Status = SchulStatus.Active, ResponsableId = Responsable, MatrikelPraefix = "CA", EssaiPerioden = 0 };
-        var b = new Schule { Name = "Collège Beta " + Kennung, NameNormalisiert = TextNormalisierung.Schluessel("Collège Beta " + Kennung), Ort = "Kara", Status = SchulStatus.Active, EssaiPerioden = 0 };
+        // Angemeldet vor dem Jahr 2026-2027 (fest statt der echten Uhr): Probezeit und « Perioden vor der Anmeldung » hängen davon ab.
+        var a = new Schule { Name = SchulNameA, NameNormalisiert = TextNormalisierung.Schluessel(SchulNameA), Ort = "Lomé", Status = SchulStatus.Active, ResponsableId = Responsable, MatrikelPraefix = "CA", EssaiPerioden = 0, ErstelltAmUtc = Angemeldet };
+        var b = new Schule { Name = "Collège Beta " + Kennung, NameNormalisiert = TextNormalisierung.Schluessel("Collège Beta " + Kennung), Ort = "Kara", Status = SchulStatus.Active, EssaiPerioden = 0, ErstelltAmUtc = Angemeldet };
         db.Schulen.AddRange(a, b);
         await db.SaveChangesAsync();
         SchuleA = a.Id;

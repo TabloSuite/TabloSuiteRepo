@@ -29,6 +29,27 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Perioden_vor_der_Anmeldung_der_Schule_werden_nie_berechnet()
+    {
+        // 21.11.2026: Einschreibungen beginnen standardmäßig am Schuljahresbeginn – eine Schule, die im Januar startet,
+        // zahlt das 1er trimestre (schon vorbei) nicht rückwirkend; das 2e trimestre normal.
+        var w = await FinanzWelt.ErstelleAsync();
+        await w.MitDbAsync(async db =>
+        {
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).ErstelltAmUtc = new DateTime(2027, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+            return await db.SaveChangesAsync();
+        });
+        w.Heute(new(2027, 3, 27));
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        Assert.Equal(w.Org.P2, (await EinzigeAsync(w)).PeriodeId);
+        var fehler = await Assert.ThrowsAsync<FachFehler>(() => w.Rechnungen.JetztAbrechnenAsync(w.Org.Admin, w.Org.P1));
+        Assert.Contains("avant l'inscription de l'établissement", fehler.Message);
+        var liste = await w.Rechnungen.AbrechenbareAsync(w.Org.Admin, w.Org.SchuleA);
+        Assert.Contains(liste, p => p.PeriodeId == w.Org.P1 && p.VorAnmeldung);
+        Assert.Contains(liste, p => p.PeriodeId == w.Org.P2 && !p.VorAnmeldung);
+    }
+
+    [Fact]
     public async Task Anteil_ist_Monatspreis_mal_Monate_der_Periode()
     {
         // 19.11.2026: P1 01.09.–18.12. (109 Tage) = 4 Monate, P2 04.01.–26.03. (82 Tage) = 3 Monate; eingefroren 1.250 je Monat.

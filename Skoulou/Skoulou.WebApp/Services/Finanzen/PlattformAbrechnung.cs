@@ -43,6 +43,11 @@ public sealed class PlattformAbrechnung(
                 if (manuell) throw new FachFehler("Cette période fait partie de la période d'essai de l'établissement : elle n'est pas facturée.");
                 return null;
             }
+            if (VorAnmeldung(p, schule))
+            {
+                if (manuell) throw new FachFehler(MeldungVorAnmeldung);
+                return null;
+            }
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 
             var (anteil, monate, monatspreis) = Anteil(jahr, p, schule, einstellung);
@@ -71,6 +76,15 @@ public sealed class PlattformAbrechnung(
             ergebnis.Anzahl, ergebnis.Betrag, ergebnis.Faellig, 0, ct);
         return ergebnis.Id;
     }
+
+    public const string MeldungVorAnmeldung = "Cette période s'est terminée avant l'inscription de l'établissement sur SKOULOU : elle n'est pas facturée.";
+
+    /// <summary>
+    /// Perioden, die vor der Anmeldung der Schule endeten, stellt SKOULOU nie in Rechnung (wie bei den Kandidaten der
+    /// Probezeit). Seit 21.11.2026 beginnen Einschreibungen standardmäßig am Beginn des Schuljahres – eine Schule, die
+    /// mitten im Jahr startet, zahlt dadurch nicht rückwirkend für Perioden, in denen sie SKOULOU noch nicht nutzte.
+    /// </summary>
+    internal static bool VorAnmeldung(Periode p, Schule schule) => p.Ende < DateOnly.FromDateTime(schule.ErstelltAmUtc);
 
     /// <summary>
     /// Anteil je Schüler für die Periode (Regel 7, seit 19.11.2026): eingefrorener Monatspreis × Monate der Periode,

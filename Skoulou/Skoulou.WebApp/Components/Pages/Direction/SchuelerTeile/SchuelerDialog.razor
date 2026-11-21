@@ -2,6 +2,7 @@
 @inherits SkoulouSeite
 @inject SchuelerService Schueler
 @inject KontoVerwaltungService Konten
+@inject TimeProvider Uhr
 
 <ModalDialog Open="Open" Title="@(SchuelerId is null ? "Nouvel élève" : $"Modifier {vorname} {nachname}")" Oberzeile="Élèves" Breite="sk-modal-lg"
              SchliessenMitEscape="false" ErrorMessage="@Fehlermeldung" OnClose="OnClose">
@@ -52,6 +53,11 @@
                                      Hinweis="@(KlassenOptionen.Count <= 1 ? "Aucune classe dans l'année choisie." : null)" />
                         <Schalter @bind-Wert="wiederholer" Label="Redoublant(e)" />
                     </div>
+                    @if (klasseId is not null && JahrBeginn is { } jb && JahrEnde is { } je)
+                    {
+                        <DatumFeld Label="Inscrit(e) depuis le" @bind-Wert="beginn" Pflicht="true" Min="jb" Max="@EinschreibungsBeginn.Hoechstens(jb, je, new SchulZeit(Uhr).Heute)"
+                                   Fehler="@FeldFehler("datum")" Hinweis="@EinschreibungDialog.HinweisBeginn" />
+                    }
                 }
             </div>
         }
@@ -68,6 +74,9 @@
     [Parameter] public Guid? SchuelerId { get; set; }
     [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
     [Parameter] public Guid? VorgabeKlasse { get; set; }
+    /// <summary>Schuljahr der Klassenauswahl: Grenzen und Vorgabe von « Inscrit(e) depuis le » (Beginn des Schuljahres).</summary>
+    [Parameter] public DateOnly? JahrBeginn { get; set; }
+    [Parameter] public DateOnly? JahrEnde { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<ZugangsStapel?> OnGespeichert { get; set; }
 
@@ -76,7 +85,7 @@
 
     private string? vorname, nachname, geburtsort, nationalitaet, matrikel, identifiant, elternTelefon, elternEmail, email, telefon, feld;
     private Geschlecht geschlecht;
-    private DateOnly? geburtsdatum;
+    private DateOnly? geburtsdatum, beginn;
     private bool interne, affecte, wiederholer, warOffen, laedt;
     private Guid? klasseId;
 
@@ -90,7 +99,7 @@
         if (Open && !warOffen)
         {
             warOffen = true;
-            (Fehlermeldung, feld, klasseId, wiederholer) = (null, null, VorgabeKlasse, false);
+            (Fehlermeldung, feld, klasseId, wiederholer, beginn) = (null, null, VorgabeKlasse, false, JahrBeginn);
             if (SchuelerId is { } id)
             {
                 laedt = true;
@@ -132,7 +141,7 @@
             }
             else
             {
-                await OnGespeichert.InvokeAsync(await Schueler.AnlegenAsync(Ich.KontoId, e, klasseId, wiederholer));
+                await OnGespeichert.InvokeAsync(await Schueler.AnlegenAsync(Ich.KontoId, e, klasseId, wiederholer, klasseId is null ? null : beginn));
             }
         }
         catch (Skoulou.Core.Fehler.FachFehler f)

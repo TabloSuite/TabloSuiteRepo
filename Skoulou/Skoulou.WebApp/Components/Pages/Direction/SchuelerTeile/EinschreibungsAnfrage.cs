@@ -7,9 +7,15 @@ public enum EinschreibungsAktion
     Wechsel,
     Austritt,
     Stornieren,
-    Sammel
+    Sammel,
+
+    /// <summary>« Corriger la date d'inscription » (Beginn einer bestehenden Einschreibung).</summary>
+    Beginn
 }
 
-/// <summary>Anfrage an den Einschreibungsdialog (ein Schüler oder – nur Sammel – mehrere).</summary>
+/// <summary>
+/// Anfrage an den Einschreibungsdialog (ein Schüler oder – nur Sammel – mehrere). Bei « Beginn » grenzen
+/// <paramref name="Min"/>/<paramref name="Max"/> das Datum auf das Schuljahr der Einschreibung ein.
+/// </summary>
 public sealed record EinschreibungsAnfrage(EinschreibungsAktion Art, IReadOnlyList<Guid> SchuelerIds, IReadOnlyList<string> Namen,
-    Guid? EinschreibungId = null, string? AktuelleKlasse = null, DateOnly? AktivSeit = null);
+    Guid? EinschreibungId = null, string? AktuelleKlasse = null, DateOnly? AktivSeit = null, DateOnly? Min = null, DateOnly? Max = null);

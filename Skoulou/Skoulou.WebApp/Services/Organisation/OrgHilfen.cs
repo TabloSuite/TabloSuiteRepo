@@ -22,6 +22,7 @@ public static class OrgAudit
     public const string KlasseGewechselt = "einschreibung.klassenwechsel";
     public const string Austritt = "einschreibung.depart";
     public const string EinschreibungStorniert = "einschreibung.annulee";
+    public const string EinschreibungsBeginnKorrigiert = "einschreibung.debut-corrige";
     public const string ElternVerknuepft = "eltern.lien";
     public const string ElternGetrennt = "eltern.lien-retire";
     public const string SchuljahrAngelegt = "schuljahr.angelegt";
@@ -52,6 +53,7 @@ public static class OrgAudit
         KlasseGewechselt => "Changement de classe",
         Austritt => "Départ d'un élève",
         EinschreibungStorniert => "Inscription annulée",
+        EinschreibungsBeginnKorrigiert => "Date d'inscription corrigée",
         ElternVerknuepft => "Parent lié",
         ElternGetrennt => "Lien parent retiré",
         SchuljahrAngelegt => "Année scolaire créée",

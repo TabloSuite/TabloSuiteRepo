@@ -33,7 +33,7 @@ public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadO
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
 public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler,
-    bool Essai = false)
+    bool Essai = false, bool VorAnmeldung = false)
 {
     public bool Begonnen(DateOnly heute) => Beginn <= heute;
 }
@@ -355,7 +355,8 @@ public sealed class RechnungService(
             {
                 var (anteil, _, _) = PlattformAbrechnung.Anteil(jahr, p, schule, einstellung);
                 var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, mitStornierten: false, ct);
-                liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id)));
+                liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id),
+                    PlattformAbrechnung.VorAnmeldung(p, schule)));
             }
         return liste;
     }

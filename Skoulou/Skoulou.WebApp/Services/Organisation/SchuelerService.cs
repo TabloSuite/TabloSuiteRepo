@@ -24,7 +24,8 @@ public sealed record SchuelerEingabe(string? Vorname, string? Nachname, Geschlec
     string? Identifiant, string? Matrikel);
 
 public sealed record EinschreibungZeile(Guid Id, Guid SchuljahrId, string Jahr, Guid KlasseId, string Klasse, DateOnly Von, DateOnly? Bis,
-    EinschreibungsStatus Status, bool Wiederholer, string? Austrittsgrund, bool Storniert, string? StornoGrund);
+    EinschreibungsStatus Status, bool Wiederholer, string? Austrittsgrund, bool Storniert, string? StornoGrund,
+    DateOnly JahrBeginn = default, DateOnly JahrEnde = default, bool JahrOffen = false);
 
 public sealed record ElternKurz(Guid KontoId, string Name, string Identifiant, string Beziehung, string? Telefon, KontoStatus Status);
 
@@ -124,7 +125,8 @@ public sealed class SchuelerService(
                                      where e.SchuelerId == k.Id
                                      orderby e.Von descending, e.ErstelltAmUtc descending
                                      select new EinschreibungZeile(e.Id, j.Id, j.Bezeichnung, kl.Id, kl.Name, e.Von, e.Bis, e.Status, e.IstWiederholer,
-                                         e.Austrittsgrund, e.StorniertAmUtc != null, e.StornoGrund)).ToListAsync(ct);
+                                         e.Austrittsgrund, e.StorniertAmUtc != null, e.StornoGrund, j.Beginn, j.Ende,
+                                         j.Status != SchuljahrStatus.Abgeschlossen)).ToListAsync(ct);
         var eltern = await (from ek in db.ElternKinder.AsNoTracking()
                             join u in db.Users on ek.ElternId equals u.Id
                             where ek.SchuelerId == k.Id
@@ -135,8 +137,12 @@ public sealed class SchuelerService(
         return new SchuelerDetail(k.Id, k.UserName!, k.Status, k.SelbstRegistriert, daten, k.FotoMediumId, k.LetzteAnmeldungUtc, einschreibungen, eltern);
     }
 
-    /// <summary>Schüler anlegen (sofort aktiv, Startpasswort, Matrikel automatisch) – optional gleich in eine Klasse.</summary>
-    public async Task<ZugangsStapel> AnlegenAsync(Guid akteurId, SchuelerEingabe e, Guid? klasseId, bool wiederholer = false, CancellationToken ct = default)
+    /// <summary>
+    /// Schüler anlegen (sofort aktiv, Startpasswort, Matrikel automatisch) – optional gleich in eine Klasse, eingeschrieben
+    /// ab <paramref name="von"/> (Standard: Beginn des Schuljahres, <see cref="EinschreibungsBeginn"/>).
+    /// </summary>
+    public async Task<ZugangsStapel> AnlegenAsync(Guid akteurId, SchuelerEingabe e, Guid? klasseId, bool wiederholer = false, DateOnly? von = null,
+        CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, ct: ct);
         var daten = Daten(e);
@@ -146,11 +152,13 @@ public sealed class SchuelerService(
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == a.SchuleId, ct);
             Klasse? klasse = null;
             Schuljahr? jahr = null;
+            var beginn = heute;
             if (klasseId is { } kid)
             {
                 klasse = await OrgAbfragen.KlasseAsync(db, a, kid, ct);
                 jahr = await db.Schuljahre.FirstAsync(j => j.Id == klasse.SchuljahrId, ct);
                 EinschreibungService.PruefeKlasseOffen(klasse, jahr);
+                beginn = EinschreibungService.Beginn(jahr, von);
             }
             var identifiant = await fabrik.IdentifiantAsync(db, e.Identifiant, daten.Konto.Vorname, daten.Konto.Nachname, ct: ct);
             var matrikel = daten.Matrikel is { } m
@@ -160,10 +168,9 @@ public sealed class SchuelerService(
             db.SchuelerProfile.Add(NeuesProfil(konto.Id, a.SchuleId, matrikel, daten));
             if (klasse is not null && jahr is not null)
             {
-                var von = heute < jahr.Beginn ? jahr.Beginn : heute > jahr.Ende ? jahr.Ende : heute;
                 db.Einschreibungen.Add(new Einschreibung
                 {
-                    SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasse.Id, Von = von,
+                    SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasse.Id, Von = beginn,
                     Status = EinschreibungsStatus.Active, IstWiederholer = wiederholer
                 });
             }
@@ -211,11 +218,13 @@ public sealed class SchuelerService(
         }, ct);
     }
 
-    /// <summary>« Valider l'inscription »: Selbstregistrierung freigeben und in einem Schritt einschreiben.</summary>
-    public async Task ValidierenAsync(Guid akteurId, Guid schuelerId, Guid klasseId, bool wiederholer, CancellationToken ct = default)
+    /// <summary>
+    /// « Valider l'inscription »: Selbstregistrierung freigeben und in einem Schritt einschreiben – ab <paramref name="von"/>
+    /// (Standard: Beginn des Schuljahres, <see cref="EinschreibungsBeginn"/>).
+    /// </summary>
+    public async Task ValidierenAsync(Guid akteurId, Guid schuelerId, Guid klasseId, bool wiederholer, DateOnly? von = null, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, ct: ct);
-        var heute = new SchulZeit(zeit).Heute;
         var (empfaenger, schulName, klassenName) = await dbFactory.TransaktionAsync(async db =>
         {
             var konto = await OrgAbfragen.KontoAsync(db, a, schuelerId, ct, Rollen.Schueler);
@@ -223,6 +232,7 @@ public sealed class SchuelerService(
             var klasse = await OrgAbfragen.KlasseAsync(db, a, klasseId, ct);
             var jahr = await db.Schuljahre.FirstAsync(j => j.Id == klasse.SchuljahrId, ct);
             EinschreibungService.PruefeKlasseOffen(klasse, jahr);
+            var beginn = EinschreibungService.Beginn(jahr, von);
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == a.SchuleId, ct);
             var profil = await db.SchuelerProfile.FirstOrDefaultAsync(p => p.KontoId == konto.Id, ct);
             if (profil is null)
@@ -238,10 +248,9 @@ public sealed class SchuelerService(
             konto.Status = KontoStatus.Actif;
             if (!await SchulAbfragen.AktiveEinschreibungen(db).AnyAsync(e => e.SchuelerId == konto.Id, ct))
             {
-                var von = heute < jahr.Beginn ? jahr.Beginn : heute > jahr.Ende ? jahr.Ende : heute;
                 db.Einschreibungen.Add(new Einschreibung
                 {
-                    SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasse.Id, Von = von,
+                    SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasse.Id, Von = beginn,
                     Status = EinschreibungsStatus.Active, IstWiederholer = wiederholer
                 });
             }

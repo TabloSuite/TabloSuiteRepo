@@ -17,7 +17,8 @@ public sealed record ImportFehler(int Zeile, string Person, string Meldung);
 public sealed record ImportZeile(int Nr, string Name, string? Identifiant, bool Vorgeschlagen, string? Zusatz, bool Gueltig);
 
 /// <summary>Vorschau eines Imports mit VOLLSTÄNDIGER Fehlerliste; gültige Zeilen können importiert werden.</summary>
-public sealed record ImportVorschau(Guid Id, ImportArt Art, string Datei, string? Jahr, IReadOnlyList<ImportZeile> Zeilen, IReadOnlyList<ImportFehler> Fehler)
+public sealed record ImportVorschau(Guid Id, ImportArt Art, string Datei, string? Jahr, IReadOnlyList<ImportZeile> Zeilen, IReadOnlyList<ImportFehler> Fehler,
+    DateOnly? JahrBeginn = null, DateOnly? JahrEnde = null)
 {
     public int Gueltig => Zeilen.Count(z => z.Gueltig);
     public int Ungueltig => Zeilen.Count - Gueltig;
@@ -67,7 +68,7 @@ public sealed class ImportService(
         var fehler = FehlerListe(geprueft);
         var name = Path.GetFileName(dateiname ?? "import.xlsx");
         var id = ablage.AblegenObjekt(a.Id, new ImportSitzung(art, jahr?.Id, name, zeilen, fehler));
-        return new ImportVorschau(id, art, name, jahr?.Bezeichnung, geprueft.Select(Zeile).ToList(), fehler);
+        return new ImportVorschau(id, art, name, jahr?.Bezeichnung, geprueft.Select(Zeile).ToList(), fehler, jahr?.Beginn, jahr?.Ende);
     }
 
     /// <summary>Fehlerliste der Vorschau als Excel-Datei.</summary>
@@ -80,8 +81,11 @@ public sealed class ImportService(
 
     public const string MeldungAbgelaufen = "Cet aperçu a expiré : chargez à nouveau le fichier.";
 
-    /// <summary>Gültige Zeilen anlegen (erneut geprüft, eine Transaktion); fehlerhafte Zeilen werden ausgelassen.</summary>
-    public async Task<ImportErgebnis> ImportierenAsync(Guid akteurId, Guid vorschauId, CancellationToken ct = default)
+    /// <summary>
+    /// Gültige Zeilen anlegen (erneut geprüft, eine Transaktion); fehlerhafte Zeilen werden ausgelassen. Schüler mit Klasse
+    /// sind ab <paramref name="beginn"/> eingeschrieben (Standard: Beginn des Schuljahres, <see cref="EinschreibungsBeginn"/>).
+    /// </summary>
+    public async Task<ImportErgebnis> ImportierenAsync(Guid akteurId, Guid vorschauId, DateOnly? beginn = null, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, ct: ct);
         var sitzung = ablage.HolenObjekt<ImportSitzung>(vorschauId, a.Id) ?? throw new FachFehler(MeldungAbgelaufen);
@@ -120,7 +124,7 @@ public sealed class ImportService(
                     db.SchuelerProfile.Add(SchuelerService.NeuesProfil(konto.Id, a.SchuleId, matrikel, s));
                     if (z.KlasseId is { } klasseId && jahr is not null)
                     {
-                        var von = heute < jahr.Beginn ? jahr.Beginn : heute > jahr.Ende ? jahr.Ende : heute;
+                        var von = EinschreibungService.Beginn(jahr, beginn);
                         db.Einschreibungen.Add(new Einschreibung
                         {
                             SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasseId, Von = von,

@@ -1,6 +1,7 @@
 @* Import depuis Excel: Vorlage laden, Datei prüfen (vollständige Fehlerliste), gültige Zeilen importieren. *@
 @inherits SkoulouSeite
 @inject ImportService Import
+@inject TimeProvider Uhr
 
 <ModalDialog Open="Open" Title="@($"Importer des {ImportVorlageText} depuis Excel")" Oberzeile="Import" Breite="sk-modal-lg" SchliessenMitEscape="false"
              ErrorMessage="@fehler" OnClose="SchliessenAsync">
@@ -54,6 +55,11 @@
                 </Aktionen>
 </Abschnitt>
         }
+        @if (Art == ImportArt.Eleves && vorschau.JahrBeginn is { } jb && vorschau.JahrEnde is { } je && vorschau.Zeilen.Any(z => z.Gueltig && z.Zusatz is not null))
+        {
+            <DatumFeld Label="Élèves avec classe : inscrits depuis le" @bind-Wert="beginn" Pflicht="true" Min="jb" Max="@EinschreibungsBeginn.Hoechstens(jb, je, new SchulZeit(Uhr).Heute)"
+                       Hinweis="Par défaut : début de l'année scolaire. Pour des élèves arrivés en cours d'année, indiquez leur premier jour." />
+        }
         <Abschnitt Titel="Aperçu" Ebene="3">
             <div class="sk-tabelle-rahmen sk-liste-scroll org-vorschau">
                 <table class="sk-tabelle">
@@ -94,6 +100,7 @@
     private string? fehler;
     private bool laedt;
     private string? dateiName;
+    private DateOnly? beginn;
 
     private string ImportVorlageText => Art switch { ImportArt.Eleves => "élèves", ImportArt.Enseignants => "enseignants", _ => "parents" };
     private string ZusatzTitel => Art switch { ImportArt.Eleves => "Classe", ImportArt.Parents => "Enfants", _ => "–" };
@@ -109,6 +116,7 @@
         {
             await using var strom = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
             vorschau = await Import.VorschauAsync(Ich.KontoId, Art, JahrId, strom, e.File.Name);
+            beginn = vorschau.JahrBeginn;
         }
         catch (IOException)
         {
@@ -128,7 +136,7 @@
     {
         if (vorschau is null) return;
         ImportErgebnis? ergebnis = null;
-        if (!await AusfuehrenAsync(async () => ergebnis = await Import.ImportierenAsync(Ich.KontoId, vorschau.Id))) { fehler = Fehlermeldung; return; }
+        if (!await AusfuehrenAsync(async () => ergebnis = await Import.ImportierenAsync(Ich.KontoId, vorschau.Id, beginn))) { fehler = Fehlermeldung; return; }
         Toast.ZeigeErfolg($"{ergebnis!.Angelegt} compte{(ergebnis.Angelegt > 1 ? "s" : "")} créé{(ergebnis.Angelegt > 1 ? "s" : "")}" +
                           (ergebnis.Ausgelassen > 0 ? $", {ergebnis.Ausgelassen} ligne(s) écartée(s)." : "."));
         vorschau = null;

@@ -2,6 +2,7 @@
 @inherits SkoulouSeite
 @inject SchuelerService Schueler
 @inject EinschreibungService Einschreibungen
+@inject TimeProvider Uhr
 
 <ModalDialog Open="SchuelerId is not null" Title="@(akte?.Name ?? "Dossier de l'élève")" Oberzeile="Dossier de l'élève" Breite="sk-modal-lg" OnClose="OnClose">
     <ChildContent>
@@ -74,6 +75,11 @@
                                                 @if (!e.Storniert && e.Status == EinschreibungsStatus.Active)
                                                 {
                                                     <AsyncKnopf Text="@(e.Wiederholer ? "Pas redoublant" : "Redoublant")" CssClass="sk-btn-ghost sk-btn-klein" OnClick="() => WiederholerAsync(e)" />
+                                                }
+                                                @if (!e.Storniert && e.JahrOffen)
+                                                {
+                                                    <button type="button" class="sk-icon-knopf" title="Corriger la date d'inscription" aria-label="Corriger la date d'inscription en @e.Klasse"
+                                                            @onclick="() => Einschreibung(EinschreibungsAktion.Beginn, e)"><Icon Name="calendar" Groesse="16" /></button>
                                                 }
                                                 @if (!e.Storniert)
                                                 {
@@ -158,8 +164,16 @@
     };
 
     private Task Einschreibung(EinschreibungsAktion art, EinschreibungZeile? e = null)
-        => akte is null ? Task.CompletedTask : OnEinschreibung.InvokeAsync(new EinschreibungsAnfrage(art, [akte.KontoId], [akte.Name], e?.Id,
-            art == EinschreibungsAktion.Wechsel ? e?.Klasse : null, art == EinschreibungsAktion.Wechsel ? e?.Von : null));
+    {
+        if (akte is null) return Task.CompletedTask;
+        var mitKlasse = art is EinschreibungsAktion.Wechsel or EinschreibungsAktion.Beginn;
+        // « Corriger la date »: innerhalb des Schuljahres der Einschreibung, höchstens bis zu ihrem Ende bzw. heute.
+        DateOnly? min = null, max = null;
+        if (art == EinschreibungsAktion.Beginn && e is not null)
+            (min, max) = (e.JahrBeginn, e.Bis ?? Skoulou.Core.Organisation.EinschreibungsBeginn.Hoechstens(e.JahrBeginn, e.JahrEnde, new SchulZeit(Uhr).Heute));
+        return OnEinschreibung.InvokeAsync(new EinschreibungsAnfrage(art, [akte.KontoId], [akte.Name], e?.Id,
+            mitKlasse ? e?.Klasse : null, mitKlasse ? e?.Von : null, min, max));
+    }
 
     private async Task WiederholerAsync(EinschreibungZeile e)
     {
