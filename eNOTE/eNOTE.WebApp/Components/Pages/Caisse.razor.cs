@@ -474,7 +474,12 @@ public partial class Caisse(
     private void SetzeStornoMenge(StornoService.StornoPosition p, int menge)
         => stornoMengen[p.PositionId] = Math.Clamp(menge, 0, p.Offen);
 
-    private async Task BestaetigeStornoAsync()
+    // Eine Buchung (Verkauf, Erstattung, Retrait) nach der anderen: Enter im Betrags-/PIN-Feld umgeht die Knopf-Sperre.
+    private readonly EinmalSperre buchungsSperre = new();
+
+    private Task BestaetigeStornoAsync() => buchungsSperre.FuehreAusAsync(BucheStornoAsync);
+
+    private async Task BucheStornoAsync()
     {
         if (aktiveSitzung is null || stornoVorlage is null || stornoWeg is null) return;
         stornoFehler = null;
@@ -538,7 +543,9 @@ public partial class Caisse(
         retraitOffen = true;
     }
 
-    private async Task BestaetigeRetraitAsync()
+    private Task BestaetigeRetraitAsync() => buchungsSperre.FuehreAusAsync(BucheRetraitAsync);
+
+    private async Task BucheRetraitAsync()
     {
         if (aktiveSitzung is null) return;
         retraitFehler = null;
@@ -966,7 +973,12 @@ public partial class Caisse(
         }
     }
 
-    private async Task ToggleFavoritAsync(Guid leistungId)
+    // Schnelles Doppeltippen auf den Stern: zweites « Hinzufügen » lief sonst in den eindeutigen Index (Fehlergrenze in der Kasse).
+    private readonly EinmalSperre favoritSperre = new();
+
+    private Task ToggleFavoritAsync(Guid leistungId) => favoritSperre.FuehreAusAsync(() => SchalteFavoritAsync(leistungId));
+
+    private async Task SchalteFavoritAsync(Guid leistungId)
     {
         if (aktiveSitzung is null || aktuellerBenutzerId == Guid.Empty)
         {
@@ -1157,7 +1169,9 @@ public partial class Caisse(
         verkaufFehler = null;
     }
 
-    private async Task BestaetigeZahlungAsync()
+    private Task BestaetigeZahlungAsync() => buchungsSperre.FuehreAusAsync(BucheZahlungAsync);
+
+    private async Task BucheZahlungAsync()
     {
         if (!ZahlungMoeglich || aktiveSitzung is null)
         {
