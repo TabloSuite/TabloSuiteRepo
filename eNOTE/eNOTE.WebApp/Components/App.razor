@@ -21,12 +21,50 @@
             window.enoteLeseTheme = modus;
             window.enoteSetzeTheme = function (m) { try { localStorage.setItem(schluessel, m); } catch (e) { } anwenden(); };
             anwenden();
-            if ('IntersectionObserver' in window && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches))
-                document.documentElement.classList.add('lp-js');
             if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', anwenden);
             // Blazor-Navigation gleicht <html>-Attribute mit dem Server-Stand ab – Thema dann wiederherstellen.
             new MutationObserver(anwenden).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
             document.addEventListener('DOMContentLoaded', anwenden);
+        })();
+        // Startseite: .lp-reveal-Elemente blenden ein, sobald sie ins Bild kommen. Seit 21.11.2026 hier im Kopf statt in enote.js:
+        // vorher erst nach blazor.web.js + enote.js – bei langsamem Netz blieb das Bild im Einstieg Sekunden unsichtbar, und eine
+        // Not-Regel (nach 5 s alles zeigen) nahm späteren Abschnitten das Einblenden. Blazor ersetzt beim Verbinden das
+        // vorgerenderte HTML: schon gezeigte Elemente (gleiche Nummer auf derselben Seite) setzen ihr Einblenden an derselben
+        // Stelle fort (negative Verzögerung) bzw. stehen sofort da – kein zweites Einblenden. Bewegung reduzieren: alles sofort.
+        (function () {
+            window.enoteStartseite = function () { };
+            if (!('IntersectionObserver' in window) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+            var html = document.documentElement, gezeigt = {};
+            var io = new IntersectionObserver(function (eintraege) {
+                eintraege.forEach(function (e) {
+                    if (!e.isIntersecting) return;
+                    io.unobserve(e.target);
+                    e.target.classList.add('sichtbar');
+                    gezeigt[e.target.lpSchluessel] = performance.now();
+                });
+            }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+            function erfasse() {
+                var liste = document.querySelectorAll('.lp-reveal');
+                for (var i = 0; i < liste.length; i++) {
+                    var el = liste[i];
+                    if (el.lpSchluessel) continue;
+                    el.lpSchluessel = location.pathname + '#' + i;
+                    var seit = gezeigt[el.lpSchluessel];
+                    if (seit === undefined) { if (!el.classList.contains('sichtbar')) io.observe(el); continue; }
+                    var vergangen = performance.now() - seit;
+                    if (vergangen < 1800) {
+                        var verz = parseFloat(getComputedStyle(el).getPropertyValue('--lp-verz')) || 0;   // Stil jetzt berechnen (unsichtbar)
+                        el.style.setProperty('--lp-verz', Math.round(verz - vergangen) + 'ms');
+                    }
+                    el.classList.add('sichtbar');
+                }
+            }
+            window.enoteStartseite = erfasse;
+            new MutationObserver(erfasse).observe(html, { childList: true, subtree: true });
+            function markiere() { if (!html.classList.contains('lp-js')) html.classList.add('lp-js'); }
+            markiere();
+            // Blazor-Navigation gleicht <html>-Attribute ab – Markierung dann wieder setzen.
+            new MutationObserver(markiere).observe(html, { attributes: true, attributeFilter: ['class'] });
         })();
     </script>
     <link rel="stylesheet" href="@Assets["app.css"]" />

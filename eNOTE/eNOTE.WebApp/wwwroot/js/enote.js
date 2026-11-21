@@ -189,33 +189,7 @@ window.enoteLeseDateiAlsDataUrl = function (inputElement) {
     });
 };
 
-// ---------- Startseite: sanftes Einblenden beim Scrollen ----------
-// Elemente mit .lp-reveal erscheinen, sobald sie ins Bild kommen. Neue Elemente (Blazor-Render)
-// werden automatisch erfasst. Bei „Bewegung reduzieren“ ist alles sofort sichtbar.
-(function () {
-    var ruhig = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var beobachter = null;
-    function zeige(el) { el.classList.add('sichtbar'); }
-    function erfasse(wurzel) {
-        var liste = (wurzel || document).querySelectorAll ? (wurzel || document).querySelectorAll('.lp-reveal:not(.sichtbar)') : [];
-        for (var i = 0; i < liste.length; i++) {
-            if (ruhig || !beobachter) zeige(liste[i]); else beobachter.observe(liste[i]);
-        }
-    }
-    if (!ruhig && 'IntersectionObserver' in window) {
-        beobachter = new IntersectionObserver(function (eintraege) {
-            eintraege.forEach(function (e) { if (e.isIntersecting) { zeige(e.target); beobachter.unobserve(e.target); } });
-        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
-        document.documentElement.classList.add('lp-js');
-    }
-    window.enoteStartseite = function () { erfasse(document); };
-    new MutationObserver(function () { erfasse(document); })
-        .observe(document.documentElement, { childList: true, subtree: true });
-    document.addEventListener('DOMContentLoaded', function () { erfasse(document); });
-    // Sicherheitsnetz: nach 4 s ist alles sichtbar, auch wenn ein Beobachter nicht feuert.
-    setTimeout(function () { document.querySelectorAll('.lp-reveal:not(.sichtbar)').forEach(function (el) {
-        var r = el.getBoundingClientRect(); if (r.top < window.innerHeight) zeige(el); }); }, 4000);
-})();
+// Startseite: sanftes Einblenden beim Scrollen – seit 21.11.2026 im Kopf von App.razor (läuft vor blazor.web.js).
 
 
 // Barcode-Scanner (USB/Bluetooth im Tastatur-Modus): tippt den Code in wenigen Millisekunden und drückt Enter.

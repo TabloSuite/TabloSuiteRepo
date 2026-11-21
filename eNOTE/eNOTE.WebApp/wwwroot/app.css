@@ -2712,11 +2712,10 @@ html[data-theme="dark"] .dp-kat-icon { color: color-mix(in srgb, var(--dp-farbe)
 
 /* Einblenden */
 .lp-reveal { --lp-verz: 0ms; transition: opacity .8s cubic-bezier(.2,.7,.2,1) var(--lp-verz), transform .8s cubic-bezier(.2,.7,.2,1) var(--lp-verz); }
-.lp-js .lp-reveal:not(.sichtbar) { opacity: 0; transform: translateY(26px); animation: lp-notfall 0s linear 5s forwards; }
+.lp-js .lp-reveal:not(.sichtbar) { opacity: 0; transform: translateY(26px); }
 .lp-js .lp-reveal.lp-von-rechts:not(.sichtbar) { transform: translateX(40px); }
 .lp-js .lp-reveal.lp-von-links:not(.sichtbar) { transform: translateX(-40px); }
 .lp-js .lp-reveal.lp-von-unten:not(.sichtbar) { transform: translateY(48px); }
-@keyframes lp-notfall { to { opacity: 1; transform: none; } }
 
 /* Hero */
 .lp-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; padding-top: clamp(2rem, 6vw, 4.5rem); }
