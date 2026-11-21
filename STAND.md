@@ -13,9 +13,10 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   vorgerenderte HTML, Skript im Kopf von App.razor setzt --lp-schon (negative Verzögerung). Texte Funktionen/Élèves angepasst.
 - TabloSuiteHome (2d64b41): Einstieg animiert (nur CSS), App-Karten beim Scrollen (animation-timeline); SKOULOU-Punkte neu:
   Cours écrits et en vidéo, Devoirs/Examens am Handy (corrigés automatiquement), Parents am Telefon.
-- Nur im Branch gepusht. **Offen: master (nur mit OK), dann Deploy SKOULOU + TabloSuiteHome** (eNOTE unverändert).
-- Gefunden (eNOTE live, nur gelesen): bei langsamem Netz bleibt das Tablet-Bild unsichtbar, bis blazor.web.js + enote.js geladen
-  sind (Test: ~3,5 s), dann kurzes Doppel-Einblenden – Vorschlag: gleiche Lösung wie SKOULOU (Skript im Kopf). Nutzer fragen.
+- eNOTE (81cba64, Nutzer « Ja für beides »): Einblenden im Kopf-Skript statt enote.js – Tablet-Bild bei langsamem Netz sofort
+  (vorher live ~3,5 s unsichtbar), kein zweites Einblenden nach dem Ersetzen durch Blazor, Not-Regel « nach 5 s alles zeigen »
+  entfernt (nahm späteren Abschnitten das Einblenden). Lokal mit Playwright geprüft.
+- **master übernommen (81cba64, mit OK). Beim Nutzer: Deploy eNOTE, SKOULOU, TabloSuiteHome** (keine Migration).
 
 **>>> JETZT (21.11. nachmittags) – Nutzer: « 1 und 2 umsetzen. Aber Test gründlich machen am Ende. Wir pushen alles am Ende »:**
 - Commits c0ce632, 88a83da, f192b93, cd3c105 + STAND c8a737b – gepusht, **`master` übernommen** (Fast-Forward auf c8a737b, mit OK
