@@ -5,6 +5,8 @@
 @using Skoulou.WebApp.Components.Pages.Finances.FinanzTeile
 @using Skoulou.WebApp.Services.Finanzen
 @inject TarifService Tarife
+@inject Skoulou.WebApp.Services.KiHilfe.KiFreigabe KiFreigabe
+@inject Skoulou.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
 
 <PageTitle>Tarifs · SKOULOU</PageTitle>
 
@@ -29,7 +31,13 @@ else if (standard is not null)
         </div>
     </Karte>
 
-    <Abschnitt Titel="Tarifs par établissement" Beschreibung="Un prix ou une part propre à un établissement remplace la valeur standard – pour adapter le tarif de façon juste, par exemple selon la taille de l'école.">
+    @* 21.11.2026: KI-Hilfe ohne Deploy für alle Rollen freigeben (nur Administrateur, serverseitig geprüft). *@
+    <Karte Titel="Assistant d'aide" Icon="sparkles" Untertitel="« Poser une question » répond aux questions sur l'utilisation de SKOULOU. Sans ce choix, seuls les administrateurs et les responsables le voient.">
+        <Schalter Wert="kiFuerAlle" WertChanged="KiFreigabeAsync" Label="Assistant (Poser une question) pour tous les rôles"
+                  Hinweis="@(KiHilfe.IstVerfuegbar ? "Direction, coordinateurs, enseignants, élèves et parents voient alors « Poser une question » dans le menu Aide." : "Aucune clé n'est configurée : l'assistant reste invisible, même activé.")" />
+    </Karte>
+
+    <Abschnitt Titel="Tarifs par établissement"Beschreibung="Un prix ou une part propre à un établissement remplace la valeur standard – pour adapter le tarif de façon juste, par exemple selon la taille de l'école.">
         <Liste T="SchulTarifZeile" @ref="liste" Laden="LadenAsync" SuchPlatzhalter="Établissement ou ville…" LeerIcon="school" LeerTitel="Aucun établissement">
             <Zeile Context="s">
                 <div class="fin-zeile">
@@ -60,6 +68,7 @@ else if (standard is not null)
     private SchulTarifZeile? bearbeitet;
     private long? preis;
     private decimal? ziel, prozent;
+    private bool kiFuerAlle;
 
     // 19.11.2026: Preis je Schüler und Monat; Beispiel mit dem eingegebenen Preis (Trimester von 3 Monaten, ganzes Schuljahr ≈ 10 Monate).
     private string TarifUntertitel
@@ -76,6 +85,14 @@ else if (standard is not null)
     {
         standard = await Tarife.EinstellungAsync(Ich.KontoId);
         (preis, ziel, prozent) = (standard.Monatspreis, standard.ZahlungszielTage, standard.ResponsableProzent);
+        kiFuerAlle = await KiFreigabe.LesenAsync(Ich.KontoId);
+    }
+
+    private async Task KiFreigabeAsync(bool an)
+    {
+        if (await AusfuehrenAsync(() => KiFreigabe.SetzenAsync(Ich.KontoId, an),
+                an ? "L'assistant est disponible pour tous les rôles." : "L'assistant est réservé aux administrateurs et aux responsables."))
+            kiFuerAlle = an;
     }
 
     private async Task<(IReadOnlyList<SchulTarifZeile>, bool)> LadenAsync(ListenAnfrage a, CancellationToken ct)

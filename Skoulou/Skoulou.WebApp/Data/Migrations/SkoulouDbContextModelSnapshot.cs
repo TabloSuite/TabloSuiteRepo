@@ -2684,6 +2684,9 @@ namespace Skoulou.WebApp.Data.Migrations
                     b.Property<DateTime>("GeaendertAmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("KiFuerAlleRollen")
+                        .HasColumnType("bit");
+
                     b.Property<long>("MonatspreisProSchueler")
                         .HasColumnType("bigint");
 

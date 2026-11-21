@@ -24,6 +24,9 @@ public sealed record KiRolle(string Rolle, KoordinatorRechte Rechte = Koordinato
     /// <summary>Administrateur und Responsable SKOULOU: dürfen zu allen Rollen fragen (Nutzer 20.11.2026).</summary>
     public bool IstPlattform => Rolle is Rollen.SuperAdmin or Rollen.Responsable;
 
+    /// <summary>Kennt die KI außer der eigenen Rolle noch weitere (« nach unten », <see cref="KiWissensbasis.BekannteRollen"/>)?</summary>
+    public bool KenntWeitere => Rolle is Rollen.SuperAdmin or Rollen.Responsable or Rollen.Direktor or Rollen.Koordinator or Rollen.Lehrer;
+
     /// <summary>Schlüssel der Wissensbasis (gleiche Rolle = gleicher Text = Cache-Treffer).</summary>
     public string Schluessel => $"{Rolle}|{(int)Rechte}|{HauptAdmin}";
 }
@@ -69,7 +72,23 @@ public static class KiWissensbasis
             .Where(r => r.Rolle != eigene.Rolle && (eigene.Rolle == Rollen.SuperAdmin || r.Rolle != Rollen.SuperAdmin))
             .Prepend(eigene);
 
-    /// <summary>Regel 3 für Rollen der Schule: nur das eigene Menü.</summary>
+    /// <summary>
+    /// Rollen, deren Menü und Guide die KI kennt – Nutzerregel « nach unten » (21.11.2026): jede Rolle kennt sich und die Rollen
+    /// darunter, nie die darüber. Plattform wie bisher (<see cref="PlattformReihenfolge"/>); Directeur → Directeur, Coordinateur,
+    /// Enseignant, Élève, Parent; Coordinateur → Coordinateur (mit seinen eigenen Rechten), Enseignant, Élève, Parent;
+    /// Enseignant → Enseignant, Élève; Élève und Parent → nur sich. Die eigene Rolle steht immer zuerst; untere Rollen ohne
+    /// Rechte-Besonderheiten (der Coordinateur aus Sicht des Directeur mit allen Rechten und Hinweis auf die Finanzen).
+    /// </summary>
+    internal static IReadOnlyList<KiRolle> BekannteRollen(KiRolle eigene) => eigene.Rolle switch
+    {
+        Rollen.SuperAdmin or Rollen.Responsable => [.. PlattformReihenfolge(eigene)],
+        Rollen.Direktor => [eigene, new(Rollen.Koordinator, KoordinatorRechte.Alle), new(Rollen.Lehrer), new(Rollen.Schueler), new(Rollen.Eltern)],
+        Rollen.Koordinator => [eigene, new(Rollen.Lehrer), new(Rollen.Schueler), new(Rollen.Eltern)],
+        Rollen.Lehrer => [eigene, new(Rollen.Schueler)],
+        _ => [eigene]
+    };
+
+    /// <summary>Regel 3 für Élève und Parent: nur das eigene Menü.</summary>
     internal const string Regel3Schule =
         "3. Le menu décrit est celui du rôle de l'utilisateur. Si une fonction n'est pas dans son menu, dis que son rôle n'y a pas accès et, si la base le dit, qui s'en charge.";
 
@@ -77,8 +96,15 @@ public static class KiWissensbasis
     internal const string Regel3Plattform =
         "3. L'utilisateur fait partie de l'équipe de la plateforme (administrateur ou responsable SKOULOU) : il peut poser des questions sur les autres rôles, par exemple pour aider une direction, un enseignant, un élève ou un parent. La base décrit le menu et le guide de ces rôles. Dis toujours pour quel rôle vaut ta réponse (par exemple « Pour la direction : »). Si la question porte sur ce que l'utilisateur fait lui-même et que son rôle n'y a pas accès, dis-le et indique qui s'en charge.";
 
-    /// <summary>Anweisungen je Rolle: nur Regel 3 unterscheidet sich (Plattform darf alles fragen).</summary>
-    internal static string AnweisungenFuer(KiRolle rolle) => rolle.IstPlattform ? Anweisungen.Replace(Regel3Schule, Regel3Plattform) : Anweisungen;
+    /// <summary>Regel 3 für Directeur, Coordinateur und Enseignant: auch die Rollen, die sie anleiten (« nach unten », 21.11.2026).</summary>
+    internal const string Regel3Encadrement =
+        "3. Le premier menu décrit est celui du rôle de l'utilisateur. Il peut aussi demander comment font les rôles qu'il encadre (décrits ensuite dans la base), par exemple pour aider un enseignant, un élève ou un parent : dis toujours pour quel rôle vaut ta réponse (par exemple « Pour un parent : »). Ne décris jamais les rôles au-dessus du sien (par exemple la direction pour un enseignant, ou l'équipe SKOULOU) au-delà de ce que dit la base. Si une fonction n'est pas dans son propre menu, dis que son rôle n'y a pas accès et, si la base le dit, qui s'en charge.";
+
+    /// <summary>Anweisungen je Rolle: nur Regel 3 unterscheidet sich (Plattform alles, Encadrement nach unten, sonst nur sich).</summary>
+    internal static string AnweisungenFuer(KiRolle rolle)
+        => rolle.IstPlattform ? Anweisungen.Replace(Regel3Schule, Regel3Plattform)
+            : rolle.KenntWeitere ? Anweisungen.Replace(Regel3Schule, Regel3Encadrement)
+            : Anweisungen;
 
     /// <summary>Lernvideos, die diese Rolle sehen darf (für Verweise in der Antwort).</summary>
     public static IReadOnlyList<VideoKatalog.LernVideo> Videos(KiRolle rolle)
@@ -110,27 +136,31 @@ public static class KiWissensbasis
         sb.Append("=== BASE DE CONNAISSANCES SKOULOU – rôle de l'utilisateur : ").Append(rolle.Bezeichnung).AppendLine(" ===");
         sb.Append("Ce rôle : ").AppendLine(Rollen.Beschreibung(rolle.Rolle));
 
-        if (rolle.IstPlattform)
+        if (rolle.KenntWeitere)
         {
-            // Nutzer 20.11.2026: Administrateur und Responsable dürfen alles fragen → Menü und Guide jeder Rolle, die eigene zuerst.
-            // Nur Wissen der KI – das eigene Menü in der Anwendung bleibt unverändert.
-            sb.AppendLine("Équipe de la plateforme : cette base décrit l'application pour tous les rôles, pour pouvoir aider les établissements.");
-            sb.AppendLine().AppendLine("## Rôles de SKOULOU");
-            foreach (var r in PlattformReihenfolge(rolle))
+            // Plattform (Nutzer 20.11.2026): Menü und Guide jeder Rolle; Schulrollen « nach unten » (21.11.2026): sich und die Rollen
+            // darunter. Die eigene Rolle zuerst. Nur Wissen der KI – das eigene Menü in der Anwendung bleibt unverändert.
+            var bekannt = BekannteRollen(rolle);
+            sb.AppendLine(rolle.IstPlattform
+                ? "Équipe de la plateforme : cette base décrit l'application pour tous les rôles, pour pouvoir aider les établissements."
+                : "Cette base décrit aussi l'application pour les rôles que ce rôle encadre, pour pouvoir les aider. Les rôles au-dessus de ce rôle n'y sont pas décrits.");
+            sb.AppendLine().AppendLine(rolle.IstPlattform ? "## Rôles de SKOULOU" : "## Rôles décrits dans cette base");
+            foreach (var r in bekannt)
                 sb.Append("- ").Append(r.Bezeichnung).Append(" : ").AppendLine(Rollen.Beschreibung(r.Rolle));
 
             sb.AppendLine().AppendLine("## 1. Menu de chaque rôle");
             sb.AppendLine(MenueAllgemein1).AppendLine(MenueAllgemein2);
-            foreach (var r in PlattformReihenfolge(rolle))
+            foreach (var r in bekannt)
             {
                 sb.AppendLine().Append("### Menu : ").Append(r.Bezeichnung).AppendLine(r.Rolle == rolle.Rolle ? " (votre rôle)" : string.Empty);
-                if (r.Rolle == Rollen.Koordinator)
+                // Fremder Coordinateur (Plattform, Directeur): Finanzen nur mit Rechten; der eigene steht mit seinen Rechten da.
+                if (r.Rolle == Rollen.Koordinator && r.Rolle != rolle.Rolle)
                     sb.AppendLine("Les rubriques de Finances seulement avec les droits accordés par le directeur (consulter les finances, saisir les paiements, journal de caisse, facturation SKOULOU).");
                 MenueZeilen(sb, r);
             }
 
             sb.AppendLine().AppendLine("## 2. Guide utilisateur (Aide › Guide utilisateur) – le guide de chaque rôle (chacun voit le sien)");
-            foreach (var r in PlattformReihenfolge(rolle))
+            foreach (var r in bekannt)
             {
                 sb.AppendLine().Append("### Guide : ").Append(r.Bezeichnung).AppendLine(r.Rolle == rolle.Rolle ? " (votre rôle)" : string.Empty);
                 GuideZeilen(sb, r, "#### ");

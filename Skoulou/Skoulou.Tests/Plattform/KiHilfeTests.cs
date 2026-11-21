@@ -1,4 +1,5 @@
 using Anthropic.Models.Messages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -331,15 +332,146 @@ public sealed class KiHilfeTests
         Assert.NotEmpty(nurAdmin);
         foreach (var k in nurAdmin) Assert.DoesNotContain("#### " + k.Titel + "\n", po.Replace("\r\n", "\n"));
 
-        // Schulrollen: Regel 3 unverändert, kein fremdes Menü
+        // Schulrollen: nie die Plattform-Regel und nie das Plattform-Wissen
         foreach (var r in AlleRollen().Where(r => !r.IstPlattform))
         {
             var text = KiWissensbasis.SystemText(r);
-            Assert.Contains(KiWissensbasis.Regel3Schule, text);
             Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, text);
-            Assert.DoesNotContain("### Menu : ", text);
             Assert.DoesNotContain("Équipe de la plateforme", text);
+            Assert.DoesNotContain("### Menu : Responsable SKOULOU", text);
+            Assert.DoesNotContain("### Menu : Administrateur", text);
         }
+    }
+
+    /// <summary>
+    /// Nutzerregel « nach unten » (21.11.2026): jede Rolle kennt sich und die Rollen darunter, nie die darüber. Directeur →
+    /// Directeur, Coordinateur, Enseignant, Élève, Parent; Coordinateur → ohne Directeur; Enseignant → Enseignant, Élève;
+    /// Élève und Parent → nur sich (Regel 3 wie bisher, kein « ### Menu : »).
+    /// </summary>
+    [Fact]
+    public void Schulrollen_kennen_sich_und_die_Rollen_darunter_nie_darueber()
+    {
+        static string[] Namen(KiRolle r) => [.. KiWissensbasis.BekannteRollen(r).Select(x => x.Rolle)];
+        var direktor = new KiRolle(Rollen.Direktor, KoordinatorRechte.Alle);
+        var koordinator = new KiRolle(Rollen.Koordinator, KoordinatorRechte.FinanzenEinsehen);
+        var lehrer = new KiRolle(Rollen.Lehrer);
+        Assert.Equal([Rollen.Direktor, Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler, Rollen.Eltern], Namen(direktor));
+        Assert.Equal([Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler, Rollen.Eltern], Namen(koordinator));
+        Assert.Equal([Rollen.Lehrer, Rollen.Schueler], Namen(lehrer));
+        Assert.Equal([Rollen.Schueler], Namen(new KiRolle(Rollen.Schueler)));
+        Assert.Equal([Rollen.Eltern], Namen(Eltern));
+        // Der eigene Coordinateur behält seine Rechte (eigenes Menü); untere Rollen ohne Rechte.
+        Assert.Same(koordinator, KiWissensbasis.BekannteRollen(koordinator)[0]);
+        Assert.All(KiWissensbasis.BekannteRollen(direktor).Skip(2), r => Assert.Equal(KoordinatorRechte.Keine, r.Rechte));
+
+        // Beschreibungen von Menüpunkten, die nur Rollen über der eigenen haben (Direktion, Plattform).
+        static IEnumerable<string> NurBei(IEnumerable<KiRolle> oben, IEnumerable<KiRolle> unten)
+        {
+            var bekannt = unten.SelectMany(r => NavKarte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin)).SelectMany(g => g.Eintraege)
+                .Select(e => e.Beschreibung).OfType<string>().ToHashSet();
+            return oben.SelectMany(r => NavKarte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin)).SelectMany(g => g.Eintraege)
+                .Select(e => e.Beschreibung).OfType<string>().Where(b => b.Length > 0 && !bekannt.Contains(b)).Distinct();
+        }
+
+        foreach (var eigene in new[] { direktor, koordinator, new KiRolle(Rollen.Koordinator), lehrer })
+        {
+            var text = KiWissensbasis.SystemText(eigene);
+            var bekannt = KiWissensbasis.BekannteRollen(eigene);
+            Assert.Contains(KiWissensbasis.Regel3Encadrement, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Schule, text);
+            Assert.Contains("### Menu : " + eigene.Bezeichnung + " (votre rôle)", text);
+            foreach (var r in bekannt)
+            {
+                Assert.Contains("### Menu : " + r.Bezeichnung, text);
+                Assert.Contains("### Guide : " + r.Bezeichnung, text);
+                foreach (var e in NavKarte.Fuer(r.Rolle, r.HatRecht, r.HauptAdmin).SelectMany(g => g.Eintraege).Where(e => e.Beschreibung is { Length: > 0 }))
+                    Assert.Contains(e.Beschreibung!, text);
+            }
+            // Eigene Rolle zuerst.
+            Assert.True(text.IndexOf("### Menu : " + eigene.Bezeichnung, StringComparison.Ordinal)
+                < bekannt.Skip(1).Min(r => text.IndexOf("### Menu : " + r.Bezeichnung, StringComparison.Ordinal)));
+            // Nichts von den Rollen darüber (und sonst unbekannten): weder Überschrift noch Menüpunkte.
+            var unbekannt = KiWissensbasis.AlleRollenFuerPlattform.Where(r => bekannt.All(b => b.Rolle != r.Rolle)).ToList();
+            Assert.NotEmpty(unbekannt);
+            foreach (var r in unbekannt) Assert.DoesNotContain("### Menu : " + r.Bezeichnung, text);
+            foreach (var b in NurBei(unbekannt, bekannt)) Assert.DoesNotContain(b, text);
+            Assert.True(text.Length < 150_000, $"{eigene.Schluessel}: {text.Length} Zeichen");
+        }
+
+        // Ausdrücklich: Lehrer-Wissen ohne Direktionsmenü und ohne Eltern; Direktor-Wissen mit Lehrer- und Eltern-Menü, ohne Plattform.
+        var lehrerText = KiWissensbasis.SystemText(lehrer);
+        Assert.DoesNotContain("### Menu : Directeur", lehrerText);
+        Assert.DoesNotContain("### Menu : Coordinateur", lehrerText);
+        Assert.DoesNotContain("### Menu : Parent", lehrerText);
+        Assert.Contains("### Menu : Élève", lehrerText);
+        var direktorText = KiWissensbasis.SystemText(direktor);
+        Assert.Contains("### Menu : Enseignant", direktorText);
+        Assert.Contains("### Menu : Parent", direktorText);
+        Assert.DoesNotContain("### Menu : Responsable SKOULOU", direktorText);
+        Assert.DoesNotContain("### Menu : Administrateur", direktorText);
+        Assert.DoesNotContain("Mes parts", direktorText);
+        Assert.DoesNotContain("### Menu : Directeur", KiWissensbasis.SystemText(koordinator));
+
+        // Élève und Parent: nur sich.
+        foreach (var r in new[] { new KiRolle(Rollen.Schueler), Eltern })
+        {
+            var text = KiWissensbasis.SystemText(r);
+            Assert.Contains(KiWissensbasis.Regel3Schule, text);
+            Assert.DoesNotContain(KiWissensbasis.Regel3Encadrement, text);
+            Assert.DoesNotContain("### Menu : ", text);
+        }
+    }
+
+    // ---------------- Schalter « pour tous les rôles » ----------------
+
+    /// <summary>
+    /// 21.11.2026: der Administrateur gibt die KI ohne Deploy für alle Rollen frei (PlattformEinstellung.KiFuerAlleRollen);
+    /// nur er darf schalten; der Wert wird eine Minute zwischengespeichert, beim Schalten sofort neu.
+    /// </summary>
+    [Fact]
+    public async Task Schalter_im_Admin_Bereich_gibt_alle_Rollen_frei()
+    {
+        await using var u = new PlattformUmgebung();
+        var admin = await u.StartAsync();
+        var responsable = await u.Basis.KontoAsync("resp.ki", Rollen.Responsable);
+        var schule = await u.Basis.SchuleAsync("Collège KI");
+        var direktor = await u.Basis.KontoAsync("dir.ki", Rollen.Direktor, schule.Id);
+        var freigabe = ActivatorUtilities.CreateInstance<KiFreigabe>(u.Basis.Dienste);
+        var dienst = new KiHilfeDienst(new FakeKiClient(), Options.Create(new KiHilfeOptionen { AnthropicApiKey = "sk-test" }), new ListenLogger(), freigabe);
+
+        Assert.False(freigabe.FuerAlleRollen);
+        Assert.False(dienst.IstVerfuegbarFuer(Rollen.Eltern));
+        Assert.True(dienst.IstVerfuegbarFuer(Rollen.Responsable));
+
+        // Nur der Administrateur schaltet (serverseitig).
+        await Assert.ThrowsAsync<Skoulou.Core.Fehler.KeinZugriffFehler>(() => freigabe.SetzenAsync(responsable.Id, true));
+        await Assert.ThrowsAsync<Skoulou.Core.Fehler.KeinZugriffFehler>(() => freigabe.SetzenAsync(direktor.Id, true));
+        await Assert.ThrowsAsync<Skoulou.Core.Fehler.KeinZugriffFehler>(() => freigabe.LesenAsync(direktor.Id));
+        Assert.False(freigabe.FuerAlleRollen);
+
+        await freigabe.SetzenAsync(admin.Id, true);
+        Assert.True(await freigabe.LesenAsync(admin.Id));
+        foreach (var rolle in new[] { Rollen.Direktor, Rollen.Koordinator, Rollen.Lehrer, Rollen.Schueler, Rollen.Eltern })
+            Assert.True(dienst.IstVerfuegbarFuer(rolle));
+        Assert.Equal(1, await u.LiesAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == KiFreigabe.AuditCode)));
+        await freigabe.SetzenAsync(admin.Id, true);   // gleicher Stand: kein weiterer Eintrag
+        Assert.Equal(1, await u.LiesAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == KiFreigabe.AuditCode)));
+
+        // Zwischenspeicher: eine Änderung an anderer Stelle (z. B. zweite Instanz) wirkt spätestens nach einer Minute.
+        await u.LiesAsync(async db =>
+        {
+            (await db.PlattformEinstellungen.SingleAsync()).KiFuerAlleRollen = false;
+            return await db.SaveChangesAsync();
+        });
+        Assert.True(freigabe.FuerAlleRollen);
+        u.Zeit.Vor(KiFreigabe.Gueltigkeit + TimeSpan.FromSeconds(1));
+        Assert.False(freigabe.FuerAlleRollen);
+        Assert.False(dienst.IstVerfuegbarFuer(Rollen.Lehrer));
+
+        // Ohne Schlüssel bleibt die KI trotz Schalter unsichtbar.
+        await freigabe.SetzenAsync(admin.Id, true);
+        var ohneSchluessel = new KiHilfeDienst(new FakeKiClient(), Options.Create(new KiHilfeOptionen()), new ListenLogger(), freigabe);
+        Assert.False(ohneSchluessel.IstVerfuegbarFuer(Rollen.Eltern));
     }
 
     [Fact]

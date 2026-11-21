@@ -15,10 +15,11 @@ public sealed record KiErgebnis(bool Erfolg, string? Antwort, string? Meldung, I
 /// KI-Hilfe « Poser une question » (Nutzerwunsch 19.11.2026): beantwortet nur Fragen zur Bedienung aus der Wissensbasis
 /// der Rolle. <b>Datenschutz:</b> an Anthropic gehen nur Hilfetexte, die Rolle und die Frage – keine Namen, keine Daten der
 /// Schule; die Frage wird nirgends gespeichert und nie protokolliert (im Log nur Rolle und Token-Verbrauch).
-/// Keine Fragen-Grenzen; zunächst nur für Administrateurs und Responsables (<see cref="IstVerfuegbarFuer"/>).
-/// Fehler des Dienstes → Meldung, die App läuft weiter.
+/// Keine Fragen-Grenzen; zunächst nur für Administrateurs und Responsables, für alle per Einstellung oder Schalter im
+/// Admin-Bereich (<see cref="IstVerfuegbarFuer(string)"/>). Fehler des Dienstes → Meldung, die App läuft weiter.
 /// </summary>
-public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> optionen, ILogger<KiHilfeDienst> log)
+/// <param name="freigabe">Schalter « pour tous les rôles » (in der App immer registriert; ohne = aus, z. B. in Tests).</param>
+public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> optionen, ILogger<KiHilfeDienst> log, KiFreigabe? freigabe = null)
 {
     public const string MeldungIndisponible = "Le service d'aide est momentanément indisponible. Réessayez dans quelques minutes, ou consultez les vidéos d'aide.";
     public const string MeldungAbgelehnt = "Je ne peux pas répondre à cette question. Je réponds seulement aux questions sur l'utilisation de SKOULOU : reformulez-la, ou consultez les vidéos d'aide et la page Contact.";
@@ -30,15 +31,18 @@ public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> op
     public bool IstVerfuegbar => optionen.Value.IstBereit;
 
     /// <summary>
-    /// Menüeintrag, Verweise und Seite für diese Rolle: mit Schlüssel zunächst nur Administrateur und Responsable
-    /// (Nutzer 19.11.2026); mit <see cref="KiHilfeOptionen.AlleRollen"/> für alle.
+    /// Menüeintrag, Verweise und Seite für diese Rolle: Schlüssel vorhanden und (Administrateur oder Responsable, Nutzer
+    /// 19.11.2026) – für alle mit <see cref="KiHilfeOptionen.AlleRollen"/> oder dem Schalter im Admin-Bereich (21.11.2026,
+    /// <see cref="KiFreigabe"/>, zwischengespeichert).
     /// </summary>
     public bool IstVerfuegbarFuer(string rolle)
-        => IstVerfuegbar && (optionen.Value.AlleRollen || rolle is Rollen.SuperAdmin or Rollen.Responsable);
+        => IstVerfuegbar && (rolle is Rollen.SuperAdmin or Rollen.Responsable || FuerAlle);
 
     /// <summary>Wie <see cref="IstVerfuegbarFuer(string)"/>, für Seiten ohne Schulkontext (Rollen aus der Anmeldung).</summary>
     public bool IstVerfuegbarFuer(System.Security.Claims.ClaimsPrincipal nutzer)
-        => IstVerfuegbar && (optionen.Value.AlleRollen || nutzer.IsInRole(Rollen.SuperAdmin) || nutzer.IsInRole(Rollen.Responsable));
+        => IstVerfuegbar && (nutzer.IsInRole(Rollen.SuperAdmin) || nutzer.IsInRole(Rollen.Responsable) || FuerAlle);
+
+    private bool FuerAlle => optionen.Value.AlleRollen || freigabe?.FuerAlleRollen == true;
 
     public async Task<KiErgebnis> FrageAsync(KiRolle rolle, string? frage, CancellationToken ct = default)
     {

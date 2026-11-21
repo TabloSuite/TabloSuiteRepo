@@ -67,4 +67,10 @@ public class PlattformEinstellung : Entitaet
 
     /// <summary>Gültige Version der Nutzungsbedingungen; Änderung erzwingt erneute Zustimmung.</summary>
     public string AgbVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Schalter « Assistant (Poser une question) pour tous les rôles » (21.11.2026): KI-Hilfe für alle Rollen freigeben, ohne Deploy.
+    /// Standard aus – dann nur Administrateur und Responsable (oder Einstellung Ki:AlleRollen).
+    /// </summary>
+    public bool KiFuerAlleRollen { get; set; }
 }

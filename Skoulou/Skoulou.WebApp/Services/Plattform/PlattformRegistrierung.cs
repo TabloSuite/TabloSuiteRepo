@@ -79,6 +79,8 @@ public static class PlattformRegistrierung
         services.AddScoped<ProtokollService>();
         services.AddScoped<MedienVerwaltungService>();
         services.AddScoped<PlattformUebersicht>();
+        // Schalter « Assistant pour tous les rôles » (Plattform-Einstellung; die KI-Hilfe nutzt ihn, wenn registriert).
+        services.AddSingleton<KiHilfe.KiFreigabe>();
         services.AddScoped<StartSeed>();
         services.AddScoped<DemoSeed>();
         return services;
