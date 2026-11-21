@@ -365,7 +365,7 @@
             offen = false;
             toast.ZeigeErfolg(Ab is null
                 ? $"Nouveau tarif appliqué : {neuerPreis:N0} F / mois."
-                : $"Changement planifié au {PreisAnpassungService.DatumText(ergebnis.AbUtc)}" + (ergebnis.Mails > 0 ? $" · {ergebnis.Mails} e-mail(s) envoyé(s)." : "."));
+                : $"Changement planifié au {PreisAnpassungService.DatumText(ergebnis.AbUtc)}" + (ergebnis.Mails > 0 ? $" · {ergebnis.Mails} e-mail(s) en cours d'envoi." : "."));
             await LadeAsync();
             await OnGeaendert.InvokeAsync();
         }
@@ -406,7 +406,7 @@
             var ergebnis = await preise.AufhebenAsync(BearbeiterId, aufhebung.Anpassung.Id,
                 new PreisAnpassungService.EntwarnungsText(entwarnTitel, entwarnText, entwarnPerMail));
             aufhebenOffen = false;
-            toast.ZeigeErfolg("Changement de tarif annulé · propriétaires prévenus" + (ergebnis.Mails > 0 ? $" ({ergebnis.Mails} e-mail(s))." : " dans l'app."));
+            toast.ZeigeErfolg("Changement de tarif annulé · propriétaires prévenus" + (ergebnis.Mails > 0 ? $" ({ergebnis.Mails} e-mail(s) en cours d'envoi)." : " dans l'app."));
             await LadeAsync();
             await OnGeaendert.InvokeAsync();
         }

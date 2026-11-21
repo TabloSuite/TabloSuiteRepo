@@ -67,7 +67,7 @@
         {
             await Service.AnfordernAsync(pseudonym, anschluss ?? ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext));
             erfolg = true;
-            message = "Si le compte est éligible, un lien a été envoyé à son adresse e-mail. Vérifiez également les courriers indésirables.";
+            message = "Si le compte est éligible, un lien sera envoyé dans un instant à son adresse e-mail. Vérifiez également les courriers indésirables.";
         }
         catch { erfolg = false; message = "La récupération n'est pas disponible pour le moment. Contactez l'administrateur."; }
         finally { laeuft = false; }

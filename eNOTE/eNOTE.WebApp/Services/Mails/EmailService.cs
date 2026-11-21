@@ -16,16 +16,26 @@ namespace ENote.WebApp.Services.Mails;
 /// <item><c>Mail:Provider = Smtp</c> (oder nur <c>Mail:SmtpHost</c> gesetzt) → klassisches SMTP.</item>
 /// <item>Nichts konfiguriert → Nachrichten landen nur in der Queue (<see cref="MailNachricht"/>).</item>
 /// </list>
-/// Jede Nachricht wird zuerst gespeichert und dann sofort versendet; Fehlversuche wiederholt
-/// <see cref="MailVersandDienst"/> (max. <see cref="MaxVersuche"/>). Versandfehler blockieren nie den Aufrufer.
+/// Jede Nachricht wird nur gespeichert (Warteschlange) und der <see cref="MailVersandDienst"/> per <see cref="MailWeckruf"/>
+/// geweckt: er versendet sie sofort im Hintergrund und wiederholt Fehlversuche (max. <see cref="MaxVersuche"/>).
+/// Ein Klick wartet so nie auf Postmark/SMTP (Klicktest 20.11.: « J'ai payé » drehte 2–8 s, bei Ausfall bis 20 s).
+/// Nur die Prüfmail der Administration (<see cref="SendeSofortAsync"/>) und « Renvoyer » senden direkt.
 /// </summary>
 public class EmailService(
     IConfiguration configuration,
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
     ILogger<EmailService> logger,
-    IHttpClientFactory? httpClientFactory = null)
+    IHttpClientFactory? httpClientFactory = null,
+    MailWeckruf? weckruf = null)
 {
     public const int MaxVersuche = 5;
+
+    /// <summary>So viele neue Mails versendet der Dienst je Durchgang.</summary>
+    public const int StapelGroesse = 25;
+
+    /// <summary>Kategorie der Passwort-vergessen-Mail: kommt in der Warteschlange vor allen anderen dran.</summary>
+    public const string KategorieVorrang = "reinitialisation";
+
     private const string PostmarkUrl = "https://api.postmarkapp.com/email";
 
     public string Absender => configuration["Mail:Absender"] is { Length: > 0 } a ? a : "contact@tablosuite.com";
@@ -116,12 +126,27 @@ public class EmailService(
     public static string MitAppName(string betreff)
         => betreff.Contains(AppKennung, StringComparison.OrdinalIgnoreCase) ? betreff : $"{AppKennung} {betreff}".TrimEnd();
 
-    /// <summary>Stellt eine E-Mail in die Queue und versucht den sofortigen Versand.</summary>
+    /// <summary>Stellt eine E-Mail in die Warteschlange; der Hintergrunddienst versendet sie gleich danach.</summary>
     public async Task SendeAsync(string empfaenger, string betreff, string htmlInhalt, CancellationToken cancellationToken = default)
         => await SendeAsync(empfaenger, betreff, htmlInhalt, kategorie: null, cancellationToken);
 
-    /// <summary>Wie <see cref="SendeAsync(string,string,string,CancellationToken)"/>, mit Kategorie (Postmark-Tag).</summary>
-    public async Task<bool> SendeAsync(string empfaenger, string betreff, string htmlInhalt, string? kategorie, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Wie <see cref="SendeAsync(string,string,string,CancellationToken)"/>, mit Kategorie (Postmark-Tag). Wartet nicht
+    /// auf den Versand. true = eingereiht und ein Versandweg ist konfiguriert (die Mail geht « dans un instant » raus);
+    /// false = verworfen (ungültige Adresse, abgeschaltete Mail-Art) oder kein Versandweg (bleibt in der Warteschlange).
+    /// </summary>
+    public Task<bool> SendeAsync(string empfaenger, string betreff, string htmlInhalt, string? kategorie, CancellationToken cancellationToken = default)
+        => SpeichereUndSendeAsync(empfaenger, betreff, htmlInhalt, kategorie, sofort: false, cancellationToken);
+
+    /// <summary>
+    /// Prüfmail der Administration: speichert und versendet direkt, damit der Administrator das Ergebnis des
+    /// Versandwegs sofort sieht. Für alle anderen Mails <see cref="SendeAsync(string,string,string,string?,CancellationToken)"/>.
+    /// </summary>
+    public Task<bool> SendeSofortAsync(string empfaenger, string betreff, string htmlInhalt, string? kategorie, CancellationToken cancellationToken = default)
+        => SpeichereUndSendeAsync(empfaenger, betreff, htmlInhalt, kategorie, sofort: true, cancellationToken);
+
+    private async Task<bool> SpeichereUndSendeAsync(string empfaenger, string betreff, string htmlInhalt, string? kategorie, bool sofort,
+        CancellationToken cancellationToken)
     {
         betreff = MitAppName(betreff);
         if (string.IsNullOrWhiteSpace(empfaenger) || !MailAddress.TryCreate(empfaenger.Trim(), out _))
@@ -163,10 +188,48 @@ public class EmailService(
             return false;
         }
 
+        if (gespeichert && !sofort)
+        {
+            // Versand übernimmt der Hintergrunddienst – der Klick wartet nicht auf Postmark/SMTP.
+            weckruf?.Wecken();
+            return true;
+        }
+
+        // Prüfmail – oder Warteschlange nicht erreichbar: direkt versenden (Ausnahmefall).
         var (erfolg, anbieterId, fehler) = await VersendeAsync(nachricht, cancellationToken);
         if (gespeichert)
             await MerkeErgebnisAsync(nachricht.Id, erfolg, anbieterId, fehler, cancellationToken);
         return erfolg;
+    }
+
+    /// <summary>
+    /// Versendet neu eingereihte Mails (noch kein Versuch), « Mot de passe oublié » zuerst, dann in Eingangsreihenfolge
+    /// (vom Hintergrunddienst nach jedem Weckruf aufgerufen). <c>Mehr</c> = es warten weitere neue Mails.
+    /// </summary>
+    public async Task<(int Gesendet, bool Mehr)> VersendeNeueAsync(CancellationToken ct = default)
+    {
+        if (!IstKonfiguriert) return (0, false);
+        List<MailNachricht> neue;
+        await using (var db = await dbContextFactory.CreateDbContextAsync(ct))
+        {
+            var grenze = DateTime.UtcNow.AddDays(-3);
+            neue = await db.MailNachrichten.AsNoTracking()
+                .Where(m => !m.IstGesendet && m.Versuche == 0 && m.CreatedAtUtc >= grenze)
+                .OrderBy(m => m.Kategorie == KategorieVorrang ? 0 : 1)
+                .ThenBy(m => m.CreatedAtUtc)
+                .Take(StapelGroesse + 1)
+                .ToListAsync(ct);
+        }
+
+        var mehr = neue.Count > StapelGroesse;
+        var gesendet = 0;
+        foreach (var m in neue.Take(StapelGroesse))
+        {
+            var (erfolg, anbieterId, fehler) = await VersendeAsync(m, ct);
+            await MerkeErgebnisAsync(m.Id, erfolg, anbieterId, fehler, ct);
+            if (erfolg) gesendet++;
+        }
+        return (gesendet, mehr);
     }
 
     /// <summary>Versendet noch offene Nachrichten erneut (vom Hintergrunddienst aufgerufen).</summary>

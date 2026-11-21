@@ -286,7 +286,7 @@
             var (_, mails) = await ankuendigungen.VeroeffentlicheAsync(bearbeiter,
                 new AnkuendigungService.Entwurf(neu.Art, ziel, neu.Titel, neu.Text, neu.LinkUrl, neu.LinkText, bis, neu.PerMail,
                     fenster?.Von, fenster?.Bis, IstWartung && neu.HinweisDanach));
-            toast.ZeigeErfolg(mails > 0 ? $"Annonce publiée · {mails} e-mail(s) envoyé(s)." : "Annonce publiée.");
+            toast.ZeigeErfolg(mails > 0 ? $"Annonce publiée · {mails} e-mail(s) en cours d'envoi." : "Annonce publiée.");
             neu = NeuesFormular();
             vorlageName = AnkuendigungService.WartungsVorlagen[0].Name;
             await LadeAsync();

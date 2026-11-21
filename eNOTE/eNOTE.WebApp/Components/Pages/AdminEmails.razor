@@ -523,7 +523,7 @@
         antwortFehler = await posteingang.AntwortenAsync(benutzerId, mailId, antwortText);
         if (antwortFehler is null)
         {
-            toast.ZeigeErfolg("Réponse envoyée.");
+            toast.ZeigeErfolg("Réponse enregistrée : elle sera envoyée dans un instant.");
             antwortText = null;
             offeneMail = null;
             await LadeEingangAsync();
@@ -603,9 +603,9 @@
             if (!email.IstKonfiguriert)
                 toast.ZeigeInfo($"{empfaenger.Count} message(s) en file d'attente (envoi inactif).");
             else if (fehler == 0)
-                toast.ZeigeErfolg($"Message envoyé à {ok} destinataire{(ok > 1 ? "s" : "")}.");
+                toast.ZeigeErfolg($"Message enregistré : il sera envoyé dans un instant à {ok} destinataire{(ok > 1 ? "s" : "")}.");
             else
-                toast.ZeigeFehler($"{ok} envoyé(s), {fehler} échec(s) : voir l'historique.");
+                toast.ZeigeFehler($"{ok} en cours d'envoi, {fehler} non envoyé(s) : voir l'historique.");
             betreff = nachricht = string.Empty;
             gesendetImMonat = await email.GesendetImMonatAsync();
         }
@@ -628,7 +628,7 @@
     private async Task SendeTestAsync()
     {
         if (string.IsNullOrWhiteSpace(testEmpfaenger)) return;
-        testOk = await email.SendeAsync(testEmpfaenger.Trim(), "Vérification de l'envoi eNOTE", TabloSuiteMails.Test(email.Anbieter, email.Absender), "test");
+        testOk = await email.SendeSofortAsync(testEmpfaenger.Trim(), "Vérification de l'envoi eNOTE", TabloSuiteMails.Test(email.Anbieter, email.Absender), "test");
         testErgebnis = testOk
             ? $"E-mail envoyé à {testEmpfaenger.Trim()} via {email.Anbieter}."
             : email.IstKonfiguriert ? "L'envoi a échoué : voir le détail dans l'historique." : "Envoi inactif : le message reste en file d'attente.";

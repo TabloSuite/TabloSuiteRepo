@@ -205,6 +205,8 @@ if (administration is null)
     builder.Services.AddScoped<ToastService>();
     builder.Services.AddScoped<MedienZugriff>();
     builder.Services.AddHttpClient("postmark", c => c.Timeout = TimeSpan.FromSeconds(20));
+    // Mails gehen nur in die Warteschlange; der Weckruf lässt den MailVersandDienst sie sofort im Hintergrund senden.
+    builder.Services.AddSingleton<ENote.WebApp.Services.Mails.MailWeckruf>();
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.EmailService>();
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.MailBenachrichtigungen>();
     builder.Services.AddScoped<ENote.WebApp.Services.Mails.NachrichtenService>();

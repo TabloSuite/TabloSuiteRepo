@@ -118,7 +118,7 @@ public class PostEingangService(IDbContextFactory<ApplicationDbContext> factory,
             logger.LogWarning(ex, "Antwort auf Eingangsmail {Id} konnte nicht versendet werden.", mailId);
             ok = false;
         }
-        if (!ok) return "Réponse mise en file d'attente : l'envoi n'a pas encore abouti (voir « Historique », nouvel essai automatique).";
+        if (!ok) return "Réponse mise en file d'attente : l'envoi n'est pas actif pour le moment (voir « Historique »).";
 
         mail.IstGelesen = true;
         mail.BeantwortetUtc = DateTime.UtcNow;

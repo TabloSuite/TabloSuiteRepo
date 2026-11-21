@@ -84,7 +84,7 @@ public partial class Abonnement(
     private Task KuendigeAsync()
     {
         var grund = string.Join(" · ", new[] { kuendigungGrund, kuendigungText?.Trim() }.Where(t => !string.IsNullOrWhiteSpace(t)));
-        return EndeAktionAsync(async () => await kuendigungService.KuendigeAsync(benutzerId, salonId, grund), "Résiliation enregistrée. Un e-mail de confirmation vous a été envoyé.");
+        return EndeAktionAsync(async () => await kuendigungService.KuendigeAsync(benutzerId, salonId, grund), "Résiliation enregistrée. Un e-mail de confirmation vous sera envoyé dans un instant.");
     }
 
     private Task NimmKuendigungZurueckAsync()

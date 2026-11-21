@@ -317,44 +317,75 @@ public class MailBenachrichtigungen(
 }
 
 /// <summary>
-/// Hintergrunddienst: alle 5 Minuten fehlgeschlagene Mails erneut senden, stündlich die
-/// zeitgesteuerten Abo-Mails prüfen. Läuft nur, wenn ein Versandweg konfiguriert ist.
+/// Hintergrunddienst und einziger regulärer Versender: neue Mails aus der Warteschlange sofort nach dem
+/// <see cref="MailWeckruf"/> (spätestens nach einer Minute), Fehlversuche alle 5 Minuten erneut, stündlich die
+/// zeitgesteuerten Abo- und Formation-Mails. Läuft nur, wenn ein Versandweg konfiguriert ist.
 /// </summary>
-public class MailVersandDienst(IServiceScopeFactory scopes, ILogger<MailVersandDienst> logger) : BackgroundService
+public class MailVersandDienst(IServiceScopeFactory scopes, ILogger<MailVersandDienst> logger, MailWeckruf? weckruf = null) : BackgroundService
 {
+    /// <summary>Wartezeit nach dem App-Start, bevor neue Mails versendet werden.</summary>
+    public TimeSpan StartVerzoegerung { get; init; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>Fehlversuche, Abo- und Formation-Mails erst so lange nach dem Start (App-Start nicht belasten).</summary>
+    public TimeSpan PruefVerzoegerung { get; init; } = TimeSpan.FromMinutes(1);
+
+    private static readonly TimeSpan WiederholAbstand = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PruefAbstand = TimeSpan.FromHours(1);
+    private static readonly TimeSpan HoechsteRuhe = TimeSpan.FromMinutes(1);
+
+    /// <summary>Höchstens so viele volle Stapel direkt hintereinander, dann eine Ruhepause (Schutz vor Endlosschleifen).</summary>
+    private const int MaxStapelAmStueck = 20;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); } catch (OperationCanceledException) { return; }
-        var letztePruefung = DateTime.MinValue;
+        var weck = weckruf ?? new MailWeckruf();
+        try { await Task.Delay(StartVerzoegerung, stoppingToken); } catch (OperationCanceledException) { return; }
+        var naechsteWiederholung = DateTime.UtcNow + PruefVerzoegerung;
+        var naechstePruefung = naechsteWiederholung;
+        var stapelAmStueck = 0;
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var mehr = false;
             try
             {
                 using var scope = scopes.CreateScope();
                 var email = scope.ServiceProvider.GetRequiredService<EmailService>();
                 if (email.IstKonfiguriert)
                 {
-                    var erneut = await email.WiederholeAusstehendeAsync(stoppingToken);
-                    if (erneut > 0) logger.LogInformation("{Anzahl} E-Mail(s) nachgesendet.", erneut);
+                    var (gesendet, weitere) = await email.VersendeNeueAsync(stoppingToken);
+                    mehr = weitere;
+                    if (gesendet > 0) logger.LogInformation("{Anzahl} E-Mail(s) versendet.", gesendet);
 
-                    if (DateTime.UtcNow - letztePruefung >= TimeSpan.FromHours(1))
+                    if (DateTime.UtcNow >= naechsteWiederholung)
                     {
-                        letztePruefung = DateTime.UtcNow;
+                        naechsteWiederholung = DateTime.UtcNow + WiederholAbstand;
+                        var erneut = await email.WiederholeAusstehendeAsync(stoppingToken);
+                        if (erneut > 0) logger.LogInformation("{Anzahl} E-Mail(s) nachgesendet.", erneut);
+                    }
+
+                    if (DateTime.UtcNow >= naechstePruefung)
+                    {
+                        naechstePruefung = DateTime.UtcNow + PruefAbstand;
                         var neu = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>().PruefeAboMailsAsync(stoppingToken);
-                        if (neu > 0) logger.LogInformation("{Anzahl} Abo-E-Mail(s) versendet.", neu);
+                        if (neu > 0) logger.LogInformation("{Anzahl} Abo-E-Mail(s) eingereiht.", neu);
                         var formation = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>()
                             .PruefeFormationMailsAsync(scope.ServiceProvider.GetRequiredService<Formation.FormationService>(), stoppingToken);
-                        if (formation > 0) logger.LogInformation("{Anzahl} Formation-E-Mail(s) versendet.", formation);
+                        if (formation > 0) logger.LogInformation("{Anzahl} Formation-E-Mail(s) eingereiht.", formation);
+                        // Die eingereihten Abo-/Formation-Mails gleich im nächsten Durchgang versenden.
+                        mehr |= neu + formation > 0;
                     }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Mail-Hintergrunddienst fehlgeschlagen.");
+                mehr = false;
             }
 
-            try { await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); } catch (OperationCanceledException) { return; }
+            if (mehr && ++stapelAmStueck < MaxStapelAmStueck) continue;
+            stapelAmStueck = 0;
+            try { await weck.WarteAsync(HoechsteRuhe, stoppingToken); } catch (OperationCanceledException) { return; }
         }
     }
 }
