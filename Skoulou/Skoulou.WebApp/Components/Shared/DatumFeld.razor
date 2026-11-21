@@ -11,7 +11,22 @@
             <div class="sk-datum-popup" role="dialog" aria-label="Choisir une date">
                 <div class="sk-datum-kopf">
                     <button type="button" class="sk-icon-knopf klein" aria-label="Mois précédent" @onclick="() => Monat(-1)"><Icon Name="chevron-left" Groesse="16" /></button>
-                    <strong>@MonatsTitel</strong>
+                    @* Klicktest 20.11.2026: Geburtsdatum nur per Monatsblättern = 152 Klicks → Monat und Jahr direkt wählbar
+                       (am Handy das Drehrad des Systems). *@
+                    <div class="sk-datum-wahl">
+                        <select class="sk-datum-select" aria-label="Mois" @onchange="MonatGewaehlt">
+                            @for (var m = 1; m <= 12; m++)
+                            {
+                                <option value="@m" selected="@(m == monat.Month)">@MonatsName(m)</option>
+                            }
+                        </select>
+                        <select class="sk-datum-select" aria-label="Année" @onchange="JahrGewaehlt">
+                            @foreach (var j in Jahre())
+                            {
+                                <option value="@j" selected="@(j == monat.Year)">@j</option>
+                            }
+                        </select>
+                    </div>
                     <button type="button" class="sk-icon-knopf klein" aria-label="Mois suivant" @onclick="() => Monat(1)"><Icon Name="chevron-right" Groesse="16" /></button>
                 </div>
                 <div class="sk-datum-raster">

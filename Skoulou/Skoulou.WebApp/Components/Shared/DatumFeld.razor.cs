@@ -32,7 +32,32 @@ public partial class DatumFeld : IAsyncDisposable
     private DotNetObjectReference<DatumFeld>? selbst;
 
     private DateOnly Heute => HeuteWert ?? new SchulZeit(Zeit).Heute;
-    private string MonatsTitel => monat.ToString("MMMM yyyy", SkoulouKultur.Kultur);
+
+    /// <summary>« janvier » … « décembre ».</summary>
+    internal static string MonatsName(int monat) => SkoulouKultur.Kultur.DateTimeFormat.GetMonthName(monat);
+
+    /// <summary>
+    /// Wählbare Jahre, das neueste zuerst: zwischen Min und Max, ohne Grenzen 100 Jahre zurück (Geburtsdaten) bis 10 Jahre
+    /// voraus; das gerade angezeigte Jahr ist immer dabei.
+    /// </summary>
+    internal static IEnumerable<int> JahreFuer(DateOnly? min, DateOnly? max, DateOnly heute, int angezeigt)
+    {
+        var von = Math.Min(min?.Year ?? heute.Year - 100, angezeigt);
+        var bis = Math.Max(max?.Year ?? heute.Year + 10, angezeigt);
+        for (var j = bis; j >= von; j--) yield return j;
+    }
+
+    private IEnumerable<int> Jahre() => JahreFuer(Min, Max, Heute, monat.Year);
+
+    private void MonatGewaehlt(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var m) && m is >= 1 and <= 12) monat = new DateOnly(monat.Year, m, 1);
+    }
+
+    private void JahrGewaehlt(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var j) && j is >= 1 and <= 9999) monat = new DateOnly(j, monat.Month, 1);
+    }
 
     private bool Erlaubt(DateOnly tag) => (Min is null || tag >= Min) && (Max is null || tag <= Max);
 
