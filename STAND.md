@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 21.11.2026 nachts (alles deployt und live geprüft, master übernommen)
+# TabloSuite – Arbeitsstand 21.11.2026 vormittags (8 Verbesserungen fertig, lokal getestet – noch nicht gepusht/deployt)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -7,32 +7,41 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachts
 
-**>>> STAND JETZT (21.11. nachts) – nichts Dringendes offen:**
-- **Deploy erledigt** (eNOTE, SKOULOU, TabloSuiteHome) und live geprüft: eNOTE `/tarifs/public` → 2.500 F, tablosuite.com zeigt
-  « 2.500 FCFA / établissement / mois » (eNOTE) und « Emplois du temps des classes et des enseignants » (SKOULOU). Keine Migration.
-- **`master` übernommen** (mit OK des Nutzers, Fast-Forward auf c704fe0). Danach nur noch STAND-Einträge in `Etse.TabloSuite.Muster`.
-- **Aufgeräumt:** Test-DBs `ENOTE_E2E_2011`/`SKOULOU_E2E_2011` gelöscht, `%TEMP%\e2e-2011` im Papierkorb (Berichte waren dort).
-  Noch vorhanden (nur auf Wunsch löschen): ältere Test-DBs `eNOTE_E2E`, `ENOTE_E2E_ABEND`, `ENOTEDB_SIM`, `SkoulouDB_SIM`,
-  `SKOULOUAPP_BROWSER_TEST_2026`; alte App-DBs `SKOULOUAPPDB`, `HALLOAPPDb`. `SkoulouDB_VIDEO` wird für Lernvideos gebraucht.
-- **Test-Befunde des Nutzers/Sado:** meldet der Nutzer selbst, falls nötig – dann Fehlerprotokolle lesen (`%TEMP%\enote-lesen\lesen.ps1`,
-  eNOTE `ExceptionLogs`, SKOULOU `FehlerProtokolle`).
+**>>> JETZT ZUERST (21.11. vormittags):**
+1. **Pushen** (`Etse.TabloSuite.Muster`, Nutzer: « wir pushen alles am Ende ») – 11 Commits seit ff43351, alles lokal getestet.
+2. **`master` übernehmen – nur nach ausdrücklichem OK.**
+3. **Vor dem nächsten Deploy: zwei Azure-Migrationen – nur nach OK, unmittelbar vor dem Deploy:**
+   - **SKOULOU `20261121090934_KiFuerAlleRollen`** (Skoulou-Database): nur AddColumn `PlattformEinstellungen.KiFuerAlleRollen bit NOT NULL
+     DEFAULT 0`. **Pflicht** – ohne die Spalte bricht die neue Version beim Lesen der Plattform-Einstellungen (`/admin/tarifs`, Abrechnung).
+     Einspielen: `dotnet ef database update --project Skoulou/Skoulou.WebApp --configuration Release --connection \"Server=tcp:tablosuite-sqlserver.database.windows.net,1433;Database=Skoulou-Database;Authentication=Active Directory Default;Encrypt=True;\"`.
+   - **eNOTE `20261121085140_PlattformEinstellungen`** (ENote-Database): nur CreateTable `PlattformEinstellungen` (Id int PK, KiFuerAlleRollen bit,
+     GeaendertUtc datetime2, GeaendertVonId uniqueidentifier NULL). Ohne Tabelle läuft die App, der KI-Schalter gilt als « aus ».
+     Einspielen: idempotentes Skript (`dotnet ef migrations script 20261119131056_KundenAktenRecht 20261121085140_PlattformEinstellungen --idempotent`)
+     mit `%TEMP%\enote-scripts\azure-anwenden.ps1` (siehe Memory « Azure-DB Stand »).
+   - Lokal (`ENOTEDB`, `SkoulouDB`) sind beide schon eingespielt (21.11., per `scripts\Datenbanken-anlegen.cmd`).
+4. Dann deployt der Nutzer **eNOTE und SKOULOU** (TabloSuiteHome unverändert).
 
-**>>> MÖGLICHE NÄCHSTE VERBESSERUNGEN (aus dem Klicktest 20.11.; nur nach Absprache, Nutzer entscheidet je Punkt):**
-1. SKOULOU: Koeffizient ist nach der ersten Veröffentlichung fürs ganze Jahr fest – ein falscher Koeffizient wäre bis Jahresende
-   nicht korrigierbar. Vorschlag: Änderung während einer « Rectification » erlauben (Bulletins werden dabei neu ausgegeben).
-2. SKOULOU: Eine « Rectification » gibt alle Bulletins der Klasse neu aus; Eltern unbeteiligter Schüler sehen « Rectifié ».
-   Vorschlag: nur Bulletins neu ausgeben, bei denen sich etwas geändert hat.
-3. SKOULOU: Registrierung bei sehr langsamem Netz – wird in den ersten Sekunden abgeschickt und der Server lehnt ab (z. B. Identifiant
-   vergeben), sind alle Eingaben weg. Vorschlag: Eingaben (ohne Passwort) im Browser merken.
-4. SKOULOU: Schule startet mitten im Jahr → alle Schüler « Arrivé(e) le … », frühere Noten grau (Zahlen richtig). Vorschlag:
-   Einschreibung dann ab Schuljahresbeginn.
-5. eNOTE: Mails (z. B. « J'ai payé ») werden im Klick verschickt – der Knopf dreht 2–8 s, bei Postmark-Ausfall bis 20 s.
-   Vorschlag: über die vorhandene Warteschlange im Hintergrund senden.
-6. eNOTE: « Déconnecter » unter « Appareils connectés » wirkt bei einem Gerät mit offener Seite erst beim nächsten Neuladen.
-   Vorschlag: regelmäßige Prüfung in der offenen Verbindung (größerer Umbau).
-7. eNOTE: Nach F5 in der Kasse ist das angefangene Ticket leer. Vorschlag: vorher warnen oder Ticket automatisch « en attente » parken.
-8. KI-Hilfe später für alle: Prinzip « nach unten » (jede Rolle kennt sich und die Rollen darunter) + Schalter im Admin-Bereich (Migration).
-Bewusst NICHT: PO öffnet keine Reçus der Läden (Regel « PO nie in Kasse/Kundendaten »).
+**>>> UMGESETZT 21.11. vormittags – alle 8 Verbesserungen aus dem Klicktest (Nutzer: « alle nach deiner Reihenfolge »):**
+- Zwei Agenten (Worktrees), von mir geprüft und übernommen; Tests eNOTE 591, SKOULOU 746 (mit SQL-Server 767), Home 11 – alle grün.
+- **SKOULOU:** (4) Einschreibung standardmäßig ab Schuljahresbeginn, Feld « Inscrit(e) depuis le » in Neuer Schüler/Validierung/Import/
+  « Inscrire dans une classe », Korrektur im Dossier (Kalender-Symbol, Journal) (dd330e1); dazu: Perioden, die **vor der Anmeldung der
+  Schule** endeten, werden nie berechnet; Einschreibungen desselben Jahres überlappen nicht. (3) Registrierung: konkrete Meldung
+  (`identifiant-pris` …), Eingaben ohne Passwort in sessionStorage (7251f05). (1) Koeffizient änderbar nur bei genau einer
+  veröffentlichten Periode in Rectification (aadfeb7). (2) Rectification gibt nur fachlich geänderte Bulletins neu aus – Schulkopf/
+  Vorlage/Lehrernamen zählen nicht (66d194a). (8) KI « nach unten » + Schalter auf `/admin/tarifs` (16451aa, Migration).
+- **eNOTE:** (5) Mails über Warteschlange + Weckruf, Antwort sofort (3da534c; Prüfmail/« Renvoyer » bleiben direkt). (6) Offene Seite prüft
+  Anmeldung alle 30 s + beim Seitenwechsel, abgemeldetes Gerät → Anmeldeseite « Cet appareil a été déconnecté » (0388b5f). (7) Kasse:
+  angefangenes Ticket in localStorage, nach F5 automatisch zurück, Preise aus dem Katalog (786bac1). (8) KI « nach unten » + Reiter
+  « Réglages » unter `/admin` (c2b3060, c7b4506, Migration).
+- **Fragen an den Nutzer (offen):** SKOULOU – darf die Regel « Perioden vor der Anmeldung werden nie berechnet » bleiben (empfohlen: ja)?;
+  Datumskorrektur mit Recht `KontenVerwalten` (Direktor, Koordinator nur mit Recht) ok?; Fachkonzept/Bauplan noch nicht nachgezogen.
+  eNOTE – Prüfmail/« Renvoyer » auch in den Hintergrund?; Konten mit « une seule connexion » werden jetzt auch auf offener Seite
+  nach ≤ 30 s abgemeldet (bestehende Regel, nur sofort); Ticket nach F5 ohne Rückfrage wiederhergestellt.
+- Bewusst NICHT: PO öffnet keine Reçus der Läden (Regel « PO nie in Kasse/Kundendaten »).
+
+**>>> (21.11. nachts) Deploy erledigt** (eNOTE, SKOULOU, Home) und live geprüft; `master` übernommen (c704fe0); Test-DBs *_E2E_2011 gelöscht.
+Noch vorhanden (nur auf Wunsch löschen): ältere Test-DBs `eNOTE_E2E`, `ENOTE_E2E_ABEND`, `ENOTEDB_SIM`, `SkoulouDB_SIM`,
+`SKOULOUAPP_BROWSER_TEST_2026`; alte App-DBs `SKOULOUAPPDB`, `HALLOAPPDb`. `SkoulouDB_VIDEO` wird für Lernvideos gebraucht.
 
 Team seit 20.11.: Chris arbeitet nur in `Etse.TabloSuite.Muster`, Sado in seinem Branch; Regeln für alle in `CLAUDE.md`.
 
