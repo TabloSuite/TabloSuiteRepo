@@ -80,7 +80,9 @@ public sealed class QuittungService(IDbContextFactory<SkoulouDbContext> dbFactor
                 return;
             case Rollen.Eltern when akteur.SchuleId == schuleId && await SchulAbfragen.IstKindAsync(db, akteur.Id, schuelerId, ct):
                 return;
-            case Rollen.Responsable or Rollen.SuperAdmin:
+            // 18.11.2026: Der Responsable sieht keine Schülerdaten (Formation, CGU) – eine Quittung trägt Name, Matrikel
+            // und Klasse; Klicktest 21.11.2026: /finances/recu/{id} lieferte sie ihm trotzdem.
+            case Rollen.SuperAdmin:
                 await zugriff.PruefeSchuleAsync(akteur, schuleId, ct);
                 return;
             default:

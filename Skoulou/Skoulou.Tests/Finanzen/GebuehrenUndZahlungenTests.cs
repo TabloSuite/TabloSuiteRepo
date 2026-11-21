@@ -195,9 +195,10 @@ public class ZahlungTests
         var pdf = await w.Quittungen.PdfAsync(w.D, z.ZahlungId);
         Assert.Equal("%PDF"u8.ToArray(), pdf.Inhalt[..4]);
 
-        foreach (var erlaubt in new[] { w.D, w.KMit, w.Org.Schueler, w.Org.Eltern, w.Org.Responsable, w.Org.Admin })
+        foreach (var erlaubt in new[] { w.D, w.KMit, w.Org.Schueler, w.Org.Eltern, w.Org.Admin })
             await w.Quittungen.DatenAsync(erlaubt, z.ZahlungId);
-        foreach (var verboten in new[] { w.KOhne, w.Org.Lehrer, w.Org.SchuelerZiel, w.Org.ElternZiel, w.Org.DirektorB })
+        // 18.11.2026: Der Responsable sieht keine Schülerdaten – die Quittung trägt Name, Matrikel und Klasse (Klicktest 21.11.2026).
+        foreach (var verboten in new[] { w.KOhne, w.Org.Lehrer, w.Org.SchuelerZiel, w.Org.ElternZiel, w.Org.DirektorB, w.Org.Responsable })
             await Assert.ThrowsAsync<KeinZugriffFehler>(() => w.Quittungen.DatenAsync(verboten, z.ZahlungId));
 
         await w.Zahlungen.StornierenAsync(w.D, z.ZahlungId, "Chèque sans provision");
