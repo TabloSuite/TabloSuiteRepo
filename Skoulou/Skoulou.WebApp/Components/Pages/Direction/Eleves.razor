@@ -88,9 +88,9 @@ else if (zaehler is not null)
 
 <SchuelerAkte SchuelerId="akteId" Version="version" OnClose="() => akteId = null" OnBearbeiten="id => Bearbeiten(id)"
               OnEinschreibung="a => einschreibung = a" OnKontoAktion="a => aktion = a" OnGeaendert="ListeLadenAsync" />
-<SchuelerDialog Open="dialog" SchuelerId="bearbeitet" Klassen="klassen" VorgabeKlasse="klasseFilter" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
+<SchuelerDialog Open="dialog" SchuelerId="bearbeitet" Klassen="klassen" VorgabeKlasse="klasseFilter" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" VorgabeBeginn="vorgabeBeginn" OnClose="() => dialog = false" OnGespeichert="GespeichertAsync" />
 <EinschreibungDialog Anfrage="einschreibung" Klassen="klassen" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" JahrId="JahrId" OnClose="() => einschreibung = null" OnErledigt="ErledigtAsync" />
-<ValidierenDialog Kandidat="kandidat" Ablehnen="ablehnen" Klassen="klassen" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" OnClose="() => kandidat = null" OnErledigt="ErledigtAsync" />
+<ValidierenDialog Kandidat="kandidat" Ablehnen="ablehnen" Klassen="klassen" JahrBeginn="jahrBeginn" JahrEnde="jahrEnde" VorgabeBeginn="vorgabeBeginn" OnClose="() => kandidat = null" OnErledigt="ErledigtAsync" />
 <KontoAktionDialog Anfrage="aktion" OnClose="() => aktion = null" OnErledigt="AktionErledigtAsync" />
 <ZugangsDialog Stapel="zugaenge" OnClose="() => zugaenge = null" />
 <ImportDialog Open="import" Art="ImportArt.Eleves" JahrId="JahrId" OnClose="() => import = false" OnImportiert="ImportiertAsync" />

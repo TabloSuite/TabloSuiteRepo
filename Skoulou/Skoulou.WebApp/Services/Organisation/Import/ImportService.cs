@@ -18,7 +18,7 @@ public sealed record ImportZeile(int Nr, string Name, string? Identifiant, bool 
 
 /// <summary>Vorschau eines Imports mit VOLLSTÄNDIGER Fehlerliste; gültige Zeilen können importiert werden.</summary>
 public sealed record ImportVorschau(Guid Id, ImportArt Art, string Datei, string? Jahr, IReadOnlyList<ImportZeile> Zeilen, IReadOnlyList<ImportFehler> Fehler,
-    DateOnly? JahrBeginn = null, DateOnly? JahrEnde = null)
+    DateOnly? JahrBeginn = null, DateOnly? JahrEnde = null, DateOnly? VorgabeBeginn = null)
 {
     public int Gueltig => Zeilen.Count(z => z.Gueltig);
     public int Ungueltig => Zeilen.Count - Gueltig;
@@ -68,7 +68,8 @@ public sealed class ImportService(
         var fehler = FehlerListe(geprueft);
         var name = Path.GetFileName(dateiname ?? "import.xlsx");
         var id = ablage.AblegenObjekt(a.Id, new ImportSitzung(art, jahr?.Id, name, zeilen, fehler));
-        return new ImportVorschau(id, art, name, jahr?.Bezeichnung, geprueft.Select(Zeile).ToList(), fehler, jahr?.Beginn, jahr?.Ende);
+        var vorgabe = jahr is null ? (DateOnly?)null : await EinschreibungService.StandardAsync(db, jahr, new SchulZeit(zeit).Heute, ct);
+        return new ImportVorschau(id, art, name, jahr?.Bezeichnung, geprueft.Select(Zeile).ToList(), fehler, jahr?.Beginn, jahr?.Ende, vorgabe);
     }
 
     /// <summary>Fehlerliste der Vorschau als Excel-Datei.</summary>
@@ -109,6 +110,7 @@ public sealed class ImportService(
 
             var liste = new List<Zugang>();
             var mailEmpfaenger = new List<MailEmpfaenger>();
+            DateOnly? standardBeginn = null; // einmal je Import (Startphase der Schule, 21.11.2026)
             foreach (var z in gueltig)
             {
                 var identifiant = z.Identifiant is not null && !z.Vorgeschlagen
@@ -124,7 +126,9 @@ public sealed class ImportService(
                     db.SchuelerProfile.Add(SchuelerService.NeuesProfil(konto.Id, a.SchuleId, matrikel, s));
                     if (z.KlasseId is { } klasseId && jahr is not null)
                     {
-                        var von = EinschreibungService.Beginn(jahr, beginn);
+                        var von = beginn is { } angegeben
+                            ? await EinschreibungService.BeginnAsync(db, jahr, angegeben, new SchulZeit(zeit).Heute, ct)
+                            : standardBeginn ??= await EinschreibungService.StandardAsync(db, jahr, new SchulZeit(zeit).Heute, ct);
                         db.Einschreibungen.Add(new Einschreibung
                         {
                             SchuleId = a.SchuleId, SchuelerId = konto.Id, SchuljahrId = jahr.Id, KlasseId = klasseId, Von = von,

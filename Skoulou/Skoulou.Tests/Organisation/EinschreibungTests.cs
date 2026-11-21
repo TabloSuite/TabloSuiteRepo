@@ -121,11 +121,59 @@ public class EinschreibungTests
         Assert.Equal(ende, EinschreibungsBeginn.Hoechstens(beginn, ende, new(2027, 7, 14)));
     }
 
+    [Theory]
+    [InlineData("2026-08-01", "2026-11-13", "2026-11-13")]   // schon vor dem Jahr bei SKOULOU: Neuzugang ab heute
+    [InlineData("2026-09-01", "2026-11-13", "2026-11-13")]   // am ersten Schultag angemeldet: nichts nachzuerfassen
+    [InlineData("2026-11-10", "2026-11-13", "2026-09-01")]   // mitten im 1er trimestre angemeldet: Startphase → Schuljahresbeginn
+    [InlineData("2026-11-10", "2026-12-18", "2026-09-01")]   // letzter Tag der Startphase (Ende der Anmeldeperiode)
+    [InlineData("2026-11-10", "2026-12-19", "2026-12-19")]   // Startphase vorbei: heute
+    [InlineData("2026-12-20", "2027-01-02", "2026-09-01")]   // in den Ferien angemeldet: Startphase bis Ende des 2e trimestre
+    [InlineData("2026-12-20", "2027-03-27", "2027-03-27")]
+    [InlineData("2026-08-01", "2026-08-20", "2026-09-01")]   // vor dem Jahr: Schuljahresbeginn
+    [InlineData("2026-08-01", "2027-07-14", "2027-06-30")]   // nach dem Jahr: Jahresende
+    [InlineData("2027-07-10", "2027-07-14", "2027-06-30")]   // nach allen Perioden angemeldet
+    public void Standard_ist_Schuljahresbeginn_nur_in_der_Startphase_einer_neuen_Schule(string anmeldung, string heute, string erwartet)
+    {
+        // 21.11.2026: Nachzügler einer etablierten Schule sind echte Neuzugänge (sonst würden frühere Perioden nachberechnet).
+        (DateOnly, DateOnly)[] perioden = [(new(2026, 9, 1), new(2026, 12, 18)), (new(2027, 1, 4), new(2027, 3, 26)), (new(2027, 4, 6), new(2027, 6, 30))];
+        Assert.Equal(DateOnly.Parse(erwartet), EinschreibungsBeginn.Standard(new(2026, 9, 1), new(2027, 6, 30), DateOnly.Parse(heute), DateOnly.Parse(anmeldung), perioden));
+    }
+
+    /// <summary>Lässt die Testschule erst am <paramref name="tag"/> bei SKOULOU angemeldet sein.</summary>
+    private static Task AngemeldetAmAsync(OrgWelt w, DateOnly tag) => w.MitDbAsync(async db =>
+    {
+        var schule = await db.Schulen.SingleAsync(s => s.Id == w.SchuleA);
+        schule.ErstelltAmUtc = tag.ToDateTime(new TimeOnly(10, 0), DateTimeKind.Utc);
+        return await db.SaveChangesAsync();
+    });
+
+    [Fact]
+    public async Task Etablierte_Schule_schreibt_Nachzuegler_ab_heute_ein_Datum_aenderbar()
+    {
+        // Schule seit dem 01/08/2026 bei SKOULOU (vor dem Schuljahr): ein neuer Schüler im November ist ein Neuzugang.
+        var w = await OrgWelt.ErstelleAsync();
+        Assert.Equal(OrgWelt.Heute, await w.D.Einschreibung.StandardBeginnAsync(w.Direktor, w.Jahr));
+        Assert.Equal(OrgWelt.Heute, await w.D.Einschreibung.StandardBeginnAsync(w.Koordinator, w.Jahr));
+        await Assert.ThrowsAnyAsync<Exception>(() => w.D.Einschreibung.StandardBeginnAsync(w.Lehrer, w.Jahr));
+        await Assert.ThrowsAnyAsync<Exception>(() => w.D.Einschreibung.StandardBeginnAsync(w.DirektorB, w.Jahr));
+
+        var neu = await w.D.Schueler.AnlegenAsync(w.Direktor, OrgWelt.SchuelerDaten("Afi", "Koffi"), w.Klasse6A);
+        Assert.Equal(OrgWelt.Heute, (await w.D.Schueler.DetailAsync(w.Direktor, neu.Zugaenge[0].KontoId)).Aktive!.Von);
+        var seitRentree = await w.D.Schueler.AnlegenAsync(w.Direktor, OrgWelt.SchuelerDaten("Yawa", "Tchalla"), w.Klasse6A, von: new DateOnly(2026, 9, 1));
+        Assert.Equal(new DateOnly(2026, 9, 1), (await w.D.Schueler.DetailAsync(w.Direktor, seitRentree.Zugaenge[0].KontoId)).Aktive!.Von);
+        await w.D.Schueler.ValidierenAsync(w.Direktor, w.SchuelerWartend, w.Klasse6B, false);
+        Assert.Equal(OrgWelt.Heute, (await w.D.Schueler.DetailAsync(w.Direktor, w.SchuelerWartend)).Aktive!.Von);
+        Assert.Equal(OrgWelt.Heute, await w.D.Einschreibung.VorgabeBeginnAsync(w.Direktor, w.Jahr, [w.SchuelerOhne]));
+    }
+
     [Fact]
     public async Task Schulstart_mitten_im_Jahr_Einschreibung_ab_Schuljahresbeginn_Datum_aenderbar()
     {
-        // Klicktest 20.11.2026: Anlage, Validierung und Import schreiben standardmäßig ab Beginn des Schuljahres ein.
+        // Klicktest 20.11.2026: Eine Schule, die mitten im Jahr startet, schreibt in ihrer Startphase (bis zum Ende der
+        // Anmeldeperiode) standardmäßig ab Beginn des Schuljahres ein – bei Anlage, Validierung und Import.
         var w = await OrgWelt.ErstelleAsync();
+        await AngemeldetAmAsync(w, new DateOnly(2026, 11, 10));
+        Assert.Equal(new DateOnly(2026, 9, 1), await w.D.Einschreibung.StandardBeginnAsync(w.Direktor, w.Jahr));
         var standard = await w.D.Schueler.AnlegenAsync(w.Direktor, OrgWelt.SchuelerDaten("Afi", "Koffi"), w.Klasse6A);
         Assert.Equal(new DateOnly(2026, 9, 1), (await w.D.Schueler.DetailAsync(w.Direktor, standard.Zugaenge[0].KontoId)).Aktive!.Von);
         var neuzugang = await w.D.Schueler.AnlegenAsync(w.Direktor, OrgWelt.SchuelerDaten("Yawa", "Tchalla"), w.Klasse6A, von: new DateOnly(2026, 11, 2));
@@ -146,6 +194,12 @@ public class EinschreibungTests
         Assert.Equal(1, sammel.Eingeschrieben);
         Assert.Contains(sammel.Uebersprungen, u => u.Contains("jusqu'au 09/10/2026"));
         await w.D.Einschreibung.EinschreibenAsync(w.Direktor, w.SchuelerZiel, w.Klasse6B, new(2026, 10, 12), false);
+
+        // Nach der Startphase (1er trimestre bis 18/12/2026) ist ein neuer Schüler ein Neuzugang: Vorgabe heute.
+        ((TestZeit)w.D.Zeit).Jetzt = new DateTimeOffset(2027, 1, 11, 9, 0, 0, TimeSpan.Zero);
+        Assert.Equal(new DateOnly(2027, 1, 11), await w.D.Einschreibung.StandardBeginnAsync(w.Direktor, w.Jahr));
+        var spaeter = await w.D.Schueler.AnlegenAsync(w.Direktor, OrgWelt.SchuelerDaten("Kafui", "Atsu"), w.Klasse6A);
+        Assert.Equal(new DateOnly(2027, 1, 11), (await w.D.Schueler.DetailAsync(w.Direktor, spaeter.Zugaenge[0].KontoId)).Aktive!.Von);
     }
 
     [Fact]

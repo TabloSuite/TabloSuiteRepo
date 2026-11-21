@@ -13,11 +13,12 @@ public partial class Eleves
     [SupplyParameterFromQuery(Name = "filtre")] public string? FilterAusAdresse { get; set; }
 
     [Inject] private SchuljahrService Schuljahre { get; set; } = default!;
+    [Inject] private EinschreibungService Einschreibungen { get; set; } = default!;
 
     private Liste<SchuelerZeile>? liste;
     private SchuelerZaehler? zaehler;
     private List<AuswahlEintrag> klassen = [];
-    private DateOnly? jahrBeginn, jahrEnde;
+    private DateOnly? jahrBeginn, jahrEnde, vorgabeBeginn;
     private string? filter;
     private Guid? klasseFilter, akteId, bearbeitet;
     private int version;
@@ -47,6 +48,8 @@ public partial class Eleves
         if (klasseFilter is { } k && klassen.All(x => x.Id != k)) klasseFilter = null;
         var jahr = JahrId is { } jid ? (await Schuljahre.JahreAsync(Ich.KontoId)).FirstOrDefault(j => j.Id == jid) : null;
         (jahrBeginn, jahrEnde) = (jahr?.Beginn, jahr?.Ende);
+        // Vorgabe « Inscrit(e) depuis le »: Schuljahresbeginn nur in der Startphase einer neuen Schule, sonst heute (21.11.2026).
+        vorgabeBeginn = JahrId is { } vj ? await Einschreibungen.StandardBeginnAsync(Ich.KontoId, vj) : null;
         if (liste is not null) await liste.NeuLadenAsync();
     }
 

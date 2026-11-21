@@ -56,7 +56,7 @@
                     @if (klasseId is not null && JahrBeginn is { } jb && JahrEnde is { } je)
                     {
                         <DatumFeld Label="Inscrit(e) depuis le" @bind-Wert="beginn" Pflicht="true" Min="jb" Max="@EinschreibungsBeginn.Hoechstens(jb, je, new SchulZeit(Uhr).Heute)"
-                                   Fehler="@FeldFehler("datum")" Hinweis="@EinschreibungDialog.HinweisBeginn" />
+                                   Fehler="@FeldFehler("datum")" Hinweis="@EinschreibungDialog.HinweisBeginn(VorgabeBeginn, jb, new SchulZeit(Uhr).Heute)" />
                     }
                 }
             </div>
@@ -76,6 +76,8 @@
     [Parameter] public Guid? VorgabeKlasse { get; set; }
     /// <summary>Schuljahr der Klassenauswahl: Grenzen und Vorgabe von « Inscrit(e) depuis le » (Beginn des Schuljahres).</summary>
     [Parameter] public DateOnly? JahrBeginn { get; set; }
+    /// <summary>Vorgabe « Inscrit(e) depuis le » (EinschreibungService.StandardBeginnAsync); ohne sie der Schuljahresbeginn.</summary>
+    [Parameter] public DateOnly? VorgabeBeginn { get; set; }
     [Parameter] public DateOnly? JahrEnde { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<ZugangsStapel?> OnGespeichert { get; set; }
@@ -99,7 +101,7 @@
         if (Open && !warOffen)
         {
             warOffen = true;
-            (Fehlermeldung, feld, klasseId, wiederholer, beginn) = (null, null, VorgabeKlasse, false, JahrBeginn);
+            (Fehlermeldung, feld, klasseId, wiederholer, beginn) = (null, null, VorgabeKlasse, false, VorgabeBeginn ?? JahrBeginn);
             if (SchuelerId is { } id)
             {
                 laedt = true;

@@ -34,14 +34,36 @@ public sealed class EinschreibungService(
     }
 
     /// <summary>
-    /// Beginn einer neuen Einschreibung: angegeben (im Schuljahr) oder – Standard – Beginn des Schuljahres
-    /// (<see cref="EinschreibungsBeginn"/>; Anlage, Import, Validierung einer Selbstregistrierung).
+    /// Beginn einer neuen Einschreibung: angegeben (im Schuljahr) oder – Standard – <see cref="StandardAsync"/>
+    /// (Anlage, Import, Validierung einer Selbstregistrierung).
     /// </summary>
-    internal static DateOnly Beginn(Schuljahr jahr, DateOnly? von)
+    internal static async Task<DateOnly> BeginnAsync(SkoulouDbContext db, Schuljahr jahr, DateOnly? von, DateOnly heute, CancellationToken ct)
     {
-        if (von is not { } d) return EinschreibungsBeginn.Vorgabe(jahr.Beginn, jahr.Ende);
+        if (von is not { } d) return await StandardAsync(db, jahr, heute, ct);
         PruefeDatum(jahr, d);
         return d;
+    }
+
+    /// <summary>
+    /// Vorgabe des Einschreibebeginns (<see cref="EinschreibungsBeginn.Standard"/>): Schuljahresbeginn nur in der Startphase
+    /// einer Schule, die mitten im Jahr zu SKOULOU kam (bis zum Ende ihrer Anmeldeperiode), sonst heute (im Schuljahr).
+    /// </summary>
+    internal static async Task<DateOnly> StandardAsync(SkoulouDbContext db, Schuljahr jahr, DateOnly heute, CancellationToken ct)
+    {
+        var anmeldung = await db.Schulen.Where(s => s.Id == jahr.SchuleId).Select(s => s.ErstelltAmUtc).FirstAsync(ct);
+        var perioden = await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr)
+            .Select(p => new { p.Beginn, p.Ende }).ToListAsync(ct);
+        return EinschreibungsBeginn.Standard(jahr.Beginn, jahr.Ende, heute, DateOnly.FromDateTime(anmeldung),
+            perioden.Select(p => (p.Beginn, p.Ende)));
+    }
+
+    /// <summary>Vorgabe für die Dialoge « Nouvel élève », « Valider » und « Importer » (nur lesen).</summary>
+    public async Task<DateOnly> StandardBeginnAsync(Guid akteurId, Guid schuljahrId, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KontenVerwalten, schreiben: false, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var jahr = await OrgAbfragen.SchuljahrAsync(db, a, schuljahrId, ct);
+        return await StandardAsync(db, jahr, new SchulZeit(zeit).Heute, ct);
     }
 
     /// <summary>Effektive Enden der (nicht stornierten) Einschreibungen der Schüler im Schuljahr (Session-Klassen enden mit der Session).</summary>
@@ -68,7 +90,7 @@ public sealed class EinschreibungService(
         var jahr = await OrgAbfragen.SchuljahrAsync(db, a, schuljahrId, ct);
         var ids = schuelerIds.Distinct().Take(500).ToList();
         var enden = await EndenAsync(db, jahr.Id, ids, ct);
-        return EinschreibungsBeginn.Vorgabe(jahr.Beginn, jahr.Ende, enden.Select(e => e.Ende));
+        return EinschreibungsBeginn.Vorgabe(await StandardAsync(db, jahr, new SchulZeit(zeit).Heute, ct), jahr.Ende, enden.Select(e => e.Ende));
     }
 
     /// <summary>Eine neue Einschreibung darf keine frühere desselben Jahres überlappen.</summary>

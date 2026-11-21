@@ -99,13 +99,23 @@
     private string? DatumHinweis => Anfrage?.Art switch
     {
         EinschreibungsAktion.Wechsel => "L'ancienne inscription se termine la veille ; les notes déjà saisies restent attachées à l'ancienne classe.",
-        EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel => HinweisBeginn,
+        EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel => HinweisBeginn(vorgabe, JahrBeginn, new SchulZeit(Uhr).Heute),
         EinschreibungsAktion.Beginn => "Les évaluations antérieures à cette date ne sont pas attendues pour l'élève (« Arrivé(e) le … » dans le cahier de notes).",
         _ => null
     };
 
-    /// <summary>Hinweis zum Feld « Inscrit(e) depuis le » (auch Anlage und Validierung).</summary>
-    public const string HinweisBeginn = "Par défaut : début de l'année scolaire. Pour un élève arrivé en cours d'année, indiquez son premier jour.";
+    /// <summary>
+    /// Hinweis zum Feld « Inscrit(e) depuis le » (auch Anlage, Validierung, Import) passend zur Vorgabe
+    /// (<see cref="EinschreibungsBeginn.Standard"/>, 21.11.2026): Schuljahresbeginn nur in der Startphase, sonst heute.
+    /// </summary>
+    public static string HinweisBeginn(DateOnly? vorgabe, DateOnly? jahrBeginn, DateOnly heute)
+        => vorgabe is null || vorgabe == jahrBeginn
+            ? "Par défaut : début de l'année scolaire (vos élèves sont saisis depuis la rentrée). Pour un élève arrivé en cours d'année, indiquez son premier jour."
+            : vorgabe >= heute
+                ? "Par défaut : aujourd'hui (nouvel élève). Si l'élève est dans l'établissement depuis plus longtemps, indiquez son premier jour."
+                : "Par défaut : le lendemain de sa dernière inscription de l'année. Au besoin, indiquez son premier jour.";
+
+    private DateOnly? vorgabe;
 
     private bool IstBeginnFeld => Anfrage?.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel or EinschreibungsAktion.Beginn;
 
@@ -139,10 +149,11 @@
             }
             else if (a.Art is EinschreibungsAktion.Einschreiben or EinschreibungsAktion.Sammel)
             {
-                // Standard: Beginn des Schuljahres (bzw. Tag nach dem Ende einer früheren Einschreibung desselben Jahres).
+                // Vorgabe: EinschreibungsBeginn.Standard (bzw. Tag nach dem Ende einer früheren Einschreibung desselben Jahres).
                 datum = JahrBeginn;
                 if (JahrId is { } jahr)
                     await AusfuehrenAsync(async () => datum = await Einschreibungen.VorgabeBeginnAsync(Ich.KontoId, jahr, a.SchuelerIds));
+                vorgabe = datum;
             }
         }
         else if (Anfrage is null)

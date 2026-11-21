@@ -21,7 +21,7 @@
                     @if (JahrBeginn is { } jb && JahrEnde is { } je)
                     {
                         <DatumFeld Label="Inscrit(e) depuis le" @bind-Wert="beginn" Pflicht="true" Min="jb" Max="@EinschreibungsBeginn.Hoechstens(jb, je, new SchulZeit(Uhr).Heute)"
-                                   Hinweis="@EinschreibungDialog.HinweisBeginn" />
+                                   Hinweis="@EinschreibungDialog.HinweisBeginn(VorgabeBeginn, jb, new SchulZeit(Uhr).Heute)" />
                     }
                     <Schalter @bind-Wert="wiederholer" Label="Redoublant(e)" />
                     <p class="sk-leise">Le compte est activé, l'élève est inscrit(e) dans la classe et reçoit un e-mail de confirmation s'il a une adresse.</p>
@@ -49,6 +49,8 @@
     [Parameter] public IReadOnlyList<AuswahlEintrag> Klassen { get; set; } = [];
     /// <summary>Schuljahr der Klassenauswahl: Grenzen und Vorgabe von « Inscrit(e) depuis le » (Beginn des Schuljahres).</summary>
     [Parameter] public DateOnly? JahrBeginn { get; set; }
+    /// <summary>Vorgabe « Inscrit(e) depuis le » (EinschreibungService.StandardBeginnAsync); ohne sie der Schuljahresbeginn.</summary>
+    [Parameter] public DateOnly? VorgabeBeginn { get; set; }
     [Parameter] public DateOnly? JahrEnde { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnErledigt { get; set; }
@@ -65,7 +67,7 @@
         if (Kandidat is { } s && geladenFuer != s.KontoId)
         {
             geladenFuer = s.KontoId;
-            (klasseId, wiederholer, grund, Fehlermeldung, beginn) = (null, false, null, null, JahrBeginn);
+            (klasseId, wiederholer, grund, Fehlermeldung, beginn) = (null, false, null, null, VorgabeBeginn ?? JahrBeginn);
         }
         else if (Kandidat is null)
         {

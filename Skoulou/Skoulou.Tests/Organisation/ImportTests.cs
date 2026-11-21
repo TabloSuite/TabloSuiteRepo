@@ -57,6 +57,30 @@ public class ImportTests
         Assert.Contains("aucune ligne", leer.Message);
     }
 
+    [Theory]
+    [InlineData(false, "2026-11-13")]   // Schule seit August bei SKOULOU: Import im November = Neuzugänge ab heute
+    [InlineData(true, "2026-09-01")]    // Schule erst am 10/11/2026 angemeldet (Startphase): « depuis la rentrée »
+    public async Task Import_ohne_Datum_schreibt_nach_dem_Standard_ein(bool neueSchule, string erwartet)
+    {
+        var w = await OrgWelt.ErstelleAsync();
+        if (neueSchule)
+            await w.MitDbAsync(async db =>
+            {
+                (await db.Schulen.SingleAsync(s => s.Id == w.SchuleA)).ErstelltAmUtc = new DateTime(2026, 11, 10, 10, 0, 0, DateTimeKind.Utc);
+                return await db.SaveChangesAsync();
+            });
+        var vorher = await w.MitDbAsync(db => db.Einschreibungen.Select(e => e.Id).ToListAsync());
+        var datei = Fuelle(await w.D.Import.VorlageAsync(w.Direktor, ImportArt.Eleves, w.Jahr),
+            Z(("Prénom", "Ama"), ("Nom", "Mensah"), ("Classe", "6e A")),
+            Z(("Prénom", "Kossi"), ("Nom", "Adjo"), ("Classe", "6e B")));
+        var vorschau = await w.D.Import.VorschauAsync(w.Direktor, ImportArt.Eleves, w.Jahr, datei, "eleves.xlsx");
+        Assert.Equal(DateOnly.Parse(erwartet), vorschau.VorgabeBeginn);
+        Assert.Equal(2, (await w.D.Import.ImportierenAsync(w.Direktor, vorschau.Id)).Angelegt);
+        var neu = await w.MitDbAsync(db => db.Einschreibungen.Where(e => !vorher.Contains(e.Id)).Select(e => e.Von).ToListAsync());
+        Assert.Equal(2, neu.Count);
+        Assert.All(neu, von => Assert.Equal(DateOnly.Parse(erwartet), von));
+    }
+
     [Fact]
     public async Task Vorschau_meldet_alle_Fehler_und_Import_legt_nur_gueltige_Zeilen_an()
     {

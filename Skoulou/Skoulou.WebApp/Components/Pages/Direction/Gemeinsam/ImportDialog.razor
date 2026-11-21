@@ -58,7 +58,7 @@
         @if (Art == ImportArt.Eleves && vorschau.JahrBeginn is { } jb && vorschau.JahrEnde is { } je && vorschau.Zeilen.Any(z => z.Gueltig && z.Zusatz is not null))
         {
             <DatumFeld Label="Élèves avec classe : inscrits depuis le" @bind-Wert="beginn" Pflicht="true" Min="jb" Max="@EinschreibungsBeginn.Hoechstens(jb, je, new SchulZeit(Uhr).Heute)"
-                       Hinweis="Par défaut : début de l'année scolaire. Pour des élèves arrivés en cours d'année, indiquez leur premier jour." />
+                       Hinweis="@(vorschau.VorgabeBeginn is { } vb && vb != jb ? "Par défaut : aujourd'hui (nouveaux élèves). Pour des élèves présents depuis plus longtemps, indiquez leur premier jour." : "Par défaut : début de l'année scolaire (vos élèves sont saisis depuis la rentrée). Pour des élèves arrivés en cours d'année, indiquez leur premier jour.")" />
         }
         <Abschnitt Titel="Aperçu" Ebene="3">
             <div class="sk-tabelle-rahmen sk-liste-scroll org-vorschau">
@@ -116,7 +116,7 @@
         {
             await using var strom = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
             vorschau = await Import.VorschauAsync(Ich.KontoId, Art, JahrId, strom, e.File.Name);
-            beginn = vorschau.JahrBeginn;
+            beginn = vorschau.VorgabeBeginn ?? vorschau.JahrBeginn;
         }
         catch (IOException)
         {

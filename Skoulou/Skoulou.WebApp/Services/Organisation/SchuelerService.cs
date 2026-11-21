@@ -158,7 +158,7 @@ public sealed class SchuelerService(
                 klasse = await OrgAbfragen.KlasseAsync(db, a, kid, ct);
                 jahr = await db.Schuljahre.FirstAsync(j => j.Id == klasse.SchuljahrId, ct);
                 EinschreibungService.PruefeKlasseOffen(klasse, jahr);
-                beginn = EinschreibungService.Beginn(jahr, von);
+                beginn = await EinschreibungService.BeginnAsync(db, jahr, von, heute, ct);
             }
             var identifiant = await fabrik.IdentifiantAsync(db, e.Identifiant, daten.Konto.Vorname, daten.Konto.Nachname, ct: ct);
             var matrikel = daten.Matrikel is { } m
@@ -220,7 +220,7 @@ public sealed class SchuelerService(
 
     /// <summary>
     /// « Valider l'inscription »: Selbstregistrierung freigeben und in einem Schritt einschreiben – ab <paramref name="von"/>
-    /// (Standard: Beginn des Schuljahres, <see cref="EinschreibungsBeginn"/>).
+    /// (Standard: <see cref="EinschreibungService.StandardAsync"/> – Schuljahresbeginn nur in der Startphase einer neuen Schule).
     /// </summary>
     public async Task ValidierenAsync(Guid akteurId, Guid schuelerId, Guid klasseId, bool wiederholer, DateOnly? von = null, CancellationToken ct = default)
     {
@@ -232,7 +232,7 @@ public sealed class SchuelerService(
             var klasse = await OrgAbfragen.KlasseAsync(db, a, klasseId, ct);
             var jahr = await db.Schuljahre.FirstAsync(j => j.Id == klasse.SchuljahrId, ct);
             EinschreibungService.PruefeKlasseOffen(klasse, jahr);
-            var beginn = EinschreibungService.Beginn(jahr, von);
+            var beginn = await EinschreibungService.BeginnAsync(db, jahr, von, new SchulZeit(zeit).Heute, ct);
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == a.SchuleId, ct);
             var profil = await db.SchuelerProfile.FirstOrDefaultAsync(p => p.KontoId == konto.Id, ct);
             if (profil is null)
