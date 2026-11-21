@@ -118,7 +118,7 @@ Es wird kein zusätzlicher Key-Vault-/Blob-Schlüsselring-Dienst eingeführt. Di
 3. **App Settings** wie oben setzen und die App neu starten.
 4. **Prüfen:** Als SuperAdmin `Administration → E-mails` öffnen: Status muss „Envoi actif via Postmark“ zeigen. Eine Test-Mail an eine externe Adresse (z. B. Gmail) senden und Posteingang/Spam prüfen. Fehler stehen im Historique (Postmark-Fehlercode + Meldung) und im Postmark-Dashboard unter *Activity*.
 
-Verhalten: Jede Mail wird zuerst in `MailNachrichten` gespeichert und sofort versendet; fehlgeschlagene Mails wiederholt der Hintergrunddienst alle 5 Minuten (max. 5 Versuche, 3 Tage). Stündlich prüft er Rechnungen (neue Rechnung, Erinnerung 3 Tage vor der Kassensperre, Sperrhinweis) und das Probe-Ende (7 Tage vorher) – jeweils einmal pro Datensatz. Rechnungen, die beim ersten Einschalten älter als 3 Tage sind, lösen keine Rechnungsmail mehr aus. Ohne Konfiguration bleiben Mails nur in der Queue.
+Verhalten: Jede Mail wird nur in `MailNachrichten` gespeichert (Warteschlange) und vom Hintergrunddienst sofort danach versendet (Weckruf, « Mot de passe oublié » zuerst) – kein Klick wartet auf Postmark (seit 21.11.2026); fehlgeschlagene Mails wiederholt der Hintergrunddienst alle 5 Minuten (max. 5 Versuche, 3 Tage). Stündlich prüft er Rechnungen (neue Rechnung, Erinnerung 3 Tage vor der Kassensperre, Sperrhinweis) und das Probe-Ende (7 Tage vorher) – jeweils einmal pro Datensatz. Rechnungen, die beim ersten Einschalten älter als 3 Tage sind, lösen keine Rechnungsmail mehr aus. Ohne Konfiguration bleiben Mails nur in der Queue.
 
 ### KI-Hilfe « Poser une question » (optional, seit 19.11.2026)
 
