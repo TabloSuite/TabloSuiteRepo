@@ -1,13 +1,37 @@
-# TabloSuite – Arbeitsstand 21.11.2026 mittags (8 Verbesserungen fertig, gepusht, master übernommen, Azure migriert – Deploy beim Nutzer)
+# TabloSuite – Arbeitsstand 21.11.2026 nachmittags (Anmelde-Regeln SKOULOU + 2 Fehler aus den Simulationen behoben; im Branch gepusht – master und Deploy offen)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachts
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachmittags
 
-**>>> JETZT (21.11. mittags):**
+**>>> JETZT (21.11. nachmittags) – Nutzer: « 1 und 2 umsetzen. Aber Test gründlich machen am Ende. Wir pushen alles am Ende »:**
+- Commits nur in `Etse.TabloSuite.Muster` (gepusht): c0ce632, 88a83da, f192b93, cd3c105 + dieser STAND. **Offen: `master` übernehmen (nur mit OK),
+  dann SKOULOU und eNOTE deployen.** Keine Migration nötig (Azure-DBs bleiben, wie sie sind).
+- **SKOULOU (1) Anmeldeperiode anteilig** (c0ce632): Periode, in der sich die Schule anmeldet, zählt erst ab dem 1. des Anmeldemonats
+  (`PlattformAnteil.AbrechnungsBeginn`; Beispiel 1er trimestre 01.09.–31.12., Anmeldung 21.11. → 2 statt 4 Monate). Rechnung, Vorschau
+  « Facturer maintenant », PDF, Journal, `/admin/tarifs`, Formation zeigen es. Perioden, die vor der Anmeldung endeten: nie berechnet (bleibt).
+- **SKOULOU (2) Koordinator darf « Inscrit(e) depuis le » im Dossier korrigieren** – war schon so (jeder Koordinator hat `KontenVerwalten`), Test ergänzt.
+- **SKOULOU Nachzügler** (f192b93, in der Simulation gefunden): Vorgabe Schuljahresbeginn **nur in der Startphase** einer mitten im Jahr
+  angemeldeten Schule (bis Ende ihrer Anmeldeperiode), sonst **heute** – sonst würde ein später Neuzugang rückwirkend ab September
+  eingeschrieben und schon abgerechnete Perioden nachberechnet. Hinweistexte unter dem Datumsfeld passen sich an.
+- **SKOULOU Anmeldedatum** (cd3c105): `Schule.ErstelltAmUtc` jetzt nach der App-Uhr gesetzt (vorher `DateTime.UtcNow` im DbContext;
+  in Produktion gleich, in der Simulation entstand dadurch keine Rechnung). Demo-Seed-Schulen gelten als seit 08/2025 angemeldet.
+  Azure SKOULOU hat noch **0 Schulen** (lesend geprüft) – keine Altdaten betroffen.
+- **eNOTE Deadlocks** (88a83da): `VertragsService.SynchronisiereAsync` verließ eine Serializable-Transaktion per `return` ohne Commit →
+  Verbindung kam mit Stufe 4 aus dem Pool, spätere Abfragen (« Divers vorhanden? » beim Kassenstart) liefen Serializable → Deadlocks
+  unter Last (auch in Produktion möglich). `IsolationsRuecksetzer` setzt jetzt auch beim Schließen/Verwerfen der Verbindung zurück;
+  SQL-Test schlägt mit altem Stand fehl. Beide Simulationen laufen jetzt mit RCSI wie Azure.
+- **Tests:** eNOTE 597/597 inkl. 18-Monats-Simulation (0 Deadlocks, vorher 5); SKOULOU 792/793 (1 übersprungen) inkl. SQL-Server und
+  Vier-Jahres-Simulation (398 Rechnungen, 82.556 Positionen unabhängig nachgerechnet, 0 Befunde). SKOULOU-Simulation zeigt weiterhin
+  abgefangene Deadlocks bei Nummernvergabe/gleichzeitigem Speichern (Wiederholung, gewollt unter Last).
+- Bewusst nicht geändert: CGU-Text (Abrechnung ab Anmeldung ist für die Schule nur günstiger).
+- Nicht im Simulationsszenario: eine Schule, die sich mitten im Jahr anmeldet (alle Simulationsschulen 06/2022) – abgedeckt durch
+  Unit-/Dienst-Tests; bei Gelegenheit in die Simulation aufnehmen.
+
+**>>> (21.11. mittags):**
 1. ~~Pushen~~ erledigt (81f66ce). 2. ~~`master` übernehmen~~ erledigt (mit OK, Fast-Forward auf 81f66ce).
 3. ~~Azure-Migrationen~~ erledigt (mit OK « JA »), beide lesend geprüft, laufende Apps antworten normal:
    - eNOTE `20261121085140_PlattformEinstellungen` (Tabelle angelegt) per idempotentem Skript + `azure-anwenden.ps1`.
@@ -28,8 +52,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Anmeldung alle 30 s + beim Seitenwechsel, abgemeldetes Gerät → Anmeldeseite « Cet appareil a été déconnecté » (0388b5f). (7) Kasse:
   angefangenes Ticket in localStorage, nach F5 automatisch zurück, Preise aus dem Katalog (786bac1). (8) KI « nach unten » + Reiter
   « Réglages » unter `/admin` (c2b3060, c7b4506, Migration).
-- **Fragen an den Nutzer (offen):** SKOULOU – darf die Regel « Perioden vor der Anmeldung werden nie berechnet » bleiben (empfohlen: ja)?;
-  Datumskorrektur mit Recht `KontenVerwalten` (Direktor, Koordinator nur mit Recht) ok?; Fachkonzept/Bauplan noch nicht nachgezogen.
+- **Fragen an den Nutzer:** SKOULOU – beide beantwortet (21.11. nachmittags: Regel bleibt + anteilig ab Anmeldemonat; Koordinator darf
+  korrigieren), Bauplan nachgezogen.
   eNOTE – Prüfmail/« Renvoyer » auch in den Hintergrund?; Konten mit « une seule connexion » werden jetzt auch auf offener Seite
   nach ≤ 30 s abgemeldet (bestehende Regel, nur sofort); Ticket nach F5 ohne Rückfrage wiederhergestellt.
 - Bewusst NICHT: PO öffnet keine Reçus der Läden (Regel « PO nie in Kasse/Kundendaten »).
