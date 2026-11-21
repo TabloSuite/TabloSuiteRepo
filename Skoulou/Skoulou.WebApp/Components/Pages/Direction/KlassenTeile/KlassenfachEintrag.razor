@@ -14,7 +14,9 @@
         }
     </div>
     <div class="org-kf-koeff">
-        <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen || Fach.WahlfachGesperrt)" Hinweis="@(Offen && Fach.WahlfachGesperrt ? "Fixé : bulletins publiés" : null)" />
+        @* 21.11.2026: nach der Veröffentlichung fest – außer in der Rectification der ersten und einzigen veröffentlichten Periode. *@
+        <ZahlFeld Label="Coef." Wert="Fach.Koeffizient" WertChanged="KoeffizientAsync" Min="0.01m" Max="100" Stellen="2" Deaktiviert="@(!Offen || Fach.KoeffizientGesperrt)"
+                  Hinweis="@(!Offen ? null : Fach.KoeffizientGesperrt ? "Fixé : bulletins publiés" : Fach.KoeffizientInRectification ? UnterrichtService.HinweisKoeffizientRectification : null)" />
     </div>
     <div class="org-kf-lehrer">
         @foreach (var l in Fach.Lehrer)

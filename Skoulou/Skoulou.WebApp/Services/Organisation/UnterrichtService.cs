@@ -9,11 +9,30 @@ namespace Skoulou.WebApp.Services.Organisation;
 
 public sealed record LehrauftragKurz(Guid Id, Guid LehrerId, string Lehrer, decimal Wochenstunden);
 
-/// <param name="WahlfachGesperrt">Bulletins der Klasse veröffentlicht: Schalter, Regel und Koeffizient sind für dieses Jahr fest.</param>
+/// <param name="WahlfachGesperrt">Bulletins der Klasse veröffentlicht: Schalter und Regel sind für dieses Jahr fest.</param>
 /// <param name="NotenOhneWahl">Erfasste Noten von Schülern ohne diese Wahl (zählen nicht, bleiben gespeichert) – Hinweis im Dialog.</param>
+/// <param name="KoeffizientGesperrt">Koeffizient fest (<see cref="KoeffizientStand.Fest"/>).</param>
+/// <param name="KoeffizientInRectification">Koeffizient ausnahmsweise änderbar (<see cref="KoeffizientStand.Rectification"/>).</param>
 public sealed record KlassenfachZeile(Guid Id, Guid FachId, string Fach, string? Kuerzel, FachGruppe Gruppe, decimal Koeffizient,
     int Reihenfolge, IReadOnlyList<LehrauftragKurz> Lehrer, bool IstWahlfach = false, WahlfachRegel WahlfachRegel = WahlfachRegel.PunkteUeber10,
-    int AnzahlGewaehlt = 0, bool WahlfachGesperrt = false, int NotenOhneWahl = 0);
+    int AnzahlGewaehlt = 0, bool WahlfachGesperrt = false, int NotenOhneWahl = 0, bool KoeffizientGesperrt = false, bool KoeffizientInRectification = false);
+
+/// <summary>
+/// Darf der Koeffizient einer Klasse noch geändert werden? (21.11.2026, eng begrenzt)
+/// <list type="bullet">
+/// <item><see cref="Frei"/>: noch keine Bulletins der Klasse veröffentlicht.</item>
+/// <item><see cref="Rectification"/>: genau EINE Periode veröffentlicht und diese gerade in Rectification – typischer Fall:
+/// der Tippfehler fällt beim ersten Bulletin auf; die erneute Veröffentlichung gibt die Bulletins mit dem richtigen
+/// Koeffizienten aus. Nur der Koeffizient, nicht die Wahlfach-Regel und keine neuen Fächer.</item>
+/// <item><see cref="Fest"/>: sonst – frühere Bulletins und Conseil müssen zur Moyenne des Jahres passen.</item>
+/// </list>
+/// </summary>
+public enum KoeffizientStand
+{
+    Frei,
+    Rectification,
+    Fest
+}
 
 public sealed record LehrauftragZeile(Guid Id, Guid KlassenfachId, Guid KlasseId, string Klasse, string Fach, decimal Wochenstunden);
 
@@ -44,9 +63,13 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
     /// Koeffizienten (auch per Kopie oder « Appliquer au niveau ») nach der ersten Veröffentlichung der Klasse: fest wie die
     /// Wahlfach-Regel (Klicktest 20.11.2026: sonst rechnet der Conseil der veröffentlichten Periode andere Moyennes als die
     /// Bulletins der Familien, und eine spätere Rectification ersetzt still alle Bulletins mit dem neuen Koeffizienten).
+    /// Einzige Ausnahme (21.11.2026): die Rectification der ersten und einzigen veröffentlichten Periode (<see cref="KoeffizientStand"/>).
     /// </summary>
     public const string MeldungKoeffizientGesperrt =
-        "Des bulletins sont déjà publiés pour cette classe : ses matières et coefficients ne peuvent plus changer cette année.";
+        "Des bulletins sont déjà publiés pour cette classe : ses matières et coefficients ne peuvent plus changer cette année (seule exception : la rectification de la première période publiée).";
+
+    /// <summary>Hinweis am Koeffizienten während der Ausnahme.</summary>
+    public const string HinweisKoeffizientRectification = "Modifiable pendant la rectification de la première période";
 
     /// <summary>Wahl eines Schülers mit Bulletin (wie eine Note: nur während einer Rectification korrigierbar).</summary>
     public const string MeldungWahlGesperrt =
@@ -73,7 +96,8 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
                                              select n.Id).Count()
                              })
             .ToListAsync(ct);
-        var gesperrt = await db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == klasseId, ct);
+        var stand = await KoeffizientStandAsync(db, klasseId, ct);
+        var gesperrt = stand != KoeffizientStand.Frei;
         var ids = faecher.Select(f => f.Id).ToList();
         var auftraege = await (from l in db.Lehrauftraege.AsNoTracking()
                                join u in db.Users on l.LehrerId equals u.Id
@@ -84,7 +108,7 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         return faecher.OrderBy(f => f.Reihenfolge).ThenBy(f => f.Name)
             .Select(f => new KlassenfachZeile(f.Id, f.FachId, f.Name, f.Kuerzel, f.Gruppe, f.Koeffizient, f.Reihenfolge,
                 auftraege.Where(x => x.KlassenfachId == f.Id).Select(x => x.Kurz).ToList(), f.IstWahlfach, f.WahlfachRegel, f.Gewaehlt,
-                gesperrt, f.OhneWahl))
+                gesperrt, f.OhneWahl, stand == KoeffizientStand.Fest, stand == KoeffizientStand.Rectification))
             .ToList();
     }
 
@@ -272,14 +296,21 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var kf = await KlassenfachAsync(db, a, klassenfachId, ct);
         await PruefeJahrOffenAsync(db, await db.Klassen.Where(k => k.Id == kf.KlasseId).Select(k => k.SchuljahrId).FirstAsync(ct), ct);
         if (kf.Koeffizient == koeff) return;
-        if (await IstVeroeffentlichtAsync(db, kf.KlasseId, ct)) throw new FachFehler(MeldungKoeffizientGesperrt);
+        if (await KoeffizientStandAsync(db, kf.KlasseId, ct) == KoeffizientStand.Fest) throw new FachFehler(MeldungKoeffizientGesperrt);
         kf.Koeffizient = koeff;
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Hat die Klasse in diesem Jahr schon veröffentlichte Bulletins (auch in Rectification)?</summary>
-    private static Task<bool> IstVeroeffentlichtAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
-        => db.KlassenVeroeffentlichungen.AnyAsync(v => v.KlasseId == klasseId, ct);
+    /// <summary>Darf der Koeffizient der Klasse geändert werden (<see cref="KoeffizientStand"/>)?</summary>
+    internal static async Task<KoeffizientStand> KoeffizientStandAsync(SkoulouDbContext db, Guid klasseId, CancellationToken ct)
+    {
+        var veroeffentlicht = await db.KlassenVeroeffentlichungen.AsNoTracking().Where(v => v.KlasseId == klasseId)
+            .Select(v => new { v.PeriodeId, v.Status }).ToListAsync(ct);
+        if (veroeffentlicht.Count == 0) return KoeffizientStand.Frei;
+        return veroeffentlicht.Select(v => v.PeriodeId).Distinct().Count() == 1 && veroeffentlicht.All(v => v.Status == VeroeffentlichungsStatus.EnRectification)
+            ? KoeffizientStand.Rectification
+            : KoeffizientStand.Fest;
+    }
 
     /// <summary>Fach aus der Klasse entfernen, solange keine Noten/Appréciations und kein Stundenplan daran hängen.</summary>
     public async Task KlassenfachEntfernenAsync(Guid akteurId, Guid klassenfachId, CancellationToken ct = default)
@@ -302,7 +333,10 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         }, ct);
     }
 
-    /// <summary>Fächer und Koeffizienten einer Klasse in eine andere übernehmen (fehlende Fächer werden ergänzt).</summary>
+    /// <summary>
+    /// Fächer und Koeffizienten einer Klasse in eine andere übernehmen (fehlende Fächer werden ergänzt). Ist die Zielklasse in
+    /// der Rectification ihrer ersten Periode (<see cref="KoeffizientStand.Rectification"/>), nur die Koeffizienten vorhandener Fächer.
+    /// </summary>
     public async Task<int> KoeffizientenKopierenAsync(Guid akteurId, Guid quelleKlasseId, Guid zielKlasseId, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, ct: ct);
@@ -311,13 +345,17 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         await OrgAbfragen.KlasseAsync(db, a, quelleKlasseId, ct);
         var ziel = await OrgAbfragen.KlasseAsync(db, a, zielKlasseId, ct);
         await PruefeJahrOffenAsync(db, ziel.SchuljahrId, ct);
-        if (await IstVeroeffentlichtAsync(db, ziel.Id, ct)) throw new FachFehler(MeldungKoeffizientGesperrt);
-        var anzahl = await KopiereInAsync(db, a.SchuleId, quelleKlasseId, ziel.Id, ct);
+        var stand = await KoeffizientStandAsync(db, ziel.Id, ct);
+        if (stand == KoeffizientStand.Fest) throw new FachFehler(MeldungKoeffizientGesperrt);
+        var anzahl = await KopiereInAsync(db, a.SchuleId, quelleKlasseId, ziel.Id, nurKoeffizienten: stand == KoeffizientStand.Rectification, ct);
         await db.SaveChangesAsync(ct);
         return anzahl;
     }
 
-    /// <summary>Koeffizienten der Klasse auf alle anderen Klassen derselben Stufe im selben Jahr übertragen. Anzahl Klassen.</summary>
+    /// <summary>
+    /// Koeffizienten der Klasse auf alle anderen Klassen derselben Stufe im selben Jahr übertragen. Anzahl Klassen. Klassen mit
+    /// veröffentlichten Bulletins bleiben unverändert – außer in der Rectification ihrer ersten Periode (dann nur Koeffizienten).
+    /// </summary>
     public async Task<int> KoeffizientenAufStufeAsync(Guid akteurId, Guid quelleKlasseId, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.KlassenVerwalten, ct: ct);
@@ -325,16 +363,21 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         var quelle = await OrgAbfragen.KlasseAsync(db, a, quelleKlasseId, ct);
         if (quelle.StufeId is null) throw new FachFehler("Cette classe n'a pas de niveau : choisissez d'abord son niveau.");
         await PruefeJahrOffenAsync(db, quelle.SchuljahrId, ct);
-        // Klassen mit veröffentlichten Bulletins behalten ihre Fächer, Koeffizienten und Wahlfach-Regeln (MeldungKoeffizientGesperrt).
-        var ziele = await db.Klassen.Where(k => k.SchuljahrId == quelle.SchuljahrId && k.StufeId == quelle.StufeId && k.Id != quelle.Id && k.Aktiv
-                                               && !db.KlassenVeroeffentlichungen.Any(v => v.KlasseId == k.Id))
+        var ziele = await db.Klassen.Where(k => k.SchuljahrId == quelle.SchuljahrId && k.StufeId == quelle.StufeId && k.Id != quelle.Id && k.Aktiv)
             .Select(k => k.Id).ToListAsync(ct);
-        foreach (var ziel in ziele) await KopiereInAsync(db, a.SchuleId, quelle.Id, ziel, ct);
+        var anzahl = 0;
+        foreach (var ziel in ziele)
+        {
+            var stand = await KoeffizientStandAsync(db, ziel, ct);
+            if (stand == KoeffizientStand.Fest) continue;   // MeldungKoeffizientGesperrt
+            await KopiereInAsync(db, a.SchuleId, quelle.Id, ziel, nurKoeffizienten: stand == KoeffizientStand.Rectification, ct);
+            anzahl++;
+        }
         await db.SaveChangesAsync(ct);
-        return ziele.Count;
+        return anzahl;
     }
 
-    private static async Task<int> KopiereInAsync(SkoulouDbContext db, Guid schuleId, Guid quelle, Guid ziel, CancellationToken ct)
+    private static async Task<int> KopiereInAsync(SkoulouDbContext db, Guid schuleId, Guid quelle, Guid ziel, bool nurKoeffizienten, CancellationToken ct)
     {
         var quellFaecher = await db.Klassenfaecher.AsNoTracking().Where(kf => kf.KlasseId == quelle).ToListAsync(ct);
         var zielFaecher = await db.Klassenfaecher.Where(kf => kf.KlasseId == ziel).ToListAsync(ct);
@@ -343,11 +386,12 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
             if (zielFaecher.FirstOrDefault(z => z.FachId == q.FachId) is { } z)
             {
                 z.Koeffizient = q.Koeffizient;
+                if (nurKoeffizienten) continue;   // Rectification der ersten Periode: Wahlfach-Regel und Fächer bleiben fest
                 z.Reihenfolge = q.Reihenfolge;
                 z.IstWahlfach = q.IstWahlfach;
                 z.WahlfachRegel = q.WahlfachRegel;
             }
-            else
+            else if (!nurKoeffizienten)
             {
                 db.Klassenfaecher.Add(new Klassenfach
                 {

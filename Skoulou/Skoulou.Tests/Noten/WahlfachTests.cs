@@ -335,6 +335,72 @@ public class WahlfachTests
         Assert.Equal(vorher.Koeffizient, (await Kf(w.O.Kf6BMath)).Koeffizient);
     }
 
+    /// <summary>
+    /// 21.11.2026: ein Tippfehler im Koeffizienten wäre sonst bis Jahresende fest. Änderbar nur, wenn die Klasse genau EINE
+    /// veröffentlichte Periode hat und diese gerade in Rectification ist – auch per Kopie/« Appliquer au niveau » (dann nur
+    /// Koeffizienten, Wahlfach-Regel und Fächer bleiben fest). Die erneute Veröffentlichung gibt die Bulletins richtig aus.
+    /// </summary>
+    [Fact]
+    public async Task Koeffizient_nur_in_der_Rectification_der_ersten_Periode_korrigierbar()
+    {
+        var (w, _) = await BenotetAsync();
+        var u = w.O.D.Unterricht;
+        await w.VeroeffentlichenAsync();
+        async Task<Klassenfach> Kf(Guid id) => await w.MitDbAsync(db => db.Klassenfaecher.AsNoTracking().SingleAsync(k => k.Id == id));
+        async Task<KlassenfachZeile> Zeile(Guid id) => (await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).Single(f => f.Id == id);
+        Assert.True((await Zeile(w.O.Kf6AMath)).KoeffizientGesperrt);
+
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Coefficient de mathématiques erroné");
+        var offen = await Zeile(w.O.Kf6AMath);
+        Assert.Equal((false, true, true), (offen.KoeffizientGesperrt, offen.KoeffizientInRectification, offen.WahlfachGesperrt));
+        await u.KoeffizientSetzenAsync(w.D, w.O.Kf6AMath, 5);
+        Assert.Equal(5, (await Kf(w.O.Kf6AMath)).Koeffizient);
+        // Die Wahlfach-Regel bleibt fest (Nutzerentscheidung 19.11.2026).
+        await Assert.ThrowsAsync<FachFehler>(() => u.WahlfachSetzenAsync(w.D, w.O.Kf6AFr, true, WahlfachRegel.WieNormal));
+
+        // Kopie/« Appliquer au niveau » in die Klasse in Rectification: nur Koeffizienten, Regel und Fächer bleiben.
+        await u.KoeffizientSetzenAsync(w.D, w.O.Kf6BMath, 6);
+        await u.FaecherHinzufuegenAsync(w.D, w.O.Klasse6B, [w.O.FachFr], 2);
+        var kf6BFr = await w.MitDbAsync(db => db.Klassenfaecher.Where(k => k.KlasseId == w.O.Klasse6B && k.FachId == w.O.FachFr).Select(k => k.Id).SingleAsync());
+        await u.KoeffizientSetzenAsync(w.D, kf6BFr, 3);
+        await u.KoeffizientenKopierenAsync(w.D, w.O.Klasse6B, w.O.Klasse6A);
+        Assert.Equal((6m, 3m), ((await Kf(w.O.Kf6AMath)).Koeffizient, (await Kf(w.O.Kf6AFr)).Koeffizient));
+        Assert.Equal((true, WahlfachRegel.PunkteUeber10), ((await Kf(w.O.Kf6AFr)).IstWahlfach, (await Kf(w.O.Kf6AFr)).WahlfachRegel));
+        await u.KoeffizientSetzenAsync(w.D, w.O.Kf6BMath, 4);
+        Assert.Equal(1, await u.KoeffizientenAufStufeAsync(w.D, w.O.Klasse6B));
+        Assert.Equal(4, (await Kf(w.O.Kf6AMath)).Koeffizient);
+
+        // Nach der erneuten Veröffentlichung wieder fest; die Bulletins tragen den richtigen Koeffizienten.
+        var vorschau = await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1);
+        await w.Bulletins.RectificationVeroeffentlichenAsync(w.D, w.O.Klasse6A, w.O.P1, vorschau.Hash);
+        Assert.True((await Zeile(w.O.Kf6AMath)).KoeffizientGesperrt);
+        await Assert.ThrowsAsync<FachFehler>(() => u.KoeffizientSetzenAsync(w.D, w.O.Kf6AMath, 3));
+        var bulletin = await w.MitDbAsync(db => db.Bulletins.FirstAsync(b => b.EinschreibungId == w.O.EinschreibungSchueler && b.Status == BulletinStatus.Publie));
+        Assert.Equal(4, BulletinSnapshot.AusJson(bulletin.SnapshotJson).Inhalt.Faecher.Single(f => f.Name == "Mathématiques").Koeffizient);
+    }
+
+    [Fact]
+    public async Task Koeffizient_fest_wenn_eine_spaetere_Periode_veroeffentlicht_ist()
+    {
+        var (w, _) = await BenotetAsync();
+        var u = w.O.D.Unterricht;
+        await w.VeroeffentlichenAsync();
+        // Zweite Periode veröffentlichen (Koeffizient gilt für beide Bulletins und den Conseil) – dann bleibt er fest, auch in einer Rectification.
+        var math2 = await w.BewertungAsync(w.O.Kf6AMath, w.O.P2, "Devoir T2");
+        foreach (var e in new[] { w.E1, w.E2 }) await w.NoteAsync(math2, e, "12");
+        var u2 = await w.Conseil.UebersichtAsync(w.D, w.O.Klasse6A, w.O.P2);
+        await w.Bulletins.VeroeffentlichenAsync(w.D, w.O.Klasse6A, w.O.P2, u2.KlassenHash, true);
+        foreach (var p in new[] { w.O.P1, w.O.P2 })
+        {
+            await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, p, "Test");
+            Assert.True((await u.KlassenfaecherAsync(w.D, w.O.Klasse6A)).All(f => f.KoeffizientGesperrt && !f.KoeffizientInRectification));
+            Assert.Equal(UnterrichtService.MeldungKoeffizientGesperrt,
+                (await Assert.ThrowsAsync<FachFehler>(() => u.KoeffizientSetzenAsync(w.D, w.O.Kf6AMath, 9))).Message);
+            Assert.Equal(0, await u.KoeffizientenAufStufeAsync(w.D, w.O.Klasse6B));
+            await w.Bulletins.RectificationAbbrechenAsync(w.D, w.O.Klasse6A, p);
+        }
+    }
+
     [Fact]
     public async Task Jahreswechsel_uebernimmt_die_Wahl_wo_das_Fach_facultative_bleibt()
     {
