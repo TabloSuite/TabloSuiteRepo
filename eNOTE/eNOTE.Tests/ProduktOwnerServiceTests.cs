@@ -112,6 +112,45 @@ public class ProduktOwnerServiceTests
         Assert.Equal(500m, aktualisiert.FestbetragProvision);
     }
 
+    /// <summary>
+    /// Klicktest 20.11.2026 (F1): Laden einem PO abgenommen und später zurückgegeben → seine letzte Commission gilt wieder
+    /// (vorher war sie weg, die nächste bezahlte Rechnung brachte still keine Provision). Ein anderer PO beginnt ohne.
+    /// </summary>
+    [Fact]
+    public async Task Erneute_Zuweisung_An_Denselben_PO_Uebernimmt_Seine_Commission()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var db = await factory.CreateDbContextAsync();
+        var sel = new AppUser { UserName = "selom", Email = "selom@x.de", FullName = "Sélom" };
+        var ama = new AppUser { UserName = "ama", Email = "ama@x.de", FullName = "Ama" };
+        var salon = new Salon { Name = "Salon A", IstFreigegeben = true };
+        db.Users.AddRange(sel, ama);
+        db.Salons.Add(salon);
+        await db.SaveChangesAsync();
+
+        var service = new ProduktOwnerService(factory);
+        await service.WeiseSalonZuAsync(sel.Id, salon.Id, true, false);
+        await service.SetzeProvisionAsync((await service.GetZuweisungenAsync(sel.Id)).Single().ZuweisungId, prozent: 10m, festbetrag: null);
+
+        // an Ama abgeben: Ama beginnt ohne Commission
+        await service.WeiseSalonZuAsync(ama.Id, salon.Id, true, false);
+        Assert.Empty(await service.GetZuweisungenAsync(sel.Id));
+        var beiAma = (await service.GetZuweisungenAsync(ama.Id)).Single();
+        Assert.Null(beiAma.ProzentProvision);
+        Assert.Null(beiAma.FestbetragProvision);
+
+        // zurück an Sélom: seine 10 % gelten wieder
+        await service.WeiseSalonZuAsync(sel.Id, salon.Id, true, false);
+        var zurueck = (await service.GetZuweisungenAsync(sel.Id)).Single();
+        Assert.Equal(10m, zurueck.ProzentProvision);
+        Assert.Null(zurueck.FestbetragProvision);
+
+        // « Décocher » und wieder « Cocher » beim selben PO: ebenfalls erhalten
+        await service.EntferneZuweisungAsync(zurueck.ZuweisungId);
+        await service.WeiseSalonZuAsync(sel.Id, salon.Id, true, false);
+        Assert.Equal(10m, (await service.GetZuweisungenAsync(sel.Id)).Single().ProzentProvision);
+    }
+
     [Fact]
     public async Task SetzeProvision_Lehnt_Ungueltige_Werte_Ab()
     {

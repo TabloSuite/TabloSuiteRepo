@@ -89,13 +89,22 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
 
         if (vorhanden is null)
         {
+            // Klicktest 20.11.2026 (F1): bekommt derselbe PO den Laden zurück, gilt seine letzte Commission für diesen Laden
+            // wieder – vorher war sie weg und die nächste bezahlte Rechnung brachte still keine Provision. Ein anderer PO
+            // beginnt ohne Commission (die legt der Admin fest).
+            var frueher = await db.ProduktOwnerSalons.AsNoTracking()
+                .Where(p => p.ProduktOwnerId == produktOwnerId && p.SalonId == salonId && p.GueltigBisUtc != null)
+                .OrderByDescending(p => p.GueltigBisUtc)
+                .FirstOrDefaultAsync(cancellationToken);
             db.ProduktOwnerSalons.Add(new ProduktOwnerSalon
             {
                 ProduktOwnerId = produktOwnerId,
                 SalonId = salonId,
                 KannLadenUmsatzSehen = kannLadenUmsatz,
                 KannPlattformUmsatzSehen = kannPlattformUmsatz,
-                SelbstAngelegt = selbstAngelegt
+                SelbstAngelegt = selbstAngelegt,
+                ProzentProvision = frueher?.ProzentProvision,
+                FestbetragProvision = frueher?.FestbetragProvision
             });
         }
         else
