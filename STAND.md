@@ -17,6 +17,16 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (12:02, kurzer Verbindungsabbruch zur DB beim Anmelden, vorübergehend, nicht KI). → Punkt 1 unten: nur noch der KI-Test des Nutzers
   (macht er später; Beispielfragen mit erwarteten Antworten stehen im Chat vom 20.11. nachmittags und unten in Punkt 1). Punkt 3 später.
 
+**>>> 21.11. nachts – Empfehlungen vor dem Deploy umgesetzt (Nutzer: « vor Deploy alles nach deinen Empfehlungen »):**
+- SKOULOU Datumsfeld Monat/Jahr wählbar (35095a4, am Handy geprüft); Frais « Accès réservé » für Koordinator ohne Finanzrecht (bcb6b4f).
+- eNOTE: Laden zurück an denselben PO → seine Commission gilt wieder (08cd166); Sperr-Hinweis 5 Minuten (bcb6b4f).
+- Beide: Registrierungsbremse je Anschluss 10 → 50/Tag (31390cb). « Au moins 6 caractères » doppelt war ein Testskript-Artefakt.
+- TabloSuiteHome (2775e38): eNOTE-Preis live über neuen eNOTE-Endpunkt `/tarifs/public`, SKOULOU-Punkt « Emplois du temps ».
+- Tests: eNOTE 566, SKOULOU 721, Home 9+2. **Deploy-Reihenfolge: eNOTE, SKOULOU, dann TabloSuiteHome.** Keine Migration.
+- **Bewusst nach dem Deploy (Empfehlung):** Koeffizient-Korrektur über Rectification, Rectification nur geänderte Bulletins,
+  Registrierung langsames Netz Eingaben merken, Schulstart mitten im Jahr, Mailversand über Warteschlange, Gerät sofort aussperren,
+  F5 in der Kasse. **Bewusst nicht:** PO öffnet keine Reçus (Regel « PO nie in Kasse/Kundendaten »).
+
 **>>> 20.11. abends – Klicktest « wie ein Mensch » beider Apps (vor dem Nacht-Test des Nutzers mit Sado):**
 - Zwei Agenten (Worktrees, eigene Test-DBs `ENOTE_E2E_2011` / `SKOULOU_E2E_2011`, Berichte `%TEMP%\e2e-2011\<app>\BERICHT.md`).
   Regeln seit heute: nur klicken, nach jedem Schritt sichtbaren Inhalt prüfen (Lehre aus Fatal 2), Normaltest + Fehlersuche.
