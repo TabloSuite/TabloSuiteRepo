@@ -76,3 +76,49 @@ public sealed record BulletinSnapshot(int Version, BulletinInhalt Inhalt, Snapsh
     public static string HashVon(IEnumerable<string> einzelHashes)
         => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', einzelHashes))));
 }
+
+/// <summary>
+/// Hat sich ein veröffentlichtes Bulletin fachlich geändert? (21.11.2026: eine Rectification gibt nur solche Bulletins neu aus –
+/// Eltern unbeteiligter Schüler sahen sonst « Rectifié », z. B. nur weil die Vorlage oder der Kopf der Schule inzwischen anders war.)
+/// Verglichen wird, was die Familie im Bulletin sieht: Noten, Moyennes, Ränge, Klassenstatistik, Appréciations, Conseil,
+/// Anwesenheit, Identität, Effectif. Ändert sich der Rang oder die Klassenstatistik eines Mitschülers, ist sein Bulletin geändert.
+/// Nicht verglichen: Kopf der Schule, Vorlage (Farbe, Schrift, Spalten – Vorlagenänderungen wirken nur auf künftige Bulletins),
+/// Namen der Lehrkräfte; ebenso Angaben, die die Vorlage des veröffentlichten Bulletins im PDF ausblendet. Rang, Moyenne und
+/// Mention stehen zusätzlich in der Liste « Mes bulletins » und zählen deshalb immer.
+/// </summary>
+public static class BulletinVergleich
+{
+    private static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
+    private static readonly SnapshotSchule OhneSchule = new(string.Empty, null, null, null, null, null, null, null, null, null, string.Empty);
+    private static readonly SnapshotAnwesenheit OhneAnwesenheit = new(false, 0, 0, 0, 0);
+
+    /// <summary>true = fachlich gleich (das veröffentlichte Bulletin bleibt gültig, kein « Rectifié »).</summary>
+    public static bool FachlichGleich(BulletinInhalt veroeffentlicht, BulletinInhalt neu)
+    {
+        // Sicht = Vorlage des veröffentlichten Bulletins (das, was die Familie in der Hand hat).
+        var sicht = veroeffentlicht.Layout ?? neu.Layout;
+        return JsonSerializer.Serialize(Fachlich(veroeffentlicht, sicht), Json) == JsonSerializer.Serialize(Fachlich(neu, sicht), Json);
+    }
+
+    /// <summary>Inhalt ohne nicht-fachliche Angaben und ohne das, was die Vorlage <paramref name="sicht"/> im PDF ausblendet.</summary>
+    internal static BulletinInhalt Fachlich(BulletinInhalt i, SnapshotLayout sicht) => i with
+    {
+        Schule = OhneSchule,
+        Layout = null!,
+        Klassenlehrer = null,
+        Faecher = i.Faecher.Select(f => f with
+        {
+            Lehrer = null,
+            Rang = sicht.ZeigeFachRang ? f.Rang : null,
+            Teilnoten = sicht.ZeigeTeilnoten ? f.Teilnoten : null,
+            Appreciation = sicht.ZeigeAppreciation ? f.Appreciation : null,
+            JahresMoyenne = sicht.ZeigeJahresBilanz ? f.JahresMoyenne : null
+        }).ToList(),
+        Gruppen = sicht.ZeigeFachGruppen ? i.Gruppen : [],
+        Statistik = sicht.ZeigeKlassenStatistik ? i.Statistik : null,
+        Anwesenheit = sicht.ZeigeAnwesenheit ? i.Anwesenheit : OhneAnwesenheit,
+        MoyenneInWorten = sicht.ZeigeNoteInWorten ? i.MoyenneInWorten : null,
+        Vorperioden = sicht.ZeigeVorperioden ? i.Vorperioden : [],
+        Bilan = sicht.ZeigeJahresBilanz ? i.Bilan : null
+    };
+}

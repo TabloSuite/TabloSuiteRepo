@@ -129,6 +129,68 @@ public class BulletinTests
         Assert.Equal(1, await w.MitDbAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == AuditAktionen.Berichtigt)));
     }
 
+    /// <summary>
+    /// 21.11.2026: eine Rectification gibt nur Bulletins neu aus, die sich fachlich geändert haben. Vorlage, Kopf der Schule und
+    /// Namen der Lehrkräfte zählen nicht – sonst sahen Eltern unbeteiligter Schüler « Rectifié ».
+    /// </summary>
+    [Fact]
+    public async Task Rectification_gibt_nur_fachlich_geaenderte_Bulletins_neu_aus()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await w.VollstaendigAsync();
+        await w.VeroeffentlichenAsync();
+        var altE1 = await w.MitDbAsync(db => db.Bulletins.SingleAsync(b => b.EinschreibungId == w.E1));
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Appréciation oubliée");
+
+        // Nicht fachlich: neue Vorlage, neue Adresse der Schule, anderer Name der Lehrkraft → keine Wirkung.
+        await w.AendernAsync(async db =>
+        {
+            db.BulletinVorlagen.Add(new BulletinVorlage { SchuleId = w.O.SchuleA, Farbe = "#b91c1c", SchriftGroesse = 11 });
+            (await db.Schulen.SingleAsync(s => s.Id == w.O.SchuleA)).Adresse = "Boulevard du 13 janvier, Lomé";
+            (await db.Users.SingleAsync(u => u.Id == w.O.Lehrer)).Nachname = "Nouveau-Nom";
+        });
+        Assert.Empty((await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1)).Aenderungen);
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bulletins.RectificationVeroeffentlichenAsync(w.D, w.O.Klasse6A, w.O.P1, "egal"));
+
+        // Fachlich: Appréciation eines Schülers → nur sein Bulletin.
+        await w.Noten.BemerkungSpeichernAsync(w.D, w.O.Kf6AMath, w.O.P1, w.E2, "Nette progression, continuez.");
+        var vorschau = await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1);
+        Assert.Equal(w.E2, Assert.Single(vorschau.Aenderungen).EinschreibungId);
+        Assert.Equal(1, await w.Bulletins.RectificationVeroeffentlichenAsync(w.D, w.O.Klasse6A, w.O.P1, vorschau.Hash));
+
+        var e1 = await w.MitDbAsync(db => db.Bulletins.Where(b => b.EinschreibungId == w.E1).ToListAsync());
+        Assert.Equal(altE1.Id, Assert.Single(e1).Id);                     // unverändert gültig, kein « Rectifié »
+        Assert.Equal((BulletinStatus.Publie, false), (e1[0].Status, e1[0].IstRectificatif));
+        Assert.False(Assert.Single(await w.Lesen.EigeneAsync(w.O.Eltern, w.O.Schueler)).IstRectificatif);
+        var e2 = await w.MitDbAsync(db => db.Bulletins.SingleAsync(b => b.EinschreibungId == w.E2 && b.Status == BulletinStatus.Publie));
+        Assert.True(e2.IstRectificatif);
+        Assert.Equal("Nette progression, continuez.", BulletinSnapshot.AusJson(e2.SnapshotJson).Inhalt.Faecher.Single(f => f.Name == "Mathématiques").Appreciation);
+    }
+
+    /// <summary>Rang und Klassenstatistik der Mitschüler zählen – die Statistik aber nur, wenn die Vorlage sie druckt.</summary>
+    [Theory]
+    [InlineData(true, 2)]
+    [InlineData(false, 1)]
+    public async Task Klassenstatistik_der_Mitschueler_zaehlt_wenn_gedruckt(bool statistikGedruckt, int erwartet)
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        if (!statistikGedruckt)
+            await w.AendernAsync(db =>
+            {
+                db.BulletinVorlagen.Add(new BulletinVorlage { SchuleId = w.O.SchuleA, ZeigeKlassenStatistik = false });
+                return Task.CompletedTask;
+            });
+        var (math, _) = await w.VollstaendigAsync();
+        await w.VeroeffentlichenAsync();
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Erreur de report");
+        // eleveziel 11 → 12 in Mathématiques: (12·3 + 14·2)/5 = 12,80 – Ränge bleiben (eleve 13,00 1er), die Moyenne der Classe ändert sich.
+        await w.NoteAsync(math, w.E2, "12");
+        var vorschau = await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1);
+        Assert.Equal(erwartet, vorschau.Aenderungen.Count);
+        Assert.Contains(vorschau.Aenderungen, a => a.EinschreibungId == w.E2 && a.NeuMoyenne == "12,80");
+        Assert.All(vorschau.Aenderungen, a => Assert.Equal(a.AltRang, a.NeuRang));
+    }
+
     [Fact]
     public async Task Rueckzug_Uebergaben_und_Sicht_der_Familie()
     {

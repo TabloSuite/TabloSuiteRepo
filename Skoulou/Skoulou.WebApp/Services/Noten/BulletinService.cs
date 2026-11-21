@@ -193,7 +193,11 @@ public sealed class BulletinService(IDbContextFactory<SkoulouDbContext> dbFactor
     private sealed record Wirkung(BulletinBerechnung Berechnung, KohortenSchueler Schueler, BulletinInhalt Inhalt, string Hash, Guid? AltId,
         RectificationAenderung Aenderung);
 
-    /// <summary>Betroffene Bulletins: die Periode selbst und spätere veröffentlichte Perioden der Klasse (Vorperioden, Bilan).</summary>
+    /// <summary>
+    /// Betroffene Bulletins: die Periode selbst und spätere veröffentlichte Perioden der Klasse (Vorperioden, Bilan) – nur solche,
+    /// die sich gegenüber der veröffentlichten Fassung fachlich geändert haben (<see cref="BulletinVergleich"/>); die übrigen
+    /// bleiben gültig und erscheinen nicht als « Rectifié ».
+    /// </summary>
     private static async Task<List<Wirkung>> WirkungenAsync(SkoulouDbContext db, Klasse klasse, Periode periode, CancellationToken ct)
     {
         var spaetere = await (from v in db.KlassenVeroeffentlichungen
@@ -213,6 +217,7 @@ public sealed class BulletinService(IDbContextFactory<SkoulouDbContext> dbFactor
                 gueltige.TryGetValue(s.EinschreibungId, out var alt);
                 if (alt is not null && alt.Hash == hash) continue;
                 var altInhalt = alt is null ? null : BulletinSnapshot.AusJson(alt.SnapshotJson).Inhalt;
+                if (altInhalt is not null && BulletinVergleich.FachlichGleich(altInhalt, inhalt)) continue;
                 liste.Add(new Wirkung(b, s, inhalt, hash, alt?.Id, new RectificationAenderung(s.EinschreibungId, s.Name, p.Titel, alt?.Nummer,
                     altInhalt?.MoyenneText ?? "—", inhalt.MoyenneText, altInhalt?.Rang ?? "—", inhalt.Rang, alt is null)));
             }
