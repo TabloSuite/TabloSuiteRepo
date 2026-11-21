@@ -8,11 +8,33 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public class UmsatzHub : Hub
 {
-    public async Task AbonniereSalon(string salonId)
-        => await Groups.AddToGroupAsync(Context.ConnectionId, GruppenName(salonId));
+    /// <summary>
+    /// Live-Umsatz abonnieren – nur mit dem geheimen Salon-Schlüssel (<see cref="SalonSchluessel"/>), nie mit der SalonId:
+    /// Der Hub ist anonym erreichbar (Kunden-Display), und die SalonId steht im Display-Link. Fehlersuche 21.11.2026:
+    /// mit « AbonniereSalon(SalonId) » empfing jeder ohne Anmeldung Tagesumsatz und Anzahl Verkäufe eines Ladens.
+    /// </summary>
+    public async Task AbonniereSalon(string salonSchluessel)
+    {
+        if (IstSalonSchluessel(salonSchluessel))
+            await Groups.AddToGroupAsync(Context.ConnectionId, GruppenName(salonSchluessel));
+    }
 
-    public async Task VerlasseSalon(string salonId)
-        => await Groups.RemoveFromGroupAsync(Context.ConnectionId, GruppenName(salonId));
+    public async Task VerlasseSalon(string salonSchluessel)
+    {
+        if (IstSalonSchluessel(salonSchluessel))
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, GruppenName(salonSchluessel));
+    }
+
+    // Geheimnis nur im Arbeitsspeicher dieses Prozesses: Sender (Kasse) und Empfänger (Finanzseite, serverseitige
+    // Hub-Verbindung) laufen im selben Prozess; der Schlüssel erreicht nie den Browser.
+    private static readonly byte[] SalonGeheimnis = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+
+    /// <summary>Nicht erratbarer Gruppen-Schlüssel eines Ladens (HMAC der SalonId, 64 Hex-Zeichen).</summary>
+    public static string SalonSchluessel(Guid salonId)
+        => Convert.ToHexString(System.Security.Cryptography.HMACSHA256.HashData(SalonGeheimnis, salonId.ToByteArray()));
+
+    public static bool IstSalonSchluessel(string? schluessel)
+        => schluessel is { Length: 64 } && schluessel.All(Uri.IsHexDigit);
 
     /// <summary>Kunden-Display abonniert die laufende Kassensitzung.</summary>
     public async Task AbonniereDisplay(string sitzungId)
@@ -63,7 +85,7 @@ public class UmsatzBenachrichtigungService(IHubContext<UmsatzHub> hubContext) : 
         CancellationToken cancellationToken = default)
     {
         await hubContext.Clients
-            .Group(UmsatzHub.GruppenName(salonId.ToString()))
+            .Group(UmsatzHub.GruppenName(UmsatzHub.SalonSchluessel(salonId)))
             .SendAsync("UmsatzAktualisiert", tagesUmsatzGesamt, anzahlVerkaeufeHeute, cancellationToken);
     }
 }

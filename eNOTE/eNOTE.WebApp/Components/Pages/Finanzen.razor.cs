@@ -212,7 +212,7 @@ public partial class Finanzen(
         try
         {
             await hubVerbindung.StartAsync();
-            await hubVerbindung.InvokeAsync("AbonniereSalon", salonId.ToString());
+            await hubVerbindung.InvokeAsync("AbonniereSalon", UmsatzHub.SalonSchluessel(salonId));
             liveVerbunden = true;
         }
         catch
@@ -319,7 +319,7 @@ public partial class Finanzen(
         {
             try
             {
-                await hubVerbindung.InvokeAsync("VerlasseSalon", salonId.ToString());
+                await hubVerbindung.InvokeAsync("VerlasseSalon", UmsatzHub.SalonSchluessel(salonId));
                 await hubVerbindung.DisposeAsync();
             }
             catch
