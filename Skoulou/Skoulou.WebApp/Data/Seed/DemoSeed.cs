@@ -20,6 +20,9 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
     public const string SchulName = "Collège Démo Les Palmiers";
     public const string Domain = "exemple.tg";
 
+    /// <summary>Anmeldung der Demo-Schulen bei SKOULOU: vor dem Demo-Vorjahr 2025-2026 (Abrechnung ab Anmeldung, 21.11.2026).</summary>
+    public static readonly DateTime Angemeldet = new(2025, 8, 1, 8, 0, 0, DateTimeKind.Utc);
+
     private static readonly (string Vorname, string Nachname, Geschlecht G, string Klasse, int Jahr)[] Schueler =
     [
         ("Kossi", "Adjo", Geschlecht.Maennlich, "6e A", 2014), ("Ama", "Dossou", Geschlecht.Weiblich, "6e A", 2014),
@@ -57,7 +60,9 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
             Email = "contact@" + Domain, RepublikZeile = "RÉPUBLIQUE TOGOLAISE", StaatsMotto = "Travail – Liberté – Patrie",
             Ministerium = "Ministère des Enseignements Primaire et Secondaire", DirectionRegionale = "Direction régionale de l'éducation Golfe-Lomé",
             Statut = "Privé laïc",
-            EssaiPerioden = 0   // Demo-Schule hat schon Rechnungen (2025-2026) – keine Probezeit
+            EssaiPerioden = 0,   // Demo-Schule hat schon Rechnungen (2025-2026) – keine Probezeit
+            // Seit August 2025 bei SKOULOU: sonst wären alle Perioden vor dem Tag des Seedens « vor der Anmeldung » (21.11.2026).
+            ErstelltAmUtc = Angemeldet
         };
         db.Schulen.Add(schule);
         await db.SaveChangesAsync(ct);

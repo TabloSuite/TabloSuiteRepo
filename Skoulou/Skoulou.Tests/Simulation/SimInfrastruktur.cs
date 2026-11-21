@@ -62,6 +62,9 @@ internal sealed class SimDatenbank
         var optionen = new DbContextOptionsBuilder<SkoulouDbContext>().UseSqlServer(Verbindung).Options;
         await using var db = new SkoulouDbContext(optionen);
         await db.Database.MigrateAsync();
+        // Wie Azure SQL (ENote-/Skoulou-Database: is_read_committed_snapshot_on = 1, geprüft 21.11.2026): Lesen ohne Sperren.
+        // Ohne diese Einstellung meldete die Simulation Deadlocks zwischen Lesen und Schreiben, die es in Produktion nicht gibt.
+        await db.Database.ExecuteSqlRawAsync($"ALTER DATABASE [{Name}] SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE");
     }
 
     public async Task LoeschenAsync()

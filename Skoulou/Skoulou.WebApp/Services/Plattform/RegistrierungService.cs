@@ -155,7 +155,10 @@ public sealed class RegistrierungService(
                 var schule = new Schule
                 {
                     Name = p.SchulName!, NameNormalisiert = TextNormalisierung.Schluessel(p.SchulName), Ort = p.Ort!, Land = p.Land!,
-                    Status = SchulStatus.EnAttente, MatrikelPraefix = NummernFormat.PraefixAusName(p.SchulName!)
+                    Status = SchulStatus.EnAttente, MatrikelPraefix = NummernFormat.PraefixAusName(p.SchulName!),
+                    // Anmeldung bei SKOULOU nach der Uhr der App (nicht DateTime.UtcNow im DbContext): daran hängen Abrechnungsbeginn
+                    // und « Perioden vor der Anmeldung » (21.11.2026, in der Simulation gefunden).
+                    ErstelltAmUtc = zeit.GetUtcNow().UtcDateTime
                 };
                 db.Schulen.Add(schule);
                 neu = await konten.AnlegenAsync(db, daten, p.Identifiant, Rollen.Direktor, schule.Id, KontoStatus.EnAttente, e.Passwort!,

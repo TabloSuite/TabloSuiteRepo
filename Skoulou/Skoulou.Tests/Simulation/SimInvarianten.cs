@@ -65,8 +65,14 @@ internal sealed partial class Simulation
                                          e.SchuelerId, e.SchuljahrId, e.Von, e.Bis,
                                          SBeginn = s == null ? (DateOnly?)null : s.Beginn, SEnde = s == null ? (DateOnly?)null : s.Ende
                                      }).ToListAsync(),
-            Schulen = await db.Schulen.Select(s => new { s.Id, s.Status }).ToDictionaryAsync(s => s.Id, s => s.Status)
+            Schulen = await db.Schulen.Select(s => new { s.Id, s.Status }).ToDictionaryAsync(s => s.Id, s => s.Status),
+            Anmeldungen = await db.Schulen.Select(s => new { s.Id, s.ErstelltAmUtc }).ToDictionaryAsync(s => s.Id, s => DateOnly.FromDateTime(s.ErstelltAmUtc))
         });
+        // Unabhängig nachgerechnet (Regeln vom 21.11.2026): Perioden, die vor der Anmeldung der Schule endeten, werden nie
+        // berechnet; die Periode der Anmeldung erst ab dem 1. des Anmeldemonats.
+        static int MonateVon(DateOnly beginn, DateOnly ende) => Math.Max(1, (int)Math.Round((ende.DayNumber - beginn.DayNumber + 1) / 30.4375m, MidpointRounding.AwayFromZero));
+        static DateOnly AbVon(DateOnly beginn, DateOnly ende, DateOnly anmeldung)
+            => anmeldung > beginn && anmeldung <= ende && new DateOnly(anmeldung.Year, anmeldung.Month, 1) is var erster && erster > beginn ? erster : beginn;
         var rechnungen = daten.Rechnungen.ToDictionary(r => r.Id);
         var periodenJeJahr = daten.Perioden.GroupBy(p => p.SchuljahrId)
             .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Beginn).ThenBy(p => p.Nr).ToList());
@@ -75,18 +81,23 @@ internal sealed partial class Simulation
         foreach (var j in daten.Jahre.Where(j => j.PlattformMonatspreis is not null))
         {
             var preis = j.PlattformMonatspreis!.Value;
-            var perioden = periodenJeJahr.GetValueOrDefault(j.Id) ?? [];
-            if (perioden.Count == 0) continue;
-            // Unabhängig nachgerechnet: Monate = max(1, round(Tage / 30,4375)), Anteil = Monatspreis × Monate.
-            var monate = perioden.ToDictionary(p => p.Id, p => Math.Max(1, (int)Math.Round((p.Ende.DayNumber - p.Beginn.DayNumber + 1) / 30.4375m, MidpointRounding.AwayFromZero)));
-            foreach (var p in perioden)
-                Pruefe(PlattformAnteil.Monate(p.Beginn, p.Ende) == monate[p.Id], $"Monate von {p.Titel} ({j.Bezeichnung}): {PlattformAnteil.Monate(p.Beginn, p.Ende)} statt {monate[p.Id]}.");
+            var alle = periodenJeJahr.GetValueOrDefault(j.Id) ?? [];
+            if (alle.Count == 0) continue;
+            var anmeldung = daten.Anmeldungen[j.SchuleId];
+            // Monate = max(1, round(Tage / 30,4375)) ab dem Abrechnungsbeginn, Anteil = Monatspreis × Monate.
+            foreach (var p in alle)
+                Pruefe(PlattformAnteil.Monate(p.Beginn, p.Ende) == MonateVon(p.Beginn, p.Ende), $"Monate von {p.Titel} ({j.Bezeichnung}): {PlattformAnteil.Monate(p.Beginn, p.Ende)} statt {MonateVon(p.Beginn, p.Ende)}.");
+            var vorAnmeldung = alle.Where(p => p.Ende < anmeldung).Select(p => p.Id).ToHashSet();
+            foreach (var p in gueltig.Where(p => vorAnmeldung.Contains(p.PeriodeId)))
+                Pruefe(false, $"Position für eine Periode vor der Anmeldung der Schule ({anmeldung:dd/MM/yyyy}) berechnet (Jahr {j.Bezeichnung}).");
+            var perioden = alle.Where(p => !vorAnmeldung.Contains(p.Id)).ToList();
+            var monate = perioden.ToDictionary(p => p.Id, p => MonateVon(AbVon(p.Beginn, p.Ende, anmeldung), p.Ende));
             var anteil = perioden.ToDictionary(p => p.Id, p => preis * monate[p.Id]);
             var jePosition = gueltig.Where(p => anteil.ContainsKey(p.PeriodeId)).ToList();
             foreach (var p in jePosition)
                 Pruefe(p.Betrag == anteil[p.PeriodeId], $"Position {p.Betrag} statt {anteil[p.PeriodeId]} (Jahr {j.Bezeichnung}, Monatspreis {preis}).");
             var jahresMonate = monate.Values.Sum();
-            foreach (var g in jePosition.GroupBy(p => p.SchuelerId).Where(g => g.Select(p => p.PeriodeId).Distinct().Count() == perioden.Count))
+            foreach (var g in jePosition.GroupBy(p => p.SchuelerId).Where(g => perioden.Count > 0 && g.Select(p => p.PeriodeId).Distinct().Count() == perioden.Count))
                 Pruefe(g.Sum(p => p.Betrag) == preis * jahresMonate, $"Schüler {g.Key}: Summe {g.Sum(p => p.Betrag)} ≠ {jahresMonate} Monate × {preis} ({j.Bezeichnung}).");
         }
         Geprueft.Add($"Monatspreis × Monate: {daten.Jahre.Count(j => j.PlattformMonatspreis is not null)} Schuljahre, {gueltig.Count} gültige Positionen");
@@ -113,7 +124,7 @@ internal sealed partial class Simulation
         {
             var jahr = daten.Jahre.First(j => j.Id == p.SchuljahrId);
             if (jahr.Status == SchuljahrStatus.Vorbereitung || daten.Schulen[jahr.SchuleId] is not (SchulStatus.Active or SchulStatus.Suspendue)) continue;
-            var soll = daten.Einschreibungen.Where(e => e.SchuljahrId == p.SchuljahrId)
+            var soll = daten.Einschreibungen.Where(e => e.SchuljahrId == p.SchuljahrId && p.Ende >= daten.Anmeldungen[jahr.SchuleId])
                 .Where(e =>
                 {
                     var von = e.SBeginn is { } sb && sb > e.Von ? sb : e.Von;

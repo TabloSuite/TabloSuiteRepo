@@ -43,7 +43,7 @@ public static class DemoSeedPlattform
         {
             Name = ZweiteSchule, NameNormalisiert = TextNormalisierung.Schluessel(ZweiteSchule), Ort = "Aného", Land = "Togo",
             Status = SchulStatus.Active, ResponsableId = demo.ResponsableId, Telefon = "+228 00 00 00 99",
-            MatrikelPraefix = NummernFormat.PraefixAusName(ZweiteSchule)
+            MatrikelPraefix = NummernFormat.PraefixAusName(ZweiteSchule), ErstelltAmUtc = DemoSeed.Angemeldet
         };
         db.Schulen.AddRange(wartend, zweite);
         await db.SaveChangesAsync(ct);

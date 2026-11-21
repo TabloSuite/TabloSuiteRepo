@@ -26,6 +26,8 @@ public class RegistrierungTests
         });
         Assert.Equal(SchulStatus.EnAttente, schule.Status);
         Assert.Equal("college horizon", schule.NameNormalisiert);
+        // Anmeldedatum nach der Uhr der App (Abrechnung ab Anmeldung, 21.11.2026) – hier die Testuhr, nicht die echte Zeit.
+        Assert.Equal(u.Zeit.GetUtcNow().UtcDateTime, schule.ErstelltAmUtc);
         Assert.Equal((Rollen.Direktor, KontoStatus.EnAttente, true, false), (konto.Rolle, konto.Status, konto.SelbstRegistriert, konto.MussPasswortAendern));
         Assert.NotNull(konto.AgbAkzeptiertAmUtc);
         Assert.Equal(AnmeldeErgebnis.Warteseite, AnmeldeRegeln.Pruefe(konto.Status, konto.Rolle, schule.Status));
